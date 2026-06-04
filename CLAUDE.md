@@ -4,21 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > **PoBR** = Path of Building in Rust。目标是把 PathOfBuilding（Lua）的核心计算引擎迁移到 Rust：解决大规模 Modifier 聚合 / 多技能并行计算的性能瓶颈，并在 PoB 兼容的基础上额外提供 source-level 归因（每个输出都能追踪到装备 / 词条 / 天赋 / 宝石 / 配置的贡献）。
 
-## ⚠️ 必读：编译产物目录指向本地盘（SMB 卷无文件锁）
+## 构建环境
 
-本仓库源码位于 SMB 网络卷（`//ackness@192.168.1.74/personal_folder`，macOS `smbfs`），该卷**不支持文件锁**。
-若 cargo 把 `target` 建在该卷上，会失败：
-`could not create session directory lock file: Operation not supported (os error 45)`。这是 SMB 协议层限制，无法在该卷上修复。
+本仓库已 `git clone` 到本地 APFS 盘（`origin` = `git@github.com:ackness/pobr.git`），`target/` 建在仓库默认位置即可，**直接使用普通 cargo 命令**，无需任何重定向或 `CARGO_INCREMENTAL=0`。
 
-**本机已通过项目级 `.cargo/config.toml` 把 `build.target-dir` 重定向到本地 APFS 盘**
-（`/Users/wuyong/.cargo-target/pobr`），从而恢复增量编译、并让编译 I/O 走本地 SSD。
-因此**直接使用普通 cargo 命令即可，无需 `CARGO_INCREMENTAL=0`**。
-
-- 本仓库由 Mac 与 Windows **共享同一份 NAS 文件**（未用 git），故 `.cargo/config.toml` 两机共用；其中 `target-dir` 是 Mac 本地绝对路径，主力开发在本 Mac，直接生效。
-- **Windows 上若需编译**：用环境变量覆盖（优先级高于本文件），PowerShell `$env:CARGO_TARGET_DIR = "$env:USERPROFILE\.cargo-target\pobr"`；或临时用 `CARGO_INCREMENTAL=0 cargo ...`。
-
-> 该卷会被同步，文件内容可能在读写之间发生变化；若工具读到的内容与磁盘 `grep`/`sed` 结果不一致，以磁盘为准并重新读取。
-> 仓库目前**没有任何 git commit**，所有文件都是 untracked 状态，且可能有进行中（测试领先于实现）的 WIP。
+> 历史背景：早期源码曾放在 SMB 网络卷（`smbfs`，不支持文件锁），cargo 会因 `could not create session directory lock file: Operation not supported (os error 45)` 失败，当时通过项目级 `.cargo/config.toml` 把 `build.target-dir` 重定向到本地盘绕过。迁移到本地后该问题不再存在；若将来在 SMB/网络卷上开发，可用环境变量 `CARGO_TARGET_DIR` 指向本地盘临时绕过。
 
 ## 常用命令
 
