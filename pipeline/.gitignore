@@ -1,0 +1,7 @@
+# pathofexile-dat 的原始产物与缓存：均为大体积中间物，绝不入库。
+# 仅 config.json / 脚本 / README 入库；真源数据按需从 GGG CDN 拉取后适配为 data/ 下的最小 JSON。
+.cache/
+tables/
+files/
+node_modules/
+*.log

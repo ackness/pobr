@@ -1,0 +1,15 @@
+{
+  "patch": "4.5.0.3.4",
+  "translations": ["English", "Traditional Chinese"],
+  "tables": [
+    { "name": "BaseItemTypes", "columns": ["Id","Name","ItemClass","DropLevel","Width","Height","Tags","Implicit_Mods","ModDomain"] },
+    { "name": "ItemClasses", "columns": ["Id","Name"] },
+    { "name": "Tags", "columns": ["Id","DisplayString"] },
+    { "name": "Mods", "columns": ["Id","Name","ModType","Domain","GenerationType","Level","Stat1","Stat2","Stat3","Stat4","Stat1Value","Stat2Value","Stat3Value","Stat4Value","Tags","SpawnWeight_Tags","Families"] },
+    { "name": "Stats", "columns": ["Id","IsLocal","Semantic","Category"] },
+    { "name": "SkillGems", "columns": ["BaseItemType","GemType","GemColour","MinLevelReq","StrengthRequirementPercent","DexterityRequirementPercent","IntelligenceRequirementPercent","GemEffects"] },
+    { "name": "GrantedEffects", "columns": ["Id","IsSupport","ActiveSkill","StatSet","CastTime","CostTypes","AllowedActiveSkillTypes","AddedActiveSkillTypes"] },
+    { "name": "GrantedEffectsPerLevel", "columns": ["GrantedEffect","Level","Cooldown","CostAmounts","AttackTime"] },
+    { "name": "ActiveSkills", "columns": ["Id","DisplayedName","Description","ActiveSkillTypes","GrantedEffect"] }
+  ]
+}

@@ -2,5 +2,8 @@
 **/target/
 .claude/
 
+# PoB 参考仓库（本地临时 clone，仅用于数据勘察 / 对照，不纳入版本控制）
+/vendor/
+
 # 本机相关的 cargo 配置（如在网络卷上开发时用 target-dir 重定向到本地盘）
 /.cargo/config.toml

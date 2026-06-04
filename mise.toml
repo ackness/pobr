@@ -1,0 +1,43 @@
+# PoBR 开发环境与数据管线（mise-en-place）
+#
+# 环境：`mise install` 装好钉定的工具链。
+# 取数据（一键）：`mise run data:fetch` —— 索引（首次 ~113MB，之后跳过）→ 抽取 .dat 为原始 JSON。
+# 完整再生成：`mise run data` —— 取数 + 适配为入库的最小 JSON。
+#
+# 原始 JSON / 索引缓存均在 pipeline/ 下且 gitignore，不入库；入库的只有 data/<version>/ 的最小适配 JSON。
+
+[tools]
+node = "22"
+
+[env]
+# 当前钉定的 PoE2 补丁版本（须与 pipeline/config.json 的 "patch" 一致）。
+POE2_PATCH = "4.5.0.3.4"
+
+[tasks."data:version"]
+description = "查询 GGG 当前 PoE2 patch 版本号（CDN 版本）"
+dir = "pipeline"
+run = "node query-patch-version.mjs"
+
+[tasks."data:index"]
+description = "弹性分块下载 bundle 索引到缓存（规避大文件单流中断；已缓存则跳过）"
+dir = "pipeline"
+run = "node download-index.mjs"
+
+[tasks."data:export"]
+description = "从 GGG CDN 抽取 .dat 表为原始 JSON（→ pipeline/tables/，gitignore）"
+dir = "pipeline"
+run = "npx -y pathofexile-dat@15"
+
+[tasks."data:fetch"]
+description = "一键取数：索引 → 抽取（原始 JSON）"
+dir = "pipeline"
+run = ["node download-index.mjs", "npx -y pathofexile-dat@15"]
+
+[tasks."data:adapt"]
+description = "适配原始 JSON 为 PoBR 最小 JSON（→ data/<version>/，入库）。需 pobr-data-adapter（建设中）"
+run = "cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.0.3.4"
+
+[tasks."data"]
+description = "完整一键：取数 + 适配"
+dir = "pipeline"
+run = ["node download-index.mjs", "npx -y pathofexile-dat@15", "cd .. && cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.0.3.4"]
