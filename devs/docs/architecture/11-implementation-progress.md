@@ -4,7 +4,7 @@
 
 ## 0. 维护规则
 
-更新时间：2026-06-04（追加：TotalDPS trace 公式树、角色基础值 / 元素抗性惩罚 / 战役奖励 modifier 入口）
+更新时间：2026-06-04（追加：物品来源接入 —— `EquipmentSlot` + `ingest_item` + `CalculationSession::add_item`，词条解析为带槽位归因的 modifier）
 
 每次实现后必须同步更新本文件：
 
@@ -28,6 +28,7 @@
 - SourceId 与 TraceGraph 基础。
 - `Life` / `Mana` / 三元素抗性 / `TotalDPS` 的 traced calculation。
 - 角色基础值 / 元素抗性惩罚 / 战役奖励的 modifier 入口（`character` / `campaign` 模块）。
+- 物品来源接入（`item` 模块）：装备词条 → 带 `SourceKind::Item` + 槽位归因的 modifier。
 
 当前仍未完成：
 
@@ -36,7 +37,8 @@
 - Max resistance / overcap / floor。
 - SkillUseTime。
 - DamageComponent vector。
-- 物品、天赋、技能来源接入。
+- 天赋、技能来源接入（物品已接入）。
+- implicit / explicit / enchant section 区分（当前统一归因到槽位级 Item 节点）。
 - PoB Build Code 导入/导出。
 - 多语言 runtime crate。
 - GUI / CLI / WASM 应用层。
@@ -136,9 +138,37 @@
 - [ ] `AttributionReport`。
 - [ ] direct/marginal/interaction attribution。
 
+### 来源接入（阶段六）
+
+- [x] 物品：`EquipmentSlot`（10 个稳定槽位 ID）。
+- [x] 物品：`ingest_item(slot, &Item)` —— 词条文本 → 带 `SourceKind::Item` + `slot` + `raw_text` 归因的 modifier。
+- [x] 物品：无法解析词条收集进 `ItemIngest::unsupported`（不报错）。
+- [x] 物品：`CalculationSession::add_item(slot, &Item)` 注入最小计算闭环。
+- [x] 物品：贡献可回溯到具体装备槽（`contributions` origin slot / source id 测试）。
+- [ ] 物品：implicit / explicit / enchant section 区分（细分到 `ItemAffix` / `ItemImplicit`）。
+- [ ] 天赋树来源接入（`PassiveTreeSpec` → allocated nodes → node modifier）。
+- [ ] 技能宝石来源接入（active / support gem，skill type 兼容，mana multiplier）。
+
 ---
 
 ## 3. 当前实现步骤
+
+### 已完成：物品来源接入（阶段六第一切片）
+
+实现见 `pobr-data/src/item.rs::EquipmentSlot`、`pobr-core/src/item.rs::ingest_item`、
+`calc/session.rs::CalculationSession::add_item`，测试见 `tests/item_source.rs`。
+
+填上了原 `add_modifier_texts` 路径「解析丢归因」的洞：装备词条经 parser 解析后，
+统一挂上 `SourceKind::Item` + 槽位 `slot` + 原始 `raw_text` 归因，复用既有
+`with_origin` / `contributions` / `sum_traced` 基建，使最终输出可 source-level
+回溯到具体装备槽。
+
+- [x] `EquipmentSlot`（武器 ×2 / 头 / 身 / 手 / 脚 / 项链 / 戒指 ×2 / 腰带），`id()` 稳定字符串。
+- [x] `ingest_item` 解析词条并挂槽位归因，`stat_id` / `mod_type` 由 `with_origin` 回填。
+- [x] 无法解析词条收集进 `unsupported`。
+- [x] `add_item` 端到端注入最小计算（life inc/base 管线可验证）。
+- [x] 贡献回溯断言（origin slot == 槽位、source id == `item.<slot>`）。
+- [ ] section 区分（implicit / explicit / enchant）需 `Item` 先拥有词条分段。
 
 ### 已完成：DPS trace formula tree
 
