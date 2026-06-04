@@ -55,8 +55,9 @@ impl CalculationSession {
         self.env.player.mod_db.add_list(modifiers);
     }
 
-    /// 接入一件装备：解析其词条文本为带槽位归因的 modifier 并注入计算，
-    /// 无法解析的词条收集进 `unsupported_modifier_texts`。
+    /// 接入一件装备：按 section（implicit / explicit / enchant）解析其词条文本为
+    /// 带槽位 + 来源类别归因的 modifier 并注入计算，无法解析的词条收集进
+    /// `unsupported_modifier_texts`。
     pub fn add_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
         let ingest = ingest_item(slot, item)?;
         self.env.player.mod_db.add_list(ingest.modifiers);

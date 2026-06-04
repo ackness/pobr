@@ -27,7 +27,13 @@ pub struct Item {
     pub base: ItemBaseId,
     pub rarity: ItemRarity,
     pub quality: u8,
+    /// implicit 词条文本（基底固有词缀），归因到 `SourceKind::ItemImplicit`。
+    pub implicit_texts: Vec<String>,
+    /// explicit 词条文本（前后缀），归因到 `SourceKind::ItemAffix`。
+    /// 沿用历史字段名 `modifier_texts` 以保持向后兼容。
     pub modifier_texts: Vec<String>,
+    /// enchant 词条文本（铭刻/附魔），归因到 `SourceKind::ItemEnchant`。
+    pub enchant_texts: Vec<String>,
     pub parsed_stats: Vec<StatId>,
 }
 
