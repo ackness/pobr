@@ -7,6 +7,7 @@ pub mod game_data;
 pub mod gem;
 pub mod item;
 pub mod modifier;
+pub mod monster;
 pub mod passive_tree;
 pub mod skill;
 pub mod source;
@@ -22,6 +23,7 @@ pub mod prelude {
     pub use crate::gem::*;
     pub use crate::item::*;
     pub use crate::modifier::*;
+    pub use crate::monster::*;
     pub use crate::passive_tree::*;
     pub use crate::skill::*;
     pub use crate::source::*;

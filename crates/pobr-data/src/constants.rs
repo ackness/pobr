@@ -134,6 +134,17 @@ impl AilmentType {
     }
 }
 
+/// PoE2 玩家/召唤物暴击伤害加成基础值（+100%；即爆伤乘区 base=0 时为 2.0）。
+/// 出处：agent-docs/critical-hits.md §爆伤、PoE2 wiki Critical hit、
+/// CalcOffence.lua `Sum("BASE","CritMultiplier")` 默认含 +100%。
+pub const PLAYER_BASE_CRIT_DAMAGE_BONUS: f64 = 100.0;
+
+/// 格挡几率硬上限（PoB2 `data.misc.BlockChanceCap = 90`，agent-docs/block.md）。
+pub const BLOCK_CHANCE_CAP: f64 = 90.0;
+
+/// 感电最小有效强度（PoE2 0.5.0：BaseShockMagnitude = 20，agent-docs/ailments.md §感电）。
+pub const SHOCK_MIN_EFFECT: f64 = 20.0;
+
 /// 集中存放 PoE2 计算常量，避免在公式中散落 magic number。
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct GameConstants {
@@ -152,8 +163,12 @@ pub struct GameConstants {
     /// 中毒基础 magnitude 占 pre-mitigation 命中的比例（每秒）。
     pub poison_base_fraction: f64,
     pub poison_base_duration: f64,
-    /// 默认感电增伤幅度（agent-docs 给定 20%）。
+    /// 默认感电增伤幅度（agent-docs/ailments.md BaseShockMagnitude=20，0.5.0）。
     pub shock_default_effect: f64,
+    /// 玩家/召唤物暴击伤害加成基础值（PoE2 +100%；见 PLAYER_BASE_CRIT_DAMAGE_BONUS）。
+    pub player_base_crit_damage_bonus: f64,
+    /// 格挡几率硬上限（PoE2 90%；见 BLOCK_CHANCE_CAP）。
+    pub block_chance_cap: f64,
 }
 
 impl GameConstants {
@@ -171,7 +186,9 @@ impl GameConstants {
             ignite_base_duration: 4.0,
             poison_base_fraction: 0.20,
             poison_base_duration: 2.0,
-            shock_default_effect: 0.20,
+            shock_default_effect: SHOCK_MIN_EFFECT / 100.0,
+            player_base_crit_damage_bonus: PLAYER_BASE_CRIT_DAMAGE_BONUS,
+            block_chance_cap: BLOCK_CHANCE_CAP,
         }
     }
 
