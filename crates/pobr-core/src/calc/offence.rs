@@ -61,6 +61,12 @@ pub struct MinimalOutput {
     pub fire_resistance: f64,
     pub cold_resistance: f64,
     pub lightning_resistance: f64,
+    pub max_fire_resistance: f64,
+    pub max_cold_resistance: f64,
+    pub max_lightning_resistance: f64,
+    pub fire_resistance_over_cap: f64,
+    pub cold_resistance_over_cap: f64,
+    pub lightning_resistance_over_cap: f64,
     pub crit_chance: f64,
     pub crit_multiplier: f64,
     pub total_hit_avg: f64,
@@ -97,6 +103,12 @@ impl MinimalOutput {
             fire_resistance: output.fire_resistance,
             cold_resistance: output.cold_resistance,
             lightning_resistance: output.lightning_resistance,
+            max_fire_resistance: output.max_fire_resistance,
+            max_cold_resistance: output.max_cold_resistance,
+            max_lightning_resistance: output.max_lightning_resistance,
+            fire_resistance_over_cap: output.fire_resistance_over_cap,
+            cold_resistance_over_cap: output.cold_resistance_over_cap,
+            lightning_resistance_over_cap: output.lightning_resistance_over_cap,
             crit_chance: output.crit_chance,
             crit_multiplier: output.crit_multiplier,
             total_hit_avg: output.total_hit_avg,
@@ -108,19 +120,69 @@ impl MinimalOutput {
     }
 }
 
+/// 单条抗性的解析结果：capped final / 最大抗性 / over-cap。
+struct ResistanceResolution {
+    final_value: f64,
+    max: f64,
+    over_cap: f64,
+}
+
+/// 解析一条元素抗性：
+/// - total = base + Σ`<element>Resistance` Base
+/// - max   = min(75 + Σ`Maximum<element>Resistance` + Σ`MaximumAllElementalResistances`, 90)
+/// - final = min(total, max)（负抗性无下限）
+/// - over  = max(total - max, 0)
+fn resolve_resistance(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base: f64,
+    res_name: &str,
+    max_res_name: &str,
+) -> ResistanceResolution {
+    let total = base + db.sum(ModType::Base, cfg, &[ModName::from(res_name)]);
+    let max_bonus = db.sum(
+        ModType::Base,
+        cfg,
+        &[
+            ModName::from(max_res_name),
+            ModName::from("MaximumAllElementalResistances"),
+        ],
+    );
+    let max = (DEFAULT_MAX_RESISTANCE + max_bonus).min(HARD_MAX_RESISTANCE);
+    ResistanceResolution {
+        final_value: round(total.min(max)),
+        max: round(max),
+        over_cap: round((total - max).max(0.0)),
+    }
+}
+
 pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> MinimalOutput {
     let life = scaled_pool(db, cfg, input.base_life, "MaximumLife");
     let mana = scaled_pool(db, cfg, input.base_mana, "MaximumMana");
-    let fire_resistance = round(
-        input.base_fire_resistance + db.sum(ModType::Base, cfg, &[ModName::from("FireResistance")]),
+    let fire = resolve_resistance(
+        db,
+        cfg,
+        input.base_fire_resistance,
+        "FireResistance",
+        "MaximumFireResistance",
     );
-    let cold_resistance = round(
-        input.base_cold_resistance + db.sum(ModType::Base, cfg, &[ModName::from("ColdResistance")]),
+    let cold = resolve_resistance(
+        db,
+        cfg,
+        input.base_cold_resistance,
+        "ColdResistance",
+        "MaximumColdResistance",
     );
-    let lightning_resistance = round(
-        input.base_lightning_resistance
-            + db.sum(ModType::Base, cfg, &[ModName::from("LightningResistance")]),
+    let lightning = resolve_resistance(
+        db,
+        cfg,
+        input.base_lightning_resistance,
+        "LightningResistance",
+        "MaximumLightningResistance",
     );
+    let fire_resistance = fire.final_value;
+    let cold_resistance = cold.final_value;
+    let lightning_resistance = lightning.final_value;
 
     let damage_cfg = if cfg.damage_type.is_some() {
         cfg.clone()
@@ -167,6 +229,12 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
         fire_resistance,
         cold_resistance,
         lightning_resistance,
+        max_fire_resistance: fire.max,
+        max_cold_resistance: cold.max,
+        max_lightning_resistance: lightning.max,
+        fire_resistance_over_cap: fire.over_cap,
+        cold_resistance_over_cap: cold.over_cap,
+        lightning_resistance_over_cap: lightning.over_cap,
         crit_chance,
         crit_multiplier,
         total_hit_avg,
@@ -193,6 +261,18 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
             BreakdownStep {
                 name: "lightning_resistance",
                 value: lightning_resistance,
+            },
+            BreakdownStep {
+                name: "fire_resistance_over_cap",
+                value: fire.over_cap,
+            },
+            BreakdownStep {
+                name: "cold_resistance_over_cap",
+                value: cold.over_cap,
+            },
+            BreakdownStep {
+                name: "lightning_resistance_over_cap",
+                value: lightning.over_cap,
             },
             BreakdownStep {
                 name: "crit_chance",

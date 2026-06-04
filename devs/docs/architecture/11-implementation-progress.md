@@ -4,7 +4,7 @@
 
 ## 0. 维护规则
 
-更新时间：2026-06-04（追加：阶段六来源接入三件套 —— 物品（含 implicit/explicit/enchant section 区分）、天赋树节点、技能宝石（主动 / 辅助）的 modifier 来源与归因入口，并行实现后合并）
+更新时间：2026-06-04（追加：阶段六来源接入三件套 —— 物品（含 implicit/explicit/enchant section 区分）、天赋树节点、技能宝石（主动 / 辅助）的 modifier 来源与归因入口，并行实现后合并；最大抗性 / 硬上限 / over-cap 计算边界原语）
 
 每次实现后必须同步更新本文件：
 
@@ -36,7 +36,6 @@
 
 - PoB 全量属性 parity matrix fixture。
 - `AttributionReport`。
-- Max resistance / overcap / floor。
 - SkillUseTime。
 - DamageComponent vector。
 - 辅助宝石 mana multiplier / more 倍率被支援技能隔离 / skill type gating（`skill_source` 已留结构化 TODO）。
@@ -101,7 +100,7 @@
 - [x] crit chance / crit multiplier 简化计算。
 - [x] attack/action rate 简化计算。
 - [x] DPS 简化计算。
-- [ ] max resistance / floor / overcap。
+- [x] max resistance / floor / overcap（默认 75 / 硬上限 90 / 可由 `Maximum<Element>Resistance` + `MaximumAllElementalResistances` 提升 / 负抗性无下限 / over-cap 输出，见 `offence.rs::resolve_resistance`）。
 - [ ] SkillUseTime。
 - [ ] DamageComponent vector。
 - [ ] EHP / max hit。

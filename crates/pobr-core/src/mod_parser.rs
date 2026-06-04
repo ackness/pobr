@@ -318,6 +318,12 @@ fn parse_name(text: &str) -> Option<ModName> {
         "cold resistance" => "ColdResistance",
         "lightning resistance" => "LightningResistance",
         "chaos resistance" => "ChaosResistance",
+        "maximum fire resistance" => "MaximumFireResistance",
+        "maximum cold resistance" => "MaximumColdResistance",
+        "maximum lightning resistance" => "MaximumLightningResistance",
+        "maximum chaos resistance" => "MaximumChaosResistance",
+        "all maximum elemental resistances" => "MaximumAllElementalResistances",
+        "maximum elemental resistances" => "MaximumAllElementalResistances",
         _ => return None,
     };
 
