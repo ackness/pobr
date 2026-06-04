@@ -1,0 +1,2775 @@
+[
+ {
+  "sub": "暴击管线",
+  "id": "crit-base-bonus-poe2",
+  "title": "爆伤基础值 PoE1→PoE2 正确性修复（150→100）",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:205",
+   "crates/pobr-core/src/calc/offence.rs:443",
+   "crates/pobr-data/src/constants.rs:139-182",
+   "crates/pobr-core/tests/calc_minimal.rs:111"
+  ],
+  "desc": "当前代码在两处将 PoE1 爆伤基础 150（即 +50%→1.5x）硬编码为公式的一部分：offence.rs:205 `(150.0 + Base)/100.0` 和 :443 同一行。PoE2 玩家/召唤物基础爆伤加成为 +100%（即 2.0x 倍率），PoB2 CalcOffence.lua 对应公式：`extraDamage = Sum(BASE,CritMultiplier)/100`，其中 CritMultiplier 默认值含 +100 基础；`output.CritMultiplier = 1 + max(0, extraDamage * (1+inc/100) * more)`。正确公式：`crit_multiplier = 1.0 + (100.0 + db.sum(Base, cfg, &[CritMultiplier])) / 100.0`（无额外 base mod 时结果 2.0）。同时 constants.rs 中 GameConstants::poe2() 须新增常量 `player_base_crit_damage_bonus: 100.0`。同步修正 calc_minimal.rs:111 的测试期望值（加 Base=50 时，PoE2 结果为 2.5，非 2.0）。验收：单元测试 `base_crit_multiplier_is_2_0_with_no_mods` 通过；`base_plus_50_gives_2_5`；PoB2 golden fixture 对比 `CritMultiplier` 字段吻合。",
+  "doc": [
+   "agent-docs/critical-hits.md §爆伤计算顺序",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.3"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — CritMultiplier 段（extraDamage = Sum BASE CritMultiplier / 100）"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-multiplier-inc-more",
+  "title": "爆伤缺少 inc/more 乘区（仅 Base 层）",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": true,
+  "dep": [
+   "crit-base-bonus-poe2"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:203-206",
+   "crates/pobr-core/src/calc/offence.rs:435-451"
+  ],
+  "desc": "当前 offence.rs 的爆伤公式只读 `ModType::Base` 的 CritMultiplier，不读 Inc 和 More：offence.rs:203-205 只做 `(150+base)/100`，traced 版 :435-443 同。PoB2 CalcOffence.lua：`extraDamage = Sum(BASE,CritMultiplier)/100 * (1+Sum(INC,CritMultiplier)/100) * More(CritMultiplier)`。缺口：新增 `crit_multiplier_inc = db.sum(Inc, cfg, &[CritMultiplier])` 和 `crit_multiplier_more = db.more(cfg, &[CritMultiplier])`，将公式改为 `1.0 + max(0.0, (BASE_BONUS + base) / 100.0 * (1 + inc / 100.0) * more)`（含 max(0,...) 保持非负）。traced 版同步补齐 sum_traced + more_factor_traced 并把这两个节点 add_edge 到 crit 节点。来源举例：`Sniper's Mark` 有 `(20-77)% increased Critical Damage Bonus`。验收：测试 `crit_mult_inc_doubles_extra_damage` 与 `crit_mult_more_compounds`；traced 版 source_ancestors 能回溯到对应 origin。",
+  "doc": [
+   "agent-docs/critical-hits.md §爆伤计算顺序",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.3"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — extraDamage 含 INC/More"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-chance-cap-queryable",
+  "title": "暴击几率上限 CritChanceCap 从 ModDb 查询而非硬编码 1.0",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:198-201",
+   "crates/pobr-core/src/calc/offence.rs:430-433",
+   "crates/pobr-core/src/calc/output.rs:20"
+  ],
+  "desc": "offence.rs:200 和 :431 把上限硬编码为 `.clamp(0.0, 1.0)`（即 100%）。PoB2 中 CritChanceCap 默认 100（%），可被修饰词覆盖（`Override` 语义）。应改为 `let cap = db.override_(cfg, ModName::from(\"CritChanceCap\")).unwrap_or(100.0) / 100.0; clamp(0.0, cap)`。当前没有已知 PoE2 词条修改此上限，但管线须支持可配置上限以对齐 PoB2 架构。OutputTable 也应新增 `pre_effective_crit_chance: f64`（= 此处 clamp 之后、命中降级之前的值）供 breakdown 显示。验收：无覆盖时行为不变；注入 Override mod 后 cap 生效。",
+  "doc": [
+   "agent-docs/critical-hits.md §暴击几率上限",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.3"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — CritChanceCap override"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-mode-effective",
+  "title": "有效 DPS 模式下暴击几率乘命中率降级（mode_effective）",
+  "size": "M",
+  "par": false,
+  "pri": "P1",
+  "bug": true,
+  "dep": [
+   "crit-chance-cap-queryable"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:194-207",
+   "crates/pobr-core/src/calc/offence.rs:419-453",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "offence.rs 的 DPS 公式中，crit_chance 直接使用原始几率与 crit_multiplier 组合，未乘命中率进行降级。PoB2 CalcOffence.lua：`if mode_effective then output.CritChance = output.CritChance * output.AccuracyHitChance / 100`（即有效暴击 = 暴击几率 × 命中率）。含义：闪避检定失败的命中降级为普通击中，不能暴击，因此有效暴击率 = 暴击几率 × 命中率。当前代码不做此乘法（crit_average_factor 直接用未降级的 crit_chance），导致有效 DPS 高估。正确逻辑：在 `resolve_crit` 内，当 `mode_effective=true` 时：`effective_crit_chance = pre_effective_crit_chance * hit_chance`；PreEffectiveCritChance 存储降级前值；用 effective_crit_chance 计算 crit_effect。验收：enemy_evasion=1000, accuracy=600, base_crit_chance=50% 时，有效暴击 = 50% × hit_chance(1000, 600)；golden fixture 对比。",
+  "doc": [
+   "agent-docs/critical-hits.md §对暴击的防御 §闪避二次命中检定降级",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.3 step2"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — mode_effective 判断与 CritChance × AccuracyHitChance / 100"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-flag-lucky",
+  "title": "CritChanceLucky flag：幸运暴击几率 1-(1-c)²",
+  "size": "S",
+  "par": false,
+  "pri": "P1",
+  "bug": false,
+  "dep": [
+   "crit-mode-effective"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:194-207",
+   "crates/pobr-core/src/calc/offence.rs:419-453"
+  ],
+  "desc": "offence.rs 完全没有 `CritChanceLucky` flag 的处理。PoB2：`if Flag(CritChanceLucky) then output.CritChance = (1-(1-c/100)^2)*100`（pct 空间运算）。实现：`if db.flag(cfg, ModName::from(\"CritChanceLucky\")) { effective_crit_chance = 1.0 - (1.0 - effective_crit_chance).powi(2); }`，在 mode_effective 步骤之后执行。tracked 版同步 flag_traced 记录来源。验收：注入 Flag(CritChanceLucky) mod、base_crit_chance=30%，结果应为 `1-(0.7)²=0.51`。",
+  "doc": [
+   "agent-docs/critical-hits.md §幸运/不幸",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.1 Flag表"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — CritChanceLucky 段"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-flag-bifurcate",
+  "title": "BifurcateCrit flag：分岔暴击几率与额外爆伤",
+  "size": "M",
+  "par": false,
+  "pri": "P1",
+  "bug": false,
+  "dep": [
+   "crit-flag-lucky"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:194-207",
+   "crates/pobr-core/src/calc/offence.rs:419-453"
+  ],
+  "desc": "offence.rs 无任何 BifurcateCrit 处理。PoB2：(1) 在 Lucky 之后再做 `1-(1-c)²`；(2) 两次都暴击的概率 `bifurcateMultiChance = (preBifurcateCritChance)² / 100`（pct²/100），这份概率额外贡献一份爆伤 extra。需要记录 `pre_bifurcate_crit_chance`（BifurcateCrit 步骤前的值）供额外爆伤计算。实现步骤：(a) Lucky 结束后存 preBifurcate；(b) crit_chance = 1-(1-preBif)²；(c) bifurcateMultiChance = preBif²；(d) crit_multiplier_extra += bifurcateMultiChance * extra_crit_mult（一份额外爆伤按概率加权）。验收：注入 BifurcateCrit flag + base_crit=50%，等效暴击率 = 75%；额外爆伤期望项正确。",
+  "doc": [
+   "agent-docs/critical-hits.md §分岔暴击",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.3 step4"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — BifurcateCrit / bifurcateMultiChance 段"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-flag-inevitable",
+  "title": "InevitableCriticalHits flag：必然暴击 + 几何级数 less 爆伤",
+  "size": "M",
+  "par": false,
+  "pri": "P1",
+  "bug": false,
+  "dep": [
+   "crit-flag-bifurcate"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:194-207",
+   "crates/pobr-core/src/calc/offence.rs:419-453"
+  ],
+  "desc": "offence.rs 无 InevitableCriticalHits 处理。PoB2：flag 触发时 crit_chance 置 100%，并用几何级数计算期望爆伤倍率：第 N 次才暴击（概率 `c*(1-c)^(N-1)`）享受 `max(0, extra - 0.3*(N-1))` 爆伤，N 从 1 到无穷。PoB2 实现用有限截断迭代折算 less 爆伤（一条 More 负值）。实现复杂度：需实现几何级数迭代（收敛快，精度要求合理），将期望爆伤折成 effective_crit_mult_more 传入爆伤计算。此 flag 须在 BifurcateCrit 步骤之后执行，crit_chance 强置 100%。验收：几何级数结果与 PoB2 golden 输出 `CritMultiplier` 字段匹配（允许 ±0.1% 误差）。",
+  "doc": [
+   "agent-docs/critical-hits.md §必然暴击",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.3 step5"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — InevitableCriticalHits 几何级数段"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-flag-no-crit-multiplier",
+  "title": "NoCritMultiplier flag：无爆伤效果",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": false,
+  "dep": [
+   "crit-multiplier-inc-more"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:203-206",
+   "crates/pobr-core/src/calc/offence.rs:435-443"
+  ],
+  "desc": "offence.rs 没有 NoCritMultiplier flag 检查。PoB2：当 `Flag(NoCritMultiplier)` 时，直接令 `output.CritMultiplier = 1`（暴击不额外造成伤害，crit_effect = 1 + c*(1-1) = 1）。实现：在 resolve_crit 计算 extra 之前检查此 flag，若为 true 则 extra=0 → crit_multiplier=1.0。验收：注入 NoCritMultiplier flag，任何 base_crit_chance 下 total_hit_avg == non_crit_hit_avg。",
+  "doc": [
+   "agent-docs/critical-hits.md §暴击伤害加成",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.1 Flag表"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — NoCritMultiplier 判断"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-enemy-selfcrit",
+  "title": "敌方 SelfCritChance + SelfCritMultiplier（暴击弱点/标记）接线",
+  "size": "M",
+  "par": false,
+  "pri": "P1",
+  "bug": true,
+  "dep": [
+   "crit-base-bonus-poe2",
+   "crit-multiplier-inc-more"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:194-201",
+   "crates/pobr-core/src/calc/offence.rs:203-206",
+   "crates/pobr-core/src/calc/offence.rs:419-453",
+   "crates/pobr-core/src/calc/perform.rs:19-21"
+  ],
+  "desc": "offence.rs 完全不读 `enemy.mod_db`。PoB2 CalcOffence.lua：`base = Sum(BASE,CritChance) + enemy:Sum(BASE,SelfCritChance)`（暴击弱点 Critical Weakness 贡献 +0.5%/层，最多 20 层 = +10%）；爆伤侧：`+ enemy:Sum(BASE,SelfCritMultiplier) * (1 + enemy:Sum(INC,SelfCritMultiplier)/100)`（Sniper's Mark 等）。须先完成 P2（敌人 modDB 接线）的基础设施，但暴击弱点接线本身属 P1 暴击管线。实现：(1) `crit_chance_base` 求和时加 `env.enemy.mod_db.sum(Base, cfg, &[SelfCritChance])`；(2) 爆伤计算时加 `enemy:Sum(BASE,SelfCritMultiplier)` 并乘其 inc 乘区。两个来源都需要 `SourceKind::EnemyConfig` 写入 TraceGraph。验收：enemy.mod_db 注入 SelfCritChance=10.0 后，crit_chance 提升 10%-points；source_ancestors 包含 EnemyConfig source。",
+  "doc": [
+   "agent-docs/critical-hits.md §暴击弱点、PoB2 计算实现",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.2 §4.3 step1"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua — enemy:Sum BASE SelfCritChance、enemy SelfCritMultiplier 段"
+  ]
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-traced-inc-more-untraced",
+  "title": "traced 版暴击：inc/more 贡献未进 TraceGraph（归因残缺）",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:428-452"
+  ],
+  "desc": "offence.rs:428-432（traced 版）中 `crit_chance_inc = db.sum(ModType::Inc, ...)` 和 `crit_chance_more = db.more(...)` 均使用非 traced 版本，其来源没有节点/边进入 TraceGraph；`crit_multiplier_base` traced 了但 inc/more 同样未 trace（:436-443）。`crit_node`（:445）只连接了 `crit_chance_base` 和 `crit_multiplier_base`，漏掉了 inc/more 的贡献节点。修复：将 `db.sum` 替换为 `db.sum_traced`，将 `db.more` 替换为 `more_factor_traced`，并 `trace.add_edge` 到 crit_node。验收：source_ancestors(dps_node) 能找到 Inc/More CritChance 和 CritMultiplier 对应的 SourceId；Traced 与 Plain 输出数值保持一致。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.10 归因贯穿"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "暴击管线",
+  "id": "crit-resolve-refactor",
+  "title": "提取 resolve_crit 函数，消除 calculate_minimal 与 total_dps_traced 的逻辑重复",
+  "size": "M",
+  "par": false,
+  "pri": "P1",
+  "bug": false,
+  "dep": [
+   "crit-base-bonus-poe2",
+   "crit-multiplier-inc-more",
+   "crit-flag-no-crit-multiplier",
+   "crit-traced-inc-more-untraced"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:163-295",
+   "crates/pobr-core/src/calc/offence.rs:376-535"
+  ],
+  "desc": "当前暴击逻辑在 `calculate_minimal`（:194-206）和 `total_dps_traced`（:420-453）中各实现一遍，存在漂移风险（已可见：traced 版 inc/more 不追踪，非 traced 版 inc/more 追踪也缺失）。按 doc12 §4.3 签名：`fn resolve_crit(player: &ModDb, enemy: &ModDb, cfg: &CalcConfig, hit_chance: f64, base_crit: f64, mode_effective: bool) -> CritOutcome { chance, multiplier, effect }`（或拆出 traced 变体）。提取后可统一包含所有 flag 处理顺序，并让两个调用点共享同一实现。验收：提取后所有现有 calc_minimal 测试继续通过；新添的 flag 测试也通过；traced 版与 plain 版数值保持一致。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.3"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "hit-chance-formula-bug",
+  "title": "命中率公式错误：使用了 PoE1 防御侧公式而非 PoE2 进攻侧公式",
+  "size": "S",
+  "par": true,
+  "pri": "P2",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/defence.rs:40-56",
+   "crates/pobr-core/src/calc/offence.rs:215,519"
+  ],
+  "desc": "当前 `hit_chance` 实现 (`defence.rs:53`) 使用 `accuracy / (accuracy + (evasion/4)^0.8)`，这是 PoE1 的防御侧命中公式（即怪物命中玩家用的 monsterHitChance）。PoE2 玩家攻击命中怪物的进攻侧公式（`CalcDefence.lua::calcs.hitChance`）应为：`rawChance = accuracy * 1.25 * 100 / (accuracy + evasion * 0.3)`，最终 clamp 到 [5, 100]（fraction 表示即 clamp(raw/100, 0.05, 1.0)），公式上限 125%（evasion=0 时），普通路径 clamp 到 100%。accuracy=0 时返回 0.05（5% 下限）。此外下限判断方向也有差异：当前在 accuracy<=0 时返回 0.05，而 PoB2 的判断是 accuracy<0 时直接返回 5（百分比）。\n\n验收信号：① unit test `hit_chance(0, 1000) == 1.0`、`hit_chance(1000, 0) == 1.0`、`hit_chance(1000, 1000) == approx(0.806)`（= 1000×1.25/(1000+1000×0.3)×clamp≈80.6%）、`hit_chance(1, 10000) == 0.05`；② 与 PoB2 同输入数值对账，误差 < 0.01%。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §二",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.2"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (calcs.hitChance 函数)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "spell-must-hit",
+  "title": "法术必中分支缺失：法术与攻击共用同一命中管线",
+  "size": "S",
+  "par": true,
+  "pri": "P2",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:209-216",
+   "crates/pobr-core/src/calc/offence.rs:481-529",
+   "crates/pobr-core/src/config.rs"
+  ],
+  "desc": "PoE2 规定法术不使用精准检定，命中率恒为 100%（`if not isAttack then output.AccuracyHitChance = 100`）。当前 `calculate_minimal`/`calculate_minimal_traced` 对所有技能都调用 `hit_chance(enemy_evasion, accuracy)`，没有检查 `CalcConfig.flags` 中的 `ModFlags::SPELL` 或 `ModFlags::ATTACK`。`BuildConfig.is_spell` 虽然存在并传入 `ModFlags::SPELL`，但 offence.rs 完全不读这个 flag。法术构建的 DPS 会被错误地乘上命中率，导致严重低估。\n\n正确实现：在 `calculate_minimal` 开头判断 `cfg.flags.intersects(ModFlags::ATTACK)` 为 false 时（或 `ModFlags::SPELL` 时），将 `hit_chance` 直接设为 1.0，跳过精准管线。`CannotBeEvaded` flag 和敌方 `CannotEvade` 条件也应同样短路置 1.0。验收：spell cfg 下 `hit_chance == 1.0`，attack cfg 下按公式计算。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §三"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (isAttack 分支，output.AccuracyHitChance = 100)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "enemy-mod-db-not-read",
+  "title": "enemy.mod_db 完全未接入进攻计算：所有敌人端 modifier 被忽略",
+  "size": "M",
+  "par": false,
+  "pri": "P2",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs:11-28",
+   "crates/pobr-core/src/calc/offence.rs:163-296",
+   "crates/pobr-core/src/calc/env.rs"
+  ],
+  "desc": "当前 `perform.rs` 只读取 `env.enemy.base.evasion`（标量）传入 `MinimalInput`（offence.rs:19），以及 `env.enemy.base.accuracy`（标量）传入 `calc_defence`（perform.rs:23）。`env.enemy.mod_db` 从未被读取。这意味着以下全部敌人端机制无效：① 暴击弱点（`enemy.mod_db.sum(Base, SelfCritChance)`）；② 感电/Intimidate/Unnerve/Debilitate/CoveredInAsh 等 `DamageTaken` 修饰词；③ 曝光写入的 `<Element>Resist BASE -N`；④ 降抗诅咒写入的抗性 Base；⑤ 完全破甲的 `Armour OVERRIDE 0`；⑥ 敌方格挡（`enemyBlockChance` 需从 `HitChance` 中扣除）；⑦ 凋萎的 `ChaosDamageTaken INC`。\n\n正确实现（参考 doc12 §4.2）：在 offence 计算时引入 `enemy: &ModDb` 参数，在暴击、伤害减伤、命中率终点各处查询 enemy modDB。`offence.rs::calculate_minimal` 签名需增加 `enemy_db: &ModDb` 参数（或通过 Env 传递），`perform.rs` 中同步传递 `&env.enemy.mod_db`。验收：给 enemy.mod_db 注入 `SelfCritChance BASE 10` 后，输出暴击率增加 10%。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §六",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.2"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (enemyDB:Sum, enemyDB:More, enemyDB:Flag)",
+   "src/Modules/CalcSetup.lua (env.enemyDB)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "setup-env-missing",
+  "title": "setup_env 函数缺失：enemy.mod_db 从不被初始化（怪物等级缩放/Boss 档位/debuff 全无）",
+  "size": "L",
+  "par": false,
+  "pri": "P2",
+  "bug": false,
+  "dep": [
+   "enemy-mod-db-not-read"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/env.rs",
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/session.rs"
+  ],
+  "desc": "PoB2 的 `CalcSetup.lua` 在计算前完整初始化 `enemyDB`：注入 `monsterAccuracyTable[level]` 作为 Accuracy BASE、注入 Boss 档位的元素抗性/护甲闪避均值/穿透/DamageTaken 减伤、注入通用 Boss debuff 抗性（`CurseEffectOnSelf MORE -50`、`ExposureEffectOnSelf MORE -50`、`PoiseThreshold MORE +500` 等）、注入各种 config 选项（enemyArmour/enemyEvasion/enemyFireResist 等）。pobr 当前 `Env::new` 初始化 enemy 为 `ActorBaseStats::default()`（全零），没有任何注入逻辑。\n\n需要新建 `setup_env(build_config, game_data) -> Env` 函数（或 `Env::setup` 方法），实现：① 按 `enemy_level = min(85, char_level)` 索引怪物缩放表，写入 enemy Accuracy/Evasion/Armour BASE；② 按 `EnemyTier`（None/Boss/Pinnacle/Uber，默认 Pinnacle）注入元素抗性、护甲闪避均值倍率、穿透 pen 值、Uber 的 `DamageTaken MORE -70`；③ Boss 通用：`CurseEffectOnSelf MORE -50`、`ExposureEffectOnSelf MORE -50`、`SlowEffectOnSelf MORE -50` 等；④ 按 config 选项注入可选 debuff（感电/曝光/Intimidate 等）。\n\n验收：Pinnacle Boss 场景下，enemy.mod_db 包含 ≥50% 元素抗性 modifier、`CurseEffectOnSelf MORE -50`、等级 82 对应的 evasion/armour BASE。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §四,§五,§六",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.2,§5"
+  ],
+  "pob2": [
+   "src/Modules/CalcSetup.lua (enemyDB 初始化全段)",
+   "src/Modules/ConfigOptions.lua (enemyIsBoss defaultIndex=3, enemyLevel, enemy*Resist, 各 conditionEnemy* 项)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "monster-level-scaling-table",
+  "title": "怪物等级缩放表（monsterAccuracyTable / monsterEvasionTable 等 99 项）未存入数据层",
+  "size": "M",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/constants.rs",
+   "crates/pobr-data/src/lib.rs"
+  ],
+  "desc": "PoB2 使用 `src/Data/Misc.lua` 中的按等级（1-99）索引的五张查表：`monsterLifeTable`、`monsterAccuracyTable`、`monsterEvasionTable`、`monsterArmourTable`、`monsterDamageTable`（以及异常阈值表 `monsterAilmentThresholdTable`/`monsterPoiseThresholdTable`）。pobr 的 `pobr-data::GameConstants` 没有这些表；`pobr-gamedata` 无对应 loader。\n\n正确实现：将这些表作为 `pobr-data` 中的 `MonsterStatTables` 结构体，配以按等级索引的访问函数（整表照搬，含 lv65/82 非线性跳变，不得外推）。通过 `pobr-gamedata` loader 读取（或内嵌为常量）。`setup_env` 中按 `enemy_level` 索引以初始化敌人 base 属性。\n\n验收：`monster_accuracy_table[85] == 2444`、`monster_evasion_table[82] == 996`、`monster_armour_table[65] == 6718`（与 agent-docs 表格对账）。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §四.1,§四.2"
+  ],
+  "pob2": [
+   "src/Data/Misc.lua (data.monsterAccuracyTable, monsterEvasionTable, monsterArmourTable, monsterLifeTable, monsterDamageTable, gameConstants: MonsterAccuracyBase=28, MonsterEvasionBase=18, MonsterArmourBase=2, EndgameStartLevel=65)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "enemy-tier-enum",
+  "title": "EnemyTier 枚举（None/Boss/Pinnacle/Uber 四档）及默认值缺失",
+  "size": "M",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/build_config.rs",
+   "crates/pobr-core/src/calc/env.rs"
+  ],
+  "desc": "PoB2 `ConfigOptions.lua` 的 `enemyIsBoss` 配置项有四档（defaultIndex=3 即 Pinnacle），每档注入不同的敌人 modifier 集合。pobr `BuildConfig`/`CalcConfig` 均无此概念。具体四档规格（见 agent-docs §五）：None→普通怪、Boss→+30% 元素抗、Pinnacle→+50% 元素抗 + 护甲/闪避均值 + pen=3 + lv≥82、Uber→+50% 元素抗 + pen=8 + DamageTaken MORE -70 + lv≥82。Boss/Pinnacle/Uber 通用：`CurseEffectOnSelf MORE -50`、`ExposureEffectOnSelf MORE -50`、`SlowEffectOnSelf MORE -50`、`PoiseThreshold MORE +500`、`WarcryPower 20`。\n\n应在 `pobr-data::build_config` 加 `EnemyTier` 枚举（纯数据），在 `setup_env` 中按档注入 enemy modDB。默认档位 `EnemyTier::Pinnacle`（对齐 PoB2 defaultIndex=3）。验收：Pinnacle 下 enemy.mod_db 包含 `FireResistance BASE 50`、`CurseEffectOnSelf MORE -50`；Uber 下额外有 `DamageTaken MORE -70`。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §五",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.2,§5"
+  ],
+  "pob2": [
+   "src/Modules/ConfigOptions.lua (enemyIsBoss, defaultIndex=3)",
+   "src/Modules/Data.lua (normalEnemyDPSMult, stdBossDPSMult, pinnacleBossDPSMult, uberBossDPSMult, pinnacleBossPen, uberBossPen, bossStats)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "mode-effective-missing",
+  "title": "mode_effective 口径开关缺失：面板 DPS vs 有效 DPS 无法区分",
+  "size": "M",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/config.rs",
+   "crates/pobr-core/src/calc/offence.rs:163-296",
+   "crates/pobr-core/src/calc/session.rs"
+  ],
+  "desc": "PoB2 的 `buffMode` 驱动 `mode_effective` 标志，控制计算是否引入命中率、敌人抗性/护甲/受伤 debuff、暴击闪避降级、`Condition:Effective` 词条等。当前 `CalcConfig` 无此字段，`calculate_minimal` 只有一种计算模式，无法给出面板 DPS（命中视 100%、忽略敌人减伤）与有效 DPS 的对比。\n\n正确实现：在 `CalcConfig` 增加 `mode_effective: bool`（默认 true 对齐 PoB2 EFFECTIVE 模式），在 `calculate_minimal` 中：①`mode_effective=false` 时 `hit_chance = 1.0`、跳过敌人抗性/护甲减伤；②`mode_effective=true` 时正常乘 hit_chance 并从 enemy_db 读取抗性/DamageTaken。`CalculationSession::perform_minimal` 应同时输出两种模式或暴露配置接口。验收：同一 Build 在 mode_effective=false 时 DPS >= mode_effective=true 时 DPS（面板不低于有效）。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §七",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §5"
+  ],
+  "pob2": [
+   "src/Modules/CalcSetup.lua (buffMode, mode_effective)",
+   "src/Modules/CalcOffence.lua (mode_effective 分支)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "exposure-min-of-aggregation",
+  "title": "曝光多来源取最强一份（min_of）逻辑缺失",
+  "size": "S",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [
+   "enemy-mod-db-not-read"
+  ],
+  "files": [
+   "crates/pobr-core/src/mod_db.rs",
+   "crates/pobr-core/src/calc/env.rs"
+  ],
+  "desc": "PoB2 `CalcPerform.lua` 对曝光的聚合规则是：遍历 `enemyDB:Tabulate('BASE', element..'Exposure')`，对每个来源分别计算 `floor(value * exposureEffect * exposureEffectOnSelf)`，取 magnitude 最大者（`magnitude = max(magnitude, value)`），最后用 `enemyDB:NewMod(element..'Resist', 'BASE', -magnitude)` 写入。这是**取最强单一来源**而非求和。pobr 当前 `ModDb::sum` 是简单相加，无法表达这种 max 语义。\n\n正确实现：需要在 `ModDb` 或 `setup_env` 阶段为 Exposure 系列实现 max 聚合（可命名为 `db.max_of(cfg, names)` 或在 setup 阶段提前归约为最终 BASE 值写入 enemy modDB）。验收：enemy modDB 注入两条 `FireExposure BASE` 分别为 20 和 30 时，最终生效的 `FireResist BASE` 减少为 30（取较大值）而非 50（求和）。",
+  "doc": [
+   "agent-docs/debuffs.md §曝光",
+   "agent-docs/accuracy-and-enemy.md §六"
+  ],
+  "pob2": [
+   "src/Modules/CalcPerform.lua (Exposure 聚合段，magnitude = max(magnitude, value))"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "cannot-be-evaded-flag",
+  "title": "CannotBeEvaded / CannotEvade 旗标短路缺失",
+  "size": "S",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [
+   "enemy-mod-db-not-read"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:213-216"
+  ],
+  "desc": "PoB2 在计算 `AccuracyHitChance` 前先检查：`cannotBeEvaded = Flag(cfg,'CannotBeEvaded') or skillData.cannotBeEvaded or (mode_effective and enemyDB:Flag('CannotEvade'))`，若为真则直接置 100% 跳过命中公式。pobr `calculate_minimal` 无此检查，即使技能带 `CannotBeEvaded` 标记也会走完整精准公式，导致命中率偏低（如 Killing Palm 的 Culling 段、Pinned 状态下的敌人）。\n\n实现：在 `calculate_minimal` 计算 `hit_chance` 前，检查 `cfg.flags` 中的 `CannotBeEvaded` flag（或 `db.flag(cfg, CannotBeEvaded)`）以及 `mode_effective` 时的 `enemy_db.flag('CannotEvade')`，短路返回 1.0。验收：带 `CannotBeEvaded` flag 的 cfg 下 hit_chance == 1.0。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §二.2"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (cannotBeEvaded 判断段)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "accuracy-distance-falloff",
+  "title": "精准距离衰减（2m→9m 线性，max 90% less）未实现",
+  "size": "S",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:213-215",
+   "crates/pobr-core/src/config.rs"
+  ],
+  "desc": "PoE2 0.5.0 规定攻击精准随距离线性衰减：2m 内无惩罚、2m→9m 线性插值、≥9m 最大 90% less Accuracy。PoB2 常量：`AccuracyFalloffStart=20`（2m，10 单位/m）、`AccuracyFalloffEnd=90`（9m）、`MaxAccuracyRangePenalty=90`（90% less）。config 项 `enemyDistance`（默认 2m=20 单位）控制衰减；旗标 `NoAccuracyDistancePenalty` 可免除。pobr 当前完全无距离衰减概念，精准永远 100% 有效。\n\n实现：在 `CalcConfig` 或 `BuildConfig` 增加 `enemy_distance: f64`（单位：游戏单位，默认 20=2m），在计算 `accuracyVsEnemy` 时乘以 `accuracyPenalty = lerp(1.0, 0.1, clamp((distance - 20)/(90-20), 0, 1))`，并检查 `NoAccuracyDistancePenalty` flag 跳过。验收：distance=20（2m）时无衰减，distance=90（9m）时衰减到 10%（90% less），distance=55（5.5m 中点）时约 55% less（penalty≈0.45）。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §一.3"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (accuracyPenalty, AccuracyFalloffStart/End, MaxAccuracyRangePenalty)",
+   "src/Modules/Data.lua (data.misc.AccuracyFalloffStart=20, AccuracyFalloffEnd=90)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "enemy-damage-taken-chain",
+  "title": "敌人受到伤害链（DamageTaken INC/MORE from enemy.mod_db）未接入伤害计算末端",
+  "size": "M",
+  "par": false,
+  "pri": "P2",
+  "bug": false,
+  "dep": [
+   "enemy-mod-db-not-read"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:191-207",
+   "crates/pobr-core/src/calc/damage.rs"
+  ],
+  "desc": "PoB2 在 `CalcOffence.lua` 伤害计算末端读取 `enemyDB:Sum('INC', ... 'DamageTaken')` 与 `enemyDB:More(... 'DamageTaken')` 作为最终乘区。pobr `calculate_minimal` 的伤害计算只读玩家 modDB，从不查询 enemy modDB 的 DamageTaken 系列。\n\n受影响的具体 debuff：感电（`DamageTaken INC 15~40%`）、Intimidate（`DamageTaken INC 10`）、Unnerve（`DamageTaken INC 10` Spell）、Covered in Ash（`DamageTaken INC 20` Fire）、Covered in Frost（`DamageTaken INC 20` Cold）、凋萎（`ChaosDamageTaken INC 6×stacks`）、Uber Boss 固有（`DamageTaken MORE -70`）。\n\n正确实现：在 `calculate_components` 或 `calculate_minimal` 末端引入 `enemy_db.sum(Inc, 'DamageTaken')`（含元素/类型 tag 过滤）和 `enemy_db.more('DamageTaken')`，乘入最终伤害（含 TraceGraph 归因）。依赖 gap `enemy-mod-db-not-read` 先完成。验收：enemy.mod_db 注入 `DamageTaken INC 20` 后，输出 total_hit_avg 增加 20%。",
+  "doc": [
+   "agent-docs/debuffs.md §增伤/减输出型减益",
+   "agent-docs/accuracy-and-enemy.md §六"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (enemyDB:Sum/More DamageTaken 段)"
+  ]
+ },
+ {
+  "sub": "敌人 modDB 接线 + 命中与敌人",
+  "id": "enemy-block-chance-hit-chain",
+  "title": "敌人格挡（enemyBlockChance）未从 HitChance 中扣除",
+  "size": "S",
+  "par": false,
+  "pri": "P2",
+  "bug": false,
+  "dep": [
+   "enemy-mod-db-not-read"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:215-216"
+  ],
+  "desc": "PoB2 的最终命中率公式为 `output.HitChance = output.AccuracyHitChance * (1 - enemyBlockChance/100)`，即精准命中率还要扣除敌方格挡几率。pobr 当前 hit_chance 只计算精准侧，无格挡扣除。对于带格挡的 Boss 场景（`enemyBlockChance BASE` 可由 config 注入 enemy modDB），当前输出的命中率偏高。\n\n实现：在 `calculate_minimal` 的命中率计算后，从 `enemy_db.sum(Base, 'BlockChance')` 读取敌方格挡值，将 `hit_chance *= (1.0 - block/100.0)`。依赖 `enemy-mod-db-not-read` 先完成。验收：enemy modDB 注入 `BlockChance BASE 25` 时，最终 hit_chance 乘以 0.75。",
+  "doc": [
+   "agent-docs/accuracy-and-enemy.md §二.3"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (output.HitChance = AccuracyHitChance * (1-enemyBlockChance/100))"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "crit-base-bonus-poe2",
+  "title": "暴击倍率基础值 PoE1→PoE2 修正（150→200，即 +100%→2.0）",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:205",
+   "crates/pobr-core/src/calc/offence.rs:443"
+  ],
+  "desc": "当前 offence.rs:205 和 offence.rs:443 使用 `(150.0 + Base)/100.0`，对应 PoE1 默认 1.5 倍爆伤。PoE2 玩家基础爆伤为 +100%（即最终 2.0 倍），应改为 `1.0 + (100.0 + Base)/100.0`。doc12 §4.3 和 agent-docs/critical-hits.md 均已标注此偏差。验收：单独 golden test：无附加 CritMultiplier 词条时 crit_multiplier 输出 2.0；加 +50% 词条时输出 2.5。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.3"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (BASE_BONUS=100 for player/minion)"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "traced-dps-physical-only-divergence",
+  "title": "total_dps_traced 与 calculate_minimal 伤害管线不一致（traced 路径只用物理模名）",
+  "size": "M",
+  "par": true,
+  "pri": "P1",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:376-535"
+  ],
+  "desc": "calculate_minimal_traced 内的 total_dps_traced（offence.rs:376）对 damage 聚合只用 [PhysicalDamage, AttackDamage, Damage] 三个 ModName，且把整个 base_hit_avg 当纯物理处理，与 calculate_minimal 调用 calculate_components 的多类型分桶完全不同步。有附加火焰/冰霜/闪电 flat 时，traced 输出的 DPS trace 值与非 traced 的 dps 字段会产生数值分歧。验收：添加 FireDamageMin/Max，同时调用 calculate_minimal 和 calculate_minimal_traced，断言 traced.output.dps == calculate_minimal 的 dps，且 TraceGraph 的 TotalDPS final 节点值也与之相等。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.4"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "missing-elemental-damage-modname-group",
+  "title": "calculate_components 缺少 ElementalDamage 聚合组（火/冰/电 shared increased）",
+  "size": "S",
+  "par": true,
+  "pri": "P4",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/damage.rs:95"
+  ],
+  "desc": "PoB2 CalcOffence.lua 对元素击中（火/冰/电）的 modNames 包含 ElementalDamage，使 'increased Elemental Damage' 词条同时作用于三种元素伤害分量。当前 calculate_components 的 generic_names 只有 [AttackDamage, Damage]，火/冰/电分量无法命中 ElementalDamage 词条，导致 'increased Elemental Damage' 对各分量无效。验收：添加 Modifier::number('ElementalDamage', Inc, 50.0).with_tag(ModTag::DamageType(Fire))（或等效无 tag 的 ElementalDamage），验证火焰/冰霜/闪电分量各乘 1.5，物理不受影响。",
+  "doc": [
+   "agent-docs/damage-scaling.md §核心叠加语义"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:calcDamage (typeFlags -> modNames 展开逻辑，ElementalDamage)"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "damage-conversion-chain-order-wrong",
+  "title": "DAMAGE_TYPES 顺序与 PoB2 转换链不匹配（当前 Phys/Fire/Cold/Light/Chaos；应为 Phys/Light/Cold/Fire/Chaos）",
+  "size": "S",
+  "par": true,
+  "pri": "P4",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/damage.rs:37-43"
+  ],
+  "desc": "damage.rs:37 的 DAMAGE_TYPES 迭代顺序为 Physical→Fire→Cold→Lightning→Chaos。PoB2 CalcOffence.lua dmgTypeList 的转换传递顺序是 Physical→Lightning→Cold→Fire→Chaos。虽然 calculate_components 本身只是并行聚合（未实现链式转换），但一旦实现转换链，若沿用当前顺序将导致转换传递计算错误（如 Phys→Fire 然后剩余 Phys→Lightning 的顺序应反过来）。现在是预防性修正时机，代价极小。验收：DAMAGE_TYPES 顺序改为 [Physical, Lightning, Cold, Fire, Chaos]，现有测试全通过，为后续转换链实现埋正确基础。",
+  "doc": [
+   "agent-docs/damage-scaling.md §转换顺序与链式"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:dmgTypeList = {\"Physical\",\"Lightning\",\"Cold\",\"Fire\",\"Chaos\"}"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "conversion-chain-not-wired",
+  "title": "伤害转换链未接入 calculate_components 管线（convert_damage/gain_as_extra 孤悬）",
+  "size": "L",
+  "par": false,
+  "pri": "P4",
+  "bug": false,
+  "dep": [
+   "damage-conversion-chain-order-wrong"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/damage.rs:61-63",
+   "crates/pobr-core/src/calc/damage.rs:89-125",
+   "crates/pobr-core/src/calc/offence.rs:191"
+  ],
+  "desc": "convert_damage、gain_as_extra、normalize_conversion 三个纯函数已实现（damage.rs:139-213），但 calculate_components（damage.rs:89）和 offence.rs 的 calculate_minimal 都没有调用它们。需要实现完整转换管线：(1) 从 ModDb 读取 SkillPhysDamageConvertToFire 等技能转换 ModName（BASE%），先做技能转换；(2) 再读全局 PhysDamageConvertToFire 等，作用于剩余；(3) 每个来源类型超 100% 归一；(4) 实现 gainTable（DamageGainAs<To> BASE%），基于转换后分量追加 extra 包；(5) 转换过的分量携带'沿途类型集合'以实现 increased 双重 dip。验收：Phys 50%→Fire 转换后，PhysicalDamage inc 和 FireDamage inc 都对该 50% fire 分量有效；gain-as-extra 保留原分量；>100% 归一。",
+  "doc": [
+   "agent-docs/damage-scaling.md §伤害转换",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.4",
+   "devs/docs/architecture/08-mechanics-primitives.md §2.3"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:conversionTable, buildGainTable, calcGainedDamage, calcConvertedDamage"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "double-dip-accumulated-type-flags",
+  "title": "DamageComponent 无 accumulated_type_flags 字段，increased 双重 dip 无法实现",
+  "size": "M",
+  "par": false,
+  "pri": "P4",
+  "bug": false,
+  "dep": [
+   "conversion-chain-not-wired"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/damage.rs:14-34"
+  ],
+  "desc": "PoB2 通过 typeFlags 累积转换链上经过的所有类型（bor 逐位或），使物理→火焰的分量同时匹配 PhysicalDamage inc 和 FireDamage inc。当前 DamageComponent 只有 damage_type: DamageType 单字段（damage.rs:15-19），无法携带'沿途类型集合'。需在 DamageComponent 增加 accumulated_types: SmallVec<[DamageType;5]> 或等价位集，在转换链过程中累积，calculate_components 的 inc/more 聚合按 accumulated_types 展开所有对应 ModName。验收：Phys→Fire 50% 转换后，该 fire 分量的 inc 同时命中 PhysicalDamage inc 和 FireDamage inc 两条词条，double-dip 数值可验证。",
+  "doc": [
+   "agent-docs/damage-scaling.md §增 increased 双重生效（double dipping）",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.4"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:typeFlags bor 累积逻辑"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "added-damage-effectiveness-missing",
+  "title": "added effectiveness（AddedDamage MORE）未实现：外部 flat 与技能自带 base 未区分",
+  "size": "S",
+  "par": true,
+  "pri": "P4",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/damage.rs:64-80"
+  ],
+  "desc": "PoB2 CalcOffence.lua 对外部 flat added（来自装备/天赋/辅助的附加伤害）乘以 addedMult（= More of AddedDamage），不乘技能自带 base。当前 base_flat（damage.rs:64-80）对物理分量直接 `base_hit_min + added_min`，added 部分未经 AddedDamage MORE 缩放，技能自带和外部附加混成一锅。验收：添加 AddedDamage MORE 50% 词条 + FireDamageMin Base 100 词条，火焰分量应为 150（100*1.5），而非 100；不加 AddedDamage 词条时仍为 100。",
+  "doc": [
+   "agent-docs/damage-scaling.md §Added Damage Effectiveness"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:addedMult = calcLib.mod(skillModList, cfg, 'Added'..damageType..'Damage', 'AddedDamage')",
+   "src/Data/SkillStatMap.lua:added_damage_+%_final -> mod('AddedDamage','MORE')"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "lucky-damage-missing",
+  "title": "幸运/不幸伤害（Lucky Hits）期望值计算未实现",
+  "size": "S",
+  "par": true,
+  "pri": "P4",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/damage.rs:30-33",
+   "crates/pobr-core/src/calc/offence.rs:192"
+  ],
+  "desc": "PoB2 CalcOffence.lua 对带 LuckyHits flag 或 LuckyHitsChance ModName 的命中，用期望值公式替代普通均值：lucky_avg = min/3 + 2*max/3，并按 luckyChance 概率混合。当前 total_hit_avg 直接取 (min+max)/2（offence.rs:192, damage.rs:31），无 LuckyHits flag 和 LuckyHitsChance ModName 支持。验收：添加 Flag('LuckyHits')，物理 100-200 hit 的 avg 应为 100/3+400/3≈166.67 而非 150。",
+  "doc": [
+   "agent-docs/damage-scaling.md §幸运/不幸伤害"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:damageTypeHitAvgLucky = min/3 + 2*max/3; LuckyHitsChance"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "double-triple-damage-missing",
+  "title": "双倍/三倍伤害（DoubleDamageChance / TripleDamageChance + ScaledDamageEffect）未实现",
+  "size": "M",
+  "par": true,
+  "pri": "P4",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:192-216"
+  ],
+  "desc": "PoB2 CalcOffence.lua 将双倍/三倍命中概率折算成期望倍率 ScaledDamageEffect = 1 + DoubleDamageEffect + TripleDamageEffect，其中三倍覆盖双倍时先做 DoubleDamageChance -= TripleDamageChance*DoubleDamageChance/100 去重叠，on-crit 版本再乘 CritChance。当前 total_hit_avg 无此乘区，ModName DoubleDamageChance/TripleDamageChance/DoubleDamageChanceOnCrit 均未注册。验收：添加 DoubleDamageChance Base 50%，avg DPS 应提升 50%（×1.5）；加 TripleDamageChance 50% 后按 PoB2 公式验算。",
+  "doc": [
+   "agent-docs/damage-scaling.md §双倍/三倍伤害"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:ScaledDamageEffect, DoubleDamageEffect, TripleDamageEffect, DoubleDamageChanceOnCrit"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "overwhelm-not-wired",
+  "title": "Overwhelm（EnemyPhysicalDamageReduction BASE 负值）未接入进攻伤害管线",
+  "size": "M",
+  "par": false,
+  "pri": "P4",
+  "bug": false,
+  "dep": [
+   "enemy-moddb-not-wired"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:191-216",
+   "crates/pobr-core/src/calc/ehp.rs:45-48"
+  ],
+  "desc": "agent-docs/damage-scaling.md 说明 Overwhelm 建模为 EnemyPhysicalDamageReduction BASE=-N（敌方侧），在计算敌人 PDR 时直接减 N 后 clamp。当前进攻管线（offence.rs）完全不读 enemy.mod_db（doc12 §3.1），Overwhelm 词条无处落地。物理伤害穿透（Physical Penetration）同理。EHP 侧（ehp.rs）的 physical_taken_fraction 只使用 player 侧的 PhysicalDamageReduction，不读敌人 PDR，验收前提是 enemy.mod_db 接线（gap：enemy-moddb-not-wired，P2 域）。验收：enemy.mod_db 接线后，添加 EnemyPhysicalDamageReduction Base=-20，物理 DPS 按敌人 PDR 减少 20pp 后应明显提升。",
+  "doc": [
+   "agent-docs/damage-scaling.md §Overwhelm",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.2"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:EnemyPhysicalDamageReduction BASE, ChanceToIgnoreEnemyPhysicalDamageReduction, PDR clamp"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "enemy-moddb-not-wired",
+  "title": "enemy.mod_db 未接入进攻计算（P2 地基：所有敌方侧机制的前提）",
+  "size": "M",
+  "par": false,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:163-216",
+   "crates/pobr-core/src/calc/perform.rs:18-28"
+  ],
+  "desc": "Env 持有 enemy: Actor，但 offence.rs::calculate_minimal 和 perform.rs 完全不读 enemy.mod_db（doc12 §3.1 明确指出）。影响 Overwhelm、穿透、曝光（Exposure）、诅咒、SelfCritChance（暴击弱点）、TakenInc（受到增伤）、敌人抗性（用于 effective DPS）等一切敌方侧机制。验收：向 enemy.mod_db 注入 TakenIncreasedDamage Base=20%，effective DPS 应提升 20%；SelfCritChance Base=10% 应叠加到暴击几率基础。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.2"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:enemyDB:Sum(...)"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "elemental-penetration-missing",
+  "title": "元素/混沌穿透（FirePenetration/ColdPenetration/LightningPenetration/ChaosPenetration）未实现",
+  "size": "M",
+  "par": false,
+  "pri": "P4",
+  "bug": false,
+  "dep": [
+   "enemy-moddb-not-wired"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ehp.rs:39-42",
+   "crates/pobr-core/src/calc/offence.rs:191-216"
+  ],
+  "desc": "当前 effective DPS 路径没有穿透计算。PoB2 对穿透的处理是 `effective_resist = max(resist - penetration, minPen)`，minPen 默认 0（不能压到负）。穿透 ModName 对应 PoB2 的 FirePenetration/ColdPenetration/LightningPenetration/ChaosPenetration（Base，单位 %），仅作用于击中（不作用于 DoT）。当前 ehp.rs 和 offence.rs 均无穿透读取和 clamp 逻辑。验收：添加 FirePenetration Base=30 且目标火焰抗 75%，等效火焰抗应降为 45%，对应分量 DPS 提升。",
+  "doc": [
+   "agent-docs/damage-scaling.md §Overwhelm/Penetration/Exposure/负抗/Armour Break 的区别"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:FirePenetration/ColdPenetration/LightningPenetration/ChaosPenetration"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "hit-dot-split-missing-in-damagecomponent",
+  "title": "DamageComponent 缺少 kind(Hit/Dot)/source(Attack/Spell) 字段，ailment 管线割裂",
+  "size": "M",
+  "par": false,
+  "pri": "P4",
+  "bug": false,
+  "dep": [
+   "conversion-chain-not-wired"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/damage.rs:14-34",
+   "crates/pobr-data/src/damage.rs:15-27"
+  ],
+  "desc": "08-mechanics-primitives.md §2.3 要求 DamageComponent 带 source:DamageSource 和 kind:DamageKind。当前 DamageComponent（damage.rs:15）只有 damage_type/min/max 三字段，ailment.rs 中的函数入参是裸 f64（pre_mitigation_phys_hit），与 DamageComponent 向量脱钩。这导致：(1) 无法区分 spell 与 attack 来源的命中伤害；(2) 转换后 DoT magnitude 的来源分量无法精确追踪；(3) HitDamageResult 结构无法组装，ailments 字段无法挂在 component 上。验收：DamageComponent 增加 source/kind 字段后，bleed_instance 可从 Physical Attack Hit 分量直接派生，ignite 从 Fire Hit 派生；ailment 向量可挂在 HitDamageResult 上。",
+  "doc": [
+   "devs/docs/architecture/08-mechanics-primitives.md §2.3",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.4"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "dealno-damage-flag-missing",
+  "title": "DealNo<Type> Flag（如 Brutality：deal no elemental/chaos damage）未实现",
+  "size": "S",
+  "par": true,
+  "pri": "P4",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/damage.rs:89-125"
+  ],
+  "desc": "PoB2 CalcOffence.lua 在转换前检查 canDeal[type] = not Flag('DealNo'..type)，如果 flag 为真则该类型整个禁用（不进入转换，不贡献 DPS）。当前 calculate_components 无此检查，Brutality Support 等词条无法正确建模。验收：添加 Flag('DealNoFire')，fire 分量应从输出中完全排除，即便有 FireDamageMin flat 也不出现。",
+  "doc": [
+   "agent-docs/damage-scaling.md §特殊词条与伤害标签"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:canDeal[type] = not Flag('DealNo'..type)"
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "culling-strike-missing",
+  "title": "斩杀（Culling Strike）阈值和 CullMultiplier 折算未实现",
+  "size": "S",
+  "par": true,
+  "pri": "P4",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:191-216",
+   "crates/pobr-core/src/calc/output.rs:1-61",
+   "crates/pobr-data/src/constants.rs:137-188"
+  ],
+  "desc": "PoB2 CalcOffence.lua 按敌人稀有度（Normal 35%/Magic 20%/Rare 10%/Unique 5%）查 CullingStrike*Threshold，再乘 (1+INC CullPercent/100)，折为等效 DPS 倍率 CullMultiplier=100/(100-cull%)。当前 OutputTable 无任何斩杀字段，GameConstants 也无 CullingStrike 常量。验收：CanCull flag + 默认 Rare 目标，CullMultiplier 应为 100/90≈1.111；effective DPS 面板应反映这一加成。",
+  "doc": [
+   "agent-docs/damage-scaling.md §Culling Strike"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:CullPercent/CullMultiplier; src/Data/Misc.lua:CullingStrikeNormalThreshold=35..."
+  ]
+ },
+ {
+  "sub": "伤害缩放/转换管线",
+  "id": "ailment-chance-threshold-missing",
+  "title": "异常状态施加概率与阈值检定未实现（ailment 当前无条件输出 DPS）",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs:54-64",
+   "crates/pobr-core/src/calc/ailment.rs:29-64"
+  ],
+  "desc": "perform.rs::fill_mechanics（:54-64）只要 phys_hit>0 就输出 bleed_dps，无异常施加几率检定（BleedChance/PoisonChance/IgniteChance），也无异常阈值（EnemyAilmentThreshold）用于判断是否能施加 freeze/shock。PoB2 用 ailmentData[type].chance = skillModList:Sum+enemy:SelfAilmentChance 做几率乘区，再折成期望乘数。验收：无 CanBleed/BleedChance 时 bleed_dps 应为 0；BleedChance=50% 时 bleed_dps 折半（期望值建模）。",
+  "doc": [
+   "agent-docs/ailments.md",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.5"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua:ailmentData[type].chance, CanBleed/CanPoison/CanIgnite flags"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "shock-min-clamp-bug",
+  "title": "感电效果下界 5% 应为 20%（PoE2 BaseShockMagnitude=20 正确性 bug）",
+  "size": "S",
+  "par": true,
+  "pri": "P3",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs:143-146",
+   "crates/pobr-core/tests/ailment.rs:42-48"
+  ],
+  "desc": "当前 shock_effect() 把 clamp 下界设为 0.05（5%），但 PoE2 0.5.0 的 BaseShockMagnitude=20（即 20%），对应 PoB2 Misc.lua nonDamagingAilment.Shock.default=20。任何命中都不应产生低于 20% 的感电效果（低于可施加阈值的命中直接不施加感电，而非给 5%）。验收：shock_effect(epsilon, threshold) 返回 0.0（未达阈值不施加），达到可施加阈值后最小为 0.20；test 用例 shock_effect_is_clamped_between_5_and_50_percent 中的 tiny 断言改为 `>= 0.20`。正确公式：`effect = 50 * (damage/threshold)^0.4 * effectMod`，clamp [20, 100]（百分点）。",
+  "doc": [
+   "agent-docs/ailments.md#§PoB2计算实现"
+  ],
+  "pob2": [
+   "src/Data/Misc.lua (nonDamagingAilment.Shock.default=20, max=100)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "player-ailment-threshold-bug",
+  "title": "玩家感电阈值用全量生命而非 50% 生命（正确性 bug）",
+  "size": "S",
+  "par": true,
+  "pri": "P3",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs:63-64",
+   "crates/pobr-data/src/constants.rs:139-176"
+  ],
+  "desc": "perform.rs 第63行 `ailment_threshold = pool_or(env.player.output.life, 1.0)` 直接用玩家生命总量作为阈值，但 PoE2 规定玩家异常阈值 = max_life * 0.5（PlayerAilmentThresholdLifeFactor=0.5）。结果：玩家对自身施加的感电/冰缓等非伤害异常强度会低估约 50%。验收：有 1000 生命玩家的阈值应为 500；对应 PoB2 CalcOffence.lua 的 `playerAilmentThreshold = maxLife * data.misc.PlayerAilmentThresholdLifeFactor`。注：此阈值用于非伤害异常强度计算，与怪物阈值表（双阈值之一）不同。",
+  "doc": [
+   "agent-docs/ailments.md#§异常阈值"
+  ],
+  "pob2": [
+   "src/Data/Misc.lua (PlayerAilmentThresholdLifeFactor=0.5)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "no-ailment-chance-pipeline",
+  "title": "未实现异常施加几率管线（流血/中毒/感电/点燃全部缺几率派生）",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "dual-ailment-threshold-tables"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs",
+   "crates/pobr-core/src/calc/perform.rs:54-64",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "PoE2 中流血/中毒必须有显式几率才能施加；感电/点燃走 hitDmg/threshold * ChanceMultiplier 几率派生路径。当前 ailment.rs 只有 magnitude 计算，完全没有 BleedChance / PoisonChance / ShockChance / IgniteChance / AilmentChance 管线，perform fill 也直接按伤害>0 即写入 DPS 而不检查几率。验收：新增 ailment_chance_*() 函数；感电/点燃的 finalChance = clamp(100, (hitAvg/threshold * ChanceMultiplier + base) * (1+inc/100) * more)；流血/中毒 chance 来自 BleedChance/PoisonChance/AilmentChance 词条；perform 只在 chance>0 时填写 DPS 字段。PoB2 常量：ShockChanceMultiplier=25，IgniteChanceMultiplier=20。",
+  "doc": [
+   "agent-docs/ailments.md#§几率派生型"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (ailmentChance pipeline, ShockChanceMultiplier=25, IgniteChanceMultiplier=20)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "dual-ailment-threshold-tables",
+  "title": "缺双阈值数据表（EnemyAilmentThreshold / PoiseThreshold 按怪物等级索引）",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/constants.rs",
+   "crates/pobr-core/src/calc/perform.rs:63"
+  ],
+  "desc": "PoE2 两套阈值表：①monsterAilmentThresholdTable[level] 用于几率派生/冰缓/感电效果；②monsterPoiseThresholdTable[level] 用于冰冻/电击/重眩晕积累。当前代码没有任何阈值数据表（perform 用玩家生命近似感电阈值，无怪物侧阈值）。需在 pobr-data/src/catalog.rs 或 constants.rs 增加两张按等级索引的数组常量，并在 enemy.mod_db 里暴露为可聚合 ModName（EnemyAilmentThreshold / PoiseThreshold）。验收：MonsterAilmentThresholdAtLevel(1)=15 / MonsterPoiseThresholdAtLevel(1)=相应值；用 EnemyAilmentThreshold mod 可以缩放结果。",
+  "doc": [
+   "agent-docs/ailments.md#§异常阈值",
+   "agent-docs/ailments.md#§PoB2计算实现"
+  ],
+  "pob2": [
+   "src/Data/Misc.lua (monsterAilmentThresholdTable, monsterPoiseThresholdTable)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "chill-effect-missing",
+  "title": "冰缓效果（Chill effect）完全未建模",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "dual-ailment-threshold-tables"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs",
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/output.rs",
+   "crates/pobr-core/src/display_catalog.rs"
+  ],
+  "desc": "冰缓应输出 ActionSpeed 降低量，公式为线性：chillEffect = ChillEffectMultiplier(100) * (damage/enemyThreshold) * effectMod，clamp [30, 50]（百分点，PoE2 0.5.0 最小阈值 30%）。当前 AilmentType::Chill 已在枚举中，但 ailment.rs 没有 chill_effect() 函数，OutputTable 没有 chill_effect 字段，perform 没有冰缓分支，display_catalog 没有 ChillEffect 条目。验收：chill_effect(damage, threshold, effectMod) 返回 [0.30, 0.50] clamp 值；perform 填入 output.chill_effect；display_catalog 添加 ChillEffect。",
+  "doc": [
+   "agent-docs/ailments.md#§冰缓Chill效果",
+   "agent-docs/ailments.md#§PoB2计算实现"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (nonDamagingAilmentsConfig.Chill.effect = ChillEffectMultiplier * damage/threshold)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "freeze-electrocute-buildup-missing",
+  "title": "冰冻/电击积累型（Poise Buildup）完全未建模",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "dual-ailment-threshold-tables"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs",
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/output.rs",
+   "crates/pobr-data/src/constants.rs"
+  ],
+  "desc": "冰冻和电击属于 Poise 积累型 debuff，公式为：poiseBuildup = DamageScale / enemyPoiseThreshold * (1+inc/100) * more * 100。本次击中积累量 = hitDamage * poiseBuildup%；积累达 100% 触发固定时长状态。FreezeDamageScale=2.1（玩家2.0）、ElectrocuteDamageScale=1.7。两者均完全未实现：ailment.rs 无 freeze_buildup()/electrocute_buildup() 函数，output.rs 无 freeze_buildup/electrocute_buildup 字段，perform 无对应分支。验收：freeze_buildup(coldHit, poiseThreshold, modDb, cfg) 返回本次积累百分比；perform 填入 output；添加相应 display_catalog 条目。",
+  "doc": [
+   "agent-docs/ailments.md#§冰冻电击积累Buildup",
+   "agent-docs/ailments.md#§姿态阈值"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (poiseBuildup = DamageScale/poiseThreshold * inc * more)",
+   "src/Data/Misc.lua (FreezeDamageScale=2.1, ElectrocuteDamageScale=1.7)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "ailment-effmult-missing",
+  "title": "缺 effMult 段（敌方抗性 + DamageTaken 对异常 DoT 的修正）",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "p2-enemy-moddb-wiring"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs",
+   "crates/pobr-core/src/calc/perform.rs:54-64"
+  ],
+  "desc": "PoE2 damaging ailment DPS 的最终公式为：ailmentDPS = baseVal * mod(AilmentEffect) * rateMod * activeAilments * effMult，其中 effMult = (1-resist/100) * (1+takenInc/100) * takenMore（抗性/DamageTaken/DamageTakenOverTime）。当前 ailment.rs 只算 magnitude（基于 pre-mitigation 击中），完全没有 effMult 段；magnitude 乘子只有攻击侧 inc/more，无敌方抗性/taken 贡献。验收：新增 effmult_for_ailment(ailmentType, enemy.mod_db, cfg) 函数；bleed/ignite/poison 最终 DPS 乘以 effMult；对应测试对敌方 40% 火抗时点燃 DPS 减少 40%。",
+  "doc": [
+   "agent-docs/ailments.md#§异常状态与伤害计算的衔接"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (effMult = (1-resist/100)*(1+takenInc/100)*takenMore)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "ailment-effect-ratemod-missing",
+  "title": "缺 AilmentEffect / Faster / Slower 三个独立维度",
+  "size": "M",
+  "par": true,
+  "pri": "P3",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs:17-21",
+   "crates/pobr-core/src/calc/ailment.rs:30-135"
+  ],
+  "desc": "PoB2 对 damaging ailment 有四个独立缩放维度：Magnitude（基础强度词条）、Effect（mod(AilmentEffect) 乘子，独立于 magnitude）、Duration、Faster/Slower（节奏，加快 DPS 同比缩短时长）。当前 ailment.rs 把 inc/more 名称列表混在 scale_magnitude() 调用里，没有区分 AilmentEffect（全局 DPS 乘子）与 BleedDamage/IgniteDamage 等（magnitude 词条），也没有 rateMod 段。验收：ailment DPS = baseVal * mod(AilmentEffect) * rateMod；duration = base * durationMod / rateMod；rateMod = mod(<Ailment>Faster) / mod(<Ailment>Slower)；AilmentEffect 独立测试与其他维度不相互干扰。",
+  "doc": [
+   "agent-docs/ailments.md#§区分Magnitude/Effect/Duration/Faster"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (ailmentDPS = baseVal * mod(AilmentEffect) * rateMod; duration = durationBase * durationMod / rateMod)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "ailment-stack-canstack-missing",
+  "title": "缺叠层机制（CanStack / StackPotential / 权重平均 DPS）",
+  "size": "L",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "no-ailment-chance-pipeline"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs",
+   "crates/pobr-core/src/calc/output.rs",
+   "crates/pobr-core/src/calc/perform.rs"
+  ],
+  "desc": "PoE2 默认大多数异常不叠层（保留最强一份），但可通过 PoisonCanStack / BleedCanStack / ShockCanStack 等开启叠层。PoB2 用权重平均模型计算实战 DPS：maxStacks = (1 + ΣbaseStacks) * more(Stacks)；ailmentStacks ≈ hitRate * chance * duration；StackPotential = ailmentStacks/maxStacks → RollAverage；activeAilments 作为乘子。当前没有任何叠层建模，bleed_dps/ignite_dps/poison_dps 均为单层值。验收：有 PoisonCanStack + 3 额外层词条时，poison_dps 近似为 4 × 单层值；StackPotential > 1 时 RollAverage 偏向高位。",
+  "doc": [
+   "agent-docs/ailments.md#§叠层与权重平均"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (ailmentStacks / stackPotential / rollAverage / activeAilments)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "ailment-crit-weighting-missing",
+  "title": "缺暴击加权：异常 magnitude 未按 hit/crit 来源伤害加权",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs:30-135",
+   "crates/pobr-core/src/calc/perform.rs:47-64"
+  ],
+  "desc": "PoE2 中暴击击中伤害更高 → 施加的 damaging ailment 强度更高；PoB2 对此精细建模：对每个 ailment 同时计算 sourceHitDmg（非暴击）和 sourceCritDmg（暴击），按暴击几率加权 baseVal。当前 ailment.rs 的三个函数都直接取非暴击平均命中（component_avg，来自 damage_components）作为 pre-mitigation hit，完全忽略暴击伤害贡献。验收：新增 ailment_source_damage(hitDmg, critDmg, critChance, critMult) 加权函数；bleed/ignite/poison instance 接受 (hitDmg, critDmg, critChance) 参数或在 perform 内加权后传入；AilmentsAreNeverFromCrit flag 强制走非暴击路径；ailmentMode=CRIT 时只算暴击来源。",
+  "doc": [
+   "agent-docs/ailments.md#§暴击与异常状态的关系"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (calcAilmentDamage: sourceHitDmg*chanceFromHit/(total) + sourceCritDmg*chanceFromCrit/(total))"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "ailment-trace-attribution-missing",
+  "title": "异常计算全程无 TraceGraph 归因",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs",
+   "crates/pobr-core/src/calc/perform.rs:54-64"
+  ],
+  "desc": "ailment.rs 的所有函数（bleed/ignite/poison/shock_effect）直接调用 db.sum / db.more，不调用 sum_traced / contributions，因此没有向 TraceGraph 写入任何贡献节点。doc12 §4.10 明确要求：「没有 trace 的机制视为未完成」。验收：bleed_instance_traced()/ignite_instance_traced() 等接受 &mut TraceGraph 参数，magnitude 中每个 inc/more modifier 的贡献均作为 source node；perform 调用 traced 版本，把贡献节点链接到 BleedDPS/IgniteDPS/PoisonDPS/ShockEffect 输出节点。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md#§4.10归因贯穿"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "异常状态",
+  "id": "dotdpscap-missing",
+  "title": "缺 DotDpsCap 全局 DoT 上限约束",
+  "size": "S",
+  "par": true,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "ailment-effmult-missing"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs",
+   "crates/pobr-data/src/constants.rs"
+  ],
+  "desc": "PoB2 对所有 damaging ailment DPS 施加全局上限 DotDpsCap（`ailmentDPS = min(DotDpsCap, ...)`），并在超 cap 时提示。当前实现没有任何上限约束，可能产生超过实际游戏上限的面板值。验收：ailment DPS 受 DotDpsCap 限制；DotDpsCap 本身来自 mod(DotDpsCap) 聚合（default 极大值）；display_catalog 可选添加 DotDpsCap 条目。",
+  "doc": [
+   "agent-docs/ailments.md#§PoB2计算实现"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (ailmentDPS = min(DotDpsCap, baseVal * effectMod * rateMod * activeAilments * effMult))"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "ailment-damage-type-override-missing",
+  "title": "缺跨类型施加规则（FireCanBleed / ChaosCanShock / LightningCanFreeze 等 flag）",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "no-ailment-chance-pipeline"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs",
+   "crates/pobr-core/src/calc/perform.rs:47-64"
+  ],
+  "desc": "PoE2 允许通过特定 flag 改变哪种伤害类型可以施加哪种异常（如 ChaosCanShock 让混沌贡献感电几率，FireCanBleed 让火贡献流血几率）。当前 ailment.rs 硬编码了「物理→流血」「物理+混沌→中毒」「火→点燃」「闪电→感电」路径，无法通过 ModDb flag 改写。验收：db.flag(cfg, ModName::from(\"ChaosCanShock\")) 时，混沌命中也贡献感电几率；对应 PoB2 的 `<DamageType>Can<Ailment>` flag 体系。",
+  "doc": [
+   "agent-docs/ailments.md#§跨类型施加规则"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (<DamageType>Can<Ailment> flag checks)"
+  ]
+ },
+ {
+  "sub": "异常状态",
+  "id": "p2-enemy-moddb-wiring",
+  "title": "enemy.mod_db 尚未参与异常计算（前置依赖）",
+  "size": "M",
+  "par": false,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/env.rs"
+  ],
+  "desc": "异常的 effMult（敌方抗性/DamageTaken）、阈值（EnemyAilmentThreshold modifier 来自 enemy.mod_db），以及怪物等级阈值数据，都需要从 enemy.mod_db 读取。doc12 §3.2 已明确 enemy.mod_db 完全没有参与任何 offence/ailment 计算。这是 effMult 和阈值两个 gap 的前置依赖。验收：calc/perform.rs 中 ailment 段能读取 env.enemy.mod_db 的 EnemyAilmentThreshold / 抗性 / DamageTaken 聚合值。（此条目对应 doc12 P2，是 P3 异常子任务的地基）",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md#§4.2敌人modDB接线"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (enemyDB:Sum calls throughout ailment section)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "hit-chance-formula-wrong",
+  "title": "闪避命中公式错误：使用幂次近似而非 PoE2 线性公式",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/defence.rs:40-56",
+   "agent-docs/evasion.md:16-19"
+  ],
+  "desc": "当前 hit_chance 使用 `accuracy / (accuracy + (evasion/4.0).powf(0.8))`。PoE2 正确公式（PoB2 CalcDefence.lua 核实）为 hit_chance = `(4*accuracy + 0.05*evasion) / (evasion + 4*accuracy)` 等价于 `1 - 0.95*evasion/(evasion+4*accuracy)`，无幂次。这是明确与 PoE2 口径不符的正确性 bug。验收信号：单元测试 `hit_chance(1000.0, 500.0)` 值与 PoB2 公式 `1 - 0.95*1000/(1000+4*500)=1-0.95*1000/3000=0.6833` 吻合，旧公式给出 `500/(500+(1000/4)^0.8)` 数值不同。",
+  "doc": [
+   "agent-docs/evasion.md",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.7"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (monsterHitChance: `(1 - (0.95 * evasion) / (evasion + 4 * accuracy)) * 100`)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "block-chance-cap-wrong",
+  "title": "格挡上限 bug：写死 75% 而 PoE2 实际上限为 90%",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/survivability.rs:53-55",
+   "crates/pobr-core/src/calc/perform.rs:117-120",
+   "crates/pobr-core/tests/perform_fill.rs:76-77",
+   "crates/pobr-core/tests/survivability.rs:36-37"
+  ],
+  "desc": "survivability.rs 中 block_chance 调用 `capped_chance(percent_sum, 75.0)`，测试 perform_fill.rs:76 也断言 `block capped at 75`。但 agent-docs/block.md 和 PoB2 Data.lua 均明确 `BlockChanceCap = 90`。需把 block_chance 的 cap 改为 90.0，并修正对应测试。法术格挡同样受此 bug 影响（perform.rs:120 的 spell_block_chance 同用 block_chance 函数）。验收信号：block_chance(90.0) 返回 90.0（不再被裁到 75）；block_chance(95.0) 返回 90.0。",
+  "doc": [
+   "agent-docs/block.md (BlockChanceCap=90)",
+   "agent-docs/active-defences.md (PoB2 caps 列表)"
+  ],
+  "pob2": [
+   "src/Modules/Data.lua (data.misc.BlockChanceCap = 90)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "spell-suppression-wrong-existence",
+  "title": "spell_suppression_chance 误实现为常规可堆叠防御层",
+  "size": "S",
+  "par": true,
+  "pri": "P2",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/survivability.rs:57-59",
+   "crates/pobr-core/src/calc/perform.rs:121-125",
+   "crates/pobr-core/src/calc/output.rs:60"
+  ],
+  "desc": "perform.rs 把 SpellSuppressionChance 作为正常防御输出写进 OutputTable，survivability.rs 把它作为 cap=100% 的几率层。但 agent-docs/active-defences.md §6 和 agent-docs/block.md 明确：PoE2 已移除法术压制，常规构建无法获取该 stat，仅 Timeless Jewel 遗留路径可触发。当前实现让任何命名为 SpellSuppressionChance 的词条直接生效为 50% 减法术伤害层，这与 PoE2 0.5.0 口径不符。修复方案：从 OutputTable 移除 spell_suppression_chance 或标记为 legacy-only（不参与 EHP 计算），确保它不影响普通构建的防御评分。验收信号：无任何词条时 spell_suppression_chance 默认 0 且不进入 EHP 乘数链；添加文档注释说明仅 Timeless Jewel 路径可用。",
+  "doc": [
+   "agent-docs/active-defences.md §6",
+   "agent-docs/block.md (法术压制与偏转：PoE2 已移除)"
+  ],
+  "pob2": [
+   "src/Modules/Data.lua (SuppressionChanceCap=100; SuppressionEffect=50 — 遗留路径)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "reservation-wrong-model",
+  "title": "保留模型错误：实现的是 PoE1 法力百分比保留，而非 PoE2 Spirit 池",
+  "size": "M",
+  "par": true,
+  "pri": "P5",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/survivability.rs:19-36",
+   "crates/pobr-core/src/calc/perform.rs:91-104",
+   "crates/pobr-core/src/calc/output.rs:49-52"
+  ],
+  "desc": "survivability.rs/perform.rs 实现的是 `LifeReserved/ManaReserved` 百分比保留（PoE1 模型）。PoE2 使用 Spirit 作为持久技能（光环/召唤）的独立固定池，保留公式为 `基础保留 / (1 + ReservationEfficiency/100)`，且「less Reservation」是独立乘区。OutputTable 无 spirit/spirit_reserved 字段，ReservationEfficiency 词条完全未实现。验收信号：新增 Spirit 池字段；`reservation_efficiency(base, efficiency_sum, less_factors)` 函数通过 unit test；保留不影响资源最大值（只改可用量）。",
+  "doc": [
+   "agent-docs/recovery-charges-buffs.md §5 Spirit 保留",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.6"
+  ],
+  "pob2": [
+   "src/Modules/CalcSetup.lua (Spirit BASE 0; output.Spirit = floor(calcLib.val(modDB,'Spirit')))",
+   "src/Modules/CalcPerform.lua (ReservationEfficiency; less Reservation 乘区)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "ehp-no-taken-multiplier",
+  "title": "EHP 未纳入承受伤害乘数 (DamageTaken/DamageTakenWhenHit)",
+  "size": "M",
+  "par": false,
+  "pri": "P5",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/ehp.rs:76-125",
+   "crates/pobr-core/src/calc/perform.rs:66-88"
+  ],
+  "desc": "calc_ehp 仅用 resist+armour+PDR 计算 max_hit，未考虑 TakenHitMult = `max(0, (1+Σinc/100) × Π(1+more/100))` 其中 inc 来自 DamageTaken/<type>DamageTaken/DamageTakenWhenHit/<type>DamageTakenWhenHit（Fortify/Wither/Shock 等落在此桶）。PoB2 CalcDefence.lua 在 max_hit 计算中将 takenMult 作为额外减伤因子。验收信号：添加 taken_mult_for_type(db, cfg, damage_type) 函数，calc_ehp 接受 TakenMultiSuite 参数，Fortify 10层时物理 max_hit 正确提升约 9%。",
+  "doc": [
+   "agent-docs/recovery-charges-buffs.md §4.1 承受伤害乘数",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.7"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (TakenHitMult = max(0, (1+takenInc/100)*takenMore))"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "ehp-no-avoidance-layer",
+  "title": "EHP 未整合命中前不被击中几率（规避/翻滚/AvoidAllDamageFromHits）",
+  "size": "M",
+  "par": false,
+  "pri": "P5",
+  "bug": false,
+  "dep": [
+   "hit-chance-formula-wrong"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ehp.rs",
+   "crates/pobr-core/src/calc/perform.rs:66-88",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "当前 EHP 仅计算 max_hit（命中后减伤池），未整合命中前避免层：`MeleeNotHitChance = 1-(1-Evade)*(1-Dodge)*(1-AvoidAllDamageFromHits)` 以及 ProjectileNotHitChance 额外乘 (1-AvoidProjectiles)。PoB2 中 EHP 是两者组合。需实现规避几率聚合函数并在 EHP 阶段乘上 `1/(1-avoid_chance)`。具体包括：`AvoidAllDamageFromHitsChance` capped 75%、异常规避（AvoidStun/AvoidIgnite 等）capped 100%、ES≥1 时隐式 +50% AvoidStun。验收信号：60% 闪避 + 30% AvoidAllDamageFromHits 使物理 EHP 约是 max_hit 的 1/(1-0.72) 倍；AvoidStun 在有 ES 时基础 50%。",
+  "doc": [
+   "agent-docs/recovery-charges-buffs.md §4.3 命中前不被击中几率",
+   "agent-docs/active-defences.md §3 规避",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.7"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (MeleeNotHitChance / ProjectileNotHitChance ~L2018; AvoidChanceCap=75; ailment避免 capped 100)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "block-not-in-ehp",
+  "title": "格挡几率未纳入 EHP 计算（post-mitigation 期望乘子缺失）",
+  "size": "S",
+  "par": false,
+  "pri": "P5",
+  "bug": false,
+  "dep": [
+   "block-chance-cap-wrong"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ehp.rs",
+   "crates/pobr-core/src/calc/perform.rs:83-88",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "block.md 明确格挡在 post-mitigation 发生（伤害计算步骤 7），对 EHP 有 `effective_ehp × 1/(1-blockChance)` 效果。当前 EHP 只读 block_chance 字段但完全未用其调整 max_hit/EHP。验收信号：block_chance=75% 时 physical_max_hit 调整为原值 /(1-0.75)=4x；或输出独立字段 `ehp_with_block`。",
+  "doc": [
+   "agent-docs/block.md §格挡在计算中的位置（post-mitigation）",
+   "agent-docs/recovery-charges-buffs.md §4.2 Max Hit"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (buildDefenceEstimations; block 作为避免层)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "charge-multiplier-missing",
+  "title": "充能层数乘数（per-charge 词条）完全未实现",
+  "size": "M",
+  "par": true,
+  "pri": "P5",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/session.rs",
+   "crates/pobr-data/src/constants.rs"
+  ],
+  "desc": "PoE2 充能无固有属性，仅通过 `per X Charge` 词条引用（Multiplier tag）。CalcConfig 有 multipliers 字段，但 perform.rs/session.rs 中没有任何代码向 multipliers[\"PowerCharge\"]/[\"FrenzyCharge\"]/[\"EnduranceCharge\"] 填充值，也无充能最大层数封顶（默认3层 per resource）。验收信号：CalcConfig 中 multipliers[\"PowerCharge\"]=3 时，`12% increased Critical Damage per Power Charge`（Multiplier:PowerCharge）词条正确放大 36%；充能超过 max_charges 时被 clamp。",
+  "doc": [
+   "agent-docs/recovery-charges-buffs.md §1 三大充能",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.6"
+  ],
+  "pob2": [
+   "src/Modules/CalcSetup.lua (multipliers[\"PowerCharge\"] 等; max_power/frenzy/endurance_charges=3; ChargeDuration BASE 15)",
+   "src/Modules/CalcPerform.lua (Condition:UseXCharges; HaveMaximumXCharges)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "leech-not-implemented",
+  "title": "偷取 (Leech) 完全未实现（0.5.0 单实例重制语义）",
+  "size": "L",
+  "par": true,
+  "pri": "P5",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/output.rs",
+   "crates/pobr-data/src/constants.rs"
+  ],
+  "desc": "0.5.0 偷取被完全重制：每资源同时只有一个实例（取最高速率），总速率上限 Life/Mana 20%/Mana 20%/ES 10%，单实例上限 10%，单击偷取上限 40000。当前 OutputTable 无任何偷取字段，perform.rs 也无偷取相关代码。验收信号：生命偷取 5%（攻击），命中 1000 物理伤害 → 偷取实例总量 50 → 每秒回复 life×2% 直到耗尽；超过 40000 的命中伤害按比例缩放；多实例只取最高速率。",
+  "doc": [
+   "agent-docs/recovery-charges-buffs.md §2.2 偷取 0.5.0 重制",
+   "agent-docs/energy-shield.md §生命偷取重制"
+  ],
+  "pob2": [
+   "src/Modules/CalcSetup.lua (MaxLifeLeechRate=20; MaxEnergyShieldLeechRate=10; MaxLeechInstance=10; EffectiveMaxDamageForLeech=40000)",
+   "src/Modules/CalcDefence.lua (偷取实例化与上限逻辑)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "recoup-not-implemented",
+  "title": "返还 (Recoup) 完全未实现",
+  "size": "M",
+  "par": true,
+  "pri": "P5",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "Recoup 把承受伤害的一部分在 8 秒（可降为 4 秒）内返还为恢复，基于承受后进入资源池的伤害。PoB2 支持按伤害类型限定（damageType+recoupType），并受 RecoveryRateMod 影响，支持 AddLifeRecoupToEnergyShieldRecoup 旗标。当前完全无实现。验收信号：承受 1000 物理伤害，30% LifeRecoup → 8 秒内返还 300 生命（37.5/s）；4SecondRecoup 旗标时改为 4s（75/s）；RecoveryRateMod=+50% 时速率×1.5。",
+  "doc": [
+   "agent-docs/recovery-charges-buffs.md §2.3 返还 Recoup"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (output[damageType..recoupType..\"Recoup\"]; 4SecondRecoup 旗标; AddLifeRecoupToEnergyShieldRecoup)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "buff-effect-not-implemented",
+  "title": "BuffEffect 体系未实现（Fortify/Onslaught/Adrenaline 等 buff 无效）",
+  "size": "L",
+  "par": true,
+  "pri": "P5",
+  "bug": false,
+  "dep": [
+   "ehp-no-taken-multiplier"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "PoE2 内置 buff 统一通过 BuffEffectOnSelf 乘区放大：Fortify 层数×effectScale 注入 DamageTakenWhenHit MORE 负值；Onslaught 给速度；Adrenaline 给伤害/速度/PDR；Elusive 给 AvoidAllDamageFromHits 和移动速度。当前 OutputTable 无任何 buff 相关字段，perform.rs 无 buff flag 检测。验收信号：CalcConfig 中 condition(\"Fortified\")=true + FortificationStacks=10 时，DamageTakenWhenHit 减少 10%×effectScale；Onslaught 激活时 AttackSpeed+20% / CastSpeed+20% / MovementSpeed+10%（基础 effect=10）。",
+  "doc": [
+   "agent-docs/recovery-charges-buffs.md §3 增益",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.6"
+  ],
+  "pob2": [
+   "src/Modules/CalcPerform.lua (Fortification:NewMod DamageTakenWhenHit MORE -floor((1+BuffEffectOnSelf/100)*stacks); Onslaught effect=floor(10*(1+(OnslaughtEffect+BuffEffectOnSelf)/100)))"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "keystone-defence-not-implemented",
+  "title": "防御向 Keystone 全未实现（IronReflexes/ZealotsOath/MindOverMatter/EldratchBattery/ChaosInoculation）",
+  "size": "L",
+  "par": false,
+  "pri": "P5",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/defence.rs",
+   "crates/pobr-core/src/calc/ehp.rs",
+   "crates/pobr-core/src/calc/perform.rs"
+  ],
+  "desc": "IronReflexes（闪避→护甲转换）、ZealotsOath（生命再生→ES）、MindOverMatter（承受顺序插入法力层）、EldratchBattery（ES→法力）、ChaosInoculation（最大生命=1、混沌/流血/毒免疫）、Bulwark（翻滚减伤层）均未实现。这些是常见 build 的核心机制，缺失导致这类 build 计算完全错误。最高优先的是 IronReflexes（改变 evasion 在 defence 中的角色）和 ChaosInoculation（改变 chaos pool 计算）。验收信号：IronReflexes flag 时 evasion 全量加入护甲而非单独统计；CI flag 时 life=1、chaos_max_hit=infinity。",
+  "doc": [
+   "agent-docs/active-defences.md §5 防御向 Keystone",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.1 Flag 驱动"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (IronReflexes: evasion→armour; ZealotsOath: LifeRegen→ES; MindOverMatter: ManaTakenBeforeLife; CI: MaximumLife=1)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "guard-buff-not-implemented",
+  "title": "Guard/伤害吸收缓冲池未实现",
+  "size": "L",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/ehp.rs",
+   "crates/pobr-core/src/calc/output.rs",
+   "crates/pobr-core/src/calc/perform.rs"
+  ],
+  "desc": "PoE2 Guard 是位于 ES 之前的独立吸收池（伤害承受顺序中优先级最高的击中缓冲）：单一 Guard 槽（magnitude 高者保留、低者按比例刷新时长）、上限 200% 最大生命、GuardAbsorbRate、Vaal Molten Shell 独立槽。当前 Actor/OutputTable/EhpResult 无任何 Guard 字段，MaxHit/EHP 也未将 Guard 池纳入计算。验收信号：Guard 池 500、life 1000 时 physical_max_hit 中 Guard 先于 life 吸收，总可承受量高于无 Guard 情况；Guard 上限不超过 max_life×2。",
+  "doc": [
+   "agent-docs/active-defences.md §2 Guard",
+   "agent-docs/damage-defence-order.md §8 (Guard 在 ES 之前)"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (sharedGuardAbsorb; GuardAbsorbRate; 上限 200%生命)",
+   "src/Modules/CalcPerform.lua (Guard buff 合并：magnitude 高者; Vaal Molten Shell 独立槽)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "crit-extra-damage-reduction-missing",
+  "title": "承受暴击额外伤害减免 (ReduceCritExtraDamage) 未实现",
+  "size": "S",
+  "par": true,
+  "pri": "P6",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "PoE2 有专属防御层：`N% 减少受到的暴击额外伤害`，作用于敌人爆伤 bonus（不影响基础击中）。PoB2 公式：CritExtraDamageReduction=min(Σ ReduceCritExtraDamage,100)；EnemyCritEffect=1+enemyCritChance/100*(enemyCritDamage/100)*(1-CritExtraDamageReduction/100)。当前 EHP 和 OutputTable 完全无此字段。验收信号：敌人暴击几率 50%、爆伤+100%、玩家 ReduceCritExtraDamage=50% 时，EnemyCritEffect=1+0.5*(1.0)*0.5=1.25 而非 1.5；100% 时等效敌人不造成暴击额外伤害。",
+  "doc": [
+   "agent-docs/active-defences.md §4 减少受到的暴击额外伤害"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (CritExtraDamageReduction=min(Sum('BASE','ReduceCritExtraDamage'),100); EnemyCritEffect 公式)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "es-recharge-missing",
+  "title": "能量护盾充能 (Recharge) 速率和延迟未实现",
+  "size": "M",
+  "par": true,
+  "pri": "P5",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs:109-113",
+   "crates/pobr-core/src/calc/output.rs",
+   "crates/pobr-data/src/constants.rs"
+  ],
+  "desc": "ES 的恢复机制是「充能 (Recharge)」不是「再生 (Regen）」，独立于 energy_shield_regen。默认充能速率 12.5%/s（750%/min），延迟 4 秒（无 ES 伤害）。当前 perform.rs 的 energy_shield_regen 用的是 stat_regen()（适用于再生），ZealotsOath/ManaRegenAppliesToEnergyShieldRecharge 等旗标也完全缺失。验收信号：新增 energy_shield_recharge_rate（ES×12.5%/s）和 energy_shield_recharge_delay（4s base）输出；energy_shield_regen 仅由显式再生词条驱动（默认 0 unless ZealotsOath）。",
+  "doc": [
+   "agent-docs/energy-shield.md §充能 Recharge (12.5%/s, 4s delay)"
+  ],
+  "pob2": [
+   "src/Data/Misc.lua (character_inherent_energy_shield_recharge_rate_per_minute_%=750; 4s delay)",
+   "src/Modules/CalcDefence.lua (ZealotsOath: OverflowEnergyShieldRecovery)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "avoidance-ailment-missing",
+  "title": "异常/眩晕规避几率未实现（ES 隐式 50% 避免眩晕）",
+  "size": "M",
+  "par": true,
+  "pri": "P5",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "当前完全无 AvoidStun/AvoidIgnite/AvoidShock/AvoidChill/AvoidFreeze/AvoidPoison/AvoidBleeding/AvoidElementalAilments 的聚合与输出。特别重要的是 ES 隐式规则：受击时有 ES（>0）→ notAvoidChance×0.5，即 50% 几率避免眩晕（PoB2 CalcDefence.lua 注释明确）。验收信号：ES=500 时 AvoidStun_effective≥50%；AvoidStun 词条 70% + ES 存在时最终避免眩晕几率正确；Stormshroud（ShockAvoidAppliesToElementalAilments）联动。",
+  "doc": [
+   "agent-docs/active-defences.md §3.2 规避异常/控制",
+   "agent-docs/active-defences.md PoB2 CalcDefence.lua 规避段"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (ailmentAvoidChance; notAvoidChance×0.5 when ES>0; AilmentImmune→100%; ailment避免上限100; ShockAvoidAppliesToElementalAilments)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "deflection-missing",
+  "title": "偏转 (Deflection) 防御层未实现",
+  "size": "M",
+  "par": true,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "hit-chance-formula-wrong"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/defence.rs",
+   "crates/pobr-core/src/calc/output.rs"
+  ],
+  "desc": "PoE2 0.5.0 重新引入 Deflection（DEX/闪避流减伤层），PoB2 有 DeflectionChanceCap=95、DeflectEffect 变量。deflection 使用类似闪避的计算但提供减伤而非完全躲避：`deflectChance = (0.1*A + 0.2*D)/(A + 0.2*D)*100`（PoB2）。当前完全未实现，OutputTable 无偏转字段。验收信号：deflection=1000、accuracy=500 时 deflectChance 计算正确；DeflectEffect 影响减伤幅度；上限 95%。",
+  "doc": [
+   "agent-docs/evasion.md §偏转 Deflection",
+   "agent-docs/active-defences.md (DeflectionChanceCap=95)"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (deflectChance = 100 - clamp((accuracy*0.9)/(accuracy+deflection*0.2)*100,0,100); DeflectionChanceCap=95; DeflectEffect)"
+  ]
+ },
+ {
+  "sub": "防御/恢复/充能/格挡/EHP/法术抑制",
+  "id": "ehp-chaos-inoculation-wrong",
+  "title": "EHP 混沌池计算对 CI build 不正确",
+  "size": "S",
+  "par": false,
+  "pri": "P5",
+  "bug": true,
+  "dep": [
+   "keystone-defence-not-implemented"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/ehp.rs:68-73,92-96"
+  ],
+  "desc": "chaos_pool 函数固定用 `life + es*0.5`，但 Chaos Inoculation 时 life=1（被 Keystone 强制）且混沌免疫，此时 chaos_max_hit 应为 infinity（或不参与计算）。当前无 CI flag 检查，chaos_max_hit 会错误限制 total_ehp 为 1（CI build 的 life=1 会使 chaos_pool≈1、chaos_max_hit≈1，拖低 total_ehp 至 1）。验收信号：CI flag 激活时 chaos_max_hit=∞，total_ehp 由其他类型决定。这依赖于 keystone-defence-not-implemented 中 CI flag 的注入。",
+  "doc": [
+   "agent-docs/energy-shield.md §混沌免疫 CI",
+   "agent-docs/active-defences.md §5 Keystone (Chaos Inoculation: 混沌免疫)"
+  ],
+  "pob2": [
+   "src/Modules/CalcDefence.lua (CI: Flag(ChaosInoculation) → chaosMax=∞)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "offence-action-rate-not-replaced",
+  "title": "offence.rs 内 legacy action_rate 未被 SkillUseTime 替换，产生双轨并行",
+  "size": "S",
+  "par": true,
+  "pri": "P6",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/offence.rs:209-212",
+   "crates/pobr-core/src/calc/offence.rs:460-479",
+   "crates/pobr-core/src/calc/perform.rs:36-45",
+   "crates/pobr-core/src/calc/skill_use_time.rs:39-80"
+  ],
+  "desc": "doc12 §4.8 明确 'SkillUseTime 替换当前 base_action_rate × speed'。但 calc/offence.rs:209-212 的 calculate_minimal 仍有独立公式 `base_action_rate * (1+inc/100) * more`，而 perform 的 fill_mechanics 另外调用 calc_skill_use_time 把 effective_action_rate 写入 OutputTable。这导致 MinimalOutput.action_rate（旧公式）与 OutputTable.effective_action_rate（SkillUseTime）不同步：旧公式混用 AttackSpeed+ActionSpeed 在同一个 inc+more 桶，而 SkillUseTime 正确地把 ActionSpeed 分离为独立乘区。DPS 计算仍使用旧的 action_rate，导致最终 DPS 面板数值与 PoE2 口径不符。\n\nPoE2 正确公式：use_time = base_use_time / (1 + Σskill_speed/100) + penalty；rate = (1/use_time) * (1 + Σaction_speed/100)；再截断到服务器帧。\n\n验收：calculate_minimal 的 action_rate 字段改为调用 calc_skill_use_time（或复用其结果），测试：同时有 AttackSpeed Inc 和 ActionSpeed Inc 时，DPS = total_hit_avg * SkillUseTime.effective_rate * hit_chance；断言 MinimalOutput.dps == MinimalOutput.total_hit_avg * effective_rate * hit_chance。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8",
+   "agent-docs/skill-speed.md"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (action rate section)",
+   "src/Modules/CalcPerform.lua"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "skilltype-enum-incomplete",
+  "title": "SkillTypes 只有 ATTACK/SPELL 两个常量，缺少 PoE2 的全量枚举",
+  "size": "S",
+  "par": true,
+  "pri": "P6",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/skill.rs:4-17"
+  ],
+  "desc": "agent-docs/skill-mechanics.md §技能标签列出的关键 SkillType 枚举（Projectile=3, Area=8, Duration=9, HasReservation=12, ReservationBecomesCost=13, Chains=19, Melee=20, Multicastable=22, Channel=48, Cascadable=56, Warcry=63, Instant=64, Cooldown=91 等）在 pobr-data/src/skill.rs 中只有 ATTACK(1<<0) / SPELL(1<<1) 两个常量。\n\nSkillType 枚举缺口导致：所有带 ModTag::SkillTypes(SkillTypes::CHANNEL/AREA/PROJECTILE…) 的 modifier 永远无法命中（matches 返回 false），技能类型特化修饰词（只对 Channel/Projectile/Area 有效的词条）全部静默失效。这不是新功能——这是现有 matches 机制的适用性前提。\n\nPoE2 正确口径：按 GGG Global.lua SkillType 枚举值（0.5.0）的位掩码常量，至少补：PROJECTILE(1<<2), AREA(1<<7), DURATION(1<<8), HAS_RESERVATION(1<<11), RESERVATION_BECOMES_COST(1<<12), CHAINS(1<<18), MELEE(1<<19), MULTICASTABLE(1<<21), CHANNEL(1<<47), CASCADABLE(1<<55), WARCRY(1<<62), INSTANT(1<<63), COOLDOWN(1<<90)。\n\n验收：ModTag::SkillTypes(SkillTypes::CHANNEL) 的 modifier 在 CalcConfig.skill_types 包含 CHANNEL 时 matches 返回 true，否则 false。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §技能标签",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Data/Global.lua (SkillType = {...} 枚举)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "keyword-flags-empty",
+  "title": "KeywordFlags 无任何常量定义（Arrow/Aura 等），导致 keyword 匹配永远不命中",
+  "size": "S",
+  "par": true,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "skilltype-enum-incomplete"
+  ],
+  "files": [
+   "crates/pobr-data/src/modifier.rs:78-103"
+  ],
+  "desc": "crates/pobr-data/src/modifier.rs:78-103 的 KeywordFlags 结构体只有 NONE 常量，没有 ARROW / AURA / MINION / WARCRY / MARK 等枚举值。Modifier.matches() 中的 keyword_flags 检测路径（第119-121行）虽然存在，但因为没有任何非零 KeywordFlag 可以设置，所有需要 keyword 区分的词条（如弓箭专属投射物数量 vs 通用投射物数量）永远无法被正确匹配。\n\nPoE2 正确口径：参照 PoB2 SkillStatMap.lua 中 KeywordFlag 枚举（Arrow/Aura/Vaal/Mine/Trap/Totem/Warcry/Mark/Brand 等），至少定义 ARROW 和 AURA，使 'arrows deal X% increased damage' 类修饰词能通过 keyword 匹配正确隔离到弓箭技能。\n\n验收：使用 KeywordFlags::ARROW 的 modifier 在 cfg.keyword_flags 包含 ARROW 时 matches 为 true，否则 false；关键词级别的修饰词隔离正确工作。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §ModFlag / KeywordFlag",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.1"
+  ],
+  "pob2": [
+   "src/Data/Global.lua (KeywordFlag = {...})"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "support-gem-more-multiplier-isolation",
+  "title": "辅助宝石的 more 倍率直接注入全局 player ModDb，未做被支援技能隔离",
+  "size": "M",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "skilltype-enum-incomplete"
+  ],
+  "files": [
+   "crates/pobr-core/src/skill_source.rs:19-21",
+   "crates/pobr-core/src/calc/session.rs:88-103"
+  ],
+  "desc": "skill_source.rs:19-21 的 TODO(more-multiplier) 明确：辅助宝石提供的 more/less 倍率应作用于被支援技能而非全局，当前直接注入 player mod_db。这导致辅助宝石的 more 加成对角色所有技能都生效，而非只对被支援的那一颗主动技能生效。例如 'Spell Echo' 支持 Fireball 的 more 伤害修饰，会错误地对角色其他技能的伤害也产生影响。\n\nPoE2 正确口径（PoB2 CalcActiveSkill.lua）：每颗主动技能有自己的 skillModList，辅助宝石的 modifier 只注入到与之关联的 skillModList，不进全局 player modList。\n\n验收：辅助宝石 X 支持技能 A，技能 A 的 DPS 包含 X 的 more 修饰，技能 B（未支持）的 DPS 不包含 X 的 more 修饰；需要引入 per-skill ModDb 或在计算时根据 parent_source_id 过滤。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §辅助宝石 mana multiplier / more 倍率隔离",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcActiveSkill.lua (skillModList / supportModList)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "support-gem-mana-multiplier",
+  "title": "辅助宝石 mana multiplier 未接入，法力消耗计算不正确",
+  "size": "M",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "support-gem-more-multiplier-isolation"
+  ],
+  "files": [
+   "crates/pobr-core/src/skill_source.rs:16-18",
+   "crates/pobr-core/src/calc/session.rs:88-103"
+  ],
+  "desc": "skill_source.rs:16-18 的 TODO(mana-multiplier) 明确：辅助宝石的 mana multiplier 未接入。PoE2 中每颗辅助宝石都有 CostMultiplier（如 Support: Added Fire Damage 的 130% mana multiplier），使被支援技能的法力消耗增加。当前实现完全忽略辅助宝石对消耗的倍增，导致有辅助宝石时法力消耗严重低估。\n\nPoE2 正确口径（PoB2 CalcOffence.lua L2050+）：mult = Π(support.CostMultiplier/100)，向下取整到4位小数；finalCost = floor(baseCost * mult + NoMult + ...)。Soul 消耗不受通用成本倍乘影响。\n\n验收：一颗 130% mana multiplier 的辅助宝石支持基础消耗 20 mana 的技能，输出 ManaCost = floor(20 * 1.3) = 26；测试断言 ManaCost 字段正确。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §消耗计算",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (cost multiplier, L2050+)",
+   "src/Data/Costs.lua"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "support-gem-skill-type-gating",
+  "title": "辅助宝石 skill-type gating 未接入，辅助宝石可无条件支持任何主动技能",
+  "size": "M",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "skilltype-enum-incomplete"
+  ],
+  "files": [
+   "crates/pobr-core/src/skill_source.rs:22-24",
+   "crates/pobr-data/src/catalog.rs:160"
+  ],
+  "desc": "skill_source.rs:22-24 的 TODO(skill-type-gating) 明确：辅助宝石仅作用于匹配 skill type 的主动技能，当前未实现。GrantedEffectDef.allowed_active_skill_types 字段已存在（catalog.rs:160），但未被用于校验辅助宝石是否可以支持特定主动技能。例如一个只支持 Projectile 技能的辅助宝石，当前会对所有技能（包括 Melee）产生效果。\n\nPoE2 正确口径：辅助宝石的 allowed_active_skill_types 需要与主动技能的 SkillTypes 取交集，非空才允许支持；PoB2 CalcActiveSkill.lua 中 initSkill 阶段检验 support.allowedTypes。\n\n验收：辅助宝石 allowed_active_skill_types 包含 Projectile，对 Spell 技能不生效（ingest_gem 或上层编排过滤），对 Projectile 技能生效；断言过滤逻辑。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §技能标签 / 技能类型",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcActiveSkill.lua (initSkill, allowedTypes)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "gem-level-quality-scaling",
+  "title": "宝石等级/品质带来的 per-level/per-quality 词条缩放未接入",
+  "size": "L",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "support-gem-more-multiplier-isolation"
+  ],
+  "files": [
+   "crates/pobr-core/src/skill_source.rs:25-27",
+   "crates/pobr-data/src/catalog.rs:117-120",
+   "crates/pobr-data/src/gem.rs:1-13"
+  ],
+  "desc": "skill_source.rs:25-27 的 TODO(level/quality) 明确：宝石词条统一归到宝石级 source 节点，未按 SourceKind::SkillLevel / GemQuality 细分。更根本的是，GrantedEffectDef 不包含 per-level stat 缩放表（GrantedEffectsPerLevel 的 cost/cooldown/damage/duration 进度），导致无论宝石处于何等级，其词条数值都是静态的（只能通过 modifier 文本硬编码数值，不能按等级插值）。\n\nPoE2 正确口径：宝石等级决定 level 字段中的基础伤害、持续时间、冷却时间、法力消耗、保留倍乘等（CalcActiveSkill.lua 读 level.* 写入 skillData）；品质按 0.5.0 额外品质属性表缩放（gems.md）。\n\n验收：Fireball 宝石 level 20 的 DPS 高于 level 1，差异来自等级表插值；SourceKind::SkillLevel 归因节点出现在 TraceGraph 中。",
+  "doc": [
+   "agent-docs/gems.md §等级与品质",
+   "agent-docs/skill-mechanics.md §等级与品质对功能的影响",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcActiveSkill.lua (level.* fields, initSkill)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "aoe-radius-formula-missing",
+  "title": "AoE 半径计算公式（√areaMod）完全未实现",
+  "size": "S",
+  "par": true,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "skilltype-enum-incomplete"
+  ],
+  "files": [],
+  "desc": "doc12 §4.8 和 agent-docs/skill-mechanics.md §范围明确要求实现 AoE 半径公式：radius = floor(baseRadius × floor(100 × √areaMod) / 100)，其中 areaMod = (1 + Σinc/100) × Π(1+more/100)。当前代码中完全没有 AreaOfEffect ModName 的聚合，也没有 calcRadius 函数，AoE 半径没有任何输出。\n\nPoE2 正确公式（PoB2 CalcOffence.lua calcRadius）：\n```lua\nlocal function calcRadius(baseRadius, areaMod)\n    return m_floor(baseRadius * m_floor(100 * m_sqrt(areaMod)) / 100)\nend\n```\n几何递减纯粹来自开方关系，无额外 DR 曲线。Primary/Secondary/Tertiary 三段独立半径。\n\n验收：输入 baseRadius=10, AreaOfEffect Inc=50% → areaMod=1.5 → radius=floor(10×floor(100×√1.5)/100)=floor(10×122/100)=floor(12.2)=12；断言 calc_aoe_radius(10.0, 1.5)==12.0。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §范围",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (calcRadius, calcRadiusBreakpoints)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "projectile-behavior-system-missing",
+  "title": "投射物行为系统（数量/Split/Pierce/Fork/Chain 优先级）完全未实现",
+  "size": "L",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "skilltype-enum-incomplete",
+   "keyword-flags-empty"
+  ],
+  "files": [],
+  "desc": "agent-docs/skill-mechanics.md §投射物明确了 PoE2 投射物行为严格优先级 Split→Pierce→Fork→Chain，以及相关 ModName（ProjectileCount/PierceCount/PierceChance/ForkCountMax/SplitCount/ChainCountMax/BeamChainCountMax/TerrainChainChance）。当前代码无任何 ProjectileCount、PierceCount、ChainCountMax 等 ModName 聚合，也无投射物数量输出字段。\n\nPoE2 正确公式（PoB2 CalcOffence.lua L1287-1296）：\nprojBase = Sum(BASE, ProjectileCount) + 2*Sum(BASE,TwoAdditionalProjectilesChance)/100 + Sum(BASE,SurpassingProjectileChance)/100\nprojMore = More(ProjectileCount)\noutput.ProjectileCount = projBase * projMore\n\n行为优先级：一次碰撞只触发一个（Split→Pierce→Fork→Chain），能穿透/分叉的投射物不从敌人连锁（但可从地形连锁）。\n\n验收：ProjectileCount BASE = 2 时 output.ProjectileCount == 2；Chain 优先级低于 Pierce；至少有 unit test 覆盖数量聚合公式。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §投射物",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (projectile count, L1287-1296)",
+   "src/Data/SkillStatMap.lua (ProjectileCount/PierceCount/ChainCountMax/ForkCountMax/SplitCount)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "cooldown-system-missing",
+  "title": "冷却计算系统（CooldownRecovery 除数 + 储存次数 + 帧对齐）完全未实现",
+  "size": "M",
+  "par": true,
+  "pri": "P6",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/skill_use_time.rs:39-80"
+  ],
+  "desc": "agent-docs/skill-mechanics.md §冷却明确了冷却公式：cooldown = cooldownBase / max(0, (1+Σinc/100) × Π(1+more/100))，再 ceil(x × ServerTickRate) / ServerTickRate（服务器帧向上取整）；可储存多次使用时不取整。当前代码无 CooldownRecovery ModName 聚合，无 AdditionalCooldownUses，无 cooldown_output 字段，SkillUseTime 也未返回冷却受限时的有效速率。\n\nPoE2 正确公式（PoB2 CalcOffence.lua calcSkillCooldown L325-346）：见 agent-docs/skill-mechanics.md §冷却代码片段。\n\n验收：base cooldown 1.0s，CooldownRecovery Inc=50% → 实际冷却 = 1.0/1.5 ≈ 0.667s → ceil(0.667×30.303)/30.303 ≈ 0.693s；cooldown_output 字段存在于 OutputTable；有 unit test。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §冷却",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (calcSkillCooldown, L325-346)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "skill-cost-system-missing",
+  "title": "技能消耗计算（ManaCost INC/MORE + 资源类型分桶 + Spirit 保留倍乘）未实现",
+  "size": "M",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "support-gem-mana-multiplier"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/survivability.rs:23-36",
+   "crates/pobr-core/src/calc/perform.rs:91-104"
+  ],
+  "desc": "agent-docs/skill-mechanics.md §消耗与保留详述了完整消耗流程：CostMultiplier → baseCost × mult → INC（注意 base_mana_cost_-% 是 INC 负值）→ MORE（no_cost 全免）→ floor。Spirit 保留走 ReservationMultiplier MORE + ExtraSpirit BASE。当前只有简单的 LifeReserved/ManaReserved 百分比 reservation（survivability.rs:23），无 ManaCost 计算管线，无 Spirit 保留系统。\n\nPoE2 正确公式：见 CalcOffence.lua L2050+；Soul 消耗不受通用成本倍乘；ManaCostEfficiency INC 提高效率（降耗）；ReservationBecomesCost（Divine Blessing）把保留转成一次性消耗。\n\n验收：技能基础 ManaCost=20，ManaCost Inc=-20%（降耗 20%）→ floor(20 × 0.8)=16；Spirit 保留：宝石保留 40 Spirit，ReservationMultiplier MORE=150% → 实际保留 60；断言输出字段。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §消耗与保留",
+   "agent-docs/meta-gems.md §精神保留",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (cost calculation, L2050+)",
+   "src/Data/Costs.lua"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "repeat-echo-system-missing",
+  "title": "重复/回响（RepeatCount + SkillType 条件 + 分次伤害 more 倍率）未实现",
+  "size": "M",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "skilltype-enum-incomplete"
+  ],
+  "files": [],
+  "desc": "agent-docs/skill-mechanics.md §重复明确了 RepeatCount 只对 Multicastable/Cascadable/WeaponMelee|Unarmed/RequiresShield 类型生效，且每次重复可有独立 more 倍率（RepeatOneDamage/RepeatTwoDamage/RepeatThreeDamage MORE）。当前无 RepeatCount ModName 聚合，无 Repeats 输出字段。\n\nPoE2 正确公式（PoB2 CalcOffence.lua L981+）：\noutput.Repeats = 1 + (repeatSkillTypesCheck(skillTypes) and Sum(BASE,RepeatCount) or 0)\n每次重复 DPS 按 RepeatXDamage MORE 加权。\n\n验收：Multicastable 技能 + RepeatCount BASE=1（Spell Echo 一次回响）→ Repeats=2；非 Multicastable 技能 RepeatCount 不生效 → Repeats=1；unit test 断言。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §重复",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (Repeats, L981+)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "duration-system-missing",
+  "title": "技能持续时间计算（Duration INC/MORE + 服务器帧向上取整）未实现",
+  "size": "S",
+  "par": true,
+  "pri": "P6",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/ailment.rs:53-54"
+  ],
+  "desc": "agent-docs/skill-mechanics.md §持续时间明确 Duration 公式：output.Duration = durationBase × durationMod，再 ceil(Duration × ServerTickRate) / ServerTickRate。ailment.rs 已有 BleedDuration/IgniteDuration/PoisonDuration/AilmentDuration ModName（ailment.rs:53-125），但技能本体持续时间（skill effect duration）的 Duration/PrimaryDuration/SecondaryDuration/TertiaryDuration/MineDuration ModName 聚合与输出字段均未实现。\n\nPoE2 正确公式（PoB2 CalcOffence.lua L362-365）：见 agent-docs/skill-mechanics.md §持续时间代码片段。\n\n验收：base duration 2.0s，Duration Inc=50% → durationMod=1.5 → duration=3.0s → ceil(3.0×30.303)/30.303 ≈ 3.033s（帧对齐）；OutputTable.skill_duration 字段存在；unit test。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §持续时间",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (Duration, L362-365, L1838-1853)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "skill-specific-speed-types-missing",
+  "title": "WarcrySpeed/TotemPlacementSpeed/ReloadSpeed 未在 speed bucket 或 mod_parser 中定义",
+  "size": "S",
+  "par": true,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "skilltype-enum-incomplete"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/skill_use_time.rs:28-36",
+   "crates/pobr-core/src/mod_parser.rs:295-328"
+  ],
+  "desc": "agent-docs/skill-speed.md §技能速度应用提到 WarcrySpeed / ReloadSpeed / TotemPlacementSpeed 等特定类型速度与通用 SkillSpeed 加法叠加。当前 speed bucket 只有 AttackSpeed/CastSpeed/SkillSpeed 三个（skill_use_time.rs:28），mod_parser.rs 只能识别 'attack speed' 和 'cast speed'。'warcry speed' / 'reload speed' / 'totem placement speed' 词条无法被解析或聚合，会落入 unsupported。\n\nPoE2 正确口径：WarcrySpeed Inc → 加入 SkillSpeed bucket 做加法（和 SkillSpeed 一样加法叠加）；同理 TotemPlacementSpeed / ReloadSpeed 各自对对应类型技能加法叠加后计入 total_skill_speed。\n\n验收：mod_parser 能解析 '10% increased warcry speed' → ModName::WarcrySpeed Inc；CalcConfig skill_types 包含 Warcry 时 speed bucket 纳入 WarcrySpeed；unit test。",
+  "doc": [
+   "agent-docs/skill-speed.md §技能速度应用"
+  ],
+  "pob2": [
+   "src/Data/SkillStatMap.lua (WarcrySpeed/TotemPlacementSpeed/ReloadSpeed 映射)"
+  ]
+ },
+ {
+  "sub": "技能功能 + 辅助宝石",
+  "id": "channelling-time-formula-missing",
+  "title": "引导技能（Channel）的 channelTime 公式未实现",
+  "size": "M",
+  "par": false,
+  "pri": "P6",
+  "bug": false,
+  "dep": [
+   "skilltype-enum-incomplete",
+   "cooldown-system-missing"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/skill_use_time.rs:44-80"
+  ],
+  "desc": "agent-docs/skill-mechanics.md §引导明确：ChannelTime = max(channelTimeMultiplier / channelSpeed, minChannelTime)；引导技结束可不进冷却（CooldownDoesNotLimitSkillSpeed flag）。当前 calc_skill_use_time 只通过 is_channelling 参数跳过服务器帧上限，没有实现 channelTimeMultiplier / minChannelTime / channelTimeOverride 的聚合，也没有 CooldownDoesNotLimitSkillSpeed flag。\n\nPoE2 正确口径（PoB2 CalcOffence.lua channelTime 段）：每次引导触发间隔由 channelTimeMultiplier / channelSpeed 决定，独立于普通 base_use_time；skill_use_time.rs 目前把 is_channelling 仅用于跳过帧上限，而不是计算引导节奏。\n\n验收：Channel 技能的 SkillUseTime 有 channel_time 字段；CooldownDoesNotLimitSkillSpeed flag 被读取后引导技冷却不限制速度；unit test。",
+  "doc": [
+   "agent-docs/skill-mechanics.md §引导与持续",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.8"
+  ],
+  "pob2": [
+   "src/Modules/CalcOffence.lua (channelTime, CooldownDoesNotLimitSkillSpeed)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "minion-env-actor-extension",
+  "title": "Env 增加 minions: Vec<Actor>，Actor 增加召唤物身份字段",
+  "size": "S",
+  "par": true,
+  "pri": "P7",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/calc/env.rs:8",
+   "crates/pobr-core/src/calc/actor.rs:40-47"
+  ],
+  "desc": "要做什么：在 `Env`（env.rs:8-12）新增 `pub minions: Vec<Actor>`；在 `Actor`（actor.rs:40-47）新增 `pub is_minion: bool` / `pub minion_type: Option<MinionType>`，以及持有虚拟武器的 `pub weapon_data: Option<MinionWeaponData>`。\n\n为什么：PoB2 的 `env.minion` 是与 `env.player` 对等的独立 Actor，拥有自己的 `modDB`/`output`，且 offence/defence 计算管线完全复用玩家侧（只是 Actor 换成召唤物）。当前 `Env` 只有 player/enemy 两个 Actor（env.rs:9-10），无法建模召唤物。\n\nPoE2 正确口径（PoB2 CalcPerform.lua）：`env.minion = activeSkill.minion`，`env.minion.modDB = new ModDB()`，`env.minion.modDB.actor = env.minion`；召唤物属于玩家的盟友（非敌人），独立 Actor 是架构契约。\n\n验收信号：`Env::new(player)` 后 `env.minions` 为空 Vec；可通过 `env.minions.push(Actor::new_minion(...))` 添加召唤物 Actor；现有 player 单 Actor 测试（calc_minimal.rs、perform_fill.rs）全部通过无 regression。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.9",
+   "agent-docs/minions.md §对 pobr 实现的启示 #1"
+  ],
+  "pob2": [
+   "CalcPerform.lua env.minion 初始化段"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "minion-data-schema",
+  "title": "pobr-data 新增 MinionDef schema 与怪物等级表常量",
+  "size": "M",
+  "par": true,
+  "pri": "P7",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/lib.rs:1",
+   "crates/pobr-data/src/constants.rs"
+  ],
+  "desc": "要做什么：在 `pobr-data` 新增 `MinionDef` 结构体，字段对应 PoB2 `Minions.lua` 每个召唤物条目：`life: f64`、`damage: f64`、`damage_spread: f64`、`attack_time: f64`（秒）、`crit_chance: f64`（百分比，默认5）、`armour: f64`、`evasion: f64`、`energy_shield: f64`（fraction，如骷髅法师0.15）、`fire_resist/cold_resist/lightning_resist/chaos_resist: f64`、`limit_stat_id: String`（如 `ActiveZombieLimit`）、`base_damage_ignores_attack_speed: bool`、`is_spectre: bool`（spectre 用 enemy 表而非 ally 表）。同时新增关联常量表（可先硬编码 `const` 数组，后续入 catalog JSON）：`MONSTER_ALLY_LIFE_TABLE: [f64; 101]`、`MONSTER_ALLY_DAMAGE_TABLE: [f64; 101]`、`MONSTER_ARMOUR_TABLE: [f64; 101]`、`MONSTER_EVASION_TABLE: [f64; 101]`、`MINION_LEVEL_TABLE: [u8; 41]`（宝石等级1→怪物等级2，宝石等级40→怪物等级80）。新增 `PlayerMinionIntrinsicStats { global_always_hit: bool, base_crit_damage_bonus: f64 (=70.0), stun_base_duration_override_ms: u32 (=500) }`。\n\nPoE2 正确口径（PoB2 Misc.lua）：`data.minionLevelTable = {2,4,6,…,80}`；`playerMinionIntrinsicStats.base_critical_hit_damage_bonus = 70`；`global_always_hit = 1`；各召唤物 `life`/`damage` 系数来自 `Minions.lua`（Zombie life=0.7, RagingSpirit life=0.25 等）。\n\n验收信号：`MinionDef::zombie()` 返回 `life=0.7, damage_spread=0.3, crit_chance=5.0, base_damage_ignores_attack_speed=true` 等正确字段；`MINION_LEVEL_TABLE[1] == 2`，`MINION_LEVEL_TABLE[40] == 80`；`PlayerMinionIntrinsicStats::default().base_crit_damage_bonus == 70.0`。",
+  "doc": [
+   "agent-docs/minions.md §一、§1.1-§1.5",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.9"
+  ],
+  "pob2": [
+   "src/Data/Minions.lua",
+   "src/Data/Misc.lua (minionLevelTable, playerMinionIntrinsicStats, monsterAllyLifeTable, monsterAllyDamageTable, monsterArmourTable, monsterEvasionTable)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "minion-base-stat-derivation",
+  "title": "召唤物基础属性派生（怪物表 × 归一化系数 + 虚拟武器合成）",
+  "size": "M",
+  "par": false,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "minion-data-schema",
+   "minion-env-actor-extension"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/actor.rs",
+   "crates/pobr-core/src/calc/env.rs"
+  ],
+  "desc": "要做什么：实现 `derive_minion_base_stats(minion_def: &MinionDef, level: u8) -> ActorBaseStats`，内部逻辑：\n1. `life = floor(monster_ally_life_table[level] × minion_def.life)`（非敌对召唤物用 ally 表）\n2. `armour_base = round(monster_armour_table[level] × minion_def.armour)`\n3. `evasion_base = round(monster_evasion_table[level] × minion_def.evasion)`\n4. 抗性直接读 `minion_def.fire_resist` 等（召唤物基础抗性多为0，除非 minionData 给出）\n5. 虚拟武器：`damage = damage_table[level]; if !base_damage_ignores_attack_speed { damage *= attack_time }; phys_min = round(damage × (1 - damage_spread)); phys_max = round(damage × (1 + damage_spread)); attack_rate = 1/attack_time; crit_chance = minion_def.crit_chance`\n6. 召唤物等级推导：按 `MinionLevelMode`（PlayerLevel/EnemyLevel/SkillLevel）选表后 clamp(1,100)\n\nPoE2 正确口径：`baseDamageIgnoresAttackSpeed` 为 true 时（Zombie/RagingSpirit 等），基础伤害不乘 attackTime——攻速只影响 DPS 不影响每击；ally 盟友用 `monsterAllyLifeTable`，spectre 用 `monsterLifeTable`（注意：两张表基准不同，spectre 还需 `hiddenDamageFixup = allyTable[level]/damageTable[level]×SpectreBeastDamageFixup - 1` 作为额外 MORE 补正）。\n\n验收信号：对 level=20 的 Zombie 配置，派生生命/护甲/phys_min/max 与 PoB2 数值一致（golden fixture）；`base_damage_ignores_attack_speed=true` 时 damage 不乘 attack_time，`=false` 时乘。",
+  "doc": [
+   "agent-docs/minions.md §一（§1.1-§1.4）",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.9 #3"
+  ],
+  "pob2": [
+   "src/Modules/CalcActiveSkill.lua (虚拟 weaponData1 合成、hiddenDamageFixup、lifeTable 选择)",
+   "src/Data/Minions.lua",
+   "src/Data/Misc.lua"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "minion-intrinsic-moddb-setup",
+  "title": "召唤物内禀 modDB 初始化（必中 FLAG + 爆伤 +70 BASE + 眩晕时长覆盖）",
+  "size": "S",
+  "par": false,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "minion-env-actor-extension",
+   "minion-data-schema"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/actor.rs",
+   "crates/pobr-core/src/calc/perform.rs"
+  ],
+  "desc": "要做什么：在召唤物 Actor 初始化时（类似 PoB2 CalcPerform.lua 召唤物初始化段），向召唤物自己的 `mod_db` 注入内禀 modifier：\n1. `Modifier::flag(\"CannotBeEvaded\")` —— 0.3.0+ 召唤物默认必中，不做命中检定\n2. `Modifier::number(\"CriticalStrikeMultiplier\", Base, monster_base_crit_damage_bonus + 70.0)` —— 爆伤基础 = 怪物常量 + 内禀 +70，注意不是玩家的 +100\n3. `Modifier::number(\"StunBaseDuration\", Override, 500.0)` —— 眩晕基础时长 500ms 覆盖\n4. 若 `MinionAccuracyEqualsAccuracy` flag 存在，改用命中检定（覆盖 CannotBeEvaded）\n\nPoE2 正确口径（PoB2 CalcPerform.lua + Misc.lua）：`playerMinionIntrinsicStats.base_critical_hit_damage_bonus = 70`；`global_always_hit = 1`（即 CannotBeEvaded FLAG）；爆伤链是 `monsterConstants.base_critical_hit_damage_bonus + 70`，与玩家的 +100 完全不同——这是最容易误套玩家逻辑的地方。\n\n验收信号：新建召唤物 Actor 后 `mod_db.flag(cfg, ModName::from(\"CannotBeEvaded\"))` 返回 true；`mod_db.sum(Base, cfg, &[ModName::from(\"CriticalStrikeMultiplier\")])` 等于 `monster_base + 70`；单元测试确认爆伤是 `1 + (monster_base + 70)/100`（约 1.7x）而非玩家的 2.0x。",
+  "doc": [
+   "agent-docs/minions.md §1.5（内禀属性表）",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.9 #5"
+  ],
+  "pob2": [
+   "src/Modules/CalcPerform.lua (env.minion 初始化段：CannotBeEvaded FLAG、CritMultiplier BASE)",
+   "src/Data/Misc.lua (playerMinionIntrinsicStats)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "minion-modifier-mod-type",
+  "title": "新增 MinionModifier LIST 语义 + player→minion 三通道注入",
+  "size": "M",
+  "par": false,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "minion-env-actor-extension"
+  ],
+  "files": [
+   "crates/pobr-core/src/modifier.rs:37-43",
+   "crates/pobr-data/src/modifier.rs:11-18",
+   "crates/pobr-core/src/calc/perform.rs"
+  ],
+  "desc": "要做什么：\n1. 在 `ModType` 或 `ModTag` 层扩展支持 `MinionModifier` LIST：其值携带一条内层 `Modifier`（含完整 flag/condition/tag/minion_type_filter）。最小实现可作为 `ModType::List` 的特化值，或新增 `ModTag::MinionModifier { inner: Box<Modifier>, minion_type: Option<MinionType> }`。\n2. 实现 `apply_minion_modifiers(player_skill_mods: &ModDb, cfg: &CalcConfig, minion: &mut Actor)`：遍历玩家技能 mod_db 中所有 MinionModifier LIST 条目，对 `value.minion_type.is_none() || value.minion_type == minion.minion_type` 的条目把内层 `Modifier` 逐条 `AddMod` 进召唤物的 `mod_db`。\n3. 敌对召唤物（`is_hostile`）改注入 `EnemyModifier` LIST（对称，当前 enemy.mod_db 路径）。\n4. 光环/buff 传递：`buff.applies_to_minions` flag 时，按召唤物自己 `mod_db.sum(Inc, nil, \"BuffEffectOnSelf\")` 缩放 buff magnitude 后 AddMod 进召唤物 mod_db（不用玩家的 BuffEffect）。\n5. 属性灌注 flag（`StrengthAddedToMinions` 等）：若玩家 mod_db 存在该 flag，将玩家 Str/Dex/Int BASE 值注入召唤物 mod_db，由召唤物内部属性派生规则换算为 life/armour 等。\n\nPoE2 正确口径（PoB2 CalcPerform.lua + SkillStatMap.lua）：游戏内 `minion_damage_+%` 映射为 `mod(\"MinionModifier\",\"LIST\",{mod=Modifier(\"Damage\",INC,v)})`，注入时携带原始 flag（如 MeleeFlag）——PoB2 注入后内层 mod 在召唤物自己的 `matches(cfg)` 判定下生效，语义完整保留。玩家普通词条**绝对不能**自动流入召唤物——这是最关键的设计原则。\n\n验收信号：玩家 mod_db 持有 `minion_damage_+%=50` 的 MinionModifier，召唤物 mod_db 在 `apply_minion_modifiers` 后 `sum(Inc, cfg, [Damage])` 返回 50；玩家的普通 `Damage INC 30` 不传给召唤物；盟友 buff（如 `Haste`）按召唤物自己的 `BuffEffectOnSelf` 缩放后才进入召唤物 mod_db。",
+  "doc": [
+   "agent-docs/minions.md §二（§2.1-§2.7）",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.9 #4"
+  ],
+  "pob2": [
+   "src/Modules/CalcPerform.lua (MinionModifier/EnemyModifier 注入、buff→ally 传递、属性灌注旗标)",
+   "src/Data/SkillStatMap.lua (minion_* stats → MinionModifier LIST 包裹映射)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "minion-per-minion-multiplier",
+  "title": "召唤物数量上限 + per-minion Multiplier 暴露",
+  "size": "S",
+  "par": false,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "minion-env-actor-extension",
+   "minion-data-schema"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs",
+   "crates/pobr-core/src/modifier.rs:37-43"
+  ],
+  "desc": "要做什么：\n1. 在 `pobr-data` 新增召唤物上限 stat ID 常量（`ActiveZombieLimit`、`ActiveSkeletonLimit`、`ActiveRagingSpiritLimit` 等），对应 PoB2 `base_number_of_<x>_allowed` stat。\n2. 在召唤物 Actor 初始化后，将最终上限值作为 `Modifier::number(\"Multiplier:SummonedMinion\", Base, limit)` 和 `Modifier::number(\"Multiplier:MinionPresenceCount\", Base, limit)` 写入**玩家**的 mod_db（非召唤物），供 `per Minion` 词条通过 `ModTag::Multiplier { var:\"SummonedMinion\", limit: None }` 引用——与充能 multiplier 机制完全同构（已支持）。\n3. 上限公式：`limit = floor(Override(limitName) or (base_val × More(\"ActiveMinionLimit\")))`。\n\nPoE2 正确口径（PoB2 CalcPerform.lua）：`Multiplier:SummonedMinion` 和 `Multiplier:MinionPresenceCount` 供「5% increased Attack Damage for each Minion (max 80%)」这类 per-minion 词条的 Multiplier tag 引用，上限由 Modifier tag 的 `limit` 字段（如 `{limit=16}`）截断——这套机制在 `Modifier::effective_number` 的 Multiplier 路径中已有骨架，只差填值。\n\n验收信号：玩家有「N% increased Damage per Summoned Minion」词条（limit=6），召唤上限为 6 只僵尸，则有效 inc = 6×N；`Multiplier:SummonedMinion` multiplier 值为 6；unit test 确认 multiplier clamp 工作。",
+  "doc": [
+   "agent-docs/minions.md §四（§4.1 数量上限）",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.9 #6"
+  ],
+  "pob2": [
+   "src/Modules/CalcPerform.lua (Limit → Multiplier:SummonedMinion)",
+   "src/Data/SkillStatMap.lua (base_number_of_*_allowed → Active<X>Limit)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "minion-multi-actor-perform",
+  "title": "perform 管线扩展为多 Actor 迭代（player + minions）",
+  "size": "M",
+  "par": false,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "minion-env-actor-extension",
+   "minion-base-stat-derivation",
+   "minion-intrinsic-moddb-setup",
+   "minion-modifier-mod-type"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs:11-28",
+   "crates/pobr-core/src/calc/env.rs"
+  ],
+  "desc": "要做什么：修改 `perform.rs` 的 `perform(env)` 函数，在对 player 做完 offence+defence 后，遍历 `env.minions`（若非空），对每个召唤物 Actor 依次：\n1. 调用 `apply_minion_modifiers` 注入三通道 modifier\n2. 用召唤物的 `weapon_data` 合成的 phys_min/max 作为 base 输入\n3. 调用与玩家相同的 `calculate_minimal(&minion.mod_db, &minion_cfg, &minion_input)` + `calc_defence(&mut minion, ...)`——不写新管线，直接复用\n4. 将结果写入 `minion.output`\n5. `TraceGraph` 跨 Actor 归因：MinionModifier 注入的贡献要携带玩家侧原始 `SourceId`（哪件装备/哪个天赋点），使召唤物输出可回溯到玩家来源\n\nPoE2 正确口径（PoB2 CalcPerform.lua）：`env.minion` 走的是与玩家完全相同的 `CalcOffence`/`CalcDefence` 管线，只是把 `env.player` 替换为 `env.minion`——PoB2 中没有为召唤物另写一套伤害公式，pobr 同样不应另写。\n\n验收信号：`env.minions` 中的 Zombie Actor 在 `perform` 后 `output.dps > 0`；Zombie 的 `output.crit_multiplier ≈ 1.7`（不是玩家的 2.0）；玩家 `MinionModifier Damage INC 50` 注入后召唤物 DPS 提高约 50%；TraceGraph 中召唤物 DPS 节点的祖先包含玩家侧 SourceId。",
+  "doc": [
+   "agent-docs/minions.md §三",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §5 perform 管线"
+  ],
+  "pob2": [
+   "src/Modules/CalcPerform.lua",
+   "src/Modules/CalcOffence.lua",
+   "src/Modules/CalcDefence.lua"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "trigger-skill-type-bits",
+  "title": "SkillTypes 新增触发相关 bit 常量（Triggerable/Triggers/Triggered/InbuiltTrigger/GeneratesEnergy）",
+  "size": "S",
+  "par": true,
+  "pri": "P7",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/skill.rs:4-18"
+  ],
+  "desc": "要做什么：扩展 `pobr-data/src/skill.rs` 的 `SkillTypes` bit-flag 常量，新增：\n- `TRIGGERABLE = 1 << 31`（可被触发，PoB2 SkillType=31）\n- `TRIGGERS = 1 << 32`（触发器，PoB2 SkillType=32）\n- `TRIGGERED = 1 << 37`（被触发，PoB2 SkillType=37）\n- `INBUILT_TRIGGER = 1 << 50`（物品内建触发，PoB2 SkillType=50）\n- `GENERATES_ENERGY = 1 << N`（能量驱动触发元宝石）\n- `META = 1 << N`（元宝石标签）\n- `PERSISTENT = 1 << N`（持续增益型元宝石）\n- `HAS_RESERVATION = 1 << 12`（Spirit 保留型，PoB2 SkillType=12）\n同时在 `CalcConfig` 的 skill_types 判定路径中，`SkillType::TRIGGERED` 的技能自动获得 `isTriggered()` 语义（affects DPS 计算使用 trigger_rate 而非 cast speed）。\n\nPoE2 正确口径（PoB2 Global.lua）：`SkillType` 枚举：Triggerable=31, Triggers=32, Triggered=37, InbuiltTrigger=50；`GeneratesEnergy`、`HasReservation=12`、`Meta`、`Persistent` 均有对应枚举值。`isTriggered()` 识别：`triggered`/`SkillType.Triggered`/`InbuiltTrigger`/`triggeredByUnique`/`grantedEffect.triggered` 之一为真即视为被触发技能。\n\n验收信号：`SkillTypes::TRIGGERED.intersects(SkillTypes::TRIGGERED)` 为 true；`SkillTypes::ATTACK.intersects(SkillTypes::TRIGGERED)` 为 false；bit 位不与现有 ATTACK(0)/SPELL(1) 冲突。",
+  "doc": [
+   "agent-docs/triggers.md §PoB2 计算实现 SkillType 段"
+  ],
+  "pob2": [
+   "src/Data/Global.lua (SkillType 枚举：Triggerable=31/Triggers=32/Triggered=37/InbuiltTrigger=50)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "trigger-rate-cap-formula",
+  "title": "触发速率上限 TriggerRateCap 公式实现（冷却驱动型）",
+  "size": "M",
+  "par": true,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "trigger-skill-type-bits"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/mod.rs:1",
+   "crates/pobr-data/src/constants.rs:12"
+  ],
+  "desc": "要做什么：新建 `crates/pobr-core/src/calc/trigger.rs` 模块，实现：\n\n```rust\npub struct TriggerRateResult {\n    pub trigger_rate_cap: f64,      // 1/(ceil(cd×ServerTickRate)/ServerTickRate)\n    pub skill_trigger_rate: f64,    // min(cap, source_rate)\n    pub capped_by_cooldown: bool,\n    pub adjusted_cooldown: f64,     // ceil 到帧后的实际冷却\n}\n\npub fn calc_trigger_rate(\n    triggered_cd: f64,              // 被触发技能自身冷却（秒，无冷却传 0）\n    trigger_cd: f64,                // 触发器宝石冷却（秒）\n    icdr: f64,                      // CooldownRecovery 乘数（从 ModDb 读 INC/MORE）\n    source_rate: f64,               // 源技能有效速率（actions/s）\n    ignores_tick_rate: bool,        // skillData.ignoresTickRate\n) -> TriggerRateResult\n```\n\n核心公式（严格对齐 CalcTriggers.lua）：\n```\nicdr_divisor = icdr  // CalcLib.mod(modList, cfg, \"CooldownRecovery\")\nmod_action_cooldown = max(triggered_cd, trigger_cd / icdr_divisor)\nadjusted_cd = if ignores_tick_rate { mod_action_cooldown } \n              else { ceil(mod_action_cooldown × SERVER_TICK_RATE) / SERVER_TICK_RATE }\ntrigger_rate_cap = 1.0 / adjusted_cd\nskill_trigger_rate = trigger_rate_cap.min(source_rate)\n```\n\nPoE2 正确口径（PoB2 CalcTriggers.lua + Data.lua）：ServerTickTime=0.033，ServerTickRate=1/0.033≈30.3/s；ICDR 作为**除数**（不是乘数）缩短冷却；`icdr = calcLib.mod(modList, cfg, \"CooldownRecovery\")` 是从 ModDb 读的 INC 合计值（已实现）；`ceil(cd × ServerTickRate)` 是整个触发系统速率出现「台阶」的根因——精确到帧边界对齐 PoB2 才是关键。\n\nCWC（引导触发）额外路径：`trigger_rate_of_trigger = 1 / ceil(trigger_time × SERVER_TICK_RATE) × SERVER_TICK_RATE`，再与被触发技能冷却取 min。\n\n验收信号：`trigger_cd=0.15s, icdr=1.0, ignores_tick_rate=false` → `adjusted_cd = ceil(0.15×30.3)/30.3 = ceil(4.545)/30.3 = 5/30.3 ≈ 0.1650s` → `cap ≈ 6.06/s`（golden fixture 锁定具体值）；`source_rate=4.0/s` 时 `skill_trigger_rate=4.0`；`source_rate=8.0/s` 时 `skill_trigger_rate=6.06`。",
+  "doc": [
+   "agent-docs/triggers.md §三（§3.1-§3.3）、§PoB2 计算实现",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.9"
+  ],
+  "pob2": [
+   "src/Modules/CalcTriggers.lua (icdr / modActionCooldown / rateCapAdjusted / TriggerRateCap / SkillTriggerRate / CWCHandler)",
+   "src/Modules/Data.lua (ServerTickTime=0.033, ServerTickRate=1/0.033)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "trigger-dps-integration",
+  "title": "触发技能 DPS 使用 skill_trigger_rate 而非自身施法速度",
+  "size": "M",
+  "par": false,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "trigger-skill-type-bits",
+   "trigger-rate-cap-formula"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/perform.rs:11-28",
+   "crates/pobr-core/src/calc/offence.rs:163-296"
+  ],
+  "desc": "要做什么：当主技能的 `SkillTypes` 包含 `TRIGGERED`（即 `isTriggered()` 为 true）时，`perform.rs` 的 DPS 计算应使用 `skill_trigger_rate`（来自 `calc_trigger_rate`）替代 `action_rate`。具体：\n1. 在 `perform` 中检测 `cfg.skill_types.intersects(SkillTypes::TRIGGERED)`\n2. 若是，从 cfg/moddb 读取 `trigger_cd`、`icdr`（`CooldownRecovery` INC）、`source_rate`（需由外部传入或从 cfg 取），调用 `calc_trigger_rate`\n3. 用 `skill_trigger_rate` 替换 `action_rate` 做 DPS 计算：`dps = total_hit_avg × skill_trigger_rate × hit_chance`\n4. 触发技能自身 less Damage（如 CoC 的 `Socketed Skills deal 20% less Damage` → `Damage MORE -20`）通过正常 MinionModifier/skill-level modifier 注入，不硬编码\n5. 触发带来的 `TriggeredDamage` INC/MORE（触发宝石上的增伤词条）注入被触发技能 mod_db 作为 Damage INC/MORE（PoB2 `addTriggerIncMoreMods`）\n\nPoE2 正确口径（PoB2 CalcTriggers.lua）：`DPS = SkillTriggerRate × 单次击中效果`；被触发技能不用自身的 cast_time 算速度；`less Damage` 惩罚是 `Damage MORE -20`（通过 mod 注入，非特判）；`TriggeredDamage INC/MORE` → 被触发技能的 `Damage INC/MORE`（`addTriggerIncMoreMods` 函数）。\n\n验收信号：标记为 TRIGGERED 的技能 Actor，`output.dps = total_hit_avg × skill_trigger_rate × hit_chance`（非 × action_rate）；附带 CoC「20% less Damage」后 DPS 降低 20%；unit test 对比有/无 TRIGGERED flag 的相同 Actor DPS。",
+  "doc": [
+   "agent-docs/triggers.md §六（触发技能伤害/暴击/上下文）",
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §4.9"
+  ],
+  "pob2": [
+   "src/Modules/CalcTriggers.lua (addTriggerIncMoreMods / Tabulate TriggeredDamage → Damage INC/MORE)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "trigger-energy-model",
+  "title": "能量驱动触发速率估算（Energy meta-gem 模型，CoC/CoA 等）",
+  "size": "L",
+  "par": false,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "trigger-rate-cap-formula"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/trigger.rs"
+  ],
+  "desc": "要做什么：实现能量驱动触发的速率估算模型（基于 agent-docs 公式，标注 PoB2 数据不完整的警告）：\n\n```rust\npub struct EnergyTriggerConfig {\n    pub max_energy: f64,            // Σ(socketed_base_cast_time / 0.1) × 10\n    pub energy_per_hit: f64,        // monster_power × raw_hit / ailment_threshold（CoC）\n    pub energy_generated_pct: f64,  // 宝石等级 energy_generated_+%（1级=0, 每级+3%）\n    pub source_rate: f64,           // 源技能速率\n}\n\npub fn calc_energy_trigger_rate(cfg: &EnergyTriggerConfig) -> f64 {\n    // energy_per_second ≈ energy_per_hit × source_rate × (1 + energy_generated_pct/100)\n    // trigger_rate ≈ energy_per_second / max_energy（受 trigger_rate_cap clamp）\n}\n```\n\n最大能量公式（PoE2 0.5.0）：`max_energy = Σ(base_cast_time / 0.1) × 10`；「total use time 修饰词在能量计算中按 2 倍处理」。CoC 产能：`energy = monster_power × (raw_crit_hit / monster_ailment_threshold)`；centienergy 基数：Crit/Ignite/Shock=100，**Freeze=1000**（Freeze 产能是其他的 10 倍）。`energy_generated_+%` 只走宝石等级（不改最大能量）。MonsterPower 默认估算：一波清怪约 15-20 总 Power（可作为 CalcConfig 敌人上下文参数）。\n\n重要注意：**PoB2 对能量驱动 meta-gem 的伤害计算「needs an entire overhaul」（PoB2 DeepWiki 原话），实现时以游戏内一手数据为准，不以 PoB2 输出为唯一 golden**——需在 OutputTable 和 breakdown 中标注该字段使用估算值。\n\n验收信号：`max_energy` 公式正确（golden fixture 用 CoC 1级固定 cast_time 场景验证）；Freeze 条件下产能约为 Crit 的 10 倍（unit test）；MonsterPower=20 场景下 trigger_rate 与手算一致；breakdown 中标注「energy model (estimated)」。",
+  "doc": [
+   "agent-docs/triggers.md §二（§2.1-§2.4）、§0.5.0 关键变化小结"
+  ],
+  "pob2": [
+   "src/Data/Skills/act_int.lua (MetaCastOnCrit centienergy 常量：crit/ignite/shock=100, freeze=1000; energy_generated_+% 等级表)",
+   "src/Data/Skills/other.lua (generic_ongoing_trigger_*_maximum_energy_per_Xms_total_cast_time=10)"
+  ]
+ },
+ {
+  "sub": "触发 + 召唤物",
+  "id": "trigger-multi-spell-rotation",
+  "title": "多技能轮转 calcMultiSpellRotationImpact 移植（冷却驱动确定性模拟）",
+  "size": "L",
+  "par": false,
+  "pri": "P7",
+  "bug": false,
+  "dep": [
+   "trigger-rate-cap-formula"
+  ],
+  "files": [
+   "crates/pobr-core/src/calc/trigger.rs"
+  ],
+  "desc": "要做什么：移植 PoB2 `calcMultiSpellRotationImpact` 的 O(1) 估算逻辑：\n\n```rust\npub struct RotationSkill { pub cd: f64, pub trigger_chance: f64 /* 0.0-1.0 */ }\n\npub fn calc_multi_spell_rotation_impact(\n    skills: &[RotationSkill],\n    source_rate: f64,\n    trigger_cd: f64,\n    server_tick_time: f64,\n) -> Vec<f64>  // 每个 skill 的 effective trigger rate\n```\n\n算法要点（PoB2 CalcTriggers.lua calcMultiSpellRotationImpact）：\n1. `trigger_increment = 1/source_rate`（每次触发机会的间隔）\n2. 模拟 1000 次触发机会（SIM_TIME = trigger_increment × 1000）\n3. 每次触发机会：按轮转顺序找第一个「已脱离冷却」的技能触发它，否则浪费\n4. 每个技能冷却对齐到帧：`next_trig = ceil_b(floor_b(now + cd, tick) + eps, tick)`\n5. 触发几率折算（`<100%`）：几何分布期望 `rate = 1/(sim_time/count + trigger_increment/chance×100 − trigger_increment)`\n6. 输出每个 skill 的 `count/sim_time` 作为稳态触发速率\n\n多个法术的「触发稀释」是 PoB2 相较 naive 计算的关键差异：轮转越多、冷却越长，每个技能的实际触发率越低于 cap。\n\n验收信号：单技能场景，`calc_multi_spell_rotation_impact([{cd:0.5, chance:1.0}], source_rate=10.0, ...)` 输出接近 `calc_trigger_rate` 的 cap（消除轮转开销）；双技能相同 cd 场景，每技能速率约为单技能的 50%；触发几率 0.5 时速率约为确定触发的 55%（几何分布期望，golden fixture 锁定）。",
+  "doc": [
+   "agent-docs/triggers.md §五（多技能轮转与触发速率建模）"
+  ],
+  "pob2": [
+   "src/Modules/CalcTriggers.lua (calcMultiSpellRotationImpact: SIM_TIME=1000、帧对齐冷却 ceil_b/floor_b、几何分布折算触发几率)"
+  ]
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "radius-jewel-wrong-constants",
+  "title": "radius jewel 三档半径常量与 PoE2 真实坐标系不符",
+  "size": "S",
+  "par": true,
+  "pri": "P1",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-tree/src/radius_jewel.rs:19-21",
+   "crates/pobr-tree/tests/radius_jewel.rs:13-22"
+  ],
+  "desc": "现有占位常量 Small=800 / Medium=1200 / Large=1500（tree units）与 PoB2 Data.lua `data.jewelRadii[\"0_1\"]` 实际值不符：PoB2 定义 Small outer=1000 / Medium outer=1150 / Large outer=1300，另有 Very Large outer=1500 及若干 Variable 区间（inner/outer 各不同）。且 PoB2 实际用 `outer * PassiveTreeJewelDistanceMultiplier(=1.2)` 后再取平方比较，并非直接用 tree unit 距离。缺口：1) 常量值本身需对照 PoB2 Data.lua 校正为 1000/1150/1300；2) 应乘以 `PassiveTreeJewelDistanceMultiplier=1.2` 后再做平方比较（即当前 compute_radius_jewel_effect 内部逻辑已是平方比较，但输入常量错误）；3) 缺 Very Large 档位；4) 缺 Variable 半径（inner/outer 双边界）支持。验收：radius_jewel 集成测试以真实半径值作 fixture，与 PoB2 `data.jewelRadii` 对齐。",
+  "doc": [
+   "agent-docs/item-character-systems.md §8.2"
+  ],
+  "pob2": [
+   "src/Modules/Data.lua (remote) data.jewelRadii[\"0_1\"], PassiveTreeJewelDistanceMultiplier"
+  ]
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "radius-jewel-multiplier-not-applied",
+  "title": "radius jewel 欧氏距离比较未乘 PassiveTreeJewelDistanceMultiplier",
+  "size": "S",
+  "par": false,
+  "pri": "P1",
+  "bug": true,
+  "dep": [
+   "radius-jewel-wrong-constants"
+  ],
+  "files": [
+   "crates/pobr-tree/src/radius_jewel.rs:19-21",
+   "crates/pobr-tree/src/radius_jewel.rs:66-102"
+  ],
+  "desc": "PoB2 在 Data.lua 中对每个 radiusInfo 用 `outer * PassiveTreeJewelDistanceMultiplier` 再取平方作为比较阈值（见 `radiusInfo.outerSquared = radiusInfo.outer * radiusInfo.outer * 1.2 * 1.2`）。当前 compute_radius_jewel_effect 直接把调用方传入的 `radius_units` 平方后比较，不应用 1.2 倍率。因此即使修正了常量，距离筛选仍差 1.44 倍面积。应在 JewelRadius::units() 或 compute 内部乘以 1.2 系数（或提供带 multiplier 参数的变体）。验收：用真实常量 outer=1000 + multiplier=1.2，实际比较阈值 = (1000×1.2)² = 1440000，而非 1000²=1000000。",
+  "doc": [
+   "agent-docs/item-character-systems.md §8.2"
+  ],
+  "pob2": [
+   "src/Modules/Data.lua (remote) data.setJewelRadiiGlobally, radiusInfo.outerSquared"
+  ]
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "passive-tree-spec-missing-mastery-selection",
+  "title": "PassiveTreeSpec 缺少 mastery_effects 选择字段，Mastery 节点被整体 gating 而非按玩家选择接入",
+  "size": "M",
+  "par": true,
+  "pri": "P2",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/passive_tree.rs:1-7",
+   "crates/pobr-tree/src/node.rs:46-50"
+  ],
+  "desc": "PoE2 Mastery 节点允许玩家从节点的多个效果中选一条；当前 PassiveTreeSpec 只有 `allocated_nodes: Vec<NodeId>`，无法记录每个 Mastery 节点的已选效果索引/文本。`collect_allocated_mods` 因此整体跳过所有 Mastery 节点（node.rs:47-50），导致 Mastery 词条永远不进入计算。正确行为：PassiveTreeSpec 增加 `mastery_effects: HashMap<NodeId, String>` 或类似字段（对应 PoB2 Build Code XML 中的 `<MasteryEffect>`），collect_allocated_mods 读取该字段，只注入玩家选定的那条词条。验收：新增 mastery_effect 字段后，allocated Mastery 节点以选定词条进入 ModDb，未选效果不进入。",
+  "doc": [
+   "agent-docs/item-character-systems.md §7.2"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "equipment-slot-missing-types",
+  "title": "EquipmentSlot 缺少 Shield / Focus / Quiver / Flask1-5 / Charm1-3 槽位",
+  "size": "S",
+  "par": true,
+  "pri": "P3",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/item.rs:42-70"
+  ],
+  "desc": "PoE2 装备系统有 Shield（单手+盾）、Focus（法师护身物）、Quiver（箭袋）等防御槽位，以及 Flask1-5（5 瓶位）和 Charm1-3（腰带护符槽）。当前 EquipmentSlot 只枚举了 10 个槽位（Weapon1/2 + 5 护甲 + 3 首饰），物品词条对上述槽位无法归因。PoB2 中 shield/focus/quiver 均为独立 item 类型，各有对应的 local vs global modifier 语义（如 shield armour/block、focus 的 ES 等）。验收：枚举新增上述变体，id() 返回稳定 kebab-case 字符串，不破坏已有测试。",
+  "doc": [
+   "agent-docs/item-character-systems.md §4.1",
+   "agent-docs/item-character-systems.md §9"
+  ],
+  "pob2": [
+   "src/Data/Bases/shield.lua",
+   "src/Data/Bases/focus.lua",
+   "src/Data/Bases/quiver.lua",
+   "src/Data/Bases/flask.lua"
+  ]
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "item-text-range-tier-marker-not-stripped",
+  "title": "item_text 未剥离 {range:N} / (tier: N) 注释，导致 mod_parser 无法解析含标注的行",
+  "size": "S",
+  "par": true,
+  "pri": "P2",
+  "bug": true,
+  "dep": [],
+  "files": [
+   "crates/pobr-core/src/item_text.rs:36",
+   "crates/pobr-core/src/item_text.rs:250-272"
+  ],
+  "desc": "PoB 导出的物品文本中，词缀行常带 `{range:0.5}` 或 `(tier: 3)` 这类元注释（例：`+40 to maximum Life {range:0.5}` 或 `20% increased Fire Damage (tier: 3) [augmented]`）。item_text.rs 注释第 36 行明确标注了这是 TODO，当前原样保留。这些注释会传给 mod_parser 导致解析失败（Unsupported 或 ParseError）。正确行为：在 classify_mod_lines 将行放入 implicit/explicit/enchant 之前，用正则或简单字符串匹配剥离 `{range:...}` / `(tier: N)` / `[augmented]` / `[crafted]` 等尾缀注释。验收：含 range/tier 标注的 PoB 导出行能被 parse_mod 正常解析；新增集成测试覆盖含该类注释的 fixture。",
+  "doc": [],
+  "pob2": []
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "item-struct-missing-req-ilvl-socket",
+  "title": "Item 数据结构缺少 item_level / req / socket_count 字段，无法建模装备需求与插槽",
+  "size": "M",
+  "par": true,
+  "pri": "P3",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/item.rs:26-38",
+   "crates/pobr-core/src/item_text.rs:210-237"
+  ],
+  "desc": "agent-docs/item-character-systems.md §3/§4 明确：装备有属性需求（reqStr/reqDex/reqInt/reqLevel）用于禁用/启用检查、item level（影响词条 tier 范围）、augment socket 数量（上限按部位）。当前 `pobr_data::Item` 结构（item.rs:26-38）只有 base/rarity/quality/texts/parsed_stats，缺少这些字段。SourceKind 中已有 ItemQuality 但无对应数据携带路径。验收：Item 增加 `item_level: Option<u16>`、`req_level: Option<u8>`、`req_str/dex/int: Option<u16>`、`socket_count: u8`；item_text::parse_item_text 解析 `Item Level:` / `Requirements:` 段填充这些字段；增加测试断言。",
+  "doc": [
+   "agent-docs/item-character-systems.md §2",
+   "agent-docs/item-character-systems.md §3",
+   "agent-docs/item-character-systems.md §4.1"
+  ],
+  "pob2": [
+   "src/Data/Bases/flask.lua",
+   "src/Data/Bases/jewel.lua"
+  ]
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "augment-rune-soulcore-not-modeled",
+  "title": "符文/灵魂核心（Augments）按插入部位变词条的机制完全缺失",
+  "size": "L",
+  "par": false,
+  "pri": "P4",
+  "bug": false,
+  "dep": [
+   "equipment-slot-missing-types",
+   "item-struct-missing-req-ilvl-socket"
+  ],
+  "files": [
+   "crates/pobr-data/src/source.rs:6-25",
+   "crates/pobr-data/src/item.rs:26-38",
+   "crates/pobr-core/src/item.rs:65-88"
+  ],
+  "desc": "PoE2 0.5.0 的 Augment（符文/灵魂核心）效果取决于插入的装备部位（weapon/armour/helmet 等），PoB2 Data/ModRunes.lua 按部位键分配词条列表，且武器内词条通常为 local（'with this weapon'），护甲内通常为 global。当前实现：1) SourceKind 无 Rune/SoulCore 变体；2) Item 结构没有 augments 字段；3) item_text 无法解析装备上由增强物产生的附魔行（目前附魔行走 enchant_texts，但 augment 类词条的来源应区分为 SourceKind::Rune 或 SoulCore 而非 ItemEnchant）；4) local vs global 语义无法区分。验收：SourceKind 增加 Rune/SoulCore；Item 增加 `augments: Vec<AugmentEntry>`（slot_kind + modifier_texts）；ingest_item 对 augment 词条用对应 SourceKind 归因；测试覆盖武器内 local 词条与护甲内 global 词条的区分。",
+  "doc": [
+   "agent-docs/item-character-systems.md §4.2",
+   "agent-docs/item-character-systems.md §4.3"
+  ],
+  "pob2": [
+   "src/Data/ModRunes.lua (local)"
+  ]
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "pobr-item-empty-shell-no-api",
+  "title": "pobr-item 仍是空壳，CLI parse-item 命令始终返回 NotImplemented",
+  "size": "S",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-item/src/lib.rs:1-11",
+   "apps/pobr-cli/src/lib.rs:197-201",
+   "apps/pobr-cli/src/lib.rs:1-9"
+  ],
+  "desc": "pobr-item/src/lib.rs 只有 11 行注释，无任何 pub struct/fn。CLI parse-item 子命令（apps/pobr-cli/src/lib.rs:197-201）明确返回 CliError::NotImplemented。pobr-core 已有完整的 item_text::parse_item_text 实现，但 pobr-item 与 item_text 的职责边界尚未明确：item_text 目前在 pobr-core 内做分段切分，pobr-item 设计目标是承接 CustomItemDraft → Item 的高层 API。短期行动：1) 在 pobr-item 中 re-export 或封装 pobr-core::item_text::parse_item_text，暴露 `pobr_item::parse_raw_item_text(text: &str) -> Result<Item, ItemTextError>`；2) CLI parse-item 接入此 API；3) 测试 `cargo test -p pobr-item raw_item` 能跑通。验收：pobr cli parse-item --text '...' 返回 JSON 结构而非 not implemented。",
+  "doc": [
+   "devs/docs/architecture/04-migration-roadmap.md §阶段六"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "passive-tree-spec-missing-weapon-set",
+  "title": "PassiveTreeSpec 缺少 weapon_set_nodes 字段，武器组天赋子树无法建模",
+  "size": "M",
+  "par": true,
+  "pri": "P4",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-data/src/passive_tree.rs:4-7",
+   "crates/pobr-tree/src/node.rs:38-63"
+  ],
+  "desc": "PoE2 角色有 2 个武器组，各有独立的武器组天赋点（24 点，转化自常规点），对应 PoB2 Build Code XML 中的 `<WeaponSet1PassiveTree>/<WeaponSet2PassiveTree>`。当前 PassiveTreeSpec 只有 `allocated_nodes: Vec<NodeId>`，无法区分哪些节点属于武器组子树。Keystone/珠宝插槽不可分组，但其余节点可分。缺口：PassiveTreeSpec 应增加 `weapon_set1_nodes: Vec<NodeId>` 和 `weapon_set2_nodes: Vec<NodeId>` 字段（可选，满时才计入），collect_allocated_mods 需按 active weapon set 过滤。验收：增加字段后，weapon_set2_nodes 中的节点只在 active_set=2 时进入 ModDb。",
+  "doc": [
+   "agent-docs/item-character-systems.md §7.3"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "timeless-jewel-not-implemented",
+  "title": "Timeless / Time-Lost jewel 节点改造机制完全缺失",
+  "size": "L",
+  "par": false,
+  "pri": "P5",
+  "bug": false,
+  "dep": [
+   "radius-jewel-wrong-constants",
+   "radius-jewel-multiplier-not-applied"
+  ],
+  "files": [
+   "crates/pobr-tree/src/radius_jewel.rs:45-102",
+   "crates/pobr-tree/src/tree.rs:102-111"
+  ],
+  "desc": "PoE2 Timeless Jewel 与 Time-Lost Jewel 会改造半径内被动节点（替换 stats），而不是单纯添加词条。PoB2 CalcSetup.lua 中有专门的两遍处理（first pass / second pass radius jewels），区分 Timeless 与普通 radius jewel。当前 compute_radius_jewel_effect 只返回受影响节点列表 + jewel 自身的 mod_texts（radius_jewel.rs:45-55），不做节点内容替换。Timeless Jewel 还依赖 `data.jewelRadii` 的 Timeless 表项（inner/outer 双边界）。验收：新增 TimelessJewelEffect 结构，能接收受影响节点列表并替换对应节点的 stats；至少有一个 fixture 用 Timeless Jewel 验证节点改造后词条正确进入 ModDb。",
+  "doc": [
+   "agent-docs/item-character-systems.md §8.2"
+  ],
+  "pob2": [
+   "src/Modules/CalcSetup.lua (remote)",
+   "src/Modules/Data.lua (remote) data.jewelRadii Timeless entries"
+  ]
+ },
+ {
+  "sub": "来源接入——物品/解析/天赋树",
+  "id": "item-quality-not-modeled-as-more-local",
+  "title": "物品品质（quality）解析但未转化为 'more 局部物理/防御' modifier 注入 ModDb",
+  "size": "M",
+  "par": false,
+  "pri": "P3",
+  "bug": true,
+  "dep": [
+   "equipment-slot-missing-types"
+  ],
+  "files": [
+   "crates/pobr-core/src/item.rs:65-88",
+   "crates/pobr-data/src/source.rs:12"
+  ],
+  "desc": "agent-docs/item-character-systems.md §5 规定：武器品质 = '1% more 局部物理伤害'（只放大底材物理，先于局部 increased 并入）；护甲品质 = '1% more 局部防御'。当前 Item::quality 字段（u8）被 parse_item_text 正确解析（item_text.rs:91-92），但 ingest_item（item.rs:65-88）完全没有把品质转换为 Modifier 注入的逻辑。品质词条归因应用 SourceKind::ItemQuality（已在 source.rs 中存在但未使用）。验收：ingest_item 对 quality>0 的武器/护甲，按部位类型生成相应 more modifier 并以 SourceKind::ItemQuality 归因；集成测试验证 quality=20 的护甲产生 '20% more Armour (local)' modifier。",
+  "doc": [
+   "agent-docs/item-character-systems.md §5.1"
+  ],
+  "pob2": [
+   "src/Modules/CalcSetup.lua (remote)"
+  ]
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "no-pob-catalog-ci-gate",
+  "title": "PoB 全量属性 parity 矩阵 fixture 未提交且无 CI gate",
+  "size": "M",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "tools/sync-pob-catalog/src/lib.rs:57-68",
+   "tools/sync-pob-catalog/src/main.rs:62-72",
+   "devs/docs/architecture/10-pob-parity-and-attribution.md:56-88"
+  ],
+  "desc": "doc10 §3 要求 fixtures/pob/parity/pob-output-catalog.json / pob-display-stats.json / pob-breakdown-sections.json 入库并在 CI 中通过 `sync-pob-catalog check --pob-root <PoB> --catalog fixtures/...` 校验。当前：这三个 fixture 文件均不存在（find 确认），也无任何 CI 配置文件（无 .github/workflows）。sync-pob-catalog 的 scan 命令能生成这些文件，但需要本地 PoB2 Modules/ 目录（vendor 只有 Data/ + Export/，没有 Modules/，需走 gh api 取远程）。验收信号：fixtures/pob/parity/ 目录存在三个 JSON，cargo run -p sync-pob-catalog -- fixture-check --catalog fixtures/pob/parity/pob-output-catalog.json 不报 drift（CI 每次 PR 自动运行）。",
+  "doc": [
+   "devs/docs/architecture/10-pob-parity-and-attribution.md §3 §9"
+  ],
+  "pob2": [
+   "gh api: src/Modules/BuildDisplayStats.lua",
+   "gh api: src/Modules/CalcSections.lua",
+   "gh api: src/Modules/CalcOffence.lua",
+   "gh api: src/Modules/CalcDefence.lua"
+  ]
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "no-golden-regression-fixtures",
+  "title": "无 PoB 导出 Build 的 golden regression fixture（doc10 §9 条目4）",
+  "size": "L",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "xml-full-build-parse",
+   "orchestrator-passive-gem"
+  ],
+  "files": [
+   "examples/demo-bd-test/ninja-bd-deadeye.txt",
+   "examples/demo-bd-test/ninja-bd-marial-artist.txt",
+   "crates/pobr-build/tests/build_code.rs:1-47"
+  ],
+  "desc": "doc10 §9 条目4 要求 ParityStatus::Computed 字段必须有测试或 golden fixture；条目1 要求能跑 sync-pob-catalog check 通过。当前只有 2 个 ninja-bd-* build code 的字节级解码测试，没有任何 golden fixture 把真实 PoB2 Build 的计算数值（life/DPS/EHP/resist等）与 pobr 输出对齐。10 个 PoB 导出 build 的 golden fixture 是 doc10 的硬性目标。验收信号：tests/golden/ 目录下 ≥10 个 JSON 文件，每个包含 PoB 导出的 OutputTable 预期值；cargo test --test golden_regression 全通过，容差 ≤1%。",
+  "doc": [
+   "devs/docs/architecture/10-pob-parity-and-attribution.md §9"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "xml-full-build-parse",
+  "title": "xml_serde 仅解析 Build 头部，缺 Items / Skills / PassiveTree / Config 全量 XML 解析",
+  "size": "L",
+  "par": false,
+  "pri": "P2",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-build/src/xml_serde.rs:29-71",
+   "crates/pobr-build/src/build.rs:67-143",
+   "crates/pobr-build/src/calc_orchestrator.rs:27-45"
+  ],
+  "desc": "当前 xml_serde.rs 的 parse_build_header() 只读 <Build level= className= ascendClassName= viewMode=>，解析后立即 break。CalcOrchestrator 因此只能消费手工构造的 Build，无法从 PoB Build Code 解码出的 XML 中恢复完整的装备/技能/天赋/配置，导致 decode-code → full-calc 链路断裂。PoE2 PoB XML schema：<Items> 含每个 slot 的 item block（需解析 modifier_texts）；<Skills> 含 socket group/gem 列表；<Tree> 含 allocated_nodes；<Config> 含 ConfigOptions 开关。验收信号：parse_full_build(xml) -> Build 能消费 ninja-bd-deadeye 解码出的 XML，recovered_build.items 非空且 life 计算结果与 PoB 结果差距 <5%。",
+  "doc": [
+   "devs/docs/architecture/05-compatibility-and-i18n.md §3.2",
+   "devs/docs/architecture/02-crate-design.md §7"
+  ],
+  "pob2": [
+   "gh api: src/Modules/BuildCode.lua (PoB Build XML schema)"
+  ]
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "orchestrator-passive-gem",
+  "title": "CalcOrchestrator 不注入天赋节点 modifier 和宝石 modifier",
+  "size": "M",
+  "par": false,
+  "pri": "P2",
+  "bug": false,
+  "dep": [
+   "xml-full-build-parse"
+  ],
+  "files": [
+   "crates/pobr-build/src/calc_orchestrator.rs:47-56",
+   "crates/pobr-build/src/calc_orchestrator.rs:1-12"
+  ],
+  "desc": "collect_item_texts() 只收集装备词条（enchant+implicit+explicit）。天赋节点 modifier 文本（SocketGroup.gem_ids 里的宝石对应词条、PassiveTreeSpec.allocated_nodes 对应词条）均未注入 CalculationSession。注释明确说明：'需要上层先把 NodeId 解析为词条，本 crate 不持有天赋树数据'。这意味着即使有完整 Build，DPS 计算也缺少天赋和宝石来源。验收信号：OrchestratorOptions 接受 passive_node_texts: Vec<String> 和 gem_texts: Vec<String>；ninja deadeye build 的 life 比纯装备版本更高（天赋加成可见）。",
+  "doc": [
+   "devs/docs/architecture/12-combat-mechanics-architecture.md §2"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "comparison-missing-fields",
+  "title": "compare_outputs 只覆盖 19/42 个 OutputTable 标量字段，漏掉 23 个计算字段",
+  "size": "S",
+  "par": true,
+  "pri": "P3",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-build/src/comparison.rs:48-104"
+  ],
+  "desc": "comparison.rs 的字段数组硬编码为 [(&'static str, f64, f64); 19]，missing_fields：bleed_dps, ignite_dps, poison_dps, shock_effect, block_chance, spell_block_chance, spell_suppression_chance, effective_action_rate, energy_shield_regen, life_regen, life_reserved, life_unreserved, lightning_max_hit, mana_regen, mana_reserved, mana_unreserved, max_cold_resistance, max_lightning_resistance, physical_max_hit, chaos_max_hit, cold_max_hit, fire_max_hit, total_ehp。当使用 compare_outputs 做装备/配置差异分析时，这 23 个字段的变化完全不可见，导致 EHP/DoT/Recovery 对比失效。验收信号：compare_outputs 覆盖所有 42 个标量字段（或通过 display_catalog 驱动动态遍历），现有测试仍通过且新增覆盖遗漏字段的测试。",
+  "doc": [
+   "devs/docs/architecture/10-pob-parity-and-attribution.md §8.3"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "display-catalog-no-planned-entries",
+  "title": "display_catalog 全 35 条均标 Computed，无任何 Planned 条目，但大量 PoB2 output key 尚未实现",
+  "size": "M",
+  "par": true,
+  "pri": "P2",
+  "bug": false,
+  "dep": [
+   "no-pob-catalog-ci-gate"
+  ],
+  "files": [
+   "crates/pobr-core/src/display_catalog.rs:16-128",
+   "crates/pobr-core/tests/display_catalog.rs:17-23"
+  ],
+  "desc": "display_catalog.rs 中 35 个条目全部调用 computed()，注释说 '已计算的标 Computed，尚未落地的标 Planned'，但实际上没有任何 Planned 条目。这意味着 PoB2 中数百个 output key（属性/需求/消耗/召唤物/技能机制等）既没有 Computed 也没有 Planned 注册，不满足 doc10 §2 要求的'全覆盖矩阵'。缺失的重要类别：ChaosResistance(+max+overcap)、Str/Dex/Int 属性、SkillUseTime 显示、消耗类（ManaCost/LifeCost/SpiritCost）、需求类（ReqStr/ReqDex/ReqInt）、FullDPS（CalcPerform 汇总）。验收信号：display_catalog() 包含所有已实现 OutputTable 字段的 Computed 条目 + 至少 30 个 Planned 条目覆盖 PoB2 BuildDisplayStats.lua 的主要 output key，catalog_entries_are_computed_with_pob_keys 测试拆分为分别断言 Computed 和 Planned 子集。",
+  "doc": [
+   "devs/docs/architecture/10-pob-parity-and-attribution.md §2 §4"
+  ],
+  "pob2": [
+   "gh api: src/Modules/BuildDisplayStats.lua"
+  ]
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "cli-parse-item-stub",
+  "title": "pobr-cli 的 parse-item 子命令永远返回 NotImplemented 错误",
+  "size": "L",
+  "par": false,
+  "pri": "P4",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "apps/pobr-cli/src/lib.rs:196-206",
+   "crates/pobr-item/src/lib.rs"
+  ],
+  "desc": "apps/pobr-cli/src/lib.rs:197-206 的 parse_item() 直接返回 Err(CliError::NotImplemented(\"raw item text parsing\"))，整个 parse-item 子命令是硬编码的 stub。pobr-item crate 是空占位（仅 lib.rs doc 注释）。用户从游戏复制物品文本后无法解析 modifier 并接入计算，严重限制了工具实用性。验收信号：parse_item 解析 'Rarity: Rare / Death Song / +50 to Life / 30% increased Fire Damage' 格式并返回至少包含正确 modifier_texts 的 Item，parse_item 测试从 expect_err 改为 expect success。",
+  "doc": [
+   "devs/docs/architecture/05-compatibility-and-i18n.md §4"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "desktop-no-gui",
+  "title": "pobr-desktop 无 GUI 框架，只是 stdout 烟雾测试",
+  "size": "L",
+  "par": true,
+  "pri": "P5",
+  "bug": false,
+  "dep": [
+   "xml-full-build-parse"
+  ],
+  "files": [
+   "apps/pobr-desktop/src/main.rs:1-19",
+   "apps/pobr-desktop/src/lib.rs:1-97",
+   "apps/pobr-desktop/Cargo.toml"
+  ],
+  "desc": "apps/pobr-desktop/src/main.rs 只调用 build_summary() 打印到 stdout，lib.rs 注释'GUI 框架（计划采用 egui/eframe）尚未引入：headless CI 无法验证 GUI'。当前 pobr-desktop 实质上等同于 pobr-cli 的功能子集（无法交互、无法导入 Build Code、无法展示 breakdown），与 doc05 §2 的桌面端能力完全不符。验收信号：egui/eframe 依赖引入，至少有一个可渲染的主窗口显示 OutputTable 的核心字段，支持 File > Import Build Code。",
+  "doc": [
+   "devs/docs/architecture/05-compatibility-and-i18n.md §7"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "wasm-no-build-code-api",
+  "title": "pobr-wasm 无 Build Code 导入 / 导出 JS API",
+  "size": "S",
+  "par": true,
+  "pri": "P4",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "apps/pobr-wasm/src/lib.rs:17-35",
+   "apps/pobr-wasm/Cargo.toml"
+  ],
+  "desc": "pobr-wasm 的 JS 绑定只暴露了 calculateJson 和 translate 两个函数（apps/pobr-wasm/src/lib.rs:26-34）。pobr-build 中已有的 decode_pob_code / encode_pob_code / detect_import / parse_build_header 均未通过 wasm 边界暴露。前端无法直接解码 Build Code 或解析 Build XML，必须在服务端中转。验收信号：wasm 模块新增 decodeCode(code: string) -> string 和 encodeCode(xml: string) -> string 两个 wasm_bindgen 导出，apps/pobr-wasm/tests/i18n.rs 增加对应集成测试。",
+  "doc": [
+   "devs/docs/architecture/05-compatibility-and-i18n.md §3.2"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "calc-cache-no-lru-eviction",
+  "title": "CalcCache 无容量上限，内存无界增长",
+  "size": "S",
+  "par": true,
+  "pri": "P4",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "crates/pobr-build/src/calc_cache.rs:18-24"
+  ],
+  "desc": "crates/pobr-build/src/calc_cache.rs:18 的 CalcCache 使用 HashMap<u64, OutputTable> 无容量限制，注释'LRU 容量上限可选'但未实现。在桌面/WASM 长期运行场景中，每次修改 Build 都会新增一个条目（level/items/nodes 变化各不同），导致内存无界增长。验收信号：CalcCache::new_with_capacity(max: usize) 构造器，超过容量时按 LRU 策略淘汰最旧条目，cache.len() <= capacity。",
+  "doc": [
+   "devs/docs/architecture/02-crate-design.md §7"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "attribution-report-not-implemented",
+  "title": "AttributionReport / 边际贡献计算完全未实现",
+  "size": "L",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "orchestrator-passive-gem"
+  ],
+  "files": [
+   "crates/pobr-build/src/calc_orchestrator.rs:27-45",
+   "crates/pobr-core/src/trace.rs"
+  ],
+  "desc": "doc10 §5-7 定义了 AttributionRequest / AttributionReport / AttributionEntry，核心能力是'某件装备对 TotalDPS 的边际贡献'。当前 pobr-build 无任何 attribution 相关代码（grep 确认），仅有 TraceGraph 的基础 traced 查询在 pobr-core 层（sum_traced / contributions）。缺少将 TraceGraph 聚合为按 SourceId/ItemSlot/Item 分组的 AttributionReport 的逻辑。验收信号：calculate_with_attribution(build, options, target_stats) -> AttributionReport，ring1 的 life 边际贡献正确计算为 remove_ring1.life - with_ring1.life，误差 < 0.01。",
+  "doc": [
+   "devs/docs/architecture/10-pob-parity-and-attribution.md §5-7"
+  ],
+  "pob2": []
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "sync-pob-catalog-no-calcs-lua",
+  "title": "sync-pob-catalog 不扫描 CalcSetup.lua，遗漏 base stat 注入来源",
+  "size": "S",
+  "par": true,
+  "pri": "P3",
+  "bug": false,
+  "dep": [],
+  "files": [
+   "tools/sync-pob-catalog/src/lib.rs:28-35",
+   "devs/docs/architecture/10-pob-parity-and-attribution.md:23-48"
+  ],
+  "desc": "tools/sync-pob-catalog/src/lib.rs:28-35 扫描的文件列表是 CalcOffence.lua / CalcDefence.lua / Calcs.lua / CalcPerform.lua，但 doc10 §2 表格中明确 CalcSetup.lua（base stats、职业属性、抗性惩罚、常量注入）和 ConfigOptions.lua（配置项生成 mods）也是 catalog 来源。CalcSetup.lua 写入 output 的 key 包括 Str/Dex/Int、各职业基础 life/mana/ES、campaign penalty，不在当前扫描范围。验收信号：collect_catalog() 在有 CalcSetup.lua 和 ConfigOptions.lua 的目录时能抽取其 output key，scan tests 新增对这两个文件的断言。",
+  "doc": [
+   "devs/docs/architecture/10-pob-parity-and-attribution.md §2 §3"
+  ],
+  "pob2": [
+   "gh api: src/Modules/CalcSetup.lua",
+   "gh api: src/Modules/ConfigOptions.lua"
+  ]
+ },
+ {
+  "sub": "PoB parity / Build 编排 / 应用层",
+  "id": "comparison-no-trace-correlation",
+  "title": "compare_outputs 只比较最终数值，无 changed_modifiers / changed_trace_nodes 关联（doc10 §8.3）",
+  "size": "L",
+  "par": false,
+  "pri": "P3",
+  "bug": false,
+  "dep": [
+   "attribution-report-not-implemented"
+  ],
+  "files": [
+   "crates/pobr-build/src/comparison.rs:22-37"
+  ],
+  "desc": "doc10 §8.3 要求 ComparisonResult 关联：changed inputs、changed modifiers、changed trace nodes、affected display stats、top gains/losses、interaction bucket。当前 OutputComparison 只有 Vec<FieldDiff>（字段名+before/after/delta/relative），完全没有 TraceGraph 关联。用户改一件装备后无法知道哪条 modifier 导致了 DPS 变化，失去了 PoBR 相对 PoB 的核心增量价值（source-level attribution）。验收信号：ComparisonResult 新增 changed_modifiers: Vec<ModifierDiff> 字段，ring1 '+50 Life' 的对比结果中 changed_modifiers 包含该词条的归因。",
+  "doc": [
+   "devs/docs/architecture/10-pob-parity-and-attribution.md §8.3"
+  ],
+  "pob2": []
+ }
+]
