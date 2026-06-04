@@ -4,7 +4,7 @@
 
 ## 0. 维护规则
 
-更新时间：2026-06-04（追加：物品来源接入 —— `EquipmentSlot` + `ingest_item` + `CalculationSession::add_item`，词条解析为带槽位归因的 modifier）
+更新时间：2026-06-04（追加：阶段六来源接入三件套 —— 物品（含 implicit/explicit/enchant section 区分）、天赋树节点、技能宝石（主动 / 辅助）的 modifier 来源与归因入口，并行实现后合并）
 
 每次实现后必须同步更新本文件：
 
@@ -28,7 +28,9 @@
 - SourceId 与 TraceGraph 基础。
 - `Life` / `Mana` / 三元素抗性 / `TotalDPS` 的 traced calculation。
 - 角色基础值 / 元素抗性惩罚 / 战役奖励的 modifier 入口（`character` / `campaign` 模块）。
-- 物品来源接入（`item` 模块）：装备词条 → 带 `SourceKind::Item` + 槽位归因的 modifier。
+- 物品来源接入（`item` 模块）：装备词条按 section（implicit / explicit / enchant）→ 带 `SourceKind::ItemImplicit` / `ItemAffix` / `ItemEnchant` + 槽位归因的 modifier。
+- 天赋树来源接入（`passive` 模块）：已分配节点词条 → 带 `SourceKind::PassiveNode` / `AscendancyNode` 归因的 modifier。
+- 技能宝石来源接入（`skill_source` 模块）：主动 / 辅助宝石词条 → 带 `SourceKind::SkillGem` / `SupportGem` 归因的 modifier（辅助宝石 `with_parent` 链接被支援技能）。
 
 当前仍未完成：
 
@@ -37,8 +39,9 @@
 - Max resistance / overcap / floor。
 - SkillUseTime。
 - DamageComponent vector。
-- 天赋、技能来源接入（物品已接入）。
-- implicit / explicit / enchant section 区分（当前统一归因到槽位级 Item 节点）。
+- 辅助宝石 mana multiplier / more 倍率被支援技能隔离 / skill type gating（`skill_source` 已留结构化 TODO）。
+- 天赋节点词条由 `PassiveTreeSpec` 直接承载（当前经独立 `AllocatedNode` 装配）。
+- 物品 section 由 raw item 文本解析自动切分（当前由调用方分字段提供）。
 - PoB Build Code 导入/导出。
 - 多语言 runtime crate。
 - GUI / CLI / WASM 应用层。
@@ -145,13 +148,27 @@
 - [x] 物品：无法解析词条收集进 `ItemIngest::unsupported`（不报错）。
 - [x] 物品：`CalculationSession::add_item(slot, &Item)` 注入最小计算闭环。
 - [x] 物品：贡献可回溯到具体装备槽（`contributions` origin slot / source id 测试）。
-- [ ] 物品：implicit / explicit / enchant section 区分（细分到 `ItemAffix` / `ItemImplicit`）。
-- [ ] 天赋树来源接入（`PassiveTreeSpec` → allocated nodes → node modifier）。
-- [ ] 技能宝石来源接入（active / support gem，skill type 兼容，mana multiplier）。
+- [x] 物品：implicit / explicit / enchant section 区分（`ItemModSection` → `ItemImplicit` / `ItemAffix` / `ItemEnchant`，`SourceId.id = item.<slot>.<section>`）。
+- [x] 天赋树来源接入（`passive::ingest_passive_nodes` + `AllocatedNode`，`SourceKind::PassiveNode` / `AscendancyNode`，`session.add_passive_nodes`）。
+- [x] 技能宝石来源接入（`skill_source::ingest_gem` + `GemModSource`，主动 `SkillGem` / 辅助 `SupportGem` + `with_parent`，`session.add_gem` / `add_skill_gem` / `add_support_gem`）。
+- [ ] 辅助宝石 mana multiplier / more 倍率被支援技能隔离 / skill type gating（结构化 TODO 见 `skill_source.rs`）。
+- [ ] 物品 section / 天赋节点词条由 raw item / `PassiveTreeSpec` 自动装配（当前由调用方分字段提供）。
 
 ---
 
 ## 3. 当前实现步骤
+
+### 已完成：阶段六来源接入三件套（并行实现 + 合并）
+
+物品 section 区分 / 天赋树 / 技能宝石三个来源由三个子任务并行实现（各自独立
+worktree 提交），再合并到 master。三者范式对称于物品来源接入：来源 → `parse_mod`
+解析词条 → 挂 `SourceKind` + 稳定 `SourceId` + `raw_text` 归因 → 注入 `ModDb`，
+无法解析词条收集进 `unsupported`。合并后 CI gate（test/fmt/clippy）全绿，67 测试通过。
+
+- 物品 section：`pobr-core/src/item.rs::ItemModSection`，`Item` 增 `implicit_texts` / `enchant_texts`，测试 `tests/item_source.rs`。
+- 天赋树：`pobr-core/src/passive.rs::ingest_passive_nodes` + `AllocatedNode`，测试 `tests/passive_source.rs`。
+- 技能宝石：`pobr-core/src/skill_source.rs::ingest_gem` + `GemModSource`，测试 `tests/skill_source.rs`。
+- 入口：`CalculationSession::add_item` / `add_passive_nodes` / `add_gem`（+ `add_skill_gem` / `add_support_gem`）。
 
 ### 已完成：物品来源接入（阶段六第一切片）
 
