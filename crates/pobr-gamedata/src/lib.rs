@@ -8,7 +8,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use pobr_data::catalog::{BaseItemDef, DataManifest};
+use pobr_data::catalog::{BaseItemDef, DataManifest, ModDef, StatDef};
 
 /// 加载错误。
 #[derive(Debug)]
@@ -73,6 +73,24 @@ impl GameData {
         lang: &str,
     ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
         self.load_json(&format!("i18n/{lang}/base_items.json"))
+    }
+
+    /// 加载 stat 注册表（id / is_local / semantic / category）。
+    pub fn stats(&self) -> Result<Vec<StatDef>, LoadError> {
+        self.load_json("stats.json")
+    }
+
+    /// 加载词缀池定义（Stat 外键已解析为稳定 stat id，掷值区间已合并）。
+    pub fn mods(&self) -> Result<Vec<ModDef>, LoadError> {
+        self.load_json("mods.json")
+    }
+
+    /// 加载某语言的词缀名称边车（`id -> 本地化名称`）。
+    pub fn mod_names(
+        &self,
+        lang: &str,
+    ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        self.load_json(&format!("i18n/{lang}/mods.json"))
     }
 }
 
