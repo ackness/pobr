@@ -2,6 +2,7 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TraceOutput, TracedValue};
 
+use super::damage::{DamageComponent, calculate_components};
 use super::{ActorBaseStats, BreakdownStep, BreakdownTable, OutputTable, hit_chance, round};
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -69,6 +70,8 @@ pub struct MinimalOutput {
     pub lightning_resistance_over_cap: f64,
     pub crit_chance: f64,
     pub crit_multiplier: f64,
+    /// 按伤害类型拆分的非暴击击中分量；求和即非暴击总击中伤害。
+    pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
     pub hit_chance: f64,
     pub action_rate: f64,
@@ -111,6 +114,7 @@ impl MinimalOutput {
             lightning_resistance_over_cap: output.lightning_resistance_over_cap,
             crit_chance: output.crit_chance,
             crit_multiplier: output.crit_multiplier,
+            damage_components: output.damage_components.clone(),
             total_hit_avg: output.total_hit_avg,
             hit_chance: output.hit_chance,
             action_rate: output.action_rate,
@@ -184,20 +188,8 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
     let cold_resistance = cold.final_value;
     let lightning_resistance = lightning.final_value;
 
-    let damage_cfg = if cfg.damage_type.is_some() {
-        cfg.clone()
-    } else {
-        cfg.clone().with_damage_type(DamageType::Physical)
-    };
-    let damage_names = [
-        ModName::from("PhysicalDamage"),
-        ModName::from("AttackDamage"),
-        ModName::from("Damage"),
-    ];
-    let base_hit_avg = (input.base_hit_min + input.base_hit_max) / 2.0;
-    let inc_damage = db.sum(ModType::Inc, &damage_cfg, &damage_names);
-    let more_damage = db.more(&damage_cfg, &damage_names);
-    let non_crit_hit_avg = base_hit_avg * (1.0 + inc_damage / 100.0) * more_damage;
+    let damage_components = calculate_components(db, cfg, input.base_hit_min, input.base_hit_max);
+    let non_crit_hit_avg: f64 = damage_components.iter().map(DamageComponent::avg).sum();
 
     let crit_chance_names = [ModName::from("CriticalStrikeChance")];
     let crit_chance_base = db.sum(ModType::Base, cfg, &crit_chance_names);
@@ -237,6 +229,7 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
         lightning_resistance_over_cap: lightning.over_cap,
         crit_chance,
         crit_multiplier,
+        damage_components,
         total_hit_avg,
         hit_chance,
         action_rate,
