@@ -9,7 +9,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use pobr_data::catalog::{
-    BaseItemDef, DataManifest, GrantedEffectDef, ModDef, SkillGemDef, StatDef,
+    BaseItemDef, DataManifest, GrantedEffectDef, ModDef, PassiveNodeDef, PassiveTreeMeta,
+    SkillGemDef, StatDef,
 };
 
 /// 加载错误。
@@ -111,6 +112,16 @@ impl GameData {
         lang: &str,
     ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
         self.load_json(&format!("i18n/{lang}/skills.json"))
+    }
+
+    /// 加载被动天赋树节点（来自 GGG 官方树导出适配，按 `skill` id 排序）。
+    pub fn passive_nodes(&self) -> Result<Vec<PassiveNodeDef>, LoadError> {
+        self.load_json("passive_tree.json")
+    }
+
+    /// 加载被动天赋树元数据（职业 / 飞升摘要）。
+    pub fn passive_tree_meta(&self) -> Result<PassiveTreeMeta, LoadError> {
+        self.load_json("passive_tree_meta.json")
     }
 }
 

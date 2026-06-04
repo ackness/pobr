@@ -9,6 +9,8 @@
     "mods",
     "stats",
     "skill_gems",
-    "granted_effects"
+    "granted_effects",
+    "passive_tree",
+    "passive_tree_meta"
   ]
 }
