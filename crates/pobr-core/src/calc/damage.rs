@@ -1,0 +1,125 @@
+//! 击中伤害的分类型分量（DamageComponent）。
+//!
+//! 把单一物理桶扩展为按伤害类型（physical / fire / cold / lightning / chaos）拆分的
+//! 分量向量：每个分量独立做 `base × (1 + Σinc/100) × Πmore` 聚合，求和为总（非暴击）击中伤害。
+//! 这是后续伤害转换 / 分类型击中伤害 / 异常状态的基础。
+
+use pobr_data::prelude::*;
+
+use crate::{CalcConfig, ModDb};
+
+use super::round;
+
+/// 单个伤害类型的击中分量：聚合后的 min/max。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DamageComponent {
+    pub damage_type: DamageType,
+    pub min: f64,
+    pub max: f64,
+}
+
+impl DamageComponent {
+    pub fn new(damage_type: DamageType, min: f64, max: f64) -> Self {
+        Self {
+            damage_type,
+            min,
+            max,
+        }
+    }
+
+    /// 该分量的平均击中伤害 `(min + max) / 2`。
+    pub fn avg(&self) -> f64 {
+        (self.min + self.max) / 2.0
+    }
+}
+
+/// 计算顺序固定的全部伤害类型，保证分量向量确定性排序。
+pub(crate) const DAMAGE_TYPES: [DamageType; 5] = [
+    DamageType::Physical,
+    DamageType::Fire,
+    DamageType::Cold,
+    DamageType::Lightning,
+    DamageType::Chaos,
+];
+
+/// 把 `DamageType` 映射到稳定的 modifier 名称前缀（与 PoB 命名一致）。
+fn type_prefix(damage_type: DamageType) -> &'static str {
+    match damage_type {
+        DamageType::Physical => "Physical",
+        DamageType::Fire => "Fire",
+        DamageType::Cold => "Cold",
+        DamageType::Lightning => "Lightning",
+        DamageType::Chaos => "Chaos",
+    }
+}
+
+/// 单个伤害类型的非暴击击中分量基础值（flat），不含 inc/more。
+///
+/// - 物理：基础来自武器击中 `base_hit_min/max`，再加 `PhysicalDamageMin/Max` Base 附加。
+/// - 其余类型：来自 `<Type>DamageMin/Max` Base 附加（flat added damage）。
+///
+/// TODO(damage-conversion): 目前未实现伤害转换 / gain-as-extra。附加分类型 flat 依赖
+/// parser 产出 `<Type>DamageMin/Max` Base modifier；parser 尚未支持时这些桶为空，
+/// 仅物理分量有值，架构已就位待补。
+fn base_flat(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    base_hit_min: f64,
+    base_hit_max: f64,
+) -> (f64, f64) {
+    let prefix = type_prefix(damage_type);
+    let min_name = ModName::from(format!("{prefix}DamageMin"));
+    let max_name = ModName::from(format!("{prefix}DamageMax"));
+    let added_min = db.sum(ModType::Base, cfg, &[min_name]);
+    let added_max = db.sum(ModType::Base, cfg, &[max_name]);
+    match damage_type {
+        DamageType::Physical => (base_hit_min + added_min, base_hit_max + added_max),
+        _ => (added_min, added_max),
+    }
+}
+
+/// 计算全部伤害类型的击中分量向量。
+///
+/// 每个分量：`base × (1 + (Σ type_inc + Σ generic_inc)/100) × Π(type_more) × Π(generic_more)`，
+/// 其中 type-scoped 聚合通过把 `cfg.damage_type` 设为对应类型来匹配带 `DamageType` tag 的 modifier。
+///
+/// 仅当分量 base（min 或 max）非零时纳入向量；物理分量始终纳入（武器击中基线），
+/// 以保证纯物理路径与旧实现完全一致。
+pub(crate) fn calculate_components(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base_hit_min: f64,
+    base_hit_max: f64,
+) -> Vec<DamageComponent> {
+    let generic_names = [ModName::from("AttackDamage"), ModName::from("Damage")];
+
+    DAMAGE_TYPES
+        .iter()
+        .filter_map(|&damage_type| {
+            let prefix = type_prefix(damage_type);
+            // type-scoped cfg：让带 DamageType(damage_type) tag 的 modifier 命中。
+            let type_cfg = cfg.clone().with_damage_type(damage_type);
+
+            let (base_min, base_max) =
+                base_flat(db, &type_cfg, damage_type, base_hit_min, base_hit_max);
+            let is_physical = damage_type == DamageType::Physical;
+            if !is_physical && base_min == 0.0 && base_max == 0.0 {
+                return None;
+            }
+
+            let type_damage_name = ModName::from(format!("{prefix}Damage"));
+            let inc_names = [type_damage_name.clone()];
+            let inc = db.sum(ModType::Inc, &type_cfg, &inc_names)
+                + db.sum(ModType::Inc, &type_cfg, &generic_names);
+            let more = db.more(&type_cfg, &inc_names) * db.more(&type_cfg, &generic_names);
+            let scale = (1.0 + inc / 100.0) * more;
+
+            Some(DamageComponent::new(
+                damage_type,
+                round(base_min * scale),
+                round(base_max * scale),
+            ))
+        })
+        .collect()
+}

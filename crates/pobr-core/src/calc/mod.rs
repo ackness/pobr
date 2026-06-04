@@ -1,5 +1,6 @@
 pub mod actor;
 pub mod breakdown;
+pub mod damage;
 pub mod defence;
 pub mod env;
 pub mod error;
@@ -10,6 +11,7 @@ pub mod session;
 
 pub use actor::{Actor, ActorBaseStats};
 pub use breakdown::{BreakdownStep, BreakdownTable};
+pub use damage::DamageComponent;
 pub use defence::{DefenceOutput, armour_reduction, calc_defence, hit_chance};
 pub use env::Env;
 pub use error::CalcError;

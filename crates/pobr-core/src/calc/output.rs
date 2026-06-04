@@ -1,4 +1,4 @@
-use super::MinimalOutput;
+use super::{DamageComponent, MinimalOutput};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct OutputTable {
@@ -19,6 +19,8 @@ pub struct OutputTable {
     pub lightning_resistance_over_cap: f64,
     pub crit_chance: f64,
     pub crit_multiplier: f64,
+    /// 按伤害类型拆分的非暴击击中分量；求和即非暴击总击中伤害。
+    pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
     pub hit_chance: f64,
     pub action_rate: f64,
@@ -41,6 +43,7 @@ impl From<&MinimalOutput> for OutputTable {
             lightning_resistance_over_cap: value.lightning_resistance_over_cap,
             crit_chance: value.crit_chance,
             crit_multiplier: value.crit_multiplier,
+            damage_components: value.damage_components.clone(),
             total_hit_avg: value.total_hit_avg,
             hit_chance: value.hit_chance,
             action_rate: value.action_rate,
