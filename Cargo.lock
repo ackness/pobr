@@ -38,6 +38,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pobr-data-adapter"
+version = "0.1.0"
+dependencies = [
+ "pobr-data",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "pobr-gamedata"
+version = "0.1.0"
+dependencies = [
+ "pobr-data",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"

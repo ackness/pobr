@@ -2,7 +2,9 @@
 members = [
     "crates/pobr-data",
     "crates/pobr-core",
+    "crates/pobr-gamedata",
     "tools/sync-pob-catalog",
+    "tools/pobr-data-adapter",
 ]
 resolver = "2"
 

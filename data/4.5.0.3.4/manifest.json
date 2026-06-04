@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "poe_version": "4.5.0.3.4",
+  "languages": [
+    "zh-TW"
+  ],
+  "domains": [
+    "base_items"
+  ]
+}

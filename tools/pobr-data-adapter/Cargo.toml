@@ -1,0 +1,9 @@
+[package]
+name = "pobr-data-adapter"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pobr-data.workspace = true
+serde.workspace = true
+serde_json.workspace = true

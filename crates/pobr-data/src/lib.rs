@@ -1,3 +1,4 @@
+pub mod catalog;
 pub mod constants;
 pub mod display_stat;
 pub mod game_data;
@@ -10,6 +11,7 @@ pub mod source;
 pub mod stat;
 
 pub mod prelude {
+    pub use crate::catalog::*;
     pub use crate::constants::*;
     pub use crate::display_stat::*;
     pub use crate::game_data::*;
