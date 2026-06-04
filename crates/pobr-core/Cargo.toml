@@ -1,0 +1,8 @@
+[package]
+name = "pobr-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pobr-data.workspace = true
+

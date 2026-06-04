@@ -1,0 +1,156 @@
+# 开发流程与工程策略
+
+---
+
+## 1. 基本策略
+
+PoBR 采用 greenfield Rust 架构。目标是兼容 PoB 的数据格式、用户工作流和计算结果，同时避免复制 Lua 的共享可变状态、全局表和 UI/计算耦合。
+
+核心原则：
+
+- 先定义计算契约，再写实现。
+- 机制不明确时先查 `agent-docs/` 本地资料库，再用 PoB-PoE2、官方 patch notes、PoE2 Wiki 或游戏数据交叉验证。
+- 先跑通 Modifier/ModDB/最小计算闭环，再接入导入导出和 UI。
+- 计算内部使用稳定 ID，显示文本通过 i18n。
+- 每个 crate 有独立测试，跨 crate 行为用 golden fixtures。
+- 性能优化以 benchmark 证据为准。
+
+---
+
+## 2. 推荐开发顺序
+
+### 2.1 第一个可运行版本：计算内核
+
+1. 建立 workspace：`crates/`, `apps/`, `tools/`, `fixtures/`。
+2. `pobr-data`：定义计算需要的稳定 ID、Item、Gem、Skill、Modifier、GameData。
+3. `pobr-core::modifier`：定义 `Modifier`, `ModTag`, `CalcConfig`。
+4. `pobr-core::mod_db`：实现 `BASE`/`INC`/`MORE`/`FLAG`/`OVERRIDE`/`LIST` 聚合。
+5. `pobr-core::mod_parser`：实现英文 PoB modifier parser/cache。
+6. `pobr-core::calc`：实现属性、生命/魔力、抗性、简单 hit damage、DPS。
+7. `apps/pobr-cli`：提供 `parse-mod`, `sum-mods`, `calc-fixture` 命令。
+
+第一版 CLI 服务计算验证，它输出 JSON 和 breakdown，作为 CI 和 golden regression 的稳定入口。
+
+### 2.1.1 机制资料查证流程
+
+实现任何游戏机制前，先按以下顺序确认公式和术语：
+
+1. 查 `agent-docs/` 中对应主题，例如 `resistances.md`、`damage-types.md`、`damage-defence-order.md`、`skill-speed.md`、`ailments.md`。
+2. 对照 PoB-PoE2 计算实现：`CalcSetup.lua`、`CalcPerform.lua`、`CalcOffence.lua`、`CalcDefence.lua`、`CalcSections.lua`、`BuildDisplayStats.lua`、`ConfigOptions.lua`、`Data.lua`、`QuestRewards.lua`。
+3. 对照官方 patch notes、PoE2 Wiki、游戏数据或 PoE2DB。
+4. 若 `agent-docs/` 与官方/PoB-PoE2/数据源冲突，以可验证的一手或更接近游戏数据的来源为准。
+5. 发现 `agent-docs/` 错误时直接修正文档，并在修改处保留来源说明。
+
+`agent-docs/` 是开发输入资料，不是最终权威。计算实现和测试必须引用可交叉验证的结论。
+
+### 2.2 输入来源版本
+
+1. `pobr-item`：实现英文 raw item text 解析和 custom item draft。
+2. `pobr-tree`：实现 allocated node modifier collection。
+3. `pobr-build`：实现 Build 状态、PoB Build Code decode/encode、XML roundtrip。
+4. `pobr-build::CalcOrchestrator`：封装计算入口和缓存。
+5. golden regression：用完整 Build fixture 对比关键输出。
+
+### 2.3 应用版本
+
+1. CLI 稳定后做 `pobr-wasm`。
+2. WASM API 稳定后做 `pobr-desktop`。
+3. GUI 第一屏直接是可编辑 Build 工作区，支持计算预览、导入 BD、粘贴物品、创建自定义物品、切换语言。
+
+---
+
+## 3. Fixture 优先
+
+目录约定：
+
+```
+fixtures/
+├── pob-codes/
+│   ├── poe1-simple.txt
+│   └── poe1-minion.txt
+├── raw-items/
+│   ├── en-US/
+│   └── zh-TW/
+├── builds/
+│   ├── xml/
+│   └── snapshots/
+└── i18n/
+```
+
+每个 fixture 需要记录：
+
+- 来源：手工构造、PoB 导出、游戏复制文本、pobb.in。
+- 游戏版本。
+- 预期覆盖的功能点。
+- 是否允许数值误差。
+
+---
+
+## 4. 测试分层
+
+| 层级 | 示例命令 | 目标 |
+|------|----------|------|
+| 单元测试 | `cargo test -p pobr-core` | 类型、解析、聚合函数正确 |
+| 兼容测试 | `cargo test -p pobr-build --test pob_code` | PoB code/XML roundtrip |
+| fixture 测试 | `cargo test -p pobr-item --test raw_items` | raw item text 不回退 |
+| i18n 测试 | `cargo run -p lint-i18n` | 语言包 key 和参数一致 |
+| golden 测试 | `cargo test -p pobr-build --test golden` | 完整 build 输出对齐 |
+| benchmark | `cargo bench -p pobr-core` | 热路径性能回归 |
+
+---
+
+## 5. CI Gate
+
+每个 PR 至少跑：
+
+```bash
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo run -p lint-i18n
+```
+
+涉及计算、Modifier、item parser、Build Code、语言包的 PR 需要补对应 fixture 或 golden snapshot。
+
+---
+
+## 6. 数据生成工具
+
+`tools/` 只负责生成和验证，不参与运行时计算。
+
+| 工具 | 职责 |
+|------|------|
+| `export-poe-data` | 从 PoB-PoE2/PoE 数据源转换为 PoBR 数据包 |
+| `gen-mod-cache` | 生成 Rust 可读 Modifier cache，并与 fixture 对比 |
+| `sync-pob-catalog` | 从 PoB-PoE2 核心 Lua 文件抽取 output/display/breakdown/quest reward catalog，并检查 PoBR parity matrix |
+| `lint-i18n` | 检查语言包完整性、fallback、格式参数 |
+
+生成产物必须可复现：同一输入数据和工具版本生成相同输出。
+
+---
+
+## 7. 性能策略
+
+- 默认使用清晰数据结构。
+- 热路径先写 benchmark，再优化。
+- `unsafe` 只允许出现在独立模块，并需要 benchmark 与测试证明收益。
+- 并行计算只在只读快照阶段展开，避免多线程写 `Env`。
+- SIMD/SoA/cache 分桶放到后期性能阶段。
+
+---
+
+## 8. 文档维护
+
+当实现改变 crate 边界、Build Code 兼容规则、语言包格式、fixture 目录或 CI 命令时，同步更新：
+
+- `00-overview.md`
+- `02-crate-design.md`
+- `03-module-interfaces.md`
+- `04-migration-roadmap.md`
+- `05-compatibility-and-i18n.md`
+- `06-development-workflow.md`
+- `11-implementation-progress.md`
+
+文档以可执行契约为主，避免只描述愿景。
+
+每个实现步骤结束前必须更新 `11-implementation-progress.md` 的勾选项，说明本轮完成了什么、还剩什么。该文件记录真实工程状态，不能用路线图愿景替代。

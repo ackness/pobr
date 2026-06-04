@@ -1,0 +1,6 @@
+/target/
+**/target/
+.claude/
+
+# 本机相关的 cargo target 重定向（指向本地盘以绕过 SMB 卷无文件锁的问题）
+/.cargo/config.toml
