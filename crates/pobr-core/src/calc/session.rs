@@ -2,6 +2,7 @@ use pobr_data::prelude::*;
 
 use crate::item::ingest_item;
 use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
+use crate::passive::{AllocatedNode, ingest_passive_nodes};
 use crate::{CalcConfig, Modifier};
 
 use super::{Actor, ActorBaseStats, Env, MinimalInput, MinimalOutput, perform};
@@ -60,6 +61,19 @@ impl CalculationSession {
     /// `unsupported_modifier_texts`。
     pub fn add_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
         let ingest = ingest_item(slot, item)?;
+        self.env.player.mod_db.add_list(ingest.modifiers);
+        self.unsupported_modifier_texts.extend(ingest.unsupported);
+        Ok(())
+    }
+
+    /// 接入一组已分配天赋节点：解析每个节点的词条文本为带节点归因
+    /// （[`SourceKind::PassiveNode`] / [`SourceKind::AscendancyNode`]）的 modifier 并注入计算，
+    /// 无法解析的词条收集进 `unsupported_modifier_texts`。
+    ///
+    /// [`SourceKind::PassiveNode`]: pobr_data::source::SourceKind::PassiveNode
+    /// [`SourceKind::AscendancyNode`]: pobr_data::source::SourceKind::AscendancyNode
+    pub fn add_passive_nodes(&mut self, nodes: &[AllocatedNode]) -> Result<(), ParseError> {
+        let ingest = ingest_passive_nodes(nodes)?;
         self.env.player.mod_db.add_list(ingest.modifiers);
         self.unsupported_modifier_texts.extend(ingest.unsupported);
         Ok(())
