@@ -31,9 +31,21 @@
 //! [`Item::enchant_texts`]。无法归类为元数据 / implicit / enchant 的词条行均视为
 //! explicit。
 //!
+//! ## 导出标注剥离
+//!
+//! PoB 导出的词条行常带以下元注释，这些注释必须在喂给 `mod_parser` 前剥离：
+//!
+//! | 格式 | 示例 | 说明 |
+//! |------|------|------|
+//! | `{key:value}` / `{key}` | `{range:0.5}`, `{crafted}` | PoB 内部标注；前缀 `{crafted}` / `{enchant}` 用于 section 归类 |
+//! | ` (lowercase)` | ` (augmented)`, ` (fractured)` | 全小写字母括号注释 |
+//! | `(tier: N)` | `(tier: 3)` | 词缀等级注释 |
+//! | `[word]` | `[augmented]`, `[crafted]` | 方括号注释 |
+//!
+//! 剥离逻辑见 [`strip_pob_annotations`]；`{crafted}` / `{enchant}` 前缀在 section 判定后才剥离。
+//!
 //! ## 留待扩展（TODO）
 //!
-//! - 词缀范围标记（`{range:0.5}`）/ tier 注释（`(tier: 3)`）暂未剥离，原样保留。
 //! - Sockets / Rune / 多语言导出暂不处理。
 //! - `Implicits: N` 缺失时退化为"无 implicit"（PoB 导出通常都带该头）。
 
@@ -236,7 +248,104 @@ fn is_metadata_line(line: &str) -> bool {
         .any(|prefix| line.starts_with(prefix))
 }
 
+/// 剥离 PoB 导出词条行中的元注释，保留可被 `mod_parser` 解析的干净文本。
+///
+/// 按照 PoB2 `Item.lua` 的处理顺序依次剥离：
+///
+/// 1. `{key:value}` / `{key}` 花括号注释（`{range:0.5}`、`{variant:1}` 等）。
+///    对应 PoB2 Lua 正则：`{(%a*):?([^}]*)}` → `""`。
+/// 2. ` (lowercase)` 全小写字母括号注释（` (augmented)`、` (crafted)`、` (fractured)`）。
+///    对应 PoB2 Lua 正则：` %((%l+)%)` → `""`。
+/// 3. `(tier: N)` 词缀等级注释（含数字/冒号，不在上述规则内）。
+/// 4. `[word]` 方括号注释（` [augmented]`、`[crafted]`）。
+///
+/// 出处：PoB2 `src/Classes/Item.lua` `BuildAndParseRaw` 函数第 708-734 行、第 926 行。
+pub fn strip_pob_annotations(text: &str) -> String {
+    let mut s = text.to_string();
+
+    // 1. 剥离花括号注释：{key:value} 或 {key}。
+    //    使用扫描替代正则，避免引入 regex 依赖。
+    //    对应 PoB2 Lua `{(%a*):?([^}]*)}` → `""` (Item.lua:708)。
+    while let Some(open) = s.find('{') {
+        let Some(close_rel) = s[open..].find('}') else {
+            break;
+        };
+        let close = open + close_rel;
+        s = format!("{}{}", &s[..open], &s[close + 1..]);
+    }
+
+    // 2. 剥离全小写字母括号注释：" (augmented)" / " (fractured)" 等。
+    //    匹配 " (" + 纯小写字母序列 + ")"。
+    //    对应 PoB2 Lua ` %((%l+)%)` → `""` (Item.lua:729)。
+    loop {
+        let mut found = false;
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i + 2 < bytes.len() {
+            if bytes[i] == b' ' && bytes[i + 1] == b'(' {
+                // 向后找 ')'，确认中间全是小写字母。
+                let mut j = i + 2;
+                while j < bytes.len() && bytes[j].is_ascii_lowercase() {
+                    j += 1;
+                }
+                if j < bytes.len() && bytes[j] == b')' && j > i + 2 {
+                    // 整个 " (word)" 区间 [i, j+1) 剥离。
+                    s = format!("{}{}", &s[..i], &s[j + 1..]);
+                    found = true;
+                    break;
+                }
+            }
+            i += 1;
+        }
+        if !found {
+            break;
+        }
+    }
+
+    // 3. 剥离 "(tier: N)" / "(tier:N)" 注释（含数字 / 冒号，不被步骤 2 匹配）。
+    //    PoB 导出格式，不在 PoB2 Lua 标准路径中但出现在某些导出。
+    loop {
+        // 找 "(tier:" 模式（大小写不敏感）。
+        let lower = s.to_ascii_lowercase();
+        let Some(idx) = lower.find("(tier:") else {
+            break;
+        };
+        // 向后找 ')'。
+        let Some(end_rel) = s[idx..].find(')') else {
+            break;
+        };
+        let end = idx + end_rel;
+        // 包含前置空格（如果有）。
+        let strip_start = if idx > 0 && s.as_bytes()[idx - 1] == b' ' {
+            idx - 1
+        } else {
+            idx
+        };
+        s = format!("{}{}", &s[..strip_start], &s[end + 1..]);
+    }
+
+    // 4. 剥离方括号注释：" [augmented]" / "[crafted]" 等。
+    //    某些第三方工具在导出时使用方括号格式。
+    while let Some(open) = s.find('[') {
+        let Some(close_rel) = s[open..].find(']') else {
+            break;
+        };
+        let close = open + close_rel;
+        let strip_start = if open > 0 && s.as_bytes()[open - 1] == b' ' {
+            open - 1
+        } else {
+            open
+        };
+        s = format!("{}{}", &s[..strip_start], &s[close + 1..]);
+    }
+
+    s.trim().to_string()
+}
+
 /// 剥离 enchant / crafted 标记。命中则返回去标记后的文本与 `true`。
+///
+/// 注意：`{crafted}` / `{enchant}` 作为**行首前缀**用于 section 归类，此步在
+/// [`strip_pob_annotations`] 之前执行，以保留 section 分类语义。
 fn strip_enchant_marker(line: &str) -> (String, bool) {
     const ENCHANT_MARKERS: &[&str] = &["{crafted}", "{enchant}"];
     for marker in ENCHANT_MARKERS {
@@ -251,6 +360,10 @@ fn strip_enchant_marker(line: &str) -> (String, bool) {
 ///
 /// `Implicits: N` 头指明的前 N 行（跨段累计）落入 implicit；带 enchant 标记的行落入
 /// enchant；其余落入 explicit。
+///
+/// 在分类之后、入库之前调用 [`strip_pob_annotations`] 剥离 `{range:0.5}` /
+/// `(augmented)` / `(tier: N)` / `[augmented]` 等 PoB 导出元注释，
+/// 使词条文本可被 `mod_parser` 正确解析。
 fn classify_mod_lines(
     lines: &[&str],
     implicit_remaining: &mut usize,
@@ -259,14 +372,17 @@ fn classify_mod_lines(
     modifier_texts: &mut Vec<String>,
 ) {
     for &line in lines {
-        let (text, is_enchant) = strip_enchant_marker(line);
+        // 先做 enchant marker 检测（利用 {crafted}/{enchant} 前缀语义），
+        // 再对剩余文本剥离 PoB 导出元注释。
+        let (text_after_enchant_marker, is_enchant) = strip_enchant_marker(line);
+        let clean_text = strip_pob_annotations(&text_after_enchant_marker);
         if is_enchant {
-            enchant_texts.push(text);
+            enchant_texts.push(clean_text);
         } else if *implicit_remaining > 0 {
             *implicit_remaining -= 1;
-            implicit_texts.push(text);
+            implicit_texts.push(clean_text);
         } else {
-            modifier_texts.push(text);
+            modifier_texts.push(clean_text);
         }
     }
 }
