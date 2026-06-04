@@ -35,10 +35,9 @@
 当前仍未完成：
 
 - PoB 全量属性 parity matrix fixture。
-- `AttributionReport`。
 - SkillUseTime。
-- DamageComponent vector。
 - 辅助宝石 mana multiplier / more 倍率被支援技能隔离 / skill type gating（`skill_source` 已留结构化 TODO）。
+- 伤害转换 / gain-as-extra / 分类型 flat added damage 的 parser（`damage.rs` 已留 TODO；架构已就位）。
 - 天赋节点词条由 `PassiveTreeSpec` 直接承载（当前经独立 `AllocatedNode` 装配）。
 - 物品 section 由 raw item 文本解析自动切分（当前由调用方分字段提供）。
 - PoB Build Code 导入/导出。
@@ -101,6 +100,7 @@
 - [x] attack/action rate 简化计算。
 - [x] DPS 简化计算。
 - [x] max resistance / floor / overcap（默认 75 / 硬上限 90 / 可由 `Maximum<Element>Resistance` + `MaximumAllElementalResistances` 提升 / 负抗性无下限 / over-cap 输出，见 `offence.rs::resolve_resistance`）。
+- [x] DamageComponent vector（`calc/damage.rs::DamageComponent` + `calculate_components`，按 5 种伤害类型拆分非暴击击中分量，纯物理路径回归一致，见 `tests/damage_components.rs`）。
 - [ ] SkillUseTime。
 - [ ] DamageComponent vector。
 - [ ] EHP / max hit。
@@ -137,8 +137,9 @@
 - [x] traced outputs：`Life` / `Mana` / `FireResist` / `ColdResist` / `LightningResist`。
 - [x] traced DPS formula tree（`TotalDPS`）。
 - [ ] `TraceMode`。
-- [ ] `AttributionReport`。
-- [ ] direct/marginal/interaction attribution。
+- [x] `AttributionReport`（`attribution.rs`：`AttributionRequest` / `AttributionReport` / `AttributionEntry`，依架构文档 10 §6-7，`ModDb::filtered` 驱动 marginal 重算，见 `tests/attribution.rs`）。
+- [x] direct/marginal/interaction attribution（direct 读 trace 祖先链 / marginal = final − without_source / interaction = final − baseline − Σmarginal）。
+- [ ] `AttributionRequest.build: BuildSnapshot` / `selected_skill`（高层类型未实现，当前用重算闭包替代）。
 
 ### 来源接入（阶段六）
 
@@ -150,8 +151,9 @@
 - [x] 物品：implicit / explicit / enchant section 区分（`ItemModSection` → `ItemImplicit` / `ItemAffix` / `ItemEnchant`，`SourceId.id = item.<slot>.<section>`）。
 - [x] 天赋树来源接入（`passive::ingest_passive_nodes` + `AllocatedNode`，`SourceKind::PassiveNode` / `AscendancyNode`，`session.add_passive_nodes`）。
 - [x] 技能宝石来源接入（`skill_source::ingest_gem` + `GemModSource`，主动 `SkillGem` / 辅助 `SupportGem` + `with_parent`，`session.add_gem` / `add_skill_gem` / `add_support_gem`）。
+- [x] raw 物品文本块解析（`item_text::parse_item_text` → 切分 implicit/explicit/enchant 段为 `Item`，喂入 `ingest_item`）。
 - [ ] 辅助宝石 mana multiplier / more 倍率被支援技能隔离 / skill type gating（结构化 TODO 见 `skill_source.rs`）。
-- [ ] 物品 section / 天赋节点词条由 raw item / `PassiveTreeSpec` 自动装配（当前由调用方分字段提供）。
+- [ ] 天赋节点词条由 `PassiveTreeSpec` 自动装配（当前由调用方经 `AllocatedNode` 提供）。
 
 ---
 
