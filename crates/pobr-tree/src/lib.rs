@@ -18,7 +18,8 @@ pub mod tree;
 pub use error::TreeError;
 pub use node::{AllocatedNodeMods, collect_allocated_mods};
 pub use radius_jewel::{
-    JEWEL_RADIUS_LARGE, JEWEL_RADIUS_MEDIUM, JEWEL_RADIUS_SMALL, JewelRadius, RadiusJewelEffect,
+    JEWEL_RADIUS_LARGE, JEWEL_RADIUS_MEDIUM, JEWEL_RADIUS_SMALL, JEWEL_RADIUS_VERY_LARGE,
+    JewelRadius, PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER, RadiusJewelEffect,
     compute_radius_jewel_effect,
 };
 pub use tree::PassiveTree;
