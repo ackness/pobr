@@ -58,6 +58,9 @@ fn perform_fills_bleed_dps_from_physical_hits() {
     assert!(env.player.output.bleed_dps > 0.0);
 }
 
+/// PoE2 格挡上限测试（Bug#11：上限为 90%，非 PoE1 的 75%）。
+///
+/// 出处：agent-docs/block.md §被动格挡、PoB2 `BlockChanceCap = 90`。
 #[test]
 fn perform_fills_block_and_suppression_chances() {
     let base = ActorBaseStats {
@@ -67,14 +70,16 @@ fn perform_fills_block_and_suppression_chances() {
     let mut env = player_with(
         base,
         vec![
-            Modifier::number("BlockChance", ModType::Base, 90.0),
+            // 95% block → capped at PoE2 limit 90%
+            Modifier::number("BlockChance", ModType::Base, 95.0),
             Modifier::number("SpellSuppressionChance", ModType::Base, 50.0),
         ],
     );
     perform(&mut env).unwrap();
 
-    // block capped at 75.
-    assert_eq!(env.player.output.block_chance, 75.0);
+    // PoE2: block capped at 90 (not PoE1's 75).
+    assert_eq!(env.player.output.block_chance, 90.0);
+    // 法术压制 PoE2 已移除，但函数保留兼容性（inert）
     assert_eq!(env.player.output.spell_suppression_chance, 50.0);
 }
 

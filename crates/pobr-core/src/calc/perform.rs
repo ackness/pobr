@@ -4,7 +4,7 @@ use crate::{CalcConfig, ModDb};
 
 use super::{
     BreakdownTable, CalcError, Env, MinimalInput, OutputTable, ResistanceSuite, bleed_instance,
-    calc_defence, calc_ehp, calc_skill_use_time, calculate_minimal, ignite_instance,
+    calc_defence, calc_ehp, calc_skill_use_time, calculate_minimal_vs_enemy, ignite_instance,
     poison_instance, regen, reservation, shock_effect,
 };
 
@@ -16,8 +16,19 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     }
 
     let mut input = MinimalInput::from(env.player.base);
-    input.enemy_evasion = env.enemy.base.evasion;
-    let output = calculate_minimal(&env.player.mod_db, &env.cfg, &input);
+    // 命中率的敌人闪避来源：优先用 enemy.mod_db 的 Evasion BASE（setup_env 注入，含档位倍率），
+    // 回退到 enemy.base.evasion 标量（兼容直接构造 Env 的旧入口）。
+    let enemy_evasion_from_db =
+        env.enemy
+            .mod_db
+            .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
+    input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
+        enemy_evasion_from_db
+    } else {
+        env.enemy.base.evasion
+    };
+    let output =
+        calculate_minimal_vs_enemy(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &input);
     env.player.output = OutputTable::from(&output);
     env.player.breakdown = BreakdownTable::from_steps(output.breakdown);
     calc_defence(&mut env.player, &env.cfg, env.enemy.base.accuracy);

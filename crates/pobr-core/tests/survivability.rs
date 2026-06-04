@@ -31,9 +31,22 @@ fn capped_chance_clamps_to_cap() {
     assert_eq!(capped_chance(40.0, 75.0), 40.0);
 }
 
+/// PoE2 格挡上限测试（Bug#11：上限已从 75% 改为 90%）。
+///
+/// 出处：agent-docs/block.md §被动格挡 `BlockChanceCap = 90`；
+///       PoB2 DeepWiki `data.misc.BlockChanceCap = 90`。
 #[test]
-fn block_caps_at_75_and_suppression_at_100() {
-    assert_eq!(block_chance(90.0), 75.0);
+fn block_caps_at_90_poe2() {
+    // PoE2 格挡上限 90%
+    assert_eq!(block_chance(95.0), 90.0);
+    assert_eq!(block_chance(90.0), 90.0);
+    assert_eq!(block_chance(60.0), 60.0);
+    assert_eq!(block_chance(0.0), 0.0);
+}
+
+#[test]
+fn suppression_chance_clamps_at_100() {
+    // 法术压制在 PoE2 已移除（inert），但函数保留兼容性，上限仍 100
     assert_eq!(suppression_chance(120.0), 100.0);
     assert_eq!(suppression_chance(60.0), 60.0);
 }

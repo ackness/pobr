@@ -1,5 +1,6 @@
 use pobr_core::calc::{
-    Actor, ActorBaseStats, BreakdownTable, Env, OutputTable, armour_reduction, hit_chance, perform,
+    Actor, ActorBaseStats, BreakdownTable, Env, OutputTable, armour_reduction, hit_chance,
+    monster_hit_chance, perform,
 };
 use pobr_core::{CalcConfig, Modifier};
 use pobr_data::prelude::*;
@@ -149,9 +150,11 @@ fn perform_writes_defence_output_and_breakdown() {
     assert_eq!(env.player.output.armour, 1_800.0);
     assert_eq!(env.player.output.evasion, 1_000.0);
     assert_eq!(env.player.output.energy_shield, 250.0);
+    // 防御侧（怪物命中玩家）用 monster_hit_chance（PoE2 双侧公式不对称）。
+    // 出处：agent-docs/accuracy-and-enemy.md §二注、CalcDefence.lua calcs.monsterHitChance
     assert_eq!(
         env.player.output.chance_to_be_hit,
-        hit_chance(env.player.output.evasion, 600.0)
+        monster_hit_chance(env.player.output.evasion, 600.0)
     );
     assert!(env.player.breakdown.contains("armour"));
     assert!(env.player.breakdown.contains("evasion"));
@@ -171,4 +174,40 @@ fn armour_reduction_uses_armour_against_raw_hit() {
     assert_eq!(armour_reduction(0.0, 1_000.0), 0.0);
     assert_eq!(armour_reduction(10_000.0, 1_000.0), 0.5);
     assert_eq!(armour_reduction(10_000.0, 0.0), 0.0);
+}
+
+/// Bug#3 测试：PoE2 进攻侧命中率公式（accuracy*1.25/(accuracy+evasion*0.3)）。
+///
+/// 出处：agent-docs/accuracy-and-enemy.md §二、CalcDefence.lua `calcs.hitChance`。
+#[test]
+fn poe2_attack_hit_chance_formula() {
+    // accuracy=1000, evasion=1000
+    // raw = 1000*1.25/(1000+1000*0.3) = 1250/1300 ≈ 0.9615
+    let hc = hit_chance(1000.0, 1000.0);
+    let expected = (1000.0_f64 * 1.25 / (1000.0 + 1000.0 * 0.3)).clamp(0.05, 1.0);
+    assert!(
+        (hc - expected).abs() < 1e-6,
+        "hit_chance={hc}, expected={expected}"
+    );
+}
+
+/// Bug#3 测试：防御侧公式不同（怪物命中玩家）。
+///
+/// 出处：agent-docs/accuracy-and-enemy.md §二注、CalcDefence.lua `calcs.monsterHitChance`。
+#[test]
+fn poe2_monster_hit_chance_formula() {
+    // evasion=1000, accuracy=1000
+    // raw = 1 - 0.95*1000/(1000+4*1000) = 1 - 0.95/5 = 1 - 0.19 = 0.81
+    let mhc = monster_hit_chance(1000.0, 1000.0);
+    let raw_expected: f64 = 1.0 - 0.95_f64 * 1000.0 / (1000.0 + 4.0 * 1000.0);
+    let expected = raw_expected.clamp(0.05_f64, 1.0_f64);
+    assert!(
+        (mhc - expected).abs() < 1e-6,
+        "monster_hit_chance={mhc}, expected={expected}"
+    );
+    // 两侧公式应不同
+    assert_ne!(
+        hit_chance(1000.0, 1000.0),
+        monster_hit_chance(1000.0, 1000.0)
+    );
 }

@@ -2,7 +2,8 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TraceOutput, TracedValue};
 
-use super::damage::{DamageComponent, calculate_components};
+use super::crit::{resolve_crit, resolve_crit_traced};
+use super::damage::{DamageComponent, calculate_components, sum_avg};
 use super::{ActorBaseStats, BreakdownStep, BreakdownTable, OutputTable, hit_chance, round};
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -69,6 +70,8 @@ pub struct MinimalOutput {
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
     pub crit_chance: f64,
+    /// 命中降级 / 幸运 / 分岔 / 必然之前、cap 之后的暴击几率（fraction）。供 breakdown 显示溢出。
+    pub pre_effective_crit_chance: f64,
     pub crit_multiplier: f64,
     /// 按伤害类型拆分的非暴击击中分量；求和即非暴击总击中伤害。
     pub damage_components: Vec<DamageComponent>,
@@ -113,6 +116,7 @@ impl MinimalOutput {
             cold_resistance_over_cap: output.cold_resistance_over_cap,
             lightning_resistance_over_cap: output.lightning_resistance_over_cap,
             crit_chance: output.crit_chance,
+            pre_effective_crit_chance: output.pre_effective_crit_chance,
             crit_multiplier: output.crit_multiplier,
             damage_components: output.damage_components.clone(),
             total_hit_avg: output.total_hit_avg,
@@ -160,7 +164,26 @@ fn resolve_resistance(
     }
 }
 
+/// 旧三参入口：等价于对**空敌人 modDB** 计算（向后兼容，输出与历史一致）。
+///
+/// 敌人侧机制（受伤链/抗性护甲减伤/格挡/`CannotEvade`）需要敌人 modDB，
+/// 由 [`calculate_minimal_vs_enemy`] 提供；`perform` 走后者。
 pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> MinimalOutput {
+    calculate_minimal_vs_enemy(db, &ModDb::new(), cfg, input)
+}
+
+/// 完整入口：玩家 modDB + 敌人 modDB。敌人侧减伤/受伤链/格挡仅在
+/// `cfg.mode_effective == true` 时生效（面板口径不引入敌人交互，保证与历史输出一致）。
+///
+/// 出处：agent-docs/accuracy-and-enemy.md §二.2,§二.3,§六,§七；
+///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2,§5；
+///       PoB2 `CalcOffence.lua`（`enemyDB:Sum/More DamageTaken`、`enemyBlockChance`、`CannotEvade`）。
+pub fn calculate_minimal_vs_enemy(
+    db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> MinimalOutput {
     let life = scaled_pool(db, cfg, input.base_life, "MaximumLife");
     let mana = scaled_pool(db, cfg, input.base_mana, "MaximumMana");
     let fire = resolve_resistance(
@@ -189,22 +212,20 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
     let lightning_resistance = lightning.final_value;
 
     let damage_components = calculate_components(db, cfg, input.base_hit_min, input.base_hit_max);
+    // 玩家侧（未减伤）非暴击平均击中，供 breakdown / ailment magnitude 源（保持原口径）。
     let non_crit_hit_avg: f64 = damage_components.iter().map(DamageComponent::avg).sum();
-
-    let crit_chance_names = [ModName::from("CriticalStrikeChance")];
-    let crit_chance_base = db.sum(ModType::Base, cfg, &crit_chance_names);
-    let crit_chance_inc = db.sum(ModType::Inc, cfg, &crit_chance_names);
-    let crit_chance_more = db.more(cfg, &crit_chance_names);
-    let crit_chance = round(
-        (crit_chance_base * (1.0 + crit_chance_inc / 100.0) * crit_chance_more / 100.0)
-            .clamp(0.0, 1.0),
-    );
-
-    let crit_multiplier_names = [ModName::from("CriticalStrikeMultiplier")];
-    let crit_multiplier =
-        round((150.0 + db.sum(ModType::Base, cfg, &crit_multiplier_names)) / 100.0);
-    let crit_average_factor = 1.0 + crit_chance * (crit_multiplier - 1.0);
-    let total_hit_avg = round(non_crit_hit_avg * crit_average_factor);
+    // 有效口径下，分伤害类型乘敌人受伤链 + 抗性/护甲减伤后的平均击中（用于 DPS）。
+    let non_crit_hit_avg_mitigated = if cfg.mode_effective {
+        damage_components
+            .iter()
+            .map(|component| {
+                let avg = component.avg();
+                avg * enemy_damage_multiplier(enemy_db, cfg, component.damage_type, avg)
+            })
+            .sum()
+    } else {
+        non_crit_hit_avg
+    };
 
     let speed_names = [ModName::from("AttackSpeed"), ModName::from("ActionSpeed")];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
@@ -212,8 +233,46 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
     let action_rate = round(input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed);
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
-    let hit_chance = hit_chance(input.enemy_evasion, accuracy);
-    let dps = round(total_hit_avg * action_rate * hit_chance);
+    // PoE2 命中率（agent-docs/accuracy-and-enemy.md §二,§三）：
+    // - 法术必中：`if not isAttack then output.AccuracyHitChance = 100`。
+    // - `CannotBeEvaded`（玩家旗标）/ effective 下敌方 `CannotEvade` → 置 100% 跳过精准公式。
+    // - 末端再扣敌方格挡：`HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`。
+    let cannot_be_evaded = db.flag(cfg, ModName::from("CannotBeEvaded"))
+        || (cfg.mode_effective && enemy_db.flag(cfg, ModName::from("CannotEvade")));
+    let accuracy_hit_chance = if cfg.is_spell() || cannot_be_evaded {
+        1.0
+    } else {
+        hit_chance(input.enemy_evasion, accuracy)
+    };
+    // 敌方格挡：仅有效口径下从命中里扣（accuracy-and-enemy.md §二.3）。
+    let enemy_block = if cfg.mode_effective {
+        (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let hit_chance = round(accuracy_hit_chance * (1.0 - enemy_block));
+
+    // 有效暴击管线（resolve_crit）：cap / 命中降级 / Lucky / Bifurcate / Inevitable /
+    // 敌方 SelfCrit* / NoCritMultiplier，全部对齐 PoB2 CalcOffence.lua（见 calc/crit.rs）。
+    // base_crit=0：本最小模型未引入武器底材基础暴击，全部经 db CriticalStrikeChance BASE。
+    // 命中降级用 accuracy_hit_chance（格挡不参与暴击降级，PoB2 仅乘 AccuracyHitChance）。
+    let crit = resolve_crit(
+        db,
+        enemy_db,
+        cfg,
+        accuracy_hit_chance,
+        0.0,
+        cfg.mode_effective,
+    );
+    let crit_chance = crit.chance;
+    let crit_multiplier = crit.multiplier;
+    let crit_average_factor = crit.effect;
+    // 输出字段：玩家侧总击中（不含敌人减伤），保持历史口径 + 作为 ailment magnitude 源。
+    let total_hit_avg = round(non_crit_hit_avg * crit_average_factor);
+    // DPS 用：有效口径下含敌人受伤链/抗性/护甲减伤的总击中。
+    let total_hit_avg_for_dps = round(non_crit_hit_avg_mitigated * crit_average_factor);
+
+    let dps = round(total_hit_avg_for_dps * action_rate * hit_chance);
 
     MinimalOutput {
         life,
@@ -228,6 +287,7 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
         cold_resistance_over_cap: cold.over_cap,
         lightning_resistance_over_cap: lightning.over_cap,
         crit_chance,
+        pre_effective_crit_chance: crit.pre_effective_chance,
         crit_multiplier,
         damage_components,
         total_hit_avg,
@@ -270,6 +330,10 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
             BreakdownStep {
                 name: "crit_chance",
                 value: crit_chance,
+            },
+            BreakdownStep {
+                name: "pre_effective_crit_chance",
+                value: crit.pre_effective_chance,
             },
             BreakdownStep {
                 name: "crit_multiplier",
@@ -380,23 +444,20 @@ fn total_dps_traced(
     trace: &mut TraceGraph,
 ) -> TracedValue {
     // --- average hit ---
-    let damage_cfg = if cfg.damage_type.is_some() {
-        cfg.clone()
-    } else {
-        cfg.clone().with_damage_type(DamageType::Physical)
-    };
+    // 使用与 calculate_minimal 相同的 calculate_components 管线计算 non-crit 平均值，
+    // 确保 traced 与非 traced 路径数值一致（Bug#5 traced-dps-physical-only-divergence）。
+    // 出处：damage-scaling.md §核心叠加语义；calculate_components 实现在 damage.rs。
+    let components = calculate_components(db, cfg, input.base_hit_min, input.base_hit_max);
+    let non_crit_hit_avg = sum_avg(&components);
+
+    // 同时 trace 物理伤害 modifier 来源（INC + MORE），确保 weapon/support 词条归因可达。
+    // 其它伤害类型的分量 modifier 也按相同方式记录，以支持元素/混沌词条归因。
+    let damage_cfg = cfg.clone().with_damage_type(DamageType::Physical);
     let damage_names = [
         ModName::from("PhysicalDamage"),
         ModName::from("AttackDamage"),
         ModName::from("Damage"),
     ];
-
-    let base_hit_avg = (input.base_hit_min + input.base_hit_max) / 2.0;
-    let base_hit_node = trace.add_source_node(
-        "base hit average",
-        base_hit_avg,
-        SourceId::new(SourceKind::CharacterBase, "base.Hit"),
-    );
     let inc_damage = db.sum_traced(
         ModType::Inc,
         &damage_cfg,
@@ -406,9 +467,15 @@ fn total_dps_traced(
     );
     let more_damage =
         more_factor_traced(db, &damage_cfg, &damage_names, "Damage MORE factor", trace);
-    let non_crit_hit_avg = base_hit_avg * (1.0 + inc_damage.value / 100.0) * more_damage.value;
+
+    let base_hit_avg = (input.base_hit_min + input.base_hit_max) / 2.0;
+    let base_hit_node = trace.add_source_node(
+        "base hit average",
+        base_hit_avg,
+        SourceId::new(SourceKind::CharacterBase, "base.Hit"),
+    );
     let non_crit_node = trace.add_node(
-        "non-crit hit average",
+        "non-crit hit average (all damage types)",
         non_crit_hit_avg,
         TraceOperation::Multiply,
     );
@@ -416,69 +483,7 @@ fn total_dps_traced(
     trace.add_edge(inc_damage.node_id, non_crit_node);
     trace.add_edge(more_damage.node_id, non_crit_node);
 
-    // --- crit average factor ---
-    let crit_chance_names = [ModName::from("CriticalStrikeChance")];
-    let crit_chance_base = db.sum_traced(
-        ModType::Base,
-        cfg,
-        &crit_chance_names,
-        trace,
-        "CriticalStrikeChance BASE sum",
-    );
-    let crit_chance_inc = db.sum(ModType::Inc, cfg, &crit_chance_names);
-    let crit_chance_more = db.more(cfg, &crit_chance_names);
-    let crit_chance = round(
-        (crit_chance_base.value * (1.0 + crit_chance_inc / 100.0) * crit_chance_more / 100.0)
-            .clamp(0.0, 1.0),
-    );
-
-    let crit_multiplier_names = [ModName::from("CriticalStrikeMultiplier")];
-    let crit_multiplier_base = db.sum_traced(
-        ModType::Base,
-        cfg,
-        &crit_multiplier_names,
-        trace,
-        "CriticalStrikeMultiplier BASE sum",
-    );
-    let crit_multiplier = round((150.0 + crit_multiplier_base.value) / 100.0);
-    let crit_average_factor = 1.0 + crit_chance * (crit_multiplier - 1.0);
-    let crit_node = trace.add_node(
-        "crit average factor",
-        crit_average_factor,
-        TraceOperation::Chance,
-    );
-    trace.add_edge(crit_chance_base.node_id, crit_node);
-    trace.add_edge(crit_multiplier_base.node_id, crit_node);
-
-    let total_hit_avg = round(non_crit_hit_avg * crit_average_factor);
-    let total_hit_node =
-        trace.add_node("total hit average", total_hit_avg, TraceOperation::Multiply);
-    trace.add_edge(non_crit_node, total_hit_node);
-    trace.add_edge(crit_node, total_hit_node);
-
-    // --- action rate ---
-    let speed_names = [ModName::from("AttackSpeed"), ModName::from("ActionSpeed")];
-    let base_rate_node = trace.add_source_node(
-        "base action rate",
-        input.base_action_rate,
-        SourceId::new(SourceKind::CharacterBase, "base.ActionRate"),
-    );
-    let inc_speed = db.sum_traced(
-        ModType::Inc,
-        cfg,
-        &speed_names,
-        trace,
-        "Speed INC modifier sum",
-    );
-    let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
-    let action_rate =
-        round(input.base_action_rate * (1.0 + inc_speed.value / 100.0) * more_speed.value);
-    let action_rate_node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
-    trace.add_edge(base_rate_node, action_rate_node);
-    trace.add_edge(inc_speed.node_id, action_rate_node);
-    trace.add_edge(more_speed.node_id, action_rate_node);
-
-    // --- accuracy & hit chance ---
+    // --- accuracy & hit chance（提前到暴击之前：mode_effective 暴击降级需命中率） ---
     let accuracy_names = [ModName::from("Accuracy")];
     let base_accuracy_node = trace.add_source_node(
         "base accuracy",
@@ -516,10 +521,58 @@ fn total_dps_traced(
         input.enemy_evasion,
         SourceId::new(SourceKind::EnemyConfig, "enemy.evasion"),
     );
-    let hit_chance_value = hit_chance(input.enemy_evasion, accuracy);
+    // PoE2 法术必中（同 calculate_minimal）
+    let hit_chance_value = if cfg.is_spell() {
+        1.0
+    } else {
+        hit_chance(input.enemy_evasion, accuracy)
+    };
     let hit_chance_node = trace.add_node("hit chance", hit_chance_value, TraceOperation::Chance);
     trace.add_edge(accuracy_node, hit_chance_node);
     trace.add_edge(enemy_evasion_node, hit_chance_node);
+
+    // --- crit average factor（resolve_crit_traced：与非 traced 路径同一实现，
+    //     BASE/INC/MORE + 敌方 SelfCrit* 全部接入 TraceGraph，gap crit-traced-inc-more-untraced）。
+    //     traced 路径无敌人 modDB（旧三参口径），传空 enemy + base_crit=0。
+    let enemy_db = ModDb::new();
+    let (crit, crit_node) = resolve_crit_traced(
+        db,
+        &enemy_db,
+        cfg,
+        hit_chance_value,
+        0.0,
+        cfg.mode_effective,
+        trace,
+    );
+    let crit_average_factor = crit.effect;
+
+    let total_hit_avg = round(non_crit_hit_avg * crit_average_factor);
+    let total_hit_node =
+        trace.add_node("total hit average", total_hit_avg, TraceOperation::Multiply);
+    trace.add_edge(non_crit_node, total_hit_node);
+    trace.add_edge(crit_node, total_hit_node);
+
+    // --- action rate ---
+    let speed_names = [ModName::from("AttackSpeed"), ModName::from("ActionSpeed")];
+    let base_rate_node = trace.add_source_node(
+        "base action rate",
+        input.base_action_rate,
+        SourceId::new(SourceKind::CharacterBase, "base.ActionRate"),
+    );
+    let inc_speed = db.sum_traced(
+        ModType::Inc,
+        cfg,
+        &speed_names,
+        trace,
+        "Speed INC modifier sum",
+    );
+    let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
+    let action_rate =
+        round(input.base_action_rate * (1.0 + inc_speed.value / 100.0) * more_speed.value);
+    let action_rate_node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
+    trace.add_edge(base_rate_node, action_rate_node);
+    trace.add_edge(inc_speed.node_id, action_rate_node);
+    trace.add_edge(more_speed.node_id, action_rate_node);
 
     // --- TotalDPS final ---
     let dps = round(total_hit_avg * action_rate * hit_chance_value);
@@ -534,9 +587,80 @@ fn total_dps_traced(
     }
 }
 
+/// 敌人侧对某伤害类型的**受到伤害**总乘子（有效口径）：
+///
+/// `mult = (1 + Σ DamageTaken_inc/100) × Π DamageTaken_more × (1 - resist_frac) × (1 - phys_reduction)`
+///
+/// 组成（均读 `enemy_db`，TraceGraph 归因 `EnemyConfig`，doc12 §4.2）：
+/// - **受伤链**：`DamageTaken` 通用 + `<Type>DamageTaken` 分类型（感电/Intimidate/凋萎/Uber 等）。
+///   通过把 `cfg.damage_type` 设为该类型，使带 `DamageType` tag 的 `DamageTaken` modifier 命中。
+/// - **抗性减伤**：元素/混沌按 `<Type>Resist BASE`（含曝光/降抗诅咒/Boss 加成）求和，
+///   clamp 到 `[RESIST_FLOOR, ENEMY_MAX_RESIST]`，减伤 = `(1 - resist/100)`。物理无抗性。
+/// - **护甲减伤**：物理按敌人 `Armour`（+ `PhysicalDamageReduction BASE`）对该分量 raw_hit
+///   求 `armour/(armour + 10*raw_hit)`，与 PDR 取并集后 clamp 到 `ENEMY_PHYS_DMGRED_CAP`。
+///
+/// `raw_hit` 用该分量的（未减伤）平均击中近似（PoB2 用每次击中量；面板近似足够），
+/// 仅物理护甲减伤需要它。
+fn enemy_damage_multiplier(
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    raw_hit: f64,
+) -> f64 {
+    let type_prefix = match damage_type {
+        DamageType::Physical => "Physical",
+        DamageType::Fire => "Fire",
+        DamageType::Cold => "Cold",
+        DamageType::Lightning => "Lightning",
+        DamageType::Chaos => "Chaos",
+    };
+    let type_cfg = cfg.clone().with_damage_type(damage_type);
+
+    // --- 受伤链：通用 + 分类型 DamageTaken（INC + MORE） ---
+    let taken_names = [
+        ModName::from("DamageTaken"),
+        ModName::from(format!("{type_prefix}DamageTaken")),
+    ];
+    let taken_inc = enemy_db.sum(ModType::Inc, &type_cfg, &taken_names);
+    let taken_more = enemy_db.more(&type_cfg, &taken_names);
+    let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
+
+    // --- 抗性减伤（元素/混沌）/ 护甲减伤（物理） ---
+    let mitigation = if damage_type == DamageType::Physical {
+        enemy_physical_multiplier(enemy_db, &type_cfg, raw_hit)
+    } else {
+        let resist = enemy_db
+            .sum(
+                ModType::Base,
+                &type_cfg,
+                &[ModName::from(format!("{type_prefix}Resist"))],
+            )
+            .clamp(RESIST_FLOOR, ENEMY_MAX_RESIST);
+        1.0 - resist / 100.0
+    };
+
+    taken_mult * mitigation
+}
+
+/// 物理护甲减伤分量（对某 raw_hit）：敌人 `Armour` + `PhysicalDamageReduction BASE`，
+/// 并集后 clamp 到 `ENEMY_PHYS_DMGRED_CAP`。返回 `(1 - reduction_frac)` 乘子。
+fn enemy_physical_multiplier(enemy_db: &ModDb, cfg: &CalcConfig, raw_hit: f64) -> f64 {
+    let armour = enemy_db.sum(ModType::Base, cfg, &[ModName::from("Armour")]);
+    let from_armour = super::armour_reduction(armour, raw_hit) * 100.0;
+    let flat_pdr = enemy_db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("PhysicalDamageReduction")],
+    );
+    // 护甲减伤与固定 PDR 取并集（PoB2: 1-(1-a)(1-b)），再 clamp 到上限。
+    let combined = (1.0 - (1.0 - from_armour / 100.0) * (1.0 - flat_pdr / 100.0)) * 100.0;
+    let reduction = combined.clamp(0.0, ENEMY_PHYS_DMGRED_CAP);
+    1.0 - reduction / 100.0
+}
+
 /// Records a MORE aggregation (`Π(1 + v/100)`) as a single trace node fed by one
 /// source node per contributing modifier, mirroring [`ModDb::more`].
-fn more_factor_traced(
+pub(crate) fn more_factor_traced(
     db: &ModDb,
     cfg: &CalcConfig,
     names: &[ModName],

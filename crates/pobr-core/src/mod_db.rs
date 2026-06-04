@@ -69,6 +69,24 @@ impl ModDb {
             .sum()
     }
 
+    /// 取某组 modifier 中**生效值最大的一份**（曝光 `ExposureMin`/取最强语义）。
+    ///
+    /// PoB2 `CalcPerform.lua` 对曝光的聚合是逐来源结算后 `magnitude = max(magnitude, value)`
+    /// （**取最强单一来源**而非求和）。本方法只考虑 `matches(cfg)` 通过的 modifier，
+    /// 空集合返回 `0.0`。
+    ///
+    /// 出处：agent-docs/debuffs.md §曝光；
+    ///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2（exposure 取最强）。
+    pub fn max_of(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+        names
+            .iter()
+            .filter_map(|name| self.mods.get(name))
+            .flat_map(|mods| mods.iter())
+            .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(cfg))
+            .filter_map(|modifier| modifier.effective_number(cfg))
+            .fold(0.0_f64, f64::max)
+    }
+
     pub fn contributions(
         &self,
         mod_type: ModType,
@@ -203,6 +221,26 @@ impl ModDb {
                 modifier.mod_type == ModType::Flag
                     && modifier.matches(cfg)
                     && modifier.value.as_bool().unwrap_or(false)
+            })
+    }
+
+    /// 返回**第一条**命中该 flag 的 modifier 的归因 `SourceId`（无 origin 或未命中返回 `None`）。
+    /// 供归因路径把旗标行为回溯到来源（如某天赋/宝石赋予 `CritChanceLucky`）。
+    pub fn flag_origin(&self, cfg: &CalcConfig, name: ModName) -> Option<SourceId> {
+        self.mods
+            .get(&name)
+            .into_iter()
+            .flat_map(|mods| mods.iter())
+            .find(|modifier| {
+                modifier.mod_type == ModType::Flag
+                    && modifier.matches(cfg)
+                    && modifier.value.as_bool().unwrap_or(false)
+            })
+            .and_then(|modifier| {
+                modifier
+                    .origin
+                    .as_ref()
+                    .map(|origin| origin.source_id.clone())
             })
     }
 

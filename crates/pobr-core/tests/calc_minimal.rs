@@ -78,6 +78,12 @@ fn minimal_calculation_respects_damage_context() {
     assert_eq!(output.dps, 20.0);
 }
 
+/// PoE2 暴击期望值测试（PoE2 爆伤基础 +100%，非 PoE1 的 +50%）。
+///
+/// PoE2 公式（agent-docs/critical-hits.md §爆伤、CalcOffence.lua）：
+///   crit_mult = 1 + max(0, (PLAYER_BASE_CRIT_DAMAGE_BONUS=100 + base_mod=50) / 100) = 2.5
+///   crit_avg_factor = 1 + 0.1 * (2.5 - 1.0) = 1.15
+///   total_hit_avg = 100 * 1.15 = 115
 #[test]
 fn minimal_calculation_includes_crit_average() {
     let mut db = ModDb::new();
@@ -86,6 +92,7 @@ fn minimal_calculation_includes_crit_average() {
         ModType::Base,
         10.0,
     ));
+    // +50 CritMultiplier BASE（来自武器/宝石等词条）
     db.add_mod(Modifier::number(
         "CriticalStrikeMultiplier",
         ModType::Base,
@@ -108,9 +115,11 @@ fn minimal_calculation_includes_crit_average() {
     let output = calculate_minimal(&db, &CalcConfig::attack(), &input);
 
     assert_eq!(output.crit_chance, 0.1);
-    assert_eq!(output.crit_multiplier, 2.0);
-    assert_eq!(output.total_hit_avg, 110.0);
-    assert_eq!(output.dps, 110.0);
+    // PoE2：base_bonus=100+50=150 → crit_mult = 1 + 150/100 = 2.5
+    assert_eq!(output.crit_multiplier, 2.5);
+    // crit_avg_factor = 1 + 0.1*(2.5-1.0) = 1.15
+    assert_eq!(output.total_hit_avg, 115.0);
+    assert_eq!(output.dps, 115.0);
 }
 
 #[test]
@@ -285,4 +294,115 @@ fn traced_minimal_calculation_links_total_dps_to_damage_speed_and_accuracy_sourc
             .iter()
             .any(|source| source.kind == SourceKind::EnemyConfig && source.id == "enemy.evasion")
     );
+}
+
+/// Bug#2 测试：爆伤 Inc 区生效。
+///
+/// 出处：agent-docs/critical-hits.md §爆伤、CalcOffence.lua
+///   `extraDamage = Sum("BASE","CritMultiplier")/100 * (1+inc/100) * more`
+#[test]
+fn crit_multiplier_scales_with_inc() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "CriticalStrikeChance",
+        ModType::Base,
+        100.0,
+    ));
+    // INC 100 → base_bonus * (1+1.0) = 2× base_bonus（base_bonus = 100/100 = 1.0）
+    db.add_mod(Modifier::number(
+        "CriticalStrikeMultiplier",
+        ModType::Inc,
+        100.0,
+    ));
+
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &input);
+
+    // base_bonus = (100+0)/100=1.0; *(1+100/100)=2.0 → crit_mult=1+2.0=3.0
+    assert_eq!(output.crit_multiplier, 3.0);
+    assert_eq!(output.total_hit_avg, 300.0);
+}
+
+#[test]
+fn crit_multiplier_scales_with_more() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "CriticalStrikeChance",
+        ModType::Base,
+        100.0,
+    ));
+    // MORE 50 → factor 1.5; bonus=1.0*1.5=1.5 → crit_mult=2.5
+    db.add_mod(Modifier::number(
+        "CriticalStrikeMultiplier",
+        ModType::More,
+        50.0,
+    ));
+
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &input);
+
+    assert_eq!(output.crit_multiplier, 2.5);
+}
+
+/// Bug#4 测试：法术必中（不进精准管线，hit_chance = 1.0）。
+///
+/// 出处：agent-docs/accuracy-and-enemy.md §三
+///   `if not isAttack then output.AccuracyHitChance = 100`。
+#[test]
+fn spell_always_hits_regardless_of_evasion() {
+    let db = ModDb::new();
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        base_accuracy: 1.0,
+        enemy_evasion: 999_999.0,
+        ..MinimalInput::default()
+    };
+    let spell_output = calculate_minimal(&db, &CalcConfig::spell(), &input);
+    assert_eq!(spell_output.hit_chance, 1.0);
+    assert_eq!(spell_output.dps, 100.0);
+
+    let attack_output = calculate_minimal(&db, &CalcConfig::attack(), &input);
+    assert!(attack_output.hit_chance < 1.0);
+}
+
+/// Bug#5 测试：traced DPS 与非 traced DPS 数值一致。
+#[test]
+fn traced_dps_matches_non_traced_dps() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("PhysicalDamage", ModType::Inc, 50.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(
+        Modifier::number("PhysicalDamage", ModType::More, 20.0).with_flags(ModFlags::ATTACK),
+    );
+    db.add_mod(Modifier::number(
+        "CriticalStrikeChance",
+        ModType::Base,
+        10.0,
+    ));
+    db.add_mod(Modifier::number("AttackSpeed", ModType::Inc, 10.0).with_flags(ModFlags::ATTACK));
+
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 200.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let cfg = CalcConfig::attack();
+    let plain = calculate_minimal(&db, &cfg, &input);
+    let traced = calculate_minimal_traced(&db, &cfg, &input);
+
+    assert_eq!(traced.output.dps, plain.dps);
+    assert_eq!(traced.output.total_hit_avg, plain.total_hit_avg);
+    assert_eq!(traced.output.crit_multiplier, plain.crit_multiplier);
 }

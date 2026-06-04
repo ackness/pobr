@@ -7,6 +7,7 @@
 //! 注：异常精确系数（shock 映射、corrupted blood per-stack）依赖 PoB-PoE2 数据，
 //! 标注为 `blocked_by_missing_data`，此处实现机制骨架 + agent-docs 默认值。
 
+use pobr_data::constants::SHOCK_MIN_EFFECT;
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
@@ -134,16 +135,23 @@ pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) ->
     }
 }
 
-/// 感电增伤幅度：`0.5 * (hit/threshold)^0.4`，clamp 到 [5%, 50%]。
+/// 感电增伤幅度：`0.5 * (hit/threshold)^0.4`，clamp 到 [20%, 100%]。
 ///
-/// 近似公式（PoB 风格），精确映射待对照 PoB-PoE2 `CalcOffence.lua`。
+/// **Bug#9 修正（shock-min-clamp-bug）**：
+/// PoE2 0.5.0 `BaseShockMagnitude = 20`，感电最小有效值为 **20%**（非 PoE1 的 5%）。
+/// 最大值为 100%（`ShockMaxEffect = 100`，远超通常可达的 50%）。
+/// 出处：agent-docs/ailments.md §感电、PoB2 `nonDamagingAilmentsConfig.Shock`：
+///   `Shock.effect = 50 * (damage/enemyThreshold)^0.4 * effectMod, clamp [min=20, max=100]`
 pub fn shock_effect(pre_mitigation_lightning_hit: f64, target_ailment_threshold: f64) -> f64 {
     if pre_mitigation_lightning_hit <= 0.0 || target_ailment_threshold <= 0.0 {
         return 0.0;
     }
     let ratio = pre_mitigation_lightning_hit / target_ailment_threshold;
-    let effect = 0.5 * ratio.powf(0.4);
-    round(effect.clamp(0.05, 0.50))
+    // 50 * ratio^0.4 → 以百分点计；SHOCK_MIN_EFFECT 以整数（20）存储，转为小数比例
+    let effect_pct = 50.0 * ratio.powf(0.4);
+    let min_pct = SHOCK_MIN_EFFECT; // 20.0 (percent)
+    let max_pct = 100.0;
+    round(effect_pct.clamp(min_pct, max_pct) / 100.0)
 }
 
 /// 腐化之血 debuff（物理 DoT，最多 10 层，不属于 bleeding）。

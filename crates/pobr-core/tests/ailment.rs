@@ -38,13 +38,24 @@ fn poison_magnitude_scales_with_ailment_damage_modifiers() {
     assert_eq!(instance.ailment, AilmentType::Poison);
 }
 
+/// PoE2 0.5.0 感电效果范围测试。
+///
+/// **Bug#9 修正**：感电最小值 20%（非 PoE1 的 5%），最大值 100%（非 PoE1 的 50%）。
+/// 出处：agent-docs/ailments.md §感电 `BaseShockMagnitude=20, max=100`；
+///       PoB2 `nonDamagingAilmentsConfig.Shock, clamp [20, 100]`。
 #[test]
-fn shock_effect_is_clamped_between_5_and_50_percent() {
+fn shock_effect_is_clamped_between_20_and_100_percent_poe2() {
+    // 无击中 → 返回 0（不施加感电）
     assert_eq!(shock_effect(0.0, 1000.0), 0.0);
+    // 极大击中 → 感电上限 100%（= 1.0 fraction）
     let huge = shock_effect(1_000_000.0, 100.0);
-    assert!(huge <= 0.50);
+    assert_eq!(huge, 1.0);
+    // 极小击中（相对阈值）→ 感电下限 20%（= 0.20 fraction）
     let tiny = shock_effect(1.0, 1_000_000.0);
-    assert!(tiny >= 0.05);
+    assert_eq!(tiny, 0.20);
+    // 满阈值击中（ratio=1）→ 50% 感电（0.5 * 1.0^0.4 = 0.5，fraction 0.50）
+    let at_threshold = shock_effect(1000.0, 1000.0);
+    assert_eq!(at_threshold, 0.50);
 }
 
 #[test]

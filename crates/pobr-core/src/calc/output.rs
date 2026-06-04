@@ -18,6 +18,8 @@ pub struct OutputTable {
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
     pub crit_chance: f64,
+    /// 命中降级 / 幸运 / 分岔 / 必然之前、cap 之后的暴击几率（fraction）。供 breakdown 显示溢出。
+    pub pre_effective_crit_chance: f64,
     pub crit_multiplier: f64,
     /// 按伤害类型拆分的非暴击击中分量；求和即非暴击总击中伤害。
     pub damage_components: Vec<DamageComponent>,
@@ -75,6 +77,7 @@ impl From<&MinimalOutput> for OutputTable {
             cold_resistance_over_cap: value.cold_resistance_over_cap,
             lightning_resistance_over_cap: value.lightning_resistance_over_cap,
             crit_chance: value.crit_chance,
+            pre_effective_crit_chance: value.pre_effective_crit_chance,
             crit_multiplier: value.crit_multiplier,
             damage_components: value.damage_components.clone(),
             total_hit_avg: value.total_hit_avg,

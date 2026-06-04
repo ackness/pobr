@@ -34,11 +34,15 @@ impl DamageComponent {
 }
 
 /// 计算顺序固定的全部伤害类型，保证分量向量确定性排序。
-pub(crate) const DAMAGE_TYPES: [DamageType; 5] = [
+///
+/// **Bug#7 修正（damage-conversion-chain-order-wrong）**：
+/// 须与 PoB2 转换链顺序一致：`Physical → Lightning → Cold → Fire → Chaos`
+/// （PoB2 `CalcOffence.lua` `dmgTypeList`；damage-scaling.md §转换顺序与链式）。
+pub const DAMAGE_TYPES: [DamageType; 5] = [
     DamageType::Physical,
-    DamageType::Fire,
-    DamageType::Cold,
     DamageType::Lightning,
+    DamageType::Cold,
+    DamageType::Fire,
     DamageType::Chaos,
 ];
 
@@ -55,8 +59,15 @@ fn type_prefix(damage_type: DamageType) -> &'static str {
 
 /// 单个伤害类型的非暴击击中分量基础值（flat），不含 inc/more。
 ///
-/// - 物理：基础来自武器击中 `base_hit_min/max`，再加 `PhysicalDamageMin/Max` Base 附加。
-/// - 其余类型：来自 `<Type>DamageMin/Max` Base 附加（flat added damage）。
+/// - 物理：基础来自武器击中 `base_hit_min/max`（技能/武器自带，不受 AddedDamage MORE 影响），
+///   再加 `PhysicalDamageMin/Max` Base 附加（受 AddedDamage MORE 效率影响）。
+/// - 其余类型：来自 `<Type>DamageMin/Max` Base 附加（flat added damage，受 AddedDamage MORE 效率影响）。
+///
+/// **Bug#8 修正（added-damage-effectiveness-missing）**：
+/// 附加伤害效率（`AddedDamage` MORE modifier）只乘外部 flat added，不乘技能/武器自带 base。
+/// 出处：damage-scaling.md §Added Damage Effectiveness；
+///       PoB2 CalcOffence.lua `addedMult = calcLib.mod(..., "Added<Type>Damage", "AddedDamage")`
+///       仅乘 `addedMin * addedMult`，不乘 `source[...]`（武器/技能自带伤害）。
 ///
 /// TODO(damage-conversion): 目前未实现伤害转换 / gain-as-extra。附加分类型 flat 依赖
 /// parser 产出 `<Type>DamageMin/Max` Base modifier；parser 尚未支持时这些桶为空，
@@ -73,16 +84,33 @@ fn base_flat(
     let max_name = ModName::from(format!("{prefix}DamageMax"));
     let added_min = db.sum(ModType::Base, cfg, &[min_name]);
     let added_max = db.sum(ModType::Base, cfg, &[max_name]);
+
+    // 附加伤害效率（AddedDamage MORE）：仅作用于外部 flat added，不乘技能/武器自带 base。
+    // `Added<Type>Damage` 可覆盖通用 `AddedDamage` 效率（分类型版本优先级更高；当前取乘积）。
+    let type_eff_name = ModName::from(format!("Added{prefix}Damage"));
+    let eff = db.more(cfg, &[ModName::from("AddedDamage")]) * db.more(cfg, &[type_eff_name]);
+
     match damage_type {
-        DamageType::Physical => (base_hit_min + added_min, base_hit_max + added_max),
-        _ => (added_min, added_max),
+        DamageType::Physical => {
+            // 武器/技能自带 base 不受效率影响；flat added 受效率影响
+            (
+                base_hit_min + added_min * eff,
+                base_hit_max + added_max * eff,
+            )
+        }
+        _ => (added_min * eff, added_max * eff),
     }
 }
 
 /// 计算全部伤害类型的击中分量向量。
 ///
-/// 每个分量：`base × (1 + (Σ type_inc + Σ generic_inc)/100) × Π(type_more) × Π(generic_more)`，
+/// 每个分量：`base × (1 + (Σ type_inc + Σ elemental_inc + Σ generic_inc)/100) × Π(type_more) × Π(elemental_more) × Π(generic_more)`，
 /// 其中 type-scoped 聚合通过把 `cfg.damage_type` 设为对应类型来匹配带 `DamageType` tag 的 modifier。
+///
+/// **Bug#6 修正（missing-elemental-damage-modname-group）**：
+/// 火/冰/电分量的 inc/more 必须包含 `ElementalDamage` 共享组
+/// （`increased Elemental Damage` 对三者均生效）。
+/// 出处：damage-scaling.md §核心叠加语义、CalcOffence.lua `typeFlags` + `modNames` 展开逻辑。
 ///
 /// 仅当分量 base（min 或 max）非零时纳入向量；物理分量始终纳入（武器击中基线），
 /// 以保证纯物理路径与旧实现完全一致。
@@ -93,6 +121,7 @@ pub(crate) fn calculate_components(
     base_hit_max: f64,
 ) -> Vec<DamageComponent> {
     let generic_names = [ModName::from("AttackDamage"), ModName::from("Damage")];
+    let elemental_name = ModName::from("ElementalDamage");
 
     DAMAGE_TYPES
         .iter()
@@ -110,9 +139,23 @@ pub(crate) fn calculate_components(
 
             let type_damage_name = ModName::from(format!("{prefix}Damage"));
             let inc_names = [type_damage_name.clone()];
-            let inc = db.sum(ModType::Inc, &type_cfg, &inc_names)
-                + db.sum(ModType::Inc, &type_cfg, &generic_names);
-            let more = db.more(&type_cfg, &inc_names) * db.more(&type_cfg, &generic_names);
+
+            // 元素伤害（火/冰/电）需要额外包含 ElementalDamage 共享桶
+            let (inc, more) = if damage_type.is_elemental() {
+                let elemental_names = [elemental_name.clone()];
+                let inc = db.sum(ModType::Inc, &type_cfg, &inc_names)
+                    + db.sum(ModType::Inc, &type_cfg, &elemental_names)
+                    + db.sum(ModType::Inc, &type_cfg, &generic_names);
+                let more = db.more(&type_cfg, &inc_names)
+                    * db.more(&type_cfg, &elemental_names)
+                    * db.more(&type_cfg, &generic_names);
+                (inc, more)
+            } else {
+                let inc = db.sum(ModType::Inc, &type_cfg, &inc_names)
+                    + db.sum(ModType::Inc, &type_cfg, &generic_names);
+                let more = db.more(&type_cfg, &inc_names) * db.more(&type_cfg, &generic_names);
+                (inc, more)
+            };
             let scale = (1.0 + inc / 100.0) * more;
 
             Some(DamageComponent::new(

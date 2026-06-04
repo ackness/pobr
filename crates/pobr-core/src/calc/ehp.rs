@@ -73,6 +73,15 @@ fn chaos_pool(life: f64, es: f64) -> f64 {
     life + es * 0.5
 }
 
+/// Chaos Inoculation (CI) keystone 选项。
+/// 出处：agent-docs/active-defences.md §五 Keystone 表；
+///       PoB2 CalcDefence.lua：CI → maxLife=1，ES 作为生命池，混沌伤害免疫（chaos_resist = 100%）。
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct EhpOptions {
+    /// Chaos Inoculation：最大生命变 1，ES 作生命池（`es` 用于所有伤害池），混沌伤害免疫。
+    pub chaos_inoculation: bool,
+}
+
 /// 计算 EHP 与各类型 max hit。`reference_hit` 为物理护甲减伤的 incoming hit 估计基准。
 pub fn calc_ehp(
     life: f64,
@@ -82,7 +91,40 @@ pub fn calc_ehp(
     armour: f64,
     reference_hit: f64,
 ) -> EhpResult {
-    let ele_pool = elemental_pool(life, es);
+    calc_ehp_with_opts(
+        life,
+        es,
+        mana,
+        resistances,
+        armour,
+        reference_hit,
+        EhpOptions::default(),
+    )
+}
+
+/// `calc_ehp` 的完整版本，支持 Chaos Inoculation 等 keystone 选项。
+///
+/// **Bug#10 修正（ehp-chaos-inoculation-wrong）**：
+/// CI build 中 ES 成为生命池（`life_pool = es`），混沌伤害免疫（`chaos_max_hit = ∞`）。
+/// 出处：agent-docs/active-defences.md §五 Keystone：
+///   `Chaos Inoculation: 最大生命变 1；免疫混沌伤害与流血`。
+pub fn calc_ehp_with_opts(
+    life: f64,
+    es: f64,
+    mana: f64,
+    resistances: &ResistanceSuite,
+    armour: f64,
+    reference_hit: f64,
+    opts: EhpOptions,
+) -> EhpResult {
+    let (effective_life, effective_es) = if opts.chaos_inoculation {
+        // CI：life = 1（已在 actor 层处理），ES 用作所有伤害池
+        // 这里把 es 放入 effective_life 以复用 elemental_pool/chaos_pool 函数
+        (es, 0.0)
+    } else {
+        (life, es)
+    };
+    let ele_pool = elemental_pool(effective_life, effective_es);
     let ref_hit = if reference_hit > 0.0 {
         reference_hit
     } else {
@@ -93,7 +135,12 @@ pub fn calc_ehp(
     let fire_max_hit = max_hit_for_type(ele_pool, resistances.fire);
     let cold_max_hit = max_hit_for_type(ele_pool, resistances.cold);
     let lightning_max_hit = max_hit_for_type(ele_pool, resistances.lightning);
-    let chaos_max_hit = max_hit_for_type(chaos_pool(life, es), resistances.chaos);
+    // CI：混沌伤害免疫 → 无限大 max hit
+    let chaos_max_hit = if opts.chaos_inoculation {
+        f64::INFINITY
+    } else {
+        max_hit_for_type(chaos_pool(effective_life, effective_es), resistances.chaos)
+    };
 
     let total_ehp = [
         physical_max_hit,
