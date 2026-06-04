@@ -23,7 +23,8 @@ pub use ailment::{
 pub use breakdown::{BreakdownStep, BreakdownTable};
 pub use crit::{CritOutcome, resolve_crit, resolve_crit_traced};
 pub use damage::{
-    DAMAGE_TYPES, DamageComponent, convert_damage, gain_as_extra, normalize_conversion, sum_avg,
+    ConversionRules, DAMAGE_TYPES, DamageComponent, convert_damage, gain_as_extra,
+    normalize_conversion, sum_avg,
 };
 pub use defence::{DefenceOutput, armour_reduction, calc_defence, hit_chance, monster_hit_chance};
 pub use ehp::{

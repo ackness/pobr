@@ -214,13 +214,14 @@ pub fn calculate_minimal_vs_enemy(
     let damage_components = calculate_components(db, cfg, input.base_hit_min, input.base_hit_max);
     // 玩家侧（未减伤）非暴击平均击中，供 breakdown / ailment magnitude 源（保持原口径）。
     let non_crit_hit_avg: f64 = damage_components.iter().map(DamageComponent::avg).sum();
-    // 有效口径下，分伤害类型乘敌人受伤链 + 抗性/护甲减伤后的平均击中（用于 DPS）。
+    // 有效口径下，分伤害类型乘敌人受伤链 + 抗性/护甲减伤（含玩家穿透/Overwhelm）后的平均
+    // 击中（用于 DPS）。穿透/Overwhelm 读 **玩家** db（`db`），敌人抗性/护甲读 `enemy_db`。
     let non_crit_hit_avg_mitigated = if cfg.mode_effective {
         damage_components
             .iter()
             .map(|component| {
                 let avg = component.avg();
-                avg * enemy_damage_multiplier(enemy_db, cfg, component.damage_type, avg)
+                avg * enemy_damage_multiplier(db, enemy_db, cfg, component.damage_type, avg)
             })
             .sum()
     } else {
@@ -589,19 +590,23 @@ fn total_dps_traced(
 
 /// 敌人侧对某伤害类型的**受到伤害**总乘子（有效口径）：
 ///
-/// `mult = (1 + Σ DamageTaken_inc/100) × Π DamageTaken_more × (1 - resist_frac) × (1 - phys_reduction)`
+/// `mult = (1 + Σ DamageTaken_inc/100) × Π DamageTaken_more × (1 - effective_resist_frac)`
 ///
-/// 组成（均读 `enemy_db`，TraceGraph 归因 `EnemyConfig`，doc12 §4.2）：
+/// 组成（受伤链 / 抗性 / 护甲读 `enemy_db` 归因 `EnemyConfig`；穿透 / Overwhelm 读
+/// **玩家** `player_db` 归因玩家来源，doc12 §4.2、damage-scaling.md §Overwhelm/Penetration）：
 /// - **受伤链**：`DamageTaken` 通用 + `<Type>DamageTaken` 分类型（感电/Intimidate/凋萎/Uber 等）。
 ///   通过把 `cfg.damage_type` 设为该类型，使带 `DamageType` tag 的 `DamageTaken` modifier 命中。
-/// - **抗性减伤**：元素/混沌按 `<Type>Resist BASE`（含曝光/降抗诅咒/Boss 加成）求和，
-///   clamp 到 `[RESIST_FLOOR, ENEMY_MAX_RESIST]`，减伤 = `(1 - resist/100)`。物理无抗性。
-/// - **护甲减伤**：物理按敌人 `Armour`（+ `PhysicalDamageReduction BASE`）对该分量 raw_hit
-///   求 `armour/(armour + 10*raw_hit)`，与 PDR 取并集后 clamp 到 `ENEMY_PHYS_DMGRED_CAP`。
+/// - **抗性减伤（元素/混沌）**：`<Type>Resist BASE`（含曝光/降抗诅咒/Boss 加成）求和，
+///   clamp 到 `[RESIST_FLOOR, ENEMY_MAX_RESIST]`；再扣**玩家穿透**：
+///   `effective_resist = if resist > 0 { max(resist - pen, 0) } else { resist }`
+///   （PoB2 `m_max(resist - pen, minPen)`，minPen=0：穿透不破 0、负抗不被穿透）。
+///   减伤 = `(1 - effective_resist/100)`。物理无抗性穿透。
+/// - **护甲减伤 / Overwhelm（物理）**：见 [`enemy_physical_multiplier`]。
 ///
 /// `raw_hit` 用该分量的（未减伤）平均击中近似（PoB2 用每次击中量；面板近似足够），
 /// 仅物理护甲减伤需要它。
 fn enemy_damage_multiplier(
+    player_db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
     damage_type: DamageType,
@@ -625,9 +630,9 @@ fn enemy_damage_multiplier(
     let taken_more = enemy_db.more(&type_cfg, &taken_names);
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 
-    // --- 抗性减伤（元素/混沌）/ 护甲减伤（物理） ---
+    // --- 抗性减伤（元素/混沌，含玩家穿透）/ 护甲减伤 + Overwhelm（物理） ---
     let mitigation = if damage_type == DamageType::Physical {
-        enemy_physical_multiplier(enemy_db, &type_cfg, raw_hit)
+        enemy_physical_multiplier(player_db, enemy_db, &type_cfg, raw_hit)
     } else {
         let resist = enemy_db
             .sum(
@@ -636,15 +641,72 @@ fn enemy_damage_multiplier(
                 &[ModName::from(format!("{type_prefix}Resist"))],
             )
             .clamp(RESIST_FLOOR, ENEMY_MAX_RESIST);
-        1.0 - resist / 100.0
+        let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
+        1.0 - effective_resist / 100.0
     };
 
     taken_mult * mitigation
 }
 
-/// 物理护甲减伤分量（对某 raw_hit）：敌人 `Armour` + `PhysicalDamageReduction BASE`，
-/// 并集后 clamp 到 `ENEMY_PHYS_DMGRED_CAP`。返回 `(1 - reduction_frac)` 乘子。
-fn enemy_physical_multiplier(enemy_db: &ModDb, cfg: &CalcConfig, raw_hit: f64) -> f64 {
+/// 玩家穿透对**已 clamp 的**敌人抗性的下调（仅元素/混沌、仅击中）。
+///
+/// 读玩家 db：元素 `<Type>Penetration` + 共享 `ElementalPenetration`；混沌 `ChaosPenetration`。
+/// 公式（PoB2 CalcOffence.lua，minPen=0）：
+/// `effective = if resist > 0 { max(resist - pen, 0) } else { resist }`
+/// —— 穿透只在抗性为正时生效、不能把抗性压到 0 以下；抗性已 ≤0（负抗）时穿透全浪费。
+///
+/// 出处：agent-docs/damage-scaling.md §Penetration（穿透不破 0、与负抗互斥、仅击中）；
+///       damage-defence-order.md §步骤 4；PoB2 `<Type>Penetration`/`ElementalPenetration`。
+fn apply_penetration(
+    player_db: &ModDb,
+    type_cfg: &CalcConfig,
+    damage_type: DamageType,
+    resist: f64,
+) -> f64 {
+    let pen = penetration_value(player_db, type_cfg, damage_type);
+    if resist > 0.0 {
+        (resist - pen).max(0.0)
+    } else {
+        resist
+    }
+}
+
+/// 玩家对某伤害类型的穿透值（%）。物理无穿透（物理走 Overwhelm/护甲破坏路径）。
+fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
+    let names: &[ModName] = &match damage_type {
+        DamageType::Physical => return 0.0,
+        DamageType::Fire => vec![
+            ModName::from("FirePenetration"),
+            ModName::from("ElementalPenetration"),
+        ],
+        DamageType::Cold => vec![
+            ModName::from("ColdPenetration"),
+            ModName::from("ElementalPenetration"),
+        ],
+        DamageType::Lightning => vec![
+            ModName::from("LightningPenetration"),
+            ModName::from("ElementalPenetration"),
+        ],
+        DamageType::Chaos => vec![ModName::from("ChaosPenetration")],
+    };
+    player_db.sum(ModType::Base, type_cfg, names)
+}
+
+/// 物理护甲减伤分量（对某 raw_hit），含玩家 **Overwhelm**：
+///
+/// 敌人 `Armour`（→ 护甲减伤）与敌人固定 `PhysicalDamageReduction BASE` 取并集
+/// （PoB2: `1-(1-a)(1-b)`），再**加上**玩家 `EnemyPhysicalDamageReduction BASE`
+/// （Overwhelm = 负值，下调敌人 PDR），最后 clamp 到 `[0, ENEMY_PHYS_DMGRED_CAP]`。
+/// 返回 `(1 - reduction_frac)` 乘子。
+///
+/// 出处：agent-docs/damage-scaling.md §Overwhelm（玩家 "Overwhelm N%" → `EnemyPhysicalDamageReduction
+///       BASE -N`，加进敌人 PDR 后 clamp，不破 0%）；PoB2 CalcOffence.lua physical resist 段。
+fn enemy_physical_multiplier(
+    player_db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    raw_hit: f64,
+) -> f64 {
     let armour = enemy_db.sum(ModType::Base, cfg, &[ModName::from("Armour")]);
     let from_armour = super::armour_reduction(armour, raw_hit) * 100.0;
     let flat_pdr = enemy_db.sum(
@@ -652,9 +714,15 @@ fn enemy_physical_multiplier(enemy_db: &ModDb, cfg: &CalcConfig, raw_hit: f64) -
         cfg,
         &[ModName::from("PhysicalDamageReduction")],
     );
-    // 护甲减伤与固定 PDR 取并集（PoB2: 1-(1-a)(1-b)），再 clamp 到上限。
+    // 护甲减伤与敌人固定 PDR 取并集（PoB2: 1-(1-a)(1-b)）。
     let combined = (1.0 - (1.0 - from_armour / 100.0) * (1.0 - flat_pdr / 100.0)) * 100.0;
-    let reduction = combined.clamp(0.0, ENEMY_PHYS_DMGRED_CAP);
+    // Overwhelm：玩家 EnemyPhysicalDamageReduction BASE（通常为负）直接加到敌人 PDR 上。
+    let overwhelm = player_db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("EnemyPhysicalDamageReduction")],
+    );
+    let reduction = (combined + overwhelm).clamp(0.0, ENEMY_PHYS_DMGRED_CAP);
     1.0 - reduction / 100.0
 }
 

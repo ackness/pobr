@@ -406,6 +406,329 @@ fn perform_uses_enemy_damage_taken_in_effective_mode() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// 9. 元素/混沌穿透（elemental-penetration-missing）：玩家穿透下调敌人有效抗性
+// ---------------------------------------------------------------------------
+
+/// 仅火伤分量的输入：base_hit 清零，玩家加 100 火 flat。
+fn fire_only_player_input() -> (ModDb, MinimalInput) {
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("FireDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("FireDamageMax", ModType::Base, 100.0));
+    let input = MinimalInput {
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        ..attack_input()
+    };
+    (player, input)
+}
+
+#[test]
+fn fire_penetration_raises_effective_dps_vs_high_resist_enemy() {
+    // 验收（gap elemental-penetration-missing）：FirePenetration 30 且敌火抗 75% →
+    // 等效火抗 45%，火伤分量 DPS 100*(1-0.45)=55（穿透前 100*0.25=25）。
+    let (mut player, input) = fire_only_player_input();
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 30.0));
+
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 75.0));
+
+    // 无穿透基线：等效火抗 75% → 100*0.25 = 25。
+    let baseline = {
+        let (player_no_pen, _) = fire_only_player_input();
+        calculate_minimal_vs_enemy(&player_no_pen, &enemy, &effective_attack(), &input).dps
+    };
+    let with_pen = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
+
+    assert!(
+        (baseline - 25.0).abs() < 1e-6,
+        "无穿透 75%抗 → 25, got {baseline}"
+    );
+    assert!(
+        (with_pen - 55.0).abs() < 1e-6,
+        "FirePen30 vs 75%抗 → 等效45% → 100*0.55 = 55, got {with_pen}"
+    );
+    assert!(with_pen > baseline, "穿透提升有效 DPS");
+}
+
+#[test]
+fn elemental_penetration_shared_applies_to_all_elements() {
+    // ElementalPenetration 共享组对火/冰/电同时生效。
+    let (mut player, input) = fire_only_player_input();
+    player.add_mod(Modifier::number(
+        "ElementalPenetration",
+        ModType::Base,
+        25.0,
+    ));
+
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
+    // 等效火抗 50-25 = 25% → 100*0.75 = 75。
+    assert!(
+        (dps - 75.0).abs() < 1e-6,
+        "ElementalPen25 vs 50%抗 → 等效25% → 75, got {dps}"
+    );
+}
+
+#[test]
+fn penetration_cannot_push_resist_below_zero() {
+    // 穿透不破 0：FirePen 100 vs 30% 抗 → 等效 0%（非 -70%），100*1.0 = 100。
+    let (mut player, input) = fire_only_player_input();
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 100.0));
+
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 30.0));
+
+    let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
+    assert!(
+        (dps - 100.0).abs() < 1e-6,
+        "穿透不破 0 → 等效 0% → 100, got {dps}"
+    );
+}
+
+#[test]
+fn penetration_wasted_against_negative_resist() {
+    // 负抗（如曝光后 -50%）时穿透全浪费：等效抗仍 -50%，100*1.5 = 150（不因穿透变化）。
+    let (mut player, input) = fire_only_player_input();
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 40.0));
+
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, -50.0));
+
+    let with_pen = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
+    let no_pen = {
+        let (player_no_pen, _) = fire_only_player_input();
+        calculate_minimal_vs_enemy(&player_no_pen, &enemy, &effective_attack(), &input).dps
+    };
+    assert!(
+        (with_pen - 150.0).abs() < 1e-6,
+        "负抗 -50% → 150, got {with_pen}"
+    );
+    assert!(
+        (with_pen - no_pen).abs() < 1e-6,
+        "负抗时穿透无效：有穿透 {with_pen} == 无穿透 {no_pen}"
+    );
+}
+
+#[test]
+fn chaos_penetration_uses_chaos_resist() {
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("ChaosDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("ChaosDamageMax", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("ChaosPenetration", ModType::Base, 20.0));
+    let input = MinimalInput {
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        ..attack_input()
+    };
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ChaosResist", ModType::Base, 60.0));
+
+    let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
+    // 等效混沌抗 60-20 = 40% → 100*0.6 = 60。
+    assert!(
+        (dps - 60.0).abs() < 1e-6,
+        "ChaosPen20 vs 60%抗 → 等效40% → 60, got {dps}"
+    );
+}
+
+#[test]
+fn penetration_does_not_affect_panel_dps() {
+    // 面板口径（mode_effective=false）不读穿透/抗性，逐字向后兼容。
+    let (mut player, input) = fire_only_player_input();
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 30.0));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 75.0));
+
+    let panel = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &input).dps;
+    assert!(
+        (panel - 100.0).abs() < 1e-6,
+        "面板：100 火伤不减抗不穿透, got {panel}"
+    );
+}
+
+#[test]
+fn penetration_only_affects_its_element() {
+    // FirePenetration 不影响冷伤分量。
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("ColdDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("ColdDamageMax", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 50.0));
+    let input = MinimalInput {
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        ..attack_input()
+    };
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ColdResist", ModType::Base, 40.0));
+
+    let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
+    // 冷抗 40% 不被 FirePenetration 穿透 → 100*0.6 = 60。
+    assert!(
+        (dps - 60.0).abs() < 1e-6,
+        "FirePen 不影响冷伤：40%冷抗 → 60, got {dps}"
+    );
+}
+
+#[test]
+fn penetration_attribution_player_and_enemy_resist_traceable() {
+    // 穿透归因玩家来源；敌人抗性归因 EnemyConfig（task：穿透=player来源, 抗性=EnemyConfig）。
+    let mut player = ModDb::new();
+    player.add_mod(
+        Modifier::number("FirePenetration", ModType::Base, 30.0).with_origin(ModifierSource::new(
+            SourceId::new(SourceKind::PassiveNode, "pen.node"),
+        )),
+    );
+    let mut enemy = ModDb::new();
+    enemy.add_mod(
+        Modifier::number("FireResist", ModType::Base, 75.0).with_origin(ModifierSource::new(
+            SourceId::new(SourceKind::EnemyConfig, "boss_fire_resist"),
+        )),
+    );
+
+    let cfg = effective_attack().with_damage_type(DamageType::Fire);
+    let pen_contribs =
+        player.contributions(ModType::Base, &cfg, &[ModName::from("FirePenetration")]);
+    assert_eq!(
+        pen_contribs[0].origin.as_ref().unwrap().source_id.kind,
+        SourceKind::PassiveNode,
+        "穿透归因玩家来源"
+    );
+    let resist_contribs = enemy.contributions(ModType::Base, &cfg, &[ModName::from("FireResist")]);
+    assert_eq!(
+        resist_contribs[0].origin.as_ref().unwrap().source_id.kind,
+        SourceKind::EnemyConfig,
+        "敌人抗性归因 EnemyConfig"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 10. Overwhelm（overwhelm-not-wired）：玩家 EnemyPhysicalDamageReduction 负值降敌人 PDR
+// ---------------------------------------------------------------------------
+
+#[test]
+fn overwhelm_reduces_enemy_pdr_and_raises_physical_dps() {
+    // 验收（gap overwhelm-not-wired）：敌人 PDR 20%（PhysicalDamageReduction Base=20），
+    // 玩家 Overwhelm 20（EnemyPhysicalDamageReduction Base=-20）→ 净 PDR 0% → 物理 DPS 满。
+    let mut player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        20.0,
+    ));
+
+    // 基线（无 Overwhelm）：PDR 20% → 150*0.8 = 120。
+    let baseline =
+        calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (baseline.dps - 120.0).abs() < 1e-6,
+        "敌人 PDR20% → 150*0.8 = 120, got {}",
+        baseline.dps
+    );
+
+    player.add_mod(Modifier::number(
+        "EnemyPhysicalDamageReduction",
+        ModType::Base,
+        -20.0,
+    ));
+    let with_overwhelm =
+        calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (with_overwhelm.dps - 150.0).abs() < 1e-6,
+        "Overwhelm20 抵消 PDR20% → 净 0% → 150, got {}",
+        with_overwhelm.dps
+    );
+    assert!(
+        with_overwhelm.dps > baseline.dps,
+        "Overwhelm 提升物理有效 DPS"
+    );
+}
+
+#[test]
+fn overwhelm_against_armour_reduction() {
+    // 敌人 armour=1500 对 raw_hit=150 → 护甲减伤 50%；Overwhelm 20 → 净 30% → 150*0.7 = 105。
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number(
+        "EnemyPhysicalDamageReduction",
+        ModType::Base,
+        -20.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
+
+    let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input()).dps;
+    assert!(
+        (dps - 105.0).abs() < 1e-6,
+        "护甲50% - Overwhelm20 → 净30% → 150*0.7 = 105, got {dps}"
+    );
+}
+
+#[test]
+fn overwhelm_cannot_push_pdr_below_zero() {
+    // Overwhelm 不破 0：敌人 PDR 10%，Overwhelm 50 → clamp 到 0%（非 -40%）→ 150 满。
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number(
+        "EnemyPhysicalDamageReduction",
+        ModType::Base,
+        -50.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        10.0,
+    ));
+
+    let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input()).dps;
+    assert!(
+        (dps - 150.0).abs() < 1e-6,
+        "Overwhelm 不破 0 → 净 0% → 150, got {dps}"
+    );
+}
+
+#[test]
+fn overwhelm_only_affects_physical() {
+    // Overwhelm 不影响火伤分量。
+    let (mut player, input) = fire_only_player_input();
+    player.add_mod(Modifier::number(
+        "EnemyPhysicalDamageReduction",
+        ModType::Base,
+        -30.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
+    // 火抗 50% 不受 Overwhelm 影响 → 100*0.5 = 50。
+    assert!(
+        (dps - 50.0).abs() < 1e-6,
+        "Overwhelm 不影响火伤：50%火抗 → 50, got {dps}"
+    );
+}
+
+#[test]
+fn overwhelm_does_not_affect_panel_dps() {
+    // 面板口径不读 Overwhelm/PDR，逐字向后兼容。
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number(
+        "EnemyPhysicalDamageReduction",
+        ModType::Base,
+        -20.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        20.0,
+    ));
+
+    let panel = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &attack_input());
+    assert_eq!(panel.dps, 150.0, "面板口径忽略 Overwhelm/PDR");
+}
+
 #[test]
 fn perform_panel_mode_ignores_enemy_damage_taken() {
     // 默认面板口径（mode_effective=false）：enemy.mod_db 受伤链不改变 DPS（向后兼容）。
