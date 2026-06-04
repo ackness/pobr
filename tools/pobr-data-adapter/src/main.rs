@@ -5,8 +5,13 @@
 //!
 //! 用法：
 //! ```text
+//! # 物品基底域（pathofexile-dat 表）
 //! cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.0.3.4
+//! # 被动天赋树域（GGG 官方树导出 data.json）
+//! cargo run -p pobr-data-adapter -- --tree pipeline/tree/data.json --out data --patch 4.5.0.3.4
 //! ```
+
+mod tree;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -19,7 +24,12 @@ use serde::Deserialize;
 const ZH_TW: &str = "Traditional Chinese";
 
 fn main() -> ExitCode {
-    match run() {
+    let result = match parse_args() {
+        Ok(Mode::BaseItems(args)) => run(args),
+        Ok(Mode::Tree(args)) => tree::run(args),
+        Err(err) => Err(err),
+    };
+    match result {
         Ok(summary) => {
             println!("{summary}");
             ExitCode::SUCCESS
@@ -37,8 +47,15 @@ struct Args {
     patch: String,
 }
 
-fn parse_args() -> Result<Args, String> {
+/// 适配器子命令：物品基底域（`--raw`）或被动树域（`--tree`），二者互斥。
+enum Mode {
+    BaseItems(Args),
+    Tree(tree::TreeArgs),
+}
+
+fn parse_args() -> Result<Mode, String> {
     let mut raw = None;
+    let mut tree = None;
     let mut out = None;
     let mut patch = None;
     let mut it = std::env::args().skip(1);
@@ -46,16 +63,24 @@ fn parse_args() -> Result<Args, String> {
         let mut take = |name: &str| it.next().ok_or_else(|| format!("{name} 缺少参数值"));
         match flag.as_str() {
             "--raw" => raw = Some(PathBuf::from(take("--raw")?)),
+            "--tree" => tree = Some(PathBuf::from(take("--tree")?)),
             "--out" => out = Some(PathBuf::from(take("--out")?)),
             "--patch" => patch = Some(take("--patch")?),
             other => return Err(format!("未知参数：{other}")),
         }
     }
-    Ok(Args {
-        raw: raw.ok_or("缺少 --raw <pipeline/tables>")?,
-        out: out.ok_or("缺少 --out <data>")?,
-        patch: patch.ok_or("缺少 --patch <version>")?,
-    })
+    let out = out.ok_or("缺少 --out <data>")?;
+    let patch = patch.ok_or("缺少 --patch <version>")?;
+    match (raw, tree) {
+        (Some(_), Some(_)) => Err("--raw 与 --tree 互斥，请分别运行".into()),
+        (Some(raw), None) => Ok(Mode::BaseItems(Args { raw, out, patch })),
+        (None, Some(data_json)) => Ok(Mode::Tree(tree::TreeArgs {
+            data_json,
+            out,
+            patch,
+        })),
+        (None, None) => Err("缺少 --raw <pipeline/tables> 或 --tree <data.json>".into()),
+    }
 }
 
 // ---- 原始 .dat JSON 行结构（只取我们需要的列）----
@@ -122,8 +147,7 @@ fn is_placeholder(name: &str) -> bool {
     name.is_empty() || name.contains("[DNT") || name.contains("[UNUSED") || name.contains("[OLD")
 }
 
-fn run() -> Result<String, String> {
-    let args = parse_args()?;
+fn run(args: Args) -> Result<String, String> {
     let en = args.raw.join("English");
     let tw = args.raw.join(ZH_TW);
 
@@ -206,7 +230,7 @@ fn run() -> Result<String, String> {
     ))
 }
 
-fn write_pretty<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
+pub(crate) fn write_pretty<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let json = serde_json::to_string_pretty(value)
         .map_err(|e| format!("序列化 {} 失败：{e}", path.display()))?;
     fs::write(path, format!("{json}\n")).map_err(|e| format!("写入 {} 失败：{e}", path.display()))
