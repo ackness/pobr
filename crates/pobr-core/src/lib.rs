@@ -6,6 +6,7 @@ pub mod mod_cache;
 pub mod mod_db;
 pub mod mod_parser;
 pub mod modifier;
+pub mod skill_source;
 pub mod trace;
 
 pub use campaign::{CampaignProgress, CampaignReward, CampaignState};
@@ -13,6 +14,7 @@ pub use character::CharacterBase;
 pub use config::CalcConfig;
 pub use mod_db::{ModContribution, ModDb, ModList};
 pub use modifier::{ModTag, ModValue, Modifier};
+pub use skill_source::{GemIngest, GemModSource, ingest_gem};
 pub use trace::{
     TraceEdge, TraceGraph, TraceNode, TraceNodeId, TraceOperation, TraceOutput, TracedValue,
 };

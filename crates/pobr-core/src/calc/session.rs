@@ -1,4 +1,5 @@
 use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
+use crate::skill_source::{GemModSource, ingest_gem};
 use crate::{CalcConfig, Modifier};
 
 use super::{Actor, ActorBaseStats, Env, MinimalInput, MinimalOutput, perform};
@@ -50,6 +51,28 @@ impl CalculationSession {
     /// 保留其 `SourceId` 归因。
     pub fn add_modifiers(&mut self, modifiers: impl IntoIterator<Item = Modifier>) {
         self.env.player.mod_db.add_list(modifiers);
+    }
+
+    /// 接入一颗宝石：解析其词条文本为带宝石归因的 modifier 并注入计算，
+    /// 无法解析的词条收集进 `unsupported_modifier_texts`。
+    ///
+    /// 主动宝石归因到 `SourceKind::SkillGem`，辅助宝石归因到 `SourceKind::SupportGem`
+    /// （并链接到被支援主动技能的 source，若 `supported_gem_id` 可得）。
+    pub fn add_gem(&mut self, gem: &GemModSource) -> Result<(), ParseError> {
+        let ingest = ingest_gem(gem)?;
+        self.env.player.mod_db.add_list(ingest.modifiers);
+        self.unsupported_modifier_texts.extend(ingest.unsupported);
+        Ok(())
+    }
+
+    /// 接入一颗主动技能宝石（`SourceKind::SkillGem` 归因）。`add_gem` 的便捷封装。
+    pub fn add_skill_gem(&mut self, gem: &GemModSource) -> Result<(), ParseError> {
+        self.add_gem(gem)
+    }
+
+    /// 接入一颗辅助宝石（`SourceKind::SupportGem` 归因）。`add_gem` 的便捷封装。
+    pub fn add_support_gem(&mut self, gem: &GemModSource) -> Result<(), ParseError> {
+        self.add_gem(gem)
     }
 
     pub fn perform_minimal(&mut self) -> MinimalOutput {
