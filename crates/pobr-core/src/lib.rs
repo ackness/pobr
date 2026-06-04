@@ -1,3 +1,4 @@
+pub mod attribution;
 pub mod calc;
 pub mod campaign;
 pub mod character;
@@ -11,6 +12,10 @@ pub mod passive;
 pub mod skill_source;
 pub mod trace;
 
+pub use attribution::{
+    AttributionEntry, AttributionGroup, AttributionMode, AttributionReport, AttributionRequest,
+    attribute,
+};
 pub use campaign::{CampaignProgress, CampaignReward, CampaignState};
 pub use character::CharacterBase;
 pub use config::CalcConfig;

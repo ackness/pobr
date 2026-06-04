@@ -36,6 +36,29 @@ impl ModDb {
         }
     }
 
+    /// Returns a new [`ModDb`] containing only the modifiers for which `keep`
+    /// returns `true`, preserving insertion order within each [`ModName`] bucket.
+    ///
+    /// Used by marginal attribution to rebuild a build with a given source
+    /// removed, without mutating the original db (read-only snapshot recompute).
+    pub fn filtered(&self, mut keep: impl FnMut(&Modifier) -> bool) -> Self {
+        let mods = self
+            .mods
+            .iter()
+            .map(|(name, modifiers)| {
+                (
+                    name.clone(),
+                    modifiers
+                        .iter()
+                        .filter(|modifier| keep(modifier))
+                        .cloned()
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect();
+        Self { mods }
+    }
+
     pub fn sum(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
         names
             .iter()
