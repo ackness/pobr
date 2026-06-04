@@ -8,7 +8,7 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use pobr_data::catalog::{BaseItemDef, DataManifest};
+use pobr_data::catalog::{BaseItemDef, DataManifest, GrantedEffectDef, SkillGemDef};
 
 /// 加载错误。
 #[derive(Debug)]
@@ -73,6 +73,24 @@ impl GameData {
         lang: &str,
     ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
         self.load_json(&format!("i18n/{lang}/base_items.json"))
+    }
+
+    /// 加载技能宝石定义（身份取自基底 id）。
+    pub fn skill_gems(&self) -> Result<Vec<SkillGemDef>, LoadError> {
+        self.load_json("skill_gems.json")
+    }
+
+    /// 加载授予效果定义（含解析后的主动技能链接）。
+    pub fn granted_effects(&self) -> Result<Vec<GrantedEffectDef>, LoadError> {
+        self.load_json("granted_effects.json")
+    }
+
+    /// 加载某语言的主动技能显示名边车（`active_skill_id -> 本地化名称`）。
+    pub fn skill_names(
+        &self,
+        lang: &str,
+    ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        self.load_json(&format!("i18n/{lang}/skills.json"))
     }
 }
 

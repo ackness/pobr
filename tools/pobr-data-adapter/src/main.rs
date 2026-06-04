@@ -16,6 +16,8 @@ use std::process::ExitCode;
 use pobr_data::catalog::{BaseItemDef, CATALOG_SCHEMA_VERSION, DataManifest};
 use serde::Deserialize;
 
+mod skills;
+
 const ZH_TW: &str = "Traditional Chinese";
 
 fn main() -> ExitCode {
@@ -98,7 +100,7 @@ struct RawNamed {
     name: Option<String>,
 }
 
-fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, String> {
+pub(crate) fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, String> {
     let bytes = fs::read(path).map_err(|e| format!("读取 {} 失败：{e}", path.display()))?;
     serde_json::from_slice(&bytes).map_err(|e| format!("解析 {} 失败：{e}", path.display()))
 }
@@ -113,12 +115,12 @@ fn id_lookup(rows: &[RawIndexed]) -> Vec<String> {
     table
 }
 
-fn resolve(lookup: &[String], idx: usize) -> Option<String> {
+pub(crate) fn resolve(lookup: &[String], idx: usize) -> Option<String> {
     lookup.get(idx).filter(|s| !s.is_empty()).cloned()
 }
 
 /// 开发用占位 / 未启用条目（不入库）。
-fn is_placeholder(name: &str) -> bool {
+pub(crate) fn is_placeholder(name: &str) -> bool {
     name.is_empty() || name.contains("[DNT") || name.contains("[UNUSED") || name.contains("[OLD")
 }
 
@@ -188,25 +190,44 @@ fn run() -> Result<String, String> {
     write_pretty(&version_dir.join("base_items.json"), &bases)?;
     write_pretty(&version_dir.join("i18n/zh-TW/base_items.json"), &i18n_zh)?;
 
+    // 技能宝石域（SkillGems / GrantedEffects / ActiveSkills）
+    let skills = skills::adapt_skills(&en, &tw)?;
+    write_pretty(&version_dir.join("skill_gems.json"), &skills.gems)?;
+    write_pretty(&version_dir.join("granted_effects.json"), &skills.effects)?;
+    write_pretty(
+        &version_dir.join("i18n/zh-TW/skills.json"),
+        &skills.zh_skill_names,
+    )?;
+
     let manifest = DataManifest {
         schema_version: CATALOG_SCHEMA_VERSION,
         poe_version: args.patch.clone(),
         languages: vec!["zh-TW".into()],
-        domains: vec!["base_items".into()],
+        domains: vec![
+            "base_items".into(),
+            "skill_gems".into(),
+            "granted_effects".into(),
+        ],
     };
     write_pretty(&version_dir.join("manifest.json"), &manifest)?;
 
     Ok(format!(
-        "适配完成：base_items {}/{} 条（过滤 {} 个占位），zh-TW 名称 {} 条 → {}",
+        "适配完成：base_items {}/{} 条（过滤 {} 个占位），zh-TW 名称 {} 条；\
+         skill_gems {}/{} 条，granted_effects {}/{} 条，zh-TW 技能名 {} 条 → {}",
         bases.len(),
         total,
         total - bases.len(),
         i18n_zh.len(),
+        skills.gems.len(),
+        skills.gems_total,
+        skills.effects.len(),
+        skills.effects_total,
+        skills.zh_skill_names.len(),
         version_dir.display()
     ))
 }
 
-fn write_pretty<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
+pub(crate) fn write_pretty<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let json = serde_json::to_string_pretty(value)
         .map_err(|e| format!("序列化 {} 失败：{e}", path.display()))?;
     fs::write(path, format!("{json}\n")).map_err(|e| format!("写入 {} 失败：{e}", path.display()))

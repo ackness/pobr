@@ -5,6 +5,8 @@
     "zh-TW"
   ],
   "domains": [
-    "base_items"
+    "base_items",
+    "skill_gems",
+    "granted_effects"
   ]
 }

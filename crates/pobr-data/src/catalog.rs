@@ -49,3 +49,55 @@ pub struct BaseItemDef {
     /// mod domain（GGG 原始枚举值，用于词缀适用域判定）。
     pub mod_domain: u32,
 }
+
+/// 技能宝石定义（来自 `SkillGems.dat` + `BaseItemTypes` 外键解析）。
+///
+/// 宝石**自身无 Id 列**，其身份取自 `BaseItemType` 指向的基底 Id
+/// （形如 `Metadata/Items/Gems/SkillGemFireball`）。`name` 走 base_items 域，
+/// 此处只存与宝石机制相关的字段。
+///
+/// TODO（后续切片）：分等级 stat 缩放（GrantedEffectStatSetsPerLevel /
+/// GrantedEffectsPerLevel 的 cost / cooldown / 伤害进度）尚未接入；
+/// `GemEffects` FK 指向的 `GemEffects` 表当前 pipeline 未导出，
+/// 故宝石→授予效果的直接连边暂缺，等该表导出后补 `granted_effects: Vec<String>`。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SkillGemDef {
+    /// 稳定 ID，取自 `BaseItemType` 基底的 `Id`。
+    pub id: String,
+    /// 宝石类型（GGG 原始枚举：0=主动技能，1=辅助），保留原值便于排查。
+    pub gem_type: Option<u32>,
+    /// 宝石颜色（GGG 原始枚举：1=红/力，2=绿/敏，3=蓝/智，4=白等）。
+    pub gem_colour: Option<u32>,
+    /// 使用所需最小角色等级。
+    pub min_level_req: u32,
+    /// 力量需求百分比（属性需求权重）。
+    pub str_pct: u32,
+    /// 敏捷需求百分比。
+    pub dex_pct: u32,
+    /// 智慧需求百分比。
+    pub int_pct: u32,
+    /// 是否为辅助宝石（由 `GemType == 1` 判定）。
+    pub is_support: bool,
+}
+
+/// 授予效果定义（来自 `GrantedEffects.dat` + 外键解析）。
+///
+/// 每个宝石/物品最终授予一个或多个 `GrantedEffect`；主动技能效果会关联到一条
+/// `ActiveSkills` 记录（显示名 / 技能类型）。本切片只取身份 + 主动技能链接 +
+/// 施放时间 + 允许的主动技能类型枚举。
+///
+/// TODO（后续切片）：`StatSet` / `CostTypes` / 分等级缩放
+/// （`GrantedEffectsPerLevel` 的 cost / cooldown / attack time）尚未接入。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GrantedEffectDef {
+    /// 稳定 ID，即 `GrantedEffects.Id`（如 `FireballPlayer`）。
+    pub id: String,
+    /// 是否为辅助效果。
+    pub is_support: bool,
+    /// 关联的主动技能 Id（解析 `ActiveSkills.Id`；辅助效果为 None）。
+    pub active_skill: Option<String>,
+    /// 施放/吟唱时间（毫秒）。原始值为 0（瞬发/辅助）时归一化为 None。
+    pub cast_time: Option<u32>,
+    /// 允许作用的主动技能类型（GGG 原始枚举值；当前无导出的类型名查表）。
+    pub allowed_active_skill_types: Vec<u32>,
+}
