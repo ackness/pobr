@@ -2,11 +2,12 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
 
+use super::ailment::{AilmentSource, bleed_traced, ignite_traced, poison_traced, shock_traced};
 use super::{
-    BreakdownTable, CalcError, Env, MinimalInput, OutputTable, ResistanceSuite, bleed_instance,
-    calc_defence, calc_ehp, calc_skill_use_time, calculate_minimal_vs_enemy, ignite_instance,
-    poison_instance, regen, reservation, shock_effect,
+    BreakdownTable, CalcError, Env, MinimalInput, OutputTable, ResistanceSuite, calc_defence,
+    calc_ehp, calc_skill_use_time, calculate_minimal_vs_enemy, regen, reservation,
 };
+use crate::TraceGraph;
 
 pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     if env.player.level == 0 {
@@ -34,6 +35,9 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     calc_defence(&mut env.player, &env.cfg, env.enemy.base.accuracy);
 
     fill_mechanics(env);
+    // 异常状态：几率 + 暴击加权 + magnitude + effMult（几率 × DoT 期望值口径）。
+    // 单独成段，避免与 fill_mechanics 内 player.mod_db 的不可变借用冲突。
+    fill_ailments(env);
 
     Ok(())
 }
@@ -54,25 +58,6 @@ fn fill_mechanics(env: &mut Env) {
     let skill_use_time = calc_skill_use_time(db, cfg, base_use_time, 0.0, is_channelling);
     env.player.output.effective_action_rate = skill_use_time.effective_rate;
     env.player.output.skill_use_time = Some(skill_use_time);
-
-    // --- 异常状态 DPS（基于非暴击分类型命中作为 pre-mitigation magnitude 源） ---
-    let phys_hit = component_avg(&env.player.output.damage_components, DamageType::Physical);
-    let fire_hit = component_avg(&env.player.output.damage_components, DamageType::Fire);
-    let lightning_hit = component_avg(&env.player.output.damage_components, DamageType::Lightning);
-    let chaos_phys_hit =
-        phys_hit + component_avg(&env.player.output.damage_components, DamageType::Chaos);
-
-    if phys_hit > 0.0 {
-        env.player.output.bleed_dps = bleed_instance(phys_hit, db, cfg).magnitude_dps;
-    }
-    if fire_hit > 0.0 {
-        env.player.output.ignite_dps = ignite_instance(fire_hit, db, cfg).magnitude_dps;
-    }
-    if chaos_phys_hit > 0.0 {
-        env.player.output.poison_dps = poison_instance(chaos_phys_hit, db, cfg).magnitude_dps;
-    }
-    let ailment_threshold = pool_or(env.player.output.life, 1.0);
-    env.player.output.shock_effect = shock_effect(lightning_hit, ailment_threshold);
 
     // --- EHP / max hit ---
     let resistances = ResistanceSuite {
@@ -136,6 +121,75 @@ fn fill_mechanics(env: &mut Env) {
     ));
 }
 
+/// 异常 fill：对每类伤害异常算 几率 × 暴击加权 magnitude × effMult，写入 [`OutputTable`]。
+///
+/// 来源命中取**非暴击**分类型平均（`component_avg`，pre-mitigation），按暴击乘区/几率派生
+/// 暴击来源（[`AilmentSource`]）。敌方异常阈值用怪物等级查表 × `EnemyAilmentThreshold` mod。
+/// 几率派生型（点燃/感电）吃阈值；内禀型（流血/中毒）吃 `BleedChance`/`PoisonChance`。
+///
+/// 面板 DPS 口径 = `chance × magnitude_dps`（pobr 叠层延后，magnitude 仍可由 trace 回溯）。
+fn fill_ailments(env: &mut Env) {
+    let player = &env.player.mod_db;
+    let enemy = &env.enemy.mod_db;
+    let cfg = &env.cfg;
+
+    let phys_hit = component_avg(&env.player.output.damage_components, DamageType::Physical);
+    let fire_hit = component_avg(&env.player.output.damage_components, DamageType::Fire);
+    let lightning_hit = component_avg(&env.player.output.damage_components, DamageType::Lightning);
+    let chaos_phys_hit =
+        phys_hit + component_avg(&env.player.output.damage_components, DamageType::Chaos);
+
+    let crit_mult = if env.player.output.crit_multiplier > 0.0 {
+        env.player.output.crit_multiplier
+    } else {
+        1.0
+    };
+    let crit_chance = env.player.output.crit_chance;
+    let never_from_crit = player.flag(cfg, ModName::from("AilmentsAreNeverFromCrit"));
+
+    // 敌方异常阈值（怪物等级查表 × EnemyAilmentThreshold mod）；无敌人配置时回退裸表。
+    let threshold = enemy_ailment_threshold_effective(enemy, cfg, env.enemy.level);
+
+    // trace 与本步聚合的归因绑在 player.breakdown 之外的临时图：写入 output 字段即可，
+    // 完整 trace 由 traced offence/归因路径统一收口（本函数构建并保留贡献节点拓扑）。
+    let mut trace = TraceGraph::new();
+
+    if phys_hit > 0.0 {
+        let source = AilmentSource::new(phys_hit, crit_mult, crit_chance, never_from_crit);
+        let (bleed, _) = bleed_traced(&source, player, enemy, cfg, &mut trace);
+        env.player.output.bleed_dps = bleed.expected_dps;
+    }
+    if fire_hit > 0.0 {
+        let source = AilmentSource::new(fire_hit, crit_mult, crit_chance, never_from_crit);
+        let (ignite, _) = ignite_traced(&source, player, enemy, cfg, threshold, &mut trace);
+        env.player.output.ignite_dps = ignite.expected_dps;
+    }
+    if chaos_phys_hit > 0.0 {
+        let source = AilmentSource::new(chaos_phys_hit, crit_mult, crit_chance, never_from_crit);
+        let (poison, _) = poison_traced(&source, player, enemy, cfg, &mut trace);
+        env.player.output.poison_dps = poison.expected_dps;
+    }
+    if lightning_hit > 0.0 {
+        let source = AilmentSource::new(lightning_hit, crit_mult, crit_chance, never_from_crit);
+        // 感电是非伤害异常：面板 `shock_effect` 保留为**效果幅度**（fraction），
+        // 不乘几率（与 DoT 的几率×期望值口径不同）。chance 已写入 trace 供归因/未来叠层。
+        let (_chance, magnitude, _) =
+            shock_traced(&source, player, enemy, cfg, threshold, &mut trace);
+        env.player.output.shock_effect = magnitude;
+    }
+}
+
+/// 有效敌方异常阈值 = `enemy_ailment_threshold(level) × mod(EnemyAilmentThreshold)`。
+///
+/// `EnemyAilmentThreshold` 以 INC/MORE 聚合为乘子（PoB2 `calcLib.mod`）。无敌人 mod_db
+/// 时退化为裸表值（兼容直接构造 Env 的旧入口）。
+fn enemy_ailment_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -> f64 {
+    let base = enemy_ailment_threshold(level as u32) as f64;
+    let inc = enemy.sum(ModType::Inc, cfg, &[ModName::from("EnemyAilmentThreshold")]);
+    let more = enemy.more(cfg, &[ModName::from("EnemyAilmentThreshold")]);
+    base * (1.0 + inc / 100.0) * more
+}
+
 /// 取某伤害类型分量的平均击中值（无该分量返回 0）。
 fn component_avg(components: &[super::DamageComponent], damage_type: DamageType) -> f64 {
     components
@@ -166,8 +220,4 @@ fn stat_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
     let inc = db.sum(ModType::Inc, cfg, &rate);
     let more = db.more(cfg, &rate);
     regen(pool, flat, percent, inc, more)
-}
-
-fn pool_or(value: f64, fallback: f64) -> f64 {
-    if value > 0.0 { value } else { fallback }
 }

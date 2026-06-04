@@ -4,15 +4,138 @@
 //! magnitude 再吃对应的 ailment damage inc/more 与 duration modifier。
 //! Corrupted Blood 不是 bleeding，走 [`DebuffInstance`]（最多 10 层）。
 //!
-//! 注：异常精确系数（shock 映射、corrupted blood per-stack）依赖 PoB-PoE2 数据，
-//! 标注为 `blocked_by_missing_data`，此处实现机制骨架 + agent-docs 默认值。
+//! ## 施加几率 / effMult / 暴击加权（逐字对照 PoB2 `CalcOffence.lua` 异常段）
+//!
+//! - **施加几率**（gap: no-ailment-chance-pipeline）：
+//!   - 几率派生型（点燃/感电）：`finalChance = clamp(100,
+//!     (hitAvg/threshold * ChanceMultiplier + base) * (1 + inc/100) * more)`
+//!     （PoB2 `hitElementalAilmentChance`；`ShockChanceMultiplier=25`、`IgniteChanceMultiplier=20`）。
+//!   - 内禀型（流血/中毒）：`chance = clamp(100, base * (1 + inc/100) * more)`，
+//!     base 来自 `BleedChance`/`PoisonChance`/`AilmentChance`（+ 敌方 `Self<Ailment>Chance`）。
+//!     **几率为 0 → 不施加**（PoE2：物理巨击若 `BleedChance=0` 也不流血）。
+//! - **暴击加权**（gap: ailment-crit-weighting-missing）：base 伤害按命中/暴击来源加权
+//!   `baseFromHit = sourceHitDmg·chanceFromHit/total + sourceCritDmg·chanceFromCrit/total`
+//!   （PoB2 `calcAilmentDamage`）。`AilmentsAreNeverFromCrit` 旗标强制走非暴击。
+//! - **effMult**（gap: ailment-effmult-missing）：DoT 受敌方对应抗性 + `DamageTaken`/
+//!   `DamageTakenOverTime`/`<Type>DamageTaken*` 修正：
+//!   `effMult = (1 - resist/100) * (1 + takenInc/100) * takenMore`，仅 `mode_effective`。
+//! - **面板 DPS 口径**：pobr 把"无条件输出 DoT"改为"几率 × DoT 期望值"
+//!   （叠层/StackPotential 延后；见 `13-gap-analysis`）。magnitude 仍单独保留。
+//!
+//! 出处：PoB2 `src/Modules/CalcOffence.lua`（`calcAilmentDamage` / `calcDamagingAilmentOutputs`
+//!       / `Calculate scaling threshold ailment chance` / effMult 段）、agent-docs/ailments.md。
 
 use pobr_data::constants::SHOCK_MIN_EFFECT;
+use pobr_data::monster::{
+    IGNITE_CHANCE_MULTIPLIER, PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR, SHOCK_CHANCE_MULTIPLIER,
+};
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModDb};
+use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation};
 
 use super::round;
+
+/// 一类伤害异常的命中来源伤害（pre-mitigation 平均击中，分非暴击/暴击两份）。
+///
+/// `hit_avg` 为非暴击平均击中（来自 damage_components）；`crit_avg` 为暴击平均击中
+/// （= `hit_avg × crit_multiplier`，PoB2 `<Type>CritAverage`）。`crit_chance` 为 fraction。
+#[derive(Debug, Clone, Copy)]
+pub struct AilmentSource {
+    pub hit_avg: f64,
+    pub crit_avg: f64,
+    pub crit_chance: f64,
+}
+
+impl AilmentSource {
+    /// 从非暴击平均击中 + 暴击乘区 + 暴击几率构造。
+    /// `never_from_crit=true`（`AilmentsAreNeverFromCrit`）时暴击来源置为非暴击伤害且暴击几率清零。
+    pub fn new(
+        hit_avg: f64,
+        crit_multiplier: f64,
+        crit_chance: f64,
+        never_from_crit: bool,
+    ) -> Self {
+        if never_from_crit {
+            Self {
+                hit_avg,
+                crit_avg: hit_avg,
+                crit_chance: 0.0,
+            }
+        } else {
+            Self {
+                hit_avg,
+                crit_avg: round(hit_avg * crit_multiplier),
+                crit_chance,
+            }
+        }
+    }
+}
+
+/// 异常施加几率 + 暴击加权后的基础来源伤害（`calcAilmentDamage` 的纯函数版）。
+///
+/// 返回 `(chance, base_source_damage)`：
+/// - `chance`（fraction 0..1）= `chanceFromHit + chanceFromCrit`，
+///   `chanceFromHit = chanceOnHit·(1-critChance)`、`chanceFromCrit = chanceOnCrit·critChance`。
+/// - `base_source_damage` = `sourceHitDmg·chanceFromHit/total + sourceCritDmg·chanceFromCrit/total`
+///   （total=0 时退化为非暴击伤害，chance 为 0）。
+///
+/// 出处：PoB2 `CalcOffence.lua::calcAilmentDamage`。
+pub fn weighted_source_damage(
+    source: &AilmentSource,
+    chance_on_hit: f64,
+    chance_on_crit: f64,
+) -> (f64, f64) {
+    // chance_on_hit/crit 为**百分点**（0..100，PoB2 口径）；crit_chance 为 fraction。
+    let crit_chance = source.crit_chance.clamp(0.0, 1.0);
+    let chance_from_hit = chance_on_hit * (1.0 - crit_chance);
+    let chance_from_crit = chance_on_crit * crit_chance;
+    let total = chance_from_hit + chance_from_crit;
+    if total <= 0.0 {
+        // 无施加几率：base 退化为非暴击伤害（与 PoB2 一致：baseVal 取 sourceHitDmg），chance=0。
+        return (0.0, source.hit_avg);
+    }
+    // base 中 total 在比值里抵消，与百分点/小数无关。
+    let base =
+        source.hit_avg * chance_from_hit / total + source.crit_avg * chance_from_crit / total;
+    // 施加几率 = chanceFromHit + chanceFromCrit（百分点）→ fraction，clamp [0,1]。
+    let chance = (total / 100.0).clamp(0.0, 1.0);
+    (round(chance), round(base))
+}
+
+/// 几率派生型施加几率（点燃/感电），返回 `(chance_on_hit, chance_on_crit)`（百分点，clamp 100）。
+///
+/// `hit_avg`/`crit_avg` 为非暴击/暴击平均击中（pre-mitigation），`threshold` 为已乘
+/// `EnemyAilmentThreshold` 的有效异常阈值，`multiplier` 为 `<Ailment>ChanceMultiplier`，
+/// `base/inc/more` 来自 `Enemy<Ailment>Chance`/`AilmentChance`（+ 敌方 `Self<Ailment>Chance`）。
+///
+/// 出处：PoB2 `CalcOffence.lua` "Calculate scaling threshold ailment chance"。
+pub fn threshold_derived_chance(
+    hit_avg: f64,
+    crit_avg: f64,
+    threshold: f64,
+    multiplier: f64,
+    base: f64,
+    inc: f64,
+    more: f64,
+) -> (f64, f64) {
+    if threshold <= 0.0 {
+        return (0.0, 0.0);
+    }
+    let scale = (1.0 + inc / 100.0) * more;
+    let on_hit = (hit_avg / threshold * multiplier + base) * scale;
+    let on_crit = (crit_avg / threshold * multiplier + base) * scale;
+    (on_hit.clamp(0.0, 100.0), on_crit.clamp(0.0, 100.0))
+}
+
+/// 内禀型施加几率（流血/中毒），返回 `chance`（百分点，clamp 100）。
+///
+/// `base` 来自 `<Ailment>Chance`/`AilmentChance`（+ 敌方 `Self<Ailment>Chance`），
+/// `inc`/`more` 同名聚合。**几率为 0 时不施加**（PoE2 流血/中毒需显式几率）。
+///
+/// 出处：PoB2 `CalcOffence.lua` "Calculate flat chance ailment (Poison, Bleed)"。
+pub fn flat_chance(base: f64, inc: f64, more: f64) -> f64 {
+    (base * (1.0 + inc / 100.0) * more).clamp(0.0, 100.0)
+}
 
 /// 应用一组 ailment damage modifier（inc 累加、more 连乘）到基础 magnitude。
 fn scale_magnitude(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
@@ -154,6 +277,15 @@ pub fn shock_effect(pre_mitigation_lightning_hit: f64, target_ailment_threshold:
     round(effect_pct.clamp(min_pct, max_pct) / 100.0)
 }
 
+/// 玩家异常阈值（用于对**玩家自身**施加的非伤害异常强度）= `maxLife × 0.5`。
+///
+/// **Bug 修正（player-ailment-threshold-bug）**：PoE2 玩家异常阈值为最大生命的 50%
+/// （`PlayerAilmentThresholdLifeFactor = 0.5`），而非全量生命。出处：agent-docs/ailments.md
+/// §异常阈值、PoB2 `CalcSetup.lua` `NewMod("AilmentThreshold","BASE",50,{PercentStat Life})`。
+pub fn player_ailment_threshold(max_life: f64) -> f64 {
+    round(max_life * PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR)
+}
+
 /// 腐化之血 debuff（物理 DoT，最多 10 层，不属于 bleeding）。
 pub fn corrupted_blood_instance(dps_per_stack: f64) -> DebuffInstance {
     DebuffInstance {
@@ -162,5 +294,459 @@ pub fn corrupted_blood_instance(dps_per_stack: f64) -> DebuffInstance {
         max_stacks: 10,
         dps_per_stack: round(dps_per_stack),
         duration_secs: 8.0,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// effMult：敌方抗性 + DamageTaken/DamageTakenOverTime 对异常 DoT 的修正
+// ---------------------------------------------------------------------------
+
+/// 异常 DoT 的 effMult（仅 `mode_effective` 时 < 1 才有意义）：
+/// `effMult = (1 - resist/100) * (1 + takenInc/100) * takenMore`。
+///
+/// `damage_type` 为该异常结算抗性/taken 的类型（流血=物理、点燃=火、中毒=混沌）。
+/// taken 名集合 = `DamageTaken` / `DamageTakenOverTime` / `<Type>DamageTaken` /
+/// `<Type>DamageTakenOverTime`（元素再加 `ElementalDamageTaken`）。物理无抗性减伤
+/// （异常无视护甲，按抗性=0 处理）。
+///
+/// 出处：PoB2 `CalcOffence.lua` damaging-ailment effMult 段。
+pub fn effmult_for_ailment(
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    mode_effective: bool,
+) -> f64 {
+    if !mode_effective {
+        return 1.0;
+    }
+    let type_cfg = cfg.clone().with_damage_type(damage_type);
+    let taken_names = taken_mod_names(damage_type);
+    let taken_inc = enemy.sum(ModType::Inc, &type_cfg, &taken_names);
+    let taken_more = enemy.more(&type_cfg, &taken_names);
+
+    let resist = ailment_resist(enemy, &type_cfg, damage_type);
+    round((1.0 - resist / 100.0) * (1.0 + taken_inc / 100.0) * taken_more)
+}
+
+/// 异常对应类型的敌方抗性（物理无抗性减伤 → 0；元素/混沌读 `<Type>Resist`，clamp 抗性区间）。
+fn ailment_resist(enemy: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
+    if damage_type == DamageType::Physical {
+        return 0.0;
+    }
+    let prefix = type_prefix(damage_type);
+    enemy
+        .sum(
+            ModType::Base,
+            type_cfg,
+            &[ModName::from(format!("{prefix}Resist"))],
+        )
+        .clamp(RESIST_FLOOR, ENEMY_MAX_RESIST)
+}
+
+/// 受伤链 ModName 集合（DamageTaken / DamageTakenOverTime / 分类型 + 元素）。
+fn taken_mod_names(damage_type: DamageType) -> Vec<ModName> {
+    let prefix = type_prefix(damage_type);
+    let mut names = vec![
+        ModName::from("DamageTaken"),
+        ModName::from("DamageTakenOverTime"),
+        ModName::from(format!("{prefix}DamageTaken")),
+        ModName::from(format!("{prefix}DamageTakenOverTime")),
+    ];
+    if damage_type.is_elemental() {
+        names.push(ModName::from("ElementalDamageTaken"));
+    }
+    names
+}
+
+/// `DamageType` → modifier 名称前缀。
+fn type_prefix(damage_type: DamageType) -> &'static str {
+    match damage_type {
+        DamageType::Physical => "Physical",
+        DamageType::Fire => "Fire",
+        DamageType::Cold => "Cold",
+        DamageType::Lightning => "Lightning",
+        DamageType::Chaos => "Chaos",
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 高层：几率 + 暴击加权 + magnitude + effMult（含 TraceGraph 归因）
+// ---------------------------------------------------------------------------
+
+/// 一类伤害异常的完整面板结果。
+#[derive(Debug, Clone, Copy)]
+pub struct DamagingAilmentOutput {
+    /// 施加几率（fraction 0..1）。
+    pub chance: f64,
+    /// effMult（敌方抗性 + taken 链）。
+    pub eff_mult: f64,
+    /// magnitude DPS（暴击加权 + inc/more + effMult；未乘 chance，对应单层满施加）。
+    pub magnitude_dps: f64,
+    /// 持续时间（秒）。
+    pub duration_secs: f64,
+    /// 面板期望 DPS = `chance × magnitude_dps`（pobr 叠层延后口径）。
+    pub expected_dps: f64,
+}
+
+/// 计算流血面板输出（几率 + 暴击加权 + magnitude + effMult），并写入 TraceGraph。
+///
+/// `source` 为物理来源命中（含暴击加权份）。流血几率来自 `BleedChance`/`AilmentChance`。
+pub fn bleed_traced(
+    source: &AilmentSource,
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    trace: &mut TraceGraph,
+) -> (DamagingAilmentOutput, TraceNodeId) {
+    let (chance_pct, chance_node) = flat_chance_traced(player, enemy, cfg, "Bleed", trace);
+    compute_damaging_ailment(
+        source,
+        player,
+        enemy,
+        cfg,
+        AilmentType::Bleed,
+        DamageType::Physical,
+        chance_pct,
+        chance_pct,
+        chance_node,
+        trace,
+    )
+}
+
+/// 计算中毒面板输出（几率来自 `PoisonChance`/`AilmentChance`，混沌 DoT）。
+pub fn poison_traced(
+    source: &AilmentSource,
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    trace: &mut TraceGraph,
+) -> (DamagingAilmentOutput, TraceNodeId) {
+    let (chance_pct, chance_node) = flat_chance_traced(player, enemy, cfg, "Poison", trace);
+    compute_damaging_ailment(
+        source,
+        player,
+        enemy,
+        cfg,
+        AilmentType::Poison,
+        DamageType::Chaos,
+        chance_pct,
+        chance_pct,
+        chance_node,
+        trace,
+    )
+}
+
+/// 计算点燃面板输出（几率派生：火命中/阈值 × IgniteChanceMultiplier + AilmentChance）。
+pub fn ignite_traced(
+    source: &AilmentSource,
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    threshold: f64,
+    trace: &mut TraceGraph,
+) -> (DamagingAilmentOutput, TraceNodeId) {
+    let (chance_hit, chance_crit, chance_node) = threshold_chance_traced(
+        source,
+        player,
+        enemy,
+        cfg,
+        "Ignite",
+        IGNITE_CHANCE_MULTIPLIER,
+        threshold,
+        trace,
+    );
+    compute_damaging_ailment(
+        source,
+        player,
+        enemy,
+        cfg,
+        AilmentType::Ignite,
+        DamageType::Fire,
+        chance_hit,
+        chance_crit,
+        chance_node,
+        trace,
+    )
+}
+
+/// 感电几率派生 + 效果幅度（非伤害异常），写入 TraceGraph。
+///
+/// 返回 `(chance, shock_effect_magnitude, node)`：`chance` 为施加几率（fraction），
+/// `shock_effect_magnitude` 为感电增伤幅度（fraction，来自 [`shock_effect`]）。
+/// 面板按"几率 × 幅度"延后到 perform 决定如何展示，本函数同时给出两者。
+pub fn shock_traced(
+    source: &AilmentSource,
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    threshold: f64,
+    trace: &mut TraceGraph,
+) -> (f64, f64, TraceNodeId) {
+    let (chance_hit, chance_crit, chance_node) = threshold_chance_traced(
+        source,
+        player,
+        enemy,
+        cfg,
+        "Shock",
+        SHOCK_CHANCE_MULTIPLIER,
+        threshold,
+        trace,
+    );
+    let (chance, _base) = weighted_source_damage(source, chance_hit, chance_crit);
+    // 感电幅度按暴击加权后的来源伤害对阈值的比例计算（PoB2 用 average damage）。
+    let weighted_hit =
+        source.hit_avg * (1.0 - source.crit_chance) + source.crit_avg * source.crit_chance;
+    let magnitude = shock_effect(weighted_hit, threshold);
+    let node = trace.add_node("ShockEffect", round(magnitude), TraceOperation::Chance);
+    // 几率贡献链入感电效果节点，使效果可回溯到 ShockChance 来源。
+    trace.add_edge(chance_node, node);
+    (chance, magnitude, node)
+}
+
+/// 内禀几率（流血/中毒）含 trace：base+inc+more 来自 `<Ailment>Chance`/`AilmentChance`
+/// （+ 敌方 `Self<Ailment>Chance`）。返回百分点几率。
+fn flat_chance_traced(
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    ailment: &str,
+    trace: &mut TraceGraph,
+) -> (f64, TraceNodeId) {
+    let chance_names = [
+        ModName::from(format!("{ailment}Chance")),
+        ModName::from("AilmentChance"),
+    ];
+    let self_chance = [ModName::from(format!("Self{ailment}Chance"))];
+
+    let base = player.sum_traced(
+        ModType::Base,
+        cfg,
+        &chance_names,
+        trace,
+        format!("{ailment}Chance BASE"),
+    );
+    let enemy_base = enemy.sum_traced(
+        ModType::Base,
+        cfg,
+        &self_chance,
+        trace,
+        format!("enemy Self{ailment}Chance BASE"),
+    );
+    let inc = player.sum(ModType::Inc, cfg, &chance_names);
+    let more = player.more(cfg, &chance_names);
+    let chance = flat_chance(base.value + enemy_base.value, inc, more);
+    let node = trace.add_node(
+        format!("{ailment}Chance"),
+        round(chance),
+        TraceOperation::Chance,
+    );
+    trace.add_edge(base.node_id, node);
+    trace.add_edge(enemy_base.node_id, node);
+    (chance, node)
+}
+
+/// 几率派生（点燃/感电）含 trace。返回 `(chance_on_hit, chance_on_crit, chance_node)`（百分点 + 节点）。
+#[allow(clippy::too_many_arguments)]
+fn threshold_chance_traced(
+    source: &AilmentSource,
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    ailment: &str,
+    multiplier: f64,
+    threshold: f64,
+    trace: &mut TraceGraph,
+) -> (f64, f64, TraceNodeId) {
+    let chance_names = [
+        ModName::from(format!("Enemy{ailment}Chance")),
+        ModName::from("AilmentChance"),
+    ];
+    let self_chance = [ModName::from(format!("Self{ailment}Chance"))];
+
+    let base = player.sum_traced(
+        ModType::Base,
+        cfg,
+        &chance_names,
+        trace,
+        format!("{ailment}Chance BASE"),
+    );
+    let enemy_base = enemy.sum_traced(
+        ModType::Base,
+        cfg,
+        &self_chance,
+        trace,
+        format!("enemy Self{ailment}Chance BASE"),
+    );
+    let inc =
+        player.sum(ModType::Inc, cfg, &chance_names) + enemy.sum(ModType::Inc, cfg, &self_chance);
+    let more = player.more(cfg, &chance_names) * enemy.more(cfg, &self_chance);
+
+    let (on_hit, on_crit) = threshold_derived_chance(
+        source.hit_avg,
+        source.crit_avg,
+        threshold,
+        multiplier,
+        base.value + enemy_base.value,
+        inc,
+        more,
+    );
+    let node = trace.add_node(
+        format!("{ailment}ChanceOnHit"),
+        round(on_hit),
+        TraceOperation::Chance,
+    );
+    trace.add_edge(base.node_id, node);
+    trace.add_edge(enemy_base.node_id, node);
+    (on_hit, on_crit, node)
+}
+
+/// 伤害异常核心：暴击加权 base → magnitude（inc/more）→ effMult → chance × magnitude。
+///
+/// 把几率节点、magnitude 的 inc/more 贡献、effMult 的敌方抗性/taken 贡献全部连入
+/// 最终 `<Ailment>DPS` 节点，使输出可回溯（gap: ailment-trace-attribution-missing）。
+#[allow(clippy::too_many_arguments)]
+fn compute_damaging_ailment(
+    source: &AilmentSource,
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    ailment: AilmentType,
+    damage_type: DamageType,
+    chance_on_hit: f64,
+    chance_on_crit: f64,
+    chance_node: TraceNodeId,
+    trace: &mut TraceGraph,
+) -> (DamagingAilmentOutput, TraceNodeId) {
+    let (chance, base_source) = weighted_source_damage(source, chance_on_hit, chance_on_crit);
+
+    // base magnitude（暴击加权来源 × 每秒比例）走与裸实例相同的 inc/more 缩放。
+    let instance = match ailment {
+        AilmentType::Bleed => bleed_instance(base_source, player, cfg),
+        AilmentType::Ignite => ignite_instance(base_source, player, cfg),
+        AilmentType::Poison => poison_instance(base_source, player, cfg),
+        _ => bleed_instance(base_source, player, cfg),
+    };
+
+    let eff_mult = effmult_for_ailment(enemy, cfg, damage_type, cfg.mode_effective);
+    let magnitude_dps = round(instance.magnitude_dps * eff_mult);
+    let expected_dps = round(magnitude_dps * chance);
+
+    let dps_node = trace.add_node(
+        format!("{ailment:?}DPS"),
+        expected_dps,
+        TraceOperation::Aggregate,
+    );
+    // 几率链入 DPS（DPS = chance × magnitude）。
+    trace.add_edge(chance_node, dps_node);
+    // magnitude 节点（含暴击加权来源 + inc/more）连入 DPS。
+    let mag_node = trace.add_node(
+        format!("{ailment:?}Magnitude"),
+        magnitude_dps,
+        TraceOperation::Multiply,
+    );
+    record_magnitude_trace(player, cfg, ailment, mag_node, trace);
+    trace.add_edge(mag_node, dps_node);
+    // effMult 节点（敌方抗性 + taken 链）连入 DPS。
+    if cfg.mode_effective {
+        let eff_node = record_effmult_trace(enemy, cfg, damage_type, eff_mult, trace);
+        trace.add_edge(eff_node, dps_node);
+    }
+
+    (
+        DamagingAilmentOutput {
+            chance,
+            eff_mult,
+            magnitude_dps,
+            duration_secs: instance.duration_secs,
+            expected_dps,
+        },
+        dps_node,
+    )
+}
+
+/// 把某异常的 magnitude inc/more 词条贡献连入 magnitude 节点。
+fn record_magnitude_trace(
+    player: &ModDb,
+    cfg: &CalcConfig,
+    ailment: AilmentType,
+    mag_node: TraceNodeId,
+    trace: &mut TraceGraph,
+) {
+    let names = magnitude_mod_names(ailment);
+    let inc = player.sum_traced(
+        ModType::Inc,
+        cfg,
+        &names,
+        trace,
+        format!("{ailment:?} magnitude INC"),
+    );
+    trace.add_edge(inc.node_id, mag_node);
+    let more = player.more_traced(cfg, &names, trace, format!("{ailment:?} magnitude MORE"));
+    trace.add_edge(more.node_id, mag_node);
+}
+
+/// 把 effMult 的敌方抗性 + taken 链贡献连入 effMult 节点，返回该节点。
+fn record_effmult_trace(
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    eff_mult: f64,
+    trace: &mut TraceGraph,
+) -> TraceNodeId {
+    let type_cfg = cfg.clone().with_damage_type(damage_type);
+    let eff_node = trace.add_node("AilmentEffMult", round(eff_mult), TraceOperation::Mitigate);
+
+    let taken_names = taken_mod_names(damage_type);
+    let taken_inc = enemy.sum_traced(
+        ModType::Inc,
+        &type_cfg,
+        &taken_names,
+        trace,
+        "ailment DamageTaken INC",
+    );
+    trace.add_edge(taken_inc.node_id, eff_node);
+    let taken_more = enemy.more_traced(&type_cfg, &taken_names, trace, "ailment DamageTaken MORE");
+    trace.add_edge(taken_more.node_id, eff_node);
+
+    if damage_type != DamageType::Physical {
+        let prefix = type_prefix(damage_type);
+        let resist = enemy.sum_traced(
+            ModType::Base,
+            &type_cfg,
+            &[ModName::from(format!("{prefix}Resist"))],
+            trace,
+            format!("enemy {prefix}Resist BASE"),
+        );
+        trace.add_edge(resist.node_id, eff_node);
+    }
+    eff_node
+}
+
+/// 某异常 magnitude 缩放的 inc/more ModName 集合（与 `*_instance` 一致）。
+fn magnitude_mod_names(ailment: AilmentType) -> Vec<ModName> {
+    match ailment {
+        AilmentType::Bleed => vec![
+            ModName::from("BleedDamage"),
+            ModName::from("AilmentDamage"),
+            ModName::from("PhysicalDamageOverTime"),
+            ModName::from("DamageOverTime"),
+        ],
+        AilmentType::Ignite => vec![
+            ModName::from("IgniteDamage"),
+            ModName::from("BurningDamage"),
+            ModName::from("AilmentDamage"),
+            ModName::from("FireDamageOverTime"),
+            ModName::from("DamageOverTime"),
+        ],
+        AilmentType::Poison => vec![
+            ModName::from("PoisonDamage"),
+            ModName::from("AilmentDamage"),
+            ModName::from("ChaosDamageOverTime"),
+            ModName::from("DamageOverTime"),
+        ],
+        _ => vec![
+            ModName::from("AilmentDamage"),
+            ModName::from("DamageOverTime"),
+        ],
     }
 }

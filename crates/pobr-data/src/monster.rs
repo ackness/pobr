@@ -3,7 +3,8 @@
 //! 数据来源：
 //! - `src/Data/Misc.lua`（PathOfBuilding-PoE2 dev 分支）—— `data.monsterAccuracyTable` /
 //!   `data.monsterEvasionTable` / `data.monsterArmourTable` / `data.monsterLifeTable` /
-//!   `data.monsterDamageTable`（各 100 项，索引 = 怪物等级 1..=100）。
+//!   `data.monsterDamageTable` / `data.monsterAilmentThresholdTable` /
+//!   `data.monsterPoiseThresholdTable`（各 100 项，索引 = 怪物等级 1..=100）。
 //! - `src/Modules/Data.lua`（同库）—— `data.misc.MaxEnemyLevel = 85`、
 //!   `normalEnemyDPSMult`、`stdBossDPSMult`、`pinnacleBossDPSMult`、`uberBossDPSMult`、
 //!   `pinnacleBossPen`、`uberBossPen`、`EnemyMaxResist`、`EnemyPhysicalDamageReductionCap`。
@@ -15,6 +16,7 @@
 //! - 本模块仅含纯数据定义与查表逻辑，**零 I/O、零 async**。
 //! - 查表函数以 `level: u32`（1..=100）为参数，超界 clamp 到表边界。
 //! - 所有对接 Step-2（`setup_env`）的接口见 [`MonsterScalingRow`] 与 [`EnemyTierDefaults`]。
+//! - 异常阈值查表接口见 [`enemy_ailment_threshold`] 与 [`enemy_poise_threshold`]。
 
 use serde::{Deserialize, Serialize};
 
@@ -82,6 +84,79 @@ pub const UBER_ARMOUR_MEAN: f64 = 125.0;
 
 /// Uber Boss 闪避倍率（百分比；PoB2 `bossStats.UberEvasionMean`）。
 pub const UBER_EVASION_MEAN: f64 = 116.571_428_571_428_57;
+
+// ---------------------------------------------------------------------------
+// 异常阈值相关游戏常量（来自 src/Data/Misc.lua data.gameConstants）
+// ---------------------------------------------------------------------------
+
+/// 感电几率倍率：`hitChance = hitAvg / enemyThreshold * SHOCK_CHANCE_MULTIPLIER`。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["ShockChanceMultiplier"] = 25`。
+/// wiki 说明："每 4% 阈值伤害 = 1% 感电几率" = `1 / 0.04 = 25`。
+pub const SHOCK_CHANCE_MULTIPLIER: f64 = 25.0;
+
+/// 点燃几率倍率：`hitChance = hitAvg / enemyThreshold * IGNITE_CHANCE_MULTIPLIER`。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["IgniteChanceMultiplier"] = 20`。
+pub const IGNITE_CHANCE_MULTIPLIER: f64 = 20.0;
+
+/// 冰缓效果倍率（线性缩放）：`chillEffect = CHILL_EFFECT_MULTIPLIER * (damage / threshold) * effectMod`。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["ChillEffectMultiplier"] = 100`。
+pub const CHILL_EFFECT_MULTIPLIER: f64 = 100.0;
+
+/// 冰缓最大效果（%行动速度降低）。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["ChillMaxEffect"] = 50`。
+pub const CHILL_MAX_EFFECT: f64 = 50.0;
+
+/// 冰缓最小效果（默认/最低施加阈值，%行动速度降低）。
+///
+/// 来源：PoB2 `src/Modules/Data.lua::nonDamagingAilment["Chill"].min = 30`。
+/// 0.5.0 注：冰缓最小阈值为 30%（0.5.0 之前为 5%）。
+pub const CHILL_MIN_EFFECT: f64 = 30.0;
+
+/// 感电默认/最小效果（%目标受到伤害增加）。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["BaseShockMagnitude"] = 20`。
+pub const BASE_SHOCK_MAGNITUDE: f64 = 20.0;
+
+/// 感电最大效果上限（%目标受到伤害增加）。
+///
+/// 来源：PoB2 `src/Modules/Data.lua::nonDamagingAilment["Shock"].max = 100`。
+pub const SHOCK_MAX_EFFECT: f64 = 100.0;
+
+/// 冰冻伤害缩放（怪物目标）：`poiseBuildup = FREEZE_DAMAGE_SCALE / enemyPoiseThreshold * ...`。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["FreezeDamageScale"] = 2.1`。
+/// 注：玩家目标用 `FreezeDamageScalePlayer = 2.0`（本模块不涉及玩家防御）。
+pub const FREEZE_DAMAGE_SCALE: f64 = 2.1;
+
+/// 电击伤害缩放（怪物目标）：`poiseBuildup = ELECTROCUTE_DAMAGE_SCALE / enemyPoiseThreshold * ...`。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["ElectrocuteDamageScale"] = 1.7`。
+pub const ELECTROCUTE_DAMAGE_SCALE: f64 = 1.7;
+
+/// 重眩晕伤害缩放（怪物目标）。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["HeavyStunDamageScale"] = 0.58`。
+pub const HEAVY_STUN_DAMAGE_SCALE: f64 = 0.58;
+
+/// 钉刺伤害缩放（怪物目标）。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["PinDamageScale"] = 4.2`。
+pub const PIN_DAMAGE_SCALE: f64 = 4.2;
+
+/// Boss 姿态阈值 MORE 修正（%，来自 ConfigOptions.lua `enemyModList:NewMod("PoiseThreshold", "MORE", 500, ...)`）。
+///
+/// 适用于 Boss/Pinnacle/Uber 档位。已在 `setup_env.rs` 中注入 enemy.mod_db，
+/// 此常量仅作文档说明，不在本模块重复使用。
+pub const BOSS_POISE_THRESHOLD_MORE: f64 = 500.0;
+
+/// 玩家异常阈值生命比例（PlayerAilmentThreshold = 最大生命 × 此系数）。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["PlayerAilmentThresholdLifeFactor"] = 0.5`。
+pub const PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR: f64 = 0.5;
 
 // ---------------------------------------------------------------------------
 // 查表：怪物精准（monsterAccuracyTable，100 项，来自 DefaultMonsterStats.dat）
@@ -176,6 +251,65 @@ pub const MONSTER_DAMAGE_TABLE: [f64; MONSTER_TABLE_LEN] = [
 ];
 
 // ---------------------------------------------------------------------------
+// 查表：怪物异常阈值（monsterAilmentThresholdTable，100 项）
+// 用于几率派生型异常（点燃 Ignite / 感电 Shock / 冰缓 Chill 最小阈值）。
+// 注：与怪物生命**无关**，独立按等级索引。lv65+ 出现大幅跳升（终局/boss 区间）。
+// 来源：src/Data/Misc.lua data.monsterAilmentThresholdTable（PathOfBuilding-PoE2 dev）
+// PoB2 CalcOffence.lua:
+//   enemyThreshold = data.monsterAilmentThresholdTable[env.enemyLevel] * mod(EnemyAilmentThreshold)
+// ---------------------------------------------------------------------------
+
+/// 怪物异常阈值查表（等级 1..=100）。
+///
+/// 用于点燃/感电的几率派生与冰缓的最小阈值计算。
+/// 与怪物生命无关，独立按等级索引；lv65（EndgameStartLevel）起大幅跳升。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.monsterAilmentThresholdTable`。
+pub const MONSTER_AILMENT_THRESHOLD_TABLE: [u32; MONSTER_TABLE_LEN] = [
+    15, 20, 24, 28, 34, 39, 46, 52, 60, 70, // lv1-10
+    81, 95, 110, 126, 144, 171, 193, 218, 245, 275, // lv11-20
+    306, 340, 376, 413, 455, 497, 543, 590, 641, 695, // lv21-30
+    752, 812, 874, 950, 1033, 1123, 1220, 1326, 1442, 1568, // lv31-40
+    1705, 1854, 2015, 2192, 2384, 2564, 2757, 2966, 3188, 3426, // lv41-50
+    3681, 3955, 4247, 4560, 4895, 5254, 5638, 6049, 6489, 6959, // lv51-60
+    7462, 8001, 8576, 9193, 9649, 10228, 10841, 11492, 12181, 18272, // lv61-70
+    19369, 20531, 21763, 23068, 34602, 36679, 38879, 41212, 43685, 65527, // lv71-80
+    68415, 71303, 74191, 77079, 79967, 82855, 85743, 88631, 91519, 94407, // lv81-90
+    97295, 100183, 103071, 105959, 108847, 111735, 114623, 117511, 120399, 123287, // lv91-100
+];
+
+// ---------------------------------------------------------------------------
+// 查表：怪物姿态阈值（monsterPoiseThresholdTable，100 项）
+// 用于积累型 debuff（冰冻 Freeze / 电击 Electrocute / 重眩晕 HeavyStun / 钉刺 Pin）。
+// Boss 在此基础上通过 mod_db PoiseThreshold MORE 500 乘以 5 倍（已在 setup_env.rs 注入）。
+// 来源：src/Data/Misc.lua data.monsterPoiseThresholdTable（PathOfBuilding-PoE2 dev）
+// PoB2 CalcOffence.lua:
+//   enemyPoiseThreshold = floor(monsterPoiseThresholdTable[enemyLevel]
+//       * mod(PoiseThreshold, ailment.."Threshold", ...EnemyAilmentThreshold))
+// ---------------------------------------------------------------------------
+
+/// 怪物姿态阈值查表（等级 1..=100）。
+///
+/// 用于冰冻/电击/重眩晕/钉刺的积累量计算。
+/// lv65（EndgameStartLevel）起同样出现大幅跳升；Boss 档位需在 mod_db 层额外乘以
+/// `PoiseThreshold MORE 500`（已由 `setup_env.rs` 注入，此处返回裸表值）。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.monsterPoiseThresholdTable`。
+pub const MONSTER_POISE_THRESHOLD_TABLE: [u32; MONSTER_TABLE_LEN] = [
+    30, 40, 48, 57, 67, 79, 93, 106, 122, 142, // lv1-10
+    165, 192, 220, 254, 290, 344, 390, 437, 488, 542, // lv11-20
+    599, 659, 724, 791, 862, 937, 1015, 1097, 1183, 1273, // lv21-30
+    1367, 1464, 1567, 1660, 1758, 1864, 1976, 2093, 2219, 2352, // lv31-40
+    2494, 2644, 2804, 2971, 3150, 3369, 3598, 3846, 4109, 4387, // lv41-50
+    4685, 5002, 5338, 5697, 6078, 6485, 6915, 7377, 7866, 8386, // lv51-60
+    8940, 9528, 10153, 10819, 26703, 28651, 30662, 32890, 35192, 53405, // lv61-70
+    57263, 61392, 65810, 70537, 106973, 114630, 122820, 131580, 140949, 213635, // lv71-80
+    225270, 236905, 248540, 260175, 271810, 283445, 295080, 306715, 318350, 329985, // lv81-90
+    341620, 353255, 364890, 376525, 388160, 399795, 411430, 423065, 434700,
+    446335, // lv91-100
+];
+
+// ---------------------------------------------------------------------------
 // 查表辅助函数
 // ---------------------------------------------------------------------------
 
@@ -226,6 +360,70 @@ pub fn monster_life(level: u32) -> u32 {
 /// 查询怪物基础伤害（等级 1..=100，超界自动 clamp）。
 pub fn monster_damage(level: u32) -> f64 {
     MONSTER_DAMAGE_TABLE[level_to_index(level)]
+}
+
+/// 查询怪物异常阈值（裸表值，等级 1..=100，超界自动 clamp）。
+///
+/// 用途：几率派生型异常（点燃 / 感电）与冰缓最小阈值计算。
+///
+/// # 完整公式（PoB2 CalcOffence.lua）
+/// ```text
+/// enemy_threshold = monster_ailment_threshold(level) * mod(EnemyAilmentThreshold)
+/// ```
+/// `EnemyAilmentThreshold` 来自 mod_db 聚合（词条 / boss 修正等）；
+/// 本函数只返回裸表值，调用方负责乘以 mod 倍率。
+///
+/// # 注意
+/// - 与怪物生命**无关**，独立按等级索引。
+/// - lv65（EndgameStartLevel）起大幅跳升，用于终局/boss 区间。
+/// - Boss 档位的 `EnemyAilmentThreshold` 修正通过 mod_db 词条注入（不在本函数处理）。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.monsterAilmentThresholdTable`。
+pub fn enemy_ailment_threshold(level: u32) -> u32 {
+    MONSTER_AILMENT_THRESHOLD_TABLE[level_to_index(level)]
+}
+
+/// 查询怪物姿态阈值（裸表值，等级 1..=100，超界自动 clamp）。
+///
+/// 用途：积累型 debuff（冰冻 / 电击 / 重眩晕 / 钉刺）的积累量计算。
+///
+/// # 完整公式（PoB2 CalcOffence.lua）
+/// ```text
+/// enemy_poise_threshold = floor(
+///     monster_poise_threshold(level)
+///     * mod(PoiseThreshold, ailment + "Threshold",
+///           [EnemyStunThreshold for HeavyStun],
+///           [EnemyAilmentThreshold for Freeze/Electrocute])
+/// )
+/// ```
+/// `PoiseThreshold` 来自 mod_db 聚合（Boss 默认 MORE 500，已在 `setup_env.rs` 注入）；
+/// 本函数只返回裸表值，调用方负责乘以 mod 倍率后 floor。
+///
+/// # 注意
+/// - lv65（EndgameStartLevel）起大幅跳升（Boss 区间）。
+/// - Boss 的 `PoiseThreshold MORE 500` 已在 `setup_env.rs` 注入 enemy.mod_db，
+///   **不在本函数重复处理**。
+/// - 冰冻 / 电击额外还吃 `EnemyAilmentThreshold` 修正。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.monsterPoiseThresholdTable`。
+pub fn enemy_poise_threshold(level: u32) -> u32 {
+    MONSTER_POISE_THRESHOLD_TABLE[level_to_index(level)]
+}
+
+/// 计算冰缓最小可施加的阈值（unmitigated cold damage 必须超过此值才算有效冰缓）。
+///
+/// # 公式（PoB2 CalcOffence.lua）
+/// ```text
+/// chill_minimum_threshold = enemy_ailment_threshold(level) / CHILL_EFFECT_MULTIPLIER
+/// ```
+/// 即：打满 1% 阈值伤害 → 冰缓效果 1%（< 30% 被丢弃）；
+/// 打满 30% 阈值伤害 → 最小有效冰缓 30%。
+/// `enemy_mod(EnemyAilmentThreshold)` 的 mod 倍率已在 `enemy_threshold` 中体现；
+/// 此工具函数接受已计算好的 `effective_threshold`（= 裸表值 × mod 倍率）。
+///
+/// 来源：PoB2 `CalcOffence.lua::chillMinimumThreshold = enemyThreshold / ChillEffectMultiplier`。
+pub fn chill_minimum_threshold(effective_threshold: f64) -> f64 {
+    effective_threshold / CHILL_EFFECT_MULTIPLIER
 }
 
 // ---------------------------------------------------------------------------
@@ -702,5 +900,205 @@ mod tests {
         // 超过 MAX_ENEMY_LEVEL 的 row 等级 == MAX_ENEMY_LEVEL
         let row = MonsterScalingRow::at_level(999);
         assert_eq!(row.level, MAX_ENEMY_LEVEL);
+    }
+
+    // -----------------------------------------------------------------------
+    // 异常阈值（Ailment Threshold）查表测试
+    // 参考：PoB2 src/Data/Misc.lua data.monsterAilmentThresholdTable（Lua 1-indexed）
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn ailment_threshold_lv1() {
+        // PoB2 monsterAilmentThresholdTable[1] = 15
+        assert_eq!(enemy_ailment_threshold(1), 15, "lv1 ailment threshold");
+    }
+
+    #[test]
+    fn ailment_threshold_lv10() {
+        // PoB2 monsterAilmentThresholdTable[10] = 70
+        assert_eq!(enemy_ailment_threshold(10), 70, "lv10 ailment threshold");
+    }
+
+    #[test]
+    fn ailment_threshold_lv60() {
+        // PoB2 monsterAilmentThresholdTable[60] = 6959
+        assert_eq!(enemy_ailment_threshold(60), 6959, "lv60 ailment threshold");
+    }
+
+    #[test]
+    fn ailment_threshold_lv64_to_lv65_jump() {
+        // lv64=9193, lv65=9649（EndgameStartLevel 出现的加速增长起点）
+        let lv64 = enemy_ailment_threshold(64);
+        let lv65 = enemy_ailment_threshold(65);
+        assert_eq!(lv64, 9193, "lv64 ailment threshold");
+        assert_eq!(lv65, 9649, "lv65 ailment threshold");
+        // lv69->lv70 大跳升（12181 -> 18272）
+        let lv69 = enemy_ailment_threshold(69);
+        let lv70 = enemy_ailment_threshold(70);
+        assert_eq!(lv69, 12181, "lv69 ailment threshold");
+        assert_eq!(lv70, 18272, "lv70 ailment threshold");
+        assert!(lv70 > lv69 * 140 / 100, "lv70 has major jump vs lv69");
+    }
+
+    #[test]
+    fn ailment_threshold_lv85() {
+        // MAX_ENEMY_LEVEL=85: PoB2 monsterAilmentThresholdTable[85] = 79967
+        assert_eq!(
+            enemy_ailment_threshold(85),
+            79967,
+            "lv85 (MAX_ENEMY_LEVEL) ailment threshold"
+        );
+    }
+
+    #[test]
+    fn ailment_threshold_lv100() {
+        // PoB2 monsterAilmentThresholdTable[100] = 123287
+        assert_eq!(
+            enemy_ailment_threshold(100),
+            123287,
+            "lv100 ailment threshold"
+        );
+    }
+
+    #[test]
+    fn ailment_threshold_clamp_above_100() {
+        assert_eq!(enemy_ailment_threshold(200), enemy_ailment_threshold(100));
+    }
+
+    #[test]
+    fn ailment_threshold_clamp_zero() {
+        assert_eq!(enemy_ailment_threshold(0), enemy_ailment_threshold(1));
+    }
+
+    // -----------------------------------------------------------------------
+    // 姿态阈值（Poise Threshold）查表测试
+    // 参考：PoB2 src/Data/Misc.lua data.monsterPoiseThresholdTable（Lua 1-indexed）
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn poise_threshold_lv1() {
+        // PoB2 monsterPoiseThresholdTable[1] = 30
+        assert_eq!(enemy_poise_threshold(1), 30, "lv1 poise threshold");
+    }
+
+    #[test]
+    fn poise_threshold_lv10() {
+        // PoB2 monsterPoiseThresholdTable[10] = 142
+        assert_eq!(enemy_poise_threshold(10), 142, "lv10 poise threshold");
+    }
+
+    #[test]
+    fn poise_threshold_lv60() {
+        // PoB2 monsterPoiseThresholdTable[60] = 8386
+        assert_eq!(enemy_poise_threshold(60), 8386, "lv60 poise threshold");
+    }
+
+    #[test]
+    fn poise_threshold_lv64_to_lv65_jump() {
+        // lv64=10819, lv65=26703（EndgameStartLevel 大幅跳升）
+        let lv64 = enemy_poise_threshold(64);
+        let lv65 = enemy_poise_threshold(65);
+        assert_eq!(lv64, 10819, "lv64 poise threshold");
+        assert_eq!(lv65, 26703, "lv65 poise threshold");
+        // 跳升幅度验证（lv65 约是 lv64 的 2.47 倍）
+        assert!(
+            lv65 > lv64 * 2,
+            "lv65 poise threshold has major jump (lv65={lv65} > 2*lv64={lv64})"
+        );
+    }
+
+    #[test]
+    fn poise_threshold_lv85() {
+        // MAX_ENEMY_LEVEL=85: PoB2 monsterPoiseThresholdTable[85] = 271810
+        assert_eq!(
+            enemy_poise_threshold(85),
+            271810,
+            "lv85 (MAX_ENEMY_LEVEL) poise threshold"
+        );
+    }
+
+    #[test]
+    fn poise_threshold_lv100() {
+        // PoB2 monsterPoiseThresholdTable[100] = 446335
+        assert_eq!(enemy_poise_threshold(100), 446335, "lv100 poise threshold");
+    }
+
+    #[test]
+    fn poise_threshold_clamp_above_100() {
+        assert_eq!(enemy_poise_threshold(200), enemy_poise_threshold(100));
+    }
+
+    #[test]
+    fn poise_threshold_clamp_zero() {
+        assert_eq!(enemy_poise_threshold(0), enemy_poise_threshold(1));
+    }
+
+    // -----------------------------------------------------------------------
+    // 姿态阈值 > 异常阈值（Boss 区间合理性）
+    // PoB2 中 poise threshold 用于冰冻/电击等积累型 debuff，
+    // 在 boss 区间（EndgameStartLevel 之后）大幅高于 ailment threshold。
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn poise_gt_ailment_at_endgame() {
+        // lv65（EndgameStartLevel）之后，姿态阈值应显著高于异常阈值
+        for lv in [65u32, 70, 75, 80, 85] {
+            let at = enemy_ailment_threshold(lv);
+            let pt = enemy_poise_threshold(lv);
+            assert!(
+                pt > at,
+                "lv{lv}: poise_threshold({pt}) should exceed ailment_threshold({at})"
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // chill_minimum_threshold 辅助函数
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn chill_minimum_threshold_lv85() {
+        // effective_threshold = 79967 * 1.0 (no mod) = 79967.0
+        // chill_minimum_threshold = 79967.0 / 100.0 = 799.67
+        let effective = enemy_ailment_threshold(85) as f64;
+        let min_thresh = chill_minimum_threshold(effective);
+        assert!(
+            (min_thresh - 799.67).abs() < 0.01,
+            "lv85 chill min threshold ≈ 799.67, got {min_thresh}"
+        );
+    }
+
+    #[test]
+    fn chill_minimum_threshold_with_mod() {
+        // effectivethreshold = 79967 * 1.1（EnemyAilmentThreshold +10%）
+        let effective = enemy_ailment_threshold(85) as f64 * 1.1;
+        let min_thresh = chill_minimum_threshold(effective);
+        assert!(
+            (min_thresh - 799.67 * 1.1).abs() < 0.1,
+            "lv85 chill min threshold with +10% mod ≈ {:.2}, got {min_thresh:.2}",
+            799.67 * 1.1
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // 游戏常量验证
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn game_constants_values() {
+        // PoB2 Misc.lua 直接抄录验证
+        assert_eq!(SHOCK_CHANCE_MULTIPLIER, 25.0);
+        assert_eq!(IGNITE_CHANCE_MULTIPLIER, 20.0);
+        assert_eq!(CHILL_EFFECT_MULTIPLIER, 100.0);
+        assert_eq!(CHILL_MAX_EFFECT, 50.0);
+        assert_eq!(CHILL_MIN_EFFECT, 30.0);
+        assert_eq!(BASE_SHOCK_MAGNITUDE, 20.0);
+        assert_eq!(SHOCK_MAX_EFFECT, 100.0);
+        assert_eq!(FREEZE_DAMAGE_SCALE, 2.1);
+        assert_eq!(ELECTROCUTE_DAMAGE_SCALE, 1.7);
+        assert_eq!(HEAVY_STUN_DAMAGE_SCALE, 0.58);
+        assert_eq!(PIN_DAMAGE_SCALE, 4.2);
+        assert_eq!(BOSS_POISE_THRESHOLD_MORE, 500.0);
+        assert_eq!(PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR, 0.5);
     }
 }
