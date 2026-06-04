@@ -1,0 +1,25 @@
+# zh-TW stat display names (developer-supplied; no official zh-TW table).
+# Keys MUST be a subset of en-US/stats.toml. Missing keys fall back to en-US.
+
+[stat]
+life = "生命"
+mana = "魔力"
+energy_shield = "能量護盾"
+spirit = "靈氣"
+
+strength = "力量"
+dexterity = "敏捷"
+intelligence = "智慧"
+
+armour = "護甲"
+evasion = "閃避值"
+
+fire_resistance = "火焰抗性"
+cold_resistance = "冰冷抗性"
+lightning_resistance = "閃電抗性"
+chaos_resistance = "混沌抗性"
+
+critical_strike_chance = "暴擊率"
+critical_strike_multiplier = "暴擊加成"
+
+total_dps = "總 DPS"

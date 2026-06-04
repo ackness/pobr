@@ -1,0 +1,15 @@
+[package]
+name = "lint-i18n"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "lint_i18n"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lint-i18n"
+path = "src/main.rs"
+
+[dependencies]
+pobr-i18n.workspace = true

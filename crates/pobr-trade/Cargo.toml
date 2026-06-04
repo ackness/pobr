@@ -1,0 +1,9 @@
+[package]
+name = "pobr-trade"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror = "2"

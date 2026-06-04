@@ -6,3 +6,10 @@ edition.workspace = true
 [dependencies]
 pobr-data.workspace = true
 
+[dev-dependencies]
+criterion = { version = "0.5", default-features = false }
+
+[[bench]]
+name = "mod_db_bench"
+harness = false
+

@@ -1,4 +1,4 @@
-use super::{DamageComponent, MinimalOutput};
+use super::{DamageComponent, MinimalOutput, SkillUseTime};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct OutputTable {
@@ -25,6 +25,39 @@ pub struct OutputTable {
     pub hit_chance: f64,
     pub action_rate: f64,
     pub dps: f64,
+
+    // --- 追加机制字段（perform 的 fill 阶段写入；Default 0/None） ---
+    /// 技能使用时间 / 行动速率解析结果。
+    pub skill_use_time: Option<SkillUseTime>,
+    /// 应用服务器帧上限后的有效行动速率（actions/s）。
+    pub effective_action_rate: f64,
+    /// 异常状态 DPS。
+    pub bleed_dps: f64,
+    pub ignite_dps: f64,
+    pub poison_dps: f64,
+    /// 感电增伤幅度（fraction，如 0.20）。
+    pub shock_effect: f64,
+    /// 各伤害类型最大可承受单次命中。
+    pub physical_max_hit: f64,
+    pub fire_max_hit: f64,
+    pub cold_max_hit: f64,
+    pub lightning_max_hit: f64,
+    pub chaos_max_hit: f64,
+    /// 综合 EHP（取各类型 max hit 最低）。
+    pub total_ehp: f64,
+    /// 生命 / 法力预留与剩余。
+    pub life_reserved: f64,
+    pub life_unreserved: f64,
+    pub mana_reserved: f64,
+    pub mana_unreserved: f64,
+    /// 每秒恢复。
+    pub life_regen: f64,
+    pub mana_regen: f64,
+    pub energy_shield_regen: f64,
+    /// 防御几率类。
+    pub block_chance: f64,
+    pub spell_block_chance: f64,
+    pub spell_suppression_chance: f64,
 }
 
 impl From<&MinimalOutput> for OutputTable {

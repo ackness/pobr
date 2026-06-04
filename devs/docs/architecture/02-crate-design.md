@@ -204,8 +204,14 @@ pub enum ClassId {
 
 ### 2.4 GameData 加载
 
+> ⚠️ **此设计已被取代（superseded）**。下方 `include_bytes!` + bincode 编译期内联到
+> `pobr-data` 的方案**未被采用**。实际实现把数据加载拆为独立的 `pobr-gamedata` loader
+> crate（运行时读 `data/<poe_version>/` 的 JSON），`pobr-data` 维持零 I/O，只保留入库
+> JSON 的 schema 定义（`catalog.rs`）。详见下方 **§2.5 数据层实现现状**。保留此小节仅作
+> 历史设计记录。
+
 ```rust
-// src/game_data.rs
+// src/game_data.rs（未采用的早期设计）
 use once_cell::sync::Lazy;
 
 pub struct GameData {
@@ -221,6 +227,46 @@ pub static GAME_DATA: Lazy<GameData> = Lazy::new(|| {
     bincode::deserialize(bytes).expect("Failed to deserialize game data")
 });
 ```
+
+### 2.5 数据层实现现状（pobr-data-adapter + pobr-gamedata）
+
+> 本小节描述**已落地**的数据管线（截至 PoE2 patch `4.5.0.3.4`），与目标架构其余尚未实现
+> 的 crate 不同——这部分是当前可运行的事实。
+
+**管线全貌**：
+
+```
+GGG .dat 原始导出（pathofexile-dat 产物）
+    │
+    ▼  tools/pobr-data-adapter（离线工具，解析外键 / 反范式化 / 过滤占位 / 按 id 排序）
+    │
+data/<poe_version>/                      # PoBR 自有最小 JSON（schema = pobr-data::catalog）
+    ├── manifest.json                    # DataManifest 信封：schema_version / poe_version / languages / domains
+    ├── base_items.json                  # BaseItemDef[]
+    ├── stats.json                       # StatDef[]
+    ├── mods.json                        # ModDef[]（Stat 外键已解析、掷值区间已合并）
+    ├── skill_gems.json                  # SkillGemDef[]
+    ├── granted_effects.json             # GrantedEffectDef[]
+    └── i18n/zh-TW/{base_items,mods,skills}.json   # id → 本地化名称 边车（英文为 canonical）
+    │
+    ▼  crates/pobr-gamedata（运行时 loader，唯一持有文件 I/O 的层）
+    │
+pobr_data::catalog 类型 → 上层计算
+```
+
+**职责边界**：
+
+| 组件 | 类型 | 职责 |
+|------|------|------|
+| `pobr-data::catalog`（`catalog.rs`） | schema 定义 | PoBR 自有最小 JSON 的强类型 schema：`DataManifest` / `BaseItemDef` / `StatDef` / `ModDef`（+ `ModStat`）/ `SkillGemDef` / `GrantedEffectDef`。与 GGG 原始列名 / PoB 生成 Lua 解耦，稳定字符串 ID，版本可钉、diff 友好。零 I/O。`CATALOG_SCHEMA_VERSION` 标记结构不兼容变更 |
+| `tools/pobr-data-adapter` | 离线工具 | `.dat 导出 → data/<ver>/*.json`。解析整型外键为稳定字符串 ID（ItemClass / Tags / Stat1..4 / BaseItemType / ActiveSkill 等）、过滤开发占位（`[DNT-UNUSED]` 类）、反范式化、按 id 排序输出。同时生成 zh-TW i18n 边车 |
+| `crates/pobr-gamedata` | 运行时 loader | `GameData::new(version_dir)` 指向某版本目录，按域懒加载（`base_items()` / `stats()` / `mods()` / `skill_gems()` / `granted_effects()`）+ 语言边车（`base_item_names(lang)` 等）。`repo_data_root()` 给出仓库内置 `data/` 根，供测试与默认加载 |
+
+**关键约定**：
+
+- **英文为 canonical**：主数据文件存英文名，其它语言走 `i18n/<lang>/*.json` 边车（`id → 本地化名称`），与「计算用稳定 ID、显示走 i18n」一致（见 05-compatibility-and-i18n.md）。
+- **I/O 收口**：仅 `pobr-gamedata` 持有 `fs` 读取；`pobr-data` / `pobr-core` 维持零 I/O，可测试 / 可并行 / 可 WASM 化。
+- **已知缺口（结构进、语义待接）**：`SkillGems.GemEffects` FK 指向的 `GemEffects` 表当前 pipeline 未导出，故宝石 → 授予效果的直接连边暂缺；分等级缩放（`GrantedEffectsPerLevel` 的 cost / cooldown / attack time）尚未接入。武器 / 护甲数值（`WeaponTypes` / `ArmourTypes`）后续切片接入。详见 `catalog.rs` 内 TODO。
 
 ---
 
@@ -633,14 +679,33 @@ impl TradeApiClient {
 
 ## 9. Cargo.toml 配置
 
+> ⚠️ **下方为目标架构配置；实际 `Cargo.toml` 与之有差异，以仓库为准。** 现状：
+>
+> - **workspace members（13 个）**：`pobr-data` / `pobr-core` / `pobr-gamedata`（见 §2.5，
+>   有实质实现）；`pobr-i18n` / `pobr-tree` / `pobr-item` / `pobr-build` / `pobr-trade` +
+>   `apps/{pobr-cli, pobr-desktop, pobr-wasm}`（**占位骨架**，最小可编译、仅挂项目内 path
+>   依赖，外部依赖待实现时加）；`tools/{sync-pob-catalog, pobr-data-adapter}`。
+> - **工具改名（职责已被现有工具承担）**：早期规划的 `tools/export-poe-data` 由
+>   **`tools/pobr-data-adapter`** 实现（GGG `.dat` → 入库 JSON，见 §2.5）；
+>   `tools/gen-mod-cache` 由 **`tools/sync-pob-catalog`**（catalog / parity 扫描）+
+>   `pobr-core::mod_cache`（运行时解析缓存）共同承担；`tools/lint-i18n` 暂未实现
+>   （依赖尚未落地的 i18n 数据，留作未来项）。
+> - **依赖继承**：实际用 `version.workspace = true` / `edition.workspace = true`，
+>   内部 crate 登记在 `workspace.dependencies`（path），下游写 `pobr-core.workspace = true`。
+> - **workspace deps**：当前仅 `pobr-data` / `pobr-core` / `pobr-i18n` / `pobr-tree` /
+>   `pobr-item` / `pobr-build` / `pobr-trade`（path）+ `regex` / `serde` / `serde_json`。
+>   下方的 `bincode` / `once_cell` / `thiserror` / `rayon` / `quick-xml` 等尚未引入。
+
 ### Workspace Root
 
 ```toml
 [workspace]
 members = [
     "crates/pobr-data",
-    "crates/pobr-i18n",
     "crates/pobr-core",
+    "crates/pobr-gamedata",
+    # 占位骨架（尚未实现）
+    "crates/pobr-i18n",
     "crates/pobr-tree",
     "crates/pobr-item",
     "crates/pobr-build",
@@ -648,20 +713,28 @@ members = [
     "apps/pobr-cli",
     "apps/pobr-desktop",
     "apps/pobr-wasm",
-    "tools/export-poe-data",
-    "tools/gen-mod-cache",
-    "tools/lint-i18n",
+    # 工具
+    "tools/sync-pob-catalog",
+    "tools/pobr-data-adapter",
 ]
 resolver = "2"
 
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
 [workspace.dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-bincode = "1.3"
-once_cell = "1.19"
-thiserror = "1.0"
-rayon = "1.8"
-quick-xml = "0.36"
+pobr-data = { path = "crates/pobr-data" }
+pobr-core = { path = "crates/pobr-core" }
+pobr-i18n = { path = "crates/pobr-i18n" }
+pobr-tree = { path = "crates/pobr-tree" }
+pobr-item = { path = "crates/pobr-item" }
+pobr-build = { path = "crates/pobr-build" }
+pobr-trade = { path = "crates/pobr-trade" }
+regex = "1.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# 目标架构还会用到（尚未引入）：bincode / once_cell / thiserror / rayon / quick-xml / base64 / flate2
 ```
 
 ### pobr-data/Cargo.toml

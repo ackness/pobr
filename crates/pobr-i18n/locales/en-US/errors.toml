@@ -1,0 +1,17 @@
+# en-US error messages. Keys are stable error identifiers referenced from apps.
+
+[build_code]
+invalid_base64 = "Invalid build code: not valid Base64"
+inflate_failed = "Invalid build code: could not decompress"
+invalid_xml = "Invalid build code: malformed XML"
+
+[item]
+unknown_base = "Unknown item base: {base}"
+parse_failed = "Could not parse item text"
+
+[import]
+unrecognised = "Could not recognise the imported content"
+download_failed = "Failed to download build from {url}"
+
+[calc]
+missing_skill = "No active skill selected"

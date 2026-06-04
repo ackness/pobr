@@ -171,6 +171,7 @@ TradeTab.lua                         pobr-trade::api
 | `09-player-facing-calculation.md` | 玩家可见输出、伤害/生存占比、breakdown、build comparison |
 | `10-pob-parity-and-attribution.md` | PoB 全量属性覆盖、生成式 catalog、source-level contribution tracing |
 | `11-implementation-progress.md` | 当前实现进度、已完成勾选项、正在进行的工程步骤 |
+| `12-combat-mechanics-architecture.md` | 战斗机制处理架构：PoB2 机制范式 → pobr `ModDb`/`Env`/`TraceGraph` 适配，敌人 modDB、有效暴击/伤害/异常/防御管线、分阶段落地路线（配套 `agent-docs/*`） |
 
 ---
 

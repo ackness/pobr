@@ -1,0 +1,38 @@
+# en-US UI strings. Canonical source and fallback for all other languages.
+# Keys are flattened by the loader to `section.key` (e.g. `build.copy_code`).
+
+[app]
+title = "Path of Building in Rust"
+
+[build]
+copy_code = "Copy BD"
+import_code = "Import BD"
+new_build = "New build"
+save_build = "Save build"
+
+[items]
+create_custom = "Create custom item"
+unsupported_mod = "Unsupported modifier"
+edit = "Edit"
+delete = "Delete"
+
+[tree]
+allocate = "Allocate"
+deallocate = "Deallocate"
+points_used = "Points used: {used}/{total}"
+
+[skills]
+active_gem = "Active skill gem"
+support_gem = "Support gem"
+
+[config]
+title = "Configuration"
+enemy_level = "Enemy level"
+
+[view]
+calcs = "Calcs"
+items = "Items"
+tree = "Tree"
+skills = "Skills"
+config = "Config"
+import = "Import"

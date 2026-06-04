@@ -1,0 +1,12 @@
+# zh-TW error messages (developer-supplied; no official zh-TW table).
+# Keys MUST be a subset of en-US/errors.toml. Missing keys fall back to en-US.
+
+[build_code]
+invalid_base64 = "無效的構築代碼：不是有效的 Base64"
+invalid_xml = "無效的構築代碼：XML 格式錯誤"
+
+[item]
+unknown_base = "未知的物品基底：{base}"
+
+[import]
+unrecognised = "無法辨識匯入的內容"

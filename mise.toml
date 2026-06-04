@@ -7,7 +7,7 @@
 # 原始 JSON / 索引缓存均在 pipeline/ 下且 gitignore，不入库；入库的只有 data/<version>/ 的最小适配 JSON。
 
 [tools]
-node = "22"
+node = "26"
 
 [env]
 # 当前钉定的 PoE2 补丁版本（须与 pipeline/config.json 的 "patch" 一致）。

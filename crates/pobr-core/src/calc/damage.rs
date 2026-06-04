@@ -123,3 +123,91 @@ pub(crate) fn calculate_components(
         })
         .collect()
 }
+
+/// 伤害转换 / 额外获得 / double-dip 辅助（08-mechanics §2.2、damage-defence-order §2.2）。
+///
+/// 这些是**纯函数**层，作用在已聚合的 [`DamageComponent`] 向量上，**不改动**上面
+/// 既有的 `calculate_components` 管线（保持纯物理路径回归一致）。供后续转换 / DoT
+/// double-dip 计算复用。
+///
+/// 设计：转换 fraction（来源 → 目标）作用在 source 分量上：
+/// - convert：从 source 分量移走 `fraction * source`，加到 target 分量；
+/// - gain-as-extra：保留 source 分量，额外把 `fraction * source` 加到 target 分量。
+///
+/// 多重转换叠加超过 100% 时由调用方先归一化（见 [`normalize_conversion`]）。
+/// 把 `from` 类型的一部分**转换**为 `to` 类型（source 减少、target 增加）。
+pub fn convert_damage(
+    components: &[DamageComponent],
+    from: DamageType,
+    to: DamageType,
+    fraction: f64,
+) -> Vec<DamageComponent> {
+    apply_shift(components, from, to, fraction, true)
+}
+
+/// 把 `from` 类型的一部分作为**额外**伤害加到 `to` 类型（source 不减少）。
+pub fn gain_as_extra(
+    components: &[DamageComponent],
+    from: DamageType,
+    to: DamageType,
+    fraction: f64,
+) -> Vec<DamageComponent> {
+    apply_shift(components, from, to, fraction, false)
+}
+
+/// 把多个转换 fraction 之和归一化到 <= 1.0（PoB / PoE2：总转换超过 100% 等比缩放）。
+pub fn normalize_conversion(fractions: &[f64]) -> Vec<f64> {
+    let total: f64 = fractions.iter().filter(|f| **f > 0.0).sum();
+    if total <= 1.0 {
+        return fractions.to_vec();
+    }
+    fractions.iter().map(|f| f / total).collect()
+}
+
+/// 把伤害分量按伤害类型求和（avg）；用于 ailment magnitude double-dip 源。
+pub fn sum_avg(components: &[DamageComponent]) -> f64 {
+    components.iter().map(DamageComponent::avg).sum()
+}
+
+/// 取某类型分量的 (min, max)，无则 (0, 0)。
+fn type_range(components: &[DamageComponent], damage_type: DamageType) -> (f64, f64) {
+    components
+        .iter()
+        .find(|component| component.damage_type == damage_type)
+        .map_or((0.0, 0.0), |component| (component.min, component.max))
+}
+
+/// 共享的转换 / 额外获得实现。`remove_from_source` 区分 convert（true）与 gain（false）。
+fn apply_shift(
+    components: &[DamageComponent],
+    from: DamageType,
+    to: DamageType,
+    fraction: f64,
+    remove_from_source: bool,
+) -> Vec<DamageComponent> {
+    let fraction = fraction.clamp(0.0, 1.0);
+    if fraction == 0.0 || from == to {
+        return components.to_vec();
+    }
+    let (from_min, from_max) = type_range(components, from);
+    let shift_min = from_min * fraction;
+    let shift_max = from_max * fraction;
+
+    let mut result: Vec<DamageComponent> = components.to_vec();
+    let mut has_target = false;
+    for component in &mut result {
+        if component.damage_type == from && remove_from_source {
+            component.min = round(component.min - shift_min);
+            component.max = round(component.max - shift_max);
+        }
+        if component.damage_type == to {
+            component.min = round(component.min + shift_min);
+            component.max = round(component.max + shift_max);
+            has_target = true;
+        }
+    }
+    if !has_target && (shift_min != 0.0 || shift_max != 0.0) {
+        result.push(DamageComponent::new(to, round(shift_min), round(shift_max)));
+    }
+    result
+}

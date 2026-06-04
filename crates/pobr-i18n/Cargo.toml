@@ -1,0 +1,11 @@
+[package]
+name = "pobr-i18n"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pobr-data.workspace = true
+serde.workspace = true
+# 未集中到根 workspace 的依赖：在 crate 内直接固定版本（见返回 notes，待主控统一）。
+toml = "0.8"
+thiserror = "2"

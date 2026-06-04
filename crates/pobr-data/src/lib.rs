@@ -1,5 +1,7 @@
+pub mod build_config;
 pub mod catalog;
 pub mod constants;
+pub mod damage;
 pub mod display_stat;
 pub mod game_data;
 pub mod gem;
@@ -11,8 +13,10 @@ pub mod source;
 pub mod stat;
 
 pub mod prelude {
+    pub use crate::build_config::*;
     pub use crate::catalog::*;
     pub use crate::constants::*;
+    pub use crate::damage::*;
     pub use crate::display_stat::*;
     pub use crate::game_data::*;
     pub use crate::gem::*;

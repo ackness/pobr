@@ -3,6 +3,7 @@ pub mod calc;
 pub mod campaign;
 pub mod character;
 pub mod config;
+pub mod display_catalog;
 pub mod item;
 pub mod item_text;
 pub mod mod_cache;
@@ -20,6 +21,7 @@ pub use attribution::{
 pub use campaign::{CampaignProgress, CampaignReward, CampaignState};
 pub use character::CharacterBase;
 pub use config::CalcConfig;
+pub use display_catalog::{display_catalog, extract_display_values};
 pub use item::{ItemIngest, ItemModSection, ingest_item};
 pub use item_text::{ItemTextError, parse_item_text};
 pub use mod_db::{ModContribution, ModDb, ModList};

@@ -1,0 +1,21 @@
+[package]
+name = "pobr-wasm"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pobr-core.workspace = true
+pobr-build.workspace = true
+pobr-i18n.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+# wasm-bindgen 绑定仅在 wasm feature 下启用，保证宿主 `cargo build` 不需 wasm 工具链。
+wasm-bindgen = { version = "0.2", optional = true }
+
+[features]
+default = []
+wasm = ["dep:wasm-bindgen"]

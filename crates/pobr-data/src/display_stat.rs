@@ -88,6 +88,59 @@ pub struct DisplayStatDefinition {
     pub parity_status: ParityStatus,
 }
 
+impl DisplayStatDefinition {
+    /// 已实现（`Computed`）的展示字段定义，使用合理默认（可见、可比较、higher-is-better）。
+    pub fn computed(
+        id: impl Into<DisplayStatId>,
+        category: DisplayStatCategory,
+        value_type: StatValueType,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            pob_key: None,
+            label: None,
+            category,
+            value_type,
+            format: None,
+            default_visible: true,
+            comparison_visible: true,
+            higher_is_better: Some(true),
+            breakdown_policy: BreakdownPolicy::Optional,
+            parity_status: ParityStatus::Computed,
+        }
+    }
+
+    /// 计划中（`Planned`）的展示字段定义（尚未计算）。
+    pub fn planned(
+        id: impl Into<DisplayStatId>,
+        category: DisplayStatCategory,
+        value_type: StatValueType,
+    ) -> Self {
+        Self {
+            parity_status: ParityStatus::Planned,
+            ..Self::computed(id, category, value_type)
+        }
+    }
+
+    pub fn with_higher_is_better(mut self, higher_is_better: Option<bool>) -> Self {
+        self.higher_is_better = higher_is_better;
+        self
+    }
+
+    pub fn with_pob_key(mut self, pob_key: impl Into<String>) -> Self {
+        self.pob_key = Some(pob_key.into());
+        self
+    }
+}
+
+/// 一个展示字段的具体取值（计算结果 → UI 友好值）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DisplayStatValue {
+    pub id: DisplayStatId,
+    pub value: f64,
+    pub category: DisplayStatCategory,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct PobOutputKey(String);

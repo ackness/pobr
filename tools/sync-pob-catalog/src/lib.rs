@@ -299,3 +299,107 @@ impl SourceIndex {
 pub fn modules_path(pob_root: &Path) -> PathBuf {
     pob_root.join("src").join("Modules")
 }
+
+/// Kind of difference between two catalogs at the output-key level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DiffKind {
+    /// A key present in `actual` but absent from `expected`.
+    Added,
+    /// A key present in `expected` but absent from `actual`.
+    Removed,
+    /// A key present in both, with a different [`ParityStatus`].
+    StatusChanged,
+    /// A key present in both with the same status, but different source files.
+    SourceChanged,
+}
+
+/// A single discrepancy between an expected and an actual catalog.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogDiff {
+    pub kind: DiffKind,
+    pub key: String,
+    pub detail: String,
+}
+
+/// Compare two catalogs' output keys and report every discrepancy.
+///
+/// Results are sorted by key so callers get a deterministic, diffable report.
+/// Within a single key, at most one diff is produced (Added / Removed take
+/// precedence, then StatusChanged, then SourceChanged).
+pub fn diff_catalogs(expected: &PobCatalog, actual: &PobCatalog) -> Vec<CatalogDiff> {
+    let expected_index = index_output_keys(expected);
+    let actual_index = index_output_keys(actual);
+
+    let mut keys: BTreeSet<&str> = BTreeSet::new();
+    keys.extend(expected_index.keys().copied());
+    keys.extend(actual_index.keys().copied());
+
+    let mut diffs = Vec::new();
+    for key in keys {
+        match (expected_index.get(key), actual_index.get(key)) {
+            (None, Some(_)) => diffs.push(CatalogDiff {
+                kind: DiffKind::Added,
+                key: key.to_string(),
+                detail: format!("`{key}` present in actual but missing from expected"),
+            }),
+            (Some(_), None) => diffs.push(CatalogDiff {
+                kind: DiffKind::Removed,
+                key: key.to_string(),
+                detail: format!("`{key}` present in expected but missing from actual"),
+            }),
+            (Some(left), Some(right)) => {
+                if left.parity_status != right.parity_status {
+                    diffs.push(CatalogDiff {
+                        kind: DiffKind::StatusChanged,
+                        key: key.to_string(),
+                        detail: format!(
+                            "parity status changed: {:?} -> {:?}",
+                            left.parity_status, right.parity_status
+                        ),
+                    });
+                } else if left.source_files != right.source_files {
+                    diffs.push(CatalogDiff {
+                        kind: DiffKind::SourceChanged,
+                        key: key.to_string(),
+                        detail: format!(
+                            "source files changed: {:?} -> {:?}",
+                            left.source_files, right.source_files
+                        ),
+                    });
+                }
+            }
+            (None, None) => unreachable!("key originated from one of the two indexes"),
+        }
+    }
+
+    diffs
+}
+
+fn index_output_keys(catalog: &PobCatalog) -> BTreeMap<&str, &PobOutputCatalogEntry> {
+    catalog
+        .output_keys
+        .iter()
+        .map(|entry| (entry.key.as_str(), entry))
+        .collect()
+}
+
+/// Write `catalog` to `path` as a self-contained JSON fixture.
+///
+/// "Self-contained" means it captures the full catalog snapshot (no external
+/// references), so it can later be compared against a freshly scanned catalog
+/// without needing the original PoB source tree. Creates parent dirs as needed.
+pub fn write_self_contained_fixture(catalog: &PobCatalog, path: &Path) -> io::Result<()> {
+    write_catalog(catalog, path)
+}
+
+/// Load the fixture at `fixture_path` and diff it against `actual`.
+///
+/// The fixture is treated as the expected baseline; any drift in `actual` is
+/// returned as [`CatalogDiff`] entries (empty when the catalogs match).
+pub fn check_against_fixture(
+    fixture_path: &Path,
+    actual: &PobCatalog,
+) -> io::Result<Vec<CatalogDiff>> {
+    let expected = read_catalog(fixture_path)?;
+    Ok(diff_catalogs(&expected, actual))
+}

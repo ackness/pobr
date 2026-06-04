@@ -1,0 +1,18 @@
+# zh-TW UI strings (developer-supplied translations; no official zh-TW table).
+# Keys MUST be a subset of en-US/ui.toml. Missing keys fall back to en-US.
+
+[build]
+copy_code = "複製 BD"
+import_code = "匯入 BD"
+
+[items]
+create_custom = "建立自訂物品"
+unsupported_mod = "不支援的詞綴"
+
+[view]
+calcs = "計算"
+items = "物品"
+tree = "天賦樹"
+skills = "技能"
+config = "設定"
+import = "匯入"

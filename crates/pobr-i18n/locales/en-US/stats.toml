@@ -1,0 +1,36 @@
+# en-US stat display names. Keys are stable `StatId` strings used internally
+# by the calc engine. `Translator::stat_text` looks these up directly.
+
+[stat]
+life = "Life"
+mana = "Mana"
+energy_shield = "Energy Shield"
+spirit = "Spirit"
+
+strength = "Strength"
+dexterity = "Dexterity"
+intelligence = "Intelligence"
+
+armour = "Armour"
+evasion = "Evasion Rating"
+block_chance = "Block Chance"
+
+fire_resistance = "Fire Resistance"
+cold_resistance = "Cold Resistance"
+lightning_resistance = "Lightning Resistance"
+chaos_resistance = "Chaos Resistance"
+
+critical_strike_chance = "Critical Strike Chance"
+critical_strike_multiplier = "Critical Strike Multiplier"
+accuracy = "Accuracy"
+attack_speed = "Attack Speed"
+cast_speed = "Cast Speed"
+
+physical_damage = "Physical Damage"
+fire_damage = "Fire Damage"
+cold_damage = "Cold Damage"
+lightning_damage = "Lightning Damage"
+chaos_damage = "Chaos Damage"
+
+total_dps = "Total DPS"
+movement_speed = "Movement Speed"

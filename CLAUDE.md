@@ -30,15 +30,23 @@ cargo run -p sync-pob-catalog -- check --pob-root <PoB路径> --catalog catalog.
 
 ## 实现现状 vs. 设计文档（重要）
 
-`devs/docs/architecture/` 描述的是**目标架构**（pobr-i18n / pobr-tree / pobr-item / pobr-build / pobr-trade / apps/* 等），其中**大部分尚未实现**。当前实际只有 3 个成员：
+`devs/docs/architecture/` 描述的是**目标架构**，其中**大部分尚未实现**。workspace 现有 13 个 members，但**只有 5 个有实质实现**，其余 8 个是占位骨架（最小可编译、仅挂项目内 path 依赖，无业务逻辑）：
+
+**有实质实现（5 个）：**
 
 | Crate | 职责 | 依赖 |
 |-------|------|------|
-| `crates/pobr-data` | 纯数据定义，零逻辑、零 I/O。所有 crate 的底层依赖 | 仅 `serde` |
+| `crates/pobr-data` | 纯数据定义，零逻辑、零 I/O。所有 crate 的底层依赖。含 `catalog.rs`（入库 JSON 的自有 schema：`BaseItemDef` / `StatDef` / `ModDef` / `SkillGemDef` / `GrantedEffectDef` / `DataManifest`） | 仅 `serde` |
 | `crates/pobr-core` | Modifier 解析/存储/聚合 + 计算引擎 + 归因。零 I/O | `pobr-data` |
+| `crates/pobr-gamedata` | **运行时数据 loader**——数据系统里唯一持有文件 I/O 的层。用 serde 把 `data/<poe_version>/` 的入库 JSON 反序列化为 `pobr-data::catalog` 类型（`GameData::new(version_dir)`，按域懒加载 + i18n 边车） | `pobr-data` + `serde`/`serde_json` |
 | `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、检查 parity（仅工具，不参与运行时） | `pobr-data` + `regex`/`serde_json` |
+| `tools/pobr-data-adapter` | **数据管线适配器**——把 GGG `.dat` 原始导出（pathofexile-dat 产物）解析外键、反范式化为入库最小 JSON，落在 `data/<poe_version>/`（base_items / stats / mods / skill_gems / granted_effects + zh-TW i18n 边车）。仅离线工具 | `pobr-data` + `serde`/`serde_json` |
 
 依赖方向只能向下，`pobr-data` 是最底层、不依赖任何项目内 crate。计算核心保持纯函数 + 确定性，不引入共享可变状态。
+
+**占位骨架（8 个，尚未实现）：** `crates/pobr-i18n`（语言包/显示文本，→ pobr-data）、`crates/pobr-tree`（天赋树拓扑/寻路/珠宝，→ pobr-data）、`crates/pobr-item`（raw item 解析/自定义物品，→ pobr-data + pobr-core）、`crates/pobr-build`（Build 状态/PoB Build Code/计算编排，→ pobr-data + pobr-core + pobr-tree + pobr-item）、`crates/pobr-trade`（Trade API，→ pobr-data）、`apps/pobr-cli`、`apps/pobr-desktop`、`apps/pobr-wasm`（均 → pobr-build）。这些 crate 仅有模块级占位说明，无业务逻辑；外部重依赖（egui / wasm-bindgen / reqwest / quick-xml / flate2 等）等真正实现时再加。实现某个域时从对应骨架起步，并参照 `02-crate-design.md` 同名章节。
+
+**数据管线**：`GGG .dat 导出` →（`pobr-data-adapter` 离线适配）→ `data/<poe_version>/*.json`（自有 schema = `pobr-data::catalog`）→（`pobr-gamedata` 运行时 loader）→ 上层计算。I/O 收口在 `pobr-gamedata` 一处；`pobr-data`/`pobr-core` 维持零 I/O。注意：02-crate-design.md 早期把 `GameData` 设计成 `pobr-data` 内 `include_bytes!` + bincode 编译期内联，实际改为「独立 loader crate + 运行时读 JSON」，以该实现为准。早期规划的 `tools/export-poe-data` / `gen-mod-cache` 已分别由 `pobr-data-adapter` / `sync-pob-catalog` 承担，不再单建。
 
 ## 计算引擎架构（pobr-core）
 

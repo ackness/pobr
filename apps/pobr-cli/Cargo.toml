@@ -1,0 +1,20 @@
+[package]
+name = "pobr-cli"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "pobr_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pobr"
+path = "src/main.rs"
+
+[dependencies]
+pobr-core.workspace = true
+pobr-build.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+clap = { version = "4.6", features = ["derive"] }
+thiserror = "2"
