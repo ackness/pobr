@@ -107,7 +107,7 @@ hit_chance 攻防双公式逐字匹配 PoB2 `CalcDefence.lua:32-44`；爆伤 `1+
 - Lane D：item_text 剥离 `{range}`/`(tier)` 注释、item quality→局部 more(武器物理/护甲防御)。
 - Defer 到后续：spell-suppression 完整移除(已 inert)、reservation→Spirit、radius Variable 档、催化剂品质、完整转换链。
 
-### Wave 1a 🚧 enemy.mod_db 地基（进行中）
+### Wave 1a ✅ enemy.mod_db 地基
 根依赖，解锁曝光/穿透/受伤链/SelfCrit/异常阈值/Overwhelm 等 ~12 下游。范围：怪物等级缩放表+EnemyTier(数据)、
 setup_env 注入 enemy.mod_db、offence 读取(受伤链/抗性/护甲/曝光 min_of/CannotBeEvaded)、mode_effective(面板 vs 有效 DPS)开关。
 
@@ -128,6 +128,31 @@ setup_env 注入 enemy.mod_db、offence 读取(受伤链/抗性/护甲/曝光 mi
 - **Defer**：穿透(`tier.pen()`)注入 player 侧 `<Element>Penetration`（依赖玩家伤害减抗末端，留待伤害管线 wave）；
   玩家施加 debuff(诅咒/破甲/凋萎/曝光来源)的具体注入(留 `reduce_enemy_exposure` hook，下游 wave 填)；
   resolve_crit 读 enemy `SelfCritChance/SelfCritMultiplier`(归 P1 暴击 wave)。
+
+### Wave 1b ✅ 暴击管线完成（commit 2d242e4 内）
+新建 `calc/crit.rs`：`resolve_crit`/`resolve_crit_traced`/`CritOutcome` 消双轨重复。对照 PoB2 `CalcOffence.lua:3620-3838`：
+flags(`CritChanceLucky`/`BifurcateCrit`/`InevitableCriticalHits` 几何级数/`NoCritMultiplier`)、可查询 `CritChanceCap`、
+敌方 `SelfCritChance/SelfCritMultiplier`(暴击弱点)、traced inc/more 归因(`ModDb::flag_origin`)。flags gate 到 `mode_effective`。399 测试。
+
+### Wave 1c ✅ 伤害转换链 + 穿透 + Overwhelm（commit cb6301a）
+对照 PoB2 `CalcOffence.lua` processDamageConversion/buildGainTable/conversionTable：
+- `DamageComponent` 富化 `kind(Hit/Dot)`/`source`/`type_path`(Copy→Clone)；`ConversionRules`(skill/global 两阶段+>100%归一+fold)；
+  gain-as-extra；按 `type_path` 双重 dip；无转换 mod 走快速路径逐字回归。
+- 有效 DPS 减伤末端(仅 mode_effective)：元素/混沌穿透 `max(resist-pen,0)`、Overwhelm(`EnemyPhysicalDamageReduction` clamp[0,75])。420 测试。
+- **待决**：double-dip 按 agent-docs(来源+目标)实现，PoB2-dev 主循环仅目标——golden 对齐时需决策。
+- 校正：`EnemyTier.pen()` 是"敌人穿透玩家"(防御侧)，非玩家穿透，未注入 offence。
+
+### Wave 1d ✅ 异常施加几率 + 阈值表（commit b37395c）
+对照 PoB2 `CalcOffence.lua` calcAilmentDamage/effMult + `CalcSetup.lua` AilmentThreshold：
+- 数据：`MONSTER_AILMENT_THRESHOLD_TABLE`/`MONSTER_POISE_THRESHOLD_TABLE`(各100项, 抄 Misc.lua)+异常常量。
+- 施加几率管线(几率派生型 点燃/感电 + 内禀型 流血/中毒)、effMult(敌抗+DamageTakenOverTime, 物理无视抗)、暴击加权、
+  玩家阈值=maxLife×0.5(修 bug)、TraceGraph 归因。perform fill 改"几率×magnitude 期望值"口径。450 测试。
+- **defer**：冰冻/电击 Poise 积累(非伤害异常)、叠层 CanStack(L)、AilmentEffect/Faster/Slower 维度、跨类型施加、DotDpsCap、crit ailment mode。
+
+### ✅ Wave 1 地基完成（2026-06-05）
+enemy modDB → 暴击 → 伤害转换/穿透/Overwhelm → 伤害型异常(几率/阈值/effMult/暴击加权) 全部落地并提交。
+332 → **450 测试**(+118)，全程 clippy+fmt 全绿、PoB2 Lua 逐字核对、向后兼容(新机制 gate 到 mode_effective)。
+**剩余 = Wave 2+**（防御扩展/技能功能 SkillUseTime/触发召唤 greenfield/来源天赋/PoB parity matrix+golden）。
 
 ## 4. 编排映射（并行/串行）
 
