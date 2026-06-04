@@ -1,3 +1,6 @@
+use pobr_data::prelude::*;
+
+use crate::item::ingest_item;
 use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
 use crate::{CalcConfig, Modifier};
 
@@ -50,6 +53,16 @@ impl CalculationSession {
     /// 保留其 `SourceId` 归因。
     pub fn add_modifiers(&mut self, modifiers: impl IntoIterator<Item = Modifier>) {
         self.env.player.mod_db.add_list(modifiers);
+    }
+
+    /// 接入一件装备：按 section（implicit / explicit / enchant）解析其词条文本为
+    /// 带槽位 + 来源类别归因的 modifier 并注入计算，无法解析的词条收集进
+    /// `unsupported_modifier_texts`。
+    pub fn add_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
+        let ingest = ingest_item(slot, item)?;
+        self.env.player.mod_db.add_list(ingest.modifiers);
+        self.unsupported_modifier_texts.extend(ingest.unsupported);
+        Ok(())
     }
 
     pub fn perform_minimal(&mut self) -> MinimalOutput {
