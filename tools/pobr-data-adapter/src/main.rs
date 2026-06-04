@@ -16,6 +16,8 @@ use std::process::ExitCode;
 use pobr_data::catalog::{BaseItemDef, CATALOG_SCHEMA_VERSION, DataManifest};
 use serde::Deserialize;
 
+mod mods;
+
 const ZH_TW: &str = "Traditional Chinese";
 
 fn main() -> ExitCode {
@@ -61,7 +63,7 @@ fn parse_args() -> Result<Args, String> {
 // ---- 原始 .dat JSON 行结构（只取我们需要的列）----
 
 #[derive(Deserialize)]
-struct RawIndexed {
+pub(crate) struct RawIndexed {
     #[serde(rename = "_index")]
     index: usize,
     #[serde(rename = "Id")]
@@ -91,14 +93,14 @@ struct RawBaseItem {
 }
 
 #[derive(Deserialize)]
-struct RawNamed {
+pub(crate) struct RawNamed {
     #[serde(rename = "_index")]
-    index: usize,
+    pub(crate) index: usize,
     #[serde(rename = "Name")]
-    name: Option<String>,
+    pub(crate) name: Option<String>,
 }
 
-fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, String> {
+pub(crate) fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, String> {
     let bytes = fs::read(path).map_err(|e| format!("读取 {} 失败：{e}", path.display()))?;
     serde_json::from_slice(&bytes).map_err(|e| format!("解析 {} 失败：{e}", path.display()))
 }
@@ -113,7 +115,7 @@ fn id_lookup(rows: &[RawIndexed]) -> Vec<String> {
     table
 }
 
-fn resolve(lookup: &[String], idx: usize) -> Option<String> {
+pub(crate) fn resolve(lookup: &[String], idx: usize) -> Option<String> {
     lookup.get(idx).filter(|s| !s.is_empty()).cloned()
 }
 
@@ -131,6 +133,7 @@ fn run() -> Result<String, String> {
     let classes = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("ItemClasses.json"))?);
     let tags = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("Tags.json"))?);
     let mods = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("Mods.json"))?);
+    let stats = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("Stats.json"))?);
 
     // 基底（英文 canonical + 繁中名称边车）
     let raw_bases = read_json::<Vec<RawBaseItem>>(&en.join("BaseItemTypes.json"))?;
@@ -188,25 +191,34 @@ fn run() -> Result<String, String> {
     write_pretty(&version_dir.join("base_items.json"), &bases)?;
     write_pretty(&version_dir.join("i18n/zh-TW/base_items.json"), &i18n_zh)?;
 
+    // Mods + Stats 域（stat 注册表 + 词缀池）。
+    let (stat_count, mod_count, mod_filtered, mod_zh) =
+        mods::adapt(&en, &tw, &stats, &tags, &version_dir)?;
+
     let manifest = DataManifest {
         schema_version: CATALOG_SCHEMA_VERSION,
         poe_version: args.patch.clone(),
         languages: vec!["zh-TW".into()],
-        domains: vec!["base_items".into()],
+        domains: vec!["base_items".into(), "mods".into(), "stats".into()],
     };
     write_pretty(&version_dir.join("manifest.json"), &manifest)?;
 
     Ok(format!(
-        "适配完成：base_items {}/{} 条（过滤 {} 个占位），zh-TW 名称 {} 条 → {}",
+        "适配完成：base_items {}/{} 条（过滤 {} 个占位），zh-TW 名称 {} 条；\
+         stats {} 条；mods {} 条（过滤 {} 个空壳），mods zh-TW 名称 {} 条 → {}",
         bases.len(),
         total,
         total - bases.len(),
         i18n_zh.len(),
+        stat_count,
+        mod_count,
+        mod_filtered,
+        mod_zh,
         version_dir.display()
     ))
 }
 
-fn write_pretty<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
+pub(crate) fn write_pretty<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let json = serde_json::to_string_pretty(value)
         .map_err(|e| format!("序列化 {} 失败：{e}", path.display()))?;
     fs::write(path, format!("{json}\n")).map_err(|e| format!("写入 {} 失败：{e}", path.display()))
