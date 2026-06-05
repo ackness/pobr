@@ -201,3 +201,36 @@ P0-2 (resolve_gems per-gem 注入)
 4. **gem 链**（P0-2→P2-1→P1-3）在 ailment/buff 链稳定后接入主轴。
 
 **关键路径（最长串行）**：数据管线流(minion.json, L) → P1-1 buff 基建(L) → P0-2 gem 注入(M) → P2-1 support 隔离(M) → P1-3 法术召唤物(L)。其余流可在此关键路径旁完全并行吸收。
+
+---
+
+## 实施修正（2026-06-06，本次会话落地后回填）
+
+实际动手实现时核对发现 recheck 的若干判断需修正（recheck 是 LLM 综合，有误差）：
+
+### 本次已落地
+- ✅ **宝石 DPS 通道**（commit `ae9676f`）：见 doc13 Wave 3 批次2。
+- ✅ **P1-2 点燃叠层**（commit `7bd176f`）：`IgniteStacks` 叠层接入，对齐 Bleed/Poison。
+  Shock/Chill 是**非伤害 magnitude 异常**，非 DoT 叠层概念——recheck 把它们与 DoT 叠层混为一谈，已澄清不在范围。
+- ✅ **P2-6 CostTypes / P2-5 非法力消耗**（commit `53dda8c`）：18 种资源入库，`ResolvedSkillLevel.costs`
+  完整解析。注：**PoE2 无 Spirit 消耗**（Spirit 仅用于保留）——recheck 的「Spirit cost」不存在。
+
+### recheck 误判修正
+- ❌ **P0-3（cross_type_source_hit 从不调用）= 误判**：实地核对 `perform.rs:447-451` 确实调用，
+  结果 `phys_hit/fire_hit/...` 用于 gate 异常计算。该项已实现，无需修复。
+- ⚠️ **P0-4（minion ally-buff 未缩放）措辞误导**：`ally_buff_mods` 实为**空 stub**（`minion.rs:473` = `vec![]`），
+  即当前**没有任何 ally buff 流动**，而非「全额未缩放」。P0-4 不可独立完成——**依赖 P1-1 先提供 buff 源**。
+
+### 关键结论：P0-2 / P1-1 / P0-4 共享同一 L 级前置 = **通用 SkillStatMap 移植**
+recheck 把 P0-2 估为 M、P1-1 拆分估算，但三者实际共享一个尚未存在的基建：
+**「技能/辅助/光环效果的任意 stat → ModName/ModType/flags」的通用映射**（PoB `SkillStatMap.lua` 105KB 的端口）。
+
+- 当前 `granted_effect_stat_sets.json` **只入库了伤害值 stat**（min/max，`is_damage_value_stat` 过滤）；
+  support 宝石的 `more`/`increased` 倍率 stat、光环的 buff stat **未入库**。
+- `calc_orchestrator::damage_stat_to_mod` **只映射 flat 伤害族**；通用 `%`/more/flag stat 无映射。
+
+**下一会话建议的关键路径**（一条主线解锁 P0-2 + P1-1 + P0-4）：
+1. 扩展 stat-set 适配器：放宽 `is_damage_value_stat`，入库 support/aura 效果的全部数值 stat（或建 `effect_stats.json` 域）。
+2. 移植 PoB `SkillStatMap` 的常用子集为 Rust 映射表（`stat_id → (ModName, ModType, flags/tags)`），覆盖 `damage_+%[_final]`、`X_+%`、reservation、buff flag 等高频族。
+3. P0-2：`resolve_gems` 对每个 gem（含 support）解析其 effect 的分等级 stat → 经映射注入，support 按 SkillTypes tag 隔离。
+4. P1-1：光环/herald 效果（带 reservation 的 GrantedEffect）→ buff mod 聚合 + `BuffEffectOnSelf` 缩放 → 玩家/召唤物（P0-4 随之解锁）。
