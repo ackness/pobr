@@ -162,6 +162,15 @@ enemy modDB → 暴击 → 伤害转换/穿透/Overwhelm → 伤害型异常(几
 - **召唤物+触发** greenfield：`calc/minion.rs`(独立 Actor+三通道+内禀必中/爆伤+70/怪物缩放)、`calc/trigger.rs`(速率上限)；集成 `Env.minions:Vec<Actor>` + `perform_minions` 多 Actor 复用同管线。
 - **defer(Wave2 批次2+)**：防御 charges/leech/regen/Recoup/BuffEffect/完整MaxHit；技能 AoE/投射物/cooldown/cost；召唤物 limit/MinionDef schema/跨Actor trace/ally-buff 缩放；触发 energy/轮转/CWC/rate-wiring；parity golden(10 build);pobr-item/CLI parse-item；剩余异常(冰冻电击Poise积累/叠层/AilmentEffect维度/跨类型/DotDpsCap)。
 
+### Wave 2 批次2 ✅（commits 654ce4b·a40edd4）
+4 子系统并行 → 集成 → 验证。**550 → 670 测试**。
+- **防御恢复**(survivability.rs)：充能乘数封顶(Power/Frenzy/Endurance)、偷取(0.5.0 单实例三上限)、再生增强(XRecoveryRate)、Recoup(8s/4s)。
+- **剩余异常**(ailment.rs)：冰缓 effect clamp[30,50]、冰冻/电击 Poise 积累、叠层权重平均 DPS(替换单层简化)。
+- **技能功能**(skill_mechanics.rs)：AoE √area、投射物数量+行为(Split→Pierce→Fork→Chain)、冷却、消耗(mana/life 分步取整)。
+- **应用层**：CLI parse-item 打通(调 item_text/ingest_item)、golden 回归 harness(2 份真实 PoB2 ninja build 端到端快照基线)。
+- 集成：OutputTable +24 字段(手写 Default 中性) + fill_skill_mechanics + fill_ailments 扩展 + 充能/偷取/Recoup，TraceGraph 贯穿。
+- **defer(Wave2 批次3+)**：召唤物完整编排/MinionDef 入库 schema/跨Actor trace/ally-buff 缩放；触发 energy/轮转/CWC/rate-wiring；parity golden(10 build 真实 PoB2 数值对齐)；AilmentEffect/Faster/Slower 维度+跨类型施加+DotDpsCap；BuffEffect；投射物距离衰减；技能基础参数入库。
+
 ## 4. 编排映射（并行/串行）
 
 | Wave | 串行流(calc 核心) | 可并行流(独立 crate/测试) | 模型 |
