@@ -102,6 +102,17 @@ impl CalculationSession {
         self.add_gem(gem)
     }
 
+    /// 按 `(config_level, tier)` 初始化敌人（怪物缩放 + 档位加成），写入 `Env.enemy`
+    /// 的标量基础与 modDB（归因 [`SourceKind::EnemyConfig`]）。
+    ///
+    /// 仅在 `CalcConfig::mode_effective == true`（经 [`with_config`](Self::with_config)
+    /// 设置）时影响有效 DPS / 命中 / 敌人减伤；面板口径不读取敌人交互，保持与历史输出一致。
+    ///
+    /// [`SourceKind::EnemyConfig`]: pobr_data::source::SourceKind::EnemyConfig
+    pub fn setup_enemy(&mut self, config_level: u32, tier: EnemyTier) {
+        super::setup_env::setup_enemy(&mut self.env, config_level, tier);
+    }
+
     pub fn perform_minimal(&mut self) -> MinimalOutput {
         perform(&mut self.env).expect("CalculationSession constructs a valid player actor");
         MinimalOutput::from_output_and_breakdown(

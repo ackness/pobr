@@ -15,6 +15,7 @@ path = "src/main.rs"
 pobr-data.workspace = true
 pobr-core.workspace = true
 pobr-build.workspace = true
+pobr-gamedata.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 clap = { version = "4.6", features = ["derive"] }

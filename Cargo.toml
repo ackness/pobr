@@ -26,6 +26,7 @@ edition = "2024"
 [workspace.dependencies]
 pobr-data = { path = "crates/pobr-data" }
 pobr-core = { path = "crates/pobr-core" }
+pobr-gamedata = { path = "crates/pobr-gamedata" }
 pobr-i18n = { path = "crates/pobr-i18n" }
 pobr-tree = { path = "crates/pobr-tree" }
 pobr-item = { path = "crates/pobr-item" }

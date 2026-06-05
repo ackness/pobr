@@ -10,8 +10,11 @@
 //! - [`build_config`] — [`BuildConfig`] + `to_calc_config`（适配 REAL [`pobr_core::CalcConfig`]）。
 //! - [`build`] — [`Build`] 内存状态（采用 REAL `pobr_data` 类型 + 简化 [`SocketGroup`]）。
 //! - [`xml_serde`] — PoB Build XML 头部解析（quick-xml）。
+//! - [`xml_build`] — PoB Build XML → 完整 [`Build`]（天赋树 / 装备槽位 / 技能宝石组）。
 //! - [`snapshot`] — 计算输入只读快照 + 确定性内容哈希。
-//! - [`calc_orchestrator`] — 把 [`Build`] 驱动进 [`pobr_core::calc::CalculationSession`]。
+//! - [`build_data`] — 把 [`pobr_gamedata::GameData`] 投影为 orchestrator 所需内存索引（节点/宝石/职业属性）。
+//! - [`calc_orchestrator`] — 把 [`Build`] 驱动进 [`pobr_core::calc::CalculationSession`]
+//!   （text-only `calculate` + 端到端归因 `calculate_with_data`）。
 //! - [`calc_cache`] — 以内容哈希为键的结果缓存。
 //! - [`comparison`] — 两份 [`pobr_core::calc::OutputTable`] 的标量字段 diff。
 //!
@@ -20,21 +23,27 @@
 pub mod build;
 pub mod build_code;
 pub mod build_config;
+pub mod build_data;
 pub mod calc_cache;
 pub mod calc_orchestrator;
 pub mod comparison;
 pub mod error;
 pub mod import_detect;
 pub mod snapshot;
+pub mod xml_build;
 pub mod xml_serde;
 
 pub use build::{Build, CharacterIdentity, SocketGroup};
 pub use build_code::{decode_pob_code, encode_pob_code};
 pub use build_config::BuildConfig;
+pub use build_data::{BuildData, ClassBaseAttributes};
 pub use calc_cache::CalcCache;
-pub use calc_orchestrator::{OrchestratorOptions, calculate};
+pub use calc_orchestrator::{
+    DataOrchestratorOptions, OrchestratorOptions, calculate, calculate_with_data,
+};
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};
 pub use import_detect::{ImportKind, ShareService, detect_import};
 pub use snapshot::BuildSnapshot;
+pub use xml_build::{parse_build, parse_build_from_code};
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

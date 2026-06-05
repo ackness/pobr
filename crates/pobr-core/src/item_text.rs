@@ -142,6 +142,122 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
     })
 }
 
+/// 解析 PoB Build XML 内嵌的 `<Item>` 文本块。
+///
+/// 与剪贴板格式（[`parse_item_text`]）的区别：PoB Build XML 的 item 文本块**不含
+/// `--------` 段分隔符**，implicit / explicit 仅靠 `Implicits: N` 头计数切分。典型布局：
+///
+/// ```text
+/// Rarity: RARE                  ← 首行，决定稀有度
+/// Plague Core                   ← 显示名（RARE/MAGIC/UNIQUE）
+/// Siege Crossbow                ← 基底（NORMAL 时首行即基底；MAGIC 常无独立基底行）
+/// Unique ID: …                  ← 元数据块起始
+/// Item Level: 81
+/// Quality: 20
+/// Sockets: S S
+/// Rune: …                       ← 已镶嵌符文的命名行（其词条以 {rune} 前缀单列）
+/// LevelReq: 79
+/// Implicits: 5                  ← 随后 5 行（可含 {enchant}{rune}）为 implicit
+/// {enchant}{rune}…              ← 符文 / 附魔 implicit（归 enchant 段）
+/// {fractured}…                  ← explicit（{tag} 前缀经 strip_pob_annotations 剥离）
+/// ```
+///
+/// 段归类沿用 [`classify_mod_lines`]：`{crafted}` / `{enchant}` 前缀行 → enchant 段，
+/// 其余按 `Implicits: N` 计数前 N 行 → implicit、之后 → explicit。**计算数值与段归类
+/// 无关**（三段都汇入同一 ModDb），段差异只影响 source-level 归因粒度。
+///
+/// 结构性错误（空输入 / 缺 `Rarity:` / 缺基底）返回 [`Err`]；无法解析的单条词条文本
+/// 仍被保留为字符串（交由 `mod_parser` 在下游按 skip-and-collect 处理）。
+pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
+    let lines: Vec<&str> = raw
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    if lines.is_empty() {
+        return Err(ItemTextError::Empty);
+    }
+
+    let rarity = parse_rarity(&lines)?;
+
+    // 名称行：Rarity 之后、首个元数据 / 计数头之前的行。RARE/UNIQUE 取 2 行（显示名 +
+    // 基底），MAGIC/NORMAL 取 1 行（基底名嵌在显示名内，无独立基底行）。任何元数据行
+    // 提前终止收集——即便后续因故缺元数据头，也最多吸收 max_names 行避免吞掉词条。
+    let max_names = match rarity {
+        ItemRarity::Normal | ItemRarity::Magic => 1,
+        ItemRarity::Rare | ItemRarity::Unique => 2,
+    };
+    let mut header: Vec<&str> = vec![lines[0]];
+    let mut idx = 1;
+    while idx < lines.len() && header.len() <= max_names && !is_xml_metadata_line(lines[idx]) {
+        header.push(lines[idx]);
+        idx += 1;
+    }
+    let base = parse_base(&header, rarity)?;
+
+    // 其余行：扫描 Quality / Implicits 头，跳过元数据，收集词条行。
+    let mut quality = 0u8;
+    let mut implicit_count = 0usize;
+    let mut mod_lines: Vec<&str> = Vec::new();
+    for &line in &lines[idx..] {
+        if let Some(value) = quality_from_line(line) {
+            quality = value;
+        } else if let Some(count) = implicits_header(line) {
+            implicit_count = count;
+        } else if is_xml_metadata_line(line) {
+            // 元数据行不计入词条。
+        } else {
+            mod_lines.push(line);
+        }
+    }
+
+    let mut implicit_texts = Vec::new();
+    let mut enchant_texts = Vec::new();
+    let mut modifier_texts = Vec::new();
+    classify_mod_lines(
+        &mod_lines,
+        &mut implicit_count,
+        &mut implicit_texts,
+        &mut enchant_texts,
+        &mut modifier_texts,
+    );
+
+    Ok(Item {
+        base,
+        rarity,
+        quality,
+        implicit_texts,
+        modifier_texts,
+        enchant_texts,
+        parsed_stats: Vec::new(),
+    })
+}
+
+/// PoB Build XML item 块的元数据 / 非词条行判定。
+///
+/// 在 [`is_metadata_line`] 基础上追加 PoB Build XML 专有的 `Rune:` / `Sockets:` /
+/// `Implicits:` / 变体 / 限定 / 词缀分组等头——剪贴板格式不出现这些，故不并入共享集合。
+fn is_xml_metadata_line(line: &str) -> bool {
+    const XML_PREFIXES: &[&str] = &[
+        "Rune:",
+        "Sockets:",
+        "Implicits:",
+        "Selected Variant:",
+        "Variant:",
+        "Has Alt Variant",
+        "Radius:",
+        "Talisman Tier:",
+        "Limited to:",
+        "Requires",
+        "Crafted:",
+        "Prefix:",
+        "Suffix:",
+        "Catalyst:",
+        "CatalystQuality:",
+    ];
+    is_metadata_line(line) || XML_PREFIXES.iter().any(|prefix| line.starts_with(prefix))
+}
+
 /// 按 `--------` 切分为若干段，每段是若干非空行（已 trim）。空段被丢弃。
 fn split_sections(raw: &str) -> Vec<Vec<&str>> {
     let mut sections: Vec<Vec<&str>> = Vec::new();
@@ -342,12 +458,14 @@ pub fn strip_pob_annotations(text: &str) -> String {
     s.trim().to_string()
 }
 
-/// 剥离 enchant / crafted 标记。命中则返回去标记后的文本与 `true`。
+/// 剥离 enchant / crafted / rune 标记。命中则返回去标记后的文本与 `true`。
 ///
-/// 注意：`{crafted}` / `{enchant}` 作为**行首前缀**用于 section 归类，此步在
-/// [`strip_pob_annotations`] 之前执行，以保留 section 分类语义。
+/// 注意：`{crafted}` / `{enchant}` / `{rune}` 作为**行首前缀**用于 section 归类（rune
+/// 镶嵌词条与附魔同属"可socket的外加来源"，统一归 enchant 段），此步在
+/// [`strip_pob_annotations`] 之前执行，以保留 section 分类语义。`{enchant}{rune}` 复合
+/// 前缀按数组顺序先匹配 `{enchant}`，残余 `{rune}` 再由 [`strip_pob_annotations`] 剥除。
 fn strip_enchant_marker(line: &str) -> (String, bool) {
-    const ENCHANT_MARKERS: &[&str] = &["{crafted}", "{enchant}"];
+    const ENCHANT_MARKERS: &[&str] = &["{crafted}", "{enchant}", "{rune}"];
     for marker in ENCHANT_MARKERS {
         if let Some(rest) = line.strip_prefix(marker) {
             return (rest.trim().to_string(), true);

@@ -5,7 +5,9 @@
 //! 带正确 [`SourceKind`] 的 modifier。
 
 use pobr_core::item::ingest_item;
-use pobr_core::item_text::{ItemTextError, parse_item_text, strip_pob_annotations};
+use pobr_core::item_text::{
+    ItemTextError, parse_item_text, parse_pob_xml_item, strip_pob_annotations,
+};
 use pobr_data::prelude::*;
 
 /// 典型 PoB 稀有物品导出：含 Quality / Item Level / Implicits 头。
@@ -302,4 +304,152 @@ Item Level: 60
         "{{crafted}} 行应归入 enchant section，且 {{range:0.9}} 被剥离"
     );
     assert_eq!(item.modifier_texts, vec!["+40 to maximum Life"]);
+}
+
+// ---------------------------------------------------------------------------
+// PoB Build XML 内嵌 <Item> 文本块解析（无 -------- 段分隔，按 Implicits: N 计数）
+// ---------------------------------------------------------------------------
+
+/// 真实 PoB2 Build XML 的 RARE 武器块（无段分隔，含 Rune: / {enchant}{rune} / {fractured}）。
+const XML_RARE_CROSSBOW: &str = "\
+\t\t\tRarity: RARE
+Plague Core
+Siege Crossbow
+Unique ID: 28c4b9c403bbe522924570d1210631801a9e1001f999d688ad4372ec13c6e2ba
+Item Level: 81
+Quality: 20
+Sockets: S S
+Rune: Perfect Iron Rune
+LevelReq: 79
+Implicits: 5
+{enchant}{rune}20% increased Physical Damage
+{enchant}{rune}Gain 5% of Damage as Extra Damage of all Elements
+Grenade Skills Fire an additional Projectile
+{fractured}Adds 1 to 356 Lightning Damage
+{desecrated}152% increased Physical Damage
+Adds 47 to 86 Physical Damage
++26 to Strength
+";
+
+#[test]
+fn xml_item_parses_rarity_base_and_quality_without_separators() {
+    let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("xml crossbow parses");
+
+    assert_eq!(item.rarity, ItemRarity::Rare);
+    assert_eq!(item.base, ItemBaseId::from("Siege Crossbow"));
+    assert_eq!(item.quality, 20);
+}
+
+#[test]
+fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
+    let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("parse");
+
+    // {enchant}{rune} 前缀经 strip_enchant_marker + strip_pob_annotations 剥离后归 enchant 段。
+    assert!(
+        item.enchant_texts
+            .iter()
+            .any(|t| t == "20% increased Physical Damage"),
+        "rune enchant 应保留干净文本: {:?}",
+        item.enchant_texts
+    );
+
+    // Rune: 命名行 / Sockets: / Unique ID: 等元数据行不得进入任何词条段。
+    let all: Vec<&String> = item
+        .implicit_texts
+        .iter()
+        .chain(&item.modifier_texts)
+        .chain(&item.enchant_texts)
+        .collect();
+    assert!(
+        all.iter().all(|t| !t.starts_with("Rune:")
+            && !t.starts_with("Sockets:")
+            && !t.starts_with("Unique ID:")),
+        "元数据行泄漏到词条段: {all:?}"
+    );
+
+    // {fractured} / {desecrated} 前缀被剥离，保留可解析文本。
+    assert!(
+        all.iter()
+            .any(|t| t.as_str() == "Adds 1 to 356 Lightning Damage"),
+        "fractured 词条应保留干净文本: {all:?}"
+    );
+    assert!(
+        all.iter().any(|t| t.as_str() == "+26 to Strength"),
+        "末尾普通词条应保留: {all:?}"
+    );
+}
+
+#[test]
+fn xml_item_handles_magic_flask_without_separate_base_line() {
+    // MAGIC 物品（药剂/护身符）只有 1 行名称、基底嵌在名称内，名称后直接是元数据。
+    let raw = "\
+Rarity: MAGIC
+Catalysed Ultimate Life Flask of the Eternal
+Unique ID: 8bf5222a8fe575715ca469864c024b5a8c54f4e4fa1bd810ea209fb6636a634b
+Item Level: 82
+Quality: 20
+Implicits: 0
+35% increased Amount Recovered
+";
+    let item = parse_pob_xml_item(raw).expect("magic flask parses");
+    assert_eq!(item.rarity, ItemRarity::Magic);
+    // 无独立基底行时退化为名称行（与 parse_item_text 一致）。
+    assert_eq!(
+        item.base,
+        ItemBaseId::from("Catalysed Ultimate Life Flask of the Eternal")
+    );
+    assert_eq!(
+        item.modifier_texts,
+        vec!["35% increased Amount Recovered".to_string()]
+    );
+}
+
+#[test]
+fn xml_item_implicit_count_splits_segments() {
+    let raw = "\
+Rarity: RARE
+Dragon Hold
+Topaz Ring
+Item Level: 80
+Implicits: 1
++30% to Lightning Resistance
++50 to maximum Life
++25 to Dexterity
+";
+    let item = parse_pob_xml_item(raw).expect("ring parses");
+    // 前 1 行（Implicits: 1）→ implicit，其余 → explicit。
+    assert_eq!(item.implicit_texts, vec!["+30% to Lightning Resistance"]);
+    assert_eq!(
+        item.modifier_texts,
+        vec!["+50 to maximum Life", "+25 to Dexterity"]
+    );
+}
+
+#[test]
+fn xml_item_rejects_empty_and_missing_rarity() {
+    assert!(matches!(parse_pob_xml_item(""), Err(ItemTextError::Empty)));
+    assert!(matches!(
+        parse_pob_xml_item("Iron Ring\n+10 to Life"),
+        Err(ItemTextError::MissingRarity)
+    ));
+}
+
+#[test]
+fn xml_item_feeds_ingest_item_with_attribution() {
+    // 端到端：XML item 块 → parse_pob_xml_item → ingest_item，词条带正确归因。
+    let raw = "\
+Rarity: RARE
+Dragon Hold
+Topaz Ring
+Item Level: 80
+Implicits: 1
++40 to maximum Life
++50 to maximum Life
+";
+    let item = parse_pob_xml_item(raw).expect("parse");
+    let ingest = ingest_item(EquipmentSlot::Ring1, &item).expect("ingest");
+    assert!(
+        !ingest.modifiers.is_empty(),
+        "ingest 应产出 modifier（含可解析词条）"
+    );
 }

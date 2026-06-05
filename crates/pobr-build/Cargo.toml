@@ -8,6 +8,7 @@ pobr-data.workspace = true
 pobr-core.workspace = true
 pobr-tree.workspace = true
 pobr-item.workspace = true
+pobr-gamedata.workspace = true
 base64 = "0.22"
 flate2 = "1"
 quick-xml = "0.36"

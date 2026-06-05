@@ -181,8 +181,18 @@ enemy modDB → 暴击 → 伤害转换/穿透/Overwhelm → 伤害型异常(几
 ### 🎯 calc 机制阶段基本完成（2026-06-05）
 Wave 0 + Wave 1 + Wave 2(批次1-3)：**332 → 801 测试**(+469)，21 commits。PoBR 计算核心从最小闭环推进到**覆盖 doc12 P1-P7 全机制族的完整 PoE2 战斗引擎**(暴击/伤害转换/异常/防御恢复/召唤物/触发/技能功能 + enemy modDB + parity 框架 + i18n)。
 
-**剩余工作转向另一层（需方向选择）**：
-1. **build-layer 集成**：Build 状态→calc 编排打通、宝石数据通道(能量触发/技能基础参数/分等级 stat)、装备/天赋/技能端到端。
+### Wave 3 批次1 ✅ build-layer 集成（2026-06-05）
+**801 → 834 测试**(+33，含先前 `BuildData`/`calculate_with_data`/`setup_enemy` 一批)。打通「一份 PoB Build Code → 完整计算」的端到端生产路径，**不再依赖测试内手写 XML 抽取**。
+- **`pobr-build::build_data::BuildData`**：把 `GameData` 按域投影为内存索引(节点表/宝石表/职业属性)，唯一 I/O 入口，调用方一次加载多次复用。
+- **`pobr-build::calc_orchestrator::calculate_with_data`**：端到端归因编排——角色基础(职业起始属性→`CharacterBase`)→装备(`add_item` 槽位+段落归因)→天赋树(`collect_allocated_mods`→节点归因)→技能宝石(active/support 分类+source 注册)→敌人(`setup_enemy`)→额外文本；逐件 `filter_parseable` 容错(PoB skip-and-collect)。`CalculationSession::setup_enemy` 经 session 暴露。
+- **`pobr-core::item_text::parse_pob_xml_item`**：解析 PoB Build XML 内嵌 `<Item>` 文本块(**无 `--------` 分隔**，按 `Implicits: N` 计数切分；`{enchant}{rune}`/`{fractured}`/`{desecrated}` 前缀剥离；`Rune:`/`Sockets:` 等 XML 专有元数据行跳过)，复用既有 `classify_mod_lines`/`strip_pob_annotations`。
+- **`pobr-build::xml_build::{parse_build, parse_build_from_code}`**：生产 XML→Build 解析器——`<Tree activeSpec>`选中`<Spec nodes>`、`<Items activeItemSet>`选中`<ItemSet>`的`<Slot name itemId>`→`EquipmentSlot`映射(枚举外槽/空槽忽略、武器组按`useSecondWeaponSet`切换)、`<Skills activeSkillSet>`下每个`<Skill>`→一个 `SocketGroup`(启用态+启用 gem)。单件解析失败跳过该件不中止。
+- **CLI `calculate-build`**：`pobr calculate-build --file <code> [--data-dir ..] [--enemy-tier ..] [--panel]`，decode→parse_build→BuildData::load→calculate_with_data，输出 Build 摘要+关键标量 JSON。真实 deadeye 验证：154 节点/9 装备/9 宝石组、life 2376、抗性 75、命中率 0.82(vs Pinnacle)、爆伤 2.0。
+- **e2e 重构**：`tests/e2e_real_build.rs` 改用生产 `parse_build_from_code`，删除 ~250 行测试内手写抽取(DRY)；两真实 fixture(Deadeye/Martial Artist)端到端回归。
+- **已知切片(deferred)**：宝石→modifier 文本(分等级 stat set 未导出，DPS/技能伤害=0)；物品基底防御值(`Armour:`/`Evasion:` 非词条文本，armour/evasion 局部计算未接)；`masteryEffects` 选择；JewelSocket 内嵌珠宝；第二武器组独立 Spec。
+
+**剩余工作（需方向选择）**：
+1. **宝石数据通道**：宝石/授予效果分等级 stat set 入库 + 解析(解锁技能伤害/DPS/能量触发/技能基础参数) —— 与 #2 数据管线耦合。
 2. **数据管线**：全量召唤物/技能等入库 JSON(pobr-data-adapter + pobr-gamedata loader)。
 3. **真·PoB2 golden 数值对齐**：需在 PoB2 跑同 build 取数值(外部数据，阻塞)。⚠️含 Wave1c 双重 dip 分歧决策。
 4. **buff/aura ingest 系统**：解锁 BuffEffect / 光环 / 玩家施加 debuff 注入 enemy.mod_db。

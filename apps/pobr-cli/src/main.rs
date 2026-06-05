@@ -8,8 +8,9 @@ use std::io::Read;
 use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
-use pobr_cli::{CalculateRequest, ParseItemRequest};
+use pobr_cli::{CalculateBuildRequest, CalculateRequest, ParseItemRequest};
 use pobr_core::calc::MinimalInput;
+use pobr_data::monster::EnemyTier;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -26,6 +27,8 @@ struct Cli {
 enum Command {
     /// 从基础属性 + modifier 文本执行最小计算，输出关键字段 JSON。
     Calculate(CalculateArgs),
+    /// 从 PoB Build Code 端到端计算（装备 / 天赋 / 宝石 / 角色基础 / 敌人），输出 JSON。
+    CalculateBuild(CalculateBuildArgs),
     /// 解析单条 modifier 文本，输出解析报告。
     ParseMod(ParseModArgs),
     /// 解析 raw item text（--text / --file / stdin）。当前为占位，返回未实现错误。
@@ -77,6 +80,27 @@ struct CalculateArgs {
 }
 
 #[derive(Debug, Args)]
+struct CalculateBuildArgs {
+    /// PoB Build Code（内联）；与 --file 二选一，缺省从 stdin 读取。
+    code: Option<String>,
+    /// 从文件读取 PoB Build Code。
+    #[arg(long)]
+    file: Option<String>,
+    /// 游戏数据版本目录（含入库 JSON）。缺省使用仓库内置 `data/4.5.0.3.4`。
+    #[arg(long)]
+    data_dir: Option<String>,
+    /// 敌人等级（0 = 跟随角色等级）。
+    #[arg(long, default_value_t = 0)]
+    enemy_level: u32,
+    /// 敌人档位：none / boss / pinnacle / uber。
+    #[arg(long, default_value = "pinnacle")]
+    enemy_tier: String,
+    /// 面板口径（不计敌人交互）。缺省为有效 DPS 口径。
+    #[arg(long, default_value_t = false)]
+    panel: bool,
+}
+
+#[derive(Debug, Args)]
 struct ParseModArgs {
     /// 待解析的 modifier 文本。
     text: String,
@@ -125,6 +149,9 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
     match cli.command {
         Command::Calculate(args) => Ok(pobr_cli::calculate_json(&build_calculate_request(args)?)?),
+        Command::CalculateBuild(args) => Ok(pobr_cli::calculate_build_json(
+            &build_calc_build_request(args)?,
+        )?),
         Command::ParseMod(args) => Ok(pobr_cli::parse_mod_json(&args.text)?),
         Command::ParseItem(args) => {
             let text = read_text_source(args.text, args.file)?;
@@ -169,6 +196,33 @@ fn build_calculate_request(
     Ok(CalculateRequest {
         input,
         modifier_texts,
+    })
+}
+
+fn build_calc_build_request(
+    args: CalculateBuildArgs,
+) -> Result<CalculateBuildRequest, Box<dyn std::error::Error>> {
+    let code = read_text_source(args.code, args.file)?;
+
+    let data_dir = match args.data_dir {
+        Some(dir) => std::path::PathBuf::from(dir),
+        None => pobr_gamedata::repo_data_root().join("4.5.0.3.4"),
+    };
+
+    let enemy_tier = match args.enemy_tier.to_ascii_lowercase().as_str() {
+        "none" => EnemyTier::None,
+        "boss" => EnemyTier::Boss,
+        "pinnacle" => EnemyTier::Pinnacle,
+        "uber" => EnemyTier::Uber,
+        other => return Err(format!("unknown enemy tier: {other}").into()),
+    };
+
+    Ok(CalculateBuildRequest {
+        code,
+        data_dir,
+        enemy_level: args.enemy_level,
+        enemy_tier,
+        mode_effective: !args.panel,
     })
 }
 

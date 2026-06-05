@@ -10,12 +10,17 @@
 //!   modifier / section / unsupported）。
 //! - [`encode_code`] / [`decode_code`]：包装 PoB Build Code 编解码。
 
+use std::path::PathBuf;
+
+use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::ModValue;
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput};
 use pobr_core::item::ingest_item;
 use pobr_core::item_text::{ItemTextError, parse_item_text};
 use pobr_core::mod_parser::{ParseStatus, parse_mod as core_parse_mod};
 use pobr_data::item::EquipmentSlot;
+use pobr_data::monster::EnemyTier;
+use pobr_gamedata::GameData;
 use serde::Serialize;
 use thiserror::Error;
 
@@ -34,6 +39,12 @@ pub enum CliError {
     /// raw item text 结构性解析失败（空输入 / 缺 Rarity / 缺基底）。
     #[error("item text parse error: {0}")]
     ItemText(#[from] ItemTextError),
+    /// Build 解析 / 计算编排失败（来自 pobr-build）。
+    #[error("build error: {0}")]
+    Build(#[from] pobr_build::BuildError),
+    /// 游戏数据加载失败（缺数据目录 / JSON 反序列化）。
+    #[error("game data load error: {0}")]
+    GameData(#[from] pobr_gamedata::LoadError),
     /// 功能尚未实现（占位保留）。
     #[error("not implemented: {0}")]
     NotImplemented(&'static str),
@@ -305,4 +316,118 @@ pub fn decode_code(code: &str) -> Result<String, CliError> {
 /// 编码 XML → PoB Build Code（URL-safe base64 of zlib-compressed XML）。
 pub fn encode_code(xml: &str) -> Result<String, CliError> {
     Ok(pobr_build::encode_pob_code(xml)?)
+}
+
+// ---------------------------------------------------------------------------
+// calculate-build（PoB Build Code → 完整 Build → 端到端归因计算）
+// ---------------------------------------------------------------------------
+
+/// `calculate-build` 子命令输入。
+#[derive(Debug, Clone)]
+pub struct CalculateBuildRequest {
+    /// PoB Build Code（URL-safe Base64 + zlib）。
+    pub code: String,
+    /// 游戏数据版本目录（含入库 JSON，如 `data/4.5.0.3.4`）。
+    pub data_dir: PathBuf,
+    /// 敌人等级（`0` = 跟随角色等级）。
+    pub enemy_level: u32,
+    /// 敌人档位（普通 / Boss / Pinnacle / Uber）。
+    pub enemy_tier: EnemyTier,
+    /// 有效 DPS 口径（`true` → 计入命中 / 敌人减伤；`false` → 面板口径）。
+    pub mode_effective: bool,
+}
+
+/// 解析出的 Build 摘要（角色身份 + 各来源计数）。
+#[derive(Debug, Clone, Serialize)]
+pub struct BuildSummary {
+    pub level: u32,
+    pub class_name: String,
+    pub ascendancy_name: String,
+    pub game_version: String,
+    pub allocated_node_count: usize,
+    pub equipped_item_count: usize,
+    pub socket_group_count: usize,
+}
+
+/// `calculate-build` 计算结果的关键输出字段。
+#[derive(Debug, Clone, Serialize)]
+pub struct CalculateBuildOutput {
+    pub life: f64,
+    pub mana: f64,
+    pub energy_shield: f64,
+    pub armour: f64,
+    pub evasion: f64,
+    pub fire_resistance: f64,
+    pub cold_resistance: f64,
+    pub lightning_resistance: f64,
+    pub crit_chance: f64,
+    pub crit_multiplier: f64,
+    pub hit_chance: f64,
+    pub total_hit_avg: f64,
+    pub dps: f64,
+}
+
+/// `calculate-build` 报告：Build 摘要 + 计算输出。
+#[derive(Debug, Clone, Serialize)]
+pub struct CalculateBuildReport {
+    pub build: BuildSummary,
+    pub output: CalculateBuildOutput,
+}
+
+/// 从一份 PoB Build Code 端到端计算：decode → [`parse_build_from_code`] →
+/// [`BuildData::load`] → [`calculate_with_data`]，返回 Build 摘要 + 关键输出字段。
+///
+/// 这是 build-layer 集成的 CLI 入口：把「装备 / 天赋树 / 技能宝石 / 角色基础 / 敌人」
+/// 全来源驱动进 REAL 计算引擎，输出可直接与 PoB2 面板对照的标量。
+pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildReport, CliError> {
+    let build = parse_build_from_code(&req.code)?;
+
+    let game_data = GameData::new(req.data_dir.clone());
+    let build_data = BuildData::load(&game_data)?;
+
+    let opts = DataOrchestratorOptions {
+        base_input: MinimalInput::default(),
+        extra_modifier_texts: Vec::new(),
+        inject_character_base: true,
+        enemy_level: req.enemy_level,
+        enemy_tier: req.enemy_tier,
+        mode_effective: req.mode_effective,
+    };
+    let out = calculate_with_data(&build, &build_data, &opts)?;
+
+    let summary = BuildSummary {
+        level: build.character.level,
+        class_name: build.character.class_name.clone(),
+        ascendancy_name: build.character.ascendancy_name.clone(),
+        game_version: format!("{:?}", build.game_version),
+        allocated_node_count: build.tree.allocated_nodes.len(),
+        equipped_item_count: build.items.len(),
+        socket_group_count: build.socket_groups.len(),
+    };
+    let output = CalculateBuildOutput {
+        life: out.life,
+        mana: out.mana,
+        energy_shield: out.energy_shield,
+        armour: out.armour,
+        evasion: out.evasion,
+        fire_resistance: out.fire_resistance,
+        cold_resistance: out.cold_resistance,
+        lightning_resistance: out.lightning_resistance,
+        crit_chance: out.crit_chance,
+        crit_multiplier: out.crit_multiplier,
+        hit_chance: out.hit_chance,
+        total_hit_avg: out.total_hit_avg,
+        dps: out.dps,
+    };
+
+    Ok(CalculateBuildReport {
+        build: summary,
+        output,
+    })
+}
+
+/// 把 [`CalculateBuildReport`] 渲染为美化的 JSON 字符串。
+pub fn calculate_build_json(req: &CalculateBuildRequest) -> Result<String, CliError> {
+    let report = calculate_build(req)?;
+    Ok(serde_json::to_string_pretty(&report)?)
 }

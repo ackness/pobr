@@ -1,8 +1,10 @@
 //! 集成测试：直接调用 `pobr_cli` 库函数（纯函数，IO 无关）。
 
 use pobr_cli::{
-    CalculateRequest, ParseItemRequest, calculate, decode_code, encode_code, parse_item, parse_mod,
+    CalculateBuildRequest, CalculateRequest, ParseItemRequest, calculate, calculate_build,
+    decode_code, encode_code, parse_item, parse_mod,
 };
+use pobr_data::monster::EnemyTier;
 
 fn base_input() -> pobr_core::calc::MinimalInput {
     pobr_core::calc::MinimalInput {
@@ -165,5 +167,87 @@ fn encode_then_decode_roundtrips_xml() {
 #[test]
 fn decode_errors_on_invalid_code() {
     let err = decode_code("!!!not-valid-base64!!!").expect_err("invalid code errors");
+    assert!(!format!("{err}").is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// calculate-build：PoB Build Code → 完整 Build → 端到端归因计算
+// ---------------------------------------------------------------------------
+
+const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
+
+fn repo_data_dir() -> std::path::PathBuf {
+    pobr_gamedata::repo_data_root().join("4.5.0.3.4")
+}
+
+#[test]
+fn calculate_build_summarizes_and_computes_from_code() {
+    let req = CalculateBuildRequest {
+        code: DEADEYE_CODE.to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 80,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let report = calculate_build(&req).expect("calculate-build succeeds");
+
+    // Build 摘要：身份与各来源计数被生产解析器还原。
+    assert_eq!(report.build.level, 98);
+    assert_eq!(report.build.class_name, "Ranger");
+    assert!(report.build.ascendancy_name.contains("Deadeye"));
+    assert_eq!(report.build.game_version, "Poe2");
+    assert!(report.build.allocated_node_count > 0);
+    assert!(report.build.equipped_item_count > 0);
+    assert!(report.build.socket_group_count > 0);
+
+    // 输出：CharacterBase + 装备 + 天赋抬升生命；命中率在合法区间。
+    let char_base_life = 28.0 + 12.0 * 98.0 + 2.0 * 7.0;
+    assert!(
+        report.output.life > char_base_life,
+        "life {} should exceed char base {}",
+        report.output.life,
+        char_base_life
+    );
+    assert!(report.output.life.is_finite());
+    assert!(report.output.hit_chance >= 0.0 && report.output.hit_chance <= 1.0);
+    // PoE2 基础爆伤倍率 2.0（无额外增伤词条）。
+    assert_eq!(report.output.crit_multiplier, 2.0);
+}
+
+#[test]
+fn calculate_build_panel_vs_effective_hit_chance() {
+    let base = CalculateBuildRequest {
+        code: DEADEYE_CODE.to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 80,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: false,
+    };
+    let panel = calculate_build(&base).expect("panel");
+    let effective = calculate_build(&CalculateBuildRequest {
+        mode_effective: true,
+        ..base.clone()
+    })
+    .expect("effective");
+
+    // 面板口径不计敌人闪避，命中率应 ≥ 有效口径。
+    assert!(
+        panel.output.hit_chance >= effective.output.hit_chance,
+        "panel {} >= effective {}",
+        panel.output.hit_chance,
+        effective.output.hit_chance
+    );
+}
+
+#[test]
+fn calculate_build_errors_on_invalid_code() {
+    let req = CalculateBuildRequest {
+        code: "!!!not-valid!!!".to_string(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let err = calculate_build(&req).expect_err("invalid code should error");
     assert!(!format!("{err}").is_empty());
 }
