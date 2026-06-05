@@ -98,6 +98,9 @@ struct RawActiveSkillName {
     id: String,
     #[serde(rename = "DisplayedName", default)]
     displayed_name: Option<String>,
+    /// 技能类型标志（`SkillType` 枚举值：1=Attack、2=Spell…）。
+    #[serde(rename = "ActiveSkillTypes", default)]
+    active_skill_types: Vec<u32>,
 }
 
 #[derive(Deserialize)]
@@ -132,6 +135,12 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
     let base_ids = id_lookup_from_base(&base_rows);
     let active_skills = read_json::<Vec<RawActiveSkillName>>(&en.join("ActiveSkills.json"))?;
     let active_ids: Vec<String> = active_skills.iter().map(|a| a.id.clone()).collect();
+    // 技能类型枚举：行索引 → 名称（如 `Attack`/`Spell`/`Projectile`）。
+    let skill_type_names: Vec<String> =
+        read_json::<Vec<RawBaseItemId>>(&en.join("ActiveSkillType.json"))?
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
 
     // ---- 宝石 ----
     let raw_gems = read_json::<Vec<RawSkillGem>>(&en.join("SkillGems.json"))?;
@@ -172,10 +181,19 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
         if raw.id.is_empty() {
             continue;
         }
-        let active_skill = raw
-            .active_skill
-            .filter(|&i| i >= 0)
-            .and_then(|i| resolve(&active_ids, i as usize));
+        let active_idx = raw.active_skill.filter(|&i| i >= 0).map(|i| i as usize);
+        let active_skill = active_idx.and_then(|i| resolve(&active_ids, i));
+        // 技能类型标志（Attack/Spell…）取自关联 ActiveSkills 行，索引 → 名称。
+        let skill_types = active_idx
+            .and_then(|i| active_skills.get(i))
+            .map(|a| {
+                a.active_skill_types
+                    .iter()
+                    .filter_map(|&t| skill_type_names.get(t as usize).cloned())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default();
         let cast_time = raw.cast_time.filter(|&t| t > 0).map(|t| t as u32);
         let stat_set = raw.stat_set.filter(|&i| i >= 0).map(|i| i as u32);
         effects.push(GrantedEffectDef {
@@ -185,6 +203,7 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
             cast_time,
             allowed_active_skill_types: raw.allowed_active_skill_types,
             stat_set,
+            skill_types,
             cost_types: raw.cost_types,
         });
     }

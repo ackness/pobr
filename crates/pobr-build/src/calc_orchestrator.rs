@@ -35,7 +35,7 @@ use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
 use pobr_core::{CharacterBase, Modifier};
-use pobr_data::item::Item;
+use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
@@ -151,6 +151,19 @@ pub fn calculate_with_data(
         base_input.base_action_rate = 1.0 / use_time;
     }
 
+    // 武器基底贡献（仅攻击技能）：击中物理伤害 + 攻击速率覆盖（攻击不用施放时间）。
+    let weapon = main_skill
+        .as_ref()
+        .and_then(|(_, group)| group.active_skill_id.as_deref())
+        .and_then(|skill_id| weapon_contribution(build, data, skill_id));
+    if let Some(w) = &weapon {
+        base_input.base_hit_min += w.phys_min;
+        base_input.base_hit_max += w.phys_max;
+        if w.attack_rate > 0.0 {
+            base_input.base_action_rate = w.attack_rate;
+        }
+    }
+
     let mut session = CalculationSession::new(base_input).with_config(cfg);
 
     // 1. 角色基础（等级 + 职业派生属性）→ CharacterBase 归因的 BASE modifier。
@@ -164,6 +177,17 @@ pub fn calculate_with_data(
     if let Some((skill, group)) = &main_skill {
         session.add_modifiers(skill_base_modifiers(skill));
         session.add_modifiers(support_modifiers(group, data));
+    }
+
+    // 1c. 武器基底暴击率 → Weapon1 归因的 BASE CritChance（攻击技能）。
+    if let Some(w) = &weapon
+        && w.crit_chance > 0.0
+    {
+        let origin = ModifierSource::new(SourceId::new(SourceKind::Item, "weapon1.base"))
+            .with_raw_text(format!("weapon base crit {}%", w.crit_chance));
+        session.add_modifiers(vec![
+            Modifier::number("CritChance", ModType::Base, w.crit_chance).with_origin(origin),
+        ]);
     }
 
     // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
@@ -228,15 +252,71 @@ fn resolve_main_skill<'b>(
 ) -> Option<(ResolvedSkillLevel, &'b SocketGroup)> {
     for group in build.enabled_socket_groups() {
         if let Some(skill_id) = &group.active_skill_id {
+            // 主技能 = 首个**伤害技能**（攻击或法术）；据此跳过元/光环/守卫等
+            // 非攻击非法术技能（如 Mirage Deadeye / Herald）。攻击技能的使用时间来自
+            // 武器（use_time_s 可为 None），故不再用 use_time 作筛选。
+            let is_damage = data
+                .granted_effects
+                .get(skill_id)
+                .map(|e| e.is_attack() || e.is_spell())
+                .unwrap_or(false);
+            if !is_damage {
+                continue;
+            }
             let level = group.active_gem_level.unwrap_or(1);
-            if let Some(resolved) = data.resolve_skill_level(skill_id, level)
-                && resolved.use_time_s.is_some()
-            {
+            if let Some(resolved) = data.resolve_skill_level(skill_id, level) {
                 return Some((resolved, group));
             }
         }
     }
     None
+}
+
+/// 攻击技能的武器基底贡献：物理击中伤害（已乘品质）+ 攻击速率 + 暴击率。
+#[derive(Debug, Clone, Copy)]
+struct WeaponContribution {
+    phys_min: f64,
+    phys_max: f64,
+    attack_rate: f64,
+    crit_chance: f64,
+}
+
+/// 解析主武器（Weapon1）对**攻击技能**的基底贡献，对照 PoB2 `CalcSetup.lua` weaponData
+/// 装配。法术技能 / 无装备武器 / 未知基底 → `None`（法术不使用武器伤害）。
+///
+/// - 物理伤害 = 基底 `DamageMin/Max` × `(1 + quality/100)`（品质仅作用物理，PoB 口径）;
+/// - 攻击速率 = `1000 / speed_ms`；暴击率 = `crit_chance / 100`（`.dat` 原始 ×100）。
+///
+/// 切片：局部词条（武器自身「增加%物理 / 附加 flat」）尚未单独作用于武器基底——
+/// 当前先打通**裸装基底**口径（roadmap 链 A #1 验收：裸装攻击 build DPS 对齐）；
+/// 局部 vs 全局词条隔离为后续切片。
+fn weapon_contribution(
+    build: &Build,
+    data: &BuildData,
+    main_skill_id: &str,
+) -> Option<WeaponContribution> {
+    // 仅攻击技能用武器伤害（法术用 stat-set 法术基础伤害）。
+    if !data
+        .granted_effects
+        .get(main_skill_id)
+        .map(|e| e.is_attack())
+        .unwrap_or(false)
+    {
+        return None;
+    }
+    let item = build.items.get(&EquipmentSlot::Weapon1)?;
+    let w = data.weapon_base(&item.base.to_string())?;
+    let quality = 1.0 + f64::from(item.quality) / 100.0;
+    Some(WeaponContribution {
+        phys_min: f64::from(w.physical_min) * quality,
+        phys_max: f64::from(w.physical_max) * quality,
+        attack_rate: if w.speed_ms > 0 {
+            1000.0 / f64::from(w.speed_ms)
+        } else {
+            0.0
+        },
+        crit_chance: f64::from(w.crit_chance) / 100.0,
+    })
 }
 
 /// 把主技能分等级参数（cost / cooldown / **stat 集**）构造为 SkillGem 归因的 modifier：
@@ -532,6 +612,7 @@ mod tests {
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
             cost_types: Vec::new(),
+            base_items: HashMap::new(),
         };
         let build = Build::new().with_character(CharacterIdentity {
             level: 10,
@@ -582,6 +663,7 @@ mod tests {
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
             cost_types: Vec::new(),
+            base_items: HashMap::new(),
         };
 
         let build = Build::new().with_tree(PassiveTreeSpec {
@@ -659,6 +741,7 @@ mod tests {
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
             cost_types: Vec::new(),
+            base_items: HashMap::new(),
         };
         let build = Build::new().add_socket_group(
             SocketGroup::new()

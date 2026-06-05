@@ -10,6 +10,7 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
 };
 use pobr_core::calc::MinimalInput;
+use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity};
 use pobr_data::monster::EnemyTier;
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -127,6 +128,80 @@ fn fireball_with_damage_support_raises_hit() {
         boosted.total_hit_avg
     );
     assert!(boosted.total_hit_avg > base.total_hit_avg * 1.5);
+}
+
+/// 一把裸基底武器（无词条），用于验证武器基底伤害装配。
+fn bare_weapon(base_name: &str) -> Item {
+    Item {
+        base: ItemBaseId::from(base_name),
+        rarity: ItemRarity::Normal,
+        quality: 0,
+        implicit_texts: vec![],
+        modifier_texts: vec![],
+        enchant_texts: vec![],
+        parsed_stats: vec![],
+    }
+}
+
+/// 武器基底伤害装配（roadmap 链 A #1）：攻击技能装备武器后，武器基底物理伤害进入击中。
+/// `Crude Claw` 基底 4–10 物理 → 平均 7 注入 base_hit。
+#[test]
+fn attack_skill_uses_weapon_base_damage() {
+    let build_data = load_build_data();
+    let opts = panel_opts();
+
+    let attack_build = |with_weapon: bool| {
+        let mut b = Build::new()
+            .with_character(CharacterIdentity {
+                level: 50,
+                class_name: "Warrior".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_slot("weapon1")
+                    .with_active_skill("AxeChopPlayer", 1),
+            );
+        if with_weapon {
+            b = b.set_item(EquipmentSlot::Weapon1, bare_weapon("Crude Claw"));
+        }
+        b
+    };
+
+    let no_weapon =
+        calculate_with_data(&attack_build(false), &build_data, &opts).expect("no weapon");
+    let with_weapon =
+        calculate_with_data(&attack_build(true), &build_data, &opts).expect("with weapon");
+
+    // 武器物理 4–10（avg 7）进入击中——装备武器后击中显著高于裸手。
+    assert!(
+        with_weapon.total_hit_avg > no_weapon.total_hit_avg + 5.0,
+        "weapon base damage should raise hit: no-weapon {} → with-weapon {}",
+        no_weapon.total_hit_avg,
+        with_weapon.total_hit_avg
+    );
+    assert!(
+        with_weapon.dps > 0.0,
+        "attack DPS should be > 0 with a weapon"
+    );
+}
+
+/// 攻击/法术门控：法术技能（Fireball）**不使用**武器伤害——装备武器击中不变（仍 280）。
+#[test]
+fn spell_skill_ignores_weapon() {
+    let build_data = load_build_data();
+    let opts = panel_opts();
+
+    let with_weapon =
+        fireball_build(20).set_item(EquipmentSlot::Weapon1, bare_weapon("Crude Claw"));
+    let out = calculate_with_data(&with_weapon, &build_data, &opts).expect("spell + weapon");
+
+    // Fireball L20 击中仍为 280（法术不吃武器基底）。
+    assert!(
+        (out.total_hit_avg - 280.0).abs() < 1.0,
+        "spell hit should ignore weapon base damage, got {}",
+        out.total_hit_avg
+    );
 }
 
 /// CostTypes 解析（P2-6/P2-5）：Fireball L20 法力消耗 104，资源名 = Mana（瞬时）。

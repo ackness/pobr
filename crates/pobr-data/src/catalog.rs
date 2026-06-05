@@ -207,6 +207,23 @@ pub struct GrantedEffectDef {
     /// [`SkillLevelDef::cost_amounts`] 按位置配对（第 i 个类型消耗第 i 个数量）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cost_types: Vec<u32>,
+    /// 关联主动技能的类型名（`ActiveSkills.ActiveSkillTypes` → `ActiveSkillType.Id` 解析，
+    /// 如 `["Attack","Projectile","Damage"]` / `["Spell","Area"]`）。用于攻击/法术判定
+    /// （攻击技能的击中伤害来自武器基底）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skill_types: Vec<String>,
+}
+
+impl GrantedEffectDef {
+    /// 是否为攻击技能（类型名含 `Attack`）——攻击技能的击中伤害来自武器基底。
+    pub fn is_attack(&self) -> bool {
+        self.skill_types.iter().any(|t| t == "Attack")
+    }
+
+    /// 是否为法术技能（类型名含 `Spell`）——法术不使用武器伤害。
+    pub fn is_spell(&self) -> bool {
+        self.skill_types.iter().any(|t| t == "Spell")
+    }
 }
 
 /// 某个授予效果在某一等级上的参数（来自 `GrantedEffectsPerLevel.dat`）。

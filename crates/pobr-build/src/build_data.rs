@@ -12,8 +12,8 @@
 use std::collections::HashMap;
 
 use pobr_data::catalog::{
-    CostTypeDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat, SkillGemDef, SkillLevelDef,
-    SkillStatSetDef,
+    BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat, SkillGemDef,
+    SkillLevelDef, SkillStatSetDef, WeaponBaseStats,
 };
 use pobr_gamedata::{GameData, LoadError};
 
@@ -76,6 +76,8 @@ pub struct BuildData {
     pub skill_stat_sets: HashMap<String, SkillStatSetDef>,
     /// 消耗资源类型表（按 `CostTypes` 索引升序；为空表示旧数据包无此域）。
     pub cost_types: Vec<CostTypeDef>,
+    /// 物品基底表，以英文 canonical 名称为键（供装备 `Item.base` 名称 → 武器/护甲基底数值）。
+    pub base_items: HashMap<String, BaseItemDef>,
 }
 
 impl BuildData {
@@ -128,6 +130,12 @@ impl BuildData {
 
         let cost_types = data.cost_types()?;
 
+        let base_items = data
+            .base_items()?
+            .into_iter()
+            .map(|b| (b.name.clone(), b))
+            .collect();
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -136,6 +144,7 @@ impl BuildData {
             granted_effect_levels,
             skill_stat_sets,
             cost_types,
+            base_items,
         })
     }
 
@@ -149,7 +158,15 @@ impl BuildData {
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
             cost_types: Vec::new(),
+            base_items: HashMap::new(),
         }
+    }
+
+    /// 按基底名称查武器基底数值（`Item.base` → `WeaponBaseStats`）；非武器/未知返回 `None`。
+    pub fn weapon_base(&self, base_name: &str) -> Option<&WeaponBaseStats> {
+        self.base_items
+            .get(base_name)
+            .and_then(|b| b.weapon.as_ref())
     }
 
     /// 解析某主动技能在某等级上的参数：cast/attack 时间（秒）、各资源消耗、冷却（秒）。
