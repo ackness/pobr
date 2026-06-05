@@ -1,12 +1,16 @@
 use pobr_core::calc::ailment::{
-    AilmentSource, DamagingAilmentOutput, StackConfig, bleed_instance, bleed_traced, chill_effect,
-    chill_effect_with_mods, chill_traced, corrupted_blood_instance, effmult_for_ailment,
-    electrocute_poise_buildup, electrocute_poise_buildup_traced, flat_chance, freeze_poise_buildup,
-    freeze_poise_buildup_traced, ignite_instance, ignite_traced, player_ailment_threshold,
-    poison_instance, roll_average, shock_effect, stack_potential, stacking_ailment_dps,
-    stacking_ailment_dps_traced, threshold_derived_chance, weighted_source_damage,
+    AilmentSource, DamagingAilmentOutput, StackConfig, ailment_effect_mod, ailment_rate_mod,
+    apply_dot_dps_cap, apply_effect_and_rate_mod, apply_effect_and_rate_mod_traced,
+    apply_effect_mod_to_instance, apply_rate_mod_to_instance, bleed_instance, bleed_traced,
+    chill_effect, chill_effect_with_mods, chill_traced, corrupted_blood_instance,
+    cross_type_source_hit, dps_with_effect_rate_cap, dps_with_effect_rate_cap_traced,
+    effmult_for_ailment, electrocute_poise_buildup, electrocute_poise_buildup_traced, flat_chance,
+    freeze_poise_buildup, freeze_poise_buildup_traced, ignite_instance, ignite_traced,
+    player_ailment_threshold, poison_instance, roll_average, shock_effect, stack_potential,
+    stacking_ailment_dps, stacking_ailment_dps_traced, threshold_derived_chance,
+    weighted_source_damage,
 };
-use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph};
+use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph, TraceOperation};
 use pobr_data::prelude::*;
 
 #[test]
@@ -681,4 +685,407 @@ fn bleed_stacking_dps_integration() {
         (p_stacked - expected_p).abs() < 1e-6,
         "4-stack poison DPS = {expected_p}, got {p_stacked}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Feature 1: AilmentEffect / Faster / Slower 三维度
+// ---------------------------------------------------------------------------
+
+/// `AilmentEffect` MORE 乘区：无 mod 时为 1.0（中性）。
+///
+/// 出处：PoB2 `CalcOffence.lua` l.5190
+///   `local effectMod = calcLib.mod(skillModList, dotCfg, "AilmentEffect")`（MORE 聚合）。
+#[test]
+fn ailment_effect_mod_defaults_to_one() {
+    let cfg = CalcConfig::attack();
+    let db = ModDb::new();
+    let eff = ailment_effect_mod(&db, &cfg);
+    assert!(
+        (eff - 1.0).abs() < 1e-9,
+        "no AilmentEffect mods → effectMod=1.0, got {eff}"
+    );
+}
+
+/// `AilmentEffect` MORE 聚合：两个 more 词条连乘。
+///
+/// 出处：PoB2 `calcLib.mod` = MORE 连乘语义。
+#[test]
+fn ailment_effect_mod_is_product_of_more_mods() {
+    let cfg = CalcConfig::attack();
+    let mut db = ModDb::new();
+    // 两个独立 AilmentEffect More：1.5 × 1.2 = 1.8（但 ModDb 用 Inc/More 口径：
+    // More mods 在 ModDb.more() 以"1 + value/100"连乘，0.5 = +50% more 词条）。
+    // 直接用 More type（value 为附加比例），0.5 → factor 1.5，0.2 → factor 1.2。
+    db.add_mod(Modifier::number("AilmentEffect", ModType::More, 50.0));
+    db.add_mod(Modifier::number("AilmentEffect", ModType::More, 20.0));
+    let eff = ailment_effect_mod(&db, &cfg);
+    let expected = 1.5 * 1.2;
+    assert!(
+        (eff - expected).abs() < 1e-9,
+        "50% more × 20% more → {expected}, got {eff}"
+    );
+}
+
+/// `ailment_rate_mod`：无 Faster/Slower mod 时 → `faster / slower = 1.0/1.0 = 1.0`。
+///
+/// 出处：PoB2 `CalcOffence.lua` l.5035
+///   `rateMod = calcLib.mod(skillModList, cfg, ailment.."Faster") / calcLib.mod(..., ailment.."Slower")`。
+#[test]
+fn ailment_rate_mod_defaults_to_one() {
+    let cfg = CalcConfig::attack();
+    let db = ModDb::new();
+    let rm = ailment_rate_mod(&db, &db, &cfg, "Bleed");
+    assert!(
+        (rm - 1.0).abs() < 1e-9,
+        "no Faster/Slower mods → rateMod=1.0, got {rm}"
+    );
+}
+
+/// `ailment_rate_mod` + Faster：`BleedFaster More 50% → faster=1.5, rateMod=1.5`。
+///
+/// 出处：PoB2 rateMod = mod(BleedFaster)（MORE） / mod(BleedSlower)（MORE = 1.0 默认）。
+#[test]
+fn ailment_rate_mod_scales_with_faster() {
+    let cfg = CalcConfig::attack();
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("BleedFaster", ModType::More, 50.0)); // ×1.5
+    let enemy = ModDb::new();
+    let rm = ailment_rate_mod(&player, &enemy, &cfg, "Bleed");
+    assert!(
+        (rm - 1.5).abs() < 1e-9,
+        "+50% BleedFaster → rateMod=1.5, got {rm}"
+    );
+}
+
+/// `ailment_rate_mod` + Slower：`BleedSlower More 25% → slower=1.25, rateMod = 1.0/1.25`。
+///
+/// 出处：PoB2 `rateMod = faster / slower`；Slower 让 rateMod < 1。
+#[test]
+fn ailment_rate_mod_reduced_by_slower() {
+    let cfg = CalcConfig::attack();
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("BleedSlower", ModType::More, 25.0)); // ×1.25
+    let enemy = ModDb::new();
+    let rm = ailment_rate_mod(&player, &enemy, &cfg, "Bleed");
+    let expected = 1.0 / 1.25;
+    assert!(
+        (rm - expected).abs() < 1e-9,
+        "+25% BleedSlower → rateMod={expected:.4}, got {rm}"
+    );
+}
+
+/// `apply_rate_mod_to_instance`：DPS × rateMod，duration / rateMod（总伤害不变）。
+///
+/// 出处：PoB2 `ailmentDPS *= rateMod`；`duration /= rateMod`；总伤害守恒验证。
+#[test]
+fn apply_rate_mod_scales_dps_and_shrinks_duration() {
+    let inst = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
+    let rate_mod = 2.0;
+    let modified = apply_rate_mod_to_instance(inst, rate_mod);
+
+    // DPS × 2
+    assert!(
+        (modified.magnitude_dps - inst.magnitude_dps * 2.0).abs() < 1e-3,
+        "DPS should double: {} → {}",
+        inst.magnitude_dps,
+        modified.magnitude_dps
+    );
+    // duration ÷ 2
+    assert!(
+        (modified.duration_secs - inst.duration_secs / 2.0).abs() < 1e-3,
+        "duration should halve: {} → {}",
+        inst.duration_secs,
+        modified.duration_secs
+    );
+    // 总伤害守恒：DPS × duration
+    let total_before = inst.magnitude_dps * inst.duration_secs;
+    let total_after = modified.magnitude_dps * modified.duration_secs;
+    assert!(
+        (total_after - total_before).abs() < 1e-3,
+        "total damage should be conserved: before={total_before} after={total_after}"
+    );
+}
+
+/// `apply_effect_mod_to_instance`：magnitude_dps × effectMod，duration 不变。
+///
+/// 出处：PoB2 `ailmentDPS = baseVal * effectMod * ...`；effectMod 不改时长。
+#[test]
+fn apply_effect_mod_scales_dps_not_duration() {
+    let inst = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
+    let effect_mod = 1.5;
+    let modified = apply_effect_mod_to_instance(inst, effect_mod);
+
+    // DPS × 1.5
+    assert!(
+        (modified.magnitude_dps - inst.magnitude_dps * 1.5).abs() < 1e-3,
+        "DPS should be ×1.5: {} → {}",
+        inst.magnitude_dps,
+        modified.magnitude_dps
+    );
+    // duration 不变
+    assert!(
+        (modified.duration_secs - inst.duration_secs).abs() < 1e-9,
+        "duration should not change with effectMod"
+    );
+}
+
+/// `apply_effect_and_rate_mod` 组合：DPS × effectMod × rateMod，duration / rateMod。
+///
+/// 出处：PoB2 `ailmentDPS = baseVal * effectMod * rateMod * activeAilments * effMult`。
+#[test]
+fn apply_effect_and_rate_mod_combines_both() {
+    let inst = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
+    let base_dps = inst.magnitude_dps;
+    let base_dur = inst.duration_secs;
+    let effect_mod = 1.5;
+    let rate_mod = 2.0;
+
+    let modified = apply_effect_and_rate_mod(inst, effect_mod, rate_mod);
+
+    // DPS = base × 1.5 × 2.0 = base × 3.0
+    let expected_dps = base_dps * effect_mod * rate_mod;
+    assert!(
+        (modified.magnitude_dps - expected_dps).abs() < 1e-2,
+        "DPS × effectMod × rateMod: expected {expected_dps:.2}, got {:.2}",
+        modified.magnitude_dps
+    );
+    // duration = base / rateMod（effectMod 不改时长）
+    let expected_dur = base_dur / rate_mod;
+    assert!(
+        (modified.duration_secs - expected_dur).abs() < 1e-3,
+        "duration / rateMod: expected {expected_dur:.3}, got {:.3}",
+        modified.duration_secs
+    );
+}
+
+/// `apply_effect_and_rate_mod_traced` 写入 TraceGraph 节点。
+///
+/// 出处：归因要求 effectMod / rateMod 各有独立节点连入 magnitude 节点。
+#[test]
+fn apply_effect_and_rate_mod_traced_writes_nodes() {
+    let mut trace = TraceGraph::new();
+    // 添加一个虚拟 magnitude 节点作为目标
+    let mag_node = trace.add_node("BleedMagnitude", 100.0, TraceOperation::Multiply);
+
+    let inst = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
+    let modified = apply_effect_and_rate_mod_traced(inst, 1.5, 2.0, "Bleed", mag_node, &mut trace);
+
+    // DPS 已修正
+    let expected_dps = inst.magnitude_dps * 1.5 * 2.0;
+    assert!(
+        (modified.magnitude_dps - expected_dps).abs() < 1e-2,
+        "traced: DPS should be {expected_dps:.2}"
+    );
+    // trace 中应有 EffectMod 和 RateMod 节点
+    let has_effect = trace
+        .nodes()
+        .iter()
+        .any(|n| n.label.contains("BleedEffectMod"));
+    let has_rate = trace
+        .nodes()
+        .iter()
+        .any(|n| n.label.contains("BleedRateMod"));
+    assert!(has_effect, "trace should have BleedEffectMod node");
+    assert!(has_rate, "trace should have BleedRateMod node");
+    // 两个节点都应链入 mag_node
+    let incoming = trace.incoming(mag_node);
+    assert!(
+        incoming.len() >= 2,
+        "mag_node should have ≥2 incoming edges (effectMod + rateMod)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Feature 2: 跨类型施加 (<Type>Can<Ailment>)
+// ---------------------------------------------------------------------------
+
+/// 默认：火命中不施加流血，物理命中才算流血来源。
+///
+/// 出处：agent-docs/ailments.md §元素/非元素归类；Bleed 默认 ScalesFrom=Physical。
+#[test]
+fn cross_type_source_hit_defaults_to_physical_for_bleed() {
+    use pobr_core::calc::DamageComponent;
+    let cfg = CalcConfig::attack();
+    let player = ModDb::new(); // 无 FireCanBleed flag
+
+    let components = vec![
+        DamageComponent::new(DamageType::Physical, 800.0, 1200.0), // avg=1000
+        DamageComponent::new(DamageType::Fire, 400.0, 600.0),      // avg=500，不计入
+    ];
+
+    let hit = cross_type_source_hit(AilmentType::Bleed, &components, &player, &cfg);
+    assert!(
+        (hit - 1000.0).abs() < 1e-6,
+        "Bleed default source: Physical avg=1000, got {hit}"
+    );
+}
+
+/// `FireCanBleed` 旗标：火伤也计入流血来源命中。
+///
+/// 出处：agent-docs/ailments.md §改写施加规则的例外（Blood Barbs 等 FireCanBleed）、
+///   PoB2 `canDoAilment` l.4806 `skillModList:Flag(cfg, type.."Can"..damagingAilment)`。
+#[test]
+fn cross_type_source_hit_fire_can_bleed_adds_fire_damage() {
+    use pobr_core::calc::DamageComponent;
+    let cfg = CalcConfig::attack();
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::flag("FireCanBleed"));
+
+    let components = vec![
+        DamageComponent::new(DamageType::Physical, 800.0, 1200.0), // avg=1000
+        DamageComponent::new(DamageType::Fire, 400.0, 600.0),      // avg=500，现在计入
+    ];
+
+    let hit = cross_type_source_hit(AilmentType::Bleed, &components, &player, &cfg);
+    assert!(
+        (hit - 1500.0).abs() < 1e-6,
+        "FireCanBleed: Physical(1000)+Fire(500)=1500, got {hit}"
+    );
+}
+
+/// `ChaosCanShock` 旗标：混沌伤也计入感电来源。
+///
+/// 出处：agent-docs/ailments.md §例外（Voltaxic Rift：ChaosCanShock）、
+///   PoB2 l.4806 `type.."Can"..damagingAilment`。
+#[test]
+fn cross_type_source_hit_chaos_can_shock() {
+    use pobr_core::calc::DamageComponent;
+    let cfg = CalcConfig::attack();
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::flag("ChaosCanShock"));
+
+    let components = vec![
+        DamageComponent::new(DamageType::Lightning, 500.0, 700.0), // avg=600，默认感电来���
+        DamageComponent::new(DamageType::Chaos, 200.0, 400.0),     // avg=300，now ChaosCanShock
+    ];
+
+    let hit = cross_type_source_hit(AilmentType::Shock, &components, &player, &cfg);
+    assert!(
+        (hit - 900.0).abs() < 1e-6,
+        "ChaosCanShock: Lightning(600)+Chaos(300)=900, got {hit}"
+    );
+}
+
+/// 无命中分量时返回 0。
+#[test]
+fn cross_type_source_hit_empty_components() {
+    let cfg = CalcConfig::attack();
+    let player = ModDb::new();
+    let components = [];
+    let hit = cross_type_source_hit(AilmentType::Bleed, &components, &player, &cfg);
+    assert_eq!(hit, 0.0, "empty components → 0");
+}
+
+// ---------------------------------------------------------------------------
+// Feature 3: DotDpsCap
+// ---------------------------------------------------------------------------
+
+/// `apply_dot_dps_cap`：普通 DPS 低于 cap 时原样返回。
+///
+/// 出处：PoB2 `ailmentDPSCapped = m_min(ailmentDPSUncapped, data.misc.DotDpsCap)`。
+#[test]
+fn apply_dot_dps_cap_passthrough_below_cap() {
+    let cfg = CalcConfig::attack();
+    let db = ModDb::new();
+    let dps = 1_000_000.0;
+    let capped = apply_dot_dps_cap(dps, &db, &cfg);
+    assert!(
+        (capped - dps).abs() < 1.0,
+        "1M DPS < cap → unchanged, got {capped}"
+    );
+}
+
+/// `apply_dot_dps_cap`：超出上限时截断为 DOT_DPS_CAP（35,791,394）。
+///
+/// 出处：PoB2 `Data.lua` `DotDpsCap = 35791394`。
+#[test]
+fn apply_dot_dps_cap_clamps_huge_dps() {
+    use pobr_data::constants::DOT_DPS_CAP;
+    let cfg = CalcConfig::attack();
+    let db = ModDb::new();
+    let dps = DOT_DPS_CAP + 1_000_000.0;
+    let capped = apply_dot_dps_cap(dps, &db, &cfg);
+    assert!(
+        (capped - DOT_DPS_CAP).abs() < 1.0,
+        "huge DPS clamped to DOT_DPS_CAP={DOT_DPS_CAP}, got {capped}"
+    );
+}
+
+/// `apply_dot_dps_cap` 支持 override：玩家 mod 中 `DotDpsCap` Base 覆写时使用低值截断。
+///
+/// 出处：PoB2 `env.modDB:Override(nil, "DotDpsCap")` → 可被 config 覆盖。
+#[test]
+fn apply_dot_dps_cap_respects_override() {
+    let cfg = CalcConfig::attack();
+    let mut db = ModDb::new();
+    // 设置较低的自定义 DotDpsCap 覆写（例如 10000）
+    db.add_mod(Modifier::number("DotDpsCap", ModType::Base, 10_000.0));
+    let dps = 50_000.0;
+    let capped = apply_dot_dps_cap(dps, &db, &cfg);
+    assert!(
+        (capped - 10_000.0).abs() < 1.0,
+        "custom cap 10000 → clamped to 10000, got {capped}"
+    );
+}
+
+/// `dps_with_effect_rate_cap`：effect + rate 同时作用后被 cap 截断。
+///
+/// 出处：PoB2 `ailmentDPS = m_min(baseVal * effectMod * rateMod * ..., DotDpsCap)`。
+#[test]
+fn dps_with_effect_rate_cap_applies_cap() {
+    use pobr_data::constants::DOT_DPS_CAP;
+    let cfg = CalcConfig::attack();
+    let db = ModDb::new();
+
+    // 设置一个超大 base_dps，确保 effectMod × rateMod 后超过 cap
+    let base_dps = DOT_DPS_CAP * 0.6; // 60% of cap
+    let effect_mod = 2.0; // × 2.0 → 120% of cap → 超 cap
+    let rate_mod = 1.0;
+
+    let result = dps_with_effect_rate_cap(base_dps, effect_mod, rate_mod, &db, &cfg);
+    assert!(
+        (result - DOT_DPS_CAP).abs() < 1.0,
+        "base × 2.0 exceeds cap → clamped to DOT_DPS_CAP, got {result}"
+    );
+}
+
+/// `dps_with_effect_rate_cap_traced`：DPS 被截断时，trace 中应有 DotDpsCap 节点。
+///
+/// 出处：DotDpsCap 截断信息应归因到 TraceGraph（增量归因价值）。
+#[test]
+fn dps_with_effect_rate_cap_traced_adds_cap_node_when_truncated() {
+    use pobr_data::constants::DOT_DPS_CAP;
+    let cfg = CalcConfig::attack();
+    let db = ModDb::new();
+    let mut trace = TraceGraph::new();
+
+    // 超 cap 的情况
+    let base_dps = DOT_DPS_CAP * 0.7;
+    let (result, node) =
+        dps_with_effect_rate_cap_traced(base_dps, 2.0, 1.0, "Ignite", &db, &cfg, &mut trace);
+
+    // 结果截断到 cap
+    assert!(
+        (result - DOT_DPS_CAP).abs() < 1.0,
+        "capped result should be DOT_DPS_CAP, got {result}"
+    );
+    // trace 中应存��� DotDpsCap 节点
+    let has_cap = trace.nodes().iter().any(|n| n.label.contains("DotDpsCap"));
+    assert!(has_cap, "trace should have DotDpsCap node when truncated");
+    // 输出节点存在
+    assert!(trace.node(node).is_some(), "output node should exist");
+}
+
+/// `dps_with_effect_rate_cap_traced`：DPS 未被截断时，trace 中**不应**有 DotDpsCap 节点。
+#[test]
+fn dps_with_effect_rate_cap_traced_no_cap_node_when_not_truncated() {
+    let cfg = CalcConfig::attack();
+    let db = ModDb::new();
+    let mut trace = TraceGraph::new();
+
+    // 很小的 base_dps，不会超 cap
+    let (_, _) = dps_with_effect_rate_cap_traced(100.0, 1.0, 1.0, "Bleed", &db, &cfg, &mut trace);
+
+    let has_cap = trace.nodes().iter().any(|n| n.label.contains("DotDpsCap"));
+    assert!(!has_cap, "no cap node when DPS is below DOT_DPS_CAP");
 }

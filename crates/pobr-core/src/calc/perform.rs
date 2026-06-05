@@ -3,7 +3,8 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb};
 
 use super::ailment::{
-    AilmentSource, StackConfig, bleed_traced, chill_traced, electrocute_poise_buildup_traced,
+    AilmentSource, StackConfig, ailment_effect_mod, ailment_rate_mod, apply_dot_dps_cap,
+    bleed_traced, chill_traced, cross_type_source_hit, electrocute_poise_buildup_traced,
     freeze_poise_buildup_traced, ignite_traced, poison_traced, shock_traced,
     stacking_ailment_dps_traced,
 };
@@ -11,6 +12,7 @@ use super::skill_mechanics::{
     calc_aoe, calc_cooldown, calc_life_cost, calc_mana_cost, calc_projectile_count,
     calc_spirit_reservation,
 };
+use super::trigger::{calc_cwc_trigger_rate_traced, resolve_trigger_rate_traced};
 use super::{
     BreakdownTable, CalcError, Env, LeechResource, MinimalInput, MinionOutput, OutputTable,
     RecoupResource, ResistanceSuite, calc_avoidance, calc_crit_extra_reduction, calc_defence,
@@ -18,7 +20,7 @@ use super::{
     calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect,
     es_recharge_per_second, reservation, resolve_all_charges,
 };
-use crate::TraceGraph;
+use crate::{TraceGraph, TraceOperation};
 
 pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     if env.player.level == 0 {
@@ -65,6 +67,31 @@ fn perform_minions(env: &mut Env) {
         return;
     }
 
+    // 召唤物数量上限（玩家 `Multiplier:SummonedMinion`，由 add_minion_from_def 写入）。
+    // 把它注入 cfg 的 multiplier，使召唤物 `Damage per Summoned Minion` 等词条可引用（PoB2）。
+    // 无该 multiplier 时为 0（不影响任何输出，向后兼容）。
+    let minion_limit = env.player.mod_db.sum(
+        ModType::Base,
+        &env.cfg,
+        &[ModName::from("Multiplier:SummonedMinion")],
+    );
+    let minion_cfg = if minion_limit > 0.0 {
+        env.cfg
+            .clone()
+            .with_multiplier("SummonedMinion", minion_limit)
+            .with_multiplier("MinionPresenceCount", minion_limit)
+    } else {
+        env.cfg.clone()
+    };
+
+    // 跨 Actor 归因：玩家来源（数量上限）→ 召唤物输出，建一个 source 节点供 trace DAG 连接。
+    let mut trace = TraceGraph::new();
+    let player_limit_node = trace.add_source_node(
+        "summoned minion limit (player)",
+        minion_limit,
+        SourceId::new(SourceKind::GameConstant, "minion.limit"),
+    );
+
     let mut snapshots = Vec::with_capacity(env.minions.len());
     for minion in &mut env.minions {
         let mut input = MinimalInput::from(minion.base);
@@ -72,7 +99,7 @@ fn perform_minions(env: &mut Env) {
         let enemy_evasion_from_db =
             env.enemy
                 .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
+                .sum(ModType::Base, &minion_cfg, &[ModName::from("Evasion")]);
         input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
             enemy_evasion_from_db
         } else {
@@ -80,10 +107,15 @@ fn perform_minions(env: &mut Env) {
         };
 
         let output =
-            calculate_minimal_vs_enemy(&minion.mod_db, &env.enemy.mod_db, &env.cfg, &input);
+            calculate_minimal_vs_enemy(&minion.mod_db, &env.enemy.mod_db, &minion_cfg, &input);
         minion.output = OutputTable::from(&output);
         minion.breakdown = BreakdownTable::from_steps(output.breakdown);
-        calc_defence(minion, &env.cfg, env.enemy.base.accuracy);
+        calc_defence(minion, &minion_cfg, env.enemy.base.accuracy);
+
+        // 跨 Actor trace 边：玩家数量上限 → 本召唤物 DPS 输出（player-source → minion-output）。
+        let minion_dps_node =
+            trace.add_node("minion dps", minion.output.dps, TraceOperation::Aggregate);
+        trace.add_edge(player_limit_node, minion_dps_node);
 
         snapshots.push(MinionOutput {
             level: minion.level as u32,
@@ -267,6 +299,68 @@ fn fill_mechanics(env: &mut Env) {
 
     // --- 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗）---
     fill_skill_mechanics(env);
+
+    // --- 触发速率（Lane B：冷却驱动 / CWC；无触发词条时保持 0）---
+    fill_trigger(env);
+}
+
+/// 触发速率 fill（Lane B）：读冷却驱动 / CWC 触发词条，写 `trigger_rate_cap` /
+/// `skill_trigger_rate`。
+///
+/// 两种可由词条立即驱动的触发模型（能量驱动需 build 层注入插槽法术数据，defer）：
+/// - **冷却驱动**（`TriggerCooldownBase` BASE，秒）：源技能本身有触发冷却。
+///   `action_cd = max(TriggeredSkillCooldown, TriggerCooldownBase / icdr)`，
+///   `cap = 1/ceil_tick(action_cd)`，`rate = min(cap, effective_action_rate)`。
+/// - **CWC**（`CWCTriggerTime` BASE，秒）：引导触发，由引导间隔取整到帧决定节奏，被触发冷却 clamp。
+///
+/// `icdr` = `(1 + Σinc_CooldownRecovery/100) × Πmore_CooldownRecovery`（PoB2 `calcLib.mod`），
+/// 作为触发冷却除数。`effective_action_rate` 取自 `fill_mechanics` 已写入的有效行动速率，
+/// 作为冷却驱动触发的源速率门控。
+///
+/// 无 `TriggerCooldownBase` / `CWCTriggerTime` 词条时两字段保持 0（向后兼容）。
+/// 出处：agent-docs/triggers.md §三 / §4.2；Lane B integration_spec；PoB2 CalcTriggers.lua。
+fn fill_trigger(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+
+    let trigger_cd = db.sum(ModType::Base, cfg, &[ModName::from("TriggerCooldownBase")]);
+    let triggered_cd = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("TriggeredSkillCooldown")],
+    );
+    let cwc_trigger_time = db.sum(ModType::Base, cfg, &[ModName::from("CWCTriggerTime")]);
+
+    // ICDR 乘子（CooldownRecovery INC/MORE 折算；默认 1.0，作触发冷却除数）。
+    let icdr = cooldown_recovery_multiplier(db, cfg);
+    let source_rate = env.player.output.effective_action_rate;
+
+    let mut trace = TraceGraph::new();
+
+    if trigger_cd > 0.0 {
+        // 冷却驱动：双门控 SkillTriggerRate = min(cap, sourceRate)。
+        let (tr, _) =
+            resolve_trigger_rate_traced(trigger_cd, triggered_cd, icdr, source_rate, &mut trace);
+        env.player.output.trigger_rate_cap = tr.trigger_rate_cap;
+        env.player.output.skill_trigger_rate = tr.skill_trigger_rate;
+    } else if cwc_trigger_time > 0.0 {
+        // CWC：引导触发，被触发技能冷却 clamp。adds_cast_time 由 build 层注入（当前传 0）。
+        let (cwc, _) =
+            calc_cwc_trigger_rate_traced(cwc_trigger_time, triggered_cd, 0.0, icdr, &mut trace);
+        env.player.output.trigger_rate_cap = cwc.trigger_rate_cap;
+        env.player.output.skill_trigger_rate = cwc.trigger_rate_cap;
+    }
+}
+
+/// 冷却恢复速率乘子（`CooldownRecovery` INC/MORE 折算）：`(1 + Σinc/100) × Πmore`。
+///
+/// 与 `skill_mechanics::calc_cooldown` 的 recovery_rate 一致语义，但只取 INC/MORE 乘子
+/// 作为触发冷却除数（不处理 Base/Override，触发宝石冷却由宝石数据给出）。默认 1.0（无加成）。
+fn cooldown_recovery_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let names = [ModName::from("CooldownRecovery")];
+    let inc = db.sum(ModType::Inc, cfg, &names);
+    let more = db.more(cfg, &names);
+    ((1.0 + inc / 100.0) * more).max(f64::EPSILON)
 }
 
 /// Recoup 面板估算基准：以「假设受到玩家最大生命 10%」的伤害估算每秒返还速率。
@@ -346,12 +440,15 @@ fn fill_ailments(env: &mut Env) {
     let enemy = &env.enemy.mod_db;
     let cfg = &env.cfg;
 
-    let phys_hit = component_avg(&env.player.output.damage_components, DamageType::Physical);
-    let fire_hit = component_avg(&env.player.output.damage_components, DamageType::Fire);
-    let cold_hit = component_avg(&env.player.output.damage_components, DamageType::Cold);
-    let lightning_hit = component_avg(&env.player.output.damage_components, DamageType::Lightning);
-    let chaos_phys_hit =
-        phys_hit + component_avg(&env.player.output.damage_components, DamageType::Chaos);
+    // Lane C 跨类型施加：来源命中按 `<Type>Can<Ailment>` 旗标聚合非默认类型分量。
+    // 无跨类型旗标时退化为各异常的默认伤害类型（流血/中毒=物理(+混沌)、点燃=火、感电=闪电、冰缓=冰），
+    // 与旧的硬编码分量口径一致（向后兼容）。
+    let components = &env.player.output.damage_components;
+    let phys_hit = cross_type_source_hit(AilmentType::Bleed, components, player, cfg);
+    let fire_hit = cross_type_source_hit(AilmentType::Ignite, components, player, cfg);
+    let cold_hit = cross_type_source_hit(AilmentType::Chill, components, player, cfg);
+    let lightning_hit = cross_type_source_hit(AilmentType::Shock, components, player, cfg);
+    let chaos_phys_hit = cross_type_source_hit(AilmentType::Poison, components, player, cfg);
 
     let crit_mult = if env.player.output.crit_multiplier > 0.0 {
         env.player.output.crit_multiplier
@@ -373,23 +470,23 @@ fn fill_ailments(env: &mut Env) {
     if phys_hit > 0.0 {
         let source = AilmentSource::new(phys_hit, crit_mult, crit_chance, never_from_crit);
         let (bleed, _) = bleed_traced(&source, player, enemy, cfg, &mut trace);
-        env.player.output.bleed_dps = bleed.expected_dps;
+        // Lane C：AilmentEffect（MORE）× rateMod（Faster/Slower）应用到期望 DPS，再 clamp DotDpsCap。
+        let bleed_dps = finalize_ailment_dps(bleed.expected_dps, "Bleed", player, enemy, cfg);
+        env.player.output.bleed_dps = bleed_dps;
 
         // Lane B：流血叠层（BleedStacks BASE）。无叠层配置时 max_stacks=1，stacked == 单层。
         let bleed_stack = resolve_stack_config(player, cfg, "Bleed");
-        let (bleed_stacked, _) = stacking_ailment_dps_traced(
-            bleed.expected_dps,
-            &bleed_stack,
-            AilmentType::Bleed,
-            &mut trace,
-        );
-        env.player.output.bleed_stacked_dps = bleed_stacked;
+        let (bleed_stacked, _) =
+            stacking_ailment_dps_traced(bleed_dps, &bleed_stack, AilmentType::Bleed, &mut trace);
+        // 叠层 DPS 也吃全局 DotDpsCap（PoB2：DotDpsCap 是叠层后的绝对上限）。
+        env.player.output.bleed_stacked_dps = apply_dot_dps_cap(bleed_stacked, player, cfg);
         env.player.output.bleed_active_stacks = active_stacks_of(&bleed_stack);
     }
     if fire_hit > 0.0 {
         let source = AilmentSource::new(fire_hit, crit_mult, crit_chance, never_from_crit);
         let (ignite, _) = ignite_traced(&source, player, enemy, cfg, threshold, &mut trace);
-        env.player.output.ignite_dps = ignite.expected_dps;
+        env.player.output.ignite_dps =
+            finalize_ailment_dps(ignite.expected_dps, "Ignite", player, enemy, cfg);
     }
     if cold_hit > 0.0 {
         // Lane B：冰缓行动速度降低（%）。强度不足最低阈值时为 0（不施加）。
@@ -402,17 +499,14 @@ fn fill_ailments(env: &mut Env) {
     if chaos_phys_hit > 0.0 {
         let source = AilmentSource::new(chaos_phys_hit, crit_mult, crit_chance, never_from_crit);
         let (poison, _) = poison_traced(&source, player, enemy, cfg, &mut trace);
-        env.player.output.poison_dps = poison.expected_dps;
+        let poison_dps = finalize_ailment_dps(poison.expected_dps, "Poison", player, enemy, cfg);
+        env.player.output.poison_dps = poison_dps;
 
         // Lane B：中毒叠层（PoisonStacks BASE）。
         let poison_stack = resolve_stack_config(player, cfg, "Poison");
-        let (poison_stacked, _) = stacking_ailment_dps_traced(
-            poison.expected_dps,
-            &poison_stack,
-            AilmentType::Poison,
-            &mut trace,
-        );
-        env.player.output.poison_stacked_dps = poison_stacked;
+        let (poison_stacked, _) =
+            stacking_ailment_dps_traced(poison_dps, &poison_stack, AilmentType::Poison, &mut trace);
+        env.player.output.poison_stacked_dps = apply_dot_dps_cap(poison_stacked, player, cfg);
         env.player.output.poison_active_stacks = active_stacks_of(&poison_stack);
     }
     if lightning_hit > 0.0 {
@@ -427,6 +521,28 @@ fn fill_ailments(env: &mut Env) {
             electrocute_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.electrocute_buildup_pct = electrocute_buildup;
     }
+}
+
+/// Lane C：对伤害异常的期望 DPS 应用 `AilmentEffect`（MORE）× `rateMod`（Faster/Slower），
+/// 再 clamp 全局 `DotDpsCap`。
+///
+/// - `effectMod`：`ailment_effect_mod`（玩家 `AilmentEffect` MORE 聚合，默认 1.0）。
+/// - `rateMod`：`ailment_rate_mod`（玩家 `<Ailment>Faster`/`Slower` + 敌方 `Self<Ailment>Faster`，默认 1.0）。
+/// - DPS = `expected_dps × effectMod × rateMod`，clamp `min(_, DotDpsCap)`。
+///
+/// 三个修正在无对应词条时均为中性（1.0 / 无 cap），输出与未接入 Lane C 时一致（向后兼容）。
+/// 出处：PoB2 `CalcOffence.lua` l.5190/l.5035/l.5193；Lane C integration_spec。
+fn finalize_ailment_dps(
+    expected_dps: f64,
+    ailment_name: &str,
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+) -> f64 {
+    let effect = ailment_effect_mod(player, cfg);
+    let rate = ailment_rate_mod(player, enemy, cfg, ailment_name);
+    let scaled = expected_dps * effect * rate;
+    apply_dot_dps_cap(scaled, player, cfg)
 }
 
 /// 从 ModDb 解析某 damaging ailment 的叠层配置（`<Ailment>Stacks` BASE → max_stacks）。

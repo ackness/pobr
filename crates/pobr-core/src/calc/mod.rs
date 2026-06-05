@@ -43,9 +43,10 @@ pub use ehp::{
 pub use env::Env;
 pub use error::CalcError;
 pub use minion::{
-    AttributeInfusion, MinionBaseStats, MinionContext, MinionData, MinionInput,
-    MinionModifierEntry, MinionWeaponData, build_minion_context, derive_minion_base_stats,
-    minion_level_from_gem_level, minion_modifier_applies,
+    AttributeInfusion, MinionBaseStats, MinionCategory, MinionContext, MinionData, MinionDef,
+    MinionInput, MinionLimitId, MinionModifierEntry, MinionWeaponData, build_minion_context,
+    build_minion_context_from_def, derive_minion_base_stats, minion_level_from_gem_level,
+    minion_modifier_applies, resolve_minion_level, write_summoned_minion_multipliers,
 };
 pub use offence::{
     MinimalInput, MinimalOutput, TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
@@ -67,8 +68,12 @@ pub use survivability::{
     resolve_all_charges, resolve_charge_state, suppression_chance,
 };
 pub use trigger::{
-    TriggerRate, action_cooldown, resolve_trigger_rate, round_cooldown_to_tick, server_tick_rate,
-    trigger_rate_cap,
+    CwcTriggerRate, EnergyTriggerRate, RotationResult, RotationSkill, SocketedSpellInfo,
+    TriggerCondition, TriggerRate, action_cooldown, calc_cwc_trigger_rate,
+    calc_cwc_trigger_rate_traced, calc_energy_per_event, calc_energy_trigger_rate,
+    calc_energy_trigger_rate_traced, calc_max_energy, calc_multi_spell_rotation,
+    resolve_trigger_rate, resolve_trigger_rate_traced, round_cooldown_to_tick, server_tick_rate,
+    spell_cast_time_added_to_cooldown, trigger_rate_cap,
 };
 
 pub(crate) fn round(value: f64) -> f64 {

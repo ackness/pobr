@@ -4,9 +4,14 @@
 
 use pobr_core::calc::minion::{
     AttributeInfusion, MinionData, MinionInput, MinionModifierEntry, build_minion_context,
-    derive_minion_base_stats, minion_level_from_gem_level, minion_modifier_applies,
+    build_minion_context_from_def, derive_minion_base_stats, minion_level_from_gem_level,
+    minion_modifier_applies, write_summoned_minion_multipliers,
 };
-use pobr_core::{CalcConfig, Modifier};
+use pobr_core::{CalcConfig, ModDb, Modifier};
+use pobr_data::minion::{
+    minion_def_raging_spirit, minion_def_skeletal_storm_mage, minion_def_skeletal_warrior,
+    minion_def_zombie,
+};
 use pobr_data::prelude::*;
 
 fn empty_input(gem_level: u32, data: MinionData) -> MinionInput {
@@ -22,7 +27,6 @@ fn empty_input(gem_level: u32, data: MinionData) -> MinionInput {
 
 #[test]
 fn gem_level_table_maps_per_pob2() {
-    // minionLevelTable = {2,4,…,80}（PoB2 Misc.lua）。
     assert_eq!(minion_level_from_gem_level(1), 2);
     assert_eq!(minion_level_from_gem_level(10), 20);
     assert_eq!(minion_level_from_gem_level(40), 80);
@@ -30,12 +34,11 @@ fn gem_level_table_maps_per_pob2() {
 
 #[test]
 fn base_stats_use_monster_table_times_normalizer() {
-    // Zombie-like：life=0.7 归一化乘数。基础生命 = 怪物等级表[level] × 0.7。
     let data = MinionData {
         life: 0.7,
         ..MinionData::default()
     };
-    let base = derive_minion_base_stats(20, &data); // 怪物等级 40
+    let base = derive_minion_base_stats(20, &data);
     let row = MonsterScalingRow::at_level(40);
     let expected = (row.life as f64 * 0.7 * 1_000_000_000.0).round() / 1_000_000_000.0;
     assert!((base.life - expected).abs() < 1e-6);
@@ -44,7 +47,6 @@ fn base_stats_use_monster_table_times_normalizer() {
 
 #[test]
 fn crit_multiplier_base_is_100_not_player_default() {
-    // 召唤物爆伤基础 = 怪物 30 + 内禀 70 = 100；走 ModDb 也能查到。
     let ctx = build_minion_context(&empty_input(20, MinionData::default()));
     let cfg = CalcConfig::attack();
     let crit_mult = ctx
@@ -70,7 +72,6 @@ fn minion_always_hit_flag_present() {
 
 #[test]
 fn channel_1_minion_modifier_injected_and_queryable() {
-    // 通道 1：「Minions deal 50% increased Damage」展开成 Damage INC 50，注入召唤物 ModDb。
     let inner = Modifier::number("Damage", ModType::Inc, 50.0);
     let mut input = empty_input(20, MinionData::default());
     input.minion_modifiers = vec![MinionModifierEntry {
@@ -88,7 +89,6 @@ fn channel_1_minion_modifier_injected_and_queryable() {
 
 #[test]
 fn channel_1_type_limited_modifier_filtered_out() {
-    // type 限定为 "Zombie"，但召唤物类型为 None → 不注入。
     let inner = Modifier::number("Damage", ModType::Inc, 50.0);
     let mut input = empty_input(20, MinionData::default());
     input.minion_modifiers = vec![MinionModifierEntry {
@@ -103,7 +103,6 @@ fn channel_1_type_limited_modifier_filtered_out() {
     );
     assert_eq!(inc, 0.0);
 
-    // 类型相符则注入。
     let inner2 = Modifier::number("Damage", ModType::Inc, 50.0);
     input.minion_modifiers = vec![MinionModifierEntry {
         inner: inner2,
@@ -139,7 +138,6 @@ fn applies_predicate_matches_pob2_semantics() {
 
 #[test]
 fn channel_2_ally_buff_mods_injected() {
-    // 通道 2：盟友 buff（已按召唤物 BuffEffectOnSelf 缩放的 mod）。
     let mut input = empty_input(20, MinionData::default());
     input.ally_buff_mods = vec![Modifier::number("AttackSpeed", ModType::Inc, 20.0)];
     let ctx = build_minion_context(&input);
@@ -153,7 +151,6 @@ fn channel_2_ally_buff_mods_injected() {
 
 #[test]
 fn channel_3_strength_infusion_injects_base_str() {
-    // 通道 3：StrengthAddedToMinions → 召唤物 Str BASE = 玩家 Str。
     let mut input = empty_input(20, MinionData::default());
     input.attribute_infusion = AttributeInfusion {
         player_strength: 300.0,
@@ -192,7 +189,6 @@ fn channel_3_half_strength_infusion() {
 
 #[test]
 fn player_ordinary_mods_do_not_leak_into_minion() {
-    // 铁律：玩家普通词条默认不进召唤物库。空通道 → 召唤物只有内禀/基础属性。
     let ctx = build_minion_context(&empty_input(20, MinionData::default()));
     let inc = ctx.mod_db.sum(
         ModType::Inc,
@@ -204,7 +200,6 @@ fn player_ordinary_mods_do_not_leak_into_minion() {
 
 #[test]
 fn weapon_data_respects_base_damage_ignores_attack_speed() {
-    // base_damage_ignores_attack_speed=true → 基础伤害不乘 attack_time。
     let mut data = MinionData {
         damage: 1.0,
         attack_time: 0.5,
@@ -217,16 +212,13 @@ fn weapon_data_respects_base_damage_ignores_attack_speed() {
     data.base_damage_ignores_attack_speed = false;
     let scaling = derive_minion_base_stats(20, &data);
 
-    // 不忽略攻速时伤害 = 忽略时 × attack_time(0.5) → 更低。
     assert!(scaling.weapon.physical_max < ignoring.weapon.physical_max);
     assert!((scaling.weapon.physical_max - ignoring.weapon.physical_max * 0.5).abs() < 1e-6);
-    // 攻速 = 1/attack_time = 2/s。
     assert!((ignoring.weapon.attack_rate - 2.0).abs() < 1e-9);
 }
 
 #[test]
 fn energy_shield_derived_from_life_fraction() {
-    // energy_shield=0.15 → ES 基础 = life × 0.15。
     let data = MinionData {
         life: 1.0,
         energy_shield: 0.15,
@@ -235,4 +227,163 @@ fn energy_shield_derived_from_life_fraction() {
     let base = derive_minion_base_stats(20, &data);
     assert!((base.energy_shield - base.life * 0.15).abs() < 1e-6);
     assert!(base.energy_shield > 0.0);
+}
+
+// ---------------------------------------------------------------------------
+// MinionDef 入库 schema 驱动的集成测试
+// 出处：PoB2 src/Data/Minions.lua；agent-docs/minions.md §1 / §4。
+// ---------------------------------------------------------------------------
+
+#[test]
+fn build_context_from_zombie_def_matches_manual() {
+    // build_minion_context_from_def(zombie, gem=20) 与手填 MinionData 结果一致。
+    let def = minion_def_zombie();
+    let ctx_def =
+        build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+    let data = MinionData {
+        life: 0.7,
+        damage: 0.75,
+        damage_spread: 0.3,
+        attack_time: 1.25,
+        crit_chance: 5.0,
+        base_damage_ignores_attack_speed: true,
+        ..MinionData::default()
+    };
+    let ctx_manual = build_minion_context(&empty_input(20, data));
+
+    assert_eq!(ctx_def.base.life, ctx_manual.base.life);
+    assert_eq!(ctx_def.base.level, ctx_manual.base.level);
+    assert_eq!(
+        ctx_def.base.crit_multiplier_base,
+        ctx_manual.base.crit_multiplier_base
+    );
+    assert!((ctx_def.base.weapon.physical_min - ctx_manual.base.weapon.physical_min).abs() < 1e-9);
+    assert!((ctx_def.base.weapon.physical_max - ctx_manual.base.weapon.physical_max).abs() < 1e-9);
+}
+
+#[test]
+fn build_context_from_storm_mage_def_has_es_and_lightning_resist() {
+    // 骷髅法师：energyShield=0.15，lightningResist=50。
+    let def = minion_def_skeletal_storm_mage();
+    let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+    assert!(ctx.base.energy_shield > 0.0);
+    let cfg = CalcConfig::attack();
+    let lr = ctx
+        .mod_db
+        .sum(ModType::Base, &cfg, &[ModName::from("LightningResist")]);
+    assert!(
+        (lr - 50.0).abs() < 1e-6,
+        "lightning resist should be 50, got {lr}"
+    );
+}
+
+#[test]
+fn build_context_from_raging_spirit_life_matches_pob2() {
+    // 暴怒魂灵：life=0.25，gem_level=20 → 怪物等级 40。
+    let def = minion_def_raging_spirit();
+    let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+    let row = MonsterScalingRow::at_level(40);
+    let expected = (row.life as f64 * 0.25 * 1e9).round() / 1e9;
+    assert!(
+        (ctx.base.life - expected).abs() < 1e-6,
+        "RagingSpirit life: expected {expected}, got {}",
+        ctx.base.life
+    );
+}
+
+#[test]
+fn build_context_from_skeletal_warrior_armour_normalizer() {
+    // 骷髅战士：armour=0.5。
+    let def = minion_def_skeletal_warrior();
+    let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+    let row = MonsterScalingRow::at_level(40);
+    let expected = (row.armour as f64 * 0.5 * 1e9).round() / 1e9;
+    assert!(
+        (ctx.base.armour - expected).abs() < 1e-6,
+        "SkeletalWarrior armour: expected {expected}, got {}",
+        ctx.base.armour
+    );
+}
+
+#[test]
+fn build_context_from_def_type_filter_works() {
+    // type 限定为 "RaisedSkeletonWarriors" → 骷髅战士注入，僵尸不注入。
+    let def_warrior = minion_def_skeletal_warrior();
+    let def_zombie = minion_def_zombie();
+    let entry = MinionModifierEntry {
+        inner: Modifier::number("Damage", ModType::Inc, 25.0),
+        minion_type: Some("RaisedSkeletonWarriors".into()),
+    };
+
+    let ctx_warrior = build_minion_context_from_def(
+        &def_warrior,
+        20,
+        vec![entry.clone()],
+        vec![],
+        AttributeInfusion::default(),
+    );
+    let inc_warrior = ctx_warrior.mod_db.sum(
+        ModType::Inc,
+        &CalcConfig::attack(),
+        &[ModName::from("Damage")],
+    );
+    assert_eq!(inc_warrior, 25.0, "warrior should receive the modifier");
+
+    let ctx_zombie = build_minion_context_from_def(
+        &def_zombie,
+        20,
+        vec![entry],
+        vec![],
+        AttributeInfusion::default(),
+    );
+    let inc_zombie = ctx_zombie.mod_db.sum(
+        ModType::Inc,
+        &CalcConfig::attack(),
+        &[ModName::from("Damage")],
+    );
+    assert_eq!(
+        inc_zombie, 0.0,
+        "zombie should not receive skeleton-only modifier"
+    );
+}
+
+#[test]
+fn summoned_minion_multipliers_integration() {
+    // limit=3 → 玩家 ModDb 里 SummonedMinion = MinionPresenceCount = 3。
+    let mut player_db = ModDb::new();
+    write_summoned_minion_multipliers(&mut player_db, 3, "RaisedSkeletonWarriors");
+    let cfg = CalcConfig::attack();
+    let summ = player_db.sum(
+        ModType::Base,
+        &cfg,
+        &[ModName::from("Multiplier:SummonedMinion")],
+    );
+    let presence = player_db.sum(
+        ModType::Base,
+        &cfg,
+        &[ModName::from("Multiplier:MinionPresenceCount")],
+    );
+    assert_eq!(summ, 3.0, "SummonedMinion multiplier should be limit=3");
+    assert_eq!(
+        presence, 3.0,
+        "MinionPresenceCount multiplier should be limit=3"
+    );
+}
+
+#[test]
+fn summoned_minion_multipliers_stack_multiple_types() {
+    // 骷髅 limit=3 + 僵尸 limit=2 → SummonedMinion = 5（BASE 累加）。
+    let mut player_db = ModDb::new();
+    write_summoned_minion_multipliers(&mut player_db, 3, "Skeleton");
+    write_summoned_minion_multipliers(&mut player_db, 2, "Zombie");
+    let cfg = CalcConfig::attack();
+    let summ = player_db.sum(
+        ModType::Base,
+        &cfg,
+        &[ModName::from("Multiplier:SummonedMinion")],
+    );
+    assert_eq!(
+        summ, 5.0,
+        "multiple minion types should stack in SummonedMinion"
+    );
 }

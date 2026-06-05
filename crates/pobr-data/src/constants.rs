@@ -145,6 +145,13 @@ pub const BLOCK_CHANCE_CAP: f64 = 90.0;
 /// 感电最小有效强度（PoE2 0.5.0：BaseShockMagnitude = 20，agent-docs/ailments.md §感电）。
 pub const SHOCK_MIN_EFFECT: f64 = 20.0;
 
+/// 全局 DoT DPS 上限（`(2^31 - 1) / 60`，约 3.579×10^7）。
+///
+/// 出处：PoB2 `src/Modules/Data.lua`
+///   `DotDpsCap = 35791394, -- (2 ^ 31 - 1) / 60 (int max / 60 seconds)`。
+/// 所有异常/DoT 面板 DPS 均须 clamp 到此值（含 TotalDotDPS）。
+pub const DOT_DPS_CAP: f64 = 35_791_394.0;
+
 /// 集中存放 PoE2 计算常量，避免在公式中散落 magic number。
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct GameConstants {

@@ -23,6 +23,9 @@ use crate::{ModDb, Modifier};
 
 use super::round;
 
+// Re-export MinionDef types so callers can use them via pobr_core::calc::minion.
+pub use pobr_data::minion::{MinionCategory, MinionDef, MinionLimitId};
+
 /// 召唤物内禀爆伤加成（`playerMinionIntrinsicStats.base_critical_hit_damage_bonus`）。
 /// 召唤物最终爆伤基础 = 怪物基础（`MONSTER_BASE_CRIT_DAMAGE_BONUS`=30）+ 该内禀（70）= 100。
 /// 出处：agent-docs/minions.md §1.5；PoB2 Misc.lua / CalcPerform.lua L1007。
@@ -92,6 +95,33 @@ impl Default for MinionData {
             lightning_resist: 0.0,
             chaos_resist: 0.0,
             base_damage_ignores_attack_speed: false,
+        }
+    }
+}
+
+impl MinionData {
+    /// 从入库 `MinionDef`（`pobr-data`）构造 `MinionData`（归一化乘数快照）。
+    ///
+    /// 这是 `MinionDef` → 计算层的**唯一桥接点**：`pobr-data` 维护纯数据 schema，
+    /// `pobr-core` 通过此函数取用归一化乘数，保持两层解耦。
+    ///
+    /// 出处：agent-docs/minions.md §1；PoB2 Minions.lua 各字段。
+    pub fn from_def(def: &MinionDef) -> Self {
+        let s = def.scaling();
+        Self {
+            life: s.life,
+            damage: s.damage,
+            damage_spread: s.damage_spread,
+            attack_time: s.attack_time,
+            crit_chance: s.crit_chance,
+            armour: s.armour,
+            evasion: s.evasion,
+            energy_shield: s.energy_shield,
+            fire_resist: s.fire_resist,
+            cold_resist: s.cold_resist,
+            lightning_resist: s.lightning_resist,
+            chaos_resist: s.chaos_resist,
+            base_damage_ignores_attack_speed: s.base_damage_ignores_attack_speed,
         }
     }
 }
@@ -347,6 +377,71 @@ pub fn build_minion_context(input: &MinionInput) -> MinionContext {
     MinionContext { base, mod_db: db }
 }
 
+// ---------------------------------------------------------------------------
+// 数量上限 / per-minion multiplier（agent-docs/minions.md §4.1）
+// ---------------------------------------------------------------------------
+
+/// 从 `MinionDef` 读取 limit 上限并暴露为 `Multiplier:SummonedMinion` + `MinionPresenceCount`。
+///
+/// PoB2 `CalcPerform.lua` 流程：
+/// ```lua
+/// limit = floor(Override(limitName) or (skillModList:Sum(limitName) * More(ActiveMinionLimit)))
+/// modDB:NewMod("Multiplier:SummonedMinion", "BASE", limit, ...)
+/// modDB:NewMod("Multiplier:MinionPresenceCount", "BASE", limit, ...)
+/// ```
+///
+/// 本函数是纯函数化简版：给定最终 `limit` 数量，把这两个 Multiplier mod 写入
+/// **玩家** `ModDb`（调用方持有），供「per Minion / per Minion in Presence」词条引用。
+///
+/// 出处：agent-docs/minions.md §4.1；PoB2 CalcPerform.lua Limit→Multiplier 段。
+pub fn write_summoned_minion_multipliers(player_db: &mut ModDb, limit: u32, def_id: &str) {
+    let src = SourceId::new(SourceKind::GameConstant, format!("minion.limit.{}", def_id));
+    let origin = ModifierSource::new(src);
+    player_db.add_mod(
+        Modifier::number("Multiplier:SummonedMinion", ModType::Base, limit as f64)
+            .with_origin(origin.clone()),
+    );
+    player_db.add_mod(
+        Modifier::number(
+            "Multiplier:MinionPresenceCount",
+            ModType::Base,
+            limit as f64,
+        )
+        .with_origin(origin),
+    );
+}
+
+/// 从 `MinionDef` + 技能等级推导召唤宝石对应的怪物等级（Spectre 走区域等级，其余走此表）。
+///
+/// 出处：agent-docs/minions.md §1.1；PoB2 CalcActiveSkill.lua 等级判定段。
+pub fn resolve_minion_level(gem_level: u32) -> u32 {
+    minion_level_from_gem_level(gem_level)
+}
+
+/// 构建召唤物 `MinionContext`，接受 `MinionDef` 代替手填 `MinionData`。
+///
+/// 这是相对 `build_minion_context` 的便利入口：把 `MinionDef`（入库 schema）的归一化乘数
+/// 通过 [`MinionData::from_def`] 转换后，再走相同的三通道 + 内禀管线。
+///
+/// 出处：agent-docs/minions.md §1 / §2；PoB2 CalcPerform.lua / CalcActiveSkill.lua。
+pub fn build_minion_context_from_def(
+    def: &MinionDef,
+    gem_level: u32,
+    minion_modifiers: Vec<MinionModifierEntry>,
+    ally_buff_mods: Vec<Modifier>,
+    attribute_infusion: AttributeInfusion,
+) -> MinionContext {
+    let input = MinionInput {
+        gem_level,
+        data: MinionData::from_def(def),
+        minion_modifiers,
+        ally_buff_mods,
+        attribute_infusion,
+        minion_type: Some(def.id.clone()),
+    };
+    build_minion_context(&input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -383,5 +478,140 @@ mod tests {
             ctx.mod_db
                 .flag(&CalcConfig::attack(), ModName::from("CannotBeEvaded"))
         );
+    }
+
+    // ---------------------------------------------------------------------------
+    // MinionData::from_def 测试
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn miniondata_from_def_zombie() {
+        use pobr_data::minion::minion_def_zombie;
+        let def = minion_def_zombie();
+        let data = MinionData::from_def(&def);
+        assert_eq!(data.life, 0.7);
+        assert_eq!(data.damage, 0.75);
+        assert!((data.damage_spread - 0.3).abs() < 1e-9);
+        assert!((data.attack_time - 1.25).abs() < 1e-9);
+        assert_eq!(data.crit_chance, 5.0);
+        assert!(data.base_damage_ignores_attack_speed);
+        assert_eq!(data.energy_shield, 0.0);
+    }
+
+    #[test]
+    fn miniondata_from_def_storm_mage_has_es() {
+        use pobr_data::minion::minion_def_skeletal_storm_mage;
+        let def = minion_def_skeletal_storm_mage();
+        let data = MinionData::from_def(&def);
+        assert!((data.energy_shield - 0.15).abs() < 1e-9);
+        assert!((data.lightning_resist - 50.0).abs() < 1e-9);
+    }
+
+    // ---------------------------------------------------------------------------
+    // build_minion_context_from_def 测试
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn build_context_from_def_zombie_crit_is_100() {
+        use pobr_data::minion::minion_def_zombie;
+        let def = minion_def_zombie();
+        let ctx =
+            build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
+        // 爆伤基础 = 30 (monster) + 70 (intrinsic) = 100
+        let cfg = CalcConfig::attack();
+        let crit_mult = ctx
+            .mod_db
+            .sum(ModType::Base, &cfg, &[ModName::from("CritMultiplier")]);
+        assert_eq!(crit_mult, 100.0);
+        // 必中
+        assert!(ctx.mod_db.flag(&cfg, ModName::from("CannotBeEvaded")));
+        // minion_type 绑定为 def.id
+        assert_eq!(ctx.base.level, minion_level_from_gem_level(20));
+    }
+
+    #[test]
+    fn build_context_from_def_applies_zombie_typed_modifier() {
+        use pobr_data::minion::minion_def_zombie;
+        let def = minion_def_zombie();
+        // 通道 1：类型限定为 "RaisedZombie" 的词条 → 应该注入（def.id == "RaisedZombie"）
+        let entry = MinionModifierEntry {
+            inner: Modifier::number("Damage", ModType::Inc, 30.0),
+            minion_type: Some("RaisedZombie".into()),
+        };
+        let ctx = build_minion_context_from_def(
+            &def,
+            20,
+            vec![entry],
+            vec![],
+            AttributeInfusion::default(),
+        );
+        let inc = ctx.mod_db.sum(
+            ModType::Inc,
+            &CalcConfig::attack(),
+            &[ModName::from("Damage")],
+        );
+        assert_eq!(inc, 30.0);
+    }
+
+    #[test]
+    fn build_context_from_def_filters_different_type_modifier() {
+        use pobr_data::minion::minion_def_zombie;
+        let def = minion_def_zombie();
+        // 通道 1：类型限定为 "Skeleton"，但 def.id = "RaisedZombie" → 不注入
+        let entry = MinionModifierEntry {
+            inner: Modifier::number("Damage", ModType::Inc, 99.0),
+            minion_type: Some("Skeleton".into()),
+        };
+        let ctx = build_minion_context_from_def(
+            &def,
+            20,
+            vec![entry],
+            vec![],
+            AttributeInfusion::default(),
+        );
+        let inc = ctx.mod_db.sum(
+            ModType::Inc,
+            &CalcConfig::attack(),
+            &[ModName::from("Damage")],
+        );
+        assert_eq!(inc, 0.0);
+    }
+
+    // ---------------------------------------------------------------------------
+    // write_summoned_minion_multipliers 测试
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn summoned_minion_multipliers_written_to_player_db() {
+        let mut player_db = ModDb::new();
+        write_summoned_minion_multipliers(&mut player_db, 5, "RaisedZombie");
+        let cfg = CalcConfig::attack();
+        let summ = player_db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from("Multiplier:SummonedMinion")],
+        );
+        let presence = player_db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from("Multiplier:MinionPresenceCount")],
+        );
+        // 两个 multiplier 都写入了 limit 数量
+        assert_eq!(summ, 5.0);
+        assert_eq!(presence, 5.0);
+    }
+
+    #[test]
+    fn summoned_minion_multipliers_zero_when_no_limit() {
+        let mut player_db = ModDb::new();
+        // limit=0 → 两个 multiplier 都为 0（无召唤）
+        write_summoned_minion_multipliers(&mut player_db, 0, "NoLimit");
+        let cfg = CalcConfig::attack();
+        let summ = player_db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from("Multiplier:SummonedMinion")],
+        );
+        assert_eq!(summ, 0.0);
     }
 }

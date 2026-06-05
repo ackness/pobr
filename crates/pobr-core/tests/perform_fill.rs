@@ -726,3 +726,304 @@ fn perform_fills_mana_and_spirit_cost() {
     assert_eq!(env.player.output.mana_cost, 45.0);
     assert!(env.player.output.spirit_reserved > 0.0);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// 集成阶段：触发速率（冷却驱动 / CWC）
+// ─────────────────────────────────────────────────────────────────
+
+/// 触发默认中性：无触发词条 → trigger_rate_cap / skill_trigger_rate 保持 0（向后兼容）。
+#[test]
+fn perform_trigger_rate_zero_without_trigger_mods() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(base, vec![]);
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.trigger_rate_cap, 0.0);
+    assert_eq!(env.player.output.skill_trigger_rate, 0.0);
+}
+
+/// 冷却驱动触发接入：TriggerCooldownBase BASE → trigger_rate_cap > 0；
+/// skill_trigger_rate = min(cap, effective_action_rate) 双门控。
+#[test]
+fn perform_fills_cooldown_driven_trigger_rate() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        // 高行动速率，使触发由 cap 而非源速率门控。
+        action_rate: 20.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.3)],
+    );
+    perform(&mut env).unwrap();
+    // 0.3s 冷却 → cap ≈ 1/ceil_tick(0.3) ≈ 3/s。
+    assert!(
+        env.player.output.trigger_rate_cap > 0.0,
+        "trigger cap should be positive"
+    );
+    assert!((env.player.output.trigger_rate_cap - 3.03).abs() < 0.2);
+    // 源速率 20/s 高于 cap → skill_trigger_rate == cap（不被源门控）。
+    assert!(
+        (env.player.output.skill_trigger_rate - env.player.output.trigger_rate_cap).abs() < 1e-9
+    );
+}
+
+/// 冷却驱动触发被源速率门控：低行动速率 → skill_trigger_rate < trigger_rate_cap。
+#[test]
+fn perform_trigger_rate_gated_by_source_rate() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        // 低行动速率（1/s），低于 cap（短冷却）→ 触发被源速率门控。
+        action_rate: 1.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.05)],
+    );
+    perform(&mut env).unwrap();
+    // cap ≈ 10+/s，源速率 1/s → skill_trigger_rate 被门控到 ≈ 1/s。
+    assert!(env.player.output.skill_trigger_rate < env.player.output.trigger_rate_cap);
+    assert!((env.player.output.skill_trigger_rate - 1.0).abs() < 0.2);
+}
+
+/// ICDR（CooldownRecovery）缩短触发冷却 → trigger_rate_cap 提高。
+#[test]
+fn perform_trigger_icdr_increases_cap() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        action_rate: 50.0,
+        ..ActorBaseStats::default()
+    };
+    let make = |icdr: Vec<Modifier>| {
+        let mut mods = vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.5)];
+        mods.extend(icdr);
+        let mut env = player_with(base, mods);
+        perform(&mut env).unwrap();
+        env.player.output.trigger_rate_cap
+    };
+    let no_icdr = make(vec![]);
+    // +100% CooldownRecovery → 触发冷却减半 → cap 提高。
+    let with_icdr = make(vec![Modifier::number(
+        "CooldownRecovery",
+        ModType::Inc,
+        100.0,
+    )]);
+    assert!(
+        with_icdr > no_icdr,
+        "ICDR should raise trigger cap: {with_icdr} vs {no_icdr}"
+    );
+}
+
+/// CWC 触发接入：CWCTriggerTime BASE（无冷却驱动词条）→ trigger_rate_cap 由引导间隔决定。
+#[test]
+fn perform_fills_cwc_trigger_rate() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![Modifier::number("CWCTriggerTime", ModType::Base, 0.3)],
+    );
+    perform(&mut env).unwrap();
+    // triggerTime 0.3s → ceil_tick ≈ 0.33s → rate ≈ 3.03/s。
+    assert!((env.player.output.trigger_rate_cap - 3.03).abs() < 0.2);
+    // CWC 下 skill_trigger_rate == cap（引导驱动）。
+    assert_eq!(
+        env.player.output.skill_trigger_rate,
+        env.player.output.trigger_rate_cap
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 集成阶段：异常维度（AilmentEffect / Faster / DotDpsCap / 跨类型施加）
+// ─────────────────────────────────────────────────────────────────
+
+fn bleed_env(extra: Vec<Modifier>) -> Env {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 1000.0,
+        hit_max: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut mods = vec![Modifier::number("BleedChance", ModType::Base, 100.0)];
+    mods.extend(extra);
+    let mut env = player_with(base, mods);
+    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    env
+}
+
+/// AilmentEffect（MORE）放大流血 DPS：+50% AilmentEffect → bleed_dps ×1.5。
+#[test]
+fn perform_ailment_effect_scales_bleed_dps() {
+    let mut baseline = bleed_env(vec![]);
+    perform(&mut baseline).unwrap();
+    let base_dps = baseline.player.output.bleed_dps;
+    assert!(base_dps > 0.0);
+
+    let mut buffed = bleed_env(vec![Modifier::number("AilmentEffect", ModType::More, 50.0)]);
+    perform(&mut buffed).unwrap();
+    assert!(
+        (buffed.player.output.bleed_dps - base_dps * 1.5).abs() < 1e-3,
+        "AilmentEffect +50% should give 1.5× bleed: {} vs {}",
+        buffed.player.output.bleed_dps,
+        base_dps * 1.5
+    );
+}
+
+/// BleedFaster（rateMod）放大流血 DPS：+100% BleedFaster → bleed_dps ×2。
+#[test]
+fn perform_ailment_faster_scales_bleed_dps() {
+    let mut baseline = bleed_env(vec![]);
+    perform(&mut baseline).unwrap();
+    let base_dps = baseline.player.output.bleed_dps;
+
+    let mut faster = bleed_env(vec![Modifier::number("BleedFaster", ModType::More, 100.0)]);
+    perform(&mut faster).unwrap();
+    assert!(
+        (faster.player.output.bleed_dps - base_dps * 2.0).abs() < 1e-3,
+        "BleedFaster +100% should double bleed DPS"
+    );
+}
+
+/// DotDpsCap 截断：巨额流血 DPS 被全局上限 clamp（DOT_DPS_CAP）。
+#[test]
+fn perform_dot_dps_cap_clamps_huge_bleed() {
+    // 巨额物理命中 + 大量 AilmentEffect → 未截断 DPS 远超上限。
+    let mut env = bleed_env(vec![
+        Modifier::number("BleedDamage", ModType::Inc, 100000.0),
+        Modifier::number("AilmentEffect", ModType::More, 100000.0),
+    ]);
+    // 把命中放大到天文数字。
+    env.player
+        .mod_db
+        .add_mod(Modifier::number("PhysicalDamageMin", ModType::Base, 1e9));
+    env.player
+        .mod_db
+        .add_mod(Modifier::number("PhysicalDamageMax", ModType::Base, 1e9));
+    perform(&mut env).unwrap();
+    // DotDpsCap = 35_791_394（pobr_data 常量）。
+    assert!(
+        env.player.output.bleed_dps <= 35_791_394.0 + 1.0,
+        "bleed DPS should be capped at DotDpsCap: {}",
+        env.player.output.bleed_dps
+    );
+    assert!(env.player.output.bleed_dps > 0.0);
+}
+
+/// 跨类型施加：FireCanBleed 旗标 → 火焰命中也计入流血来源 → 火焰 build 产生流血。
+#[test]
+fn perform_cross_type_fire_can_bleed() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    // 纯火焰命中，无物理 → 默认不流血。
+    let make = |with_flag: bool| {
+        let mut mods = vec![
+            Modifier::number("FireDamageMin", ModType::Base, 5000.0),
+            Modifier::number("FireDamageMax", ModType::Base, 5000.0),
+            Modifier::number("BleedChance", ModType::Base, 100.0),
+        ];
+        if with_flag {
+            mods.push(Modifier::flag("FireCanBleed"));
+        }
+        let mut env = player_with(base, mods);
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Fire);
+        perform(&mut env).unwrap();
+        env.player.output.bleed_dps
+    };
+    // 无旗标：火焰命中不计入流血来源 → bleed_dps == 0。
+    assert_eq!(make(false), 0.0, "fire hit should not bleed by default");
+    // 有 FireCanBleed：火焰命中计入流血来源 → bleed_dps > 0。
+    assert!(
+        make(true) > 0.0,
+        "FireCanBleed should let fire hits cause bleed"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 集成阶段：召唤物从 MinionDef 真实底材 + 数量上限
+// ─────────────────────────────────────────────────────────────────
+
+/// add_minion_from_def 端到端：真实 MinionDef（僵尸）底材 + 数量上限注入玩家 multiplier。
+#[test]
+fn perform_minion_from_def_with_limit() {
+    use pobr_data::minion::minion_def_zombie;
+
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(base, vec![]);
+    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+
+    let def = minion_def_zombie();
+    env.add_minion_from_def(&def, 20, 3, vec![], vec![], AttributeInfusion::default());
+    perform(&mut env).unwrap();
+
+    // 数量上限写入玩家 multiplier。
+    let limit = env.player.mod_db.sum(
+        ModType::Base,
+        &env.cfg,
+        &[ModName::from("Multiplier:SummonedMinion")],
+    );
+    assert_eq!(limit, 3.0);
+
+    // 召唤物用真实僵尸底材：等级 = 宝石 20 → 怪物等级 40，生命来自怪物表 × 0.7 归一化。
+    assert_eq!(env.player.output.minions.len(), 1);
+    let m = &env.player.output.minions[0];
+    assert_eq!(m.level, 40);
+    assert!(m.life > 0.0, "zombie should have life from monster table");
+    // 玩家自身不受召唤物影响。
+    assert_eq!(env.player.output.life, 1000.0);
+}
+
+/// 数量上限 multiplier 接入 cfg：召唤物「per Summoned Minion」词条可引用数量。
+#[test]
+fn perform_minion_damage_per_summoned_minion_uses_limit() {
+    use pobr_data::minion::minion_def_zombie;
+
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+
+    let make = |limit: u32| {
+        let mut env = player_with(base, vec![]);
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        let def = minion_def_zombie();
+        // 通道 1：召唤物「每个召唤物 +X% 增伤」（Multiplier:SummonedMinion 引用数量）。
+        let entry = MinionModifierEntry {
+            inner: Modifier::number("Damage", ModType::Inc, 10.0).with_tag(
+                pobr_core::ModTag::Multiplier {
+                    var: "SummonedMinion".into(),
+                    limit: None,
+                },
+            ),
+            minion_type: None,
+        };
+        env.add_minion_from_def(
+            &def,
+            20,
+            limit,
+            vec![entry],
+            vec![],
+            AttributeInfusion::default(),
+        );
+        perform(&mut env).unwrap();
+        env.player.output.minions[0].dps
+    };
+
+    let dps_1 = make(1);
+    let dps_5 = make(5);
+    // 数量越多，per-minion 增伤越高 → 召唤物 DPS 越高。
+    assert!(
+        dps_5 > dps_1,
+        "more summoned minions should scale per-minion damage: {dps_5} vs {dps_1}"
+    );
+}

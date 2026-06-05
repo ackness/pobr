@@ -25,7 +25,7 @@
 //! 出处：PoB2 `src/Modules/CalcOffence.lua`（`calcAilmentDamage` / `calcDamagingAilmentOutputs`
 //!       / `Calculate scaling threshold ailment chance` / effMult 段）、agent-docs/ailments.md。
 
-use pobr_data::constants::SHOCK_MIN_EFFECT;
+use pobr_data::constants::{DOT_DPS_CAP, SHOCK_MIN_EFFECT};
 use pobr_data::monster::{
     CHILL_EFFECT_MULTIPLIER, CHILL_MAX_EFFECT, CHILL_MIN_EFFECT, ELECTROCUTE_DAMAGE_SCALE,
     FREEZE_DAMAGE_SCALE, IGNITE_CHANCE_MULTIPLIER, PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR,
@@ -35,7 +35,7 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation};
 
-use super::round;
+use super::{DamageComponent, round};
 
 /// 一类伤害异常的命中来源伤害（pre-mitigation 平均击中，分非暴击/暴击两份）。
 ///
@@ -1062,6 +1062,285 @@ pub fn stacking_ailment_dps_traced(
     );
     trace.add_edge(stacks_node, node);
     (stacked, node)
+}
+
+// ---------------------------------------------------------------------------
+// Feature 1: AilmentEffect / Faster / Slower 三维度
+// ---------------------------------------------------------------------------
+
+/// 异常 Effect 乘区：`calcLib.mod(skillModList, dotCfg, "AilmentEffect")`。
+///
+/// 对应 PoB2 damaging ailment DPS 公式中的 `effectMod`：
+/// `ailmentDPS = baseVal * effectMod * rateMod * activeAilments * effMult`。
+///
+/// `AilmentEffect` 以 MORE 聚合（PoB2 `calcLib.mod`），出处：
+/// PoB2 `CalcOffence.lua` l.5190 `local effectMod = calcLib.mod(skillModList, dotCfg, "AilmentEffect")`。
+pub fn ailment_effect_mod(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    db.more(cfg, &[ModName::from("AilmentEffect")])
+}
+
+/// 异常 Rate 乘区（节奏修正）：`mod(Faster) / mod(Slower)`。
+///
+/// `rateMod` 同时放大 DPS 并**等比缩短**持续时间，使总伤害不变但 DPS 提升。
+/// 分别读攻击方 `<Ailment>Faster`/`<Ailment>Slower`（MORE 聚合）与敌方
+/// `Self<Ailment>Faster`（INC 累加后除以 100，加入 faster 分子）。
+///
+/// 出处：PoB2 `CalcOffence.lua` l.5035
+/// ```lua
+/// local rateMod = (calcLib.mod(skillModList, cfg, ailment .. "Faster")
+///     + enemyDB:Sum("INC", nil, "Self" .. ailment .. "Faster") / 100)
+///   / calcLib.mod(skillModList, cfg, ailment .. "Slower")
+/// ```
+///
+/// `ailment_name` = `"Bleed"` / `"Poison"` / `"Ignite"`。
+pub fn ailment_rate_mod(
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    ailment_name: &str,
+) -> f64 {
+    let faster_name = ModName::from(format!("{ailment_name}Faster"));
+    let slower_name = ModName::from(format!("{ailment_name}Slower"));
+    let self_faster_name = ModName::from(format!("Self{ailment_name}Faster"));
+
+    // faster: MORE 聚合（player）+ 敌方 INC/100 加成。
+    let player_faster = player.more(cfg, &[faster_name]);
+    let enemy_faster_inc = enemy.sum(ModType::Inc, cfg, &[self_faster_name]) / 100.0;
+    let faster = player_faster + enemy_faster_inc;
+
+    // slower: MORE 聚合（player）。
+    let slower = player.more(cfg, &[slower_name]);
+
+    // rateMod = faster / slower（两个 more 乘区之比）。
+    if slower <= 0.0 {
+        faster
+    } else {
+        faster / slower
+    }
+}
+
+/// 把 `rateMod` 应用到 `AilmentInstance`：DPS × rateMod，duration / rateMod。
+///
+/// 出处：PoB2 `ailmentDPS *= rateMod`；`duration /= rateMod`。
+/// `rate_mod` = 1.0 表示无修正；> 1.0 表示 burn faster（DPS 升、时长缩短）。
+pub fn apply_rate_mod_to_instance(inst: AilmentInstance, rate_mod: f64) -> AilmentInstance {
+    if rate_mod <= 0.0 || (rate_mod - 1.0).abs() < f64::EPSILON {
+        return inst;
+    }
+    AilmentInstance {
+        magnitude_dps: round(inst.magnitude_dps * rate_mod),
+        duration_secs: round(inst.duration_secs / rate_mod),
+        ..inst
+    }
+}
+
+/// 把 `AilmentEffect` 乘区应用到 `AilmentInstance`：magnitude_dps × effect_mod。
+///
+/// 出处：PoB2 `ailmentDPS = baseVal * effectMod * ...`。
+/// `effect_mod` = 1.0 表示无修正（默认 MORE = 1.0）。
+pub fn apply_effect_mod_to_instance(inst: AilmentInstance, effect_mod: f64) -> AilmentInstance {
+    if (effect_mod - 1.0).abs() < f64::EPSILON {
+        return inst;
+    }
+    AilmentInstance {
+        magnitude_dps: round(inst.magnitude_dps * effect_mod),
+        ..inst
+    }
+}
+
+/// 同时应用 `effectMod` 和 `rateMod`：先 effect 再 rate（DPS × effectMod × rateMod）。
+///
+/// 持续时间只受 `rateMod` 影响（/ rateMod），不受 `effectMod` 影响。
+/// 与 PoB2 公式 `ailmentDPS = baseVal * effectMod * rateMod * ...` 语义一致。
+pub fn apply_effect_and_rate_mod(
+    inst: AilmentInstance,
+    effect_mod: f64,
+    rate_mod: f64,
+) -> AilmentInstance {
+    let after_effect = apply_effect_mod_to_instance(inst, effect_mod);
+    apply_rate_mod_to_instance(after_effect, rate_mod)
+}
+
+/// Traced 版：把 effectMod + rateMod 归因写入 TraceGraph 并返回修正后的实例。
+///
+/// 分别为 effectMod 和 rateMod 各建一个 TraceNode，连入 magnitude 节点（由调用方传入）。
+/// 返回修正后的 `AilmentInstance`。
+pub fn apply_effect_and_rate_mod_traced(
+    inst: AilmentInstance,
+    effect_mod: f64,
+    rate_mod: f64,
+    ailment_name: &str,
+    mag_node: TraceNodeId,
+    trace: &mut TraceGraph,
+) -> AilmentInstance {
+    if (effect_mod - 1.0).abs() > f64::EPSILON {
+        let n = trace.add_node(
+            format!("{ailment_name}EffectMod"),
+            effect_mod,
+            TraceOperation::Multiply,
+        );
+        trace.add_edge(n, mag_node);
+    }
+    if rate_mod > 0.0 && (rate_mod - 1.0).abs() > f64::EPSILON {
+        let n = trace.add_node(
+            format!("{ailment_name}RateMod"),
+            rate_mod,
+            TraceOperation::Multiply,
+        );
+        trace.add_edge(n, mag_node);
+    }
+    apply_effect_and_rate_mod(inst, effect_mod, rate_mod)
+}
+
+// ---------------------------------------------------------------------------
+// Feature 2: 跨类型施加（<Type>Can<Ailment>）
+// ---------------------------------------------------------------------------
+
+/// 为某 damaging ailment 计算有效来源命中（含跨类型施加 `<Type>Can<Ailment>` 旗标）。
+///
+/// 默认伤害类型（Bleed=Physical、Ignite=Fire、Poison=Physical+Chaos）贡献来源命中；
+/// 若玩家 `ModDb` 携带 `<Type>Can<Ailment>` 旗标（如 `FireCanBleed`、`ChaosCanShock`），
+/// 则对应类型的命中伤害也计入来源。
+///
+/// `damage_components` 为该次击中的分类型平均命中（`component_avg` 口径）；
+/// 返回合计 pre-mitigation 来源命中值。
+///
+/// 出处：PoB2 `CalcOffence.lua` l.4809–4825 `canDoAilment` + l.5453–5456 处理
+///   `type.."Can"..damagingAilment` 旗标；agent-docs/ailments.md §改写施加规则的例外。
+pub fn cross_type_source_hit(
+    ailment: AilmentType,
+    damage_components: &[DamageComponent],
+    player: &ModDb,
+    cfg: &CalcConfig,
+) -> f64 {
+    let ailment_name = ailment_mod_name(ailment);
+    let mut total = 0.0;
+    for component in damage_components {
+        let dt = component.damage_type;
+        if is_default_source(ailment, dt)
+            || player.flag(
+                cfg,
+                ModName::from(format!(
+                    "{prefix}Can{ailment_name}",
+                    prefix = type_prefix(dt)
+                )),
+            )
+        {
+            total += (component.min + component.max) / 2.0;
+        }
+    }
+    total
+}
+
+/// 是否为某 ailment 的默认来源伤害类型（无需 `Can<Ailment>` 旗标）。
+fn is_default_source(ailment: AilmentType, damage_type: DamageType) -> bool {
+    match ailment {
+        AilmentType::Bleed | AilmentType::CorruptedBlood => damage_type == DamageType::Physical,
+        AilmentType::Ignite => damage_type == DamageType::Fire,
+        AilmentType::Poison => {
+            damage_type == DamageType::Physical || damage_type == DamageType::Chaos
+        }
+        AilmentType::Shock => damage_type == DamageType::Lightning,
+        AilmentType::Chill | AilmentType::Freeze => damage_type == DamageType::Cold,
+        AilmentType::Electrocute => damage_type == DamageType::Lightning,
+    }
+}
+
+/// `AilmentType` → modifier/flag 名称中使用的稳定名（PoB2 口径）。
+fn ailment_mod_name(ailment: AilmentType) -> &'static str {
+    match ailment {
+        AilmentType::Bleed | AilmentType::CorruptedBlood => "Bleed",
+        AilmentType::Ignite => "Ignite",
+        AilmentType::Poison => "Poison",
+        AilmentType::Shock => "Shock",
+        AilmentType::Chill => "Chill",
+        AilmentType::Freeze => "Freeze",
+        AilmentType::Electrocute => "Electrocute",
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Feature 3: DotDpsCap
+// ---------------------------------------------------------------------------
+
+/// 应用全局 DoT DPS 上限：`min(dps, DotDpsCap_override or DOT_DPS_CAP)`。
+///
+/// `DotDpsCap` 可以被 `Override` 修正器重写（PoB2 `env.modDB:Override(nil, "DotDpsCap")`），
+/// 此函数读取 player `ModDb` 中 `DotDpsCap` 的 `Override` 值（Base 覆写口径：仅取 max）。
+/// 无覆写时使用常量 `DOT_DPS_CAP`。
+///
+/// 出处：PoB2 `CalcOffence.lua` l.5193
+///   `local ailmentDPSCapped = m_min(ailmentDPSUncapped, data.misc.DotDpsCap)`
+///   + `Data.lua` `DotDpsCap = 35791394`。
+pub fn apply_dot_dps_cap(dps: f64, player: &ModDb, cfg: &CalcConfig) -> f64 {
+    // Override: 若 mod_db 中存在 DotDpsCap 的 Base 覆写，取其最大值（PoB2 Override 语义）。
+    let override_cap = player.sum(ModType::Base, cfg, &[ModName::from("DotDpsCap")]);
+    let cap = if override_cap > 0.0 {
+        override_cap
+    } else {
+        DOT_DPS_CAP
+    };
+    round(dps.min(cap))
+}
+
+/// 同时应用 effectMod + rateMod + DotDpsCap 到最终 DPS（full pipeline）。
+///
+/// 计算流程：`base_dps * effect_mod * rate_mod → clamp(DotDpsCap)`。
+/// 这是 PoB2 `ailmentDPS = m_min(baseVal * effectMod * rateMod * activeAilments * effMult, DotDpsCap)`
+/// 除 `activeAilments * effMult` 部分的纯函数化。
+///
+/// 调用方在叠层（× activeAilments）和 effMult（×敌方减伤）后再调用本函数，
+/// 或在 effMult 之后调用（两种顺序最终结果相同，因为 DotDpsCap 是全局绝对上限）。
+pub fn dps_with_effect_rate_cap(
+    base_dps: f64,
+    effect_mod: f64,
+    rate_mod: f64,
+    player: &ModDb,
+    cfg: &CalcConfig,
+) -> f64 {
+    let uncapped = round(base_dps * effect_mod * rate_mod);
+    apply_dot_dps_cap(uncapped, player, cfg)
+}
+
+/// Traced 版全 pipeline：effectMod + rateMod + DotDpsCap，写入 TraceGraph。
+///
+/// 返回 `(final_dps, dps_node_id)`。若 DPS 被上限截断，额外添加 Cap 节点。
+pub fn dps_with_effect_rate_cap_traced(
+    base_dps: f64,
+    effect_mod: f64,
+    rate_mod: f64,
+    ailment_name: &str,
+    player: &ModDb,
+    cfg: &CalcConfig,
+    trace: &mut TraceGraph,
+) -> (f64, TraceNodeId) {
+    let uncapped = round(base_dps * effect_mod * rate_mod);
+    let capped = apply_dot_dps_cap(uncapped, player, cfg);
+    let label = format!("{ailment_name}DPSFull");
+    let node = trace.add_node(&label, capped, TraceOperation::Aggregate);
+
+    if (effect_mod - 1.0).abs() > f64::EPSILON {
+        let eff_n = trace.add_node(
+            format!("{ailment_name}EffectMod"),
+            effect_mod,
+            TraceOperation::Multiply,
+        );
+        trace.add_edge(eff_n, node);
+    }
+    if rate_mod > 0.0 && (rate_mod - 1.0).abs() > f64::EPSILON {
+        let rate_n = trace.add_node(
+            format!("{ailment_name}RateMod"),
+            rate_mod,
+            TraceOperation::Multiply,
+        );
+        trace.add_edge(rate_n, node);
+    }
+    if capped < uncapped {
+        let cap_n = trace.add_node("DotDpsCap", DOT_DPS_CAP, TraceOperation::Mitigate);
+        trace.add_edge(cap_n, node);
+    }
+
+    (capped, node)
 }
 
 /// 某异常 magnitude 缩放的 inc/more ModName 集合（与 `*_instance` 一致）。

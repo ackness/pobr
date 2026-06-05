@@ -34,6 +34,38 @@ impl Env {
         self
     }
 
+    /// 便利入口：从 [`MinionDef`](super::MinionDef) 真实底材 + 召唤宝石等级 + 数量上限
+    /// 直接接入召唤物，并把数量上限写为玩家 `Multiplier:SummonedMinion` /
+    /// `Multiplier:MinionPresenceCount`（供「per Minion / per Minion in Presence」词条引用）。
+    ///
+    /// 这是 Lane A 端到端入口：用 [`build_minion_context_from_def`](super::build_minion_context_from_def)
+    /// 取 `MinionDef` 归一化乘数（怪物表 × 乘数派生底材），三通道注入后接入 `Env.minions`；
+    /// 同时调用 [`write_summoned_minion_multipliers`](super::write_summoned_minion_multipliers)
+    /// 把 `limit` 写入玩家 `mod_db`（PoB2 CalcPerform.lua Limit→Multiplier 段）。
+    ///
+    /// `limit` 通常由玩家技能 `skillModList:Sum(limitName)` 派生（本阶段由调用方给定）。
+    /// `limit == 0` 时仍写入（multiplier=0，等价无召唤数量贡献，向后兼容）。
+    pub fn add_minion_from_def(
+        &mut self,
+        def: &super::MinionDef,
+        gem_level: u32,
+        limit: u32,
+        minion_modifiers: Vec<super::MinionModifierEntry>,
+        ally_buff_mods: Vec<crate::Modifier>,
+        infusion: super::AttributeInfusion,
+    ) -> &mut Self {
+        let ctx = super::build_minion_context_from_def(
+            def,
+            gem_level,
+            minion_modifiers,
+            ally_buff_mods,
+            infusion,
+        );
+        super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
+        self.minions.push(minion_actor_from_context(&ctx));
+        self
+    }
+
     pub fn with_config(mut self, cfg: CalcConfig) -> Self {
         self.cfg = cfg;
         self
