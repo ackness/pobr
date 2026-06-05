@@ -211,7 +211,10 @@ pub struct SkillStatSetDef {
     /// stat-set 的基础效力（`BaseEffectiveness`，备查；分等级值已是解析后的最终量）。
     #[serde(default, skip_serializing_if = "is_zero_f64")]
     pub base_effectiveness: f64,
-    /// 分等级伤害 stat（按宝石等级升序）。
+    /// 等级无关的常量 stat（`ConstantStats` + 值；如 support 宝石的 `damage_+%_final` 倍率）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub constant_stats: Vec<SkillDamageStat>,
+    /// 分等级 stat（按宝石等级升序；含基础伤害值 + `damage_+%[_final]` 缩放）。
     pub levels: Vec<SkillStatSetLevel>,
 }
 

@@ -17,13 +17,18 @@
 //!      [`CalculationSession::add_modifiers`]（CharacterBase 归因）；
 //!    - 敌人 + 有效 DPS → [`CalculationSession::setup_enemy`] + `mode_effective`。
 //!
-//! 已知数据切片（记录在 notes，不阻塞接线）：
-//! - **宝石 → modifier 文本**：当前数据管线尚未导出宝石/授予效果的分等级 stat set
-//!   （见 `pobr_data::catalog::SkillGemDef` 的 TODO），故宝石只完成 active/support
-//!   分类与 source 注册，自身**暂不贡献 modifier**。待管线补 `granted_effects` stat
-//!   后，此处按宝石等级解析词条即可贯通。
+//! 宝石 stat 注入（已贯通）：
+//! - **主技能**：分等级 stat set（基础伤害 + 自带 `damage_+%`）经 [`skill_base_modifiers`]
+//!   → [`map_skill_stat`] 注入；cost/cooldown → `SkillManaCostBase`/`SkillCooldownBase`;
+//!   use_time → `base_action_rate`。
+//! - **support 宝石**：同组 support 的分等级 stat（附加伤害、`damage_+%[_final]` 倍率）
+//!   经 [`support_modifiers`] → [`map_skill_stat`] 注入（SupportGem 归因）。当前作用域为
+//!   全局（单主技能口径正确），多技能 tag 隔离待 flag 系统接入。
 //! - **天赋节点词条**：完整解析（节点 `stats` 已随官方树导出落地），含 Mastery 选择与
 //!   JewelSocket gating。
+//!
+//! 已知切片：武器伤害（attack 技能依赖未接的武器基底）、DoT per-minute、area/speed/crit
+//! 等非伤害族的 SkillStatMap 映射（[`map_skill_stat`] 待逐步补全）。
 
 use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::mod_parser::parse_mod;
@@ -36,9 +41,10 @@ use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use pobr_tree::collect_allocated_mods;
 
-use crate::build::Build;
+use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
+use crate::skill_stat_map::map_skill_stat;
 
 /// 编排选项：可注入基础 [`MinimalInput`]（角色基础生命/抗性等，来自上层装配）。
 #[derive(Debug, Clone, Default)]
@@ -138,7 +144,7 @@ pub fn calculate_with_data(
     // 在建 session 前先解析，以便把行动速率写入 base_input。
     let main_skill = resolve_main_skill(build, data);
     let mut base_input = options.base_input;
-    if let Some(skill) = &main_skill
+    if let Some((skill, _)) = &main_skill
         && let Some(use_time) = skill.use_time_s
         && use_time > 0.0
     {
@@ -154,9 +160,10 @@ pub fn calculate_with_data(
         session.add_modifiers(base.modifiers());
     }
 
-    // 1b. 主技能 cost / cooldown → SkillGem 归因的 BASE 词条（供 fill_skill_mechanics 读取）。
-    if let Some(skill) = &main_skill {
+    // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
+    if let Some((skill, group)) = &main_skill {
         session.add_modifiers(skill_base_modifiers(skill));
+        session.add_modifiers(support_modifiers(group, data));
     }
 
     // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
@@ -215,24 +222,27 @@ pub fn calculate_with_data(
 ///
 /// 注：主技能组选择当前为启发式（首个有使用时间的可施放技能），尚未解析 PoB 的
 /// `mainSocketGroup` / `mainActiveSkill` 指定——多主技能 build 的精确选择留待后续。
-fn resolve_main_skill(build: &Build, data: &BuildData) -> Option<ResolvedSkillLevel> {
+fn resolve_main_skill<'b>(
+    build: &'b Build,
+    data: &BuildData,
+) -> Option<(ResolvedSkillLevel, &'b SocketGroup)> {
     for group in build.enabled_socket_groups() {
         if let Some(skill_id) = &group.active_skill_id {
             let level = group.active_gem_level.unwrap_or(1);
             if let Some(resolved) = data.resolve_skill_level(skill_id, level)
                 && resolved.use_time_s.is_some()
             {
-                return Some(resolved);
+                return Some((resolved, group));
             }
         }
     }
     None
 }
 
-/// 把主技能分等级参数（cost / cooldown / **基础伤害**）构造为 SkillGem 归因的 BASE
-/// modifier：cost/cooldown 供 `fill_skill_mechanics` 经 `SkillManaCostBase` /
-/// `SkillCooldownBase` 读取；基础伤害经 [`damage_stat_to_mod`] 映射为
-/// `<Type>DamageMin/Max` BASE，进入 offence 的伤害分量管线（解锁技能 DPS）。
+/// 把主技能分等级参数（cost / cooldown / **stat 集**）构造为 SkillGem 归因的 modifier：
+/// cost/cooldown 供 `fill_skill_mechanics` 经 `SkillManaCostBase` / `SkillCooldownBase` 读取；
+/// stat 集经 [`map_skill_stat`] 映射（基础伤害 BASE、`damage_+%` INC、`_final` MORE），
+/// 进入 offence 的伤害分量管线。
 ///
 /// 使用时间不在此处（它走 `base_input.base_action_rate`，见 [`calculate_with_data`]）。
 fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
@@ -253,62 +263,66 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
     {
         mods.push(mk("SkillManaCostBase", mc, "main skill base mana cost"));
     }
-    // 基础伤害：把 stat-set 解析出的 `<source>_<min|max>_<base|added>_<type>_damage`
-    // 映射为 `<Type>DamageMin/Max` BASE，注入伤害分量。多个 stat 映射到同名 ModName 时
-    // 由 ModDb 求和（base/added 叠加）。
-    for ds in &skill.base_damage {
-        if let Some((mod_name, mod_type)) = damage_stat_to_mod(&ds.stat)
-            && ds.value > 0.0
-        {
-            let origin = ModifierSource::new(SourceId::new(
-                SourceKind::SkillGem,
-                format!("skill.dmg.{}", ds.stat),
-            ))
-            .with_raw_text(format!("main skill {} ({})", ds.stat, ds.value));
-            mods.push(Modifier::number(mod_name.as_str(), mod_type, ds.value).with_origin(origin));
+    // 技能 stat（基础伤害 + 自带 damage% 缩放）经 SkillStatMap 映射注入。
+    mods.extend(mapped_stat_modifiers(
+        &skill.base_damage,
+        SourceKind::SkillGem,
+        "skill",
+    ));
+    mods
+}
+
+/// 把主技能组内 **support 宝石**的分等级 stat 经 [`map_skill_stat`] 映射为 SupportGem 归因
+/// 的 modifier，注入被支援技能（如「附加闪电伤害」→ `LightningDamageMin/Max` BASE、
+/// 「更多伤害」→ `Damage` MORE）。
+///
+/// 当前作用域为**全局**（单主技能 build 下口径正确：所有 support 倍率作用于唯一计算技能）；
+/// 多主技能的按技能 tag 隔离（仅作用于被支援技能）待 flag 系统接入后细化。active 主技能
+/// 自身伤害已由 [`skill_base_modifiers`] 注入，此处只处理 support。
+fn support_modifiers(group: &SocketGroup, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for gem in &group.gem_skills {
+        let is_support = data
+            .granted_effects
+            .get(&gem.skill_id)
+            .map(|e| e.is_support);
+        if is_support != Some(true) {
+            continue; // 仅 support 效果；active/未知跳过。
         }
+        let stats = data.effect_stats(&gem.skill_id, gem.gem_level);
+        mods.extend(mapped_stat_modifiers(
+            &stats,
+            SourceKind::SupportGem,
+            &gem.skill_id,
+        ));
     }
     mods
 }
 
-/// 技能基础伤害 stat → (ModName, ModType) 映射。
-///
-/// 当前支持「flat 分类型 min/max 伤害值」族（PoB2 `SkillStatMap` 中映射到
-/// `mod("<Type>Min/Max","BASE",…)` 的那一类）：
-/// `<source>_<minimum|maximum>_<base|added>_<type>_damage`，
-/// 其中 `source ∈ {spell, secondary, attack}`、`type ∈ {physical,fire,cold,lightning,chaos}`，
-/// 映射为 PoBR 伤害分量读取的 `<Type>DamageMin` / `<Type>DamageMax`（BASE）。
-///
-/// 返回 `None`（暂不落地）的族：武器伤害（`*_weapon_*`，依赖未接的武器基底伤害）、
-/// 持续伤害（`*_damage_to_deal_per_minute`，需独立 DoT 通道）、条件型
-/// （`*_per_*_charge` / `*_as_%_of_*`，已被 `_damage` 后缀判定排除）。
-fn damage_stat_to_mod(stat: &str) -> Option<(String, ModType)> {
-    const TYPES: [(&str, &str); 5] = [
-        ("physical", "Physical"),
-        ("fire", "Fire"),
-        ("cold", "Cold"),
-        ("lightning", "Lightning"),
-        ("chaos", "Chaos"),
-    ];
-    // 必须是精确的 flat 伤害值（以 `_<type>_damage` 结尾）。
-    let core = stat.strip_suffix("_damage")?;
-    let (rest, pascal) = TYPES
-        .iter()
-        .find_map(|(lc, pascal)| core.strip_suffix(&format!("_{lc}")).map(|r| (r, *pascal)))?;
-    // 仅接受可直接落地为技能 flat 伤害的来源前缀。
-    let known_source =
-        rest.starts_with("spell_") || rest.starts_with("secondary_") || rest.starts_with("attack_");
-    if !known_source || !(rest.contains("base") || rest.contains("added")) {
-        return None;
+/// 把一组已解析 stat 经 [`map_skill_stat`] 映射为带 `source_kind` 归因的 modifier。
+/// 无法映射的 stat（未知/条件型）静默跳过；零值跳过。
+fn mapped_stat_modifiers(
+    stats: &[pobr_data::catalog::SkillDamageStat],
+    source_kind: SourceKind,
+    label_prefix: &str,
+) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for ds in stats {
+        if let Some(mapped) = map_skill_stat(&ds.stat)
+            && ds.value != 0.0
+        {
+            let origin = ModifierSource::new(SourceId::new(
+                source_kind.clone(),
+                format!("{label_prefix}.{}", ds.stat),
+            ))
+            .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
+            mods.push(
+                Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
+                    .with_origin(origin),
+            );
+        }
     }
-    let bound = if rest.contains("minimum") {
-        "Min"
-    } else if rest.contains("maximum") {
-        "Max"
-    } else {
-        return None;
-    };
-    Some((format!("{pascal}Damage{bound}"), ModType::Base))
+    mods
 }
 
 /// 从职业名 + 等级派生 [`CharacterBase`]（属性取职业起始值；树/装备属性加成走

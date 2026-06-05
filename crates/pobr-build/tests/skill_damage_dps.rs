@@ -81,6 +81,54 @@ fn fireball_base_damage_drives_nonzero_dps() {
     assert!(out.action_rate > 0.0, "action_rate should be > 0");
 }
 
+/// P0-2 support 宝石注入：同组的「更多/增加伤害」support 宝石的 `damage_+%` 应抬升击中伤害。
+/// `SupportFerociousRoarPlayer` 带 `damage_+%`（INC Damage），加入 Fireball 组后击中显著提升。
+#[test]
+fn fireball_with_damage_support_raises_hit() {
+    let build_data = load_build_data();
+
+    // 该 support 确有可映射的 damage_+% stat（数据通道未断）。
+    let sup = build_data.effect_stats("SupportFerociousRoarPlayer", 20);
+    let inc = sup
+        .iter()
+        .find(|s| s.stat == "damage_+%")
+        .expect("support should carry damage_+%");
+    assert!(inc.value > 0.0);
+
+    let base = calculate_with_data(&fireball_build(20), &build_data, &panel_opts())
+        .expect("no-support calc");
+
+    // 同组加入带 damage_+% 的 support → 注入 Damage INC。
+    let with_support = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Sorceress".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(
+            SocketGroup::new()
+                .with_slot("weapon1")
+                .with_gem("Metadata/Items/Gems/Fireball")
+                .with_active_skill("FireballPlayer", 20)
+                .with_gem_skill("FireballPlayer", 20)
+                .with_gem_skill("SupportFerociousRoarPlayer", 20),
+        );
+    let boosted =
+        calculate_with_data(&with_support, &build_data, &panel_opts()).expect("with-support calc");
+
+    // damage_+% 是 INC：击中 = base × (1 + inc/100)。inc≈129 → 约 2.29×。
+    let expected = base.total_hit_avg * (1.0 + inc.value / 100.0);
+    assert!(
+        (boosted.total_hit_avg - expected).abs() < 1.0,
+        "support damage_+% ({}) should scale hit: base {} → {} (got {})",
+        inc.value,
+        base.total_hit_avg,
+        expected,
+        boosted.total_hit_avg
+    );
+    assert!(boosted.total_hit_avg > base.total_hit_avg * 1.5);
+}
+
 /// CostTypes 解析（P2-6/P2-5）：Fireball L20 法力消耗 104，资源名 = Mana（瞬时）。
 #[test]
 fn fireball_cost_resolves_to_mana_resource() {

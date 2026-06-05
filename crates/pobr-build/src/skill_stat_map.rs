@@ -1,0 +1,170 @@
+//! 技能 stat → PoBR ModName/ModType 映射（PoB `Data/SkillStatMap.lua` 的常用子集移植）。
+//!
+//! PoB 把技能/辅助/光环效果的每条 stat（如 `spell_minimum_base_fire_damage`、`damage_+%`）
+//! 映射为内部 modifier（`mod("FireMin","BASE")` / `mod("Damage","INC")`）。本模块把这套映射
+//! 移植为 Rust，并**翻译到 PoBR 自有的 ModName 约定**（如伤害用 `<Type>DamageMin/Max` /
+//! `<Type>Damage`，对齐 `pobr_core::calc::damage` 读取的名字），供 orchestrator 把宝石
+//! 分等级 stat 注入计算。
+//!
+//! 当前覆盖**伤害族**（解锁 P0-2 宝石倍率）：
+//! - flat 基础伤害值 `<source>_<min|max>_<base|added>_<type>_damage` → `<Type>DamageMin/Max` BASE；
+//! - 伤害缩放 `[<scope>_]damage_+%` → INC、`..._final` → MORE，scope 决定 ModName。
+//!
+//! **保守原则**：只映射已知的无条件族；未知/条件型前缀（如「仅受身攻击」「消耗破甲时」）
+//! 返回 `None` 不注入，避免把条件倍率当无条件 more 误算。其余族（area/speed/crit/抗性…）
+//! 待后续按 PoB SkillStatMap 逐步补全。
+
+use pobr_data::modifier::ModType;
+
+/// 一条已映射的 modifier 规格（ModName + 聚合类型）。
+#[derive(Debug, Clone, PartialEq)]
+pub struct MappedStat {
+    /// PoBR ModName（如 `FireDamageMin` / `Damage` / `FireDamage`）。
+    pub mod_name: String,
+    /// 聚合类型（Base / Inc / More）。
+    pub mod_type: ModType,
+}
+
+impl MappedStat {
+    fn new(mod_name: impl Into<String>, mod_type: ModType) -> Self {
+        Self {
+            mod_name: mod_name.into(),
+            mod_type,
+        }
+    }
+}
+
+const TYPES: [(&str, &str); 5] = [
+    ("physical", "Physical"),
+    ("fire", "Fire"),
+    ("cold", "Cold"),
+    ("lightning", "Lightning"),
+    ("chaos", "Chaos"),
+];
+
+/// 把一条技能 stat id 映射为 PoBR modifier 规格。无法映射（未知/条件型）返回 `None`。
+pub fn map_skill_stat(stat: &str) -> Option<MappedStat> {
+    map_base_damage(stat).or_else(|| map_damage_percent(stat))
+}
+
+/// flat 基础伤害值：`<source>_<minimum|maximum>_<base|added>_<type>_damage`
+/// （source ∈ spell/secondary/attack）→ `<Type>DamageMin/Max` BASE。
+fn map_base_damage(stat: &str) -> Option<MappedStat> {
+    let core = stat.strip_suffix("_damage")?;
+    let (rest, pascal) = TYPES
+        .iter()
+        .find_map(|(lc, pascal)| core.strip_suffix(&format!("_{lc}")).map(|r| (r, *pascal)))?;
+    let known_source =
+        rest.starts_with("spell_") || rest.starts_with("secondary_") || rest.starts_with("attack_");
+    if !known_source || !(rest.contains("base") || rest.contains("added")) {
+        return None;
+    }
+    let bound = if rest.contains("minimum") {
+        "Min"
+    } else if rest.contains("maximum") {
+        "Max"
+    } else {
+        return None;
+    };
+    Some(MappedStat::new(
+        format!("{pascal}Damage{bound}"),
+        ModType::Base,
+    ))
+}
+
+/// 伤害缩放百分比：`[<scope>_]damage_+%` → INC、`..._final` → MORE。
+/// scope 决定作用的 ModName；未知 scope（条件型）返回 `None`。
+fn map_damage_percent(stat: &str) -> Option<MappedStat> {
+    let (scope, mod_type) = if let Some(c) = stat.strip_suffix("damage_+%_final") {
+        (c.trim_end_matches('_'), ModType::More)
+    } else if let Some(c) = stat.strip_suffix("damage_+%") {
+        (c.trim_end_matches('_'), ModType::Inc)
+    } else {
+        return None;
+    };
+    let mod_name = damage_scope_mod_name(scope)?;
+    Some(MappedStat::new(mod_name, mod_type))
+}
+
+/// 伤害缩放前缀 → PoBR ModName（对齐 `damage::aggregate_inc_more` 读取的名字）。
+///
+/// PoBR 的 inc/more 聚合读取通用 `Damage`/`AttackDamage`、分类型 `<Type>Damage`、
+/// 共享 `ElementalDamage`。注：PoBR 当前不读 `SpellDamage`，故法术伤害缩放映射到通用
+/// `Damage`（单技能计算正确；多技能精确 tag 待 flag 系统接入）。
+fn damage_scope_mod_name(scope: &str) -> Option<String> {
+    let name = match scope {
+        "" => "Damage",
+        "attack" => "AttackDamage",
+        "spell" => "Damage",
+        "elemental" => "ElementalDamage",
+        "physical" => "PhysicalDamage",
+        "fire" => "FireDamage",
+        "cold" => "ColdDamage",
+        "lightning" => "LightningDamage",
+        "chaos" => "ChaosDamage",
+        // 触发元宝石（cast on X）的无条件 more 伤害，作用于被触发技能。
+        "trigger_meta_gem" => "Damage",
+        // 未知/条件型前缀（如 support 专属、按条件触发）→ 不映射（保守，避免误算）。
+        _ => return None,
+    };
+    Some(name.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_spell_base_damage_to_typed_min_max_base() {
+        let m = map_skill_stat("spell_minimum_base_fire_damage").unwrap();
+        assert_eq!(m, MappedStat::new("FireDamageMin", ModType::Base));
+        let m = map_skill_stat("spell_maximum_base_fire_damage").unwrap();
+        assert_eq!(m, MappedStat::new("FireDamageMax", ModType::Base));
+    }
+
+    #[test]
+    fn maps_generic_and_typed_damage_percent() {
+        assert_eq!(
+            map_skill_stat("damage_+%").unwrap(),
+            MappedStat::new("Damage", ModType::Inc)
+        );
+        assert_eq!(
+            map_skill_stat("fire_damage_+%").unwrap(),
+            MappedStat::new("FireDamage", ModType::Inc)
+        );
+        assert_eq!(
+            map_skill_stat("attack_damage_+%").unwrap(),
+            MappedStat::new("AttackDamage", ModType::Inc)
+        );
+        assert_eq!(
+            map_skill_stat("elemental_damage_+%").unwrap(),
+            MappedStat::new("ElementalDamage", ModType::Inc)
+        );
+    }
+
+    #[test]
+    fn maps_final_suffix_to_more() {
+        assert_eq!(
+            map_skill_stat("damage_+%_final").unwrap(),
+            MappedStat::new("Damage", ModType::More)
+        );
+        assert_eq!(
+            map_skill_stat("trigger_meta_gem_damage_+%_final").unwrap(),
+            MappedStat::new("Damage", ModType::More)
+        );
+        assert_eq!(
+            map_skill_stat("fire_damage_+%_final").unwrap(),
+            MappedStat::new("FireDamage", ModType::More)
+        );
+    }
+
+    #[test]
+    fn skips_unknown_or_conditional_stats() {
+        // 条件型（仅受身攻击）— 数据侧已不入库，映射侧亦保守拒绝。
+        assert!(map_skill_stat("warcry_grant_damage_+%_to_exerted_attacks").is_none());
+        // 未知 scope 前缀的 final → 不映射（避免把条件 more 当无条件）。
+        assert!(map_skill_stat("some_conditional_thing_damage_+%_final").is_none());
+        // 非伤害 stat。
+        assert!(map_skill_stat("base_skill_area_of_effect_+%").is_none());
+    }
+}

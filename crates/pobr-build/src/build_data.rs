@@ -217,18 +217,8 @@ impl BuildData {
             .find(|c| c.resource == "Mana" && !c.per_second)
             .map(|c| c.amount);
 
-        // 基础伤害 stat：从 stat-set 域取该宝石等级行（等级越界取最接近的 ≤ 行）。
-        let base_damage = self
-            .skill_stat_sets
-            .get(skill_id)
-            .and_then(|set| {
-                set.levels
-                    .iter()
-                    .rfind(|l| l.gem_level <= gem_level)
-                    .or(set.levels.first())
-            })
-            .map(|level| level.stats.clone())
-            .unwrap_or_default();
+        // 技能 stat（基础伤害值 + damage% 缩放）：分等级行 + 等级无关常量，供映射注入。
+        let base_damage = self.effect_stats(skill_id, gem_level);
 
         Some(ResolvedSkillLevel {
             use_time_s,
@@ -237,6 +227,26 @@ impl BuildData {
             base_damage,
             costs,
         })
+    }
+
+    /// 取某授予效果在某宝石等级上的全部可映射 stat（stat-set 的分等级行 + 等级无关常量）。
+    ///
+    /// 对 active 与 **support** 效果同样适用（无 `is_support` 守卫）——support 宝石的
+    /// 倍率 / 附加伤害 stat 经此取出，再由 [`crate::skill_stat_map`] 映射注入被支援技能。
+    /// 等级越界取最接近的 ≤ 行；无 stat-set 数据返回空。
+    pub fn effect_stats(&self, skill_id: &str, gem_level: u32) -> Vec<SkillDamageStat> {
+        let Some(set) = self.skill_stat_sets.get(skill_id) else {
+            return Vec::new();
+        };
+        let mut stats = set
+            .levels
+            .iter()
+            .rfind(|l| l.gem_level <= gem_level)
+            .or(set.levels.first())
+            .map(|level| level.stats.clone())
+            .unwrap_or_default();
+        stats.extend(set.constant_stats.iter().cloned());
+        stats
     }
 
     /// 查询某职业的基础属性（按英文 canonical 名）；未知职业返回 `None`。

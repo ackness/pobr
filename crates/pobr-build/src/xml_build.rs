@@ -335,17 +335,22 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             && let Some(gem_id) = attr_value(&e, b"gemId")
                             && !gem_id.is_empty()
                         {
-                            // 组内首个启用 gem 视为主动技能（PoB Gem 列表 active 在前）：
-                            // 捕获其 skillId + level 作为分等级参数解析键。
-                            if cur.active_skill_id.is_none()
-                                && let Some(skill_id) = attr_value(&e, b"skillId")
+                            // 捕获每个启用 gem 的 skillId + level（active 与 support 皆收）。
+                            if let Some(skill_id) = attr_value(&e, b"skillId")
                                 && !skill_id.is_empty()
                             {
                                 let level = attr_value(&e, b"level")
                                     .and_then(|v| v.parse::<u32>().ok())
                                     .unwrap_or(1);
-                                cur.active_skill_id = Some(skill_id);
-                                cur.active_gem_level = Some(level);
+                                // 组内首个启用 gem 视为主动技能（PoB Gem 列表 active 在前）。
+                                if cur.active_skill_id.is_none() {
+                                    cur.active_skill_id = Some(skill_id.clone());
+                                    cur.active_gem_level = Some(level);
+                                }
+                                cur.gem_skills.push(crate::build::GemSkillRef {
+                                    skill_id,
+                                    gem_level: level,
+                                });
                             }
                             cur.gem_ids.push(gem_id);
                         }

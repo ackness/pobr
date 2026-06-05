@@ -279,6 +279,11 @@ struct RawGrantedEffectStatSetLink {
 struct RawStatSet {
     #[serde(rename = "BaseEffectiveness")]
     base_effectiveness: Option<f64>,
+    /// 等级无关常量 stat（`Stats` 行索引）与其值（位置配对；如 support `damage_+%_final`）。
+    #[serde(rename = "ConstantStats", default)]
+    constant_stats: Vec<usize>,
+    #[serde(rename = "ConstantStatsValues", default)]
+    constant_stats_values: Vec<i64>,
 }
 
 #[derive(Deserialize)]
@@ -310,14 +315,19 @@ pub struct StatSetsBundle {
     pub damage_levels_total: usize,
 }
 
-/// 是否为可注入计算的「伤害值」stat（flat min/max 伤害或 DoT per-minute）。
+/// 是否为可注入计算的伤害相关 stat：flat 伤害值（min/max base/added、DoT per-minute）
+/// **或**伤害缩放百分比（`damage_+%` / `<type>_damage_+%` 及其 `_final` more 变体）。
 ///
-/// 入库判定从宽（保留全部分类型 flat 伤害 + 持续伤害值），由计算侧的 stat→ModName
-/// 映射决定能否落地——这样数据通用、升级映射无需重生成数据。排除「增加%」「抗性%」
-/// 「buff 伤害%」等非 flat 值（不含 minimum/maximum 且非 per-minute）。
-fn is_damage_value_stat(stat: &str) -> bool {
+/// 入库判定从宽——由计算侧的 stat→ModName 映射决定能否落地，这样数据通用、升级映射
+/// 无需重生成。覆盖 support 宝石的 `damage_+%[_final]` 倍率（解锁 P0-2）。仍排除抗性%、
+/// buff 专用%、条件型（如 `..._to_exerted_attacks`，不以 `damage_+%[_final]` 结尾）。
+fn is_mappable_stat(stat: &str) -> bool {
+    // flat 伤害值
     (stat.contains("minimum") || stat.contains("maximum")) && stat.contains("_damage")
         || stat.ends_with("_damage_to_deal_per_minute")
+        // 伤害缩放百分比（increased / more）
+        || stat.ends_with("damage_+%")
+        || stat.ends_with("damage_+%_final")
 }
 
 /// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`
@@ -365,9 +375,25 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             continue;
         };
         let Some(set) = sets.get(si) else { continue };
-        let Some(rows) = rows_by_set.get(&si) else {
-            continue;
-        };
+
+        // 等级无关常量 stat（如 support `damage_+%_final` 倍率）。
+        let mut constant_stats = Vec::new();
+        for (&stat_idx, &value) in set
+            .constant_stats
+            .iter()
+            .zip(set.constant_stats_values.iter())
+        {
+            if let Some(sid) = stat_id.get(stat_idx).filter(|s| !s.is_empty())
+                && is_mappable_stat(sid)
+            {
+                constant_stats.push(SkillDamageStat {
+                    stat: sid.clone(),
+                    value: value as f64,
+                });
+            }
+        }
+
+        let rows = rows_by_set.get(&si).map(Vec::as_slice).unwrap_or(&[]);
 
         let mut levels = Vec::new();
         for row in rows {
@@ -388,7 +414,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 let Some(sid) = stat_id.get(stat_idx).filter(|s| !s.is_empty()) else {
                     continue;
                 };
-                if is_damage_value_stat(sid) {
+                if is_mappable_stat(sid) {
                     stats.push(SkillDamageStat {
                         stat: sid.clone(),
                         value: value as f64,
@@ -399,7 +425,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 levels.push(SkillStatSetLevel { gem_level, stats });
             }
         }
-        if levels.is_empty() {
+        if levels.is_empty() && constant_stats.is_empty() {
             continue;
         }
         levels.sort_by_key(|l| l.gem_level);
@@ -407,6 +433,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
         out.push(SkillStatSetDef {
             id: link.id.clone(),
             base_effectiveness: set.base_effectiveness.unwrap_or(0.0),
+            constant_stats,
             levels,
         });
     }
