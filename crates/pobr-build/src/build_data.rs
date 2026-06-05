@@ -157,7 +157,11 @@ impl BuildData {
     /// `skill_id` 为 `GrantedEffects.Id`（PoB `<Gem skillId>`）。返回 `None` 表示该
     /// 技能不在数据表中或为辅助效果（辅助效果不作为主动技能注入计算）。
     /// 等级越界时取最接近的已有等级行（数组按等级升序）。
-    pub fn resolve_skill_level(&self, skill_id: &str, gem_level: u32) -> Option<ResolvedSkillLevel> {
+    pub fn resolve_skill_level(
+        &self,
+        skill_id: &str,
+        gem_level: u32,
+    ) -> Option<ResolvedSkillLevel> {
         let effect = self.granted_effects.get(skill_id)?;
         if effect.is_support {
             return None;
@@ -174,7 +178,9 @@ impl BuildData {
 
         // 使用时间：优先该等级的攻击时间，回退授予效果的施放时间（毫秒→秒）。
         let use_time_ms = row.attack_time_ms.or(effect.cast_time);
-        let use_time_s = use_time_ms.filter(|&t| t > 0).map(|t| f64::from(t) / 1000.0);
+        let use_time_s = use_time_ms
+            .filter(|&t| t > 0)
+            .map(|t| f64::from(t) / 1000.0);
         let cooldown_s = row
             .cooldown_ms
             .filter(|&c| c > 0)

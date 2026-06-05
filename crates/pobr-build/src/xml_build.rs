@@ -530,7 +530,10 @@ Adds 47 to 86 Physical Damage
             "禁用 gem 应被跳过"
         );
         // 首个启用 gem 的 skillId + level 被捕获为主动技能（分等级参数解析键）。
-        assert_eq!(enabled[0].active_skill_id.as_deref(), Some("FireballPlayer"));
+        assert_eq!(
+            enabled[0].active_skill_id.as_deref(),
+            Some("FireballPlayer")
+        );
         assert_eq!(enabled[0].active_gem_level, Some(18));
     }
 

@@ -238,8 +238,9 @@ fn resolve_main_skill(build: &Build, data: &BuildData) -> Option<ResolvedSkillLe
 fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
     let mut mods = Vec::new();
     let mk = |stat: &str, value: f64, label: &str| {
-        let origin = ModifierSource::new(SourceId::new(SourceKind::SkillGem, format!("skill.{stat}")))
-            .with_raw_text(label);
+        let origin =
+            ModifierSource::new(SourceId::new(SourceKind::SkillGem, format!("skill.{stat}")))
+                .with_raw_text(label);
         Modifier::number(stat, ModType::Base, value).with_origin(origin)
     };
     if let Some(cd) = skill.cooldown_s
@@ -295,9 +296,8 @@ fn damage_stat_to_mod(stat: &str) -> Option<(String, ModType)> {
         .iter()
         .find_map(|(lc, pascal)| core.strip_suffix(&format!("_{lc}")).map(|r| (r, *pascal)))?;
     // 仅接受可直接落地为技能 flat 伤害的来源前缀。
-    let known_source = rest.starts_with("spell_")
-        || rest.starts_with("secondary_")
-        || rest.starts_with("attack_");
+    let known_source =
+        rest.starts_with("spell_") || rest.starts_with("secondary_") || rest.starts_with("attack_");
     if !known_source || !(rest.contains("base") || rest.contains("added")) {
         return None;
     }

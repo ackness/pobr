@@ -378,7 +378,11 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 .float_stats
                 .iter()
                 .zip(row.base_resolved_values.iter())
-                .chain(row.additional_stats.iter().zip(row.additional_stats_values.iter()));
+                .chain(
+                    row.additional_stats
+                        .iter()
+                        .zip(row.additional_stats_values.iter()),
+                );
             let mut stats = Vec::new();
             for (&stat_idx, &value) in pairs {
                 let Some(sid) = stat_id.get(stat_idx).filter(|s| !s.is_empty()) else {
