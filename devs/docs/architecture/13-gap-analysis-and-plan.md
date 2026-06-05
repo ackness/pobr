@@ -171,6 +171,23 @@ enemy modDB → 暴击 → 伤害转换/穿透/Overwhelm → 伤害型异常(几
 - 集成：OutputTable +24 字段(手写 Default 中性) + fill_skill_mechanics + fill_ailments 扩展 + 充能/偷取/Recoup，TraceGraph 贯穿。
 - **defer(Wave2 批次3+)**：召唤物完整编排/MinionDef 入库 schema/跨Actor trace/ally-buff 缩放；触发 energy/轮转/CWC/rate-wiring；parity golden(10 build 真实 PoB2 数值对齐)；AilmentEffect/Faster/Slower 维度+跨类型施加+DotDpsCap；BuffEffect；投射物距离衰减；技能基础参数入库。
 
+### Wave 2 批次3 ✅（commits 862d25b·359d1b3）
+**670 → 801 测试**。
+- **召唤物完整化**：pobr-data `MinionDef` 入库 schema(life/damage/attackTime/crit/resist+SkillTypes, 4 代表性常量)、`MinionData::from_def` 桥接、数量上限(Multiplier:SummonedMinion)、per-minion 乘数、`Env::add_minion_from_def` + perform_minions 真实底材 + 跨Actor 通道。
+- **触发完整**：能量驱动(Cast on X)、多技能轮转(确定性模拟)、CWC(triggerTime 取整)；`fill_trigger` 冷却驱动接入 perform。
+- **异常维度**：AilmentEffect/Faster/Slower、跨类型施加(`<Type>Can<Ailment>`)、DotDpsCap=(2³¹-1)/60。
+- **i18n+显示**：输出 stat 显示文本(en-US 80 key canonical + zh-TW 44 译文)、display_catalog 映射、golden 扩展。
+
+### 🎯 calc 机制阶段基本完成（2026-06-05）
+Wave 0 + Wave 1 + Wave 2(批次1-3)：**332 → 801 测试**(+469)，21 commits。PoBR 计算核心从最小闭环推进到**覆盖 doc12 P1-P7 全机制族的完整 PoE2 战斗引擎**(暴击/伤害转换/异常/防御恢复/召唤物/触发/技能功能 + enemy modDB + parity 框架 + i18n)。
+
+**剩余工作转向另一层（需方向选择）**：
+1. **build-layer 集成**：Build 状态→calc 编排打通、宝石数据通道(能量触发/技能基础参数/分等级 stat)、装备/天赋/技能端到端。
+2. **数据管线**：全量召唤物/技能等入库 JSON(pobr-data-adapter + pobr-gamedata loader)。
+3. **真·PoB2 golden 数值对齐**：需在 PoB2 跑同 build 取数值(外部数据，阻塞)。⚠️含 Wave1c 双重 dip 分歧决策。
+4. **buff/aura ingest 系统**：解锁 BuffEffect / 光环 / 玩家施加 debuff 注入 enemy.mod_db。
+5. **应用层 GUI**(pobr-desktop egui)。
+
 ## 4. 编排映射（并行/串行）
 
 | Wave | 串行流(calc 核心) | 可并行流(独立 crate/测试) | 模型 |
