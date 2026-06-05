@@ -335,6 +335,18 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             && let Some(gem_id) = attr_value(&e, b"gemId")
                             && !gem_id.is_empty()
                         {
+                            // 组内首个启用 gem 视为主动技能（PoB Gem 列表 active 在前）：
+                            // 捕获其 skillId + level 作为分等级参数解析键。
+                            if cur.active_skill_id.is_none()
+                                && let Some(skill_id) = attr_value(&e, b"skillId")
+                                && !skill_id.is_empty()
+                            {
+                                let level = attr_value(&e, b"level")
+                                    .and_then(|v| v.parse::<u32>().ok())
+                                    .unwrap_or(1);
+                                cur.active_skill_id = Some(skill_id);
+                                cur.active_gem_level = Some(level);
+                            }
                             cur.gem_ids.push(gem_id);
                         }
                     }
@@ -420,7 +432,7 @@ mod tests {
     <Skills activeSkillSet="1">
         <SkillSet id="1">
             <Skill enabled="true">
-                <Gem gemId="Metadata/Items/Gem/Active" enabled="true"/>
+                <Gem gemId="Metadata/Items/Gem/Active" skillId="FireballPlayer" level="18" enabled="true"/>
                 <Gem gemId="Metadata/Items/Gems/Support" enabled="true"/>
                 <Gem gemId="Metadata/Items/Gems/Disabled" enabled="false"/>
             </Skill>
@@ -517,6 +529,9 @@ Adds 47 to 86 Physical Damage
             ],
             "禁用 gem 应被跳过"
         );
+        // 首个启用 gem 的 skillId + level 被捕获为主动技能（分等级参数解析键）。
+        assert_eq!(enabled[0].active_skill_id.as_deref(), Some("FireballPlayer"));
+        assert_eq!(enabled[0].active_gem_level, Some(18));
     }
 
     #[test]

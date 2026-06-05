@@ -11,7 +11,9 @@
 
 use std::collections::HashMap;
 
-use pobr_data::catalog::{PassiveNodeDef, SkillGemDef};
+use pobr_data::catalog::{
+    GrantedEffectDef, PassiveNodeDef, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
+};
 use pobr_gamedata::{GameData, LoadError};
 
 /// 职业基础属性（PoE2 起始 str/dex/int），用于 [`pobr_core::CharacterBase`] 派生。
@@ -20,6 +22,20 @@ pub struct ClassBaseAttributes {
     pub strength: i32,
     pub dexterity: i32,
     pub intelligence: i32,
+}
+
+/// 某主动技能在某等级上解析出的计算相关参数（时间单位均为秒）。
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ResolvedSkillLevel {
+    /// 使用时间（秒）：攻击型取攻击时间，否则取施放时间。`None`=由武器/默认决定。
+    pub use_time_s: Option<f64>,
+    /// 冷却时间（秒）。`None`=无冷却。
+    pub cooldown_s: Option<f64>,
+    /// 法力消耗（cost type 0）。`None`=无法力消耗或为其他资源（待 CostTypes 表）。
+    pub mana_cost: Option<f64>,
+    /// 该等级上已解析的技能**基础伤害 stat**（如 `spell_minimum_base_fire_damage` → 值）。
+    /// 由计算侧映射为 `<Type>DamageMin/Max` BASE 词条注入。空=无 stat-set 伤害数据。
+    pub base_damage: Vec<SkillDamageStat>,
 }
 
 /// 从 [`GameData`] 投影出的、orchestrator 计算所需的内存索引。
@@ -36,6 +52,13 @@ pub struct BuildData {
     pub skill_gems: HashMap<String, SkillGemDef>,
     /// 职业基础属性表，以英文 canonical 职业名为键（如 `Ranger`）。
     pub class_attributes: HashMap<String, ClassBaseAttributes>,
+    /// 授予效果表，以 `GrantedEffects.Id` 为键（如 `ExplosiveGrenadePlayer`）；
+    /// 即 PoB `<Gem skillId>` 指向的目标，供主动技能 cast/cost 解析。
+    pub granted_effects: HashMap<String, GrantedEffectDef>,
+    /// 授予效果分等级参数表，以 `GrantedEffects.Id` 为键（升序等级数组）。
+    pub granted_effect_levels: HashMap<String, Vec<SkillLevelDef>>,
+    /// 授予效果分等级**伤害 stat 集**，以 `GrantedEffects.Id` 为键（每级已解析伤害 stat）。
+    pub skill_stat_sets: HashMap<String, SkillStatSetDef>,
 }
 
 impl BuildData {
@@ -72,10 +95,27 @@ impl BuildData {
             })
             .collect();
 
+        let granted_effects = data
+            .granted_effects()?
+            .into_iter()
+            .map(|effect| (effect.id.clone(), effect))
+            .collect();
+
+        let granted_effect_levels = data.granted_effect_levels()?.into_iter().collect();
+
+        let skill_stat_sets = data
+            .skill_stat_sets()?
+            .into_iter()
+            .map(|set| (set.id.clone(), set))
+            .collect();
+
         Ok(Self {
             passive_nodes,
             skill_gems,
             class_attributes,
+            granted_effects,
+            granted_effect_levels,
+            skill_stat_sets,
         })
     }
 
@@ -85,7 +125,71 @@ impl BuildData {
             passive_nodes: HashMap::new(),
             skill_gems: HashMap::new(),
             class_attributes: HashMap::new(),
+            granted_effects: HashMap::new(),
+            granted_effect_levels: HashMap::new(),
+            skill_stat_sets: HashMap::new(),
         }
+    }
+
+    /// 解析某主动技能在某等级上的参数：cast/attack 时间（秒）、各资源消耗、冷却（秒）。
+    ///
+    /// `skill_id` 为 `GrantedEffects.Id`（PoB `<Gem skillId>`）。返回 `None` 表示该
+    /// 技能不在数据表中或为辅助效果（辅助效果不作为主动技能注入计算）。
+    /// 等级越界时取最接近的已有等级行（数组按等级升序）。
+    pub fn resolve_skill_level(&self, skill_id: &str, gem_level: u32) -> Option<ResolvedSkillLevel> {
+        let effect = self.granted_effects.get(skill_id)?;
+        if effect.is_support {
+            return None;
+        }
+        let rows = self.granted_effect_levels.get(skill_id)?;
+        if rows.is_empty() {
+            return None;
+        }
+        // 取等级 ≤ gem_level 的最高行；都比 gem_level 高则取首行。
+        let row = rows
+            .iter()
+            .rfind(|r| r.level <= gem_level)
+            .unwrap_or(&rows[0]);
+
+        // 使用时间：优先该等级的攻击时间，回退授予效果的施放时间（毫秒→秒）。
+        let use_time_ms = row.attack_time_ms.or(effect.cast_time);
+        let use_time_s = use_time_ms.filter(|&t| t > 0).map(|t| f64::from(t) / 1000.0);
+        let cooldown_s = row
+            .cooldown_ms
+            .filter(|&c| c > 0)
+            .map(|c| f64::from(c) / 1000.0);
+
+        // 消耗：按 cost_types 与 cost_amounts 位置配对（当前仅识别 type 0 = 法力，
+        // 其余类型待 CostTypes 表下载后解析）。
+        let mut mana_cost = None;
+        for (i, &cost_type) in effect.cost_types.iter().enumerate() {
+            if cost_type == 0
+                && let Some(&amount) = row.cost_amounts.get(i)
+                && amount > 0
+            {
+                mana_cost = Some(f64::from(amount));
+            }
+        }
+
+        // 基础伤害 stat：从 stat-set 域取该宝石等级行（等级越界取最接近的 ≤ 行）。
+        let base_damage = self
+            .skill_stat_sets
+            .get(skill_id)
+            .and_then(|set| {
+                set.levels
+                    .iter()
+                    .rfind(|l| l.gem_level <= gem_level)
+                    .or(set.levels.first())
+            })
+            .map(|level| level.stats.clone())
+            .unwrap_or_default();
+
+        Some(ResolvedSkillLevel {
+            use_time_s,
+            cooldown_s,
+            mana_cost,
+            base_damage,
+        })
     }
 
     /// 查询某职业的基础属性（按英文 canonical 名）；未知职业返回 `None`。

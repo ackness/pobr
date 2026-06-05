@@ -10,6 +10,7 @@
     "stats",
     "skill_gems",
     "granted_effects",
-    "granted_effect_levels"
+    "granted_effect_levels",
+    "granted_effect_stat_sets"
   ]
 }

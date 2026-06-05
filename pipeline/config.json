@@ -10,8 +10,8 @@
     { "name": "SkillGems", "columns": ["BaseItemType","GemType","GemColour","MinLevelReq","StrengthRequirementPercent","DexterityRequirementPercent","IntelligenceRequirementPercent","GemEffects"] },
     { "name": "GrantedEffects", "columns": ["Id","IsSupport","ActiveSkill","StatSet","CastTime","CostTypes","AllowedActiveSkillTypes","AddedActiveSkillTypes"] },
     { "name": "GrantedEffectsPerLevel", "columns": ["GrantedEffect","Level","Cooldown","CostAmounts","AttackTime"] },
-    { "name": "GrantedEffectStatSets", "columns": ["Id","BaseEffectiveness","IncrementalEffectiveness","ImplicitStats","ConstantStats","ConstantStatsValues"] },
-    { "name": "GrantedEffectStatSetsPerLevel", "columns": ["StatSet","GemLevel","BaseMultiplier","DamageMultiplier","FloatStats","AdditionalStats","AdditionalStatsValues","FloatStatsValues"] },
+    { "name": "GrantedEffectStatSets", "columns": ["Id","BaseEffectiveness","IncrementalEffectiveness","DamageIncrementalEffectiveness","ImplicitStats","ConstantStats","ConstantStatsValues"] },
+    { "name": "GrantedEffectStatSetsPerLevel", "columns": ["StatSet","GemLevel","BaseMultiplier","BaseResolvedValues","FloatStats","FloatStatsValues","AdditionalStats","AdditionalStatsValues"] },
     { "name": "ActiveSkills", "columns": ["Id","DisplayedName","Description","ActiveSkillTypes","GrantedEffect"] }
   ]
 }

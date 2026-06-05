@@ -145,12 +145,11 @@ pub struct SkillGemDef {
 /// 施放时间 + 允许的主动技能类型枚举 + StatSet/CostTypes 外键索引。
 ///
 /// 分等级参数（cost / cooldown / attack time）在独立域
-/// [`GrantedEffectLevels`]（`granted_effect_levels.json`），以本 `id` 为键。
+/// [`SkillLevelDef`]（`granted_effect_levels.json`），以本 `id` 为键。
 ///
-/// TODO（后续切片，受外部数据阻塞）：`stat_set` 指向的 `GrantedEffectStatSets` /
-/// `GrantedEffectStatSetsPerLevel` 表当前 pipeline 未下载，故**分等级伤害 stat 值**
-/// 尚不可解析（DPS 计算的最后一环）；这两张表加入 `pipeline/config.json` 重下后，
-/// 适配器即可按 `stat_set` 解析每级 stat 集，填入分等级缩放。
+/// 分等级**伤害 stat 值**在独立域 [`SkillStatSetDef`]
+/// （`granted_effect_stat_sets.json`），同样以本 `id` 为键（适配器已按 `stat_set`
+/// 外键 join 解析）。`stat_set` 字段保留原始索引备查。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GrantedEffectDef {
     /// 稳定 ID，即 `GrantedEffects.Id`（如 `FireballPlayer`）。
@@ -190,6 +189,53 @@ pub struct SkillLevelDef {
     /// 各消耗类型的消耗量（与 [`GrantedEffectDef::cost_types`] 按位置配对）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cost_amounts: Vec<u32>,
+}
+
+/// 某授予效果（技能）分等级解析出的**伤害相关 stat 值**集合
+/// （来自 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel.dat` 外键解析）。
+///
+/// 每个主动技能效果关联一个 `GrantedEffectStatSets`（`BaseEffectiveness` +
+/// `ImplicitStats`），其 `GrantedEffectStatSetsPerLevel` 行给出每个宝石等级上
+/// `FloatStats`/`AdditionalStats` 对应的**已解析值**（`BaseResolvedValues` /
+/// `AdditionalStatsValues`）。适配器把 stat 索引解析为稳定 stat id，过滤出伤害族
+/// （`spell_*_base/added_<type>_damage`、`secondary_*_base_<type>_damage`、
+/// `attack_*_added_<type>_damage` 等）后按 effect id 入库。
+///
+/// 收录于 `granted_effect_stat_sets.json`，以 [`GrantedEffectDef::id`] 为键
+/// （player 技能的 stat-set Id 与 effect Id 同名，适配器已在导出时完成 join）。
+/// 这是「宝石 → 技能伤害 → DPS」数据通道的最后一环。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillStatSetDef {
+    /// 授予效果 id（如 `FireballPlayer`），与 [`GrantedEffectDef::id`] 对齐。
+    pub id: String,
+    /// stat-set 的基础效力（`BaseEffectiveness`，备查；分等级值已是解析后的最终量）。
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    pub base_effectiveness: f64,
+    /// 分等级伤害 stat（按宝石等级升序）。
+    pub levels: Vec<SkillStatSetLevel>,
+}
+
+/// 某授予效果在某宝石等级上的伤害 stat 列表。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillStatSetLevel {
+    /// 宝石等级（1-based，对齐 [`SkillLevelDef::level`]）。
+    pub gem_level: u32,
+    /// 该等级上已解析的伤害 stat（stat id → 值）。
+    pub stats: Vec<SkillDamageStat>,
+}
+
+/// 单条已解析的伤害 stat（稳定 stat id + 解析后的数值）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillDamageStat {
+    /// 稳定 stat id（如 `spell_minimum_base_fire_damage`）。
+    pub stat: String,
+    /// 该宝石等级上的已解析值（`BaseResolvedValues` / `AdditionalStatsValues`）。
+    pub value: f64,
+}
+
+/// serde 跳过零值 f64（diff 友好）。
+fn is_zero_f64(v: &f64) -> bool {
+    *v == 0.0
 }
 
 /// 被动天赋节点的种类。

@@ -365,6 +365,12 @@ pub struct CalculateBuildOutput {
     pub hit_chance: f64,
     pub total_hit_avg: f64,
     pub dps: f64,
+    /// 主技能行动速率（次/秒，来自宝石分等级 cast/attack 时间）。
+    pub action_rate: f64,
+    /// 主技能冷却（秒，来自分等级 cooldown）。
+    pub cooldown: f64,
+    /// 主技能法力消耗（来自分等级 cost）。
+    pub mana_cost: f64,
 }
 
 /// `calculate-build` 报告：Build 摘要 + 计算输出。
@@ -418,6 +424,9 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         hit_chance: out.hit_chance,
         total_hit_avg: out.total_hit_avg,
         dps: out.dps,
+        action_rate: out.action_rate,
+        cooldown: out.cooldown,
+        mana_cost: out.mana_cost,
     };
 
     Ok(CalculateBuildReport {

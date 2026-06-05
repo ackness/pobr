@@ -233,6 +233,13 @@ fn run(args: Args) -> Result<String, String> {
         &skills.zh_skill_names,
     )?;
 
+    // 分等级伤害 stat 集（GrantedEffectStatSets* → effect id → 每级伤害）。
+    let stat_sets = skills::adapt_stat_sets(&en)?;
+    write_pretty(
+        &version_dir.join("granted_effect_stat_sets.json"),
+        &stat_sets.sets,
+    )?;
+
     let manifest = DataManifest {
         schema_version: CATALOG_SCHEMA_VERSION,
         poe_version: args.patch.clone(),
@@ -244,6 +251,7 @@ fn run(args: Args) -> Result<String, String> {
             "skill_gems".into(),
             "granted_effects".into(),
             "granted_effect_levels".into(),
+            "granted_effect_stat_sets".into(),
         ],
     };
     write_pretty(&version_dir.join("manifest.json"), &manifest)?;
@@ -252,7 +260,8 @@ fn run(args: Args) -> Result<String, String> {
         "适配完成：base_items {}/{} 条（过滤 {} 个占位），zh-TW 名称 {} 条；\
          stats {} 条；mods {} 条（过滤 {} 个空壳），mods zh-TW 名称 {} 条；\
          skill_gems {}/{} 条，granted_effects {}/{} 条，\
-         granted_effect_levels {} 个效果 / {} 行，zh-TW 技能名 {} 条 → {}",
+         granted_effect_levels {} 个效果 / {} 行，zh-TW 技能名 {} 条，\
+         granted_effect_stat_sets {} 个伤害效果 / {} 级（共 {} stat-set） → {}",
         bases.len(),
         total,
         total - bases.len(),
@@ -268,6 +277,9 @@ fn run(args: Args) -> Result<String, String> {
         skills.levels.len(),
         skills.level_rows_total,
         skills.zh_skill_names.len(),
+        stat_sets.sets.len(),
+        stat_sets.damage_levels_total,
+        stat_sets.sets_total,
         version_dir.display()
     ))
 }

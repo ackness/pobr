@@ -25,6 +25,11 @@ pub struct SocketGroup {
     pub enabled: bool,
     /// 该组的宝石稳定 id（主动技能在前，辅助宝石在后；与 PoB Gem 列表顺序一致）。
     pub gem_ids: Vec<String>,
+    /// 主动技能的授予效果 id（PoB `<Gem skillId>`，如 `ExplosiveGrenadePlayer`），
+    /// 用于解析该技能的分等级参数（cast/attack time、cost、cooldown）。`None`=未知。
+    pub active_skill_id: Option<String>,
+    /// 主动技能宝石的等级（PoB `<Gem level>`），用于在分等级数组中定位行。
+    pub active_gem_level: Option<u32>,
 }
 
 impl SocketGroup {
@@ -33,6 +38,8 @@ impl SocketGroup {
             slot: None,
             enabled: true,
             gem_ids: Vec::new(),
+            active_skill_id: None,
+            active_gem_level: None,
         }
     }
 
@@ -48,6 +55,13 @@ impl SocketGroup {
 
     pub fn with_enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
+        self
+    }
+
+    /// 设定主动技能授予效果 id + 宝石等级（分等级参数解析的键）。
+    pub fn with_active_skill(mut self, skill_id: impl Into<String>, gem_level: u32) -> Self {
+        self.active_skill_id = Some(skill_id.into());
+        self.active_gem_level = Some(gem_level);
         self
     }
 }
