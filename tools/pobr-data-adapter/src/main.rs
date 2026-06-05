@@ -18,7 +18,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use pobr_data::catalog::{BaseItemDef, CATALOG_SCHEMA_VERSION, DataManifest};
+use pobr_data::catalog::{
+    ArmourBaseStats, BaseItemDef, CATALOG_SCHEMA_VERSION, DataManifest, WeaponBaseStats,
+};
 use serde::Deserialize;
 
 mod mods;
@@ -126,6 +128,83 @@ pub(crate) struct RawNamed {
     pub(crate) name: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct RawWeaponType {
+    /// `BaseItemTypes` 行索引。
+    #[serde(rename = "BaseItemType")]
+    base_item_type: Option<usize>,
+    #[serde(rename = "DamageMin")]
+    damage_min: Option<i64>,
+    #[serde(rename = "DamageMax")]
+    damage_max: Option<i64>,
+    #[serde(rename = "Speed")]
+    speed: Option<i64>,
+    #[serde(rename = "CritChance")]
+    crit_chance: Option<i64>,
+    #[serde(rename = "RangeMax")]
+    range_max: Option<i64>,
+}
+
+#[derive(Deserialize)]
+struct RawArmourType {
+    #[serde(rename = "BaseItemType")]
+    base_item_type: Option<usize>,
+    #[serde(rename = "Armour")]
+    armour: Option<i64>,
+    #[serde(rename = "Evasion")]
+    evasion: Option<i64>,
+    #[serde(rename = "EnergyShield")]
+    energy_shield: Option<i64>,
+    #[serde(rename = "Ward")]
+    ward: Option<i64>,
+}
+
+fn nn(v: Option<i64>) -> u32 {
+    v.unwrap_or(0).max(0) as u32
+}
+
+/// `WeaponTypes` / `ArmourTypes` 按 base item 行索引的基底数值查表对。
+type BaseStatsLookups = (
+    BTreeMap<usize, WeaponBaseStats>,
+    BTreeMap<usize, ArmourBaseStats>,
+);
+
+/// 把 `WeaponTypes` / `ArmourTypes`（按 `BaseItemType` 行索引）建成基底数值查表。
+fn weapon_armour_lookups(en: &Path) -> Result<BaseStatsLookups, String> {
+    let weapons = read_json::<Vec<RawWeaponType>>(&en.join("WeaponTypes.json"))?;
+    let mut weapon_map = BTreeMap::new();
+    for w in weapons {
+        if let Some(idx) = w.base_item_type {
+            weapon_map.insert(
+                idx,
+                WeaponBaseStats {
+                    physical_min: nn(w.damage_min),
+                    physical_max: nn(w.damage_max),
+                    speed_ms: nn(w.speed),
+                    crit_chance: nn(w.crit_chance),
+                    range: nn(w.range_max),
+                },
+            );
+        }
+    }
+    let armours = read_json::<Vec<RawArmourType>>(&en.join("ArmourTypes.json"))?;
+    let mut armour_map = BTreeMap::new();
+    for a in armours {
+        if let Some(idx) = a.base_item_type {
+            armour_map.insert(
+                idx,
+                ArmourBaseStats {
+                    armour: nn(a.armour),
+                    evasion: nn(a.evasion),
+                    energy_shield: nn(a.energy_shield),
+                    ward: nn(a.ward),
+                },
+            );
+        }
+    }
+    Ok((weapon_map, armour_map))
+}
+
 pub(crate) fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, String> {
     let bytes = fs::read(path).map_err(|e| format!("读取 {} 失败：{e}", path.display()))?;
     serde_json::from_slice(&bytes).map_err(|e| format!("解析 {} 失败：{e}", path.display()))
@@ -168,6 +247,9 @@ fn run(args: Args) -> Result<String, String> {
         .filter_map(|r| r.name.map(|n| (r.index, n)))
         .collect();
 
+    // 武器/护甲基底数值（WeaponTypes / ArmourTypes，按 base item 行索引 join）。
+    let (weapon_map, armour_map) = weapon_armour_lookups(&en)?;
+
     let mut bases = Vec::new();
     let mut i18n_zh: BTreeMap<String, String> = BTreeMap::new();
     let total = raw_bases.len();
@@ -203,6 +285,8 @@ fn run(args: Args) -> Result<String, String> {
             tags: tag_ids,
             implicits,
             mod_domain: raw.mod_domain.unwrap_or(0),
+            weapon: weapon_map.get(&index).cloned(),
+            armour: armour_map.get(&index).cloned(),
         });
     }
 
