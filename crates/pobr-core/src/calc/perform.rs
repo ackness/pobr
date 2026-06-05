@@ -4,8 +4,10 @@ use crate::{CalcConfig, ModDb};
 
 use super::ailment::{AilmentSource, bleed_traced, ignite_traced, poison_traced, shock_traced};
 use super::{
-    BreakdownTable, CalcError, Env, MinimalInput, OutputTable, ResistanceSuite, calc_defence,
-    calc_ehp, calc_skill_use_time, calculate_minimal_vs_enemy, regen, reservation,
+    BreakdownTable, CalcError, Env, MinimalInput, MinionOutput, OutputTable, ResistanceSuite,
+    calc_avoidance, calc_crit_extra_reduction, calc_defence, calc_ehp, calc_es_recharge,
+    calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect,
+    es_recharge_per_second, regen, reservation,
 };
 use crate::TraceGraph;
 
@@ -39,12 +41,66 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // 单独成段，避免与 fill_mechanics 内 player.mod_db 的不可变借用冲突。
     fill_ailments(env);
 
+    // 召唤物（Lane4）：每个召唤物是独立 Actor，复用玩家同款 offence/defence 管线。
+    // 无召唤物时该段空转，行为与无此字段时完全一致（向后兼容）。
+    perform_minions(env);
+
     Ok(())
+}
+
+/// 对每个召唤物跑同一套 offence/defence 管线，并把关键输出快照收集到玩家
+/// `OutputTable.minions`。召唤物复用 `calculate_minimal_vs_enemy` + `calc_defence`，
+/// 不另写公式。召唤物对敌人的命中沿用玩家敌人配置（同一 `env.enemy`）。
+fn perform_minions(env: &mut Env) {
+    if env.minions.is_empty() {
+        return;
+    }
+
+    let mut snapshots = Vec::with_capacity(env.minions.len());
+    for minion in &mut env.minions {
+        let mut input = MinimalInput::from(minion.base);
+        // 召唤物命中敌人：与玩家一致，敌方闪避优先取 enemy.mod_db 的 Evasion BASE。
+        let enemy_evasion_from_db =
+            env.enemy
+                .mod_db
+                .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
+        input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
+            enemy_evasion_from_db
+        } else {
+            env.enemy.base.evasion
+        };
+
+        let output =
+            calculate_minimal_vs_enemy(&minion.mod_db, &env.enemy.mod_db, &env.cfg, &input);
+        minion.output = OutputTable::from(&output);
+        minion.breakdown = BreakdownTable::from_steps(output.breakdown);
+        calc_defence(minion, &env.cfg, env.enemy.base.accuracy);
+
+        snapshots.push(MinionOutput {
+            level: minion.level as u32,
+            dps: minion.output.dps,
+            life: minion.output.life,
+            armour: minion.output.armour,
+            evasion: minion.output.evasion,
+            energy_shield: minion.output.energy_shield,
+        });
+    }
+    env.player.output.minions = snapshots;
 }
 
 /// Fill 阶段：在基础 offence + defence 之上，把 skill-use-time / ailment / EHP /
 /// reservation / regen / 防御几率写入 [`OutputTable`]。纯增量，不改既有字段。
 fn fill_mechanics(env: &mut Env) {
+    // 敌人暴击几率/爆伤先行读出（避免后续 player.mod_db 可变借用与 enemy 不可变借用冲突）。
+    let enemy_crit_chance =
+        env.enemy
+            .mod_db
+            .sum(ModType::Base, &env.cfg, &[ModName::from("CritChance")]);
+    let enemy_crit_damage =
+        env.enemy
+            .mod_db
+            .sum(ModType::Base, &env.cfg, &[ModName::from("CritMultiplier")]);
+
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
 
@@ -119,6 +175,40 @@ fn fill_mechanics(env: &mut Env) {
         cfg,
         &[ModName::from("SpellSuppressionChance")],
     ));
+
+    // --- ES 充能（Lane2：充能与再生独立；energy_shield_regen 字段保持现有逻辑）---
+    let zealots_oath = db.flag(cfg, ModName::from("ZealotsOath"));
+    let es_recharge = calc_es_recharge(db, cfg, env.player.output.energy_shield, zealots_oath);
+    env.player.output.es_recharge_rate = es_recharge.rate_fraction;
+    env.player.output.es_recharge_delay = es_recharge.delay_seconds;
+    env.player.output.es_recharge_per_second =
+        es_recharge_per_second(&es_recharge, env.player.output.energy_shield);
+
+    // --- 规避几率（Lane2：击中/投射物/各异常）---
+    let avoidance = calc_avoidance(db, cfg, env.player.output.energy_shield);
+    env.player.output.avoid_all_damage_from_hits = avoidance.avoid_all_damage_from_hits;
+    env.player.output.avoid_projectile_damage = avoidance.avoid_projectile_damage;
+    env.player.output.avoid_stun = avoidance.avoid_stun;
+    env.player.output.avoid_ignite = avoidance.avoid_ignite;
+    env.player.output.avoid_shock = avoidance.avoid_shock;
+    env.player.output.avoid_chill = avoidance.avoid_chill;
+    env.player.output.avoid_freeze = avoidance.avoid_freeze;
+    env.player.output.avoid_poison = avoidance.avoid_poison;
+    env.player.output.avoid_bleeding = avoidance.avoid_bleeding;
+
+    // --- 承受伤害乘数（Lane2：受击口径，按类型）---
+    let taken = calc_taken_multi_suite(db, cfg);
+    env.player.output.taken_multi_physical = taken.physical_when_hit;
+    env.player.output.taken_multi_fire = taken.fire_when_hit;
+    env.player.output.taken_multi_cold = taken.cold_when_hit;
+    env.player.output.taken_multi_lightning = taken.lightning_when_hit;
+    env.player.output.taken_multi_chaos = taken.chaos_when_hit;
+
+    // --- 暴击额外伤害减免 + 敌人暴击效果（Lane2）---
+    let crit_red = calc_crit_extra_reduction(db, cfg);
+    env.player.output.crit_extra_damage_reduction = crit_red.reduction_pct;
+    env.player.output.enemy_crit_effect =
+        enemy_crit_effect(enemy_crit_chance, enemy_crit_damage, &crit_red);
 }
 
 /// 异常 fill：对每类伤害异常算 几率 × 暴击加权 magnitude × effMult，写入 [`OutputTable`]。

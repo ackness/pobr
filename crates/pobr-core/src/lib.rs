@@ -27,7 +27,10 @@ pub use item_text::{ItemTextError, parse_item_text};
 pub use mod_db::{ModContribution, ModDb, ModList};
 pub use modifier::{ModTag, ModValue, Modifier};
 pub use passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes};
-pub use skill_source::{GemIngest, GemModSource, ingest_gem};
+pub use skill_source::{
+    ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError, SupportGemSpec, SupportIngestError,
+    can_support, ingest_active_gem, ingest_gem, ingest_gem_leveled, ingest_support_gem,
+};
 pub use trace::{
     TraceEdge, TraceGraph, TraceNode, TraceNodeId, TraceOperation, TraceOutput, TracedValue,
 };

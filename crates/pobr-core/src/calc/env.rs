@@ -9,6 +9,9 @@ pub struct Env {
     pub player: Actor,
     pub enemy: Actor,
     pub cfg: CalcConfig,
+    /// 玩家召唤物（Lane4）。每个召唤物是独立 `Actor`，复用 player 的 offence/defence
+    /// 管线。无召唤物时为空（向后兼容：行为与无此字段时一致）。
+    pub minions: Vec<Actor>,
 }
 
 impl Env {
@@ -17,11 +20,53 @@ impl Env {
             player,
             enemy: Actor::new(1, ActorBaseStats::default()),
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),
+            minions: Vec::new(),
         }
+    }
+
+    /// 把一个 [`super::MinionContext`] 转成召唤物 `Actor` 并接入 `Env.minions`。
+    ///
+    /// 召唤物基础属性映射到 [`ActorBaseStats`]（life/armour/evasion/energy_shield/resists +
+    /// 虚拟武器伤害/攻速喂给攻击伤害管线），`mod_db` 携带三通道注入结果。集成阶段调用此
+    /// 入口后，`perform` 会对每个召唤物跑同一套 offence/defence。
+    pub fn add_minion(&mut self, ctx: super::MinionContext) -> &mut Self {
+        self.minions.push(minion_actor_from_context(&ctx));
+        self
     }
 
     pub fn with_config(mut self, cfg: CalcConfig) -> Self {
         self.cfg = cfg;
         self
     }
+}
+
+/// 把召唤物 [`super::MinionContext`] 转成可走 offence/defence 管线的 `Actor`。
+///
+/// 映射策略（避免重复计入 / 漏算）：
+/// - **生命 / 抗性 / 虚拟武器伤害**：写入 [`ActorBaseStats`] 标量基础字段——因为玩家管线
+///   的池子查询用 `MaximumLife`、抗性查询用 `FireResistance`，与召唤物 `ModDb` 内禀的
+///   `Life`/`FireResist` BASE 命名不同，靠 db 取不到，必须经标量基础喂入。
+/// - **护甲 / 闪避 / ES**：标量基础留 0，由召唤物 `ModDb` 内禀的 `Armour`/`Evasion`/
+///   `EnergyShield` BASE 经防御管线驱动（这些查询名与内禀命名一致，避免双重计入）。
+/// - `mod_db` 原样携带三通道注入结果。
+fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
+    let base = ActorBaseStats {
+        life: ctx.base.life,
+        mana: 0.0,
+        // 护甲/闪避/ES 由 mod_db BASE 驱动（防御管线读同名词条），标量留 0 防双重计入。
+        armour: 0.0,
+        evasion: 0.0,
+        energy_shield: 0.0,
+        accuracy: 0.0,
+        fire_resistance: ctx.base.fire_resist,
+        cold_resistance: ctx.base.cold_resist,
+        lightning_resistance: ctx.base.lightning_resist,
+        // 攻击型召唤物的虚拟武器伤害喂给攻击伤害管线。
+        hit_min: ctx.base.weapon.physical_min,
+        hit_max: ctx.base.weapon.physical_max,
+        action_rate: ctx.base.weapon.attack_rate,
+    };
+    let mut actor = Actor::new(ctx.base.level as u8, base);
+    actor.mod_db = ctx.mod_db.clone();
+    actor
 }
