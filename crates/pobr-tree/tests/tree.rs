@@ -101,6 +101,7 @@ fn compute_node_mods_collects_only_allocated() {
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(1), NodeId(2)],
+        ..Default::default()
     };
 
     let mods = tree.compute_node_mods(&spec);
@@ -116,6 +117,7 @@ fn compute_node_mods_skips_jewel_socket_stats() {
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(1), NodeId(3)],
+        ..Default::default()
     };
 
     let mods = tree.compute_node_mods(&spec);
@@ -130,15 +132,16 @@ fn compute_node_mods_skips_jewel_socket_stats() {
 }
 
 #[test]
-fn compute_node_mods_skips_mastery_stats() {
+fn compute_node_mods_skips_mastery_without_selection() {
+    // Backwards-compatible: Mastery node with no entry in mastery_effects is gated.
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(1), NodeId(6)],
+        ..Default::default()
     };
 
     let mods = tree.compute_node_mods(&spec);
 
-    // Mastery (skill 6) carries all options; gated until selection is modeled.
     assert!(mods.iter().all(|m| m.node_id != NodeId(6)));
     assert_eq!(mods.len(), 1);
 }
@@ -148,6 +151,7 @@ fn compute_node_mods_ignores_unknown_allocated_ids() {
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(1), NodeId(404)],
+        ..Default::default()
     };
 
     let mods = tree.compute_node_mods(&spec);
@@ -161,6 +165,7 @@ fn compute_node_mods_skips_nodes_with_no_stats() {
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(4), NodeId(5)],
+        ..Default::default()
     };
 
     let mods = tree.compute_node_mods(&spec);
@@ -175,6 +180,7 @@ fn compute_node_mods_preserves_allocation_order() {
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(4), NodeId(2), NodeId(1)],
+        ..Default::default()
     };
 
     let mods = tree.compute_node_mods(&spec);
@@ -188,6 +194,7 @@ fn allocated_mods_carry_passive_node_source_id() {
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(2)],
+        ..Default::default()
     };
 
     let mods = tree.compute_node_mods(&spec);
@@ -203,6 +210,7 @@ fn collect_allocated_mods_free_function_matches_tree_method() {
     let nodes: HashMap<u32, PassiveNodeDef> = tree.nodes.clone();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(1), NodeId(2), NodeId(3)],
+        ..Default::default()
     };
 
     let via_fn: Vec<AllocatedNodeMods> = collect_allocated_mods(&spec, &nodes);
@@ -252,4 +260,141 @@ fn from_nodes_round_trips_with_positions() {
 
     assert_eq!(tree.len(), 2);
     assert_eq!(tree.nodes_in_radius(NodeId(1), 100.0), vec![NodeId(2)]);
+}
+
+// --- Mastery selection tests ---
+
+/// 当 mastery_effects 中包含对应节点的选择时，应只注入选定的单条词条。
+#[test]
+fn mastery_with_selection_injects_chosen_effect() {
+    // Arrange
+    let tree = PassiveTree::from_json(fixture_json()).unwrap();
+    let mut mastery_effects = HashMap::new();
+    mastery_effects.insert(
+        NodeId(6),
+        MasterySelection {
+            effect_text: "mastery effect a".to_string(),
+        },
+    );
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(1), NodeId(6)],
+        mastery_effects,
+    };
+
+    // Act
+    let mods = tree.compute_node_mods(&spec);
+
+    // Assert: mastery node 6 must now appear with the selected effect only
+    let mastery_mod = mods.iter().find(|m| m.node_id == NodeId(6)).unwrap();
+    assert_eq!(mastery_mod.modifier_texts, vec!["mastery effect a"]);
+    assert_eq!(mods.len(), 2);
+}
+
+/// 当 mastery_effects 中选择了 effect b，应注入 effect b 而不是 a。
+#[test]
+fn mastery_selection_injects_second_effect() {
+    // Arrange
+    let tree = PassiveTree::from_json(fixture_json()).unwrap();
+    let mut mastery_effects = HashMap::new();
+    mastery_effects.insert(
+        NodeId(6),
+        MasterySelection {
+            effect_text: "mastery effect b".to_string(),
+        },
+    );
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(6)],
+        mastery_effects,
+    };
+
+    // Act
+    let mods = tree.compute_node_mods(&spec);
+
+    // Assert
+    let mastery_mod = mods.iter().find(|m| m.node_id == NodeId(6)).unwrap();
+    assert_eq!(mastery_mod.modifier_texts, vec!["mastery effect b"]);
+    assert_eq!(mods.len(), 1);
+}
+
+/// 当 mastery_effects 中没有对应节点的选择时，Mastery 节点整体 gating（向后兼容）。
+#[test]
+fn mastery_without_selection_is_still_gated() {
+    // Arrange
+    let tree = PassiveTree::from_json(fixture_json()).unwrap();
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(1), NodeId(6)],
+        mastery_effects: HashMap::new(), // 无任何选择
+    };
+
+    // Act
+    let mods = tree.compute_node_mods(&spec);
+
+    // Assert: mastery node 6 is gated out
+    assert!(mods.iter().all(|m| m.node_id != NodeId(6)));
+    assert_eq!(mods.len(), 1);
+}
+
+/// 多个 Mastery 节点各自独立选择，互不干扰。
+#[test]
+fn multiple_mastery_selections_are_independent() {
+    // Arrange: fixture only has node 6 as mastery; build a tree with two mastery nodes
+    let nodes_json = r#"[
+      { "skill": 10, "id": "mastery_a", "kind": "mastery", "stats": ["effect_a1", "effect_a2"] },
+      { "skill": 11, "id": "mastery_b", "kind": "mastery", "stats": ["effect_b1", "effect_b2"] }
+    ]"#;
+    let tree = PassiveTree::from_json(nodes_json).unwrap();
+
+    let mut mastery_effects = HashMap::new();
+    mastery_effects.insert(
+        NodeId(10),
+        MasterySelection {
+            effect_text: "effect_a2".to_string(),
+        },
+    );
+    mastery_effects.insert(
+        NodeId(11),
+        MasterySelection {
+            effect_text: "effect_b1".to_string(),
+        },
+    );
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(10), NodeId(11)],
+        mastery_effects,
+    };
+
+    // Act
+    let mods = tree.compute_node_mods(&spec);
+
+    // Assert
+    assert_eq!(mods.len(), 2);
+    let mod_a = mods.iter().find(|m| m.node_id == NodeId(10)).unwrap();
+    let mod_b = mods.iter().find(|m| m.node_id == NodeId(11)).unwrap();
+    assert_eq!(mod_a.modifier_texts, vec!["effect_a2"]);
+    assert_eq!(mod_b.modifier_texts, vec!["effect_b1"]);
+}
+
+/// Mastery 节点的 SourceId 与普通节点保持一致（PassiveNode, skill id 字符串）。
+#[test]
+fn mastery_selection_source_id_is_passive_node() {
+    // Arrange
+    let tree = PassiveTree::from_json(fixture_json()).unwrap();
+    let mut mastery_effects = HashMap::new();
+    mastery_effects.insert(
+        NodeId(6),
+        MasterySelection {
+            effect_text: "mastery effect a".to_string(),
+        },
+    );
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(6)],
+        mastery_effects,
+    };
+
+    // Act
+    let mods = tree.compute_node_mods(&spec);
+
+    // Assert
+    let m = &mods[0];
+    assert_eq!(m.source_id.kind, SourceKind::PassiveNode);
+    assert_eq!(m.source_id.id, "6");
 }

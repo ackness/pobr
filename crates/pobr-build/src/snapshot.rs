@@ -216,10 +216,12 @@ mod tests {
         let mut a = build_with_level(90);
         a = a.with_tree(PassiveTreeSpec {
             allocated_nodes: vec![NodeId(3), NodeId(1), NodeId(2)],
+            ..Default::default()
         });
         let mut b = build_with_level(90);
         b = b.with_tree(PassiveTreeSpec {
             allocated_nodes: vec![NodeId(1), NodeId(2), NodeId(3)],
+            ..Default::default()
         });
         assert_eq!(
             BuildSnapshot::from_build(&a).content_hash(),

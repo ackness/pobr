@@ -9,3 +9,6 @@ regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
+[dev-dependencies]
+pobr-core.workspace = true
+

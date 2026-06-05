@@ -403,3 +403,49 @@ pub fn check_against_fixture(
     let expected = read_catalog(fixture_path)?;
     Ok(diff_catalogs(&expected, actual))
 }
+
+/// Describe a key present in PoBR's display catalog but absent from the PoB fixture.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MissingPobKey {
+    /// The PoBR display stat id (doubles as the pob_key we map to).
+    pub pobr_id: String,
+    /// The PoB output key we tried to find in the fixture.
+    pub pob_key: String,
+}
+
+/// Cross-check PoBR's declared display stat definitions against a PoB fixture catalog.
+///
+/// For every `DisplayStatDefinition` in `pobr_catalog` that has a `pob_key` **and** is
+/// `ParityStatus::Computed`, verify that the `pob_key` appears in the PoB
+/// fixture's `output_keys`.  Returns the list of missing keys; empty means full
+/// parity.
+///
+/// This is the CI gate: if PoBR claims to compute a stat but PoB doesn't know that
+/// key at all, something is wrong with the mapping.
+pub fn check_pobr_parity(
+    pob_fixture: &PobCatalog,
+    pobr_display_defs: &[DisplayStatDefinition],
+) -> Vec<MissingPobKey> {
+    let pob_key_set: BTreeSet<&str> = pob_fixture
+        .output_keys
+        .iter()
+        .map(|e| e.key.as_str())
+        .chain(pob_fixture.display_stats.iter().map(|s| s.id.as_str()))
+        .collect();
+
+    pobr_display_defs
+        .iter()
+        .filter(|def| def.parity_status == ParityStatus::Computed)
+        .filter_map(|def| {
+            let pob_key = def.pob_key.as_ref()?.as_str().to_string();
+            if pob_key_set.contains(pob_key.as_str()) {
+                None
+            } else {
+                Some(MissingPobKey {
+                    pobr_id: def.id.as_str().to_string(),
+                    pob_key,
+                })
+            }
+        })
+        .collect()
+}

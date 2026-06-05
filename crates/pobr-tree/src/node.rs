@@ -28,8 +28,8 @@ pub struct AllocatedNodeMods {
 /// 规则：
 /// - 只处理 `spec.allocated_nodes` 中**确实存在于 `nodes`** 的节点（未知 id 跳过）。
 /// - **JewelSocket 节点本身的 `stats` 不计入**（gating；珠宝镶嵌后另行处理）。
-/// - **Mastery 节点不计入**：其 `stats` 通常是所有可选效果，而玩家只选一条；
-///   在 `PassiveTreeSpec` 增加 mastery 效果选择字段前，避免把全部效果一并应用。
+/// - **Mastery 节点**：若 `spec.mastery_effects` 中存在该节点的选择，则只注入
+///   玩家选定的那一条词条文本；若无选择记录则跳过（整体 gating，与历史行为兼容）。
 /// - 跳过 `stats` 为空的节点（无可贡献的 modifier）。
 ///
 /// 输出顺序遵循 `spec.allocated_nodes` 的顺序（确定性）。
@@ -43,13 +43,22 @@ pub fn collect_allocated_mods(
         .iter()
         .filter_map(|node_id| {
             let node = nodes.get(&node_id.0)?;
-            // JewelSocket（珠宝插槽 gating）与 Mastery（多选其一，缺选择信息）不直接计入。
-            if matches!(
-                node.kind,
-                PassiveNodeKind::JewelSocket | PassiveNodeKind::Mastery
-            ) {
+
+            // JewelSocket 整体 gating：珠宝镶嵌后另行处理。
+            if node.kind == PassiveNodeKind::JewelSocket {
                 return None;
             }
+
+            // Mastery 节点：按玩家选择注入单条词条；无选择则整体 gating。
+            if node.kind == PassiveNodeKind::Mastery {
+                let selection = spec.mastery_effects.get(node_id)?;
+                return Some(AllocatedNodeMods {
+                    node_id: *node_id,
+                    modifier_texts: vec![selection.effect_text.clone()],
+                    source_id: SourceId::new(SourceKind::PassiveNode, node_id.0.to_string()),
+                });
+            }
+
             if node.stats.is_empty() {
                 return None;
             }

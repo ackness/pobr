@@ -642,6 +642,7 @@ dependencies = [
 name = "sync-pob-catalog"
 version = "0.1.0"
 dependencies = [
+ "pobr-core",
  "pobr-data",
  "regex",
  "serde",
