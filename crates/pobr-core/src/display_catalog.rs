@@ -125,6 +125,235 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "ChaosMaximumHitTaken",
         ),
+        // --- ES Recharge (Wave 2) ---
+        computed(
+            "EsRechargeRate",
+            Cat::Recovery,
+            Vt::Percent,
+            "EnergyShieldRechargeRate",
+        ),
+        computed(
+            "EsRechargeDelay",
+            Cat::Recovery,
+            Vt::TimeSeconds,
+            "EnergyShieldRechargeDelay",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "EsRechargePerSecond",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldRechargePerSecond",
+        ),
+        // --- Avoidance (Wave 2) ---
+        computed(
+            "AvoidAllDamageFromHits",
+            Cat::Avoidance,
+            Vt::Percent,
+            "AvoidAllDamageFromHits",
+        ),
+        computed(
+            "AvoidProjectileDamage",
+            Cat::Avoidance,
+            Vt::Percent,
+            "AvoidProjectileDamage",
+        ),
+        computed("AvoidStun", Cat::Avoidance, Vt::Percent, "AvoidStun"),
+        computed("AvoidIgnite", Cat::Avoidance, Vt::Percent, "AvoidIgnite"),
+        computed("AvoidShock", Cat::Avoidance, Vt::Percent, "AvoidShock"),
+        computed("AvoidChill", Cat::Avoidance, Vt::Percent, "AvoidChill"),
+        computed("AvoidFreeze", Cat::Avoidance, Vt::Percent, "AvoidFreeze"),
+        computed("AvoidPoison", Cat::Avoidance, Vt::Percent, "AvoidPoison"),
+        computed(
+            "AvoidBleeding",
+            Cat::Avoidance,
+            Vt::Percent,
+            "AvoidBleeding",
+        ),
+        // --- Taken multipliers (Wave 2) ---
+        computed(
+            "TakenMultiPhysical",
+            Cat::Mitigation,
+            Vt::Number,
+            "PhysicalDamageTakenMultiplier",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "TakenMultiFire",
+            Cat::Mitigation,
+            Vt::Number,
+            "FireDamageTakenMultiplier",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "TakenMultiCold",
+            Cat::Mitigation,
+            Vt::Number,
+            "ColdDamageTakenMultiplier",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "TakenMultiLightning",
+            Cat::Mitigation,
+            Vt::Number,
+            "LightningDamageTakenMultiplier",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "TakenMultiChaos",
+            Cat::Mitigation,
+            Vt::Number,
+            "ChaosDamageTakenMultiplier",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "CritExtraDamageReduction",
+            Cat::Mitigation,
+            Vt::Percent,
+            "CritExtraDamageReduction",
+        ),
+        computed(
+            "EnemyCritEffect",
+            Cat::Mitigation,
+            Vt::Number,
+            "EnemyCritEffect",
+        )
+        .with_higher_is_better(Some(false)),
+        // --- Charges (Wave 2 / Lane A) ---
+        computed(
+            "ChargePowerCurrent",
+            Cat::Utility,
+            Vt::Number,
+            "PowerCharges",
+        ),
+        computed(
+            "ChargePowerMaximum",
+            Cat::Utility,
+            Vt::Number,
+            "PowerChargesMax",
+        ),
+        computed(
+            "ChargeFrenzyCurrent",
+            Cat::Utility,
+            Vt::Number,
+            "FrenzyCharges",
+        ),
+        computed(
+            "ChargeFrenzyMaximum",
+            Cat::Utility,
+            Vt::Number,
+            "FrenzyChargesMax",
+        ),
+        computed(
+            "ChargeEnduranceCurrent",
+            Cat::Utility,
+            Vt::Number,
+            "EnduranceCharges",
+        ),
+        computed(
+            "ChargeEnduranceMaximum",
+            Cat::Utility,
+            Vt::Number,
+            "EnduranceChargesMax",
+        ),
+        // --- Leech / Recoup (Wave 2 / Lane A) ---
+        computed("LifeLeechRate", Cat::Recovery, Vt::Number, "LifeLeechRate"),
+        computed("ManaLeechRate", Cat::Recovery, Vt::Number, "ManaLeechRate"),
+        computed(
+            "EsLeechRate",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldLeechRate",
+        ),
+        computed(
+            "LifeRecoupRate",
+            Cat::Recovery,
+            Vt::Number,
+            "LifeRecoupRate",
+        ),
+        computed(
+            "EsRecoupRate",
+            Cat::Recovery,
+            Vt::Number,
+            "EnergyShieldRecoupRate",
+        ),
+        // --- Ailment extensions (Wave 2 / Lane B) ---
+        computed("ChillEffect", Cat::Ailment, Vt::Percent, "ChillEffect"),
+        computed(
+            "FreezeBuildupPct",
+            Cat::Ailment,
+            Vt::Percent,
+            "FreezeBuildupPerHit",
+        ),
+        computed(
+            "ElectrocuteBuildupPct",
+            Cat::Ailment,
+            Vt::Percent,
+            "ElectrocuteBuildupPerHit",
+        ),
+        computed(
+            "BleedStackedDPS",
+            Cat::DotDamage,
+            Vt::Number,
+            "BleedStackedDPS",
+        ),
+        computed(
+            "BleedActiveStacks",
+            Cat::DotDamage,
+            Vt::Number,
+            "BleedActiveStacks",
+        ),
+        computed(
+            "PoisonStackedDPS",
+            Cat::DotDamage,
+            Vt::Number,
+            "PoisonStackedDPS",
+        ),
+        computed(
+            "PoisonActiveStacks",
+            Cat::DotDamage,
+            Vt::Number,
+            "PoisonActiveStacks",
+        ),
+        // --- Skill mechanics (Wave 2 / Lane C) ---
+        computed("AoeRadius", Cat::SkillMechanics, Vt::Number, "AreaOfEffect"),
+        computed(
+            "AoeAreaMod",
+            Cat::SkillMechanics,
+            Vt::Percent,
+            "AreaOfEffectMod",
+        ),
+        computed(
+            "ProjectileCount",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "ProjectileCount",
+        ),
+        computed("Cooldown", Cat::SkillMechanics, Vt::TimeSeconds, "Cooldown")
+            .with_higher_is_better(Some(false)),
+        computed(
+            "CooldownStoredUses",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "CooldownStoredUses",
+        ),
+        computed("ManaCost", Cat::Cost, Vt::Number, "ManaCost").with_higher_is_better(Some(false)),
+        computed("LifeCost", Cat::Cost, Vt::Number, "LifeCost").with_higher_is_better(Some(false)),
+        computed("SpiritReserved", Cat::Cost, Vt::Number, "SpiritReserved")
+            .with_higher_is_better(Some(false)),
+        // --- Trigger (Wave 2 / Lane 4) ---
+        computed(
+            "TriggerRateCap",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "TriggerRateCap",
+        ),
+        computed(
+            "SkillTriggerRate",
+            Cat::SkillMechanics,
+            Vt::Number,
+            "SkillTriggerRate",
+        ),
     ]
 }
 
@@ -183,6 +412,70 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "ColdMaxHit" => output.cold_max_hit,
         "LightningMaxHit" => output.lightning_max_hit,
         "ChaosMaxHit" => output.chaos_max_hit,
+
+        // --- ES Recharge ---
+        "EsRechargeRate" => output.es_recharge_rate,
+        "EsRechargeDelay" => output.es_recharge_delay,
+        "EsRechargePerSecond" => output.es_recharge_per_second,
+
+        // --- Avoidance ---
+        "AvoidAllDamageFromHits" => output.avoid_all_damage_from_hits,
+        "AvoidProjectileDamage" => output.avoid_projectile_damage,
+        "AvoidStun" => output.avoid_stun,
+        "AvoidIgnite" => output.avoid_ignite,
+        "AvoidShock" => output.avoid_shock,
+        "AvoidChill" => output.avoid_chill,
+        "AvoidFreeze" => output.avoid_freeze,
+        "AvoidPoison" => output.avoid_poison,
+        "AvoidBleeding" => output.avoid_bleeding,
+
+        // --- Taken multipliers ---
+        "TakenMultiPhysical" => output.taken_multi_physical,
+        "TakenMultiFire" => output.taken_multi_fire,
+        "TakenMultiCold" => output.taken_multi_cold,
+        "TakenMultiLightning" => output.taken_multi_lightning,
+        "TakenMultiChaos" => output.taken_multi_chaos,
+        "CritExtraDamageReduction" => output.crit_extra_damage_reduction,
+        "EnemyCritEffect" => output.enemy_crit_effect,
+
+        // --- Charges ---
+        "ChargePowerCurrent" => output.charge_power_current as f64,
+        "ChargePowerMaximum" => output.charge_power_maximum as f64,
+        "ChargeFrenzyCurrent" => output.charge_frenzy_current as f64,
+        "ChargeFrenzyMaximum" => output.charge_frenzy_maximum as f64,
+        "ChargeEnduranceCurrent" => output.charge_endurance_current as f64,
+        "ChargeEnduranceMaximum" => output.charge_endurance_maximum as f64,
+
+        // --- Leech / Recoup ---
+        "LifeLeechRate" => output.life_leech_rate,
+        "ManaLeechRate" => output.mana_leech_rate,
+        "EsLeechRate" => output.es_leech_rate,
+        "LifeRecoupRate" => output.life_recoup_rate,
+        "EsRecoupRate" => output.es_recoup_rate,
+
+        // --- Ailment extensions ---
+        "ChillEffect" => output.chill_effect,
+        "FreezeBuildupPct" => output.freeze_buildup_pct,
+        "ElectrocuteBuildupPct" => output.electrocute_buildup_pct,
+        "BleedStackedDPS" => output.bleed_stacked_dps,
+        "BleedActiveStacks" => output.bleed_active_stacks,
+        "PoisonStackedDPS" => output.poison_stacked_dps,
+        "PoisonActiveStacks" => output.poison_active_stacks,
+
+        // --- Skill mechanics ---
+        "AoeRadius" => output.aoe_radius,
+        "AoeAreaMod" => output.aoe_area_mod,
+        "ProjectileCount" => output.projectile_count,
+        "Cooldown" => output.cooldown,
+        "CooldownStoredUses" => output.cooldown_stored_uses as f64,
+        "ManaCost" => output.mana_cost,
+        "LifeCost" => output.life_cost,
+        "SpiritReserved" => output.spirit_reserved,
+
+        // --- Trigger ---
+        "TriggerRateCap" => output.trigger_rate_cap,
+        "SkillTriggerRate" => output.skill_trigger_rate,
+
         _ => 0.0,
     }
 }

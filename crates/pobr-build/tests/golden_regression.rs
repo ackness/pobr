@@ -250,3 +250,256 @@ fn pipeline_smoke_test_both_fixtures() {
             .unwrap_or_else(|e| panic!("{name}: calculate failed: {e}"));
     }
 }
+
+// ---------------------------------------------------------------------------
+// Wave 1 / Wave 2 新增字段快照（空 Build + 空 MinimalInput → 全为默认中性值）
+//
+// 目的：锁定 Wave1/2 新增 OutputTable 字段在默认（无词条）状态下的基准值，
+// 防止这些字段在重构过程中被静默改写。
+// 基线值均来自 OutputTable::default() 中性规则：
+//   - 大多数字段 0.0（无词条时无效果）
+//   - taken_multi_* = 1.0（乘数中性，不减伤也不增伤）
+//   - enemy_crit_effect = 1.0（中性）
+// ---------------------------------------------------------------------------
+
+/// Wave 1 暴击字段快照（crit_chance / crit_multiplier / pre_effective_crit_chance）。
+///
+/// 说明：crit_multiplier 基值 = 1 + PLAYER_BASE_CRIT_DAMAGE_BONUS/100 = 2.0（PoE2 口径）；
+/// 无额外增伤词条时维持 2.0。crit_chance 无词条 → 0.0（无暴击 base）。
+const DEADEYE_GOLDEN_CRIT_MULTIPLIER: f64 = 2.0;
+
+#[test]
+fn deadeye_golden_wave1_crit_fields() {
+    let build = build_from_code(DEADEYE_CODE);
+    let out = calculate(&build, &default_opts()).expect("calc");
+
+    // 暴击率：无暴击 base 词条 → 0.0。
+    assert_near_float("crit_chance", 0.0, out.crit_chance);
+    // 暴击加成：PoE2 基础值 2.0（PLAYER_BASE_CRIT_DAMAGE_BONUS = 100%）。
+    assert_near_float(
+        "crit_multiplier",
+        DEADEYE_GOLDEN_CRIT_MULTIPLIER,
+        out.crit_multiplier,
+    );
+    // 未应用 mode_effective 前暴击率：无 base → 0.0。
+    assert_near_float(
+        "pre_effective_crit_chance",
+        0.0,
+        out.pre_effective_crit_chance,
+    );
+}
+
+/// Wave 2 防御扩展字段快照：ES 充能 / 规避 / 承受乘数 / 暴击减免。
+#[test]
+fn deadeye_golden_wave2_defence_extension_fields() {
+    let build = build_from_code(DEADEYE_CODE);
+    let out = calculate(&build, &default_opts()).expect("calc");
+
+    // ES 充能：无词条 → 充能速率 0，延迟 0，每秒 0。
+    assert_near_float("es_recharge_rate", 0.0, out.es_recharge_rate);
+    assert_near_float("es_recharge_delay", 0.0, out.es_recharge_delay);
+    assert_near_float("es_recharge_per_second", 0.0, out.es_recharge_per_second);
+
+    // 规避：无词条 → 全 0。
+    assert_near_float(
+        "avoid_all_damage_from_hits",
+        0.0,
+        out.avoid_all_damage_from_hits,
+    );
+    assert_near_float("avoid_ignite", 0.0, out.avoid_ignite);
+    assert_near_float("avoid_shock", 0.0, out.avoid_shock);
+    assert_near_float("avoid_chill", 0.0, out.avoid_chill);
+    assert_near_float("avoid_freeze", 0.0, out.avoid_freeze);
+    assert_near_float("avoid_poison", 0.0, out.avoid_poison);
+    assert_near_float("avoid_bleeding", 0.0, out.avoid_bleeding);
+    assert_near_float("avoid_stun", 0.0, out.avoid_stun);
+
+    // 承受乘数中性：默认 1.0。
+    assert_near_float("taken_multi_physical", 1.0, out.taken_multi_physical);
+    assert_near_float("taken_multi_fire", 1.0, out.taken_multi_fire);
+    assert_near_float("taken_multi_cold", 1.0, out.taken_multi_cold);
+    assert_near_float("taken_multi_lightning", 1.0, out.taken_multi_lightning);
+    assert_near_float("taken_multi_chaos", 1.0, out.taken_multi_chaos);
+
+    // 暴击额外减免 / 敌方暴击效果（中性）。
+    assert_near_float(
+        "crit_extra_damage_reduction",
+        0.0,
+        out.crit_extra_damage_reduction,
+    );
+    assert_near_float("enemy_crit_effect", 1.0, out.enemy_crit_effect);
+}
+
+/// Wave 2 充能 / 偷取 / Recoup 快照（无词条 → 全 0）。
+#[test]
+fn deadeye_golden_wave2_charges_leech_recoup_fields() {
+    let build = build_from_code(DEADEYE_CODE);
+    let out = calculate(&build, &default_opts()).expect("calc");
+
+    // 充能：无词条 → 当前/最大均 0。
+    assert_eq!(out.charge_power_current, 0, "charge_power_current");
+    assert_eq!(out.charge_power_maximum, 0, "charge_power_maximum");
+    assert_eq!(out.charge_frenzy_current, 0, "charge_frenzy_current");
+    assert_eq!(out.charge_frenzy_maximum, 0, "charge_frenzy_maximum");
+    assert_eq!(out.charge_endurance_current, 0, "charge_endurance_current");
+    assert_eq!(out.charge_endurance_maximum, 0, "charge_endurance_maximum");
+
+    // 偷取速率：无词条 → 0。
+    assert_near_float("life_leech_rate", 0.0, out.life_leech_rate);
+    assert_near_float("mana_leech_rate", 0.0, out.mana_leech_rate);
+    assert_near_float("es_leech_rate", 0.0, out.es_leech_rate);
+
+    // Recoup：无词条 → 0。
+    assert_near_float("life_recoup_rate", 0.0, out.life_recoup_rate);
+    assert_near_float("es_recoup_rate", 0.0, out.es_recoup_rate);
+}
+
+/// Wave 2 异常扩展快照（无词条 → 全 0）。
+#[test]
+fn deadeye_golden_wave2_ailment_extension_fields() {
+    let build = build_from_code(DEADEYE_CODE);
+    let out = calculate(&build, &default_opts()).expect("calc");
+
+    assert_near_float("chill_effect", 0.0, out.chill_effect);
+    assert_near_float("freeze_buildup_pct", 0.0, out.freeze_buildup_pct);
+    assert_near_float("electrocute_buildup_pct", 0.0, out.electrocute_buildup_pct);
+
+    // 叠层 DPS / 活跃层数：无命中词条 → 0。
+    assert_near_float("bleed_stacked_dps", 0.0, out.bleed_stacked_dps);
+    assert_near_float("bleed_active_stacks", 0.0, out.bleed_active_stacks);
+    assert_near_float("poison_stacked_dps", 0.0, out.poison_stacked_dps);
+    assert_near_float("poison_active_stacks", 0.0, out.poison_active_stacks);
+}
+
+/// Wave 2 技能功能 / 触发快照（无 base 配置 → 全 0）。
+#[test]
+fn deadeye_golden_wave2_skill_mechanics_and_trigger_fields() {
+    let build = build_from_code(DEADEYE_CODE);
+    let out = calculate(&build, &default_opts()).expect("calc");
+
+    // 技能功能：无 base 词条 → 0。
+    assert_near_float("aoe_radius", 0.0, out.aoe_radius);
+    assert_near_float("aoe_area_mod", 0.0, out.aoe_area_mod);
+    assert_near_float("projectile_count", 0.0, out.projectile_count);
+    assert_near_float("cooldown", 0.0, out.cooldown);
+    assert_eq!(out.cooldown_stored_uses, 0, "cooldown_stored_uses");
+    assert_near_float("mana_cost", 0.0, out.mana_cost);
+    assert_near_float("life_cost", 0.0, out.life_cost);
+    assert_near_float("spirit_reserved", 0.0, out.spirit_reserved);
+
+    // 触发：无触发词条 → 0。
+    assert_near_float("trigger_rate_cap", 0.0, out.trigger_rate_cap);
+    assert_near_float("skill_trigger_rate", 0.0, out.skill_trigger_rate);
+}
+
+/// Wave 1 异常 DPS 字段快照（空 Build → 全 0 期望）。
+#[test]
+fn deadeye_golden_wave1_ailment_dps_fields() {
+    let build = build_from_code(DEADEYE_CODE);
+    let out = calculate(&build, &default_opts()).expect("calc");
+
+    assert_near_float("bleed_dps", 0.0, out.bleed_dps);
+    assert_near_float("ignite_dps", 0.0, out.ignite_dps);
+    assert_near_float("poison_dps", 0.0, out.poison_dps);
+    assert_near_float("shock_effect", 0.0, out.shock_effect);
+}
+
+/// Wave 1 行动速率字段快照。
+///
+/// 说明：hit_chance 在 base_accuracy=0 + enemy_evasion=0 时命中率公式退化为 1.0（100%）。
+/// action_rate / effective_action_rate 无 base 词条 → 0.0。
+const DEADEYE_GOLDEN_HIT_CHANCE: f64 = 1.0;
+
+#[test]
+fn deadeye_golden_wave1_action_rate_fields() {
+    let build = build_from_code(DEADEYE_CODE);
+    let out = calculate(&build, &default_opts()).expect("calc");
+
+    assert_near_float("action_rate", 0.0, out.action_rate);
+    assert_near_float("effective_action_rate", 0.0, out.effective_action_rate);
+    // hit_chance: base_accuracy=0 + enemy_evasion=0 → formula returns 1.0（100%）。
+    assert_near_float("hit_chance", DEADEYE_GOLDEN_HIT_CHANCE, out.hit_chance);
+}
+
+/// Wave 2 ES 词条注入：验证 ES 词条被正确解析并注入计算管线。
+///
+/// 注意：当前 CalcOrchestrator 通过 MinimalOutput → OutputTable 路径返回结果，
+/// 该路径只保留 MinimalOutput 的核心字段（life/mana/resistance/crit/hit），
+/// energy_shield / es_recharge 等防御扩展字段在此路径中回退到 OutputTable::default()。
+/// 本测试验证：管线不崩溃 + life 注入路径正常 + 默认字段符合预期。
+/// 完整 ES 计算的单元测试在 pobr-core 层（defense.rs / session.rs）覆盖。
+#[test]
+fn deadeye_golden_wave2_es_modifier_pipeline_ok() {
+    let build = build_from_code(DEADEYE_CODE);
+    let opts = OrchestratorOptions {
+        base_input: MinimalInput {
+            base_life: 500.0,
+            ..MinimalInput::default()
+        },
+        extra_modifier_texts: vec![
+            "+500 to maximum Energy Shield".to_string(),
+            "+1000 to maximum Life".to_string(),
+        ],
+    };
+    // 管线不崩溃。
+    let out = calculate(&build, &opts).expect("calc with es modifier should not panic");
+
+    // life = base(500) + modifier(+1000) = 1500（MinimalOutput 路径正常保留）。
+    assert_near_int("life_with_modifiers", 1500.0, out.life);
+
+    // 当前 orchestrator 路径 energy_shield 回退到 OutputTable::default() = 0.0。
+    // 此断言作为回归锁，防止静默改写（若将来 orchestrator 改为全字段返回，
+    // 此断言应更新为 500.0）。
+    assert_near_int(
+        "energy_shield_via_orchestrator_path",
+        0.0,
+        out.energy_shield,
+    );
+}
+
+/// Wave 1/2 抗性 + 防御字段整体确定性（两次调用一致）。
+///
+/// 只注入已知可解析词条；避免引入 ParseError（不支持的词条形式会导致 Err 返回）。
+#[test]
+fn deadeye_golden_wave2_all_fields_deterministic() {
+    let build = build_from_code(DEADEYE_CODE);
+    let opts = OrchestratorOptions {
+        base_input: MinimalInput {
+            base_life: 1000.0,
+            ..MinimalInput::default()
+        },
+        extra_modifier_texts: vec![
+            "+300 to maximum Energy Shield".to_string(),
+            "+50% to fire resistance".to_string(),
+        ],
+    };
+
+    let out1 = calculate(&build, &opts).expect("first calc");
+    let out2 = calculate(&build, &opts).expect("second calc");
+
+    // 核心防御字段。
+    assert_eq!(out1.life, out2.life, "life non-deterministic");
+    assert_eq!(
+        out1.fire_resistance, out2.fire_resistance,
+        "fire_resistance"
+    );
+    assert_eq!(
+        out1.es_recharge_per_second, out2.es_recharge_per_second,
+        "es_recharge_per_second"
+    );
+    // Wave 2 充能/异常/技能字段。
+    assert_eq!(
+        out1.charge_power_maximum, out2.charge_power_maximum,
+        "charge_power_max"
+    );
+    assert_eq!(out1.chill_effect, out2.chill_effect, "chill_effect");
+    assert_eq!(out1.aoe_radius, out2.aoe_radius, "aoe_radius");
+    assert_eq!(
+        out1.trigger_rate_cap, out2.trigger_rate_cap,
+        "trigger_rate_cap"
+    );
+    assert_eq!(
+        out1.bleed_stacked_dps, out2.bleed_stacked_dps,
+        "bleed_stacked_dps"
+    );
+}

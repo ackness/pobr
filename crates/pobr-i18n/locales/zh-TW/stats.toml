@@ -23,3 +23,70 @@ critical_strike_chance = "暴擊率"
 critical_strike_multiplier = "暴擊加成"
 
 total_dps = "總 DPS"
+
+# Display-stat label keys (partial translation; missing keys fall back to en-US).
+# Keys MUST be a subset of en-US/stats.toml [display] section.
+[display]
+# --- Offence ---
+TotalDPS = "總 DPS"
+TotalHitAvg = "平均命中"
+HitChance = "命中率"
+CritChance = "暴擊率"
+CritMultiplier = "暴擊加成"
+# --- DoT / Ailment ---
+BleedDPS = "流血 DPS"
+IgniteDPS = "點燃 DPS"
+PoisonDPS = "中毒 DPS"
+ShockEffect = "感電效果"
+ChillEffect = "冰緩效果"
+BleedStackedDPS = "流血疊層 DPS"
+PoisonStackedDPS = "中毒疊層 DPS"
+# --- Resource ---
+Life = "生命"
+Mana = "魔力"
+EnergyShield = "能量護盾"
+LifeReserved = "生命預留"
+LifeUnreserved = "可用生命"
+ManaReserved = "魔力預留"
+ManaUnreserved = "可用魔力"
+# --- Recovery ---
+LifeRegen = "每秒生命恢復"
+ManaRegen = "每秒魔力恢復"
+EnergyShieldRegen = "每秒能量護盾恢復"
+EsRechargePerSecond = "每秒護盾充能量"
+# --- Defence / Mitigation ---
+Armour = "護甲"
+Evasion = "閃避值"
+FireResist = "火焰抗性"
+ColdResist = "冰冷抗性"
+LightningResist = "閃電抗性"
+BlockChance = "格擋率"
+SpellBlockChance = "法術格擋率"
+SpellSuppressionChance = "法術壓制率"
+# --- Avoidance ---
+AvoidIgnite = "規避點燃"
+AvoidShock = "規避感電"
+AvoidChill = "規避冰緩"
+AvoidFreeze = "規避冰凍"
+AvoidPoison = "規避中毒"
+AvoidBleeding = "規避流血"
+AvoidStun = "規避暈眩"
+# --- EHP / Max Hit ---
+TotalEHP = "有效血量"
+PhysicalMaxHit = "最大可承受物理單擊"
+FireMaxHit = "最大可承受火焰單擊"
+ColdMaxHit = "最大可承受冰冷單擊"
+LightningMaxHit = "最大可承受閃電單擊"
+ChaosMaxHit = "最大可承受混沌單擊"
+# --- Charges ---
+ChargePowerCurrent = "魔力充能"
+ChargePowerMaximum = "最大魔力充能"
+ChargeFrenzyCurrent = "狂暴充能"
+ChargeFrenzyMaximum = "最大狂暴充能"
+ChargeEnduranceCurrent = "耐力充能"
+ChargeEnduranceMaximum = "最大耐力充能"
+# --- Skill Mechanics ---
+AoeRadius = "技能範圍半徑"
+Cooldown = "冷卻時間"
+ManaCost = "魔力消耗"
+LifeCost = "生命消耗"

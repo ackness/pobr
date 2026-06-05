@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 
-use pobr_data::prelude::{StatId, StatTextKey};
+use pobr_data::prelude::{DisplayStatId, StatId, StatTextKey};
 
 use crate::errors::I18nError;
 use crate::language::{CANONICAL_LANGUAGE, LanguageId};
@@ -117,6 +117,22 @@ impl Translator {
     /// re-deriving the convention.
     pub fn stat_text_key(stat: &StatId) -> StatTextKey {
         stat_text::stat_text_key(stat)
+    }
+
+    /// Localized label for an output display stat. Looks up `display.<id>`;
+    /// falls back to canonical, then to the `DisplayStatId` string itself.
+    ///
+    /// The `DisplayStatId` values are PascalCase (e.g. `"TotalDPS"`) and map
+    /// to the `[display]` section in `stats.toml`.
+    pub fn display_stat_text(&self, id: &DisplayStatId) -> Cow<'_, str> {
+        stat_text::resolve_display(&self.active_bundle, &self.fallback_bundle, id)
+    }
+
+    /// The stable bundle key (`display.<id>`) used to look up a display-stat
+    /// label. Exposed for callers that carry the [`StatTextKey`] without
+    /// re-deriving the `display.<id>` convention.
+    pub fn display_stat_text_key(id: &DisplayStatId) -> StatTextKey {
+        stat_text::display_stat_text_key(id)
     }
 
     /// All shipped languages, canonical first.

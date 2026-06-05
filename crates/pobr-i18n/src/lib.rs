@@ -32,5 +32,5 @@ mod translator;
 
 pub use errors::I18nError;
 pub use language::{CANONICAL_LANGUAGE, LanguageId, LanguagePack};
-pub use stat_text::{STAT_PREFIX, stat_text_key};
+pub use stat_text::{DISPLAY_STAT_PREFIX, STAT_PREFIX, display_stat_text_key, stat_text_key};
 pub use translator::{I18nValue, Translator};
