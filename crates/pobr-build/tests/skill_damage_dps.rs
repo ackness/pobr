@@ -81,6 +81,28 @@ fn fireball_base_damage_drives_nonzero_dps() {
     assert!(out.action_rate > 0.0, "action_rate should be > 0");
 }
 
+/// CostTypes 解析（P2-6/P2-5）：Fireball L20 法力消耗 104，资源名 = Mana（瞬时）。
+#[test]
+fn fireball_cost_resolves_to_mana_resource() {
+    let build_data = load_build_data();
+    let resolved = build_data
+        .resolve_skill_level("FireballPlayer", 20)
+        .expect("FireballPlayer should resolve");
+
+    assert_eq!(
+        resolved.mana_cost,
+        Some(104.0),
+        "Fireball L20 mana cost should be 104"
+    );
+    let mana = resolved
+        .costs
+        .iter()
+        .find(|c| c.resource == "Mana")
+        .expect("should resolve a Mana cost via CostTypes");
+    assert_eq!(mana.amount, 104.0);
+    assert!(!mana.per_second, "Mana cost is instant, not per-second");
+}
+
 /// 等级缩放：L1 基础伤害（8–12，avg 10）远低于 L20（avg 280），且均 > 0。
 #[test]
 fn fireball_damage_scales_with_gem_level() {

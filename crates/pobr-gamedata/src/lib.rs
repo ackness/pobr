@@ -9,8 +9,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use pobr_data::catalog::{
-    BaseItemDef, DataManifest, GrantedEffectDef, ModDef, PassiveNodeDef, PassiveTreeMeta,
-    SkillGemDef, SkillLevelDef, SkillStatSetDef, StatDef,
+    BaseItemDef, CostTypeDef, DataManifest, GrantedEffectDef, ModDef, PassiveNodeDef,
+    PassiveTreeMeta, SkillGemDef, SkillLevelDef, SkillStatSetDef, StatDef,
 };
 
 /// 加载错误。
@@ -117,6 +117,16 @@ impl GameData {
     /// 已解析的伤害 stat）。空缺（旧数据包无此域）时返回空 Vec，向后兼容。
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
         match self.load_json::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
+            Ok(v) => Ok(v),
+            Err(LoadError::Io { .. }) => Ok(Vec::new()),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// 加载技能消耗资源类型表（按索引升序，[`GrantedEffectDef::cost_types`] 外键目标）。
+    /// 空缺（旧数据包无此域）时返回空 Vec，向后兼容。
+    pub fn cost_types(&self) -> Result<Vec<CostTypeDef>, LoadError> {
+        match self.load_json::<Vec<CostTypeDef>>("cost_types.json") {
             Ok(v) => Ok(v),
             Err(LoadError::Io { .. }) => Ok(Vec::new()),
             Err(e) => Err(e),

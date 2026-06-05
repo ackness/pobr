@@ -12,7 +12,8 @@
 use std::collections::HashMap;
 
 use pobr_data::catalog::{
-    GrantedEffectDef, PassiveNodeDef, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
+    CostTypeDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat, SkillGemDef, SkillLevelDef,
+    SkillStatSetDef,
 };
 use pobr_gamedata::{GameData, LoadError};
 
@@ -31,11 +32,25 @@ pub struct ResolvedSkillLevel {
     pub use_time_s: Option<f64>,
     /// 冷却时间（秒）。`None`=无冷却。
     pub cooldown_s: Option<f64>,
-    /// 法力消耗（cost type 0）。`None`=无法力消耗或为其他资源（待 CostTypes 表）。
+    /// 法力消耗（资源 = `Mana`）。`None`=无法力消耗（可能为 Life/ES 等其他资源，见 `costs`）。
     pub mana_cost: Option<f64>,
     /// 该等级上已解析的技能**基础伤害 stat**（如 `spell_minimum_base_fire_damage` → 值）。
     /// 由计算侧映射为 `<Type>DamageMin/Max` BASE 词条注入。空=无 stat-set 伤害数据。
     pub base_damage: Vec<SkillDamageStat>,
+    /// 全部资源消耗（按 `CostTypes` 解析的资源名 + 已除 divisor 的量）。
+    /// 含 Mana/Life/ES/Rage/Ward 等及 per-second 持续消耗。空=无 CostTypes 数据或无消耗。
+    pub costs: Vec<ResolvedCost>,
+}
+
+/// 一项已解析的技能资源消耗。
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedCost {
+    /// 资源 id（`Mana` / `Life` / `ES` / `Rage` / `Ward` / `ManaPercent` / `ManaPerMinute` …）。
+    pub resource: String,
+    /// 消耗量（已除 `CostTypes.Divisor`：per-minute 资源 ÷60 得每秒量）。
+    pub amount: f64,
+    /// 是否为按时间持续消耗（per-second）。
+    pub per_second: bool,
 }
 
 /// 从 [`GameData`] 投影出的、orchestrator 计算所需的内存索引。
@@ -59,6 +74,8 @@ pub struct BuildData {
     pub granted_effect_levels: HashMap<String, Vec<SkillLevelDef>>,
     /// 授予效果分等级**伤害 stat 集**，以 `GrantedEffects.Id` 为键（每级已解析伤害 stat）。
     pub skill_stat_sets: HashMap<String, SkillStatSetDef>,
+    /// 消耗资源类型表（按 `CostTypes` 索引升序；为空表示旧数据包无此域）。
+    pub cost_types: Vec<CostTypeDef>,
 }
 
 impl BuildData {
@@ -109,6 +126,8 @@ impl BuildData {
             .map(|set| (set.id.clone(), set))
             .collect();
 
+        let cost_types = data.cost_types()?;
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -116,6 +135,7 @@ impl BuildData {
             granted_effects,
             granted_effect_levels,
             skill_stat_sets,
+            cost_types,
         })
     }
 
@@ -128,6 +148,7 @@ impl BuildData {
             granted_effects: HashMap::new(),
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
+            cost_types: Vec::new(),
         }
     }
 
@@ -159,17 +180,36 @@ impl BuildData {
             .filter(|&c| c > 0)
             .map(|c| f64::from(c) / 1000.0);
 
-        // 消耗：按 cost_types 与 cost_amounts 位置配对（当前仅识别 type 0 = 法力，
-        // 其余类型待 CostTypes 表下载后解析）。
-        let mut mana_cost = None;
-        for (i, &cost_type) in effect.cost_types.iter().enumerate() {
-            if cost_type == 0
-                && let Some(&amount) = row.cost_amounts.get(i)
-                && amount > 0
-            {
-                mana_cost = Some(f64::from(amount));
+        // 消耗：按 effect.cost_types（资源类型索引）与 row.cost_amounts 位置配对，经
+        // CostTypes 表解析为资源名 + 除 divisor（per-minute 资源 ÷60 得每秒量）。
+        // 无 CostTypes 数据时回退「索引 0 = 法力」启发式（向后兼容）。
+        let mut costs = Vec::new();
+        for (i, &type_idx) in effect.cost_types.iter().enumerate() {
+            let Some(&raw_amount) = row.cost_amounts.get(i) else {
+                continue;
+            };
+            if raw_amount == 0 {
+                continue;
+            }
+            match self.cost_types.get(type_idx as usize) {
+                Some(def) if !def.id.is_empty() => costs.push(ResolvedCost {
+                    resource: def.id.clone(),
+                    amount: f64::from(raw_amount) / f64::from(def.divisor.max(1)),
+                    per_second: def.per_minute,
+                }),
+                _ if type_idx == 0 => costs.push(ResolvedCost {
+                    resource: "Mana".into(),
+                    amount: f64::from(raw_amount),
+                    per_second: false,
+                }),
+                _ => {}
             }
         }
+        // 法力消耗（瞬时 `Mana` 资源）供 fill_skill_mechanics 的 SkillManaCostBase 读取。
+        let mana_cost = costs
+            .iter()
+            .find(|c| c.resource == "Mana" && !c.per_second)
+            .map(|c| c.amount);
 
         // 基础伤害 stat：从 stat-set 域取该宝石等级行（等级越界取最接近的 ≤ 行）。
         let base_damage = self
@@ -189,6 +229,7 @@ impl BuildData {
             cooldown_s,
             mana_cost,
             base_damage,
+            costs,
         })
     }
 

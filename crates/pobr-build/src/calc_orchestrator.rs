@@ -517,6 +517,7 @@ mod tests {
             granted_effects: HashMap::new(),
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
+            cost_types: Vec::new(),
         };
         let build = Build::new().with_character(CharacterIdentity {
             level: 10,
@@ -566,6 +567,7 @@ mod tests {
             granted_effects: HashMap::new(),
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
+            cost_types: Vec::new(),
         };
 
         let build = Build::new().with_tree(PassiveTreeSpec {
@@ -642,6 +644,7 @@ mod tests {
             granted_effects: HashMap::new(),
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
+            cost_types: Vec::new(),
         };
         let build = Build::new().add_socket_group(
             SocketGroup::new()

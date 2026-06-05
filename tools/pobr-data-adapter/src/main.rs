@@ -240,6 +240,10 @@ fn run(args: Args) -> Result<String, String> {
         &stat_sets.sets,
     )?;
 
+    // 技能消耗资源类型（CostTypes → cost_types FK 目标，解析 Mana/Life/ES/... 资源名）。
+    let cost_types = skills::adapt_cost_types(&en)?;
+    write_pretty(&version_dir.join("cost_types.json"), &cost_types)?;
+
     let manifest = DataManifest {
         schema_version: CATALOG_SCHEMA_VERSION,
         poe_version: args.patch.clone(),
@@ -252,6 +256,7 @@ fn run(args: Args) -> Result<String, String> {
             "granted_effects".into(),
             "granted_effect_levels".into(),
             "granted_effect_stat_sets".into(),
+            "cost_types".into(),
         ],
     };
     write_pretty(&version_dir.join("manifest.json"), &manifest)?;

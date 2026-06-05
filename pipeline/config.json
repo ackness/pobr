@@ -12,6 +12,7 @@
     { "name": "GrantedEffectsPerLevel", "columns": ["GrantedEffect","Level","Cooldown","CostAmounts","AttackTime"] },
     { "name": "GrantedEffectStatSets", "columns": ["Id","BaseEffectiveness","IncrementalEffectiveness","DamageIncrementalEffectiveness","ImplicitStats","ConstantStats","ConstantStatsValues"] },
     { "name": "GrantedEffectStatSetsPerLevel", "columns": ["StatSet","GemLevel","BaseMultiplier","BaseResolvedValues","FloatStats","FloatStatsValues","AdditionalStats","AdditionalStatsValues"] },
-    { "name": "ActiveSkills", "columns": ["Id","DisplayedName","Description","ActiveSkillTypes","GrantedEffect"] }
+    { "name": "ActiveSkills", "columns": ["Id","DisplayedName","Description","ActiveSkillTypes","GrantedEffect"] },
+    { "name": "CostTypes", "columns": ["Id","Stat","FormatText","Divisor","PerMinute"] }
   ]
 }

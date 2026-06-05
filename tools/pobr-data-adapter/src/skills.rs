@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use pobr_data::catalog::{
-    GrantedEffectDef, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
+    CostTypeDef, GrantedEffectDef, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
     SkillStatSetLevel,
 };
 use serde::Deserialize;
@@ -413,6 +413,43 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
         sets_total,
         damage_levels_total,
     })
+}
+
+// ---- 消耗资源类型（CostTypes 域）----
+
+#[derive(Deserialize)]
+struct RawCostType {
+    #[serde(rename = "_index")]
+    index: usize,
+    #[serde(rename = "Id")]
+    id: String,
+    #[serde(rename = "Divisor")]
+    divisor: Option<i64>,
+    #[serde(rename = "PerMinute", default)]
+    per_minute: bool,
+}
+
+/// 适配 `CostTypes.dat` 为按索引升序的资源类型数组（[`GrantedEffectDef::cost_types`]
+/// 外键的目标表）。索引连续，直接落位为有序 Vec。
+pub fn adapt_cost_types(en: &Path) -> Result<Vec<CostTypeDef>, String> {
+    let raw = read_json::<Vec<RawCostType>>(&en.join("CostTypes.json"))?;
+    let max = raw.iter().map(|r| r.index).max().map_or(0, |m| m + 1);
+    let mut out = vec![
+        CostTypeDef {
+            id: String::new(),
+            divisor: 1,
+            per_minute: false,
+        };
+        max
+    ];
+    for r in raw {
+        out[r.index] = CostTypeDef {
+            id: r.id,
+            divisor: r.divisor.filter(|&d| d > 0).unwrap_or(1) as u32,
+            per_minute: r.per_minute,
+        };
+    }
+    Ok(out)
 }
 
 /// 把 base item 行建成 `_index -> (Id, Name)` 查表（`_index` 连续，越界返回 None）。
