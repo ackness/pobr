@@ -99,13 +99,53 @@ fn parse_mod_errors_on_unparseable() {
 }
 
 #[test]
-fn parse_item_reports_not_implemented() {
-    // REAL 的 pobr-item raw item text 解析尚未迁移，parse-item 当前为占位 stub。
+fn parse_item_parses_rare_ring() {
+    // parse_item 现已调用真实解析器（item_text::parse_item_text + item::ingest_item）。
     let req = ParseItemRequest {
-        text: "Rarity: Rare\nGloom Coil\nIron Ring".to_string(),
+        text: "Rarity: Rare\nGloom Coil\nIron Ring\n--------\n+40 to maximum Life".to_string(),
     };
-    let err = parse_item(&req).expect_err("parse_item is a stub");
-    assert!(format!("{err}").contains("not implemented"));
+    let report = parse_item(&req).expect("parse_item succeeds");
+    assert_eq!(report.base, "Iron Ring");
+    assert_eq!(report.rarity, "Rare");
+    assert_eq!(report.quality, 0);
+    // "+40 to maximum Life" 是可解析词条，应出现在 modifiers 中。
+    assert!(
+        report
+            .modifiers
+            .iter()
+            .any(|m| m.name.contains("MaximumLife")),
+        "expected MaximumLife modifier, got: {:?}",
+        report.modifiers
+    );
+    assert!(
+        report.unsupported.is_empty(),
+        "no unsupported: {:?}",
+        report.unsupported
+    );
+}
+
+#[test]
+fn parse_item_collects_unsupported_modifiers() {
+    // "mirrored" 是 Unsupported，应收集进 unsupported 而不阻断解析。
+    let req = ParseItemRequest {
+        text: "Rarity: Normal\nIron Ring\n--------\nmirrored".to_string(),
+    };
+    let report = parse_item(&req).expect("parse_item succeeds even with unsupported mods");
+    assert_eq!(report.base, "Iron Ring");
+    assert_eq!(report.unsupported, vec!["mirrored".to_string()]);
+}
+
+#[test]
+fn parse_item_errors_on_missing_rarity() {
+    // 缺少 Rarity: 头，返回结构性错误。
+    let req = ParseItemRequest {
+        text: "Iron Ring\n--------\n+40 to maximum Life".to_string(),
+    };
+    let err = parse_item(&req).expect_err("missing rarity should error");
+    assert!(
+        format!("{err}").contains("Rarity") || format!("{err}").contains("item text"),
+        "error should mention rarity or item text: {err}"
+    );
 }
 
 #[test]

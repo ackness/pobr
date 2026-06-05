@@ -5,13 +5,17 @@
 //! - [`calculate`]：从基础 [`MinimalInput`] + modifier 文本构造 [`CalculationSession`]，
 //!   `perform_minimal` 后返回关键字段 + 未支持文本。
 //! - [`parse_mod`]：包装 [`pobr_core::mod_parser::parse_mod`]，返回可序列化的解析报告。
-//! - [`parse_item`]：占位 —— REAL 的 `pobr-item` raw item text 解析尚未实现，
-//!   当前返回 [`CliError::NotImplemented`]。
+//! - [`parse_item`]：调用 [`pobr_core::item_text::parse_item_text`] +
+//!   [`pobr_core::item::ingest_item`] 真正解析 raw item 文本，输出 JSON（解析出的
+//!   modifier / section / unsupported）。
 //! - [`encode_code`] / [`decode_code`]：包装 PoB Build Code 编解码。
 
 use pobr_core::ModValue;
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput};
+use pobr_core::item::ingest_item;
+use pobr_core::item_text::{ItemTextError, parse_item_text};
 use pobr_core::mod_parser::{ParseStatus, parse_mod as core_parse_mod};
+use pobr_data::item::EquipmentSlot;
 use serde::Serialize;
 use thiserror::Error;
 
@@ -27,7 +31,10 @@ pub enum CliError {
     /// JSON 序列化失败。
     #[error("json serialization error: {0}")]
     Json(#[from] serde_json::Error),
-    /// 功能尚未实现（如 raw item text 解析依赖未迁移的 `pobr-item`）。
+    /// raw item text 结构性解析失败（空输入 / 缺 Rarity / 缺基底）。
+    #[error("item text parse error: {0}")]
+    ItemText(#[from] ItemTextError),
+    /// 功能尚未实现（占位保留）。
     #[error("not implemented: {0}")]
     NotImplemented(&'static str),
 }
@@ -180,29 +187,110 @@ pub fn parse_mod_json(text: &str) -> Result<String, CliError> {
 }
 
 // ---------------------------------------------------------------------------
-// parse-item（占位）
+// parse-item
 // ---------------------------------------------------------------------------
 
 /// `parse-item` 子命令输入。
 #[derive(Debug, Clone)]
 pub struct ParseItemRequest {
-    /// 完整 raw item text。
+    /// 完整 raw item text（PoB 风格英文导出）。
     pub text: String,
 }
 
-/// 解析 raw item text。
-///
-/// REAL 的 `pobr-item` raw item text 解析尚未实现（当前为占位 crate），故本入口
-/// 返回 [`CliError::NotImplemented`]。待 `pobr-item` 提供 `parse_raw_item_text` 后接入。
-pub fn parse_item(_req: &ParseItemRequest) -> Result<String, CliError> {
-    Err(CliError::NotImplemented(
-        "raw item text parsing (pobr-item 尚未实现)",
-    ))
+/// 单条已解析 modifier 的可序列化摘要（`parse-item` 专用）。
+#[derive(Debug, Clone, Serialize)]
+pub struct ParsedModEntry {
+    /// section：`implicit` / `explicit` / `enchant`。
+    pub section: String,
+    /// 稳定 ModName。
+    pub name: String,
+    /// 聚合类型（`Base` / `Inc` / `More` / …）。
+    pub mod_type: String,
+    /// 数值（文本型 modifier 为 `None`）。
+    pub value: Option<f64>,
+    /// 归因来源 ID（装备槽 + section 后缀）。
+    pub source_id: String,
 }
 
-/// 把 `parse-item` 结果渲染为 JSON 字符串（当前未实现，直接返回错误）。
+/// `parse-item` 解析报告：基础元数据 + 各 section modifier + 未支持词条。
+#[derive(Debug, Clone, Serialize)]
+pub struct ParseItemReport {
+    /// 物品基底名。
+    pub base: String,
+    /// 稀有度（`Normal` / `Magic` / `Rare` / `Unique`）。
+    pub rarity: String,
+    /// 品质（0–20）。
+    pub quality: u8,
+    /// 解析出的 modifier（含 implicit / explicit / enchant / quality）。
+    pub modifiers: Vec<ParsedModEntry>,
+    /// 无法被 mod_parser 识别的词条文本（保留原始，不报错）。
+    pub unsupported: Vec<String>,
+}
+
+/// 解析 raw item text，输出结构化 [`ParseItemReport`]。
+///
+/// 内部调用：
+/// 1. [`pobr_core::item_text::parse_item_text`] — 文本分段（rarity / sections / annotations 剥离）→ `Item`；
+/// 2. [`pobr_core::item::ingest_item`] — `Item` 词条 → 带归因 `Modifier` 列表。
+///
+/// 槽位默认为 [`EquipmentSlot::Ring1`]（CLI parse-item 不关联具体槽位，归因 ID 仅供
+/// 调试显示，不影响伤害计算）。
+///
+/// 结构性错误（空文本 / 缺 Rarity / 缺基底）返回 [`CliError::ItemText`]；
+/// 词条解析不支持时收入 `unsupported`，不报错。
+pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
+    let item = parse_item_text(&req.text)?;
+
+    // CLI parse-item 不关联具体装备槽；使用 Ring1 作为占位槽（归因 ID 供调试）。
+    let slot = EquipmentSlot::Ring1;
+    let ingest = ingest_item(slot, &item).map_err(|e| CliError::ModParse(e.to_string()))?;
+
+    let modifiers = ingest
+        .modifiers
+        .iter()
+        .map(|m| {
+            let (section, sid) = if let Some(origin) = &m.origin {
+                let id = &origin.source_id.id;
+                let section = if id.contains(".implicit") {
+                    "implicit"
+                } else if id.contains(".enchant") {
+                    "enchant"
+                } else if id.contains(".quality") {
+                    "quality"
+                } else {
+                    "explicit"
+                };
+                (section, id.clone())
+            } else {
+                ("explicit", String::new())
+            };
+            ParsedModEntry {
+                section: section.to_string(),
+                name: m.name.to_string(),
+                mod_type: format!("{:?}", m.mod_type),
+                value: match &m.value {
+                    ModValue::Number(n) => Some(*n),
+                    ModValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
+                    ModValue::Text(_) => None,
+                },
+                source_id: sid,
+            }
+        })
+        .collect();
+
+    Ok(ParseItemReport {
+        base: item.base.to_string(),
+        rarity: format!("{:?}", item.rarity),
+        quality: item.quality,
+        modifiers,
+        unsupported: ingest.unsupported,
+    })
+}
+
+/// 把 [`ParseItemReport`] 渲染为美化的 JSON 字符串。
 pub fn parse_item_json(req: &ParseItemRequest) -> Result<String, CliError> {
-    parse_item(req)
+    let report = parse_item(req)?;
+    Ok(serde_json::to_string_pretty(&report)?)
 }
 
 // ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ name = "pobr"
 path = "src/main.rs"
 
 [dependencies]
+pobr-data.workspace = true
 pobr-core.workspace = true
 pobr-build.workspace = true
 serde.workspace = true

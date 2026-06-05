@@ -395,6 +395,7 @@ dependencies = [
  "clap",
  "pobr-build",
  "pobr-core",
+ "pobr-data",
  "serde",
  "serde_json",
  "thiserror",

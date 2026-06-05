@@ -9,6 +9,12 @@ impl From<&str> for ItemBaseId {
     }
 }
 
+impl std::fmt::Display for ItemBaseId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ItemRarity {
     Normal,
