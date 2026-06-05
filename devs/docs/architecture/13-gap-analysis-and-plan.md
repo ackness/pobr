@@ -154,6 +154,14 @@ enemy modDB → 暴击 → 伤害转换/穿透/Overwhelm → 伤害型异常(几
 332 → **450 测试**(+118)，全程 clippy+fmt 全绿、PoB2 Lua 逐字核对、向后兼容(新机制 gate 到 mode_effective)。
 **剩余 = Wave 2+**（防御扩展/技能功能 SkillUseTime/触发召唤 greenfield/来源天赋/PoB parity matrix+golden）。
 
+### Wave 2 批次1 ✅（commits eb50627·f331ef3·522b2c8）
+4 子系统并行内部逻辑 → 串行集成 → 验证。**450 → 550 测试**。
+- **parity**：PoB catalog fixture(215 display_stats/1092 output_keys, 从 PoB2 Lua gh 生成, `devs/fixtures/pob/parity/`)+ `check_pobr_parity` CI gate；天赋树 `PassiveTreeSpec.mastery_effects` 玩家选择注入。
+- **防御扩展**：ES recharge(12.5%/s, 4s delay, ZealotsOath)、avoidance(乘法叠加+cap)、taken 乘数(WhenHit/OverTime)、暴击额外伤害减免/EnemyCritEffect。
+- **辅助宝石**：skill_source 4 TODO 全清(mana mult/more 隔离/skill-type gating/level&quality)+ SkillTypes 扩展。
+- **召唤物+触发** greenfield：`calc/minion.rs`(独立 Actor+三通道+内禀必中/爆伤+70/怪物缩放)、`calc/trigger.rs`(速率上限)；集成 `Env.minions:Vec<Actor>` + `perform_minions` 多 Actor 复用同管线。
+- **defer(Wave2 批次2+)**：防御 charges/leech/regen/Recoup/BuffEffect/完整MaxHit；技能 AoE/投射物/cooldown/cost；召唤物 limit/MinionDef schema/跨Actor trace/ally-buff 缩放；触发 energy/轮转/CWC/rate-wiring；parity golden(10 build);pobr-item/CLI parse-item；剩余异常(冰冻电击Poise积累/叠层/AilmentEffect维度/跨类型/DotDpsCap)。
+
 ## 4. 编排映射（并行/串行）
 
 | Wave | 串行流(calc 核心) | 可并行流(独立 crate/测试) | 模型 |
