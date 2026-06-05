@@ -2,12 +2,21 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
 
-use super::ailment::{AilmentSource, bleed_traced, ignite_traced, poison_traced, shock_traced};
+use super::ailment::{
+    AilmentSource, StackConfig, bleed_traced, chill_traced, electrocute_poise_buildup_traced,
+    freeze_poise_buildup_traced, ignite_traced, poison_traced, shock_traced,
+    stacking_ailment_dps_traced,
+};
+use super::skill_mechanics::{
+    calc_aoe, calc_cooldown, calc_life_cost, calc_mana_cost, calc_projectile_count,
+    calc_spirit_reservation,
+};
 use super::{
-    BreakdownTable, CalcError, Env, MinimalInput, MinionOutput, OutputTable, ResistanceSuite,
-    calc_avoidance, calc_crit_extra_reduction, calc_defence, calc_ehp, calc_es_recharge,
+    BreakdownTable, CalcError, Env, LeechResource, MinimalInput, MinionOutput, OutputTable,
+    RecoupResource, ResistanceSuite, calc_avoidance, calc_crit_extra_reduction, calc_defence,
+    calc_ehp, calc_es_recharge, calc_leech_from_db, calc_recoup_from_db, calc_regen,
     calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect,
-    es_recharge_per_second, regen, reservation,
+    es_recharge_per_second, reservation, resolve_all_charges,
 };
 use crate::TraceGraph;
 
@@ -155,10 +164,10 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.mana_reserved = mana_res.reserved;
     env.player.output.mana_unreserved = mana_res.unreserved;
 
-    // --- 每秒恢复 ---
-    env.player.output.life_regen = stat_regen(db, cfg, env.player.output.life, "LifeRegen");
-    env.player.output.mana_regen = stat_regen(db, cfg, env.player.output.mana, "ManaRegen");
-    env.player.output.energy_shield_regen = stat_regen(
+    // --- 每秒恢复（Lane A：calc_regen 行为超集，含 XRecoveryRate 全局恢复速率）---
+    env.player.output.life_regen = calc_regen(db, cfg, env.player.output.life, "LifeRegen");
+    env.player.output.mana_regen = calc_regen(db, cfg, env.player.output.mana, "ManaRegen");
+    env.player.output.energy_shield_regen = calc_regen(
         db,
         cfg,
         env.player.output.energy_shield,
@@ -209,6 +218,120 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.crit_extra_damage_reduction = crit_red.reduction_pct;
     env.player.output.enemy_crit_effect =
         enemy_crit_effect(enemy_crit_chance, enemy_crit_damage, &crit_red);
+
+    // --- 充能状态（Lane A：供 per-charge 词条引用与面板显示；无来源时 current=0, maximum=3）---
+    let charges = resolve_all_charges(db, cfg);
+    env.player.output.charge_power_current = charges.power.current;
+    env.player.output.charge_power_maximum = charges.power.maximum;
+    env.player.output.charge_frenzy_current = charges.frenzy.current;
+    env.player.output.charge_frenzy_maximum = charges.frenzy.maximum;
+    env.player.output.charge_endurance_current = charges.endurance.current;
+    env.player.output.charge_endurance_maximum = charges.endurance.maximum;
+
+    // --- 偷取（Lane A：传入物理平均命中作为 hit_damage；PoE2 默认仅物理偷取）---
+    // 无偷取词条时各 display_rate 为 0（calc_leech_from_db 短路），不影响面板。
+    let phys_hit = component_avg(&env.player.output.damage_components, DamageType::Physical);
+    env.player.output.life_leech_rate = calc_leech_from_db(
+        db,
+        cfg,
+        env.player.output.life,
+        phys_hit,
+        LeechResource::Life,
+    )
+    .display_rate_per_second;
+    env.player.output.mana_leech_rate = calc_leech_from_db(
+        db,
+        cfg,
+        env.player.output.mana,
+        phys_hit,
+        LeechResource::Mana,
+    )
+    .display_rate_per_second;
+    env.player.output.es_leech_rate = calc_leech_from_db(
+        db,
+        cfg,
+        env.player.output.energy_shield,
+        phys_hit,
+        LeechResource::EnergyShield,
+    )
+    .display_rate_per_second;
+
+    // --- Recoup（Lane A：事件触发，面板口径以「假设受到 10% 生命的伤害」估算返还速率）---
+    // 无 Recoup 词条时 calc_recoup_from_db 返回 rate=0（短路），不影响面板。
+    let damage_taken_estimate = env.player.output.life * RECOUP_DAMAGE_BASIS_FRACTION;
+    env.player.output.life_recoup_rate =
+        calc_recoup_from_db(db, cfg, damage_taken_estimate, RecoupResource::Life).rate_per_second;
+    env.player.output.es_recoup_rate =
+        calc_recoup_from_db(db, cfg, damage_taken_estimate, RecoupResource::EnergyShield)
+            .rate_per_second;
+
+    // --- 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗）---
+    fill_skill_mechanics(env);
+}
+
+/// Recoup 面板估算基准：以「假设受到玩家最大生命 10%」的伤害估算每秒返还速率。
+///
+/// Recoup 本质是受击事件触发；面板口径需要一个固定的受击伤害基准。10% 生命是常见
+/// 估算约定（PoB2 面板亦用假设受击量）。真实受击伤害来源待 Build 层事件接入后替换。
+const RECOUP_DAMAGE_BASIS_FRACTION: f64 = 0.1;
+
+/// 技能功能 fill（Lane C）：AoE 半径 / 投射物数量 / 冷却 / 资源消耗。
+///
+/// 这些机制依赖技能基础参数（基础半径 / 基础冷却 / 基础消耗），当前 `Actor` 尚无对应
+/// 字段（Build 层注入待接入），故从玩家 `mod_db` 的 BASE 词条读取基础值：
+/// - `SkillAreaRadiusBase` / `SkillCooldownBase` / `SkillManaCostBase` /
+///   `SkillLifeCostBase` / `SkillSpiritReservationBase`（均无词条时该项跳过，输出保持 0）。
+///
+/// 这样既不改 `Actor`/`Env`（避免跨 lane 共享文件的字段 ripple），又能让有这些基础
+/// 参数的 build（经 item/gem 注入对应 BASE 词条）走完整聚合管线。基础参数随技能宝石
+/// 数据接入的字段化改造 defer 到 Build 层。
+fn fill_skill_mechanics(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+
+    // 投射物数量：始终计算（无投射物词条时 calc_projectile_count 走 base=0 → count=0）。
+    // 仅当存在投射物来源（base_count > 0）时写入面板，避免给非投射物技能误标 0 以外的值。
+    let proj = calc_projectile_count(db, cfg);
+    if proj.base_count > 0.0 {
+        env.player.output.projectile_count = proj.projectile_count;
+    }
+
+    // AoE：需技能基础半径（SkillAreaRadiusBase BASE）。无则跳过（保持 0）。
+    let base_radius = db.sum(ModType::Base, cfg, &[ModName::from("SkillAreaRadiusBase")]);
+    if base_radius > 0.0 {
+        let aoe = calc_aoe(db, cfg, base_radius, 0.0);
+        env.player.output.aoe_radius = aoe.radius;
+        env.player.output.aoe_area_mod = aoe.area_mod;
+    }
+
+    // 冷却：需技能基础冷却（SkillCooldownBase BASE，秒）。无则跳过。
+    let base_cd = db.sum(ModType::Base, cfg, &[ModName::from("SkillCooldownBase")]);
+    if base_cd > 0.0 {
+        let stored = db
+            .sum(ModType::Base, cfg, &[ModName::from("SkillStoredUsesBase")])
+            .max(1.0) as u32;
+        let cd = calc_cooldown(db, cfg, base_cd, stored);
+        env.player.output.cooldown = cd.cooldown;
+        env.player.output.cooldown_stored_uses = cd.stored_uses;
+    }
+
+    // 消耗：各资源需对应基础值 BASE 词条。无则跳过（保持 0）。
+    let base_mc = db.sum(ModType::Base, cfg, &[ModName::from("SkillManaCostBase")]);
+    if base_mc > 0.0 {
+        env.player.output.mana_cost = calc_mana_cost(db, cfg, base_mc).final_cost;
+    }
+    let base_lc = db.sum(ModType::Base, cfg, &[ModName::from("SkillLifeCostBase")]);
+    if base_lc > 0.0 {
+        env.player.output.life_cost = calc_life_cost(db, cfg, base_lc).final_cost;
+    }
+    let base_sr = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("SkillSpiritReservationBase")],
+    );
+    if base_sr > 0.0 {
+        env.player.output.spirit_reserved = calc_spirit_reservation(db, cfg, base_sr).final_cost;
+    }
 }
 
 /// 异常 fill：对每类伤害异常算 几率 × 暴击加权 magnitude × effMult，写入 [`OutputTable`]。
@@ -225,6 +348,7 @@ fn fill_ailments(env: &mut Env) {
 
     let phys_hit = component_avg(&env.player.output.damage_components, DamageType::Physical);
     let fire_hit = component_avg(&env.player.output.damage_components, DamageType::Fire);
+    let cold_hit = component_avg(&env.player.output.damage_components, DamageType::Cold);
     let lightning_hit = component_avg(&env.player.output.damage_components, DamageType::Lightning);
     let chaos_phys_hit =
         phys_hit + component_avg(&env.player.output.damage_components, DamageType::Chaos);
@@ -239,6 +363,8 @@ fn fill_ailments(env: &mut Env) {
 
     // 敌方异常阈值（怪物等级查表 × EnemyAilmentThreshold mod）；无敌人配置时回退裸表。
     let threshold = enemy_ailment_threshold_effective(enemy, cfg, env.enemy.level);
+    // 敌方姿态阈值（冰冻/电击姿态积累用；与异常阈值平行，含 floor）。
+    let poise_thr = enemy_poise_threshold_effective(enemy, cfg, env.enemy.level);
 
     // trace 与本步聚合的归因绑在 player.breakdown 之外的临时图：写入 output 字段即可，
     // 完整 trace 由 traced offence/归因路径统一收口（本函数构建并保留贡献节点拓扑）。
@@ -248,16 +374,46 @@ fn fill_ailments(env: &mut Env) {
         let source = AilmentSource::new(phys_hit, crit_mult, crit_chance, never_from_crit);
         let (bleed, _) = bleed_traced(&source, player, enemy, cfg, &mut trace);
         env.player.output.bleed_dps = bleed.expected_dps;
+
+        // Lane B：流血叠层（BleedStacks BASE）。无叠层配置时 max_stacks=1，stacked == 单层。
+        let bleed_stack = resolve_stack_config(player, cfg, "Bleed");
+        let (bleed_stacked, _) = stacking_ailment_dps_traced(
+            bleed.expected_dps,
+            &bleed_stack,
+            AilmentType::Bleed,
+            &mut trace,
+        );
+        env.player.output.bleed_stacked_dps = bleed_stacked;
+        env.player.output.bleed_active_stacks = active_stacks_of(&bleed_stack);
     }
     if fire_hit > 0.0 {
         let source = AilmentSource::new(fire_hit, crit_mult, crit_chance, never_from_crit);
         let (ignite, _) = ignite_traced(&source, player, enemy, cfg, threshold, &mut trace);
         env.player.output.ignite_dps = ignite.expected_dps;
     }
+    if cold_hit > 0.0 {
+        // Lane B：冰缓行动速度降低（%）。强度不足最低阈值时为 0（不施加）。
+        let (chill, _) = chill_traced(cold_hit, threshold, player, cfg, &mut trace);
+        env.player.output.chill_effect = chill;
+        // Lane B：冰冻姿态积累（% per hit）。
+        let (freeze_buildup, _) = freeze_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
+        env.player.output.freeze_buildup_pct = freeze_buildup;
+    }
     if chaos_phys_hit > 0.0 {
         let source = AilmentSource::new(chaos_phys_hit, crit_mult, crit_chance, never_from_crit);
         let (poison, _) = poison_traced(&source, player, enemy, cfg, &mut trace);
         env.player.output.poison_dps = poison.expected_dps;
+
+        // Lane B：中毒叠层（PoisonStacks BASE）。
+        let poison_stack = resolve_stack_config(player, cfg, "Poison");
+        let (poison_stacked, _) = stacking_ailment_dps_traced(
+            poison.expected_dps,
+            &poison_stack,
+            AilmentType::Poison,
+            &mut trace,
+        );
+        env.player.output.poison_stacked_dps = poison_stacked;
+        env.player.output.poison_active_stacks = active_stacks_of(&poison_stack);
     }
     if lightning_hit > 0.0 {
         let source = AilmentSource::new(lightning_hit, crit_mult, crit_chance, never_from_crit);
@@ -266,7 +422,51 @@ fn fill_ailments(env: &mut Env) {
         let (_chance, magnitude, _) =
             shock_traced(&source, player, enemy, cfg, threshold, &mut trace);
         env.player.output.shock_effect = magnitude;
+        // Lane B：电击姿态积累（% per hit）。
+        let (electrocute_buildup, _) =
+            electrocute_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
+        env.player.output.electrocute_buildup_pct = electrocute_buildup;
     }
+}
+
+/// 从 ModDb 解析某 damaging ailment 的叠层配置（`<Ailment>Stacks` BASE → max_stacks）。
+///
+/// 无 `<Ailment>Stacks` 词条时默认 max_stacks=1（不叠层，stacked == 单层 DPS，向后兼容）。
+/// active_stacks 暂取 0（由 `stacking_ailment_dps` 回退到 max_stacks 作上界）；精细活跃
+/// 层数（命中频率 × 持续时间）待 Build 层完整 stacking 实现接入。
+fn resolve_stack_config(db: &ModDb, cfg: &CalcConfig, ailment: &str) -> StackConfig {
+    let base_stacks = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from(format!("{ailment}Stacks"))],
+    );
+    let max_stacks = (1.0 + base_stacks).max(1.0) as u32;
+    StackConfig::new(max_stacks, 0.0)
+}
+
+/// 估算活跃层数（面板口径）：active_stacks>0 取之，否则取 max_stacks 作上界。
+fn active_stacks_of(cfg: &StackConfig) -> f64 {
+    if cfg.active_stacks > 0.0 {
+        cfg.active_stacks
+    } else {
+        cfg.max_stacks as f64
+    }
+}
+
+/// 有效敌方姿态阈值 = `enemy_poise_threshold(level) × mod(...)` 后 floor。
+///
+/// mod 集合与 Lane B 规格一致：`PoiseThreshold` / `FreezeThreshold` /
+/// `EnemyAilmentThreshold`，INC/MORE 聚合为乘子。无敌人 mod_db 时退化为裸表值。
+fn enemy_poise_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -> f64 {
+    let base = enemy_poise_threshold(level as u32) as f64;
+    let names = [
+        ModName::from("PoiseThreshold"),
+        ModName::from("FreezeThreshold"),
+        ModName::from("EnemyAilmentThreshold"),
+    ];
+    let inc = enemy.sum(ModType::Inc, cfg, &names);
+    let more = enemy.more(cfg, &names);
+    (base * (1.0 + inc / 100.0) * more).floor()
 }
 
 /// 有效敌方异常阈值 = `enemy_ailment_threshold(level) × mod(EnemyAilmentThreshold)`。
@@ -296,18 +496,4 @@ fn physical_pdr_fraction(db: &ModDb, cfg: &CalcConfig) -> f64 {
         &[ModName::from("PhysicalDamageReduction")],
     );
     (pct / 100.0).clamp(0.0, 0.9)
-}
-
-/// 某池子的每秒恢复：`base_flat + pool * %regen/100`，再吃 `<stat>Rate` inc/more。
-fn stat_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
-    let flat = db.sum(ModType::Base, cfg, &[ModName::from(stat)]);
-    let percent = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from(format!("{stat}Percent"))],
-    );
-    let rate = [ModName::from(format!("{stat}Rate"))];
-    let inc = db.sum(ModType::Inc, cfg, &rate);
-    let more = db.more(cfg, &rate);
-    regen(pool, flat, percent, inc, more)
 }

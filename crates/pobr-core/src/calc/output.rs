@@ -98,6 +98,49 @@ pub struct OutputTable {
     pub trigger_rate_cap: f64,
     /// 实际触发速率（次/秒）= min(上限, 有效源速率)。
     pub skill_trigger_rate: f64,
+
+    // --- 防御恢复扩展（Lane A：充能状态 / 偷取 / Recoup；perform fill 写入，无来源时中性 0） ---
+    /// 充能当前/最大层数（Power / Frenzy / Endurance）。
+    pub charge_power_current: u32,
+    pub charge_power_maximum: u32,
+    pub charge_frenzy_current: u32,
+    pub charge_frenzy_maximum: u32,
+    pub charge_endurance_current: u32,
+    pub charge_endurance_maximum: u32,
+    /// 偷取面板速率（每秒；0 = 无偷取）。
+    pub life_leech_rate: f64,
+    pub mana_leech_rate: f64,
+    pub es_leech_rate: f64,
+    /// Recoup 返还速率（每秒；依赖 damage_taken 估算基准）。
+    pub life_recoup_rate: f64,
+    pub es_recoup_rate: f64,
+
+    // --- 异常扩展（Lane B：冰缓 / 冰冻·电击姿态积累 / 流血·中毒叠层；perform fill_ailments 写入） ---
+    /// 冰缓行动速度降低（%，如 30.0 = 30%；0 = 不施加）。
+    pub chill_effect: f64,
+    /// 冰冻姿态积累（% per hit；0 = 不积累）。
+    pub freeze_buildup_pct: f64,
+    /// 电击姿态积累（% per hit；0 = 不积累）。
+    pub electrocute_buildup_pct: f64,
+    /// 流血/中毒多层 DPS 与活跃层数（0 = 无叠层配置）。
+    pub bleed_stacked_dps: f64,
+    pub bleed_active_stacks: f64,
+    pub poison_stacked_dps: f64,
+    pub poison_active_stacks: f64,
+
+    // --- 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗；perform fill 写入，无 base 时 0） ---
+    /// AoE 最终半径（内部坐标单位）与面积乘数。
+    pub aoe_radius: f64,
+    pub aoe_area_mod: f64,
+    /// 投射物数量（无投射物词条时为 0）。
+    pub projectile_count: f64,
+    /// 冷却（秒；0 = 无冷却）与可储存使用次数。
+    pub cooldown: f64,
+    pub cooldown_stored_uses: u32,
+    /// 资源消耗（final_cost；无 base 配置时为 0）。
+    pub mana_cost: f64,
+    pub life_cost: f64,
+    pub spirit_reserved: f64,
 }
 
 /// 单个召唤物的输出快照（结构同玩家 offence/defence 关键输出的子集）。
@@ -188,6 +231,35 @@ impl Default for OutputTable {
             minions: Vec::new(),
             trigger_rate_cap: 0.0,
             skill_trigger_rate: 0.0,
+            // Lane A：充能 / 偷取 / Recoup 默认中性 0（无来源词条时不影响面板）。
+            charge_power_current: 0,
+            charge_power_maximum: 0,
+            charge_frenzy_current: 0,
+            charge_frenzy_maximum: 0,
+            charge_endurance_current: 0,
+            charge_endurance_maximum: 0,
+            life_leech_rate: 0.0,
+            mana_leech_rate: 0.0,
+            es_leech_rate: 0.0,
+            life_recoup_rate: 0.0,
+            es_recoup_rate: 0.0,
+            // Lane B：异常扩展默认 0（无对应命中/词条时不施加）。
+            chill_effect: 0.0,
+            freeze_buildup_pct: 0.0,
+            electrocute_buildup_pct: 0.0,
+            bleed_stacked_dps: 0.0,
+            bleed_active_stacks: 0.0,
+            poison_stacked_dps: 0.0,
+            poison_active_stacks: 0.0,
+            // Lane C：技能功能默认 0（无 base 配置时不写入）。
+            aoe_radius: 0.0,
+            aoe_area_mod: 0.0,
+            projectile_count: 0.0,
+            cooldown: 0.0,
+            cooldown_stored_uses: 0,
+            mana_cost: 0.0,
+            life_cost: 0.0,
+            spirit_reserved: 0.0,
         }
     }
 }

@@ -27,7 +27,9 @@
 
 use pobr_data::constants::SHOCK_MIN_EFFECT;
 use pobr_data::monster::{
-    IGNITE_CHANCE_MULTIPLIER, PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR, SHOCK_CHANCE_MULTIPLIER,
+    CHILL_EFFECT_MULTIPLIER, CHILL_MAX_EFFECT, CHILL_MIN_EFFECT, ELECTROCUTE_DAMAGE_SCALE,
+    FREEZE_DAMAGE_SCALE, IGNITE_CHANCE_MULTIPLIER, PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR,
+    SHOCK_CHANCE_MULTIPLIER,
 };
 use pobr_data::prelude::*;
 
@@ -720,6 +722,346 @@ fn record_effmult_trace(
         trace.add_edge(resist.node_id, eff_node);
     }
     eff_node
+}
+
+// ---------------------------------------------------------------------------
+// 冰缓 (Chill) 效果计算
+// ---------------------------------------------------------------------------
+
+/// 冰缓效果（行动速度降低百分比，整数量级）：
+/// `chillEffect = ChillEffectMultiplier × (damage / enemyThreshold) × effectMod`。
+///
+/// 结果 clamp 到 `[CHILL_MIN_EFFECT=30, CHILL_MAX_EFFECT=50]`（默认）。
+/// **强度 < 30% 时丢弃**（0.5.0：最小阈值 30%，非 PoE1 的 5%）。
+///
+/// `damage` = pre-mitigation 冷伤命中；`enemy_threshold` = 已乘 `EnemyAilmentThreshold` mod
+/// 的有效阈值（`enemy_ailment_threshold(lv) × mod`）。
+///
+/// 出处：PoB2 `CalcOffence.lua` `nonDamagingAilmentsConfig.Chill`：
+///   `Chill.effect = ChillEffectMultiplier * (damage/enemyThreshold) * effectMod, clamp [30,50]`
+/// agent-docs/ailments.md §冰缓效果。
+pub fn chill_effect(damage: f64, enemy_threshold: f64) -> f64 {
+    chill_effect_with_mods(damage, enemy_threshold, 1.0)
+}
+
+/// 冰缓效果（含 effectMod 乘子）：
+/// `chillEffect = CHILL_EFFECT_MULTIPLIER × (damage / enemyThreshold) × effectMod`，
+/// clamp 到 `[min_effect, max_effect]`。
+///
+/// `effect_mod` = 攻击方 `AilmentMagnitude`/`EnemyChillMagnitude` × 防御方对应减成
+/// （PoB2 乘子语义：1.0 = 无加成）。
+/// `min_effect` 和 `max_effect` 使用 `CHILL_MIN_EFFECT`（30）/`CHILL_MAX_EFFECT`（50）默认值。
+///
+/// 当计算结果 < CHILL_MIN_EFFECT 时**返回 0.0**（冰缓不施加，丢弃逻辑）。
+///
+/// 出处：PoB2 `CalcOffence.lua` `nonDamagingAilmentsConfig.Chill`：
+///   `chillEffect = clamp(ChillEffectMultiplier*(damage/threshold)*effectMod, min=30, max=50)`
+///   在施加前检查 `> chillMinEffect`（即 < 30% 则丢弃）。
+pub fn chill_effect_with_mods(damage: f64, enemy_threshold: f64, effect_mod: f64) -> f64 {
+    if damage <= 0.0 || enemy_threshold <= 0.0 {
+        return 0.0;
+    }
+    let raw = CHILL_EFFECT_MULTIPLIER * (damage / enemy_threshold) * effect_mod;
+    if raw < CHILL_MIN_EFFECT {
+        // 强度不足最低阈值，冰缓不施加
+        return 0.0;
+    }
+    round(raw.clamp(CHILL_MIN_EFFECT, CHILL_MAX_EFFECT))
+}
+
+/// 感电/冰缓的 traced 版：冰缓效果含 inc/more 词条归因写入 TraceGraph。
+///
+/// `AilmentMagnitude`/`EnemyChillMagnitude`（攻击方）组合为 effect_mod：
+/// `effect_mod = (1 + inc/100) * more`。
+///
+/// 返回 `(chill_effect_pct, node_id)`：`chill_effect_pct` 为百分比整数量级（如 30.0 = 30%），
+/// 0.0 表示冰缓不施加（强度不足 30%）。
+pub fn chill_traced(
+    damage: f64,
+    enemy_threshold: f64,
+    player: &ModDb,
+    cfg: &CalcConfig,
+    trace: &mut TraceGraph,
+) -> (f64, TraceNodeId) {
+    let mag_names = [
+        ModName::from("AilmentMagnitude"),
+        ModName::from("EnemyChillMagnitude"),
+    ];
+    let inc = player.sum(ModType::Inc, cfg, &mag_names);
+    let more = player.more(cfg, &mag_names);
+    let effect_mod = (1.0 + inc / 100.0) * more;
+
+    let effect = chill_effect_with_mods(damage, enemy_threshold, effect_mod);
+    let node = trace.add_node("ChillEffect", effect, TraceOperation::Multiply);
+
+    // 记录 effectMod 贡献到冰缓效果节点
+    let inc_traced = player.sum_traced(ModType::Inc, cfg, &mag_names, trace, "Chill magnitude INC");
+    trace.add_edge(inc_traced.node_id, node);
+    let more_traced = player.more_traced(cfg, &mag_names, trace, "Chill magnitude MORE");
+    trace.add_edge(more_traced.node_id, node);
+
+    (effect, node)
+}
+
+// ---------------------------------------------------------------------------
+// 冰冻 / 电击 Poise 积累 (Poise Buildup)
+// ---------------------------------------------------------------------------
+
+/// Poise 积累百分比（每单位伤害对姿态积累的贡献，以百分比表示）：
+/// `poiseBuildup% = DamageScale / enemyPoiseThreshold × (1 + inc/100) × more × 100`。
+///
+/// 当玩家造成击中伤害时，本次积累 = `hitDamage × poiseBuildup% / 100`。
+/// 积累 ≥ 100% 时施加固定时长的对应状态，并将积累清零。
+///
+/// 返回百分比（如 2.1/300000 × 100 ≈ 0.0007%，低等级怪物时为更高百分比）。
+///
+/// 出处：PoB2 `CalcOffence.lua`：
+///   `poiseBuildup = data.gameConstants[ailment.."DamageScale"] / enemyPoiseThreshold
+///                   * (1 + inc/100) * more * 100`
+fn poise_buildup_inner(damage_scale: f64, enemy_poise_threshold: f64, inc: f64, more: f64) -> f64 {
+    if enemy_poise_threshold <= 0.0 {
+        return 0.0;
+    }
+    let pct = damage_scale / enemy_poise_threshold * (1.0 + inc / 100.0) * more * 100.0;
+    round(pct)
+}
+
+/// 冰冻 Poise 积累百分比（每单位冷伤命中的姿态积累，%）。
+///
+/// `freezeBuildup% = FREEZE_DAMAGE_SCALE / enemyPoiseThreshold × inc_more × 100`
+///
+/// inc/more 来自 `EnemyFreezeBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`
+/// （攻击方侧）。本函数接受已聚合好的 `inc`（百分点）和 `more`（乘子，1.0 = 无 more）。
+///
+/// `enemy_poise_threshold` 应为已应用 `PoiseThreshold`/`FreezeThreshold`/
+/// `EnemyAilmentThreshold` mod 且 floor 处理后的姿态阈值。
+///
+/// 出处：agent-docs/ailments.md §冰冻/电击积累、PoB2 `CalcOffence.lua` poise buildup 段。
+pub fn freeze_poise_buildup(enemy_poise_threshold: f64, inc: f64, more: f64) -> f64 {
+    poise_buildup_inner(FREEZE_DAMAGE_SCALE, enemy_poise_threshold, inc, more)
+}
+
+/// 电击 Poise 积累百分比（每单位闪电伤命中的姿态积累，%）。
+///
+/// `electrocuteBuildup% = ELECTROCUTE_DAMAGE_SCALE / enemyPoiseThreshold × inc_more × 100`
+///
+/// inc/more 来自 `EnemyElectrocuteBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`。
+///
+/// 出处：agent-docs/ailments.md §电击积累、PoB2 `CalcOffence.lua` poise buildup 段。
+pub fn electrocute_poise_buildup(enemy_poise_threshold: f64, inc: f64, more: f64) -> f64 {
+    poise_buildup_inner(ELECTROCUTE_DAMAGE_SCALE, enemy_poise_threshold, inc, more)
+}
+
+/// 冰冻 Poise 积累含 trace：把词条贡献写入 TraceGraph，返回 `(buildup_pct, node)`。
+///
+/// inc/more 来自 `EnemyFreezeBuildup`/`EnemyImmobilisationBuildup`/`ImmobilisationBuildup`。
+pub fn freeze_poise_buildup_traced(
+    enemy_poise_threshold: f64,
+    player: &ModDb,
+    cfg: &CalcConfig,
+    trace: &mut TraceGraph,
+) -> (f64, TraceNodeId) {
+    poise_buildup_traced(
+        "Freeze",
+        FREEZE_DAMAGE_SCALE,
+        enemy_poise_threshold,
+        player,
+        cfg,
+        trace,
+    )
+}
+
+/// 电击 Poise 积累含 trace：把词条贡献写入 TraceGraph，返回 `(buildup_pct, node)`。
+pub fn electrocute_poise_buildup_traced(
+    enemy_poise_threshold: f64,
+    player: &ModDb,
+    cfg: &CalcConfig,
+    trace: &mut TraceGraph,
+) -> (f64, TraceNodeId) {
+    poise_buildup_traced(
+        "Electrocute",
+        ELECTROCUTE_DAMAGE_SCALE,
+        enemy_poise_threshold,
+        player,
+        cfg,
+        trace,
+    )
+}
+
+/// 通用 Poise 积累 traced 实现（Freeze / Electrocute 共享）。
+fn poise_buildup_traced(
+    ailment: &str,
+    damage_scale: f64,
+    enemy_poise_threshold: f64,
+    player: &ModDb,
+    cfg: &CalcConfig,
+    trace: &mut TraceGraph,
+) -> (f64, TraceNodeId) {
+    let buildup_names = [
+        ModName::from(format!("Enemy{ailment}Buildup")),
+        ModName::from("EnemyImmobilisationBuildup"),
+        ModName::from("ImmobilisationBuildup"),
+    ];
+    let inc = player.sum(ModType::Inc, cfg, &buildup_names);
+    let more = player.more(cfg, &buildup_names);
+
+    let buildup = poise_buildup_inner(damage_scale, enemy_poise_threshold, inc, more);
+    let node = trace.add_node(
+        format!("{ailment}PoiseBuildup"),
+        buildup,
+        TraceOperation::Multiply,
+    );
+
+    let inc_tr = player.sum_traced(
+        ModType::Inc,
+        cfg,
+        &buildup_names,
+        trace,
+        format!("{ailment} poise buildup INC"),
+    );
+    trace.add_edge(inc_tr.node_id, node);
+    let more_tr = player.more_traced(
+        cfg,
+        &buildup_names,
+        trace,
+        format!("{ailment} poise buildup MORE"),
+    );
+    trace.add_edge(more_tr.node_id, node);
+
+    (buildup, node)
+}
+
+// ---------------------------------------------------------------------------
+// 叠层与权重平均 DPS (Ailment Stacking)
+// ---------------------------------------------------------------------------
+
+/// 叠层配置：决定某类 damaging ailment 的最大叠层数与活跃叠层数。
+///
+/// 对应 PoB2 `<Ailment>CanStack`/`<Ailment>Stacks`/`<Ailment>MaxStacks` 标识。
+#[derive(Debug, Clone, Copy)]
+pub struct StackConfig {
+    /// 最大叠层数（`maxStacks = Override or (1 + ΣbaseStacks) * more(Stacks)`）。
+    /// 默认 1（不叠层）。
+    pub max_stacks: u32,
+    /// 活跃叠层数（来自 `ailmentStacks` 估算，或 `Multiplier:<Ailment>Stacks` config 覆盖）。
+    /// 用于 StackPotential 计算。若为 0，使用 max_stacks 作为上界。
+    pub active_stacks: f64,
+}
+
+impl Default for StackConfig {
+    fn default() -> Self {
+        Self {
+            max_stacks: 1,
+            active_stacks: 0.0,
+        }
+    }
+}
+
+impl StackConfig {
+    /// 单层（默认不叠层）。
+    pub fn single() -> Self {
+        Self::default()
+    }
+
+    /// 指定叠层配置。`active_stacks=0` 时取 `max_stacks` 作为活跃叠层上界。
+    pub fn new(max_stacks: u32, active_stacks: f64) -> Self {
+        Self {
+            max_stacks,
+            active_stacks,
+        }
+    }
+}
+
+/// 叠层 StackPotential：活跃叠层 vs 最大叠层的比例，返回 `[0.0, 1.0]`。
+///
+/// `stack_potential = active_stacks / max_stacks`，clamp 到 1.0。
+/// StackPotential > 1 表示溢出（活跃 > 最大），此时取上限 1.0。
+///
+/// 出处：PoB2 `CalcOffence.lua` `StackPotential = ailmentStacks / maxStacks`。
+pub fn stack_potential(cfg: &StackConfig) -> f64 {
+    let active = if cfg.active_stacks > 0.0 {
+        cfg.active_stacks
+    } else {
+        cfg.max_stacks as f64
+    };
+    let max = cfg.max_stacks as f64;
+    if max <= 0.0 {
+        return 0.0;
+    }
+    (active / max).clamp(0.0, 1.0)
+}
+
+/// 叠层 RollAverage（PoB2：`StackPotential > 100% 时 roll 向高位偏移`的内插）：
+/// - `StackPotential >= 1.0`（溢出）：`roll_avg = (active - (max-1)/2) / (active+1) * 100`
+/// - `StackPotential < 1.0`（未溢出）：`roll_avg = 50.0`（区间中点，百分比）
+///
+/// 本函数只在 `stacking_ailment_dps` 内部使用；此处单独导出便于测试。
+/// 返回百分比（0..100）。
+///
+/// 出处：PoB2 `CalcOffence.lua` RollAverage 段。
+pub fn roll_average(cfg: &StackConfig) -> f64 {
+    let active = if cfg.active_stacks > 0.0 {
+        cfg.active_stacks
+    } else {
+        cfg.max_stacks as f64
+    };
+    let max = cfg.max_stacks as f64;
+    if active > max && active + 1.0 > 0.0 {
+        // 溢出：roll 偏向高端
+        ((active - (max - 1.0) / 2.0) / (active + 1.0) * 100.0).clamp(0.0, 100.0)
+    } else {
+        // 未溢出：50% 中点
+        50.0
+    }
+}
+
+/// 叠层权重平均 DPS（damaging ailment 叠层口径）。
+///
+/// 公式（PoB2 `ailmentDPS = baseVal * effectMod * rateMod * activeAilments * effMult`）：
+/// - `single_layer_dps` = 单层 magnitude_dps（已含 effMult）
+/// - `active_stacks` = `stack_cfg.active_stacks`（>0）or `stack_cfg.max_stacks`
+/// - 最终 DPS = `single_layer_dps × active_stacks`（各层独立，不累乘）
+///
+/// **注意**：本函数仅做简化的活跃叠层线性聚合（替换 Wave1d 的单层期望值简化）。
+/// `rateMod`（Faster/Slower）维度延后（defer）到完整 stacking 实现时补充。
+///
+/// 出处：agent-docs/ailments.md §叠层与权重平均、PoB2 `CalcOffence.lua` ailmentDPS 段。
+pub fn stacking_ailment_dps(single_layer_dps: f64, stack_cfg: &StackConfig) -> f64 {
+    let active = if stack_cfg.active_stacks > 0.0 {
+        stack_cfg.active_stacks
+    } else {
+        stack_cfg.max_stacks as f64
+    };
+    round(single_layer_dps * active)
+}
+
+/// 叠层权重平均 DPS 含 trace（写入 TraceGraph，归因到活跃叠层数）。
+///
+/// 返回 `(stacked_dps, node_id)`。
+pub fn stacking_ailment_dps_traced(
+    single_layer_dps: f64,
+    stack_cfg: &StackConfig,
+    ailment: AilmentType,
+    trace: &mut TraceGraph,
+) -> (f64, TraceNodeId) {
+    let stacked = stacking_ailment_dps(single_layer_dps, stack_cfg);
+    let node = trace.add_node(
+        format!("{ailment:?}StackedDPS"),
+        stacked,
+        TraceOperation::Aggregate,
+    );
+    let active = if stack_cfg.active_stacks > 0.0 {
+        stack_cfg.active_stacks
+    } else {
+        stack_cfg.max_stacks as f64
+    };
+    let stacks_node = trace.add_node(
+        format!("{ailment:?}ActiveStacks"),
+        active,
+        TraceOperation::Aggregate,
+    );
+    trace.add_edge(stacks_node, node);
+    (stacked, node)
 }
 
 /// 某异常 magnitude 缩放的 inc/more ModName 集合（与 `*_instance` 一致）。

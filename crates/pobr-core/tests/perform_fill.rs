@@ -392,3 +392,337 @@ fn perform_minion_modifier_channel_scales_minion_life() {
         "MinionModifier(+50% life) should raise minion life: {buffed_life} vs {base_life}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Lane A 集成：防御恢复（充能 / 偷取 / Recoup / regen 超集）
+// ─────────────────────────────────────────────────────────────────
+
+/// 防御恢复新字段默认中性：无来源 → 充能 current=0/maximum=3、偷取 0、Recoup 0。
+#[test]
+fn perform_recovery_ext_defaults_are_neutral() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        mana: 200.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(base, vec![]);
+    perform(&mut env).unwrap();
+
+    let o = &env.player.output;
+    // 充能默认上限 3、当前 0（无 multiplier config）。
+    assert_eq!(o.charge_power_current, 0);
+    assert_eq!(o.charge_power_maximum, 3);
+    assert_eq!(o.charge_frenzy_maximum, 3);
+    assert_eq!(o.charge_endurance_maximum, 3);
+    // 无偷取/Recoup 词条 → 速率 0。
+    assert_eq!(o.life_leech_rate, 0.0);
+    assert_eq!(o.mana_leech_rate, 0.0);
+    assert_eq!(o.es_leech_rate, 0.0);
+    assert_eq!(o.life_recoup_rate, 0.0);
+    assert_eq!(o.es_recoup_rate, 0.0);
+}
+
+/// 充能上限词条接入：+2 to Maximum Power Charges → maximum=5；当前层数由 multiplier config。
+#[test]
+fn perform_fills_charge_maximum_and_current() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![Modifier::number("PowerChargesMax", ModType::Base, 2.0)],
+    );
+    // 当前 4 层 power charge（multiplier config），会被 cap 到 maximum=5。
+    env.cfg = env.cfg.with_multiplier("PowerCharge", 4.0);
+    perform(&mut env).unwrap();
+
+    assert_eq!(env.player.output.charge_power_maximum, 5);
+    assert_eq!(env.player.output.charge_power_current, 4);
+}
+
+/// 偷取接入：物理命中 + LifeLeech BASE → life_leech_rate > 0。
+#[test]
+fn perform_fills_life_leech_from_physical_hit() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 1000.0,
+        hit_max: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    // 无偷取 → 0。
+    let mut no_leech = player_with(base, vec![]);
+    no_leech.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    perform(&mut no_leech).unwrap();
+    assert_eq!(no_leech.player.output.life_leech_rate, 0.0);
+
+    // 5% LifeLeech → 速率 > 0（取最高速率实例口径）。
+    let mut with_leech = player_with(
+        base,
+        vec![Modifier::number("LifeLeech", ModType::Base, 5.0)],
+    );
+    with_leech.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    perform(&mut with_leech).unwrap();
+    assert!(with_leech.player.output.life_leech_rate > 0.0);
+}
+
+/// Recoup 接入：LifeRecoup BASE → life_recoup_rate > 0（以 10% 生命估算受击）。
+#[test]
+fn perform_fills_life_recoup_rate() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![Modifier::number("LifeRecoup", ModType::Base, 20.0)],
+    );
+    perform(&mut env).unwrap();
+    // damage_taken_estimate = 1000 * 0.1 = 100；recoup 20% = 20 在 8s 内 → 2.5/s。
+    assert!((env.player.output.life_recoup_rate - 2.5).abs() < 1e-9);
+}
+
+/// regen 超集：XRecoveryRate 全局恢复速率乘进 regen（calc_regen 行为超集）。
+#[test]
+fn perform_regen_picks_up_global_recovery_rate() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    // 1%/s 生命再生 + 100% 增加生命恢复速率（LifeRecoveryRate INC）。
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("LifeRegenPercent", ModType::Base, 1.0),
+            Modifier::number("LifeRecoveryRate", ModType::Inc, 100.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    // base regen = 1000 * 1% = 10；×(1 + 100/100) = 20。
+    assert!((env.player.output.life_regen - 20.0).abs() < 1e-6);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Lane B 集成：异常扩展（冰缓 / 冰冻·电击姿态积累 / 流血·中毒叠层）
+// ─────────────────────────────────────────────────────────────────
+
+fn cold_hit_env(extra: Vec<Modifier>) -> Env {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut actor = Actor::new(1, base);
+    // 巨额冷伤命中以越过冰缓最低阈值。
+    actor
+        .mod_db
+        .add_mod(Modifier::number("ColdDamageMin", ModType::Base, 200000.0));
+    actor
+        .mod_db
+        .add_mod(Modifier::number("ColdDamageMax", ModType::Base, 200000.0));
+    actor.mod_db.add_list(extra);
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Cold);
+    env
+}
+
+/// 冰缓接入：足量冷伤命中 → chill_effect > 0；冰冻姿态积累 > 0。
+#[test]
+fn perform_fills_chill_and_freeze_buildup_from_cold_hit() {
+    let mut env = cold_hit_env(vec![]);
+    perform(&mut env).unwrap();
+
+    assert!(
+        env.player.output.chill_effect > 0.0,
+        "large cold hit should apply chill: {}",
+        env.player.output.chill_effect
+    );
+    assert!(
+        env.player.output.freeze_buildup_pct > 0.0,
+        "cold hit should accumulate freeze poise buildup"
+    );
+}
+
+/// 无冷伤命中时冰缓/冰冻积累保持 0（向后兼容：纯物理 build 不受影响）。
+#[test]
+fn perform_chill_zero_without_cold_hit() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 1000.0,
+        hit_max: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(base, vec![]);
+    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.chill_effect, 0.0);
+    assert_eq!(env.player.output.freeze_buildup_pct, 0.0);
+}
+
+/// 电击姿态积累接入：闪电命中 → electrocute_buildup_pct > 0。
+#[test]
+fn perform_fills_electrocute_buildup_from_lightning_hit() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut actor = Actor::new(1, base);
+    actor.mod_db.add_mod(Modifier::number(
+        "LightningDamageMin",
+        ModType::Base,
+        5000.0,
+    ));
+    actor.mod_db.add_mod(Modifier::number(
+        "LightningDamageMax",
+        ModType::Base,
+        5000.0,
+    ));
+    let mut env = Env::new(actor);
+    env.cfg = CalcConfig::attack().with_damage_type(DamageType::Lightning);
+    perform(&mut env).unwrap();
+
+    assert!(
+        env.player.output.electrocute_buildup_pct > 0.0,
+        "lightning hit should accumulate electrocute poise buildup"
+    );
+}
+
+/// 叠层接入：BleedStacks BASE → bleed_stacked_dps = 单层 × 活跃层数；默认单层时相等。
+#[test]
+fn perform_bleed_stacking_multiplies_dps() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 1000.0,
+        hit_max: 1000.0,
+        ..ActorBaseStats::default()
+    };
+
+    // 单层（默认）：stacked == 单层 DPS。
+    let mut single = player_with(
+        base,
+        vec![Modifier::number("BleedChance", ModType::Base, 100.0)],
+    );
+    single.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    perform(&mut single).unwrap();
+    let one_layer = single.player.output.bleed_dps;
+    assert!(one_layer > 0.0);
+    assert!((single.player.output.bleed_stacked_dps - one_layer).abs() < 1e-6);
+    assert_eq!(single.player.output.bleed_active_stacks, 1.0);
+
+    // +2 BleedStacks → max_stacks=3 → stacked ≈ 单层 × 3。
+    let mut stacked = player_with(
+        base,
+        vec![
+            Modifier::number("BleedChance", ModType::Base, 100.0),
+            Modifier::number("BleedStacks", ModType::Base, 2.0),
+        ],
+    );
+    stacked.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+    perform(&mut stacked).unwrap();
+    assert_eq!(stacked.player.output.bleed_active_stacks, 3.0);
+    assert!((stacked.player.output.bleed_stacked_dps - one_layer * 3.0).abs() < 1e-3);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Lane C 集成：技能功能（AoE / 投射物 / 冷却 / 消耗）
+// ─────────────────────────────────────────────────────────────────
+
+/// 技能功能默认中性：无 base 词条 → AoE/cooldown/cost 全 0；投射物 0（无投射物来源）。
+#[test]
+fn perform_skill_mechanics_defaults_are_neutral() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(base, vec![]);
+    perform(&mut env).unwrap();
+
+    let o = &env.player.output;
+    assert_eq!(o.aoe_radius, 0.0);
+    assert_eq!(o.aoe_area_mod, 0.0);
+    assert_eq!(o.projectile_count, 0.0);
+    assert_eq!(o.cooldown, 0.0);
+    assert_eq!(o.cooldown_stored_uses, 0);
+    assert_eq!(o.mana_cost, 0.0);
+    assert_eq!(o.life_cost, 0.0);
+    assert_eq!(o.spirit_reserved, 0.0);
+}
+
+/// AoE 接入：SkillAreaRadiusBase BASE + AreaOfEffect INC → 半径与面积乘数 > 0。
+#[test]
+fn perform_fills_aoe_radius_from_base_and_inc() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("SkillAreaRadiusBase", ModType::Base, 20.0),
+            Modifier::number("AreaOfEffect", ModType::Inc, 44.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+
+    // areaMod = 1.44 → radius = floor(20 × floor(100×√1.44)/100) = floor(20 × 1.2) = 24。
+    assert!((env.player.output.aoe_area_mod - 1.44).abs() < 1e-9);
+    assert_eq!(env.player.output.aoe_radius, 24.0);
+}
+
+/// 投射物接入：ProjectileCount BASE → projectile_count；无来源时保持 0。
+#[test]
+fn perform_fills_projectile_count_when_source_present() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    // 基础 1 发 + 额外 2 发 = 3 发。
+    let mut env = player_with(
+        base,
+        vec![Modifier::number("ProjectileCount", ModType::Base, 3.0)],
+    );
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.projectile_count, 3.0);
+}
+
+/// 冷却接入：SkillCooldownBase BASE + CooldownRecovery INC → cooldown 缩短。
+#[test]
+fn perform_fills_cooldown_from_base_and_recovery() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("SkillCooldownBase", ModType::Base, 4.0),
+            Modifier::number("CooldownRecovery", ModType::Inc, 100.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    // 4s / (1 + 100/100) = 2s（向上取整到服务器帧，单次储存）。
+    assert!(env.player.output.cooldown > 0.0);
+    assert!(env.player.output.cooldown <= 2.1);
+    assert!(env.player.output.cooldown >= 1.9);
+}
+
+/// 消耗接入：SkillManaCostBase BASE + ManaCost INC → mana_cost；Spirit 保留同理。
+#[test]
+fn perform_fills_mana_and_spirit_cost() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        mana: 500.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("SkillManaCostBase", ModType::Base, 30.0),
+            Modifier::number("ManaCost", ModType::Inc, 50.0),
+            Modifier::number("SkillSpiritReservationBase", ModType::Base, 60.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    // 30 × (1 + 50/100) = 45。
+    assert_eq!(env.player.output.mana_cost, 45.0);
+    assert!(env.player.output.spirit_reserved > 0.0);
+}
