@@ -141,11 +141,16 @@ pub struct SkillGemDef {
 /// 授予效果定义（来自 `GrantedEffects.dat` + 外键解析）。
 ///
 /// 每个宝石/物品最终授予一个或多个 `GrantedEffect`；主动技能效果会关联到一条
-/// `ActiveSkills` 记录（显示名 / 技能类型）。本切片只取身份 + 主动技能链接 +
-/// 施放时间 + 允许的主动技能类型枚举。
+/// `ActiveSkills` 记录（显示名 / 技能类型）。本切片取身份 + 主动技能链接 +
+/// 施放时间 + 允许的主动技能类型枚举 + StatSet/CostTypes 外键索引。
 ///
-/// TODO（后续切片）：`StatSet` / `CostTypes` / 分等级缩放
-/// （`GrantedEffectsPerLevel` 的 cost / cooldown / attack time）尚未接入。
+/// 分等级参数（cost / cooldown / attack time）在独立域
+/// [`GrantedEffectLevels`]（`granted_effect_levels.json`），以本 `id` 为键。
+///
+/// TODO（后续切片，受外部数据阻塞）：`stat_set` 指向的 `GrantedEffectStatSets` /
+/// `GrantedEffectStatSetsPerLevel` 表当前 pipeline 未下载，故**分等级伤害 stat 值**
+/// 尚不可解析（DPS 计算的最后一环）；这两张表加入 `pipeline/config.json` 重下后，
+/// 适配器即可按 `stat_set` 解析每级 stat 集，填入分等级缩放。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GrantedEffectDef {
     /// 稳定 ID，即 `GrantedEffects.Id`（如 `FireballPlayer`）。
@@ -158,6 +163,33 @@ pub struct GrantedEffectDef {
     pub cast_time: Option<u32>,
     /// 允许作用的主动技能类型（GGG 原始枚举值；当前无导出的类型名查表）。
     pub allowed_active_skill_types: Vec<u32>,
+    /// `GrantedEffectStatSets` 表的外键索引（原始 `StatSet` 列）。分等级伤害 stat 值
+    /// 经此解析（待 stat-set 表下载后接入）；当前仅保留索引备查。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stat_set: Option<u32>,
+    /// 消耗类型外键索引（原始 `CostTypes` 列，如 `[0]`=法力）。与
+    /// [`SkillLevelDef::cost_amounts`] 按位置配对（第 i 个类型消耗第 i 个数量）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cost_types: Vec<u32>,
+}
+
+/// 某个授予效果在某一等级上的参数（来自 `GrantedEffectsPerLevel.dat`）。
+///
+/// 与 [`GrantedEffectDef`] 解耦为独立域（一个效果有几十个等级行，避免主表膨胀）。
+/// 收录于 `granted_effect_levels.json`，以 `GrantedEffect` id 为键聚合为升序数组。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SkillLevelDef {
+    /// 宝石/技能等级（1-based）。
+    pub level: u32,
+    /// 冷却时间（毫秒）。原始 0（无冷却）归一化为 None。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cooldown_ms: Option<u32>,
+    /// 攻击时间（毫秒，攻击型技能）。原始 0（非攻击/由武器决定）归一化为 None。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_time_ms: Option<u32>,
+    /// 各消耗类型的消耗量（与 [`GrantedEffectDef::cost_types`] 按位置配对）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cost_amounts: Vec<u32>,
 }
 
 /// 被动天赋节点的种类。

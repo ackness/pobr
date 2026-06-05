@@ -11,6 +11,13 @@ fn manifest_lists_skill_gem_domains() {
     let manifest = game_data().manifest().expect("manifest 可加载");
     assert!(manifest.domains.iter().any(|d| d == "skill_gems"));
     assert!(manifest.domains.iter().any(|d| d == "granted_effects"));
+    assert!(
+        manifest
+            .domains
+            .iter()
+            .any(|d| d == "granted_effect_levels"),
+        "manifest 应声明 granted_effect_levels 域"
+    );
 }
 
 #[test]
@@ -73,6 +80,8 @@ fn granted_effects_load_with_resolved_active_skill() {
         .expect("存在 FireballPlayer 授予效果");
     assert!(!fireball.is_support);
     assert_eq!(fireball.active_skill.as_deref(), Some("fireball"));
+    // StatSet 外键索引已提取（伤害 stat 解析的入口，待 stat-set 表下载）。
+    assert!(fireball.stat_set.is_some(), "主动技能应有 StatSet 索引");
 
     // 辅助效果无关联主动技能。
     let support = effects
@@ -88,6 +97,38 @@ fn granted_effects_sorted_by_id_for_stable_diffs() {
     let mut sorted = effects.clone();
     sorted.sort_by(|a, b| a.id.cmp(&b.id));
     assert_eq!(effects, sorted, "granted_effects.json 应按 id 排序");
+}
+
+#[test]
+fn granted_effect_levels_load_with_ascending_levels() {
+    let levels = game_data()
+        .granted_effect_levels()
+        .expect("granted_effect_levels 可加载");
+    assert!(
+        levels.len() > 1000,
+        "应有数千个效果的分等级数据，实得 {}",
+        levels.len()
+    );
+
+    // 已知技能：ExplosiveGrenadePlayer 应有多级，且按 level 升序。
+    let rows = levels
+        .get("ExplosiveGrenadePlayer")
+        .expect("存在 ExplosiveGrenadePlayer 分等级数据");
+    assert!(rows.len() >= 20, "应有 >=20 级，实得 {}", rows.len());
+    assert!(
+        rows.windows(2).all(|w| w[0].level <= w[1].level),
+        "分等级数组应按 level 升序"
+    );
+
+    // 该技能为冷却驱动（Cooldown 5000ms），消耗随等级递增。
+    let l1 = rows.iter().find(|r| r.level == 1).expect("L1 存在");
+    let l20 = rows.iter().find(|r| r.level == 20).expect("L20 存在");
+    assert_eq!(l1.cooldown_ms, Some(5000));
+    assert!(!l1.cost_amounts.is_empty(), "应有消耗量");
+    assert!(
+        l20.cost_amounts.first() >= l1.cost_amounts.first(),
+        "高等级消耗应不低于低等级"
+    );
 }
 
 #[test]

@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use pobr_data::catalog::{
     BaseItemDef, DataManifest, GrantedEffectDef, ModDef, PassiveNodeDef, PassiveTreeMeta,
-    SkillGemDef, StatDef,
+    SkillGemDef, SkillLevelDef, StatDef,
 };
 
 /// 加载错误。
@@ -101,9 +101,16 @@ impl GameData {
         self.load_json("skill_gems.json")
     }
 
-    /// 加载授予效果定义（含解析后的主动技能链接）。
+    /// 加载授予效果定义（含解析后的主动技能链接 + StatSet/CostTypes 索引）。
     pub fn granted_effects(&self) -> Result<Vec<GrantedEffectDef>, LoadError> {
         self.load_json("granted_effects.json")
+    }
+
+    /// 加载授予效果的分等级参数（`granted_effect_id -> 升序等级数组`，cost/cooldown/attack time）。
+    pub fn granted_effect_levels(
+        &self,
+    ) -> Result<std::collections::BTreeMap<String, Vec<SkillLevelDef>>, LoadError> {
+        self.load_json("granted_effect_levels.json")
     }
 
     /// 加载某语言的主动技能显示名边车（`active_skill_id -> 本地化名称`）。

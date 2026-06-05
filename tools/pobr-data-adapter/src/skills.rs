@@ -1,19 +1,21 @@
-//! 技能宝石域适配：`SkillGems` / `GrantedEffects` / `ActiveSkills` 原始 JSON
-//! → PoBR 最小 JSON（`skill_gems.json` + `granted_effects.json` + 技能名边车）。
+//! 技能宝石域适配：`SkillGems` / `GrantedEffects` / `GrantedEffectsPerLevel` /
+//! `ActiveSkills` 原始 JSON → PoBR 最小 JSON（`skill_gems.json` +
+//! `granted_effects.json` + `granted_effect_levels.json` + 技能名边车）。
 //!
 //! 外键解析方式与 base items 域一致（整型索引 → 稳定字符串 Id）：
 //! - 宝石身份取自 `SkillGems.BaseItemType` → `BaseItemTypes.Id`；
 //! - 授予效果的 `ActiveSkill` 整型索引 → `ActiveSkills.Id`；
-//! - `ActiveSkills.GrantedEffect` 本身即字符串 Id（GrantedEffects.Id），无需查表。
+//! - `GrantedEffectsPerLevel.GrantedEffect` 整型 `_index` → `GrantedEffects.Id`；
+//! - `GrantedEffects.StatSet` / `CostTypes` 保留为原始索引（其目标表
+//!   `GrantedEffectStatSets*` 当前未下载，待重下后按 `stat_set` 解析分等级伤害 stat）。
 //!
-//! TODO（后续切片）：`SkillGems.GemEffects` FK 指向的 `GemEffects` 表当前 pipeline
-//! 未导出，故宝石→授予效果的直接连边暂缺；分等级缩放
-//! （`GrantedEffectsPerLevel` 的 cost / cooldown / attack time / 伤害进度）亦未接入。
+//! 已接入分等级 cost / cooldown / attack time（`granted_effect_levels.json`）；
+//! 分等级**伤害 stat 值**受外部数据阻塞（见 [`GrantedEffectDef`] 文档）。
 
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use pobr_data::catalog::{GrantedEffectDef, SkillGemDef};
+use pobr_data::catalog::{GrantedEffectDef, SkillGemDef, SkillLevelDef};
 use serde::Deserialize;
 
 use crate::{is_placeholder, read_json, resolve};
@@ -64,6 +66,27 @@ struct RawGrantedEffect {
     cast_time: Option<i64>,
     #[serde(rename = "AllowedActiveSkillTypes", default)]
     allowed_active_skill_types: Vec<u32>,
+    /// `GrantedEffectStatSets` 外键索引（负数/越界归一化为 None）。
+    #[serde(rename = "StatSet")]
+    stat_set: Option<i64>,
+    /// 消耗类型外键索引列表（如 `[0]`）。
+    #[serde(rename = "CostTypes", default)]
+    cost_types: Vec<u32>,
+}
+
+#[derive(Deserialize)]
+struct RawGrantedEffectPerLevel {
+    /// `GrantedEffects` 的 `_index`（0-based 外键）。
+    #[serde(rename = "GrantedEffect")]
+    granted_effect: Option<usize>,
+    #[serde(rename = "Level")]
+    level: Option<i64>,
+    #[serde(rename = "Cooldown")]
+    cooldown: Option<i64>,
+    #[serde(rename = "AttackTime")]
+    attack_time: Option<i64>,
+    #[serde(rename = "CostAmounts", default)]
+    cost_amounts: Vec<i64>,
 }
 
 #[derive(Deserialize)]
@@ -90,10 +113,13 @@ fn clamp_u32(v: Option<i64>) -> u32 {
 pub struct SkillsBundle {
     pub gems: Vec<SkillGemDef>,
     pub effects: Vec<GrantedEffectDef>,
+    /// 分等级参数：`granted_effect_id -> 升序等级数组`。
+    pub levels: BTreeMap<String, Vec<SkillLevelDef>>,
     /// 主动技能显示名边车（`active_skill_id -> 繁中名称`）。
     pub zh_skill_names: BTreeMap<String, String>,
     pub gems_total: usize,
     pub effects_total: usize,
+    pub level_rows_total: usize,
 }
 
 /// 从原始表适配出技能宝石 + 授予效果 + 繁中技能名。
@@ -133,8 +159,11 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
     gems.sort_by(|a, b| a.id.cmp(&b.id));
 
     // ---- 授予效果 ----
+    // raw_effects 按文件顺序即 `_index` 顺序；先建 `_index -> Id` 表供 per-level FK 解析。
     let raw_effects = read_json::<Vec<RawGrantedEffect>>(&en.join("GrantedEffects.json"))?;
     let effects_total = raw_effects.len();
+    let effect_id_by_index: Vec<String> = raw_effects.iter().map(|r| r.id.clone()).collect();
+
     let mut effects = Vec::new();
     for raw in raw_effects {
         if raw.id.is_empty() {
@@ -145,15 +174,53 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
             .filter(|&i| i >= 0)
             .and_then(|i| resolve(&active_ids, i as usize));
         let cast_time = raw.cast_time.filter(|&t| t > 0).map(|t| t as u32);
+        let stat_set = raw.stat_set.filter(|&i| i >= 0).map(|i| i as u32);
         effects.push(GrantedEffectDef {
             id: raw.id,
             is_support: raw.is_support.unwrap_or(false),
             active_skill,
             cast_time,
             allowed_active_skill_types: raw.allowed_active_skill_types,
+            stat_set,
+            cost_types: raw.cost_types,
         });
     }
     effects.sort_by(|a, b| a.id.cmp(&b.id));
+
+    // ---- 分等级参数（GrantedEffectsPerLevel）----
+    let raw_levels =
+        read_json::<Vec<RawGrantedEffectPerLevel>>(&en.join("GrantedEffectsPerLevel.json"))?;
+    let level_rows_total = raw_levels.len();
+    let mut levels: BTreeMap<String, Vec<SkillLevelDef>> = BTreeMap::new();
+    for raw in raw_levels {
+        let Some(level) = raw.level.filter(|&l| l > 0).map(|l| l as u32) else {
+            continue; // 等级 0 / 缺失 → 占位行，跳过
+        };
+        let Some(idx) = raw.granted_effect else {
+            continue;
+        };
+        let Some(id) = effect_id_by_index
+            .get(idx)
+            .filter(|s| !s.is_empty())
+            .cloned()
+        else {
+            continue;
+        };
+        levels.entry(id).or_default().push(SkillLevelDef {
+            level,
+            cooldown_ms: raw.cooldown.filter(|&c| c > 0).map(|c| c as u32),
+            attack_time_ms: raw.attack_time.filter(|&t| t > 0).map(|t| t as u32),
+            cost_amounts: raw
+                .cost_amounts
+                .into_iter()
+                .map(|c| c.max(0) as u32)
+                .collect(),
+        });
+    }
+    // 每个效果的等级数组按 level 升序（diff 友好 + 查表确定）。
+    for rows in levels.values_mut() {
+        rows.sort_by_key(|r| r.level);
+    }
 
     // ---- 繁中技能显示名边车（key = ActiveSkills.Id，按英文 canonical 去同名）----
     let tw_rows = read_json::<Vec<RawActiveSkillTwName>>(&tw.join("ActiveSkills.json"))?;
@@ -178,9 +245,11 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
     Ok(SkillsBundle {
         gems,
         effects,
+        levels,
         zh_skill_names,
         gems_total,
         effects_total,
+        level_rows_total,
     })
 }
 

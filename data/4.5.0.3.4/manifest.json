@@ -10,7 +10,6 @@
     "stats",
     "skill_gems",
     "granted_effects",
-    "passive_tree",
-    "passive_tree_meta"
+    "granted_effect_levels"
   ]
 }

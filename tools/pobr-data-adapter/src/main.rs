@@ -220,10 +220,14 @@ fn run(args: Args) -> Result<String, String> {
     let (stat_count, mod_count, mod_filtered, mod_zh) =
         mods::adapt(&en, &tw, &stats, &tags, &version_dir)?;
 
-    // 技能宝石域（SkillGems / GrantedEffects / ActiveSkills）
+    // 技能宝石域（SkillGems / GrantedEffects / GrantedEffectsPerLevel / ActiveSkills）
     let skills = skills::adapt_skills(&en, &tw)?;
     write_pretty(&version_dir.join("skill_gems.json"), &skills.gems)?;
     write_pretty(&version_dir.join("granted_effects.json"), &skills.effects)?;
+    write_pretty(
+        &version_dir.join("granted_effect_levels.json"),
+        &skills.levels,
+    )?;
     write_pretty(
         &version_dir.join("i18n/zh-TW/skills.json"),
         &skills.zh_skill_names,
@@ -239,6 +243,7 @@ fn run(args: Args) -> Result<String, String> {
             "stats".into(),
             "skill_gems".into(),
             "granted_effects".into(),
+            "granted_effect_levels".into(),
         ],
     };
     write_pretty(&version_dir.join("manifest.json"), &manifest)?;
@@ -246,7 +251,8 @@ fn run(args: Args) -> Result<String, String> {
     Ok(format!(
         "适配完成：base_items {}/{} 条（过滤 {} 个占位），zh-TW 名称 {} 条；\
          stats {} 条；mods {} 条（过滤 {} 个空壳），mods zh-TW 名称 {} 条；\
-         skill_gems {}/{} 条，granted_effects {}/{} 条，zh-TW 技能名 {} 条 → {}",
+         skill_gems {}/{} 条，granted_effects {}/{} 条，\
+         granted_effect_levels {} 个效果 / {} 行，zh-TW 技能名 {} 条 → {}",
         bases.len(),
         total,
         total - bases.len(),
@@ -259,6 +265,8 @@ fn run(args: Args) -> Result<String, String> {
         skills.gems_total,
         skills.effects.len(),
         skills.effects_total,
+        skills.levels.len(),
+        skills.level_rows_total,
         skills.zh_skill_names.len(),
         version_dir.display()
     ))
