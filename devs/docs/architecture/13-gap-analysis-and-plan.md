@@ -191,12 +191,20 @@ Wave 0 + Wave 1 + Wave 2(批次1-3)：**332 → 801 测试**(+469)，21 commits�
 - **e2e 重构**：`tests/e2e_real_build.rs` 改用生产 `parse_build_from_code`，删除 ~250 行测试内手写抽取(DRY)；两真实 fixture(Deadeye/Martial Artist)端到端回归。
 - **已知切片(deferred)**：宝石→modifier 文本(分等级 stat set 未导出，DPS/技能伤害=0)；物品基底防御值(`Armour:`/`Evasion:` 非词条文本，armour/evasion 局部计算未接)；`masteryEffects` 选择；JewelSocket 内嵌珠宝；第二武器组独立 Spec。
 
-**剩余工作（需方向选择）**：
-1. **宝石数据通道**：宝石/授予效果分等级 stat set 入库 + 解析(解锁技能伤害/DPS/能量触发/技能基础参数) —— 与 #2 数据管线耦合。
-2. **数据管线**：全量召唤物/技能等入库 JSON(pobr-data-adapter + pobr-gamedata loader)。
-3. **真·PoB2 golden 数值对齐**：需在 PoB2 跑同 build 取数值(外部数据，阻塞)。⚠️含 Wave1c 双重 dip 分歧决策。
-4. **buff/aura ingest 系统**：解锁 BuffEffect / 光环 / 玩家施加 debuff 注入 enemy.mod_db。
-5. **应用层 GUI**(pobr-desktop egui)。
+### Wave 3 批次2 ✅ 宝石数据通道 Phase 2+3 — 真实 DPS 解锁（2026-06-06，commit `ae9676f`）
+**834 → 837 测试**。打通「PoB `<Gem skillId>`+等级 → stat-set 基础伤害 → `<Type>DamageMin/Max` BASE → offence 伤害分量 → **DPS**」，端到端计算首次产出真实技能 DPS（此前恒 0）。
+- **解阻 = `GrantedEffectStatSets*` 表重下**（此前误记为外部阻塞，实测 GGG PoE2 CDN + npm 均可达）：`node download-index.mjs && npx -y pathofexile-dat@15`；偶发 socket 中断的大 bundle 手动 curl（`Folders/` 前缀）落缓存再跑；config.json 列名按 PoE2 schema variant(`validFor=2`)修正(`BaseResolvedValues/FloatStats/AdditionalStats`，无 `DamageEffectiveness`)。
+- **伤害解析**：`FloatStats[i]↔BaseResolvedValues[i]`(+`AdditionalStats↔AdditionalStatsValues`) = 每级已解析 min/max；FireballPlayer L1=8/12、L20=224/336（对齐 vendor `Data/Skills/act_int.lua`）。
+- **入库 + 注入**：`granted_effect_stat_sets.json`(2068 效果) → `pobr-gamedata::skill_stat_sets()` → `BuildData.skill_stat_sets` → `ResolvedSkillLevel.base_damage` → `damage_stat_to_mod`(`<source>_<min|max>_<base|added>_<type>_damage`, source∈spell/secondary/attack)。Phase 2(action rate/cost/cooldown)随同提交。
+- **defer**：per-gem/support 宝石 more 倍率(`resolve_gems` 传空文本)、武器伤害(attack 技能仍 0)、DoT per-minute、多主技能 use_time。
+
+**剩余工作 → 见 [`14-remaining-work-recheck.md`](14-remaining-work-recheck.md)**（2026-06-06 8-agent 实地重核，55 项分 P0–P3 + 并行编排建议；下列为粗粒度入口）：
+1. ✅ ~~宝石数据通道 DPS~~（Wave 3 批次2 完成；剩 per-gem/support 注入 = recheck P0-2）。
+2. **数据管线**：minion/aura/unique/CostTypes 入库（recheck P2-6，独立流，解锁最多下游）。
+3. **真·PoB2 golden 数值对齐**：parity catalog 全 `Planned`、无 golden 回归(recheck P0-1，外部阻塞)。⚠️含 Wave1c 双重 dip 分歧决策。
+4. **buff/aura ingest 系统**：BuffEffect/光环/玩家 debuff→enemy（recheck P1-1，单点解锁面最大）。
+5. **silent bug**：`cross_type_source_hit` 从不调用(recheck P0-3,S)、异常叠层 Ignite/Shock/Chill 未实现(P1-2)、minion ally-buff 无缩放(P0-4)。
+6. **应用层 GUI**(pobr-desktop egui，recheck P3-3)。
 
 ## 4. 编排映射（并行/串行）
 
