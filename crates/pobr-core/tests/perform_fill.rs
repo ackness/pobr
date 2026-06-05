@@ -622,6 +622,42 @@ fn perform_bleed_stacking_multiplies_dps() {
     assert!((stacked.player.output.bleed_stacked_dps - one_layer * 3.0).abs() < 1e-3);
 }
 
+/// 点燃叠层接入（P1-2）：默认 max_stacks=1（stacked==单层）；`IgniteStacks` BASE → 叠层翻倍。
+#[test]
+fn perform_ignite_stacking_multiplies_dps() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 2000.0,
+        hit_max: 2000.0,
+        ..ActorBaseStats::default()
+    };
+    let fire_skill = |extra: Vec<Modifier>| {
+        let mut mods = vec![
+            Modifier::number("FireDamageMin", ModType::Base, 2000.0),
+            Modifier::number("FireDamageMax", ModType::Base, 2000.0),
+            Modifier::number("IgniteChance", ModType::Base, 100.0),
+        ];
+        mods.extend(extra);
+        let mut env = player_with(base, mods);
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Fire);
+        env
+    };
+
+    // 默认（无 IgniteStacks）：stacked == 单层 ignite_dps，活跃层数 1。
+    let mut single = fire_skill(vec![]);
+    perform(&mut single).unwrap();
+    let one_layer = single.player.output.ignite_dps;
+    assert!(one_layer > 0.0, "ignite should apply with fire damage");
+    assert!((single.player.output.ignite_stacked_dps - one_layer).abs() < 1e-6);
+    assert_eq!(single.player.output.ignite_active_stacks, 1.0);
+
+    // +2 IgniteStacks → max_stacks=3 → stacked ≈ 单层 × 3。
+    let mut stacked = fire_skill(vec![Modifier::number("IgniteStacks", ModType::Base, 2.0)]);
+    perform(&mut stacked).unwrap();
+    assert_eq!(stacked.player.output.ignite_active_stacks, 3.0);
+    assert!((stacked.player.output.ignite_stacked_dps - one_layer * 3.0).abs() < 1e-3);
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Lane C 集成：技能功能（AoE / 投射物 / 冷却 / 消耗）
 // ─────────────────────────────────────────────────────────────────

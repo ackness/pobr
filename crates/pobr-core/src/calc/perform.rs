@@ -485,8 +485,16 @@ fn fill_ailments(env: &mut Env) {
     if fire_hit > 0.0 {
         let source = AilmentSource::new(fire_hit, crit_mult, crit_chance, never_from_crit);
         let (ignite, _) = ignite_traced(&source, player, enemy, cfg, threshold, &mut trace);
-        env.player.output.ignite_dps =
-            finalize_ailment_dps(ignite.expected_dps, "Ignite", player, enemy, cfg);
+        let ignite_dps = finalize_ailment_dps(ignite.expected_dps, "Ignite", player, enemy, cfg);
+        env.player.output.ignite_dps = ignite_dps;
+
+        // Lane B：点燃叠层（IgniteStacks BASE）。PoE2 点燃默认不叠层（只取最强一层），
+        // 仅在携带 `IgniteStacks` 词条时 max_stacks>1；无配置时 stacked == 单层（向后兼容）。
+        let ignite_stack = resolve_stack_config(player, cfg, "Ignite");
+        let (ignite_stacked, _) =
+            stacking_ailment_dps_traced(ignite_dps, &ignite_stack, AilmentType::Ignite, &mut trace);
+        env.player.output.ignite_stacked_dps = apply_dot_dps_cap(ignite_stacked, player, cfg);
+        env.player.output.ignite_active_stacks = active_stacks_of(&ignite_stack);
     }
     if cold_hit > 0.0 {
         // Lane B：冰缓行动速度降低（%）。强度不足最低阈值时为 0（不施加）。
