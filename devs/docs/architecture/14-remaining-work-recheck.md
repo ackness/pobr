@@ -234,3 +234,15 @@ recheck 把 P0-2 估为 M、P1-1 拆分估算，但三者实际共享一个尚�
 2. 移植 PoB `SkillStatMap` 的常用子集为 Rust 映射表（`stat_id → (ModName, ModType, flags/tags)`），覆盖 `damage_+%[_final]`、`X_+%`、reservation、buff flag 等高频族。
 3. P0-2：`resolve_gems` 对每个 gem（含 support）解析其 effect 的分等级 stat → 经映射注入，support 按 SkillTypes tag 隔离。
 4. P1-1：光环/herald 效果（带 reservation 的 GrantedEffect）→ buff mod 聚合 + `BuffEffectOnSelf` 缩放 → 玩家/召唤物（P0-4 随之解锁）。
+
+### 续：SkillStatMap 移植起步 + P0-2 support 注入（2026-06-06，commit `13d4687`）
+
+- **新基建 `pobr-build::skill_stat_map`**：PoB `Data/SkillStatMap.lua`（vendor 已本地化）伤害族子集移植，
+  翻译到 PoBR ModName。flat 基础伤害 BASE、`damage_+%`→INC、`_final`→MORE。保守拒绝未知/条件型前缀。
+- **数据**：入库 `damage_+%[_final]` + ConstantStats（support 倍率多在常量层）。SocketGroup.gem_skills
+  捕获每个宝石 skillId（xml_build）；BuildData::effect_stats（active/support 通用）。
+- **P0-2 核心达成**：support 宝石伤害 inc/more/附加 → 注入被支援技能 → DPS。Fireball+FerociousRoar
+  (damage_+% 129) 验证击中 ×2.29。
+- **剩余**：area/speed/crit/抗性 等**非伤害族**的 SkillStatMap 映射；多技能 **tag 隔离**（当前全局作用域，
+  单主技能正确）；support **mana multiplier**（P2-1）。**P1-1 buff/aura 可复用此基建**（光环效果 stat →
+  map_skill_stat + reservation/BuffEffect），是下一主线。
