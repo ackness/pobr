@@ -89,7 +89,8 @@ fn report(name: &str, code: &str, data: &BuildData) -> OutputTable {
         ("FireRes", "FireResist", out.fire_resistance),
         ("ColdRes", "ColdResist", out.cold_resistance),
         ("LightRes", "LightningResist", out.lightning_resistance),
-        ("CritChance", "CritChance", out.crit_chance),
+        // PoBR crit_chance 是 fraction（0.05），PoB2 CritChance 是 percent（5）→ ×100 对齐。
+        ("CritChance", "CritChance", out.crit_chance * 100.0),
         ("CritMulti", "CritMultiplier", out.crit_multiplier),
         ("AvgHit", "AverageDamage", out.total_hit_avg),
         ("DPS", "TotalDPS", out.dps),

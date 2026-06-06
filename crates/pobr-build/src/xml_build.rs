@@ -55,6 +55,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let allocated_nodes = parse_passive_nodes(xml)?;
     let items = parse_items_and_slots(xml)?;
     let socket_groups = parse_socket_groups(xml)?;
+    let main_socket_group = parse_main_socket_group(xml);
 
     let mut build = Build::new()
         .with_character(CharacterIdentity {
@@ -68,6 +69,9 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
             allocated_nodes,
             ..Default::default()
         });
+    if let Some(g) = main_socket_group {
+        build = build.with_main_socket_group(g);
+    }
 
     for (slot, item) in items {
         build = build.set_item(slot, item);
@@ -77,6 +81,21 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     }
 
     Ok(build)
+}
+
+/// 抽取 `<Build mainSocketGroup="N">`（1-based 主技能组索引）。缺失返回 `None`。
+fn parse_main_socket_group(xml: &str) -> Option<usize> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Build" => {
+                return attr_value(&e, b"mainSocketGroup").and_then(|v| v.parse::<usize>().ok());
+            }
+            Ok(Event::Eof) | Err(_) => return None,
+            _ => {}
+        }
+    }
 }
 
 // ── 天赋树 ────────────────────────────────────────────────────────────────────

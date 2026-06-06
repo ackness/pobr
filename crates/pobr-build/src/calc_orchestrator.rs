@@ -186,7 +186,8 @@ pub fn calculate_with_data(
         let origin = ModifierSource::new(SourceId::new(SourceKind::Item, "weapon1.base"))
             .with_raw_text(format!("weapon base crit {}%", w.crit_chance));
         session.add_modifiers(vec![
-            Modifier::number("CritChance", ModType::Base, w.crit_chance).with_origin(origin),
+            Modifier::number("CriticalStrikeChance", ModType::Base, w.crit_chance)
+                .with_origin(origin),
         ]);
     }
 
@@ -250,11 +251,20 @@ fn resolve_main_skill<'b>(
     build: &'b Build,
     data: &BuildData,
 ) -> Option<(ResolvedSkillLevel, &'b SocketGroup)> {
+    // 优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）。指定组解析失败时回退启发式。
+    if let Some(n) = build.main_socket_group
+        && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
+        && let Some(skill_id) = &group.active_skill_id
+        && let Some(resolved) =
+            data.resolve_skill_level(skill_id, group.active_gem_level.unwrap_or(1))
+    {
+        return Some((resolved, group));
+    }
+
+    // 回退启发式：首个**伤害技能**（攻击或法术）组，跳过元/光环/守卫（非攻击非法术）。
+    // 攻击技能的使用时间来自武器（use_time_s 可为 None），故不用 use_time 作筛选。
     for group in build.enabled_socket_groups() {
         if let Some(skill_id) = &group.active_skill_id {
-            // 主技能 = 首个**伤害技能**（攻击或法术）；据此跳过元/光环/守卫等
-            // 非攻击非法术技能（如 Mirage Deadeye / Herald）。攻击技能的使用时间来自
-            // 武器（use_time_s 可为 None），故不再用 use_time 作筛选。
             let is_damage = data
                 .granted_effects
                 .get(skill_id)

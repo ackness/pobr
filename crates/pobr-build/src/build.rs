@@ -116,6 +116,9 @@ pub struct Build {
     pub items: HashMap<EquipmentSlot, Item>,
     /// 技能宝石组。
     pub socket_groups: Vec<SocketGroup>,
+    /// 主技能组索引（PoB `<Build mainSocketGroup>`，**1-based**，指向 `socket_groups`）。
+    /// `None`=未指定（退化为启发式选首个伤害技能）。
+    pub main_socket_group: Option<usize>,
     /// Build 级配置。
     pub config: BuildConfig,
 }
@@ -137,6 +140,12 @@ impl Build {
 
     pub fn with_view_mode(mut self, view_mode: ViewMode) -> Self {
         self.view_mode = view_mode;
+        self
+    }
+
+    /// 设定主技能组索引（PoB `mainSocketGroup`，1-based）。
+    pub fn with_main_socket_group(mut self, group: usize) -> Self {
+        self.main_socket_group = Some(group);
         self
     }
 
