@@ -262,7 +262,20 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Damag
 /// 元素类型额外贡献共享 `ElementalDamage`（去重，多个元素只算一次）。通用
 /// `AttackDamage`/`Damage` 只算一次（与 type-scoped 无关）。
 fn aggregate_inc_more(db: &ModDb, cfg: &CalcConfig, type_path: &[DamageType]) -> (f64, f64) {
-    let generic_names = [ModName::from("AttackDamage"), ModName::from("Damage")];
+    // 通用桶（不限伤害类型）：`Damage` 始终；攻击/法术/技能类别（投射物/范围/近战）按
+    // cfg flag——使 `increased <Attack|Spell|Projectile|Area|Melee> Damage` 对该技能生效。
+    let mut generic_names = vec![ModName::from("Damage")];
+    for (flag, name) in [
+        (ModFlags::ATTACK, "AttackDamage"),
+        (ModFlags::SPELL, "SpellDamage"),
+        (ModFlags::PROJECTILE, "ProjectileDamage"),
+        (ModFlags::AREA, "AreaDamage"),
+        (ModFlags::MELEE, "MeleeDamage"),
+    ] {
+        if cfg.flags.intersects(flag) {
+            generic_names.push(ModName::from(name));
+        }
+    }
     let elemental_name = ModName::from("ElementalDamage");
 
     // 通用桶只算一次（不限定伤害类型）。

@@ -36,7 +36,7 @@ use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
 use pobr_core::{CharacterBase, Modifier};
 use pobr_data::item::{EquipmentSlot, Item};
-use pobr_data::modifier::ModType;
+use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use pobr_tree::collect_allocated_mods;
@@ -135,14 +135,23 @@ pub fn calculate_with_data(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Result<OutputTable, BuildError> {
-    let cfg = build
-        .config
-        .to_calc_config()
-        .with_mode_effective(options.mode_effective);
-
     // 主技能分等级参数（cast/attack 时间 → 行动速率；cost / cooldown 经 BASE 词条注入）。
-    // 在建 session 前先解析，以便把行动速率写入 base_input。
+    // 在建 session 前先解析，以便把行动速率写入 base_input + 据其类型设 cfg 伤害 flag。
     let main_skill = resolve_main_skill(build, data);
+
+    // 主技能类型 → cfg 伤害 flag（Attack/Spell/Projectile/Area/Melee），使
+    // `increased <Projectile|Area|Spell|Melee> Damage` 对该技能生效（damage 聚合按 flag 取名）。
+    let skill_flags = main_skill
+        .as_ref()
+        .and_then(|(_, group)| group.active_skill_id.as_deref())
+        .and_then(|id| data.granted_effects.get(id))
+        .map(|e| skill_type_flags(&e.skill_types))
+        .unwrap_or(ModFlags::NONE);
+    let base_cfg = build.config.to_calc_config();
+    let cfg = base_cfg
+        .clone()
+        .with_flags(base_cfg.flags | skill_flags)
+        .with_mode_effective(options.mode_effective);
     let mut base_input = options.base_input;
     if let Some((skill, _)) = &main_skill
         && let Some(use_time) = skill.use_time_s
@@ -317,6 +326,23 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
         }
     }
     mods
+}
+
+/// 技能类型名（`ActiveSkillType.Id`）→ cfg 伤害 flag。供 damage 聚合按技能类别取用
+/// `<Projectile|Area|Spell|Melee>Damage` 增伤。
+fn skill_type_flags(skill_types: &[String]) -> ModFlags {
+    let mut flags = ModFlags::NONE;
+    for t in skill_types {
+        match t.as_str() {
+            "Attack" => flags |= ModFlags::ATTACK,
+            "Spell" => flags |= ModFlags::SPELL,
+            "Melee" => flags |= ModFlags::MELEE,
+            "Projectile" | "ProjectilesFromUser" => flags |= ModFlags::PROJECTILE,
+            "Area" | "AreaSpell" => flags |= ModFlags::AREA,
+            _ => {}
+        }
+    }
+    flags
 }
 
 /// 攻击技能的武器基底贡献：物理击中伤害（已乘品质）+ 攻击速率 + 暴击率。
