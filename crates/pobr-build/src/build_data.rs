@@ -40,6 +40,8 @@ pub struct ResolvedSkillLevel {
     /// 全部资源消耗（按 `CostTypes` 解析的资源名 + 已除 divisor 的量）。
     /// 含 Mana/Life/ES/Rage/Ward 等及 per-second 持续消耗。空=无 CostTypes 数据或无消耗。
     pub costs: Vec<ResolvedCost>,
+    /// 技能伤害倍率（PoB `baseMultiplier`；攻击技能武器+附加伤害的放大倍率）。`1.0`=无。
+    pub damage_multiplier: f64,
 }
 
 /// 一项已解析的技能资源消耗。
@@ -244,12 +246,26 @@ impl BuildData {
         // 技能 stat（基础伤害值 + damage% 缩放）：分等级行 + 等级无关常量，供映射注入。
         let base_damage = self.effect_stats(skill_id, gem_level);
 
+        // 技能伤害倍率（PoB baseMultiplier）：取该宝石等级的 stat-set 行。
+        let damage_multiplier = self
+            .skill_stat_sets
+            .get(skill_id)
+            .and_then(|set| {
+                set.levels
+                    .iter()
+                    .rfind(|l| l.gem_level <= gem_level)
+                    .or(set.levels.first())
+            })
+            .map(|l| l.damage_multiplier)
+            .unwrap_or(1.0);
+
         Some(ResolvedSkillLevel {
             use_time_s,
             cooldown_s,
             mana_cost,
             base_damage,
             costs,
+            damage_multiplier,
         })
     }
 

@@ -160,16 +160,35 @@ pub fn calculate_with_data(
         base_input.base_action_rate = 1.0 / use_time;
     }
 
-    // 武器基底贡献（仅攻击技能）：击中物理伤害 + 攻击速率覆盖（攻击不用施放时间）。
+    // 技能伤害倍率（PoB baseMultiplier，如 grenade 7.57）：放大武器击中 + 附加伤害。
+    let dmg_mult = main_skill
+        .as_ref()
+        .map(|(s, _)| s.damage_multiplier)
+        .filter(|m| *m > 0.0)
+        .unwrap_or(1.0);
+
+    // 武器基底贡献（仅攻击技能）：击中物理伤害（× 技能倍率）+ 攻击速率覆盖。
     let weapon = main_skill
         .as_ref()
         .and_then(|(_, group)| group.active_skill_id.as_deref())
         .and_then(|skill_id| weapon_contribution(build, data, skill_id));
     if let Some(w) = &weapon {
-        base_input.base_hit_min += w.phys_min;
-        base_input.base_hit_max += w.phys_max;
+        base_input.base_hit_min += w.phys_min * dmg_mult;
+        base_input.base_hit_max += w.phys_max * dmg_mult;
         if w.attack_rate > 0.0 {
             base_input.base_action_rate = w.attack_rate;
+        }
+    }
+
+    // 冷却限速：有冷却的技能（如 grenade 5s）每次冷却才发一次，行动速率上限 1/cooldown
+    // （近似，未计 stored uses）。否则攻击/施放速率会高出 PoB2 一个数量级。
+    if let Some((skill, _)) = &main_skill
+        && let Some(cd) = skill.cooldown_s
+        && cd > 0.0
+    {
+        let cd_rate = 1.0 / cd;
+        if base_input.base_action_rate > cd_rate {
+            base_input.base_action_rate = cd_rate;
         }
     }
 
@@ -186,6 +205,17 @@ pub fn calculate_with_data(
     if let Some((skill, group)) = &main_skill {
         session.add_modifiers(skill_base_modifiers(skill));
         session.add_modifiers(support_modifiers(group, data));
+    }
+
+    // 1b-ii. 技能伤害倍率 → `AddedDamage` MORE，使**附加 flat 伤害**（武器+装备 added）
+    //        同武器击中一并按 baseMultiplier 放大（武器击中已在 base_input × dmg_mult）。
+    if (dmg_mult - 1.0).abs() > f64::EPSILON {
+        let origin = ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.damageMult"))
+            .with_raw_text(format!("skill damage multiplier {dmg_mult:.2}"));
+        session.add_modifiers(vec![
+            Modifier::number("AddedDamage", ModType::More, (dmg_mult - 1.0) * 100.0)
+                .with_origin(origin),
+        ]);
     }
 
     // 1c. 武器基底暴击率 → Weapon1 归因的 BASE CritChance（攻击技能）。

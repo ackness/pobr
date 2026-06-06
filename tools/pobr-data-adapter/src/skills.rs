@@ -322,6 +322,9 @@ struct RawStatSetPerLevel {
     additional_stats: Vec<usize>,
     #[serde(rename = "AdditionalStatsValues", default)]
     additional_stats_values: Vec<i64>,
+    /// 技能伤害倍率原始值（permyriad）；倍率 = `1 + BaseMultiplier/10000`。
+    #[serde(rename = "BaseMultiplier")]
+    base_multiplier: Option<i64>,
 }
 
 /// 分等级伤害 stat 集适配产物。
@@ -443,8 +446,16 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                     });
                 }
             }
-            if !stats.is_empty() {
-                levels.push(SkillStatSetLevel { gem_level, stats });
+            // 伤害倍率 = 1 + BaseMultiplier/10000（攻击技能武器伤害倍率，如 grenade 7.57）。
+            let damage_multiplier =
+                1.0 + f64::from(row.base_multiplier.unwrap_or(0) as i32) / 10000.0;
+            // 收录有伤害 stat 或有非平凡倍率的等级行。
+            if !stats.is_empty() || (damage_multiplier - 1.0).abs() > f64::EPSILON {
+                levels.push(SkillStatSetLevel {
+                    gem_level,
+                    damage_multiplier,
+                    stats,
+                });
             }
         }
         if levels.is_empty() && constant_stats.is_empty() {

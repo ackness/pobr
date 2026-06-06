@@ -277,8 +277,21 @@ pub struct SkillStatSetDef {
 pub struct SkillStatSetLevel {
     /// 宝石等级（1-based，对齐 [`SkillLevelDef::level`]）。
     pub gem_level: u32,
+    /// 技能伤害倍率（PoB `baseMultiplier` = `1 + GrantedEffectStatSetsPerLevel.BaseMultiplier/10000`）。
+    /// 攻击技能据此把武器+附加伤害放大（如 grenade L18 = 7.57 → 757% 武器伤害）；
+    /// `1.0` = 无倍率（多数法术）。
+    #[serde(default = "one_f64", skip_serializing_if = "is_one_f64")]
+    pub damage_multiplier: f64,
     /// 该等级上已解析的伤害 stat（stat id → 值）。
     pub stats: Vec<SkillDamageStat>,
+}
+
+fn one_f64() -> f64 {
+    1.0
+}
+
+fn is_one_f64(v: &f64) -> bool {
+    *v == 1.0
 }
 
 /// 单条已解析的伤害 stat（稳定 stat id + 解析后的数值）。
