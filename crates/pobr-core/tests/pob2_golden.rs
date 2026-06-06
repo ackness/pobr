@@ -192,3 +192,53 @@ fn defence_capped_res_and_pdr() {
         assert!(within_10pct(v, 240.0), "{name}_max_hit = {v} (PoB2 240)");
     }
 }
+
+/// PoB2 TestAttacks「correctly adds damage with oracle forced outcome」(inevitable)：
+/// base 1、暴击 10%、倍率 2、「inevitable critical hits」→ 平均击中
+/// = 1 + (2-1)*(1*0.1 + 0.7*0.9*0.1 + 0.4*0.9²*0.1 + 0.1*0.9³*0.1) = 1.20269。
+#[test]
+fn crit_inevitable_forced_outcome() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "CriticalStrikeChance",
+        ModType::Base,
+        10.0,
+    ));
+    db.add_mod(Modifier::flag("InevitableCriticalHits"));
+    let cfg = CalcConfig::attack().with_mode_effective(true);
+    let out = calculate_minimal(&db, &cfg, &input_base_hit(1.0, 1.0));
+    let s = 1.0 * 0.1 + 0.7 * 0.9 * 0.1 + 0.4 * 0.9_f64.powi(2) * 0.1 + 0.1 * 0.9_f64.powi(3) * 0.1;
+    let expected = 1.0 * (1.0 + (2.0 - 1.0) * s);
+    assert!(
+        within_10pct(out.total_hit_avg, expected),
+        "inevitable total_hit_avg = {} (PoB2 {:.5})",
+        out.total_hit_avg,
+        expected
+    );
+}
+
+/// PoB2 TestAttacks「correctly calculates forced outcome with bifurcated critical hits」：
+/// base 1、暴击 10%、倍率 2、bifurcate+inevitable → 平均击中
+/// = 1 + (2-1)*(2*0.1*(1 + 0.7*(1-0.1)² + 0.4*((1-0.1)²)² + 0.1*((1-0.1)²)³))。
+#[test]
+fn crit_bifurcate_inevitable() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "CriticalStrikeChance",
+        ModType::Base,
+        10.0,
+    ));
+    db.add_mod(Modifier::flag("BifurcateCrit"));
+    db.add_mod(Modifier::flag("InevitableCriticalHits"));
+    let cfg = CalcConfig::attack().with_mode_effective(true);
+    let out = calculate_minimal(&db, &cfg, &input_base_hit(1.0, 1.0));
+    let q = (1.0_f64 - 0.1).powi(2);
+    let expected =
+        1.0 + (2.0 - 1.0) * (2.0 * 0.1 * (1.0 + 0.7 * q + 0.4 * q.powi(2) + 0.1 * q.powi(3)));
+    assert!(
+        within_10pct(out.total_hit_avg, expected),
+        "bifurcate+inevitable total_hit_avg = {} (PoB2 {:.5})",
+        out.total_hit_avg,
+        expected
+    );
+}
