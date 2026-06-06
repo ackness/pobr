@@ -276,6 +276,10 @@ fn aggregate_inc_more(db: &ModDb, cfg: &CalcConfig, type_path: &[DamageType]) ->
             generic_names.push(ModName::from(name));
         }
     }
+    // 关键词 / 武器类别派生的伤害缩放名（GrenadeDamage / CrossbowDamage 等）。
+    for kw in &cfg.damage_keywords {
+        generic_names.push(ModName::from(kw.clone()));
+    }
     let elemental_name = ModName::from("ElementalDamage");
 
     // 通用桶只算一次（不限定伤害类型）。

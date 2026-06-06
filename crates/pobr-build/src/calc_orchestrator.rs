@@ -141,16 +141,23 @@ pub fn calculate_with_data(
 
     // 主技能类型 → cfg 伤害 flag（Attack/Spell/Projectile/Area/Melee），使
     // `increased <Projectile|Area|Spell|Melee> Damage` 对该技能生效（damage 聚合按 flag 取名）。
-    let skill_flags = main_skill
+    let main_effect = main_skill
         .as_ref()
         .and_then(|(_, group)| group.active_skill_id.as_deref())
-        .and_then(|id| data.granted_effects.get(id))
+        .and_then(|id| data.granted_effects.get(id));
+    let skill_flags = main_effect
         .map(|e| skill_type_flags(&e.skill_types))
         .unwrap_or(ModFlags::NONE);
+    let dmg_keywords = damage_keywords(
+        build,
+        data,
+        main_effect.map(|e| e.skill_types.as_slice()).unwrap_or(&[]),
+    );
     let base_cfg = build.config.to_calc_config();
     let cfg = base_cfg
         .clone()
         .with_flags(base_cfg.flags | skill_flags)
+        .with_damage_keywords(dmg_keywords)
         .with_mode_effective(options.mode_effective);
     let mut base_input = options.base_input;
     if let Some((skill, _)) = &main_skill
@@ -356,6 +363,39 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
         }
     }
     mods
+}
+
+/// 主技能关键词 + 主武器类别 → 额外伤害缩放 ModName（`GrenadeDamage`/`CrossbowDamage` 等）。
+/// 使 `increased Grenade Damage` / `Damage with Crossbows` 这类按技能/武器作用的增伤生效。
+fn damage_keywords(build: &Build, data: &BuildData, skill_types: &[String]) -> Vec<String> {
+    let mut names = Vec::new();
+    // 技能关键词（非 flag 的伤害关键词，如 Grenade）。
+    if skill_types.iter().any(|t| t == "Grenade") {
+        names.push("GrenadeDamage".to_string());
+    }
+    // 主武器类别 → 武器类型伤害。
+    if let Some(item) = build.items.get(&EquipmentSlot::Weapon1)
+        && let Some(def) = data.base_items.get(&item.base.to_string())
+    {
+        let cls = def.item_class.as_str();
+        let kw = if cls.contains("Crossbow") {
+            Some("CrossbowDamage")
+        } else if cls.contains("Bow") {
+            Some("BowDamage")
+        } else if cls.contains("Quarterstaff") {
+            Some("QuarterstaffDamage")
+        } else if cls.contains("Mace") {
+            Some("MaceDamage")
+        } else if cls.contains("Spear") {
+            Some("SpearDamage")
+        } else {
+            None
+        };
+        if let Some(k) = kw {
+            names.push(k.to_string());
+        }
+    }
+    names
 }
 
 /// 技能类型名（`ActiveSkillType.Id`）→ cfg 伤害 flag。供 damage 聚合按技能类别取用

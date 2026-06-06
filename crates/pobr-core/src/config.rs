@@ -10,6 +10,10 @@ pub struct CalcConfig {
     pub damage_type: Option<DamageType>,
     pub conditions: HashMap<String, bool>,
     pub multipliers: HashMap<String, f64>,
+    /// 额外的伤害缩放 ModName（按主技能关键词 / 武器类别派生，如 `GrenadeDamage`、
+    /// `CrossbowDamage`）。`damage::aggregate_inc_more` 把它们纳入通用增伤桶，使
+    /// `increased Grenade Damage` / `Damage with Crossbows` 对该技能生效。
+    pub damage_keywords: Vec<String>,
     /// 有效 DPS 口径开关（PoB2 `env.mode_effective`）。
     ///
     /// - `false`（默认，面板/裸 DPS 口径）：进攻计算**不**引入敌人 modDB 的减伤
@@ -68,6 +72,12 @@ impl CalcConfig {
 
     pub fn with_damage_type(mut self, damage_type: DamageType) -> Self {
         self.damage_type = Some(damage_type);
+        self
+    }
+
+    /// 设定额外伤害缩放 ModName（技能关键词 / 武器类别派生）。
+    pub fn with_damage_keywords(mut self, names: Vec<String>) -> Self {
+        self.damage_keywords = names;
         self
     }
 

@@ -502,6 +502,13 @@ fn parse_name(text: &str) -> Option<ModName> {
         "area damage" => "AreaDamage",
         "elemental damage with attacks" => "ElementalDamage",
         "elemental damage with attack skills" => "ElementalDamage",
+        // 技能关键词 / 武器类别伤害（由 cfg.damage_keywords 按主技能/武器选择性聚合）。
+        "grenade damage" => "GrenadeDamage",
+        "damage with crossbows" => "CrossbowDamage",
+        "damage with bow" | "damage with bows" => "BowDamage",
+        "damage with quarterstaves" | "damage with quarterstaff" => "QuarterstaffDamage",
+        "damage with maces" | "damage with mace" => "MaceDamage",
+        "damage with spears" | "damage with spear" => "SpearDamage",
         "attack speed" => "AttackSpeed",
         "cast speed" => "CastSpeed",
         "movement speed" => "MovementSpeed",
