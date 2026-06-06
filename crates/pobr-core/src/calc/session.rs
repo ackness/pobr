@@ -113,6 +113,27 @@ impl CalculationSession {
         super::setup_env::setup_enemy(&mut self.env, config_level, tier);
     }
 
+    /// 注入玩家施加的元素**曝光**（`[fire, cold, lightning]`，PoB2 config 默认每点 -20%
+    /// 抗），写入 enemy modDB 并按 [`reduce_enemy_exposure`] 折算为 `<Element>Resist` 减项。
+    /// 仅在有效口径（`mode_effective`）下对伤害生效。须在 [`setup_enemy`](Self::setup_enemy)
+    /// 之后调用。
+    ///
+    /// [`reduce_enemy_exposure`]: super::setup_env::reduce_enemy_exposure
+    pub fn apply_enemy_exposure(&mut self, elements: [bool; 3], magnitude: f64) {
+        let names = ["FireExposure", "ColdExposure", "LightningExposure"];
+        for (on, name) in elements.iter().zip(names) {
+            if *on {
+                self.env.enemy.mod_db.add_list([Modifier::number(
+                    ModName::from(name),
+                    ModType::Base,
+                    magnitude,
+                )
+                .with_source("config exposure")]);
+            }
+        }
+        super::setup_env::reduce_enemy_exposure(&mut self.env.enemy.mod_db, &self.env.cfg);
+    }
+
     pub fn perform_minimal(&mut self) -> MinimalOutput {
         perform(&mut self.env).expect("CalculationSession constructs a valid player actor");
         MinimalOutput::from_output_and_breakdown(

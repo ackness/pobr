@@ -105,14 +105,14 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>) {
                 let Some(name) = attr_value(&e, b"name") else {
                     continue;
                 };
-                if let Some(var) = name.strip_prefix("condition") {
-                    if let Some(b) = attr_value(&e, b"boolean") {
-                        conditions.insert(var.to_string(), b == "true");
-                    }
-                } else if let Some(var) = name.strip_prefix("multiplier") {
-                    if let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok()) {
-                        multipliers.insert(var.to_string(), n);
-                    }
+                if let Some(var) = name.strip_prefix("condition")
+                    && let Some(b) = attr_value(&e, b"boolean")
+                {
+                    conditions.insert(var.to_string(), b == "true");
+                } else if let Some(var) = name.strip_prefix("multiplier")
+                    && let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
+                {
+                    multipliers.insert(var.to_string(), n);
                 }
             }
             Ok(Event::Eof) | Err(_) => break,

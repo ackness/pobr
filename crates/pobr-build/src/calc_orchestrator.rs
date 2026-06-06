@@ -46,6 +46,9 @@ use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
 use crate::skill_stat_map::map_skill_stat;
 
+/// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
+const EXPOSURE_MAGNITUDE: f64 = 20.0;
+
 /// 编排选项：可注入基础 [`MinimalInput`]（角色基础生命/抗性等，来自上层装配）。
 #[derive(Debug, Clone, Default)]
 pub struct OrchestratorOptions {
@@ -275,6 +278,24 @@ pub fn calculate_with_data(
 
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
     session.setup_enemy(options.enemy_level, options.enemy_tier);
+
+    // 5b. 玩家施加的元素曝光（build config `conditionEnemy*Exposure`）→ enemy 抗性减项
+    //     （PoB2 config 默认每点 -20%）。仅有效口径生效，须在 setup_enemy 后。
+    if options.mode_effective {
+        let exposure = [
+            build.config.conditions.get("EnemyFireExposure").copied(),
+            build.config.conditions.get("EnemyColdExposure").copied(),
+            build
+                .config
+                .conditions
+                .get("EnemyLightningExposure")
+                .copied(),
+        ]
+        .map(|c| c.unwrap_or(false));
+        if exposure.iter().any(|&on| on) {
+            session.apply_enemy_exposure(exposure, EXPOSURE_MAGNITUDE);
+        }
+    }
 
     // 6. 额外全局文本（战役奖励 / 调试覆盖）。
     if !options.extra_modifier_texts.is_empty() {
