@@ -202,3 +202,19 @@ fn parses_conversion_and_gain_as_extra() {
     let o = parse_mod("Gain 5% of Damage as Extra Damage of all Elements").unwrap();
     assert_eq!(o.mods.len(), 3, "all elements → fire/cold/lightning");
 }
+
+#[test]
+fn parses_against_rarity_conditions() {
+    // 「against Rare or Unique Enemies」→ 条件型增伤（DPS vs boss 时由 cfg 置真）。
+    let o = parse_mod("50% increased Attack Damage against Rare or Unique Enemies").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("AttackDamage"));
+    assert_eq!(o.mods[0].mod_type, ModType::Inc);
+    assert!(
+        o.mods[0]
+            .tags
+            .iter()
+            .any(|t| matches!(t, ModTag::Condition { var, .. } if var == "RareOrUnique")),
+        "should carry RareOrUnique condition tag"
+    );
+}

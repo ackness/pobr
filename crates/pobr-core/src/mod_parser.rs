@@ -472,6 +472,28 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
                 limit: None,
             },
         ),
+        // 敌人稀有度条件（DPS 默认 vs Boss/Unique → 由 orchestrator 据敌人档位置真）。
+        (
+            " against rare or unique enemies",
+            ModTag::Condition {
+                var: "RareOrUnique".into(),
+                negated: false,
+            },
+        ),
+        (
+            " against unique enemies",
+            ModTag::Condition {
+                var: "Unique".into(),
+                negated: false,
+            },
+        ),
+        (
+            " against rare enemies",
+            ModTag::Condition {
+                var: "Rare".into(),
+                negated: false,
+            },
+        ),
     ];
 
     for (suffix, tag) in known_tags {

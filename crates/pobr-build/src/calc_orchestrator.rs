@@ -157,11 +157,21 @@ pub fn calculate_with_data(
         main_effect.map(|e| e.skill_types.as_slice()).unwrap_or(&[]),
     );
     let base_cfg = build.config.to_calc_config();
-    let cfg = base_cfg
+    let mut cfg = base_cfg
         .clone()
         .with_flags(base_cfg.flags | skill_flags)
         .with_damage_keywords(dmg_keywords)
         .with_mode_effective(options.mode_effective);
+    // 敌人稀有度条件：DPS 默认 vs Boss/Pinnacle/Uber（= Unique）→ 置真，使
+    // `... against Rare or Unique Enemies` 这类条件型增伤生效（PoB 的 boss DPS 口径）。
+    if matches!(
+        options.enemy_tier,
+        EnemyTier::Boss | EnemyTier::Pinnacle | EnemyTier::Uber
+    ) {
+        cfg = cfg
+            .with_condition("Unique", true)
+            .with_condition("RareOrUnique", true);
+    }
     let mut base_input = options.base_input;
     if let Some((skill, _)) = &main_skill
         && let Some(use_time) = skill.use_time_s
