@@ -114,6 +114,9 @@ pub struct Build {
     /// 装备：按 [`EquipmentSlot`] 索引。遍历时按 `slot.id()` 字典序排序以保证确定性
     /// （`EquipmentSlot` 仅实现 `Hash` 不实现 `Ord`，REAL 类型不可改）。
     pub items: HashMap<EquipmentSlot, Item>,
+    /// 珠宝（天赋树/深渊槽，无固定 [`EquipmentSlot`]）。其词条按全局作用注入
+    /// （多数珠宝为全局；radius 珠宝当前按全局近似）。
+    pub jewels: Vec<Item>,
     /// 技能宝石组。
     pub socket_groups: Vec<SocketGroup>,
     /// 主技能组索引（PoB `<Build mainSocketGroup>`，**1-based**，指向 `socket_groups`）。
@@ -162,6 +165,12 @@ impl Build {
     /// 设置某槽位装备，返回新副本。
     pub fn set_item(mut self, slot: EquipmentSlot, item: Item) -> Self {
         self.items.insert(slot, item);
+        self
+    }
+
+    /// 设定珠宝列表，返回新副本。
+    pub fn with_jewels(mut self, jewels: Vec<Item>) -> Self {
+        self.jewels = jewels;
         self
     }
 

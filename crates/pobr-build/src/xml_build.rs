@@ -55,7 +55,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     };
 
     let allocated_nodes = parse_passive_nodes(xml)?;
-    let items = parse_items_and_slots(xml)?;
+    let (items, jewels) = parse_items_and_slots(xml)?;
     let socket_groups = parse_socket_groups(xml)?;
     let main_socket_group = parse_main_socket_group(xml);
 
@@ -77,6 +77,9 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
 
     for (slot, item) in items {
         build = build.set_item(slot, item);
+    }
+    if !jewels.is_empty() {
+        build = build.with_jewels(jewels);
     }
     for group in socket_groups {
         build = build.add_socket_group(group);
@@ -193,9 +196,9 @@ fn parse_node_csv(value: &str) -> Vec<NodeId> {
 
 /// 抽取 `<Item id>` 文本块并按 `<Items activeItemSet>` 选中的 `<ItemSet>` 槽位映射，
 /// 返回 `(EquipmentSlot, Item)` 列表（按槽位 id 字典序，确定性）。
-fn parse_items_and_slots(xml: &str) -> Result<Vec<(EquipmentSlot, Item)>, XmlError> {
+fn parse_items_and_slots(xml: &str) -> Result<(Vec<(EquipmentSlot, Item)>, Vec<Item>), XmlError> {
     let items = parse_item_blocks(xml)?;
-    let slot_assignments = parse_active_item_set(xml)?;
+    let (slot_assignments, jewel_ids) = parse_active_item_set(xml)?;
 
     let mut out: Vec<(EquipmentSlot, Item)> = Vec::new();
     for (slot, item_id) in slot_assignments {
@@ -204,7 +207,40 @@ fn parse_items_and_slots(xml: &str) -> Result<Vec<(EquipmentSlot, Item)>, XmlErr
         }
     }
     out.sort_by_key(|(slot, _)| slot.id());
-    Ok(out)
+
+    // 树上珠宝在 `<Tree><Spec><Sockets><Socket nodeId itemId/>`（非 ItemSet），单独收集。
+    let mut all_jewel_ids = jewel_ids;
+    all_jewel_ids.extend(parse_tree_socket_item_ids(xml)?);
+    all_jewel_ids.sort_unstable();
+    all_jewel_ids.dedup();
+
+    let jewels: Vec<Item> = all_jewel_ids
+        .iter()
+        .filter_map(|id| items.get(id).cloned())
+        .collect();
+    Ok((out, jewels))
+}
+
+/// 解析 `<Sockets><Socket nodeId="N" itemId="M"/>` → 非零 itemId（树上珠宝）。
+fn parse_tree_socket_item_ids(xml: &str) -> Result<Vec<u32>, XmlError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+    let mut ids = Vec::new();
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Socket" => {
+                if let Some(id) = attr_value(&e, b"itemId").and_then(|v| v.parse::<u32>().ok())
+                    && id != 0
+                {
+                    ids.push(id);
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(XmlError::Parse(e.to_string())),
+            _ => {}
+        }
+    }
+    Ok(ids)
 }
 
 /// 解析所有 `<Item id="N">…</Item>` 文本块为 `id -> Item`。
@@ -267,9 +303,10 @@ fn item_set_data(e: &BytesStart<'_>) -> ItemSetData {
     }
 }
 
-/// 解析 `<Items activeItemSet>` 选中的 `<ItemSet>`，返回 `(EquipmentSlot, item_id)` 映射。
-/// `itemId="0"`（空槽）与枚举外槽名被忽略；武器组按该组 `useSecondWeaponSet` 切换。
-fn parse_active_item_set(xml: &str) -> Result<Vec<(EquipmentSlot, u32)>, XmlError> {
+/// 解析 `<Items activeItemSet>` 选中的 `<ItemSet>`，返回 `(装备槽映射, 珠宝 item_id 列表)`。
+/// `itemId="0"`（空槽）与枚举外槽名被忽略；武器组按该组 `useSecondWeaponSet` 切换；
+/// `Jewel*` / `*Socket*` 槽位的物品收入珠宝列表（全局词条注入，见 orchestrator）。
+fn parse_active_item_set(xml: &str) -> Result<(Vec<(EquipmentSlot, u32)>, Vec<u32>), XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
@@ -313,7 +350,7 @@ fn parse_active_item_set(xml: &str) -> Result<Vec<(EquipmentSlot, u32)>, XmlErro
     }
 
     let Some(first_set) = sets.first() else {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     };
     let chosen = active_item_set
         .as_deref()
@@ -321,15 +358,23 @@ fn parse_active_item_set(xml: &str) -> Result<Vec<(EquipmentSlot, u32)>, XmlErro
         .unwrap_or(first_set);
 
     let mut assignments = Vec::new();
+    let mut jewel_ids = Vec::new();
     for (slot_name, item_id) in &chosen.slots {
         if *item_id == 0 {
             continue;
         }
         if let Some(slot) = slot_from_pob_name(slot_name, chosen.use_second_weapon_set) {
             assignments.push((slot, *item_id));
+        } else if is_jewel_slot(slot_name) {
+            jewel_ids.push(*item_id);
         }
     }
-    Ok(assignments)
+    Ok((assignments, jewel_ids))
+}
+
+/// PoB 珠宝/深渊槽名（`Jewel 12345` / `… Abyssal Socket N` / `… Socket N`）→ 收入珠宝列表。
+fn is_jewel_slot(name: &str) -> bool {
+    name.starts_with("Jewel") || name.contains("Socket")
 }
 
 /// PoB `<Slot name>` → [`EquipmentSlot`]。枚举外槽名（Charm/Flask/Ring 3/防具切换组等）

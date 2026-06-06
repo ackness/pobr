@@ -278,6 +278,22 @@ pub fn calculate_with_data(
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
+    // 2b. 珠宝（天赋树/深渊槽）：词条按**全局**注入（多数珠宝为全局 mod；radius 珠宝
+    //     当前近似为全局）。沿用 add_item 的 skip-and-collect 容错。
+    for jewel in &build.jewels {
+        let filtered = filter_item_parseable(jewel);
+        let texts: Vec<&str> = filtered
+            .implicit_texts
+            .iter()
+            .chain(&filtered.modifier_texts)
+            .chain(&filtered.enchant_texts)
+            .map(String::as_str)
+            .collect();
+        session
+            .add_modifier_texts(texts)
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+    }
+
     // 3. 天赋树：NodeId → 节点 mod 文本（节点级归因）。
     let passive_nodes = resolve_passive_nodes(build, data);
     if !passive_nodes.is_empty() {
