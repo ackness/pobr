@@ -23,6 +23,8 @@
 //! 组的独立 Spec、`<Item>` 的精确基底归一化等留待后续。
 
 use quick_xml::Reader;
+use std::collections::HashMap;
+
 use quick_xml::events::{BytesStart, Event};
 
 use pobr_core::item_text::parse_pob_xml_item;
@@ -80,7 +82,44 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
         build = build.add_socket_group(group);
     }
 
+    // 战斗配置（敌人状态 / 条件 / 倍率）→ BuildConfig，经 to_calc_config 进入 cfg，
+    // 供条件型词条（`... against Chilled Enemies` 等）按 PoB 保存的开关生效。
+    let (conditions, multipliers) = parse_config(xml);
+    build.config.conditions.extend(conditions);
+    build.config.multipliers.extend(multipliers);
+
     Ok(build)
+}
+
+/// 抽取 `<Config>` 的 `<Input name boolean|number>` → (conditions, multipliers)。
+/// 名称去 `condition`/`multiplier` 前缀作为变量名（如 `conditionEnemyChilled` → `EnemyChilled`），
+/// 与计算侧 `ModTag::Condition`/`Multiplier` 变量约定对齐。
+fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>) {
+    let mut conditions = HashMap::new();
+    let mut multipliers = HashMap::new();
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Input" => {
+                let Some(name) = attr_value(&e, b"name") else {
+                    continue;
+                };
+                if let Some(var) = name.strip_prefix("condition") {
+                    if let Some(b) = attr_value(&e, b"boolean") {
+                        conditions.insert(var.to_string(), b == "true");
+                    }
+                } else if let Some(var) = name.strip_prefix("multiplier") {
+                    if let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok()) {
+                        multipliers.insert(var.to_string(), n);
+                    }
+                }
+            }
+            Ok(Event::Eof) | Err(_) => break,
+            _ => {}
+        }
+    }
+    (conditions, multipliers)
 }
 
 /// 抽取 `<Build mainSocketGroup="N">`（1-based 主技能组索引）。缺失返回 `None`。
