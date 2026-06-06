@@ -44,7 +44,34 @@ const TYPES: [(&str, &str); 5] = [
 
 /// 把一条技能 stat id 映射为 PoBR modifier 规格。无法映射（未知/条件型）返回 `None`。
 pub fn map_skill_stat(stat: &str) -> Option<MappedStat> {
-    map_base_damage(stat).or_else(|| map_damage_percent(stat))
+    map_base_damage(stat)
+        .or_else(|| map_damage_percent(stat))
+        .or_else(|| map_conversion(stat))
+}
+
+/// 技能自带转换 / gain-as-extra（PoB2 skill 阶段）：
+/// - `active_skill_base_<from>_damage_%_to_convert_to_<to>` → `Skill<From>DamageConvertTo<To>` BASE
+/// - `active_skill_base_<from>_damage_%_to_gain_as_<to>` → `Skill<From>DamageGainAs<To>` BASE
+///
+/// `<to>` 必须恰为伤害类型词（条件型如 `fire_if_heat_is_consumed` 不匹配，保守跳过）。
+fn map_conversion(stat: &str) -> Option<MappedStat> {
+    let pascal = |w: &str| TYPES.iter().find(|(lc, _)| *lc == w).map(|(_, p)| *p);
+    for (marker, kind) in [
+        ("_damage_%_to_convert_to_", "ConvertTo"),
+        ("_damage_%_to_gain_as_", "GainAs"),
+    ] {
+        if let Some((before, to_word)) = stat.split_once(marker) {
+            let Some(to) = pascal(to_word) else { continue };
+            let Some(from) = before.rsplit('_').next().and_then(pascal) else {
+                continue;
+            };
+            return Some(MappedStat::new(
+                format!("Skill{from}Damage{kind}{to}"),
+                ModType::Base,
+            ));
+        }
+    }
+    None
 }
 
 /// flat 基础伤害值：`<source>_<minimum|maximum>_<base|added>_<type>_damage`

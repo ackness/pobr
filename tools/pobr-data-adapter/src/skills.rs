@@ -347,6 +347,9 @@ fn is_mappable_stat(stat: &str) -> bool {
         // 伤害缩放百分比（increased / more）
         || stat.ends_with("damage_+%")
         || stat.ends_with("damage_+%_final")
+        // 技能自带转换 / gain-as-extra（如 grenade 物理→火）
+        || stat.contains("_damage_%_to_convert_to_")
+        || stat.contains("_damage_%_to_gain_as_")
 }
 
 /// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`
