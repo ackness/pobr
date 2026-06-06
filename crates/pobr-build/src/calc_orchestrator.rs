@@ -259,7 +259,20 @@ pub fn calculate_with_data(
     //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
     //    skip-and-collect 语义）。
     for (slot, item) in build.equipped_items() {
-        let filtered = filter_item_parseable(item);
+        let mut filtered = filter_item_parseable(item);
+        // 主手武器：剔除局部物理增伤/附加（已作为武器 source 独立乘区 × baseMultiplier 计入
+        // weapon_contribution）；留在全局会重复且错误地并入加法桶（PoB 是独立乘区）。
+        if slot == EquipmentSlot::Weapon1 {
+            let drop_local = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| !is_weapon_local_phys_mod(t))
+                    .collect()
+            };
+            filtered.implicit_texts = drop_local(filtered.implicit_texts);
+            filtered.modifier_texts = drop_local(filtered.modifier_texts);
+            filtered.enchant_texts = drop_local(filtered.enchant_texts);
+        }
         session
             .add_item(slot, &filtered)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
@@ -481,9 +494,14 @@ fn weapon_contribution(
     let item = build.items.get(&EquipmentSlot::Weapon1)?;
     let w = data.weapon_base(&item.base.to_string())?;
     let quality = 1.0 + f64::from(item.quality) / 100.0;
+    // PoB CalcOffence：武器伤害 source = (基底 + **局部**附加) × (1 + **局部**增伤%) × 品质，
+    // 再 × baseMultiplier；局部增伤是独立乘区、与全局增伤相乘（非相加）。这些局部物理词条
+    // 在 add_item 时被剔除（见 calculate_with_data），避免重复 / 错误地并入全局加法桶。
+    let (local_add_min, local_add_max) = weapon_local_phys_adds(item);
+    let local_inc = 1.0 + weapon_local_phys_inc(item) / 100.0;
     Some(WeaponContribution {
-        phys_min: f64::from(w.physical_min) * quality,
-        phys_max: f64::from(w.physical_max) * quality,
+        phys_min: (f64::from(w.physical_min) + local_add_min) * local_inc * quality,
+        phys_max: (f64::from(w.physical_max) + local_add_max) * local_inc * quality,
         attack_rate: if w.speed_ms > 0 {
             1000.0 / f64::from(w.speed_ms)
         } else {
@@ -491,6 +509,68 @@ fn weapon_contribution(
         },
         crit_chance: f64::from(w.crit_chance) / 100.0,
     })
+}
+
+/// 剥离 PoB 物品词条 `{tag}` 标记（如 `{desecrated}{enchant}`），返回去标记小写文本。
+fn clean_item_text(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut depth = 0u32;
+    for c in text.chars() {
+        match c {
+            '{' => depth += 1,
+            '}' => depth = depth.saturating_sub(1),
+            _ if depth == 0 => out.push(c),
+            _ => {}
+        }
+    }
+    out.trim().to_lowercase()
+}
+
+/// 武器上「N% increased Physical Damage」（局部词条）之和。
+fn weapon_local_phys_inc(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|t| {
+            clean_item_text(t)
+                .strip_suffix("% increased physical damage")
+                .and_then(|n| n.trim().parse::<f64>().ok())
+        })
+        .sum()
+}
+
+/// 武器上「Adds N to M Physical Damage」（局部词条）的区间和。
+fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
+    let mut min_sum = 0.0;
+    let mut max_sum = 0.0;
+    for t in weapon_mod_texts(item) {
+        if let Some((lo, hi)) = parse_adds_physical(&clean_item_text(t)) {
+            min_sum += lo;
+            max_sum += hi;
+        }
+    }
+    (min_sum, max_sum)
+}
+
+/// 解析「adds N to M physical damage」→ (N, M)。非此形式返回 `None`。
+fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
+    let body = clean
+        .strip_prefix("adds ")?
+        .strip_suffix(" physical damage")?;
+    let (lo, hi) = body.split_once(" to ")?;
+    Some((lo.trim().parse().ok()?, hi.trim().parse().ok()?))
+}
+
+/// 主手武器全部词条文本（implicit + explicit + enchant）迭代器。
+fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
+    item.implicit_texts
+        .iter()
+        .chain(&item.modifier_texts)
+        .chain(&item.enchant_texts)
+}
+
+/// 该词条是否为应从全局剔除的**武器局部物理**词条（已计入武器 source 乘区）。
+fn is_weapon_local_phys_mod(text: &str) -> bool {
+    let clean = clean_item_text(text);
+    clean.ends_with("% increased physical damage") || parse_adds_physical(&clean).is_some()
 }
 
 /// 把主技能分等级参数（cost / cooldown / **stat 集**）构造为 SkillGem 归因的 modifier：
