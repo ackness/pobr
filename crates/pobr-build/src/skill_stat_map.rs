@@ -60,13 +60,33 @@ fn map_conversion(stat: &str) -> Option<MappedStat> {
         ("_damage_%_to_convert_to_", "ConvertTo"),
         ("_damage_%_to_gain_as_", "GainAs"),
     ] {
-        if let Some((before, to_word)) = stat.split_once(marker) {
+        if let Some((before, after)) = stat.split_once(marker) {
+            // `to`：marker 后首个词须为类型；其后仅允许 `_with_attacks/_with_spells` 作用域，
+            // 条件型（`_if_...`）保守跳过（不臆造无条件应用）。
+            let to_word = after.split('_').next().unwrap_or("");
             let Some(to) = pascal(to_word) else { continue };
-            let Some(from) = before.rsplit('_').next().and_then(pascal) else {
+            let rest = &after[to_word.len()..];
+            if !rest.is_empty() && !rest.starts_with("_with_") {
                 continue;
+            }
+            // `from`：marker 前最后一段。类型→该类型；`all`→通用（空前缀，作用全部伤害）。
+            let from_word = before.rsplit('_').next().unwrap_or("");
+            let from = if from_word == "all" {
+                ""
+            } else {
+                match pascal(from_word) {
+                    Some(f) => f,
+                    None => continue,
+                }
+            };
+            // 作用域：`active_skill_*`→仅本技能（Skill 前缀）；`non_skill_*` 等→全局。
+            let scope = if stat.starts_with("active_skill") {
+                "Skill"
+            } else {
+                ""
             };
             return Some(MappedStat::new(
-                format!("Skill{from}Damage{kind}{to}"),
+                format!("{scope}{from}Damage{kind}{to}"),
                 ModType::Base,
             ));
         }
