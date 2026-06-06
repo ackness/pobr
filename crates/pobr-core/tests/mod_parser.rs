@@ -142,3 +142,31 @@ fn cache_keeps_unsupported_outcomes_for_stable_diffs() {
     );
     assert_eq!(cache.len(), 1);
 }
+
+#[test]
+fn parses_adds_range_damage_to_two_base_mods() {
+    let outcome = parse_mod("Adds 1 to 356 Lightning Damage").unwrap();
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    assert_eq!(outcome.mods.len(), 2, "range adds two mods (min + max)");
+
+    let min = &outcome.mods[0];
+    assert_eq!(min.name, ModName::from("LightningDamageMin"));
+    assert_eq!(min.mod_type, ModType::Base);
+    assert_eq!(min.value, ModValue::Number(1.0));
+
+    let max = &outcome.mods[1];
+    assert_eq!(max.name, ModName::from("LightningDamageMax"));
+    assert_eq!(max.value, ModValue::Number(356.0));
+}
+
+#[test]
+fn parses_adds_damage_to_attacks_with_flag() {
+    let outcome = parse_mod("Adds 27 to 39 Fire Damage to Attacks").unwrap();
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    assert_eq!(outcome.mods.len(), 2);
+    assert_eq!(outcome.mods[0].name, ModName::from("FireDamageMin"));
+    assert!(
+        outcome.mods[0].flags.intersects(ModFlags::ATTACK),
+        "'to Attacks' should set the Attack flag"
+    );
+}

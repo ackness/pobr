@@ -82,6 +82,17 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         rest = stripped.into();
     }
 
+    // 「Adds N to M <type> Damage [to Attacks|to Spells]」——区间附加伤害，产出两条
+    // `<Type>DamageMin/Max` BASE（attack/spell flag 由后缀决定）。这是攻击 build 装备
+    // flat 附加伤害的主要形式，单独处理（parse_form 只产单值）。
+    if let Some(mods) = parse_added_damage_range(&rest, flags, original) {
+        return Ok(ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     let (form, after_form) = parse_form(&rest).ok_or_else(|| ParseError {
         input: original.into(),
         reason: "unsupported modifier form".into(),
@@ -117,6 +128,53 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         status: ParseStatus::Parsed,
         unparsed: None,
     })
+}
+
+/// 解析「adds N to M <type> damage [to attacks|to spells]」（`rest` 已小写、规范空格）。
+/// 产出 `<Type>DamageMin/Max` BASE 两条。非此形式返回 `None`。
+fn parse_added_damage_range(
+    rest: &str,
+    prefix_flags: ModFlags,
+    source: &str,
+) -> Option<Vec<Modifier>> {
+    let body = rest.strip_prefix("adds ")?;
+    let (min_str, after_min) = body.split_once(" to ")?;
+    let min: f64 = min_str.trim().parse().ok()?;
+    let (max_str, tail) = after_min.split_once(' ')?;
+    let max: f64 = max_str.trim().parse().ok()?;
+
+    // 后缀决定作用域（to attacks / to spells）；与前缀 flag 合并。
+    let mut flags = prefix_flags;
+    let tail = if let Some(t) = tail.strip_suffix(" to attacks") {
+        flags |= ModFlags::ATTACK;
+        t
+    } else if let Some(t) = tail.strip_suffix(" to spells") {
+        flags |= ModFlags::SPELL;
+        t
+    } else {
+        tail
+    };
+
+    let type_word = tail.strip_suffix(" damage")?;
+    let (pascal, damage_type) = match type_word {
+        "physical" => ("Physical", DamageType::Physical),
+        "fire" => ("Fire", DamageType::Fire),
+        "cold" => ("Cold", DamageType::Cold),
+        "lightning" => ("Lightning", DamageType::Lightning),
+        "chaos" => ("Chaos", DamageType::Chaos),
+        _ => return None,
+    };
+
+    let mk = |bound: &str, value: f64| {
+        let mut m = Modifier::number(format!("{pascal}Damage{bound}"), ModType::Base, value)
+            .with_source(source)
+            .with_tag(ModTag::DamageType(damage_type));
+        if !flags.is_empty() {
+            m = m.with_flags(flags);
+        }
+        m
+    };
+    Some(vec![mk("Min", min), mk("Max", max)])
 }
 
 fn normalize_spaces(text: &str) -> String {
