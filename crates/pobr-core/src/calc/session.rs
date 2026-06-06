@@ -6,7 +6,7 @@ use crate::passive::{AllocatedNode, ingest_passive_nodes};
 use crate::skill_source::{GemModSource, ingest_gem};
 use crate::{CalcConfig, Modifier};
 
-use super::{Actor, ActorBaseStats, Env, MinimalInput, MinimalOutput, perform};
+use super::{Actor, ActorBaseStats, Env, MinimalInput, MinimalOutput, OutputTable, perform};
 
 #[derive(Debug, Clone)]
 pub struct CalculationSession {
@@ -123,5 +123,12 @@ impl CalculationSession {
 
     pub fn unsupported_modifier_texts(&self) -> &[String] {
         &self.unsupported_modifier_texts
+    }
+
+    /// 取玩家完整 [`OutputTable`]（`perform`/`perform_minimal` 后填满）。包含
+    /// armour/evasion/ES、异常、EHP、技能机制等全部 fill 阶段字段——`MinimalOutput`
+    /// 仅是其攻击/抗性子集，需要完整输出时用此。
+    pub fn output(&self) -> &OutputTable {
+        &self.env.player.output
     }
 }

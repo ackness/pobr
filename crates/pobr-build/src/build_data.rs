@@ -12,8 +12,8 @@
 use std::collections::HashMap;
 
 use pobr_data::catalog::{
-    BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat, SkillGemDef,
-    SkillLevelDef, SkillStatSetDef, WeaponBaseStats,
+    ArmourBaseStats, BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat,
+    SkillGemDef, SkillLevelDef, SkillStatSetDef, WeaponBaseStats,
 };
 use pobr_gamedata::{GameData, LoadError};
 
@@ -167,6 +167,13 @@ impl BuildData {
         self.base_items
             .get(base_name)
             .and_then(|b| b.weapon.as_ref())
+    }
+
+    /// 按基底名称查护甲基底数值（`Item.base` → `ArmourBaseStats`）；非护甲/未知返回 `None`。
+    pub fn armour_base(&self, base_name: &str) -> Option<&ArmourBaseStats> {
+        self.base_items
+            .get(base_name)
+            .and_then(|b| b.armour.as_ref())
     }
 
     /// 解析某主动技能在某等级上的参数：cast/attack 时间（秒）、各资源消耗、冷却（秒）。

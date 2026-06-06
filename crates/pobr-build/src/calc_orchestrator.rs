@@ -191,6 +191,10 @@ pub fn calculate_with_data(
         ]);
     }
 
+    // 1d. 装备基底防御（armour/evasion/ES）→ Item 归因的 BASE 词条（× 品质）。装备的
+    //     `increased Armour/Evasion/EnergyShield` 词条经 add_item 注入 INC，于此 base 上缩放。
+    session.add_modifiers(defence_base_modifiers(build, data));
+
     // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
     //    真实词条中含解析器尚未支持的硬失败形式（如 `[Bleeding] on [Hit]`），逐件
     //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
@@ -233,8 +237,10 @@ pub fn calculate_with_data(
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
-    let minimal = session.perform_minimal();
-    Ok(OutputTable::from(&minimal))
+    // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等
+    // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
+    session.perform_minimal();
+    Ok(session.output().clone())
 }
 
 /// 解析 build 的主技能分等级参数：取首个**已启用、带 active_skill_id 且解析出真实
@@ -280,6 +286,37 @@ fn resolve_main_skill<'b>(
         }
     }
     None
+}
+
+/// 把全部装备护甲件的基底 armour/evasion/ES（× 品质）注入为 Item 归因的 BASE 词条，
+/// 供 `scaled_defence_stat` 在其上叠加 `increased Armour/Evasion/EnergyShield`。
+///
+/// 切片：品质/「increased」当前按全局口径作用（PoB 是逐件 local 后再求和），多防御件
+/// build 会略有偏差；裸装/单主防御件口径正确。
+fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for item in build.items.values() {
+        let Some(a) = data.armour_base(&item.base.to_string()) else {
+            continue;
+        };
+        let quality = 1.0 + f64::from(item.quality) / 100.0;
+        for (name, raw) in [
+            ("Armour", a.armour),
+            ("Evasion", a.evasion),
+            ("EnergyShield", a.energy_shield),
+        ] {
+            if raw > 0 {
+                let origin =
+                    ModifierSource::new(SourceId::new(SourceKind::Item, format!("base.{name}")))
+                        .with_raw_text(format!("{} base {name} {raw}", item.base));
+                mods.push(
+                    Modifier::number(name, ModType::Base, f64::from(raw) * quality)
+                        .with_origin(origin),
+                );
+            }
+        }
+    }
+    mods
 }
 
 /// 攻击技能的武器基底贡献：物理击中伤害（已乘品质）+ 攻击速率 + 暴击率。
