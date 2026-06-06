@@ -67,6 +67,11 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // 符文绑定词条前缀（PoB rune「Bonded: <mod>」）——剥离后按普通词条解析。
+    if rest.starts_with("bonded: ") {
+        rest = rest["bonded: ".len()..].to_string();
+    }
+
     let mut flags = ModFlags::NONE;
     if let Some(stripped) = rest.strip_prefix("attacks deal ") {
         flags |= ModFlags::ATTACK;
@@ -98,15 +103,12 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         reason: "unsupported modifier form".into(),
     })?;
 
-    let (mut remainder, mut tags) = strip_tags(after_form);
-    let name = parse_name(&remainder).ok_or_else(|| ParseError {
+    let (remainder, base_tags) = strip_tags(after_form);
+    // 复合词条（`A, B and C`）+ 聚合名（`all elemental resistances`）→ 多个 ModName，共享同一 form。
+    let names = resolve_names(&remainder).ok_or_else(|| ParseError {
         input: original.into(),
         reason: format!("unknown modifier name: {remainder}"),
     })?;
-
-    if let Some(damage_type) = damage_type_for_name(name.as_str()) {
-        tags.push(ModTag::DamageType(damage_type));
-    }
 
     let mod_type = match form.kind {
         FormKind::Base => ModType::Base,
@@ -114,20 +116,52 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         FormKind::More => ModType::More,
     };
 
-    let mut modifier = Modifier::number(name, mod_type, form.value).with_source(original);
-    if !flags.is_empty() {
-        modifier = modifier.with_flags(flags);
-    }
-    for tag in tags {
-        modifier = modifier.with_tag(tag);
-    }
+    let mods = names
+        .into_iter()
+        .map(|name| {
+            let mut tags = base_tags.clone();
+            if let Some(damage_type) = damage_type_for_name(name.as_str()) {
+                tags.push(ModTag::DamageType(damage_type));
+            }
+            let mut m = Modifier::number(name, mod_type, form.value).with_source(original);
+            if !flags.is_empty() {
+                m = m.with_flags(flags);
+            }
+            for tag in tags {
+                m = m.with_tag(tag);
+            }
+            m
+        })
+        .collect();
 
-    remainder.clear();
     Ok(ParseOutcome {
-        mods: vec![modifier],
+        mods,
         status: ParseStatus::Parsed,
         unparsed: None,
     })
+}
+
+/// 把词条名部分解析为一个或多个 [`ModName`]：处理聚合名（`all elemental resistances`）
+/// 与复合名（`armour, evasion and energy shield`）。任一子名未知则返回 `None`。
+fn resolve_names(text: &str) -> Option<Vec<ModName>> {
+    let t = text.trim();
+    // 聚合名：展开为多条。
+    let aggregate: &[&str] = match t {
+        "all elemental resistances" => {
+            &["fire resistance", "cold resistance", "lightning resistance"]
+        }
+        "all attributes" => &["strength", "dexterity", "intelligence"],
+        _ => &[],
+    };
+    if !aggregate.is_empty() {
+        return aggregate.iter().map(|n| parse_name(n)).collect();
+    }
+    // 复合名：`A, B and C` / `A and B` → 拆分。
+    let normalized = t.replace(" and ", ", ");
+    normalized
+        .split(", ")
+        .map(|part| parse_name(part.trim()))
+        .collect()
 }
 
 /// 解析「adds N to M <type> damage [to attacks|to spells]」（`rest` 已小写、规范空格）。
@@ -351,20 +385,42 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
 }
 
 fn parse_name(text: &str) -> Option<ModName> {
-    let name = match text.trim() {
+    // `global` 作用域前缀对面板聚合无影响，剥离后按本体名解析。
+    let trimmed = text.trim();
+    let trimmed = trimmed.strip_prefix("global ").unwrap_or(trimmed);
+    let name = match trimmed {
         "damage" => "Damage",
         "physical damage" => "PhysicalDamage",
         "fire damage" => "FireDamage",
         "cold damage" => "ColdDamage",
         "lightning damage" => "LightningDamage",
         "chaos damage" => "ChaosDamage",
+        "elemental damage" => "ElementalDamage",
         "attack damage" => "AttackDamage",
+        "spell damage" => "SpellDamage",
+        "projectile damage" => "ProjectileDamage",
+        "area damage" => "AreaDamage",
+        "elemental damage with attacks" => "ElementalDamage",
+        "elemental damage with attack skills" => "ElementalDamage",
         "attack speed" => "AttackSpeed",
         "cast speed" => "CastSpeed",
+        "movement speed" => "MovementSpeed",
+        // 暴击（PoE2「Critical Hit」= 旧「Critical Strike」；计算读 CriticalStrike* ModName）。
+        "critical hit chance" => "CriticalStrikeChance",
+        "critical strike chance" => "CriticalStrikeChance",
+        "critical hit damage bonus" => "CriticalStrikeMultiplier",
+        "critical damage bonus" => "CriticalStrikeMultiplier",
+        "critical strike multiplier" => "CriticalStrikeMultiplier",
+        // 属性。
+        "strength" => "Strength",
+        "dexterity" => "Dexterity",
+        "intelligence" => "Intelligence",
+        "spirit" => "Spirit",
         "maximum life" => "MaximumLife",
         "life" => "MaximumLife",
         "maximum mana" => "MaximumMana",
         "mana" => "MaximumMana",
+        "stun threshold" => "StunThreshold",
         "accuracy" => "Accuracy",
         "accuracy rating" => "Accuracy",
         "armour" => "Armour",
