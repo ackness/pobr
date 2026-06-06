@@ -170,3 +170,19 @@ fn parses_adds_damage_to_attacks_with_flag() {
         "'to Attacks' should set the Attack flag"
     );
 }
+
+#[test]
+fn strips_pob_bracket_markup() {
+    // [内部|显示] → 显示名；展开复合 + 聚合。
+    let o = parse_mod("15% increased [Evasion|Evasion Rating]").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("Evasion"));
+    assert_eq!(o.mods[0].mod_type, ModType::Inc);
+
+    let o = parse_mod("12% increased [ElementalDamage|Elemental] Damage with [Attack|Attacks]")
+        .unwrap();
+    assert_eq!(o.mods[0].name, ModName::from("ElementalDamage"));
+
+    let o = parse_mod("+5 to any [Attributes|Attribute]").unwrap();
+    assert_eq!(o.mods.len(), 3, "any attribute → str/dex/int");
+}

@@ -57,7 +57,9 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
-    let mut rest = normalize_spaces(original);
+    // PoB 树/词条的 `[内部名|显示名]` / `[名]` 标记 → 取显示名（解析器按显示文本匹配）。
+    let cleaned = strip_pob_brackets(original);
+    let mut rest = normalize_spaces(&cleaned);
     let unsupported = ["mirrored", "split"];
     if unsupported.contains(&rest.as_str()) {
         return Ok(ParseOutcome {
@@ -150,7 +152,9 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
         "all elemental resistances" => {
             &["fire resistance", "cold resistance", "lightning resistance"]
         }
-        "all attributes" => &["strength", "dexterity", "intelligence"],
+        "all attributes" | "any attribute" | "attributes" => {
+            &["strength", "dexterity", "intelligence"]
+        }
         _ => &[],
     };
     if !aggregate.is_empty() {
@@ -209,6 +213,32 @@ fn parse_added_damage_range(
         m
     };
     Some(vec![mk("Min", min), mk("Max", max)])
+}
+
+/// 解析 PoB 词条标记 `[A|B]` → `B`（显示名）、`[A]` → `A`。无标记原样返回。
+fn strip_pob_brackets(text: &str) -> String {
+    if !text.contains('[') {
+        return text.to_string();
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '[' {
+            let mut inner = String::new();
+            for ic in chars.by_ref() {
+                if ic == ']' {
+                    break;
+                }
+                inner.push(ic);
+            }
+            // `[A|B]` → 取最后一段（显示名 B）；`[A]` → A。
+            let display = inner.rsplit('|').next().unwrap_or(&inner);
+            out.push_str(display);
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 fn normalize_spaces(text: &str) -> String {
