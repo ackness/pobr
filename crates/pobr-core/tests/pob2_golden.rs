@@ -6,10 +6,19 @@
 //!
 //! 来源映射记于每个用例。新增机制时优先在此补 golden 用例（比真实 ninja build 易调试）。
 
-use pobr_core::calc::{MinimalInput, calculate_minimal};
+use pobr_core::calc::{CalculationSession, MinimalInput, calculate_minimal};
 use pobr_core::mod_parser::{ParseStatus, parse_mod};
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
+
+/// 相对误差 < 10%（PoB2 parity 目标）。`golden` 为 0 时退化为绝对误差。
+fn within_10pct(actual: f64, golden: f64) -> bool {
+    if golden == 0.0 {
+        actual.abs() < 1e-6
+    } else {
+        ((actual - golden) / golden).abs() < 0.10
+    }
+}
 
 /// 把 PoB 词条文本解析并注入 db（用于复现 PoB 测试的 customMods / 物品词条）。
 fn add_text(db: &mut ModDb, text: &str) {
@@ -100,4 +109,42 @@ fn attack_damage_increase_aggregation() {
         (inc - 10.0).abs() < 1e-6,
         "attack Damage INC = {inc} (expected 10)"
     );
+}
+
+/// PoB2 TestDefence「no armour max hits」(基线)：默认角色 Life 60、四类抗性 -60%、
+/// 无护甲 → 物理最大承受击中 = Life 60；元素/混沌 = 60/(1+0.6) = 37.5（PoB2 取整 38）。
+/// 验证 PoBR `max_hit_for_type = pool/(1-res/100)` 与 PoB2 一致。
+#[test]
+fn defence_no_armour_max_hits() {
+    let input = MinimalInput {
+        base_life: 60.0,
+        base_mana: 50.0,
+        base_fire_resistance: -60.0,
+        base_cold_resistance: -60.0,
+        base_lightning_resistance: -60.0,
+        base_accuracy: 0.0,
+        enemy_evasion: 0.0,
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        base_action_rate: 1.0,
+    };
+    let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
+    // 混沌抗不在 MinimalInput，单独注入 -60%。
+    session.add_modifiers([Modifier::number("ChaosResistance", ModType::Base, -60.0)]);
+    session.perform_minimal();
+    let o = session.output();
+
+    assert!(
+        within_10pct(o.physical_max_hit, 60.0),
+        "physical_max_hit = {} (PoB2 60)",
+        o.physical_max_hit
+    );
+    for (name, v) in [
+        ("fire", o.fire_max_hit),
+        ("cold", o.cold_max_hit),
+        ("lightning", o.lightning_max_hit),
+        ("chaos", o.chaos_max_hit),
+    ] {
+        assert!(within_10pct(v, 38.0), "{name}_max_hit = {v} (PoB2 38)");
+    }
 }
