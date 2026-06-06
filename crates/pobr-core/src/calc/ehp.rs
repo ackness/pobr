@@ -57,10 +57,24 @@ pub fn max_hit_for_type(pool: f64, resist_pct: f64) -> f64 {
     }
 }
 
-/// 物理最大可承受命中：`pool / physical_taken_fraction`。
+/// 物理最大可承受命中。
+///
+/// 护甲减伤随击中大小变化（`armour/(armour+10*hit)`），故最大承受击中 `H` 须**自洽**：
+/// `H * taken(H) = pool`（被该击中打中、过减伤后恰好等于血池）。PoB2 同此口径
+/// （`takenHitFromDamage(MaxHit) == pool`）。用定点迭代求解（`taken` 随 `H` 单调，收敛快）；
+/// 无护甲时 `taken` 与 `H` 无关，一步收敛 → 退化为 `pool/taken`。`reference_hit` 作初值。
 pub fn physical_max_hit(pool: f64, pdr_flat: f64, armour: f64, reference_hit: f64) -> f64 {
-    let taken = physical_taken_fraction(pdr_flat, armour, reference_hit);
-    round(pool / taken)
+    let mut hit = reference_hit.max(pool).max(1.0);
+    for _ in 0..50 {
+        let taken = physical_taken_fraction(pdr_flat, armour, hit);
+        let next = pool / taken;
+        if (next - hit).abs() < 1e-3 {
+            hit = next;
+            break;
+        }
+        hit = next;
+    }
+    round(hit)
 }
 
 /// 元素血池（life + es）。

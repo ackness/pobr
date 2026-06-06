@@ -242,3 +242,42 @@ fn crit_bifurcate_inevitable() {
         expected
     );
 }
+
+/// PoB2 TestDefence「armoured max hits」：Life 1000、抗性 -60%、护甲 10000、无 PDR。
+/// 物理最大承受击中需**自洽**（护甲减伤依赖击中大小）：H 满足 H*taken(H)=pool →
+/// H²-1000H-10^6=0 → H≈1618（PoB2 PhysicalMaximumHitTaken）；元素 = 1000/1.6 = 625。
+#[test]
+fn defence_armoured_max_hits() {
+    let input = MinimalInput {
+        base_life: 1000.0,
+        base_mana: 50.0,
+        base_fire_resistance: -60.0,
+        base_cold_resistance: -60.0,
+        base_lightning_resistance: -60.0,
+        base_accuracy: 0.0,
+        enemy_evasion: 0.0,
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        base_action_rate: 1.0,
+    };
+    let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
+    session.add_modifiers([
+        Modifier::number("ChaosResistance", ModType::Base, -60.0),
+        Modifier::number("Armour", ModType::Base, 10000.0),
+    ]);
+    session.perform_minimal();
+    let o = session.output();
+    assert!(
+        within_10pct(o.physical_max_hit, 1618.0),
+        "physical_max_hit = {} (PoB2 1618)",
+        o.physical_max_hit
+    );
+    for (name, v) in [
+        ("fire", o.fire_max_hit),
+        ("cold", o.cold_max_hit),
+        ("lightning", o.lightning_max_hit),
+        ("chaos", o.chaos_max_hit),
+    ] {
+        assert!(within_10pct(v, 625.0), "{name}_max_hit = {v} (PoB2 625)");
+    }
+}
