@@ -162,7 +162,18 @@ fn fill_mechanics(env: &mut Env) {
         fire: env.player.output.fire_resistance,
         cold: env.player.output.cold_resistance,
         lightning: env.player.output.lightning_resistance,
-        chaos: db.sum(ModType::Base, cfg, &[ModName::from("ChaosResistance")]),
+        chaos: {
+            // 混沌抗同样按最大抗性上限截断（PoB2 默认 75%，+max chaos res 提升、硬上限 90%）。
+            let total = db.sum(ModType::Base, cfg, &[ModName::from("ChaosResistance")]);
+            let max_bonus = db.sum(
+                ModType::Base,
+                cfg,
+                &[ModName::from("MaximumChaosResistance")],
+            );
+            let max = (pobr_data::constants::DEFAULT_MAX_RESISTANCE + max_bonus)
+                .min(pobr_data::constants::HARD_MAX_RESISTANCE);
+            total.min(max)
+        },
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
     let ehp = calc_ehp(

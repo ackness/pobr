@@ -148,3 +148,47 @@ fn defence_no_armour_max_hits() {
         assert!(within_10pct(v, 38.0), "{name}_max_hit = {v} (PoB2 38)");
     }
 }
+
+/// PoB2 TestDefence「no armour max hits」(+200 抗 / +200% 物理减伤)：
+/// 元素/混沌抗 -60+200=140 → 上限 75% → 承受 0.25 → 60/0.25 = 240；
+/// 物理 200% 额外减伤 → 减伤上限 90% → 承受 0.1 → 60/0.1 = 600。
+/// 验证 PoBR 抗性上限（75）与物理减伤上限（90%）与 PoB2 一致。
+#[test]
+fn defence_capped_res_and_pdr() {
+    let input = MinimalInput {
+        base_life: 60.0,
+        base_mana: 50.0,
+        base_fire_resistance: -60.0,
+        base_cold_resistance: -60.0,
+        base_lightning_resistance: -60.0,
+        base_accuracy: 0.0,
+        enemy_evasion: 0.0,
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        base_action_rate: 1.0,
+    };
+    let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
+    session.add_modifiers([
+        Modifier::number("ChaosResistance", ModType::Base, -60.0),
+        Modifier::number("FireResistance", ModType::Base, 200.0),
+        Modifier::number("ColdResistance", ModType::Base, 200.0),
+        Modifier::number("LightningResistance", ModType::Base, 200.0),
+        Modifier::number("ChaosResistance", ModType::Base, 200.0),
+        Modifier::number("PhysicalDamageReduction", ModType::Base, 200.0),
+    ]);
+    session.perform_minimal();
+    let o = session.output();
+    assert!(
+        within_10pct(o.physical_max_hit, 600.0),
+        "physical_max_hit = {} (PoB2 600)",
+        o.physical_max_hit
+    );
+    for (name, v) in [
+        ("fire", o.fire_max_hit),
+        ("cold", o.cold_max_hit),
+        ("lightning", o.lightning_max_hit),
+        ("chaos", o.chaos_max_hit),
+    ] {
+        assert!(within_10pct(v, 240.0), "{name}_max_hit = {v} (PoB2 240)");
+    }
+}
