@@ -186,3 +186,19 @@ fn strips_pob_bracket_markup() {
     let o = parse_mod("+5 to any [Attributes|Attribute]").unwrap();
     assert_eq!(o.mods.len(), 3, "any attribute → str/dex/int");
 }
+
+#[test]
+fn parses_conversion_and_gain_as_extra() {
+    let o = parse_mod("100% of Fire Damage Converted to Lightning Damage").unwrap();
+    assert_eq!(
+        o.mods[0].name,
+        ModName::from("FireDamageConvertToLightning")
+    );
+    assert_eq!(o.mods[0].value, ModValue::Number(100.0));
+
+    let o = parse_mod("Gain 13% of Damage as Extra Chaos Damage").unwrap();
+    assert_eq!(o.mods[0].name, ModName::from("DamageGainAsChaos"));
+
+    let o = parse_mod("Gain 5% of Damage as Extra Damage of all Elements").unwrap();
+    assert_eq!(o.mods.len(), 3, "all elements → fire/cold/lightning");
+}

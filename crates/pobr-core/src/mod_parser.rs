@@ -100,6 +100,16 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // 转换 / gain-as-extra：`N% of <from> Damage Converted to <to> Damage` /
+    // `Gain N% of Damage as Extra <to> Damage`（含 of all Elements 展开）。
+    if let Some(mods) = parse_conversion_or_gain(&rest, original) {
+        return Ok(ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     let (form, after_form) = parse_form(&rest).ok_or_else(|| ParseError {
         input: original.into(),
         reason: "unsupported modifier form".into(),
@@ -213,6 +223,66 @@ fn parse_added_damage_range(
         m
     };
     Some(vec![mk("Min", min), mk("Max", max)])
+}
+
+/// 伤害类型词 → PoBR Pascal 前缀。
+fn type_pascal(word: &str) -> Option<&'static str> {
+    match word.trim() {
+        "physical" => Some("Physical"),
+        "fire" => Some("Fire"),
+        "cold" => Some("Cold"),
+        "lightning" => Some("Lightning"),
+        "chaos" => Some("Chaos"),
+        _ => None,
+    }
+}
+
+/// 解析转换 / gain-as-extra（`rest` 已小写规范）：
+/// - `N% of <from> damage converted to <to> damage` → `<From>DamageConvertTo<To>` BASE N
+/// - `gain N% of damage as extra <to> damage` → `DamageGainAs<To>` BASE N
+/// - `gain N% of <from> damage as extra <to> damage` → `<From>DamageGainAs<To>` BASE N
+/// - `... as extra damage of all elements` → 火/冰/电三条
+fn parse_conversion_or_gain(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let body = rest.strip_prefix("gain ").unwrap_or(rest);
+    let (pct_str, after) = body.split_once("% of ")?;
+    let pct: f64 = pct_str.trim().parse().ok()?;
+    // after: `<from> damage converted to <to> damage` 或 `damage as extra <to> damage`
+    let (from, tail) = if let Some(t) = after.strip_prefix("damage ") {
+        (None, t) // `Gain N% of Damage as Extra ...`（源为通用 Damage）
+    } else {
+        let (from_word, t) = after.split_once(" damage ")?;
+        (Some(type_pascal(from_word)?), t)
+    };
+    let from_prefix = from.unwrap_or("");
+
+    let (kind, to_part) = if let Some(t) = tail.strip_prefix("converted to ") {
+        ("ConvertTo", t)
+    } else if let Some(t) = tail.strip_prefix("as extra ") {
+        ("GainAs", t)
+    } else if let Some(t) = tail.strip_prefix("gained as extra ") {
+        ("GainAs", t)
+    } else {
+        return None;
+    };
+
+    // `damage of all elements` → 三元素；否则 `<to> damage`。
+    if to_part.starts_with("damage of all elements") {
+        return Some(
+            ["Fire", "Cold", "Lightning"]
+                .iter()
+                .map(|to| {
+                    Modifier::number(format!("{from_prefix}Damage{kind}{to}"), ModType::Base, pct)
+                        .with_source(source)
+                })
+                .collect(),
+        );
+    }
+    let to_word = to_part.strip_suffix(" damage").unwrap_or(to_part);
+    let to = type_pascal(to_word)?;
+    Some(vec![
+        Modifier::number(format!("{from_prefix}Damage{kind}{to}"), ModType::Base, pct)
+            .with_source(source),
+    ])
 }
 
 /// 解析 PoB 词条标记 `[A|B]` → `B`（显示名）、`[A]` → `A`。无标记原样返回。
