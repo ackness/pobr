@@ -406,3 +406,39 @@ fn defence_es_pool_and_chaos_half() {
         o.chaos_max_hit
     );
 }
+
+/// 伤害转换链（PoB2 processDamageConversion 口径）：基础物理 100、「100% of Physical
+/// Damage Converted to Fire Damage」→ 物理分量 0、火分量 100（守恒，类型转移）。
+#[test]
+fn conversion_physical_to_fire_full() {
+    let mut db = ModDb::new();
+    add_text(&mut db, "100% of Physical Damage Converted to Fire Damage");
+    let out = calculate_minimal(&db, &CalcConfig::attack(), &input_base_hit(100.0, 100.0));
+    let comp = |t: DamageType| {
+        out.damage_components
+            .iter()
+            .filter(|c| c.damage_type == t)
+            .map(|c| c.avg())
+            .sum::<f64>()
+    };
+    assert!(comp(DamageType::Physical) < 1.0, "physical should be ~0");
+    assert!(
+        within_10pct(comp(DamageType::Fire), 100.0),
+        "fire = {} (expected ~100, converted)",
+        comp(DamageType::Fire)
+    );
+}
+
+/// gain-as-extra（不扣源）：基础物理 100、「Gain 50% of Physical Damage as Extra Fire
+/// Damage」→ 物理 100（保留）+ 火 50（额外）= 总 150。
+#[test]
+fn gain_as_extra_physical_to_fire() {
+    let mut db = ModDb::new();
+    add_text(&mut db, "Gain 50% of Physical Damage as Extra Fire Damage");
+    let out = calculate_minimal(&db, &CalcConfig::attack(), &input_base_hit(100.0, 100.0));
+    assert!(
+        within_10pct(out.total_hit_avg, 150.0),
+        "total = {} (expected ~150: phys 100 + gained fire 50)",
+        out.total_hit_avg
+    );
+}
