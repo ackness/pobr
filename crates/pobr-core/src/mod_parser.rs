@@ -603,6 +603,13 @@ fn parse_name(text: &str) -> Option<ModName> {
         "maximum chaos resistance" => "MaximumChaosResistance",
         "all maximum elemental resistances" => "MaximumAllElementalResistances",
         "maximum elemental resistances" => "MaximumAllElementalResistances",
+        // 技能消耗（Cost）+ 消耗效率（Cost Efficiency，除以 1+eff）。
+        "cost" => "Cost",
+        "mana cost" => "ManaCost",
+        "life cost" => "LifeCost",
+        "cost efficiency" => "CostEfficiency",
+        "mana cost efficiency" => "ManaCostEfficiency",
+        "life cost efficiency" => "LifeCostEfficiency",
         // 承受伤害乘区（EHP）：reduced→INC<0、less→MORE<0。通用 + 分类型。
         "damage taken" => "DamageTaken",
         "physical damage taken" => "PhysicalDamageTaken",

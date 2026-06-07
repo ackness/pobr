@@ -536,3 +536,47 @@ fn defence_physical_overwhelm() {
         o.chaos_max_hit
     );
 }
+
+/// PoB2 TestSkills「cost efficiency modifiers」(Ball Lightning L1 mana cost = 9)：消耗效率
+/// 在 inc/more（取整后）**除以** `1 + 效率/100`，结果不取整；`Cost Efficiency` 通用与
+/// `Mana Cost Efficiency` 加法叠加。验证 PoBR calc_mana_cost 的消耗效率口径。
+#[test]
+fn cost_efficiency_modifiers() {
+    use pobr_core::calc::skill_mechanics::calc_mana_cost;
+    let cfg = CalcConfig::attack();
+    let cost = |texts: &[&str]| -> f64 {
+        let mut db = ModDb::new();
+        for t in texts {
+            add_text(&mut db, t);
+        }
+        calc_mana_cost(&db, &cfg, 9.0).final_cost
+    };
+    assert!((cost(&[]) - 9.0).abs() < 1e-6, "base cost = {}", cost(&[]));
+    assert!(
+        (cost(&["50% increased Mana Cost Efficiency"]) - 6.0).abs() < 1e-6,
+        "50% mana eff → {} (PoB2 6 = 9/1.5)",
+        cost(&["50% increased Mana Cost Efficiency"])
+    );
+    assert!(
+        (cost(&["25% increased Cost Efficiency"]) - 7.2).abs() < 1e-3,
+        "25% generic eff → {} (PoB2 7.2 = 9/1.25)",
+        cost(&["25% increased Cost Efficiency"])
+    );
+    assert!(
+        (cost(&[
+            "25% increased Cost Efficiency",
+            "25% increased Mana Cost Efficiency"
+        ]) - 6.0)
+            .abs()
+            < 1e-6,
+        "25%+25% eff → 6 (additive, 9/1.5)"
+    );
+    let inc_eff = cost(&[
+        "50% increased Mana Cost",
+        "50% increased Mana Cost Efficiency",
+    ]);
+    assert!(
+        (inc_eff - 8.6667).abs() < 0.1,
+        "50% inc + 50% eff → {inc_eff} (PoB2 8.67 = floor(9×1.5)/1.5)"
+    );
+}

@@ -606,12 +606,25 @@ pub fn calc_skill_cost(
     } else {
         (after_inc * more_type).floor()
     };
-    let final_cost = (if more_generic < 1.0 {
+    let after_more = (if more_generic < 1.0 {
         (after_more_type * more_generic).ceil()
     } else {
         (after_more_type * more_generic).floor()
     })
     .max(0.0);
+
+    // 消耗效率（Cost Efficiency）：在 inc/more（已取整）之后**除以** `1 + 效率/100`，结果不再取整。
+    // `{type}CostEfficiency` + 通用 `CostEfficiency` 加法叠加。PoB2: 9 mana, 50% eff → 6；
+    // 25% 通用 → 7.2；25%+25% → 6；50% inc + 50% eff → floor(9×1.5)/1.5 = 8.67。
+    let efficiency = db.sum(
+        ModType::Inc,
+        cfg,
+        &[
+            ModName::from(format!("{resource_mod_prefix}CostEfficiency").as_str()),
+            ModName::from("CostEfficiency"),
+        ],
+    );
+    let final_cost = after_more / (1.0 + efficiency / 100.0);
 
     SkillCostResult {
         kind,
