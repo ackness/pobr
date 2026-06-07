@@ -247,6 +247,11 @@ pub struct SkillLevelDef {
     /// 作用于武器攻击速率：`AttackRate × (1 + attackSpeedMultiplier/100)`（如 Flicker -50）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attack_speed_multiplier: Option<f64>,
+    /// 技能伤害基础倍率（PoB `GrantedEffectsPerLevel.baseMultiplier`，如 Flicker L13 = 1.99）。
+    /// 当 stat-set 的 `BaseMultiplier` 缺失时作为 [`SkillStatSetLevelDef::damage_multiplier`]
+    /// 的回退源（二者同义，PoB 在两表均存）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_multiplier: Option<f64>,
 }
 
 /// 某授予效果（技能）分等级解析出的**伤害相关 stat 值**集合

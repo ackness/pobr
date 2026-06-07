@@ -93,6 +93,9 @@ struct RawGrantedEffectPerLevel {
     /// 攻击速度乘数（百分点，可负；作用于武器攻击速率）。如 Flicker Strike -50。
     #[serde(rename = "AttackSpeedMultiplier")]
     attack_speed_multiplier: Option<i64>,
+    /// 伤害基础倍率（PoB `baseMultiplier`，stat-set BaseMultiplier 缺失时的回退源）。
+    #[serde(rename = "BaseMultiplier")]
+    base_multiplier: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -244,6 +247,7 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
                 .attack_speed_multiplier
                 .filter(|&m| m != 0)
                 .map(|m| m as f64),
+            base_multiplier: raw.base_multiplier.filter(|&m| (m - 1.0).abs() > 1e-9),
         });
     }
     // 每个效果的等级数组按 level 升序（diff 友好 + 查表确定）。

@@ -249,7 +249,9 @@ impl BuildData {
         // 技能 stat（基础伤害值 + damage% 缩放）：分等级行 + 等级无关常量，供映射注入。
         let base_damage = self.effect_stats(skill_id, gem_level);
 
-        // 技能伤害倍率（PoB baseMultiplier）：取该宝石等级的 stat-set 行。
+        // 技能伤害倍率（PoB baseMultiplier）：优先 stat-set 行；stat-set 缺失（如 Flicker
+        // 等 stat-set 为空的技能）时回退到 GrantedEffectsPerLevel 的 base_multiplier
+        // （二者同义，PoB 在两表均存；grenade 的 stat-set 7.57 与 per-level 一致，不受影响）。
         let damage_multiplier = self
             .skill_stat_sets
             .get(skill_id)
@@ -260,6 +262,7 @@ impl BuildData {
                     .or(set.levels.first())
             })
             .map(|l| l.damage_multiplier)
+            .or(row.base_multiplier)
             .unwrap_or(1.0);
 
         Some(ResolvedSkillLevel {
