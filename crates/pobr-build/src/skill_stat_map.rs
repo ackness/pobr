@@ -151,7 +151,13 @@ fn damage_scope_mod_name(scope: &str) -> Option<String> {
         "chaos" => "ChaosDamage",
         // 触发元宝石（cast on X）的无条件 more 伤害，作用于被触发技能。
         "trigger_meta_gem" => "Damage",
-        // 未知/条件型前缀（如 support 专属、按条件触发）→ 不映射（保守，避免误算）。
+        // 辅助宝石的**无条件** `_final` 倍率（PoB constantStats）：elemental armament +% 元素
+        // （对攻击/法术技能）。恒定生效（非条件型）。注：multishot `support_multiple` 的 −% 伤害
+        // 须与投射物数 DPS 乘区**成对**实现（否则单边惩罚回归），单 build 为 Mirage 复杂，暂不映射。
+        "support_elemental"
+        | "support_attack_skills_elemental"
+        | "support_spell_skills_elemental" => "ElementalDamage",
+        // 未知/条件型前缀（如按条件触发）→ 不映射（保守，避免误算）。
         _ => return None,
     };
     Some(name.to_string())
