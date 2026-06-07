@@ -247,3 +247,53 @@ fn fireball_damage_scales_with_gem_level() {
         l1.total_hit_avg
     );
 }
+
+/// PoB2 TestSkills「cost efficiency modifiers」端到端移植（gem 装配 harness）：Ball Lightning
+/// L1 法力消耗 9（data cost_amounts[0]=9，与 PoB2 一致）；消耗效率经 customMods 注入。
+/// 验证 `<Gem> → SkillManaCostBase → calc_mana_cost（含 Cost Efficiency）→ output.mana_cost` 整链。
+#[test]
+fn ball_lightning_cost_efficiency_e2e() {
+    let build_data = load_build_data();
+    let ball_lightning = || {
+        Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_slot("weapon1")
+                    .with_gem("Metadata/Items/Gems/SkillGemBallLightning")
+                    .with_active_skill("BallLightningPlayer", 1),
+            )
+    };
+    let cost = |mods: &[&str]| -> f64 {
+        let opts = DataOrchestratorOptions {
+            extra_modifier_texts: mods.iter().map(|s| s.to_string()).collect(),
+            ..panel_opts()
+        };
+        calculate_with_data(&ball_lightning(), &build_data, &opts)
+            .expect("calc")
+            .mana_cost
+    };
+    assert_eq!(cost(&[]), 9.0, "Ball Lightning L1 base mana cost (PoB2 9)");
+    assert!(
+        (cost(&["50% increased Mana Cost Efficiency"]) - 6.0).abs() < 1e-6,
+        "50% eff → {} (PoB2 6)",
+        cost(&["50% increased Mana Cost Efficiency"])
+    );
+    assert!(
+        (cost(&["25% increased Cost Efficiency"]) - 7.2).abs() < 1e-3,
+        "25% generic eff → {} (PoB2 7.2)",
+        cost(&["25% increased Cost Efficiency"])
+    );
+    let inc_eff = cost(&[
+        "50% increased Mana Cost",
+        "50% increased Mana Cost Efficiency",
+    ]);
+    assert!(
+        (inc_eff - 8.6667).abs() < 0.1,
+        "50% inc + 50% eff → {inc_eff} (PoB2 8.67)"
+    );
+}

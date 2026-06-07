@@ -580,3 +580,36 @@ fn cost_efficiency_modifiers() {
         "50% inc + 50% eff → {inc_eff} (PoB2 8.67 = floor(9×1.5)/1.5)"
     );
 }
+
+/// per-charge 缩放（PoB2 Multiplier tag）：词条「N% increased/more Damage per <X> Charge」按
+/// 当前充能层数倍乘。cfg.multiplier 存当前层数（PoB2 `modDB.multipliers["PowerCharge"]` 同构）。
+/// 验证 PoBR Modifier Multiplier tag 在 sum/more 聚合中按层数生效。
+#[test]
+fn per_charge_scaling() {
+    // 8% increased per power charge × 3 层 = 24% INC。
+    let mut db = ModDb::new();
+    add_text(&mut db, "8% increased Damage per Power Charge");
+    let cfg = CalcConfig::attack().with_multiplier("PowerCharge", 3.0);
+    let inc = db.sum(ModType::Inc, &cfg, &[ModName::from("Damage")]);
+    assert!(
+        (inc - 24.0).abs() < 1e-6,
+        "3 power charges → Damage INC {inc} (expect 24)"
+    );
+    // 0 层 → 0 INC。
+    let cfg0 = CalcConfig::attack();
+    let inc0 = db.sum(ModType::Inc, &cfg0, &[ModName::from("Damage")]);
+    assert!(
+        inc0.abs() < 1e-6,
+        "0 charges → Damage INC {inc0} (expect 0)"
+    );
+
+    // 10% more per frenzy charge × 3 = ×1.3。
+    let mut db2 = ModDb::new();
+    add_text(&mut db2, "10% more Damage per Frenzy Charge");
+    let cfg3 = CalcConfig::attack().with_multiplier("FrenzyCharge", 3.0);
+    let more = db2.more(&cfg3, &[ModName::from("Damage")]);
+    assert!(
+        (more - 1.3).abs() < 1e-6,
+        "3 frenzy charges → Damage more {more} (expect 1.3)"
+    );
+}
