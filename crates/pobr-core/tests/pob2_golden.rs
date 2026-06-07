@@ -442,3 +442,97 @@ fn gain_as_extra_physical_to_fire() {
         out.total_hit_avg
     );
 }
+
+/// PoB2 TestDefence「armoured max hits」(Armour applies to elements instead of Physical)：
+/// Life 1000 + Armour 10000 + 元素抗 0（物理无护甲、火/冰/电改吃护甲）+ 混沌抗 -60。
+/// 物理 = 1000（=池，无护甲）；火/冰/电 = 物理带护甲口径 1618（ArmourRatio 10：H(1-A/(A+10H))=池）；
+/// 混沌 = 1000/1.6 = 625。验证 armour-applies-to-element 重定向 + 元素走护甲减伤。
+#[test]
+fn defence_armour_applies_to_element() {
+    let input = MinimalInput {
+        base_life: 1000.0,
+        base_mana: 50.0,
+        base_fire_resistance: 0.0,
+        base_cold_resistance: 0.0,
+        base_lightning_resistance: 0.0,
+        base_accuracy: 0.0,
+        enemy_evasion: 0.0,
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        base_action_rate: 1.0,
+    };
+    let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
+    session.add_modifiers([
+        Modifier::number("Armour", ModType::Base, 10000.0),
+        Modifier::number("ChaosResistance", ModType::Base, -60.0),
+    ]);
+    session
+        .add_modifier_texts([
+            "Armour applies to Fire, Cold and Lightning Damage taken from Hits instead of Physical Damage",
+        ])
+        .unwrap();
+    session.perform_minimal();
+    let o = session.output();
+    assert!(
+        within_10pct(o.physical_max_hit, 1000.0),
+        "physical = {} (PoB2 1000, redirected away from armour)",
+        o.physical_max_hit
+    );
+    for (n, v) in [
+        ("fire", o.fire_max_hit),
+        ("cold", o.cold_max_hit),
+        ("lightning", o.lightning_max_hit),
+    ] {
+        assert!(
+            within_10pct(v, 1618.0),
+            "{n} = {v} (PoB2 armour-on-element, ArmourRatio 10 → 1618)"
+        );
+    }
+    assert!(
+        within_10pct(o.chaos_max_hit, 625.0),
+        "chaos = {} (PoB2 625, res -60)",
+        o.chaos_max_hit
+    );
+}
+
+/// PoB2 TestDefence「armoured max hits」(敌人物理压制 overwhelm)：Life 1000 + Armour 1e9
+/// （护甲减伤封顶 90%）+ enemyPhysicalOverwhelm 15 → 物理减伤 90%-15% = 75% → 承受 0.25 →
+/// 物理最大承受击中 = 1000/0.25 = 4000。元素/混沌抗 -60 → 625。验证 overwhelm 削减物理减伤。
+#[test]
+fn defence_physical_overwhelm() {
+    let input = MinimalInput {
+        base_life: 1000.0,
+        base_mana: 50.0,
+        base_fire_resistance: -60.0,
+        base_cold_resistance: -60.0,
+        base_lightning_resistance: -60.0,
+        base_accuracy: 0.0,
+        enemy_evasion: 0.0,
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        base_action_rate: 1.0,
+    };
+    let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
+    session.add_modifiers([
+        Modifier::number("Armour", ModType::Base, 1.0e9),
+        Modifier::number("ChaosResistance", ModType::Base, -60.0),
+        Modifier::number("EnemyPhysicalOverwhelm", ModType::Base, 15.0),
+    ]);
+    session.perform_minimal();
+    let o = session.output();
+    assert!(
+        within_10pct(o.physical_max_hit, 4000.0),
+        "physical = {} (PoB2 4000: 90% DR - 15% overwhelm = 75% → /0.25)",
+        o.physical_max_hit
+    );
+    assert!(
+        within_10pct(o.fire_max_hit, 625.0),
+        "fire = {}",
+        o.fire_max_hit
+    );
+    assert!(
+        within_10pct(o.chaos_max_hit, 625.0),
+        "chaos = {}",
+        o.chaos_max_hit
+    );
+}

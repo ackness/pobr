@@ -14,11 +14,11 @@ use super::skill_mechanics::{
 };
 use super::trigger::{calc_cwc_trigger_rate_traced, resolve_trigger_rate_traced};
 use super::{
-    BreakdownTable, CalcError, Env, LeechResource, MinimalInput, MinionOutput, OutputTable,
-    RecoupResource, ResistanceSuite, calc_avoidance, calc_crit_extra_reduction, calc_defence,
-    calc_ehp, calc_es_recharge, calc_leech_from_db, calc_recoup_from_db, calc_regen,
-    calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect,
-    es_recharge_per_second, reservation, resolve_all_charges, round,
+    BreakdownTable, CalcError, EhpOptions, Env, LeechResource, MinimalInput, MinionOutput,
+    OutputTable, RecoupResource, ResistanceSuite, calc_avoidance, calc_crit_extra_reduction,
+    calc_defence, calc_ehp_with_opts, calc_es_recharge, calc_leech_from_db, calc_recoup_from_db,
+    calc_regen, calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy,
+    enemy_crit_effect, es_recharge_per_second, reservation, resolve_all_charges, round,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -176,13 +176,28 @@ fn fill_mechanics(env: &mut Env) {
         },
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
-    let ehp = calc_ehp(
+    // 防御机制选项：敌人物理压制 + 「Armour applies to <Element> instead of Physical」。
+    let ehp_opts = EhpOptions {
+        chaos_inoculation: false,
+        physical_overwhelm: db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("EnemyPhysicalOverwhelm")],
+        ) / 100.0,
+        armour_applies_to_element: [
+            db.flag(cfg, ModName::from("ArmourAppliesToFire")),
+            db.flag(cfg, ModName::from("ArmourAppliesToCold")),
+            db.flag(cfg, ModName::from("ArmourAppliesToLightning")),
+        ],
+    };
+    let ehp = calc_ehp_with_opts(
         env.player.output.life,
         env.player.output.energy_shield,
         env.player.output.mana,
         &resistances,
         env.player.output.armour,
         reference_hit,
+        ehp_opts,
     );
     // 承受伤害乘区（玩家侧 `DamageTaken` / `<Type>DamageTaken`，reduced→INC<0、less→MORE<1）：
     // 最大承受击中 = ehp / dt（dt<1 → 承受更少 → 可承受更大击中）。dt≤0（完全免疫）→ ∞。

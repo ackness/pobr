@@ -110,6 +110,16 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // 防御 flag 词条：「Armour applies to <Element(s)> Damage taken from Hits instead of
+    // Physical Damage」→ `ArmourAppliesTo<Element>` flag（EHP 据此让该元素改走护甲）。
+    if let Some(mods) = parse_armour_applies_to_element(&rest, original) {
+        return Ok(ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     let (form, after_form) = parse_form(&rest).ok_or_else(|| ParseError {
         input: original.into(),
         reason: "unsupported modifier form".into(),
@@ -288,6 +298,27 @@ fn parse_conversion_or_gain(rest: &str, source: &str) -> Option<Vec<Modifier>> {
         Modifier::number(format!("{from_prefix}Damage{kind}{to}"), ModType::Base, pct)
             .with_source(source),
     ])
+}
+
+/// 解析「Armour applies to <Fire/Cold/Lightning...> Damage taken from Hits instead of Physical
+/// Damage」→ 对应元素的 `ArmourAppliesTo<Element>` flag。`rest` 已小写归一。非此形式返回 None。
+fn parse_armour_applies_to_element(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let body = rest.strip_prefix("armour applies to ")?;
+    // 必须是 instead of physical（重定向语义）。
+    if !body.contains("instead of physical") {
+        return None;
+    }
+    let mut mods = Vec::new();
+    for (kw, flag) in [
+        ("fire", "ArmourAppliesToFire"),
+        ("cold", "ArmourAppliesToCold"),
+        ("lightning", "ArmourAppliesToLightning"),
+    ] {
+        if body.contains(kw) {
+            mods.push(Modifier::flag(flag).with_source(source));
+        }
+    }
+    (!mods.is_empty()).then_some(mods)
 }
 
 /// 解析 PoB 词条标记 `[A|B]` → `B`（显示名）、`[A]` → `A`。无标记原样返回。

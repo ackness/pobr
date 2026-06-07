@@ -68,6 +68,7 @@ fn chaos_inoculation_uses_es_as_life_pool_and_grants_chaos_immunity() {
     };
     let ci_opts = EhpOptions {
         chaos_inoculation: true,
+        ..EhpOptions::default()
     };
     // life=1（CI keystone），es=5000
     let result = calc_ehp_with_opts(1.0, 5000.0, 0.0, &resistances, 0.0, 1000.0, ci_opts);

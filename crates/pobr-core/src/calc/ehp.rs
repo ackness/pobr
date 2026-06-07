@@ -43,8 +43,19 @@ fn resist_taken_fraction(resist_pct: f64) -> f64 {
 
 /// 物理承受比例：`1 - (pdr_flat + 护甲减伤)`，clamp 到 [0.1, 1.0]（PoE 物理减伤上限 90%）。
 pub fn physical_taken_fraction(pdr_flat: f64, armour: f64, reference_hit: f64) -> f64 {
-    let total_reduction = pdr_flat + armour_reduction(armour, reference_hit);
-    (1.0 - total_reduction).clamp(0.1, 1.0)
+    physical_taken_fraction_overwhelm(pdr_flat, armour, reference_hit, 0.0)
+}
+
+/// 物理承受比例，含敌人**压制**（overwhelm，fraction）：先按 90% 上限算总减伤，再被
+/// overwhelm 削减（提高承受）。PoB2：armour 1e9（90% DR）+ 15% overwhelm → 75% DR → 承受 0.25。
+pub fn physical_taken_fraction_overwhelm(
+    pdr_flat: f64,
+    armour: f64,
+    reference_hit: f64,
+    overwhelm: f64,
+) -> f64 {
+    let reduction = (pdr_flat + armour_reduction(armour, reference_hit)).clamp(0.0, 0.9);
+    (1.0 - (reduction - overwhelm)).clamp(0.0, 1.0)
 }
 
 /// 元素/混沌类型的最大可承受命中：`pool / (1 - resist%/100)`。
@@ -64,9 +75,47 @@ pub fn max_hit_for_type(pool: f64, resist_pct: f64) -> f64 {
 /// （`takenHitFromDamage(MaxHit) == pool`）。用定点迭代求解（`taken` 随 `H` 单调，收敛快）；
 /// 无护甲时 `taken` 与 `H` 无关，一步收敛 → 退化为 `pool/taken`。`reference_hit` 作初值。
 pub fn physical_max_hit(pool: f64, pdr_flat: f64, armour: f64, reference_hit: f64) -> f64 {
+    physical_max_hit_overwhelm(pool, pdr_flat, armour, reference_hit, 0.0)
+}
+
+/// 物理最大承受击中（含敌人 overwhelm）。同 [`physical_max_hit`] 的自洽迭代，承受比例改用
+/// [`physical_taken_fraction_overwhelm`]。
+pub fn physical_max_hit_overwhelm(
+    pool: f64,
+    pdr_flat: f64,
+    armour: f64,
+    reference_hit: f64,
+    overwhelm: f64,
+) -> f64 {
     let mut hit = reference_hit.max(pool).max(1.0);
     for _ in 0..50 {
-        let taken = physical_taken_fraction(pdr_flat, armour, hit);
+        let taken = physical_taken_fraction_overwhelm(pdr_flat, armour, hit, overwhelm);
+        if taken <= 0.0 {
+            return f64::INFINITY;
+        }
+        let next = pool / taken;
+        if (next - hit).abs() < 1e-3 {
+            hit = next;
+            break;
+        }
+        hit = next;
+    }
+    round(hit)
+}
+
+/// 元素类型走护甲的最大承受击中（「Armour applies to <Element> instead of Physical」）：
+/// 护甲减伤作用于**抗性后**的伤害（PoB2 口径），故 `taken = res_taken × (1 - armour_dr(H×res_taken))`，
+/// armour_dr 上限 90%。同样自洽迭代求 `H × taken(H) = pool`。
+fn element_max_hit_with_armour(pool: f64, resist_pct: f64, armour: f64, reference_hit: f64) -> f64 {
+    let res_taken = resist_taken_fraction(resist_pct);
+    if res_taken <= 0.0 {
+        return f64::INFINITY;
+    }
+    let mut hit = reference_hit.max(pool).max(1.0);
+    for _ in 0..50 {
+        let post_resist = hit * res_taken;
+        let armour_part = (1.0 - armour_reduction(armour, post_resist)).clamp(0.1, 1.0);
+        let taken = res_taken * armour_part;
         let next = pool / taken;
         if (next - hit).abs() < 1e-3 {
             hit = next;
@@ -94,6 +143,11 @@ fn chaos_pool(life: f64, es: f64) -> f64 {
 pub struct EhpOptions {
     /// Chaos Inoculation：最大生命变 1，ES 作生命池（`es` 用于所有伤害池），混沌伤害免疫。
     pub chaos_inoculation: bool,
+    /// 敌人物理压制（overwhelm，fraction）：削减玩家物理总减伤（提高承受）。
+    pub physical_overwhelm: f64,
+    /// 「Armour applies to <Element> instead of Physical」：火/冰/电是否改走护甲减伤；
+    /// 任一为真时物理不再吃护甲（仅 PDR）。对应 PoB2 同名词条。
+    pub armour_applies_to_element: [bool; 3],
 }
 
 /// 计算 EHP 与各类型 max hit。`reference_hit` 为物理护甲减伤的 incoming hit 估计基准。
@@ -145,10 +199,27 @@ pub fn calc_ehp_with_opts(
         ele_pool.max(1.0)
     };
 
-    let physical_max_hit = physical_max_hit(ele_pool, resistances.physical_pdr, armour, ref_hit);
-    let fire_max_hit = max_hit_for_type(ele_pool, resistances.fire);
-    let cold_max_hit = max_hit_for_type(ele_pool, resistances.cold);
-    let lightning_max_hit = max_hit_for_type(ele_pool, resistances.lightning);
+    // 「Armour applies to <Element> instead of Physical」：物理改吃护甲与否取决于是否有重定向。
+    let any_redirect = opts.armour_applies_to_element.iter().any(|&x| x);
+    let phys_armour = if any_redirect { 0.0 } else { armour };
+    let physical_max_hit = physical_max_hit_overwhelm(
+        ele_pool,
+        resistances.physical_pdr,
+        phys_armour,
+        ref_hit,
+        opts.physical_overwhelm,
+    );
+    // 各元素：重定向时走护甲（抗性后），否则纯抗性。
+    let elem_max_hit = |resist_pct: f64, idx: usize| -> f64 {
+        if opts.armour_applies_to_element[idx] {
+            element_max_hit_with_armour(ele_pool, resist_pct, armour, ref_hit)
+        } else {
+            max_hit_for_type(ele_pool, resist_pct)
+        }
+    };
+    let fire_max_hit = elem_max_hit(resistances.fire, 0);
+    let cold_max_hit = elem_max_hit(resistances.cold, 1);
+    let lightning_max_hit = elem_max_hit(resistances.lightning, 2);
     // CI：混沌伤害免疫 → 无限大 max hit
     let chaos_max_hit = if opts.chaos_inoculation {
         f64::INFINITY
