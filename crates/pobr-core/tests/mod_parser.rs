@@ -247,6 +247,112 @@ fn parses_weapon_type_attack_speed_as_condition() {
 }
 
 #[test]
+fn parses_compound_dual_type_resistance_to_two_mods() {
+    // PoB2 ModParser modNameList：`fire and chaos resistances` → 火抗 + 混沌抗。
+    let o = parse_mod("+13% to Fire and Chaos Resistances").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    let names: Vec<_> = o.mods.iter().map(|m| m.name.clone()).collect();
+    assert_eq!(names.len(), 2);
+    assert!(names.contains(&ModName::from("FireResistance")));
+    assert!(names.contains(&ModName::from("ChaosResistance")));
+    for m in &o.mods {
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value, ModValue::Number(13.0));
+    }
+}
+
+#[test]
+fn parses_all_resistances_including_chaos() {
+    // `all resistances`（含混沌）区别于不含混沌的 `all elemental resistances`。
+    let o = parse_mod("+10% to all Resistances").unwrap();
+    let names: Vec<_> = o.mods.iter().map(|m| m.name.clone()).collect();
+    assert_eq!(names.len(), 4);
+    assert!(names.contains(&ModName::from("FireResistance")));
+    assert!(names.contains(&ModName::from("ColdResistance")));
+    assert!(names.contains(&ModName::from("LightningResistance")));
+    assert!(names.contains(&ModName::from("ChaosResistance")));
+
+    let elem = parse_mod("+10% to all Elemental Resistances").unwrap();
+    assert_eq!(elem.mods.len(), 3, "elemental variant excludes chaos");
+}
+
+#[test]
+fn strips_scope_suffix_for_spells_into_flag() {
+    // `... for Spells` 后缀作用域 → SPELL flag（残留会使 resolve_names 失败）。
+    let o = parse_mod("+15% to Critical Hit Chance for Spells").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("CriticalStrikeChance"));
+    assert!(o.mods[0].flags.intersects(ModFlags::SPELL));
+    assert!(!o.mods[0].flags.intersects(ModFlags::ATTACK));
+}
+
+#[test]
+fn strips_scope_prefix_attack_critical_into_flag() {
+    // `Attack Critical Hit Chance` 前缀作用域 → ATTACK flag。
+    let o = parse_mod("8% increased Attack Critical Hit Chance").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("CriticalStrikeChance"));
+    assert_eq!(o.mods[0].mod_type, ModType::Inc);
+    assert!(o.mods[0].flags.intersects(ModFlags::ATTACK));
+}
+
+#[test]
+fn maps_skill_speed_and_freeze_buildup_and_mana_regen() {
+    assert_eq!(
+        parse_mod("10% increased Skill Speed").unwrap().mods[0].name,
+        ModName::from("SkillSpeed")
+    );
+    assert_eq!(
+        parse_mod("20% increased Freeze Buildup").unwrap().mods[0].name,
+        ModName::from("FreezeBuildup")
+    );
+    assert_eq!(
+        parse_mod("15% increased Mana Regeneration Rate")
+            .unwrap()
+            .mods[0]
+            .name,
+        ModName::from("ManaRegen")
+    );
+}
+
+#[test]
+fn keystone_maximum_life_is_one_yields_override_and_ci_flag() {
+    // CI 关键石：`Maximum Life is 1` → MaximumLife OVERRIDE 1 + ChaosInoculation flag。
+    let o = parse_mod("Maximum Life is 1").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    let life = o
+        .mods
+        .iter()
+        .find(|m| m.name == ModName::from("MaximumLife"))
+        .expect("MaximumLife override present");
+    assert_eq!(life.mod_type, ModType::Override);
+    assert_eq!(life.value, ModValue::Number(1.0));
+    assert!(
+        o.mods
+            .iter()
+            .any(|m| m.name == ModName::from("ChaosInoculation") && m.mod_type == ModType::Flag),
+        "CI flag should accompany the life override"
+    );
+}
+
+#[test]
+fn keystone_no_mana_yields_zero_override() {
+    let o = parse_mod("You have no Mana").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("MaximumMana"));
+    assert_eq!(o.mods[0].mod_type, ModType::Override);
+    assert_eq!(o.mods[0].value, ModValue::Number(0.0));
+}
+
+#[test]
+fn pure_immunity_phrase_is_unsupported_not_error() {
+    // 纯免疫短语无数值：归 Unsupported（不报错、不产数值），避免噪声。
+    let o = parse_mod("Immune to Chaos Damage and Bleeding").unwrap();
+    assert_eq!(o.status, ParseStatus::Unsupported);
+    assert!(o.mods.is_empty());
+}
+
+#[test]
 fn weapon_type_guard_keeps_damage_as_weapon_keyword_name() {
     // 「damage with crossbows」必须映射到武器类伤害名 CrossbowDamage（keyword 聚合），
     // 不能被武器类条件守卫误转成带 UsingCrossbow 条件的通用 Damage（否则丢失武器伤害）。

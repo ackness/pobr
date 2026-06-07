@@ -54,7 +54,7 @@ pub fn collect_allocated_mods(
                 let selection = spec.mastery_effects.get(node_id)?;
                 return Some(AllocatedNodeMods {
                     node_id: *node_id,
-                    modifier_texts: vec![selection.effect_text.clone()],
+                    modifier_texts: split_lines(std::slice::from_ref(&selection.effect_text)),
                     source_id: SourceId::new(SourceKind::PassiveNode, node_id.0.to_string()),
                 });
             }
@@ -62,11 +62,30 @@ pub fn collect_allocated_mods(
             if node.stats.is_empty() {
                 return None;
             }
+            let modifier_texts = split_lines(&node.stats);
+            if modifier_texts.is_empty() {
+                return None;
+            }
             Some(AllocatedNodeMods {
                 node_id: *node_id,
-                modifier_texts: node.stats.clone(),
+                modifier_texts,
                 source_id: SourceId::new(SourceKind::PassiveNode, node_id.0.to_string()),
             })
         })
+        .collect()
+}
+
+/// 把节点/精通词条按物理换行拆成独立行（trim + 去空行）。
+///
+/// PoE2 部分天赋节点（尤其关键石）的单个 `stats` 元素含 `\n`，例如
+/// `"Maximum Life is 1\nImmune to Chaos Damage and Bleeding"`。整条交给
+/// `parse_mod` 必然失败而被静默丢弃；逐行拆分后每行可独立解析，是所有多行
+/// 节点共享的通用修复（不针对任何具体节点/职业）。
+fn split_lines(stats: &[String]) -> Vec<String> {
+    stats
+        .iter()
+        .flat_map(|s| s.lines())
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
         .collect()
 }

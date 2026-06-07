@@ -120,12 +120,22 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // 关键石/无 form 特例：非数字开头、parse_form 必然失败的固定语义短语。
+    // 在 parse_form 之前查表，命中即直接产出对应 Modifier（OVERRIDE / flag）。
+    if let Some(outcome) = parse_keystone_special(&rest, original) {
+        return Ok(outcome);
+    }
+
     let (form, after_form) = parse_form(&rest).ok_or_else(|| ParseError {
         input: original.into(),
         reason: "unsupported modifier form".into(),
     })?;
 
     let (remainder, base_tags) = strip_tags(after_form);
+    // 作用域后缀子句（`for spells` / `for attacks` / `with spells`...）→ 合并 ModFlags。
+    // 这些限定词残留在名字里会使 resolve_names 失败，剥离后归入主 flags。
+    let (remainder, scope_flags) = strip_scope_suffix(&remainder);
+    flags |= scope_flags;
     // 复合词条（`A, B and C`）+ 聚合名（`all elemental resistances`）→ 多个 ModName，共享同一 form。
     let names = resolve_names(&remainder).ok_or_else(|| ParseError {
         input: original.into(),
@@ -183,6 +193,22 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
             "all maximum elemental resistances",
             "maximum chaos resistance",
         ],
+        // 全抗（含混沌）——区别于不含混沌的 `all elemental resistances`。
+        // 与 PoB2 ModParser.lua modNameList(283) `all resistances`={Elemental,Chaos} 对齐。
+        "all resistances" => &[
+            "fire resistance",
+            "cold resistance",
+            "lightning resistance",
+            "chaos resistance",
+        ],
+        // 复合双类型抗性（PoB2 ModParser.lua 277-289）——朴素 " and "→", " 切分会得到
+        // 无效单词（如 "fire"），故显式展开为完整 ModName 短语。
+        "fire and cold resistances" => &["fire resistance", "cold resistance"],
+        "fire and lightning resistances" => &["fire resistance", "lightning resistance"],
+        "cold and lightning resistances" => &["cold resistance", "lightning resistance"],
+        "fire and chaos resistances" => &["fire resistance", "chaos resistance"],
+        "cold and chaos resistances" => &["cold resistance", "chaos resistance"],
+        "lightning and chaos resistances" => &["lightning resistance", "chaos resistance"],
         _ => &[],
     };
     if !aggregate.is_empty() {
@@ -301,6 +327,41 @@ fn parse_conversion_or_gain(rest: &str, source: &str) -> Option<Vec<Modifier>> {
         Modifier::number(format!("{from_prefix}Damage{kind}{to}"), ModType::Base, pct)
             .with_source(source),
     ])
+}
+
+/// 关键石/无 form 特例短语表（`rest` 已小写规范）。这些行非数字开头，parse_form 必然
+/// 失败；命中固定语义短语时直接产出对应 [`Modifier`]（OVERRIDE 数值型 / flag）。
+///
+/// **注意**：scaled_pool 当前不消费 ModType::Override（W2-B 负责接入），故产出 Override
+/// 后 Life/Mana 数值暂不变化——这是预期的；本波次只负责让解析产出正确的 Override。
+/// 纯条件型免疫短语（无数值）产出 [`ParseStatus::Unsupported`]（而非 Err），避免噪声。
+fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
+    // 数值型 OVERRIDE + 伴随 flag（Chaos Inoculation: Maximum Life is 1 → 免疫混沌）。
+    let mods: Vec<Modifier> = match rest {
+        "maximum life is 1" => vec![
+            Modifier::number("MaximumLife", ModType::Override, 1.0).with_source(source),
+            Modifier::flag("ChaosInoculation").with_source(source),
+        ],
+        "you have no mana" => {
+            vec![Modifier::number("MaximumMana", ModType::Override, 0.0).with_source(source)]
+        }
+        // 纯免疫/条件短语：计算侧暂不消费，归 Unsupported（不报错、不产数值）。
+        "immune to chaos damage and bleeding"
+        | "immune to chaos damage"
+        | "immune to chaos damage and [bleeding]" => {
+            return Some(ParseOutcome {
+                mods: Vec::new(),
+                status: ParseStatus::Unsupported,
+                unparsed: Some(source.into()),
+            });
+        }
+        _ => return None,
+    };
+    Some(ParseOutcome {
+        mods,
+        status: ParseStatus::Parsed,
+        unparsed: None,
+    })
 }
 
 /// 解析「Armour applies to <Fire/Cold/Lightning...> Damage taken from Hits instead of Physical
@@ -450,6 +511,41 @@ fn take_signed_number(text: &str) -> Option<(f64, &str)> {
 
     let number = text[..end].parse().ok()?;
     Some((number, &text[end..]))
+}
+
+/// 剥离作用域限定子句（`... for spells` / `attack ...` / `spell ...`）→ 返回剩余名
+/// 与对应 [`ModFlags`]。PoE2 暴击/伤害词条常带这类限定（如 `Critical Hit Chance for
+/// Spells`、`Attack Critical Hit Chance`），残留会使 resolve_names 失败；按 PoB2 语义
+/// 把它转为 ATTACK/SPELL flag。后缀/前缀各剥离一次即可（一条词条只带一个作用域限定）。
+fn strip_scope_suffix(text: &str) -> (String, ModFlags) {
+    // 后缀 → flag，按长度降序排列以最长匹配优先（避免 ` for spell` 抢在 ` for spell skills` 前）。
+    let suffixes: &[(&str, ModFlags)] = &[
+        (" for spell skills", ModFlags::SPELL),
+        (" for spell damage", ModFlags::SPELL),
+        (" for attack skills", ModFlags::ATTACK),
+        (" for attack damage", ModFlags::ATTACK),
+        (" with attacks", ModFlags::ATTACK),
+        (" with spells", ModFlags::SPELL),
+        (" for spells", ModFlags::SPELL),
+        (" for attacks", ModFlags::ATTACK),
+    ];
+    for (suffix, flag) in suffixes {
+        if let Some(stripped) = text.strip_suffix(suffix) {
+            return (stripped.trim().to_string(), *flag);
+        }
+    }
+    // 前缀作用域（`attack critical hit chance` / `spell critical damage bonus`...）。
+    // 仅对暴击族名启用，避免误伤 `attack damage`/`spell damage`（已是独立 ModName）。
+    let prefixes: &[(&str, ModFlags)] =
+        &[("attack ", ModFlags::ATTACK), ("spell ", ModFlags::SPELL)];
+    for (prefix, flag) in prefixes {
+        if let Some(stripped) = text.strip_prefix(prefix)
+            && stripped.starts_with("critical")
+        {
+            return (stripped.trim().to_string(), *flag);
+        }
+    }
+    (text.to_string(), ModFlags::NONE)
 }
 
 fn strip_tags(text: String) -> (String, Vec<ModTag>) {
@@ -606,12 +702,21 @@ fn parse_name(text: &str) -> Option<ModName> {
         "attack speed" => "AttackSpeed",
         "cast speed" => "CastSpeed",
         "movement speed" => "MovementSpeed",
+        // 通用技能速度（speed bucket，见 calc::skill_use_time::SPEED_BUCKET）。
+        "skill speed" => "SkillSpeed",
         // 暴击（PoE2「Critical Hit」= 旧「Critical Strike」；计算读 CriticalStrike* ModName）。
         "critical hit chance" => "CriticalStrikeChance",
         "critical strike chance" => "CriticalStrikeChance",
         "critical hit damage bonus" => "CriticalStrikeMultiplier",
         "critical damage bonus" => "CriticalStrikeMultiplier",
         "critical strike multiplier" => "CriticalStrikeMultiplier",
+        // 暴击伤害加成的作用域内嵌写法（PoB2：`Critical Spell Damage Bonus` 等）。
+        // 作用域 flag 不在 parse_name 处理（其只产 ModName）；`attack/spell` 前缀由
+        // strip_scope_suffix 剥离，这里收口残留的内嵌 `spell/attack` 写法以消 Err。
+        "critical spell damage bonus" => "CriticalStrikeMultiplier",
+        "attack critical damage bonus" | "critical attack damage bonus" => {
+            "CriticalStrikeMultiplier"
+        }
         // 属性。
         "strength" => "Strength",
         "dexterity" => "Dexterity",
@@ -654,6 +759,14 @@ fn parse_name(text: &str) -> Option<ModName> {
         "lightning damage taken" => "LightningDamageTaken",
         "chaos damage taken" => "ChaosDamageTaken",
         "elemental damage taken" => "ElementalDamageTaken",
+        // 恢复速率（perform.rs::calc_regen 读 ManaRegen/LifeRegen）。
+        "mana regeneration rate" => "ManaRegen",
+        "life regeneration rate" => "LifeRegen",
+        // 冰冻 Poise 积累（玩家侧 FreezeBuildup，PoB2 命名）；计算侧暂只消费
+        // EnemyFreezeBuildup/ImmobilisationBuildup，此名先消 Err、备后续接入。
+        "freeze buildup" => "FreezeBuildup",
+        // 掉落/通货稀有度（面板展示，计算侧暂不消费——消 Err 用）。
+        "rarity of items found" => "LootRarity",
         _ => return None,
     };
 

@@ -225,6 +225,39 @@ fn collect_allocated_mods_free_function_matches_tree_method() {
 }
 
 #[test]
+fn compute_node_mods_splits_multiline_stats_into_separate_texts() {
+    // PoE2 关键石的单个 stats 元素常含 `\n`（如 CI 节点）。整条交给 parse_mod 必失败被
+    // 静默丢弃；逐行拆分后每行独立可解析。这是所有多行节点共享的通用修复。
+    let json = r#"[
+      {
+        "skill": 7,
+        "id": "node_ci",
+        "name": "Chaos Inoculation",
+        "kind": "keystone",
+        "stats": ["Maximum Life is 1\nImmune to Chaos Damage and Bleeding"],
+        "connections": []
+      }
+    ]"#;
+    let tree = PassiveTree::from_json(json).unwrap();
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(7)],
+        ..Default::default()
+    };
+
+    let mods = tree.compute_node_mods(&spec);
+
+    assert_eq!(mods.len(), 1);
+    assert_eq!(
+        mods[0].modifier_texts,
+        vec![
+            "Maximum Life is 1".to_string(),
+            "Immune to Chaos Damage and Bleeding".to_string(),
+        ],
+        "multi-line stat must split per physical line (trimmed, non-empty)"
+    );
+}
+
+#[test]
 fn from_nodes_round_trips_with_positions() {
     let nodes = vec![
         PassiveNodeDef {
