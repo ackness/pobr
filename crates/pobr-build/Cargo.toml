@@ -13,3 +13,6 @@ base64 = "0.22"
 flate2 = "1"
 quick-xml = "0.36"
 thiserror = "2"
+
+[dev-dependencies]
+serde_json = { workspace = true }

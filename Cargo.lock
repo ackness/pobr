@@ -386,6 +386,7 @@ dependencies = [
  "pobr-item",
  "pobr-tree",
  "quick-xml",
+ "serde_json",
  "thiserror",
 ]
 
