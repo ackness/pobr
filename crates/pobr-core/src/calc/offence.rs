@@ -228,10 +228,19 @@ pub fn calculate_minimal_vs_enemy(
         non_crit_hit_avg
     };
 
-    let speed_names = [ModName::from("AttackSpeed"), ModName::from("ActionSpeed")];
+    // 速度族（按技能类型取 AttackSpeed 或 CastSpeed，SkillSpeed 始终）作为一个 inc/more 乘区；
+    // ActionSpeed 独立乘区单独相乘（对齐 PoB CalcOffence：
+    // finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod）。攻击吃武器攻速 + AttackSpeed，
+    // 法术吃技能施法速率 + CastSpeed——不混淆（攻击不吃 CastSpeed、法术不吃 AttackSpeed）。
+    let speed_names = super::skill_use_time::speed_names_for_db(db, cfg);
+    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
     let more_speed = db.more(cfg, &speed_names);
-    let action_rate = round(input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed);
+    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
+        * db.more(cfg, &action_speed_names);
+    let uncapped_action_rate =
+        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed * action_speed_mod;
+    let action_rate = round(apply_cooldown_cap(db, cfg, uncapped_action_rate));
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
     // PoE2 命中率（agent-docs/accuracy-and-enemy.md §二,§三）：
@@ -554,7 +563,11 @@ fn total_dps_traced(
     trace.add_edge(crit_node, total_hit_node);
 
     // --- action rate ---
-    let speed_names = [ModName::from("AttackSpeed"), ModName::from("ActionSpeed")];
+    // 速度族（攻击取 AttackSpeed / 法术取 CastSpeed，SkillSpeed 始终）一个 inc/more 乘区；
+    // ActionSpeed 独立乘区单独相乘；末端按固有冷却限速（min(rate, 1/effective_cooldown)）——
+    // 对齐非 traced 路径。
+    let speed_names = super::skill_use_time::speed_names_for_db(db, cfg);
+    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let base_rate_node = trace.add_source_node(
         "base action rate",
         input.base_action_rate,
@@ -565,11 +578,16 @@ fn total_dps_traced(
         cfg,
         &speed_names,
         trace,
-        "Speed INC modifier sum",
+        "Speed INC modifier sum (Attack/Cast/Skill)",
     );
     let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
-    let action_rate =
-        round(input.base_action_rate * (1.0 + inc_speed.value / 100.0) * more_speed.value);
+    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
+        * db.more(cfg, &action_speed_names);
+    let uncapped_rate = input.base_action_rate
+        * (1.0 + inc_speed.value / 100.0)
+        * more_speed.value
+        * action_speed_mod;
+    let action_rate = round(apply_cooldown_cap(db, cfg, uncapped_rate));
     let action_rate_node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
     trace.add_edge(base_rate_node, action_rate_node);
     trace.add_edge(inc_speed.node_id, action_rate_node);
@@ -770,12 +788,42 @@ pub(crate) fn more_factor_traced(
     }
 }
 
+/// 冷却限速：技能有固有冷却时，最终行动速率不能超过 `1/effective_cooldown`。
+///
+/// PoB 顺序：**先把速度全部 inc/more 算完**，再 `min(rate, 1/cooldown)`——所以本函数在
+/// 速度链路末端调用（不在装配阶段预截 base_action_rate）。`effective_cooldown` 经
+/// `CooldownRecovery`（INC/MORE，[`calc_cooldown`]）缩短：`base_cd / (1+Σinc/100)/Πmore`。
+///
+/// 例外：「绕过冷却」技能（如 Flicker Strike，消耗充能重置冷却）注入 `CooldownBypass` flag，
+/// 此时不限速、按攻速出手。无 `SkillCooldownBase` 词条（base_cd≤0）时也不限速。
+fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f64) -> f64 {
+    if db.flag(cfg, ModName::from("CooldownBypass")) {
+        return uncapped_rate;
+    }
+    let base_cd = db.sum(ModType::Base, cfg, &[ModName::from("SkillCooldownBase")]);
+    if base_cd <= 0.0 {
+        return uncapped_rate;
+    }
+    let cd = super::skill_mechanics::calc_cooldown(db, cfg, base_cd, 0).cooldown;
+    if cd <= 0.0 {
+        return uncapped_rate;
+    }
+    uncapped_rate.min(1.0 / cd)
+}
+
 fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
     let names = [ModName::from(name)];
     scaled_numeric_stat(db, cfg, base, &names)
 }
 
 fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[ModName]) -> f64 {
+    // OVERRIDE 胜过 base/inc/more（PoB2 语义：关键石如 Chaos Inoculation「Maximum Life is 1」、
+    // Blood Magic「You have no Mana」直接钳定池值）。后写覆盖先写，取首个匹配的 override。
+    for name in names {
+        if let Some(value) = db.override_(cfg, name.clone()) {
+            return round(value);
+        }
+    }
     let base_value = base + db.sum(ModType::Base, cfg, names);
     let inc = db.sum(ModType::Inc, cfg, names);
     let more = db.more(cfg, names);
@@ -791,6 +839,26 @@ fn scaled_pool_traced(
     trace: &mut TraceGraph,
 ) -> TracedValue {
     let names = [ModName::from(stat_name)];
+    // OVERRIDE 胜过 base/inc/more（PoB2 关键石池钳定语义，见 scaled_numeric_stat）。
+    let (override_value, override_node) = db.override_traced(
+        cfg,
+        ModName::from(stat_name),
+        trace,
+        format!("{stat_name} OVERRIDE"),
+    );
+    if let Some(value) = override_value {
+        let final_value = round(value);
+        let final_node = trace.add_node(
+            format!("{output_label} final"),
+            final_value,
+            TraceOperation::QueryOverride,
+        );
+        trace.add_edge(override_node, final_node);
+        return TracedValue {
+            value: final_value,
+            node_id: final_node,
+        };
+    }
     let base_node = trace.add_source_node(
         format!("base {stat_name}"),
         base,
@@ -874,5 +942,132 @@ fn additive_stat_traced(
     TracedValue {
         value: final_value,
         node_id: final_node,
+    }
+}
+
+#[cfg(test)]
+mod speed_tests {
+    use super::*;
+    use crate::Modifier;
+
+    /// base rate=1, 不带任何速度词条 → action_rate 不变。
+    fn input(base_rate: f64) -> MinimalInput {
+        MinimalInput {
+            base_action_rate: base_rate,
+            ..MinimalInput::default()
+        }
+    }
+
+    fn mk(name: &str, mt: ModType, v: f64) -> Modifier {
+        Modifier::number(name, mt, v)
+    }
+
+    #[test]
+    fn cast_speed_feeds_spell_action_rate() {
+        // 法术：+50% increased Cast Speed → action_rate = 1.0 × 1.5。
+        let mut db = ModDb::new();
+        db.add_mod(mk("CastSpeed", ModType::Inc, 50.0));
+        let cfg = CalcConfig::spell();
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        assert!(
+            (out.action_rate - 1.5).abs() < 1e-6,
+            "got {}",
+            out.action_rate
+        );
+    }
+
+    #[test]
+    fn skill_speed_feeds_action_rate() {
+        // SkillSpeed 与 CastSpeed/AttackSpeed 同 additive bucket。
+        let mut db = ModDb::new();
+        db.add_mod(mk("SkillSpeed", ModType::Inc, 20.0));
+        db.add_mod(mk("AttackSpeed", ModType::Inc, 30.0));
+        let cfg = CalcConfig::attack();
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        // (1 + (20+30)/100) = 1.5
+        assert!(
+            (out.action_rate - 1.5).abs() < 1e-6,
+            "got {}",
+            out.action_rate
+        );
+    }
+
+    #[test]
+    fn action_speed_is_independent_multiplier() {
+        // ActionSpeed 是独立乘区：speed bucket × ActionSpeedMod。
+        // +100% bucket (×2) 且 +50% ActionSpeed (×1.5) → ×3。
+        let mut db = ModDb::new();
+        db.add_mod(mk("AttackSpeed", ModType::Inc, 100.0));
+        db.add_mod(mk("ActionSpeed", ModType::Inc, 50.0));
+        let cfg = CalcConfig::attack();
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        assert!(
+            (out.action_rate - 3.0).abs() < 1e-6,
+            "got {}",
+            out.action_rate
+        );
+    }
+
+    #[test]
+    fn cooldown_caps_rate_after_speed() {
+        // SkillCooldownBase=2s → 上限 ≈0.5/s（冷却取整到服务器帧后略 <0.5）。
+        // 即便速度把 uncapped 推到 2.0，也被 min 截到冷却上限，远低于 2.0。
+        let mut db = ModDb::new();
+        db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0));
+        db.add_mod(mk("CastSpeed", ModType::Inc, 100.0)); // ×2 → uncapped 2.0
+        let cfg = CalcConfig::spell();
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        assert!(
+            (out.action_rate - 0.5).abs() < 0.01 && out.action_rate < 2.0,
+            "got {}",
+            out.action_rate
+        );
+    }
+
+    #[test]
+    fn cooldown_does_not_raise_slow_rate() {
+        // 速度未达上限时，冷却不抬升速率（min 不取更大值）。base 0.2 < 0.5 cap → 仍 0.2。
+        let mut db = ModDb::new();
+        db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0)); // cap 0.5
+        let cfg = CalcConfig::spell();
+        let out = calculate_minimal(&db, &cfg, &input(0.2));
+        assert!(
+            (out.action_rate - 0.2).abs() < 1e-6,
+            "got {}",
+            out.action_rate
+        );
+    }
+
+    #[test]
+    fn cooldown_recovery_raises_cap() {
+        // CooldownRecovery +100% → effective_cd = 2/2 = 1s → cap ≈1.0/s（取整到帧后略 <1.0），
+        // 显著高于无恢复时的 ≈0.5 上限。
+        let mut db = ModDb::new();
+        db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0));
+        db.add_mod(mk("CooldownRecovery", ModType::Inc, 100.0));
+        db.add_mod(mk("CastSpeed", ModType::Inc, 200.0)); // uncapped 3.0
+        let cfg = CalcConfig::spell();
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        assert!(
+            (out.action_rate - 1.0).abs() < 0.03 && out.action_rate > 0.6,
+            "got {}",
+            out.action_rate
+        );
+    }
+
+    #[test]
+    fn cooldown_bypass_flag_skips_cap() {
+        // CooldownBypass flag（如 Flicker）→ 不限速，按全速出手。
+        let mut db = ModDb::new();
+        db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0)); // 若生效 cap 0.5
+        db.add_mod(Modifier::flag("CooldownBypass"));
+        db.add_mod(mk("AttackSpeed", ModType::Inc, 100.0)); // uncapped 2.0
+        let cfg = CalcConfig::attack();
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        assert!(
+            (out.action_rate - 2.0).abs() < 1e-6,
+            "got {}",
+            out.action_rate
+        );
     }
 }

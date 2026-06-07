@@ -25,14 +25,55 @@ pub struct SkillUseTime {
     pub capped_by_server_tick: bool,
 }
 
-const SPEED_BUCKET: [&str; 3] = ["AttackSpeed", "CastSpeed", "SkillSpeed"];
+/// 速度 additive Inc/连乘 More bucket：AttackSpeed / CastSpeed / SkillSpeed 同属一个
+/// 速度乘区（PoB CalcOffence：`inc`/`more` 取三者之和/连乘）。ActionSpeed 不在其中——
+/// 它是独立乘区，单独相乘（见 [`action_speed_name`]）。
+pub const SPEED_BUCKET: [&str; 3] = ["AttackSpeed", "CastSpeed", "SkillSpeed"];
 
-fn speed_names() -> [ModName; 3] {
+/// 独立乘区 ActionSpeed 的 stat 名（与速度 bucket 区分，单独相乘到最终速率）。
+pub const ACTION_SPEED: &str = "ActionSpeed";
+
+/// 速度 bucket 的 [`ModName`] 数组（供 [`ModDb::sum`]/[`ModDb::more`] 聚合）。
+/// 含全部三个成员——用于「使用时间」展示口径（攻击/法术各自只有一侧非零）。
+pub fn speed_names() -> [ModName; 3] {
     [
         ModName::from(SPEED_BUCKET[0]),
         ModName::from(SPEED_BUCKET[1]),
         ModName::from(SPEED_BUCKET[2]),
     ]
+}
+
+/// 按技能类型选取速度 bucket：攻击 → `[AttackSpeed, SkillSpeed]`，法术 → `[CastSpeed, SkillSpeed]`，
+/// 二者皆非（如纯 DoT/未标记）→ 取全部三个（向后兼容）。
+///
+/// 出处：PoB CalcOffence——攻击只吃攻速、法术只吃施法速度，`SkillSpeed` 两者通吃；不混淆
+/// （避免攻击错误吃到 `increased Cast Speed`、法术错误吃到 `increased Attack Speed`）。
+pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
+    // 攻击/法术判定同时认 ModFlags（orchestrator 经 `skill_type_flags` 注入）与 SkillTypes
+    // （`CalcConfig::attack()`/`spell()` 预设），二者任一命中即可——兼容两条装配路径。
+    let is_attack = cfg.flags.intersects(ModFlags::ATTACK) || cfg.is_attack();
+    let is_spell = cfg.flags.intersects(ModFlags::SPELL) || cfg.is_spell();
+    let untyped = !is_attack && !is_spell;
+    let mut names = Vec::with_capacity(3);
+    if is_attack || untyped {
+        names.push(ModName::from(SPEED_BUCKET[0])); // AttackSpeed
+    }
+    if is_spell || untyped {
+        names.push(ModName::from(SPEED_BUCKET[1])); // CastSpeed
+    }
+    names.push(ModName::from(SPEED_BUCKET[2])); // SkillSpeed（始终）
+    names
+}
+
+/// db 感知版本：当 db 设有 `LegacyCooldownAttackSpeed` flag（冷却攻击·吞吐未建模的近似路径）时，
+/// 回退到旧速度桶 `[AttackSpeed, ActionSpeed-不在此]`——实际仅 `[AttackSpeed]`（ActionSpeed 走独立乘区），
+/// 避免 SkillSpeed/CastSpeed 入桶放大冷却攻击速率（grenade 吞吐倍率缺数据时的桥接）。否则同
+/// [`speed_names_for`]。补齐 grenade 吞吐数据后应删此分支。
+pub fn speed_names_for_db(db: &crate::ModDb, cfg: &CalcConfig) -> Vec<ModName> {
+    if db.flag(cfg, ModName::from("LegacyCooldownAttackSpeed")) {
+        return vec![ModName::from(SPEED_BUCKET[0])];
+    }
+    speed_names_for(cfg)
 }
 
 /// 计算技能使用时间与有效动作速率。
@@ -44,7 +85,7 @@ pub fn calc_skill_use_time(
     is_channelling: bool,
 ) -> SkillUseTime {
     let total_skill_speed = db.sum(ModType::Inc, cfg, &speed_names());
-    let total_action_speed = db.sum(ModType::Inc, cfg, &[ModName::from("ActionSpeed")]);
+    let total_action_speed = db.sum(ModType::Inc, cfg, &[ModName::from(ACTION_SPEED)]);
 
     let tooltip_use_time = if base_use_time > 0.0 {
         base_use_time / (1.0 + total_skill_speed / 100.0) + use_time_penalty
@@ -106,7 +147,7 @@ pub fn calc_skill_use_time_traced(
     let action_speed = db.sum_traced(
         ModType::Inc,
         cfg,
-        &[ModName::from("ActionSpeed")],
+        &[ModName::from(ACTION_SPEED)],
         trace,
         "action speed (independent)",
     );
