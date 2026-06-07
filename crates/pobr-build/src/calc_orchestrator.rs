@@ -55,6 +55,9 @@ const LIFE_PER_STRENGTH: f64 = 2.0;
 const MANA_PER_INTELLIGENCE: f64 = 2.0;
 const ACCURACY_PER_DEXTERITY: f64 = 6.0;
 
+/// PoE2 终局默认元素抗性惩罚（火/冰/电；PoB2 `configInput.resistancePenalty or -60`）。
+const ENDGAME_RESISTANCE_PENALTY: f64 = -60.0;
+
 /// 编排选项：可注入基础 [`MinimalInput`]（角色基础生命/抗性等，来自上层装配）。
 #[derive(Debug, Clone, Default)]
 pub struct OrchestratorOptions {
@@ -225,6 +228,21 @@ pub fn calculate_with_data(
         && let Some(base) = character_base(build, data)
     {
         session.add_modifiers(base.modifiers());
+        // PoE2 终局默认元素抗性惩罚（火/冰/电各 -60%；混沌无惩罚）。对应 PoB2 CalcSetup.lua
+        // `configInput.resistancePenalty or -60`——所有终局 build 的基础抗性起点。
+        let pen = |elem: &str| {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::CharacterBase,
+                "base.resist_penalty",
+            ))
+            .with_raw_text("endgame elemental resistance penalty");
+            Modifier::number(elem, ModType::Base, ENDGAME_RESISTANCE_PENALTY).with_origin(origin)
+        };
+        session.add_modifiers([
+            pen("FireResistance"),
+            pen("ColdResistance"),
+            pen("LightningResistance"),
+        ]);
     }
 
     // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
