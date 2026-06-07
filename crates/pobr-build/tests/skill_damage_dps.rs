@@ -173,10 +173,16 @@ fn attack_skill_uses_weapon_base_damage() {
     let with_weapon =
         calculate_with_data(&attack_build(true), &build_data, &opts).expect("with weapon");
 
-    // 武器物理 4–10（avg 7）进入击中——装备武器后击中显著高于裸手。
+    // 裸手用 unarmed 基底（Warrior 物理 2–8，avg 5）→ 非零；装备武器（Crude Claw 4–10，
+    // avg 7）后击中更高。验证武器基底进入击中、且空手回退非零。
     assert!(
-        with_weapon.total_hit_avg > no_weapon.total_hit_avg + 5.0,
-        "weapon base damage should raise hit: no-weapon {} → with-weapon {}",
+        no_weapon.total_hit_avg > 0.0,
+        "unarmed should give non-zero base hit, got {}",
+        no_weapon.total_hit_avg
+    );
+    assert!(
+        with_weapon.total_hit_avg > no_weapon.total_hit_avg,
+        "weapon base damage should raise hit above unarmed: no-weapon {} → with-weapon {}",
         no_weapon.total_hit_avg,
         with_weapon.total_hit_avg
     );
@@ -295,5 +301,45 @@ fn ball_lightning_cost_efficiency_e2e() {
     assert!(
         (inc_eff - 8.6667).abs() < 0.1,
         "50% inc + 50% eff → {inc_eff} (PoB2 8.67)"
+    );
+}
+
+/// PoB2 TestSkills「Flame Breath attack speed scales DPS and is not capped by its channel
+/// cooldown」端到端移植：空手 Flame Breath（PoB unarmedWeaponData 基底）+100% 攻速 → DPS
+/// 应 > 基线 ×1.9（线性缩放，不被通道冷却封顶）。相对断言，验证攻速→DPS 线性。
+#[test]
+fn flame_breath_attack_speed_scales_dps_e2e() {
+    let build_data = load_build_data();
+    let flame_breath = || {
+        Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_slot("weapon1")
+                    .with_gem("Metadata/Items/Gem/SkillGemWyvernFlameBreath")
+                    .with_active_skill("WyvernFlameBreathPlayer", 20),
+            )
+    };
+    let base = calculate_with_data(&flame_breath(), &build_data, &panel_opts()).expect("base calc");
+    assert!(
+        base.dps > 0.0,
+        "base DPS should be > 0 (unarmed), got {}",
+        base.dps
+    );
+
+    let fast_opts = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["100% increased attack speed".to_string()],
+        ..panel_opts()
+    };
+    let fast = calculate_with_data(&flame_breath(), &build_data, &fast_opts).expect("fast calc");
+    assert!(
+        fast.dps > base.dps * 1.9,
+        "100% attack speed → DPS {} should be > base {} × 1.9",
+        fast.dps,
+        base.dps
     );
 }

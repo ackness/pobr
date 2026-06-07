@@ -574,7 +574,11 @@ fn weapon_contribution(
     {
         return None;
     }
-    let item = build.items.get(&EquipmentSlot::Weapon1)?;
+    // 无主手武器 → 空手（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（按职业）、
+    // 攻速 1.65、暴击 5%。使空手攻击/通道技能（如 Flame Breath、Monk）有非零基底伤害。
+    let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
+        return Some(unarmed_contribution(build));
+    };
     let w = data.weapon_base(&item.base.to_string())?;
     let quality = 1.0 + f64::from(item.quality) / 100.0;
     // PoB CalcOffence：武器伤害 source = (基底 + **局部**附加) × (1 + **局部**增伤%) × 品质，
@@ -592,6 +596,23 @@ fn weapon_contribution(
         },
         crit_chance: f64::from(w.crit_chance) / 100.0,
     })
+}
+
+/// 空手武器贡献（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（N 按职业）、
+/// 攻速 1.65、暴击 5%。无主手武器时的攻击技能基底。
+fn unarmed_contribution(build: &Build) -> WeaponContribution {
+    // 各职业空手物理上限（PoB2 Data.lua unarmedWeaponData）。
+    let phys_max = match build.character.class_name.as_str() {
+        "Warrior" => 8.0,
+        "Scion" | "Mercenary" | "Druid" => 6.0,
+        _ => 5.0, // Witch/Ranger/Sorceress/Huntress/Monk
+    };
+    WeaponContribution {
+        phys_min: 2.0,
+        phys_max,
+        attack_rate: 1.65,
+        crit_chance: 0.05,
+    }
 }
 
 /// 剥离 PoB 物品词条 `{tag}` 标记（如 `{desecrated}{enchant}`），返回去标记小写文本。
