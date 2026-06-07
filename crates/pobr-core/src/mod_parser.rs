@@ -165,6 +165,11 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
         "all attributes" | "any attribute" | "attributes" => {
             &["strength", "dexterity", "intelligence"]
         }
+        // 「+X% to all maximum resistances」含混沌：展开为元素聚合 max + 混沌 max。
+        "all maximum resistances" => &[
+            "all maximum elemental resistances",
+            "maximum chaos resistance",
+        ],
         _ => &[],
     };
     if !aggregate.is_empty() {
@@ -567,6 +572,14 @@ fn parse_name(text: &str) -> Option<ModName> {
         "maximum chaos resistance" => "MaximumChaosResistance",
         "all maximum elemental resistances" => "MaximumAllElementalResistances",
         "maximum elemental resistances" => "MaximumAllElementalResistances",
+        // 承受伤害乘区（EHP）：reduced→INC<0、less→MORE<0。通用 + 分类型。
+        "damage taken" => "DamageTaken",
+        "physical damage taken" => "PhysicalDamageTaken",
+        "fire damage taken" => "FireDamageTaken",
+        "cold damage taken" => "ColdDamageTaken",
+        "lightning damage taken" => "LightningDamageTaken",
+        "chaos damage taken" => "ChaosDamageTaken",
+        "elemental damage taken" => "ElementalDamageTaken",
         _ => return None,
     };
 

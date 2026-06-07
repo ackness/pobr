@@ -281,3 +281,75 @@ fn defence_armoured_max_hits() {
         assert!(within_10pct(v, 625.0), "{name}_max_hit = {v} (PoB2 625)");
     }
 }
+
+/// 共用：无甲、Life 60、四类抗 -60% 基线 + 自定义防御词条 → (phys, fire, cold, lightning, chaos) 最大承受击中。
+fn defence_max_hits(mods: &[(&str, ModType, f64)]) -> (f64, f64, f64, f64, f64) {
+    let input = MinimalInput {
+        base_life: 60.0,
+        base_mana: 50.0,
+        base_fire_resistance: -60.0,
+        base_cold_resistance: -60.0,
+        base_lightning_resistance: -60.0,
+        base_accuracy: 0.0,
+        enemy_evasion: 0.0,
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        base_action_rate: 1.0,
+    };
+    let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
+    let mut list = vec![Modifier::number("ChaosResistance", ModType::Base, -60.0)];
+    for (n, t, v) in mods {
+        list.push(Modifier::number(*n, *t, *v));
+    }
+    session.add_modifiers(list);
+    session.perform_minimal();
+    let o = session.output();
+    (
+        o.physical_max_hit,
+        o.fire_max_hit,
+        o.cold_max_hit,
+        o.lightning_max_hit,
+        o.chaos_max_hit,
+    )
+}
+
+/// PoB2 TestDefence「no armour max hits」(+200 抗 / +200 max 抗 / 50% reduced damage taken)：
+/// 元素抗 140→硬上限 90→承受 0.1，再 ×(1-0.5) reduced → 60/0.05 = 1200；物理 60/0.5 = 120。
+/// 验证最大抗性硬上限(90) + 玩家侧 DamageTaken(reduced=INC<0)。
+#[test]
+fn defence_max_res_and_reduced_taken() {
+    let (p, f, c, l, ch) = defence_max_hits(&[
+        ("FireResistance", ModType::Base, 200.0),
+        ("ColdResistance", ModType::Base, 200.0),
+        ("LightningResistance", ModType::Base, 200.0),
+        ("ChaosResistance", ModType::Base, 200.0),
+        ("MaximumAllElementalResistances", ModType::Base, 200.0),
+        ("MaximumChaosResistance", ModType::Base, 200.0),
+        ("DamageTaken", ModType::Inc, -50.0),
+    ]);
+    assert!(within_10pct(p, 120.0), "physical = {p} (PoB2 120)");
+    for (n, v) in [("fire", f), ("cold", c), ("lightning", l), ("chaos", ch)] {
+        assert!(within_10pct(v, 1200.0), "{n} = {v} (PoB2 1200)");
+    }
+}
+
+/// PoB2 TestDefence「no armour max hits」(+ 再叠 50% less damage taken)：
+/// dt = (1-0.5) reduced × 0.5 less = 0.25 → 元素 60/(0.1*0.25)=2400；物理 60/0.25 = 240。
+/// 验证 DamageTaken less=MORE 与 reduced 叠乘。
+#[test]
+fn defence_reduced_and_less_taken() {
+    let (p, f, c, l, ch) = defence_max_hits(&[
+        ("FireResistance", ModType::Base, 200.0),
+        ("ColdResistance", ModType::Base, 200.0),
+        ("LightningResistance", ModType::Base, 200.0),
+        ("ChaosResistance", ModType::Base, 200.0),
+        ("MaximumAllElementalResistances", ModType::Base, 200.0),
+        ("MaximumChaosResistance", ModType::Base, 200.0),
+        ("DamageTaken", ModType::Inc, -50.0),
+        ("DamageTaken", ModType::More, -50.0),
+    ]);
+    assert!(within_10pct(p, 240.0), "physical = {p} (PoB2 240)");
+    for (n, v) in [("fire", f), ("cold", c), ("lightning", l), ("chaos", ch)] {
+        assert!(within_10pct(v, 2400.0), "{n} = {v} (PoB2 2400)");
+    }
+}

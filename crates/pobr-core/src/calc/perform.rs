@@ -18,7 +18,7 @@ use super::{
     RecoupResource, ResistanceSuite, calc_avoidance, calc_crit_extra_reduction, calc_defence,
     calc_ehp, calc_es_recharge, calc_leech_from_db, calc_recoup_from_db, calc_regen,
     calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect,
-    es_recharge_per_second, reservation, resolve_all_charges,
+    es_recharge_per_second, reservation, resolve_all_charges, round,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -184,11 +184,33 @@ fn fill_mechanics(env: &mut Env) {
         env.player.output.armour,
         reference_hit,
     );
-    env.player.output.physical_max_hit = ehp.physical_max_hit;
-    env.player.output.fire_max_hit = ehp.fire_max_hit;
-    env.player.output.cold_max_hit = ehp.cold_max_hit;
-    env.player.output.lightning_max_hit = ehp.lightning_max_hit;
-    env.player.output.chaos_max_hit = ehp.chaos_max_hit;
+    // 承受伤害乘区（玩家侧 `DamageTaken` / `<Type>DamageTaken`，reduced→INC<0、less→MORE<1）：
+    // 最大承受击中 = ehp / dt（dt<1 → 承受更少 → 可承受更大击中）。dt≤0（完全免疫）→ ∞。
+    let damage_taken_mult = |type_prefix: &str, elemental: bool| -> f64 {
+        let mut names = vec![
+            ModName::from("DamageTaken"),
+            ModName::from(format!("{type_prefix}DamageTaken")),
+        ];
+        if elemental {
+            names.push(ModName::from("ElementalDamageTaken"));
+        }
+        let inc = db.sum(ModType::Inc, cfg, &names);
+        let more = db.more(cfg, &names);
+        ((1.0 + inc / 100.0) * more).max(0.0)
+    };
+    let apply_dt = |max_hit: f64, prefix: &str, elemental: bool| -> f64 {
+        let dt = damage_taken_mult(prefix, elemental);
+        if dt <= 0.0 {
+            f64::INFINITY
+        } else {
+            round(max_hit / dt)
+        }
+    };
+    env.player.output.physical_max_hit = apply_dt(ehp.physical_max_hit, "Physical", false);
+    env.player.output.fire_max_hit = apply_dt(ehp.fire_max_hit, "Fire", true);
+    env.player.output.cold_max_hit = apply_dt(ehp.cold_max_hit, "Cold", true);
+    env.player.output.lightning_max_hit = apply_dt(ehp.lightning_max_hit, "Lightning", true);
+    env.player.output.chaos_max_hit = apply_dt(ehp.chaos_max_hit, "Chaos", false);
     env.player.output.total_ehp = ehp.total_ehp;
 
     // --- 预留 / 剩余 ---
