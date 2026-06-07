@@ -1,0 +1,218 @@
+{
+  "defensiveStats": {
+    "life": 1,
+    "energyShield": 11403,
+    "mana": 2166,
+    "spirit": 169,
+    "movementSpeed": 131,
+    "lifeRegen": 0,
+    "evasionRating": 244,
+    "evadeChance": 3,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 176,
+    "damageReductions": {
+      "physical": {
+        "value": 41,
+        "max": 90,
+        "effectiveAppliedArmour": 7193,
+        "base": 0,
+        "takenDamage": 975
+      }
+    },
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 50,
+    "dexterity": 60,
+    "intelligence": 243,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 36291,
+    "physicalMaximumHitTaken": 12082,
+    "fireMaximumHitTaken": 40729,
+    "coldMaximumHitTaken": 42237,
+    "lightningMaximumHitTaken": 40729,
+    "chaosMaximumHitTaken": 2147483647,
+    "fireResistance": 75,
+    "fireResistanceOverCap": 12,
+    "fireResistanceMax": 75,
+    "coldResistance": 76,
+    "coldResistanceOverCap": 29,
+    "coldResistanceMax": 76,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 22,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 100,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 15,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 12082
+  },
+  "skills": [
+    {
+      "gems": [
+        "Frost Wall",
+        "Spell Cascade",
+        "Fortress II",
+        "Pinpoint Critical",
+        "Ice Bite II",
+        "Verglas"
+      ],
+      "dps": [
+        {
+          "name": "Frost Wall",
+          "dps": 4839,
+          "dotDps": 49,
+          "damageTypes": [
+            0,
+            21,
+            50,
+            29,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Orb of Storms",
+        "Unleash",
+        "Pinpoint Critical",
+        "Living Lightning II",
+        "Arbiter's Ignition",
+        "Overabundance II"
+      ],
+      "dps": [
+        {
+          "name": "Orb of Storms",
+          "dps": 76687,
+          "dotDps": 986,
+          "damageTypes": [
+            0,
+            58,
+            14,
+            28,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Spark",
+        "Esh's Radiance",
+        "Pinpoint Critical",
+        "Considered Casting",
+        "Pierce III",
+        "Projectile Acceleration III"
+      ],
+      "dps": [
+        {
+          "name": "Spark",
+          "dps": 82734,
+          "dotDps": 853,
+          "damageTypes": [
+            0,
+            48,
+            12,
+            23,
+            17
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Cast on Critical",
+        "Comet",
+        "Boundless Energy II",
+        "Pinpoint Critical",
+        "Spell Cascade",
+        "Rakiata's Flow"
+      ],
+      "dps": [
+        {
+          "name": "Comet",
+          "dps": 450372,
+          "dotDps": 12494,
+          "damageTypes": [
+            0,
+            21,
+            50,
+            29,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Temporal Chains",
+        "Heightened Curse",
+        "Cursed Ground",
+        "Magnified Area II",
+        "Slow Potency",
+        "Efficiency II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Convalescence",
+        "Rapid Casting II",
+        "Second Wind III",
+        "Cooldown Recovery II",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Navira, the Last Mirage",
+        "Bidding III",
+        "Rapid Casting II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Sigil of Power",
+        "Prolonged Duration II",
+        "Magnified Area II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Elemental Conflux",
+        "Uhtred's Exodus"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Unleash"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Chaos Inoculation"
+  ],
+  "level": 98,
+  "class": "Disciple of Varashta",
+  "lastSeenUtc": null,
+  "updatedUtc": "2026-06-07T13:17:28.779634Z"
+}

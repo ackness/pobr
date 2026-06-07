@@ -1,0 +1,478 @@
+{
+  "name": "warrior-smith-of-kitava-shield-wall",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Prec0cious-1317/xxTheWizardOfOsu",
+    "account": "Prec0cious-1317",
+    "character": "xxTheWizardOfOsu",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Smith of Kitava",
+    "level": 100,
+    "main_skill": "Shield Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "d713de39a5e06de4c36406190a46e414535930963dc0aea991b61e9ae658bfaf",
+    "code_chars": 10924,
+    "decoded_bytes": 40171
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Herald of Ash",
+          "skill_id": "HeraldOfAshPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Herbalism I",
+          "skill_id": "SupportHerbalismPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Precision II",
+          "skill_id": "SupportPrecisionPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cannibalism I",
+          "skill_id": "SupportCannibalismPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Vitality II",
+          "skill_id": "SupportVitalityPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area I",
+          "skill_id": "SupportMagnifiedAreaPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Infernal Cry",
+          "skill_id": "InfernalCryPlayer",
+          "level": 21,
+          "quality": 23,
+          "enabled": true
+        },
+        {
+          "name": "Tireless",
+          "skill_id": "SupportTirelessPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Raging Cry",
+          "skill_id": "SupportRagingCryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Fire Mastery",
+          "skill_id": "SupportFireMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Exposing Cry",
+          "skill_id": "SupportExposingCryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Shield Wall",
+          "skill_id": "ShieldWallPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Close Combat II",
+          "skill_id": "SupportCloseCombatPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks II",
+          "skill_id": "SupportRapidAttacksPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Heft",
+          "skill_id": "SupportHeftPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Heavy Swing",
+          "skill_id": "SupportMeleePhysicalDamagePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Atalui's Bloodletting",
+          "skill_id": "SupportAtaluiBloodlettingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Fortifying Cry",
+          "skill_id": "FortifyingCryPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Raging Cry",
+          "skill_id": "SupportRagingCryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Enraged Warcry II",
+          "skill_id": "SupportEnragedWarcryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Armour Break III",
+          "skill_id": "SupportArmourBreakPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Heavy Swing",
+          "skill_id": "SupportMeleePhysicalDamagePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Heft",
+          "skill_id": "SupportHeftPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Pounce",
+          "skill_id": "WolfPouncePlayer",
+          "level": 3,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Mark of Siphoning",
+          "skill_id": "SupportMarkOfSiphoningPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Mark for Death",
+          "skill_id": "SupportMarkForDeathPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks III",
+          "skill_id": "SupportRapidAttacksPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Shield Charge",
+          "skill_id": "ShieldChargePlayer",
+          "level": 6,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks III",
+          "skill_id": "SupportRapidAttacksPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Flame Wall",
+          "skill_id": "FlameWallPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Ahn's Citadel",
+          "skill_id": "SupportAhnsCitadelPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Volcanic Fissure",
+          "skill_id": "VolcanicFissurePlayer",
+          "level": 18,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Kaom's Madness",
+          "skill_id": "SupportKaomsMadnessPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Leap Slam",
+          "skill_id": "LeapSlamPlayer",
+          "level": 7,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks III",
+          "skill_id": "SupportRapidAttacksPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Raise Shield",
+          "skill_id": "ShieldBlockPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Raise Shield",
+          "skill_id": "ShieldBlockPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageDamage": 70284.397353862,
+    "AverageBurstDamage": 70284.397353862,
+    "Speed": 1.296,
+    "PreEffectiveCritChance": 5.0,
+    "CritChance": 5.0,
+    "CritMultiplier": 2.0,
+    "HitChance": 100.0,
+    "TotalDPS": 91088.578970605,
+    "TotalDot": 0.0,
+    "WithBleedDPS": 91088.578970605,
+    "IgniteDPS": 88.55024680768,
+    "WithIgniteDPS": 91177.129217413,
+    "WithPoisonDPS": 91088.578970605,
+    "TotalDotDPS": 88.55024680768,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 91177.129217413,
+    "AreaOfEffectRadiusMetres": 5.6,
+    "ManaCost": 0.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 0.0,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 309.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 400.464,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 164.0,
+    "ReqStr": 163.0,
+    "Dex": 42.0,
+    "ReqDex": 35.0,
+    "Int": 21.0,
+    "ReqInt": 20.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 76432.897582616,
+    "PhysicalMaximumHitTaken": 7358.0,
+    "LightningMaximumHitTaken": 15459.0,
+    "FireMaximumHitTaken": 15459.0,
+    "ColdMaximumHitTaken": 15459.0,
+    "ChaosMaximumHitTaken": 14706.0,
+    "OffHandAccuracy": 1438.0,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 3090.0,
+    "Spec:LifeInc": 31.0,
+    "LifeUnreserved": 3090.0,
+    "LifeRecoverable": 3090.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 251.8,
+    "LifeLeechGainRate": 400.464,
+    "Mana": 0.0,
+    "Spec:ManaInc": 0.0,
+    "ManaUnreserved": 0.0,
+    "ManaRegenRecovery": 0.0,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 130.0,
+    "SpiritUnreserved": 10.0,
+    "SpiritUnreservedPercent": 7.6923076923077,
+    "EnergyShield": 0.0,
+    "EnergyShieldRecoveryCap": 0.0,
+    "Spec:EnergyShieldInc": 0.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "Rage": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 6.0,
+    "Spec:EvasionInc": 0.0,
+    "EvadeChance": 0.0,
+    "MeleeEvadeChance": 0.0,
+    "ProjectileEvadeChance": 0.0,
+    "SpellEvadeChance": 0.0,
+    "SpellProjectileEvadeChance": 0.0,
+    "DeflectionRating": 0.0,
+    "DeflectChance": 0.0,
+    "Armour": 27915.0,
+    "Spec:ArmourInc": 361.0,
+    "PhysicalDamageReduction": 89.0,
+    "EffectiveBlockChance": 27.3,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 75.0,
+    "FireResistOverCap": 43.0,
+    "ColdResist": 75.0,
+    "ColdResistOverCap": 49.0,
+    "LightningResist": 75.0,
+    "LightningResistOverCap": 42.0,
+    "ChaosResist": 75.0,
+    "ChaosResistOverCap": 0.0,
+    "EffectiveMovementSpeedMod": 1.32,
+    "PresenceRadiusMetres": 3.5,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 17
+}

@@ -1,0 +1,211 @@
+{
+  "defensiveStats": {
+    "life": 1,
+    "energyShield": 13204,
+    "mana": 832,
+    "spirit": 336,
+    "movementSpeed": 129,
+    "lifeRegen": 15,
+    "evasionRating": 989,
+    "evadeChance": 10,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 2254,
+    "damageReductions": {
+      "physical": {
+        "value": 19,
+        "max": 90,
+        "effectiveAppliedArmour": 2254,
+        "base": 0,
+        "takenDamage": 978
+      }
+    },
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 75,
+    "dexterity": 94,
+    "intelligence": 148,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 58624,
+    "physicalMaximumHitTaken": 20275,
+    "fireMaximumHitTaken": 71617,
+    "coldMaximumHitTaken": 71617,
+    "lightningMaximumHitTaken": 71617,
+    "chaosMaximumHitTaken": 2147483647,
+    "fireResistance": 75,
+    "fireResistanceOverCap": 7,
+    "fireResistanceMax": 75,
+    "coldResistance": 75,
+    "coldResistanceOverCap": 3,
+    "coldResistanceMax": 75,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 19,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 100,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 0,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 20275
+  },
+  "skills": [
+    {
+      "gems": [
+        "Blasphemy",
+        "Temporal Chains",
+        "Ritualistic Curse",
+        "Magnified Area II",
+        "Elemental Weakness",
+        "Enfeeble"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Time Freeze",
+        "Prolonged Duration II",
+        "Rapid Casting II",
+        "Magnified Area II",
+        "Cooldown Recovery II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Essence Drain",
+        "Chain I",
+        "Considered Casting",
+        "Swift Affliction I"
+      ],
+      "dps": [
+        {
+          "name": "Essence Drain",
+          "dps": 0,
+          "dotDps": 334,
+          "damageTypes": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Contagion",
+        "Rapid Casting I",
+        "Magnified Area I",
+        "Unleash"
+      ],
+      "dps": [
+        {
+          "name": "Contagion",
+          "dps": 0,
+          "dotDps": 29,
+          "damageTypes": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Frost Bomb",
+        "Short Fuse II",
+        "Potent Exposure",
+        "Overabundance I"
+      ],
+      "dps": [
+        {
+          "name": "Frost Bomb",
+          "dps": 51,
+          "dotDps": 0,
+          "damageTypes": [
+            0,
+            0,
+            100,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Overwhelming Presence",
+        "Cool Headed",
+        "Warm Blooded",
+        "Strong Hearted"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Convalescence",
+        "Prolonged Duration II",
+        "Cooldown Recovery II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Time Snap",
+        "Cooldown Recovery I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Malice",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Time of Need",
+        "Cooldown Recovery II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Discipline"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Barkskin"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Mind Over Matter",
+    "Whispers of Doom",
+    "Chaos Inoculation"
+  ],
+  "level": 98,
+  "class": "Chronomancer",
+  "lastSeenUtc": "2026-06-07T15:53:19.479622Z",
+  "updatedUtc": "2026-06-07T12:52:21.809355Z"
+}

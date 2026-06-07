@@ -1,0 +1,493 @@
+{
+  "name": "ranger-pathfinder-ice-shot",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Aengus-2685/stillAengus",
+    "account": "Aengus-2685",
+    "character": "stillAengus",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Pathfinder",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "6f7690a0c3089811221eecc7a663c1e244196ff9e5d7038fe43da049ddcfeb4c",
+    "code_chars": 12196,
+    "decoded_bytes": 45503
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Ice-Tipped Arrows",
+          "skill_id": "IceTippedArrowsPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Short Fuse I",
+          "skill_id": "SupportShortFusePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Deliberation",
+          "skill_id": "SupportDeliberationPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Freeze",
+          "skill_id": "SupportFreezePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Snipe",
+          "skill_id": "SnipePlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Window of Opportunity II",
+          "skill_id": "SupportWindowOfOpportunityPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Concentrated Area",
+          "skill_id": "SupportConcentratedAreaPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Inexorable Critical I",
+          "skill_id": "SupportInevitableCriticalsPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Focus",
+          "skill_id": "SupportElementalFocusPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Herald of Ice",
+          "skill_id": "HeraldOfIcePlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cold Penetration",
+          "skill_id": "SupportColdPenetrationPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Longshot II",
+          "skill_id": "SupportFarCombatPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Focus",
+          "skill_id": "SupportElementalFocusPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Ice Shot",
+          "skill_id": "IceShotPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Garukhan's Resolve",
+          "skill_id": "SupportGarukhansResolvePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Ice Bite II",
+          "skill_id": "SupportIceBitePlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Fork",
+          "skill_id": "SupportForkPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rakiata's Flow",
+          "skill_id": "SupportRakiatasFlowPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Freezing Mark",
+          "skill_id": "FreezingMarkPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Eternal Mark",
+          "skill_id": "SupportEternalMarkPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Charged Mark",
+          "skill_id": "SupportChargedMarkPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Mark of Siphoning II",
+          "skill_id": "SupportMarkOfSiphoningPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Mana Remnants",
+          "skill_id": "ManaRemnantsPlayer",
+          "level": 16,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Khatal's Rejuvenation",
+          "skill_id": "SupportKhatalsRejuvenationPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Harmonic Remnants II",
+          "skill_id": "SupportFleetingRemnantsPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Remnant Potency III",
+          "skill_id": "SupportInterludePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Barrage",
+          "skill_id": "BarragePlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Olroth's Conviction",
+          "skill_id": "SupportOlrothsConvictionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Ghost Dance",
+          "skill_id": "GhostDancePlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Her Declaration",
+          "skill_id": "SupportHerDeclarationPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Wind Dancer",
+          "skill_id": "WindDancerPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Knockback",
+          "skill_id": "SupportKnockbackPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageDamage": 995672.83343665,
+    "AverageBurstDamage": 995672.83343665,
+    "Speed": 1.9224,
+    "PreEffectiveCritChance": 49.7046,
+    "CritChance": 74.7037273884,
+    "CritBifurcates": 24.7054726116,
+    "CritMultiplier": 10.99,
+    "HitChance": 100.0,
+    "TotalDPS": 1952363.0840986,
+    "TotalDot": 0.0,
+    "WithBleedDPS": 1952363.0840986,
+    "IgniteDPS": 6901.3770256819,
+    "WithIgniteDPS": 1959264.4611243,
+    "WithPoisonDPS": 1952363.0840986,
+    "TotalDotDPS": 6901.3770256819,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 1959264.4611243,
+    "ManaCost": 139.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 267.2136,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 74.0,
+    "ReqStr": 40.0,
+    "Dex": 165.0,
+    "ReqDex": 163.0,
+    "Int": 117.0,
+    "ReqInt": 116.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 23830.5945214,
+    "PhysicalMaximumHitTaken": 6404.0,
+    "LightningMaximumHitTaken": 21886.0,
+    "FireMaximumHitTaken": 21886.0,
+    "ColdMaximumHitTaken": 21886.0,
+    "ChaosMaximumHitTaken": 6322.0,
+    "MainHandAccuracy": 1938.0,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 1687.0,
+    "Spec:LifeInc": 5.0,
+    "LifeUnreserved": 1687.0,
+    "LifeRecoverable": 1687.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 0.0,
+    "LifeLeechGainRate": 0.0,
+    "Mana": 693.0,
+    "Spec:ManaInc": 0.0,
+    "ManaUnreserved": 693.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 49.1,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 150.0,
+    "SpiritUnreserved": 4.0,
+    "SpiritUnreservedPercent": 2.6666666666667,
+    "EnergyShield": 4164.0,
+    "EnergyShieldRecoveryCap": 4164.0,
+    "Spec:EnergyShieldInc": 206.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 6343.0,
+    "Spec:EvasionInc": 222.0,
+    "EvadeChance": 41.0,
+    "MeleeEvadeChance": 41.0,
+    "ProjectileEvadeChance": 41.0,
+    "SpellEvadeChance": 41.0,
+    "SpellProjectileEvadeChance": 41.0,
+    "DeflectionRating": 6913.87,
+    "DeflectChance": 42.0,
+    "Armour": 0.0,
+    "Spec:ArmourInc": 25.0,
+    "PhysicalDamageReduction": 0.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 75.0,
+    "FireResistOverCap": 4.0,
+    "ColdResist": 75.0,
+    "ColdResistOverCap": 0.0,
+    "LightningResist": 75.0,
+    "LightningResistOverCap": 20.0,
+    "ChaosResist": 36.0,
+    "ChaosResistOverCap": 0.0,
+    "EffectiveMovementSpeedMod": 1.736,
+    "MovementSpeedWhileUsingSkill": 0.9363984,
+    "PresenceRadiusMetres": 4.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 20
+}

@@ -1,0 +1,257 @@
+{
+  "defensiveStats": {
+    "life": 1830,
+    "energyShield": 2587,
+    "mana": 688,
+    "spirit": 230,
+    "movementSpeed": 130,
+    "lifeRegen": 36,
+    "evasionRating": 7265,
+    "evadeChance": 44,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 0,
+    "damageReductions": {},
+    "deflectChance": 37,
+    "deflectChanceMax": 95,
+    "deflectionRating": 5666,
+    "deflectEffect": 40,
+    "strength": 136,
+    "dexterity": 163,
+    "intelligence": 137,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 19858,
+    "physicalMaximumHitTaken": 4747,
+    "fireMaximumHitTaken": 16343,
+    "coldMaximumHitTaken": 16343,
+    "lightningMaximumHitTaken": 16343,
+    "chaosMaximumHitTaken": 7634,
+    "fireResistance": 75,
+    "fireResistanceOverCap": 7,
+    "fireResistanceMax": 75,
+    "coldResistance": 75,
+    "coldResistanceOverCap": 27,
+    "coldResistanceMax": 75,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 3,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 57,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 132,
+    "physicalTakenAs": {
+      "physical": 95,
+      "lightning": 1.6666666,
+      "fire": 1.6666666,
+      "cold": 1.6666666,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 4747
+  },
+  "skills": [
+    {
+      "gems": [
+        "Vivid Stampede",
+        "Magnified Area II",
+        "Shock",
+        "Lightning Exposure",
+        "Elemental Armament II",
+        "Lightning Attunement"
+      ],
+      "dps": [
+        {
+          "name": "Vivid Stampede",
+          "dps": 0,
+          "dotDps": 1,
+          "damageTypes": [
+            12,
+            64,
+            0,
+            4,
+            20
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Whirling Slash",
+        "Rage III",
+        "Rapid Attacks III",
+        "Knockback",
+        "Blazing Critical",
+        "Rigwald's Ferocity"
+      ],
+      "dps": [
+        {
+          "name": "Whirling Slash",
+          "dps": 6000,
+          "dotDps": 2,
+          "damageTypes": [
+            26,
+            30,
+            0,
+            17,
+            27
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Herald of Ice",
+        "Uruk's Smelting",
+        "Elemental Armament II",
+        "Magnified Area II",
+        "Armour Break III",
+        "Armour Explosion"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Twister",
+        "Rakiata's Flow",
+        "Garukhan's Resolve",
+        "Armour Break III",
+        "Projectile Acceleration III",
+        "Prolonged Duration II"
+      ],
+      "dps": [
+        {
+          "name": "Twister",
+          "dps": 83227,
+          "dotDps": 36,
+          "damageTypes": [
+            29,
+            41,
+            0,
+            15,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Wild Protector",
+        "Romira's Requital",
+        "Elemental Army",
+        "Meat Shield II",
+        "Hulking Minions"
+      ],
+      "dps": [
+        {
+          "name": "Wild Protector",
+          "dps": 780,
+          "dotDps": 0,
+          "damageTypes": [
+            82,
+            0,
+            0,
+            0,
+            18
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Impurity",
+        "Vitality II",
+        "Clarity II",
+        "Precision II",
+        "Cannibalism II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Herald of Ash",
+        "Magnified Area II",
+        "Fire Mastery",
+        "Armour Demolisher II",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Ice-Tipped Arrows",
+        "Elemental Armament I",
+        "Magnified Area I",
+        "Elemental Focus",
+        "Retreat III"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Barrage",
+        "Rapid Casting II",
+        "Cooldown Recovery II",
+        "Heightened Charges",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Combat Frenzy",
+        "Charge Profusion II",
+        "Precision I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Primal Bounty",
+        "Olroth's Conviction"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Trinity",
+        "Fire Mastery"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Spear Throw"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Righteous Descent"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Spear Throw"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Charge Regulation"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Resonance",
+    "Dance with Death"
+  ],
+  "level": 99,
+  "class": "Spirit Walker",
+  "lastSeenUtc": "2026-06-07T15:53:19.040419Z",
+  "updatedUtc": "2026-06-07T15:53:30.898174Z"
+}

@@ -218,3 +218,43 @@ fn parses_against_rarity_conditions() {
         "should carry RareOrUnique condition tag"
     );
 }
+
+#[test]
+fn parses_compound_attack_and_cast_speed_to_two_mods() {
+    let outcome = parse_mod("8% increased Attack and Cast Speed").unwrap();
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    let names: Vec<_> = outcome.mods.iter().map(|m| m.name.clone()).collect();
+    assert!(names.contains(&ModName::from("AttackSpeed")));
+    assert!(names.contains(&ModName::from("CastSpeed")));
+    for m in &outcome.mods {
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value, ModValue::Number(8.0));
+    }
+}
+
+#[test]
+fn parses_weapon_type_attack_speed_as_condition() {
+    let outcome = parse_mod("3% increased Attack Speed with Quarterstaves").unwrap();
+    let m = &outcome.mods[0];
+    assert_eq!(m.name, ModName::from("AttackSpeed"));
+    assert_eq!(m.mod_type, ModType::Inc);
+    assert!(
+        m.tags
+            .iter()
+            .any(|t| matches!(t, ModTag::Condition { var, .. } if var == "UsingQuarterstaff")),
+        "weapon-type attack speed should carry UsingQuarterstaff condition"
+    );
+}
+
+#[test]
+fn weapon_type_guard_keeps_damage_as_weapon_keyword_name() {
+    // 「damage with crossbows」必须映射到武器类伤害名 CrossbowDamage（keyword 聚合），
+    // 不能被武器类条件守卫误转成带 UsingCrossbow 条件的通用 Damage（否则丢失武器伤害）。
+    let outcome = parse_mod("20% increased Damage with Crossbows").unwrap();
+    let m = &outcome.mods[0];
+    assert_eq!(m.name, ModName::from("CrossbowDamage"));
+    assert!(
+        !m.tags.iter().any(|t| matches!(t, ModTag::Condition { .. })),
+        "damage-with-weapon should not become a conditional mod"
+    );
+}

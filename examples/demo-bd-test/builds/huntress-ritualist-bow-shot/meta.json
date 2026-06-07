@@ -1,0 +1,614 @@
+{
+  "name": "huntress-ritualist-bow-shot",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/oopssl-6209/oopssist",
+    "account": "oopssl-6209",
+    "character": "oopssist",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Huntress",
+    "ascendancy": "Ritualist",
+    "level": 99,
+    "main_skill": "Bow Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "d4f7e90de20401f5cb4cd9dccaec1b2e0368d43d63e76ade36849f856e756e29",
+    "code_chars": 12472,
+    "decoded_bytes": 50318
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Bow Shot",
+          "skill_id": "MeleeBowPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Bleed III",
+          "skill_id": "SupportBleedPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Bursting Plague",
+          "skill_id": "SupportBurstingPlaguePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Poison II",
+          "skill_id": "SupportPoisonPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Fork",
+          "skill_id": "SupportForkPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Toxic Growth",
+          "skill_id": "ToxicGrowthPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Concentrated Area",
+          "skill_id": "SupportConcentratedAreaPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Arakaali's Lust",
+          "skill_id": "SupportArakaalisLustPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Efficiency II",
+          "skill_id": "SupportEfficiencyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Long Fuse II",
+          "skill_id": "SupportLongFusePlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Bursting Plague",
+          "skill_id": "SupportBurstingPlaguePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Poisonburst Arrow",
+          "skill_id": "PoisonBurstArrowPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Multishot II",
+          "skill_id": "SupportMultishotPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Ambush",
+          "skill_id": "SupportAmbushPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Bursting Plague",
+          "skill_id": "SupportBurstingPlaguePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Deadly Poison II",
+          "skill_id": "SupportDeadlyPoisonPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Tacati's Ire",
+          "skill_id": "SupportTacatisIrePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Gas Arrow",
+          "skill_id": "GasArrowPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Persistent Ground III",
+          "skill_id": "SupportPersistentGroundPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Ambush",
+          "skill_id": "SupportAmbushPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pinpoint Critical",
+          "skill_id": "SupportPinpointCriticalPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Escalating Poison",
+          "skill_id": "SupportEscalatingPoisonPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Deadly Poison II",
+          "skill_id": "SupportDeadlyPoisonPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Maul",
+          "skill_id": "BearMaulPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area I",
+          "skill_id": "SupportMagnifiedAreaPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Deadly Poison I",
+          "skill_id": "SupportDeadlyPoisonPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pinpoint Critical",
+          "skill_id": "SupportPinpointCriticalPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Bleed III",
+          "skill_id": "SupportBleedPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Convalescence",
+          "skill_id": "ConvalescencePlayer",
+          "level": 14,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Second Wind II",
+          "skill_id": "SupportSecondWindPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Vine Arrow",
+          "skill_id": "VineArrowPlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Swift Affliction II",
+          "skill_id": "SupportSwiftAfflictionPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks II",
+          "skill_id": "SupportRapidAttacksPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Eternal Rage",
+          "skill_id": "EternalRagePlayer",
+          "level": 14,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Atziri's Communion",
+          "skill_id": null,
+          "level": 0,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Dialla's Desire",
+          "skill_id": "SupportDiallasDesirePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Direstrike II",
+          "skill_id": "SupportDirestrikePlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Warm Blooded",
+          "skill_id": "SupportWarmbloodedPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Blood Boil",
+          "skill_id": "BloodBoilPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Acrimony",
+          "skill_id": "SupportAcrimonyPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Physical Mastery",
+          "skill_id": "SupportPhysicalMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Wind Dancer",
+          "skill_id": "WindDancerPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Blind II",
+          "skill_id": "SupportBlindPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Pounce",
+          "skill_id": "WolfPouncePlayer",
+          "level": 3,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Herald of Plague",
+          "skill_id": "HeraldOfPlaguePlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Chaos Mastery",
+          "skill_id": "SupportChaosMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageDamage": 51935.649916078,
+    "AverageBurstDamage": 51935.649916078,
+    "Speed": 1.342,
+    "PreEffectiveCritChance": 27.839,
+    "CritChance": 27.839,
+    "CritMultiplier": 4.37,
+    "HitChance": 100.0,
+    "TotalDPS": 69697.642187377,
+    "TotalDot": 0.0,
+    "BleedDPS": 11615.866818467,
+    "WithBleedDPS": 81313.509005845,
+    "IgniteDPS": 6.3598060654534,
+    "WithIgniteDPS": 69704.001993443,
+    "PoisonDPS": 131474.1690689,
+    "WithPoisonDPS": 201171.81125628,
+    "TotalDotDPS": 143096.39569343,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 212794.03788081,
+    "ManaCost": 0.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 0.0,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 112.0,
+    "ReqStr": 103.0,
+    "Dex": 166.0,
+    "ReqDex": 163.0,
+    "Int": 112.0,
+    "ReqInt": 108.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 6023.6828340573,
+    "PhysicalMaximumHitTaken": 4968.0,
+    "LightningMaximumHitTaken": 7391.0,
+    "FireMaximumHitTaken": 7391.0,
+    "ColdMaximumHitTaken": 4099.0,
+    "ChaosMaximumHitTaken": 10536.0,
+    "MainHandAccuracy": 1740.0,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 293.0,
+    "Spec:LifeInc": -80.0,
+    "LifeUnreserved": 293.0,
+    "LifeRecoverable": 293.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 0.0,
+    "LifeLeechGainRate": 0.0,
+    "Mana": 518.0,
+    "Spec:ManaInc": -30.0,
+    "ManaUnreserved": 518.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 23.8,
+    "ManaLeechGainRate": 69.5156,
+    "Spirit": 100.0,
+    "SpiritUnreserved": -130.0,
+    "SpiritUnreservedPercent": -130.0,
+    "EnergyShield": 4488.0,
+    "EnergyShieldRecoveryCap": 4488.0,
+    "Spec:EnergyShieldInc": 194.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "Rage": 0.0,
+    "RageRegenRecovery": 4.4,
+    "Evasion": 531.0,
+    "Spec:EvasionInc": 204.0,
+    "EvadeChance": 6.0,
+    "MeleeEvadeChance": 6.0,
+    "ProjectileEvadeChance": 6.0,
+    "SpellEvadeChance": 6.0,
+    "SpellProjectileEvadeChance": 6.0,
+    "DeflectionRating": 0.0,
+    "DeflectChance": 0.0,
+    "Armour": 0.0,
+    "Spec:ArmourInc": 0.0,
+    "PhysicalDamageReduction": 0.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 37.0,
+    "FireResistOverCap": 0.0,
+    "ColdResist": -19.0,
+    "ColdResistOverCap": 0.0,
+    "LightningResist": 37.0,
+    "LightningResistOverCap": 0.0,
+    "ChaosResist": 75.0,
+    "ChaosResistOverCap": 0.0,
+    "EffectiveMovementSpeedMod": 1.513,
+    "MovementSpeedWhileUsingSkill": 0.4539,
+    "PresenceRadiusMetres": 4.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 23
+}

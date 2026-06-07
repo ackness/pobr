@@ -1,0 +1,474 @@
+{
+  "name": "warrior-titan-shield-wall",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/methanman-2640/goodnerfing",
+    "account": "methanman-2640",
+    "character": "goodnerfing",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Titan",
+    "level": 100,
+    "main_skill": "Shield Wall"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "50a5b890b1926bf4609955b8746c2877049b2de96eb9eb2f5a08a12084254f1c",
+    "code_chars": 12324,
+    "decoded_bytes": 42832
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Ancestral Warrior Totem",
+          "skill_id": "AncestralWarriorTotemPlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Armour Breaker",
+          "skill_id": "ArmourBreakerPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Uruk's Smelting",
+          "skill_id": "SupportUruksSmeltingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Bleed IV",
+          "skill_id": "SupportBleedPlayerFour",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Knockback",
+          "skill_id": "SupportKnockbackPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Font of Blood",
+          "skill_id": "SupportBloodFountainPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Pounce",
+          "skill_id": "WolfPouncePlayer",
+          "level": 9,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks I",
+          "skill_id": "SupportRapidAttacksPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Xibaqua's Rending",
+          "skill_id": "SupportXibaquasRendingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Holy Descent",
+          "skill_id": "SupportHolyDescentPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Helbrym's Hide",
+          "skill_id": "SupportHelbrymsHidePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Fortifying Cry",
+          "skill_id": "FortifyingCryPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Blind II",
+          "skill_id": "SupportBlindPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Inhibitor",
+          "skill_id": "SupportChargeInhibitionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Echoing Cry",
+          "skill_id": "SupportEchoingCryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Enraged Warcry II",
+          "skill_id": "SupportEnragedWarcryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Bleed IV",
+          "skill_id": "SupportBleedPlayerFour",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Ferocious Roar",
+          "skill_id": "FerociousRoarMetaPlayer",
+          "level": 9,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Infernal Cry",
+          "skill_id": "InfernalCryPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Raging Cry",
+          "skill_id": "SupportRagingCryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Enraged Warcry I",
+          "skill_id": "SupportEnragedWarcryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Efficiency II",
+          "skill_id": "SupportEfficiencyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Profanity II",
+          "skill_id": "SupportProfanityPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Shield Wall",
+          "skill_id": "ShieldWallPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Rakiata's Flow",
+          "skill_id": "SupportRakiatasFlowPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Garukhan's Resolve",
+          "skill_id": "SupportGarukhansResolvePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Vorana's Siege",
+          "skill_id": "SupportVoranasSiege",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Medved's Felling",
+          "skill_id": "SupportMedvedsFelling",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks II",
+          "skill_id": "SupportRapidAttacksPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Eternal Rage",
+          "skill_id": "EternalRagePlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Dialla's Desire",
+          "skill_id": "SupportDiallasDesirePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Precision I",
+          "skill_id": "SupportPrecisionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Leap Slam",
+          "skill_id": "LeapSlamPlayer",
+          "level": 8,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks III",
+          "skill_id": "SupportRapidAttacksPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Raise Shield",
+          "skill_id": "ShieldBlockPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Raise Shield",
+          "skill_id": "ShieldBlockPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "",
+          "skill_id": "EnemyExplode",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageDamage": 49662.113025147,
+    "AverageBurstDamage": 49662.113025147,
+    "Speed": 1.136,
+    "PreEffectiveCritChance": 5.85,
+    "CritChance": 11.2475852775,
+    "CritBifurcates": 0.3354147225,
+    "CritMultiplier": 5.65,
+    "HitChance": 99.0,
+    "TotalDPS": 56416.160396567,
+    "TotalDot": 0.0,
+    "BleedDPS": 5536.1582129291,
+    "WithBleedDPS": 61952.318609496,
+    "IgniteDPS": 239.62253893275,
+    "WithIgniteDPS": 56655.7829355,
+    "WithPoisonDPS": 56416.160396567,
+    "TotalDotDPS": 5775.7807518619,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 62191.941148429,
+    "AreaOfEffectRadiusMetres": 6.1,
+    "ManaCost": 0.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 0.0,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 136.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 154.496,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 162.0,
+    "ReqStr": 157.0,
+    "Dex": 45.0,
+    "ReqDex": 45.0,
+    "Int": 67.0,
+    "ReqInt": 59.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 50244.09183105,
+    "PhysicalMaximumHitTaken": 6466.0,
+    "LightningMaximumHitTaken": 16086.0,
+    "FireMaximumHitTaken": 15641.0,
+    "ColdMaximumHitTaken": 15641.0,
+    "ChaosMaximumHitTaken": 13470.0,
+    "OffHandAccuracy": 1365.0,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 2784.0,
+    "Spec:LifeInc": 17.0,
+    "LifeUnreserved": 2784.0,
+    "LifeRecoverable": 2784.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 13.9,
+    "LifeLeechGainRate": 313.099776,
+    "Mana": 0.0,
+    "Spec:ManaInc": 0.0,
+    "ManaUnreserved": 0.0,
+    "ManaRegenRecovery": 0.0,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 100.0,
+    "SpiritUnreserved": 1.0,
+    "SpiritUnreservedPercent": 1.0,
+    "EnergyShield": 41.0,
+    "EnergyShieldRecoveryCap": 41.0,
+    "Spec:EnergyShieldInc": 0.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "Rage": 0.0,
+    "RageRegenRecovery": 5.6,
+    "Evasion": 7.0,
+    "Spec:EvasionInc": 0.0,
+    "EvadeChance": 0.0,
+    "MeleeEvadeChance": 0.0,
+    "ProjectileEvadeChance": 0.0,
+    "SpellEvadeChance": 0.0,
+    "SpellProjectileEvadeChance": 0.0,
+    "DeflectionRating": 0.84,
+    "DeflectChance": 0.0,
+    "Armour": 21202.0,
+    "Spec:ArmourInc": 102.0,
+    "PhysicalDamageReduction": 89.0,
+    "EffectiveBlockChance": 27.82,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 74.0,
+    "FireResistOverCap": 21.0,
+    "ColdResist": 74.0,
+    "ColdResistOverCap": 16.0,
+    "LightningResist": 75.0,
+    "LightningResistOverCap": 19.0,
+    "ChaosResist": 75.0,
+    "ChaosResistOverCap": 0.0,
+    "EffectiveMovementSpeedMod": 1.224,
+    "PresenceRadiusMetres": 4.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 5.0,
+    "ActiveTotemLimit": 0.0
+  },
+  "item_count": 21
+}

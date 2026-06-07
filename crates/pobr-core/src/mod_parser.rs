@@ -175,6 +175,9 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
         "all attributes" | "any attribute" | "attributes" => {
             &["strength", "dexterity", "intelligence"]
         }
+        // 复合速度（PoE2 常见树/词条）：「Attack and Cast Speed」→ 两条 speed（朴素
+        // " and "→", " 切分会得到无效的单词 "attack"，故此处显式展开）。
+        "attack and cast speed" | "cast and attack speed" => &["attack speed", "cast speed"],
         // 「+X% to all maximum resistances」含混沌：展开为元素聚合 max + 混沌 max。
         "all maximum resistances" => &[
             "all maximum elemental resistances",
@@ -530,11 +533,44 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
                 negated: false,
             },
         ),
+        (
+            " while dual wielding",
+            ModTag::Condition {
+                var: "DualWielding".into(),
+                negated: false,
+            },
+        ),
     ];
 
     for (suffix, tag) in known_tags {
         if let Some(stripped) = text.strip_suffix(suffix) {
             tags.push(tag);
+            return stripped.trim().into();
+        }
+    }
+
+    // 武器类别条件（树/词条「... with <武器类>」）——由 orchestrator 据主手武器类别置真。
+    // **守卫**：`<...> damage with <武器类>` 走武器类伤害名映射（如 `damage with crossbows`
+    // → `CrossbowDamage`，见 parse_name），不在此转条件；仅非伤害族（攻速/暴击等）转条件。
+    let weapon_type_tags: &[(&str, &str)] = &[
+        (" with quarterstaves", "UsingQuarterstaff"),
+        (" with quarterstaff", "UsingQuarterstaff"),
+        (" with maces", "UsingMace"),
+        (" with crossbows", "UsingCrossbow"),
+        (" with bows", "UsingBow"),
+        (" with spears", "UsingSpear"),
+        (" with daggers", "UsingDagger"),
+        (" with one handed melee weapons", "UsingOneHandedMelee"),
+        (" with two handed melee weapons", "UsingTwoHandedMelee"),
+    ];
+    for (suffix, var) in weapon_type_tags {
+        if let Some(stripped) = text.strip_suffix(suffix)
+            && !stripped.ends_with("damage")
+        {
+            tags.push(ModTag::Condition {
+                var: (*var).into(),
+                negated: false,
+            });
             return stripped.trim().into();
         }
     }

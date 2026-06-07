@@ -1,0 +1,175 @@
+{
+  "defensiveStats": {
+    "life": 1687,
+    "energyShield": 4164,
+    "mana": 693,
+    "spirit": 150,
+    "movementSpeed": 173,
+    "lifeRegen": 0,
+    "evasionRating": 6343,
+    "evadeChance": 41,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 0,
+    "damageReductions": {},
+    "deflectChance": 42,
+    "deflectChanceMax": 95,
+    "deflectionRating": 6913,
+    "deflectEffect": 40,
+    "strength": 74,
+    "dexterity": 165,
+    "intelligence": 117,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 23830,
+    "physicalMaximumHitTaken": 6404,
+    "fireMaximumHitTaken": 21886,
+    "coldMaximumHitTaken": 21886,
+    "lightningMaximumHitTaken": 21886,
+    "chaosMaximumHitTaken": 6322,
+    "fireResistance": 75,
+    "fireResistanceOverCap": 4,
+    "fireResistanceMax": 75,
+    "coldResistance": 75,
+    "coldResistanceOverCap": 0,
+    "coldResistanceMax": 75,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 20,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 36,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 85,
+    "physicalTakenAs": {
+      "physical": 94,
+      "lightning": 2,
+      "fire": 2,
+      "cold": 2,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 6322
+  },
+  "skills": [
+    {
+      "gems": [
+        "Ice-Tipped Arrows",
+        "Short Fuse I",
+        "Elemental Armament II",
+        "Magnified Area II",
+        "Deliberation",
+        "Freeze"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Snipe",
+        "Elemental Armament II",
+        "Window of Opportunity II",
+        "Concentrated Area",
+        "Inexorable Critical I",
+        "Elemental Focus"
+      ],
+      "dps": [
+        {
+          "name": "Snipe",
+          "dps": 167749,
+          "dotDps": 0,
+          "damageTypes": [
+            44,
+            15,
+            33,
+            8,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Herald of Ice",
+        "Magnified Area II",
+        "Elemental Armament II",
+        "Cold Penetration",
+        "Longshot II",
+        "Elemental Focus"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Ice Shot",
+        "Garukhan's Resolve",
+        "Elemental Armament II",
+        "Ice Bite II",
+        "Fork",
+        "Rakiata's Flow"
+      ],
+      "dps": [
+        {
+          "name": "Ice Shot",
+          "dps": 1952363,
+          "dotDps": 6901,
+          "damageTypes": [
+            3,
+            17,
+            72,
+            8,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Freezing Mark",
+        "Eternal Mark",
+        "Charged Mark",
+        "Mark of Siphoning II",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Mana Remnants",
+        "Khatal's Rejuvenation",
+        "Harmonic Remnants II",
+        "Remnant Potency III"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Barrage",
+        "Cooldown Recovery II",
+        "Olroth's Conviction",
+        "Rapid Casting II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Ghost Dance",
+        "Cooldown Recovery II",
+        "Her Declaration"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Wind Dancer",
+        "Knockback"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [],
+  "level": 99,
+  "class": "Pathfinder",
+  "lastSeenUtc": "2026-06-07T15:53:19.023213Z",
+  "updatedUtc": "2026-06-07T15:53:29.522328Z"
+}

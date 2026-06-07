@@ -1,0 +1,494 @@
+{
+  "name": "ranger-deadeye-explosive-grenade",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/lua_dipaa-4786/AESPA_LEMONADE",
+    "account": "lua_dipaa-4786",
+    "character": "AESPA_LEMONADE",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Ranger",
+    "ascendancy": "Deadeye",
+    "level": 99,
+    "main_skill": "Explosive Grenade"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "b158bc0d4c12101948bc5c3ca331b3c88754651d491353bbe5c85feb9916e394",
+    "code_chars": 11160,
+    "decoded_bytes": 43486
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Mirage Deadeye",
+          "skill_id": "MetaMirageDeadeyePlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Explosive Grenade",
+          "skill_id": "ExplosiveGrenadePlayer",
+          "level": 18,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Multishot II",
+          "skill_id": "SupportMultishotPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Explosive Grenade",
+          "skill_id": "ExplosiveGrenadePlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Payload",
+          "skill_id": "SupportPayloadPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Multishot II",
+          "skill_id": "SupportMultishotPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Lightning Penetration",
+          "skill_id": "SupportLightningPenetrationPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Lightning Attunement",
+          "skill_id": "SupportAddedLightningDamagePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Explosive Shot",
+          "skill_id": "ExplosiveShotAmmoPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Multishot II",
+          "skill_id": "SupportMultishotPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Lightning Attunement",
+          "skill_id": "SupportAddedLightningDamagePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Ratha's Assault",
+          "skill_id": "SupportCombatReloadPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Cluster Grenade",
+          "skill_id": "ClusterGrenadePlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Multishot II",
+          "skill_id": "SupportMultishotPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Lightning Attunement",
+          "skill_id": "SupportAddedLightningDamagePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Short Fuse II",
+          "skill_id": "SupportShortFusePlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Deliberation",
+          "skill_id": "SupportDeliberationPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Herald of Thunder",
+          "skill_id": "HeraldOfThunderPlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Lightning Attunement",
+          "skill_id": "SupportAddedLightningDamagePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Longshot II",
+          "skill_id": "SupportFarCombatPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Focus",
+          "skill_id": "SupportElementalFocusPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Wind Dancer",
+          "skill_id": "WindDancerPlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Blind II",
+          "skill_id": "SupportBlindPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Knockback",
+          "skill_id": "SupportKnockbackPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Precision I",
+          "skill_id": "SupportPrecisionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cannibalism II",
+          "skill_id": "SupportCannibalismPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Gas Grenade",
+          "skill_id": "ToxicGrenadePlayer",
+          "level": 18,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Armament II",
+          "skill_id": "SupportElementalArmamentPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Multishot II",
+          "skill_id": "SupportMultishotPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Payload",
+          "skill_id": "SupportPayloadPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Oil Grenade",
+          "skill_id": "OilGrenadePlayer",
+          "level": 17,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Potent Exposure",
+          "skill_id": "SupportPotentExposurePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Mirage Deadeye",
+          "skill_id": "MetaMirageDeadeyePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageDamage": 108426.02939805,
+    "AverageBurstDamage": 108426.02939805,
+    "Speed": 0.164,
+    "PreEffectiveCritChance": 5.0,
+    "CritChance": 5.0,
+    "CritMultiplier": 2.0,
+    "HitChance": 100.0,
+    "TotalDPS": 26672.803231921,
+    "TotalDot": 0.0,
+    "WithBleedDPS": 26672.803231921,
+    "IgniteDPS": 21.87775950244,
+    "WithIgniteDPS": 26694.680991423,
+    "WithPoisonDPS": 26672.803231921,
+    "TotalDotDPS": 21.87775950244,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 26694.680991423,
+    "Cooldown": 6.0975609756098,
+    "AreaOfEffectRadiusMetres": 2.9,
+    "ManaCost": 162.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 26.568,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 161.0,
+    "ReqStr": 89.0,
+    "Dex": 140.0,
+    "ReqDex": 137.0,
+    "Int": 22.0,
+    "ReqInt": 20.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 17664.882705007,
+    "PhysicalMaximumHitTaken": 2935.0,
+    "LightningMaximumHitTaken": 4808.0,
+    "FireMaximumHitTaken": 6303.0,
+    "ColdMaximumHitTaken": 6035.0,
+    "ChaosMaximumHitTaken": 9145.0,
+    "MainHandAccuracy": 2142.0,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 2835.0,
+    "Spec:LifeInc": 5.0,
+    "LifeUnreserved": 2835.0,
+    "LifeRecoverable": 2835.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 0.0,
+    "LifeLeechGainRate": 0.0,
+    "Mana": 470.0,
+    "Spec:ManaInc": 0.0,
+    "ManaUnreserved": 470.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 18.8,
+    "ManaLeechGainRate": 11.562,
+    "Spirit": 100.0,
+    "SpiritUnreserved": 0.0,
+    "SpiritUnreservedPercent": 0.0,
+    "EnergyShield": 0.0,
+    "EnergyShieldRecoveryCap": 0.0,
+    "Spec:EnergyShieldInc": 0.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 14437.0,
+    "Spec:EvasionInc": 199.0,
+    "EvadeChance": 60.0,
+    "MeleeEvadeChance": 60.0,
+    "ProjectileEvadeChance": 60.0,
+    "SpellEvadeChance": 60.0,
+    "SpellProjectileEvadeChance": 60.0,
+    "DeflectionRating": 17757.51,
+    "DeflectChance": 75.0,
+    "Armour": 226.0,
+    "Spec:ArmourInc": 0.0,
+    "PhysicalDamageReduction": 2.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 58.0,
+    "FireResistOverCap": 0.0,
+    "ColdResist": 56.0,
+    "ColdResistOverCap": 0.0,
+    "LightningResist": 44.0,
+    "LightningResistOverCap": 0.0,
+    "ChaosResist": 69.0,
+    "ChaosResistOverCap": 0.0,
+    "EffectiveMovementSpeedMod": 1.504,
+    "MovementSpeedWhileUsingSkill": 0.651232,
+    "PresenceRadiusMetres": 4.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 18
+}

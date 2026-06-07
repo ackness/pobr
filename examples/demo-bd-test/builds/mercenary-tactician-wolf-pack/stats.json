@@ -1,0 +1,222 @@
+{
+  "defensiveStats": {
+    "life": 2674,
+    "energyShield": 0,
+    "mana": 770,
+    "spirit": 336,
+    "movementSpeed": 199,
+    "lifeRegen": 53,
+    "evasionRating": 16824,
+    "evadeChance": 63,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 18580,
+    "damageReductions": {
+      "physical": {
+        "value": 68,
+        "max": 90,
+        "effectiveAppliedArmour": 18580,
+        "base": 0,
+        "takenDamage": 872
+      },
+      "fire": {
+        "value": 71,
+        "max": 90,
+        "effectiveAppliedArmour": 21181,
+        "base": 0,
+        "takenDamage": 872
+      },
+      "cold": {
+        "value": 71,
+        "max": 90,
+        "effectiveAppliedArmour": 21181,
+        "base": 0,
+        "takenDamage": 872
+      },
+      "lightning": {
+        "value": 71,
+        "max": 90,
+        "effectiveAppliedArmour": 21181,
+        "base": 0,
+        "takenDamage": 872
+      }
+    },
+    "deflectChance": 60,
+    "deflectChanceMax": 95,
+    "deflectionRating": 11791,
+    "deflectEffect": 40,
+    "strength": 401,
+    "dexterity": 104,
+    "intelligence": 139,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 116555,
+    "physicalMaximumHitTaken": 5313,
+    "fireMaximumHitTaken": 15713,
+    "coldMaximumHitTaken": 15713,
+    "lightningMaximumHitTaken": 15713,
+    "chaosMaximumHitTaken": 15307,
+    "fireResistance": 75,
+    "fireResistanceOverCap": 11,
+    "fireResistanceMax": 75,
+    "coldResistance": 75,
+    "coldResistanceOverCap": 3,
+    "coldResistanceMax": 75,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 16,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 75,
+    "chaosResistanceOverCap": 6,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 12,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 5313
+  },
+  "skills": [
+    {
+      "gems": [
+        "Mace Strike",
+        "Rapid Attacks I",
+        "Close Combat I",
+        "Pursuit I",
+        "Punch Through",
+        "Corrosion"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Mace Strike",
+        "Rapid Attacks I",
+        "Close Combat I",
+        "Pursuit I",
+        "Punch Through",
+        "Blindside"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Defiance Banner",
+        "Magnified Area II",
+        "Prolonged Duration II",
+        "Mobility",
+        "Daresso's Passion",
+        "Refraction II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Wolf Pack",
+        "Amanamu's Tithe",
+        "Feeding Frenzy I",
+        "Infernal Legion II",
+        "Loyalty",
+        "Blind I"
+      ],
+      "dps": [
+        {
+          "name": "Wolf Pack",
+          "dps": 1826,
+          "dotDps": 0,
+          "damageTypes": [
+            90,
+            5,
+            0,
+            5,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Dread Banner",
+        "Magnified Area II",
+        "Prolonged Duration II",
+        "Mobility",
+        "Expanse"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "War Banner",
+        "Magnified Area II",
+        "Prolonged Duration II",
+        "Mobility",
+        "Expanse"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Blasphemy",
+        "Temporal Chains",
+        "Enfeeble",
+        "Magnified Area II",
+        "Heightened Curse"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Time of Need",
+        "Herbalism II",
+        "Vitality II",
+        "Clarity II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Overwhelming Presence",
+        "Warm Blooded",
+        "Cool Headed",
+        "Strong Hearted"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Malice",
+        "Precision I",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Withering Presence",
+        "Prolonged Duration II",
+        "Chaos Mastery"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Alchemist's Boon"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Giant's Blood",
+    "Mind Over Matter",
+    "Whispers of Doom"
+  ],
+  "level": 98,
+  "class": "Tactician",
+  "lastSeenUtc": "2026-06-07T15:53:19.291604Z",
+  "updatedUtc": "2026-06-07T15:53:36.566441Z"
+}

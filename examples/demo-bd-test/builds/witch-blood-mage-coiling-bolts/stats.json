@@ -1,0 +1,199 @@
+{
+  "defensiveStats": {
+    "life": 2522,
+    "energyShield": 0,
+    "mana": 3537,
+    "spirit": 340,
+    "movementSpeed": 135,
+    "lifeRegen": 31,
+    "evasionRating": 8,
+    "evadeChance": 0,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 0,
+    "damageReductions": {},
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 49,
+    "dexterity": 24,
+    "intelligence": 182,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 9152,
+    "physicalMaximumHitTaken": 6900,
+    "fireMaximumHitTaken": 8734,
+    "coldMaximumHitTaken": 12777,
+    "lightningMaximumHitTaken": 8117,
+    "chaosMaximumHitTaken": 27599,
+    "fireResistance": 24,
+    "fireResistanceOverCap": 0,
+    "fireResistanceMax": 75,
+    "coldResistance": 49,
+    "coldResistanceOverCap": 0,
+    "coldResistanceMax": 75,
+    "lightningResistance": 18,
+    "lightningResistanceOverCap": 0,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 75,
+    "chaosResistanceOverCap": 5,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 107,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 6900
+  },
+  "skills": [
+    {
+      "gems": [
+        "Coiling Bolts",
+        "Chaos Mastery",
+        "Zenith II",
+        "Deliberation",
+        "Considered Casting",
+        "Esh's Radiance"
+      ],
+      "dps": [
+        {
+          "name": "Coiling Bolts",
+          "dps": 413839,
+          "dotDps": 96,
+          "damageTypes": [
+            58,
+            2,
+            0,
+            1,
+            39
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Cast on Critical",
+        "Comet",
+        "Living Bomb",
+        "Spell Cascade",
+        "Boundless Energy II",
+        "Atalui's Bloodletting"
+      ],
+      "dps": [
+        {
+          "name": "Comet",
+          "dps": 160270,
+          "dotDps": 44,
+          "damageTypes": [
+            45,
+            2,
+            12,
+            2,
+            39
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Explosive Transmutation",
+        "Physical Mastery",
+        "Cooldown Recovery II",
+        "Magnified Area II",
+        "Spell Cascade",
+        "Efficiency II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Blasphemy",
+        "Temporal Chains",
+        "Elemental Weakness",
+        "Repulsion",
+        "Enfeeble",
+        "Ritualistic Curse"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Despair",
+        "Ritualistic Curse",
+        "Doedre's Undoing",
+        "Spell Cascade",
+        "Armour Break III",
+        "Chaos Mastery"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Life Remnants",
+        "Remnant Potency I",
+        "Harmonic Remnants II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Impurity",
+        "Seraph's Heart",
+        "Her Declaration"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Mana Remnants",
+        "Harmonic Remnants II",
+        "Remnant Potency I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Vulnerability",
+        "Efficiency II",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Remnants of Kalguur",
+        "Remnant Potency I",
+        "Harmonic Remnants II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Withering Presence",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Sigil of Power"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Mind Over Matter",
+    "Eldritch Battery"
+  ],
+  "level": 98,
+  "class": "Blood Mage",
+  "lastSeenUtc": "2026-06-07T15:53:19.181311Z",
+  "updatedUtc": "2026-06-07T16:04:57.416431Z"
+}

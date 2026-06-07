@@ -1,0 +1,568 @@
+{
+  "name": "sorceress-disciple-of-varashta-comet",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/KingFud-1121/KingFud_RoA",
+    "account": "KingFud-1121",
+    "character": "KingFud_RoA",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Disciple of Varashta",
+    "level": 98,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "f0032108b2dcdacef297755ee183454fc34fe56b0c2359eed8695d754a731082",
+    "code_chars": 12220,
+    "decoded_bytes": 47483
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Frost Wall",
+          "skill_id": "FrostWallPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Spell Cascade",
+          "skill_id": "SupportSpellCascadePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Fortress II",
+          "skill_id": "SupportWallFortressPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pinpoint Critical",
+          "skill_id": "SupportPinpointCriticalPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Ice Bite II",
+          "skill_id": "SupportIceBitePlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Verglas",
+          "skill_id": "SupportVerglasPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Orb of Storms",
+          "skill_id": "OrbOfStormsPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Unleash",
+          "skill_id": null,
+          "level": 0,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pinpoint Critical",
+          "skill_id": "SupportPinpointCriticalPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Living Lightning II",
+          "skill_id": "SupportLivingLightningPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Arbiter's Ignition",
+          "skill_id": "SupportArbitersIgnitionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Overabundance II",
+          "skill_id": "SupportIncreaseLimitPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Spark",
+          "skill_id": "SparkPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Esh's Radiance",
+          "skill_id": "SupportEshsRadiancePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pinpoint Critical",
+          "skill_id": "SupportPinpointCriticalPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Considered Casting",
+          "skill_id": "SupportConsideredCastingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pierce III",
+          "skill_id": "SupportPiercePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Projectile Acceleration III",
+          "skill_id": "SupportProjectileAccelerationPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "2",
+      "gems": [
+        {
+          "name": "Cast on Critical",
+          "skill_id": "MetaCastOnCritPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Comet",
+          "skill_id": "CometPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Boundless Energy II",
+          "skill_id": "SupportBoundlessEnergyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pinpoint Critical",
+          "skill_id": "SupportPinpointCriticalPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Spell Cascade",
+          "skill_id": "SupportSpellCascadePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rakiata's Flow",
+          "skill_id": "SupportRakiatasFlowPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Temporal Chains",
+          "skill_id": "TemporalChainsPlayer",
+          "level": 19,
+          "quality": 23,
+          "enabled": true
+        },
+        {
+          "name": "Heightened Curse",
+          "skill_id": "SupportCurseEffectPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cursed Ground",
+          "skill_id": "SupportCursedGroundPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Slow Potency",
+          "skill_id": "SupportSlowPotencyPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Efficiency II",
+          "skill_id": "SupportEfficiencyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Convalescence",
+          "skill_id": "ConvalescencePlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Second Wind III",
+          "skill_id": "SupportSecondWindPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Navira, the Last Mirage",
+          "skill_id": "SummonWaterDjinnPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Bidding III",
+          "skill_id": "SupportBiddingPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Sigil of Power",
+          "skill_id": "SigilOfPowerPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Elemental Conflux",
+          "skill_id": "ElementalConfluxPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Uhtred's Exodus",
+          "skill_id": "SupportUhtredExodusPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Navira's Well",
+          "skill_id": null,
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Unleash",
+          "skill_id": null,
+          "level": 18,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Navira, the Last Mirage",
+          "skill_id": "SummonWaterDjinnPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Unleash",
+          "skill_id": "SupportUnleashPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Sigil of Power",
+          "skill_id": "SigilOfPowerPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageHit": 639604.875,
+    "AverageBurstDamage": 639604.875,
+    "Speed": 0.70414201183432,
+    "PreEffectiveCritChance": 100.0,
+    "CritChance": 100.0,
+    "CritMultiplier": 3.5,
+    "HitChance": 100.0,
+    "TotalDPS": 450372.66346154,
+    "TotalDot": 0.0,
+    "WithBleedDPS": 450372.66346154,
+    "IgniteDPS": 12494.840289364,
+    "WithIgniteDPS": 462867.5037509,
+    "WithPoisonDPS": 450372.66346154,
+    "TotalDotDPS": 12494.840289364,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 462867.5037509,
+    "AreaOfEffectRadiusMetres": 2.6,
+    "ManaCost": 429.19254658385,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 302.21250321585,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 50.0,
+    "ReqStr": 20.0,
+    "Dex": 60.0,
+    "ReqDex": 56.0,
+    "Int": 243.0,
+    "ReqInt": 157.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 36291.546187395,
+    "PhysicalMaximumHitTaken": 12082.0,
+    "LightningMaximumHitTaken": 40729.0,
+    "FireMaximumHitTaken": 40729.0,
+    "ColdMaximumHitTaken": 42237.0,
+    "ChaosMaximumHitTaken": Infinity,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 1.0,
+    "Spec:LifeInc": 5.0,
+    "LifeUnreserved": 1.0,
+    "LifeRecoverable": 1.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 0.0,
+    "LifeLeechGainRate": 0.0,
+    "Mana": 2166.0,
+    "Spec:ManaInc": 0.0,
+    "ManaUnreserved": 2166.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 418.1,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 169.0,
+    "SpiritUnreserved": 2.0,
+    "SpiritUnreservedPercent": 1.1834319526627,
+    "EnergyShield": 11403.0,
+    "EnergyShieldRecoveryCap": 11403.0,
+    "Spec:EnergyShieldInc": 376.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 244.0,
+    "Spec:EvasionInc": 0.0,
+    "EvadeChance": 3.0,
+    "MeleeEvadeChance": 3.0,
+    "ProjectileEvadeChance": 3.0,
+    "SpellEvadeChance": 3.0,
+    "SpellProjectileEvadeChance": 3.0,
+    "DeflectionRating": 0.0,
+    "DeflectChance": 0.0,
+    "Armour": 176.0,
+    "Spec:ArmourInc": 0.0,
+    "PhysicalDamageReduction": 42.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 75.0,
+    "FireResistOverCap": 12.0,
+    "ColdResist": 76.0,
+    "ColdResistOverCap": 29.0,
+    "LightningResist": 75.0,
+    "LightningResistOverCap": 22.0,
+    "ChaosResist": 0.0,
+    "ChaosResistOverCap": 0.0,
+    "EffectiveMovementSpeedMod": 1.319,
+    "PresenceRadiusMetres": 4.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 21
+}

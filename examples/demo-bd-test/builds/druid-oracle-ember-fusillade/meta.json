@@ -1,0 +1,456 @@
+{
+  "name": "druid-oracle-ember-fusillade",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Whiteyang123456-2065/%E7%9C%8B%E7%9C%8B%E4%BD%A0%E7%9A%84%E7%89%9B%E6%B2%BB",
+    "account": "Whiteyang123456-2065",
+    "character": "看看你的牛治",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Druid",
+    "ascendancy": "Oracle",
+    "level": 98,
+    "main_skill": "Ember Fusillade"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "934b896d92bf51607dbd85edefc0ce6e8892c57f6d84b6095e2e23f43f08e97b",
+    "code_chars": 12212,
+    "decoded_bytes": 42670
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "2",
+      "gems": [
+        {
+          "name": "Spellslinger",
+          "skill_id": "MetaSpellslingerPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Orb of Storms",
+          "skill_id": "OrbOfStormsPlayer",
+          "level": 3,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Harmonic Remnants II",
+          "skill_id": "SupportFleetingRemnantsPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Overabundance I",
+          "skill_id": "SupportIncreaseLimitPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Powered by Verisium",
+          "skill_id": "PoweredByVerisiumPlayer",
+          "level": 16,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "2",
+      "gems": [
+        {
+          "name": "Cast on Critical",
+          "skill_id": "MetaCastOnCritPlayer",
+          "level": 20,
+          "quality": 23,
+          "enabled": true
+        },
+        {
+          "name": "Living Bomb",
+          "skill_id": "LivingBombPlayer",
+          "level": 3,
+          "quality": 23,
+          "enabled": true
+        },
+        {
+          "name": "Comet",
+          "skill_id": "CometPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Efficiency II",
+          "skill_id": "SupportEfficiencyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Zenith II",
+          "skill_id": "SupportZenithPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Dialla's Desire",
+          "skill_id": "SupportDiallasDesirePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Ember Fusillade",
+          "skill_id": "EmberFusilladePlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Compressed Duration II",
+          "skill_id": "CompressedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Swift Affliction III",
+          "skill_id": "SupportSwiftAfflictionPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rakiata's Flow",
+          "skill_id": "SupportRakiatasFlowPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Sione's Temper",
+          "skill_id": "SupportWildshardsPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Zenith II",
+          "skill_id": "SupportZenithPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Disengage",
+          "skill_id": "DisengagePlayer",
+          "level": 5,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks III",
+          "skill_id": "SupportRapidAttacksPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Charge Profusion II",
+          "skill_id": "SupportChargeProfusionPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rage III",
+          "skill_id": "SupportRagePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Mana Remnants",
+          "skill_id": "ManaRemnantsPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Harmonic Remnants II",
+          "skill_id": "SupportFleetingRemnantsPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Remnant Potency III",
+          "skill_id": "SupportInterludePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Clarity II",
+          "skill_id": "SupportClarityPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Remnants of Kalguur",
+          "skill_id": "MetaRemnantsOfKalguurPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Harmonic Remnants II",
+          "skill_id": "SupportFleetingRemnantsPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Remnant Potency III",
+          "skill_id": "SupportInterludePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Clarity I",
+          "skill_id": "SupportClarityPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Elemental Conflux",
+          "skill_id": "ElementalConfluxPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Fire Mastery",
+          "skill_id": "SupportFireMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Spear Throw",
+          "skill_id": "SpearThrowPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Spellslinger",
+          "skill_id": "MetaSpellslingerPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Spear Throw",
+          "skill_id": "SpearThrowPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageHit": 78168.415,
+    "AverageBurstDamage": 78168.415,
+    "Speed": 5.4,
+    "PreEffectiveCritChance": 14.49,
+    "CritChance": 100.0,
+    "CritMultiplier": 1.69,
+    "HitChance": 100.0,
+    "TotalDPS": 422109.441,
+    "TotalDot": 0.0,
+    "WithBleedDPS": 422109.441,
+    "IgniteDPS": 3141.1927552579,
+    "WithIgniteDPS": 425250.63375526,
+    "WithPoisonDPS": 422109.441,
+    "TotalDotDPS": 3141.1927552579,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 425250.63375526,
+    "ManaCost": 196.55172413793,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 1061.3793103448,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 29.0,
+    "ReqStr": 25.0,
+    "Dex": 30.0,
+    "ReqDex": 30.0,
+    "Int": 435.0,
+    "ReqInt": 157.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 20821.05741432,
+    "PhysicalMaximumHitTaken": 8221.0,
+    "LightningMaximumHitTaken": 29211.0,
+    "FireMaximumHitTaken": 29211.0,
+    "ColdMaximumHitTaken": 29211.0,
+    "ChaosMaximumHitTaken": Infinity,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 1.0,
+    "Spec:LifeInc": 5.0,
+    "LifeUnreserved": 1.0,
+    "LifeRecoverable": 1.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 0.0,
+    "LifeLeechGainRate": 0.0,
+    "Mana": 7889.0,
+    "Spec:ManaInc": 8.0,
+    "ManaUnreserved": 7889.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 1384.9234042553,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 179.0,
+    "SpiritUnreserved": -50.0,
+    "SpiritUnreservedPercent": -27.932960893855,
+    "EnergyShield": 0.0,
+    "EnergyShieldRecoveryCap": 0.0,
+    "Spec:EnergyShieldInc": 0.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 397.0,
+    "Spec:EvasionInc": 0.0,
+    "EvadeChance": 4.0,
+    "MeleeEvadeChance": 4.0,
+    "ProjectileEvadeChance": 4.0,
+    "SpellEvadeChance": 4.0,
+    "SpellProjectileEvadeChance": 4.0,
+    "DeflectionRating": 0.0,
+    "DeflectChance": 0.0,
+    "Armour": 426.0,
+    "Spec:ArmourInc": 0.0,
+    "PhysicalDamageReduction": 4.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 75.0,
+    "FireResistOverCap": 3.0,
+    "ColdResist": 75.0,
+    "ColdResistOverCap": 1.0,
+    "LightningResist": 75.0,
+    "LightningResistOverCap": 5.0,
+    "ChaosResist": -7.0,
+    "ChaosResistOverCap": 0.0,
+    "EffectiveMovementSpeedMod": 1.48,
+    "MovementSpeedWhileUsingSkill": 0.444,
+    "PresenceRadiusMetres": 4.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 21
+}

@@ -1,0 +1,611 @@
+{
+  "name": "witch-abyssal-lich-detonate-dead",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Kaku167-1951/LeafMeAloneeeee",
+    "account": "Kaku167-1951",
+    "character": "LeafMeAloneeeee",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Abyssal Lich",
+    "level": 98,
+    "main_skill": "Detonate Dead"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 6,
+    "code_sha256": "fe3ef6f3b2c52a348ecd631da585aadf21cd91fa3c3724fbd20e2455b8ee0374",
+    "code_chars": 12812,
+    "decoded_bytes": 51906
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Reap",
+          "skill_id": "ReapPlayer",
+          "level": 19,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Zenith II",
+          "skill_id": "SupportZenithPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Concentrated Area",
+          "skill_id": "SupportConcentratedAreaPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Physical Mastery",
+          "skill_id": "SupportPhysicalMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Execute III",
+          "skill_id": "SupportExecutePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Bonestorm",
+          "skill_id": "BonestormPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Heft",
+          "skill_id": "SupportHeftPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Execute III",
+          "skill_id": "SupportExecutePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Burgeon II",
+          "skill_id": "SupportBurgeonPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Efficiency II",
+          "skill_id": "SupportEfficiencyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Thrashing Vines",
+          "skill_id": "ThrashingVinesPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Heft",
+          "skill_id": "SupportHeftPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Execute III",
+          "skill_id": "SupportExecutePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Zenith II",
+          "skill_id": "SupportZenithPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Blindside",
+          "skill_id": "SupportBlindsidePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Considered Casting",
+          "skill_id": "SupportConsideredCastingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Convalescence",
+          "skill_id": "ConvalescencePlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Second Wind III",
+          "skill_id": "SupportSecondWindPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Mysticism I",
+          "skill_id": "SupportMysticismPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Blasphemy",
+          "skill_id": "BlasphemyPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Temporal Chains",
+          "skill_id": "TemporalChainsPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Ritualistic Curse",
+          "skill_id": "SupportRitualisticCursePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Slow Potency",
+          "skill_id": "SupportSlowPotencyPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Kalisa's Crescendo",
+          "skill_id": "SupportKalisasCrescendoPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "2",
+      "gems": [
+        {
+          "name": "Cast on Critical",
+          "skill_id": "MetaCastOnCritPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Atziri's Communion",
+          "skill_id": null,
+          "level": 0,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Detonate Dead",
+          "skill_id": "DetonateDeadPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Energy Retention",
+          "skill_id": "SupportEnergyRetentionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Clarity II",
+          "skill_id": "SupportClarityPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Efficiency II",
+          "skill_id": "SupportEfficiencyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Thunderstorm",
+          "skill_id": "ThunderstormPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Overabundance II",
+          "skill_id": "SupportIncreaseLimitPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Living Lightning II",
+          "skill_id": "SupportLivingLightningPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Shock",
+          "skill_id": "SupportShockPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Entangle",
+          "skill_id": "EntanglePlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Accelerated Growth II",
+          "skill_id": "SupportExplosiveGrowthPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Branching Fissures II",
+          "skill_id": "SupportBranchingFissuresPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Trickster's Shard",
+          "skill_id": "SupportTrickstersShardPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Execute III",
+          "skill_id": "SupportExecutePlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Zenith II",
+          "skill_id": "SupportZenithPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Sigil of Power",
+          "skill_id": "SigilOfPowerPlayer",
+          "level": 17,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Reap",
+          "skill_id": "ReapPlayer",
+          "level": 19,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Sigil of Power",
+          "skill_id": "SigilOfPowerPlayer",
+          "level": 17,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "",
+          "skill_id": "EnemyExplode",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageHit": 170416.09256404,
+    "AverageBurstDamage": 170416.09256404,
+    "Speed": 2.625,
+    "PreEffectiveCritChance": 47.92,
+    "CritChance": 47.92,
+    "CritMultiplier": 6.72,
+    "HitChance": 100.0,
+    "TotalDPS": 447342.24298061,
+    "TotalDot": 0.0,
+    "WithBleedDPS": 447342.24298061,
+    "IgniteDPS": 14558.462322456,
+    "WithIgniteDPS": 461900.70530307,
+    "WithPoisonDPS": 447342.24298061,
+    "TotalDotDPS": 14558.462322456,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 461900.70530307,
+    "AreaOfEffectRadiusMetres": 3.0,
+    "ManaCost": 249.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 653.625,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 107.0,
+    "ReqStr": 86.0,
+    "Dex": 47.0,
+    "ReqDex": 35.0,
+    "Int": 166.0,
+    "ReqInt": 157.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 22862.677775949,
+    "PhysicalMaximumHitTaken": 17464.0,
+    "LightningMaximumHitTaken": 22390.0,
+    "FireMaximumHitTaken": 21297.0,
+    "ColdMaximumHitTaken": 32340.0,
+    "ChaosMaximumHitTaken": 38316.0,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 1694.0,
+    "Spec:LifeInc": 18.0,
+    "LifeUnreserved": 1694.0,
+    "LifeRecoverable": 1694.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 0.0,
+    "LifeLeechGainRate": 0.0,
+    "Mana": 792.0,
+    "Spec:ManaInc": -10.0,
+    "ManaUnreserved": 792.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 504.0,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 100.0,
+    "SpiritUnreserved": -109.0,
+    "SpiritUnreservedPercent": -109.0,
+    "EnergyShield": 11512.0,
+    "EnergyShieldRecoveryCap": 11512.0,
+    "Spec:EnergyShieldInc": 368.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 9.0,
+    "Spec:EvasionInc": 0.0,
+    "EvadeChance": 0.0,
+    "MeleeEvadeChance": 0.0,
+    "ProjectileEvadeChance": 0.0,
+    "SpellEvadeChance": 0.0,
+    "SpellProjectileEvadeChance": 0.0,
+    "DeflectionRating": 0.0,
+    "DeflectChance": 0.0,
+    "Armour": 0.0,
+    "Spec:ArmourInc": 0.0,
+    "PhysicalDamageReduction": 0.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 21.0,
+    "FireResistOverCap": 0.0,
+    "ColdResist": 49.0,
+    "ColdResistOverCap": 0.0,
+    "LightningResist": 25.0,
+    "LightningResistOverCap": 0.0,
+    "ChaosResist": 75.0,
+    "ChaosResistOverCap": 8.0,
+    "EffectiveMovementSpeedMod": 1.416,
+    "MovementSpeedWhileUsingSkill": 0.4248,
+    "PresenceRadiusMetres": 4.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 25
+}

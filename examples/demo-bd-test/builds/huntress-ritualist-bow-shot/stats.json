@@ -1,0 +1,256 @@
+{
+  "defensiveStats": {
+    "life": 293,
+    "energyShield": 4488,
+    "mana": 518,
+    "spirit": 100,
+    "movementSpeed": 151,
+    "lifeRegen": 0,
+    "evasionRating": 531,
+    "evadeChance": 6,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 0,
+    "damageReductions": {},
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 112,
+    "dexterity": 166,
+    "intelligence": 112,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 6023,
+    "physicalMaximumHitTaken": 4968,
+    "fireMaximumHitTaken": 7391,
+    "coldMaximumHitTaken": 4099,
+    "lightningMaximumHitTaken": 7391,
+    "chaosMaximumHitTaken": 10536,
+    "fireResistance": 37,
+    "fireResistanceOverCap": 0,
+    "fireResistanceMax": 75,
+    "coldResistance": -19,
+    "coldResistanceOverCap": 0,
+    "coldResistanceMax": 75,
+    "lightningResistance": 37,
+    "lightningResistanceOverCap": 0,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 75,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 33,
+    "physicalTakenAs": {
+      "physical": 95,
+      "lightning": 0,
+      "fire": 5,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 4099
+  },
+  "skills": [
+    {
+      "gems": [
+        "Bow Shot",
+        "Bleed III",
+        "Bursting Plague",
+        "Magnified Area II",
+        "Poison II",
+        "Fork"
+      ],
+      "dps": [
+        {
+          "name": "Bow Shot",
+          "dps": 69697,
+          "dotDps": 143096,
+          "damageTypes": [
+            31,
+            0,
+            1,
+            1,
+            67
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Toxic Growth",
+        "Concentrated Area",
+        "Arakaali's Lust",
+        "Efficiency II",
+        "Long Fuse II",
+        "Bursting Plague"
+      ],
+      "dps": [
+        {
+          "name": "Toxic Growth",
+          "dps": 17548,
+          "dotDps": 32533,
+          "damageTypes": [
+            27,
+            0,
+            1,
+            1,
+            71
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Poisonburst Arrow",
+        "Multishot II",
+        "Ambush",
+        "Bursting Plague",
+        "Deadly Poison II",
+        "Tacati's Ire"
+      ],
+      "dps": [
+        {
+          "name": "Poisonburst Arrow",
+          "dps": 26554,
+          "dotDps": 171815,
+          "damageTypes": [
+            29,
+            0,
+            1,
+            1,
+            69
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Gas Arrow",
+        "Persistent Ground III",
+        "Ambush",
+        "Pinpoint Critical",
+        "Escalating Poison",
+        "Deadly Poison II"
+      ],
+      "dps": [
+        {
+          "name": "Gas Arrow",
+          "dps": 14069,
+          "dotDps": 42150,
+          "damageTypes": [
+            25,
+            0,
+            1,
+            1,
+            73
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Maul",
+        "Magnified Area I",
+        "Deadly Poison I",
+        "Pinpoint Critical",
+        "Bleed III"
+      ],
+      "dps": [
+        {
+          "name": "Maul",
+          "dps": 693,
+          "dotDps": 2072,
+          "damageTypes": [
+            11,
+            0,
+            0,
+            1,
+            88
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Convalescence",
+        "Prolonged Duration II",
+        "Second Wind II",
+        "Cooldown Recovery II",
+        "Rapid Casting II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Vine Arrow",
+        "Magnified Area II",
+        "Swift Affliction II",
+        "Prolonged Duration II",
+        "Rapid Attacks II"
+      ],
+      "dps": [
+        {
+          "name": "Vine Arrow",
+          "dps": 52960,
+          "dotDps": 83646,
+          "damageTypes": [
+            30,
+            0,
+            1,
+            1,
+            68
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Eternal Rage",
+        "Atziri's Communion",
+        "Dialla's Desire",
+        "Direstrike II",
+        "Warm Blooded"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Blood Boil",
+        "Acrimony",
+        "Magnified Area II",
+        "Physical Mastery"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Wind Dancer",
+        "Blind II",
+        "Magnified Area II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Pounce",
+        "Cooldown Recovery II",
+        "Magnified Area II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Herald of Plague",
+        "Chaos Mastery"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [],
+  "level": 99,
+  "class": "Ritualist",
+  "lastSeenUtc": "2026-06-07T15:53:19.063509Z",
+  "updatedUtc": "2026-06-07T15:53:31.676405Z"
+}

@@ -1,0 +1,196 @@
+{
+  "defensiveStats": {
+    "life": 2784,
+    "energyShield": 41,
+    "mana": 0,
+    "spirit": 100,
+    "movementSpeed": 122,
+    "lifeRegen": 13,
+    "evasionRating": 7,
+    "evadeChance": 0,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 21202,
+    "damageReductions": {
+      "physical": {
+        "value": 89,
+        "max": 90,
+        "effectiveAppliedArmour": 42404,
+        "base": 8,
+        "takenDamage": 965
+      },
+      "fire": {
+        "value": 85,
+        "max": 90,
+        "effectiveAppliedArmour": 53005,
+        "base": 0,
+        "takenDamage": 965
+      },
+      "cold": {
+        "value": 85,
+        "max": 90,
+        "effectiveAppliedArmour": 53005,
+        "base": 0,
+        "takenDamage": 965
+      },
+      "lightning": {
+        "value": 85,
+        "max": 90,
+        "effectiveAppliedArmour": 53005,
+        "base": 0,
+        "takenDamage": 965
+      }
+    },
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 162,
+    "dexterity": 45,
+    "intelligence": 67,
+    "enduranceCharges": 5,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 50244,
+    "physicalMaximumHitTaken": 6466,
+    "fireMaximumHitTaken": 15641,
+    "coldMaximumHitTaken": 15641,
+    "lightningMaximumHitTaken": 16086,
+    "chaosMaximumHitTaken": 13470,
+    "fireResistance": 74,
+    "fireResistanceOverCap": 21,
+    "fireResistanceMax": 74,
+    "coldResistance": 74,
+    "coldResistanceOverCap": 16,
+    "coldResistanceMax": 74,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 19,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 75,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 27,
+    "itemRarity": 63,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 6466
+  },
+  "skills": [
+    {
+      "gems": [
+        "Ancestral Warrior Totem",
+        "Armour Breaker",
+        "Uruk's Smelting",
+        "Bleed IV",
+        "Knockback",
+        "Font of Blood"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Pounce",
+        "Rapid Attacks I",
+        "Cooldown Recovery II",
+        "Xibaqua's Rending",
+        "Holy Descent",
+        "Helbrym's Hide"
+      ],
+      "dps": [
+        {
+          "name": "Pounce",
+          "dps": 137,
+          "dotDps": 0,
+          "damageTypes": [
+            11,
+            25,
+            15,
+            49,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Fortifying Cry",
+        "Blind II",
+        "Inhibitor",
+        "Echoing Cry",
+        "Enraged Warcry II",
+        "Bleed IV"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Ferocious Roar",
+        "Infernal Cry",
+        "Raging Cry",
+        "Enraged Warcry I",
+        "Efficiency II",
+        "Profanity II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Shield Wall",
+        "Rakiata's Flow",
+        "Garukhan's Resolve",
+        "Vorana's Siege",
+        "Medved's Felling",
+        "Rapid Attacks II"
+      ],
+      "dps": [
+        {
+          "name": "Shield Wall",
+          "dps": 56416,
+          "dotDps": 5775,
+          "damageTypes": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Eternal Rage",
+        "Dialla's Desire",
+        "Precision I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Leap Slam",
+        "Rapid Attacks III"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Raise Shield"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Blood Magic",
+    "Primal Hunger"
+  ],
+  "level": 100,
+  "class": "Titan",
+  "lastSeenUtc": "2026-06-07T15:53:18.990496Z",
+  "updatedUtc": "2026-06-07T14:22:53.236398Z"
+}

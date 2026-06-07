@@ -1,0 +1,224 @@
+{
+  "defensiveStats": {
+    "life": 2835,
+    "energyShield": 0,
+    "mana": 470,
+    "spirit": 100,
+    "movementSpeed": 150,
+    "lifeRegen": 0,
+    "evasionRating": 14437,
+    "evadeChance": 60,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 226,
+    "damageReductions": {
+      "physical": {
+        "value": 2,
+        "max": 90,
+        "effectiveAppliedArmour": 226,
+        "base": 0,
+        "takenDamage": 922
+      },
+      "fire": {
+        "value": 0,
+        "max": 90,
+        "effectiveAppliedArmour": 33,
+        "base": 0,
+        "takenDamage": 986
+      },
+      "cold": {
+        "value": 0,
+        "max": 90,
+        "effectiveAppliedArmour": 33,
+        "base": 0,
+        "takenDamage": 986
+      },
+      "lightning": {
+        "value": 0,
+        "max": 90,
+        "effectiveAppliedArmour": 33,
+        "base": 0,
+        "takenDamage": 986
+      }
+    },
+    "deflectChance": 75,
+    "deflectChanceMax": 95,
+    "deflectionRating": 17757,
+    "deflectEffect": 43,
+    "strength": 161,
+    "dexterity": 140,
+    "intelligence": 22,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 17664,
+    "physicalMaximumHitTaken": 2935,
+    "fireMaximumHitTaken": 6303,
+    "coldMaximumHitTaken": 6035,
+    "lightningMaximumHitTaken": 4808,
+    "chaosMaximumHitTaken": 9145,
+    "fireResistance": 58,
+    "fireResistanceOverCap": 0,
+    "fireResistanceMax": 75,
+    "coldResistance": 56,
+    "coldResistanceOverCap": 0,
+    "coldResistanceMax": 75,
+    "lightningResistance": 44,
+    "lightningResistanceOverCap": 0,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 69,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 0,
+    "physicalTakenAs": {
+      "physical": 95,
+      "lightning": 1.6666666,
+      "fire": 1.6666666,
+      "cold": 1.6666666,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 2935
+  },
+  "skills": [
+    {
+      "gems": [
+        "Mirage Deadeye",
+        "Explosive Grenade",
+        "Multishot II",
+        "Cooldown Recovery II",
+        "Elemental Armament II",
+        "Prolonged Duration II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Explosive Grenade",
+        "Payload",
+        "Multishot II",
+        "Elemental Armament II",
+        "Lightning Penetration",
+        "Lightning Attunement"
+      ],
+      "dps": [
+        {
+          "name": "Explosive Grenade",
+          "dps": 26672,
+          "dotDps": 21,
+          "damageTypes": [
+            4,
+            89,
+            1,
+            6,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Explosive Shot",
+        "Multishot II",
+        "Magnified Area II",
+        "Lightning Attunement",
+        "Ratha's Assault",
+        "Elemental Armament II"
+      ],
+      "dps": [
+        {
+          "name": "Explosive Shot",
+          "dps": 25399,
+          "dotDps": 7,
+          "damageTypes": [
+            16,
+            76,
+            2,
+            6,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Cluster Grenade",
+        "Multishot II",
+        "Elemental Armament II",
+        "Lightning Attunement",
+        "Short Fuse II",
+        "Deliberation"
+      ],
+      "dps": [
+        {
+          "name": "Cluster Grenade",
+          "dps": 6468,
+          "dotDps": 2,
+          "damageTypes": [
+            20,
+            72,
+            2,
+            6,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Herald of Thunder",
+        "Lightning Attunement",
+        "Longshot II",
+        "Magnified Area II",
+        "Elemental Armament II",
+        "Elemental Focus"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Wind Dancer",
+        "Blind II",
+        "Knockback",
+        "Precision I",
+        "Cannibalism II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Gas Grenade",
+        "Elemental Armament II",
+        "Multishot II",
+        "Payload"
+      ],
+      "dps": [
+        {
+          "name": "Gas Grenade",
+          "dps": 3759,
+          "dotDps": 2,
+          "damageTypes": [
+            27,
+            54,
+            4,
+            15,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Oil Grenade",
+        "Potent Exposure"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [],
+  "level": 99,
+  "class": "Deadeye",
+  "lastSeenUtc": "2026-06-07T15:53:19.034604Z",
+  "updatedUtc": "2026-06-07T15:53:30.219233Z"
+}

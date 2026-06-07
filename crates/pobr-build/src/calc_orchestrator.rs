@@ -181,6 +181,29 @@ pub fn calculate_with_data(
             .with_condition("Unique", true)
             .with_condition("RareOrUnique", true);
     }
+    // 主手武器类别 → 持握条件（使「... with Quarterstaves」「while Dual Wielding」等树/词条生效）。
+    // 注：冷却限速技能（如榴弹）当前 rate 模型把攻速 inc/more 乘到 cd-capped base 上（近似），
+    // 一旦补全武器类攻速会错误放大 grenade rate（真值应 cooldown-governed：Speed=1/cooldown ×
+    // dpsMultiplier，与攻速无关）。grenade 正解依赖**数据补全**（SupportPayload 的 -70%
+    // CooldownRecovery + GrenadeActivateTwice，二者当前缺在入库数据中）。故暂只对**非冷却限速**
+    // 主技能启用武器类条件，避免回归 deadeye；冷却模型 + 数据补齐后全量启用。
+    let main_bypasses_cd = main_effect
+        .map(|e| {
+            e.skill_types
+                .iter()
+                .any(|t| t == "SkillConsumesPowerChargesOnUse")
+        })
+        .unwrap_or(false);
+    let main_is_cooldown_bound = main_skill
+        .as_ref()
+        .and_then(|(s, _)| s.cooldown_s)
+        .is_some_and(|cd| cd > 0.0)
+        && !main_bypasses_cd;
+    if !main_is_cooldown_bound {
+        for var in weapon_type_conditions(build, data) {
+            cfg = cfg.with_condition(var, true);
+        }
+    }
     let mut base_input = options.base_input;
     if let Some((skill, _)) = &main_skill
         && let Some(use_time) = skill.use_time_s
@@ -311,7 +334,7 @@ pub fn calculate_with_data(
             let drop_local = |texts: Vec<String>| -> Vec<String> {
                 texts
                     .into_iter()
-                    .filter(|t| !is_weapon_local_phys_mod(t))
+                    .filter(|t| !is_weapon_local_mod(t))
                     .collect()
             };
             filtered.implicit_texts = drop_local(filtered.implicit_texts);
@@ -529,11 +552,12 @@ fn damage_keywords(build: &Build, data: &BuildData, skill_types: &[String]) -> V
         && let Some(def) = data.base_items.get(&item.base.to_string())
     {
         let cls = def.item_class.as_str();
+        // 注：PoE2 内部把「Quarterstaff」基底类名记为 `Warstaff`。
         let kw = if cls.contains("Crossbow") {
             Some("CrossbowDamage")
         } else if cls.contains("Bow") {
             Some("BowDamage")
-        } else if cls.contains("Quarterstaff") {
+        } else if cls.contains("Warstaff") || cls.contains("Quarterstaff") {
             Some("QuarterstaffDamage")
         } else if cls.contains("Mace") {
             Some("MaceDamage")
@@ -547,6 +571,67 @@ fn damage_keywords(build: &Build, data: &BuildData, skill_types: &[String]) -> V
         }
     }
     names
+}
+
+/// 主手武器类别 → 武器类型 / 持握条件 var（树/词条「... with <武器类>」「while dual wielding」）。
+/// PoE2 内部类名：Quarterstaff = `Warstaff`。返回置真的 condition var 列表。
+fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'static str> {
+    let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
+        return Vec::new();
+    };
+    let Some(def) = data.base_items.get(&item.base.to_string()) else {
+        return Vec::new();
+    };
+    let cls = def.item_class.as_str();
+    let mut vars = Vec::new();
+    let two_handed = cls.starts_with("Two Hand") || cls == "Warstaff" || cls == "Staff";
+    if cls == "Warstaff" || cls.contains("Quarterstaff") {
+        vars.push("UsingQuarterstaff");
+    }
+    if cls.contains("Mace") {
+        vars.push("UsingMace");
+    }
+    if cls.contains("Crossbow") {
+        vars.push("UsingCrossbow");
+    } else if cls.contains("Bow") {
+        vars.push("UsingBow");
+    }
+    if cls.contains("Spear") {
+        vars.push("UsingSpear");
+    }
+    if cls.contains("Dagger") {
+        vars.push("UsingDagger");
+    }
+    // 近战单/双手分类（PoB weaponTypeInfo.melee/oneHand）：法器/弓/弩为非近战，不置。
+    let melee = matches!(
+        cls,
+        "Warstaff"
+            | "One Hand Mace"
+            | "Two Hand Mace"
+            | "One Hand Sword"
+            | "Two Hand Sword"
+            | "One Hand Axe"
+            | "Two Hand Axe"
+            | "Spear"
+            | "Dagger"
+            | "Claw"
+            | "Flail"
+    );
+    if melee {
+        vars.push(if two_handed {
+            "UsingTwoHandedMelee"
+        } else {
+            "UsingOneHandedMelee"
+        });
+    }
+    // 双持：副手也是武器基底（非盾/箭袋/法器副手）。
+    if !two_handed
+        && let Some(off) = build.items.get(&EquipmentSlot::Weapon2)
+        && data.weapon_base(&off.base.to_string()).is_some()
+    {
+        vars.push("DualWielding");
+    }
+    vars
 }
 
 /// 技能类型名（`ActiveSkillType.Id`）→ cfg 伤害 flag。供 damage 聚合按技能类别取用
@@ -610,14 +695,19 @@ fn weapon_contribution(
     // 在 add_item 时被剔除（见 calculate_with_data），避免重复 / 错误地并入全局加法桶。
     let (local_add_min, local_add_max) = weapon_local_phys_adds(item);
     let local_inc = 1.0 + weapon_local_phys_inc(item) / 100.0;
+    // 武器**局部**「N% increased Attack Speed」作用于武器攻击速率（PoB weaponData.AttackRate =
+    // 基底速率 ×(1+局部攻速%)），是独立乘区——与全局树攻速相乘、不并入全局加法桶。
+    // 这些局部攻速词条在 add_item 时从全局剔除（见 is_weapon_local_mod）。
+    let local_as = 1.0 + weapon_local_attack_speed(item) / 100.0;
+    let base_rate = if w.speed_ms > 0 {
+        1000.0 / f64::from(w.speed_ms)
+    } else {
+        0.0
+    };
     Some(WeaponContribution {
         phys_min: (f64::from(w.physical_min) + local_add_min) * local_inc * quality,
         phys_max: (f64::from(w.physical_max) + local_add_max) * local_inc * quality,
-        attack_rate: if w.speed_ms > 0 {
-            1000.0 / f64::from(w.speed_ms)
-        } else {
-            0.0
-        },
+        attack_rate: base_rate * local_as,
         crit_chance: f64::from(w.crit_chance) / 100.0,
     })
 }
@@ -665,6 +755,17 @@ fn weapon_local_phys_inc(item: &Item) -> f64 {
         .sum()
 }
 
+/// 武器上「N% increased Attack Speed」（局部词条，无条件后缀）之和。
+fn weapon_local_attack_speed(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|t| {
+            clean_item_text(t)
+                .strip_suffix("% increased attack speed")
+                .and_then(|n| n.trim().parse::<f64>().ok())
+        })
+        .sum()
+}
+
 /// 武器上「Adds N to M Physical Damage」（局部词条）的区间和。
 fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
     let mut min_sum = 0.0;
@@ -695,10 +796,13 @@ fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
         .chain(&item.enchant_texts)
 }
 
-/// 该词条是否为应从全局剔除的**武器局部物理**词条（已计入武器 source 乘区）。
-fn is_weapon_local_phys_mod(text: &str) -> bool {
+/// 该词条是否为应从全局剔除的**武器局部**词条（已计入武器 source 乘区）：
+/// 局部物理增伤/附加 + 局部攻击速率（后者作用于武器攻速、不入全局加法桶）。
+fn is_weapon_local_mod(text: &str) -> bool {
     let clean = clean_item_text(text);
-    clean.ends_with("% increased physical damage") || parse_adds_physical(&clean).is_some()
+    clean.ends_with("% increased physical damage")
+        || clean.ends_with("% increased attack speed")
+        || parse_adds_physical(&clean).is_some()
 }
 
 /// 解析护甲件**局部**「N% increased <Armour/Evasion/Energy Shield 组合>」→ 每类型增幅

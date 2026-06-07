@@ -1,0 +1,241 @@
+{
+  "defensiveStats": {
+    "life": 1694,
+    "energyShield": 11512,
+    "mana": 792,
+    "spirit": 100,
+    "movementSpeed": 141,
+    "lifeRegen": 0,
+    "evasionRating": 9,
+    "evadeChance": 0,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 0,
+    "damageReductions": {},
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 107,
+    "dexterity": 47,
+    "intelligence": 166,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 22862,
+    "physicalMaximumHitTaken": 17464,
+    "fireMaximumHitTaken": 21297,
+    "coldMaximumHitTaken": 32340,
+    "lightningMaximumHitTaken": 22390,
+    "chaosMaximumHitTaken": 38316,
+    "fireResistance": 21,
+    "fireResistanceOverCap": 0,
+    "fireResistanceMax": 75,
+    "coldResistance": 49,
+    "coldResistanceOverCap": 0,
+    "coldResistanceMax": 75,
+    "lightningResistance": 25,
+    "lightningResistanceOverCap": 0,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 75,
+    "chaosResistanceOverCap": 8,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 56,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 17464
+  },
+  "skills": [
+    {
+      "gems": [
+        "Reap",
+        "Zenith II",
+        "Concentrated Area",
+        "Physical Mastery",
+        "Execute III",
+        "Rapid Casting II"
+      ],
+      "dps": [
+        {
+          "name": "Reap",
+          "dps": 314355,
+          "dotDps": 7948,
+          "damageTypes": [
+            63,
+            1,
+            18,
+            18,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Bonestorm",
+        "Heft",
+        "Execute III",
+        "Burgeon II",
+        "Rapid Casting II",
+        "Efficiency II"
+      ],
+      "dps": [
+        {
+          "name": "Bonestorm",
+          "dps": 140357,
+          "dotDps": 875,
+          "damageTypes": [
+            64,
+            2,
+            17,
+            17,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Thrashing Vines",
+        "Heft",
+        "Execute III",
+        "Zenith II",
+        "Blindside",
+        "Considered Casting"
+      ],
+      "dps": [
+        {
+          "name": "Thrashing Vines",
+          "dps": 151618,
+          "dotDps": 2438,
+          "damageTypes": [
+            66,
+            2,
+            16,
+            16,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Convalescence",
+        "Second Wind III",
+        "Prolonged Duration II",
+        "Cooldown Recovery II",
+        "Rapid Casting II",
+        "Mysticism I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Blasphemy",
+        "Temporal Chains",
+        "Magnified Area II",
+        "Ritualistic Curse",
+        "Slow Potency",
+        "Kalisa's Crescendo"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Cast on Critical",
+        "Atziri's Communion",
+        "Detonate Dead",
+        "Energy Retention",
+        "Clarity II",
+        "Efficiency II"
+      ],
+      "dps": [
+        {
+          "name": "Detonate Dead",
+          "dps": 447342,
+          "dotDps": 14558,
+          "damageTypes": [
+            59,
+            2,
+            18,
+            21,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Thunderstorm",
+        "Overabundance II",
+        "Rapid Casting II",
+        "Prolonged Duration II",
+        "Living Lightning II",
+        "Shock"
+      ],
+      "dps": [
+        {
+          "name": "Thunderstorm",
+          "dps": 16866,
+          "dotDps": 72,
+          "damageTypes": [
+            0,
+            45,
+            30,
+            25,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Entangle",
+        "Accelerated Growth II",
+        "Branching Fissures II",
+        "Trickster's Shard",
+        "Execute III",
+        "Zenith II"
+      ],
+      "dps": [
+        {
+          "name": "Entangle",
+          "dps": 106133,
+          "dotDps": 1152,
+          "damageTypes": [
+            61,
+            1,
+            19,
+            19,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Sigil of Power",
+        "Magnified Area II",
+        "Prolonged Duration II",
+        "Cooldown Recovery II",
+        "Rapid Casting II"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Pain Attunement",
+    "Wildsurge Incantation"
+  ],
+  "level": 98,
+  "class": "Abyssal Lich",
+  "lastSeenUtc": "2026-06-07T15:53:19.15087Z",
+  "updatedUtc": "2026-06-07T15:53:33.922532Z"
+}

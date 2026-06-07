@@ -1,0 +1,206 @@
+{
+  "defensiveStats": {
+    "life": 1,
+    "energyShield": 0,
+    "mana": 7889,
+    "spirit": 179,
+    "movementSpeed": 148,
+    "lifeRegen": 0,
+    "evasionRating": 397,
+    "evadeChance": 4,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 426,
+    "damageReductions": {
+      "physical": {
+        "value": 4,
+        "max": 90,
+        "effectiveAppliedArmour": 426,
+        "base": 0,
+        "takenDamage": 965
+      }
+    },
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 29,
+    "dexterity": 30,
+    "intelligence": 435,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 20821,
+    "physicalMaximumHitTaken": 8221,
+    "fireMaximumHitTaken": 29211,
+    "coldMaximumHitTaken": 29211,
+    "lightningMaximumHitTaken": 29211,
+    "chaosMaximumHitTaken": 2147483647,
+    "fireResistance": 75,
+    "fireResistanceOverCap": 3,
+    "fireResistanceMax": 75,
+    "coldResistance": 75,
+    "coldResistanceOverCap": 1,
+    "coldResistanceMax": 75,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 5,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 100,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 15,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 8221
+  },
+  "skills": [
+    {
+      "gems": [
+        "Spellslinger",
+        "Orb of Storms",
+        "Harmonic Remnants II",
+        "Magnified Area II",
+        "Overabundance I",
+        "Powered by Verisium"
+      ],
+      "dps": [
+        {
+          "name": "Orb of Storms",
+          "dps": 3356,
+          "dotDps": 0,
+          "damageTypes": [
+            0,
+            48,
+            32,
+            12,
+            8
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Cast on Critical",
+        "Living Bomb",
+        "Comet",
+        "Efficiency II",
+        "Zenith II",
+        "Dialla's Desire"
+      ],
+      "dps": [
+        {
+          "name": "Living Bomb",
+          "dps": 18607,
+          "dotDps": 192,
+          "damageTypes": [
+            0,
+            5,
+            33,
+            54,
+            8
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Ember Fusillade",
+        "Compressed Duration II",
+        "Swift Affliction III",
+        "Rakiata's Flow",
+        "Sione's Temper",
+        "Zenith II"
+      ],
+      "dps": [
+        {
+          "name": "Ember Fusillade",
+          "dps": 422109,
+          "dotDps": 3141,
+          "damageTypes": [
+            0,
+            6,
+            34,
+            57,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Disengage",
+        "Cooldown Recovery II",
+        "Rapid Attacks III",
+        "Charge Profusion II",
+        "Rage III"
+      ],
+      "dps": [
+        {
+          "name": "Disengage",
+          "dps": 49,
+          "dotDps": 0,
+          "damageTypes": [
+            0,
+            77,
+            10,
+            0,
+            13
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Mana Remnants",
+        "Harmonic Remnants II",
+        "Remnant Potency III",
+        "Clarity II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Remnants of Kalguur",
+        "Harmonic Remnants II",
+        "Remnant Potency III",
+        "Clarity I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Elemental Conflux",
+        "Fire Mastery"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Spear Throw"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Mind Over Matter",
+    "Scarred Faith",
+    "Wildsurge Incantation",
+    "Eldritch Battery",
+    "Conduit",
+    "Resonance",
+    "Chaos Inoculation",
+    "Hollow Palm Technique",
+    "Unwavering Stance"
+  ],
+  "level": 98,
+  "class": "Oracle",
+  "lastSeenUtc": "2026-06-07T15:53:19.121422Z",
+  "updatedUtc": "2026-06-07T15:53:32.546044Z"
+}

@@ -1,0 +1,239 @@
+{
+  "defensiveStats": {
+    "life": 1497,
+    "energyShield": 2379,
+    "mana": 651,
+    "spirit": 223,
+    "movementSpeed": 103,
+    "lifeRegen": 59,
+    "evasionRating": 14776,
+    "evadeChance": 60,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 0,
+    "damageReductions": {},
+    "deflectChance": 58,
+    "deflectChanceMax": 95,
+    "deflectionRating": 11229,
+    "deflectEffect": 49,
+    "strength": 95,
+    "dexterity": 164,
+    "intelligence": 95,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 31555,
+    "physicalMaximumHitTaken": 4126,
+    "fireMaximumHitTaken": 15869,
+    "coldMaximumHitTaken": 15281,
+    "lightningMaximumHitTaken": 14736,
+    "chaosMaximumHitTaken": 10487,
+    "fireResistance": 77,
+    "fireResistanceOverCap": 5,
+    "fireResistanceMax": 77,
+    "coldResistance": 76,
+    "coldResistanceOverCap": 18,
+    "coldResistanceMax": 76,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 20,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 72,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 86,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 4126
+  },
+  "skills": [
+    {
+      "gems": [
+        "Hollow Focus",
+        "Magnified Area II",
+        "Cooldown Recovery II",
+        "Overabundance II",
+        "Close Combat II",
+        "Execute II"
+      ],
+      "dps": [
+        {
+          "name": "Hollow Focus",
+          "dps": 128,
+          "dotDps": 0,
+          "damageTypes": [
+            8,
+            37,
+            34,
+            21,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Barrage",
+        "Cooldown Recovery II",
+        "Rapid Casting II",
+        "Heightened Charges",
+        "Olroth's Conviction",
+        "Efficiency II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Whirling Slash",
+        "Rage III",
+        "Rapid Attacks III",
+        "Blazing Critical",
+        "Heightened Accuracy II",
+        "Rigwald's Ferocity"
+      ],
+      "dps": [
+        {
+          "name": "Whirling Slash",
+          "dps": 8689,
+          "dotDps": 8,
+          "damageTypes": [
+            24,
+            30,
+            24,
+            22,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Herald of Ice",
+        "Elemental Armament II",
+        "Magnified Area II",
+        "Elemental Focus",
+        "Longshot II",
+        "Ambush"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Twister",
+        "Retreat III",
+        "Projectile Acceleration III",
+        "Elemental Armament II",
+        "Pinpoint Critical",
+        "Rakiata's Flow"
+      ],
+      "dps": [
+        {
+          "name": "Twister",
+          "dps": 143711,
+          "dotDps": 193,
+          "damageTypes": [
+            15,
+            37,
+            30,
+            18,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Sniper's Mark",
+        "Charged Mark",
+        "Charge Profusion II",
+        "Eternal Mark",
+        "Cooldown Recovery II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Righteous Descent",
+        "Close Combat II",
+        "Elemental Armament II",
+        "Culling Strike II"
+      ],
+      "dps": [
+        {
+          "name": "Righteous Descent",
+          "dps": 13552,
+          "dotDps": 250,
+          "damageTypes": [
+            24,
+            39,
+            23,
+            14,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Purity of Fire",
+        "Vitality II",
+        "Cannibalism II",
+        "Clarity II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Ghost Dance",
+        "Cooldown Recovery II",
+        "Precision I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Combat Frenzy",
+        "Charge Profusion II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Trinity",
+        "Fire Mastery"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Spear Throw"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Spear Throw"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Charge Regulation"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Dance with Death"
+  ],
+  "level": 100,
+  "class": "Martial Artist",
+  "lastSeenUtc": "2026-06-07T15:53:18.98039Z",
+  "updatedUtc": "2026-06-05T19:01:27.973504Z"
+}

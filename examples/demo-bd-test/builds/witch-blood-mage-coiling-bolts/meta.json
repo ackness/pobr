@@ -1,0 +1,624 @@
+{
+  "name": "witch-blood-mage-coiling-bolts",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/BansheesVeil-4479/sotsunakuwRoA",
+    "account": "BansheesVeil-4479",
+    "character": "sotsunakuwRoA",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 98,
+    "main_skill": "Coiling Bolts"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 1,
+    "code_sha256": "88d6310d198addd6e6c5c036f4c629b3c49c01365fc4e32f7398f9371f40219f",
+    "code_chars": 12068,
+    "decoded_bytes": 49042
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Coiling Bolts",
+          "skill_id": "CoilingBoltsPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Chaos Mastery",
+          "skill_id": "SupportChaosMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Zenith II",
+          "skill_id": "SupportZenithPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Deliberation",
+          "skill_id": "SupportDeliberationPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Considered Casting",
+          "skill_id": "SupportConsideredCastingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Esh's Radiance",
+          "skill_id": "SupportEshsRadiancePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "2",
+      "gems": [
+        {
+          "name": "Cast on Critical",
+          "skill_id": "MetaCastOnCritPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Comet",
+          "skill_id": "CometPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Living Bomb",
+          "skill_id": "LivingBombPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Spell Cascade",
+          "skill_id": "SupportSpellCascadePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Boundless Energy II",
+          "skill_id": "SupportBoundlessEnergyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Atalui's Bloodletting",
+          "skill_id": "SupportAtaluiBloodlettingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Explosive Transmutation",
+          "skill_id": "ExplosiveTransmutationPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Physical Mastery",
+          "skill_id": "SupportPhysicalMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Spell Cascade",
+          "skill_id": "SupportSpellCascadePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Efficiency II",
+          "skill_id": "SupportEfficiencyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Blasphemy",
+          "skill_id": "BlasphemyPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Temporal Chains",
+          "skill_id": "TemporalChainsPlayer",
+          "level": 19,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Weakness",
+          "skill_id": "ElementalWeaknessPlayer",
+          "level": 19,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Repulsion",
+          "skill_id": "CurseOfRepulsionPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Enfeeble",
+          "skill_id": "EnfeeblePlayer",
+          "level": 19,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Ritualistic Curse",
+          "skill_id": "SupportRitualisticCursePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Despair",
+          "skill_id": "DespairPlayer",
+          "level": 21,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Ritualistic Curse",
+          "skill_id": "SupportRitualisticCursePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Doedre's Undoing",
+          "skill_id": "SupportDoedresUndoingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Spell Cascade",
+          "skill_id": "SupportSpellCascadePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Armour Break III",
+          "skill_id": "SupportArmourBreakPlayerThree",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Chaos Mastery",
+          "skill_id": "SupportChaosMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Life Remnants",
+          "skill_id": "LifeRemnantsPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Remnant Potency I",
+          "skill_id": "SupportInterludePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Harmonic Remnants II",
+          "skill_id": "SupportFleetingRemnantsPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Impurity",
+          "skill_id": "ImpurityPlayer",
+          "level": 15,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Seraph's Heart",
+          "skill_id": "SupportSeraphsHeartPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Her Declaration",
+          "skill_id": "SupportHerDeclarationPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Mana Remnants",
+          "skill_id": "ManaRemnantsPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Harmonic Remnants II",
+          "skill_id": "SupportFleetingRemnantsPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Remnant Potency I",
+          "skill_id": "SupportInterludePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Vulnerability",
+          "skill_id": "VulnerabilityPlayer",
+          "level": 19,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Efficiency II",
+          "skill_id": "SupportEfficiencyPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Remnants of Kalguur",
+          "skill_id": "MetaRemnantsOfKalguurPlayer",
+          "level": 20,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Remnant Potency I",
+          "skill_id": "SupportInterludePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Harmonic Remnants II",
+          "skill_id": "SupportFleetingRemnantsPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Withering Presence",
+          "skill_id": "WitheringPresencePlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Sigil of Power",
+          "skill_id": "SigilOfPowerPlayer",
+          "level": 16,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Life Remnants",
+          "skill_id": "LifeRemnantsPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Coiling Bolts",
+          "skill_id": "CoilingBoltsPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Sigil of Power",
+          "skill_id": "SigilOfPowerPlayer",
+          "level": 16,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Impurity",
+          "skill_id": "ImpurityPlayer",
+          "level": 15,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Cast on Critical",
+          "skill_id": "MetaCastOnCritPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageHit": 206919.51341416,
+    "AverageBurstDamage": 206919.51341416,
+    "Speed": 2.0,
+    "PreEffectiveCritChance": 72.45,
+    "CritChance": 72.45,
+    "CritMultiplier": 5.34,
+    "HitChance": 100.0,
+    "TotalDPS": 413839.02682832,
+    "TotalDot": 0.0,
+    "WithBleedDPS": 413839.02682832,
+    "IgniteDPS": 96.601646947328,
+    "WithIgniteDPS": 413935.62847527,
+    "WithPoisonDPS": 413839.02682832,
+    "TotalDotDPS": 96.601646947328,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 413935.62847527,
+    "ManaCost": 0.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 0.0,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 49.0,
+    "ReqStr": 45.0,
+    "Dex": 24.0,
+    "ReqDex": 10.0,
+    "Int": 182.0,
+    "ReqInt": 157.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 9152.6827258384,
+    "PhysicalMaximumHitTaken": 6900.0,
+    "LightningMaximumHitTaken": 8117.0,
+    "FireMaximumHitTaken": 8734.0,
+    "ColdMaximumHitTaken": 12777.0,
+    "ChaosMaximumHitTaken": 27599.0,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 2522.0,
+    "Spec:LifeInc": 11.0,
+    "LifeUnreserved": 2522.0,
+    "LifeRecoverable": 2522.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 31.3,
+    "LifeLeechGainRate": 504.4,
+    "Mana": 3537.0,
+    "Spec:ManaInc": 8.0,
+    "ManaUnreserved": 3537.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 92.0,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 340.0,
+    "SpiritUnreserved": -130.0,
+    "SpiritUnreservedPercent": -38.235294117647,
+    "EnergyShield": 0.0,
+    "EnergyShieldRecoveryCap": 0.0,
+    "Spec:EnergyShieldInc": 0.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 8.0,
+    "Spec:EvasionInc": 0.0,
+    "EvadeChance": 0.0,
+    "MeleeEvadeChance": 0.0,
+    "ProjectileEvadeChance": 0.0,
+    "SpellEvadeChance": 0.0,
+    "SpellProjectileEvadeChance": 0.0,
+    "DeflectionRating": 0.0,
+    "DeflectChance": 0.0,
+    "Armour": 0.0,
+    "Spec:ArmourInc": 0.0,
+    "PhysicalDamageReduction": 0.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 24.0,
+    "FireResistOverCap": 0.0,
+    "ColdResist": 49.0,
+    "ColdResistOverCap": 0.0,
+    "LightningResist": 18.0,
+    "LightningResistOverCap": 0.0,
+    "ChaosResist": 75.0,
+    "ChaosResistOverCap": 5.0,
+    "EffectiveMovementSpeedMod": 1.358,
+    "MovementSpeedWhileUsingSkill": 0.12222,
+    "PresenceRadiusMetres": 4.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 22
+}

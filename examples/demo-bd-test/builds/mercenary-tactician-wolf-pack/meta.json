@@ -1,0 +1,621 @@
+{
+  "name": "mercenary-tactician-wolf-pack",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Lorkant-2790/BAKDUSH",
+    "account": "Lorkant-2790",
+    "character": "BAKDUSH",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Tactician",
+    "level": 98,
+    "main_skill": "Wolf Pack"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 4,
+    "code_sha256": "acde6f7b106b327411bd5aa576af46380724d258694cdaaaf8fa2945db084a73",
+    "code_chars": 12008,
+    "decoded_bytes": 50319
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Mace Strike",
+          "skill_id": null,
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks I",
+          "skill_id": "SupportRapidAttacksPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Close Combat I",
+          "skill_id": "SupportCloseCombatPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pursuit I",
+          "skill_id": "SupportPursuitPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Punch Through",
+          "skill_id": "SupportPunchThroughPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Corrosion",
+          "skill_id": "SupportCorrosionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Mace Strike",
+          "skill_id": null,
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Attacks I",
+          "skill_id": "SupportRapidAttacksPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Close Combat I",
+          "skill_id": "SupportCloseCombatPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Pursuit I",
+          "skill_id": "SupportPursuitPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Punch Through",
+          "skill_id": "SupportPunchThroughPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Blindside",
+          "skill_id": "SupportBlindsidePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Defiance Banner",
+          "skill_id": "DefianceBannerReservationPlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Mobility",
+          "skill_id": "SupportMobilityPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Daresso's Passion",
+          "skill_id": "SupportDaressosPassionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Refraction II",
+          "skill_id": "SupportRefractionPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Wolf Pack",
+          "skill_id": "WolfPackPlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Amanamu's Tithe",
+          "skill_id": "SupportAmanamusTithePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Feeding Frenzy I",
+          "skill_id": "SupportFeedingFrenzyPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Infernal Legion II",
+          "skill_id": "SupportInfernalLegionPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Loyalty",
+          "skill_id": "SupportLoyaltyPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Blind I",
+          "skill_id": "SupportBlindPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Dread Banner",
+          "skill_id": "DreadBannerReservationPlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Mobility",
+          "skill_id": "SupportMobilityPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Expanse",
+          "skill_id": "SupportExpansePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "War Banner",
+          "skill_id": "WarBannerReservationPlayer",
+          "level": 17,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Mobility",
+          "skill_id": "SupportMobilityPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Expanse",
+          "skill_id": "SupportExpansePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Blasphemy",
+          "skill_id": "BlasphemyPlayer",
+          "level": 17,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Temporal Chains",
+          "skill_id": "TemporalChainsPlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Enfeeble",
+          "skill_id": "EnfeeblePlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Heightened Curse",
+          "skill_id": "SupportCurseEffectPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Time of Need",
+          "skill_id": "TimeOfNeedPlayer",
+          "level": 17,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Herbalism II",
+          "skill_id": "SupportHerbalismPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Vitality II",
+          "skill_id": "SupportVitalityPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Clarity II",
+          "skill_id": "SupportClarityPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Overwhelming Presence",
+          "skill_id": "OverwhelmingPresencePlayer",
+          "level": 17,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Warm Blooded",
+          "skill_id": "SupportWarmbloodedPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cool Headed",
+          "skill_id": "SupportCoolheadedPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Strong Hearted",
+          "skill_id": "SupportStrongHeartedPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Malice",
+          "skill_id": "MalicePlayer",
+          "level": 18,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Precision I",
+          "skill_id": "SupportPrecisionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Withering Presence",
+          "skill_id": "WitheringPresencePlayer",
+          "level": 18,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Chaos Mastery",
+          "skill_id": "SupportChaosMasteryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Alchemist's Boon",
+          "skill_id": "AlchemistsBoonPlayer",
+          "level": 14,
+          "quality": 20,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Malice",
+          "skill_id": "MalicePlayer",
+          "level": 18,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "",
+          "skill_id": "ThornsPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "ActiveMinionLimit": 0.0,
+    "AverageHit": 0.0,
+    "AverageBurstDamage": 0.0,
+    "Speed": 1.0,
+    "CritMultiplier": 2.0,
+    "HitChance": 100.0,
+    "TotalDPS": 0.0,
+    "TotalDot": 0.0,
+    "WithBleedDPS": 0.0,
+    "WithIgniteDPS": 0.0,
+    "WithPoisonDPS": 0.0,
+    "TotalDotDPS": 0.0,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 0.0,
+    "ManaCost": 0.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 0.0,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 401.0,
+    "ReqStr": 342.0,
+    "Dex": 104.0,
+    "ReqDex": 103.0,
+    "Int": 139.0,
+    "ReqInt": 137.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 116555.42960467,
+    "PhysicalMaximumHitTaken": 5313.0,
+    "LightningMaximumHitTaken": 15713.0,
+    "FireMaximumHitTaken": 15713.0,
+    "ColdMaximumHitTaken": 15713.0,
+    "ChaosMaximumHitTaken": 15307.0,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 2674.0,
+    "Spec:LifeInc": 10.0,
+    "LifeUnreserved": 2674.0,
+    "LifeRecoverable": 2674.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 53.5,
+    "LifeLeechGainRate": 0.0,
+    "Mana": 770.0,
+    "Spec:ManaInc": 5.0,
+    "ManaUnreserved": 770.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 31.3,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 336.0,
+    "SpiritUnreserved": 21.0,
+    "SpiritUnreservedPercent": 6.25,
+    "EnergyShield": 0.0,
+    "EnergyShieldRecoveryCap": 0.0,
+    "Spec:EnergyShieldInc": 0.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 16824.0,
+    "Spec:EvasionInc": 135.0,
+    "EvadeChance": 63.0,
+    "MeleeEvadeChance": 63.0,
+    "ProjectileEvadeChance": 63.0,
+    "SpellEvadeChance": 63.0,
+    "SpellProjectileEvadeChance": 63.0,
+    "DeflectionRating": 11791.52,
+    "DeflectChance": 60.0,
+    "Armour": 18580.0,
+    "Spec:ArmourInc": 230.0,
+    "PhysicalDamageReduction": 68.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 75.0,
+    "FireResistOverCap": 11.0,
+    "ColdResist": 75.0,
+    "ColdResistOverCap": 3.0,
+    "LightningResist": 75.0,
+    "LightningResistOverCap": 16.0,
+    "ChaosResist": 75.0,
+    "ChaosResistOverCap": 6.0,
+    "EffectiveMovementSpeedMod": 1.997,
+    "PresenceRadiusMetres": 12.0,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 23
+}

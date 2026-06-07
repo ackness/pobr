@@ -1,0 +1,237 @@
+{
+  "defensiveStats": {
+    "life": 1,
+    "energyShield": 8721,
+    "mana": 897,
+    "spirit": 433,
+    "movementSpeed": 133,
+    "lifeRegen": 0,
+    "evasionRating": 446,
+    "evadeChance": 5,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 1460,
+    "damageReductions": {
+      "physical": {
+        "value": 13,
+        "max": 90,
+        "effectiveAppliedArmour": 1460,
+        "base": 0,
+        "takenDamage": 965
+      },
+      "fire": {
+        "value": 2,
+        "max": 90,
+        "effectiveAppliedArmour": 219,
+        "base": 0,
+        "takenDamage": 965
+      },
+      "cold": {
+        "value": 2,
+        "max": 90,
+        "effectiveAppliedArmour": 219,
+        "base": 0,
+        "takenDamage": 965
+      },
+      "lightning": {
+        "value": 2,
+        "max": 90,
+        "effectiveAppliedArmour": 219,
+        "base": 0,
+        "takenDamage": 965
+      }
+    },
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 106,
+    "dexterity": 45,
+    "intelligence": 201,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 23312,
+    "physicalMaximumHitTaken": 8865,
+    "fireMaximumHitTaken": 27278,
+    "coldMaximumHitTaken": 31171,
+    "lightningMaximumHitTaken": 31171,
+    "chaosMaximumHitTaken": 2147483647,
+    "fireResistance": 71,
+    "fireResistanceOverCap": 0,
+    "fireResistanceMax": 75,
+    "coldResistance": 75,
+    "coldResistanceOverCap": 18,
+    "coldResistanceMax": 75,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 43,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 100,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 135,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 8865
+  },
+  "skills": [
+    {
+      "gems": [
+        "Spellslinger",
+        "Comet",
+        "Energy Retention",
+        "Boundless Energy II",
+        "Spell Cascade",
+        "Magnified Area II"
+      ],
+      "dps": [
+        {
+          "name": "Comet",
+          "dps": 63649,
+          "dotDps": 182,
+          "damageTypes": [
+            0,
+            4,
+            87,
+            9,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Spell Totem",
+        "Grim Pillars",
+        "Vorana's Siege",
+        "Rakiata's Flow",
+        "Urgent Totems III",
+        "Efficiency II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Entangle",
+        "Branching Fissures II",
+        "Mórrigan's Insight",
+        "Magnified Area II",
+        "Rapid Casting II",
+        "Living Lightning II"
+      ],
+      "dps": [
+        {
+          "name": "Entangle",
+          "dps": 479,
+          "dotDps": 0,
+          "damageTypes": [
+            15,
+            7,
+            58,
+            20,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Frost Bomb",
+        "Efficiency II",
+        "Short Fuse II",
+        "Spell Cascade",
+        "Overabundance I"
+      ],
+      "dps": [
+        {
+          "name": "Frost Bomb",
+          "dps": 2927,
+          "dotDps": 1,
+          "damageTypes": [
+            0,
+            4,
+            87,
+            9,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Blasphemy",
+        "Temporal Chains",
+        "Magnified Area II",
+        "Cursed Ground",
+        "Ritualistic Curse"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Mana Remnants",
+        "Harmonic Remnants II",
+        "Remnant Potency III",
+        "Clarity I",
+        "Mysticism I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Mana Tempest",
+        "Cooldown Recovery II",
+        "Efficiency II",
+        "Advancing Storm",
+        "Lightning Mastery"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Refutation",
+        "Efficiency II",
+        "Prolonged Duration II",
+        "Rapid Casting II",
+        "Cooldown Recovery II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Elemental Weakness",
+        "Ritualistic Curse",
+        "Efficiency II",
+        "Heightened Curse"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Malice"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Blink"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Ancestral Bond",
+    "Chaos Inoculation"
+  ],
+  "level": 98,
+  "class": "Oracle",
+  "lastSeenUtc": null,
+  "updatedUtc": "2026-06-07T08:58:04.948847Z"
+}

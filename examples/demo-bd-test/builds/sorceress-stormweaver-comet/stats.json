@@ -1,0 +1,270 @@
+{
+  "defensiveStats": {
+    "life": 1581,
+    "energyShield": 987,
+    "mana": 2367,
+    "spirit": 351,
+    "movementSpeed": 138,
+    "lifeRegen": 0,
+    "evasionRating": 238,
+    "evadeChance": 3,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 0,
+    "damageReductions": {},
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 38,
+    "dexterity": 84,
+    "intelligence": 205,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 4,
+    "effectiveHealthPool": 12979,
+    "physicalMaximumHitTaken": 5825,
+    "fireMaximumHitTaken": 18203,
+    "coldMaximumHitTaken": 20804,
+    "lightningMaximumHitTaken": 20804,
+    "chaosMaximumHitTaken": 21326,
+    "fireResistance": 71,
+    "fireResistanceOverCap": 0,
+    "fireResistanceMax": 75,
+    "coldResistance": 75,
+    "coldResistanceOverCap": 4,
+    "coldResistanceMax": 75,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 1,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 75,
+    "chaosResistanceOverCap": 12,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 61,
+    "physicalTakenAs": {
+      "physical": 100,
+      "lightning": 0,
+      "fire": 0,
+      "cold": 0,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 5825
+  },
+  "skills": [
+    {
+      "gems": [
+        "Elemental Storm",
+        "Cooldown Recovery II",
+        "Fire Exposure",
+        "Potent Exposure",
+        "Commiserate",
+        "Arbiter's Ignition"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Spark",
+        "Pinpoint Critical",
+        "Rapid Casting II",
+        "Vilenta's Propulsion",
+        "Pierce III",
+        "Mobility"
+      ],
+      "dps": [
+        {
+          "name": "Spark",
+          "dps": 8770,
+          "dotDps": 87,
+          "damageTypes": [
+            0,
+            76,
+            17,
+            0,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Cast on Elemental Ailment",
+        "Comet",
+        "Living Bomb",
+        "Boundless Energy II",
+        "Spell Cascade",
+        "Flame Wall"
+      ],
+      "dps": [
+        {
+          "name": "Comet",
+          "dps": 14196,
+          "dotDps": 1258,
+          "damageTypes": [
+            0,
+            4,
+            87,
+            0,
+            9
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Arctic Armour",
+        "Cold Mastery",
+        "Freeze",
+        "Knockback",
+        "Bounty II",
+        "Pinpoint Critical"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Frost Bomb",
+        "Spell Cascade",
+        "Short Fuse II",
+        "Harmonic Remnants II",
+        "Cooldown Recovery II",
+        "Spell Echo"
+      ],
+      "dps": [
+        {
+          "name": "Frost Bomb",
+          "dps": 1106,
+          "dotDps": 6,
+          "damageTypes": [
+            0,
+            4,
+            89,
+            0,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Cast on Critical",
+        "Comet",
+        "Living Bomb",
+        "Boundless Energy II",
+        "Pinpoint Critical",
+        "Spell Cascade"
+      ],
+      "dps": [
+        {
+          "name": "Comet",
+          "dps": 19199,
+          "dotDps": 1910,
+          "damageTypes": [
+            0,
+            4,
+            87,
+            0,
+            9
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Elemental Invocation",
+        "Spark",
+        "Pierce III",
+        "Projectile Acceleration III",
+        "Pinpoint Critical",
+        "Boundless Energy II"
+      ],
+      "dps": [
+        {
+          "name": "Spark",
+          "dps": 10571,
+          "dotDps": 133,
+          "damageTypes": [
+            0,
+            75,
+            16,
+            0,
+            9
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Purity of Fire",
+        "Cool Headed",
+        "Clarity II",
+        "Strong Hearted",
+        "Warm Blooded"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Firestorm",
+        "Unleash",
+        "Spell Cascade",
+        "Spell Echo",
+        "Overabundance II"
+      ],
+      "dps": [
+        {
+          "name": "Firestorm",
+          "dps": 5558,
+          "dotDps": 31,
+          "damageTypes": [
+            0,
+            0,
+            13,
+            79,
+            8
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Siphon Elements",
+        "Harmonic Remnants II",
+        "Remnant Potency I",
+        "Khatal's Rejuvenation"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Pinnacle of Power",
+        "Prolonged Duration II",
+        "Heightened Charges"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Mana Remnants",
+        "Harmonic Remnants II",
+        "Remnant Potency I"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Power Siphon"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [
+    "Mind Over Matter"
+  ],
+  "level": 98,
+  "class": "Stormweaver",
+  "lastSeenUtc": "2026-06-07T15:53:19.096534Z",
+  "updatedUtc": "2026-06-07T15:23:15.353366Z"
+}

@@ -1,0 +1,271 @@
+{
+  "defensiveStats": {
+    "life": 3151,
+    "energyShield": 757,
+    "mana": 662,
+    "spirit": 250,
+    "movementSpeed": 149,
+    "lifeRegen": 194,
+    "evasionRating": 7299,
+    "evadeChance": 44,
+    "evadeChanceMax": 95,
+    "enemyAccuracy": 2114,
+    "baseEvadeChance": 0,
+    "armour": 2009,
+    "damageReductions": {
+      "physical": {
+        "value": 18,
+        "max": 90,
+        "effectiveAppliedArmour": 2009,
+        "base": 0,
+        "takenDamage": 924
+      }
+    },
+    "deflectChance": 0,
+    "deflectChanceMax": 95,
+    "deflectionRating": 0,
+    "deflectEffect": 40,
+    "strength": 128,
+    "dexterity": 163,
+    "intelligence": 90,
+    "enduranceCharges": 3,
+    "frenzyCharges": 3,
+    "powerCharges": 3,
+    "effectiveHealthPool": 15887,
+    "physicalMaximumHitTaken": 4252,
+    "fireMaximumHitTaken": 13957,
+    "coldMaximumHitTaken": 13957,
+    "lightningMaximumHitTaken": 13957,
+    "chaosMaximumHitTaken": 7353,
+    "fireResistance": 75,
+    "fireResistanceOverCap": 12,
+    "fireResistanceMax": 75,
+    "coldResistance": 75,
+    "coldResistanceOverCap": 2,
+    "coldResistanceMax": 75,
+    "lightningResistance": 75,
+    "lightningResistanceOverCap": 10,
+    "lightningResistanceMax": 75,
+    "chaosResistance": 52,
+    "chaosResistanceOverCap": 0,
+    "chaosResistanceMax": 75,
+    "blockChance": 0,
+    "itemRarity": 98,
+    "physicalTakenAs": {
+      "physical": 95,
+      "lightning": 1.6666666,
+      "fire": 1.6666666,
+      "cold": 1.6666666,
+      "chaos": 0
+    },
+    "lowestMaximumHitTaken": 4252
+  },
+  "skills": [
+    {
+      "gems": [
+        "Crossbow Shot",
+        "Multishot II",
+        "Bleed II",
+        "Fire Attunement",
+        "Defy II",
+        "Deliberation"
+      ],
+      "dps": [
+        {
+          "name": "Crossbow Shot",
+          "dps": 33069,
+          "dotDps": 3890,
+          "damageTypes": [
+            47,
+            15,
+            10,
+            28,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Crossbow Shot",
+        "Rapid Attacks III",
+        "Rage III",
+        "Defy II",
+        "Longshot II",
+        "Deliberation"
+      ],
+      "dps": [
+        {
+          "name": "Crossbow Shot",
+          "dps": 36671,
+          "dotDps": 10,
+          "damageTypes": [
+            43,
+            29,
+            19,
+            9,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Explosive Grenade",
+        "Vorana's Siege",
+        "Payload",
+        "Rakiata's Flow",
+        "Innervate",
+        "Elemental Armament II"
+      ],
+      "dps": [
+        {
+          "name": "Explosive Grenade",
+          "dps": 55904,
+          "dotDps": 614,
+          "damageTypes": [
+            3,
+            22,
+            33,
+            42,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Flash Grenade",
+        "Magnified Area II",
+        "Lightning Penetration",
+        "Lightning Attunement",
+        "Short Fuse II",
+        "Elemental Armament II"
+      ],
+      "dps": [
+        {
+          "name": "Flash Grenade",
+          "dps": 9465,
+          "dotDps": 1,
+          "damageTypes": [
+            34,
+            53,
+            9,
+            4,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Cluster Grenade",
+        "Short Fuse I",
+        "Magnified Area II",
+        "Efficiency II",
+        "Multishot II",
+        "Elemental Armament II"
+      ],
+      "dps": [
+        {
+          "name": "Cluster Grenade",
+          "dps": 5478,
+          "dotDps": 17,
+          "damageTypes": [
+            30,
+            30,
+            20,
+            20,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Explosive Shot",
+        "Elemental Armament II",
+        "Rapid Attacks II",
+        "Multishot II",
+        "Magnified Area II",
+        "Mobility"
+      ],
+      "dps": [
+        {
+          "name": "Explosive Shot",
+          "dps": 17659,
+          "dotDps": 93,
+          "damageTypes": [
+            24,
+            30,
+            20,
+            26,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "gems": [
+        "Herald of Thunder",
+        "Longshot II",
+        "Elemental Armament II",
+        "Elemental Focus",
+        "Magnified Area II",
+        "Pinpoint Critical"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Mirage Archer",
+        "Explosive Grenade",
+        "Elemental Armament II",
+        "Cooldown Recovery II",
+        "Prolonged Duration II",
+        "Magnified Area II"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Sorcery Ward",
+        "Fire Mastery",
+        "Armour Demolisher II",
+        "Slow Potency"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Trinity",
+        "Dialla's Desire",
+        "Fire Mastery"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Virtuous Barrier"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Eternal Rage"
+      ],
+      "dps": []
+    },
+    {
+      "gems": [
+        "Berserk"
+      ],
+      "dps": []
+    }
+  ],
+  "keystones": [],
+  "level": 98,
+  "class": "Gemling Legionnaire",
+  "lastSeenUtc": "2026-06-07T15:53:19.812137Z",
+  "updatedUtc": "2026-06-07T00:16:04.610479Z"
+}

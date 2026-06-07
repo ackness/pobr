@@ -1,0 +1,540 @@
+{
+  "name": "sorceress-chronomancer-essence-drain",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/runesofaldur/character/HoodwinkTheSlayer-7436/%D1%81%D0%B8%D0%BB%D1%8C%D0%BD%D0%B5%D0%B9%D1%88%D0%B8%D0%B9%D0%BD%D0%B5%D0%B3%D1%80",
+    "account": "HoodwinkTheSlayer-7436",
+    "character": "сильнейшийнегр",
+    "league": "Runes of Aldur",
+    "game_version": "0.5.0",
+    "fetched_at": "2026-06-07"
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Chronomancer",
+    "level": 98,
+    "main_skill": "Essence Drain"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 3,
+    "code_sha256": "b04fb30633a0abbeaaf7776726c4d440ef4790a89127c764574813a3992b677a",
+    "code_chars": 11240,
+    "decoded_bytes": 43647
+  },
+  "skill_groups": [
+    {
+      "index": 1,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Blasphemy",
+          "skill_id": "BlasphemyPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Temporal Chains",
+          "skill_id": "TemporalChainsPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Ritualistic Curse",
+          "skill_id": "SupportRitualisticCursePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Elemental Weakness",
+          "skill_id": "ElementalWeaknessPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Enfeeble",
+          "skill_id": "EnfeeblePlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Time Freeze",
+          "skill_id": "TimeFreezePlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting II",
+          "skill_id": "SupportRapidCastingPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area II",
+          "skill_id": "SupportMagnifiedAreaPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Essence Drain",
+          "skill_id": "EssenceDrainPlayer",
+          "level": 14,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Chain I",
+          "skill_id": "SupportChainPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Considered Casting",
+          "skill_id": "SupportConsideredCastingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Swift Affliction I",
+          "skill_id": "SupportSwiftAfflictionPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Contagion",
+          "skill_id": "ContagionPlayer",
+          "level": 12,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Rapid Casting I",
+          "skill_id": "SupportRapidCastingPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Magnified Area I",
+          "skill_id": "SupportMagnifiedAreaPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Unleash",
+          "skill_id": null,
+          "level": 0,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Frost Bomb",
+          "skill_id": "FrostBombPlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Short Fuse II",
+          "skill_id": "SupportShortFusePlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Potent Exposure",
+          "skill_id": "SupportPotentExposurePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Overabundance I",
+          "skill_id": "SupportIncreaseLimitPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Overwhelming Presence",
+          "skill_id": "OverwhelmingPresencePlayer",
+          "level": 9,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Cool Headed",
+          "skill_id": "SupportCoolheadedPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Warm Blooded",
+          "skill_id": "SupportWarmbloodedPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Strong Hearted",
+          "skill_id": "SupportStrongHeartedPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Convalescence",
+          "skill_id": "ConvalescencePlayer",
+          "level": 19,
+          "quality": 20,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Time Snap",
+          "skill_id": "TimeSnapPlayer",
+          "level": 20,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery I",
+          "skill_id": "SupportCooldownRecoveryPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Malice",
+          "skill_id": "MalicePlayer",
+          "level": 18,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Prolonged Duration II",
+          "skill_id": "ProlongedDurationSupportPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Time of Need",
+          "skill_id": "TimeOfNeedPlayer",
+          "level": 10,
+          "quality": 0,
+          "enabled": true
+        },
+        {
+          "name": "Cooldown Recovery II",
+          "skill_id": "SupportCooldownRecoveryPlayerTwo",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Discipline",
+          "skill_id": "DisciplinePlayer",
+          "level": 16,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "enabled": true,
+      "main_active_skill": "1",
+      "gems": [
+        {
+          "name": "Barkskin",
+          "skill_id": "BarkskinPlayer",
+          "level": 12,
+          "quality": 20,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Time Freeze",
+          "skill_id": "TimeFreezePlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Time Snap",
+          "skill_id": "TimeSnapPlayer",
+          "level": 1,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Malice",
+          "skill_id": "MalicePlayer",
+          "level": 18,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "enabled": true,
+      "main_active_skill": "nil",
+      "gems": [
+        {
+          "name": "Discipline",
+          "skill_id": "DisciplinePlayer",
+          "level": 16,
+          "quality": 0,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "player_stats": {
+    "AverageHit": 0.0,
+    "AverageBurstDamage": 0.0,
+    "Speed": 1.15,
+    "PreEffectiveCritChance": 18.19,
+    "CritChance": 18.19,
+    "CritMultiplier": 2.0,
+    "HitChance": 100.0,
+    "TotalDPS": 0.0,
+    "TotalDot": 334.99957333333,
+    "WithDotDPS": 334.99957333333,
+    "WithBleedDPS": 0.0,
+    "WithIgniteDPS": 0.0,
+    "WithPoisonDPS": 0.0,
+    "TotalDotDPS": 334.99957333333,
+    "CullingDPS": 0.0,
+    "ReservationDPS": 0.0,
+    "CombinedDPS": 334.99957333333,
+    "ManaCost": 34.0,
+    "ManaPercentCost": 0.0,
+    "ManaPerSecondCost": 39.1,
+    "ManaPercentPerSecondCost": 0.0,
+    "LifeCost": 0.0,
+    "LifePercentCost": 0.0,
+    "LifePerSecondCost": 0.0,
+    "LifePercentPerSecondCost": 0.0,
+    "ESCost": 0.0,
+    "ESPerSecondCost": 0.0,
+    "ESPercentPerSecondCost": 0.0,
+    "RageCost": 0.0,
+    "SoulCost": 0.0,
+    "Str": 75.0,
+    "ReqStr": 64.0,
+    "Dex": 94.0,
+    "ReqDex": 91.0,
+    "Int": 148.0,
+    "ReqInt": 147.0,
+    "Devotion": 0.0,
+    "Tribute": 0.0,
+    "TotalEHP": 58624.443034902,
+    "PhysicalMaximumHitTaken": 20275.0,
+    "LightningMaximumHitTaken": 71617.0,
+    "FireMaximumHitTaken": 71617.0,
+    "ColdMaximumHitTaken": 71617.0,
+    "ChaosMaximumHitTaken": Infinity,
+    "Darkness": 0.0,
+    "ReservedDarkness": 0.0,
+    "Life": 1.0,
+    "Spec:LifeInc": 5.0,
+    "LifeUnreserved": 1.0,
+    "LifeRecoverable": 1.0,
+    "LifeUnreservedPercent": 100.0,
+    "LifeRegenRecovery": 15.1,
+    "LifeLeechGainRate": 0.0,
+    "Mana": 832.0,
+    "Spec:ManaInc": -10.0,
+    "ManaUnreserved": 832.0,
+    "ManaUnreservedPercent": 100.0,
+    "ManaRegenRecovery": 20.6,
+    "ManaLeechGainRate": 0.0,
+    "Spirit": 336.0,
+    "SpiritUnreserved": 6.0,
+    "SpiritUnreservedPercent": 1.7857142857143,
+    "EnergyShield": 13204.0,
+    "EnergyShieldRecoveryCap": 13204.0,
+    "Spec:EnergyShieldInc": 486.0,
+    "EnergyShieldRegenRecovery": 0.0,
+    "EnergyShieldLeechGainRate": 0.0,
+    "RageRegenRecovery": 0.0,
+    "Evasion": 989.0,
+    "Spec:EvasionInc": 0.0,
+    "EvadeChance": 10.0,
+    "MeleeEvadeChance": 10.0,
+    "ProjectileEvadeChance": 10.0,
+    "SpellEvadeChance": 10.0,
+    "SpellProjectileEvadeChance": 10.0,
+    "DeflectionRating": 0.0,
+    "DeflectChance": 0.0,
+    "Armour": 2254.0,
+    "Spec:ArmourInc": 95.0,
+    "PhysicalDamageReduction": 19.0,
+    "EffectiveBlockChance": 0.0,
+    "EffectiveSpellBlockChance": 0.0,
+    "AttackDodgeChance": 0.0,
+    "SpellDodgeChance": 0.0,
+    "EffectiveSpellSuppressionChance": 0.0,
+    "FireResist": 75.0,
+    "FireResistOverCap": 7.0,
+    "ColdResist": 75.0,
+    "ColdResistOverCap": 3.0,
+    "LightningResist": 75.0,
+    "LightningResistOverCap": 19.0,
+    "ChaosResist": 8.0,
+    "ChaosResistOverCap": 0.0,
+    "EffectiveMovementSpeedMod": 1.29,
+    "MovementSpeedWhileUsingSkill": 0.387,
+    "PresenceRadiusMetres": 13.9,
+    "FullDPS": 0.0,
+    "FullDotDPS": 0.0,
+    "PowerCharges": 0.0,
+    "PowerChargesMax": 3.0,
+    "FrenzyCharges": 0.0,
+    "FrenzyChargesMax": 3.0,
+    "EnduranceCharges": 0.0,
+    "EnduranceChargesMax": 3.0
+  },
+  "item_count": 18
+}
