@@ -37,6 +37,11 @@ use crate::build_code::decode_pob_code;
 use crate::error::{BuildError, XmlError};
 use crate::xml_serde::parse_build_header;
 
+/// 槽位装备 + 珠宝（无固定槽位）的解析产物。
+type EquippedAndJewels = (Vec<(EquipmentSlot, Item)>, Vec<Item>);
+/// 装备槽分配（槽位 → item_id）+ 珠宝 item_id 列表。
+type SlotAssignments = (Vec<(EquipmentSlot, u32)>, Vec<u32>);
+
 /// 把一份 PoB Build Code 直接解析为完整 [`Build`]（decode → XML → 解析）。
 ///
 /// 等价于 `parse_build(&decode_pob_code(code)?)`，是上层导入最常用的一步入口。
@@ -196,7 +201,7 @@ fn parse_node_csv(value: &str) -> Vec<NodeId> {
 
 /// 抽取 `<Item id>` 文本块并按 `<Items activeItemSet>` 选中的 `<ItemSet>` 槽位映射，
 /// 返回 `(EquipmentSlot, Item)` 列表（按槽位 id 字典序，确定性）。
-fn parse_items_and_slots(xml: &str) -> Result<(Vec<(EquipmentSlot, Item)>, Vec<Item>), XmlError> {
+fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
     let items = parse_item_blocks(xml)?;
     let (slot_assignments, jewel_ids) = parse_active_item_set(xml)?;
 
@@ -306,7 +311,7 @@ fn item_set_data(e: &BytesStart<'_>) -> ItemSetData {
 /// 解析 `<Items activeItemSet>` 选中的 `<ItemSet>`，返回 `(装备槽映射, 珠宝 item_id 列表)`。
 /// `itemId="0"`（空槽）与枚举外槽名被忽略；武器组按该组 `useSecondWeaponSet` 切换；
 /// `Jewel*` / `*Socket*` 槽位的物品收入珠宝列表（全局词条注入，见 orchestrator）。
-fn parse_active_item_set(xml: &str) -> Result<(Vec<(EquipmentSlot, u32)>, Vec<u32>), XmlError> {
+fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
