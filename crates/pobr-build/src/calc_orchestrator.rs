@@ -205,13 +205,29 @@ pub fn calculate_with_data(
         base_input.base_hit_min += w.phys_min * dmg_mult;
         base_input.base_hit_max += w.phys_max * dmg_mult;
         if w.attack_rate > 0.0 {
-            base_input.base_action_rate = w.attack_rate;
+            // 技能 attackSpeedMultiplier（PoB GrantedEffectsPerLevel，可负）作用于武器攻击速率
+            // （CalcOffence L2721-2723：`source.AttackRate × (1 + mult/100)`，如 Flicker -50）。
+            let asm = main_skill
+                .as_ref()
+                .and_then(|(s, _)| s.attack_speed_multiplier)
+                .map_or(1.0, |m| 1.0 + m / 100.0);
+            base_input.base_action_rate = w.attack_rate * asm;
         }
     }
 
     // 冷却限速：有冷却的技能（如 grenade 5s）每次冷却才发一次，行动速率上限 1/cooldown
     // （近似，未计 stored uses）。否则攻击/施放速率会高出 PoB2 一个数量级。
-    if let Some((skill, _)) = &main_skill
+    // 例外：消耗充能重置冷却的技能（如 Flicker Strike，`SkillConsumesPowerChargesOnUse`）
+    // 绕过冷却（PoB2 Cooldown=nil），按攻击速率出手，**不限速**。
+    let bypasses_cooldown = main_effect
+        .map(|e| {
+            e.skill_types
+                .iter()
+                .any(|t| t == "SkillConsumesPowerChargesOnUse")
+        })
+        .unwrap_or(false);
+    if !bypasses_cooldown
+        && let Some((skill, _)) = &main_skill
         && let Some(cd) = skill.cooldown_s
         && cd > 0.0
     {
@@ -249,6 +265,11 @@ pub fn calculate_with_data(
     if let Some((skill, group)) = &main_skill {
         session.add_modifiers(skill_base_modifiers(skill));
         session.add_modifiers(support_modifiers(group, data));
+        // 技能/辅助专属的硬编码攻速 more（PoB statMap 写死，对应数据 stat-set 当前缺失）：
+        // Flicker Strike +285%（act_int.lua flag→Speed MORE 285）、Hit and Run +40%。
+        if let Some(id) = group.active_skill_id.as_deref() {
+            session.add_modifiers(hardcoded_skill_speed_mods(id, group));
+        }
     }
 
     // 1b-ii. 技能伤害倍率 → `AddedDamage` MORE，使**附加 flat 伤害**（武器+装备 added）
@@ -783,6 +804,32 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
 /// 当前作用域为**全局**（单主技能 build 下口径正确：所有 support 倍率作用于唯一计算技能）；
 /// 多主技能的按技能 tag 隔离（仅作用于被支援技能）待 flag 系统接入后细化。active 主技能
 /// 自身伤害已由 [`skill_base_modifiers`] 注入，此处只处理 support。
+/// 技能/辅助专属的**硬编码攻速 more**（PoB 在 statMap 里写死、对应数据 stat-set 当前缺失）。
+/// 注入为 `AttackSpeed` MORE（offence 的 action_rate 读取 [AttackSpeed, ActionSpeed] 的 more）。
+/// 数据补全后应改为 stat 驱动（flag stat → MORE 映射）；此处为 parity 桥接。
+fn hardcoded_skill_speed_mods(main_skill_id: &str, group: &SocketGroup) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    let mk = |value: f64, label: &str| {
+        let origin = ModifierSource::new(SourceId::new(SourceKind::SkillGem, "speed.hardcode"))
+            .with_raw_text(label);
+        Modifier::number("AttackSpeed", ModType::More, value).with_origin(origin)
+    };
+    // Flicker Strike：+285% more 攻速（PoB act_int.lua statMap 把 flag stat
+    // `base_skill_show_average_damage_instead_of_dps` 映射成 mod Speed MORE 285）。
+    if main_skill_id == "FlickerStrikePlayer" {
+        mods.push(mk(285.0, "Flicker Strike base attack speed"));
+    }
+    // SupportHitAndRun：+40% more 攻速。
+    if group
+        .gem_skills
+        .iter()
+        .any(|g| g.skill_id == "SupportHitAndRunPlayer")
+    {
+        mods.push(mk(40.0, "Hit and Run support attack speed"));
+    }
+    mods
+}
+
 fn support_modifiers(group: &SocketGroup, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     for gem in &group.gem_skills {
