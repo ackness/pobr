@@ -67,10 +67,16 @@ fn fireball_base_damage_drives_nonzero_dps() {
     let out = calculate_with_data(&build, &build_data, &panel_opts())
         .expect("calculate_with_data should succeed for Fireball build");
 
-    // 无任何 increased/more 来源 → 平均击中 = (224 + 336) / 2 = 280。
+    // 无任何 increased/more 来源 → 非暴击平均击中 = (224 + 336) / 2 = 280。
+    let non_crit: f64 = out.damage_components.iter().map(|c| c.avg()).sum();
     assert!(
-        (out.total_hit_avg - 280.0).abs() < 1.0,
-        "Fireball L20 average hit should be ~280, got {}",
+        (non_crit - 280.0).abs() < 1.0,
+        "Fireball L20 non-crit hit should be ~280, got {non_crit}"
+    );
+    // total_hit_avg 含 Fireball 7% 基础暴击放大（PoB2 AverageDamage 为暴击加权）→ 略高于 280。
+    assert!(
+        out.total_hit_avg > 280.0,
+        "Fireball average hit should include base crit, got {}",
         out.total_hit_avg
     );
     // 行动速率来自 cast time 1.2s → 1/1.2 ≈ 0.833；命中率 > 0 → DPS > 0。
@@ -198,14 +204,23 @@ fn spell_skill_ignores_weapon() {
     let build_data = load_build_data();
     let opts = panel_opts();
 
+    let no_weapon =
+        calculate_with_data(&fireball_build(20), &build_data, &opts).expect("spell no weapon");
     let with_weapon =
         fireball_build(20).set_item(EquipmentSlot::Weapon1, bare_weapon("Crude Claw"));
     let out = calculate_with_data(&with_weapon, &build_data, &opts).expect("spell + weapon");
 
-    // Fireball L20 击中仍为 280（法术不吃武器基底）。
+    // 法术不吃武器基底伤害，也不吃武器基底暴击 → 装备武器后击中与无武器完全一致。
+    // （非暴击分量 = 280；total_hit_avg 含 Fireball 7% 技能基础暴击，但与武器无关。）
+    let non_crit: f64 = out.damage_components.iter().map(|c| c.avg()).sum();
     assert!(
-        (out.total_hit_avg - 280.0).abs() < 1.0,
-        "spell hit should ignore weapon base damage, got {}",
+        (non_crit - 280.0).abs() < 1.0,
+        "spell non-crit hit should ignore weapon base damage, got {non_crit}"
+    );
+    assert!(
+        (out.total_hit_avg - no_weapon.total_hit_avg).abs() < 1.0,
+        "spell hit should be weapon-independent: no-weapon {} vs with-weapon {}",
+        no_weapon.total_hit_avg,
         out.total_hit_avg
     );
 }

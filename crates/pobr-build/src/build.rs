@@ -43,6 +43,10 @@ pub struct SocketGroup {
     /// 该组**每个启用宝石**的授予效果引用（按 PoB Gem 列表顺序，含 active 与 support）；
     /// 供解析 support 宝石的分等级 stat（倍率/附加伤害）注入被支援技能。
     pub gem_skills: Vec<GemSkillRef>,
+    /// PoB `<Skill mainActiveSkill="N">`（**1-based**）：指向该组**非辅助技能列表**中的第 N 个
+    /// （meta/触发壳算入，support 不计入）。用于多主动技能组（如 Cast on Crit + Comet）里
+    /// 选中正确的主技能；`None`=未指定（退化为该组首个伤害技能）。
+    pub main_active_skill: Option<usize>,
 }
 
 impl SocketGroup {
@@ -54,6 +58,7 @@ impl SocketGroup {
             active_skill_id: None,
             active_gem_level: None,
             gem_skills: Vec::new(),
+            main_active_skill: None,
         }
     }
 
@@ -85,6 +90,12 @@ impl SocketGroup {
             skill_id: skill_id.into(),
             gem_level,
         });
+        self
+    }
+
+    /// 设定 PoB `mainActiveSkill`（1-based，索引该组非辅助技能列表）。
+    pub fn with_main_active_skill(mut self, n: usize) -> Self {
+        self.main_active_skill = Some(n);
         self
     }
 }

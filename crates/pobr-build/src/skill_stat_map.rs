@@ -47,6 +47,51 @@ pub fn map_skill_stat(stat: &str) -> Option<MappedStat> {
     map_base_damage(stat)
         .or_else(|| map_damage_percent(stat))
         .or_else(|| map_conversion(stat))
+        .or_else(|| map_critical(stat))
+        .or_else(|| map_penetration(stat))
+}
+
+/// 暴击缩放（support 宝石的**无条件** `_final` more 暴击修正，PoB2 statMap
+/// `mod("CritChance"/"CritMultiplier","MORE")`）：
+/// - `*critical_strike_chance_+%_final` → `CriticalStrikeChance` MORE（如 Pinpoint +60%）
+/// - `*critical_strike_multiplier_+%_final` / `*critical_*damage_+%_final`
+///   → `CriticalStrikeMultiplier` MORE（如 Pinpoint −30%）
+///
+/// 仅映射 `_final`（无条件 more 倍率，对应 constantStats）；非 `_final` 的暴击 `+%`（局部/
+/// 武器底材增量）不在技能 stat-set 注入路径，保守跳过避免重复计入。
+fn map_critical(stat: &str) -> Option<MappedStat> {
+    if stat.ends_with("critical_strike_chance_+%_final") {
+        return Some(MappedStat::new("CriticalStrikeChance", ModType::More));
+    }
+    // 爆伤：`critical_strike_multiplier_+%_final` 或 `critical_*damage_+%_final`。
+    if stat.ends_with("critical_strike_multiplier_+%_final")
+        || (stat.contains("critical") && stat.ends_with("damage_+%_final"))
+    {
+        return Some(MappedStat::new("CriticalStrikeMultiplier", ModType::More));
+    }
+    None
+}
+
+/// 穿透 / 降敌抗（offence.rs `apply_penetration` 消费 `<Type>Penetration` / `ElementalPenetration`
+/// BASE）。映射 support 宝石的无条件穿透 stat（如 `base_<type>_damage_resistance_penetration_%`、
+/// `elemental_damage_penetration_%`）。条件型 / 概率型（如 Rakiatas 的
+/// `treat_enemy_resistances_as_negated_..._%_chance`）不在此匹配，保守跳过。
+fn map_penetration(stat: &str) -> Option<MappedStat> {
+    let core = stat.strip_suffix("_damage_penetration_%")?;
+    let kind = if core.ends_with("elemental") {
+        "Elemental"
+    } else if core.ends_with("fire") {
+        "Fire"
+    } else if core.ends_with("cold") {
+        "Cold"
+    } else if core.ends_with("lightning") {
+        "Lightning"
+    } else if core.ends_with("chaos") {
+        "Chaos"
+    } else {
+        return None;
+    };
+    Some(MappedStat::new(format!("{kind}Penetration"), ModType::Base))
 }
 
 /// 技能自带转换 / gain-as-extra（PoB2 skill 阶段）：
@@ -156,7 +201,18 @@ fn damage_scope_mod_name(scope: &str) -> Option<String> {
         // 须与投射物数 DPS 乘区**成对**实现（否则单边惩罚回归），单 build 为 Mirage 复杂，暂不映射。
         "support_elemental"
         | "support_attack_skills_elemental"
-        | "support_spell_skills_elemental" => "ElementalDamage",
+        | "support_spell_skills_elemental"
+        // Elemental Focus（`support_gem_elemental`）：+% more 元素伤害（无条件，对应 PoB2
+        // statMap `mod("ElementalDamage","MORE")`；附带「无法造成元素异常」是独立 flag）。
+        | "support_gem_elemental" => "ElementalDamage",
+        // Melee Physical Damage（`support_melee_physical`）：+% more 物理伤害（PoB2
+        // `mod("PhysicalDamage","MORE", ModFlag.Melee)`）。映射到 PhysicalDamage MORE——近战
+        // 技能 cfg 已带 Melee flag，非近战技能不享此 support（数据上也只挂在近战 build）。
+        // 配套 attackSpeed_+%_final 走 speed 链路，伤害侧此处单独取。
+        "support_melee_physical" => "PhysicalDamage",
+        // Deliberation（`support_deliberation`）：+% more 通用伤害（无条件，PoB2
+        // `mod("Damage","MORE")`；移动惩罚是独立 stat，不影响伤害）。
+        "support_deliberation" => "Damage",
         // Concentrated Area：+% more 范围伤害（无条件）。映射到 AreaDamage（范围技能经
         // cfg AREA flag 聚合）。stat `support_area_concentrate_area_damage_+%_final`。
         "support_area_concentrate_area" => "AreaDamage",
@@ -211,6 +267,59 @@ mod tests {
         assert_eq!(
             map_skill_stat("fire_damage_+%_final").unwrap(),
             MappedStat::new("FireDamage", ModType::More)
+        );
+    }
+
+    #[test]
+    fn maps_unconditional_support_more_scopes() {
+        // Elemental Focus → ElementalDamage MORE
+        assert_eq!(
+            map_skill_stat("support_gem_elemental_damage_+%_final").unwrap(),
+            MappedStat::new("ElementalDamage", ModType::More)
+        );
+        // Melee Physical Damage → PhysicalDamage MORE
+        assert_eq!(
+            map_skill_stat("support_melee_physical_damage_+%_final").unwrap(),
+            MappedStat::new("PhysicalDamage", ModType::More)
+        );
+        // Deliberation → Damage MORE
+        assert_eq!(
+            map_skill_stat("support_deliberation_damage_+%_final").unwrap(),
+            MappedStat::new("Damage", ModType::More)
+        );
+    }
+
+    #[test]
+    fn maps_pinpoint_critical_to_crit_more() {
+        // Pinpoint Critical 的两条无条件 _final 倍率（PoB2 CritChance/CritMultiplier MORE）。
+        assert_eq!(
+            map_skill_stat("support_pinpoint_critical_strike_chance_+%_final").unwrap(),
+            MappedStat::new("CriticalStrikeChance", ModType::More)
+        );
+        assert_eq!(
+            map_skill_stat("support_pinpoint_critical_strike_multiplier_+%_final").unwrap(),
+            MappedStat::new("CriticalStrikeMultiplier", ModType::More)
+        );
+        // critical_*damage_+%_final 也归爆伤 MORE。
+        assert_eq!(
+            map_skill_stat("support_critical_strike_damage_+%_final").unwrap(),
+            MappedStat::new("CriticalStrikeMultiplier", ModType::More)
+        );
+    }
+
+    #[test]
+    fn maps_penetration_to_typed_base() {
+        assert_eq!(
+            map_skill_stat("base_fire_damage_penetration_%").unwrap(),
+            MappedStat::new("FirePenetration", ModType::Base)
+        );
+        assert_eq!(
+            map_skill_stat("elemental_damage_penetration_%").unwrap(),
+            MappedStat::new("ElementalPenetration", ModType::Base)
+        );
+        assert_eq!(
+            map_skill_stat("chaos_damage_penetration_%").unwrap(),
+            MappedStat::new("ChaosPenetration", ModType::Base)
         );
     }
 

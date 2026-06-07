@@ -435,6 +435,14 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                         if let Some(slot) = attr_value(&e, b"slot") {
                             group = group.with_slot(slot);
                         }
+                        // PoB `mainActiveSkill`（1-based，索引该组非辅助技能列表）：标记多主动技能
+                        // 组（如 Cast on Crit + Comet）里指定的主技能；真正的「跳过 support/meta、
+                        // 按序号选」判定在 resolve_main_skill（那里有 granted_effect 数据）。
+                        if let Some(n) =
+                            attr_value(&e, b"mainActiveSkill").and_then(|v| v.parse::<usize>().ok())
+                        {
+                            group = group.with_main_active_skill(n);
+                        }
                         current = Some(group);
                     }
                     "Gem" if in_target_set => {

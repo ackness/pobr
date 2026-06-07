@@ -153,10 +153,11 @@ pub fn calculate_with_data(
 
     // 主技能类型 → cfg 伤害 flag（Attack/Spell/Projectile/Area/Melee），使
     // `increased <Projectile|Area|Spell|Melee> Damage` 对该技能生效（damage 聚合按 flag 取名）。
+    // 主技能效果定义：用 resolve_main_skill 解析出的**真实主技能 id**（已跳过 meta/触发壳），
+    // 而非组首个 gem 的 active_skill_id（多主动技能组里那是 meta 壳，会导致 flag/伤害类型错配）。
     let main_effect = main_skill
         .as_ref()
-        .and_then(|(_, group)| group.active_skill_id.as_deref())
-        .and_then(|id| data.granted_effects.get(id));
+        .and_then(|(_, _, skill_id)| data.granted_effects.get(*skill_id));
     let skill_flags = main_effect
         .map(|e| skill_type_flags(&e.skill_types))
         .unwrap_or(ModFlags::NONE);
@@ -196,7 +197,7 @@ pub fn calculate_with_data(
         .unwrap_or(false);
     let main_is_cooldown_bound = main_skill
         .as_ref()
-        .and_then(|(s, _)| s.cooldown_s)
+        .and_then(|(s, _, _)| s.cooldown_s)
         .is_some_and(|cd| cd > 0.0)
         && !main_bypasses_cd;
     if !main_is_cooldown_bound {
@@ -205,7 +206,7 @@ pub fn calculate_with_data(
         }
     }
     let mut base_input = options.base_input;
-    if let Some((skill, _)) = &main_skill
+    if let Some((skill, _, _)) = &main_skill
         && let Some(use_time) = skill.use_time_s
         && use_time > 0.0
     {
@@ -215,15 +216,15 @@ pub fn calculate_with_data(
     // 技能伤害倍率（PoB baseMultiplier，如 grenade 7.57）：放大武器击中 + 附加伤害。
     let dmg_mult = main_skill
         .as_ref()
-        .map(|(s, _)| s.damage_multiplier)
+        .map(|(s, _, _)| s.damage_multiplier)
         .filter(|m| *m > 0.0)
         .unwrap_or(1.0);
 
     // 武器基底贡献（仅攻击技能）：击中物理伤害（× 技能倍率）+ 攻击速率覆盖。
+    // 用解析出的真实主技能 id（跳过 meta 壳），确保攻击/法术判定与权重正确。
     let weapon = main_skill
         .as_ref()
-        .and_then(|(_, group)| group.active_skill_id.as_deref())
-        .and_then(|skill_id| weapon_contribution(build, data, skill_id));
+        .and_then(|(_, _, skill_id)| weapon_contribution(build, data, skill_id));
     if let Some(w) = &weapon {
         base_input.base_hit_min += w.phys_min * dmg_mult;
         base_input.base_hit_max += w.phys_max * dmg_mult;
@@ -232,16 +233,25 @@ pub fn calculate_with_data(
             // （CalcOffence L2721-2723：`source.AttackRate × (1 + mult/100)`，如 Flicker -50）。
             let asm = main_skill
                 .as_ref()
-                .and_then(|(s, _)| s.attack_speed_multiplier)
+                .and_then(|(s, _, _)| s.attack_speed_multiplier)
                 .map_or(1.0, |m| 1.0 + m / 100.0);
             base_input.base_action_rate = w.attack_rate * asm;
         }
     }
 
-    // 冷却限速：有冷却的技能（如 grenade 5s）每次冷却才发一次，行动速率上限 1/cooldown
-    // （近似，未计 stored uses）。否则攻击/施放速率会高出 PoB2 一个数量级。
-    // 例外：消耗充能重置冷却的技能（如 Flicker Strike，`SkillConsumesPowerChargesOnUse`）
-    // 绕过冷却（PoB2 Cooldown=nil），按攻击速率出手，**不限速**。
+    // 冷却限速：PoB 顺序——先把速度全部 inc/more 算完，再 `min(rate, 1/effective_cooldown)`
+    // （effective_cooldown 经 `CooldownRecovery` 缩短）。该 min 下沉到 offence.rs
+    // `apply_cooldown_cap`，读 `SkillCooldownBase` BASE（由 `skill_base_modifiers` 注入）+
+    // `CooldownRecovery`。法术（如 comet）直接走此正确口径。
+    //
+    // 例外 1（绕过冷却）：消耗充能重置冷却的技能（如 Flicker Strike，
+    // `SkillConsumesPowerChargesOnUse`）→ PoB2 Cooldown=nil，按攻速出手不限速 → `CooldownBypass`。
+    //
+    // 例外 2（攻击冷却·吞吐未建模）：grenade 这类冷却攻击，PoB2 的 Speed = 1/cooldown，
+    // 但 DPS 含未入库的吞吐倍率（GrenadeActivateTwice / 储存次数 ≈ ×1.5）。当前数据缺该倍率，
+    // 沿用历史近似——装配阶段把 base_rate 预截到 1/cooldown，再让攻速 inc/more 乘上去补偿吞吐，
+    // 并注入 `CooldownBypass` 让末端不再二次截断（否则会抹掉补偿因子）。数据补齐吞吐倍率后，
+    // 应删此分支、统一走正确末端 min。
     let bypasses_cooldown = main_effect
         .map(|e| {
             e.skill_types
@@ -249,8 +259,14 @@ pub fn calculate_with_data(
                 .any(|t| t == "SkillConsumesPowerChargesOnUse")
         })
         .unwrap_or(false);
-    if !bypasses_cooldown
-        && let Some((skill, _)) = &main_skill
+    let cooldown_attack_unmodeled = !bypasses_cooldown
+        && main_effect.map(|e| e.is_attack()).unwrap_or(false)
+        && main_skill
+            .as_ref()
+            .and_then(|(s, _, _)| s.cooldown_s)
+            .is_some_and(|cd| cd > 0.0);
+    if cooldown_attack_unmodeled
+        && let Some((skill, _, _)) = &main_skill
         && let Some(cd) = skill.cooldown_s
         && cd > 0.0
     {
@@ -261,6 +277,24 @@ pub fn calculate_with_data(
     }
 
     let mut session = CalculationSession::new(base_input).with_config(cfg);
+
+    if bypasses_cooldown || cooldown_attack_unmodeled {
+        let label = if bypasses_cooldown {
+            "skill bypasses cooldown (consumes charges on use)"
+        } else {
+            "cooldown attack: throughput unmodeled, legacy pre-cap retained"
+        };
+        let origin =
+            ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.cooldownBypass"))
+                .with_raw_text(label);
+        let mut flags = vec![Modifier::flag("CooldownBypass").with_origin(origin.clone())];
+        if cooldown_attack_unmodeled {
+            // 旧速度模型（仅 AttackSpeed/ActionSpeed，不含 SkillSpeed/CastSpeed）作为吞吐补偿的
+            // 校准基准——隔离到此数据缺口路径，避免 SkillSpeed 入桶后过度放大 grenade 速率。
+            flags.push(Modifier::flag("LegacyCooldownAttackSpeed").with_origin(origin));
+        }
+        session.add_modifiers(flags);
+    }
 
     // 1. 角色基础（等级 + 职业派生属性）→ CharacterBase 归因的 BASE modifier。
     if options.inject_character_base
@@ -285,14 +319,11 @@ pub fn calculate_with_data(
     }
 
     // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
-    if let Some((skill, group)) = &main_skill {
+    // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
+    // 不再有单技能硬编码。
+    if let Some((skill, group, _)) = &main_skill {
         session.add_modifiers(skill_base_modifiers(skill));
         session.add_modifiers(support_modifiers(group, data));
-        // 技能/辅助专属的硬编码攻速 more（PoB statMap 写死，对应数据 stat-set 当前缺失）：
-        // Flicker Strike +285%（act_int.lua flag→Speed MORE 285）、Hit and Run +40%。
-        if let Some(id) = group.active_skill_id.as_deref() {
-            session.add_modifiers(hardcoded_skill_mods(id, group));
-        }
     }
 
     // 1b-ii. 技能伤害倍率 → `AddedDamage` MORE，使**附加 flat 伤害**（武器+装备 added）
@@ -306,9 +337,15 @@ pub fn calculate_with_data(
         ]);
     }
 
-    // 1c. 武器基底暴击率 → Weapon1 归因的 BASE CritChance（攻击技能）。
+    // 1c. 武器基底暴击率 → Weapon1 归因的 BASE CritChance（**仅攻击技能**）。法术技能用自身
+    //     基础暴击（skill_base_modifiers 注入），不吃武器暴击——故主技能自带 crit_chance 时跳过。
+    let main_skill_has_own_crit = main_skill
+        .as_ref()
+        .map(|(s, _, _)| s.crit_chance.is_some_and(|c| c > 0.0))
+        .unwrap_or(false);
     if let Some(w) = &weapon
         && w.crit_chance > 0.0
+        && !main_skill_has_own_crit
     {
         let origin = ModifierSource::new(SourceId::new(SourceKind::Item, "weapon1.base"))
             .with_raw_text(format!("weapon base crit {}%", w.crit_chance));
@@ -456,46 +493,103 @@ pub fn calculate_with_data(
     Ok(session.output().clone())
 }
 
-/// 解析 build 的主技能分等级参数：取首个**已启用、带 active_skill_id 且解析出真实
-/// 使用时间**的宝石组，用其授予效果 id + 宝石等级查 [`BuildData::resolve_skill_level`]。
+/// 判定某授予效果是否为「可主动施放的伤害技能」候选：攻击或法术，且不是 meta/触发壳
+/// （`skill_types` 含 `"Meta"`，如 Cast on Crit / Mirage Deadeye）。
 ///
-/// 要求 `use_time_s.is_some()` 以跳过无独立施放时间的元/光环/守卫技能（如 Mirage
-/// Deadeye / Herald），选中真正可主动施放的伤害技能。找不到（无宝石组 / 未捕获
-/// skillId / 数据缺失 / 为辅助效果 / 均无使用时间）时返回 `None`，计算退化为无技能
-/// base（行动速率/消耗保持来自 base_input 的值）。
+/// PoB `socketGroupSkillList` 把全部非辅助宝石（含 meta 壳）当作主动技能项，`mainActiveSkill`
+/// 按序号在其中选；但 meta 壳本身无独立伤害/施放时间，需穿透到组内真正的伤害技能。本判定
+/// 通用按标签（is_attack/is_spell + 非 Meta）筛，绝不针对单个技能 id。
+fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
+    data.granted_effects
+        .get(skill_id)
+        .map(|e| (e.is_attack() || e.is_spell()) && !e.skill_types.iter().any(|t| t == "Meta"))
+        .unwrap_or(false)
+}
+
+/// 在单个宝石组内选出主技能 `(skill_id, gem_level)`：
+/// 1. 收集**非辅助**宝石（保持顺序，含 meta 壳）= PoB `socketGroupSkillList`。
+/// 2. 用 `main_active_skill`（1-based，缺省 1，越界 clamp）选第 N 个。
+/// 3. 若选中项是伤害技能 → 用它；否则（meta 壳 / 非伤害）穿透到组内首个伤害技能候选。
+/// 4. `gem_skills` 为空（仅由 builder 的 `with_active_skill` 构造、未填 gem_skills）时回退到
+///    `active_skill_id`——保持公共 builder/测试 API 的向后兼容。
 ///
-/// 注：主技能组选择当前为启发式（首个有使用时间的可施放技能），尚未解析 PoB 的
-/// `mainSocketGroup` / `mainActiveSkill` 指定——多主技能 build 的精确选择留待后续。
+/// 返回 `None` 表示该组无任何伤害技能候选（纯光环/meta 组），交由上层回退扫描其他组。
+fn pick_group_main_skill<'b>(
+    build_data: &BuildData,
+    group: &'b SocketGroup,
+) -> Option<(&'b str, u32)> {
+    // 非辅助宝石列表（meta 壳算入），与 PoB socketGroupSkillList 一致。`gem_skills` 存的是
+    // 授予效果 id，故经 granted_effects.is_support 判定（未知效果按非 support 处理，宁可保留）。
+    let actives: Vec<&crate::build::GemSkillRef> = group
+        .gem_skills
+        .iter()
+        .filter(|g| {
+            !build_data
+                .granted_effects
+                .get(&g.skill_id)
+                .map(|e| e.is_support)
+                .unwrap_or(false)
+        })
+        .collect();
+
+    if !actives.is_empty() {
+        // mainActiveSkill（1-based）→ 0-based，越界 clamp 到末项。
+        let idx = group
+            .main_active_skill
+            .unwrap_or(1)
+            .saturating_sub(1)
+            .min(actives.len() - 1);
+        let chosen = actives[idx];
+
+        // 指定项即伤害技能 → 直接用；否则（meta 壳等）穿透到组内首个伤害技能。
+        if is_damage_skill(build_data, &chosen.skill_id) {
+            return Some((chosen.skill_id.as_str(), chosen.gem_level));
+        }
+        if let Some(dmg) = actives
+            .iter()
+            .find(|g| is_damage_skill(build_data, &g.skill_id))
+        {
+            return Some((dmg.skill_id.as_str(), dmg.gem_level));
+        }
+        // gem_skills 非空但无伤害技能候选 → 该组无主技能（纯 meta/光环组）。
+        return None;
+    }
+
+    // 回退：无 gem_skills（builder/测试用 with_active_skill 构造）时用 active_skill_id。
+    group
+        .active_skill_id
+        .as_deref()
+        .map(|id| (id, group.active_gem_level.unwrap_or(1)))
+}
+
+/// 解析 build 的主技能分等级参数：优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+
+/// 组内 `mainActiveSkill` 选中真正的伤害技能（跳过 support 与 meta/触发壳），用其授予效果
+/// id + 宝石等级查 [`BuildData::resolve_skill_level`]。
+///
+/// 找不到（无宝石组 / 指定组无伤害技能 / 数据缺失）时回退扫描所有启用组，取首个有伤害技能
+/// 候选的组；仍无则返回 `None`，计算退化为无技能 base（行动速率/消耗保持来自 base_input）。
+///
+/// 通用性：候选判定全按技能标签（is_attack/is_spell/is_support + 非 Meta），不针对任何单个
+/// 技能 id；支持多主动技能组（如 Cast on Crit + Comet）按 `mainActiveSkill` 精确选中主技能。
 fn resolve_main_skill<'b>(
     build: &'b Build,
     data: &BuildData,
-) -> Option<(ResolvedSkillLevel, &'b SocketGroup)> {
-    // 优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）。指定组解析失败时回退启发式。
+) -> Option<(ResolvedSkillLevel, &'b SocketGroup, &'b str)> {
+    // 优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+ 组内 mainActiveSkill。
     if let Some(n) = build.main_socket_group
         && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
-        && let Some(skill_id) = &group.active_skill_id
-        && let Some(resolved) =
-            data.resolve_skill_level(skill_id, group.active_gem_level.unwrap_or(1))
+        && let Some((skill_id, level)) = pick_group_main_skill(data, group)
+        && let Some(resolved) = data.resolve_skill_level(skill_id, level)
     {
-        return Some((resolved, group));
+        return Some((resolved, group, skill_id));
     }
 
-    // 回退启发式：首个**伤害技能**（攻击或法术）组，跳过元/光环/守卫（非攻击非法术）。
-    // 攻击技能的使用时间来自武器（use_time_s 可为 None），故不用 use_time 作筛选。
+    // 回退：扫描所有启用组，取首个有伤害技能候选的组（同样按 mainActiveSkill 在组内选）。
     for group in build.enabled_socket_groups() {
-        if let Some(skill_id) = &group.active_skill_id {
-            let is_damage = data
-                .granted_effects
-                .get(skill_id)
-                .map(|e| e.is_attack() || e.is_spell())
-                .unwrap_or(false);
-            if !is_damage {
-                continue;
-            }
-            let level = group.active_gem_level.unwrap_or(1);
-            if let Some(resolved) = data.resolve_skill_level(skill_id, level) {
-                return Some((resolved, group));
-            }
+        if let Some((skill_id, level)) = pick_group_main_skill(data, group)
+            && let Some(resolved) = data.resolve_skill_level(skill_id, level)
+        {
+            return Some((resolved, group, skill_id));
         }
     }
     None
@@ -892,6 +986,18 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
     {
         mods.push(mk("SkillManaCostBase", mc, "main skill base mana cost"));
     }
+    // 技能固有基础暴击率（百分点，如 Comet 13.0）→ CriticalStrikeChance BASE。法术的基础暴击
+    // 来自技能本身（非武器）；攻击技能此字段为 None，改由武器底材暴击注入（见 calc 主流程
+    // 1c）。对齐 PoB2：base crit = 法术取 skillData.critChance、攻击取 weapon crit。
+    if let Some(cc) = skill.crit_chance
+        && cc > 0.0
+    {
+        mods.push(mk(
+            "CriticalStrikeChance",
+            cc,
+            "main skill base crit chance",
+        ));
+    }
     // 技能 stat（基础伤害 + 自带 damage% 缩放）经 SkillStatMap 映射注入。
     mods.extend(mapped_stat_modifiers(
         &skill.base_damage,
@@ -908,37 +1014,6 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
 /// 当前作用域为**全局**（单主技能 build 下口径正确：所有 support 倍率作用于唯一计算技能）；
 /// 多主技能的按技能 tag 隔离（仅作用于被支援技能）待 flag 系统接入后细化。active 主技能
 /// 自身伤害已由 [`skill_base_modifiers`] 注入，此处只处理 support。
-/// 技能/辅助专属的**硬编码 more**（PoB 在 statMap 里写死、对应数据 stat-set 当前缺失）。
-/// 攻速注入 `AttackSpeed` MORE、暴击率注入 `CriticalStrikeChance` MORE。
-/// 数据补全后应改为 stat 驱动（flag stat → MORE 映射）；此处为 parity 桥接。
-fn hardcoded_skill_mods(main_skill_id: &str, group: &SocketGroup) -> Vec<Modifier> {
-    let mut mods = Vec::new();
-    let mk = |name: &str, value: f64, label: &str| {
-        let origin = ModifierSource::new(SourceId::new(SourceKind::SkillGem, "mods.hardcode"))
-            .with_raw_text(label);
-        Modifier::number(name, ModType::More, value).with_origin(origin)
-    };
-    // Flicker Strike：+285% more 攻速（PoB act_int.lua statMap flag
-    // `base_skill_show_average_damage_instead_of_dps` → Speed MORE 285）+ +20% more 暴击率。
-    if main_skill_id == "FlickerStrikePlayer" {
-        mods.push(mk("AttackSpeed", 285.0, "Flicker Strike base attack speed"));
-        mods.push(mk(
-            "CriticalStrikeChance",
-            20.0,
-            "Flicker Strike crit chance",
-        ));
-    }
-    // SupportHitAndRun：+40% more 攻速。
-    if group
-        .gem_skills
-        .iter()
-        .any(|g| g.skill_id == "SupportHitAndRunPlayer")
-    {
-        mods.push(mk("AttackSpeed", 40.0, "Hit and Run support attack speed"));
-    }
-    mods
-}
-
 fn support_modifiers(group: &SocketGroup, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     for gem in &group.gem_skills {
