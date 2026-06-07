@@ -468,9 +468,10 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
         let Some(a) = data.armour_base(&item.base.to_string()) else {
             continue;
         };
-        // PoB 护甲件最终防御 = (基底 + 局部 flat) × (1 + 品质% + 局部 increased%)。品质与局部
-        // increased 同为**加法**增幅（非乘法），局部 flat 在该乘区内。这些局部词条在 add_item
-        // 时剔除以免重复（全局加法桶）。全局树/光环增幅在此基础上再乘（标准管线）。
+        // PoB 护甲件最终防御 = (基底 + 局部 flat) × (1 + 局部 increased%) × (1 + 品质%)。
+        // 品质是**独立乘区**（与局部 increased 相乘，非相加；已对 Slipstrike Vest 显示值
+        // 2136 验证）。局部 flat 在该乘区内。局部词条在 add_item 时剔除以免重复（全局加法桶）；
+        // 全局树/光环增幅在此基础上再乘（标准管线）。
         let quality_pct = f64::from(item.quality);
         let local_pct = item_local_defence_inc(item);
         let local_flat = item_local_defence_flat(item);
@@ -484,7 +485,9 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
                 let origin =
                     ModifierSource::new(SourceId::new(SourceKind::Item, format!("base.{name}")))
                         .with_raw_text(format!("{} local {name}", item.base));
-                let value = base * (1.0 + (quality_pct + local_pct[idx]) / 100.0);
+                // PoB 口径：品质是**独立乘区**（非与局部 increased 相加）。
+                // 最终 = (基底 + 局部 flat) × (1 + 局部 increased%) × (1 + 品质%)。
+                let value = base * (1.0 + local_pct[idx] / 100.0) * (1.0 + quality_pct / 100.0);
                 mods.push(Modifier::number(name, ModType::Base, value).with_origin(origin));
             }
         }
