@@ -63,7 +63,7 @@ fn compare_row(out: &OutputTable, label: &str, pob2: Option<f64>, pobr: f64) -> 
     }
 }
 
-fn report(name: &str, code: &str, data: &BuildData) -> OutputTable {
+fn report(name: &str, code: &str, data: &BuildData) -> (OutputTable, HashMap<String, f64>) {
     let xml = decode_pob_code(code).expect("decode");
     let pob2 = parse_player_stats(&xml);
     let build = parse_build_from_code(code).expect("parse build");
@@ -101,24 +101,46 @@ fn report(name: &str, code: &str, data: &BuildData) -> OutputTable {
             compare_row(&out, label, pob2.get(*key).copied(), *pobr)
         );
     }
-    out
+    (out, pob2)
+}
+
+/// 断言某 PoB2 嵌入 PlayerStat 与 PoBR 输出在 `tol` 相对误差内（golden 缺该 key 则跳过）。
+fn assert_within(pob2: &HashMap<String, f64>, key: &str, pobr: f64, tol: f64) {
+    if let Some(&golden) = pob2.get(key)
+        && golden != 0.0
+    {
+        let ratio = pobr / golden;
+        assert!(
+            (ratio - 1.0).abs() < tol,
+            "{key}: PoBR {pobr:.1} vs PoB2 {golden:.1} = {ratio:.3}x (tol {tol})"
+        );
+    }
 }
 
 /// Deadeye：打印对照 + 断言「目前应当成立」的不变量（build 解析、生命有限为正、抗性 ≤ cap）。
 #[test]
 fn deadeye_parity_report() {
     let data = load_data();
-    let out = report("DEADEYE", DEADEYE, &data);
+    let (out, pob2) = report("DEADEYE", DEADEYE, &data);
     assert!(out.life > 0.0 && out.life.is_finite(), "life must be > 0");
     assert!(out.dps.is_finite(), "dps must be finite");
-    // 已知差距（见输出）：armour/evasion/ES 基底未接、抗性偏高、AvgHit/DPS 远低于 PoB2。
-    // 这些随路线图修复后比值应趋向 1.0；本测试当前只守不变量，不硬断言比值。
+    // 已对齐 PoB2 <10%（回归门禁，防止后续改动破坏 deadeye parity）：
+    assert_within(&pob2, "Life", out.life, 0.10);
+    assert_within(&pob2, "Armour", out.armour, 0.10);
+    assert_within(&pob2, "CritChance", out.crit_chance * 100.0, 0.10);
+    assert_within(&pob2, "CritMultiplier", out.crit_multiplier, 0.10);
+    assert_within(&pob2, "FireResist", out.fire_resistance, 0.12);
+    assert_within(&pob2, "ColdResist", out.cold_resistance, 0.12);
+    assert_within(&pob2, "LightningResist", out.lightning_resistance, 0.10);
+    assert_within(&pob2, "AverageDamage", out.total_hit_avg, 0.10);
+    assert_within(&pob2, "TotalDPS", out.dps, 0.10);
+    // 切片：Evasion 仍 ~0.77x（分散树节点/物品基底），暂不硬断言。
 }
 
 #[test]
 fn martial_parity_report() {
     let data = load_data();
-    let out = report("MARTIAL", MARTIAL, &data);
+    let (out, _pob2) = report("MARTIAL", MARTIAL, &data);
     assert!(out.life.is_finite() && out.mana.is_finite());
     assert!(out.dps.is_finite());
 }
