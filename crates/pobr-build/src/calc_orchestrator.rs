@@ -49,6 +49,12 @@ use crate::skill_stat_map::map_skill_stat;
 /// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
 const EXPOSURE_MAGNITUDE: f64 = 20.0;
 
+/// PoE2 属性派生系数（对齐 `pobr_core::CharacterBase`）：每点力量 +2 生命、每点智力 +2
+/// 魔力、每点敏捷 +6 精准。
+const LIFE_PER_STRENGTH: f64 = 2.0;
+const MANA_PER_INTELLIGENCE: f64 = 2.0;
+const ACCURACY_PER_DEXTERITY: f64 = 6.0;
+
 /// 编排选项：可注入基础 [`MinimalInput`]（角色基础生命/抗性等，来自上层装配）。
 #[derive(Debug, Clone, Default)]
 pub struct OrchestratorOptions {
@@ -341,6 +347,28 @@ pub fn calculate_with_data(
         session
             .add_modifier_texts(options.extra_modifier_texts.iter())
             .map_err(|e| BuildError::Parse(e.to_string()))?;
+    }
+
+    // 6b. 属性派生（PoE2）：life/mana/accuracy 须用**最终**属性（职业基础 + 装备/树/珠宝
+    //     的 +Strength/Dex/Int）。character_base 已注入职业基础派生部分；此处补注入来自
+    //     +属性词条的增量（2 life/力量、2 mana/智力、6 accuracy/敏捷），须在全部来源注入后。
+    if options.inject_character_base {
+        let str_total = session.base_sum("Strength");
+        let dex_total = session.base_sum("Dexterity");
+        let int_total = session.base_sum("Intelligence");
+        let mk = |stat: &str, value: f64| {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::CharacterBase,
+                "base.attr_derived",
+            ))
+            .with_raw_text(format!("{stat} from attributes"));
+            Modifier::number(stat, ModType::Base, value).with_origin(origin)
+        };
+        session.add_modifiers([
+            mk("MaximumLife", LIFE_PER_STRENGTH * str_total),
+            mk("MaximumMana", MANA_PER_INTELLIGENCE * int_total),
+            mk("Accuracy", ACCURACY_PER_DEXTERITY * dex_total),
+        ]);
     }
 
     // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等

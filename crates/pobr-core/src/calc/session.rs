@@ -146,6 +146,16 @@ impl CalculationSession {
         &self.unsupported_modifier_texts
     }
 
+    /// 取玩家 modDB 中某 ModName 的 BASE 之和（按当前 cfg）。供编排层在全部来源注入后
+    /// 读取总属性（Strength/Dexterity/Intelligence）以派生 life/mana/accuracy（属性派生需
+    /// 用**最终**属性，而非仅职业基础）。
+    pub fn base_sum(&self, name: &str) -> f64 {
+        self.env
+            .player
+            .mod_db
+            .sum(ModType::Base, &self.env.cfg, &[ModName::from(name)])
+    }
+
     /// 取玩家完整 [`OutputTable`]（`perform`/`perform_minimal` 后填满）。包含
     /// armour/evasion/ES、异常、EHP、技能机制等全部 fill 阶段字段——`MinimalOutput`
     /// 仅是其攻击/抗性子集，需要完整输出时用此。
