@@ -353,3 +353,56 @@ fn defence_reduced_and_less_taken() {
         assert!(within_10pct(v, 2400.0), "{n} = {v} (PoB2 2400)");
     }
 }
+
+/// PoB2 TestDefence「no armour max hits」(ES 血池 + 满叠减伤)：Life 60 + ES 60（pool 120）、
+/// max抗硬上限 90、reduced 50% + less 50% + nearby 20% less（dt = 0.5×0.5×0.8 = 0.2）。
+/// 元素 = 120/(0.1×0.2) = 6000；物理 = 120/0.2 = 600；混沌 pool = life + 0.5×ES = 90 →
+/// 90/(0.1×0.2) = 4500。验证 ES 血池 + 混沌半 ES + 多重 DamageTaken 叠乘。
+#[test]
+fn defence_es_pool_and_chaos_half() {
+    let input = MinimalInput {
+        base_life: 60.0,
+        base_mana: 50.0,
+        base_fire_resistance: -60.0,
+        base_cold_resistance: -60.0,
+        base_lightning_resistance: -60.0,
+        base_accuracy: 0.0,
+        enemy_evasion: 0.0,
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        base_action_rate: 1.0,
+    };
+    let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
+    session.add_modifiers([
+        Modifier::number("EnergyShield", ModType::Base, 60.0),
+        Modifier::number("ChaosResistance", ModType::Base, -60.0),
+        Modifier::number("FireResistance", ModType::Base, 200.0),
+        Modifier::number("ColdResistance", ModType::Base, 200.0),
+        Modifier::number("LightningResistance", ModType::Base, 200.0),
+        Modifier::number("ChaosResistance", ModType::Base, 200.0),
+        Modifier::number("MaximumAllElementalResistances", ModType::Base, 200.0),
+        Modifier::number("MaximumChaosResistance", ModType::Base, 200.0),
+        Modifier::number("DamageTaken", ModType::Inc, -50.0), // 50% reduced
+        Modifier::number("DamageTaken", ModType::More, -50.0), // 50% less
+        Modifier::number("DamageTaken", ModType::More, -20.0), // nearby enemies 20% less
+    ]);
+    session.perform_minimal();
+    let o = session.output();
+    assert!(
+        within_10pct(o.physical_max_hit, 600.0),
+        "physical = {} (PoB2 600)",
+        o.physical_max_hit
+    );
+    for (n, v) in [
+        ("fire", o.fire_max_hit),
+        ("cold", o.cold_max_hit),
+        ("lightning", o.lightning_max_hit),
+    ] {
+        assert!(within_10pct(v, 6000.0), "{n} = {v} (PoB2 6000)");
+    }
+    assert!(
+        within_10pct(o.chaos_max_hit, 4500.0),
+        "chaos = {} (PoB2 4500, pool=life+0.5*ES)",
+        o.chaos_max_hit
+    );
+}
