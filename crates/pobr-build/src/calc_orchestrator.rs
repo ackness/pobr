@@ -279,6 +279,23 @@ pub fn calculate_with_data(
             filtered.modifier_texts = drop_local(filtered.modifier_texts);
             filtered.enchant_texts = drop_local(filtered.enchant_texts);
         }
+        // 护甲件：剔除局部「increased / +flat Armour/Evasion/ES」（已作为基底独立乘区计入
+        // defence_base_modifiers）；留在全局会重复（且错误地变成全局加法）。
+        if data.armour_base(&item.base.to_string()).is_some() {
+            let drop_def = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| {
+                        let c = clean_item_text(t);
+                        parse_local_defence_inc(&c).is_none()
+                            && parse_local_defence_flat(&c).is_none()
+                    })
+                    .collect()
+            };
+            filtered.implicit_texts = drop_def(filtered.implicit_texts);
+            filtered.modifier_texts = drop_def(filtered.modifier_texts);
+            filtered.enchant_texts = drop_def(filtered.enchant_texts);
+        }
         session
             .add_item(slot, &filtered)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
@@ -433,20 +450,24 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
         let Some(a) = data.armour_base(&item.base.to_string()) else {
             continue;
         };
-        let quality = 1.0 + f64::from(item.quality) / 100.0;
-        for (name, raw) in [
-            ("Armour", a.armour),
-            ("Evasion", a.evasion),
-            ("EnergyShield", a.energy_shield),
+        // PoB 护甲件最终防御 = (基底 + 局部 flat) × (1 + 品质% + 局部 increased%)。品质与局部
+        // increased 同为**加法**增幅（非乘法），局部 flat 在该乘区内。这些局部词条在 add_item
+        // 时剔除以免重复（全局加法桶）。全局树/光环增幅在此基础上再乘（标准管线）。
+        let quality_pct = f64::from(item.quality);
+        let local_pct = item_local_defence_inc(item);
+        let local_flat = item_local_defence_flat(item);
+        for (idx, name, raw) in [
+            (0, "Armour", a.armour),
+            (1, "Evasion", a.evasion),
+            (2, "EnergyShield", a.energy_shield),
         ] {
-            if raw > 0 {
+            let base = f64::from(raw) + local_flat[idx];
+            if base > 0.0 {
                 let origin =
                     ModifierSource::new(SourceId::new(SourceKind::Item, format!("base.{name}")))
-                        .with_raw_text(format!("{} base {name} {raw}", item.base));
-                mods.push(
-                    Modifier::number(name, ModType::Base, f64::from(raw) * quality)
-                        .with_origin(origin),
-                );
+                        .with_raw_text(format!("{} local {name}", item.base));
+                let value = base * (1.0 + (quality_pct + local_pct[idx]) / 100.0);
+                mods.push(Modifier::number(name, ModType::Base, value).with_origin(origin));
             }
         }
     }
@@ -615,6 +636,69 @@ fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
 fn is_weapon_local_phys_mod(text: &str) -> bool {
     let clean = clean_item_text(text);
     clean.ends_with("% increased physical damage") || parse_adds_physical(&clean).is_some()
+}
+
+/// 解析护甲件**局部**「N% increased <Armour/Evasion/Energy Shield 组合>」→ 每类型增幅
+/// `[armour, evasion, es]`（受影响类型得 N）。含 `global` 或非纯防御组合返回 `None`。
+fn parse_local_defence_inc(clean: &str) -> Option<[f64; 3]> {
+    let (pct_str, rest) = clean.split_once("% increased ")?;
+    let pct: f64 = pct_str.trim().parse().ok()?;
+    if rest.contains("global") {
+        return None; // 全局防御增幅不作局部隔离
+    }
+    let normalized = rest.replace(" rating", "").replace(" and ", ", ");
+    let mut out = [0.0; 3];
+    let mut any = false;
+    for part in normalized.split(", ") {
+        match part.trim() {
+            "armour" => out[0] = pct,
+            "evasion" => out[1] = pct,
+            "energy shield" | "maximum energy shield" => out[2] = pct,
+            _ => return None, // 含非防御项 → 非纯局部防御增幅
+        }
+        any = true;
+    }
+    any.then_some(out)
+}
+
+/// 护甲件全部词条的局部防御增幅之和 `[armour, evasion, es]`（百分点）。
+fn item_local_defence_inc(item: &Item) -> [f64; 3] {
+    let mut total = [0.0; 3];
+    for t in weapon_mod_texts(item) {
+        if let Some(inc) = parse_local_defence_inc(&clean_item_text(t)) {
+            for i in 0..3 {
+                total[i] += inc[i];
+            }
+        }
+    }
+    total
+}
+
+/// 解析护甲件**局部**「+N to <Armour/Evasion Rating/maximum Energy Shield>」→ `[armour, evasion, es]`。
+fn parse_local_defence_flat(clean: &str) -> Option<[f64; 3]> {
+    let (num, rest) = clean.strip_prefix('+')?.split_once(" to ")?;
+    let n: f64 = num.trim().parse().ok()?;
+    let mut out = [0.0; 3];
+    match rest.replace(" rating", "").trim() {
+        "armour" => out[0] = n,
+        "evasion" => out[1] = n,
+        "energy shield" | "maximum energy shield" => out[2] = n,
+        _ => return None,
+    }
+    Some(out)
+}
+
+/// 护甲件全部词条的局部防御 flat 之和 `[armour, evasion, es]`。
+fn item_local_defence_flat(item: &Item) -> [f64; 3] {
+    let mut total = [0.0; 3];
+    for t in weapon_mod_texts(item) {
+        if let Some(flat) = parse_local_defence_flat(&clean_item_text(t)) {
+            for i in 0..3 {
+                total[i] += flat[i];
+            }
+        }
+    }
+    total
 }
 
 /// 把主技能分等级参数（cost / cooldown / **stat 集**）构造为 SkillGem 归因的 modifier：
