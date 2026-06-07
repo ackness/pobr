@@ -90,6 +90,9 @@ struct RawGrantedEffectPerLevel {
     attack_time: Option<i64>,
     #[serde(rename = "CostAmounts", default)]
     cost_amounts: Vec<i64>,
+    /// 攻击速度乘数（百分点，可负；作用于武器攻击速率）。如 Flicker Strike -50。
+    #[serde(rename = "AttackSpeedMultiplier")]
+    attack_speed_multiplier: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -237,6 +240,10 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
                 .into_iter()
                 .map(|c| c.max(0) as u32)
                 .collect(),
+            attack_speed_multiplier: raw
+                .attack_speed_multiplier
+                .filter(|&m| m != 0)
+                .map(|m| m as f64),
         });
     }
     // 每个效果的等级数组按 level 升序（diff 友好 + 查表确定）。

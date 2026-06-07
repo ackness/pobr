@@ -42,6 +42,9 @@ pub struct ResolvedSkillLevel {
     pub costs: Vec<ResolvedCost>,
     /// 技能伤害倍率（PoB `baseMultiplier`；攻击技能武器+附加伤害的放大倍率）。`1.0`=无。
     pub damage_multiplier: f64,
+    /// 攻击速度乘数（PoB `attackSpeedMultiplier`，百分点，可负）。作用于武器攻击速率
+    /// `AttackRate × (1 + v/100)`（如 Flicker -50）。`None`=无（武器速率不变）。
+    pub attack_speed_multiplier: Option<f64>,
 }
 
 /// 一项已解析的技能资源消耗。
@@ -266,6 +269,7 @@ impl BuildData {
             base_damage,
             costs,
             damage_multiplier,
+            attack_speed_multiplier: row.attack_speed_multiplier,
         })
     }
 

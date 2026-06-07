@@ -230,7 +230,7 @@ impl GrantedEffectDef {
 ///
 /// 与 [`GrantedEffectDef`] 解耦为独立域（一个效果有几十个等级行，避免主表膨胀）。
 /// 收录于 `granted_effect_levels.json`，以 `GrantedEffect` id 为键聚合为升序数组。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SkillLevelDef {
     /// 宝石/技能等级（1-based）。
     pub level: u32,
@@ -243,6 +243,10 @@ pub struct SkillLevelDef {
     /// 各消耗类型的消耗量（与 [`GrantedEffectDef::cost_types`] 按位置配对）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cost_amounts: Vec<u32>,
+    /// 攻击速度乘数（PoB `GrantedEffectsPerLevel.attackSpeedMultiplier`，百分点，可负）。
+    /// 作用于武器攻击速率：`AttackRate × (1 + attackSpeedMultiplier/100)`（如 Flicker -50）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_speed_multiplier: Option<f64>,
 }
 
 /// 某授予效果（技能）分等级解析出的**伤害相关 stat 值**集合
