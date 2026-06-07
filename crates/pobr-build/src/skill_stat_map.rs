@@ -157,6 +157,9 @@ fn damage_scope_mod_name(scope: &str) -> Option<String> {
         "support_elemental"
         | "support_attack_skills_elemental"
         | "support_spell_skills_elemental" => "ElementalDamage",
+        // Concentrated Area：+% more 范围伤害（无条件）。映射到 AreaDamage（范围技能经
+        // cfg AREA flag 聚合）。stat `support_area_concentrate_area_damage_+%_final`。
+        "support_area_concentrate_area" => "AreaDamage",
         // 未知/条件型前缀（如按条件触发）→ 不映射（保守，避免误算）。
         _ => return None,
     };
