@@ -1270,6 +1270,551 @@
     ]
   },
   {
+    "id": "AncestralWarriorTotemPlayer",
+    "base_effectiveness": 1.8600000143051147,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 5.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 15.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 5.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 25.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 35.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 45.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 55.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 65.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "AncestralWarriorTotemRogueExileWarrior2",
+    "base_effectiveness": 1.8600000143051147,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "ApocalypseColdPlayer",
     "base_effectiveness": 0.8500000238418579,
     "levels": [
@@ -4791,6 +5336,532 @@
     ]
   },
   {
+    "id": "ArtilleryBallistaPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 5.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 15.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 5.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 25.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 35.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 45.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 55.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 65.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "ArtilleryBallistaProjectilePlayer",
     "base_effectiveness": 1.0,
     "constant_stats": [
@@ -5014,6 +6085,25 @@
     "levels": []
   },
   {
+    "id": "ArtilleryBallistaRogueExileMercenary2",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "AttributeEssenceCrystalStorm",
     "base_effectiveness": 3.25,
     "levels": [
@@ -5081,6 +6171,17 @@
         "stats": []
       }
     ]
+  },
+  {
+    "id": "AzmeriFabricationDespair",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "base_chaos_damage_resistance_%",
+        "value": -30.0
+      }
+    ],
+    "levels": []
   },
   {
     "id": "AzmeriPictBowRainOfSpores",
@@ -20872,6 +21973,532 @@
     ]
   },
   {
+    "id": "DarkEffigyPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 5.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 15.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 5.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 25.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 35.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 45.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 55.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 65.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "DarkEffigyProjectilePlayer",
     "base_effectiveness": 0.8500000238418579,
     "levels": [
@@ -21411,6 +23038,25 @@
           {
             "stat": "spell_maximum_base_chaos_damage",
             "value": 11.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "DarkEffigyRogueExileWitch2",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
           }
         ]
       }
@@ -24003,6 +25649,12 @@
   {
     "id": "DeliriumMonsterChargedBlastUnique",
     "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "base_reduce_enemy_fire_resistance_%",
+        "value": 10.0
+      }
+    ],
     "levels": [
       {
         "gem_level": 1,
@@ -39312,6 +40964,12 @@
   {
     "id": "FlameLinkPlayer",
     "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "flame_link_added_fire_damage_from_life_%",
+        "value": 10.0
+      }
+    ],
     "levels": [
       {
         "gem_level": 1,
@@ -111937,6 +113595,532 @@
     ]
   },
   {
+    "id": "MetaMortarCannonPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 5.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 15.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 5.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 25.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 35.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 45.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 55.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 65.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "MeteorFireDjinn",
     "base_effectiveness": 2.7200000286102295,
     "levels": [
@@ -132073,6 +134257,532 @@
     ]
   },
   {
+    "id": "ShockwaveTotemPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 5.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 15.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 5.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 25.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 35.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 45.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 55.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 65.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "ShockwaveTotemQuakePlayer",
     "base_effectiveness": 1.0,
     "levels": [
@@ -132275,6 +134985,532 @@
         "gem_level": 40,
         "damage_multiplier": 1.27,
         "stats": []
+      }
+    ]
+  },
+  {
+    "id": "SiegeBallistaPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 5.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 15.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 5.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 25.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 35.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 45.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 55.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 65.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
       }
     ]
   },
@@ -141612,6 +144848,1058 @@
     "levels": []
   },
   {
+    "id": "SummonMetaTotemBallistaPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 5.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 15.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 5.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 25.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 35.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 45.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 55.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 65.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "SummonMetaTotemSpellTotemPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 0.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 5.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 0.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 15.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 5.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 25.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 35.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 45.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 55.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 65.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "totem_elemental_resistance_%",
+            "value": 75.0
+          },
+          {
+            "stat": "totem_chaos_resistance_%",
+            "value": 35.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "SunWorshipperFireLaser",
     "base_effectiveness": 35.0,
     "levels": [
@@ -142170,6 +146458,17 @@
     "levels": []
   },
   {
+    "id": "SupportBlindsidePlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_unseen_critical_strike_chance_+%_final_vs_blinded_enemies",
+        "value": 15.0
+      }
+    ],
+    "levels": []
+  },
+  {
     "id": "SupportBranchingFissuresPlayer",
     "base_effectiveness": 1.0,
     "constant_stats": [
@@ -142253,6 +146552,17 @@
       {
         "stat": "support_chain_hit_damage_+%_final",
         "value": -50.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportColdPenetrationPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "base_reduce_enemy_cold_resistance_%",
+        "value": 30.0
       }
     ],
     "levels": []
@@ -142450,6 +146760,17 @@
       {
         "stat": "support_attack_skills_elemental_damage_+%_final",
         "value": 25.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportElementalArmyPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "minion_elemental_resistance_%",
+        "value": 30.0
       }
     ],
     "levels": []
@@ -142898,6 +147219,17 @@
     ]
   },
   {
+    "id": "SupportFirePenetrationPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "base_reduce_enemy_fire_resistance_%",
+        "value": 30.0
+      }
+    ],
+    "levels": []
+  },
+  {
     "id": "SupportFlukePlayer",
     "base_effectiveness": 1.0,
     "constant_stats": [
@@ -142994,12 +147326,82 @@
     "levels": []
   },
   {
+    "id": "SupportIceBitePlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_ice_bite_buff_grant_%_added_cold_attack_damage",
+        "value": 25.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportIceBitePlayerTwo",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_ice_bite_buff_grant_%_added_cold_attack_damage",
+        "value": 30.0
+      }
+    ],
+    "levels": []
+  },
+  {
     "id": "SupportImmolatePlayer",
     "base_effectiveness": 0.8888999819755554,
     "constant_stats": [
       {
         "stat": "non_skill_base_all_damage_%_to_gain_as_fire_with_attacks_vs_burning_enemies",
         "value": 30.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportIncreasedCriticalDamagePlayer",
+    "constant_stats": [
+      {
+        "stat": "support_critical_damage_critical_strike_chance_+%_final",
+        "value": -20.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportInevitableCriticalsPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_inevitable_criticals_critical_strike_chance_+%_per_second",
+        "value": 10.0
+      },
+      {
+        "stat": "support_inevitable_criticals_critical_strike_chance_+%_cap",
+        "value": 100.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportInevitableCriticalsPlayerTwo",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_inevitable_criticals_critical_strike_chance_+%_per_second",
+        "value": 40.0
+      },
+      {
+        "stat": "support_inevitable_criticals_critical_strike_chance_+%_cap",
+        "value": 200.0
+      },
+      {
+        "stat": "support_inevitable_criticals_critical_strike_multiplier_+%_final_per_second",
+        "value": -10.0
+      },
+      {
+        "stat": "support_inevitable_criticals_critical_strike_multiplier_+%_final_cap",
+        "value": -50.0
       }
     ],
     "levels": []
@@ -143022,6 +147424,10 @@
       {
         "stat": "minion_fire_damage_%_of_maximum_life_taken_per_minute",
         "value": 600.0
+      },
+      {
+        "stat": "minion_fire_damage_resistance_%",
+        "value": 20.0
       }
     ],
     "levels": []
@@ -143033,6 +147439,21 @@
       {
         "stat": "minion_fire_damage_%_of_maximum_life_taken_per_minute",
         "value": 600.0
+      },
+      {
+        "stat": "minion_fire_damage_resistance_%",
+        "value": 20.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportInnervatePlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_innervate_buff_grant_%_added_lightning_attack_damage",
+        "value": 25.0
       }
     ],
     "levels": []
@@ -143055,6 +147476,28 @@
       {
         "stat": "cascadeable_offering_support_offering_casted_spell_damage_+%_final",
         "value": -50.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportLeveragePlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "critical_strike_chance_+%_vs_immobilised_enemies",
+        "value": 50.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportLightningPenetrationPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "base_reduce_enemy_lightning_resistance_%",
+        "value": 30.0
       }
     ],
     "levels": []
@@ -144041,6 +148484,80 @@
     "levels": []
   },
   {
+    "id": "SupportOlrothsHubrisPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "added_physical_damage_%_ward_cost",
+        "value": 15.0
+      },
+      {
+        "stat": "added_cold_damage_%_ward_cost",
+        "value": 15.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportOverextendPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_overextend_critical_strike_multiplier_+%_final",
+        "value": 30.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportPinPlayerTwo",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "critical_strike_chance_+%_vs_immobilised_enemies",
+        "value": 50.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportPinpointCriticalPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_pinpoint_critical_strike_chance_+%_final",
+        "value": 60.0
+      },
+      {
+        "stat": "support_pinpoint_critical_strike_multiplier_+%_final",
+        "value": -30.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportPotentialPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "skill_consume_power_charge_to_gain_critical_strike_chance_+%_final",
+        "value": 40.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportPrototypeSeventeenPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "critical_strike_chance_+%_per_5_rage",
+        "value": 20.0
+      }
+    ],
+    "levels": []
+  },
+  {
     "id": "SupportPursuitPlayer",
     "base_effectiveness": 1.0,
     "constant_stats": [
@@ -144140,6 +148657,28 @@
     "levels": []
   },
   {
+    "id": "SupportReinforcedTotemsPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "totem_elemental_resistance_%",
+        "value": 40.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportReinforcedTotemsPlayerTwo",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "totem_elemental_resistance_%",
+        "value": 40.0
+      }
+    ],
+    "levels": []
+  },
+  {
     "id": "SupportRetreatPlayer",
     "base_effectiveness": 1.0,
     "constant_stats": [
@@ -144168,6 +148707,17 @@
       {
         "stat": "support_retreating_assault_melee_damage_+%_final",
         "value": -100.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportRunicInfusionPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "added_physical_damage_%_ward_cost",
+        "value": 25.0
       }
     ],
     "levels": []
@@ -144256,6 +148806,28 @@
       {
         "stat": "support_thorns_spirit_cost_thorns_damage_+%",
         "value": 70.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportThrillOfTheKillPlayer",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_thrill_of_the_kill_buff_grant_%_added_lightning_attack_damage",
+        "value": 25.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "SupportThrillOfTheKillPlayerTwo",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "support_thrill_of_the_kill_buff_grant_%_added_lightning_attack_damage",
+        "value": 25.0
       }
     ],
     "levels": []
@@ -171103,6 +175675,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 2.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 30.0
           }
         ]
       },
@@ -171116,6 +175692,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 3.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 33.0
           }
         ]
       },
@@ -171129,6 +175709,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 3.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 36.0
           }
         ]
       },
@@ -171142,6 +175726,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 4.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 39.0
           }
         ]
       },
@@ -171155,6 +175743,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 5.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 42.0
           }
         ]
       },
@@ -171168,6 +175760,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 6.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 45.0
           }
         ]
       },
@@ -171181,6 +175777,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 7.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 48.0
           }
         ]
       },
@@ -171194,6 +175794,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 8.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 51.0
           }
         ]
       },
@@ -171207,6 +175811,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 9.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 54.0
           }
         ]
       },
@@ -171220,6 +175828,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 10.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 57.0
           }
         ]
       },
@@ -171233,6 +175845,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 11.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 60.0
           }
         ]
       },
@@ -171246,6 +175862,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 13.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 63.0
           }
         ]
       },
@@ -171259,6 +175879,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 14.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 66.0
           }
         ]
       },
@@ -171272,6 +175896,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 15.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 69.0
           }
         ]
       },
@@ -171285,6 +175913,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 17.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 72.0
           }
         ]
       },
@@ -171298,6 +175930,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 18.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 75.0
           }
         ]
       },
@@ -171311,6 +175947,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 20.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 78.0
           }
         ]
       },
@@ -171324,6 +175964,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 21.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 81.0
           }
         ]
       },
@@ -171337,6 +175981,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 23.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 84.0
           }
         ]
       },
@@ -171350,6 +175998,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 25.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 87.0
           }
         ]
       },
@@ -171363,6 +176015,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 26.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 90.0
           }
         ]
       },
@@ -171376,6 +176032,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 28.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 93.0
           }
         ]
       },
@@ -171389,6 +176049,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 30.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 96.0
           }
         ]
       },
@@ -171402,6 +176066,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 32.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 99.0
           }
         ]
       },
@@ -171415,6 +176083,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 34.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 102.0
           }
         ]
       },
@@ -171428,6 +176100,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 36.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 105.0
           }
         ]
       },
@@ -171441,6 +176117,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 38.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 108.0
           }
         ]
       },
@@ -171454,6 +176134,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 40.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 111.0
           }
         ]
       },
@@ -171467,6 +176151,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 42.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 114.0
           }
         ]
       },
@@ -171480,6 +176168,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 45.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 117.0
           }
         ]
       },
@@ -171493,6 +176185,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 47.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 118.0
           }
         ]
       },
@@ -171506,6 +176202,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 49.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 120.0
           }
         ]
       },
@@ -171519,6 +176219,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 51.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 121.0
           }
         ]
       },
@@ -171532,6 +176236,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 54.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 124.0
           }
         ]
       },
@@ -171545,6 +176253,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 56.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 125.0
           }
         ]
       },
@@ -171558,6 +176270,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 59.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 127.0
           }
         ]
       },
@@ -171571,6 +176287,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 62.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 128.0
           }
         ]
       },
@@ -171584,6 +176304,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 64.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 130.0
           }
         ]
       },
@@ -171597,6 +176321,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 67.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 131.0
           }
         ]
       },
@@ -171610,6 +176338,10 @@
           {
             "stat": "howl_attack_maximum_added_physical_damage",
             "value": 70.0
+          },
+          {
+            "stat": "howl_attack_critical_strike_chance_+%",
+            "value": 133.0
           }
         ]
       }

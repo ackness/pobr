@@ -96,6 +96,9 @@ struct RawGrantedEffectPerLevel {
     /// 伤害基础倍率（PoB `baseMultiplier`，stat-set BaseMultiplier 缺失时的回退源）。
     #[serde(rename = "BaseMultiplier")]
     base_multiplier: Option<f64>,
+    /// 技能基础暴击率（PoB `critChance`，百分点；如 Comet 13）。法系/攻击技能固有暴击来源。
+    #[serde(rename = "CritChance")]
+    crit_chance: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -248,6 +251,8 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
                 .filter(|&m| m != 0)
                 .map(|m| m as f64),
             base_multiplier: raw.base_multiplier.filter(|&m| (m - 1.0).abs() > 1e-9),
+            // 暴击率原样保留（含 0=无暴击，与「缺失」区分）；分等级值由 PoB 抽取合并。
+            crit_chance: raw.crit_chance,
         });
     }
     // 每个效果的等级数组按 level 升序（diff 友好 + 查表确定）。
@@ -348,14 +353,26 @@ pub struct StatSetsBundle {
     pub damage_levels_total: usize,
 }
 
-/// 是否为可注入计算的伤害相关 stat：flat 伤害值（min/max base/added、DoT per-minute）
-/// **或**伤害缩放百分比（`damage_+%` / `<type>_damage_+%` 及其 `_final` more 变体）。
+/// 是否为有计算意义、值得忠实入库的机制 stat——即所有「会影响伤害 / 暴击 / 穿透 /
+/// 命中 / 速度 / added flat 伤害」的 stat。
 ///
-/// 入库判定从宽——由计算侧的 stat→ModName 映射决定能否落地，这样数据通用、升级映射
-/// 无需重生成。覆盖 support 宝石的 `damage_+%[_final]` 倍率（解锁 P0-2）。仍排除抗性%、
-/// buff 专用%、条件型（如 `..._to_exerted_attacks`，不以 `damage_+%[_final]` 结尾）。
+/// **入库从宽，落地由计算侧决定**：本函数只决定数据层保留哪些 stat；能否变成 modifier
+/// 由 `pobr-build::skill_stat_map::map_skill_stat` 决定（映射不到的 stat 静默跳过，无害）。
+/// 因此宁可多保留：旧版只留伤害 stat，导致只含暴击 stat 的 support stat-set（如 Pinpoint
+/// Critical 的 `support_pinpoint_critical_strike_*_+%_final`）被 `adapt_stat_sets` 末尾的
+/// 「无 stat → 丢整个 set」整段丢弃，进攻 parity 大面积塌陷。
+///
+/// 保留（按语义后缀，不按具体技能 id）：
+/// - flat 伤害值：min/max base/added 伤害、DoT per-minute；
+/// - 伤害缩放：`damage_+%` / `..._final`、转换 / gain-as-extra；
+/// - 暴击：`critical_strike_chance_+%[_final]` / `critical_strike_multiplier_+%[_final]` /
+///   `critical_*damage_+%[_final]`；
+/// - 穿透 / 降敌抗：`penetrat*` / `resistance_%`（如 exposure/negate 类 support）；
+/// - added flat 伤害 buff：`*added_*_damage`（含 `buff_grant_%_added_<type>_attack_damage`）。
+///
+/// 仍排除：纯显示 / 持续时间 / 范围显示等与伤害无关的 stat。
 fn is_mappable_stat(stat: &str) -> bool {
-    // flat 伤害值
+    // flat 伤害值（min/max base/added）+ DoT per-minute
     (stat.contains("minimum") || stat.contains("maximum")) && stat.contains("_damage")
         || stat.ends_with("_damage_to_deal_per_minute")
         // 伤害缩放百分比（increased / more）
@@ -364,6 +381,15 @@ fn is_mappable_stat(stat: &str) -> bool {
         // 技能自带转换 / gain-as-extra（如 grenade 物理→火）
         || stat.contains("_damage_%_to_convert_to_")
         || stat.contains("_damage_%_to_gain_as_")
+        // 暴击率 / 爆伤缩放（含 _final more 变体）——解锁 Pinpoint Critical 等 support set。
+        || stat.contains("critical_strike_chance_+%")
+        || stat.contains("critical_strike_multiplier_+%")
+        || stat.contains("critical") && stat.contains("damage_+%")
+        // 穿透 / 降敌抗（exposure / penetration / negate 类 support）。
+        || stat.contains("penetrat")
+        || stat.ends_with("resistance_%")
+        // added flat 伤害 buff（如 Ice Bite 的 buff_grant_%_added_cold_attack_damage）。
+        || stat.contains("added") && stat.contains("_damage")
 }
 
 /// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`
@@ -535,4 +561,64 @@ fn id_lookup_from_base(rows: &[RawBaseItemId]) -> Vec<(String, String)> {
         table[r.index] = (r.id.clone(), r.name.clone());
     }
     table
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_mappable_stat;
+
+    #[test]
+    fn keeps_flat_and_percent_damage_stats() {
+        assert!(is_mappable_stat("spell_minimum_base_fire_damage"));
+        assert!(is_mappable_stat("attack_maximum_added_cold_damage"));
+        assert!(is_mappable_stat("damage_+%"));
+        assert!(is_mappable_stat("fire_damage_+%_final"));
+        assert!(is_mappable_stat("base_chaos_damage_to_deal_per_minute"));
+        assert!(is_mappable_stat(
+            "active_skill_base_physical_damage_%_to_convert_to_fire"
+        ));
+        assert!(is_mappable_stat(
+            "support_added_fire_damage_%_to_gain_as_cold"
+        ));
+    }
+
+    #[test]
+    fn keeps_critical_strike_stats() {
+        // Pinpoint Critical 的两条 constantStats——旧版被过滤，整个 set 被丢。
+        assert!(is_mappable_stat(
+            "support_pinpoint_critical_strike_chance_+%_final"
+        ));
+        assert!(is_mappable_stat(
+            "support_pinpoint_critical_strike_multiplier_+%_final"
+        ));
+        assert!(is_mappable_stat("critical_strike_chance_+%"));
+        assert!(is_mappable_stat("local_critical_strike_multiplier_+%"));
+        assert!(is_mappable_stat("critical_strike_damage_+%_final"));
+    }
+
+    #[test]
+    fn keeps_penetration_and_resistance_stats() {
+        assert!(is_mappable_stat(
+            "base_fire_damage_resistance_penetration_%"
+        ));
+        assert!(is_mappable_stat("elemental_damage_penetration_%"));
+        // 降敌抗 exposure 类（resistance_% 后缀）。
+        assert!(is_mappable_stat("base_fire_damage_resistance_%"));
+    }
+
+    #[test]
+    fn keeps_added_flat_buff_damage() {
+        // Ice Bite 等 added flat buff（数据层忠实保留；条件应用由计算侧决定）。
+        assert!(is_mappable_stat(
+            "support_ice_bite_buff_grant_%_added_cold_attack_damage"
+        ));
+    }
+
+    #[test]
+    fn rejects_non_combat_stats() {
+        assert!(!is_mappable_stat("base_skill_area_of_effect_+%"));
+        assert!(!is_mappable_stat("support_ice_bite_base_buff_duration"));
+        assert!(!is_mappable_stat("active_skill_attack_speed_+%_final"));
+        assert!(!is_mappable_stat("number_of_additional_projectiles"));
+    }
 }

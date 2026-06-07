@@ -45,6 +45,9 @@ pub struct ResolvedSkillLevel {
     /// 攻击速度乘数（PoB `attackSpeedMultiplier`，百分点，可负）。作用于武器攻击速率
     /// `AttackRate × (1 + v/100)`（如 Flicker -50）。`None`=无（武器速率不变）。
     pub attack_speed_multiplier: Option<f64>,
+    /// 技能基础暴击率（PoB `critChance`，百分点；如 Comet 13.0=13%）。法系技能的固有暴击源；
+    /// 攻击技能若 `None` 由武器基底暴击决定。`None`=数据缺失（旧数据包或该技能无 critChance 行）。
+    pub crit_chance: Option<f64>,
 }
 
 /// 一项已解析的技能资源消耗。
@@ -273,6 +276,7 @@ impl BuildData {
             costs,
             damage_multiplier,
             attack_speed_multiplier: row.attack_speed_multiplier,
+            crit_chance: row.crit_chance,
         })
     }
 

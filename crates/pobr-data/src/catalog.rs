@@ -252,6 +252,11 @@ pub struct SkillLevelDef {
     /// 的回退源（二者同义，PoB 在两表均存）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub base_multiplier: Option<f64>,
+    /// 技能基础暴击率（PoB `GrantedEffectsPerLevel.critChance`，百分点；如 Comet = 13.0=13%）。
+    /// 法系/攻击技能的固有暴击率来源——攻击技能若 `None` 则回退武器基底暴击。
+    /// `0`（无暴击，如多数 DoT/触发器技能）归一化为 `Some(0.0)` 以区别于「数据缺失」。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crit_chance: Option<f64>,
 }
 
 /// 某授予效果（技能）分等级解析出的**伤害相关 stat 值**集合
