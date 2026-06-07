@@ -268,7 +268,7 @@ pub fn calculate_with_data(
         // 技能/辅助专属的硬编码攻速 more（PoB statMap 写死，对应数据 stat-set 当前缺失）：
         // Flicker Strike +285%（act_int.lua flag→Speed MORE 285）、Hit and Run +40%。
         if let Some(id) = group.active_skill_id.as_deref() {
-            session.add_modifiers(hardcoded_skill_speed_mods(id, group));
+            session.add_modifiers(hardcoded_skill_mods(id, group));
         }
     }
 
@@ -804,20 +804,25 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
 /// 当前作用域为**全局**（单主技能 build 下口径正确：所有 support 倍率作用于唯一计算技能）；
 /// 多主技能的按技能 tag 隔离（仅作用于被支援技能）待 flag 系统接入后细化。active 主技能
 /// 自身伤害已由 [`skill_base_modifiers`] 注入，此处只处理 support。
-/// 技能/辅助专属的**硬编码攻速 more**（PoB 在 statMap 里写死、对应数据 stat-set 当前缺失）。
-/// 注入为 `AttackSpeed` MORE（offence 的 action_rate 读取 [AttackSpeed, ActionSpeed] 的 more）。
+/// 技能/辅助专属的**硬编码 more**（PoB 在 statMap 里写死、对应数据 stat-set 当前缺失）。
+/// 攻速注入 `AttackSpeed` MORE、暴击率注入 `CriticalStrikeChance` MORE。
 /// 数据补全后应改为 stat 驱动（flag stat → MORE 映射）；此处为 parity 桥接。
-fn hardcoded_skill_speed_mods(main_skill_id: &str, group: &SocketGroup) -> Vec<Modifier> {
+fn hardcoded_skill_mods(main_skill_id: &str, group: &SocketGroup) -> Vec<Modifier> {
     let mut mods = Vec::new();
-    let mk = |value: f64, label: &str| {
-        let origin = ModifierSource::new(SourceId::new(SourceKind::SkillGem, "speed.hardcode"))
+    let mk = |name: &str, value: f64, label: &str| {
+        let origin = ModifierSource::new(SourceId::new(SourceKind::SkillGem, "mods.hardcode"))
             .with_raw_text(label);
-        Modifier::number("AttackSpeed", ModType::More, value).with_origin(origin)
+        Modifier::number(name, ModType::More, value).with_origin(origin)
     };
-    // Flicker Strike：+285% more 攻速（PoB act_int.lua statMap 把 flag stat
-    // `base_skill_show_average_damage_instead_of_dps` 映射成 mod Speed MORE 285）。
+    // Flicker Strike：+285% more 攻速（PoB act_int.lua statMap flag
+    // `base_skill_show_average_damage_instead_of_dps` → Speed MORE 285）+ +20% more 暴击率。
     if main_skill_id == "FlickerStrikePlayer" {
-        mods.push(mk(285.0, "Flicker Strike base attack speed"));
+        mods.push(mk("AttackSpeed", 285.0, "Flicker Strike base attack speed"));
+        mods.push(mk(
+            "CriticalStrikeChance",
+            20.0,
+            "Flicker Strike crit chance",
+        ));
     }
     // SupportHitAndRun：+40% more 攻速。
     if group
@@ -825,7 +830,7 @@ fn hardcoded_skill_speed_mods(main_skill_id: &str, group: &SocketGroup) -> Vec<M
         .iter()
         .any(|g| g.skill_id == "SupportHitAndRunPlayer")
     {
-        mods.push(mk(40.0, "Hit and Run support attack speed"));
+        mods.push(mk("AttackSpeed", 40.0, "Hit and Run support attack speed"));
     }
     mods
 }
