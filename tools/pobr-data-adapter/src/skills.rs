@@ -399,6 +399,32 @@ fn is_mappable_stat(stat: &str) -> bool {
         // `TotalCastTime`/`TotalAttackTime` BASE。这类常量来自 statSet constantStats。
         || stat == "total_cast_time_+_ms"
         || stat == "total_attack_time_+_ms"
+        // 出手速度族（攻速 / 施法速度 / 技能速度，含 `_final` more 变体）——解锁 Rapid Attacks
+        // （`attack_speed_+%`）、Rapid Casting（`base_cast_speed_+%`）等整组缺失的 support
+        // stat-set（旧版只留伤害 stat，整个 set 被「无 stat → 丢」整段丢弃，攻击 build 攻速塌陷）。
+        // 这三族进入 PoB 的「Speed」加法/连乘乘区（AttackSpeed/CastSpeed/SkillSpeed），由
+        // `pobr-build::skill_stat_map` 按后缀语义落地（INC / `_final`→MORE）。movement/projectile/
+        // reload/knockback/cooldown 等**非出手速率**的 speed stat 不在此匹配（与面板 DPS 无关）。
+        || is_skill_speed_stat(stat)
+        // 距离 ramp more 伤害（`*_damage_+%_final_from_distance`，如 Close Combat / Far Combat）：
+        // PoB2 `mod("Damage","MORE", DistanceRamp)`，面板按配置距离取 ramp 系数。入库保留常量
+        // ramp 上限值，由 calc 侧按 ramp 应用（见 `skill_stat_map::map_distance_ramp`）。
+        || stat.ends_with("_damage_+%_final_from_distance")
+}
+
+/// 是否为**出手速率**（攻速 / 施法速度 / 技能速度）类 stat——即进入 PoB「Speed」乘区、
+/// 影响每秒出手次数的速度 stat。匹配 `*attack_speed_+%[_final]` / `*cast_speed_+%[_final]` /
+/// `*skill_speed_+%[_final]`。
+///
+/// **刻意排除**与面板出手速率无关的同形 speed stat：`movement_speed`（位移）、
+/// `projectile_speed`（弹道飞行速度）、`reload_speed`（换弹）、`knockback_speed`、
+/// `cooldown_speed`（冷却恢复）——这些都含 `speed_+%` 但不属攻/施/技能速度乘区。
+fn is_skill_speed_stat(stat: &str) -> bool {
+    let base = stat.strip_suffix("_final").unwrap_or(stat);
+    let Some(core) = base.strip_suffix("_+%") else {
+        return false;
+    };
+    core.ends_with("attack_speed") || core.ends_with("cast_speed") || core.ends_with("skill_speed")
 }
 
 /// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`
@@ -627,10 +653,47 @@ mod tests {
     }
 
     #[test]
+    fn keeps_skill_speed_stats() {
+        // Rapid Attacks（attack_speed_+%）/ Rapid Casting（base_cast_speed_+%）整组缺失的祸首。
+        assert!(is_mappable_stat("attack_speed_+%"));
+        assert!(is_mappable_stat("base_cast_speed_+%"));
+        // `_final` more 变体（active_skill_attack_speed_+%_final = mod("Speed","MORE",Attack)）。
+        assert!(is_mappable_stat("active_skill_attack_speed_+%_final"));
+        assert!(is_mappable_stat(
+            "support_additional_fissures_skill_speed_+%_final"
+        ));
+        // 前缀型（具体 support 前缀，按后缀语义保留）。
+        assert!(is_mappable_stat("totem_skill_attack_speed_+%"));
+        // 条件后缀变体（`..._while_not_at_maximum_rage`）不以 `<族>_speed_+%[_final]` 结尾，
+        // 与 calc 侧映射保持一致——不保留（即便保留计算侧也会保守跳过，入库无益）。
+        assert!(!is_mappable_stat(
+            "support_rage_attack_speed_+%_while_not_at_maximum_rage"
+        ));
+    }
+
+    #[test]
+    fn keeps_distance_ramp_more_damage() {
+        // Close Combat / Far Combat（`*_damage_+%_final_from_distance` = mod("Damage","MORE",ramp)）。
+        assert!(is_mappable_stat(
+            "support_close_combat_attack_damage_+%_final_from_distance"
+        ));
+        assert!(is_mappable_stat(
+            "support_far_combat_attack_damage_+%_final_from_distance"
+        ));
+    }
+
+    #[test]
     fn rejects_non_combat_stats() {
         assert!(!is_mappable_stat("base_skill_area_of_effect_+%"));
         assert!(!is_mappable_stat("support_ice_bite_base_buff_duration"));
-        assert!(!is_mappable_stat("active_skill_attack_speed_+%_final"));
         assert!(!is_mappable_stat("number_of_additional_projectiles"));
+        // 非出手速率的同形 speed stat——不属攻/施/技能速度乘区，不入库。
+        assert!(!is_mappable_stat(
+            "movement_speed_+%_final_while_performing_action"
+        ));
+        assert!(!is_mappable_stat("active_skill_projectile_speed_+%_final"));
+        assert!(!is_mappable_stat("active_skill_reload_speed_+%_final"));
+        assert!(!is_mappable_stat("base_knockback_speed_+%"));
+        assert!(!is_mappable_stat("base_cooldown_speed_+%_final"));
     }
 }

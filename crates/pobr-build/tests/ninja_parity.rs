@@ -269,8 +269,8 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Vec<String>) {
 /// 永不下调（防止改动悄悄倒退）。对应 commit 当时的 ninja_parity 输出。
 const BASELINE_DEF_HIT5: usize = 74;
 const BASELINE_DEF_HIT10: usize = 88;
-const BASELINE_OFF_HIT5: usize = 19;
-const BASELINE_OFF_HIT10: usize = 27;
+const BASELINE_OFF_HIT5: usize = 23;
+const BASELINE_OFF_HIT10: usize = 31;
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

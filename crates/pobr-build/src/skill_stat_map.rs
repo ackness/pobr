@@ -60,6 +60,54 @@ pub fn map_skill_stat(stat: &str) -> Option<MappedStat> {
         .or_else(|| map_critical(stat))
         .or_else(|| map_penetration(stat))
         .or_else(|| map_skill_time(stat))
+        .or_else(|| map_skill_speed(stat))
+        .or_else(|| map_distance_ramp(stat))
+}
+
+/// 出手速率（攻速 / 施法速度 / 技能速度）→ PoBR 速度乘区 ModName。对照 PoB2 SkillStatMap：
+/// - `attack_speed_+%` → `mod("Speed","INC",Attack)` → `AttackSpeed` INC（如 Rapid Attacks 15/25/35）
+/// - `base_cast_speed_+%` → `mod("Speed","INC",Cast)` → `CastSpeed` INC（如 Rapid Casting）
+/// - `*skill_speed_+%` → `SkillSpeed` INC（攻/法通吃的速度乘区）
+/// - 上述任一带 `_final` 后缀 → 对应 MORE（如 `active_skill_attack_speed_+%_final`）
+///
+/// **无条件门槛**：只匹配恰以 `<族>_speed_+%[_final]` 结尾的 stat。带条件后缀的变体（如
+/// `attack_speed_+%_per_rage`、`support_rage_attack_speed_+%_while_not_at_maximum_rage`）
+/// 不以此结尾，自动落到 `None`——保守跳过，避免把条件速度当无条件乘区误算。
+/// 非出手速率的同形 speed stat（movement / projectile / reload / knockback / cooldown）数据层
+/// 已不入库，映射侧亦不匹配（其 core 不以 attack/cast/skill `_speed` 结尾）。
+fn map_skill_speed(stat: &str) -> Option<MappedStat> {
+    let (base, mod_type) = match stat.strip_suffix("_final") {
+        Some(b) => (b, ModType::More),
+        None => (stat, ModType::Inc),
+    };
+    let core = base.strip_suffix("_+%")?;
+    let mod_name = if core.ends_with("attack_speed") {
+        "AttackSpeed"
+    } else if core.ends_with("cast_speed") {
+        "CastSpeed"
+    } else if core.ends_with("skill_speed") {
+        "SkillSpeed"
+    } else {
+        return None;
+    };
+    Some(MappedStat::new(mod_name, mod_type))
+}
+
+/// 距离 ramp more 伤害（PoB2 `mod("Damage","MORE", DistanceRamp ramp)`）：
+/// - `support_close_combat_attack_damage_+%_final_from_distance`（Close Combat）：ramp `{{10,1},{35,0}}`
+///   ——近距离系数 1（满层），远距离系数 0。
+///
+/// **面板口径取 ramp 上限（近距离满层）**：constantStat 值即满层 MORE 百分点（如 Close Combat II = 30），
+/// 映射为 `Damage` MORE。PoB2 默认配置距离（`enemyDistance` 占位 20）下系数为 0.6，但 demo build 的
+/// 黄金面板按各自配置距离评估；本映射以满层为上界注入（贴近近战贴脸场景）。Far Combat 等
+/// **远距离满层**（ramp 反向）不在此匹配（避免近距离误满），保守跳过——仅匹配 close_combat 语义。
+fn map_distance_ramp(stat: &str) -> Option<MappedStat> {
+    // 仅 close_combat（近距离满层）：远战 ramp（far_combat / shadow_dash）方向相反，
+    // 满层条件是远距离，按面板「贴脸」口径会高估，保守不映射。
+    if stat == "support_close_combat_attack_damage_+%_final_from_distance" {
+        return Some(MappedStat::new("Damage", ModType::More));
+    }
+    None
 }
 
 /// 附加施放/攻击时间常量（PoB2 SkillStatMap `total_cast_time_+_ms` / `total_attack_time_+_ms`，
@@ -473,6 +521,53 @@ mod tests {
         assert!(map_aura_buff_stat("base_skill_buff_armour_evasion_+%_final_to_apply").is_empty());
         // 非 buff stat。
         assert!(map_aura_buff_stat("spell_minimum_base_fire_damage").is_empty());
+    }
+
+    #[test]
+    fn maps_skill_speed_to_speed_bucket() {
+        // Rapid Attacks（attack_speed_+%）→ AttackSpeed INC
+        assert_eq!(
+            map_skill_stat("attack_speed_+%").unwrap(),
+            MappedStat::new("AttackSpeed", ModType::Inc)
+        );
+        // Rapid Casting（base_cast_speed_+%）→ CastSpeed INC
+        assert_eq!(
+            map_skill_stat("base_cast_speed_+%").unwrap(),
+            MappedStat::new("CastSpeed", ModType::Inc)
+        );
+        // `_final` → MORE（active_skill_attack_speed_+%_final = mod("Speed","MORE",Attack)）
+        assert_eq!(
+            map_skill_stat("active_skill_attack_speed_+%_final").unwrap(),
+            MappedStat::new("AttackSpeed", ModType::More)
+        );
+        // skill_speed → SkillSpeed（攻/法通吃乘区）
+        assert_eq!(
+            map_skill_stat("support_additional_fissures_skill_speed_+%_final").unwrap(),
+            MappedStat::new("SkillSpeed", ModType::More)
+        );
+    }
+
+    #[test]
+    fn skips_conditional_speed_variants() {
+        // 带条件后缀（不以 `<族>_speed_+%[_final]` 结尾）→ 不映射，避免当无条件乘区误算。
+        assert!(map_skill_stat("attack_speed_+%_per_rage").is_none());
+        assert!(map_skill_stat("support_rage_attack_speed_+%_while_not_at_maximum_rage").is_none());
+        // 非出手速率 speed（即便数据层漏入也不落地）。
+        assert!(map_skill_stat("active_skill_projectile_speed_+%_final").is_none());
+        assert!(map_skill_stat("movement_speed_+%_final_while_performing_action").is_none());
+    }
+
+    #[test]
+    fn maps_close_combat_distance_ramp_to_damage_more() {
+        // Close Combat（近距离满层）→ Damage MORE（面板取 ramp 上限）。
+        assert_eq!(
+            map_skill_stat("support_close_combat_attack_damage_+%_final_from_distance").unwrap(),
+            MappedStat::new("Damage", ModType::More)
+        );
+        // Far Combat（远距离满层，方向相反）保守不映射（避免近距离误满）。
+        assert!(
+            map_skill_stat("support_far_combat_attack_damage_+%_final_from_distance").is_none()
+        );
     }
 
     #[test]
