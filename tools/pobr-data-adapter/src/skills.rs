@@ -394,6 +394,11 @@ fn is_mappable_stat(stat: &str) -> bool {
         // 这些以 `base_skill_buff_*_to_apply` / `_to_grant` 命名，由 [`crate::skill_stat_map`]
         // 的 aura buff 映射消费。入库从宽：能否落地由计算侧的映射决定（映射不到静默跳过）。
         || stat.starts_with("base_skill_buff_")
+        // 附加施放/攻击时间常量（`total_cast_time_+_ms` / `total_attack_time_+_ms`，毫秒）：
+        // 作为加法项计入出手时间分母（如 Comet +1000ms = +1.0s），由 SkillStatMap 映射为
+        // `TotalCastTime`/`TotalAttackTime` BASE。这类常量来自 statSet constantStats。
+        || stat == "total_cast_time_+_ms"
+        || stat == "total_attack_time_+_ms"
 }
 
 /// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`

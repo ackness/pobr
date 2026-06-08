@@ -238,8 +238,14 @@ pub fn calculate_minimal_vs_enemy(
     let more_speed = db.more(cfg, &speed_names);
     let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
         * db.more(cfg, &action_speed_names);
-    let uncapped_action_rate =
-        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed * action_speed_mod;
+    // 速度 inc/more 缩放后，先按附加施放/攻击时间（TotalCastTime/TotalAttackTime）换算有效时间，
+    // 再乘 ActionSpeed 独立乘区（对齐 PoB CalcOffence L2827 的加法分母 + 末端 action speed）。
+    let scaled_rate = apply_total_time(
+        db,
+        cfg,
+        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
+    );
+    let uncapped_action_rate = scaled_rate * action_speed_mod;
     let action_rate = round(apply_cooldown_cap(db, cfg, uncapped_action_rate));
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
@@ -583,10 +589,12 @@ fn total_dps_traced(
     let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
     let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
         * db.more(cfg, &action_speed_names);
-    let uncapped_rate = input.base_action_rate
-        * (1.0 + inc_speed.value / 100.0)
-        * more_speed.value
-        * action_speed_mod;
+    let scaled_rate = apply_total_time(
+        db,
+        cfg,
+        input.base_action_rate * (1.0 + inc_speed.value / 100.0) * more_speed.value,
+    );
+    let uncapped_rate = scaled_rate * action_speed_mod;
     let action_rate = round(apply_cooldown_cap(db, cfg, uncapped_rate));
     let action_rate_node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
     trace.add_edge(base_rate_node, action_rate_node);
@@ -786,6 +794,36 @@ pub(crate) fn more_factor_traced(
         value: factor,
         node_id: factor_node,
     }
+}
+
+/// 附加施放/攻击时间（PoB2 `TotalCastTime` / `TotalAttackTime`，单位秒）：在速度 inc/more
+/// **缩放之后**作为**加法项**计入有效时间分母（CalcOffence L2827：
+/// `Speed = 1 / (baseTime / ((1+inc/100)*more) + TotalAttackTime + TotalCastTime)`）。
+///
+/// 这类常量来自技能 statSet 的 `total_cast_time_+_ms` / `total_attack_time_+_ms`
+/// constantStat（如 Comet +1000ms = +1.0s），由 [`crate::skill_stat_map`] 映射为
+/// `TotalCastTime`/`TotalAttackTime` BASE 注入。无此词条时返回原速率（加法项为 0）。
+///
+/// `scaled_rate` 为已应用速度 inc/more（但**未应用** ActionSpeed）的速率；本函数把它转回
+/// 时间、加上附加时间、再转回速率。ActionSpeed 由调用方在本函数之后单独乘上（对齐 PoB：
+/// action speed 是独立乘区，作用于含附加时间的最终速率）。
+fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
+    if scaled_rate <= 0.0 {
+        return scaled_rate;
+    }
+    let extra_time = db.sum(
+        ModType::Base,
+        cfg,
+        &[
+            ModName::from("TotalCastTime"),
+            ModName::from("TotalAttackTime"),
+        ],
+    );
+    if extra_time <= 0.0 {
+        return scaled_rate;
+    }
+    let effective_time = 1.0 / scaled_rate + extra_time;
+    1.0 / effective_time
 }
 
 /// 冷却限速：技能有固有冷却时，最终行动速率不能超过 `1/effective_cooldown`。

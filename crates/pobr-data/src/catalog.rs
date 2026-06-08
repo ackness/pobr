@@ -224,6 +224,14 @@ impl GrantedEffectDef {
     pub fn is_spell(&self) -> bool {
         self.skill_types.iter().any(|t| t == "Spell")
     }
+
+    /// 是否为**非武器攻击**（类型名含 `NonWeaponAttack`，如 Shield Wall）——攻击的击中
+    /// 基础伤害由技能自身（off-hand stat-set）提供，而非主手武器基底。对应 PoB2
+    /// `skillFlags.shieldAttack`/`NonWeaponAttack`：source 不取 weaponData1，而由
+    /// `setOffHand*` 技能 stat 决定。
+    pub fn is_non_weapon_attack(&self) -> bool {
+        self.skill_types.iter().any(|t| t == "NonWeaponAttack")
+    }
 }
 
 /// 某个授予效果在某一等级上的参数（来自 `GrantedEffectsPerLevel.dat`）。

@@ -23,6 +23,9 @@ pub struct MappedStat {
     pub mod_name: String,
     /// 聚合类型（Base / Inc / More）。
     pub mod_type: ModType,
+    /// 注入前对原始 stat 值乘的换算系数（对应 PoB SkillStatMap 的 `div`，倒数形式）。
+    /// 默认 `1.0`；如 `total_cast_time_+_ms`（毫秒）→ `TotalCastTime`（秒）用 `1/1000`。
+    pub scale: f64,
 }
 
 impl MappedStat {
@@ -30,7 +33,14 @@ impl MappedStat {
         Self {
             mod_name: mod_name.into(),
             mod_type,
+            scale: 1.0,
         }
+    }
+
+    /// 设置换算系数（对应 PoB SkillStatMap 的 `div`，以倒数形式给出）。
+    fn with_scale(mut self, scale: f64) -> Self {
+        self.scale = scale;
+        self
     }
 }
 
@@ -49,6 +59,23 @@ pub fn map_skill_stat(stat: &str) -> Option<MappedStat> {
         .or_else(|| map_conversion(stat))
         .or_else(|| map_critical(stat))
         .or_else(|| map_penetration(stat))
+        .or_else(|| map_skill_time(stat))
+}
+
+/// 附加施放/攻击时间常量（PoB2 SkillStatMap `total_cast_time_+_ms` / `total_attack_time_+_ms`，
+/// `mod("TotalCastTime"/"TotalAttackTime","BASE")`，`div = 1000` 毫秒→秒）：
+/// 作为加法项计入有效出手时间分母（如 Comet `total_cast_time_+_ms = 1000` → +1.0s），
+/// 由 `pobr_core::calc::offence::apply_total_time` 消费。
+fn map_skill_time(stat: &str) -> Option<MappedStat> {
+    match stat {
+        "total_cast_time_+_ms" => {
+            Some(MappedStat::new("TotalCastTime", ModType::Base).with_scale(1.0 / 1000.0))
+        }
+        "total_attack_time_+_ms" => {
+            Some(MappedStat::new("TotalAttackTime", ModType::Base).with_scale(1.0 / 1000.0))
+        }
+        _ => None,
+    }
 }
 
 /// 把一条**光环 / buff 授予的防御 stat** 映射为一组 PoBR modifier 规格（可多条，如
@@ -184,9 +211,18 @@ fn map_base_damage(stat: &str) -> Option<MappedStat> {
     let (rest, pascal) = TYPES
         .iter()
         .find_map(|(lc, pascal)| core.strip_suffix(&format!("_{lc}")).map(|r| (r, *pascal)))?;
-    let known_source =
-        rest.starts_with("spell_") || rest.starts_with("secondary_") || rest.starts_with("attack_");
-    if !known_source || !(rest.contains("base") || rest.contains("added")) {
+    // 武器侧基础伤害（PoB `setOffHandPhysicalMin` / `main_hand_weapon_minimum_physical_damage`
+    // → `<Type>Min/Max` BASE）：技能直接提供武器基底伤害（如 Shield Wall 用 off-hand 物理 4–6）。
+    // PoB 对 off-hand 走 `skill("setOffHandPhysical*")`、对 main-hand 走 `mod("Physical*","BASE")`，
+    // 二者在单技能口径下都是把该值作为攻击的武器基础伤害——映射到统一的 `<Type>DamageMin/Max` BASE。
+    let is_weapon_base =
+        rest.starts_with("off_hand_weapon_") || rest.starts_with("main_hand_weapon_");
+    let known_source = rest.starts_with("spell_")
+        || rest.starts_with("secondary_")
+        || rest.starts_with("attack_")
+        || is_weapon_base;
+    // 「weapon」族即基底伤害源；其余族仍要求 base/added 关键字（排除条件型/显示 stat）。
+    if !known_source || !(is_weapon_base || rest.contains("base") || rest.contains("added")) {
         return None;
     }
     let bound = if rest.contains("minimum") {
@@ -270,6 +306,24 @@ mod tests {
         assert_eq!(m, MappedStat::new("FireDamageMin", ModType::Base));
         let m = map_skill_stat("spell_maximum_base_fire_damage").unwrap();
         assert_eq!(m, MappedStat::new("FireDamageMax", ModType::Base));
+    }
+
+    #[test]
+    fn maps_weapon_side_base_physical_damage() {
+        // off-hand 武器基础伤害（Shield Wall）→ PhysicalDamageMin/Max BASE。
+        assert_eq!(
+            map_skill_stat("off_hand_weapon_minimum_physical_damage").unwrap(),
+            MappedStat::new("PhysicalDamageMin", ModType::Base)
+        );
+        assert_eq!(
+            map_skill_stat("off_hand_weapon_maximum_physical_damage").unwrap(),
+            MappedStat::new("PhysicalDamageMax", ModType::Base)
+        );
+        // main-hand 武器基础伤害同样映射到 PhysicalDamageMin/Max BASE。
+        assert_eq!(
+            map_skill_stat("main_hand_weapon_minimum_physical_damage").unwrap(),
+            MappedStat::new("PhysicalDamageMin", ModType::Base)
+        );
     }
 
     #[test]
@@ -397,6 +451,20 @@ mod tests {
                 ModType::Base
             )]
         );
+    }
+
+    #[test]
+    fn maps_total_cast_attack_time_with_ms_to_s_scale() {
+        // total_cast_time_+_ms（毫秒）→ TotalCastTime BASE，scale = 1/1000（如 Comet 1000ms → 1.0s）。
+        let m = map_skill_stat("total_cast_time_+_ms").unwrap();
+        assert_eq!(m.mod_name, "TotalCastTime");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert!((m.scale - 0.001).abs() < 1e-12);
+        // total_attack_time_+_ms → TotalAttackTime BASE，同样 ms→s。
+        let m = map_skill_stat("total_attack_time_+_ms").unwrap();
+        assert_eq!(m.mod_name, "TotalAttackTime");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert!((m.scale - 0.001).abs() < 1e-12);
     }
 
     #[test]
