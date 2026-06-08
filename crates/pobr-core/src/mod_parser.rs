@@ -336,6 +336,27 @@ fn parse_conversion_or_gain(rest: &str, source: &str) -> Option<Vec<Modifier>> {
 /// 后 Life/Mana 数值暂不变化——这是预期的；本波次只负责让解析产出正确的 Override。
 /// 纯条件型免疫短语（无数值）产出 [`ParseStatus::Unsupported`]（而非 Err），避免噪声。
 fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
+    // 「Your <Stat> is N%」硬覆盖形（如 `Your Critical Damage Bonus is 250%`）：把数值设为
+    // OVERRIDE，胜过 base/inc/more（PoB2 OVERRIDE 语义）。通用按 stat 短语分发。
+    if let Some(rest) = rest.strip_prefix("your ") {
+        let dynamic_overrides: &[(&str, &str)] = &[
+            ("critical damage bonus is ", "CriticalStrikeMultiplier"),
+            ("critical hit chance is ", "CriticalStrikeChance"),
+        ];
+        for (phrase, name) in dynamic_overrides {
+            if let Some(num_str) = rest.strip_prefix(phrase)
+                && let Ok(value) = num_str.trim_end_matches('%').trim().parse::<f64>()
+            {
+                return Some(ParseOutcome {
+                    mods: vec![
+                        Modifier::number(*name, ModType::Override, value).with_source(source),
+                    ],
+                    status: ParseStatus::Parsed,
+                    unparsed: None,
+                });
+            }
+        }
+    }
     // 数值型 OVERRIDE + 伴随 flag（Chaos Inoculation: Maximum Life is 1 → 免疫混沌）。
     let mods: Vec<Modifier> = match rest {
         "maximum life is 1" => vec![

@@ -258,7 +258,14 @@ fn resolve_crit_multiplier(
         more *= 1.0 + less_more / 100.0;
     }
 
-    let mut extra = (PLAYER_BASE_CRIT_DAMAGE_BONUS + base) / 100.0 * (1.0 + inc / 100.0) * more;
+    // OVERRIDE 硬覆盖爆伤加成（如 `Your Critical Damage Bonus is 250%`）：胜过 base/inc/more
+    // （PoB2 OVERRIDE 语义），直接作为加成百分点。否则走 (100 + ΣBASE)×(1+inc)×more。
+    let mut extra =
+        if let Some(ov) = player.override_(cfg, ModName::from("CriticalStrikeMultiplier")) {
+            ov / 100.0
+        } else {
+            (PLAYER_BASE_CRIT_DAMAGE_BONUS + base) / 100.0 * (1.0 + inc / 100.0) * more
+        };
 
     // 分岔："两次都暴击"的概率额外加权一份爆伤（CalcOffence.lua L3796–3811），
     // 与必然互斥（必然路径已把 100% 暴击折进 less）。
