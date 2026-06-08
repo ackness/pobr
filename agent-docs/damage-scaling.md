@@ -64,9 +64,18 @@ if total > 100 then local factor = 100 / total; ... total = 100 end
 
 例：`100% Phys→Fire` + `50% Phys→Cold` → 归一为 `67% Fire / 33% Cold`。
 
-### "increased 双重生效"（double dipping）
+### 转换分量的 increased/more 口径（**PoE2 = 仅最终类型，无转换源 double-dip**）
 
-转换后的伤害**同时享受来源类型与目标类型的 increased/more**。物理转火焰后，该笔伤害既吃 "increased Physical Damage" 又吃 "increased Fire Damage"（以及 "increased Elemental Damage"）。这是 PoB2 用 `typeFlags` 把来源类型 flag 一路 `bor` 累加进 `modNames` 实现的——转换链上经过的每个类型的 flag 都会保留，所以聚合时会把沿途所有类型的 increased 都算进去。这是转换 build 强力的根源，也是 pobr 必须保留"转换沿途类型标签"的原因。
+> **修正（一手来源）**：早期本节据 PoE1 描述为"转换后伤害同时吃来源 + 目标类型 increased（double-dip）"。
+> 经 PoB2 源码 + headless oracle 逐分量验证，**PoE2 已移除此机制**：转换分量只吃**最终伤害类型**自身的
+> increased/more（外加 Elemental，若为元素）。依据：`CalcOffence.lua` `calcDamage(activeSkill, output, cfg,
+> …, damageType, **0**)`（:3990）——`typeFlags` 传入 **0**，函数内 `typeFlags = bor(0, dmgTypeFlags.flags[damageType])`
+> 只含被计算的最终 `damageType`，转换源类型的 flag **不**累加。转换本身（base 在类型间搬运）已预折进
+> `output[damageType.."SummedBase"]`，`calcDamage` 仅按最终类型缩放该 base。
+
+物理转火焰后，火焰分量只吃 "increased Fire Damage" + "increased Elemental Damage"，**不**吃 "increased Physical
+Damage"。pobr 实现见 `crates/pobr-core/src/calc/damage.rs::aggregate_inc_more`（只按 `type_path` 末位最终类型聚合）。
+`type_path` 仍保留转换沿途类型集合，但**仅用于归因/展示**，不参与 inc/more 聚合。
 
 ### Gain #% as Extra（额外伤害包，**不是转换**）
 
@@ -76,11 +85,11 @@ if total > 100 then local factor = 100 / total; ... total = 100 end
 |---|---|---|
 | 来源伤害是否减少 | **是**（转出部分从原类型扣除） | **否**（原类型伤害不变） |
 | 产生的新伤害 | 替换原伤害 | **额外叠加**一份新伤害包 |
-| increased 生效 | 来源+目标双重 | 同样双重（吃来源与目标的 increased） |
+| increased 生效 | **仅最终类型**（PoE2 无源双重） | **仅最终类型**（gained 包按目标类型 increased，PoB2 L3990 同口径） |
 
 PoB2 用独立的 `gainTable`（`buildGainTable`）与 `calcGainedDamage` 处理，旗标名形如 `<From>DamageGainAs<To>` / `DamageGainAs<To>` / `ElementalDamageGainAs<To>` / `SkillDamageGainAs<To>`（BASE，单位 %）。注意 `gainTable` 的来源是"**转换后**的伤害"——gain 计算里会先 `calcConvertedDamage` 再乘 gain 系数，所以 extra 包是在转换链之后追加的。
 
-> 直觉记法：转换"搬走"伤害并可能多吃一层 increased；gain as extra "复制一份"伤害且不动原始包。两者都会双重 dip increased，但 gain 不会被"转换总和归一化到 100%"约束。
+> 直觉记法：转换"搬走"伤害（从原类型扣除）；gain as extra "复制一份"伤害且不动原始包。**两者的 increased 都只按最终/目标类型生效（PoE2，无 PoE1 的转换源 double-dip）**；gain 不受"转换总和归一化到 100%"约束。
 
 ## 幸运 / 不幸伤害 (Lucky / Unlucky Damage)
 

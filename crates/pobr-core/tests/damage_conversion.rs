@@ -65,10 +65,11 @@ fn convert_50_percent_phys_to_fire_splits_base() {
     assert!(fire.type_path.contains(&DamageType::Fire));
 }
 
-/// double-dip：50% Phys→Fire 后，火焰分量同时吃 PhysicalDamage inc、FireDamage inc、
-/// ElementalDamage inc 三条 increased（来源 + 目标 + 元素共享组）。
+/// PoE2 口径（无转换源 double-dip）：50% Phys→Fire 后，火焰分量只吃**最终类型** FireDamage inc
+/// 与 ElementalDamage inc，**不**吃转换源 PhysicalDamage inc。一手依据：PoB2 `CalcOffence.lua`
+/// `calcDamage(..., damageType, 0)`（:3990，typeFlags 传 0，仅含最终类型）+ headless oracle 逐分量验证。
 #[test]
-fn converted_fire_double_dips_phys_and_fire_and_elemental_increased() {
+fn converted_fire_uses_final_type_inc_only_no_conversion_source_double_dip() {
     let mut db = ModDb::new();
     db.add_mod(
         Modifier::number("PhysicalDamageConvertToFire", ModType::Base, 50.0)
@@ -100,11 +101,11 @@ fn converted_fire_double_dips_phys_and_fire_and_elemental_increased() {
     assert_eq!(phys.min, 100.0);
     assert_eq!(phys.max, 200.0);
 
-    // 火焰分量：base 50-100，inc = Phys100 + Fire100 + Elem50 = 250 → ×3.5
-    // min 50*3.5 = 175, max 100*3.5 = 350
+    // 火焰分量：base 50-100，inc = Fire100 + Elem50 = 150（**不含**转换源 Phys100）→ ×2.5
+    // min 50*2.5 = 125, max 100*2.5 = 250
     let fire = component(&output, DamageType::Fire);
-    assert_eq!(fire.min, 175.0);
-    assert_eq!(fire.max, 350.0);
+    assert_eq!(fire.min, 125.0);
+    assert_eq!(fire.max, 250.0);
 }
 
 /// 超 100% 转换归一：100% Phys→Fire + 50% Phys→Cold → 归一为 ~67% Fire / ~33% Cold。
@@ -169,7 +170,7 @@ fn gain_as_extra_does_not_reduce_source() {
     let lightning = component(&output, DamageType::Lightning);
     assert_eq!(lightning.min, 25.0);
     assert_eq!(lightning.max, 50.0);
-    // 闪电分量 type_path 含来源 Physical（double-dip）
+    // 闪电分量 type_path 含来源 Physical（仅用于归因/展示；inc 聚合只按最终类型，不 double-dip）
     assert!(lightning.type_path.contains(&DamageType::Physical));
     assert!(lightning.type_path.contains(&DamageType::Lightning));
     // 总伤害 = 物理 150 + 闪电 37.5 = 187.5（gain 是净增）
@@ -177,9 +178,10 @@ fn gain_as_extra_does_not_reduce_source() {
     assert_eq!(total, 187.5);
 }
 
-/// gain-as-extra double-dip：物理 gain as 火焰后，额外火焰吃 PhysicalDamage inc + FireDamage inc。
+/// PoE2 口径：物理 gain as 火焰后，额外火焰分量只吃**最终类型** FireDamage inc，**不**吃来源
+/// PhysicalDamage inc（与转换同口径，PoB2 calcDamage typeFlags 仅含最终类型；oracle 验证）。
 #[test]
-fn gain_as_extra_fire_double_dips_phys_and_fire() {
+fn gain_as_extra_fire_uses_final_type_inc_only() {
     let mut db = ModDb::new();
     db.add_mod(
         Modifier::number("PhysicalDamageGainAsFire", ModType::Base, 50.0)
@@ -202,10 +204,10 @@ fn gain_as_extra_fire_double_dips_phys_and_fire() {
     let phys = component(&output, DamageType::Physical);
     assert_eq!(phys.min, 200.0);
     assert_eq!(phys.max, 400.0);
-    // 额外火焰：50% 物理 base = 50-100，inc = Phys100 + Fire100 = 200 → ×3 = 150-300
+    // 额外火焰：50% 物理 base = 50-100，inc = Fire100（**不含**来源 Phys100）→ ×2 = 100-200
     let fire = component(&output, DamageType::Fire);
-    assert_eq!(fire.min, 150.0);
-    assert_eq!(fire.max, 300.0);
+    assert_eq!(fire.min, 100.0);
+    assert_eq!(fire.max, 200.0);
 }
 
 /// 富化字段：转换 / gain 产生的分量 kind=Hit、source=Attack；type_path 正确去重有序。

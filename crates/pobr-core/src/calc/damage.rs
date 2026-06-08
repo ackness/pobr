@@ -286,18 +286,19 @@ fn aggregate_inc_more(db: &ModDb, cfg: &CalcConfig, type_path: &[DamageType]) ->
     let mut inc = db.sum(ModType::Inc, cfg, &generic_names);
     let mut more = db.more(cfg, &generic_names);
 
-    let mut elemental_counted = false;
-    for &damage_type in type_path {
-        let type_cfg = cfg.clone().with_damage_type(damage_type);
-        let type_name = [ModName::from(format!("{}Damage", type_prefix(damage_type)))];
+    // PoB2-PoE2：类型化 inc/more 只按分量**最终伤害类型**（type_path 末位）聚合，**不**叠加
+    // 转换源类型（PoE1 的「按转换源 increased 双重 dip」在 PoE2 已移除——PoB2 headless oracle
+    // 逐分量一手验证：`calcDamage` 的 typeFlags 仅含最终类型）。转换/gain-as-extra 产物同此口径。
+    if let Some(&final_type) = type_path.last() {
+        let type_cfg = cfg.clone().with_damage_type(final_type);
+        let type_name = [ModName::from(format!("{}Damage", type_prefix(final_type)))];
         inc += db.sum(ModType::Inc, &type_cfg, &type_name);
         more *= db.more(&type_cfg, &type_name);
 
-        if damage_type.is_elemental() && !elemental_counted {
-            let elem = [elemental_name.clone()];
+        if final_type.is_elemental() {
+            let elem = [elemental_name];
             inc += db.sum(ModType::Inc, &type_cfg, &elem);
             more *= db.more(&type_cfg, &elem);
-            elemental_counted = true;
         }
     }
     (inc, more)
