@@ -390,6 +390,10 @@ fn is_mappable_stat(stat: &str) -> bool {
         || stat.ends_with("resistance_%")
         // added flat 伤害 buff（如 Ice Bite 的 buff_grant_%_added_cold_attack_damage）。
         || stat.contains("added") && stat.contains("_damage")
+        // 光环 / buff 授予的**防御** stat（Discipline ES、Purity 抗性、Defiance 护甲/闪避…）。
+        // 这些以 `base_skill_buff_*_to_apply` / `_to_grant` 命名，由 [`crate::skill_stat_map`]
+        // 的 aura buff 映射消费。入库从宽：能否落地由计算侧的映射决定（映射不到静默跳过）。
+        || stat.starts_with("base_skill_buff_")
 }
 
 /// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`

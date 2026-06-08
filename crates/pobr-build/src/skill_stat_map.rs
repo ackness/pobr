@@ -51,6 +51,44 @@ pub fn map_skill_stat(stat: &str) -> Option<MappedStat> {
         .or_else(|| map_penetration(stat))
 }
 
+/// 把一条**光环 / buff 授予的防御 stat** 映射为一组 PoBR modifier 规格（可多条，如
+/// `all_elements` 同时给火/冰/电）。无法映射（未知/条件型 buff）返回空 `Vec`。
+///
+/// 对应 PoB2 各光环 statSet 的 `statMap`（移植到 PoBR 防御侧消费的 ModName）：
+/// - Discipline `..._total_maximum_energy_shield_+_to_apply` → `EnergyShield` BASE
+///   （PoB 用 `EnergyShieldTotal`，PoBR 防御侧聚合的是 `EnergyShield`；并享全局
+///   `increased ES%`，与 PoB 在 buff 上叠 inc 同口径）；
+/// - Purity of Fire/Ice/Lightning / Impurity `..._<elem>_damage_resistance_%_to_apply`
+///   → `<Elem>Resistance` BASE；
+/// - Purity of Elements `..._all_elements_resistance_%_to_apply` → 火/冰/电三抗 BASE；
+/// - `..._additional_maximum_all_elemental_resistances_%_to_apply`
+///   → `MaximumAllElementalResistances` BASE。
+///
+/// **保守**：仅映射无条件、自身受益的防御 buff。诅咒（`effectType=Curse`，作用于敌人）
+/// 与条件型 banner buff（`armour_evasion_+%_final`，需 `BannerPlanted`）不在此映射——
+/// 调用方亦只对 `skill_types` 含 `Aura` 的效果调用本函数，curse 不会进入。
+pub fn map_aura_buff_stat(stat: &str) -> Vec<MappedStat> {
+    let base = |n: &str| MappedStat::new(n, ModType::Base);
+    match stat {
+        "base_skill_buff_total_maximum_energy_shield_+_to_apply" => vec![base("EnergyShield")],
+        "base_skill_buff_fire_damage_resistance_%_to_apply" => vec![base("FireResistance")],
+        "base_skill_buff_cold_damage_resistance_%_to_apply" => vec![base("ColdResistance")],
+        "base_skill_buff_lightning_damage_resistance_%_to_apply" => {
+            vec![base("LightningResistance")]
+        }
+        "base_skill_buff_chaos_damage_resistance_%_to_apply" => vec![base("ChaosResistance")],
+        "base_skill_buff_all_elements_resistance_%_to_apply" => vec![
+            base("FireResistance"),
+            base("ColdResistance"),
+            base("LightningResistance"),
+        ],
+        "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply" => {
+            vec![base("MaximumAllElementalResistances")]
+        }
+        _ => Vec::new(),
+    }
+}
+
 /// 暴击缩放（support 宝石的**无条件** `_final` more 暴击修正，PoB2 statMap
 /// `mod("CritChance"/"CritMultiplier","MORE")`）：
 /// - `*critical_strike_chance_+%_final` → `CriticalStrikeChance` MORE（如 Pinpoint +60%）
@@ -321,6 +359,52 @@ mod tests {
             map_skill_stat("chaos_damage_penetration_%").unwrap(),
             MappedStat::new("ChaosPenetration", ModType::Base)
         );
+    }
+
+    #[test]
+    fn maps_aura_buff_defence_stats() {
+        // Discipline → EnergyShield BASE
+        assert_eq!(
+            map_aura_buff_stat("base_skill_buff_total_maximum_energy_shield_+_to_apply"),
+            vec![MappedStat::new("EnergyShield", ModType::Base)]
+        );
+        // Purity of Fire → FireResistance BASE
+        assert_eq!(
+            map_aura_buff_stat("base_skill_buff_fire_damage_resistance_%_to_apply"),
+            vec![MappedStat::new("FireResistance", ModType::Base)]
+        );
+        // Impurity → ChaosResistance BASE
+        assert_eq!(
+            map_aura_buff_stat("base_skill_buff_chaos_damage_resistance_%_to_apply"),
+            vec![MappedStat::new("ChaosResistance", ModType::Base)]
+        );
+        // Purity of Elements → 火/冰/电三抗 BASE
+        assert_eq!(
+            map_aura_buff_stat("base_skill_buff_all_elements_resistance_%_to_apply"),
+            vec![
+                MappedStat::new("FireResistance", ModType::Base),
+                MappedStat::new("ColdResistance", ModType::Base),
+                MappedStat::new("LightningResistance", ModType::Base),
+            ]
+        );
+        // 最大全元素抗
+        assert_eq!(
+            map_aura_buff_stat(
+                "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply"
+            ),
+            vec![MappedStat::new(
+                "MaximumAllElementalResistances",
+                ModType::Base
+            )]
+        );
+    }
+
+    #[test]
+    fn skips_unmapped_aura_buff_stats() {
+        // 条件型 banner buff（须 BannerPlanted）— 不在自身光环注入路径映射。
+        assert!(map_aura_buff_stat("base_skill_buff_armour_evasion_+%_final_to_apply").is_empty());
+        // 非 buff stat。
+        assert!(map_aura_buff_stat("spell_minimum_base_fire_damage").is_empty());
     }
 
     #[test]

@@ -4082,6 +4082,26 @@
     "levels": []
   },
   {
+    "id": "ArchnemesisElementalWeakness",
+    "constant_stats": [
+      {
+        "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+        "value": -30.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "ArchnemesisEnfeeble",
+    "constant_stats": [
+      {
+        "stat": "base_skill_buff_damage_+%_final_to_apply",
+        "value": -40.0
+      }
+    ],
+    "levels": []
+  },
+  {
     "id": "ArchnemesisFireVolatileSuicideExplosion",
     "base_effectiveness": 3.8889000415802,
     "levels": [
@@ -6179,6 +6199,17 @@
       {
         "stat": "base_chaos_damage_resistance_%",
         "value": -30.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "AzmeriFabricationEnfeeble",
+    "base_effectiveness": 1.0,
+    "constant_stats": [
+      {
+        "stat": "base_skill_buff_damage_+%_final_to_apply",
+        "value": -60.0
       }
     ],
     "levels": []
@@ -19419,6 +19450,372 @@
     ]
   },
   {
+    "id": "ConductivityPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": -36.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "ContagionPlayer",
     "base_effectiveness": 1.7999999523162842,
     "levels": [
@@ -24250,6 +24647,532 @@
     ]
   },
   {
+    "id": "DefianceBannerPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_armour_evasion_+%_final_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_movement_speed_+%_to_apply",
+            "value": 30.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "DelayedLightningSpark",
     "base_effectiveness": 1.5,
     "levels": [
@@ -26942,6 +27865,387 @@
     ]
   },
   {
+    "id": "DespairPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -37.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -38.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -38.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -39.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -40.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -41.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -41.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -42.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -43.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -44.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -44.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -45.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -46.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -47.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -47.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -48.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -49.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -50.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -50.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -52.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -54.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -55.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -56.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -56.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -57.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -57.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -57.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -58.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -58.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -59.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -59.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -59.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -60.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -60.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "DespairRogueExileWitch2",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "DestructiveLinkSkeletonBombadierMinion",
     "base_effectiveness": 1.0,
     "constant_stats": [
@@ -28418,6 +29722,372 @@
     ]
   },
   {
+    "id": "DisciplinePlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 18.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 41.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 62.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 74.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 89.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 104.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 122.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 140.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 162.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 185.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 209.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 235.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 250.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 278.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 309.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 328.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 363.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 400.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 439.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 479.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 520.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 563.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 608.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 653.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 699.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 748.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 798.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 849.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 902.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 956.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 1010.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 1067.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 1125.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 1184.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 1245.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_maximum_energy_shield_+_to_apply",
+            "value": 1307.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "DisengagePlayer",
     "base_effectiveness": 1.0,
     "levels": [
@@ -29185,6 +30855,692 @@
           {
             "stat": "spell_maximum_base_chaos_damage",
             "value": 8645.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "DreadBannerPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_ailment_threshold_+%_final_to_apply",
+            "value": 60.0
+          },
+          {
+            "stat": "base_skill_buff_flask_charge_per_min_to_apply",
+            "value": 30.0
+          },
+          {
+            "stat": "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply",
+            "value": 4.0
           }
         ]
       }
@@ -32494,6 +34850,372 @@
     ]
   },
   {
+    "id": "ElementalWeaknessPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -40.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -41.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -42.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -43.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -44.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -45.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -46.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -47.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -48.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -49.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -50.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -52.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -54.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -55.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -56.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -57.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -58.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -59.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -60.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -61.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -62.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -63.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -64.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -65.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -66.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -67.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -68.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -69.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -69.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -70.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -70.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -71.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -71.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -72.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -72.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -73.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -73.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+            "value": -74.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "EmberFusilladePlayer",
     "base_effectiveness": 2.0999999046325684,
     "levels": [
@@ -34083,6 +36805,399 @@
           {
             "stat": "active_skill_electrocutes_as_though_dealt_damage_+%_final",
             "value": 202.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "EnfeeblePlayer",
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -21.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -21.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -22.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -22.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -37.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "EnfeebleRogueExileWarrior2",
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -20.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "EnfeebleRogueExileWitch2",
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_damage_+%_final_to_apply",
+            "value": -26.0
           }
         ]
       }
@@ -42747,6 +45862,387 @@
           {
             "stat": "spell_maximum_base_fire_damage",
             "value": 7.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FlammabilityPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -36.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "FlammabilityRogueExileSorceress1",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": -23.0
           }
         ]
       }
@@ -86266,6 +89762,372 @@
     ]
   },
   {
+    "id": "HypothermiaPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": -36.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "IceArmourSkeletonMageMinion",
     "base_effectiveness": 0.8500000238418579,
     "levels": [
@@ -89042,6 +92904,372 @@
           {
             "stat": "spell_maximum_base_cold_damage",
             "value": 1868.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "ImpurityPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 10.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 11.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 12.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 13.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 14.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 15.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 16.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 17.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 18.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 19.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 20.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 21.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 22.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 37.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 38.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 39.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 40.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 41.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 42.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 43.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 44.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 45.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 46.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 47.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 48.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            "value": 49.0
           }
         ]
       }
@@ -108193,6 +112421,26 @@
     ]
   },
   {
+    "id": "MapModElementalWeakness",
+    "constant_stats": [
+      {
+        "stat": "base_skill_buff_all_elements_resistance_%_to_apply",
+        "value": -30.0
+      }
+    ],
+    "levels": []
+  },
+  {
+    "id": "MapModEnfeeble",
+    "constant_stats": [
+      {
+        "stat": "base_skill_buff_damage_+%_final_to_apply",
+        "value": -30.0
+      }
+    ],
+    "levels": []
+  },
+  {
     "id": "MarAcolyteSlam",
     "base_effectiveness": 1.0,
     "constant_stats": [
@@ -122609,6 +126857,1104 @@
           {
             "stat": "spell_maximum_base_physical_damage",
             "value": 3.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PurityOfFirePlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 22.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 37.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 38.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 39.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 40.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 41.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 42.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 43.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 44.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 45.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 46.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 47.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 48.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 49.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 50.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 52.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 52.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 54.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 54.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 55.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 55.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+            "value": 56.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PurityOfIcePlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 22.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 37.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 38.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 39.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 40.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 41.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 42.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 43.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 44.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 45.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 46.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 47.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 48.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 49.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 50.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 52.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 52.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 54.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 54.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 55.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 55.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+            "value": 56.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PurityOfLightningPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 22.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 23.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 24.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 26.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 27.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 28.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 29.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 31.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 32.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 33.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 34.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 35.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 36.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 37.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 38.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 39.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 40.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 41.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 42.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 43.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 44.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 45.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 46.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 47.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 48.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 49.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 50.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 51.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 52.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 52.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 53.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 54.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 54.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 55.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 55.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+            "value": 56.0
           }
         ]
       }
@@ -172293,6 +177639,371 @@
     ]
   },
   {
+    "id": "VulnerabilityPlayer",
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 16.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 30.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 58.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 108.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 176.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 266.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 382.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 536.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 788.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 1136.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 1602.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 2236.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 3280.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 4752.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 6818.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 9146.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 10882.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 12930.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 16228.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 19210.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 20318.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 21482.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 22712.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 24010.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 25378.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 26820.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 28342.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 29946.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 31638.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 33420.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 35298.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 37278.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 39366.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 41562.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 43880.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 46322.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 48896.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 51606.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 54302.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_total_armour_-_to_grant",
+            "value": 57100.0
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "WalkingCalamityMeteorPlayer",
     "base_effectiveness": 1.0,
     "constant_stats": [
@@ -172724,6 +178435,692 @@
         "gem_level": 1,
         "damage_multiplier": 0.7,
         "stats": []
+      }
+    ]
+  },
+  {
+    "id": "WarBannerPlayer",
+    "base_effectiveness": 1.0,
+    "levels": [
+      {
+        "gem_level": 1,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 2,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 3,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 4,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 5,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 6,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 7,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 8,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 9,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 10,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 11,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 12,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 13,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 14,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 15,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 16,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 17,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 18,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 19,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 20,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 21,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 22,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 23,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 24,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 25,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 26,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 27,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 28,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 29,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 30,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 31,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 32,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 33,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 34,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 35,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 36,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 37,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 38,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 39,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
+      },
+      {
+        "gem_level": 40,
+        "stats": [
+          {
+            "stat": "base_skill_buff_attack_damage_+%_final_to_apply",
+            "value": 25.0
+          },
+          {
+            "stat": "base_skill_buff_banner_accuracy_+%_to_apply",
+            "value": 50.0
+          },
+          {
+            "stat": "base_skill_buff_banner_attack_speed_+%_to_apply",
+            "value": 25.0
+          }
+        ]
       }
     ]
   },

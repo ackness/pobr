@@ -44,7 +44,7 @@ use pobr_tree::collect_allocated_mods;
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
-use crate::skill_stat_map::map_skill_stat;
+use crate::skill_stat_map::{map_aura_buff_stat, map_skill_stat};
 
 /// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
 const EXPOSURE_MAGNITUDE: f64 = 20.0;
@@ -436,6 +436,12 @@ pub fn calculate_with_data(
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
         }
     }
+
+    // 4b. 光环宝石的**防御 buff**（全局自身 buff）→ SkillGem 归因 modifier。数据驱动：
+    //     `skill_types` 含 `Aura` 的已启用宝石，按分等级 stat 注入对应防御 ModName
+    //     （Discipline→EnergyShield、Purity of Fire→FireResistance…）。ES buff 享全局
+    //     `increased ES%`，与 PoB 在 buff 上叠 inc 同口径。
+    session.add_modifiers(aura_buff_modifiers(build, data));
 
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
     session.setup_enemy(options.enemy_level, options.enemy_tier);
@@ -1034,6 +1040,43 @@ fn support_modifiers(group: &SocketGroup, data: &BuildData) -> Vec<Modifier> {
     mods
 }
 
+/// 把所有**已启用光环宝石**（`skill_types` 含 `Aura`）授予的分等级**防御 buff**
+/// 经 [`map_aura_buff_stat`] 映射为 SkillGem 归因的 modifier（如 Discipline → `EnergyShield`
+/// BASE、Purity of Fire → `FireResistance` BASE）。
+///
+/// 数据驱动、零按宝石名硬编码：光环身份由 `skill_types` 判定，buff→ModName 映射由
+/// stat id 决定。光环为**全局**自身 buff，故遍历**所有**启用 socket group 的 gem_skills，
+/// 而非仅主技能组；同一光环效果在多组重复出现时按 id 去重（避免重复注入）。
+fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    use std::collections::HashSet;
+    let mut mods = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            if !data.is_aura(&gem.skill_id) || !seen.insert(gem.skill_id.as_str()) {
+                continue;
+            }
+            for ds in data.effect_stats(&gem.skill_id, gem.gem_level) {
+                for mapped in map_aura_buff_stat(&ds.stat) {
+                    if ds.value == 0.0 {
+                        continue;
+                    }
+                    let origin = ModifierSource::new(SourceId::new(
+                        SourceKind::SkillGem,
+                        format!("aura.{}.{}", gem.skill_id, ds.stat),
+                    ))
+                    .with_raw_text(format!("aura {} {} ({})", gem.skill_id, ds.stat, ds.value));
+                    mods.push(
+                        Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
+                            .with_origin(origin),
+                    );
+                }
+            }
+        }
+    }
+    mods
+}
+
 /// 把一组已解析 stat 经 [`map_skill_stat`] 映射为带 `source_kind` 归因的 modifier。
 /// 无法映射的 stat（未知/条件型）静默跳过；零值跳过。
 fn mapped_stat_modifiers(
@@ -1518,5 +1561,52 @@ mod tests {
         // CharacterBase (level 90 Ranger: 28 + 1080 + 2*7=14 = 1122) + ring 80 ≥ 装备贡献。
         assert!(out.life >= 1122.0 + 80.0, "life={}", out.life);
         assert!(out.life.is_finite());
+    }
+
+    #[test]
+    fn aura_gem_injects_defensive_buff() {
+        // 数据驱动：已启用的 Discipline（ES 光环）+ Purity of Fire（火抗光环）应分别抬升
+        // EnergyShield / FireResist；非光环（无 stat）build 不受影响。绝不按宝石名硬编码。
+        let data = repo_data();
+        // 前置确认：两者确为光环（skill_types 含 Aura），且其分等级 stat 非空（数据已落地）。
+        assert!(data.is_aura("DisciplinePlayer"), "Discipline 应判定为光环");
+        assert!(
+            data.is_aura("PurityOfFirePlayer"),
+            "Purity of Fire 应判定为光环"
+        );
+
+        let base_build = Build::new().with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Witch".into(),
+            ascendancy_name: String::new(),
+        });
+        let aura_build = base_build.clone().add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("DisciplinePlayer", 20)
+                .with_gem_skill("PurityOfFirePlayer", 20),
+        );
+
+        let opts = DataOrchestratorOptions {
+            inject_character_base: true,
+            ..Default::default()
+        };
+        let base = calculate_with_data(&base_build, &data, &opts).expect("base calc");
+        let aura = calculate_with_data(&aura_build, &data, &opts).expect("aura calc");
+
+        assert!(
+            aura.energy_shield > base.energy_shield,
+            "Discipline 应抬升 ES: base={} aura={}",
+            base.energy_shield,
+            aura.energy_shield,
+        );
+        assert!(
+            aura.fire_resistance > base.fire_resistance,
+            "Purity of Fire 应抬升火抗: base={} aura={}",
+            base.fire_resistance,
+            aura.fire_resistance,
+        );
+        // 非火抗光环不应污染冰/电抗（Purity of Fire 仅给火抗）。
+        assert_eq!(aura.cold_resistance, base.cold_resistance);
+        assert_eq!(aura.lightning_resistance, base.lightning_resistance);
     }
 }

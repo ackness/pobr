@@ -309,6 +309,17 @@ impl BuildData {
     pub fn is_support_gem(&self, gem_id: &str) -> Option<bool> {
         self.skill_gems.get(gem_id).map(|gem| gem.is_support)
     }
+
+    /// 判断某授予效果是否为**光环**（`skill_types` 含 `Aura`）。光环对自身（及在场盟友）
+    /// 施加持续 buff——其分等级 stat 走 [`Self::effect_stats`] 取值后由防御侧注入。
+    /// 未知效果返回 `false`（保守，不臆造光环语义）。诅咒（作用于敌人）`skill_types` 不含
+    /// `Aura`，故不会被误判为自身 buff。
+    pub fn is_aura(&self, skill_id: &str) -> bool {
+        self.granted_effects
+            .get(skill_id)
+            .map(|e| e.skill_types.iter().any(|t| t == "Aura"))
+            .unwrap_or(false)
+    }
 }
 
 #[cfg(test)]
