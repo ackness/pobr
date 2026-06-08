@@ -364,3 +364,24 @@ fn weapon_type_guard_keeps_damage_as_weapon_keyword_name() {
         "damage-with-weapon should not become a conditional mod"
     );
 }
+
+#[test]
+fn parses_buffs_also_grant_resistances() {
+    // 「Archon Buffs also grant +20% to all Elemental Resistances」——授予型 buff 增益，
+    // 面板口径假设 buff 激活 → 三元素抗各 +20 BASE。
+    let outcome = parse_mod("Archon Buffs also grant +20% to all Elemental Resistances").unwrap();
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    assert_eq!(outcome.mods.len(), 3);
+    for m in &outcome.mods {
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value, ModValue::Number(20.0));
+    }
+    let names: Vec<String> = outcome
+        .mods
+        .iter()
+        .map(|m| m.name.as_str().to_string())
+        .collect();
+    assert!(names.contains(&"FireResistance".to_string()));
+    assert!(names.contains(&"ColdResistance".to_string()));
+    assert!(names.contains(&"LightningResistance".to_string()));
+}

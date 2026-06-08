@@ -29,6 +29,11 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         ));
     }
 
+    // 充能 multiplier：按 PoB2 口径，仅 `Condition:UseXCharges` 为真（或常驻满层）时把
+    // PowerCharge/FrenzyCharge/EnduranceCharge 置为最大层，供 `per X charge` 词条展开。
+    // 未启用该充能时保持 0（PoB2 面板 current=0），避免错误施加 per-charge 增益/罚减。
+    env.cfg = super::survivability::charge_multipliers_panel_default(&env.player.mod_db, &env.cfg);
+
     let mut input = MinimalInput::from(env.player.base);
     // 命中率的敌人闪避来源：优先用 enemy.mod_db 的 Evasion BASE（setup_env 注入，含档位倍率），
     // 回退到 enemy.base.evasion 标量（兼容直接构造 Env 的旧入口）。

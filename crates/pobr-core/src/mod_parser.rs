@@ -120,6 +120,17 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // 「<X> buffs also grant +N% to <stat>」（如 `Archon Buffs also grant +20% to all
+    // Elemental Resistances`）——授予型 buff 增益。PoB 面板口径假设 buff 已激活，直接把 grant
+    // 的 stat 作为 BASE 注入（复用 resolve_names 支持聚合名/复合名）。非此形式返回 None。
+    if let Some(mods) = parse_buffs_also_grant(&rest, original) {
+        return Ok(ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     // 关键石/无 form 特例：非数字开头、parse_form 必然失败的固定语义短语。
     // 在 parse_form 之前查表，命中即直接产出对应 Modifier（OVERRIDE / flag）。
     if let Some(outcome) = parse_keystone_special(&rest, original) {
@@ -383,6 +394,43 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
         status: ParseStatus::Parsed,
         unparsed: None,
     })
+}
+
+/// 解析「<X> buffs also grant +N% to <stat>」/「buffs also grant +N to <stat>」——授予型 buff
+/// 增益（`rest` 已小写规范）。PoB 面板口径假设 buff 已激活，把 grant 的 stat 直接作为 BASE 注入。
+///
+/// 支持任意前导词（`archon buffs ...`、`buffs ...`），与聚合名（`all elemental resistances`）/
+/// 复合名（`armour and evasion`）——复用 [`resolve_names`]。`<stat>` 的 form 只取 BASE
+/// （`+N`/`N% to`）；inc/more grant（如 `10% increased Movement Speed`）当前不支持（返回 None，
+/// 由调用方继续后续解析或归 Unsupported）。
+///
+/// 出处：PoB2 TreeData 0_5 tree.lua「Archon Buffs also grant +20% to all Elemental Resistances」
+/// 等授予型从句；ModParser.lua 把 `also grant` 拆为对授予 stat 的直接修饰。
+fn parse_buffs_also_grant(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    // 定位 `buffs also grant ` 从句（前面可有任意限定词，如 `archon `）。
+    let idx = rest.find("buffs also grant ")?;
+    let after = &rest[idx + "buffs also grant ".len()..];
+
+    // grant 体必须是 BASE 形（`+N% to <stat>` / `+N to <stat>` / `N% <stat>`）。复用 parse_form
+    // 后只接受 Base，避免误把 inc/more 授予当作 BASE（语义不同，暂不支持）。
+    let (form, after_form) = parse_form(after)?;
+    if !matches!(form.kind, FormKind::Base) {
+        return None;
+    }
+    let (remainder, base_tags) = strip_tags(after_form);
+    let names = resolve_names(remainder.trim())?;
+
+    let mods = names
+        .into_iter()
+        .map(|name| {
+            let mut m = Modifier::number(name, ModType::Base, form.value).with_source(source);
+            for tag in &base_tags {
+                m = m.with_tag(tag.clone());
+            }
+            m
+        })
+        .collect();
+    Some(mods)
 }
 
 /// 解析「Armour applies to <Fire/Cold/Lightning...> Damage taken from Hits instead of Physical

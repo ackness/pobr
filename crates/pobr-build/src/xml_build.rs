@@ -117,6 +117,12 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>) {
                     && let Some(b) = attr_value(&e, b"boolean")
                 {
                     conditions.insert(var.to_string(), b == "true");
+                } else if let Some(charge_cond) = use_charge_condition(&name)
+                    && let Some(b) = attr_value(&e, b"boolean")
+                {
+                    // PoB2 ConfigOptions：`useXCharges` 复选框 → `Condition:UseXCharges` FLAG。
+                    // 充能满层默认（current = max）仅在该条件为真时生效（见 charge_multipliers_panel_default）。
+                    conditions.insert(charge_cond.to_string(), b == "true");
                 } else if let Some(var) = name.strip_prefix("multiplier")
                     && let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
                 {
@@ -128,6 +134,17 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>) {
         }
     }
     (conditions, multipliers)
+}
+
+/// PoB2 充能使用复选框（`use{Power,Frenzy,Endurance}Charges`）→ 计算侧条件变量名。
+/// 命中即把对应 `UseXCharges` 条件置入 build config（gate 充能满层默认）。
+fn use_charge_condition(name: &str) -> Option<&'static str> {
+    match name {
+        "usePowerCharges" => Some("UsePowerCharges"),
+        "useFrenzyCharges" => Some("UseFrenzyCharges"),
+        "useEnduranceCharges" => Some("UseEnduranceCharges"),
+        _ => None,
+    }
 }
 
 /// 抽取 `<Build mainSocketGroup="N">`（1-based 主技能组索引）。缺失返回 `None`。

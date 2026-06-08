@@ -289,6 +289,45 @@ pub fn resolve_all_charges(db: &ModDb, cfg: &CalcConfig) -> AllChargeStates {
     }
 }
 
+/// 按 PoB2 充能口径填充充能层数 multiplier，返回派生 cfg。
+///
+/// PoB2（CalcPerform.lua L831-832 / L899）：仅当 `Condition:UseXCharges` 为真时
+/// `output.XCharges = output.XChargesMax`，随后 `modDB.multipliers["XCharge"] = output.XCharges`，
+/// 使 `per X charge` 词条按满层展开。**未启用该充能的 build，PoB2 面板 current=0**（如
+/// stormweaver `PowerCharges value="0"`），故此处也保持 0，避免错误施加 `per charge` 罚减/增益。
+/// pobr 用 `CalcConfig.multipliers` 与 `Condition:UseXCharges` 同构。
+///
+/// **覆盖语义**：若 cfg 已显式设正值（build 导入的 `XCharges` 数量覆盖 / 非满层），沿用原值；
+/// 若 `MinimumXChargesIsMaximumXCharges`（常驻满层），`charge_minimum` 会返回 maximum，
+/// 即便未勾选使用条件也按常驻层填充。
+pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcConfig {
+    let mut out = cfg.clone();
+    for kind in [ChargeKind::Power, ChargeKind::Frenzy, ChargeKind::Endurance] {
+        let key = kind.multiplier_key();
+        // 已显式设为正值则尊重 build 覆盖。
+        if out.multiplier(key) > 0.0 {
+            continue;
+        }
+        let maximum = charge_maximum(db, cfg, kind);
+        let minimum = charge_minimum(db, cfg, kind, maximum);
+        // 使用条件（PoB2 `Condition:UseXCharges`）：勾选则满层，否则取常驻最小（通常 0）。
+        let use_cond = match kind {
+            ChargeKind::Power => "UsePowerCharges",
+            ChargeKind::Frenzy => "UseFrenzyCharges",
+            ChargeKind::Endurance => "UseEnduranceCharges",
+        };
+        let current = if cfg.condition(use_cond) {
+            maximum.max(minimum)
+        } else {
+            minimum
+        };
+        if current > 0 {
+            out = out.with_multiplier(key, current as f64);
+        }
+    }
+    out
+}
+
 // ─────────────────────────────────────────────────────────────────
 // 偷取 (Leech) — 0.5.0 重制
 // ─────────────────────────────────────────────────────────────────
