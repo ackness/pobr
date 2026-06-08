@@ -211,7 +211,7 @@ impl Build {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pobr_data::item::{ItemBaseId, ItemRarity};
+    use pobr_data::item::{ItemBaseId, ItemRarity, RolledDefence};
 
     fn sample_item() -> Item {
         Item {
@@ -221,6 +221,7 @@ mod tests {
             implicit_texts: vec![],
             modifier_texts: vec!["+10 to maximum Life".into()],
             enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
             parsed_stats: vec![],
         }
     }

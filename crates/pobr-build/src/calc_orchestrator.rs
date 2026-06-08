@@ -224,7 +224,7 @@ pub fn calculate_with_data(
     // 用解析出的真实主技能 id（跳过 meta 壳），确保攻击/法术判定与权重正确。
     let weapon = main_skill
         .as_ref()
-        .and_then(|(_, _, skill_id)| weapon_contribution(build, data, skill_id));
+        .and_then(|(skill, _, skill_id)| weapon_contribution(build, data, skill_id, skill));
     if let Some(w) = &weapon {
         base_input.base_hit_min += w.phys_min * dmg_mult;
         base_input.base_hit_max += w.phys_max * dmg_mult;
@@ -378,9 +378,15 @@ pub fn calculate_with_data(
             filtered.modifier_texts = drop_local(filtered.modifier_texts);
             filtered.enchant_texts = drop_local(filtered.enchant_texts);
         }
-        // 护甲件：剔除局部「increased / +flat Armour/Evasion/ES」（已作为基底独立乘区计入
-        // defence_base_modifiers）；留在全局会重复（且错误地变成全局加法）。
-        if data.armour_base(&item.base.to_string()).is_some() {
+        // 护甲件：剔除局部「increased / +flat Armour/Evasion/ES」（已折入 rolled 件级底值 /
+        // 基底兜底乘区，见 defence_base_modifiers）；留在全局会重复（且错误地变成全局加法）。
+        // 判定护甲件：有基底护甲项 **或** 文本给出 rolled 防御行（兜底覆盖无 catalog 的 unique）。
+        let rd = &item.rolled_defence;
+        let is_armour_piece = data.armour_base(&item.base.to_string()).is_some()
+            || rd.armour.is_some()
+            || rd.evasion.is_some()
+            || rd.energy_shield.is_some();
+        if is_armour_piece {
             let drop_def = |texts: Vec<String>| -> Vec<String> {
                 texts
                     .into_iter()
@@ -601,37 +607,75 @@ fn resolve_main_skill<'b>(
     None
 }
 
-/// 把全部装备护甲件的基底 armour/evasion/ES（× 品质）注入为 Item 归因的 BASE 词条，
-/// 供 `scaled_defence_stat` 在其上叠加 `increased Armour/Evasion/EnergyShield`。
+/// 把全部装备护甲件的**件级**防御底值（armour/evasion/ES）注入为 Item 归因的 BASE 词条，
+/// 供 `scaled_defence_stat` 在其上叠加全局（树/光环）`increased Armour/Evasion/EnergyShield`
+/// 与全局 `+to Armour` BASE。
 ///
-/// 切片：品质/「increased」当前按全局口径作用（PoB 是逐件 local 后再求和），多防御件
-/// build 会略有偏差；裸装/单主防御件口径正确。
+/// PoB2 口径（`CalcDefence.lua` per-slot + `Item.lua` `BuildModListForSlotNum`）：
+/// - 物品导出文本的 `Armour:`/`Evasion:`/`Energy Shield:` 行（`item.armourData`）**已包含**
+///   该件的基底掷点 + 局部 `increased X` + 品质 — 即 PoB 在装载物品时已逐件算好的件级底值。
+///   因此此处**直接采用 rolled 值作为件级底**，不再重复叠加局部 increased / 品质 / flat
+///   （那些已剔除，见 `calculate_with_data` 的护甲件 drop-local）。
+/// - 缺失 rolled 行的物品（裸装 / 测试夹具）退回基底物品默认值，并在其上叠加局部
+///   `increased X` × 品质 × 局部 flat（旧口径，作为兜底）。
+///
+/// 把所有件级底值求和注入单一全局 BASE：因全局乘区（树/光环 increased + more）对每件**一致**，
+/// 「逐件乘全局后求和」与「求和后乘全局」数值等价（无 slot-scoped 全局增幅时）。
+///
+/// **已知缺口（slot-scoped defence）**：`N% increased/more <Defence> from Equipped <Slot>`
+/// （如 Titan `80% increased Armour from Equipped Body Armour`）当前**未实现**——这类槽位级
+/// `increased` 与全局 `increased` 同属加法桶（PoB2 `calcLib.mod({slotName=slot})` 把两者相加），
+/// 无法在「求和后乘单一全局乘区」的现行结构里精确表达（独立乘区会多乘出 `g×s` 交叉项导致
+/// 高估，实测使 evasion/ES build 反向倒退）。精确实现需把全局 inc/more 改为 per-slot 应用
+/// （ModDb SlotName tag），属结构性改造，留作后续。
 fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     for item in build.items.values() {
-        let Some(a) = data.armour_base(&item.base.to_string()) else {
+        let base_default = data.armour_base(&item.base.to_string());
+        let rolled = &item.rolled_defence;
+        // 仅护甲件（有基底护甲项 **或** 文本给出 rolled 防御行）参与。
+        if base_default.is_none()
+            && rolled.armour.is_none()
+            && rolled.evasion.is_none()
+            && rolled.energy_shield.is_none()
+        {
             continue;
-        };
-        // PoB 护甲件最终防御 = (基底 + 局部 flat) × (1 + 局部 increased%) × (1 + 品质%)。
-        // 品质是**独立乘区**（与局部 increased 相乘，非相加；已对 Slipstrike Vest 显示值
-        // 2136 验证）。局部 flat 在该乘区内。局部词条在 add_item 时剔除以免重复（全局加法桶）；
-        // 全局树/光环增幅在此基础上再乘（标准管线）。
+        }
         let quality_pct = f64::from(item.quality);
         let local_pct = item_local_defence_inc(item);
         let local_flat = item_local_defence_flat(item);
-        for (idx, name, raw) in [
-            (0, "Armour", a.armour),
-            (1, "Evasion", a.evasion),
-            (2, "EnergyShield", a.energy_shield),
-        ] {
-            let base = f64::from(raw) + local_flat[idx];
-            if base > 0.0 {
+        let entries = [
+            (0, "Armour", rolled.armour, base_default.map(|a| a.armour)),
+            (
+                1,
+                "Evasion",
+                rolled.evasion,
+                base_default.map(|a| a.evasion),
+            ),
+            (
+                2,
+                "EnergyShield",
+                rolled.energy_shield,
+                base_default.map(|a| a.energy_shield),
+            ),
+        ];
+        for (idx, name, rolled_val, default_val) in entries {
+            // 优先用 rolled 件级底值（已含局部 increased + 品质）。缺失时退回基底默认 ×
+            // 局部 increased × 品质 + 局部 flat（兜底口径）。
+            let value = match rolled_val {
+                Some(v) => v,
+                None => {
+                    let base = f64::from(default_val.unwrap_or(0)) + local_flat[idx];
+                    if base <= 0.0 {
+                        continue;
+                    }
+                    base * (1.0 + local_pct[idx] / 100.0) * (1.0 + quality_pct / 100.0)
+                }
+            };
+            if value > 0.0 {
                 let origin =
                     ModifierSource::new(SourceId::new(SourceKind::Item, format!("base.{name}")))
-                        .with_raw_text(format!("{} local {name}", item.base));
-                // PoB 口径：品质是**独立乘区**（非与局部 increased 相加）。
-                // 最终 = (基底 + 局部 flat) × (1 + 局部 increased%) × (1 + 品质%)。
-                let value = base * (1.0 + local_pct[idx] / 100.0) * (1.0 + quality_pct / 100.0);
+                        .with_raw_text(format!("{} item {name}", item.base));
                 mods.push(Modifier::number(name, ModType::Base, value).with_origin(origin));
             }
         }
@@ -773,15 +817,18 @@ fn weapon_contribution(
     build: &Build,
     data: &BuildData,
     main_skill_id: &str,
+    skill: &ResolvedSkillLevel,
 ) -> Option<WeaponContribution> {
+    let effect = data.granted_effects.get(main_skill_id)?;
     // 仅攻击技能用武器伤害（法术用 stat-set 法术基础伤害）。
-    if !data
-        .granted_effects
-        .get(main_skill_id)
-        .map(|e| e.is_attack())
-        .unwrap_or(false)
-    {
+    if !effect.is_attack() {
         return None;
+    }
+    // 非武器攻击（如 Shield Wall）：击中基础伤害来自技能自身 off-hand stat-set（而非主手武器），
+    // 攻击速率取技能自带攻击时间、暴击取技能 critChance。对应 PoB2 `skillFlags.shieldAttack`：
+    // source = off-hand，`setOffHandPhysical*` 提供 phys、`source.AttackRate = 1000/skillData.attackTime`。
+    if effect.is_non_weapon_attack() {
+        return Some(non_weapon_attack_contribution(skill));
     }
     // 无主手武器 → 空手（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（按职业）、
     // 攻速 1.65、暴击 5%。使空手攻击/通道技能（如 Flame Breath、Monk）有非零基底伤害。
@@ -810,6 +857,35 @@ fn weapon_contribution(
         attack_rate: base_rate * local_as,
         crit_chance: f64::from(w.crit_chance) / 100.0,
     })
+}
+
+/// 非武器攻击（如 Shield Wall）的武器源贡献：基础物理伤害来自技能自身 off-hand stat-set
+/// （`off_hand_weapon_minimum/maximum_physical_damage`），攻击速率取技能攻击时间
+/// （`1/use_time_s`），暴击取技能 `crit_chance`。对应 PoB2 CalcOffence L2418-2431
+/// （`source.PhysicalMin = setOffHandPhysicalMin`、`source.AttackRate = 1000/attackTime`）。
+///
+/// `baseMultiplier`（技能伤害倍率，如 Shield Wall 0.65）由调用方在 `phys × dmg_mult` 处应用，
+/// 与普通武器攻击同口径——故此处只返回**未乘倍率**的裸 off-hand 基础伤害。
+fn non_weapon_attack_contribution(skill: &ResolvedSkillLevel) -> WeaponContribution {
+    let mut phys_min = 0.0;
+    let mut phys_max = 0.0;
+    for ds in &skill.base_damage {
+        match ds.stat.as_str() {
+            "off_hand_weapon_minimum_physical_damage" => phys_min += ds.value,
+            "off_hand_weapon_maximum_physical_damage" => phys_max += ds.value,
+            _ => {}
+        }
+    }
+    let attack_rate = skill
+        .use_time_s
+        .filter(|&t| t > 0.0)
+        .map_or(0.0, |t| 1.0 / t);
+    WeaponContribution {
+        phys_min,
+        phys_max,
+        attack_rate,
+        crit_chance: skill.crit_chance.unwrap_or(0.0) / 100.0,
+    }
 }
 
 /// 空手武器贡献（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（N 按职业）、
@@ -1005,12 +1081,30 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
         ));
     }
     // 技能 stat（基础伤害 + 自带 damage% 缩放）经 SkillStatMap 映射注入。
+    // 例外：`off_hand_weapon_*physical_damage`（非武器攻击的击中基础伤害）已作为**武器 source**
+    // 由 `non_weapon_attack_contribution` 计入 `base_hit_min/max`（× baseMultiplier），
+    // 不能再经 stat-map 注入 `PhysicalDamageMin/Max` BASE（否则重复计入）。
+    let base_damage: Vec<_> = skill
+        .base_damage
+        .iter()
+        .filter(|ds| !is_off_hand_weapon_base_stat(&ds.stat))
+        .cloned()
+        .collect();
     mods.extend(mapped_stat_modifiers(
-        &skill.base_damage,
+        &base_damage,
         SourceKind::SkillGem,
         "skill",
     ));
     mods
+}
+
+/// 是否为非武器攻击的 off-hand 武器基础伤害 stat（由 `non_weapon_attack_contribution` 作为
+/// 武器 source 消费，故从 stat-map 注入路径剔除以避免重复计入）。
+fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
+    matches!(
+        stat,
+        "off_hand_weapon_minimum_physical_damage" | "off_hand_weapon_maximum_physical_damage"
+    )
 }
 
 /// 把主技能组内 **support 宝石**的分等级 stat 经 [`map_skill_stat`] 映射为 SupportGem 归因
@@ -1095,8 +1189,12 @@ fn mapped_stat_modifiers(
             ))
             .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
             mods.push(
-                Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
-                    .with_origin(origin),
+                Modifier::number(
+                    mapped.mod_name.as_str(),
+                    mapped.mod_type,
+                    ds.value * mapped.scale,
+                )
+                .with_origin(origin),
             );
         }
     }
@@ -1211,7 +1309,7 @@ mod tests {
     use crate::build_data::ClassBaseAttributes;
     use pobr_core::CalcConfig;
     use pobr_core::calc::CalculationSession;
-    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity};
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
     use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
     use pobr_gamedata::{GameData, repo_data_root};
     use std::collections::HashMap;
@@ -1224,6 +1322,7 @@ mod tests {
             implicit_texts: vec![],
             modifier_texts: vec![format!("+{amount} to maximum Life")],
             enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
             parsed_stats: vec![],
         }
     }
