@@ -105,8 +105,9 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
     let mut implicit_texts = Vec::new();
     let mut enchant_texts = Vec::new();
     let mut modifier_texts = Vec::new();
+    let mut rolled_defence = RolledDefence::default();
 
-    // 后续段：先扫描元数据（Quality / Implicits 头），再按行归类词条。
+    // 后续段：先扫描元数据（Quality / Implicits 头 / 防御底值），再按行归类词条。
     for section in &sections[1..] {
         let mut mod_lines: Vec<&str> = Vec::new();
 
@@ -115,6 +116,8 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
                 quality = value;
             } else if let Some(count) = implicits_header(line) {
                 implicit_count = count;
+            } else if accumulate_rolled_defence(line, &mut rolled_defence) {
+                // 已掷出防御底值行：记入 rolled_defence，不计入词条。
             } else if is_metadata_line(line) {
                 // 元数据行不计入词条。
             } else {
@@ -138,6 +141,7 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
         implicit_texts,
         modifier_texts,
         enchant_texts,
+        rolled_defence,
         parsed_stats: Vec::new(),
     })
 }
@@ -195,15 +199,18 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     }
     let base = parse_base(&header, rarity)?;
 
-    // 其余行：扫描 Quality / Implicits 头，跳过元数据，收集词条行。
+    // 其余行：扫描 Quality / Implicits 头 / 防御底值，跳过元数据，收集词条行。
     let mut quality = 0u8;
     let mut implicit_count = 0usize;
+    let mut rolled_defence = RolledDefence::default();
     let mut mod_lines: Vec<&str> = Vec::new();
     for &line in &lines[idx..] {
         if let Some(value) = quality_from_line(line) {
             quality = value;
         } else if let Some(count) = implicits_header(line) {
             implicit_count = count;
+        } else if accumulate_rolled_defence(line, &mut rolled_defence) {
+            // 已掷出防御底值行：记入 rolled_defence，不计入词条。
         } else if is_xml_metadata_line(line) {
             // 元数据行不计入词条。
         } else {
@@ -229,6 +236,7 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
         implicit_texts,
         modifier_texts,
         enchant_texts,
+        rolled_defence,
         parsed_stats: Vec::new(),
     })
 }
@@ -333,6 +341,42 @@ fn quality_from_line(line: &str) -> Option<u8> {
 fn implicits_header(line: &str) -> Option<usize> {
     let rest = line.strip_prefix("Implicits:")?.trim();
     rest.parse::<usize>().ok()
+}
+
+/// 解析 PoB 导出 item 文本里的**已掷出防御底值**行
+/// （`Armour: 4018` / `Evasion: 192` / `Energy Shield: 26`），累加进 `out`。
+///
+/// 这些行是物品实际防御底值（已含基底掷点 / 词缀 / 影响），PoB2 `CalcDefence`
+/// 直接用作 per-slot 基底（`item.armourData`）。返回 `true` 表示该行被识别为防御行。
+fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
+    let parse_num = |rest: &str| -> Option<f64> {
+        // 容错括号注释 / 范围（如 `Armour: 100 (augmented)`）：取首个数字 token。
+        rest.split_whitespace()
+            .next()
+            .and_then(|tok| tok.parse::<f64>().ok())
+    };
+    if let Some(rest) = line.strip_prefix("Armour:") {
+        if let Some(n) = parse_num(rest) {
+            out.armour = Some(out.armour.unwrap_or(0.0) + n);
+            return true;
+        }
+    } else if let Some(rest) = line.strip_prefix("Evasion Rating:") {
+        if let Some(n) = parse_num(rest) {
+            out.evasion = Some(out.evasion.unwrap_or(0.0) + n);
+            return true;
+        }
+    } else if let Some(rest) = line.strip_prefix("Evasion:") {
+        if let Some(n) = parse_num(rest) {
+            out.evasion = Some(out.evasion.unwrap_or(0.0) + n);
+            return true;
+        }
+    } else if let Some(rest) = line.strip_prefix("Energy Shield:")
+        && let Some(n) = parse_num(rest)
+    {
+        out.energy_shield = Some(out.energy_shield.unwrap_or(0.0) + n);
+        return true;
+    }
+    false
 }
 
 /// 判断是否为元数据行（不计入词条）。匹配已知的 `Key:` 前缀。

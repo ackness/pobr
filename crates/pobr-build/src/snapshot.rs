@@ -186,7 +186,7 @@ impl Fnv1a {
 mod tests {
     use super::*;
     use crate::build::{Build, CharacterIdentity, SocketGroup};
-    use pobr_data::item::{Item, ItemBaseId, ItemRarity};
+    use pobr_data::item::{Item, ItemBaseId, ItemRarity, RolledDefence};
     use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
 
     fn build_with_level(level: u32) -> Build {
@@ -241,6 +241,7 @@ mod tests {
                 implicit_texts: vec![],
                 modifier_texts: vec!["+10 to maximum Life".into()],
                 enchant_texts: vec![],
+                rolled_defence: RolledDefence::default(),
                 parsed_stats: vec![],
             },
         );

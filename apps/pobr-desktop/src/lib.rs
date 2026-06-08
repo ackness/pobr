@@ -10,7 +10,7 @@
 
 use pobr_build::{Build, CharacterIdentity, OrchestratorOptions, calculate};
 use pobr_core::calc::MinimalInput;
-use pobr_data::prelude::{EquipmentSlot, Item, ItemBaseId, ItemRarity};
+use pobr_data::prelude::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_i18n::{CANONICAL_LANGUAGE, LanguageId, Translator};
 
 /// 示例 Build 的等级（与 [`example_build`] 一致，供测试断言）。
@@ -37,6 +37,7 @@ pub fn example_build() -> Build {
             "+30% to Fire Resistance".to_string(),
         ],
         enchant_texts: vec![],
+        rolled_defence: RolledDefence::default(),
         parsed_stats: vec![],
     };
 

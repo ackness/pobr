@@ -10,7 +10,7 @@ use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
 };
 use pobr_core::calc::MinimalInput;
-use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity};
+use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::monster::EnemyTier;
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -145,6 +145,7 @@ fn bare_weapon(base_name: &str) -> Item {
         implicit_texts: vec![],
         modifier_texts: vec![],
         enchant_texts: vec![],
+        rolled_defence: RolledDefence::default(),
         parsed_stats: vec![],
     }
 }

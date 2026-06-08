@@ -11,6 +11,7 @@ fn helmet(texts: &[&str]) -> Item {
         implicit_texts: Vec::new(),
         modifier_texts: texts.iter().map(|t| (*t).to_string()).collect(),
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     }
 }
@@ -92,6 +93,7 @@ fn ingest_item_distinguishes_implicit_explicit_enchant_sections() {
         implicit_texts: vec!["+30% to Fire Resistance".to_string()],
         modifier_texts: vec!["+40 to maximum Life".to_string()],
         enchant_texts: vec!["+25% to Cold Resistance".to_string()],
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -134,6 +136,7 @@ fn ingest_item_collects_unsupported_texts_across_sections() {
         implicit_texts: vec!["split".to_string()],
         modifier_texts: vec!["+40 to maximum Life".to_string(), "mirrored".to_string()],
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -155,6 +158,7 @@ fn ingested_item_modifiers_attribute_back_to_slot() {
         implicit_texts: Vec::new(),
         modifier_texts: vec!["+25 to maximum Life".to_string()],
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -184,6 +188,7 @@ fn ingested_implicit_attributes_to_item_implicit_source() {
         implicit_texts: vec!["+25 to maximum Life".to_string()],
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -220,6 +225,7 @@ fn session_add_item_feeds_minimal_calc() {
             "mirrored".to_string(),
         ],
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -252,6 +258,7 @@ fn armour_quality_injects_local_defences_more_modifier() {
         implicit_texts: Vec::new(),
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -295,6 +302,7 @@ fn weapon_quality_injects_local_physical_damage_more_modifier() {
         implicit_texts: Vec::new(),
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -338,6 +346,7 @@ fn accessory_quality_does_not_inject_modifier() {
         implicit_texts: Vec::new(),
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -365,6 +374,7 @@ fn zero_quality_does_not_inject_modifier() {
         implicit_texts: Vec::new(),
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
@@ -392,6 +402,7 @@ fn body_armour_quality_uses_correct_source_id() {
         implicit_texts: Vec::new(),
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     };
 
