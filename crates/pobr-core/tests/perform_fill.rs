@@ -1038,6 +1038,7 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
             inner: Modifier::number("Damage", ModType::Inc, 10.0).with_tag(
                 pobr_core::ModTag::Multiplier {
                     var: "SummonedMinion".into(),
+                    div: 1.0,
                     limit: None,
                 },
             ),

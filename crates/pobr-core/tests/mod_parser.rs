@@ -94,6 +94,56 @@ fn parses_multiplier_tag_with_limitless_charge_scaling() {
     assert_eq!(modifier.mod_type, ModType::Inc);
     assert!(modifier.tags.contains(&ModTag::Multiplier {
         var: "PowerCharge".into(),
+        div: 1.0,
+        limit: None,
+    }));
+}
+
+#[test]
+fn parses_per_resource_scaling_with_divisor() {
+    use pobr_core::CalcConfig;
+
+    // `+N to <stat> per M <resource>` → 纯 stat + Multiplier{var, div=M}（PoB2 PerStat）。
+    let outcome = parse_mod("+2 to Armour per 1 Spirit").unwrap();
+    let modifier = &outcome.mods[0];
+    assert_eq!(modifier.name, ModName::from("Armour"));
+    assert_eq!(modifier.mod_type, ModType::Base);
+    assert!(modifier.tags.contains(&ModTag::Multiplier {
+        var: "Spirit".into(),
+        div: 1.0,
+        limit: None,
+    }));
+    // effective_number 按 cfg.multipliers[Spirit] / div 展开：336 Spirit → 2 * 336 = 672。
+    let cfg = CalcConfig::new().with_multiplier("Spirit", 336.0);
+    assert_eq!(modifier.effective_number(&cfg), Some(672.0));
+}
+
+#[test]
+fn parses_per_n_attribute_scaling() {
+    use pobr_core::CalcConfig;
+
+    // `per 10 Intelligence` → div=10：100 Int → 5 * (100/10) = 50。
+    let outcome = parse_mod("+5 to maximum Mana per 10 Intelligence").unwrap();
+    let modifier = &outcome.mods[0];
+    assert_eq!(modifier.name, ModName::from("MaximumMana"));
+    assert!(modifier.tags.contains(&ModTag::Multiplier {
+        var: "Intelligence".into(),
+        div: 10.0,
+        limit: None,
+    }));
+    let cfg = CalcConfig::new().with_multiplier("Intelligence", 100.0);
+    assert_eq!(modifier.effective_number(&cfg), Some(50.0));
+}
+
+#[test]
+fn parses_per_resource_without_divisor() {
+    // `per Strength`（无数字）→ div=1。
+    let outcome = parse_mod("+1 to Accuracy per Strength").unwrap();
+    let modifier = &outcome.mods[0];
+    assert_eq!(modifier.name, ModName::from("Accuracy"));
+    assert!(modifier.tags.contains(&ModTag::Multiplier {
+        var: "Strength".into(),
+        div: 1.0,
         limit: None,
     }));
 }

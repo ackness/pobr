@@ -700,6 +700,7 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
             " per power charge",
             ModTag::Multiplier {
                 var: "PowerCharge".into(),
+                div: 1.0,
                 limit: None,
             },
         ),
@@ -707,6 +708,7 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
             " per frenzy charge",
             ModTag::Multiplier {
                 var: "FrenzyCharge".into(),
+                div: 1.0,
                 limit: None,
             },
         ),
@@ -714,6 +716,7 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
             " per endurance charge",
             ModTag::Multiplier {
                 var: "EnduranceCharge".into(),
+                div: 1.0,
                 limit: None,
             },
         ),
@@ -781,7 +784,131 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
         }
     }
 
+    // per-装备槽防御缩放（PoB2 PerStat `<Stat>On<Slot>`）：
+    // `<base> per <N> [item] <defence-stat> on [equipped] <slot>`
+    // → Multiplier{var = "<StatVar>On<SlotId>", div = N}。须在通用 per-stat 之前尝试
+    // （否则 `per N energy shield ...` 会被当成全局 EnergyShield 缩放，丢失槽位限定）。
+    if let Some((stripped, tag)) = strip_per_slot_stat_suffix(text) {
+        tags.push(tag);
+        return stripped;
+    }
+
+    // per-X 资源/属性缩放（PoB2 PerStat / `per N <resource>`）。
+    // `<base> per <N> <resource>` 或 `<base> per <resource>` → Multiplier{var, div=N}。
+    if let Some((stripped, tag)) = strip_per_stat_suffix(text) {
+        tags.push(tag);
+        return stripped;
+    }
+
     text.into()
+}
+
+/// 剥离 `<base> per <N> [item] <defence-stat> on [equipped] <slot>` 尾缀
+/// （PoB2 ModParser `per (%d+) (item )?<stat> on equipped <slot>` → `PerStat <Stat>On<Slot>`）。
+///
+/// 产出 [`ModTag::Multiplier`]，`var` = `<StatVar>On<SlotId>`（如 `EnergyShieldOnboots`），由
+/// 编排器按每件装备的 rolled 防御值注入到 `cfg.multipliers`。仅当 stat 与 slot 同时已知时触发，
+/// 否则返回 `None`（保守，让上层照常归 Unsupported）。通用：按词条语义解析，绝不针对具体物品。
+fn strip_per_slot_stat_suffix(text: &str) -> Option<(String, ModTag)> {
+    let lower = text.to_ascii_lowercase();
+    // 必须含 ` on ` 槽位限定（区别于全局 per-stat）。取最后一个 ` per ` 作切分点。
+    let per_idx = lower.rfind(" per ")?;
+    let head = text[..per_idx].trim();
+    if head.is_empty() {
+        return None;
+    }
+    let tail = lower[per_idx + " per ".len()..].trim();
+    // 分出 `<stat-clause> on <slot-clause>`。
+    let (stat_clause, slot_clause) = tail.split_once(" on ")?;
+
+    // stat-clause：`<N> [item] <stat>`（N 可缺，缺则 div=1）。
+    let stat_clause = stat_clause.trim();
+    let (div, rest) = match stat_clause.split_once(' ') {
+        Some((first, rest)) if first.chars().all(|c| c.is_ascii_digit()) && !first.is_empty() => {
+            (first.parse::<f64>().ok()?, rest.trim())
+        }
+        _ => (1.0, stat_clause),
+    };
+    // 剥离可选 `item ` / `total ` / `maximum ` 限定词（PoB2 `(item )?` `total `）。
+    let rest = rest
+        .strip_prefix("item ")
+        .or_else(|| rest.strip_prefix("total "))
+        .unwrap_or(rest);
+    let stat_var = per_slot_defence_var(rest.trim())?;
+
+    // slot-clause：`[equipped] <slot words>`。
+    let slot_words = slot_clause
+        .trim()
+        .strip_prefix("equipped ")
+        .unwrap_or(slot_clause.trim());
+    let slot_id = slot_words_to_id(slot_words.trim())?;
+
+    let tag = ModTag::Multiplier {
+        var: format!("{stat_var}On{slot_id}"),
+        div,
+        limit: None,
+    };
+    Some((head.to_string(), tag))
+}
+
+/// 防御属性词 → per-槽位缩放变量前缀（`Armour`/`Evasion`/`EnergyShield`）。
+/// 仅识别可按装备件求和的防御属性；其它返回 `None`。
+fn per_slot_defence_var(words: &str) -> Option<&'static str> {
+    Some(match words {
+        "armour" => "Armour",
+        "evasion" | "evasion rating" => "Evasion",
+        "energy shield" | "maximum energy shield" => "EnergyShield",
+        _ => return None,
+    })
+}
+
+/// 资源/属性词 → 缩放变量名（对齐 `CalcConfig::multipliers` 注入键，见 calc_orchestrator）。
+/// 返回 `None` 表示该词不是已知可缩放资源（保守不剥离，交由上层归 Unsupported）。
+fn per_stat_var(words: &str) -> Option<&'static str> {
+    Some(match words {
+        "strength" => "Strength",
+        "dexterity" => "Dexterity",
+        "intelligence" => "Intelligence",
+        "spirit" => "Spirit",
+        "armour" => "Armour",
+        "evasion" | "evasion rating" => "Evasion",
+        "energy shield" | "maximum energy shield" => "EnergyShield",
+        "mana" | "maximum mana" => "Mana",
+        "life" | "maximum life" => "Life",
+        // 等级类（`per level` / `per N player levels`）。
+        "level" | "player level" | "player levels" | "levels" => "Level",
+        _ => return None,
+    })
+}
+
+/// 剥离 `<base> per <N> <resource>` / `<base> per <resource>` 尾缀（PoB2 PerStat）。
+/// 仅当 resource 在 [`per_stat_var`] 已知集内时触发；否则原样返回 `None`。
+fn strip_per_stat_suffix(text: &str) -> Option<(String, ModTag)> {
+    let lower = text.to_ascii_lowercase();
+    // 取**最后一个** " per " 切分（per-X 通常是尾缀）。
+    let idx = lower.rfind(" per ")?;
+    let head = text[..idx].trim();
+    if head.is_empty() {
+        return None;
+    }
+    let tail = lower[idx + " per ".len()..].trim();
+
+    // 尝试 `<N> <resource>`：先吃前导整数，余下为 resource 词。
+    let (div, resource_words) = match tail.split_once(' ') {
+        Some((first, rest)) if first.chars().all(|c| c.is_ascii_digit()) && !first.is_empty() => {
+            (first.parse::<f64>().ok()?, rest.trim())
+        }
+        // 无前导数字：`per <resource>`（div = 1）。
+        _ => (1.0, tail),
+    };
+
+    let var = per_stat_var(resource_words)?;
+    let tag = ModTag::Multiplier {
+        var: var.into(),
+        div,
+        limit: None,
+    };
+    Some((head.to_string(), tag))
 }
 
 fn parse_name(text: &str) -> Option<ModName> {
@@ -891,5 +1018,50 @@ fn damage_type_for_name(name: &str) -> Option<DamageType> {
         "LightningDamage" => Some(DamageType::Lightning),
         "ChaosDamage" => Some(DamageType::Chaos),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod per_slot_defence_tests {
+    use super::*;
+
+    /// `+N to <stat> per M <defence> on equipped <slot>` → BASE + Multiplier{<Stat>On<Slot>}。
+    /// 通用：仅依赖词条语义（防御属性 + 槽位），不针对任何具体物品。
+    #[test]
+    fn parses_armour_per_item_energy_shield_on_boots() {
+        let outcome = parse_mod(
+            "+2 to [Armour] per 1 [ItemEnergyShield|Item Energy Shield] on Equipped Boots",
+        )
+        .expect("parses");
+        assert_eq!(outcome.status, ParseStatus::Parsed);
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("Armour"));
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(2.0));
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Multiplier { var, div, .. } if var == "EnergyShieldOnboots" && *div == 1.0
+        )));
+    }
+
+    /// `per N` 含除数 + 无 `item` 限定词 + 无 `equipped` 前缀的变体仍正确解析。
+    #[test]
+    fn parses_evasion_per_n_armour_on_body_armour_variants() {
+        let outcome = parse_mod("+5 to Evasion per 10 Armour on Body Armour").expect("parses");
+        let m = &outcome.mods[0];
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Multiplier { var, div, .. } if var == "ArmourOnbodyarmour" && *div == 10.0
+        )));
+    }
+
+    /// 未知防御属性 / 未知槽位不剥离（保守落回常规解析，不误吞）。
+    #[test]
+    fn unknown_stat_or_slot_does_not_strip() {
+        assert!(strip_per_slot_stat_suffix("+2 to Armour per 1 Life on Equipped Boots").is_none());
+        assert!(
+            strip_per_slot_stat_suffix("+2 to Armour per 1 Energy Shield on Equipped Ring")
+                .is_none()
+        );
     }
 }

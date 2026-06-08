@@ -54,6 +54,7 @@ fn multiplier_tags_scale_values_and_apply_limits() {
     db.add_mod(
         Modifier::number("MaximumLife", ModType::Base, 8.0).with_tag(ModTag::Multiplier {
             var: "AllocatedSmallPassives".into(),
+            div: 1.0,
             limit: Some(5.0),
         }),
     );

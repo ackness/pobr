@@ -31,6 +31,16 @@ impl CalculationSession {
         self
     }
 
+    /// 在已注入全部来源后，向计算上下文写入一个资源/属性缩放量（PoB2 PerStat 的分母变量
+    /// 的总量，如 `Spirit`/`Strength`/`Level`）。供 `+N to <stat> per M <resource>` 这类
+    /// 词条经 [`crate::ModTag::Multiplier`] 在 `perform` 查询时按 `value / div` 展开。
+    ///
+    /// 须在 [`perform_minimal`](Self::perform_minimal) 之前调用；资源量通常由编排层在全部
+    /// 来源注入后用 [`base_sum`](Self::base_sum) 读取（属性/Spirit 的 BASE 总量）后回填。
+    pub fn set_multiplier(&mut self, name: impl Into<String>, value: f64) {
+        self.env.cfg.multipliers.insert(name.into(), value);
+    }
+
     pub fn add_modifier_texts(
         &mut self,
         texts: impl IntoIterator<Item = impl AsRef<str>>,

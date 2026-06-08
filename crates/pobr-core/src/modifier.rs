@@ -40,8 +40,17 @@ pub enum ModTag {
         var: String,
         negated: bool,
     },
+    /// 按某资源/属性数量线性缩放（PoB2 `Multiplier` / `PerStat` tag）。
+    ///
+    /// 有效值 = `cfg.multiplier(var) / div`（再受 `limit` 上限约束）。
+    /// - 充能数类（`per power charge`）：`div = 1`，`var = PowerCharge` 等。
+    /// - 资源/属性类（`per 1 Spirit`、`per 10 Intelligence`、`per 5 player levels`）：
+    ///   `div = N`，`var` 为资源名（`Spirit`/`Strength`/`Dexterity`/`Intelligence`/
+    ///   `Level`/`Armour`/`Evasion`/`EnergyShield`/`Mana`/`Life` 等）。
     Multiplier {
         var: String,
+        /// 每多少单位资源缩放一次（PoB2 `div`）。`per power charge` 等无除数时为 `1.0`。
+        div: f64,
         limit: Option<f64>,
     },
     DamageType(DamageType),
@@ -160,9 +169,10 @@ impl Modifier {
         let mut value = self.value.as_number()?;
 
         for tag in &self.tags {
-            if let ModTag::Multiplier { var, limit } = tag {
-                let multiplier = cfg.multiplier(var);
-                value *= limit.map_or(multiplier, |max| multiplier.min(max));
+            if let ModTag::Multiplier { var, div, limit } = tag {
+                // 每 `div` 单位资源缩放一次（PoB2 PerStat：count / div）。
+                let count = cfg.multiplier(var) / div.max(f64::EPSILON);
+                value *= limit.map_or(count, |max| count.min(max));
             }
         }
 

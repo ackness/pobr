@@ -523,6 +523,31 @@ pub fn calculate_with_data(
         ]);
     }
 
+    // 6c. per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量）：把全部来源注入后的属性 /
+    //     Spirit BASE 总量与角色等级写入 cfg.multipliers，使 `+N to <stat> per M <resource>`
+    //     这类词条（解析为 ModTag::Multiplier{var, div}）在 perform 查询时按 count/div 展开。
+    //     须在全部来源注入后、perform 之前；属性/Spirit 不参与 per-X 自缩放，base_sum 取值稳定。
+    {
+        let str_total = session.base_sum("Strength");
+        let dex_total = session.base_sum("Dexterity");
+        let int_total = session.base_sum("Intelligence");
+        let spirit_total = session.base_sum("Spirit");
+        let mana_total = session.base_sum("MaximumMana");
+        let life_total = session.base_sum("MaximumLife");
+        session.set_multiplier("Strength", str_total);
+        session.set_multiplier("Dexterity", dex_total);
+        session.set_multiplier("Intelligence", int_total);
+        session.set_multiplier("Spirit", spirit_total);
+        session.set_multiplier("Mana", mana_total);
+        session.set_multiplier("Life", life_total);
+        session.set_multiplier("Level", f64::from(build.character.level));
+        // per-槽位防御缩放（`<Stat>On<Slot>`）：使 `+N to Armour per M Item Energy Shield on
+        // Equipped Boots` 这类按某件装备防御值缩放的词条生效（PoB2 PerStat `<Stat>On<Slot>`）。
+        for (var, value) in per_slot_defence_multipliers(build, data) {
+            session.set_multiplier(var, value);
+        }
+    }
+
     // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等
     // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
     session.perform_minimal();
@@ -656,47 +681,11 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     for (slot, item) in &build.items {
         let slot_id = slot.id();
-        let base_default = data.armour_base(&item.base.to_string());
-        let rolled = &item.rolled_defence;
-        // 仅护甲件（有基底护甲项 **或** 文本给出 rolled 防御行）参与。
-        if base_default.is_none()
-            && rolled.armour.is_none()
-            && rolled.evasion.is_none()
-            && rolled.energy_shield.is_none()
-        {
+        let Some(values) = item_rolled_defence(item, data) else {
             continue;
-        }
-        let quality_pct = f64::from(item.quality);
-        let local_pct = item_local_defence_inc(item);
-        let local_flat = item_local_defence_flat(item);
-        let entries = [
-            (0, "Armour", rolled.armour, base_default.map(|a| a.armour)),
-            (
-                1,
-                "Evasion",
-                rolled.evasion,
-                base_default.map(|a| a.evasion),
-            ),
-            (
-                2,
-                "EnergyShield",
-                rolled.energy_shield,
-                base_default.map(|a| a.energy_shield),
-            ),
-        ];
-        for (idx, name, rolled_val, default_val) in entries {
-            // 优先用 rolled 件级底值（已含局部 increased + 品质）。缺失时退回基底默认 ×
-            // 局部 increased × 品质 + 局部 flat（兜底口径）。
-            let value = match rolled_val {
-                Some(v) => v,
-                None => {
-                    let base = f64::from(default_val.unwrap_or(0)) + local_flat[idx];
-                    if base <= 0.0 {
-                        continue;
-                    }
-                    base * (1.0 + local_pct[idx] / 100.0) * (1.0 + quality_pct / 100.0)
-                }
-            };
+        };
+        for (idx, name) in [(0, "Armour"), (1, "Evasion"), (2, "EnergyShield")] {
+            let value = values[idx];
             if value > 0.0 {
                 let origin =
                     ModifierSource::new(SourceId::new(SourceKind::Item, format!("base.{name}")))
@@ -711,6 +700,71 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
         }
     }
     mods
+}
+
+/// 单件装备的件级防御底值 `[armour, evasion, energy_shield]`（已含局部 increased + 品质 + flat）。
+///
+/// 优先采用物品文本导出的 rolled 行（`item.rolled_defence`，PoB 已逐件算好）；缺失时退回
+/// 基底物品默认值 × 局部 increased × 品质 + 局部 flat（裸装 / 测试夹具兜底口径）。
+/// 非护甲件（无基底护甲项且无任何 rolled 防御行）返回 `None`。
+///
+/// 与 [`defence_base_modifiers`] 共用，并供 per-槽位防御缩放（`<Stat>On<Slot>` 倍率）取值，
+/// 二者件级底值口径一致。
+fn item_rolled_defence(item: &Item, data: &BuildData) -> Option<[f64; 3]> {
+    let base_default = data.armour_base(&item.base.to_string());
+    let rolled = &item.rolled_defence;
+    if base_default.is_none()
+        && rolled.armour.is_none()
+        && rolled.evasion.is_none()
+        && rolled.energy_shield.is_none()
+    {
+        return None;
+    }
+    let quality_pct = f64::from(item.quality);
+    let local_pct = item_local_defence_inc(item);
+    let local_flat = item_local_defence_flat(item);
+    let entries = [
+        (rolled.armour, base_default.map(|a| a.armour)),
+        (rolled.evasion, base_default.map(|a| a.evasion)),
+        (rolled.energy_shield, base_default.map(|a| a.energy_shield)),
+    ];
+    let mut out = [0.0; 3];
+    for (idx, (rolled_val, default_val)) in entries.into_iter().enumerate() {
+        out[idx] = match rolled_val {
+            Some(v) => v,
+            None => {
+                let base = f64::from(default_val.unwrap_or(0)) + local_flat[idx];
+                if base <= 0.0 {
+                    0.0
+                } else {
+                    base * (1.0 + local_pct[idx] / 100.0) * (1.0 + quality_pct / 100.0)
+                }
+            }
+        };
+    }
+    Some(out)
+}
+
+/// per-槽位防御缩放倍率 `<Stat>On<SlotId>`（PoB2 PerStat，如 `EnergyShieldOnboots`）。
+///
+/// 对每件装备的件级防御底值（[`item_rolled_defence`]）按 `Armour/Evasion/EnergyShield` ×
+/// 该件槽位 ID 拼出倍率键，供 `+N to <stat> per M <defence> on equipped <slot>` 这类词条
+/// （解析为 `ModTag::Multiplier{var, div}`）在 perform 时按 count/div 展开。
+/// 通用：按槽位/属性拼键，绝不针对具体物品。
+fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> Vec<(String, f64)> {
+    let mut out = Vec::new();
+    for (slot, item) in &build.items {
+        let Some(values) = item_rolled_defence(item, data) else {
+            continue;
+        };
+        let slot_id = slot.id();
+        for (idx, name) in [(0, "Armour"), (1, "Evasion"), (2, "EnergyShield")] {
+            if values[idx] > 0.0 {
+                out.push((format!("{name}On{slot_id}"), values[idx]));
+            }
+        }
+    }
+    out
 }
 
 /// 主技能关键词 + 主武器类别 → 额外伤害缩放 ModName（`GrenadeDamage`/`CrossbowDamage` 等）。
