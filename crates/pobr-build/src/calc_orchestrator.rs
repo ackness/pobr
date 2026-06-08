@@ -422,6 +422,19 @@ pub fn calculate_with_data(
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
+    // 2c. 任务奖励 / 全局配置词条（PoB2 `questRewards`）：按**全局** modifier text 注入
+    //     （属性 / 抗性 / 防御 inc 等永久全局加成）。沿用 add_modifier_texts 的容错。
+    if !build.config.global_modifier_texts.is_empty() {
+        // 与装备/珠宝路径一致：先过滤掉硬失败词条（skip-and-collect），避免单条不可解析
+        // 文本中止整批注入。
+        let texts = filter_parseable(build.config.global_modifier_texts.clone());
+        if !texts.is_empty() {
+            session
+                .add_modifier_texts(&texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
+    }
+
     // 3. 天赋树：NodeId → 节点 mod 文本（节点级归因）。
     let passive_nodes = resolve_passive_nodes(build, data);
     if !passive_nodes.is_empty() {
@@ -834,7 +847,7 @@ fn weapon_contribution(
     // 攻击速率取技能自带攻击时间、暴击取技能 critChance。对应 PoB2 `skillFlags.shieldAttack`：
     // source = off-hand，`setOffHandPhysical*` 提供 phys、`source.AttackRate = 1000/skillData.attackTime`。
     if effect.is_non_weapon_attack() {
-        return Some(non_weapon_attack_contribution(skill));
+        return Some(non_weapon_attack_contribution(skill, build, data));
     }
     // 无主手武器 → 空手（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（按职业）、
     // 攻速 1.65、暴击 5%。使空手攻击/通道技能（如 Flame Breath、Monk）有非零基底伤害。
@@ -872,14 +885,29 @@ fn weapon_contribution(
 ///
 /// `baseMultiplier`（技能伤害倍率，如 Shield Wall 0.65）由调用方在 `phys × dmg_mult` 处应用，
 /// 与普通武器攻击同口径——故此处只返回**未乘倍率**的裸 off-hand 基础伤害。
-fn non_weapon_attack_contribution(skill: &ResolvedSkillLevel) -> WeaponContribution {
+fn non_weapon_attack_contribution(
+    skill: &ResolvedSkillLevel,
+    build: &Build,
+    data: &BuildData,
+) -> WeaponContribution {
     let mut phys_min = 0.0;
     let mut phys_max = 0.0;
     for ds in &skill.base_damage {
         match ds.stat.as_str() {
             "off_hand_weapon_minimum_physical_damage" => phys_min += ds.value,
             "off_hand_weapon_maximum_physical_damage" => phys_max += ds.value,
-            _ => {}
+            // per-X 缩放的附加物理（如 Shield Wall `off_hand_min/max_added_physical_damage_
+            // per_15_shield_armour`）：按 off-hand 盾的对应防御值 ÷ N 缩放后并入基础物理。
+            // 对应 PoB2 SkillStatMap `mod("PhysicalMin/Max","BASE",val,{PerStat,stat="ArmourOnWeapon 2",div=N})`。
+            stat => {
+                if let Some((is_max, mult)) = per_shield_defence_scale(stat, build, data) {
+                    if is_max {
+                        phys_max += ds.value * mult;
+                    } else {
+                        phys_min += ds.value * mult;
+                    }
+                }
+            }
         }
     }
     let attack_rate = skill
@@ -892,6 +920,67 @@ fn non_weapon_attack_contribution(skill: &ResolvedSkillLevel) -> WeaponContribut
         attack_rate,
         crit_chance: skill.crit_chance.unwrap_or(0.0) / 100.0,
     }
+}
+
+/// 解析 `off_hand_<minimum|maximum>_added_physical_damage_per_<N>_shield_<armour|evasion|...>`
+/// 形式的 per-X 附加物理 stat，返回 `(是否 maximum, 缩放系数 = 盾防御值 / N)`。非此形式返回 `None`。
+///
+/// 对应 PoB2 SkillStatMap 的 `{ type = "PerStat", stat = "ArmourOnWeapon 2", div = N }` ——
+/// 缩放源是 **off-hand（盾，Weapon2）自身**的护甲/闪避/能量盾（含其局部增益），非全局总防御。
+/// 通用：覆盖 per_5/per_15_shield_armour/evasion/energy_shield 等同族词条。
+fn per_shield_defence_scale(stat: &str, build: &Build, data: &BuildData) -> Option<(bool, f64)> {
+    let rest = stat.strip_prefix("off_hand_")?;
+    let (is_max, rest) = if let Some(r) = rest.strip_prefix("maximum_added_physical_damage_per_") {
+        (true, r)
+    } else if let Some(r) = rest.strip_prefix("minimum_added_physical_damage_per_") {
+        (false, r)
+    } else {
+        return None;
+    };
+    // rest = "<N>_shield_<defence>"
+    let (n_str, defence) = rest.split_once("_shield_")?;
+    let div: f64 = n_str.parse().ok()?;
+    if div <= 0.0 {
+        return None;
+    }
+    let defence_value = match defence {
+        "armour" => off_hand_defence(build, data, 0),
+        "evasion" => off_hand_defence(build, data, 1),
+        "energy_shield" => off_hand_defence(build, data, 2),
+        _ => return None,
+    };
+    Some((is_max, defence_value / div))
+}
+
+/// off-hand（盾，[`EquipmentSlot::Weapon2`]）自身的防御值（`idx` 0=护甲/1=闪避/2=能量盾），
+/// 与 [`defence_base_modifiers`] 的件级底值同口径：优先 rolled 件级值（含局部 increased + 品质），
+/// 缺失时 `基底默认 × (1+局部 increased) × (1+品质)`。对应 PoB2 `ArmourOnWeapon 2` 等。
+fn off_hand_defence(build: &Build, data: &BuildData, idx: usize) -> f64 {
+    let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
+        return 0.0;
+    };
+    let rolled = &item.rolled_defence;
+    let rolled_val = match idx {
+        0 => rolled.armour,
+        1 => rolled.evasion,
+        _ => rolled.energy_shield,
+    };
+    if let Some(v) = rolled_val {
+        return v;
+    }
+    let base_default = data.armour_base(&item.base.to_string());
+    let default_val = base_default.map(|a| match idx {
+        0 => a.armour,
+        1 => a.evasion,
+        _ => a.energy_shield,
+    });
+    let local_flat = item_local_defence_flat(item);
+    let local_pct = item_local_defence_inc(item);
+    let base = f64::from(default_val.unwrap_or(0)) + local_flat[idx];
+    if base <= 0.0 {
+        return 0.0;
+    }
+    base * (1.0 + local_pct[idx] / 100.0) * (1.0 + f64::from(item.quality) / 100.0)
 }
 
 /// 空手武器贡献（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（N 按职业）、
@@ -1085,6 +1174,17 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
             cc,
             "main skill base crit chance",
         ));
+    }
+    // statSet baseMods 固有攻击速度 MORE（PoB2 `mod("Speed","MORE",N,ModFlag.Attack)`；如 Flicker 285）。
+    // 注入 `AttackSpeed` MORE——攻击速度乘区按 ModName 取 AttackSpeed（仅攻击链路），与 PoB2
+    // `skillModList:More(cfg,"Speed")` 对齐。法术不取 AttackSpeed，故天然不受影响。
+    if let Some(more) = skill.skill_attack_speed_more
+        && more != 0.0
+    {
+        let origin =
+            ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.AttackSpeedMore"))
+                .with_raw_text("main skill statSet base attack speed MORE");
+        mods.push(Modifier::number("AttackSpeed", ModType::More, more).with_origin(origin));
     }
     // 技能 stat（基础伤害 + 自带 damage% 缩放）经 SkillStatMap 映射注入。
     // 例外：`off_hand_weapon_*physical_damage`（非武器攻击的击中基础伤害）已作为**武器 source**

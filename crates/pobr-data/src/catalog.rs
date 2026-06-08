@@ -290,6 +290,11 @@ pub struct SkillStatSetDef {
     /// 等级无关的常量 stat（`ConstantStats` + 值；如 support 宝石的 `damage_+%_final` 倍率）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub constant_stats: Vec<SkillDamageStat>,
+    /// statSet `baseMods` 中的固有**攻击速度 MORE**（PoB2 `mod("Speed", "MORE", N, ModFlag.Attack)`，
+    /// 百分点；如 Flicker Strike = 285）。这是 PoB2 自带的常量 baseMod，不在 GGG `.dat` 表中——
+    /// 由 vendor Lua 抽取合并。作为 `AttackSpeed` MORE 注入（仅攻击技能链路消费）。`None`=无。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skill_attack_speed_more: Option<f64>,
     /// 分等级 stat（按宝石等级升序；含基础伤害值 + `damage_+%[_final]` 缩放）。
     pub levels: Vec<SkillStatSetLevel>,
 }

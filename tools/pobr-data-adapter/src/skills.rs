@@ -513,6 +513,9 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             id: link.id.clone(),
             base_effectiveness: set.base_effectiveness.unwrap_or(0.0),
             constant_stats,
+            // statSet baseMods（如 Flicker `Speed MORE 285`）不在 GGG `.dat` 表中，是 PoB2 自带常量，
+            // 由 vendor Lua 合并入 JSON（同 crit_chance 先例），适配阶段留空。
+            skill_attack_speed_more: None,
             levels,
         });
     }

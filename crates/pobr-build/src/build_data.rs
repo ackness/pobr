@@ -48,6 +48,9 @@ pub struct ResolvedSkillLevel {
     /// 技能基础暴击率（PoB `critChance`，百分点；如 Comet 13.0=13%）。法系技能的固有暴击源；
     /// 攻击技能若 `None` 由武器基底暴击决定。`None`=数据缺失（旧数据包或该技能无 critChance 行）。
     pub crit_chance: Option<f64>,
+    /// statSet `baseMods` 固有**攻击速度 MORE**（PoB2 `mod("Speed","MORE",N,ModFlag.Attack)`，百分点；
+    /// 如 Flicker Strike=285）。作为 `AttackSpeed` MORE 注入速度乘区（仅攻击技能消费）。`None`=无。
+    pub skill_attack_speed_more: Option<f64>,
 }
 
 /// 一项已解析的技能资源消耗。
@@ -268,6 +271,12 @@ impl BuildData {
             .or(row.base_multiplier)
             .unwrap_or(1.0);
 
+        // statSet baseMods 固有攻击速度 MORE（PoB2 自带常量，如 Flicker 285）。等级无关。
+        let skill_attack_speed_more = self
+            .skill_stat_sets
+            .get(skill_id)
+            .and_then(|set| set.skill_attack_speed_more);
+
         Some(ResolvedSkillLevel {
             use_time_s,
             cooldown_s,
@@ -277,6 +286,7 @@ impl BuildData {
             damage_multiplier,
             attack_speed_multiplier: row.attack_speed_multiplier,
             crit_chance: row.crit_chance,
+            skill_attack_speed_more,
         })
     }
 
