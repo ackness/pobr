@@ -1010,11 +1010,13 @@ fn parse_name(text: &str) -> Option<ModName> {
         "elemental damage with attack skills" => "ElementalDamage",
         // 技能关键词 / 武器类别伤害（由 cfg.damage_keywords 按主技能/武器选择性聚合）。
         "grenade damage" => "GrenadeDamage",
-        "damage with crossbows" => "CrossbowDamage",
-        "damage with bow" | "damage with bows" => "BowDamage",
-        "damage with quarterstaves" | "damage with quarterstaff" => "QuarterstaffDamage",
-        "damage with maces" | "damage with mace" => "MaceDamage",
-        "damage with spears" | "damage with spear" => "SpearDamage",
+        "damage with crossbows" | "damage with crossbow skills" => "CrossbowDamage",
+        "damage with bow" | "damage with bows" | "damage with bow skills" => "BowDamage",
+        "damage with quarterstaves"
+        | "damage with quarterstaff"
+        | "damage with quarterstaff skills" => "QuarterstaffDamage",
+        "damage with maces" | "damage with mace" | "damage with mace skills" => "MaceDamage",
+        "damage with spears" | "damage with spear" | "damage with spear skills" => "SpearDamage",
         "attack speed" => "AttackSpeed",
         "cast speed" => "CastSpeed",
         "movement speed" => "MovementSpeed",
@@ -1142,5 +1144,31 @@ mod per_slot_defence_tests {
             strip_per_slot_stat_suffix("+2 to Armour per 1 Energy Shield on Equipped Ring")
                 .is_none()
         );
+    }
+
+    /// `Damage with <Weapon> Skills`（PoE2 常见词条）映射到对应武器类伤害 ModName，
+    /// 与裸 `Damage with <Weapon>` 同名（由 cfg.damage_keywords 按主武器/技能选择性聚合）。
+    #[test]
+    fn parses_damage_with_weapon_skills_to_weapon_damage_name() {
+        let cases = [
+            ("53% increased Damage with Bow Skills", "BowDamage"),
+            (
+                "20% increased Damage with Crossbow Skills",
+                "CrossbowDamage",
+            ),
+            (
+                "15% increased Damage with Quarterstaff Skills",
+                "QuarterstaffDamage",
+            ),
+            ("10% increased Damage with Mace Skills", "MaceDamage"),
+            ("12% increased Damage with Spear Skills", "SpearDamage"),
+        ];
+        for (text, name) in cases {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            assert_eq!(out.mods[0].name.as_str(), name, "{text}");
+            assert_eq!(out.mods[0].mod_type, ModType::Inc, "{text}");
+        }
     }
 }
