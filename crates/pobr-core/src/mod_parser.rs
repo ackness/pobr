@@ -142,7 +142,11 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         reason: "unsupported modifier form".into(),
     })?;
 
-    let (remainder, base_tags) = strip_tags(after_form);
+    let (remainder, mut base_tags) = strip_tags(after_form);
+    // 槽位限定子句（`... from Equipped <Slot>`，如 Titan `Armour from Equipped Body Armour`）
+    // → SlotName tag。剥离后名字回到纯 stat（`armour`/`energy shield`），由 per-slot 防御聚合
+    // 在匹配槽位生效。残留会使 resolve_names 失败，故须在解析名前剥离。
+    let remainder = strip_slot_suffix(&remainder, &mut base_tags);
     // 作用域后缀子句（`for spells` / `for attacks` / `with spells`...）→ 合并 ModFlags。
     // 这些限定词残留在名字里会使 resolve_names 失败，剥离后归入主 flags。
     let (remainder, scope_flags) = strip_scope_suffix(&remainder);
@@ -615,6 +619,43 @@ fn strip_scope_suffix(text: &str) -> (String, ModFlags) {
         }
     }
     (text.to_string(), ModFlags::NONE)
+}
+
+/// 剥离槽位限定子句 `... from equipped <slot words>`（PoB2 `from Equipped <Slot>`）→ 追加
+/// [`ModTag::SlotName`]（稳定槽位 ID）。返回剩余名（纯 stat）。无此子句则原样返回。
+///
+/// 槽位词 → 稳定 ID 映射对齐 `EquipmentSlot::id`（Focus/Shield/Off Hand → `weapon2`，
+/// Weapon/Main Hand → `weapon1`）。未知槽位词保守不剥离（让上层照常归 Unsupported），
+/// 避免误把非槽位短语吞掉。
+fn strip_slot_suffix(text: &str, tags: &mut Vec<ModTag>) -> String {
+    let lower = text.to_ascii_lowercase();
+    let Some(idx) = lower.find(" from equipped ") else {
+        return text.to_string();
+    };
+    let head = text[..idx].trim();
+    let slot_words = lower[idx + " from equipped ".len()..].trim();
+    let Some(slot_id) = slot_words_to_id(slot_words) else {
+        return text.to_string();
+    };
+    tags.push(ModTag::SlotName(slot_id.to_string()));
+    head.to_string()
+}
+
+/// 槽位词 → 稳定槽位 ID（对齐 `pobr_data::item::EquipmentSlot::id`）。
+fn slot_words_to_id(words: &str) -> Option<&'static str> {
+    Some(match words {
+        "body armour" => "bodyarmour",
+        "helmet" => "helmet",
+        "gloves" => "gloves",
+        "boots" => "boots",
+        "belt" => "belt",
+        "amulet" => "amulet",
+        // 副手族（法器 / 盾 / 箭袋 / 副手通称）→ weapon2 槽。
+        "focus" | "shield" | "quiver" | "off hand" => "weapon2",
+        // 主手族（武器 / 主手通称）→ weapon1 槽。
+        "weapon" | "weapons" | "main hand" => "weapon1",
+        _ => return None,
+    })
 }
 
 fn strip_tags(text: String) -> (String, Vec<ModTag>) {

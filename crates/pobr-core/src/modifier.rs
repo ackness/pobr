@@ -36,10 +36,23 @@ impl ModValue {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ModTag {
-    Condition { var: String, negated: bool },
-    Multiplier { var: String, limit: Option<f64> },
+    Condition {
+        var: String,
+        negated: bool,
+    },
+    Multiplier {
+        var: String,
+        limit: Option<f64>,
+    },
     DamageType(DamageType),
     SkillTypes(SkillTypes),
+    /// 槽位限定（PoB2 `calcLib.mod({slotName=slot})`）：该 modifier 仅作用于匹配槽位的
+    /// per-slot 防御聚合（如 `80% increased Armour from Equipped Body Armour`）。
+    ///
+    /// **不参与 [`Modifier::matches`] 的普通过滤**（对 `sum`/`more` 等全局查询透明）——
+    /// 由 [`crate::ModDb`] 的 per-slot 查询路径（`sum_for_slot`/`more_for_slot`）显式按槽位读取，
+    /// 避免影响进攻 / 其他全局查询语义。槽名为稳定槽位 ID（见 `EquipmentSlot::id`）。
+    SlotName(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -130,6 +143,16 @@ impl Modifier {
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
             }
+            // 槽位限定对普通过滤透明（由 ModDb 的 per-slot 查询路径显式处理）。
+            ModTag::SlotName(_) => true,
+        })
+    }
+
+    /// 该 modifier 的槽位限定（若有 [`ModTag::SlotName`]）。供 per-slot 防御聚合按槽过滤。
+    pub fn slot_name(&self) -> Option<&str> {
+        self.tags.iter().find_map(|tag| match tag {
+            ModTag::SlotName(slot) => Some(slot.as_str()),
+            _ => None,
         })
     }
 

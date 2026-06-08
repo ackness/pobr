@@ -385,3 +385,74 @@ fn parses_buffs_also_grant_resistances() {
     assert!(names.contains(&"ColdResistance".to_string()));
     assert!(names.contains(&"LightningResistance".to_string()));
 }
+
+#[test]
+fn parses_increased_armour_from_equipped_body_armour_as_slot_tag() {
+    // Titan `80% increased Armour from Equipped Body Armour`：剥离槽位子句 → 纯 Armour INC
+    // + SlotName("bodyarmour") tag（per-slot 防御聚合在该槽生效）。
+    let outcome = parse_mod("80% increased Armour from Equipped Body Armour").unwrap();
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    assert_eq!(outcome.mods.len(), 1);
+    let m = &outcome.mods[0];
+    assert_eq!(m.name, ModName::from("Armour"));
+    assert_eq!(m.mod_type, ModType::Inc);
+    assert_eq!(m.value, ModValue::Number(80.0));
+    assert!(
+        m.tags
+            .iter()
+            .any(|t| matches!(t, ModTag::SlotName(s) if s == "bodyarmour")),
+        "expected SlotName(bodyarmour) tag, got {:?}",
+        m.tags
+    );
+    assert_eq!(m.slot_name(), Some("bodyarmour"));
+}
+
+#[test]
+fn parses_energy_shield_from_equipped_focus_as_weapon2_slot() {
+    // Focus（副手法器）在 weapon2 槽：`44% increased Energy Shield from Equipped Focus`
+    // → EnergyShield INC + SlotName("weapon2")。
+    let outcome = parse_mod("44% increased Energy Shield from Equipped Focus").unwrap();
+    assert_eq!(outcome.status, ParseStatus::Parsed);
+    let m = &outcome.mods[0];
+    assert_eq!(m.name, ModName::from("EnergyShield"));
+    assert_eq!(m.slot_name(), Some("weapon2"));
+}
+
+#[test]
+fn parses_more_armour_from_equipped_body_armour_as_slot_more() {
+    // `50% more Armour from Equipped Body Armour` → Armour MORE + SlotName(bodyarmour)。
+    let outcome = parse_mod("50% more Armour from Equipped Body Armour").unwrap();
+    let m = &outcome.mods[0];
+    assert_eq!(m.mod_type, ModType::More);
+    assert_eq!(m.slot_name(), Some("bodyarmour"));
+}
+
+#[test]
+fn slot_tag_is_transparent_to_normal_sum_but_scoped_in_per_slot() {
+    use pobr_core::{CalcConfig, ModDb, Modifier};
+    let cfg = CalcConfig::default();
+    let mut db = ModDb::new();
+    // 全局 inc + 槽位限定底 + 槽位限定 inc。
+    db.add_mod(Modifier::number("Armour", ModType::Inc, 100.0)); // global inc
+    db.add_mod(
+        Modifier::number("Armour", ModType::Base, 1000.0)
+            .with_tag(ModTag::SlotName("bodyarmour".into())),
+    );
+    db.add_mod(
+        Modifier::number("Armour", ModType::Inc, 80.0)
+            .with_tag(ModTag::SlotName("bodyarmour".into())),
+    );
+    let names = [ModName::from("Armour")];
+    // global_only 排除槽位 inc。
+    assert_eq!(db.sum_global_only(ModType::Inc, &cfg, &names), 100.0);
+    // for_slot 只取该槽 inc。
+    assert_eq!(
+        db.sum_for_slot(ModType::Inc, &cfg, &names, "bodyarmour"),
+        80.0
+    );
+    // slot_bases 取该槽底。
+    assert_eq!(
+        db.slot_bases(&cfg, &ModName::from("Armour")),
+        vec![("bodyarmour".to_string(), 1000.0)]
+    );
+}

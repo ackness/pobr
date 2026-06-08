@@ -212,6 +212,93 @@ impl ModDb {
         }
     }
 
+    /// 仅累加**无槽位限定**（无 [`ModTag::SlotName`]）的 modifier（per-slot 防御聚合的全局桶）。
+    ///
+    /// 与 [`sum`](Self::sum) 区别：[`sum`] 对槽位 tag 透明（会一并算入槽位限定 mod），
+    /// 而本方法显式排除带槽位 tag 的 mod，使之只通过 [`sum_for_slot`](Self::sum_for_slot)
+    /// 在匹配槽位生效。PoB2 `calcLib.mod` 的 global 部分对应此。
+    pub fn sum_global_only(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+        names
+            .iter()
+            .filter_map(|name| self.mods.get(name))
+            .flat_map(|mods| mods.iter())
+            .filter(|modifier| {
+                modifier.mod_type == mod_type
+                    && modifier.slot_name().is_none()
+                    && modifier.matches(cfg)
+            })
+            .filter_map(|modifier| modifier.effective_number(cfg))
+            .sum()
+    }
+
+    /// 仅累加限定到 `slot`（[`ModTag::SlotName`] 匹配）的 modifier（per-slot 防御聚合的槽位桶）。
+    pub fn sum_for_slot(
+        &self,
+        mod_type: ModType,
+        cfg: &CalcConfig,
+        names: &[ModName],
+        slot: &str,
+    ) -> f64 {
+        names
+            .iter()
+            .filter_map(|name| self.mods.get(name))
+            .flat_map(|mods| mods.iter())
+            .filter(|modifier| {
+                modifier.mod_type == mod_type
+                    && modifier.slot_name() == Some(slot)
+                    && modifier.matches(cfg)
+            })
+            .filter_map(|modifier| modifier.effective_number(cfg))
+            .sum()
+    }
+
+    /// 仅连乘**无槽位限定**的 `More` modifier（per-slot 防御聚合的全局 more 桶）。
+    pub fn more_global_only(&self, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+        names
+            .iter()
+            .filter_map(|name| self.mods.get(name))
+            .flat_map(|mods| mods.iter())
+            .filter(|modifier| {
+                modifier.mod_type == ModType::More
+                    && modifier.slot_name().is_none()
+                    && modifier.matches(cfg)
+            })
+            .filter_map(|modifier| modifier.effective_number(cfg))
+            .fold(1.0, |product, value| product * (1.0 + value / 100.0))
+    }
+
+    /// 仅连乘限定到 `slot` 的 `More` modifier（per-slot 防御聚合的槽位 more 桶）。
+    pub fn more_for_slot(&self, cfg: &CalcConfig, names: &[ModName], slot: &str) -> f64 {
+        names
+            .iter()
+            .filter_map(|name| self.mods.get(name))
+            .flat_map(|mods| mods.iter())
+            .filter(|modifier| {
+                modifier.mod_type == ModType::More
+                    && modifier.slot_name() == Some(slot)
+                    && modifier.matches(cfg)
+            })
+            .filter_map(|modifier| modifier.effective_number(cfg))
+            .fold(1.0, |product, value| product * (1.0 + value / 100.0))
+    }
+
+    /// per-slot 防御聚合所需的槽位 BASE 词条：返回各 `(slot, value)`（带 [`ModTag::SlotName`]
+    /// 的 `Base` modifier）。无槽位的 BASE 由调用方另行用 [`sum_global_only`](Self::sum_global_only)
+    /// 取（作为「无槽位底」，只享全局乘区）。
+    pub fn slot_bases(&self, cfg: &CalcConfig, name: &ModName) -> Vec<(String, f64)> {
+        self.mods
+            .get(name)
+            .into_iter()
+            .flat_map(|mods| mods.iter())
+            .filter(|modifier| modifier.mod_type == ModType::Base && modifier.matches(cfg))
+            .filter_map(|modifier| {
+                let slot = modifier.slot_name()?.to_string();
+                let value = modifier.effective_number(cfg)?;
+                Some((slot, value))
+            })
+            .collect()
+    }
+
     pub fn flag(&self, cfg: &CalcConfig, name: ModName) -> bool {
         self.mods
             .get(&name)

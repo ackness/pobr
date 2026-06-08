@@ -175,12 +175,36 @@ pub fn armour_reduction(armour: f64, raw_hit: f64) -> f64 {
     round(armour / (armour + 10.0 * raw_hit))
 }
 
+/// per-slot 防御聚合（PoB2 `CalcDefence.lua` + `CalcTools.calcLib.mod({slotName=slot})`）。
+///
+/// 每个槽位的防御底值（`SlotName`-tagged BASE，如各护甲件 rolled 底值）按
+/// **该槽位的** inc/more 与**全局** inc/more 合并缩放后求和：
+/// ```text
+/// per_slot(slot) = slot_base × (1 + (Σglobal_inc + Σslot_inc(slot))/100) × (Π global_more × Π slot_more(slot))
+/// total = Σ_slots per_slot(slot) + global_base × (1 + Σglobal_inc/100) × Π global_more
+/// ```
+/// - slot-scoped inc（`from Equipped <Slot>`）与 global inc **同加法桶相加**（非独立乘区，
+///   避免 `g×s` 交叉项高估，对齐 PoB2）。
+/// - 无槽位的 flat BASE（`base` 入参 + 全局 `+to Armour` 等）作为「无槽位底」，只享全局乘区。
 fn scaled_defence_stat(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
     let names = [ModName::from(name)];
-    let base_value = base + db.sum(ModType::Base, cfg, &names);
-    let inc = db.sum(ModType::Inc, cfg, &names);
-    let more = db.more(cfg, &names);
-    round(base_value * (1.0 + inc / 100.0) * more)
+    let name = ModName::from(name);
+
+    let global_inc = db.sum_global_only(ModType::Inc, cfg, &names);
+    let global_more = db.more_global_only(cfg, &names);
+
+    // 无槽位底：调用方传入的 base（如树 flat）+ 无 SlotName tag 的 BASE 词条，只享全局乘区。
+    let global_base = base + db.sum_global_only(ModType::Base, cfg, &names);
+    let mut total = global_base * (1.0 + global_inc / 100.0) * global_more;
+
+    // 各槽位底：用「全局 inc + 该槽 inc」加法桶 × 「全局 more × 该槽 more」连乘。
+    for (slot, slot_base) in db.slot_bases(cfg, &name) {
+        let slot_inc = db.sum_for_slot(ModType::Inc, cfg, &names, &slot);
+        let slot_more = db.more_for_slot(cfg, &names, &slot);
+        total += slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
+    }
+
+    round(total)
 }
 
 // ─────────────────────────────────────────────────────────────────

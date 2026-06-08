@@ -34,7 +34,7 @@ use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
-use pobr_core::{CharacterBase, Modifier};
+use pobr_core::{CharacterBase, ModTag, Modifier};
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
@@ -630,7 +630,8 @@ fn resolve_main_skill<'b>(
 /// （ModDb SlotName tag），属结构性改造，留作后续。
 fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
-    for item in build.items.values() {
+    for (slot, item) in &build.items {
+        let slot_id = slot.id();
         let base_default = data.armour_base(&item.base.to_string());
         let rolled = &item.rolled_defence;
         // 仅护甲件（有基底护甲项 **或** 文本给出 rolled 防御行）参与。
@@ -676,7 +677,12 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
                 let origin =
                     ModifierSource::new(SourceId::new(SourceKind::Item, format!("base.{name}")))
                         .with_raw_text(format!("{} item {name}", item.base));
-                mods.push(Modifier::number(name, ModType::Base, value).with_origin(origin));
+                // 件级底值带槽位限定（per-slot 聚合：享全局 inc/more + 该槽 `from Equipped <Slot>`）。
+                mods.push(
+                    Modifier::number(name, ModType::Base, value)
+                        .with_origin(origin)
+                        .with_tag(ModTag::SlotName(slot_id.to_string())),
+                );
             }
         }
     }
