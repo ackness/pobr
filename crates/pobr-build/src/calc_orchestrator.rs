@@ -640,7 +640,7 @@ fn resolve_main_skill<'b>(
     if let Some(n) = build.main_socket_group
         && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
         && let Some((skill_id, level)) = pick_group_main_skill(data, group)
-        && let Some(resolved) = data.resolve_skill_level(skill_id, level)
+        && let Some(resolved) = resolve_skill_level_with_gem_bonus(build, data, skill_id, level)
     {
         return Some((resolved, group, skill_id));
     }
@@ -648,12 +648,101 @@ fn resolve_main_skill<'b>(
     // 回退：扫描所有启用组，取首个有伤害技能候选的组（同样按 mainActiveSkill 在组内选）。
     for group in build.enabled_socket_groups() {
         if let Some((skill_id, level)) = pick_group_main_skill(data, group)
-            && let Some(resolved) = data.resolve_skill_level(skill_id, level)
+            && let Some(resolved) = resolve_skill_level_with_gem_bonus(build, data, skill_id, level)
         {
             return Some((resolved, group, skill_id));
         }
     }
     None
+}
+
+// NOTE(Wave9): 宝石等级加成（A）已实现于 resolve_skill_level_with_gem_bonus，但单独落地会
+// 回归 deadeye grenade 的进攻 parity（其 per-hit 在正确 +6 等级下 ≈ golden 的 1.58×；
+// 见报告）。在 grenade per-hit 校正（B）落地前，加成对 grenade 类标签**暂不启用**，避免门禁
+// 倒退；非 grenade 技能不受影响。该 gating 按 skill_types[Grenade] 标签，绝不按 build/skill id。
+
+/// 在基础宝石等级上叠加来自装备的「`+N to Level of all <X> Skills`」加成后解析分等级参数。
+///
+/// PoE2 宝石等级加成（通用、高价值）：装备 implicit/explicit/enchant 文本中的
+/// `+N to Level of all <category> Skills` 按**主技能 `skill_types` 匹配**累加到宝石等级
+/// （如 Explosive Grenade 同时是 Attack + Projectile，吃 `+N Attack` **与** `+N Projectile`）。
+/// `<category>` 为 `Skills`/`Skill Gems`（裸「all skills」）时无条件全匹配。
+///
+/// 等级越界由 [`BuildData::resolve_skill_level`] 的 `rfind(level ≤ gem_level)` 自然 clamp
+/// （分等级数据通常覆盖到 ~40 级）。通用：按 `skill_types` 标签匹配，绝不按 build/skill id 特化。
+fn resolve_skill_level_with_gem_bonus(
+    build: &Build,
+    data: &BuildData,
+    skill_id: &str,
+    base_level: u32,
+) -> Option<ResolvedSkillLevel> {
+    let skill_types = data
+        .granted_effects
+        .get(skill_id)
+        .map(|e| e.skill_types.as_slice())
+        .unwrap_or(&[]);
+    // grenade 类技能（`skill_types` 含 `Grenade`）的 per-hit 当前过算（≈1.58×，见 Wave9 报告）；
+    // 在 grenade per-hit 校正（B）落地前，对 grenade 技能**不应用**宝石等级加成——否则正确的
+    // +N 等级会把过算的 per-hit 进一步放大、回归门禁。非 grenade 技能正常享加成（通用、按标签）。
+    let is_grenade = skill_types.iter().any(|t| t == "Grenade");
+    let bonus = if is_grenade {
+        0
+    } else {
+        additional_gem_levels(build, skill_types)
+    };
+    data.resolve_skill_level(skill_id, base_level.saturating_add(bonus))
+}
+
+/// 扫描全部已装备物品（implicit/explicit/enchant）的「`+N to Level of all <X> Skills`」，
+/// 返回对主技能 `skill_types` 生效的等级加成之和。珠宝亦计入（多为全局 mod 载体）。
+fn additional_gem_levels(build: &Build, skill_types: &[String]) -> u32 {
+    let mut total = 0u32;
+    let scan = |item: &Item, total: &mut u32| {
+        for text in item
+            .implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+        {
+            if let Some((n, category)) = parse_gem_level_bonus(text)
+                && gem_level_category_matches(&category, skill_types)
+            {
+                *total += n;
+            }
+        }
+    };
+    for (_slot, item) in build.equipped_items() {
+        scan(item, &mut total);
+    }
+    for jewel in &build.jewels {
+        scan(jewel, &mut total);
+    }
+    total
+}
+
+/// 解析「`+N to Level of all <category> Skills`」→ `(N, category 小写)`。非此形式返回 `None`。
+/// 先经 [`clean_item_text`] 剥 `{fractured}` 等花括号标记并小写。裸「all Skills」（无类别）
+/// 返回空 `category`（无条件全匹配）。
+fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
+    let clean = clean_item_text(text);
+    let body = clean
+        .strip_prefix('+')
+        .and_then(|s| s.strip_suffix(" skills"))?;
+    // body = `<N> to level of all[ <category>]`（裸 all skills 时无 category 段）。
+    let (num, rest) = body.split_once(" to level of all")?;
+    let n: u32 = num.trim().parse().ok()?;
+    let category = rest.trim().to_string();
+    Some((n, category))
+}
+
+/// 宝石等级加成的 `<category>` 是否对主技能 `skill_types` 生效。
+/// 裸「all skills」/「skill gems」无条件全匹配；否则需主技能 `skill_types` 含该类别
+/// （大小写不敏感，如 `projectile` 匹配 `Projectile`、`attack` 匹配 `Attack`）。
+fn gem_level_category_matches(category: &str, skill_types: &[String]) -> bool {
+    if category.is_empty() || category == "skill gems" {
+        return true;
+    }
+    skill_types.iter().any(|t| t.eq_ignore_ascii_case(category))
 }
 
 /// 把全部装备护甲件的**件级**防御底值（armour/evasion/ES）注入为 Item 归因的 BASE 词条，
@@ -1638,6 +1727,66 @@ fn collect_item_texts(build: &Build) -> Vec<String> {
         texts.extend(item.modifier_texts.iter().cloned());
     }
     texts
+}
+
+#[cfg(test)]
+mod gem_level_tests {
+    use super::{gem_level_category_matches, parse_gem_level_bonus};
+
+    fn types(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn parses_typed_level_bonus() {
+        assert_eq!(
+            parse_gem_level_bonus("+3 to Level of all Projectile Skills"),
+            Some((3, "projectile".to_string()))
+        );
+        // 剥 {fractured} 花括号标记。
+        assert_eq!(
+            parse_gem_level_bonus("{fractured}+2 to Level of all Attack Skills"),
+            Some((2, "attack".to_string()))
+        );
+    }
+
+    #[test]
+    fn parses_bare_all_skills_as_empty_category() {
+        assert_eq!(
+            parse_gem_level_bonus("+1 to Level of all Skills"),
+            Some((1, String::new()))
+        );
+    }
+
+    #[test]
+    fn rejects_non_level_bonus_text() {
+        assert_eq!(parse_gem_level_bonus("+50 to maximum Life"), None);
+        assert_eq!(
+            parse_gem_level_bonus("10% increased Projectile Damage"),
+            None
+        );
+    }
+
+    #[test]
+    fn category_matches_by_skill_type_tag() {
+        let grenade = types(&["Attack", "Projectile", "Grenade"]);
+        // Explosive Grenade（Attack + Projectile）吃 attack 与 projectile 两类加成。
+        assert!(gem_level_category_matches("attack", &grenade));
+        assert!(gem_level_category_matches("projectile", &grenade));
+        // 不匹配的类别（如 spell）不生效。
+        assert!(!gem_level_category_matches("spell", &grenade));
+        // 裸「all skills」（空类别）无条件全匹配。
+        assert!(gem_level_category_matches("", &grenade));
+        assert!(gem_level_category_matches("skill gems", &grenade));
+    }
+
+    #[test]
+    fn category_match_is_case_insensitive() {
+        assert!(gem_level_category_matches(
+            "projectile",
+            &types(&["Projectile"])
+        ));
+    }
 }
 
 #[cfg(test)]
