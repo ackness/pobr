@@ -39,7 +39,7 @@ use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
-use pobr_tree::collect_allocated_mods;
+use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect};
 
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
@@ -419,6 +419,17 @@ pub fn calculate_with_data(
             .collect();
         session
             .add_modifier_texts(texts)
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+    }
+
+    // 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
+    //      已分配**对应种类节点数 × 授予，展开为全局 modifier text 注入（PoB2 几何口径）。
+    //      与装备/天赋路径一致，先 skip-and-collect 过滤硬失败词条，避免单条中止整批。
+    let radius_texts = filter_parseable(radius_jewel_grant_texts(build, data));
+    if !radius_texts.is_empty() {
+        let refs: Vec<&str> = radius_texts.iter().map(String::as_str).collect();
+        session
+            .add_modifier_texts(&refs)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
@@ -1340,6 +1351,125 @@ fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<AllocatedNode> 
         .collect()
 }
 
+/// 把 `Radius:` 档位文本映射为 [`JewelRadius`]。未识别/缺失时回退 `Large`
+/// （PoB2 树珠宝默认半径），保持几何近似可用。
+fn parse_jewel_radius(label: Option<&str>) -> JewelRadius {
+    match label.map(|s| s.trim().to_ascii_lowercase()).as_deref() {
+        Some("small") => JewelRadius::Small,
+        Some("medium") => JewelRadius::Medium,
+        Some("large") => JewelRadius::Large,
+        Some("very large") => JewelRadius::VeryLarge,
+        _ => JewelRadius::Large,
+    }
+}
+
+/// 范围珠宝 `also grant` 行的目标节点种类（由前缀决定授予对象）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GrantTargetKind {
+    Notable,
+    /// `Small Passive Skills` = 普通（非 notable/keystone/socket/mastery）节点。
+    Small,
+}
+
+/// 解析 `<Kind> Passive Skills in Radius also grant <mod>` 行 → (目标种类, 授予 mod 文本)。
+///
+/// 仅识别 `Notable` / `Small` 前缀；其它前缀（如 keystone 授予，目前未见样本）返回 None。
+fn parse_grant_line(line: &str) -> Option<(GrantTargetKind, String)> {
+    const MARKER: &str = "Passive Skills in Radius also grant";
+    let idx = line.find(MARKER)?;
+    let prefix = line[..idx].trim();
+    let kind = match prefix.to_ascii_lowercase().as_str() {
+        "notable" => GrantTargetKind::Notable,
+        "small" => GrantTargetKind::Small,
+        _ => return None,
+    };
+    let granted = line[idx + MARKER.len()..].trim();
+    if granted.is_empty() {
+        None
+    } else {
+        Some((kind, granted.to_string()))
+    }
+}
+
+/// 把所有范围珠宝的 `also grant` 词条按半径几何展开为全局 modifier 文本。
+///
+/// 对每个珠宝：以插槽节点坐标为圆心、按 `Radius:` 档位筛出**已分配**节点，按种类计数
+/// （notable / small=普通），每个 `also grant` 行按对应计数注入 `count` 份授予 mod 文本。
+/// 这复刻 PoB2「半径内每个该种类（已分配）节点各获得一份授予」的累加效果。
+fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
+    if build.radius_jewels.is_empty() {
+        return Vec::new();
+    }
+    // 已分配节点集合（含种类）。坐标取自 data.passive_nodes（树数据回填的 x/y）。
+    let allocated: std::collections::HashSet<u32> =
+        build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+
+    // 位置表：socket 自身 + 全部已分配节点（候选只在已分配集合中筛）。
+    let mut positions: std::collections::HashMap<u32, (f64, f64)> =
+        std::collections::HashMap::new();
+    for (&skill, def) in &data.passive_nodes {
+        if let (Some(x), Some(y)) = (def.x, def.y)
+            && allocated.contains(&skill)
+        {
+            positions.insert(skill, (x, y));
+        }
+    }
+
+    let mut out: Vec<String> = Vec::new();
+    for jewel in &build.radius_jewels {
+        // socket 坐标须可得，否则无法定圆心（跳过，不臆造）。
+        let Some(socket_pos) =
+            data.passive_nodes
+                .get(&jewel.socket_node)
+                .and_then(|d| match (d.x, d.y) {
+                    (Some(x), Some(y)) => Some((x, y)),
+                    _ => None,
+                })
+        else {
+            continue;
+        };
+
+        let radius = parse_jewel_radius(jewel.radius_label.as_deref());
+
+        // 把 socket 坐标并入位置表（compute 会排除 socket 自身）。
+        let mut pos = positions.clone();
+        pos.insert(jewel.socket_node, socket_pos);
+
+        let effect = match compute_radius_jewel_effect(jewel.socket_node, radius, &pos, Vec::new())
+        {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        // 半径内已分配节点按种类计数。
+        let (mut notables, mut smalls) = (0usize, 0usize);
+        for &skill in &effect.affected_nodes {
+            let Some(def) = data.passive_nodes.get(&skill) else {
+                continue;
+            };
+            match def.kind {
+                pobr_data::catalog::PassiveNodeKind::Notable => notables += 1,
+                pobr_data::catalog::PassiveNodeKind::Normal => smalls += 1,
+                _ => {}
+            }
+        }
+
+        for line in &jewel.grant_lines {
+            let Some((kind, granted)) = parse_grant_line(line) else {
+                continue;
+            };
+            let count = match kind {
+                GrantTargetKind::Notable => notables,
+                GrantTargetKind::Small => smalls,
+            };
+            for _ in 0..count {
+                out.push(granted.clone());
+            }
+        }
+    }
+    out
+}
+
 /// 保留 [`parse_mod`] 不**硬失败**（`Ok(_)`，含 Parsed / Unsupported）的词条文本，
 /// 丢弃结构性解析失败（`Err`）的词条。
 ///
@@ -1553,6 +1683,8 @@ mod tests {
             group: None,
             orbit: None,
             orbit_index: None,
+            x: None,
+            y: None,
             connections: vec![],
             ascendancy_id: None,
         };

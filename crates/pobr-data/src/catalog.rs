@@ -379,7 +379,9 @@ pub enum PassiveNodeKind {
 /// `passive_keystone_avatar_of_fire`），`skill` 为数值 skill id（树连线 / Build Code
 /// 引用的稳定数值键）。`stats` 是节点授予的英文词条文本行（PoB 兼容解析的输入）。
 /// `connections` 为该节点的出边目标 `skill` id（无向树用出边即可重建邻接）。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// 注：含 `x`/`y` 浮点坐标字段，故不派生 `Eq`/`Hash`（仅 `PartialEq`）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PassiveNodeDef {
     /// 数值 skill id（GGG `nodes` 的 map key / `skill` 字段）。树连线、Build Code 用此引用。
     pub skill: u32,
@@ -402,6 +404,15 @@ pub struct PassiveNodeDef {
     /// 在 orbit 上的角度槽位（GGG `orbitIndex`）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orbit_index: Option<u32>,
+    /// 节点平面 x 坐标（tree units）。由 `group.(x,y)` + orbit 半径/角度推导，
+    /// 对标 PoB2 `PassiveTree.lua` `node.x = group.x + sin(angle) * orbitRadii[orbit]`。
+    /// 旧 catalog 无此字段，`#[serde(default)]` 兼容；radius 珠宝几何计算依赖它。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x: Option<f64>,
+    /// 节点平面 y 坐标（tree units）。对标 PoB2
+    /// `node.y = group.y - cos(angle) * orbitRadii[orbit]`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub y: Option<f64>,
     /// 出边目标节点的 `skill` id（GGG `out`，已从字符串 key 转为数值）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub connections: Vec<u32>,

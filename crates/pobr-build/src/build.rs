@@ -108,6 +108,22 @@ pub struct CharacterIdentity {
     pub ascendancy_name: String,
 }
 
+/// 范围珠宝（radius jewel）的几何展开输入。
+///
+/// PoB2 `... Passive Skills in Radius also grant <mod>` 词条需要按珠宝插槽**半径内已分配**
+/// 的对应种类节点数 × 授予值注入全局 mod。本结构携带几何计算所需的最小信息：插槽所在
+/// 树节点 id、半径档位文本（`Radius:` 行）、以及 `also grant` 行（原文，后续逐行展开）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RadiusJewel {
+    /// 珠宝所在的树插槽节点 `skill` id（`<Socket nodeId>`）。
+    pub socket_node: u32,
+    /// 半径档位文本（`Radius:` 行原文，如 `Small`/`Medium`/`Large`/`Very Large`）。
+    /// 缺失时为 `None`（PoB 默认珠宝半径，按 Large 近似）。
+    pub radius_label: Option<String>,
+    /// `... Passive Skills in Radius also grant <mod>` 行（原文，含种类前缀）。
+    pub grant_lines: Vec<String>,
+}
+
 /// PoB Build 的内存状态。
 ///
 /// 不可变更新：所有 `with_*` 方法返回新副本；`set_item` / `add_socket_group` 等
@@ -128,6 +144,10 @@ pub struct Build {
     /// 珠宝（天赋树/深渊槽，无固定 [`EquipmentSlot`]）。其词条按全局作用注入
     /// （多数珠宝为全局；radius 珠宝当前按全局近似）。
     pub jewels: Vec<Item>,
+    /// 范围珠宝（`... in Radius also grant <mod>`）的几何展开输入。与 `jewels` 并存：
+    /// `jewels` 注入珠宝**自身**的全局词条，本列表额外按半径几何把 `also grant` 展开为
+    /// 「半径内已分配对应种类节点数 × 授予」的全局 mod（见 `calc_orchestrator`）。
+    pub radius_jewels: Vec<RadiusJewel>,
     /// 技能宝石组。
     pub socket_groups: Vec<SocketGroup>,
     /// 主技能组索引（PoB `<Build mainSocketGroup>`，**1-based**，指向 `socket_groups`）。
@@ -182,6 +202,12 @@ impl Build {
     /// 设定珠宝列表，返回新副本。
     pub fn with_jewels(mut self, jewels: Vec<Item>) -> Self {
         self.jewels = jewels;
+        self
+    }
+
+    /// 设定范围珠宝（radius jewel）几何展开列表，返回新副本。
+    pub fn with_radius_jewels(mut self, radius_jewels: Vec<RadiusJewel>) -> Self {
+        self.radius_jewels = radius_jewels;
         self
     }
 

@@ -12,6 +12,7 @@
 //! ```
 
 mod tree;
+mod tree_coords;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -32,6 +33,7 @@ fn main() -> ExitCode {
     let result = match parse_args() {
         Ok(Mode::BaseItems(args)) => run(args),
         Ok(Mode::Tree(args)) => tree::run(args),
+        Ok(Mode::TreeCoords(args)) => tree_coords::run(args),
         Err(err) => Err(err),
     };
     match result {
@@ -56,11 +58,14 @@ struct Args {
 enum Mode {
     BaseItems(Args),
     Tree(tree::TreeArgs),
+    /// 从 vendor `tree.lua` 回填既有 `passive_tree.json` 的节点 x/y 坐标。
+    TreeCoords(tree_coords::TreeCoordsArgs),
 }
 
 fn parse_args() -> Result<Mode, String> {
     let mut raw = None;
     let mut tree = None;
+    let mut tree_coords = None;
     let mut out = None;
     let mut patch = None;
     let mut it = std::env::args().skip(1);
@@ -69,6 +74,7 @@ fn parse_args() -> Result<Mode, String> {
         match flag.as_str() {
             "--raw" => raw = Some(PathBuf::from(take("--raw")?)),
             "--tree" => tree = Some(PathBuf::from(take("--tree")?)),
+            "--tree-coords" => tree_coords = Some(PathBuf::from(take("--tree-coords")?)),
             "--out" => out = Some(PathBuf::from(take("--out")?)),
             "--patch" => patch = Some(take("--patch")?),
             other => return Err(format!("未知参数：{other}")),
@@ -76,15 +82,24 @@ fn parse_args() -> Result<Mode, String> {
     }
     let out = out.ok_or("缺少 --out <data>")?;
     let patch = patch.ok_or("缺少 --patch <version>")?;
-    match (raw, tree) {
-        (Some(_), Some(_)) => Err("--raw 与 --tree 互斥，请分别运行".into()),
-        (Some(raw), None) => Ok(Mode::BaseItems(Args { raw, out, patch })),
-        (None, Some(data_json)) => Ok(Mode::Tree(tree::TreeArgs {
+    match (raw, tree, tree_coords) {
+        (Some(_), Some(_), _) | (Some(_), _, Some(_)) | (_, Some(_), Some(_)) => {
+            Err("--raw / --tree / --tree-coords 互斥，请分别运行".into())
+        }
+        (Some(raw), None, None) => Ok(Mode::BaseItems(Args { raw, out, patch })),
+        (None, Some(data_json), None) => Ok(Mode::Tree(tree::TreeArgs {
             data_json,
             out,
             patch,
         })),
-        (None, None) => Err("缺少 --raw <pipeline/tables> 或 --tree <data.json>".into()),
+        (None, None, Some(tree_lua)) => Ok(Mode::TreeCoords(tree_coords::TreeCoordsArgs {
+            tree_lua,
+            out,
+            patch,
+        })),
+        (None, None, None) => Err(
+            "缺少 --raw <pipeline/tables> / --tree <data.json> / --tree-coords <tree.lua>".into(),
+        ),
     }
 }
 

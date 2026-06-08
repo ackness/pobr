@@ -32,7 +32,7 @@ use pobr_data::build_config::GameVersion;
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
 
-use crate::build::{Build, CharacterIdentity, SocketGroup};
+use crate::build::{Build, CharacterIdentity, RadiusJewel, SocketGroup};
 use crate::build_code::decode_pob_code;
 use crate::error::{BuildError, XmlError};
 use crate::xml_serde::parse_build_header;
@@ -61,6 +61,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
 
     let allocated_nodes = parse_passive_nodes(xml)?;
     let (items, jewels) = parse_items_and_slots(xml)?;
+    let radius_jewels = parse_radius_jewels(xml)?;
     let socket_groups = parse_socket_groups(xml)?;
     let main_socket_group = parse_main_socket_group(xml);
 
@@ -85,6 +86,9 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     }
     if !jewels.is_empty() {
         build = build.with_jewels(jewels);
+    }
+    if !radius_jewels.is_empty() {
+        build = build.with_radius_jewels(radius_jewels);
     }
     for group in socket_groups {
         build = build.add_socket_group(group);
@@ -275,6 +279,124 @@ fn parse_tree_socket_item_ids(xml: &str) -> Result<Vec<u32>, XmlError> {
         }
     }
     Ok(ids)
+}
+
+/// 解析树插槽 `<Socket nodeId="N" itemId="M"/>` → `(socket_node, item_id)`（itemId≠0）。
+fn parse_socket_node_items(xml: &str) -> Result<Vec<(u32, u32)>, XmlError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+    let mut out = Vec::new();
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Socket" => {
+                let node = attr_value(&e, b"nodeId").and_then(|v| v.parse::<u32>().ok());
+                let item = attr_value(&e, b"itemId").and_then(|v| v.parse::<u32>().ok());
+                if let (Some(node), Some(item)) = (node, item)
+                    && item != 0
+                {
+                    out.push((node, item));
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(XmlError::Parse(e.to_string())),
+            _ => {}
+        }
+    }
+    Ok(out)
+}
+
+/// 解析所有 `<Item id="N">…</Item>` 的**原始文本**为 `id -> 文本块`（保留行结构）。
+///
+/// 与 [`parse_item_blocks`] 区别：本函数不解析为 [`Item`]，而是保留 `Radius:` /
+/// `... in Radius also grant ...` 等被 item 解析丢弃的行，供范围珠宝几何展开。
+fn parse_raw_item_texts(xml: &str) -> Result<std::collections::HashMap<u32, String>, XmlError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(false);
+    let mut result = std::collections::HashMap::new();
+    let mut in_item = false;
+    let mut current_id: u32 = 0;
+    let mut current_text = String::new();
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) if element_name(&e) == "Item" => {
+                in_item = true;
+                current_text.clear();
+                current_id = attr_value(&e, b"id")
+                    .and_then(|v| v.parse::<u32>().ok())
+                    .unwrap_or(0);
+            }
+            Ok(Event::Text(t)) if in_item => {
+                if let Ok(text) = t.unescape() {
+                    current_text.push_str(&text);
+                }
+            }
+            Ok(Event::End(e)) if element_name_end(&e) == "Item" && in_item => {
+                in_item = false;
+                if current_id > 0 {
+                    result.insert(current_id, current_text.clone());
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(XmlError::Parse(e.to_string())),
+            _ => {}
+        }
+    }
+    Ok(result)
+}
+
+/// 解析范围珠宝：把树插槽珠宝（`<Socket nodeId itemId>`）含 `... in Radius also grant ...`
+/// 词条的，连同其 `Radius:` 档位一起收集为 [`RadiusJewel`]（几何展开输入）。
+///
+/// 仅收集**确实带 `also grant` 行**的珠宝；无该词条的珠宝不产生条目（其全局词条仍由
+/// `jewels` 路径注入，不重复）。
+fn parse_radius_jewels(xml: &str) -> Result<Vec<RadiusJewel>, XmlError> {
+    let socket_items = parse_socket_node_items(xml)?;
+    let raw_texts = parse_raw_item_texts(xml)?;
+    let mut out = Vec::new();
+    for (socket_node, item_id) in socket_items {
+        let Some(text) = raw_texts.get(&item_id) else {
+            continue;
+        };
+        let grant_lines: Vec<String> = text
+            .lines()
+            .map(str::trim)
+            .filter(|l| l.contains("in Radius also grant"))
+            .map(strip_brace_tags)
+            .collect();
+        if grant_lines.is_empty() {
+            continue;
+        }
+        let radius_label = text
+            .lines()
+            .map(str::trim)
+            .find_map(|l| l.strip_prefix("Radius:").map(|r| r.trim().to_string()))
+            .filter(|s| !s.is_empty());
+        out.push(RadiusJewel {
+            socket_node,
+            radius_label,
+            grant_lines,
+        });
+    }
+    // 确定性：按插槽节点、再按行排序。
+    out.sort_by(|a, b| {
+        a.socket_node
+            .cmp(&b.socket_node)
+            .then_with(|| a.grant_lines.cmp(&b.grant_lines))
+    });
+    Ok(out)
+}
+
+/// 去掉 PoB 词条行的 `{crafted}` / `{desecrated}` 等花括号标签前缀。
+fn strip_brace_tags(line: &str) -> String {
+    let mut s = line.trim();
+    while let Some(rest) = s.strip_prefix('{') {
+        if let Some(end) = rest.find('}') {
+            s = rest[end + 1..].trim_start();
+        } else {
+            break;
+        }
+    }
+    s.to_string()
 }
 
 /// 解析所有 `<Item id="N">…</Item>` 文本块为 `id -> Item`。

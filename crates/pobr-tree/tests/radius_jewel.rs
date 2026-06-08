@@ -47,6 +47,8 @@ fn node(skill: u32, kind: PassiveNodeKind) -> PassiveNodeDef {
         group: None,
         orbit: None,
         orbit_index: None,
+        x: None,
+        y: None,
         connections: vec![],
         ascendancy_id: None,
     }

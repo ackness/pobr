@@ -144,6 +144,9 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
             group: n.group,
             orbit: n.orbit,
             orbit_index: n.orbit_index,
+            // 坐标由独立的 `--tree-coords <tree.lua>` 步骤回填（GGG data.json 不含 group 坐标）。
+            x: None,
+            y: None,
             connections: resolve_connections(&n.out, &skill_by_key),
             ascendancy_id: n.ascendancy_id.clone(),
         });
