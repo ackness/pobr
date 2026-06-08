@@ -210,6 +210,54 @@ fn gain_as_extra_fire_uses_final_type_inc_only() {
     assert_eq!(fire.max, 200.0);
 }
 
+/// 回归（type_path-last-not-final-type）：当某分量的 `type_path` 含**链序晚于自身**的类型时，
+/// inc/more 聚合必须按分量自身 `damage_type` 而非 `type_path` 末位。
+///
+/// 场景：物理 100% gain as Cold（Cold 分量 path 起含 Physical），再叠加 Fire gain as Cold
+/// （把 Fire 推入 Cold 的 path）。链序 [Phys,Lightning,Cold,Fire] 下 Cold 的 path 排序后末位
+/// = Fire。旧实现误用 `FireDamage` inc 聚合 Cold 分量；修正后须用 `ColdDamage`。
+/// PoB2 `calcDamage` typeFlags 仅含最终 damageType——oracle（ice-shot/deadeye）逐分量验证。
+#[test]
+fn component_uses_own_type_inc_not_path_last() {
+    let mut db = ModDb::new();
+    // 物理 100% gain as Cold（Cold 得物理 base，path 含 Physical）。
+    db.add_mod(
+        Modifier::number("PhysicalDamageGainAsCold", ModType::Base, 100.0)
+            .with_flags(ModFlags::ATTACK),
+    );
+    // Fire flat base（使 Fire→Cold gain 有源，从而把 Fire 推入 Cold 的 type_path）。
+    db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 20.0).with_flags(ModFlags::ATTACK));
+    // Fire 100% gain as Cold——把 Fire 推入 Cold 的 type_path。
+    db.add_mod(
+        Modifier::number("FireDamageGainAsCold", ModType::Base, 100.0).with_flags(ModFlags::ATTACK),
+    );
+    // ColdDamage inc 100：仅当按分量自身类型聚合时 Cold 才吃到。
+    db.add_mod(
+        Modifier::number("ColdDamage", ModType::Inc, 100.0)
+            .with_flags(ModFlags::ATTACK)
+            .with_tag(ModTag::DamageType(DamageType::Cold)),
+    );
+    // FireDamage inc 999：若误用 path 末位（Fire），Cold 会被这个巨大值污染。
+    db.add_mod(
+        Modifier::number("FireDamage", ModType::Inc, 999.0)
+            .with_flags(ModFlags::ATTACK)
+            .with_tag(ModTag::DamageType(DamageType::Fire)),
+    );
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+
+    let cold = component(&output, DamageType::Cold);
+    // Cold base = 物理 gain(100-200) + 火焰 gain(10-20) = 110-220，吃 ColdDamage inc 100 →
+    // ×2 = 220-440。若误用 path 末位 FireDamage inc 999 → ×10.99（断言会失败）。
+    assert!(cold.type_path.contains(&DamageType::Fire), "path 应含 Fire");
+    assert_eq!(
+        cold.min, 220.0,
+        "Cold 须按 ColdDamage inc 聚合，非 path 末位 Fire"
+    );
+    assert_eq!(cold.max, 440.0);
+}
+
 /// 富化字段：转换 / gain 产生的分量 kind=Hit、source=Attack；type_path 正确去重有序。
 #[test]
 fn converted_components_carry_hit_attack_kind_and_ordered_path() {

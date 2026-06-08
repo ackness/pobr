@@ -11,11 +11,12 @@
 //!   再**全局转换**（`<From>DamageConvertTo<To>` / `DamageConvertTo<To>` /
 //!   `ElementalDamageConvertTo<To>` / `NonChaosDamageConvertTo<To>`）。
 //! - 同源转换总和 `> 100%` 等比归一化到 100%（`factor = 100 / total`）。
-//! - **double-dip**：被转换的伤害沿途经过的每个类型的 increased/more 都累积适用，
-//!   通过 [`DamageComponent::type_path`] 收集所有相关 ModName 实现
-//!   （PoB2 `typeFlags` `bor` 累积语义；damage-scaling.md §increased 双重生效）。
+//! - **inc/more 仅按最终类型**（PoE2，无转换源 double-dip）：转换/gain 分量只吃**自身最终
+//!   伤害类型**的 increased/more（+ Elemental 共享组），**不**累积转换源类型。一手依据：PoB2
+//!   `calcDamage(...,damageType,0)`（CalcOffence.lua:3990，typeFlags 仅含最终类型）+ headless
+//!   oracle 验证。PoE1 的"转换源 double-dip"在 PoE2 已移除。见 damage-scaling.md §转换分量口径。
 //! - **gain-as-extra**（`<From>DamageGainAs<To>` / `DamageGainAs<To>` 等 BASE%）：
-//!   额外伤害包，**不从来源扣减、不参与归一**，但同样吃来源+目标 double-dip。
+//!   额外伤害包，**不从来源扣减、不参与归一**；inc/more 同样只按目标（最终）类型。
 //!
 //! ## 向后兼容
 //!
@@ -30,10 +31,10 @@ use super::round;
 
 /// 单个伤害分量：聚合后的 min/max，含击中/持续区分、来源桶、转换沿途类型集合。
 ///
-/// **`type_path`**（08-mechanics §2.3、damage-scaling.md §double dipping）：
+/// **`type_path`**（08-mechanics §2.3、damage-scaling.md §转换分量口径）：
 /// 该分量在转换链上经过的所有伤害类型（去重、按 [`DAMAGE_TYPES`] 顺序）。
-/// 例如物理 50% 转火焰后的火焰分量 `type_path = [Physical, Fire]`，其 increased 聚合
-/// 同时命中 `PhysicalDamage` 与 `FireDamage`（+`ElementalDamage`）两组 ModName。
+/// 例如物理 50% 转火焰后的火焰分量 `type_path = [Physical, Fire]`；**仅用于归因/展示**，
+/// inc/more 聚合只按最终类型 `FireDamage`（+`ElementalDamage`），不含转换源 `PhysicalDamage`。
 /// 未转换分量的 `type_path` 只含自身类型，与历史单类型聚合等价。
 #[derive(Debug, Clone, PartialEq)]
 pub struct DamageComponent {
@@ -44,7 +45,7 @@ pub struct DamageComponent {
     pub kind: DamageKind,
     /// 来源桶（Attack / Spell / Secondary / …）。默认 [`DamageSource::Attack`]。
     pub source: DamageSource,
-    /// 转换链上经过的伤害类型集合（去重、有序），用于 increased 双重 dip。
+    /// 转换链上经过的伤害类型集合（去重、有序）；仅用于归因/展示，inc/more 只按最终类型。
     pub type_path: Vec<DamageType>,
 }
 
@@ -174,14 +175,14 @@ fn base_flat(
     }
 }
 
-/// 计算全部伤害类型的击中分量向量（含转换链 + gain-as-extra + double-dip）。
+/// 计算全部伤害类型的击中分量向量（含转换链 + gain-as-extra；inc/more 仅按最终类型）。
 ///
 /// 管线：
 /// 1. 按 [`DAMAGE_TYPES`] 顺序求各类型 flat base（[`base_flat`]，含 added effectiveness）。
 /// 2. 读 [`ConversionRules`]（技能 + 全局 convert + gain-as-extra）。**全为空时**走
 ///    [`scale_components_no_conversion`] 快速路径，输出与历史逐字一致。
 /// 3. 否则跑 [`apply_conversion_chain`]：产出带 `type_path` 的「转换后基础分量」，
-///    再各自按 `type_path` 展开 inc/more 聚合（double-dip）。
+///    再各自按**最终伤害类型**聚合 inc/more（PoE2 无转换源 double-dip）。
 ///
 /// **Bug#6 修正（missing-elemental-damage-modname-group）**：火/冰/电分量的 inc/more
 /// 必须包含 `ElementalDamage` 共享组（在 [`aggregate_inc_more`] 内统一展开）。
@@ -211,7 +212,7 @@ pub(crate) fn calculate_components(
     // 第三步：跑转换链，产出带 type_path 的「转换后基础分量」。
     let converted = apply_conversion_chain(&base, &rules);
 
-    // 第四步：各自按 type_path double-dip 聚合 inc/more。
+    // 第四步：各自按最终伤害类型聚合 inc/more（PoE2 无转换源 double-dip）。
     converted
         .into_iter()
         .filter(|comp| {
@@ -247,7 +248,7 @@ fn scale_components_no_conversion(
 /// （+ 元素 `ElementalDamage`）以及通用 `AttackDamage`/`Damage` 的 inc/more —— double-dip。
 /// `type_path` 仅含单类型时退化为历史逐类型聚合。
 fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> DamageComponent {
-    let (inc, more) = aggregate_inc_more(db, cfg, &comp.type_path);
+    let (inc, more) = aggregate_inc_more(db, cfg, comp.damage_type);
     let scale = (1.0 + inc / 100.0) * more;
     DamageComponent {
         min: round(comp.min * scale),
@@ -261,7 +262,7 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Damag
 /// 每个路径类型贡献 `<Type>Damage`（type-scoped cfg 命中其 `DamageType` tag）；
 /// 元素类型额外贡献共享 `ElementalDamage`（去重，多个元素只算一次）。通用
 /// `AttackDamage`/`Damage` 只算一次（与 type-scoped 无关）。
-fn aggregate_inc_more(db: &ModDb, cfg: &CalcConfig, type_path: &[DamageType]) -> (f64, f64) {
+fn aggregate_inc_more(db: &ModDb, cfg: &CalcConfig, final_type: DamageType) -> (f64, f64) {
     // 通用桶（不限伤害类型）：`Damage` 始终；攻击/法术/技能类别（投射物/范围/近战）按
     // cfg flag——使 `increased <Attack|Spell|Projectile|Area|Melee> Damage` 对该技能生效。
     let mut generic_names = vec![ModName::from("Damage")];
@@ -286,20 +287,20 @@ fn aggregate_inc_more(db: &ModDb, cfg: &CalcConfig, type_path: &[DamageType]) ->
     let mut inc = db.sum(ModType::Inc, cfg, &generic_names);
     let mut more = db.more(cfg, &generic_names);
 
-    // PoB2-PoE2：类型化 inc/more 只按分量**最终伤害类型**（type_path 末位）聚合，**不**叠加
-    // 转换源类型（PoE1 的「按转换源 increased 双重 dip」在 PoE2 已移除——PoB2 headless oracle
-    // 逐分量一手验证：`calcDamage` 的 typeFlags 仅含最终类型）。转换/gain-as-extra 产物同此口径。
-    if let Some(&final_type) = type_path.last() {
-        let type_cfg = cfg.clone().with_damage_type(final_type);
-        let type_name = [ModName::from(format!("{}Damage", type_prefix(final_type)))];
-        inc += db.sum(ModType::Inc, &type_cfg, &type_name);
-        more *= db.more(&type_cfg, &type_name);
+    // PoB2-PoE2：类型化 inc/more 只按分量**最终伤害类型**聚合，**不**叠加转换源类型
+    // （PoE1 的「按转换源 increased 双重 dip」在 PoE2 已移除——PoB2 headless oracle 逐分量一手
+    // 验证：`calcDamage` 的 typeFlags 仅含最终 damageType）。转换/gain-as-extra 产物同此口径。
+    // 必须用分量的最终 `damage_type`（而非 type_path 末位）——type_path 已按链序排序，末位
+    // 可能并非分量自身类型（如 Cold 分量 path=[Physical,Lightning,Cold,Fire] 末位是 Fire）。
+    let type_cfg = cfg.clone().with_damage_type(final_type);
+    let type_name = [ModName::from(format!("{}Damage", type_prefix(final_type)))];
+    inc += db.sum(ModType::Inc, &type_cfg, &type_name);
+    more *= db.more(&type_cfg, &type_name);
 
-        if final_type.is_elemental() {
-            let elem = [elemental_name];
-            inc += db.sum(ModType::Inc, &type_cfg, &elem);
-            more *= db.more(&type_cfg, &elem);
-        }
+    if final_type.is_elemental() {
+        let elem = [elemental_name];
+        inc += db.sum(ModType::Inc, &type_cfg, &elem);
+        more *= db.more(&type_cfg, &elem);
     }
     (inc, more)
 }
