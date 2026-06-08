@@ -183,24 +183,33 @@ impl Tally {
 
 const TOL10: f64 = 0.10; // 接近 = 相对误差 < 10%（进度可见性辅助指标）
 
-fn print_rows(rows: &[Row]) -> Tally {
+/// 仅计数（不打印）：供回归门禁 [`parity_no_regression`] 用。
+fn tally_rows(rows: &[Row]) -> Tally {
     let mut t = Tally::default();
+    for r in rows {
+        if let Some(gv) = r.golden {
+            let rt = ratio(r.pobr, gv);
+            t.total += 1;
+            if (rt - 1.0).abs() < TOL {
+                t.hit5 += 1;
+            }
+            if (rt - 1.0).abs() < TOL10 {
+                t.hit10 += 1;
+            }
+        }
+    }
+    t
+}
+
+/// 打印逐 stat 对照表并返回命中聚合（复用 [`tally_rows`] 的计数口径）。
+fn print_rows(rows: &[Row]) -> Tally {
     for r in rows {
         match r.golden {
             Some(gv) => {
                 let rt = ratio(r.pobr, gv);
-                let ok5 = (rt - 1.0).abs() < TOL;
-                let ok10 = (rt - 1.0).abs() < TOL10;
-                t.total += 1;
-                if ok5 {
-                    t.hit5 += 1;
-                }
-                if ok10 {
-                    t.hit10 += 1;
-                }
-                let mark = if ok5 {
+                let mark = if (rt - 1.0).abs() < TOL {
                     "✓"
-                } else if ok10 {
+                } else if (rt - 1.0).abs() < TOL10 {
                     "~"
                 } else {
                     " "
@@ -213,12 +222,12 @@ fn print_rows(rows: &[Row]) -> Tally {
             None => eprintln!("    {:<16}{:>14.2}{:>14}{:>10}", r.label, r.pobr, "—", "—"),
         }
     }
-    t
+    tally_rows(rows)
 }
 
-/// 主基线报告：逐 build 打印防御 + 进攻对照，并汇总聚合命中率。
-#[test]
-fn parity_baseline_report() {
+/// 遍历全部 build 计算防御/进攻命中聚合。`verbose` 控制是否逐 build 打印对照表。
+/// 返回 `(防御 Tally, 进攻 Tally, 解析/计算失败的 build 名)`。
+fn compute_tallies(verbose: bool) -> (Tally, Tally, Vec<String>) {
     let data = load_data();
     let builds = discover_builds();
     assert!(!builds.is_empty(), "no builds discovered");
@@ -232,19 +241,69 @@ fn parity_baseline_report() {
         let g = golden_stats(dir);
         let Some(out) = run_build(dir, &data) else {
             failed_parse.push(name.to_string());
-            eprintln!("\n##### {name} :: PARSE/CALC FAILED #####");
+            if verbose {
+                eprintln!("\n##### {name} :: PARSE/CALC FAILED #####");
+            }
             continue;
         };
-        eprintln!("\n##### {name} #####");
-        eprintln!(
-            "  {:<18}{:>14}{:>14}{:>10}",
-            "stat", "PoBR", "PoB2", "ratio"
-        );
-        eprintln!("  -- defensive --");
-        def.add(print_rows(&defensive_rows(&out, &g)));
-        eprintln!("  -- offensive --");
-        off.add(print_rows(&offensive_rows(&out, &g)));
+        let (def_rows, off_rows) = (defensive_rows(&out, &g), offensive_rows(&out, &g));
+        if verbose {
+            eprintln!("\n##### {name} #####");
+            eprintln!(
+                "  {:<18}{:>14}{:>14}{:>10}",
+                "stat", "PoBR", "PoB2", "ratio"
+            );
+            eprintln!("  -- defensive --");
+            def.add(print_rows(&def_rows));
+            eprintln!("  -- offensive --");
+            off.add(print_rows(&off_rows));
+        } else {
+            def.add(tally_rows(&def_rows));
+            off.add(tally_rows(&off_rows));
+        }
     }
+    (def, off, failed_parse)
+}
+
+/// 已记录的 parity 基线（命中数）——回归门禁的下限。**仅在确认改动整体提升 parity 时上调**，
+/// 永不下调（防止改动悄悄倒退）。对应 commit 当时的 ninja_parity 输出。
+const BASELINE_DEF_HIT5: usize = 74;
+const BASELINE_DEF_HIT10: usize = 88;
+const BASELINE_OFF_HIT5: usize = 19;
+const BASELINE_OFF_HIT10: usize = 27;
+
+/// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
+#[test]
+fn parity_no_regression() {
+    let (def, off, failed) = compute_tallies(false);
+    assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
+    assert!(
+        def.hit5 >= BASELINE_DEF_HIT5,
+        "defensive @5% regressed: {} < baseline {BASELINE_DEF_HIT5}",
+        def.hit5
+    );
+    assert!(
+        def.hit10 >= BASELINE_DEF_HIT10,
+        "defensive @10% regressed: {} < baseline {BASELINE_DEF_HIT10}",
+        def.hit10
+    );
+    assert!(
+        off.hit5 >= BASELINE_OFF_HIT5,
+        "offensive @5% regressed: {} < baseline {BASELINE_OFF_HIT5}",
+        off.hit5
+    );
+    assert!(
+        off.hit10 >= BASELINE_OFF_HIT10,
+        "offensive @10% regressed: {} < baseline {BASELINE_OFF_HIT10}",
+        off.hit10
+    );
+}
+
+/// 主基线报告：逐 build 打印防御 + 进攻对照，并汇总聚合命中率。
+#[test]
+fn parity_baseline_report() {
+    let (def, off, failed_parse) = compute_tallies(true);
+    let builds = discover_builds();
 
     eprintln!(
         "\n================ PARITY SUMMARY (tol {:.0}%) ================",

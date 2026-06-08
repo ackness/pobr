@@ -260,6 +260,10 @@ fn resolve_crit_multiplier(
 
     // OVERRIDE 硬覆盖爆伤加成（如 `Your Critical Damage Bonus is 250%`）：胜过 base/inc/more
     // （PoB2 OVERRIDE 语义），直接作为加成百分点。否则走 (100 + ΣBASE)×(1+inc)×more。
+    //
+    // 注：OVERRIDE 分支**有意**忽略上面折入 `more` 的 `inevitable_less_more`——OVERRIDE 是终值
+    // 钳定，且必然暴击修正仅在 `mode_effective`（有效口径）下出现；面板口径不受影响。
+    // 二者同时出现（必然暴击 build + 「爆伤 is N%」关键石）是边角，当前按 OVERRIDE 终值处理。
     let mut extra =
         if let Some(ov) = player.override_(cfg, ModName::from("CriticalStrikeMultiplier")) {
             ov / 100.0

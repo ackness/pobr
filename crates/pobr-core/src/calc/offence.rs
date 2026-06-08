@@ -811,6 +811,10 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
     if scaled_rate <= 0.0 {
         return scaled_rate;
     }
+    // 同时取 TotalCastTime + TotalAttackTime：PoB 按技能只注入其一（法术=cast、攻击=attack），
+    // 实际每技能仅一项非零，故求和等价于取相关项。**有意不按 cfg.is_spell() 门控**——主技能的
+    // SPELL/ATTACK flag 派生（skill_type_flags）对部分 build 并不可靠，门控会让 comet 等丢失
+    // TotalCastTime 限速（实测倒退进攻 parity）；求和则稳健。
     let extra_time = db.sum(
         ModType::Base,
         cfg,

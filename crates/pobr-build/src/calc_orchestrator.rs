@@ -188,7 +188,9 @@ pub fn calculate_with_data(
     // dpsMultiplier，与攻速无关）。grenade 正解依赖**数据补全**（SupportPayload 的 -70%
     // CooldownRecovery + GrenadeActivateTwice，二者当前缺在入库数据中）。故暂只对**非冷却限速**
     // 主技能启用武器类条件，避免回归 deadeye；冷却模型 + 数据补齐后全量启用。
-    let main_bypasses_cd = main_effect
+    // 主技能是否绕过冷却（消耗充能即用，如 Flicker）——同时供下方武器类条件门控与
+    // `CooldownBypass` 注入复用（单一来源，避免两处独立计算漂移）。
+    let bypasses_cooldown = main_effect
         .map(|e| {
             e.skill_types
                 .iter()
@@ -199,7 +201,7 @@ pub fn calculate_with_data(
         .as_ref()
         .and_then(|(s, _, _)| s.cooldown_s)
         .is_some_and(|cd| cd > 0.0)
-        && !main_bypasses_cd;
+        && !bypasses_cooldown;
     if !main_is_cooldown_bound {
         for var in weapon_type_conditions(build, data) {
             cfg = cfg.with_condition(var, true);
@@ -251,14 +253,7 @@ pub fn calculate_with_data(
     // 但 DPS 含未入库的吞吐倍率（GrenadeActivateTwice / 储存次数 ≈ ×1.5）。当前数据缺该倍率，
     // 沿用历史近似——装配阶段把 base_rate 预截到 1/cooldown，再让攻速 inc/more 乘上去补偿吞吐，
     // 并注入 `CooldownBypass` 让末端不再二次截断（否则会抹掉补偿因子）。数据补齐吞吐倍率后，
-    // 应删此分支、统一走正确末端 min。
-    let bypasses_cooldown = main_effect
-        .map(|e| {
-            e.skill_types
-                .iter()
-                .any(|t| t == "SkillConsumesPowerChargesOnUse")
-        })
-        .unwrap_or(false);
+    // 应删此分支、统一走正确末端 min。`bypasses_cooldown` 在上方已计算（单一来源）。
     let cooldown_attack_unmodeled = !bypasses_cooldown
         && main_effect.map(|e| e.is_attack()).unwrap_or(false)
         && main_skill
