@@ -8,7 +8,10 @@
 //!
 //! 当前覆盖**伤害族**（解锁 P0-2 宝石倍率）：
 //! - flat 基础伤害值 `<source>_<min|max>_<base|added>_<type>_damage` → `<Type>DamageMin/Max` BASE；
-//! - 伤害缩放 `[<scope>_]damage_+%` → INC、`..._final` → MORE，scope 决定 ModName。
+//! - 伤害缩放 `[<scope>_]damage_+%` → INC、`..._final` → MORE，scope 决定 ModName；
+//! - **分类型 final**（`*_<type>_damage_+%_final` → `<Type>Damage` MORE，按后缀语义；组合
+//!   `*_<A>_and_<B>_damage_+%_final` 展开为两条分类型 MORE；`non_chaos` → 全非混沌分类型）
+//!   经 [`map_skill_stats`] 取全部映射（绝不按 support id，全按后缀）。
 //!
 //! **保守原则**：只映射已知的无条件族；未知/条件型前缀（如「仅受身攻击」「消耗破甲时」）
 //! 返回 `None` 不注入，避免把条件倍率当无条件 more 误算。其余族（area/speed/crit/抗性…）
@@ -53,15 +56,34 @@ const TYPES: [(&str, &str); 5] = [
 ];
 
 /// 把一条技能 stat id 映射为 PoBR modifier 规格。无法映射（未知/条件型）返回 `None`。
+///
+/// 仅返回**单条**映射；分类型 final 伤害可能展开成多条（如 `*_cold_and_fire_damage_+%_final`
+/// → ColdDamage MORE + FireDamage MORE），需用 [`map_skill_stats`] 取全部。本函数返回首条
+/// （供既有单值消费/单测）；orchestrator 注入路径走 [`map_skill_stats`]。
 pub fn map_skill_stat(stat: &str) -> Option<MappedStat> {
+    map_skill_stats(stat).into_iter().next()
+}
+
+/// 把一条技能 stat id 映射为**一组** PoBR modifier 规格（无法映射返回空 `Vec`）。
+///
+/// 多数 stat 映射为单条；分类型组合 final 伤害（`*_<A>_and_<B>_damage_+%_final`）展开为
+/// 两条对应分类型 MORE，对齐 PoB2 sup_*.lua statMap（如 Lightning Attunement
+/// `support_cold_and_fire_damage_+%_final` → `mod("ColdDamage","MORE")` +
+/// `mod("FireDamage","MORE")`）。
+pub fn map_skill_stats(stat: &str) -> Vec<MappedStat> {
+    let v = map_damage_percent(stat);
+    if !v.is_empty() {
+        return v;
+    }
     map_base_damage(stat)
-        .or_else(|| map_damage_percent(stat))
         .or_else(|| map_conversion(stat))
         .or_else(|| map_critical(stat))
         .or_else(|| map_penetration(stat))
         .or_else(|| map_skill_time(stat))
         .or_else(|| map_skill_speed(stat))
         .or_else(|| map_distance_ramp(stat))
+        .into_iter()
+        .collect()
 }
 
 /// 出手速率（攻速 / 施法速度 / 技能速度）→ PoBR 速度乘区 ModName。对照 PoB2 SkillStatMap：
@@ -287,35 +309,65 @@ fn map_base_damage(stat: &str) -> Option<MappedStat> {
 }
 
 /// 伤害缩放百分比：`[<scope>_]damage_+%` → INC、`..._final` → MORE。
-/// scope 决定作用的 ModName；未知 scope（条件型）返回 `None`。
-fn map_damage_percent(stat: &str) -> Option<MappedStat> {
+/// scope 决定作用的 ModName；未知 scope（条件型）返回空 `Vec`。
+/// 分类型组合 final（`*_<A>_and_<B>_damage_+%_final`）展开为两条分类型 MORE。
+fn map_damage_percent(stat: &str) -> Vec<MappedStat> {
     let (scope, mod_type) = if let Some(c) = stat.strip_suffix("damage_+%_final") {
         (c.trim_end_matches('_'), ModType::More)
     } else if let Some(c) = stat.strip_suffix("damage_+%") {
         (c.trim_end_matches('_'), ModType::Inc)
     } else {
-        return None;
+        return Vec::new();
     };
-    let mod_name = damage_scope_mod_name(scope)?;
-    Some(MappedStat::new(mod_name, mod_type))
+    damage_scope_mod_names(scope)
+        .into_iter()
+        .map(|name| MappedStat::new(name, mod_type))
+        .collect()
 }
 
-/// 伤害缩放前缀 → PoBR ModName（对齐 `damage::aggregate_inc_more` 读取的名字）。
+/// 伤害缩放前缀 → PoBR ModName 列表（对齐 `damage::aggregate_inc_more` 读取的名字）。
+/// 多数返回单条；分类型组合（`*_<A>_and_<B>`）返回两条。未知/条件型返回空 `Vec`。
 ///
+/// **按后缀语义判定，绝不按 support id**：scope 以分类型词（fire/cold/lightning/chaos/
+/// physical）结尾 → 对应 `<Type>Damage`；以 `<A>_and_<B>` 分类型组合结尾 → 两条 MORE。
 /// PoBR 的 inc/more 聚合读取通用 `Damage`/`AttackDamage`、分类型 `<Type>Damage`、
 /// 共享 `ElementalDamage`。注：PoBR 当前不读 `SpellDamage`，故法术伤害缩放映射到通用
 /// `Damage`（单技能计算正确；多技能精确 tag 待 flag 系统接入）。
-fn damage_scope_mod_name(scope: &str) -> Option<String> {
+fn damage_scope_mod_names(scope: &str) -> Vec<String> {
+    // `non_chaos`（Added Chaos `support_chaos_support_non_chaos_damage_+%_final`）→ 全部
+    // 非混沌类型 MORE（PoB2: Cold/Lightning/Fire/Physical MORE）。须在分类型词匹配前判定
+    // （`non_chaos` 以 `_chaos` 结尾会被误判为 ChaosDamage）。
+    if scope.ends_with("non_chaos") {
+        return TYPES
+            .iter()
+            .filter(|(lc, _)| *lc != "chaos")
+            .map(|(_, p)| format!("{p}Damage"))
+            .collect();
+    }
+    // 分类型组合：scope 以 `<A>_and_<B>` 结尾（A/B ∈ 五类型）→ 两条分类型。
+    // 对齐 PoB2 sup_*.lua（如 Lightning Attunement `support_cold_and_fire_damage_+%_final`
+    // → ColdDamage MORE + FireDamage MORE）。
+    if let Some(combo) = combo_typed_mod_names(scope) {
+        return combo;
+    }
+    // `maximum_<type>` / `minimum_<type>`（如 Heft `support_heft_maximum_physical`→PoB2
+    // `mod("MaxPhysicalDamage","MORE")`，仅作用伤害区间上界）保守不映射：PoBR 的
+    // `<Type>Damage` MORE 作用整段区间，会高估。只放行整段分类型缩放。
+    if scope.contains("maximum_") || scope.contains("minimum_") {
+        return Vec::new();
+    }
+    // scope 以单一分类型词结尾（含裸 `fire` 及 `support_attack_skills_fire` 等前缀）→
+    // 对应 `<Type>Damage`。`elemental`/`physical` 等已在通用映射覆盖，但分类型词优先。
+    for (lc, pascal) in TYPES {
+        if scope == lc || scope.ends_with(&format!("_{lc}")) {
+            return vec![format!("{pascal}Damage")];
+        }
+    }
     let name = match scope {
         "" => "Damage",
         "attack" => "AttackDamage",
         "spell" => "Damage",
         "elemental" => "ElementalDamage",
-        "physical" => "PhysicalDamage",
-        "fire" => "FireDamage",
-        "cold" => "ColdDamage",
-        "lightning" => "LightningDamage",
-        "chaos" => "ChaosDamage",
         // 触发元宝石（cast on X）的无条件 more 伤害，作用于被触发技能。
         "trigger_meta_gem" => "Damage",
         // 辅助宝石的**无条件** `_final` 倍率（PoB constantStats）：elemental armament +% 元素
@@ -327,11 +379,7 @@ fn damage_scope_mod_name(scope: &str) -> Option<String> {
         // Elemental Focus（`support_gem_elemental`）：+% more 元素伤害（无条件，对应 PoB2
         // statMap `mod("ElementalDamage","MORE")`；附带「无法造成元素异常」是独立 flag）。
         | "support_gem_elemental" => "ElementalDamage",
-        // Melee Physical Damage（`support_melee_physical`）：+% more 物理伤害（PoB2
-        // `mod("PhysicalDamage","MORE", ModFlag.Melee)`）。映射到 PhysicalDamage MORE——近战
-        // 技能 cfg 已带 Melee flag，非近战技能不享此 support（数据上也只挂在近战 build）。
-        // 配套 attackSpeed_+%_final 走 speed 链路，伤害侧此处单独取。
-        "support_melee_physical" => "PhysicalDamage",
+        // Melee Physical Damage（`support_melee_physical`）：见下文按 `_physical` 结尾分类型；
         // Deliberation（`support_deliberation`）：+% more 通用伤害（无条件，PoB2
         // `mod("Damage","MORE")`；移动惩罚是独立 stat，不影响伤害）。
         "support_deliberation" => "Damage",
@@ -339,9 +387,21 @@ fn damage_scope_mod_name(scope: &str) -> Option<String> {
         // cfg AREA flag 聚合）。stat `support_area_concentrate_area_damage_+%_final`。
         "support_area_concentrate_area" => "AreaDamage",
         // 未知/条件型前缀（如按条件触发）→ 不映射（保守，避免误算）。
-        _ => return None,
+        _ => return Vec::new(),
     };
-    Some(name.to_string())
+    vec![name.to_string()]
+}
+
+/// 分类型组合 scope（`*_<A>_and_<B>`）→ 两条 `<Type>Damage`。非组合返回 `None`。
+/// `<A>`/`<B>` 须均为分类型词（fire/cold/lightning/chaos/physical）；对齐 PoB2 statMap
+/// 把组合 final 展开为两条分类型 MORE/INC。
+fn combo_typed_mod_names(scope: &str) -> Option<Vec<String>> {
+    let pascal = |w: &str| TYPES.iter().find(|(lc, _)| *lc == w).map(|(_, p)| *p);
+    let (before, b_word) = scope.rsplit_once("_and_")?;
+    let a_word = before.rsplit('_').next().unwrap_or(before);
+    let a = pascal(a_word)?;
+    let b = pascal(b_word)?;
+    Some(vec![format!("{a}Damage"), format!("{b}Damage")])
 }
 
 #[cfg(test)]
@@ -568,6 +628,66 @@ mod tests {
         assert!(
             map_skill_stat("support_far_combat_attack_damage_+%_final_from_distance").is_none()
         );
+    }
+
+    #[test]
+    fn maps_combo_typed_final_to_two_typed_more() {
+        // Lightning Attunement `support_cold_and_fire_damage_+%_final` → ColdDamage + FireDamage MORE
+        // （对齐 PoB2 sup_dex.lua statMap）。map_skill_stats 返回两条。
+        assert_eq!(
+            map_skill_stats("support_cold_and_fire_damage_+%_final"),
+            vec![
+                MappedStat::new("ColdDamage", ModType::More),
+                MappedStat::new("FireDamage", ModType::More),
+            ]
+        );
+        // Cold Attunement `support_fire_and_lightning_damage_+%_final` → FireDamage + LightningDamage MORE。
+        assert_eq!(
+            map_skill_stats("support_fire_and_lightning_damage_+%_final"),
+            vec![
+                MappedStat::new("FireDamage", ModType::More),
+                MappedStat::new("LightningDamage", ModType::More),
+            ]
+        );
+    }
+
+    #[test]
+    fn maps_non_chaos_final_to_all_non_chaos_typed_more() {
+        // Added Chaos `support_chaos_support_non_chaos_damage_+%_final` → Physical/Fire/Cold/Lightning MORE
+        // （PoB2: 4 条非混沌分类型 MORE）。
+        let got = map_skill_stats("support_chaos_support_non_chaos_damage_+%_final");
+        let names: Vec<String> = got.iter().map(|m| m.mod_name.clone()).collect();
+        assert_eq!(
+            names,
+            vec![
+                "PhysicalDamage".to_string(),
+                "FireDamage".to_string(),
+                "ColdDamage".to_string(),
+                "LightningDamage".to_string(),
+            ]
+        );
+        assert!(got.iter().all(|m| m.mod_type == ModType::More));
+    }
+
+    #[test]
+    fn maps_single_typed_final_with_prefix() {
+        // 带前缀的分类型 final（如 active_skill_fire_damage_+%_final）→ FireDamage MORE。
+        assert_eq!(
+            map_skill_stat("active_skill_fire_damage_+%_final").unwrap(),
+            MappedStat::new("FireDamage", ModType::More)
+        );
+        // Brutality `support_brutality_physical_damage_+%_final` → PhysicalDamage MORE（按 `_physical` 后缀）。
+        assert_eq!(
+            map_skill_stat("support_brutality_physical_damage_+%_final").unwrap(),
+            MappedStat::new("PhysicalDamage", ModType::More)
+        );
+    }
+
+    #[test]
+    fn skips_maximum_minimum_typed_final() {
+        // Heft `support_heft_maximum_physical_damage_+%_final`：PoB2 仅作用伤害区间上界
+        // （`MaxPhysicalDamage` MORE）；PoBR 的整段 `PhysicalDamage` MORE 会高估 → 保守不映射。
+        assert!(map_skill_stats("support_heft_maximum_physical_damage_+%_final").is_empty());
     }
 
     #[test]

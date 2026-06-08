@@ -44,7 +44,7 @@ use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
-use crate::skill_stat_map::{map_aura_buff_stat, map_skill_stat};
+use crate::skill_stat_map::{map_aura_buff_stat, map_skill_stats};
 
 /// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
 const EXPOSURE_MAGNITUDE: f64 = 20.0;
@@ -1488,9 +1488,12 @@ fn mapped_stat_modifiers(
 ) -> Vec<Modifier> {
     let mut mods = Vec::new();
     for ds in stats {
-        if let Some(mapped) = map_skill_stat(&ds.stat)
-            && ds.value != 0.0
-        {
+        if ds.value == 0.0 {
+            continue;
+        }
+        // 分类型组合 final（如 Lightning Attunement `*_cold_and_fire_damage_+%_final`）展开为
+        // 多条分类型 MORE——用 [`map_skill_stats`] 取全部，避免漏算半边惩罚。
+        for mapped in map_skill_stats(&ds.stat) {
             let origin = ModifierSource::new(SourceId::new(
                 source_kind.clone(),
                 format!("{label_prefix}.{}", ds.stat),
