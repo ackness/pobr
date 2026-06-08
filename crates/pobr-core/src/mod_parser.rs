@@ -74,6 +74,27 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         rest = rest["bonded: ".len()..].to_string();
     }
 
+    // 「Has +N to <Defence> per player level」（PoB2 唯一物 implicit，如 Pain Caress）——
+    // PoB2 `ModParser.lua` 3400-3402 映射为 **`<Defence>PerLevel` BASE**（局部件级 per-level
+    // 底值，由 Item.lua `GetArmourDataValue` 按 `PerLevel × level` 折入该件防御底，享该件
+    // **槽位** inc/more，而非全局）。这里产出对应 `*PerLevel` BASE，由编排层在 `item_rolled_defence`
+    // 折入件级底值。须在通用 `Has ` 剥离之前命中（否则会被当作全局 per-level base 过缩放）。
+    if let Some(mods) = parse_has_defence_per_level(&rest, original) {
+        return Ok(ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
+    // 「Has <mod>」语义前缀（PoB2 唯一物 implicit）——剥离后按普通词条解析
+    // （PoB2 ModParser 把 `Has ` 视为无语义前缀）。
+    if let Some(stripped) = rest.strip_prefix("has +") {
+        rest = format!("+{stripped}");
+    } else if let Some(stripped) = rest.strip_prefix("has ") {
+        rest = stripped.to_string();
+    }
+
     let mut flags = ModFlags::NONE;
     if let Some(stripped) = rest.strip_prefix("attacks deal ") {
         flags |= ModFlags::ATTACK;
@@ -188,6 +209,54 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     })
 }
 
+/// 解析「Has +N to <Defence> per player level」（PoB2 `ModParser.lua` 3400-3402）→
+/// `<Defence>PerLevel` BASE（`EvasionPerLevel`/`EnergyShieldPerLevel`/`ArmourPerLevel`）。
+///
+/// 这是**局部件级 per-level 底值**：PoB2 在 `Item.lua` 把它折入该件 `armourData.<X>PerLevel`，
+/// 再由 `GetArmourDataValue` 按 `PerLevel × level` 加进该件防御底值——享该**件槽位**的
+/// inc/more，而非全局缩放。编排层 [`item_rolled_defence`] 据此把 `<X>PerLevel × level`
+/// 折入件级底值。非此形式返回 `None`。
+fn parse_has_defence_per_level(rest: &str, original: &str) -> Option<Vec<Modifier>> {
+    let body = rest
+        .strip_prefix("has +")
+        .and_then(|s| s.strip_suffix(" per player level"))?;
+    let (num_str, name_words) = body.split_once(" to ")?;
+    let value: f64 = num_str.trim().parse().ok()?;
+    let per_level_name = match name_words.trim() {
+        "armour" => "ArmourPerLevel",
+        "evasion" | "evasion rating" => "EvasionPerLevel",
+        "energy shield" | "maximum energy shield" => "EnergyShieldPerLevel",
+        _ => return None,
+    };
+    Some(vec![
+        Modifier::number(per_level_name, ModType::Base, value).with_source(original),
+    ])
+}
+
+/// 复合防御名 → PoB2 组合 ModName（`ModParser.lua` modNameList）。返回 `None` 表示非组合防御名。
+///
+/// PoB2 口径（`CalcDefence.lua` resourceList 的全局缩放名集）：
+/// - `armour` 缩放名集 = `{Armour, ArmourAndEvasion, Defences}`
+/// - `evasion` 缩放名集 = `{Evasion, ArmourAndEvasion, Defences}`
+/// - `energy shield` 缩放名集 = `{EnergyShield, Defences}`
+///
+/// 故 `ArmourAndEnergyShield` / `EvasionAndEnergyShield` 不在任何全局缩放名集——
+/// 它们仅作护甲件**局部** rolled 底值的 calcLocal（已折入件级底值并从全局剔除），
+/// 全局出现时对 Armour/Evasion/ES 总值**无效**（与 PoB2 一致）。
+fn combined_defence_name(text: &str) -> Option<&'static str> {
+    Some(match text {
+        "armour and evasion" | "armour and evasion rating" | "evasion rating and armour" => {
+            "ArmourAndEvasion"
+        }
+        "armour and energy shield" => "ArmourAndEnergyShield",
+        "evasion and energy shield" | "evasion rating and energy shield" => {
+            "EvasionAndEnergyShield"
+        }
+        "armour, evasion and energy shield" | "defences" => "Defences",
+        _ => return None,
+    })
+}
+
 /// 把词条名部分解析为一个或多个 [`ModName`]：处理聚合名（`all elemental resistances`）
 /// 与复合名（`armour, evasion and energy shield`）。任一子名未知则返回 `None`。
 fn resolve_names(text: &str) -> Option<Vec<ModName>> {
@@ -228,6 +297,16 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
     };
     if !aggregate.is_empty() {
         return aggregate.iter().map(|n| parse_name(n)).collect();
+    }
+    // 复合防御名（PoB2 ModParser modNameList）：映射为**单一**组合 ModName，**不拆分**。
+    // PoB2 `CalcDefence.lua` resourceList 只把 `ArmourAndEvasion`/`Defences` 纳入对应
+    // Armour/Evasion 的全局缩放名集；`EvasionAndEnergyShield`/`ArmourAndEnergyShield`
+    // 不在任何全局缩放名集（仅作护甲件局部 rolled 底值的 calcLocal）。朴素 " and "→", "
+    // 拆分会把这些组合名错误地拆成两个独立 ModName 全局作用，导致 ES/闪避过缩放。
+    // `global ` 作用域前缀对组合名映射无影响（与 parse_name 一致），先剥离再匹配。
+    let combined_key = t.strip_prefix("global ").unwrap_or(t);
+    if let Some(combined) = combined_defence_name(combined_key) {
+        return Some(vec![ModName::from(combined)]);
     }
     // 复合名：`A, B and C` / `A and B` → 拆分。
     let normalized = t.replace(" and ", ", ");

@@ -187,24 +187,54 @@ pub fn armour_reduction(armour: f64, raw_hit: f64) -> f64 {
 ///   避免 `g×s` 交叉项高估，对齐 PoB2）。
 /// - 无槽位的 flat BASE（`base` 入参 + 全局 `+to Armour` 等）作为「无槽位底」，只享全局乘区。
 fn scaled_defence_stat(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
-    let names = [ModName::from(name)];
-    let name = ModName::from(name);
+    // PoB2 `CalcDefence.lua` resourceList：每个防御属性的全局 inc/more 缩放名集。
+    // 组合名 `ArmourAndEvasion`/`Defences` 按 PoB2 纳入对应属性；`*AndEnergyShield`
+    // 组合名不在任何集内（仅作护甲件局部 rolled 底值，全局出现时对总值无效）。
+    let names = defence_scaling_names(name);
+    // BASE 词条只挂在本体属性名下（per-slot 底值 + 无槽位全局底）。
+    let base_name = ModName::from(name);
 
     let global_inc = db.sum_global_only(ModType::Inc, cfg, &names);
     let global_more = db.more_global_only(cfg, &names);
 
     // 无槽位底：调用方传入的 base（如树 flat）+ 无 SlotName tag 的 BASE 词条，只享全局乘区。
-    let global_base = base + db.sum_global_only(ModType::Base, cfg, &names);
+    let global_base =
+        base + db.sum_global_only(ModType::Base, cfg, std::slice::from_ref(&base_name));
     let mut total = global_base * (1.0 + global_inc / 100.0) * global_more;
 
     // 各槽位底：用「全局 inc + 该槽 inc」加法桶 × 「全局 more × 该槽 more」连乘。
-    for (slot, slot_base) in db.slot_bases(cfg, &name) {
+    for (slot, slot_base) in db.slot_bases(cfg, &base_name) {
         let slot_inc = db.sum_for_slot(ModType::Inc, cfg, &names, &slot);
         let slot_more = db.more_for_slot(cfg, &names, &slot);
         total += slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
     }
 
     round(total)
+}
+
+/// 某防御属性的全局/槽位 inc·more 缩放名集（PoB2 `CalcDefence.lua` resourceList `mods`）。
+///
+/// - `Armour`  → `[Armour, ArmourAndEvasion, Defences]`
+/// - `Evasion` → `[Evasion, ArmourAndEvasion, Defences]`
+/// - `EnergyShield` → `[EnergyShield, Defences]`
+///
+/// 注意：`ArmourAndEnergyShield` / `EvasionAndEnergyShield` **不在任何集内**——这与
+/// PoB2 一致（这类组合名仅作护甲件局部 rolled 底值，全局出现时对总值无效）。
+fn defence_scaling_names(name: &str) -> Vec<ModName> {
+    match name {
+        "Armour" => vec![
+            ModName::from("Armour"),
+            ModName::from("ArmourAndEvasion"),
+            ModName::from("Defences"),
+        ],
+        "Evasion" => vec![
+            ModName::from("Evasion"),
+            ModName::from("ArmourAndEvasion"),
+            ModName::from("Defences"),
+        ],
+        "EnergyShield" => vec![ModName::from("EnergyShield"), ModName::from("Defences")],
+        other => vec![ModName::from(other)],
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────

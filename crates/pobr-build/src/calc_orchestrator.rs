@@ -382,10 +382,14 @@ pub fn calculate_with_data(
         // 基底兜底乘区，见 defence_base_modifiers）；留在全局会重复（且错误地变成全局加法）。
         // 判定护甲件：有基底护甲项 **或** 文本给出 rolled 防御行（兜底覆盖无 catalog 的 unique）。
         let rd = &item.rolled_defence;
+        // per-level 防御件（如纯 implicit 唯一手套）也算护甲件——其 `Has +N per level` 已折入
+        // 件级底值（item_rolled_defence），须从全局路径剔除，避免重复/错误全局注入。
+        let has_per_level_def = item_per_level_defence(item).iter().any(|&v| v > 0.0);
         let is_armour_piece = data.armour_base(&item.base.to_string()).is_some()
             || rd.armour.is_some()
             || rd.evasion.is_some()
-            || rd.energy_shield.is_some();
+            || rd.energy_shield.is_some()
+            || has_per_level_def;
         if is_armour_piece {
             let drop_def = |texts: Vec<String>| -> Vec<String> {
                 texts
@@ -394,6 +398,7 @@ pub fn calculate_with_data(
                         let c = clean_item_text(t);
                         parse_local_defence_inc(&c).is_none()
                             && parse_local_defence_flat(&c).is_none()
+                            && parse_has_per_level_defence(&c).is_none()
                     })
                     .collect()
             };
@@ -679,9 +684,10 @@ fn resolve_main_skill<'b>(
 /// （ModDb SlotName tag），属结构性改造，留作后续。
 fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
+    let level = build.character.level;
     for (slot, item) in &build.items {
         let slot_id = slot.id();
-        let Some(values) = item_rolled_defence(item, data) else {
+        let Some(values) = item_rolled_defence(item, data, level) else {
             continue;
         };
         for (idx, name) in [(0, "Armour"), (1, "Evasion"), (2, "EnergyShield")] {
@@ -710,13 +716,18 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
 ///
 /// 与 [`defence_base_modifiers`] 共用，并供 per-槽位防御缩放（`<Stat>On<Slot>` 倍率）取值，
 /// 二者件级底值口径一致。
-fn item_rolled_defence(item: &Item, data: &BuildData) -> Option<[f64; 3]> {
+fn item_rolled_defence(item: &Item, data: &BuildData, level: u32) -> Option<[f64; 3]> {
     let base_default = data.armour_base(&item.base.to_string());
     let rolled = &item.rolled_defence;
+    // per-level 件级底值（`Has +N to <Defence> per player level`，PoB2 `<X>PerLevel`）：
+    // 即使该件无 rolled/基底防御（如纯 implicit 唯一手套 Pain Caress）也使其成为防御件。
+    let per_level = item_per_level_defence(item);
+    let has_per_level = per_level.iter().any(|&v| v > 0.0);
     if base_default.is_none()
         && rolled.armour.is_none()
         && rolled.evasion.is_none()
         && rolled.energy_shield.is_none()
+        && !has_per_level
     {
         return None;
     }
@@ -741,6 +752,47 @@ fn item_rolled_defence(item: &Item, data: &BuildData) -> Option<[f64; 3]> {
                 }
             }
         };
+        // per-level 底值叠加（PoB2 `GetArmourDataValue` = base + PerLevel × level）。
+        // PoB2 `armourData.<X>PerLevel` 也吃该件局部 inc/quality（Item.lua 1821-1822）。
+        if per_level[idx] > 0.0 {
+            out[idx] += per_level[idx]
+                * f64::from(level)
+                * (1.0 + local_pct[idx] / 100.0)
+                * (1.0 + quality_pct / 100.0);
+        }
+    }
+    Some(out)
+}
+
+/// 单件装备的 per-level 防御**每级系数** `[armour, evasion, es]`（每级 +N，PoB2 `<X>PerLevel`），
+/// 由 `Has +N to <Defence> per player level` 解析（见 mod_parser `parse_has_defence_per_level`）。
+/// 调用方按 `× level` 折入件级底值。
+fn item_per_level_defence(item: &Item) -> [f64; 3] {
+    let mut total = [0.0; 3];
+    for t in weapon_mod_texts(item) {
+        if let Some(per) = parse_has_per_level_defence(&clean_item_text(t)) {
+            for i in 0..3 {
+                total[i] += per[i];
+            }
+        }
+    }
+    total
+}
+
+/// 解析「has +N to <armour/evasion rating/maximum energy shield> per player level」
+/// → `[armour, evasion, es]`（每级 +N）。非此形式返回 `None`。
+fn parse_has_per_level_defence(clean: &str) -> Option<[f64; 3]> {
+    let body = clean
+        .strip_prefix("has +")?
+        .strip_suffix(" per player level")?;
+    let (num, rest) = body.split_once(" to ")?;
+    let n: f64 = num.trim().parse().ok()?;
+    let mut out = [0.0; 3];
+    match rest.replace(" rating", "").trim() {
+        "armour" => out[0] = n,
+        "evasion" => out[1] = n,
+        "energy shield" | "maximum energy shield" => out[2] = n,
+        _ => return None,
     }
     Some(out)
 }
@@ -753,8 +805,9 @@ fn item_rolled_defence(item: &Item, data: &BuildData) -> Option<[f64; 3]> {
 /// 通用：按槽位/属性拼键，绝不针对具体物品。
 fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> Vec<(String, f64)> {
     let mut out = Vec::new();
+    let level = build.character.level;
     for (slot, item) in &build.items {
-        let Some(values) = item_rolled_defence(item, data) else {
+        let Some(values) = item_rolled_defence(item, data, level) else {
             continue;
         };
         let slot_id = slot.id();
