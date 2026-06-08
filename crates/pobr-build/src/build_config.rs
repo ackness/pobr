@@ -31,6 +31,9 @@ pub struct BuildConfig {
     pub conditions: HashMap<String, bool>,
     /// 数值乘子覆盖（稳定 key，例如 `"PowerCharge"`）。
     pub multipliers: HashMap<String, f64>,
+    /// 任务奖励 / 全局配置 `<Input string="...">` 词条文本（PoB2 `questRewards` 等），
+    /// 按**全局** modifier 注入（如 `15% increased Global Armour, Evasion and Energy Shield`）。
+    pub global_modifier_texts: Vec<String>,
 }
 
 impl BuildConfig {

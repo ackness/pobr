@@ -92,9 +92,10 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
 
     // 战斗配置（敌人状态 / 条件 / 倍率）→ BuildConfig，经 to_calc_config 进入 cfg，
     // 供条件型词条（`... against Chilled Enemies` 等）按 PoB 保存的开关生效。
-    let (conditions, multipliers) = parse_config(xml);
+    let (conditions, multipliers, global_texts) = parse_config(xml);
     build.config.conditions.extend(conditions);
     build.config.multipliers.extend(multipliers);
+    build.config.global_modifier_texts.extend(global_texts);
 
     Ok(build)
 }
@@ -102,9 +103,10 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
 /// 抽取 `<Config>` 的 `<Input name boolean|number>` → (conditions, multipliers)。
 /// 名称去 `condition`/`multiplier` 前缀作为变量名（如 `conditionEnemyChilled` → `EnemyChilled`），
 /// 与计算侧 `ModTag::Condition`/`Multiplier` 变量约定对齐。
-fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>) {
+fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<String>) {
     let mut conditions = HashMap::new();
     let mut multipliers = HashMap::new();
+    let mut global_texts = Vec::new();
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
     loop {
@@ -127,13 +129,23 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>) {
                     && let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
                 {
                     multipliers.insert(var.to_string(), n);
+                } else if name.starts_with("quest")
+                    && let Some(s) = attr_value(&e, b"string")
+                {
+                    // PoB2 任务奖励（`questRewards`）：`<Input name="quest…" string="<mod text>">`
+                    // 是按**全局**作用的永久 modifier（属性 / 抗性 / 防御 / 恢复…）。逐条收集，
+                    // 由编排器作为全局 modifier text 注入（见 calc_orchestrator）。
+                    let text = s.trim();
+                    if !text.is_empty() {
+                        global_texts.push(text.to_string());
+                    }
                 }
             }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}
         }
     }
-    (conditions, multipliers)
+    (conditions, multipliers, global_texts)
 }
 
 /// PoB2 充能使用复选框（`use{Power,Frenzy,Endurance}Charges`）→ 计算侧条件变量名。
