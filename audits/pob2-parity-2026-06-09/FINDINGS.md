@@ -7,6 +7,26 @@
 
 CRITICAL + 全部 10 条 HIGH 已落地（每条对照 PoB2 源码二次核实后修复并补回归测试）。全 workspace `cargo test`(956 passed) + `clippy -D warnings` + `fmt --check` 全绿，无 parity 回归。
 
+### 第三波·启用工作（更新于 2026-06-10）
+
+第二波 defer 的 partly finding 经 **5 个 worktree 隔离 agent 并行实现各自的启用工作**（参考 vendor PoB2 一手实现），逐个合并回 master、每次合并跑 ninja_parity 门禁。全部合入后 `cargo test --workspace`**997 passed** + clippy + fmt 全绿、**ninja_parity 无回归**（baseline 未动）。
+
+| ID | 启用工作 | 状态 |
+|----|---------|------|
+| 01-04 | keyword_flags 解析接线（`for poison`/`of curse auras` 等 + DoT 位常量）→ `matches_context` 真正生效 | ✅ 启用 |
+| 02-03 | boss debuff 消费侧（曝光乘 `ExposureEffectOnSelf` 后折抗）+ `Condition:Effective` 由 mode_effective 派生门控 | ✅ 启用 |
+| 03-01/03-02 | build 层 `trigger_modifiers`/`in_group_trigger_source_rate` 注入触发冷却+源速率（内建触发主技能）→ 触发面板从恒 0 打通 | ✅ 启用（support-gem 触发链路/CWC 数据 defer） |
+| 03-06 | CWC 分支改走 `calc_multi_spell_rotation` 单技能路径 | ✅ 启用 |
+| 05-01 | `estimate_active_stacks`（命中×施加×持续×速度）→ SP>1 → over-stacking 暴击放大真正生效 | ✅ 启用（多 hit/冷却/图腾分支 defer） |
+| 05-04 | `cross_type_source_hit_at_roll` 双 pass：RollAverage 高位偏移 | ✅ 启用 |
+| 05-05 | `calculate_minimal_traced_vs_enemy`：traced DPS 串敌方格挡/减伤/命中降级，对齐 panel | ✅ 启用 |
+| 05-07 | `apply_dot_dps_cap` 改用常量（PoB2 无 DotDpsCap-Override 机制），移除 modDB 读取 | ✅ 启用 |
+| 06-06 | `taken_mult_for_type` 支持 Attack/Spell hit-source 上下文（PoB2 Average 默认）；反射 defer（PoB2 自身禁用） | ✅ 启用 |
+| 01-06 | config `defaultState` 导入（XML 省略=PoB2 默认值，如 DemonForm/BypassCD） | ✅ 启用 |
+| 02-05 | 移除零消费者死 modifier（per-type quality 已在 orchestrator 正确）；催化剂 defer（缺 mod-tag 层+Item catalyst 字段） | ✅ 归位 |
+
+> 三波合计：1 CRITICAL + 10 HIGH + 6 MED/LOW confirmed + 11 项启用工作落地，4 条经验/复核 rejected（04-02/05-06/03-05/04-03），余 03-04-Repeats/02-06-add_skill_types/触发 support 链路/催化剂等 defer（缺更深数据模型，已逐条记录缺什么）。
+
 ### MEDIUM/LOW 第二波（更新于 2026-06-09）
 
 23 条 MEDIUM/LOW 经并行核查（对照 PoB2 一手源码）：**7 confirmed · 15 partly · 1 rejected**。已落地 **6 条 confirmed**（含回归测试），全 workspace `cargo test`(966 passed) + clippy + fmt 全绿、ninja_parity 无回归。
