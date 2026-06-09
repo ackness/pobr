@@ -3,10 +3,10 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb};
 
 use super::ailment::{
-    AilmentSource, StackConfig, ailment_effect_mod, ailment_rate_mod, apply_dot_dps_cap,
-    bleed_traced, chill_traced, cross_type_source_hit, electrocute_poise_buildup_traced,
-    freeze_poise_buildup_traced, ignite_traced, poison_traced, shock_traced,
-    stacking_ailment_dps_traced,
+    AilmentSource, StackConfig, ailment_crit_chance, ailment_effect_mod, ailment_rate_mod,
+    apply_dot_dps_cap, bleed_traced, chill_traced, cross_type_source_hit,
+    electrocute_poise_buildup_traced, freeze_poise_buildup_traced, ignite_traced, poison_traced,
+    shock_traced, stack_potential, stacking_ailment_dps_traced,
 };
 use super::skill_mechanics::{
     calc_aoe, calc_cooldown, calc_life_cost, calc_mana_cost, calc_projectile_count,
@@ -19,6 +19,7 @@ use super::{
     calc_defence, calc_ehp_with_opts, calc_es_recharge, calc_leech_from_db, calc_recoup_from_db,
     calc_regen, calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy,
     enemy_crit_effect, es_recharge_per_second, reservation, resolve_all_charges, round,
+    taken_mult_for_type,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -75,11 +76,7 @@ fn perform_minions(env: &mut Env) {
     // 召唤物数量上限（玩家 `Multiplier:SummonedMinion`，由 add_minion_from_def 写入）。
     // 把它注入 cfg 的 multiplier，使召唤物 `Damage per Summoned Minion` 等词条可引用（PoB2）。
     // 无该 multiplier 时为 0（不影响任何输出，向后兼容）。
-    let minion_limit = env.player.mod_db.sum(
-        ModType::Base,
-        &env.cfg,
-        &[ModName::from("Multiplier:SummonedMinion")],
-    );
+    let minion_limit = env.player.mod_db.get_multiplier("SummonedMinion", &env.cfg);
     let minion_cfg = if minion_limit > 0.0 {
         env.cfg
             .clone()
@@ -182,6 +179,12 @@ fn fill_mechanics(env: &mut Env) {
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
     // 防御机制选项：敌人物理压制 + 「Armour applies to <Element> instead of Physical」。
+    // 减伤上限：PoB2 `Max('DamageReductionMax') or DamageReductionCap(=90)`（CalcDefence.lua:1862）。
+    // 无词条时 max_of 返回 0 → 取默认 90。
+    let dr_max_pct = {
+        let v = db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
+        if v > 0.0 { v } else { 90.0 }
+    };
     let ehp_opts = EhpOptions {
         chaos_inoculation: false,
         physical_overwhelm: db.sum(
@@ -194,6 +197,9 @@ fn fill_mechanics(env: &mut Env) {
             db.flag(cfg, ModName::from("ArmourAppliesToCold")),
             db.flag(cfg, ModName::from("ArmourAppliesToLightning")),
         ],
+        damage_reduction_caps: crate::calc::ehp::DamageReductionCaps {
+            global: dr_max_pct / 100.0,
+        },
     };
     let ehp = calc_ehp_with_opts(
         env.player.output.life,
@@ -204,33 +210,25 @@ fn fill_mechanics(env: &mut Env) {
         reference_hit,
         ehp_opts,
     );
-    // 承受伤害乘区（玩家侧 `DamageTaken` / `<Type>DamageTaken`，reduced→INC<0、less→MORE<1）：
+    // 承受伤害乘区（玩家侧受击口径）：复用 `taken_mult_for_type`，与 PoB2
+    // `output[type.."TakenHitMult"]` 一致——base(`DamageTaken`/`<Type>DamageTaken`[/`ElementalDamageTaken`])
+    // 叠加 WhenHit(`DamageTakenWhenHit`/`<Type>DamageTakenWhenHit`[/`ElementalDamageTakenWhenHit`])，
+    // 与面板 `taken_multi_*` 共用同一函数，消除双账本与 WhenHit 漏算。
     // 最大承受击中 = ehp / dt（dt<1 → 承受更少 → 可承受更大击中）。dt≤0（完全免疫）→ ∞。
-    let damage_taken_mult = |type_prefix: &str, elemental: bool| -> f64 {
-        let mut names = vec![
-            ModName::from("DamageTaken"),
-            ModName::from(format!("{type_prefix}DamageTaken")),
-        ];
-        if elemental {
-            names.push(ModName::from("ElementalDamageTaken"));
-        }
-        let inc = db.sum(ModType::Inc, cfg, &names);
-        let more = db.more(cfg, &names);
-        ((1.0 + inc / 100.0) * more).max(0.0)
-    };
-    let apply_dt = |max_hit: f64, prefix: &str, elemental: bool| -> f64 {
-        let dt = damage_taken_mult(prefix, elemental);
+    // 出处：PoB2 CalcDefence.lua:2250-2263（TakenHitMult 聚合）、2422-2443/3609（折进 max-hit）。
+    let apply_dt = |max_hit: f64, dtype: DamageType| -> f64 {
+        let dt = taken_mult_for_type(db, cfg, dtype);
         if dt <= 0.0 {
             f64::INFINITY
         } else {
             round(max_hit / dt)
         }
     };
-    env.player.output.physical_max_hit = apply_dt(ehp.physical_max_hit, "Physical", false);
-    env.player.output.fire_max_hit = apply_dt(ehp.fire_max_hit, "Fire", true);
-    env.player.output.cold_max_hit = apply_dt(ehp.cold_max_hit, "Cold", true);
-    env.player.output.lightning_max_hit = apply_dt(ehp.lightning_max_hit, "Lightning", true);
-    env.player.output.chaos_max_hit = apply_dt(ehp.chaos_max_hit, "Chaos", false);
+    env.player.output.physical_max_hit = apply_dt(ehp.physical_max_hit, DamageType::Physical);
+    env.player.output.fire_max_hit = apply_dt(ehp.fire_max_hit, DamageType::Fire);
+    env.player.output.cold_max_hit = apply_dt(ehp.cold_max_hit, DamageType::Cold);
+    env.player.output.lightning_max_hit = apply_dt(ehp.lightning_max_hit, DamageType::Lightning);
+    env.player.output.chaos_max_hit = apply_dt(ehp.chaos_max_hit, DamageType::Chaos);
     env.player.output.total_ehp = ehp.total_ehp;
 
     // --- 预留 / 剩余 ---
@@ -367,11 +365,16 @@ fn fill_mechanics(env: &mut Env) {
 /// - **CWC**（`CWCTriggerTime` BASE，秒）：引导触发，由引导间隔取整到帧决定节奏，被触发冷却 clamp。
 ///
 /// `icdr` = `(1 + Σinc_CooldownRecovery/100) × Πmore_CooldownRecovery`（PoB2 `calcLib.mod`），
-/// 作为触发冷却除数。`effective_action_rate` 取自 `fill_mechanics` 已写入的有效行动速率，
-/// 作为冷却驱动触发的源速率门控。
+/// 作为触发冷却除数。源速率门控优先取 build 层注入的 `TriggerSourceRate` BASE（触发源技能
+/// 有效 cast/attack rate，对应 PoB2 EffectiveSourceRate）；未注入时回退到主技能
+/// `effective_action_rate`（占位语义——主技能并非触发源）。触发速率末端再乘 triggerChance
+/// （命中/暴击/显式触发几率折算，PoB2 CalcTriggers.lua L715-777）。
 ///
-/// 无 `TriggerCooldownBase` / `CWCTriggerTime` 词条时两字段保持 0（向后兼容）。
-/// 出处：agent-docs/triggers.md §三 / §4.2；Lane B integration_spec；PoB2 CalcTriggers.lua。
+/// 无 `TriggerCooldownBase` / `CWCTriggerTime` 词条时两字段保持 0；**且 build 层当前尚未注入
+/// 任一触发词条（TriggerCooldownBase/CWCTriggerTime/TriggerSourceRate/触发上下文），故真实
+/// build 中两分支均不进入、面板为占位 0，待 orchestrator 接线后生效。**
+/// 出处：agent-docs/triggers.md §三 / §4.2；Lane B integration_spec；PoB2 CalcTriggers.lua
+/// L74-86 findTriggerSkill / L702-707 EffectiveSourceRate / L715-777 triggerChance。
 fn fill_trigger(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
@@ -386,16 +389,29 @@ fn fill_trigger(env: &mut Env) {
 
     // ICDR 乘子（CooldownRecovery INC/MORE 折算；默认 1.0，作触发冷却除数）。
     let icdr = cooldown_recovery_multiplier(db, cfg);
-    let source_rate = env.player.output.effective_action_rate;
+    // 触发源速率：PoB2 EffectiveSourceRate 取自触发源技能（findTriggerSkill 命中的源技能
+    // HitSpeed/Speed，CalcTriggers.lua L74-86/L702-707），而非被触发的主技能自身速率。build 层
+    // 把源技能有效 cast/attack rate 写入 `TriggerSourceRate` BASE 注入；未注入(=0)时回退到主技能
+    // `effective_action_rate`（向后兼容；回退值仅为占位语义）。
+    let injected_source_rate = db.sum(ModType::Base, cfg, &[ModName::from("TriggerSourceRate")]);
+    let source_rate = if injected_source_rate > 0.0 {
+        injected_source_rate
+    } else {
+        env.player.output.effective_action_rate
+    };
+    // 触发几率折算（PoB2 CalcTriggers.lua defaultTriggerHandler L715-777）：默认 1.0（=100%），
+    // 仅攻击源未必中 / triggerOnCrit / 显式触发几率<100% 时降速。触发上下文由 build 层经 cfg 注入。
+    let trigger_chance = trigger_chance_multiplier(cfg, &env.player.output);
 
     let mut trace = TraceGraph::new();
 
     if trigger_cd > 0.0 {
-        // 冷却驱动：双门控 SkillTriggerRate = min(cap, sourceRate)。
+        // 冷却驱动：双门控 min(cap, sourceRate) 后乘 triggerChance（对齐 PoB2
+        // calcMultiSpellRotationImpact 单技能稳态：rate ≈ min(cap, sourceRate) × geometric(chance)）。
         let (tr, _) =
             resolve_trigger_rate_traced(trigger_cd, triggered_cd, icdr, source_rate, &mut trace);
         env.player.output.trigger_rate_cap = tr.trigger_rate_cap;
-        env.player.output.skill_trigger_rate = tr.skill_trigger_rate;
+        env.player.output.skill_trigger_rate = round(tr.skill_trigger_rate * trigger_chance);
     } else if cwc_trigger_time > 0.0 {
         // CWC：引导触发，被触发技能冷却 clamp。adds_cast_time 由 build 层注入（当前传 0）。
         let (cwc, _) =
@@ -414,6 +430,35 @@ fn cooldown_recovery_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let inc = db.sum(ModType::Inc, cfg, &names);
     let more = db.more(cfg, &names);
     ((1.0 + inc / 100.0) * more).max(f64::EPSILON)
+}
+
+/// 触发几率乘子（fraction，0.0–1.0）：移植 PoB2 `CalcTriggers.lua` `defaultTriggerHandler`
+/// 的 triggerChance（L715-777）。
+///
+/// - **攻击源命中率**：仅当触发源是攻击技能（`cfg.is_attack()`，对齐 L720
+///   `source.skillTypes[Melee] or [Attack]`）且命中率≠100% 时乘 `output.hit_chance`。
+/// - **triggerOnCrit 暴击率**：仅当 `cfg` 条件 `TriggerOnCrit` 为真（build 层注入）且暴击率≠100%
+///   时乘 `output.crit_chance`（对齐 L743-767）。
+/// - **显式触发几率**：`cfg.multipliers["TriggerChance"]`（百分数，build 层注入）<100% 时乘其
+///   `/100`（对齐 L772-776）。**用 `.get()` 区分「未注入」与「注入 0」——`cfg.multiplier()` 缺省
+///   返回 0.0 会把未注入误判为 0% 几率。**
+///
+/// 无任何触发上下文注入时返回 1.0（与历史输出一致）。`hit_chance`/`crit_chance` 在 `output` 中
+/// 已是 fraction，可直接相乘。
+fn trigger_chance_multiplier(cfg: &CalcConfig, output: &OutputTable) -> f64 {
+    let mut chance = 1.0_f64;
+    if cfg.is_attack() && output.hit_chance < 1.0 {
+        chance *= output.hit_chance.clamp(0.0, 1.0);
+    }
+    if cfg.condition("TriggerOnCrit") && output.crit_chance < 1.0 {
+        chance *= output.crit_chance.clamp(0.0, 1.0);
+    }
+    if let Some(&pct) = cfg.multipliers.get("TriggerChance")
+        && pct < 100.0
+    {
+        chance *= (pct / 100.0).clamp(0.0, 1.0);
+    }
+    chance.clamp(0.0, 1.0)
 }
 
 /// Recoup 面板估算基准：以「假设受到玩家最大生命 10%」的伤害估算每秒返还速率。
@@ -521,14 +566,17 @@ fn fill_ailments(env: &mut Env) {
     let mut trace = TraceGraph::new();
 
     if phys_hit > 0.0 {
-        let source = AilmentSource::new(phys_hit, crit_mult, crit_chance, never_from_crit);
+        // over-stacking 暴击放大（PoB2 CalcOffence.lua L5144 `ailmentCritChance`）：叠层潜力 SP>1
+        // 时"至少一层暴击"概率高于裸暴击率；SP<=1（当前默认）退化为裸暴击，向后兼容。
+        let bleed_stack = resolve_stack_config(player, cfg, "Bleed");
+        let bleed_crit = ailment_crit_chance(crit_chance, stack_potential(&bleed_stack));
+        let source = AilmentSource::new(phys_hit, crit_mult, bleed_crit, never_from_crit);
         let (bleed, _) = bleed_traced(&source, player, enemy, cfg, &mut trace);
         // Lane C：AilmentEffect（MORE）× rateMod（Faster/Slower）应用到期望 DPS，再 clamp DotDpsCap。
         let bleed_dps = finalize_ailment_dps(bleed.expected_dps, "Bleed", player, enemy, cfg);
         env.player.output.bleed_dps = bleed_dps;
 
-        // Lane B：流血叠层（BleedStacks BASE）。无叠层配置时 max_stacks=1，stacked == 单层。
-        let bleed_stack = resolve_stack_config(player, cfg, "Bleed");
+        // Lane B：流血叠层（BleedStacks BASE）。复用上方已解析的 bleed_stack。
         let (bleed_stacked, _) =
             stacking_ailment_dps_traced(bleed_dps, &bleed_stack, AilmentType::Bleed, &mut trace);
         // 叠层 DPS 也吃全局 DotDpsCap（PoB2：DotDpsCap 是叠层后的绝对上限）。
@@ -536,14 +584,16 @@ fn fill_ailments(env: &mut Env) {
         env.player.output.bleed_active_stacks = active_stacks_of(&bleed_stack);
     }
     if fire_hit > 0.0 {
-        let source = AilmentSource::new(fire_hit, crit_mult, crit_chance, never_from_crit);
+        // over-stacking 暴击放大（PoB2 L5144）：SP<=1（当前默认）退化为裸暴击。
+        let ignite_stack = resolve_stack_config(player, cfg, "Ignite");
+        let ignite_crit = ailment_crit_chance(crit_chance, stack_potential(&ignite_stack));
+        let source = AilmentSource::new(fire_hit, crit_mult, ignite_crit, never_from_crit);
         let (ignite, _) = ignite_traced(&source, player, enemy, cfg, threshold, &mut trace);
         let ignite_dps = finalize_ailment_dps(ignite.expected_dps, "Ignite", player, enemy, cfg);
         env.player.output.ignite_dps = ignite_dps;
 
         // Lane B：点燃叠层（IgniteStacks BASE）。PoE2 点燃默认不叠层（只取最强一层），
-        // 仅在携带 `IgniteStacks` 词条时 max_stacks>1；无配置时 stacked == 单层（向后兼容）。
-        let ignite_stack = resolve_stack_config(player, cfg, "Ignite");
+        // 仅在携带 `IgniteStacks` 词条时 max_stacks>1；复用上方已解析的 ignite_stack。
         let (ignite_stacked, _) =
             stacking_ailment_dps_traced(ignite_dps, &ignite_stack, AilmentType::Ignite, &mut trace);
         env.player.output.ignite_stacked_dps = apply_dot_dps_cap(ignite_stacked, player, cfg);
@@ -558,13 +608,15 @@ fn fill_ailments(env: &mut Env) {
         env.player.output.freeze_buildup_pct = freeze_buildup;
     }
     if chaos_phys_hit > 0.0 {
-        let source = AilmentSource::new(chaos_phys_hit, crit_mult, crit_chance, never_from_crit);
+        // over-stacking 暴击放大（PoB2 L5144）：SP<=1（当前默认）退化为裸暴击。
+        let poison_stack = resolve_stack_config(player, cfg, "Poison");
+        let poison_crit = ailment_crit_chance(crit_chance, stack_potential(&poison_stack));
+        let source = AilmentSource::new(chaos_phys_hit, crit_mult, poison_crit, never_from_crit);
         let (poison, _) = poison_traced(&source, player, enemy, cfg, &mut trace);
         let poison_dps = finalize_ailment_dps(poison.expected_dps, "Poison", player, enemy, cfg);
         env.player.output.poison_dps = poison_dps;
 
-        // Lane B：中毒叠层（PoisonStacks BASE）。
-        let poison_stack = resolve_stack_config(player, cfg, "Poison");
+        // Lane B：中毒叠层（PoisonStacks BASE）。复用上方已解析的 poison_stack。
         let (poison_stacked, _) =
             stacking_ailment_dps_traced(poison_dps, &poison_stack, AilmentType::Poison, &mut trace);
         env.player.output.poison_stacked_dps = apply_dot_dps_cap(poison_stacked, player, cfg);
@@ -672,5 +724,7 @@ fn physical_pdr_fraction(db: &ModDb, cfg: &CalcConfig) -> f64 {
         cfg,
         &[ModName::from("PhysicalDamageReduction")],
     );
-    (pct / 100.0).clamp(0.0, 0.9)
+    // 不在此处用 0.9 提前截断：PoB2 仅在 armour+flat 求和后按 DamageReductionMax clamp 一次
+    // （CalcDefence.lua:396），上限截断统一交给 ehp 层（可变 dr_max）。这里只保证非负。
+    (pct / 100.0).max(0.0)
 }

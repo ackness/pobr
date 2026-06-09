@@ -21,7 +21,7 @@ use pobr_data::prelude::*;
 
 use crate::{ModDb, Modifier};
 
-use super::{Actor, ActorBaseStats, Env};
+use super::{Actor, Env};
 
 /// `EnemyConfig` 归因来源（统一 id 前缀，便于 TraceGraph 区分敌人天生属性 vs 我方 debuff）。
 fn enemy_source(id: &str) -> ModifierSource {
@@ -63,20 +63,43 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     };
     let defaults = EnemyTierDefaults::compute(resolved_level, tier);
 
-    // --- 标量基础值（保持 perform/offence 现有标量入口的兼容） ---
-    let base = ActorBaseStats {
-        accuracy: defaults.accuracy as f64,
-        evasion: defaults.evasion,
-        armour: defaults.armour,
-        fire_resistance: defaults.elemental_resist,
-        cold_resistance: defaults.elemental_resist,
-        lightning_resistance: defaults.elemental_resist,
-        ..ActorBaseStats::default()
-    };
+    // --- 就地更新 env.enemy（对齐 PoB2 CalcSetup.lua:682-691：enemyDB 是持久增量 db，
+    // 不整体替换 actor）。base 标量按档位缩放写入；档位 mod **追加**进现有 mod_db，从而
+    // 保留 setup_enemy 之前已注入的 enemy mod（曝光/物理减伤/用户自定义 enemy 词条等）。
+    env.enemy.level = defaults.level.max(1) as u8;
+    env.enemy.base.accuracy = defaults.accuracy as f64;
+    env.enemy.base.evasion = defaults.evasion;
+    env.enemy.base.armour = defaults.armour;
+    env.enemy.base.fire_resistance = defaults.elemental_resist;
+    env.enemy.base.cold_resistance = defaults.elemental_resist;
+    env.enemy.base.lightning_resistance = defaults.elemental_resist;
+    inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier);
 
-    let mut enemy = Actor::new(defaults.level.max(1) as u8, base);
-    inject_enemy_mods(&mut enemy.mod_db, &defaults, tier);
-    env.enemy = enemy;
+    // Boss 自带元素穿透作用在**玩家**伤害的减抗上 → 注入 player modDB
+    // （`offence.rs::penetration_value` 从玩家 db 读 `ElementalPenetration`）。
+    inject_boss_penetration(&mut env.player.mod_db, &defaults);
+}
+
+/// Boss 自带元素穿透（Pinnacle +3% / Uber +8%）：注入 **player** modDB 的
+/// `ElementalPenetration BASE`。fire/cold/lightning 三种元素在
+/// [`penetration_value`](super::offence) 中共享读取该项（不影响混沌/物理），等价 PoB2 的
+/// per-element `enemyFire/Cold/LightningPen`。归因仍记 [`SourceKind::EnemyConfig`]——
+/// 这是敌人天生属性作用在我方伤害上的减抗，而非玩家自身词条。
+///
+/// 对照 PoB2 `ConfigOptions.lua` `enemyIsBoss` 段：`pinnacleBossPen = 15/5 = 3`、
+/// `uberBossPen = 40/5 = 8`，注入 `enemy{Fire,Cold,Lightning}Pen`。
+fn inject_boss_penetration(player_db: &mut ModDb, defaults: &EnemyTierDefaults) {
+    if defaults.pen != 0.0 {
+        player_db.add_mod(
+            Modifier::number(
+                ModName::from("ElementalPenetration"),
+                ModType::Base,
+                defaults.pen,
+            )
+            .with_source("enemy pinnacle_boss_pen")
+            .with_origin(enemy_source("pinnacle_boss_pen")),
+        );
+    }
 }
 
 /// 把 [`EnemyTierDefaults`] + 档位加成写入 enemy modDB（不触碰 base 标量）。
@@ -207,7 +230,8 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, cfg: &crate::CalcConfig) {
 
 /// 便捷构造：从 player [`Actor`] 起一个完整 `Env`（player + enemy 缩放 + cfg）。
 ///
-/// 注意：本函数构造 enemy 用 [`setup_enemy`]，对玩家 modDB 不做任何注入。
+/// 注意：本函数构造 enemy 用 [`setup_enemy`]，仅在 boss 自带穿透时向玩家 modDB 注入
+/// `ElementalPenetration BASE`（见 [`setup_enemy`]），其余玩家来源（装备/天赋/宝石）不在此注入。
 pub fn env_with_enemy(player: Actor, config_level: u32, tier: EnemyTier) -> Env {
     let mut env = Env::new(player);
     setup_enemy(&mut env, config_level, tier);

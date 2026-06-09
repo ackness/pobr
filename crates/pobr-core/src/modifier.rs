@@ -134,7 +134,10 @@ impl Modifier {
     }
 
     pub fn matches(&self, cfg: &CalcConfig) -> bool {
-        if !self.flags.is_empty() && !self.flags.intersects(cfg.flags) {
+        // PoB2 ModList.lua：`band(cfg.flags, mod.flags) == mod.flags` —— mod.flags 必须是
+        // cfg.flags 的子集（mod 上每个 flag 都被 cfg 满足才生效），而非任一重叠（intersects）。
+        // 空 flag（NONE）是任意集合子集 → 恒匹配，涵盖原 is_empty 短路。
+        if !self.flags.is_subset_of(cfg.flags) {
             return false;
         }
 
@@ -170,8 +173,11 @@ impl Modifier {
 
         for tag in &self.tags {
             if let ModTag::Multiplier { var, div, limit } = tag {
-                // 每 `div` 单位资源缩放一次（PoB2 PerStat：count / div）。
-                let count = cfg.multiplier(var) / div.max(f64::EPSILON);
+                // PoB2 ModStore.lua EvalMod（Multiplier L365 / PerStat L460）：
+                // `mult = m_floor(base / (tag.div or 1) + 0.0001)` —— 资源数除以 div 后向下取整
+                // （+epsilon 抵消浮点误差）再作乘数，floor 先于 min(limit)。整倍场景（div=1、整数
+                // 资源）floor 无影响；仅修正 `per 10 Strength` 在 95 力量等非整倍情形（旧值 9.5→9）。
+                let count = (cfg.multiplier(var) / div.max(f64::EPSILON) + 0.0001).floor();
                 value *= limit.map_or(count, |max| count.min(max));
             }
         }

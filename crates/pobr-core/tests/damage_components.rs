@@ -271,3 +271,38 @@ fn added_damage_effectiveness_only_scales_flat_added_not_weapon_base() {
     // phys base = (100 + 0*3) = 100 min, (200+0*3) = 200 max → avg 150
     assert_eq!(phys.avg(), 150.0);
 }
+
+// ---------------------------------------------------------------------------
+// 04-01：Min<Type>Damage / Max<Type>Damage 分 min/max 独立 MORE 乘区
+// （PoB2 CalcOffence.lua:138-139,153-154）
+// ---------------------------------------------------------------------------
+
+#[test]
+fn min_max_type_more_scales_only_one_end() {
+    // "35% less minimum Physical Damage" → MinPhysicalDamage MORE -35
+    // "35% more maximum Physical Damage" → MaxPhysicalDamage MORE +35
+    //   min = round(100 * (1 - 0.35)) = 65; max = round(200 * (1 + 0.35)) = 270
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("MinPhysicalDamage", ModType::More, -35.0));
+    db.add_mod(Modifier::number("MaxPhysicalDamage", ModType::More, 35.0));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+    let phys = component(&output, DamageType::Physical);
+    assert_eq!(phys.min, 65.0, "min 只被 MinPhysicalDamage 缩放");
+    assert_eq!(phys.max, 270.0, "max 只被 MaxPhysicalDamage 缩放");
+    assert_eq!(phys.avg(), 167.5);
+}
+
+#[test]
+fn min_max_type_more_stacks_with_generic_inc_more() {
+    // 通用 PhysicalDamage INC 50% → scale=1.5；MaxPhysicalDamage MORE +10% 只乘 max。
+    //   min = round(100 * 1.5) = 150; max = round(200 * 1.5 * 1.10) = 330
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("PhysicalDamage", ModType::Inc, 50.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(Modifier::number("MaxPhysicalDamage", ModType::More, 10.0));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+    let phys = component(&output, DamageType::Physical);
+    assert_eq!(phys.min, 150.0);
+    assert_eq!(phys.max, 330.0);
+}

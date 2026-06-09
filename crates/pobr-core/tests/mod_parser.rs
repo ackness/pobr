@@ -506,3 +506,24 @@ fn slot_tag_is_transparent_to_normal_sum_but_scoped_in_per_slot() {
         vec![("bodyarmour".to_string(), 1000.0)]
     );
 }
+
+/// 01-03：PoB2 EvalMod 对 Multiplier/PerStat 倍率做 `m_floor(base/div + 0.0001)`，
+/// 非整倍资源须向下取整。`+5 ... per 10 Intelligence` 在 95 Int → floor(9.5)=9 → 45（非 47.5）。
+#[test]
+fn per_stat_multiplier_floors_non_integral_count_like_pob2() {
+    use pobr_core::CalcConfig;
+
+    let outcome = parse_mod("+5 to maximum Mana per 10 Intelligence").unwrap();
+    let modifier = &outcome.mods[0];
+    assert!(modifier.tags.contains(&ModTag::Multiplier {
+        var: "Intelligence".into(),
+        div: 10.0,
+        limit: None,
+    }));
+    // 95 Int → floor(9.5 + 0.0001) = 9 → 5 * 9 = 45。
+    let cfg_non_integral = CalcConfig::new().with_multiplier("Intelligence", 95.0);
+    assert_eq!(modifier.effective_number(&cfg_non_integral), Some(45.0));
+    // 100 Int → floor(10.0001) = 10 → 50（整倍不受 floor 影响）。
+    let cfg_integral = CalcConfig::new().with_multiplier("Intelligence", 100.0);
+    assert_eq!(modifier.effective_number(&cfg_integral), Some(50.0));
+}

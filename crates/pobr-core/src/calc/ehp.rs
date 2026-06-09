@@ -23,6 +23,21 @@ pub struct ResistanceSuite {
     pub chaos: f64,
 }
 
+/// 减伤上限（fraction，默认 0.9）。对齐 PoB2
+/// `output.DamageReductionMax = Max('DamageReductionMax') or DamageReductionCap(=90)`
+/// （CalcDefence.lua:1862）。`+Maximum Damage Reduction` 词条可提升此值。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DamageReductionCaps {
+    /// 全局减伤上限 fraction（默认 0.9 = 90%）。
+    pub global: f64,
+}
+
+impl Default for DamageReductionCaps {
+    fn default() -> Self {
+        Self { global: 0.9 }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EhpResult {
     pub life: f64,
@@ -54,7 +69,19 @@ pub fn physical_taken_fraction_overwhelm(
     reference_hit: f64,
     overwhelm: f64,
 ) -> f64 {
-    let reduction = (pdr_flat + armour_reduction(armour, reference_hit)).clamp(0.0, 0.9);
+    physical_taken_fraction_overwhelm_cap(pdr_flat, armour, reference_hit, overwhelm, 0.9)
+}
+
+/// 同 [`physical_taken_fraction_overwhelm`]，减伤上限改为可变 `dr_max`（fraction）。
+/// 对齐 PoB2：armour+flat 求和后 clamp 到 `DamageReductionMax`（CalcDefence.lua:396）。
+pub fn physical_taken_fraction_overwhelm_cap(
+    pdr_flat: f64,
+    armour: f64,
+    reference_hit: f64,
+    overwhelm: f64,
+    dr_max: f64,
+) -> f64 {
+    let reduction = (pdr_flat + armour_reduction(armour, reference_hit)).clamp(0.0, dr_max);
     (1.0 - (reduction - overwhelm)).clamp(0.0, 1.0)
 }
 
@@ -87,9 +114,21 @@ pub fn physical_max_hit_overwhelm(
     reference_hit: f64,
     overwhelm: f64,
 ) -> f64 {
+    physical_max_hit_overwhelm_cap(pool, pdr_flat, armour, reference_hit, overwhelm, 0.9)
+}
+
+/// 同 [`physical_max_hit_overwhelm`]，减伤上限改为可变 `dr_max`（fraction）。
+pub fn physical_max_hit_overwhelm_cap(
+    pool: f64,
+    pdr_flat: f64,
+    armour: f64,
+    reference_hit: f64,
+    overwhelm: f64,
+    dr_max: f64,
+) -> f64 {
     let mut hit = reference_hit.max(pool).max(1.0);
     for _ in 0..50 {
-        let taken = physical_taken_fraction_overwhelm(pdr_flat, armour, hit, overwhelm);
+        let taken = physical_taken_fraction_overwhelm_cap(pdr_flat, armour, hit, overwhelm, dr_max);
         if taken <= 0.0 {
             return f64::INFINITY;
         }
@@ -104,17 +143,25 @@ pub fn physical_max_hit_overwhelm(
 }
 
 /// 元素类型走护甲的最大承受击中（「Armour applies to <Element> instead of Physical」）：
-/// 护甲减伤作用于**抗性后**的伤害（PoB2 口径），故 `taken = res_taken × (1 - armour_dr(H×res_taken))`，
+/// 护甲减伤作用于**抗性前（raw）**伤害（PoB2 `armourReductionF(armour, RAW)`，
+/// CalcDefence.lua:56/393/427/3626），与抗性层独立相乘。故 `taken = res_taken × (1 - armour_dr(H))`，
 /// armour_dr 上限 90%。同样自洽迭代求 `H × taken(H) = pool`。
-fn element_max_hit_with_armour(pool: f64, resist_pct: f64, armour: f64, reference_hit: f64) -> f64 {
+fn element_max_hit_with_armour(
+    pool: f64,
+    resist_pct: f64,
+    armour: f64,
+    reference_hit: f64,
+    dr_max: f64,
+) -> f64 {
     let res_taken = resist_taken_fraction(resist_pct);
     if res_taken <= 0.0 {
         return f64::INFINITY;
     }
     let mut hit = reference_hit.max(pool).max(1.0);
     for _ in 0..50 {
-        let post_resist = hit * res_taken;
-        let armour_part = (1.0 - armour_reduction(armour, post_resist)).clamp(0.1, 1.0);
+        // PoB2：armour DR 基于 RAW（抗性前）伤害，即迭代当前 hit H，而非 post-resist。
+        // 减伤上限可变（默认 0.9），承受下限 = 1 - dr_max。
+        let armour_part = (1.0 - armour_reduction(armour, hit)).clamp(1.0 - dr_max, 1.0);
         let taken = res_taken * armour_part;
         let next = pool / taken;
         if (next - hit).abs() < 1e-3 {
@@ -139,7 +186,7 @@ fn chaos_pool(life: f64, es: f64) -> f64 {
 /// Chaos Inoculation (CI) keystone 选项。
 /// 出处：agent-docs/active-defences.md §五 Keystone 表；
 ///       PoB2 CalcDefence.lua：CI → maxLife=1，ES 作为生命池，混沌伤害免疫（chaos_resist = 100%）。
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EhpOptions {
     /// Chaos Inoculation：最大生命变 1，ES 作生命池（`es` 用于所有伤害池），混沌伤害免疫。
     pub chaos_inoculation: bool,
@@ -148,6 +195,19 @@ pub struct EhpOptions {
     /// 「Armour applies to <Element> instead of Physical」：火/冰/电是否改走护甲减伤；
     /// 任一为真时物理不再吃护甲（仅 PDR）。对应 PoB2 同名词条。
     pub armour_applies_to_element: [bool; 3],
+    /// 减伤上限（可被 `+Maximum Damage Reduction` 词条提升）。默认 90%。
+    pub damage_reduction_caps: DamageReductionCaps,
+}
+
+impl Default for EhpOptions {
+    fn default() -> Self {
+        Self {
+            chaos_inoculation: false,
+            physical_overwhelm: 0.0,
+            armour_applies_to_element: [false; 3],
+            damage_reduction_caps: DamageReductionCaps::default(),
+        }
+    }
 }
 
 /// 计算 EHP 与各类型 max hit。`reference_hit` 为物理护甲减伤的 incoming hit 估计基准。
@@ -202,17 +262,19 @@ pub fn calc_ehp_with_opts(
     // 「Armour applies to <Element> instead of Physical」：物理改吃护甲与否取决于是否有重定向。
     let any_redirect = opts.armour_applies_to_element.iter().any(|&x| x);
     let phys_armour = if any_redirect { 0.0 } else { armour };
-    let physical_max_hit = physical_max_hit_overwhelm(
+    let dr_max = opts.damage_reduction_caps.global;
+    let physical_max_hit = physical_max_hit_overwhelm_cap(
         ele_pool,
         resistances.physical_pdr,
         phys_armour,
         ref_hit,
         opts.physical_overwhelm,
+        dr_max,
     );
     // 各元素：重定向时走护甲（抗性后），否则纯抗性。
     let elem_max_hit = |resist_pct: f64, idx: usize| -> f64 {
         if opts.armour_applies_to_element[idx] {
-            element_max_hit_with_armour(ele_pool, resist_pct, armour, ref_hit)
+            element_max_hit_with_armour(ele_pool, resist_pct, armour, ref_hit, dr_max)
         } else {
             max_hit_for_type(ele_pool, resist_pct)
         }

@@ -246,7 +246,11 @@ pub fn calculate_minimal_vs_enemy(
         input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
     );
     let uncapped_action_rate = scaled_rate * action_speed_mod;
-    let action_rate = round(apply_cooldown_cap(db, cfg, uncapped_action_rate));
+    let action_rate = round(apply_server_tick_cap(
+        db,
+        cfg,
+        apply_cooldown_cap(db, cfg, uncapped_action_rate),
+    ));
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
     // PoE2 命中率（agent-docs/accuracy-and-enemy.md §二,§三）：
@@ -595,7 +599,11 @@ fn total_dps_traced(
         input.base_action_rate * (1.0 + inc_speed.value / 100.0) * more_speed.value,
     );
     let uncapped_rate = scaled_rate * action_speed_mod;
-    let action_rate = round(apply_cooldown_cap(db, cfg, uncapped_rate));
+    let action_rate = round(apply_server_tick_cap(
+        db,
+        cfg,
+        apply_cooldown_cap(db, cfg, uncapped_rate),
+    ));
     let action_rate_node = trace.add_node("action rate", action_rate, TraceOperation::Multiply);
     trace.add_edge(base_rate_node, action_rate_node);
     trace.add_edge(inc_speed.node_id, action_rate_node);
@@ -850,7 +858,27 @@ fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f64) -> f64 {
     if cd <= 0.0 {
         return uncapped_rate;
     }
-    uncapped_rate.min(1.0 / cd)
+    // PoB2 CalcOffence L2855：冷却 cap 同样乘 Repeats（多重打击/技能重复，默认 1）。
+    uncapped_rate.min(repeats(db, cfg) / cd)
+}
+
+/// 技能重复次数 Repeats（PoB2 CalcOffence L981：`1 + RepeatCount`，默认 1）。
+/// multistrike / 技能重复词条注入 BASE `RepeatCount` 后此值 >1；当前未接线时恒为 1。
+fn repeats(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    1.0 + db
+        .sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])
+        .max(0.0)
+}
+
+/// 服务器帧速率上限（PoB2 CalcOffence L2863-2865）：非引导技能的最终行动速率不能超过
+/// `ServerTickRate × Repeats`（ServerTickRate = 1/0.033 ≈ 30.3 actions/s）。引导技能
+/// （`Channelling` 条件）不受此限。在冷却 cap 之后施加，与 PoB2 顺序一致。
+fn apply_server_tick_cap(db: &ModDb, cfg: &CalcConfig, rate: f64) -> f64 {
+    if cfg.condition("Channelling") {
+        return rate;
+    }
+    let server_cap = (1.0 / SERVER_TICK_SECONDS) * repeats(db, cfg);
+    rate.min(server_cap)
 }
 
 fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
@@ -1010,6 +1038,49 @@ mod speed_tests {
         let mut db = ModDb::new();
         db.add_mod(mk("CastSpeed", ModType::Inc, 50.0));
         let cfg = CalcConfig::spell();
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        assert!(
+            (out.action_rate - 1.5).abs() < 1e-6,
+            "got {}",
+            out.action_rate
+        );
+    }
+
+    /// 03-04：超过服务器帧上限（1/0.033≈30.303/s）的攻速被截断（非引导技能）。
+    #[test]
+    fn server_tick_caps_high_attack_rate() {
+        let mut db = ModDb::new();
+        db.add_mod(mk("AttackSpeed", ModType::Inc, 4000.0)); // 1×41 = 41/s
+        let cfg = CalcConfig::attack();
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        let server_cap = 1.0 / pobr_data::prelude::SERVER_TICK_SECONDS;
+        assert!(
+            (out.action_rate - server_cap).abs() < 0.02,
+            "expected ~{server_cap}, got {}",
+            out.action_rate
+        );
+    }
+
+    /// 03-04：引导技能（Channelling）不受服务器帧 cap。
+    #[test]
+    fn channelling_skill_bypasses_server_tick_cap() {
+        let mut db = ModDb::new();
+        db.add_mod(mk("AttackSpeed", ModType::Inc, 4000.0));
+        let cfg = CalcConfig::attack().with_condition("Channelling", true);
+        let out = calculate_minimal(&db, &cfg, &input(1.0));
+        assert!(
+            out.action_rate > 40.0,
+            "channelling bypass, got {}",
+            out.action_rate
+        );
+    }
+
+    /// 03-04 回归保护：低于帧上限的速率不变。
+    #[test]
+    fn low_rate_unaffected_by_server_tick_cap() {
+        let mut db = ModDb::new();
+        db.add_mod(mk("AttackSpeed", ModType::Inc, 50.0));
+        let cfg = CalcConfig::attack();
         let out = calculate_minimal(&db, &cfg, &input(1.0));
         assert!(
             (out.action_rate - 1.5).abs() < 1e-6,

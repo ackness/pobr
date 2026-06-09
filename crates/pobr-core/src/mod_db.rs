@@ -4,6 +4,11 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModValue, Modifier, TraceGraph, TraceNodeId, TraceOperation, TracedValue};
 
+/// 单个 modName 的 MORE 连乘积按 PoB2 默认精度 `round(·, 2)` 归一（ModList.lua MoreInternal）。
+fn round_more(value: f64) -> f64 {
+    (value * 100.0).round() / 100.0
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModContribution {
     pub name: ModName,
@@ -159,13 +164,30 @@ impl ModDb {
     }
 
     pub fn more(&self, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+        self.more_rounded(cfg, names, |_| true)
+    }
+
+    /// PoB2 `ModList.lua` `MoreInternal` 语义：**逐 modName** 先连乘该名下所有 MORE mod 得
+    /// `modResult`，再 `round(modResult, 2)`（默认精度），最后跨 modName 连乘。逐名取整避免多
+    /// more 乘区的浮点末位漂移（影响 golden 逐值对账）。`extra` 施加额外筛选（如槽位）。
+    fn more_rounded(
+        &self,
+        cfg: &CalcConfig,
+        names: &[ModName],
+        extra: impl Fn(&Modifier) -> bool,
+    ) -> f64 {
         names
             .iter()
             .filter_map(|name| self.mods.get(name))
-            .flat_map(|mods| mods.iter())
-            .filter(|modifier| modifier.mod_type == ModType::More && modifier.matches(cfg))
-            .filter_map(|modifier| modifier.effective_number(cfg))
-            .fold(1.0, |product, value| product * (1.0 + value / 100.0))
+            .map(|mods| {
+                let mod_result = mods
+                    .iter()
+                    .filter(|m| m.mod_type == ModType::More && m.matches(cfg) && extra(m))
+                    .filter_map(|m| m.effective_number(cfg))
+                    .fold(1.0, |product, value| product * (1.0 + value / 100.0));
+                round_more(mod_result)
+            })
+            .fold(1.0, |product, mod_result| product * mod_result)
     }
 
     /// Traced [`more`](Self::more)：把 `Π(1 + v/100)` 记录为单个 MoreProduct 节点，
@@ -178,8 +200,17 @@ impl ModDb {
         label: impl Into<String>,
     ) -> TracedValue {
         let contributions = self.contributions(ModType::More, cfg, names);
-        let factor = contributions.iter().fold(1.0, |product, contribution| {
-            product * (1.0 + contribution.value / 100.0)
+        // PoB2 逐 modName：先连乘同名 MORE 得 modResult，round(·,2) 后跨名连乘（与 `more` 一致）。
+        let mut per_name: Vec<(ModName, f64)> = Vec::new();
+        for contribution in &contributions {
+            let factor = 1.0 + contribution.value / 100.0;
+            match per_name.iter_mut().find(|(n, _)| *n == contribution.name) {
+                Some((_, product)) => *product *= factor,
+                None => per_name.push((contribution.name.clone(), factor)),
+            }
+        }
+        let factor = per_name.iter().fold(1.0, |product, (_, mod_result)| {
+            product * round_more(*mod_result)
         });
         let factor_node = trace.add_node(label, factor, TraceOperation::MoreProduct);
 
@@ -254,32 +285,12 @@ impl ModDb {
 
     /// 仅连乘**无槽位限定**的 `More` modifier（per-slot 防御聚合的全局 more 桶）。
     pub fn more_global_only(&self, cfg: &CalcConfig, names: &[ModName]) -> f64 {
-        names
-            .iter()
-            .filter_map(|name| self.mods.get(name))
-            .flat_map(|mods| mods.iter())
-            .filter(|modifier| {
-                modifier.mod_type == ModType::More
-                    && modifier.slot_name().is_none()
-                    && modifier.matches(cfg)
-            })
-            .filter_map(|modifier| modifier.effective_number(cfg))
-            .fold(1.0, |product, value| product * (1.0 + value / 100.0))
+        self.more_rounded(cfg, names, |m| m.slot_name().is_none())
     }
 
     /// 仅连乘限定到 `slot` 的 `More` modifier（per-slot 防御聚合的槽位 more 桶）。
     pub fn more_for_slot(&self, cfg: &CalcConfig, names: &[ModName], slot: &str) -> f64 {
-        names
-            .iter()
-            .filter_map(|name| self.mods.get(name))
-            .flat_map(|mods| mods.iter())
-            .filter(|modifier| {
-                modifier.mod_type == ModType::More
-                    && modifier.slot_name() == Some(slot)
-                    && modifier.matches(cfg)
-            })
-            .filter_map(|modifier| modifier.effective_number(cfg))
-            .fold(1.0, |product, value| product * (1.0 + value / 100.0))
+        self.more_rounded(cfg, names, |m| m.slot_name() == Some(slot))
     }
 
     /// per-slot 防御聚合所需的槽位 BASE 词条：返回各 `(slot, value)`（带 [`ModTag::SlotName`]
@@ -383,6 +394,24 @@ impl ModDb {
             .filter(|modifier| modifier.mod_type == ModType::Override && modifier.matches(cfg))
             .filter_map(|modifier| modifier.effective_number(cfg))
             .next()
+    }
+
+    /// PoB2 `ModStore:GetMultiplier(var, cfg)`（ModStore.lua:276-278）等价原语：
+    /// `Override("Multiplier:var")` 优先，否则 `cfg.multipliers[var] + Sum(BASE, "Multiplier:var")`。
+    ///
+    /// PoBR 的 multiplier 求值（[`crate::Modifier::effective_number`] → `cfg.multiplier`）只读
+    /// `cfg.multipliers` HashMap，无法消费 modDB 内 `Multiplier:X` 形态的 BASE/Override mod。
+    /// 编排层在注入完所有来源后，对需要的 `var` 调用本方法把结果写回 `cfg.with_multiplier(var, _)`，
+    /// 使 per-X 缩放词条引用到这些 modDB 乘数（契约：`Multiplier:X` 由编排层经此原语注入 cfg）。
+    ///
+    /// 注意：parent 链与 PerStat `tag.base` 偏置暂未纳入；此处覆盖 PoB2 主路径的
+    /// Override / multipliers / Sum(BASE) 三项基线。
+    pub fn get_multiplier(&self, var: &str, cfg: &CalcConfig) -> f64 {
+        let name = ModName::from(format!("Multiplier:{var}"));
+        if let Some(overridden) = self.override_(cfg, name.clone()) {
+            return overridden;
+        }
+        cfg.multiplier(var) + self.sum(ModType::Base, cfg, &[name])
     }
 
     /// Traced [`override_`](Self::override_)：记录一个 QueryOverride 节点（生效值或 0），

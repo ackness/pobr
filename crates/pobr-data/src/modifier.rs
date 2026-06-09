@@ -52,6 +52,12 @@ impl ModFlags {
     pub fn intersects(self, other: Self) -> bool {
         self.0 & other.0 != 0
     }
+
+    /// `self` 的所有置位都被 `other` 满足（PoB2 ModList `band(other, self) == self`）。
+    /// 空集（`NONE`）是任意集合的子集。
+    pub fn is_subset_of(self, other: Self) -> bool {
+        self.0 & other.0 == self.0
+    }
 }
 
 impl BitOr for ModFlags {

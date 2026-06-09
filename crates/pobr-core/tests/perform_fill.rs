@@ -929,9 +929,9 @@ fn perform_ailment_faster_scales_bleed_dps() {
 /// DotDpsCap 截断：巨额流血 DPS 被全局上限 clamp（DOT_DPS_CAP）。
 #[test]
 fn perform_dot_dps_cap_clamps_huge_bleed() {
-    // 巨额物理命中 + 大量 AilmentEffect → 未截断 DPS 远超上限。
+    // 巨额物理命中 + 大量 AilmentMagnitude/AilmentEffect → 未截断 DPS 远超上限。
     let mut env = bleed_env(vec![
-        Modifier::number("BleedDamage", ModType::Inc, 100000.0),
+        Modifier::number("AilmentMagnitude", ModType::Inc, 100000.0),
         Modifier::number("AilmentEffect", ModType::More, 100000.0),
     ]);
     // 把命中放大到天文数字。
@@ -1062,5 +1062,138 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
     assert!(
         dps_5 > dps_1,
         "more summoned minions should scale per-minion damage: {dps_5} vs {dps_1}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 06-01：EHP/max-hit 计入 DamageTakenWhenHit 受击专属承受乘数
+// （PoB2 CalcDefence.lua:2250-2263 TakenHitMult）
+// ---------------------------------------------------------------------------
+
+#[test]
+fn perform_max_hit_includes_damage_taken_when_hit() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    // FireDamageTakenWhenHit INC -20 → 受击火承受乘数 = 0.8 → fire_max_hit = 1000/0.8 = 1250。
+    let mut env = player_with(
+        base,
+        vec![Modifier::number(
+            "FireDamageTakenWhenHit",
+            ModType::Inc,
+            -20.0,
+        )],
+    );
+    perform(&mut env).unwrap();
+    assert!(
+        (env.player.output.fire_max_hit - 1250.0).abs() < 1e-6,
+        "fire_max_hit = {} (期望 1250 = 1000/0.8)",
+        env.player.output.fire_max_hit
+    );
+    // 冷不含 WhenHit → 不受影响（类型隔离）。
+    assert!(
+        (env.player.output.cold_max_hit - 1000.0).abs() < 1e-6,
+        "cold_max_hit = {} (期望 1000)",
+        env.player.output.cold_max_hit
+    );
+
+    // 叠加：DamageTaken MORE -10 + DamageTakenWhenHit INC -20 → 0.8*0.9=0.72。
+    let mut env2 = player_with(
+        base,
+        vec![
+            Modifier::number("DamageTaken", ModType::More, -10.0),
+            Modifier::number("DamageTakenWhenHit", ModType::Inc, -20.0),
+        ],
+    );
+    perform(&mut env2).unwrap();
+    let expected = 1000.0 / 0.72;
+    assert!(
+        (env2.player.output.physical_max_hit - expected).abs() < 1e-3,
+        "physical_max_hit = {} (期望 {} = 1000/0.72)",
+        env2.player.output.physical_max_hit,
+        expected
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 03-02：触发源速率取注入的 TriggerSourceRate（PoB2 EffectiveSourceRate = 触发源技能速率）
+// ---------------------------------------------------------------------------
+
+#[test]
+fn perform_trigger_uses_injected_source_rate_not_main_skill_rate() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        action_rate: 50.0, // 主技能高速；若误用主技能速率当源速率则门控失效
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("TriggerCooldownBase", ModType::Base, 0.05), // 短冷却 → cap 高
+            Modifier::number("TriggerSourceRate", ModType::Base, 1.0),    // 注入源速率 1/s
+        ],
+    );
+    perform(&mut env).unwrap();
+    assert!(
+        env.player.output.trigger_rate_cap > 5.0,
+        "0.05s 冷却 → cap 应较高，got {}",
+        env.player.output.trigger_rate_cap
+    );
+    assert!(
+        env.player.output.skill_trigger_rate < env.player.output.trigger_rate_cap,
+        "低注入源速率须把触发速率门控到 cap 以下"
+    );
+    assert!(
+        (env.player.output.skill_trigger_rate - 1.0).abs() < 0.2,
+        "skill_trigger_rate 应跟随注入源速率 1/s，got {}",
+        env.player.output.skill_trigger_rate
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 03-01：触发速率末端乘 triggerChance（显式触发几率折算，PoB2 CalcTriggers L715-777）
+// ---------------------------------------------------------------------------
+
+#[test]
+fn perform_trigger_rate_folds_explicit_trigger_chance() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        action_rate: 20.0, // 源速率 > cap → 被 cap 门控
+        ..ActorBaseStats::default()
+    };
+    // 基准：无显式触发几率 → 不折算。
+    let mut env_base = player_with(
+        base,
+        vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.3)],
+    );
+    perform(&mut env_base).unwrap();
+    let cap = env_base.player.output.trigger_rate_cap;
+    assert!(
+        (env_base.player.output.skill_trigger_rate - cap).abs() < 1e-9,
+        "无触发上下文不应折算：skill_trigger_rate={} cap={}",
+        env_base.player.output.skill_trigger_rate,
+        cap
+    );
+
+    // 注入显式触发几率 50%（build 层经 cfg.multipliers["TriggerChance"] 注入，百分数）。
+    let mut env_half = player_with(
+        base,
+        vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.3)],
+    );
+    env_half
+        .cfg
+        .multipliers
+        .insert("TriggerChance".to_string(), 50.0);
+    perform(&mut env_half).unwrap();
+    assert!(
+        (env_half.player.output.trigger_rate_cap - cap).abs() < 1e-9,
+        "triggerChance 不改 cap"
+    );
+    assert!(
+        (env_half.player.output.skill_trigger_rate - cap * 0.5).abs() < 1e-6,
+        "50% 触发几率应使触发速率减半：got {} expect {}",
+        env_half.player.output.skill_trigger_rate,
+        cap * 0.5
     );
 }

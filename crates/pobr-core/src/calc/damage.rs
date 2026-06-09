@@ -250,9 +250,16 @@ fn scale_components_no_conversion(
 fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> DamageComponent {
     let (inc, more) = aggregate_inc_more(db, cfg, comp.damage_type);
     let scale = (1.0 + inc / 100.0) * more;
+    // PoB2 `calcDamage`（CalcOffence.lua:138-139,153-154）：min 与 max 各额外乘一个独立 MORE
+    // 乘区 `Min<Type>Damage` / `Max<Type>Damage`（如「more maximum Lightning Damage」「less
+    // minimum Physical Attack Damage」），仅缩放区间一端。这些 ModName 类型编码在名字里、不带
+    // DamageType tag，按名用 cfg（携带技能 flag）命中；无此类词条时 more 返回 1.0、输出不变。
+    let prefix = type_prefix(comp.damage_type);
+    let more_min = db.more(cfg, &[ModName::from(format!("Min{prefix}Damage"))]);
+    let more_max = db.more(cfg, &[ModName::from(format!("Max{prefix}Damage"))]);
     DamageComponent {
-        min: round(comp.min * scale),
-        max: round(comp.max * scale),
+        min: round(comp.min * scale * more_min),
+        max: round(comp.max * scale * more_max),
         ..comp
     }
 }
@@ -554,7 +561,14 @@ fn apply_conversion_chain(
             if frac <= 0.0 {
                 continue;
             }
+            // gain 来源恒为转换后的中间类型量（对角线留存 + 转入量），对齐 PoB2
+            // calcGainedDamage：源量 = floor(MinBase*mult) + convertedMin。convert[mid][mid]
+            // 已含留存 mult，故纯 gain 无转换时 conv_min[mid] == base_min[mid]；mid 被 100%
+            // 转走且无转入时源量为 0（不回退原始 base 凭空产出 gain）。
             // gain 来源是转换后的中间类型量（若该类型无转换后量，回退到其 flat base）。
+            // 注：04-02 审查曾建议去掉此 fallback（理论上 PoB2 全转走时 gain 源为 0），但 ninja_parity
+            // 经验证据表明去掉会让某真实 build 的进攻值偏离 PoB2 golden——conv_min[mid] 在某些路径
+            // 并未携带应有的对角线留存，fallback 是 load-bearing 的，故保留。详见 audits 04-offence-core。
             let src_min = if conv_min[mid] != 0.0 || conv_max[mid] != 0.0 {
                 conv_min[mid]
             } else {

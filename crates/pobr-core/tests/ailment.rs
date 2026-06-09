@@ -1,14 +1,14 @@
 use pobr_core::calc::ailment::{
-    AilmentSource, DamagingAilmentOutput, StackConfig, ailment_effect_mod, ailment_rate_mod,
-    apply_dot_dps_cap, apply_effect_and_rate_mod, apply_effect_and_rate_mod_traced,
-    apply_effect_mod_to_instance, apply_rate_mod_to_instance, bleed_instance, bleed_traced,
-    chill_effect, chill_effect_with_mods, chill_traced, corrupted_blood_instance,
-    cross_type_source_hit, dps_with_effect_rate_cap, dps_with_effect_rate_cap_traced,
-    effmult_for_ailment, electrocute_poise_buildup, electrocute_poise_buildup_traced, flat_chance,
-    freeze_poise_buildup, freeze_poise_buildup_traced, ignite_instance, ignite_traced,
-    player_ailment_threshold, poison_instance, roll_average, shock_effect, stack_potential,
-    stacking_ailment_dps, stacking_ailment_dps_traced, threshold_derived_chance,
-    weighted_source_damage,
+    AilmentSource, DamagingAilmentOutput, StackConfig, ailment_crit_chance, ailment_effect_mod,
+    ailment_rate_mod, apply_dot_dps_cap, apply_effect_and_rate_mod,
+    apply_effect_and_rate_mod_traced, apply_effect_mod_to_instance, apply_rate_mod_to_instance,
+    bleed_instance, bleed_traced, chill_effect, chill_effect_with_mods, chill_traced,
+    corrupted_blood_instance, cross_type_source_hit, dps_with_effect_rate_cap,
+    dps_with_effect_rate_cap_traced, effmult_for_ailment, electrocute_poise_buildup,
+    electrocute_poise_buildup_traced, flat_chance, freeze_poise_buildup,
+    freeze_poise_buildup_traced, ignite_instance, ignite_traced, player_ailment_threshold,
+    poison_instance, roll_average, shock_effect, stack_potential, stacking_ailment_dps,
+    stacking_ailment_dps_traced, threshold_derived_chance, weighted_source_damage,
 };
 use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph, TraceOperation};
 use pobr_data::prelude::*;
@@ -35,16 +35,24 @@ fn ignite_uses_fire_fraction_and_duration() {
 }
 
 #[test]
-fn poison_magnitude_scales_with_ailment_damage_modifiers() {
+fn poison_magnitude_scales_with_ailment_magnitude() {
+    // PoE2：伤害异常 magnitude 仅由 `AilmentMagnitude` 缩放（PoB2 ailmentPercentBase 因子）。
+    // PoE1 的 PoisonDamage/DamageOverTime 在 PoE2 不存在、不再生效。
     let gc = GameConstants::poe2();
     let mut db = ModDb::new();
-    db.add_mod(Modifier::number("PoisonDamage", ModType::Inc, 100.0));
+    db.add_mod(Modifier::number("AilmentMagnitude", ModType::Inc, 100.0));
 
     let instance = poison_instance(1000.0, &db, &CalcConfig::attack());
 
     let base = 1000.0 * gc.poison_base_fraction;
     assert_eq!(instance.magnitude_dps, base * 2.0);
     assert_eq!(instance.ailment, AilmentType::Poison);
+
+    // PoE1 幻影名不再缩放 PoE2 magnitude。
+    let mut db_phantom = ModDb::new();
+    db_phantom.add_mod(Modifier::number("PoisonDamage", ModType::Inc, 100.0));
+    let phantom = poison_instance(1000.0, &db_phantom, &CalcConfig::attack());
+    assert_eq!(phantom.magnitude_dps, base, "PoisonDamage 幻影名不生效");
 }
 
 /// PoE2 0.5.0 感电效果范围测试。
@@ -584,12 +592,11 @@ fn stack_potential_is_ratio_of_active_to_max() {
     let sp = stack_potential(&cfg);
     assert!((sp - 0.5).abs() < 1e-6, "5/10 → potential 0.5, got {sp}");
 
-    // 溢出：active > max → clamp 1.0
+    // 溢出：active > max → SP = 8/5 = 1.6（PoB2 不 clamp，可 >1；触发 over-stacking 放大）
     let cfg_over = StackConfig::new(5, 8.0);
-    assert_eq!(
-        stack_potential(&cfg_over),
-        1.0,
-        "overflow → potential clamped 1.0"
+    assert!(
+        (stack_potential(&cfg_over) - 1.6).abs() < 1e-6,
+        "overflow → potential 8/5 = 1.6 (PoB2 不 clamp)"
     );
 
     // 默认单层
@@ -1088,4 +1095,43 @@ fn dps_with_effect_rate_cap_traced_no_cap_node_when_not_truncated() {
 
     let has_cap = trace.nodes().iter().any(|n| n.label.contains("DotDpsCap"));
     assert!(!has_cap, "no cap node when DPS is below DOT_DPS_CAP");
+}
+
+// ---------------------------------------------------------------------------
+// 05-01：异常暴击 over-stacking 修正（PoB2 CalcOffence.lua L5144
+// ailmentCritChance = 100*(1-(1-c)^max(SP,1))）
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ailment_crit_chance_applies_over_stacking_correction() {
+    let crit = 0.5_f64; // 50% 单次命中暴击率（fraction）
+
+    // SP <= 1：退化为裸暴击率（指数被 max(.,1) 抬到 1）。
+    assert!((ailment_crit_chance(crit, 1.0) - 0.5).abs() < 1e-9);
+    assert!((ailment_crit_chance(crit, 0.4) - 0.5).abs() < 1e-9);
+
+    // SP > 1（叠层溢出）：放大。SP=2 → 1 - 0.5^2 = 0.75。
+    let amplified = ailment_crit_chance(crit, 2.0);
+    assert!((amplified - 0.75).abs() < 1e-9);
+    assert!(amplified > crit, "over-stacking 应抬高暴击份额");
+
+    // 边界：0 暴击恒 0；满暴击恒 1。
+    assert!((ailment_crit_chance(0.0, 3.0) - 0.0).abs() < 1e-9);
+    assert!((ailment_crit_chance(1.0, 3.0) - 1.0).abs() < 1e-9);
+
+    // 端到端：放大后的暴击份额喂入 weighted_source_damage，base 高于 SP=1。
+    let src_sp1 = AilmentSource::new(1000.0, 2.0, ailment_crit_chance(crit, 1.0), false);
+    let (_c0, base_sp1) = weighted_source_damage(&src_sp1, 100.0, 100.0);
+    assert!(
+        (base_sp1 - 1500.0).abs() < 1.0,
+        "SP=1: 1000*0.5+2000*0.5=1500"
+    );
+
+    let src_over = AilmentSource::new(1000.0, 2.0, ailment_crit_chance(crit, 2.0), false);
+    let (_c1, base_over) = weighted_source_damage(&src_over, 100.0, 100.0);
+    assert!(
+        (base_over - 1750.0).abs() < 1.0,
+        "SP=2: 1000*0.25+2000*0.75=1750"
+    );
+    assert!(base_over > base_sp1, "over-stacking 应抬高异常 base 伤害");
 }

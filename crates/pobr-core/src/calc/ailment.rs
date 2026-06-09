@@ -160,17 +160,12 @@ pub fn bleed_instance(
 ) -> AilmentInstance {
     let gc = GameConstants::poe2();
     let base_dps = pre_mitigation_phys_hit * gc.bleed_base_fraction;
-    let magnitude_dps = scale_magnitude(
-        base_dps,
-        db,
-        cfg,
-        &[
-            ModName::from("BleedDamage"),
-            ModName::from("AilmentDamage"),
-            ModName::from("PhysicalDamageOverTime"),
-            ModName::from("DamageOverTime"),
-        ],
-    );
+    // PoE2 伤害异常 magnitude 仅由 `AilmentMagnitude` 缩放（= PoB2 ailmentPercentBase 的
+    // calcLib.mod(AilmentMagnitude) 因子，inc+more 聚合）。PoE1 的 BleedDamage/
+    // PhysicalDamageOverTime/DamageOverTime 在 PoE2 不存在、不参与伤害异常 magnitude；
+    // `AilmentEffect` 作为独立乘区在 finalize_ailment_dps 应用（PoB2 effectMod，不双计）。
+    // 出处：PoB2 CalcOffence.lua L5145-5146 / L5190。
+    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
     let duration_secs = scale_duration(
         gc.bleed_base_duration,
         db,
@@ -197,18 +192,9 @@ pub fn ignite_instance(
 ) -> AilmentInstance {
     let gc = GameConstants::poe2();
     let base_dps = pre_mitigation_fire_hit * gc.ignite_base_fraction;
-    let magnitude_dps = scale_magnitude(
-        base_dps,
-        db,
-        cfg,
-        &[
-            ModName::from("IgniteDamage"),
-            ModName::from("BurningDamage"),
-            ModName::from("AilmentDamage"),
-            ModName::from("FireDamageOverTime"),
-            ModName::from("DamageOverTime"),
-        ],
-    );
+    // PoE2 点燃 magnitude 仅由 `AilmentMagnitude` 缩放（PoB2 ailmentPercentBase 因子）。
+    // 出处：PoB2 CalcOffence.lua L5145-5146。
+    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
     let duration_secs = scale_duration(
         gc.ignite_base_duration,
         db,
@@ -231,17 +217,9 @@ pub fn ignite_instance(
 pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) -> AilmentInstance {
     let gc = GameConstants::poe2();
     let base_dps = pre_mitigation_hit * gc.poison_base_fraction;
-    let magnitude_dps = scale_magnitude(
-        base_dps,
-        db,
-        cfg,
-        &[
-            ModName::from("PoisonDamage"),
-            ModName::from("AilmentDamage"),
-            ModName::from("ChaosDamageOverTime"),
-            ModName::from("DamageOverTime"),
-        ],
-    );
+    // PoE2 中毒 magnitude 仅由 `AilmentMagnitude` 缩放（PoB2 ailmentPercentBase 因子）。
+    // 出处：PoB2 CalcOffence.lua L5145-5146。
+    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
     let duration_secs = scale_duration(
         gc.poison_base_duration,
         db,
@@ -268,12 +246,26 @@ pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) ->
 /// 出处：agent-docs/ailments.md §感电、PoB2 `nonDamagingAilmentsConfig.Shock`：
 ///   `Shock.effect = 50 * (damage/enemyThreshold)^0.4 * effectMod, clamp [min=20, max=100]`
 pub fn shock_effect(pre_mitigation_lightning_hit: f64, target_ailment_threshold: f64) -> f64 {
+    shock_effect_with_mods(pre_mitigation_lightning_hit, target_ailment_threshold, 1.0)
+}
+
+/// 感电增伤幅度（含 effectMod 乘子）：`50 * (hit/threshold)^0.4 * effectMod`，clamp 到
+/// [20%, 100%]（effectMod 之后再 clamp）。`effect_mod` = 攻击方 `AilmentMagnitude`/
+/// `EnemyShockMagnitude` ×（防御方对应减成；乘子语义 1.0 = 无加成）。
+///
+/// 出处：PoB2 `CalcOffence.lua` `Shock.effect = 50*(damage/enemyThreshold)^0.4*effectMod`（L5472）、
+/// `effectMod = mod(EnemyShockMagnitude, AilmentMagnitude) * mod(enemyDB, SelfShockMagnitude, AilmentMagnitude)`（L5523）。
+pub fn shock_effect_with_mods(
+    pre_mitigation_lightning_hit: f64,
+    target_ailment_threshold: f64,
+    effect_mod: f64,
+) -> f64 {
     if pre_mitigation_lightning_hit <= 0.0 || target_ailment_threshold <= 0.0 {
         return 0.0;
     }
     let ratio = pre_mitigation_lightning_hit / target_ailment_threshold;
-    // 50 * ratio^0.4 → 以百分点计；SHOCK_MIN_EFFECT 以整数（20）存储，转为小数比例
-    let effect_pct = 50.0 * ratio.powf(0.4);
+    // 50 * ratio^0.4 * effectMod → 以百分点计；SHOCK_MIN_EFFECT 以整数（20）存储，转为小数比例
+    let effect_pct = 50.0 * ratio.powf(0.4) * effect_mod;
     let min_pct = SHOCK_MIN_EFFECT; // 20.0 (percent)
     let max_pct = 100.0;
     round(effect_pct.clamp(min_pct, max_pct) / 100.0)
@@ -498,10 +490,25 @@ pub fn shock_traced(
     // 感电幅度按暴击加权后的来源伤害对阈值的比例计算（PoB2 用 average damage）。
     let weighted_hit =
         source.hit_avg * (1.0 - source.crit_chance) + source.crit_avg * source.crit_chance;
-    let magnitude = shock_effect(weighted_hit, threshold);
+    // effectMod：玩家 EnemyShockMagnitude/AilmentMagnitude 的 (1+Σinc/100)*Πmore
+    // （PoB2 CalcOffence.lua L5523 玩家侧；敌方 SelfShockMagnitude 侧与 chill 一并留待对称化）。
+    let mag_names = [
+        ModName::from("AilmentMagnitude"),
+        ModName::from("EnemyShockMagnitude"),
+    ];
+    let mag_inc = player.sum(ModType::Inc, cfg, &mag_names);
+    let mag_more = player.more(cfg, &mag_names);
+    let effect_mod = (1.0 + mag_inc / 100.0) * mag_more;
+    let magnitude = shock_effect_with_mods(weighted_hit, threshold, effect_mod);
     let node = trace.add_node("ShockEffect", round(magnitude), TraceOperation::Chance);
     // 几率贡献链入感电效果节点，使效果可回溯到 ShockChance 来源。
     trace.add_edge(chance_node, node);
+    // effectMod 词条归因连入感电效果节点（仿 chill_traced）。
+    let mag_inc_traced =
+        player.sum_traced(ModType::Inc, cfg, &mag_names, trace, "Shock magnitude INC");
+    trace.add_edge(mag_inc_traced.node_id, node);
+    let mag_more_traced = player.more_traced(cfg, &mag_names, trace, "Shock magnitude MORE");
+    trace.add_edge(mag_more_traced.node_id, node);
     (chance, magnitude, node)
 }
 
@@ -972,10 +979,11 @@ impl StackConfig {
     }
 }
 
-/// 叠层 StackPotential：活跃叠层 vs 最大叠层的比例，返回 `[0.0, 1.0]`。
+/// 叠层 StackPotential：活跃叠层 vs 最大叠层的比例。
 ///
-/// `stack_potential = active_stacks / max_stacks`，clamp 到 1.0。
-/// StackPotential > 1 表示溢出（活跃 > 最大），此时取上限 1.0。
+/// `stack_potential = active_stacks / max_stacks`。PoB2（`CalcOffence.lua` L5069）**不 clamp**，
+/// 允许 > 1（叠层溢出）——这是 over-stacking 暴击放大（`ailment_crit_chance`）与 RollAverage
+/// 高位偏移的触发条件。这里仅做下界保护（不为负）。
 ///
 /// 出处：PoB2 `CalcOffence.lua` `StackPotential = ailmentStacks / maxStacks`。
 pub fn stack_potential(cfg: &StackConfig) -> f64 {
@@ -988,7 +996,21 @@ pub fn stack_potential(cfg: &StackConfig) -> f64 {
     if max <= 0.0 {
         return 0.0;
     }
-    (active / max).clamp(0.0, 1.0)
+    (active / max).max(0.0)
+}
+
+/// 异常暴击份额（over-stacking 修正）：叠层溢出时"至少一层暴击"概率高于单次命中暴击率。
+///
+/// `crit_chance` 为单次命中暴击率（fraction 0..1）；`stack_potential` 为叠层潜力（可 > 1）。
+/// 返回进入异常 base 加权的暴击份额 fraction：`1 - (1 - crit)^max(SP, 1)`。
+/// `SP <= 1`（含当前默认 SP=1）时退化为裸暴击率，向后兼容。
+///
+/// 出处：PoB2 `CalcOffence.lua` L5144
+/// `ailmentCritChance = 100*(1 - (1 - CritChance/100)^m_max(StackPotential, 1))`。
+pub fn ailment_crit_chance(crit_chance: f64, stack_potential: f64) -> f64 {
+    let c = crit_chance.clamp(0.0, 1.0);
+    let exp = stack_potential.max(1.0);
+    (1.0 - (1.0 - c).powf(exp)).clamp(0.0, 1.0)
 }
 
 /// 叠层 RollAverage（PoB2：`StackPotential > 100% 时 roll 向高位偏移`的内插）：
@@ -1343,31 +1365,11 @@ pub fn dps_with_effect_rate_cap_traced(
     (capped, node)
 }
 
-/// 某异常 magnitude 缩放的 inc/more ModName 集合（与 `*_instance` 一致）。
-fn magnitude_mod_names(ailment: AilmentType) -> Vec<ModName> {
-    match ailment {
-        AilmentType::Bleed => vec![
-            ModName::from("BleedDamage"),
-            ModName::from("AilmentDamage"),
-            ModName::from("PhysicalDamageOverTime"),
-            ModName::from("DamageOverTime"),
-        ],
-        AilmentType::Ignite => vec![
-            ModName::from("IgniteDamage"),
-            ModName::from("BurningDamage"),
-            ModName::from("AilmentDamage"),
-            ModName::from("FireDamageOverTime"),
-            ModName::from("DamageOverTime"),
-        ],
-        AilmentType::Poison => vec![
-            ModName::from("PoisonDamage"),
-            ModName::from("AilmentDamage"),
-            ModName::from("ChaosDamageOverTime"),
-            ModName::from("DamageOverTime"),
-        ],
-        _ => vec![
-            ModName::from("AilmentDamage"),
-            ModName::from("DamageOverTime"),
-        ],
-    }
+/// 某异常 magnitude 缩放的 inc/more ModName 集合（与 `*_instance` 的 `scale_magnitude` 一致）。
+///
+/// PoE2：伤害异常 magnitude 的唯一缩放杠杆是 `AilmentMagnitude`（PoB2 ailmentPercentBase
+/// 因子，CalcOffence.lua L5145-5146）。PoE1 的 `BleedDamage`/`DamageOverTime` 等在 PoE2 不存在；
+/// 归因名集须与实际缩放同源，否则 trace 会展示不再生效的词条。
+fn magnitude_mod_names(_ailment: AilmentType) -> Vec<ModName> {
+    vec![ModName::from("AilmentMagnitude")]
 }

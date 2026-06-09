@@ -292,18 +292,27 @@ pub fn calc_es_recharge(
     // 换算为每秒 fraction（750%/min = 12.5%/s，用 /100 变 fraction）。
     let rate_fraction = rate_per_min / 60.0 / 100.0;
 
-    // 充能延迟：基础 4 秒；`EnergyShieldRechargeFaster` BASE（%，>0 表示「faster」→缩短延迟）。
-    // PoB2 公式：delay = base / (1 + faster/100)（更快充能开始 → 延迟更短）。
-    let faster = db.sum(
-        ModType::Base,
+    // 充能延迟（PoB2 CalcDefence.lua:1762-1763）：
+    //   rechargeBase = Override('EnergyShieldRechargeBase')
+    //               or (4 + Sum('BASE','EnergyShieldRechargeFaster'))   // BASE 是「秒」，加到分子
+    //   delay = rechargeBase / (1 + Sum('INC','EnergyShieldRechargeFaster')/100)  // INC 是「%」缩短延迟
+    // BASE 与 INC 是不同 ModType、不同位置（分子 vs 分母），不可混用。
+    let recharge_base = db
+        .override_(cfg, ModName::from("EnergyShieldRechargeBase"))
+        .unwrap_or_else(|| {
+            ES_RECHARGE_DELAY_BASE
+                + db.sum(
+                    ModType::Base,
+                    cfg,
+                    &[ModName::from("EnergyShieldRechargeFaster")],
+                )
+        });
+    let faster_inc = db.sum(
+        ModType::Inc,
         cfg,
         &[ModName::from("EnergyShieldRechargeFaster")],
     );
-    let delay_seconds = if faster > 0.0 {
-        round(ES_RECHARGE_DELAY_BASE / (1.0 + faster / 100.0))
-    } else {
-        ES_RECHARGE_DELAY_BASE
-    };
+    let delay_seconds = round(recharge_base / (1.0 + faster_inc / 100.0));
 
     EsRecharge {
         rate_fraction: round(rate_fraction),

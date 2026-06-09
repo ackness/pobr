@@ -65,23 +65,53 @@ fn es_recharge_rate_scales_with_inc_modifier() {
     );
 }
 
-/// `EnergyShieldRechargeFaster` BASE=100（「充能开始提速 100%」）→ 延迟缩短一半。
-/// PoB2 公式：delay = 4 / (1 + 100/100) = 2 秒。
+/// PoB2 CalcDefence.lua:1762-1763：**INC** `EnergyShieldRechargeFaster` 缩短延迟（分母）。
+/// delay = (4 + Sum(BASE)) / (1 + Sum(INC)/100) = 4 / (1 + 100/100) = 2.0s。
 #[test]
-fn es_recharge_delay_halved_with_faster_100pct() {
+fn es_recharge_delay_halved_with_faster_inc_100pct() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number(
         "EnergyShieldRechargeFaster",
-        ModType::Base,
+        ModType::Inc,
         100.0,
     ));
     let cfg = CalcConfig::default();
     let result = calc_es_recharge(&db, &cfg, 1000.0, false);
+    assert_eq!(result.delay_seconds, 2.0, "100% INC faster → delay 2s");
+}
 
-    assert_eq!(
-        result.delay_seconds, 2.0,
-        "100% faster should halve delay to 2s"
-    );
+/// BASE `EnergyShieldRechargeFaster` 是「秒」，加到分子（4 + base），不缩放分母。
+/// delay = (4 + 2) / (1 + 0) = 6.0s。
+#[test]
+fn es_recharge_delay_base_adds_seconds_to_numerator() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "EnergyShieldRechargeFaster",
+        ModType::Base,
+        2.0,
+    ));
+    let cfg = CalcConfig::default();
+    let result = calc_es_recharge(&db, &cfg, 1000.0, false);
+    assert_eq!(result.delay_seconds, 6.0, "+2s BASE → delay 6s (4+2)");
+}
+
+/// Override('EnergyShieldRechargeBase') 直接替换基础，再除 INC：1.0 / (1+100/100) = 0.5s。
+#[test]
+fn es_recharge_delay_respects_override_base() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "EnergyShieldRechargeBase",
+        ModType::Override,
+        1.0,
+    ));
+    db.add_mod(Modifier::number(
+        "EnergyShieldRechargeFaster",
+        ModType::Inc,
+        100.0,
+    ));
+    let cfg = CalcConfig::default();
+    let result = calc_es_recharge(&db, &cfg, 1000.0, false);
+    assert_eq!(result.delay_seconds, 0.5, "override base 1.0s / 2 = 0.5s");
 }
 
 /// ZealotsOath：ES 由再生驱动，充能禁用（rate_fraction = 0）。

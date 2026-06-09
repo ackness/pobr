@@ -1106,6 +1106,18 @@ fn parse_name(text: &str) -> Option<ModName> {
         "lightning damage" => "LightningDamage",
         "chaos damage" => "ChaosDamage",
         "elemental damage" => "ElementalDamage",
+        // 分 min/max 的独立 MORE 乘区（PoB2 ModParser.lua:711-712,718；calcDamage moreMin/moreMaxDamage）。
+        // 类型编码在 ModName、不挂 DamageType tag（damage_type_for_name 对 Min/Max... 返回 None）。
+        "minimum physical attack damage" | "minimum physical damage" => "MinPhysicalDamage",
+        "maximum physical attack damage" | "maximum physical damage" => "MaxPhysicalDamage",
+        "minimum lightning damage" => "MinLightningDamage",
+        "maximum lightning damage" => "MaxLightningDamage",
+        "minimum fire damage" => "MinFireDamage",
+        "maximum fire damage" => "MaxFireDamage",
+        "minimum cold damage" => "MinColdDamage",
+        "maximum cold damage" => "MaxColdDamage",
+        "minimum chaos damage" => "MinChaosDamage",
+        "maximum chaos damage" => "MaxChaosDamage",
         "attack damage" => "AttackDamage",
         "spell damage" => "SpellDamage",
         "projectile damage" => "ProjectileDamage",

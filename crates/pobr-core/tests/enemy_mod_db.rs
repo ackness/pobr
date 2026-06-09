@@ -313,6 +313,15 @@ fn setup_enemy_injects_pinnacle_defaults() {
     );
     // 等级被 Pinnacle 抬到 >=82（这里 85）。
     assert_eq!(env.enemy.level, 85);
+
+    // Boss 自带元素穿透注入 **player** modDB（offence 从玩家 db 读 ElementalPenetration）。
+    // Pinnacle = pinnacleBossPen 15/5 = 3。
+    let pen = env.player.mod_db.sum(
+        ModType::Base,
+        &cfg,
+        &[ModName::from("ElementalPenetration")],
+    );
+    assert_eq!(pen, 3.0, "Pinnacle 元素穿透 +3 注入玩家 db");
 }
 
 #[test]
@@ -329,6 +338,13 @@ fn setup_enemy_uber_injects_damage_taken_penalty() {
     );
     // Uber 最低等级 82（角色 80 被抬到 82）。
     assert_eq!(env.enemy.level, 82);
+    // Uber 元素穿透 = uberBossPen 40/5 = 8（注入玩家 db）。
+    let pen = env.player.mod_db.sum(
+        ModType::Base,
+        &cfg,
+        &[ModName::from("ElementalPenetration")],
+    );
+    assert_eq!(pen, 8.0, "Uber 元素穿透 +8 注入玩家 db");
 }
 
 #[test]
@@ -347,6 +363,16 @@ fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
         "普通怪无 Unique 条件"
     );
     assert!(!db.flag(&cfg, ModName::from("Condition:PinnacleBoss")));
+    // 普通怪无自带穿透 → 玩家 db 不应被注入 ElementalPenetration。
+    assert_eq!(
+        env.player.mod_db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from("ElementalPenetration")]
+        ),
+        0.0,
+        "普通怪不注入穿透"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -749,4 +775,41 @@ fn perform_panel_mode_ignores_enemy_damage_taken() {
         env.player.output.dps, 150.0,
         "面板口径忽略 enemy DamageTaken"
     );
+}
+
+// ---------------------------------------------------------------------------
+// 02-02：setup_enemy 把 enemy.mod_db 当持久增量 db（PoB2 CalcSetup.lua:682-691），
+// 不整体替换 actor、不清空此前已注入的 enemy mod
+// ---------------------------------------------------------------------------
+
+#[test]
+fn setup_enemy_preserves_preexisting_enemy_mods() {
+    let player = Actor::new(85, ActorBaseStats::default());
+    let mut env = Env::new(player);
+
+    // 在 setup_enemy 之前注入一条自定义 enemy mod（模拟 config enemyPhysicalReduction /
+    // 用户自定义 enemy 词条先于档位装配注入的情形）。
+    env.enemy.mod_db.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        12.0,
+    ));
+
+    setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
+
+    // 旧实现（env.enemy = Actor::new(...) 整体替换）会读到 0；新实现增量追加 → 仍为 12。
+    let cfg = CalcConfig::attack();
+    let pdr = env.enemy.mod_db.sum(
+        ModType::Base,
+        &cfg,
+        &[ModName::from("PhysicalDamageReduction")],
+    );
+    assert_eq!(pdr, 12.0, "setup_enemy 不应清空已注入的 enemy mod");
+
+    // 档位 mod 也正常注入（增量装配，二者共存）。
+    let fire = env
+        .enemy
+        .mod_db
+        .sum(ModType::Base, &cfg, &[ModName::from("FireResist")]);
+    assert_eq!(fire, 50.0, "Pinnacle 档位 FireResist 仍正常注入");
 }

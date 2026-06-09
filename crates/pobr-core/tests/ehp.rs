@@ -93,3 +93,40 @@ fn non_ci_chaos_uses_life_plus_half_es_pool() {
     // chaos pool = life + es*0.5 = 1000 + 500 = 1500
     assert_eq!(result.chaos_max_hit, 1500.0);
 }
+
+/// 06-04：减伤上限可变（`+Maximum Damage Reduction`）。默认 0.9，提到 0.95 → max-hit 翻倍。
+#[test]
+fn damage_reduction_cap_raised_by_mod() {
+    use pobr_core::calc::ehp::{
+        physical_max_hit_overwhelm_cap, physical_taken_fraction_overwhelm,
+        physical_taken_fraction_overwhelm_cap,
+    };
+    let frac_default = physical_taken_fraction_overwhelm_cap(0.95, 0.0, 1000.0, 0.0, 0.9);
+    assert!(
+        (frac_default - 0.1).abs() < 1e-9,
+        "default cap 0.9 → taken 0.1"
+    );
+    let frac_raised = physical_taken_fraction_overwhelm_cap(0.95, 0.0, 1000.0, 0.0, 0.95);
+    assert!(
+        (frac_raised - 0.05).abs() < 1e-9,
+        "raised cap 0.95 → taken 0.05"
+    );
+
+    let mh_default = physical_max_hit_overwhelm_cap(1000.0, 0.95, 0.0, 1000.0, 0.0, 0.9);
+    let mh_raised = physical_max_hit_overwhelm_cap(1000.0, 0.95, 0.0, 1000.0, 0.0, 0.95);
+    assert!(
+        (mh_default - 10000.0).abs() < 1.0,
+        "default ~10000, got {mh_default}"
+    );
+    assert!(
+        (mh_raised - 20000.0).abs() < 1.0,
+        "raised ~20000, got {mh_raised}"
+    );
+
+    // 旧签名 wrapper 等价 dr_max=0.9。
+    let legacy = physical_taken_fraction_overwhelm(0.95, 0.0, 1000.0, 0.0);
+    assert!(
+        (legacy - frac_default).abs() < 1e-9,
+        "legacy wrapper == cap 0.9"
+    );
+}
