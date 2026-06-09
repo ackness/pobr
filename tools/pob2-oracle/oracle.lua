@@ -208,6 +208,121 @@ intermediates.IncCritChance = smlSum("INC", skillCfg, "CritChance")
 intermediates.BaseCritChance = smlSum("BASE", skillCfg, "CritChance")
 intermediates.IncCritMultiplier = smlSum("INC", skillCfg, "CritMultiplier")
 intermediates.BaseCritMultiplier = smlSum("BASE", skillCfg, "CritMultiplier")
+intermediates.IncSpeed = smlSum("INC", skillCfg, "Speed")
+intermediates.IncCastSpeed = smlSum("INC", skillCfg, "Speed", "CastSpeed")
+intermediates.IncAttackSpeed = smlSum("INC", skillCfg, "Speed", "AttackSpeed")
+
+----------------------------------------------------------------------
+-- Per-mod damage list dump. Tabulate every individual mod that contributes
+-- to Sum("INC", cfg, <name>) / More(cfg, <name>) for the generic + per-type
+-- damage names that drive per-hit damage. This is the diagnostic surface for
+-- the "PoBR is missing ~150-220 increased damage" gap: each entry is a
+-- {name, type, value, source, flags, keywordFlags, tags, applies} record so we
+-- can diff PoB2 vs PoBR mod-by-mod and classify each missing mod as
+-- (a) not ingested, (b) ingested but condition not defaulted true, (c) parse/scope.
+--
+-- tags carries the condition / multiplier tagList (mod[1..n]); a mod with a
+-- Condition/Multiplier/ActorCondition tag is the (b) class candidate — PoB2
+-- defaults the condition true via ConfigOptions, PoBR may not.
+----------------------------------------------------------------------
+
+-- modLib is a global in PoB; formatTags/formatFlags render the tagList & flags.
+local function flagsStr(flags, src)
+	if not modLib or not flags then return nil end
+	local ok, s = pcall(modLib.formatFlags, flags, src)
+	if ok and s ~= "-" then return s end
+	return nil
+end
+
+-- Render the tagList (integer-indexed entries on the mod) to a flat array of
+-- strings, and separately surface Condition/Multiplier var names for class (b).
+local function tagInfo(mod)
+	local tags = {}
+	local condVars = {}
+	for i, tag in ipairs(mod) do
+		if type(tag) == "table" then
+			local ok, s = pcall(modLib.formatTag, tag)
+			if ok and s and s ~= "" then tags[#tags + 1] = s end
+			-- surface the condition/multiplier var so stage 2 knows what to default
+			if tag.type == "Condition" and tag.var then
+				condVars[#condVars + 1] = "Condition:" .. tostring(tag.var)
+			elseif tag.type == "ActorCondition" and tag.var then
+				condVars[#condVars + 1] = "ActorCondition:" .. tostring(tag.var)
+			elseif tag.type == "Multiplier" and tag.var then
+				condVars[#condVars + 1] = "Multiplier:" .. tostring(tag.var)
+			elseif tag.type == "MultiplierThreshold" and tag.var then
+				condVars[#condVars + 1] = "MultiplierThreshold:" .. tostring(tag.var)
+			elseif tag.type == "PerStat" and tag.stat then
+				condVars[#condVars + 1] = "PerStat:" .. tostring(tag.stat)
+			elseif tag.type == "StatThreshold" and tag.stat then
+				condVars[#condVars + 1] = "StatThreshold:" .. tostring(tag.stat)
+			end
+		end
+	end
+	return tags, condVars
+end
+
+-- Tabulate one (modType, name) over the main skill modList. Returns the array
+-- of per-mod records. evalValue is the post-EvalMod value PoB actually uses
+-- (so conditional mods that fail evaluate to 0 / are dropped by Tabulate).
+local function tabulateModList(modType, name)
+	local out = {}
+	if not sml then return out end
+	local ok, modTable = pcall(function() return sml:Tabulate(modType, skillCfg, name) end)
+	if not ok or not modTable then return out end
+	for _, entry in ipairs(modTable) do
+		local mod = entry.mod
+		local tags, condVars = tagInfo(mod)
+		out[#out + 1] = {
+			queryName = name,
+			name = mod.name,
+			type = mod.type,
+			-- mod.value is the raw declared value (table-valued mods become a string)
+			rawValue = (type(mod.value) == "number") and mod.value or modLib.formatValue(mod.value),
+			evalValue = entry.value, -- post-EvalMod contribution actually counted
+			source = mod.source,
+			flags = flagsStr(mod.flags, ModFlag),
+			keywordFlags = flagsStr(mod.keywordFlags, KeywordFlag),
+			tags = (#tags > 0) and tags or nil,
+			condVars = (#condVars > 0) and condVars or nil,
+			conditional = (#condVars > 0) or nil,
+		}
+	end
+	return out
+end
+
+-- Names that feed the generic + per-type increased/more damage chain in PoBR's
+-- aggregate_inc_more: generic (Damage + Attack/Spell/Projectile/Area/Melee +
+-- weapon/keyword-derived), per-type <Type>Damage, and ElementalDamage.
+local damageNames = {
+	"Damage",
+	"AttackDamage", "SpellDamage", "ProjectileDamage", "AreaDamage", "MeleeDamage",
+	"PhysicalDamage", "LightningDamage", "ColdDamage", "FireDamage", "ChaosDamage",
+	"ElementalDamage",
+	-- common weapon/keyword-derived damage scaling names (PoB2 Data)
+	"BowDamage", "CrossbowDamage", "GrenadeDamage", "StaffDamage", "MaceDamage",
+	"SwordDamage", "AxeDamage", "ClawDamage", "DaggerDamage", "WandDamage",
+	"UnarmedDamage", "SpellSkillDamage",
+}
+
+local damageModList = { INC = {}, MORE = {} }
+for _, name in ipairs(damageNames) do
+	local incList = tabulateModList("INC", name)
+	if #incList > 0 then damageModList.INC[name] = incList end
+	local moreList = tabulateModList("MORE", name)
+	if #moreList > 0 then damageModList.MORE[name] = moreList end
+end
+
+-- Aggregate cross-check: Sum/More over the same names PoBR uses, so the JSON
+-- carries the authoritative PoB2 totals alongside the per-mod breakdown.
+local damageAgg = {
+	IncDamageGeneric = smlSum("INC", skillCfg, "Damage"),
+	IncAttackDamage = smlSum("INC", skillCfg, "AttackDamage"),
+	IncSpellDamage = smlSum("INC", skillCfg, "SpellDamage"),
+	IncProjectileDamage = smlSum("INC", skillCfg, "ProjectileDamage"),
+	IncAreaDamage = smlSum("INC", skillCfg, "AreaDamage"),
+	IncMeleeDamage = smlSum("INC", skillCfg, "MeleeDamage"),
+}
 
 ----------------------------------------------------------------------
 -- Per-component damage min/max/avg pulled directly from output (written by
@@ -310,6 +425,8 @@ local report = {
 	mainOutput = scalarsOf(mainOutput),
 	calcsOutput = scalarsOf(calcsOutput),
 	intermediates = intermediates,
+	damageModList = damageModList,
+	damageAgg = damageAgg,
 	components = components,
 	summedBase = summedBase,
 	damageTypeBreakdown = damageTypeBreakdown,

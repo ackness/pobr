@@ -34,7 +34,7 @@ use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
-use pobr_core::{CharacterBase, ModTag, Modifier};
+use pobr_core::{CalcConfig, CharacterBase, ModTag, Modifier};
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
@@ -181,6 +181,17 @@ pub fn calculate_with_data(
         cfg = cfg
             .with_condition("Unique", true)
             .with_condition("RareOrUnique", true);
+    }
+
+    // PoB2 条件蕴含链（ConfigOptions.lua `implyCond`/`implyCondList`）：build config 勾选的
+    // 母条件会自动置真若干子条件。PoBR 只读到 build config 的母条件名，须在此补全蕴含，
+    // 否则蕴含子条件型词条（PoBR 已解析为条件标签）不会生效。通用、与 build/skill 无关。
+    cfg = apply_condition_implications(cfg);
+
+    // PoB2 `Condition:UsingShield`（CalcSetup：副手为盾时置真）。据当前激活装备组副手槽
+    // 是否为盾牌类基底判定——build-state 默认，全 build 一致，非特化。
+    if main_hand_offhand_is_shield(build, data) {
+        cfg = cfg.with_condition("UsingShield", true);
     }
     // 主手武器类别 → 持握条件（使「... with Quarterstaves」「while Dual Wielding」等树/词条生效）。
     // 注：冷却限速技能（如榴弹）当前 rate 模型把攻速 inc/more 乘到 cd-capped base 上（近似），
@@ -941,6 +952,32 @@ fn damage_keywords(build: &Build, data: &BuildData, skill_types: &[String]) -> V
         }
     }
     names
+}
+
+/// 副手槽是否装备盾牌（PoB2 `Condition:UsingShield`）。据当前激活装备组 `Weapon2` 槽
+/// 基底 `item_class` 判定（`Shield`/`Buckler`/`Focus` 中仅 Shield 类计盾）。通用、非特化。
+fn main_hand_offhand_is_shield(build: &Build, data: &BuildData) -> bool {
+    let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
+        return false;
+    };
+    let Some(def) = data.base_items.get(&item.base.to_string()) else {
+        return false;
+    };
+    def.item_class.as_str().contains("Shield")
+}
+
+/// PoB2 条件蕴含（ConfigOptions.lua `implyCond`/`implyCondList`）：母条件为真时同置子条件。
+/// 仅覆盖与进攻聚合相关、PoBR 词条已能解析为条件标签的链路；通用、与 build/skill 无关。
+fn apply_condition_implications(mut cfg: CalcConfig) -> CalcConfig {
+    // 敌人点燃必伴燃烧（PoB2 `conditionEnemyIgnited` implyCond `Burning`）。
+    if cfg.condition("EnemyIgnited") {
+        cfg = cfg.with_condition("EnemyBurning", true);
+    }
+    // 敌人冰冻必伴冰缓（PoB2 `conditionEnemyFrozen` implyCond `Chilled`）。
+    if cfg.condition("EnemyFrozen") {
+        cfg = cfg.with_condition("EnemyChilled", true);
+    }
+    cfg
 }
 
 /// 主手武器类别 → 武器类型 / 持握条件 var（树/词条「... with <武器类>」「while dual wielding」）。

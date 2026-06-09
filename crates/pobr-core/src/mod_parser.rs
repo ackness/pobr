@@ -96,13 +96,37 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     }
 
     let mut flags = ModFlags::NONE;
-    if let Some(stripped) = rest.strip_prefix("attacks deal ") {
+    let mut prefix_tags: Vec<ModTag> = Vec::new();
+    // 「Empowered Attacks deal ...」（PoB2 `Condition:Empowered` + Attack flag）。须先于
+    // 通用 `attacks deal` 前缀，否则会被后者截断丢失 Empowered 条件。Empowered 默认不激活
+    // （PoB2 ConfigOptions 无 defaultState），仅入条件标签，按 cfg 决定是否生效。
+    if let Some(stripped) = rest.strip_prefix("empowered attacks deal ") {
+        flags |= ModFlags::ATTACK;
+        prefix_tags.push(ModTag::Condition {
+            var: "Empowered".into(),
+            negated: false,
+        });
+        rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("empowered attacks ") {
+        flags |= ModFlags::ATTACK;
+        prefix_tags.push(ModTag::Condition {
+            var: "Empowered".into(),
+            negated: false,
+        });
+        rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("attacks deal ") {
+        flags |= ModFlags::ATTACK;
+        rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("attack skills deal ") {
         flags |= ModFlags::ATTACK;
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("attacks ") {
         flags |= ModFlags::ATTACK;
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spells deal ") {
+        flags |= ModFlags::SPELL;
+        rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("spell skills deal ") {
         flags |= ModFlags::SPELL;
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spells ") {
@@ -164,6 +188,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     })?;
 
     let (remainder, mut base_tags) = strip_tags(after_form);
+    base_tags.extend(prefix_tags);
     // 槽位限定子句（`... from Equipped <Slot>`，如 Titan `Armour from Equipped Body Armour`）
     // → SlotName tag。剥离后名字回到纯 stat（`armour`/`energy shield`），由 per-slot 防御聚合
     // 在匹配槽位生效。残留会使 resolve_names 失败，故须在解析名前剥离。
@@ -680,6 +705,9 @@ fn strip_scope_suffix(text: &str) -> (String, ModFlags) {
         (" with spells", ModFlags::SPELL),
         (" for spells", ModFlags::SPELL),
         (" for attacks", ModFlags::ATTACK),
+        // 「Damage with Hits」= 命中伤害（PoB2 KeywordFlag Hit）。面板进攻聚合本就按命中，
+        // 故此限定对 hit 伤害是恒真——剥离为纯名、不加额外 flag（命中是默认伤害路径）。
+        (" with hits", ModFlags::NONE),
     ];
     for (suffix, flag) in suffixes {
         if let Some(stripped) = text.strip_suffix(suffix) {
@@ -825,6 +853,82 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
             " while dual wielding",
             ModTag::Condition {
                 var: "DualWielding".into(),
+                negated: false,
+            },
+        ),
+        // 敌人异常状态条件（PoB2 ActorCondition actor=enemy）。对应 build config
+        // `conditionEnemy<X>`（PoBR 解析为 cfg 条件 `Enemy<X>`，编排层据 config 置真）。
+        // PoB2 语义：Ignited ⇒ Burning（点燃必燃烧）；故「against Burning Enemies」由
+        // EnemyBurning 或 EnemyIgnited 任一满足，编排层在 EnemyIgnited 真时同置 EnemyBurning。
+        (
+            " against ignited enemies",
+            ModTag::Condition {
+                var: "EnemyIgnited".into(),
+                negated: false,
+            },
+        ),
+        (
+            " against burning enemies",
+            ModTag::Condition {
+                var: "EnemyBurning".into(),
+                negated: false,
+            },
+        ),
+        (
+            " against chilled enemies",
+            ModTag::Condition {
+                var: "EnemyChilled".into(),
+                negated: false,
+            },
+        ),
+        (
+            " against frozen enemies",
+            ModTag::Condition {
+                var: "EnemyFrozen".into(),
+                negated: false,
+            },
+        ),
+        (
+            " against shocked enemies",
+            ModTag::Condition {
+                var: "EnemyShocked".into(),
+                negated: false,
+            },
+        ),
+        (
+            " against bleeding enemies",
+            ModTag::Condition {
+                var: "EnemyBleeding".into(),
+                negated: false,
+            },
+        ),
+        (
+            " against poisoned enemies",
+            ModTag::Condition {
+                var: "EnemyPoisoned".into(),
+                negated: false,
+            },
+        ),
+        // 持盾条件（PoB2 `Condition:UsingShield`）——编排层据副手槽位为盾置真。
+        (
+            " while holding a shield",
+            ModTag::Condition {
+                var: "UsingShield".into(),
+                negated: false,
+            },
+        ),
+        (
+            " while wielding a shield",
+            ModTag::Condition {
+                var: "UsingShield".into(),
+                negated: false,
+            },
+        ),
+        // 持法器条件（PoB2 `Condition:UsingFlask`）——build config `conditionUsingFlask`。
+        (
+            " while you have a flask active",
+            ModTag::Condition {
+                var: "UsingFlask".into(),
                 negated: false,
             },
         ),
@@ -1006,6 +1110,7 @@ fn parse_name(text: &str) -> Option<ModName> {
         "spell damage" => "SpellDamage",
         "projectile damage" => "ProjectileDamage",
         "area damage" => "AreaDamage",
+        "melee damage" => "MeleeDamage",
         "elemental damage with attacks" => "ElementalDamage",
         "elemental damage with attack skills" => "ElementalDamage",
         // 技能关键词 / 武器类别伤害（由 cfg.damage_keywords 按主技能/武器选择性聚合）。
@@ -1170,5 +1275,84 @@ mod per_slot_defence_tests {
             assert_eq!(out.mods[0].name.as_str(), name, "{text}");
             assert_eq!(out.mods[0].mod_type, ModType::Inc, "{text}");
         }
+    }
+
+    fn has_condition(m: &Modifier, var: &str) -> bool {
+        m.tags
+            .iter()
+            .any(|t| matches!(t, ModTag::Condition { var: v, negated: false } if v == var))
+    }
+
+    /// 「Melee Damage」映射到 `MeleeDamage`（此前缺失，导致近战增伤词条被丢弃）。
+    #[test]
+    fn parses_melee_damage_name() {
+        let out = parse_mod("10% increased [Melee] Damage").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods[0].name.as_str(), "MeleeDamage");
+        assert_eq!(out.mods[0].mod_type, ModType::Inc);
+    }
+
+    /// 敌人异常状态条件后缀 → `Enemy<X>` Condition 标签（对应 build config `conditionEnemy<X>`）。
+    #[test]
+    fn parses_against_ailment_enemy_conditions() {
+        let cases = [
+            (
+                "21% increased Damage against [Ignited|Ignited] Enemies",
+                "EnemyIgnited",
+            ),
+            (
+                "14% increased Damage with [HitDamage|Hits] against [Burning|Burning] Enemies",
+                "EnemyBurning",
+            ),
+            (
+                "21% increased Damage against [Chilled|Chilled] Enemies",
+                "EnemyChilled",
+            ),
+            (
+                "15% increased Damage against [Shocked|Shocked] Enemies",
+                "EnemyShocked",
+            ),
+        ];
+        for (text, var) in cases {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods[0].name.as_str(), "Damage", "{text}");
+            assert!(has_condition(&out.mods[0], var), "{text} → {var}");
+        }
+    }
+
+    /// 持盾 / 持法器条件后缀 → `UsingShield` / `UsingFlask` Condition 标签。
+    #[test]
+    fn parses_shield_and_flask_conditions() {
+        let shield = parse_mod(
+            "[Attack|Attack] Skills deal 10% increased Damage while holding a [Shield|Shield]",
+        )
+        .expect("parses");
+        assert_eq!(shield.mods[0].name.as_str(), "Damage");
+        assert!(has_condition(&shield.mods[0], "UsingShield"));
+        assert!(shield.mods[0].flags.intersects(ModFlags::ATTACK));
+
+        let flask =
+            parse_mod("25% increased Damage while you have a Flask active").expect("parses");
+        assert!(has_condition(&flask.mods[0], "UsingFlask"));
+    }
+
+    /// 「Empowered Attacks deal ... increased Damage」→ generic Damage + Attack flag +
+    /// `Empowered` Condition（PoB2 默认不激活，按 cfg 决定生效）。
+    #[test]
+    fn parses_empowered_attacks_prefix() {
+        let out =
+            parse_mod("[Empowered|Empowered Attacks] deal 16% increased Damage").expect("parses");
+        assert_eq!(out.mods[0].name.as_str(), "Damage");
+        assert_eq!(out.mods[0].mod_type, ModType::Inc);
+        assert!(out.mods[0].flags.intersects(ModFlags::ATTACK));
+        assert!(has_condition(&out.mods[0], "Empowered"));
+    }
+
+    /// 「Damage with Hits」= 命中伤害，剥离为纯 `Damage`（命中是默认伤害路径，不加额外 flag）。
+    #[test]
+    fn parses_damage_with_hits_as_generic() {
+        let out = parse_mod("20% increased Damage with [HitDamage|Hits]").expect("parses");
+        assert_eq!(out.mods[0].name.as_str(), "Damage");
     }
 }
