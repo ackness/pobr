@@ -4,9 +4,10 @@
 //!       PoB2 `src/Modules/CalcDefence.lua`、`src/Data/Misc.lua`。
 
 use pobr_core::calc::defence::{
-    AVOID_AILMENT_CAP, AVOID_HIT_CAP, CritExtraReduction, EsRecharge, calc_avoidance,
-    calc_crit_extra_reduction, calc_es_recharge, calc_taken_multi_suite, enemy_crit_effect,
-    es_recharge_per_second, taken_mult_for_type, taken_mult_over_time,
+    ANY_TAKEN_REFLECT_ENABLED, AVOID_AILMENT_CAP, AVOID_HIT_CAP, CritExtraReduction, EsRecharge,
+    HitSource, calc_avoidance, calc_crit_extra_reduction, calc_es_recharge, calc_taken_multi_suite,
+    enemy_crit_effect, es_recharge_per_second, taken_mult_for_type, taken_mult_for_type_default,
+    taken_mult_for_type_with_source, taken_mult_over_time,
 };
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
@@ -462,4 +463,134 @@ fn enemy_crit_effect_no_crit_chance_returns_1() {
     let effect = enemy_crit_effect(0.0, 100.0, &reduction);
 
     assert_eq!(effect, 1.0);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Attack/Spell takenMult 上下文 + 反射 defer（finding 06-06）
+// PoB2 CalcDefence.lua L2265-2269（hitSourceList={"Attack","Spell"}）。
+// ─────────────────────────────────────────────────────────────────
+
+/// `source=None` 与 [`taken_mult_for_type`] 等价（基础 hit 口径，无 Attack/Spell 层）。
+#[test]
+fn taken_mult_with_source_none_equals_base() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("FireDamageTaken", ModType::Inc, 30.0));
+    let cfg = CalcConfig::default();
+
+    let base = taken_mult_for_type(&db, &cfg, DamageType::Fire);
+    let none = taken_mult_for_type_with_source(&db, &cfg, DamageType::Fire, None);
+    assert!((base - none).abs() < 1e-9);
+}
+
+/// `AttackDamageTaken` 仅在 Attack 上下文叠加，Spell/None 不读。
+#[test]
+fn attack_damage_taken_only_in_attack_context() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("AttackDamageTaken", ModType::Inc, 25.0));
+    let cfg = CalcConfig::default();
+
+    let attack =
+        taken_mult_for_type_with_source(&db, &cfg, DamageType::Physical, Some(HitSource::Attack));
+    let spell =
+        taken_mult_for_type_with_source(&db, &cfg, DamageType::Physical, Some(HitSource::Spell));
+    let none = taken_mult_for_type(&db, &cfg, DamageType::Physical);
+
+    assert!(
+        (attack - 1.25).abs() < 1e-9,
+        "Attack 上下文 +25% → 1.25, got {attack}"
+    );
+    assert_eq!(spell, 1.0, "Spell 上下文不读 AttackDamageTaken");
+    assert_eq!(none, 1.0, "基础 hit 口径不读 AttackDamageTaken");
+}
+
+/// `SpellDamageTaken` 仅在 Spell 上下文叠加。
+#[test]
+fn spell_damage_taken_only_in_spell_context() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("SpellDamageTaken", ModType::Inc, -40.0));
+    let cfg = CalcConfig::default();
+
+    let spell =
+        taken_mult_for_type_with_source(&db, &cfg, DamageType::Fire, Some(HitSource::Spell));
+    let attack =
+        taken_mult_for_type_with_source(&db, &cfg, DamageType::Fire, Some(HitSource::Attack));
+
+    assert!(
+        (spell - 0.6).abs() < 1e-9,
+        "Spell 上下文 -40% → 0.6, got {spell}"
+    );
+    assert_eq!(attack, 1.0, "Attack 上下文不读 SpellDamageTaken");
+}
+
+/// base + WhenHit + Attack 层叠加：DamageTaken+10、PhysicalDamageTakenWhenHit+10、
+/// AttackDamageTaken+10 → (1 + 0.30) = 1.30（同一 INC 加法桶）。
+#[test]
+fn attack_context_stacks_with_base_and_when_hit() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("DamageTaken", ModType::Inc, 10.0));
+    db.add_mod(Modifier::number(
+        "PhysicalDamageTakenWhenHit",
+        ModType::Inc,
+        10.0,
+    ));
+    db.add_mod(Modifier::number("AttackDamageTaken", ModType::Inc, 10.0));
+    let cfg = CalcConfig::default();
+
+    let attack =
+        taken_mult_for_type_with_source(&db, &cfg, DamageType::Physical, Some(HitSource::Attack));
+    assert!(
+        (attack - 1.30).abs() < 1e-9,
+        "10+10+10 INC → 1.30, got {attack}"
+    );
+}
+
+/// PoB2 default（"Average"）= (Attack 层 + Spell 层) / 2。
+/// AttackDamageTaken+40 → Attack=1.4，Spell=1.0 → 默认 1.2。
+#[test]
+fn taken_mult_default_is_average_of_attack_and_spell() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("AttackDamageTaken", ModType::Inc, 40.0));
+    let cfg = CalcConfig::default();
+
+    let def = taken_mult_for_type_default(&db, &cfg, DamageType::Physical);
+    assert!(
+        (def - 1.2).abs() < 1e-9,
+        "Average of 1.4 and 1.0 = 1.2, got {def}"
+    );
+}
+
+/// 无 Attack/Spell 词条时 default 退化为基础 hit 口径（对现有回归保持一致）。
+#[test]
+fn taken_mult_default_degenerates_to_base_without_source_mods() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("DamageTaken", ModType::Inc, -25.0));
+    db.add_mod(Modifier::number(
+        "FireDamageTakenWhenHit",
+        ModType::Inc,
+        10.0,
+    ));
+    let cfg = CalcConfig::default();
+
+    for dt in [
+        DamageType::Physical,
+        DamageType::Fire,
+        DamageType::Cold,
+        DamageType::Lightning,
+        DamageType::Chaos,
+    ] {
+        let base = taken_mult_for_type(&db, &cfg, dt);
+        let def = taken_mult_for_type_default(&db, &cfg, dt);
+        assert!(
+            (base - def).abs() < 1e-9,
+            "{dt:?}: default {def} 应等于基础 hit 口径 {base}（无 Attack/Spell 词条）"
+        );
+    }
+}
+
+/// 反射 takenMult 当前 defer（PoB2 自身 AnyTakenReflect 写死 false）。
+#[test]
+fn any_taken_reflect_is_deferred_false() {
+    // 把 const 读进运行时变量，避免对编译期常量做平凡断言（clippy::assertions_on_constants）。
+    let enabled = std::hint::black_box(ANY_TAKEN_REFLECT_ENABLED);
+    assert!(!enabled, "反射受伤链 defer，与 PoB2 当前行为一致");
 }

@@ -469,7 +469,41 @@ pub fn calc_avoidance(db: &ModDb, cfg: &CalcConfig, energy_shield: f64) -> Avoid
 // Taken multiplier（gap: ehp-no-taken-multiplier）
 // ─────────────────────────────────────────────────────────────────
 
-/// 计算某伤害类型的受击承受乘数。
+/// 反射 takenMult 是否启用（PoB2 `CalcDefence.lua` L2248/L2281 写死 `AnyTakenReflect = false`）。
+///
+/// PoB2 自身在反射受伤链上惰性未启用（注释 `--this needs a rework as well`）。这里同样
+/// **defer**：保留占位常量、不实现 `<type>ReflectedDamageTaken` 链路，与 PoB2 当前行为一致。
+/// 待 PoB2 上游重做反射受伤后再对齐。
+///
+/// 出处：PoB2 `src/Modules/CalcDefence.lua` L2248,L2266-2281（Reflect 段 + 写死 false）。
+pub const ANY_TAKEN_REFLECT_ENABLED: bool = false;
+
+/// 受击伤害来源上下文（PoB2 `CalcDefence.lua` `hitSourceList = {"Attack","Spell"}`）。
+///
+/// 对应 `<hitType>DamageTaken` / `<type><hitType>DamageTaken` 这一层叠加——只在按攻击/法术
+/// 上下文取值时生效；默认（基础 hit 口径）不读取这层。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HitSource {
+    /// 攻击来源（`AttackDamageTaken` / `<type>AttackDamageTaken`）。
+    Attack,
+    /// 法术来源（`SpellDamageTaken` / `<type>SpellDamageTaken`）。
+    Spell,
+}
+
+impl HitSource {
+    /// PoB2 ModName 前缀（`"Attack"` / `"Spell"`）。
+    fn prefix(self) -> &'static str {
+        match self {
+            HitSource::Attack => "Attack",
+            HitSource::Spell => "Spell",
+        }
+    }
+}
+
+/// 计算某伤害类型的受击承受乘数（**基础 hit 口径**，无 Attack/Spell 上下文）。
+///
+/// 等价于 [`taken_mult_for_type_with_source`] 传 `None`，对齐 PoB2
+/// `output[<type>.."TakenHitMult"]`（L2263）。
 ///
 /// 公式：`TakenHitMult = max(0, (1 + Σinc/100) × Π(1 + more/100))`
 ///
@@ -481,11 +515,35 @@ pub fn calc_avoidance(db: &ModDb, cfg: &CalcConfig, energy_shield: f64) -> Avoid
 /// - `ElementalDamageTaken` / `ElementalDamageTakenWhenHit`（若为元素类型）
 ///
 /// 出处：agent-docs/recovery-charges-buffs.md §4.1；
-///       PoB2 `src/Modules/CalcDefence.lua` TakenHitMult 段。
+///       PoB2 `src/Modules/CalcDefence.lua` TakenHitMult 段（L2250-2263）。
 pub fn taken_mult_for_type(db: &ModDb, cfg: &CalcConfig, damage_type: DamageType) -> f64 {
+    taken_mult_for_type_with_source(db, cfg, damage_type, None)
+}
+
+/// 计算某伤害类型的受击承受乘数，可选叠加 Attack/Spell 来源上下文。
+///
+/// PoB2 `CalcDefence.lua` L2265-2269：在基础 hit 口径之上，对每个 `hitType ∈ {Attack,Spell}`
+/// 叠加 `<hitType>DamageTaken`（如 `AttackDamageTaken` / `SpellDamageTaken`）：
+/// ```text
+/// <hitType>TakenHitMult = max(0, (1 + (takenInc + Sum(INC,<hitType>DamageTaken))/100)
+///                                  × takenMore × More(<hitType>DamageTaken))
+/// ```
+/// `source = None` 时退化为基础 hit 口径（`<type>TakenHitMult`，无此层）。
+///
+/// 注：`<type><hitType>TakenHitMult` 在 PoB2 中与 `<hitType>TakenHitMult` 同值（L2269），
+/// 故本函数不区分两者。
+///
+/// 出处：PoB2 `src/Modules/CalcDefence.lua` L2265-2269；
+///       hitSourceList = {"Attack","Spell"}（L26）。
+pub fn taken_mult_for_type_with_source(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    source: Option<HitSource>,
+) -> f64 {
     let type_name = damage_type_mod_prefix(damage_type);
 
-    // INC 桶：全局 + 类型 + WhenHit + 类型WhenHit + (Elemental*)
+    // 基础 hit 桶（base + WhenHit + Elemental*），与 PoB2 takenInc/takenMore 一致。
     let mut inc_names = vec![
         ModName::from("DamageTaken"),
         ModName::from(format!("{type_name}DamageTaken")),
@@ -508,10 +566,34 @@ pub fn taken_mult_for_type(db: &ModDb, cfg: &CalcConfig, damage_type: DamageType
         more_names.push(ModName::from("ElementalDamageTakenWhenHit"));
     }
 
+    // Attack/Spell 上下文层：叠加 `<hitType>DamageTaken`（PoB2 L2266-2267）。
+    if let Some(src) = source {
+        let hit_prefix = src.prefix();
+        inc_names.push(ModName::from(format!("{hit_prefix}DamageTaken")));
+        more_names.push(ModName::from(format!("{hit_prefix}DamageTaken")));
+    }
+
     let inc = db.sum(ModType::Inc, cfg, &inc_names);
     let more = db.more(cfg, &more_names);
     let mult = (1.0 + inc / 100.0) * more;
     round(mult.max(0.0))
+}
+
+/// PoB2 默认 damageCategory（`"Average"`）口径的受击承受乘数：Attack 与 Spell 两层的均值。
+///
+/// PoB2 `CalcDefence.lua` L2429-2430（`damageCategoryConfig == "Average"`）：
+/// `takenMult = (<type>SpellTakenHitMult + <type>AttackTakenHitMult) / 2`。
+/// 无 `AttackDamageTaken`/`SpellDamageTaken` 词条时两层相等，退化为基础 hit 口径
+/// （[`taken_mult_for_type`]），故对现有回归输出保持一致。
+///
+/// PoE2 已移除法术抑制（`spellSuppressMult`）、deflect 罕用（`deflectMulti`），二者按
+/// 1.0 略去，与 PoB2 default 单一 hit 口径一致。
+///
+/// 出处：PoB2 `src/Modules/CalcDefence.lua` L2013（default `"Average"`）、L2422-2430。
+pub fn taken_mult_for_type_default(db: &ModDb, cfg: &CalcConfig, damage_type: DamageType) -> f64 {
+    let attack = taken_mult_for_type_with_source(db, cfg, damage_type, Some(HitSource::Attack));
+    let spell = taken_mult_for_type_with_source(db, cfg, damage_type, Some(HitSource::Spell));
+    round((attack + spell) / 2.0)
 }
 
 /// 计算持续伤害承受乘数（OverTime，区别于 WhenHit）。

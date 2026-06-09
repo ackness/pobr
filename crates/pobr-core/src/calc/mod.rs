@@ -30,11 +30,12 @@ pub use damage::{
     normalize_conversion, sum_avg,
 };
 pub use defence::{
-    AVOID_AILMENT_CAP, AVOID_HIT_CAP, AvoidanceResult, CritExtraReduction, DefenceOutput,
-    EsRecharge, TakenMultiSuite, armour_reduction, calc_avoidance, calc_crit_extra_reduction,
-    calc_defence, calc_es_recharge, calc_taken_multi_suite, enemy_crit_effect,
-    es_recharge_per_second, hit_chance, monster_hit_chance, taken_mult_for_type,
-    taken_mult_over_time,
+    ANY_TAKEN_REFLECT_ENABLED, AVOID_AILMENT_CAP, AVOID_HIT_CAP, AvoidanceResult,
+    CritExtraReduction, DefenceOutput, EsRecharge, HitSource, TakenMultiSuite, armour_reduction,
+    calc_avoidance, calc_crit_extra_reduction, calc_defence, calc_es_recharge,
+    calc_taken_multi_suite, enemy_crit_effect, es_recharge_per_second, hit_chance,
+    monster_hit_chance, taken_mult_for_type, taken_mult_for_type_default,
+    taken_mult_for_type_with_source, taken_mult_over_time,
 };
 pub use ehp::{
     EhpOptions, EhpResult, ResistanceSuite, calc_ehp, calc_ehp_with_opts, max_hit_for_type,
@@ -50,7 +51,7 @@ pub use minion::{
 };
 pub use offence::{
     MinimalInput, MinimalOutput, TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
-    calculate_minimal_vs_enemy,
+    calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy,
 };
 pub use output::{MinionOutput, OutputTable};
 pub use perform::perform;
