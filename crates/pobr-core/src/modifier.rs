@@ -141,7 +141,9 @@ impl Modifier {
             return false;
         }
 
-        if !self.keyword_flags.is_empty() && !self.keyword_flags.intersects(cfg.keyword_flags) {
+        // PoB2 Global.lua `MatchKeywordFlags`：mod 去掉 MatchAll 后为空 → 恒匹配；带 MatchAll →
+        // cfg 须含 mod 全部 keyword（ALL）；否则任一重叠即可（ANY）。当前全 NONE 下退化为恒真。
+        if !self.keyword_flags.matches_context(cfg.keyword_flags) {
             return false;
         }
 

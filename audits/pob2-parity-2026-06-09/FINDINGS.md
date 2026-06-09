@@ -21,8 +21,11 @@ CRITICAL + 全部 10 条 HIGH 已落地（每条对照 PoB2 源码二次核实�
 | 06-04 | MED | ✅ 已修复 | 减伤上限参数化（`DamageReductionMax` 词条），去 perform 提前 0.9 clamp |
 | 04-02 | MED | ❌ 否决（经验证据） | 审查建议去掉 gain-source base fallback；实测 **ninja_parity 进攻 @5% 从 23 跌到 22**，fallback 实为 load-bearing（conv_min 某路径未携对角线留存）→ **保留 fallback**，理论分析被一手 parity 数据反驳 |
 | 05-06 | LOW | ⊘ rejected（核查） | flat_chance 敌方 SelfXChance —— 核查判定不成立 |
-| 02-04, 04-04 | MED/LOW | ⊘ defer（无补丁） | 核查判 partly 但无安全增量补丁，留后续 |
-| 01-04, 01-06, 02-03, 02-05, 02-06, 03-03, 03-05, 03-06, 04-03, 05-04, 05-05, 05-07, 06-06 | MED/LOW | ◷ partly·补丁就绪未落地 | 13 条已产出 vetted 补丁方案；多为 latent/基础设施/架构性（如 04-03 ModName 体系、01-04 KeywordFlags MatchAll、02-06 support gem types）。鉴于 04-02 证明即便 confirmed 也可能回归，这批需**逐条 parity-gated 落地**，留作聚焦后续波次 |
+| 01-04 | LOW | ✅ 已修复 | 补 `KeywordFlags::matches_context`（PoB2 MatchKeywordFlags 三段：空集恒真/MatchAll 子集/否则 ANY）。当前全 NONE 下恒真、零行为变化、为 keyword 接线就绪 |
+| 03-05 | LOW | ⊘ rejected（复核） | 审查称 AoE 把 BASE AreaOfEffect 加入基径为臆造——**错**。PoB2 CalcOffence.lua:429 确实 `baseRadius += Sum("BASE","AreaOfEffect")`，PoBR 是逐字移植，**移除反而破坏 parity** → 不改 |
+| 04-03 | LOW | ⊘ rejected（复核·核心） | 审查称 AttackDamage/SpellDamage 独立 ModName 是缺陷——核查证 PoBR 解析名与聚合名两侧自洽、与 PoB2 聚合期等价 → 命名约定差异，不改；仅"补复合名解析"属可选增量，defer |
+| 02-04, 04-04 | MED/LOW | ⊘ defer（无补丁） | 核查判 partly 但无安全增量补丁 |
+| 01-06, 02-03, 02-05, 02-06, 03-03, 03-06, 05-04, 05-05, 05-07, 06-06 | MED/LOW | ◷ defer·补丁就绪 | 10 条 vetted 补丁存档，**当前均零数值/parity 影响**（latent/基础设施/跨层）：05-07(PoB2 无 DotDpsCap-Override 机制)、05-04(需活跃叠层模型)、05-05(traced-vs-enemy 重构)、06-06(攻击/法术·反射 takenMult 需跨函数 plumb)、02-03/02-05/02-06/03-03/01-06(消费侧/build 层未接线)。待各自启用依赖落地时逐条 parity-gated 接入 |
 
 > **关键教训**：parity harness 是理论分析的经验仲裁者。04-02 的一手 PoB2 公式分析看似正确，但 ninja_parity 真实 build 数据表明 PoBR 的 `conv_min` 在某转换路径未正确携带对角线留存，原 fallback 在补那个隐藏缺口——直接按"PoB2 理论"去掉反而倒退。后续每条落地都应跑 ninja_parity 验证。
 
