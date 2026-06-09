@@ -3,10 +3,11 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb};
 
 use super::ailment::{
-    AilmentSource, StackConfig, ailment_crit_chance, ailment_effect_mod, ailment_rate_mod,
-    apply_dot_dps_cap, bleed_traced, chill_traced, cross_type_source_hit,
-    electrocute_poise_buildup_traced, freeze_poise_buildup_traced, ignite_traced, poison_traced,
-    shock_traced, stack_potential, stacking_ailment_dps_traced,
+    AilmentSource, StackConfig, ailment_crit_chance, ailment_duration, ailment_effect_mod,
+    ailment_rate_mod, apply_dot_dps_cap, bleed_traced, chill_traced, cross_type_source_hit,
+    cross_type_source_hit_at_roll, electrocute_poise_buildup_traced, estimate_active_stacks,
+    freeze_poise_buildup_traced, ignite_traced, poison_traced, roll_average, shock_traced,
+    stack_potential, stacking_ailment_dps_traced,
 };
 use super::skill_mechanics::{
     calc_aoe, calc_cooldown, calc_life_cost, calc_mana_cost, calc_projectile_count,
@@ -556,6 +557,12 @@ fn fill_ailments(env: &mut Env) {
     let crit_chance = env.player.output.crit_chance;
     let never_from_crit = player.flag(cfg, ModName::from("AilmentsAreNeverFromCrit"));
 
+    // 活跃叠层估算所需的面板信号（PoB2 `ailmentStacks = hitChance × applyChance × duration × speed`）。
+    // `output.hit_chance` 已是 fraction（命中公式直接产出 0..1，见 defence::hit_chance）；
+    // 命中速率取 fill_mechanics 已写入的有效行动速率（无速率 → 0）。
+    let hit_chance_frac = env.player.output.hit_chance.clamp(0.0, 1.0);
+    let hit_speed = env.player.output.effective_action_rate.max(0.0);
+
     // 敌方异常阈值（怪物等级查表 × EnemyAilmentThreshold mod）；无敌人配置时回退裸表。
     let threshold = enemy_ailment_threshold_effective(enemy, cfg, env.enemy.level);
     // 敌方姿态阈值（冰冻/电击姿态积累用；与异常阈值平行，含 floor）。
@@ -566,28 +573,59 @@ fn fill_ailments(env: &mut Env) {
     let mut trace = TraceGraph::new();
 
     if phys_hit > 0.0 {
-        // over-stacking 暴击放大（PoB2 CalcOffence.lua L5144 `ailmentCritChance`）：叠层潜力 SP>1
-        // 时"至少一层暴击"概率高于裸暴击率；SP<=1（当前默认）退化为裸暴击，向后兼容。
-        let bleed_stack = resolve_stack_config(player, cfg, "Bleed");
-        let bleed_crit = ailment_crit_chance(crit_chance, stack_potential(&bleed_stack));
-        let source = AilmentSource::new(phys_hit, crit_mult, bleed_crit, never_from_crit);
+        // Pass 1（50% roll, 裸暴击）：取施加几率 + 持续时间，用于估算活跃叠层（PoB2 L5043-5046）。
+        let probe = AilmentSource::new(phys_hit, crit_mult, crit_chance, never_from_crit);
+        let (probe_out, _) = bleed_traced(&probe, player, enemy, cfg, &mut trace);
+        // 活跃叠层估算 → StackConfig（active_stacks 真正生效，05-01）。SP = active/max，可 > 1。
+        let bleed_stack = resolve_stack_config(
+            player,
+            cfg,
+            "Bleed",
+            hit_chance_frac,
+            probe_out.chance,
+            ailment_duration(AilmentType::Bleed, player, cfg),
+            hit_speed,
+        );
+        let sp = stack_potential(&bleed_stack);
+        // over-stacking 暴击放大（PoB2 L5144 `ailmentCritChance`）：SP>1 时"至少一层暴击"概率升高。
+        let bleed_crit = ailment_crit_chance(crit_chance, sp);
+        // RollAverage 高位偏移（05-04，PoB2 L5098-5125）：SP>1 时来源命中向高端内插。
+        let roll = roll_average(&bleed_stack);
+        let phys_hit_rolled =
+            cross_type_source_hit_at_roll(AilmentType::Bleed, components, player, cfg, roll);
+        // Pass 2：高 roll 来源 + over-stacking 暴击 → 最终伤害。
+        let source = AilmentSource::new(phys_hit_rolled, crit_mult, bleed_crit, never_from_crit);
         let (bleed, _) = bleed_traced(&source, player, enemy, cfg, &mut trace);
         // Lane C：AilmentEffect（MORE）× rateMod（Faster/Slower）应用到期望 DPS，再 clamp DotDpsCap。
         let bleed_dps = finalize_ailment_dps(bleed.expected_dps, "Bleed", player, enemy, cfg);
         env.player.output.bleed_dps = bleed_dps;
 
-        // Lane B：流血叠层（BleedStacks BASE）。复用上方已解析的 bleed_stack。
+        // Lane B：流血叠层（BleedStacks BASE × 活跃叠层）。复用上方已解析的 bleed_stack。
         let (bleed_stacked, _) =
             stacking_ailment_dps_traced(bleed_dps, &bleed_stack, AilmentType::Bleed, &mut trace);
         // 叠层 DPS 也吃全局 DotDpsCap（PoB2：DotDpsCap 是叠层后的绝对上限）。
-        env.player.output.bleed_stacked_dps = apply_dot_dps_cap(bleed_stacked, player, cfg);
+        env.player.output.bleed_stacked_dps = apply_dot_dps_cap(bleed_stacked);
         env.player.output.bleed_active_stacks = active_stacks_of(&bleed_stack);
     }
     if fire_hit > 0.0 {
-        // over-stacking 暴击放大（PoB2 L5144）：SP<=1（当前默认）退化为裸暴击。
-        let ignite_stack = resolve_stack_config(player, cfg, "Ignite");
-        let ignite_crit = ailment_crit_chance(crit_chance, stack_potential(&ignite_stack));
-        let source = AilmentSource::new(fire_hit, crit_mult, ignite_crit, never_from_crit);
+        // Pass 1（50% roll, 裸暴击）：施加几率 + 持续 → 活跃叠层估算。
+        let probe = AilmentSource::new(fire_hit, crit_mult, crit_chance, never_from_crit);
+        let (probe_out, _) = ignite_traced(&probe, player, enemy, cfg, threshold, &mut trace);
+        let ignite_stack = resolve_stack_config(
+            player,
+            cfg,
+            "Ignite",
+            hit_chance_frac,
+            probe_out.chance,
+            ailment_duration(AilmentType::Ignite, player, cfg),
+            hit_speed,
+        );
+        let sp = stack_potential(&ignite_stack);
+        let ignite_crit = ailment_crit_chance(crit_chance, sp);
+        let roll = roll_average(&ignite_stack);
+        let fire_hit_rolled =
+            cross_type_source_hit_at_roll(AilmentType::Ignite, components, player, cfg, roll);
+        let source = AilmentSource::new(fire_hit_rolled, crit_mult, ignite_crit, never_from_crit);
         let (ignite, _) = ignite_traced(&source, player, enemy, cfg, threshold, &mut trace);
         let ignite_dps = finalize_ailment_dps(ignite.expected_dps, "Ignite", player, enemy, cfg);
         env.player.output.ignite_dps = ignite_dps;
@@ -596,7 +634,7 @@ fn fill_ailments(env: &mut Env) {
         // 仅在携带 `IgniteStacks` 词条时 max_stacks>1；复用上方已解析的 ignite_stack。
         let (ignite_stacked, _) =
             stacking_ailment_dps_traced(ignite_dps, &ignite_stack, AilmentType::Ignite, &mut trace);
-        env.player.output.ignite_stacked_dps = apply_dot_dps_cap(ignite_stacked, player, cfg);
+        env.player.output.ignite_stacked_dps = apply_dot_dps_cap(ignite_stacked);
         env.player.output.ignite_active_stacks = active_stacks_of(&ignite_stack);
     }
     if cold_hit > 0.0 {
@@ -608,18 +646,32 @@ fn fill_ailments(env: &mut Env) {
         env.player.output.freeze_buildup_pct = freeze_buildup;
     }
     if chaos_phys_hit > 0.0 {
-        // over-stacking 暴击放大（PoB2 L5144）：SP<=1（当前默认）退化为裸暴击。
-        let poison_stack = resolve_stack_config(player, cfg, "Poison");
-        let poison_crit = ailment_crit_chance(crit_chance, stack_potential(&poison_stack));
-        let source = AilmentSource::new(chaos_phys_hit, crit_mult, poison_crit, never_from_crit);
+        // Pass 1（50% roll, 裸暴击）：施加几率 + 持续 → 活跃叠层估算。
+        let probe = AilmentSource::new(chaos_phys_hit, crit_mult, crit_chance, never_from_crit);
+        let (probe_out, _) = poison_traced(&probe, player, enemy, cfg, &mut trace);
+        let poison_stack = resolve_stack_config(
+            player,
+            cfg,
+            "Poison",
+            hit_chance_frac,
+            probe_out.chance,
+            ailment_duration(AilmentType::Poison, player, cfg),
+            hit_speed,
+        );
+        let sp = stack_potential(&poison_stack);
+        let poison_crit = ailment_crit_chance(crit_chance, sp);
+        let roll = roll_average(&poison_stack);
+        let chaos_phys_rolled =
+            cross_type_source_hit_at_roll(AilmentType::Poison, components, player, cfg, roll);
+        let source = AilmentSource::new(chaos_phys_rolled, crit_mult, poison_crit, never_from_crit);
         let (poison, _) = poison_traced(&source, player, enemy, cfg, &mut trace);
         let poison_dps = finalize_ailment_dps(poison.expected_dps, "Poison", player, enemy, cfg);
         env.player.output.poison_dps = poison_dps;
 
-        // Lane B：中毒叠层（PoisonStacks BASE）。复用上方已解析的 poison_stack。
+        // Lane B：中毒叠层（PoisonStacks BASE × 活跃叠层）。复用上方已解析的 poison_stack。
         let (poison_stacked, _) =
             stacking_ailment_dps_traced(poison_dps, &poison_stack, AilmentType::Poison, &mut trace);
-        env.player.output.poison_stacked_dps = apply_dot_dps_cap(poison_stacked, player, cfg);
+        env.player.output.poison_stacked_dps = apply_dot_dps_cap(poison_stacked);
         env.player.output.poison_active_stacks = active_stacks_of(&poison_stack);
     }
     if lightning_hit > 0.0 {
@@ -655,22 +707,39 @@ fn finalize_ailment_dps(
     let effect = ailment_effect_mod(player, cfg);
     let rate = ailment_rate_mod(player, enemy, cfg, ailment_name);
     let scaled = expected_dps * effect * rate;
-    apply_dot_dps_cap(scaled, player, cfg)
+    apply_dot_dps_cap(scaled)
 }
 
-/// 从 ModDb 解析某 damaging ailment 的叠层配置（`<Ailment>Stacks` BASE → max_stacks）。
+/// 从 ModDb 解析某 damaging ailment 的叠层配置（`<Ailment>Stacks` BASE → max_stacks）+
+/// 估算平均活跃叠层数（05-01：`ailmentStacks = hitChance × applyChance × duration × speed`）。
 ///
-/// 无 `<Ailment>Stacks` 词条时默认 max_stacks=1（不叠层，stacked == 单层 DPS，向后兼容）。
-/// active_stacks 暂取 0（由 `stacking_ailment_dps` 回退到 max_stacks 作上界）；精细活跃
-/// 层数（命中频率 × 持续时间）待 Build 层完整 stacking 实现接入。
-fn resolve_stack_config(db: &ModDb, cfg: &CalcConfig, ailment: &str) -> StackConfig {
+/// - `max_stacks`：`1 + Σ<Ailment>Stacks BASE`（PoB2 仅在 `<Ailment>CanStack` 时 >1，此处用
+///   `<Ailment>Stacks` 词条存在与否近似；无词条时 max_stacks=1，不叠层）。
+/// - `active_stacks`：[`estimate_active_stacks`] 估算值。**面板信号缺失（无攻击/施法速率，
+///   如纯单元 build）时为 0**，由 [`active_stacks_of`]/`stacking_ailment_dps` 回退到 max_stacks
+///   作上界（= 旧的"恒满层"占位口径，向后兼容）。有速率时估算值真正生效，使
+///   StackPotential 可 > 1，触发 over-stacking 暴击放大与 RollAverage 高位偏移。
+///
+/// 出处：PoB2 `CalcOffence.lua` L5021-5069。
+#[allow(clippy::too_many_arguments)]
+fn resolve_stack_config(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    ailment: &str,
+    hit_chance_frac: f64,
+    apply_chance_frac: f64,
+    duration_secs: f64,
+    hit_speed: f64,
+) -> StackConfig {
     let base_stacks = db.sum(
         ModType::Base,
         cfg,
         &[ModName::from(format!("{ailment}Stacks"))],
     );
     let max_stacks = (1.0 + base_stacks).max(1.0) as u32;
-    StackConfig::new(max_stacks, 0.0)
+    let active_stacks =
+        estimate_active_stacks(hit_chance_frac, apply_chance_frac, duration_secs, hit_speed);
+    StackConfig::new(max_stacks, active_stacks)
 }
 
 /// 估算活跃层数（面板口径）：active_stacks>0 取之，否则取 max_stacks 作上界。

@@ -3,12 +3,13 @@ use pobr_core::calc::ailment::{
     ailment_rate_mod, apply_dot_dps_cap, apply_effect_and_rate_mod,
     apply_effect_and_rate_mod_traced, apply_effect_mod_to_instance, apply_rate_mod_to_instance,
     bleed_instance, bleed_traced, chill_effect, chill_effect_with_mods, chill_traced,
-    corrupted_blood_instance, cross_type_source_hit, dps_with_effect_rate_cap,
-    dps_with_effect_rate_cap_traced, effmult_for_ailment, electrocute_poise_buildup,
-    electrocute_poise_buildup_traced, flat_chance, freeze_poise_buildup,
-    freeze_poise_buildup_traced, ignite_instance, ignite_traced, player_ailment_threshold,
-    poison_instance, roll_average, shock_effect, stack_potential, stacking_ailment_dps,
-    stacking_ailment_dps_traced, threshold_derived_chance, weighted_source_damage,
+    corrupted_blood_instance, cross_type_source_hit, cross_type_source_hit_at_roll,
+    dps_with_effect_rate_cap, dps_with_effect_rate_cap_traced, effmult_for_ailment,
+    electrocute_poise_buildup, electrocute_poise_buildup_traced, estimate_active_stacks,
+    flat_chance, freeze_poise_buildup, freeze_poise_buildup_traced, ignite_instance, ignite_traced,
+    player_ailment_threshold, poison_instance, roll_average, shock_effect, stack_potential,
+    stacking_ailment_dps, stacking_ailment_dps_traced, threshold_derived_chance,
+    weighted_source_damage,
 };
 use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph, TraceOperation};
 use pobr_data::prelude::*;
@@ -637,6 +638,53 @@ fn roll_average_shifted_high_when_overflow() {
     );
 }
 
+/// 05-01 活跃叠层估算：`stacks = hitChance × applyChance × duration × speed`。
+#[test]
+fn estimate_active_stacks_is_product_of_signals() {
+    // 1.0 命中 × 1.0 施加 × 5s 持续 × 4/s 速率 = 20 层。
+    let s = estimate_active_stacks(1.0, 1.0, 5.0, 4.0);
+    assert!((s - 20.0).abs() < 1e-6, "1×1×5×4 = 20, got {s}");
+
+    // 部分命中/施加按比例缩放：0.9 × 0.5 × 4 × 2 = 3.6。
+    let s2 = estimate_active_stacks(0.9, 0.5, 4.0, 2.0);
+    assert!((s2 - 3.6).abs() < 1e-6, "0.9×0.5×4×2 = 3.6, got {s2}");
+}
+
+/// 任一信号缺失（无速率 / 无持续 / 无命中 / 无施加几率）时返回 0（回退到 max_stacks 上界）。
+#[test]
+fn estimate_active_stacks_zero_when_any_signal_missing() {
+    assert_eq!(estimate_active_stacks(1.0, 1.0, 5.0, 0.0), 0.0, "no speed");
+    assert_eq!(
+        estimate_active_stacks(1.0, 1.0, 0.0, 4.0),
+        0.0,
+        "no duration"
+    );
+    assert_eq!(estimate_active_stacks(0.0, 1.0, 5.0, 4.0), 0.0, "no hit");
+    assert_eq!(estimate_active_stacks(1.0, 0.0, 5.0, 4.0), 0.0, "no chance");
+}
+
+/// 05-04 RollAverage 高位偏移：`cross_type_source_hit_at_roll` 在 [min,max] 上内插。
+/// roll=50 退化为区间中点（= `cross_type_source_hit`）；roll>50 向高端偏移。
+#[test]
+fn cross_type_source_hit_shifts_with_roll() {
+    use pobr_core::calc::DamageComponent;
+    let player = ModDb::new();
+    let cfg = CalcConfig::attack();
+    // 物理分量 [600, 1400]，跨度 800。
+    let components = vec![DamageComponent::new(DamageType::Physical, 600.0, 1400.0)];
+
+    // roll=50 → 中点 1000（与 cross_type_source_hit 一致）。
+    let mid = cross_type_source_hit_at_roll(AilmentType::Bleed, &components, &player, &cfg, 50.0);
+    let legacy = cross_type_source_hit(AilmentType::Bleed, &components, &player, &cfg);
+    assert!((mid - 1000.0).abs() < 1e-6, "roll 50 → 1000, got {mid}");
+    assert!((mid - legacy).abs() < 1e-6, "roll 50 == legacy avg");
+
+    // roll=75 → 600 + 800×0.75 = 1200（向高端偏移）。
+    let high = cross_type_source_hit_at_roll(AilmentType::Bleed, &components, &player, &cfg, 75.0);
+    assert!((high - 1200.0).abs() < 1e-6, "roll 75 → 1200, got {high}");
+    assert!(high > mid, "high roll shifts source hit up");
+}
+
 /// 叠层 DPS traced：节点写入 TraceGraph，DPS 与 non-traced 一致。
 #[test]
 fn stacking_ailment_dps_traced_writes_trace() {
@@ -992,10 +1040,8 @@ fn cross_type_source_hit_empty_components() {
 /// 出处：PoB2 `ailmentDPSCapped = m_min(ailmentDPSUncapped, data.misc.DotDpsCap)`。
 #[test]
 fn apply_dot_dps_cap_passthrough_below_cap() {
-    let cfg = CalcConfig::attack();
-    let db = ModDb::new();
     let dps = 1_000_000.0;
-    let capped = apply_dot_dps_cap(dps, &db, &cfg);
+    let capped = apply_dot_dps_cap(dps);
     assert!(
         (capped - dps).abs() < 1.0,
         "1M DPS < cap → unchanged, got {capped}"
@@ -1008,30 +1054,26 @@ fn apply_dot_dps_cap_passthrough_below_cap() {
 #[test]
 fn apply_dot_dps_cap_clamps_huge_dps() {
     use pobr_data::constants::DOT_DPS_CAP;
-    let cfg = CalcConfig::attack();
-    let db = ModDb::new();
     let dps = DOT_DPS_CAP + 1_000_000.0;
-    let capped = apply_dot_dps_cap(dps, &db, &cfg);
+    let capped = apply_dot_dps_cap(dps);
     assert!(
         (capped - DOT_DPS_CAP).abs() < 1.0,
         "huge DPS clamped to DOT_DPS_CAP={DOT_DPS_CAP}, got {capped}"
     );
 }
 
-/// `apply_dot_dps_cap` 支持 override：玩家 mod 中 `DotDpsCap` Base 覆写时使用低值截断。
+/// 05-07 硬化：`apply_dot_dps_cap` 始终用常量 `DOT_DPS_CAP`，**忽略 modDB 中的
+/// `DotDpsCap`**（PoB2 中该 cap 是 `Data.lua` 硬编码常量，无 Override/modDB 机制）。
 ///
-/// 出处：PoB2 `env.modDB:Override(nil, "DotDpsCap")` → 可被 config 覆盖。
+/// 出处：PoB2 全 src `m_min(_, data.misc.DotDpsCap)`，grep 无 `Override(..,"DotDpsCap")`。
 #[test]
-fn apply_dot_dps_cap_respects_override() {
-    let cfg = CalcConfig::attack();
-    let mut db = ModDb::new();
-    // 设置较低的自定义 DotDpsCap 覆写（例如 10000）
-    db.add_mod(Modifier::number("DotDpsCap", ModType::Base, 10_000.0));
-    let dps = 50_000.0;
-    let capped = apply_dot_dps_cap(dps, &db, &cfg);
+fn apply_dot_dps_cap_ignores_moddb_dotdpscap() {
+    // modDB 中即便写入低值 DotDpsCap，也不影响 cap（PoB2-faithful：始终用常量）。
+    let dps = 50_000.0; // 远低于 DOT_DPS_CAP
+    let capped = apply_dot_dps_cap(dps);
     assert!(
-        (capped - 10_000.0).abs() < 1.0,
-        "custom cap 10000 → clamped to 10000, got {capped}"
+        (capped - dps).abs() < 1.0,
+        "50k < DOT_DPS_CAP → 原样返回（modDB DotDpsCap 不生效），got {capped}"
     );
 }
 
@@ -1041,15 +1083,13 @@ fn apply_dot_dps_cap_respects_override() {
 #[test]
 fn dps_with_effect_rate_cap_applies_cap() {
     use pobr_data::constants::DOT_DPS_CAP;
-    let cfg = CalcConfig::attack();
-    let db = ModDb::new();
 
     // 设置一个超大 base_dps，确保 effectMod × rateMod 后超过 cap
     let base_dps = DOT_DPS_CAP * 0.6; // 60% of cap
     let effect_mod = 2.0; // × 2.0 → 120% of cap → 超 cap
     let rate_mod = 1.0;
 
-    let result = dps_with_effect_rate_cap(base_dps, effect_mod, rate_mod, &db, &cfg);
+    let result = dps_with_effect_rate_cap(base_dps, effect_mod, rate_mod);
     assert!(
         (result - DOT_DPS_CAP).abs() < 1.0,
         "base × 2.0 exceeds cap → clamped to DOT_DPS_CAP, got {result}"
@@ -1062,14 +1102,11 @@ fn dps_with_effect_rate_cap_applies_cap() {
 #[test]
 fn dps_with_effect_rate_cap_traced_adds_cap_node_when_truncated() {
     use pobr_data::constants::DOT_DPS_CAP;
-    let cfg = CalcConfig::attack();
-    let db = ModDb::new();
     let mut trace = TraceGraph::new();
 
     // 超 cap 的情况
     let base_dps = DOT_DPS_CAP * 0.7;
-    let (result, node) =
-        dps_with_effect_rate_cap_traced(base_dps, 2.0, 1.0, "Ignite", &db, &cfg, &mut trace);
+    let (result, node) = dps_with_effect_rate_cap_traced(base_dps, 2.0, 1.0, "Ignite", &mut trace);
 
     // 结果截断到 cap
     assert!(
@@ -1086,12 +1123,10 @@ fn dps_with_effect_rate_cap_traced_adds_cap_node_when_truncated() {
 /// `dps_with_effect_rate_cap_traced`：DPS 未被截断时，trace 中**不应**有 DotDpsCap 节点。
 #[test]
 fn dps_with_effect_rate_cap_traced_no_cap_node_when_not_truncated() {
-    let cfg = CalcConfig::attack();
-    let db = ModDb::new();
     let mut trace = TraceGraph::new();
 
     // 很小的 base_dps，不会超 cap
-    let (_, _) = dps_with_effect_rate_cap_traced(100.0, 1.0, 1.0, "Bleed", &db, &cfg, &mut trace);
+    let (_, _) = dps_with_effect_rate_cap_traced(100.0, 1.0, 1.0, "Bleed", &mut trace);
 
     let has_cap = trace.nodes().iter().any(|n| n.label.contains("DotDpsCap"));
     assert!(!has_cap, "no cap node when DPS is below DOT_DPS_CAP");

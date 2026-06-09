@@ -152,6 +152,23 @@ fn scale_duration(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[ModName]) ->
     base * (1.0 + inc / 100.0)
 }
 
+/// 某伤害异常的有效持续时间（秒）：基础时长（[`GameConstants`]）吃对应 duration mod。
+///
+/// 与各 `*_instance` 内部 `scale_duration` 同源；单独导出供活跃叠层估算
+/// （[`estimate_active_stacks`] 的 `duration_secs` 参数）在构造实例前取用。
+/// 仅支持伤害异常（Bleed/Ignite/Poison）；其余类型返回 0。
+pub fn ailment_duration(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let gc = GameConstants::poe2();
+    let (base, specific) = match ailment {
+        AilmentType::Bleed => (gc.bleed_base_duration, "BleedDuration"),
+        AilmentType::Ignite => (gc.ignite_base_duration, "IgniteDuration"),
+        AilmentType::Poison => (gc.poison_base_duration, "PoisonDuration"),
+        _ => return 0.0,
+    };
+    let names = [ModName::from(specific), ModName::from("AilmentDuration")];
+    round(scale_duration(base, db, cfg, &names))
+}
+
 /// 流血实例：magnitude = 15% pre-mitigation 物理命中/秒，持续 5s。
 pub fn bleed_instance(
     pre_mitigation_phys_hit: f64,
@@ -979,6 +996,44 @@ impl StackConfig {
     }
 }
 
+/// 估算平均活跃叠层数（面板口径，PoB2 `ailmentStacks`）：
+/// `ailmentStacks ≈ hitChance × applyChance × duration × hitSpeed`
+/// （无 cooldown 的攻击/法术单次施放分支，CalcOffence.lua L5046 + L5053）。
+///
+/// - `hit_chance_frac` = 命中几率（fraction，`output.hit_chance/100`）；
+/// - `apply_chance_frac` = 该次命中施加异常的几率（fraction，hit/crit 加权后的 `ailmentChance`）；
+/// - `duration_secs` = 该异常的有效持续时间（已吃 duration mod / rateMod）；
+/// - `hit_speed` = 每秒命中次数（`output.effective_action_rate`，actions/s）。
+///
+/// 返回估算叠层数（可 < 1，可 > max_stacks——溢出由 [`stack_potential`] 不 clamp 体现）。
+/// 任一信号缺失（速率/持续/命中/施加几率为 0）时返回 0.0，调用方据此回退到 max_stacks 上界
+/// （= 旧的"恒满层"占位口径，向后兼容无速率的纯单元 build）。
+///
+/// **defer**：PoB2 还含 `skillData.dpsMultiplier`（多次命中技能）、cooldown 分支
+/// （`duration / max(cooldown, hitTime)`）、totem 倍数、`Multiplier:<Ailment>Stacks` config 覆写。
+/// 本估算只覆盖最常见的无 cooldown 单次施放，其余维度延后（缺 cooldown/dpsMultiplier 等面板信号）。
+///
+/// 出处：PoB2 `CalcOffence.lua` L5046-5053。
+pub fn estimate_active_stacks(
+    hit_chance_frac: f64,
+    apply_chance_frac: f64,
+    duration_secs: f64,
+    hit_speed: f64,
+) -> f64 {
+    if hit_speed <= 0.0
+        || duration_secs <= 0.0
+        || hit_chance_frac <= 0.0
+        || apply_chance_frac <= 0.0
+    {
+        return 0.0;
+    }
+    let stacks = hit_chance_frac.clamp(0.0, 1.0)
+        * apply_chance_frac.clamp(0.0, 1.0)
+        * duration_secs
+        * hit_speed;
+    (stacks).max(0.0)
+}
+
 /// 叠层 StackPotential：活跃叠层 vs 最大叠层的比例。
 ///
 /// `stack_potential = active_stacks / max_stacks`。PoB2（`CalcOffence.lua` L5069）**不 clamp**，
@@ -1235,7 +1290,27 @@ pub fn cross_type_source_hit(
     player: &ModDb,
     cfg: &CalcConfig,
 ) -> f64 {
+    // 默认 roll = 50%（区间中点）→ `(min+max)/2`，向后兼容旧的固定 50% roll 口径。
+    cross_type_source_hit_at_roll(ailment, damage_components, player, cfg, 50.0)
+}
+
+/// 跨类型来源命中，按指定 RollAverage（百分比 0..100）在每分量的 `[min, max]` 上内插：
+/// `hit = min + (max - min) * roll_pct / 100`（PoB2 `hitAvg = hitMin + (hitMax-hitMin)*rollAvg/100`，
+/// CalcOffence.lua L5125）。
+///
+/// `roll_pct = 50` 退化为区间中点（= [`cross_type_source_hit`]，向后兼容）；叠层溢出
+/// （StackPotential > 1）时 `roll_pct > 50`，来源命中向高位偏移（05-04 RollAverage）。
+///
+/// 出处：PoB2 `CalcOffence.lua` L5125 + 跨类型 `<Type>Can<Ailment>` 旗标（L5453-5456）。
+pub fn cross_type_source_hit_at_roll(
+    ailment: AilmentType,
+    damage_components: &[DamageComponent],
+    player: &ModDb,
+    cfg: &CalcConfig,
+    roll_pct: f64,
+) -> f64 {
     let ailment_name = ailment_mod_name(ailment);
+    let roll = (roll_pct / 100.0).clamp(0.0, 1.0);
     let mut total = 0.0;
     for component in damage_components {
         let dt = component.damage_type;
@@ -1248,7 +1323,7 @@ pub fn cross_type_source_hit(
                 )),
             )
         {
-            total += (component.min + component.max) / 2.0;
+            total += component.min + (component.max - component.min) * roll;
         }
     }
     total
@@ -1285,24 +1360,19 @@ fn ailment_mod_name(ailment: AilmentType) -> &'static str {
 // Feature 3: DotDpsCap
 // ---------------------------------------------------------------------------
 
-/// 应用全局 DoT DPS 上限：`min(dps, DotDpsCap_override or DOT_DPS_CAP)`。
+/// 应用全局 DoT DPS 上限：`min(dps, DOT_DPS_CAP)`。
 ///
-/// `DotDpsCap` 可以被 `Override` 修正器重写（PoB2 `env.modDB:Override(nil, "DotDpsCap")`），
-/// 此函数读取 player `ModDb` 中 `DotDpsCap` 的 `Override` 值（Base 覆写口径：仅取 max）。
-/// 无覆写时使用常量 `DOT_DPS_CAP`。
+/// **05-07 硬化（PoB2-faithful）**：PoB2 中 `DotDpsCap` 是 `Data.lua` 硬编码常量
+/// （`data.misc.DotDpsCap = 35791394`），**无任何 modDB / Override 机制**——所有
+/// `m_min(_, data.misc.DotDpsCap)` 调用点（CalcOffence/Calcs/BuildDisplayStats）都直接读常量。
+/// 因此移除原先的 modDB `DotDpsCap` Base 读取（PoE1 风格的伪 override，在 PoE2 不存在），
+/// 始终用常量 `DOT_DPS_CAP`。
 ///
 /// 出处：PoB2 `CalcOffence.lua` l.5193
 ///   `local ailmentDPSCapped = m_min(ailmentDPSUncapped, data.misc.DotDpsCap)`
-///   + `Data.lua` `DotDpsCap = 35791394`。
-pub fn apply_dot_dps_cap(dps: f64, player: &ModDb, cfg: &CalcConfig) -> f64 {
-    // Override: 若 mod_db 中存在 DotDpsCap 的 Base 覆写，取其最大值（PoB2 Override 语义）。
-    let override_cap = player.sum(ModType::Base, cfg, &[ModName::from("DotDpsCap")]);
-    let cap = if override_cap > 0.0 {
-        override_cap
-    } else {
-        DOT_DPS_CAP
-    };
-    round(dps.min(cap))
+///   + `Data.lua` `DotDpsCap = 35791394`（grep 全 src 无 `Override(..,"DotDpsCap")`）。
+pub fn apply_dot_dps_cap(dps: f64) -> f64 {
+    round(dps.min(DOT_DPS_CAP))
 }
 
 /// 同时应用 effectMod + rateMod + DotDpsCap 到最终 DPS（full pipeline）。
@@ -1313,15 +1383,9 @@ pub fn apply_dot_dps_cap(dps: f64, player: &ModDb, cfg: &CalcConfig) -> f64 {
 ///
 /// 调用方在叠层（× activeAilments）和 effMult（×敌方减伤）后再调用本函数，
 /// 或在 effMult 之后调用（两种顺序最终结果相同，因为 DotDpsCap 是全局绝对上限）。
-pub fn dps_with_effect_rate_cap(
-    base_dps: f64,
-    effect_mod: f64,
-    rate_mod: f64,
-    player: &ModDb,
-    cfg: &CalcConfig,
-) -> f64 {
+pub fn dps_with_effect_rate_cap(base_dps: f64, effect_mod: f64, rate_mod: f64) -> f64 {
     let uncapped = round(base_dps * effect_mod * rate_mod);
-    apply_dot_dps_cap(uncapped, player, cfg)
+    apply_dot_dps_cap(uncapped)
 }
 
 /// Traced 版全 pipeline：effectMod + rateMod + DotDpsCap，写入 TraceGraph。
@@ -1332,12 +1396,10 @@ pub fn dps_with_effect_rate_cap_traced(
     effect_mod: f64,
     rate_mod: f64,
     ailment_name: &str,
-    player: &ModDb,
-    cfg: &CalcConfig,
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
     let uncapped = round(base_dps * effect_mod * rate_mod);
-    let capped = apply_dot_dps_cap(uncapped, player, cfg);
+    let capped = apply_dot_dps_cap(uncapped);
     let label = format!("{ailment_name}DPSFull");
     let node = trace.add_node(&label, capped, TraceOperation::Aggregate);
 

@@ -622,6 +622,75 @@ fn perform_bleed_stacking_multiplies_dps() {
     assert!((stacked.player.output.bleed_stacked_dps - one_layer * 3.0).abs() < 1e-3);
 }
 
+/// 05-01/05-04 综合：高攻速 + 暴击的流血 build → StackPotential > 1，触发 over-stacking
+/// 暴击放大 + RollAverage 高位偏移，bleed_dps 高于"无速率（SP=1）"的同配置基线。
+///
+/// 无速率 build：`effective_action_rate=0` → active_stacks 估算为 0 → SP=1 → 裸暴击 + 50% roll。
+/// 有速率 build：active_stacks = hit×chance×duration×speed ≫ max_stacks(=1) → SP≫1 →
+/// 暴击份额 `1-(1-c)^SP`（接近全暴击）+ roll 向高端偏移 → magnitude 明显更高。
+#[test]
+fn perform_overstacking_amplifies_bleed_dps_with_speed_and_crit() {
+    // 物理击中区间 [400, 1600]（min≠max，使 RollAverage 内插可见）。
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 400.0,
+        hit_max: 1600.0,
+        action_rate: 1.6, // 攻速基底（仅"有速率"分支用；无速率分支置 0）
+        ..ActorBaseStats::default()
+    };
+    let crit_bleed_mods = || {
+        vec![
+            Modifier::number("BleedChance", ModType::Base, 100.0),
+            Modifier::number("CriticalStrikeChance", ModType::Base, 50.0),
+            Modifier::number("CriticalStrikeMultiplier", ModType::Base, 100.0),
+        ]
+    };
+
+    // 基线：无攻速（action_rate=0）→ SP=1（active_stacks 估算为 0，回退 max=1）。
+    let no_speed = ActorBaseStats {
+        action_rate: 0.0,
+        ..base
+    };
+    let mut baseline = {
+        let mut actor = Actor::new(1, no_speed);
+        actor.mod_db.add_list(crit_bleed_mods());
+        let mut env = Env::new(actor);
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env
+    };
+    perform(&mut baseline).unwrap();
+    let baseline_dps = baseline.player.output.bleed_dps;
+    assert!(baseline_dps > 0.0, "baseline bleed should apply");
+    // 无速率 → active_stacks 回退到 max_stacks=1（SP=1，无放大）。
+    assert_eq!(
+        baseline.player.output.bleed_active_stacks, 1.0,
+        "no speed → active_stacks falls back to max=1"
+    );
+
+    // SP>1：有攻速 → active_stacks ≫ 1 → over-stacking 放大生效。
+    let mut overstack = {
+        let mut actor = Actor::new(1, base);
+        actor.mod_db.add_list(crit_bleed_mods());
+        let mut env = Env::new(actor);
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env
+    };
+    perform(&mut overstack).unwrap();
+    let overstack_dps = overstack.player.output.bleed_dps;
+
+    // active_stacks 应远大于 1（hit≈1 × chance=1 × 5s × ~1.6/s ≈ 8 层，max=1 → SP≈8）。
+    assert!(
+        overstack.player.output.bleed_active_stacks > 1.0,
+        "speed → active_stacks > 1 (SP>1), got {}",
+        overstack.player.output.bleed_active_stacks
+    );
+    // over-stacking 暴击放大 + RollAverage 高位偏移 → 单层 magnitude（bleed_dps）严格更高。
+    assert!(
+        overstack_dps > baseline_dps,
+        "SP>1 should amplify bleed_dps: overstack {overstack_dps} vs baseline {baseline_dps}"
+    );
+}
+
 /// 点燃叠层接入（P1-2）：默认 max_stacks=1（stacked==单层）；`IgniteStacks` BASE → 叠层翻倍。
 #[test]
 fn perform_ignite_stacking_multiplies_dps() {
