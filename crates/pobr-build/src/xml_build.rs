@@ -104,13 +104,43 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     Ok(build)
 }
 
+/// PoB2 `ConfigOptions.lua` 中 `defaultState = true` 的布尔型配置项映射表：
+/// `(XML <Input name>, 计算侧条件变量名)`。
+///
+/// PoB2 语义：当某 `<Input>` 在 build XML 中**被省略**时，其值取 `defaultState`
+/// 而非一律 false。多数布尔条件默认 false（与 PoBR 全 false 回退一致），但下列项默认
+/// **true**，须在导入层补默认值（finding 01-06）。
+///
+/// 这些条目的 XML `name` 不全带 `condition` 前缀，故无法走通用 `strip_prefix("condition")`
+/// 路径——逐条按 PoB2 `apply` 函数实际设置的 `Condition:` 变量名映射。CD-bypass 类
+/// （`*BypassCD`）PoB2 未设 `Condition:`，PoBR 计算侧也尚未消费，按原 var 名存入以保留语义。
+///
+/// 出处：vendor `src/Modules/ConfigOptions.lua` `defaultState = true` 各条目
+///   （targetBrandedEnemy:277, ConcPathBypassCD:309, inDemonForm:345,
+///    FlickerStrikeBypassCD:387, VigilantStrikeBypassCD:700,
+///    companionInPresence:1012, conditionChampionIntimidate:1403）。
+const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
+    ("targetBrandedEnemy", "TargetingBrandedEnemy"),
+    ("inDemonForm", "DemonForm"),
+    ("companionInPresence", "CompanionInPresence"),
+    ("conditionChampionIntimidate", "ChampionIntimidate"),
+    ("ConcPathBypassCD", "ConcPathBypassCD"),
+    ("FlickerStrikeBypassCD", "FlickerStrikeBypassCD"),
+    ("VigilantStrikeBypassCD", "VigilantStrikeBypassCD"),
+];
+
 /// 抽取 `<Config>` 的 `<Input name boolean|number>` → (conditions, multipliers)。
 /// 名称去 `condition`/`multiplier` 前缀作为变量名（如 `conditionEnemyChilled` → `EnemyChilled`），
 /// 与计算侧 `ModTag::Condition`/`Multiplier` 变量约定对齐。
+///
+/// **省略=默认值**（PoB2 `defaultState`）：XML 中出现的 `<Input>` 按其值；未出现的
+/// 布尔条件中，[`DEFAULT_TRUE_CONDITIONS`] 列出的项补 `true`（其余仍由计算侧回退 false）。
 fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<String>) {
     let mut conditions = HashMap::new();
     let mut multipliers = HashMap::new();
     let mut global_texts = Vec::new();
+    // 记录 XML 中**出现过**的 `<Input name>`，用于判定哪些 defaultState 项被省略。
+    let mut seen_names: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
     loop {
@@ -119,6 +149,7 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
                 let Some(name) = attr_value(&e, b"name") else {
                     continue;
                 };
+                seen_names.insert(name.clone());
                 if let Some(var) = name.strip_prefix("condition")
                     && let Some(b) = attr_value(&e, b"boolean")
                 {
@@ -129,6 +160,12 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
                     // PoB2 ConfigOptions：`useXCharges` 复选框 → `Condition:UseXCharges` FLAG。
                     // 充能满层默认（current = max）仅在该条件为真时生效（见 charge_multipliers_panel_default）。
                     conditions.insert(charge_cond.to_string(), b == "true");
+                } else if let Some((_, cond_var)) =
+                    DEFAULT_TRUE_CONDITIONS.iter().find(|(n, _)| *n == name)
+                    && let Some(b) = attr_value(&e, b"boolean")
+                {
+                    // defaultState=true 项**显式出现**时按其值（不再走默认补填）。
+                    conditions.insert((*cond_var).to_string(), b == "true");
                 } else if let Some(var) = name.strip_prefix("multiplier")
                     && let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
                 {
@@ -149,6 +186,14 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
             _ => {}
         }
     }
+
+    // PoB2 `defaultState = true`：XML 省略的项补 true（已显式出现的不覆盖）。
+    for (xml_name, cond_var) in DEFAULT_TRUE_CONDITIONS {
+        if !seen_names.contains(*xml_name) {
+            conditions.entry((*cond_var).to_string()).or_insert(true);
+        }
+    }
+
     (conditions, multipliers, global_texts)
 }
 
@@ -826,5 +871,78 @@ Adds 47 to 86 Physical Damage
             parse_build("<NotPoB><Build/></NotPoB>"),
             Err(XmlError::NotPobRoot(_))
         ));
+    }
+
+    // ── Config defaultState 导入（finding 01-06）─────────────────────────────
+
+    #[test]
+    fn omitted_default_true_conditions_fill_to_true() {
+        // SAMPLE 无 <Config> → 所有 defaultState=true 项应补 true（PoB2「省略=默认值」）。
+        let build = parse_build(SAMPLE).expect("parse");
+        for (_, cond_var) in DEFAULT_TRUE_CONDITIONS {
+            assert_eq!(
+                build.config.conditions.get(*cond_var).copied(),
+                Some(true),
+                "省略的 defaultState=true 条件 {cond_var} 应补 true"
+            );
+        }
+    }
+
+    #[test]
+    fn explicit_false_overrides_default_true() {
+        // XML 显式给出 inDemonForm=false → 不应被默认 true 覆盖。
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="1" className="Witch"/>
+    <Config>
+        <Input name="inDemonForm" boolean="false"/>
+        <Input name="conditionChampionIntimidate" boolean="false"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        assert_eq!(
+            build.config.conditions.get("DemonForm").copied(),
+            Some(false)
+        );
+        assert_eq!(
+            build.config.conditions.get("ChampionIntimidate").copied(),
+            Some(false)
+        );
+        // 未出现的其余 defaultState=true 项仍补 true。
+        assert_eq!(
+            build.config.conditions.get("CompanionInPresence").copied(),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn explicit_true_default_condition_maps_to_calc_var() {
+        // 显式 targetBrandedEnemy=true → 计算侧条件名 TargetingBrandedEnemy=true。
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="1" className="Witch"/>
+    <Config>
+        <Input name="targetBrandedEnemy" boolean="true"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        assert_eq!(
+            build
+                .config
+                .conditions
+                .get("TargetingBrandedEnemy")
+                .copied(),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn ordinary_omitted_conditions_remain_unset() {
+        // 非 defaultState=true 的普通条件省略时仍不入表（计算侧回退 false）。
+        let build = parse_build(SAMPLE).expect("parse");
+        assert!(
+            !build.config.conditions.contains_key("EnemyChilled"),
+            "普通条件省略时不应被填默认值"
+        );
     }
 }
