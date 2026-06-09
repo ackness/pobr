@@ -44,7 +44,7 @@ use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
-use crate::skill_stat_map::{map_aura_buff_stat, map_skill_stats};
+use crate::skill_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat, map_skill_stats};
 
 /// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
 const EXPOSURE_MAGNITUDE: f64 = 20.0;
@@ -472,6 +472,11 @@ pub fn calculate_with_data(
     //     （Discipline→EnergyShield、Purity of Fire→FireResistance…）。ES buff 享全局
     //     `increased ES%`，与 PoB 在 buff 上叠 inc 同口径。
     session.add_modifiers(aura_buff_modifiers(build, data));
+
+    // 4c. Mark 激活授予玩家的**进攻自身 buff**（gain-as-extra）→ SkillGem 归因 modifier。
+    //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
+    //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
+    session.add_modifiers(self_buff_offensive_modifiers(build, data));
 
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
     session.setup_enemy(options.enemy_level, options.enemy_tier);
@@ -1479,6 +1484,44 @@ fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     mods
 }
 
+/// 把所有**已启用宝石**授予玩家的**进攻自身 buff**（Mark 激活时的 gain-as-extra）经
+/// [`map_self_buff_offensive_stat`] 映射为 SkillGem 归因的 `DamageGainAs<Type>` BASE modifier。
+///
+/// 对应 PoB2 `mod("DamageGainAs<Type>","BASE",{type="GlobalEffect",effectType="Buff"})`：
+/// Mark 命中触发的 buff 作用于自身，默认配置下无条件计入主技能 gain 矩阵。数据驱动、零按
+/// 宝石名硬编码——buff 身份由 stat 命名语义（`*_damage_buff_damage_%_to_gain_as_<type>`）判定。
+/// buff 为**全局**自身效果，故遍历所有启用 socket group 的 gem_skills，按 id 去重避免重复注入。
+fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    use std::collections::HashSet;
+    let mut mods = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            if !seen.insert(gem.skill_id.as_str()) {
+                continue;
+            }
+            for ds in data.effect_stats(&gem.skill_id, gem.gem_level) {
+                let Some(mapped) = map_self_buff_offensive_stat(&ds.stat) else {
+                    continue;
+                };
+                if ds.value == 0.0 {
+                    continue;
+                }
+                let origin = ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("buff.{}.{}", gem.skill_id, ds.stat),
+                ))
+                .with_raw_text(format!("buff {} {} ({})", gem.skill_id, ds.stat, ds.value));
+                mods.push(
+                    Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
+                        .with_origin(origin),
+                );
+            }
+        }
+    }
+    mods
+}
+
 /// 把一组已解析 stat 经 [`map_skill_stat`] 映射为带 `source_kind` 归因的 modifier。
 /// 无法映射的 stat（未知/条件型）静默跳过；零值跳过。
 fn mapped_stat_modifiers(
@@ -2152,6 +2195,48 @@ mod tests {
         // CharacterBase (level 90 Ranger: 28 + 1080 + 2*7=14 = 1122) + ring 80 ≥ 装备贡献。
         assert!(out.life >= 1122.0 + 80.0, "life={}", out.life);
         assert!(out.life.is_finite());
+    }
+
+    #[test]
+    fn mark_gem_injects_offensive_gain_as_buff() {
+        // 数据驱动：已启用的 Freezing Mark（命中冻结时给玩家 30% gain-as-cold buff）应产出
+        // 一条 DamageGainAsCold BASE=30 modifier；非 Mark build 不产出。绝不按宝石名硬编码。
+        let data = repo_data();
+        // 前置：Freezing Mark 非光环（Mark/Buff，不含 Aura），且其 stat-set 含目标 buff stat。
+        assert!(
+            !data.is_aura("FreezingMarkPlayer"),
+            "Freezing Mark 非光环（Mark/Buff）"
+        );
+
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Ranger".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FreezingMarkPlayer", 20));
+
+        let mods = self_buff_offensive_modifiers(&build, &data);
+        let cold: f64 = mods
+            .iter()
+            .filter(|m| m.name.as_str() == "DamageGainAsCold")
+            .filter_map(|m| m.value.as_number())
+            .sum();
+        assert_eq!(
+            cold, 30.0,
+            "Freezing Mark 应给 30% gain-as-cold，实得 {cold}"
+        );
+
+        // 无 Mark 的 build 不产出进攻自身 buff。
+        let bare = Build::new().with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Ranger".into(),
+            ascendancy_name: String::new(),
+        });
+        assert!(
+            self_buff_offensive_modifiers(&bare, &data).is_empty(),
+            "无 Mark build 不应产出 gain-as buff"
+        );
     }
 
     #[test]

@@ -186,6 +186,25 @@ pub fn map_aura_buff_stat(stat: &str) -> Vec<MappedStat> {
     }
 }
 
+/// 把一条**Mark 激活时授予玩家的进攻 buff**（PoB2 statMap `mod("DamageGainAs<Type>","BASE",
+/// { type="GlobalEffect", effectType="Buff" })`）映射为 PoBR `DamageGainAs<Type>` BASE。
+///
+/// 对应 stat 形如 `<prefix>_mark_damage_buff_damage_%_to_gain_as_<type>`（如 Freezing Mark
+/// `freezing_mark_damage_buff_damage_%_to_gain_as_cold = 30`、Voltaic Mark
+/// `thaumaturgist_mark_damage_buff_damage_%_to_gain_as_lightning = 30`）。这是 Mark 命中冻结/
+/// 感电时给玩家的 GlobalEffect **Buff**（作用于自身，非作用于敌人的 Curse），PoB2 在默认配置
+/// 下无条件计入主技能 modList 的 gain-as 矩阵。
+///
+/// **保守**：仅匹配 `damage_buff_damage_%_to_gain_as_<伤害类型>` 这一自身 buff 语义；`<type>`
+/// 必须恰为伤害类型词，避免误把作用于敌人的 Curse stat（命名不同，如 `*_multiplier_+%`）当作
+/// 自身 buff。无法识别返回 `None`。
+pub fn map_self_buff_offensive_stat(stat: &str) -> Option<MappedStat> {
+    let (_, after) = stat.split_once("_damage_buff_damage_%_to_gain_as_")?;
+    // marker 之后必须恰为单个伤害类型词（无附加作用域/条件后缀）。
+    let to = TYPES.iter().find(|(lc, _)| *lc == after).map(|(_, p)| *p)?;
+    Some(MappedStat::new(format!("DamageGainAs{to}"), ModType::Base))
+}
+
 /// 暴击缩放（support 宝石的**无条件** `_final` more 暴击修正，PoB2 statMap
 /// `mod("CritChance"/"CritMultiplier","MORE")`）：
 /// - `*critical_strike_chance_+%_final` → `CriticalStrikeChance` MORE（如 Pinpoint +60%）
@@ -558,6 +577,36 @@ mod tests {
                 "MaximumAllElementalResistances",
                 ModType::Base
             )]
+        );
+    }
+
+    #[test]
+    fn maps_mark_self_buff_gain_as_offensive_stats() {
+        // Freezing Mark → DamageGainAsCold BASE（命中冻结时给玩家 30% gain-as-cold buff）。
+        assert_eq!(
+            map_self_buff_offensive_stat("freezing_mark_damage_buff_damage_%_to_gain_as_cold"),
+            Some(MappedStat::new("DamageGainAsCold", ModType::Base))
+        );
+        // Voltaic Mark → DamageGainAsLightning BASE。
+        assert_eq!(
+            map_self_buff_offensive_stat(
+                "thaumaturgist_mark_damage_buff_damage_%_to_gain_as_lightning"
+            ),
+            Some(MappedStat::new("DamageGainAsLightning", ModType::Base))
+        );
+        // 非自身 buff gain-as stat（普通技能/支援 gain-as、curse multiplier）不在此匹配。
+        assert_eq!(
+            map_self_buff_offensive_stat("active_skill_base_physical_damage_%_to_gain_as_cold"),
+            None
+        );
+        assert_eq!(
+            map_self_buff_offensive_stat("freezing_mark_hit_damage_freeze_multiplier_+%_final"),
+            None
+        );
+        // marker 后非伤害类型词（条件后缀）不匹配。
+        assert_eq!(
+            map_self_buff_offensive_stat("foo_damage_buff_damage_%_to_gain_as_cold_if_frozen"),
+            None
         );
     }
 
