@@ -19,7 +19,7 @@ use super::{
     calc_defence, calc_ehp_with_opts, calc_es_recharge, calc_leech_from_db, calc_recoup_from_db,
     calc_regen, calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy,
     enemy_crit_effect, es_recharge_per_second, reservation, resolve_all_charges, round,
-    taken_mult_for_type,
+    taken_mult_for_type_default,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -210,14 +210,16 @@ fn fill_mechanics(env: &mut Env) {
         reference_hit,
         ehp_opts,
     );
-    // 承受伤害乘区（玩家侧受击口径）：复用 `taken_mult_for_type`，与 PoB2
-    // `output[type.."TakenHitMult"]` 一致——base(`DamageTaken`/`<Type>DamageTaken`[/`ElementalDamageTaken`])
-    // 叠加 WhenHit(`DamageTakenWhenHit`/`<Type>DamageTakenWhenHit`[/`ElementalDamageTakenWhenHit`])，
-    // 与面板 `taken_multi_*` 共用同一函数，消除双账本与 WhenHit 漏算。
+    // 承受伤害乘区（玩家侧受击口径）：用 `taken_mult_for_type_default`，对齐 PoB2 默认
+    // `damageCategoryConfig = "Average"`（CalcDefence.lua L2013/L2429）——base
+    // (`DamageTaken`/`<Type>DamageTaken`[/`ElementalDamageTaken`]) 叠加 WhenHit，再取
+    // Attack/Spell 两层（`AttackDamageTaken`/`SpellDamageTaken`）均值。无 Attack/Spell 词条时
+    // 两层相等，退化为基础 hit 口径，对现有回归输出保持一致。
+    // PoE2 已移除法术抑制、deflect 罕用，二者按 1.0 略去（与 PoB2 default 单一 hit 口径一致）。
     // 最大承受击中 = ehp / dt（dt<1 → 承受更少 → 可承受更大击中）。dt≤0（完全免疫）→ ∞。
-    // 出处：PoB2 CalcDefence.lua:2250-2263（TakenHitMult 聚合）、2422-2443/3609（折进 max-hit）。
+    // 出处：PoB2 CalcDefence.lua:2250-2269（TakenHitMult 聚合）、2422-2430（damageCategory 选取）。
     let apply_dt = |max_hit: f64, dtype: DamageType| -> f64 {
-        let dt = taken_mult_for_type(db, cfg, dtype);
+        let dt = taken_mult_for_type_default(db, cfg, dtype);
         if dt <= 0.0 {
             f64::INFINITY
         } else {

@@ -6,8 +6,8 @@
 
 use pobr_core::calc::setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 use pobr_core::calc::{
-    Actor, ActorBaseStats, Env, MinimalInput, calculate_minimal, calculate_minimal_vs_enemy,
-    perform,
+    Actor, ActorBaseStats, Env, MinimalInput, calculate_minimal, calculate_minimal_traced,
+    calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy, perform,
 };
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
@@ -812,4 +812,111 @@ fn setup_enemy_preserves_preexisting_enemy_mods() {
         .mod_db
         .sum(ModType::Base, &cfg, &[ModName::from("FireResist")]);
     assert_eq!(fire, 50.0, "Pinnacle 档位 FireResist 仍正常注入");
+}
+
+// ---------------------------------------------------------------------------
+// 05-05：traced DPS 路径串入 enemy_db，与非 traced panel 同口径
+// （命中×(1-enemy_block)、分类型减伤、resolve_crit_traced 用 enemy_db）。
+// ---------------------------------------------------------------------------
+
+/// 有效口径下，traced DPS 与非 traced `calculate_minimal_vs_enemy` 完全一致——
+/// 敌人受伤链生效时不再分叉（finding 05-05）。
+#[test]
+fn traced_vs_enemy_dps_matches_panel_with_damage_taken() {
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("DamageTaken", ModType::Inc, 20.0));
+
+    let input = attack_input();
+    let cfg = effective_attack();
+
+    let panel = calculate_minimal_vs_enemy(&player, &enemy, &cfg, &input);
+    let traced = calculate_minimal_traced_vs_enemy(&player, &enemy, &cfg, &input);
+
+    assert!(
+        (traced.output.dps - panel.dps).abs() < 1e-6,
+        "traced DPS {} 应等于 panel DPS {}",
+        traced.output.dps,
+        panel.dps
+    );
+    // 受伤链 +20% 生效：150 * 1.2 = 180。
+    assert!((traced.output.dps - 180.0).abs() < 1e-6);
+}
+
+/// 有效口径下敌方格挡从 traced 命中里扣，与非 traced 一致。
+#[test]
+fn traced_vs_enemy_dps_matches_panel_with_block() {
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("BlockChance", ModType::Base, 40.0));
+
+    let input = attack_input();
+    let cfg = effective_attack();
+
+    let panel = calculate_minimal_vs_enemy(&player, &enemy, &cfg, &input);
+    let traced = calculate_minimal_traced_vs_enemy(&player, &enemy, &cfg, &input);
+
+    assert!(
+        (traced.output.dps - panel.dps).abs() < 1e-6,
+        "traced DPS {} 应等于 panel DPS {}（含格挡）",
+        traced.output.dps,
+        panel.dps
+    );
+    // 40% 格挡：150 * (1 - 0.4) = 90。
+    assert!((traced.output.dps - 90.0).abs() < 1e-6);
+}
+
+/// 有效口径下敌方抗性减伤（火）从 traced 火伤里扣，与非 traced 一致。
+#[test]
+fn traced_vs_enemy_dps_matches_panel_with_resist() {
+    let mut player = ModDb::new();
+    // 100 火伤分量（与 enemy_fire_resist_reduces_fire_dps_only_in_effective 同构造）。
+    player.add_mod(Modifier::number("FireDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("FireDamageMax", ModType::Base, 100.0));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    // base_hit 0：仅火伤分量，满命中。
+    let input = MinimalInput {
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        ..attack_input()
+    };
+    let cfg = effective_attack();
+
+    let panel = calculate_minimal_vs_enemy(&player, &enemy, &cfg, &input);
+    let traced = calculate_minimal_traced_vs_enemy(&player, &enemy, &cfg, &input);
+
+    assert!(
+        (traced.output.dps - panel.dps).abs() < 1e-6,
+        "traced DPS {} 应等于 panel DPS {}（含火抗）",
+        traced.output.dps,
+        panel.dps
+    );
+    // 50% 火抗：100 * 0.5 = 50。
+    assert!((traced.output.dps - 50.0).abs() < 1e-6);
+}
+
+/// `calculate_minimal_traced`（旧四参）等价于对空 enemy_db 调用——面板/非有效口径下
+/// 输出与历史一致（5 个旧 traced 测试口径不变）。
+#[test]
+fn traced_empty_enemy_equals_legacy_entry() {
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("PhysicalDamage", ModType::Inc, 50.0));
+    let input = attack_input();
+
+    // 即便提供 enemy mod，但 mode_effective=false（面板口径），两路径 DPS 一致且不引入敌人交互。
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("DamageTaken", ModType::Inc, 99.0));
+    let cfg = CalcConfig::attack(); // 非有效
+
+    let legacy = calculate_minimal_traced(&player, &cfg, &input);
+    let vs_empty = calculate_minimal_traced_vs_enemy(&player, &ModDb::new(), &cfg, &input);
+    let vs_enemy_panel = calculate_minimal_traced_vs_enemy(&player, &enemy, &cfg, &input);
+
+    assert!((legacy.output.dps - vs_empty.output.dps).abs() < 1e-9);
+    assert!(
+        (legacy.output.dps - vs_enemy_panel.output.dps).abs() < 1e-9,
+        "面板口径下敌人 DamageTaken 不应影响 traced DPS"
+    );
 }

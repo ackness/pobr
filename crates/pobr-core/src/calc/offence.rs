@@ -379,12 +379,33 @@ pub fn calculate_minimal_vs_enemy(
     }
 }
 
+/// 旧四参 traced 入口：等价于对**空敌人 modDB** 计算（向后兼容，面板口径下与历史一致）。
+///
+/// 敌人侧机制（受伤链/抗性护甲减伤/格挡/`CannotEvade`/`SelfCrit*`）需要敌人 modDB，
+/// 由 [`calculate_minimal_traced_vs_enemy`] 提供；`perform` 的归因路径应走后者。
 pub fn calculate_minimal_traced(
     db: &ModDb,
     cfg: &CalcConfig,
     input: &MinimalInput,
 ) -> TracedMinimalOutput {
-    let output = calculate_minimal(db, cfg, input);
+    calculate_minimal_traced_vs_enemy(db, &ModDb::new(), cfg, input)
+}
+
+/// 完整 traced 入口：玩家 modDB + 敌人 modDB，与 [`calculate_minimal_vs_enemy`] 同口径。
+///
+/// 把 `enemy_db` 串进 traced DPS：命中 ×(1-enemy_block)、分类型敌人减伤、暴击降级用
+/// 真实敌人 modDB（`resolve_crit_traced`）。敌人侧交互仅在 `cfg.mode_effective == true`
+/// 时生效（面板口径与历史 traced 输出一致）。
+///
+/// 出处：与 [`calculate_minimal_vs_enemy`] 相同（PoB2 `CalcOffence.lua`：`enemyDB:Sum/More
+/// DamageTaken`、`enemyBlockChance`、`CannotEvade`、`SelfCrit*`）。
+pub fn calculate_minimal_traced_vs_enemy(
+    db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> TracedMinimalOutput {
+    let output = calculate_minimal_vs_enemy(db, enemy_db, cfg, input);
     let mut trace = TraceGraph::new();
     let mut outputs = Vec::new();
 
@@ -439,7 +460,7 @@ pub fn calculate_minimal_traced(
         node_id: lightning_resistance.node_id,
     });
 
-    let total_dps = total_dps_traced(db, cfg, input, &mut trace);
+    let total_dps = total_dps_traced(db, enemy_db, cfg, input, &mut trace);
     outputs.push(TraceOutput {
         stat: DisplayStatId::from("TotalDPS"),
         node_id: total_dps.node_id,
@@ -457,8 +478,13 @@ pub fn calculate_minimal_traced(
 ///
 /// `TotalDPS final = total_hit_avg * action_rate * hit_chance`, where each
 /// factor fans back out to the modifiers and base values that produced it.
+///
+/// `enemy_db` 串入与 [`calculate_minimal_vs_enemy`] 同口径的敌人交互（仅 `mode_effective`）：
+/// 分类型受伤链/抗性/护甲减伤进 `total_hit_avg`、敌方格挡进 `hit_chance`、敌方 `SelfCrit*`
+/// 进暴击降级。空 `enemy_db` 等价于历史三参口径（面板口径输出不变）。
 fn total_dps_traced(
     db: &ModDb,
+    enemy_db: &ModDb,
     cfg: &CalcConfig,
     input: &MinimalInput,
     trace: &mut TraceGraph,
@@ -469,6 +495,19 @@ fn total_dps_traced(
     // 出处：damage-scaling.md §核心叠加语义；calculate_components 实现在 damage.rs。
     let components = calculate_components(db, cfg, input.base_hit_min, input.base_hit_max);
     let non_crit_hit_avg = sum_avg(&components);
+    // 有效口径下：分伤害类型乘敌人受伤链 + 抗性/护甲减伤（含玩家穿透/Overwhelm）。
+    // 与 calculate_minimal_vs_enemy 一致——穿透/Overwhelm 读玩家 db，抗性/护甲读 enemy_db。
+    let non_crit_hit_avg_mitigated = if cfg.mode_effective {
+        components
+            .iter()
+            .map(|component| {
+                let avg = component.avg();
+                avg * enemy_damage_multiplier(db, enemy_db, cfg, component.damage_type, avg)
+            })
+            .sum()
+    } else {
+        non_crit_hit_avg
+    };
 
     // 同时 trace 物理伤害 modifier 来源（INC + MORE），确保 weapon/support 词条归因可达。
     // 其它伤害类型的分量 modifier 也按相同方式记录，以支持元素/混沌词条归因。
@@ -541,32 +580,49 @@ fn total_dps_traced(
         input.enemy_evasion,
         SourceId::new(SourceKind::EnemyConfig, "enemy.evasion"),
     );
-    // PoE2 法术必中（同 calculate_minimal）
-    let hit_chance_value = if cfg.is_spell() {
+    // PoE2 法术必中 + 有效口径 CannotEvade（同 calculate_minimal_vs_enemy）。
+    let cannot_be_evaded = db.flag(cfg, ModName::from("CannotBeEvaded"))
+        || (cfg.mode_effective && enemy_db.flag(cfg, ModName::from("CannotEvade")));
+    let accuracy_hit_chance = if cfg.is_spell() || cannot_be_evaded {
         1.0
     } else {
         hit_chance(input.enemy_evasion, accuracy)
     };
+    // 敌方格挡：仅有效口径下从命中里扣（accuracy-and-enemy.md §二.3）。
+    let enemy_block = if cfg.mode_effective {
+        (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let hit_chance_value = accuracy_hit_chance * (1.0 - enemy_block);
     let hit_chance_node = trace.add_node("hit chance", hit_chance_value, TraceOperation::Chance);
     trace.add_edge(accuracy_node, hit_chance_node);
     trace.add_edge(enemy_evasion_node, hit_chance_node);
+    if enemy_block > 0.0 {
+        let enemy_block_node = trace.add_source_node(
+            "enemy block chance",
+            enemy_block,
+            SourceId::new(SourceKind::EnemyConfig, "enemy.block"),
+        );
+        trace.add_edge(enemy_block_node, hit_chance_node);
+    }
 
     // --- crit average factor（resolve_crit_traced：与非 traced 路径同一实现，
-    //     BASE/INC/MORE + 敌方 SelfCrit* 全部接入 TraceGraph，gap crit-traced-inc-more-untraced）。
-    //     traced 路径无敌人 modDB（旧三参口径），传空 enemy + base_crit=0。
-    let enemy_db = ModDb::new();
+    //     BASE/INC/MORE + 敌方 SelfCrit* 全部接入 TraceGraph）。命中降级用 accuracy_hit_chance
+    //     （格挡不参与暴击降级，对齐 calculate_minimal_vs_enemy）。
     let (crit, crit_node) = resolve_crit_traced(
         db,
-        &enemy_db,
+        enemy_db,
         cfg,
-        hit_chance_value,
+        accuracy_hit_chance,
         0.0,
         cfg.mode_effective,
         trace,
     );
     let crit_average_factor = crit.effect;
 
-    let total_hit_avg = round(non_crit_hit_avg * crit_average_factor);
+    // total_hit_avg（DPS 用）：有效口径下含敌人受伤链/抗性/护甲减伤的总击中。
+    let total_hit_avg = round(non_crit_hit_avg_mitigated * crit_average_factor);
     let total_hit_node =
         trace.add_node("total hit average", total_hit_avg, TraceOperation::Multiply);
     trace.add_edge(non_crit_node, total_hit_node);
