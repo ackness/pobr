@@ -87,12 +87,6 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "SpellBlockChance",
         ),
-        computed(
-            "SpellSuppressionChance",
-            Cat::Avoidance,
-            Vt::Percent,
-            "SpellSuppressionChance",
-        ),
         // --- EHP / max hit ---
         computed("TotalEHP", Cat::Mitigation, Vt::Number, "TotalEHP"),
         computed(
@@ -405,7 +399,6 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "LightningResist" => output.lightning_resistance,
         "BlockChance" => output.block_chance,
         "SpellBlockChance" => output.spell_block_chance,
-        "SpellSuppressionChance" => output.spell_suppression_chance,
         "TotalEHP" => output.total_ehp,
         "PhysicalMaxHit" => output.physical_max_hit,
         "FireMaxHit" => output.fire_max_hit,

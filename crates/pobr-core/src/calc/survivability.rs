@@ -1,12 +1,11 @@
-//! 生存性辅助计算（reservation / regen / capped chance / suppression /
-//! charges / leech / recoup）。
+//! 生存性辅助计算（reservation / regen / capped chance / charges / leech / recoup）。
 //!
 //! 资料：`agent-docs/active-defences.md`、`agent-docs/block.md`、
 //! `agent-docs/recovery-charges-buffs.md`（PoE2 0.5.0）。
 //!
 //! - **Reservation**：光环 / 守护按 `Σ flat + 池子 * (Σ % / 100)` 预留，结果钳到 [0, pool]。
 //! - **Regen**：`base_flat + pool * (Σ %regen / 100)`，再吃 inc/more 恢复速率（含 RecoveryRateMod）。
-//! - **Capped chance**：几率类（block / suppression）求和后钳到 [0, cap]。
+//! - **Capped chance**：几率类（block）求和后钳到 [0, cap]。
 //! - **Charges**：充能层数/上限解析；PoE2 充能无固有属性，仅供 per-charge 词条乘数引用。
 //! - **Leech**：0.5.0 重制——单资源单实例（取最高速率），三层上限，默认仅物理。
 //! - **Recoup**：承受伤害的一定比例在 8s（或 4s）内返还。
@@ -129,17 +128,6 @@ pub fn capped_chance(percent_sum: f64, cap: f64) -> f64 {
 /// 出处：agent-docs/block.md §被动格挡、PoB2 DeepWiki `BlockChanceCap = 90`。
 pub fn block_chance(percent_sum: f64) -> f64 {
     capped_chance(percent_sum, BLOCK_CHANCE_CAP)
-}
-
-/// 法术压制（spell suppression）几率（PoE2 已移除此机制，此函数保留为 inert 兼容桩）。
-///
-/// PoE2 中法术压制已从常规防御移除（agent-docs/block.md §法术压制；active-defences.md §六）。
-/// 保留此函数仅避免调用方编译失败（值始终为 0 或有效但无意义）；完整移除留 Wave2。
-/// 上限保持 100% 与旧行为兼容，但正常 PoE2 build 无词条来源，结果始终 0。
-pub fn suppression_chance(percent_sum: f64) -> f64 {
-    // PoE2 法术压制已移除：常规 build 无词条来源，始终 0；
-    // 保留函数签名避免 ripple，Wave2 再完整清理。
-    capped_chance(percent_sum, 100.0)
 }
 
 // ─────────────────────────────────────────────────────────────────

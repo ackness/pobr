@@ -268,11 +268,6 @@ fn fill_mechanics(env: &mut Env) {
         super::block_chance(db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]));
     env.player.output.spell_block_chance =
         super::block_chance(db.sum(ModType::Base, cfg, &[ModName::from("SpellBlockChance")]));
-    env.player.output.spell_suppression_chance = super::suppression_chance(db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("SpellSuppressionChance")],
-    ));
 
     // --- ES 充能（Lane2：充能与再生独立；energy_shield_regen 字段保持现有逻辑）---
     let zealots_oath = db.flag(cfg, ModName::from("ZealotsOath"));

@@ -17,7 +17,6 @@ pub struct BuildSnapshot {
     pub level: u32,
     pub class_name: String,
     pub ascendancy_name: String,
-    pub game_version_tag: &'static str,
     pub allocated_nodes: Vec<u32>,
     /// 已装备物品的 (槽位 id, 规范化词条文本)，按槽位 id 字典序排序。
     pub items: Vec<(String, Vec<String>)>,
@@ -45,7 +44,6 @@ impl BuildSnapshot {
             level: build.character.level,
             class_name: build.character.class_name.clone(),
             ascendancy_name: build.character.ascendancy_name.clone(),
-            game_version_tag: game_version_tag(build),
             allocated_nodes,
             items,
             socket_groups,
@@ -59,7 +57,6 @@ impl BuildSnapshot {
         hasher.write_u32(self.level);
         hasher.write_str(&self.class_name);
         hasher.write_str(&self.ascendancy_name);
-        hasher.write_str(self.game_version_tag);
 
         hasher.write_str("|nodes|");
         for node in &self.allocated_nodes {
@@ -133,14 +130,6 @@ fn collect_config_keys(build: &Build) -> Vec<String> {
 
 fn slot_tag(slot: EquipmentSlot) -> &'static str {
     slot.id()
-}
-
-fn game_version_tag(build: &Build) -> &'static str {
-    use pobr_data::build_config::GameVersion;
-    match build.game_version {
-        GameVersion::Poe1 => "poe1",
-        GameVersion::Poe2 => "poe2",
-    }
 }
 
 /// 64 位 FNV-1a 哈希器（确定性，无随机种子）。

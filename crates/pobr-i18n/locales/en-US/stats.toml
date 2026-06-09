@@ -87,7 +87,6 @@ ColdResist = "Cold Resistance"
 LightningResist = "Lightning Resistance"
 BlockChance = "Block Chance"
 SpellBlockChance = "Spell Block Chance"
-SpellSuppressionChance = "Spell Suppression Chance"
 # --- Avoidance ---
 AvoidAllDamageFromHits = "Avoid All Damage from Hits"
 AvoidProjectileDamage = "Avoid Projectile Damage"

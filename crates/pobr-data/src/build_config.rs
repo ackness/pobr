@@ -26,11 +26,3 @@ pub enum BanditChoice {
     Alira,
     Oak,
 }
-
-/// Build 目标游戏版本（区分 PoE1 vs PoE2 公式差异，如护甲系数 *5 vs *10）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub enum GameVersion {
-    Poe1,
-    #[default]
-    Poe2,
-}

@@ -59,7 +59,6 @@ pub struct OutputTable {
     /// 防御几率类。
     pub block_chance: f64,
     pub spell_block_chance: f64,
-    pub spell_suppression_chance: f64,
 
     // --- 防御扩展（Lane2：ES 充能 / 规避 / 承受乘数 / 暴击减免；perform fill 写入） ---
     /// ES 充能速率（每秒恢复比例，fraction；ZealotsOath 或 es=0 时为 0）。
@@ -209,7 +208,6 @@ impl Default for OutputTable {
             energy_shield_regen: 0.0,
             block_chance: 0.0,
             spell_block_chance: 0.0,
-            spell_suppression_chance: 0.0,
             es_recharge_rate: 0.0,
             es_recharge_delay: 0.0,
             es_recharge_per_second: 0.0,

@@ -1,13 +1,13 @@
 //! `BuildConfig`：Build 级别的计算上下文配置，可生成 [`CalcConfig`]。
 //!
 //! `pobr-data::build_config` 只放语言无关、零逻辑的稳定枚举（[`ViewMode`] /
-//! [`BanditChoice`] / [`GameVersion`]）。带逻辑、依赖 `pobr-core` 的本体放这里，
+//! [`BanditChoice`]）。带逻辑、依赖 `pobr-core` 的本体放这里，
 //! 通过 [`BuildConfig::to_calc_config`] 适配 REAL 的 [`CalcConfig`]。
 
 use std::collections::HashMap;
 
 use pobr_core::CalcConfig;
-use pobr_data::build_config::{BanditChoice, GameVersion};
+use pobr_data::build_config::BanditChoice;
 use pobr_data::prelude::{DamageType, ModFlags, SkillTypes};
 
 /// PoB「Configuration」面板对应的 Build 级配置。
@@ -23,8 +23,6 @@ pub struct BuildConfig {
     pub is_spell: bool,
     /// 主技能主伤害类型（若已知）。
     pub damage_type: Option<DamageType>,
-    /// 目标游戏版本（影响公式差异，如护甲系数）。
-    pub game_version: GameVersion,
     /// 盗贼任务奖励选择。
     pub bandit: BanditChoice,
     /// 布尔条件覆盖（稳定 key，例如 `"UseFrenzyCharges"`）。
@@ -53,11 +51,6 @@ impl BuildConfig {
 
     pub fn with_damage_type(mut self, damage_type: DamageType) -> Self {
         self.damage_type = Some(damage_type);
-        self
-    }
-
-    pub fn with_game_version(mut self, version: GameVersion) -> Self {
-        self.game_version = version;
         self
     }
 

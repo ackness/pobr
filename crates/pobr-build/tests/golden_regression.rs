@@ -64,13 +64,11 @@ fn build_from_code(code: &str) -> Build {
     let xml = decode_pob_code(code.trim()).expect("decode build code");
     let header = parse_build_header(&xml).expect("parse build header");
 
-    Build::new()
-        .with_character(CharacterIdentity {
-            level: header.identity.level,
-            class_name: header.identity.class_name.clone(),
-            ascendancy_name: header.identity.ascendancy_name.clone(),
-        })
-        .with_game_version(pobr_data::build_config::GameVersion::Poe2)
+    Build::new().with_character(CharacterIdentity {
+        level: header.identity.level,
+        class_name: header.identity.class_name.clone(),
+        ascendancy_name: header.identity.ascendancy_name.clone(),
+    })
 }
 
 fn default_opts() -> OrchestratorOptions {
@@ -200,10 +198,9 @@ fn deadeye_golden_snapshot_is_deterministic() {
 #[test]
 fn martial_artist_golden_decode_and_calc() {
     let xml = decode_pob_code(MARTIAL_ARTIST_CODE.trim()).expect("decode martial artist code");
+    // parse_build_header 仅接受 PathOfBuilding2 根；成功解析即确认是 PoE2 文档。
     let header = parse_build_header(&xml).expect("parse header");
 
-    // 确认是 PathOfBuilding2 文档。
-    assert_eq!(header.pob_major, 2, "expected PoE2 build");
     // level 应在合理范围。
     assert!(
         header.identity.level > 0 && header.identity.level <= 100,
@@ -212,13 +209,11 @@ fn martial_artist_golden_decode_and_calc() {
     );
 
     // Build + CalcOrchestrator 不报错。
-    let build = Build::new()
-        .with_character(CharacterIdentity {
-            level: header.identity.level,
-            class_name: header.identity.class_name.clone(),
-            ascendancy_name: header.identity.ascendancy_name.clone(),
-        })
-        .with_game_version(pobr_data::build_config::GameVersion::Poe2);
+    let build = Build::new().with_character(CharacterIdentity {
+        level: header.identity.level,
+        class_name: header.identity.class_name.clone(),
+        ascendancy_name: header.identity.ascendancy_name.clone(),
+    });
 
     let out = calculate(&build, &default_opts()).expect("martial artist calc");
     // 空 Build 无词条，输出全零（默认）。
@@ -239,13 +234,11 @@ fn pipeline_smoke_test_both_fixtures() {
             decode_pob_code(code.trim()).unwrap_or_else(|e| panic!("{name}: decode failed: {e}"));
         let header = parse_build_header(&xml)
             .unwrap_or_else(|e| panic!("{name}: parse_build_header failed: {e}"));
-        let build = Build::new()
-            .with_character(CharacterIdentity {
-                level: header.identity.level,
-                class_name: header.identity.class_name.clone(),
-                ascendancy_name: header.identity.ascendancy_name.clone(),
-            })
-            .with_game_version(pobr_data::build_config::GameVersion::Poe2);
+        let build = Build::new().with_character(CharacterIdentity {
+            level: header.identity.level,
+            class_name: header.identity.class_name.clone(),
+            ascendancy_name: header.identity.ascendancy_name.clone(),
+        });
         calculate(&build, &default_opts())
             .unwrap_or_else(|e| panic!("{name}: calculate failed: {e}"));
     }

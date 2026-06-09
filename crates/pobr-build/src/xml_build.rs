@@ -6,8 +6,7 @@
 //! PoB Build Code 端到端计算，而无需调用方手写 XML 抽取。
 //!
 //! 解析覆盖范围：
-//! - **角色身份**：复用 [`parse_build_header`]（等级 / 职业 / 升华 / `viewMode` /
-//!   `PathOfBuilding(2)` 主版本 → [`GameVersion`]）。
+//! - **角色身份**：复用 [`parse_build_header`]（等级 / 职业 / 升华 / `viewMode`）。
 //! - **天赋树**：`<Tree activeSpec>` 选中的 `<Spec nodes="…">` 节点 id 数组
 //!   （多 Spec 时取 `activeSpec` 1-based 索引，缺省取首个）。
 //! - **装备**：`<Item id>` 文本块经 [`parse_pob_xml_item`] 解析为 [`Item`]，再由
@@ -28,7 +27,6 @@ use std::collections::HashMap;
 use quick_xml::events::{BytesStart, Event};
 
 use pobr_core::item_text::parse_pob_xml_item;
-use pobr_data::build_config::GameVersion;
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
 
@@ -53,11 +51,6 @@ pub fn parse_build_from_code(code: &str) -> Result<Build, BuildError> {
 /// 把一份 PoB Build XML 解析为完整 [`Build`]（角色 + 天赋树 + 装备 + 技能宝石组）。
 pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let header = parse_build_header(xml)?;
-    let game_version = if header.pob_major == 1 {
-        GameVersion::Poe1
-    } else {
-        GameVersion::Poe2
-    };
 
     let allocated_nodes = parse_passive_nodes(xml)?;
     let (items, jewels) = parse_items_and_slots(xml)?;
@@ -71,7 +64,6 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
             class_name: header.identity.class_name,
             ascendancy_name: header.identity.ascendancy_name,
         })
-        .with_game_version(game_version)
         .with_view_mode(header.view_mode)
         .with_tree(PassiveTreeSpec {
             allocated_nodes,
@@ -786,12 +778,11 @@ Adds 47 to 86 Physical Damage
 </PathOfBuilding2>"#;
 
     #[test]
-    fn parses_full_build_identity_and_version() {
+    fn parses_full_build_identity() {
         let build = parse_build(SAMPLE).expect("parse");
         assert_eq!(build.character.level, 92);
         assert_eq!(build.character.class_name, "Ranger");
         assert_eq!(build.character.ascendancy_name, "Deadeye");
-        assert_eq!(build.game_version, GameVersion::Poe2);
     }
 
     #[test]
@@ -855,14 +846,10 @@ Adds 47 to 86 Physical Damage
     }
 
     #[test]
-    fn poe1_root_maps_to_poe1_version() {
+    fn poe1_root_rejected() {
+        // PoE2-only：PoE1 的 `PathOfBuilding` 根不再被接受。
         let xml = r#"<PathOfBuilding><Build level="1" className="Witch"/></PathOfBuilding>"#;
-        let build = parse_build(xml).expect("parse poe1");
-        assert_eq!(build.game_version, GameVersion::Poe1);
-        assert_eq!(build.character.class_name, "Witch");
-        assert!(build.tree.allocated_nodes.is_empty());
-        assert!(build.items.is_empty());
-        assert!(build.socket_groups.is_empty());
+        assert!(matches!(parse_build(xml), Err(XmlError::NotPobRoot(_))));
     }
 
     #[test]

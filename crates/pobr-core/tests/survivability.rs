@@ -1,6 +1,4 @@
-use pobr_core::calc::survivability::{
-    block_chance, capped_chance, regen, reservation, suppression_chance,
-};
+use pobr_core::calc::survivability::{block_chance, capped_chance, regen, reservation};
 
 #[test]
 fn reservation_combines_flat_and_percent_and_clamps_to_pool() {
@@ -42,11 +40,4 @@ fn block_caps_at_90_poe2() {
     assert_eq!(block_chance(90.0), 90.0);
     assert_eq!(block_chance(60.0), 60.0);
     assert_eq!(block_chance(0.0), 0.0);
-}
-
-#[test]
-fn suppression_chance_clamps_at_100() {
-    // 法术压制在 PoE2 已移除（inert），但函数保留兼容性，上限仍 100
-    assert_eq!(suppression_chance(120.0), 100.0);
-    assert_eq!(suppression_chance(60.0), 60.0);
 }

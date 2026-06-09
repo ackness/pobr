@@ -195,7 +195,6 @@ fn calculate_build_summarizes_and_computes_from_code() {
     assert_eq!(report.build.level, 98);
     assert_eq!(report.build.class_name, "Ranger");
     assert!(report.build.ascendancy_name.contains("Deadeye"));
-    assert_eq!(report.build.game_version, "Poe2");
     assert!(report.build.allocated_node_count > 0);
     assert!(report.build.equipped_item_count > 0);
     assert!(report.build.socket_group_count > 0);

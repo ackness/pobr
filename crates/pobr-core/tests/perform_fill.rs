@@ -77,7 +77,7 @@ fn perform_fills_bleed_dps_only_with_bleed_chance() {
 ///
 /// 出处：agent-docs/block.md §被动格挡、PoB2 `BlockChanceCap = 90`。
 #[test]
-fn perform_fills_block_and_suppression_chances() {
+fn perform_fills_block_chance() {
     let base = ActorBaseStats {
         life: 1000.0,
         ..ActorBaseStats::default()
@@ -87,15 +87,12 @@ fn perform_fills_block_and_suppression_chances() {
         vec![
             // 95% block → capped at PoE2 limit 90%
             Modifier::number("BlockChance", ModType::Base, 95.0),
-            Modifier::number("SpellSuppressionChance", ModType::Base, 50.0),
         ],
     );
     perform(&mut env).unwrap();
 
     // PoE2: block capped at 90 (not PoE1's 75).
     assert_eq!(env.player.output.block_chance, 90.0);
-    // 法术压制 PoE2 已移除，但函数保留兼容性（inert）
-    assert_eq!(env.player.output.spell_suppression_chance, 50.0);
 }
 
 /// 端到端：点燃几率派生 + effMult（敌方火抗降低点燃 DPS）经 `setup_enemy` 全管线。
