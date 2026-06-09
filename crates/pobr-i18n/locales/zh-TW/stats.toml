@@ -62,7 +62,6 @@ ColdResist = "冰冷抗性"
 LightningResist = "閃電抗性"
 BlockChance = "格擋率"
 SpellBlockChance = "法術格擋率"
-SpellSuppressionChance = "法術壓制率"
 # --- Avoidance ---
 AvoidIgnite = "規避點燃"
 AvoidShock = "規避感電"

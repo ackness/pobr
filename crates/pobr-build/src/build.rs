@@ -5,12 +5,12 @@
 //! （[`SocketGroup`]）、Build 级配置（[`BuildConfig`]）以及当前视图（[`ViewMode`]）。
 //!
 //! 类型一律采用 REAL 权威定义（`pobr_data` 的 `PassiveTreeSpec` / `Item` /
-//! `GameVersion` / `ViewMode`）。`SocketGroup` 是本 crate 的简化等价物（不依赖
+//! `ViewMode`）。`SocketGroup` 是本 crate 的简化等价物（不依赖
 //! SANDBOX 专有类型），承载「主动技能 + 辅助宝石」的稳定 id 与启用状态。
 
 use std::collections::HashMap;
 
-use pobr_data::build_config::{GameVersion, ViewMode};
+use pobr_data::build_config::ViewMode;
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::passive_tree::PassiveTreeSpec;
 
@@ -132,8 +132,6 @@ pub struct RadiusJewel {
 pub struct Build {
     /// 角色身份。
     pub character: CharacterIdentity,
-    /// 目标游戏版本。
-    pub game_version: GameVersion,
     /// 当前视图（PoB UI 状态，兼容 Build XML `viewMode`）。
     pub view_mode: ViewMode,
     /// 已分配天赋树。
@@ -164,11 +162,6 @@ impl Build {
 
     pub fn with_character(mut self, character: CharacterIdentity) -> Self {
         self.character = character;
-        self
-    }
-
-    pub fn with_game_version(mut self, version: GameVersion) -> Self {
-        self.game_version = version;
         self
     }
 

@@ -133,9 +133,7 @@ fn deadeye_e2e_contributions_are_additive() {
     };
 
     // 步骤 1：仅 CharacterBase（无装备 / 无天赋）。
-    let build_base = pobr_build::Build::new()
-        .with_character(full.character.clone())
-        .with_game_version(full.game_version);
+    let build_base = pobr_build::Build::new().with_character(full.character.clone());
     let out_base =
         calculate_with_data(&build_base, &build_data, &base_opts).expect("base only calc");
 

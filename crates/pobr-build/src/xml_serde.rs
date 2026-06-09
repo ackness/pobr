@@ -2,7 +2,7 @@
 //!
 //! 完整还原 PoB Build XML（含 items / tree / skills 全量字段）是个大工程；此处先实现
 //! **可被计算编排消费的最小子集**：
-//! - 校验根元素为 `<PathOfBuilding...>`（PoE1 是 `PathOfBuilding`，PoE2 是 `PathOfBuilding2`）；
+//! - 校验根元素为 `<PathOfBuilding2>`（PoE2-only；PoB2 上游已彻底放弃 PoE1 的 `PathOfBuilding` 根）；
 //! - 抽取 `<Build>` 头部的 `level` / `className` / `ascendClassName`；
 //! - 抽取 `viewMode`（若有）。
 //!
@@ -21,8 +21,6 @@ use crate::error::XmlError;
 pub struct ParsedBuildHeader {
     pub identity: CharacterIdentity,
     pub view_mode: ViewMode,
-    /// 检测到的 PoB 主版本（`PathOfBuilding` → 1，`PathOfBuilding2` → 2）。
-    pub pob_major: u8,
 }
 
 /// 解析 Build XML 头部。校验根元素并抽取 `<Build>` / `viewMode`。
@@ -41,11 +39,9 @@ pub fn parse_build_header(xml: &str) -> Result<ParsedBuildHeader, XmlError> {
 
                 if !root_seen {
                     root_seen = true;
-                    if name == "PathOfBuilding" {
-                        header.pob_major = 1;
-                    } else if name == "PathOfBuilding2" {
-                        header.pob_major = 2;
-                    } else {
+                    // PoE2-only：仅接受 `PathOfBuilding2`。PoE1 的 `PathOfBuilding`
+                    // 根与任何其他根一律拒绝（与 PoB2 上游一致）。
+                    if name != "PathOfBuilding2" {
                         return Err(XmlError::NotPobRoot(name));
                     }
                     apply_root_attrs(&e, &mut header)?;
@@ -65,7 +61,7 @@ pub fn parse_build_header(xml: &str) -> Result<ParsedBuildHeader, XmlError> {
     }
 
     if !root_seen {
-        return Err(XmlError::MissingNode("PathOfBuilding root".into()));
+        return Err(XmlError::MissingNode("PathOfBuilding2 root".into()));
     }
 
     Ok(header)
@@ -143,7 +139,6 @@ mod tests {
     #[test]
     fn parses_header() {
         let header = parse_build_header(SAMPLE).expect("parse");
-        assert_eq!(header.pob_major, 2);
         assert_eq!(header.identity.level, 98);
         assert_eq!(header.identity.class_name, "Ranger");
         assert_eq!(header.identity.ascendancy_name, "Deadeye");
@@ -151,11 +146,13 @@ mod tests {
     }
 
     #[test]
-    fn poe1_root_recognized() {
+    fn poe1_root_rejected() {
+        // PoE2-only：PoE1 的 `PathOfBuilding` 根不再被接受（与 PoB2 上游一致）。
         let xml = r#"<PathOfBuilding><Build level="1" className="Witch"/></PathOfBuilding>"#;
-        let header = parse_build_header(xml).expect("parse");
-        assert_eq!(header.pob_major, 1);
-        assert_eq!(header.identity.class_name, "Witch");
+        assert!(matches!(
+            parse_build_header(xml),
+            Err(XmlError::NotPobRoot(name)) if name == "PathOfBuilding"
+        ));
     }
 
     #[test]
