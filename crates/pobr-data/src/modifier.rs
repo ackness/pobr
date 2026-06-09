@@ -85,6 +85,33 @@ pub struct KeywordFlags(u64);
 
 impl KeywordFlags {
     pub const NONE: Self = Self(0);
+
+    // 具体 keyword 位，位值对齐 PoB2 `Global.lua` `KeywordFlag.*`（src/Data/Global.lua:263-292）。
+    /// `KeywordFlag.Aura = 0x00000001`
+    pub const AURA: Self = Self(0x0000_0001);
+    /// `KeywordFlag.Curse = 0x00000002`
+    pub const CURSE: Self = Self(0x0000_0002);
+    /// `KeywordFlag.Hit = 0x00040000`
+    pub const HIT: Self = Self(0x0004_0000);
+    /// `KeywordFlag.Ailment = 0x00080000`
+    pub const AILMENT: Self = Self(0x0008_0000);
+    /// `KeywordFlag.Poison = 0x00200000`
+    pub const POISON: Self = Self(0x0020_0000);
+    /// `KeywordFlag.Bleed = 0x00400000`
+    pub const BLEED: Self = Self(0x0040_0000);
+    /// `KeywordFlag.Ignite = 0x00800000`
+    pub const IGNITE: Self = Self(0x0080_0000);
+    /// `KeywordFlag.PhysicalDot = 0x01000000`
+    pub const PHYSICAL_DOT: Self = Self(0x0100_0000);
+    /// `KeywordFlag.LightningDot = 0x02000000`
+    pub const LIGHTNING_DOT: Self = Self(0x0200_0000);
+    /// `KeywordFlag.ColdDot = 0x04000000`
+    pub const COLD_DOT: Self = Self(0x0400_0000);
+    /// `KeywordFlag.FireDot = 0x08000000`
+    pub const FIRE_DOT: Self = Self(0x0800_0000);
+    /// `KeywordFlag.ChaosDot = 0x10000000`
+    pub const CHAOS_DOT: Self = Self(0x1000_0000);
+
     /// PoB2 `KeywordFlag.MatchAll = 0x40000000`：带此位时 mod 的 keyword 改为 ALL（子集）
     /// 匹配而非默认 ANY（参见 PoB2 Global.lua `MatchKeywordFlags`）。
     pub const MATCH_ALL: Self = Self(0x4000_0000);

@@ -98,6 +98,17 @@ impl CalcConfig {
     }
 
     pub fn condition(&self, name: &str) -> bool {
+        // PoB2 `mode_effective` 派生条件：`Condition:Effective` 用于门控只在有效 DPS 口径
+        // 才生效的敌侧 debuff（curse/exposure/slow effect-on-self）。显式置入的 `Effective`
+        // 条件优先（便于测试覆盖），未显式置入时回退为 `mode_effective`。
+        if name == "Effective"
+            && let Some(explicit) = self.conditions.get(name)
+        {
+            return *explicit;
+        }
+        if name == "Effective" {
+            return self.mode_effective;
+        }
         self.conditions.get(name).copied().unwrap_or(false)
     }
 

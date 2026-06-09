@@ -193,6 +193,10 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     // → SlotName tag。剥离后名字回到纯 stat（`armour`/`energy shield`），由 per-slot 防御聚合
     // 在匹配槽位生效。残留会使 resolve_names 失败，故须在解析名前剥离。
     let remainder = strip_slot_suffix(&remainder, &mut base_tags);
+    // 异常/诅咒等 keyword 后缀子句（`with poison` / `for poison` / `of curse auras`...）→
+    // 合并 KeywordFlags（带 MatchAll 处保留 MatchAll 位）。须先于 scope/resolve_names，
+    // 否则限定残留会使名字解析失败。PoB2 `ModParser.lua` modTagList（1055-1088）语义。
+    let (remainder, keyword_flags) = strip_keyword_suffix(&remainder);
     // 作用域后缀子句（`for spells` / `for attacks` / `with spells`...）→ 合并 ModFlags。
     // 这些限定词残留在名字里会使 resolve_names 失败，剥离后归入主 flags。
     let (remainder, scope_flags) = strip_scope_suffix(&remainder);
@@ -219,6 +223,9 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             let mut m = Modifier::number(name, mod_type, form.value).with_source(original);
             if !flags.is_empty() {
                 m = m.with_flags(flags);
+            }
+            if !keyword_flags.is_empty() {
+                m = m.with_keyword_flags(keyword_flags);
             }
             for tag in tags {
                 m = m.with_tag(tag);
@@ -726,6 +733,46 @@ fn strip_scope_suffix(text: &str) -> (String, ModFlags) {
         }
     }
     (text.to_string(), ModFlags::NONE)
+}
+
+/// 剥离异常/诅咒等 keyword 限定后缀（PoB2 `ModParser.lua` modTagList 1050-1088）→ 返回剩余名
+/// 与对应 [`KeywordFlags`]。
+///
+/// PoB2 默认 keyword 匹配语义为 ANY（任一重叠即可）；个别从句带 `MatchAll`（如 `for poison`
+/// = `bor(Poison, MatchAll)`、`of curse auras` = `bor(Curse, Aura, MatchAll)`），要求上下文
+/// keyword 为该集合的超集（ALL）。`with poison`/`with bleeding` 等无 MatchAll（ANY）。
+///
+/// 一条词条通常只带一个这类限定后缀，故按最长匹配剥离一次即可。无匹配则原样返回（NONE）。
+fn strip_keyword_suffix(text: &str) -> (String, KeywordFlags) {
+    // 按后缀长度降序，保证 `of curse auras` 抢在更短的潜在前缀之前、
+    // `with hits and ailments` 抢在 `with hits` 之前。
+    let suffixes: [(&str, KeywordFlags); 8] = [
+        // MatchAll 从句（ALL 语义）。
+        (
+            " of curse auras",
+            KeywordFlags::CURSE | KeywordFlags::AURA | KeywordFlags::MATCH_ALL,
+        ),
+        (
+            " for poison",
+            KeywordFlags::POISON | KeywordFlags::MATCH_ALL,
+        ),
+        // ANY 从句。
+        (
+            " with hits and ailments",
+            KeywordFlags::HIT | KeywordFlags::AILMENT,
+        ),
+        (" with bleeding", KeywordFlags::BLEED),
+        (" with poison", KeywordFlags::POISON),
+        (" for bleeding", KeywordFlags::BLEED),
+        (" for ignite", KeywordFlags::IGNITE),
+        (" with ignite", KeywordFlags::IGNITE),
+    ];
+    for (suffix, kw) in suffixes {
+        if let Some(stripped) = text.strip_suffix(suffix) {
+            return (stripped.trim().to_string(), kw);
+        }
+    }
+    (text.to_string(), KeywordFlags::NONE)
 }
 
 /// 剥离槽位限定子句 `... from equipped <slot words>`（PoB2 `from Equipped <Slot>`）→ 追加
@@ -1366,5 +1413,80 @@ mod per_slot_defence_tests {
     fn parses_damage_with_hits_as_generic() {
         let out = parse_mod("20% increased Damage with [HitDamage|Hits]").expect("parses");
         assert_eq!(out.mods[0].name.as_str(), "Damage");
+    }
+
+    /// `with poison` / `with bleeding`（ANY，无 MatchAll）→ 对应 KeywordFlag，不带 MATCH_ALL。
+    #[test]
+    fn parses_with_ailment_keyword_suffix_any() {
+        let poison = parse_mod("30% increased Damage with Poison").expect("parses");
+        assert_eq!(poison.mods[0].name.as_str(), "Damage");
+        assert!(
+            poison.mods[0]
+                .keyword_flags
+                .intersects(KeywordFlags::POISON)
+        );
+        assert!(!poison.mods[0].keyword_flags.requires_match_all());
+
+        let bleed = parse_mod("20% increased Damage with Bleeding").expect("parses");
+        assert!(bleed.mods[0].keyword_flags.intersects(KeywordFlags::BLEED));
+        assert!(!bleed.mods[0].keyword_flags.requires_match_all());
+    }
+
+    /// `for poison`（PoB2 `bor(Poison, MatchAll)`）→ 带 MATCH_ALL 位，要求上下文 ALL 匹配。
+    #[test]
+    fn parses_for_poison_keyword_suffix_match_all() {
+        let dmg = parse_mod("40% increased Damage for Poison").expect("parses");
+        let kw = dmg.mods[0].keyword_flags;
+        assert!(kw.intersects(KeywordFlags::POISON));
+        assert!(kw.requires_match_all(), "for poison 带 MatchAll 位");
+    }
+
+    /// `of curse auras`（PoB2 `bor(Curse, Aura, MatchAll)`）→ Curse + Aura + MATCH_ALL。
+    /// 用已知 ModName `Damage` 承载（keyword 后缀先剥离，余下 `damage`）。
+    #[test]
+    fn parses_of_curse_auras_keyword_suffix_match_all() {
+        let out = parse_mod("25% increased Damage of Curse Auras").expect("parses");
+        let kw = out.mods[0].keyword_flags;
+        assert!(kw.intersects(KeywordFlags::CURSE));
+        assert!(kw.intersects(KeywordFlags::AURA));
+        assert!(kw.requires_match_all(), "of curse auras 带 MatchAll 位");
+    }
+
+    /// MatchAll keyword mod 只在上下文含**全部** keyword 时命中（ALL 语义，回归 matches）。
+    #[test]
+    fn match_all_keyword_mod_requires_full_context() {
+        use crate::CalcConfig;
+
+        let dmg = parse_mod("40% increased Damage for Poison").expect("parses");
+        let m = &dmg.mods[0]; // keyword = Poison | MatchAll
+
+        // 上下文缺 Poison → 不命中。
+        let cfg_none = CalcConfig::new();
+        assert!(!m.matches(&cfg_none), "上下文无 Poison → ALL 拒绝");
+
+        // 上下文含 Poison → 命中（Poison 是 {Poison} 的超集）。
+        let cfg_poison = CalcConfig::new().with_keyword_flags(KeywordFlags::POISON);
+        assert!(m.matches(&cfg_poison), "上下文含 Poison → ALL 命中");
+    }
+
+    /// `Area of Effect of Curse Auras`（Curse+Aura+MatchAll）只在上下文同时含 Curse 与 Aura 时命中。
+    #[test]
+    fn match_all_curse_aura_requires_both_keywords() {
+        use crate::CalcConfig;
+
+        let out = parse_mod("25% increased Damage of Curse Auras").expect("parses");
+        let m = &out.mods[0];
+
+        // 仅 Curse（缺 Aura）→ 不命中。
+        let cfg_curse = CalcConfig::new().with_keyword_flags(KeywordFlags::CURSE);
+        assert!(
+            !m.matches(&cfg_curse),
+            "仅 Curse 不是 {{Curse,Aura}} 超集 → 拒绝"
+        );
+
+        // Curse + Aura → 命中。
+        let cfg_both =
+            CalcConfig::new().with_keyword_flags(KeywordFlags::CURSE | KeywordFlags::AURA);
+        assert!(m.matches(&cfg_both), "Curse+Aura → ALL 命中");
     }
 }

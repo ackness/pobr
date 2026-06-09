@@ -156,6 +156,78 @@ fn exposure_takes_strongest_single_source() {
     );
 }
 
+// 曝光消费侧：boss `ExposureEffectOnSelf MORE -50` 在有效口径下把曝光 magnitude 折半，
+// 面板口径下不生效（门控）。对照 PoB2 CalcPerform.lua:3225-3227。
+#[test]
+fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
+    let player = Actor::new(85, ActorBaseStats::default());
+
+    // 有效口径：setup_enemy(Pinnacle) 注入 ExposureEffectOnSelf MORE -50（带 Condition:Effective）。
+    let mut env = Env::new(player.clone());
+    setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
+    env.enemy
+        .mod_db
+        .add_mod(Modifier::number("FireExposure", ModType::Base, 25.0));
+    let cfg_eff = effective_attack();
+    reduce_enemy_exposure(&mut env.enemy.mod_db, &cfg_eff);
+    let fire_eff = env
+        .enemy
+        .mod_db
+        .sum(ModType::Base, &cfg_eff, &[ModName::from("FireResist")]);
+    // Pinnacle 火抗 base +50；曝光 floor(25 * 0.5) = 12 → FireResist 段含 -12。
+    // 取最终值：50 (boss base) + (-12) = 38。
+    assert!(
+        (fire_eff - 38.0).abs() < 1e-6,
+        "有效口径：曝光 25 折半 floor=12，FireResist=50-12=38，got {}",
+        fire_eff
+    );
+
+    // 面板口径：ExposureEffectOnSelf 被 Condition:Effective 门控 → 因子 1.0，曝光不折半。
+    let mut env2 = Env::new(player);
+    setup_enemy(&mut env2, 0, EnemyTier::Pinnacle);
+    env2.enemy
+        .mod_db
+        .add_mod(Modifier::number("FireExposure", ModType::Base, 25.0));
+    let cfg_panel = CalcConfig::attack();
+    reduce_enemy_exposure(&mut env2.enemy.mod_db, &cfg_panel);
+    let fire_panel =
+        env2.enemy
+            .mod_db
+            .sum(ModType::Base, &cfg_panel, &[ModName::from("FireResist")]);
+    // 面板：曝光 25 不折半 → FireResist 50 + (-25) = 25。
+    assert!(
+        (fire_panel - 25.0).abs() < 1e-6,
+        "面板口径：曝光不折半，FireResist=50-25=25，got {}",
+        fire_panel
+    );
+}
+
+// boss debuff effect-on-self 门控：仅有效口径生效，面板口径恒 1.0。
+#[test]
+fn boss_debuff_effect_on_self_gated_by_effective() {
+    let player = Actor::new(85, ActorBaseStats::default());
+    let mut env = Env::new(player);
+    setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
+    let db = &env.enemy.mod_db;
+
+    for name in [
+        "CurseEffectOnSelf",
+        "ExposureEffectOnSelf",
+        "SlowEffectOnSelf",
+    ] {
+        let panel = db.more(&CalcConfig::attack(), &[ModName::from(name)]);
+        assert!(
+            (panel - 1.0).abs() < 1e-9,
+            "{name} 面板口径被门控 → 1.0, got {panel}"
+        );
+        let eff = db.more(&effective_attack(), &[ModName::from(name)]);
+        assert!(
+            (eff - 0.5).abs() < 1e-9,
+            "{name} 有效口径 MORE -50 → 0.5, got {eff}"
+        );
+    }
+}
+
 #[test]
 fn max_of_empty_is_zero() {
     let enemy = ModDb::new();
@@ -299,12 +371,21 @@ fn setup_enemy_injects_pinnacle_defaults() {
     // 精准 = monsterAccuracyTable[85] = 2357。
     let acc = db.sum(ModType::Base, &cfg, &[ModName::from("Accuracy")]);
     assert_eq!(acc, monster_accuracy(85) as f64);
-    // 通用 Boss debuff 抗性。
-    let curse = db.more(&cfg, &[ModName::from("CurseEffectOnSelf")]);
+    // 通用 Boss debuff 抗性（带 `Condition:Effective` 门控）：
+    // - 面板口径（mode_effective=false）不匹配 → 因子 1.0（不污染裸 DPS）。
+    let curse_panel = db.more(&cfg, &[ModName::from("CurseEffectOnSelf")]);
     assert!(
-        (curse - 0.5).abs() < 1e-9,
-        "CurseEffectOnSelf MORE -50 → 0.5, got {}",
-        curse
+        (curse_panel - 1.0).abs() < 1e-9,
+        "面板口径 CurseEffectOnSelf 被门控 → 1.0, got {}",
+        curse_panel
+    );
+    // - 有效 DPS 口径（mode_effective=true）匹配 → MORE -50 → 0.5。
+    let cfg_eff = effective_attack();
+    let curse_eff = db.more(&cfg_eff, &[ModName::from("CurseEffectOnSelf")]);
+    assert!(
+        (curse_eff - 0.5).abs() < 1e-9,
+        "有效口径 CurseEffectOnSelf MORE -50 → 0.5, got {}",
+        curse_eff
     );
     // Condition:PinnacleBoss 已设置。
     assert!(

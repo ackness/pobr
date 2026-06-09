@@ -19,7 +19,7 @@
 
 use pobr_data::prelude::*;
 
-use crate::{ModDb, Modifier};
+use crate::{ModDb, ModTag, Modifier};
 
 use super::{Actor, Env};
 
@@ -34,6 +34,29 @@ fn push_enemy_number(db: &mut ModDb, name: &str, mod_type: ModType, value: f64, 
         Modifier::number(ModName::from(name), mod_type, value)
             .with_source(format!("enemy {id}"))
             .with_origin(enemy_source(id)),
+    );
+}
+
+/// 给 enemy modDB 注入一条带 `EnemyConfig` 归因、且仅在有效 DPS 口径生效的数值 modifier。
+///
+/// 附 `Condition:Effective` 标签（由 [`CalcConfig::condition`](crate::CalcConfig::condition)
+/// 从 `mode_effective` 派生）：面板口径（`mode_effective == false`）下这些敌侧 debuff-抗
+/// （curse/exposure/slow effect-on-self）不参与聚合，避免污染裸 DPS。
+fn push_enemy_effective_number(
+    db: &mut ModDb,
+    name: &str,
+    mod_type: ModType,
+    value: f64,
+    id: &str,
+) {
+    db.add_mod(
+        Modifier::number(ModName::from(name), mod_type, value)
+            .with_source(format!("enemy {id}"))
+            .with_origin(enemy_source(id))
+            .with_tag(ModTag::Condition {
+                var: "Effective".into(),
+                negated: false,
+            }),
     );
 }
 
@@ -161,22 +184,24 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
     }
 
     // Boss 通用 debuff 抗性（Boss/Pinnacle/Uber 共有；accuracy-and-enemy.md §五）。
+    // 这三项 effect-on-self 削弱我方诅咒/曝光/减速对 Boss 的有效度，仅在有效 DPS 口径
+    // （`mode_effective`）参与消费——故带 `Condition:Effective` 门控。
     if tier.is_boss() {
-        push_enemy_number(
+        push_enemy_effective_number(
             db,
             "CurseEffectOnSelf",
             ModType::More,
             -50.0,
             "boss_curse_effect",
         );
-        push_enemy_number(
+        push_enemy_effective_number(
             db,
             "ExposureEffectOnSelf",
             ModType::More,
             -50.0,
             "boss_exposure_effect",
         );
-        push_enemy_number(
+        push_enemy_effective_number(
             db,
             "SlowEffectOnSelf",
             ModType::More,
@@ -209,12 +234,19 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
 /// 出处：agent-docs/debuffs.md §曝光（`magnitude = max(magnitude, value)`）；
 ///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2。
 pub fn reduce_enemy_exposure(db: &mut ModDb, cfg: &crate::CalcConfig) {
+    // PoB2 `CalcPerform.lua:3225` `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")`：
+    // 曝光 magnitude 先乘该 effect-on-self（Boss `MORE -50` → 0.5）再折入抗性。该 mod 带
+    // `Condition:Effective` 门控，面板口径（`mode_effective == false`）不匹配 → 因子 1.0，
+    // 与历史输出一致。
+    let exposure_effect = db.more(cfg, &[ModName::from("ExposureEffectOnSelf")]);
     for (exposure_name, resist_name) in [
         ("FireExposure", "FireResist"),
         ("ColdExposure", "ColdResist"),
         ("LightningExposure", "LightningResist"),
     ] {
-        let magnitude = db.max_of(ModType::Base, cfg, &[ModName::from(exposure_name)]);
+        let raw = db.max_of(ModType::Base, cfg, &[ModName::from(exposure_name)]);
+        // 先乘 effect-on-self 再向下取整（PoB2 `m_floor((value + extraExposure) * ... * effectOnSelf)`）。
+        let magnitude = (raw * exposure_effect).floor();
         if magnitude > 0.0 {
             db.add_mod(
                 Modifier::number(ModName::from(resist_name), ModType::Base, -magnitude)
