@@ -240,11 +240,11 @@ Implicits: 1
         "含注释的行在剥离后应能被 mod_parser 解析，不应归入 unsupported：{:?}",
         ingest.unsupported
     );
-    // 1 implicit + 2 explicit + 1 quality modifier（quality=20 护甲注入 LocalDefencesMore）。
+    // 1 implicit + 2 explicit（品质不再注入 modifier，逐属性 base 缩放在编排层处理）。
     assert_eq!(
         ingest.modifiers.len(),
-        4,
-        "应解析出 4 个 modifier（1 implicit + 2 explicit + 1 quality）"
+        3,
+        "应解析出 3 个 modifier（1 implicit + 2 explicit）"
     );
 }
 

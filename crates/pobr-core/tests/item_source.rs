@@ -26,8 +26,8 @@ fn ingest_item_parses_texts_into_modifiers_with_item_affix_source() {
     } = ingest_item(EquipmentSlot::Helmet, &item).unwrap();
 
     assert!(unsupported.is_empty());
-    // quality=20 护甲注入 1 个 LocalDefencesMore modifier，共 3 个。
-    assert_eq!(modifiers.len(), 3);
+    // 品质不再注入 modifier（逐属性 base 缩放在编排层处理），仅 2 个 explicit 词条。
+    assert_eq!(modifiers.len(), 2);
 
     // 仅检查 explicit 词条（SourceKind::ItemAffix）的归因字段。
     let explicit_mods: Vec<_> = modifiers
@@ -65,22 +65,17 @@ fn ingest_item_parses_texts_into_modifiers_with_item_affix_source() {
     );
     assert_eq!(life.origin.as_ref().unwrap().mod_type, Some(ModType::Base));
 
-    // 品质 modifier 归因到 ItemQuality。
-    let quality_mod = modifiers
-        .iter()
-        .find(|m| {
-            m.origin
-                .as_ref()
-                .map(|o| o.source_id.kind == SourceKind::ItemQuality)
-                .unwrap_or(false)
-        })
-        .expect("quality modifier present");
-    assert_eq!(
-        quality_mod.origin.as_ref().unwrap().source_id.id,
-        "item.helmet.quality"
+    // 品质不再注入任何 ItemQuality modifier。
+    let quality_mod = modifiers.iter().find(|m| {
+        m.origin
+            .as_ref()
+            .map(|o| o.source_id.kind == SourceKind::ItemQuality)
+            .unwrap_or(false)
+    });
+    assert!(
+        quality_mod.is_none(),
+        "品质不再作为 modifier 注入（逐属性 base 缩放在编排层处理）"
     );
-    assert_eq!(quality_mod.mod_type, ModType::More);
-    assert_eq!(quality_mod.value.as_number(), Some(20.0));
 }
 
 #[test]
@@ -238,195 +233,91 @@ fn session_add_item_feeds_minimal_calc() {
     assert_eq!(session.unsupported_modifier_texts(), ["mirrored"]);
 }
 
-// ── Bug Fix: item-quality-not-modeled-as-more-local ───────────────────────
+// ── 品质不作为 More modifier 注入（finding 02-05 修正）─────────────────────
 //
-// PoE2 物品品质（quality）应转化为 More 局部修饰词注入 ModDb：
-// - 武器 quality → ModName::LocalPhysicalDamageMore（More modifier）
-// - 护甲 quality → ModName::LocalDefencesMore（More modifier）
+// PoB2 的物品品质是**逐属性 base 缩放**（武器仅物理；护甲 armour/evasion/ES 各自
+// 独立 × (1 + quality/100)），不是一个全局 `more` modifier。把品质作为
+// `LocalPhysicalDamageMore` / `LocalDefencesMore` 全局 More 注入会错误地波及全局
+// 伤害 / 全部防御。实际缩放由编排层 `pobr-build::calc_orchestrator`（item_rolled_defence
+// 与武器 physical_min/max）逐件、逐属性处理，与 PoB2 对齐。故 ingest 不注入品质 modifier。
 //
-// 出处：agent-docs/item-character-systems.md §5.1；
-//       PoB2 src/Classes/Item.lua BuildModListForSlotNum 1751-1756（武器）、
-//       1812-1819（护甲）。
+// 出处：PoB2 src/Classes/Item.lua BuildModListForSlotNum 1751-1756（武器）、
+//       1812-1819（护甲，逐属性独立缩放）。
 
-#[test]
-fn armour_quality_injects_local_defences_more_modifier() {
-    // 护甲 quality=20 → 注入 20 的 LocalDefencesMore (More) modifier。
-    let helmet = Item {
-        base: ItemBaseId::from("Iron Helmet"),
+/// 辅助：断言一件物品 ingest 后**不含**任何 `ItemQuality` 归因的 modifier。
+fn assert_no_quality_modifier(slot: EquipmentSlot, item: &Item) {
+    let ingest = ingest_item(slot, item).unwrap();
+    let quality_mod = ingest.modifiers.iter().find(|m| {
+        m.origin
+            .as_ref()
+            .map(|o| o.source_id.kind == SourceKind::ItemQuality)
+            .unwrap_or(false)
+    });
+    assert!(
+        quality_mod.is_none(),
+        "{} 品质不应作为 modifier 注入（逐属性 base 缩放在编排层处理）",
+        slot.id()
+    );
+}
+
+fn bare_item(base: &str, slot_quality: u8) -> Item {
+    Item {
+        base: ItemBaseId::from(base),
         rarity: ItemRarity::Rare,
-        quality: 20,
+        quality: slot_quality,
         implicit_texts: Vec::new(),
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
         rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
-    };
-
-    let ingest = ingest_item(EquipmentSlot::Helmet, &helmet).unwrap();
-
-    let quality_mod = ingest
-        .modifiers
-        .iter()
-        .find(|m| {
-            m.origin
-                .as_ref()
-                .map(|o| o.source_id.kind == SourceKind::ItemQuality)
-                .unwrap_or(false)
-        })
-        .expect("quality modifier should be present for quality=20 armour");
-
-    assert_eq!(
-        quality_mod.name,
-        ModName::from("LocalDefencesMore"),
-        "护甲品质应映射到 LocalDefencesMore"
-    );
-    assert_eq!(quality_mod.mod_type, ModType::More);
-    assert_eq!(
-        quality_mod.value.as_number(),
-        Some(20.0),
-        "quality 值应为 20.0"
-    );
-    let origin = quality_mod.origin.as_ref().unwrap();
-    assert_eq!(origin.source_id.kind, SourceKind::ItemQuality);
-    assert_eq!(origin.source_id.id, "item.helmet.quality");
-    assert_eq!(origin.slot.as_deref(), Some("helmet"));
+    }
 }
 
 #[test]
-fn weapon_quality_injects_local_physical_damage_more_modifier() {
-    // 武器 quality=15 → 注入 15 的 LocalPhysicalDamageMore (More) modifier。
-    let weapon = Item {
-        base: ItemBaseId::from("Iron Sword"),
-        rarity: ItemRarity::Rare,
-        quality: 15,
-        implicit_texts: Vec::new(),
-        modifier_texts: Vec::new(),
-        enchant_texts: Vec::new(),
-        rolled_defence: RolledDefence::default(),
-        parsed_stats: Vec::new(),
-    };
+fn armour_quality_does_not_inject_modifier() {
+    assert_no_quality_modifier(EquipmentSlot::Helmet, &bare_item("Iron Helmet", 20));
+    assert_no_quality_modifier(EquipmentSlot::BodyArmour, &bare_item("Plate Vest", 10));
+}
 
-    let ingest = ingest_item(EquipmentSlot::Weapon1, &weapon).unwrap();
-
-    let quality_mod = ingest
-        .modifiers
-        .iter()
-        .find(|m| {
-            m.origin
-                .as_ref()
-                .map(|o| o.source_id.kind == SourceKind::ItemQuality)
-                .unwrap_or(false)
-        })
-        .expect("quality modifier should be present for quality=15 weapon");
-
-    assert_eq!(
-        quality_mod.name,
-        ModName::from("LocalPhysicalDamageMore"),
-        "武器品质应映射到 LocalPhysicalDamageMore"
-    );
-    assert_eq!(quality_mod.mod_type, ModType::More);
-    assert_eq!(
-        quality_mod.value.as_number(),
-        Some(15.0),
-        "quality 值应为 15.0"
-    );
-    let origin = quality_mod.origin.as_ref().unwrap();
-    assert_eq!(origin.source_id.kind, SourceKind::ItemQuality);
-    assert_eq!(origin.source_id.id, "item.weapon1.quality");
-    assert_eq!(origin.slot.as_deref(), Some("weapon1"));
+#[test]
+fn weapon_quality_does_not_inject_modifier() {
+    assert_no_quality_modifier(EquipmentSlot::Weapon1, &bare_item("Iron Sword", 15));
 }
 
 #[test]
 fn accessory_quality_does_not_inject_modifier() {
-    // 戒指 / 腰带品质通过催化剂机制影响词条，当前不注入 quality modifier。
-    let ring = Item {
-        base: ItemBaseId::from("Iron Ring"),
-        rarity: ItemRarity::Rare,
-        quality: 20,
-        implicit_texts: Vec::new(),
-        modifier_texts: Vec::new(),
-        enchant_texts: Vec::new(),
-        rolled_defence: RolledDefence::default(),
-        parsed_stats: Vec::new(),
-    };
-
-    let ingest = ingest_item(EquipmentSlot::Ring1, &ring).unwrap();
-
-    let quality_mod = ingest.modifiers.iter().find(|m| {
-        m.origin
-            .as_ref()
-            .map(|o| o.source_id.kind == SourceKind::ItemQuality)
-            .unwrap_or(false)
-    });
-    assert!(
-        quality_mod.is_none(),
-        "戒指品质不应注入 quality modifier（催化剂机制，暂不建模）"
-    );
+    // 戒指 / 腰带品质走催化剂机制（getCatalystScalar），尚未建模——见下方 defer 说明。
+    assert_no_quality_modifier(EquipmentSlot::Ring1, &bare_item("Iron Ring", 20));
+    assert_no_quality_modifier(EquipmentSlot::Belt, &bare_item("Heavy Belt", 20));
 }
 
 #[test]
 fn zero_quality_does_not_inject_modifier() {
-    // quality=0 时不注入任何 quality modifier。
-    let helmet = Item {
-        base: ItemBaseId::from("Iron Helmet"),
-        rarity: ItemRarity::Rare,
-        quality: 0,
-        implicit_texts: Vec::new(),
-        modifier_texts: Vec::new(),
-        enchant_texts: Vec::new(),
-        rolled_defence: RolledDefence::default(),
-        parsed_stats: Vec::new(),
-    };
-
-    let ingest = ingest_item(EquipmentSlot::Helmet, &helmet).unwrap();
-
-    let quality_mod = ingest.modifiers.iter().find(|m| {
-        m.origin
-            .as_ref()
-            .map(|o| o.source_id.kind == SourceKind::ItemQuality)
-            .unwrap_or(false)
-    });
-    assert!(
-        quality_mod.is_none(),
-        "quality=0 时不应注入 quality modifier"
-    );
+    assert_no_quality_modifier(EquipmentSlot::Helmet, &bare_item("Iron Helmet", 0));
 }
 
+// ── Defer: 催化剂（accessory quality → catalyst）尚未建模 ───────────────────
+//
+// PoB2 `getCatalystScalar(catalystId, mod, quality)`（src/Classes/Item.lua 33-58）
+// 按催化剂的 tag 集（catalystTags：life/mana/defences/physical/attack/caster…）与
+// **每条词缀的 GGG modTags** 求交，命中则将该词缀值缩放 (100 + quality)/100。
+//
+// PoBR 当前缺两样东西，故无法建模，明确 defer：
+//   1. 数据模型：`pobr_data::Item` 无 `catalyst` / `catalyst_quality` 字段
+//      （item_text 已把 `Catalyst:` / `CatalystQuality:` 行作为元数据丢弃）。
+//   2. 词缀 tag 分类：PoBR 解析出的 `Modifier` 不携带 GGG modTags
+//      （life/defences/physical…），`getCatalystScalar` 无从匹配。
+//
+// 补齐顺序应为：先在 mod 数据管线引入词缀 tag 分类，再加 Item 催化剂字段，
+// 最后在 ingest（或编排层）按 tag 命中缩放词缀值。此处仅占位记录。
 #[test]
-fn body_armour_quality_uses_correct_source_id() {
-    // 胸甲 quality modifier 的 SourceId 应包含正确槽位 ID。
-    let body = Item {
-        base: ItemBaseId::from("Plate Vest"),
-        rarity: ItemRarity::Normal,
-        quality: 10,
-        implicit_texts: Vec::new(),
-        modifier_texts: Vec::new(),
-        enchant_texts: Vec::new(),
-        rolled_defence: RolledDefence::default(),
-        parsed_stats: Vec::new(),
-    };
-
-    let ingest = ingest_item(EquipmentSlot::BodyArmour, &body).unwrap();
-
-    let quality_mod = ingest
-        .modifiers
-        .iter()
-        .find(|m| {
-            m.origin
-                .as_ref()
-                .map(|o| o.source_id.kind == SourceKind::ItemQuality)
-                .unwrap_or(false)
-        })
-        .expect("body armour quality modifier present");
-
-    assert_eq!(
-        quality_mod.origin.as_ref().unwrap().source_id.id,
-        "item.bodyarmour.quality"
-    );
-    assert_eq!(quality_mod.value.as_number(), Some(10.0));
-    assert_eq!(
-        quality_mod.name,
-        ModName::from("LocalDefencesMore"),
-        "胸甲属于护甲类，应映射到 LocalDefencesMore"
+fn catalyst_scaling_is_deferred_no_field_in_model() {
+    // 文档化 defer：accessory 即便有品质也不缩放词条（催化剂未建模），
+    // 与 accessory_quality_does_not_inject_modifier 一致——不引入虚假缩放。
+    let ring = bare_item("Topaz Ring", 20);
+    let ingest = ingest_item(EquipmentSlot::Ring1, &ring).unwrap();
+    assert!(
+        ingest.modifiers.is_empty(),
+        "催化剂未建模：accessory 不应因品质产生任何额外 modifier"
     );
 }
