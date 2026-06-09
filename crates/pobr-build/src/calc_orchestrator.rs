@@ -327,9 +327,15 @@ pub fn calculate_with_data(
     // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
     // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
     // 不再有单技能硬编码。
-    if let Some((skill, group, _)) = &main_skill {
+    if let Some((skill, group, skill_id)) = &main_skill {
         session.add_modifiers(skill_base_modifiers(skill));
         session.add_modifiers(support_modifiers(group, data));
+
+        // 1b-iii. 触发链路（findings 03-01/03-02/03-06）：主技能若为**内建触发**
+        // （`skill_types` 含 `Triggered`/`InbuiltTrigger`，对应 PoB2 `isTriggered`）则注入
+        // 触发冷却 + 组内触发源速率 BASE，驱动 perform `fill_trigger` 写出非占位的
+        // trigger_rate_cap / skill_trigger_rate。无触发标签时返回空、面板保持 0（向后兼容）。
+        session.add_modifiers(trigger_modifiers(build, data, skill, group, skill_id));
     }
 
     // 1b-ii. 技能伤害倍率 → `AddedDamage` MORE，使**附加 flat 伤害**（武器+装备 added）
@@ -1457,6 +1463,128 @@ fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
     )
 }
 
+/// 主技能触发链路 modifier（findings 03-01/03-02/03-06 的 build 层接线）。
+///
+/// PoB2 触发面板（`CalcTriggers.lua`）由「触发源技能速率」「触发冷却」「被触发技能冷却」
+/// 三要素决定。PoBR 当前数据模型**无 gem-link / triggeredBy 关系**（无法从数据知道哪个
+/// support 把哪个源技能连到被触发技能），故只对**内建触发**（`skill_types` 含 `Triggered` /
+/// `InbuiltTrigger`，对应 PoB2 `isTriggered`：物品/升华自带的自动触发技能）做可达接线：
+///
+/// - 被触发的主技能有冷却（`cooldown_s`）→ 注入 `TriggeredSkillCooldown` + `TriggerCooldownBase`
+///   BASE（秒）。无独立触发宝石冷却数据时，二者同取被触发技能冷却（PoB2
+///   `actionCooldown = max(triggerCD, triggeredCD)` 在此退化为该单一冷却）。驱动 `fill_trigger`
+///   冷却分支算出 `trigger_rate_cap = 1/ceil_tick(cd/icdr)`。
+/// - 触发源速率（PoB2 `EffectiveSourceRate`，`findTriggerSkill` 取组内最高 cast/attack rate）：
+///   扫描**同插槽组**内非辅助、非触发的伤害技能（≠ 主技能），取其有效行动速率
+///   `1/use_time` 注入 `TriggerSourceRate` BASE。组内无独立源技能时**不注入**——`fill_trigger`
+///   回退到主技能 `effective_action_rate`（占位语义；多数内建触发的源是物品/升华事件，
+///   其真实频率未入库，留作 defer）。
+///
+/// **defer（受限于数据模型）**：① 触发 support 宝石（Cast on Crit / Trigger 支援）的链路——
+/// 无 gem→trigger 映射，无法判定 `triggerOnCrit` / 触发宝石独立冷却；② CWC（`triggerTime` /
+/// `CWCAddsCastTime` 未入库，无 CastWhileChannelling skill_type）；③ 多被触发技能 per-skill
+/// 冷却轮转（需 gem-link 列表）。这些待数据管线补 `triggeredBy` / `triggerTime` 后接入。
+fn trigger_modifiers(
+    build: &Build,
+    data: &BuildData,
+    main_skill: &ResolvedSkillLevel,
+    group: &SocketGroup,
+    main_skill_id: &str,
+) -> Vec<Modifier> {
+    let Some(effect) = data.granted_effects.get(main_skill_id) else {
+        return Vec::new();
+    };
+    // 内建触发判定（PoB2 isTriggered：skillTypes 含 Triggered 或 InbuiltTrigger）。
+    let is_triggered = effect
+        .skill_types
+        .iter()
+        .any(|t| t == "Triggered" || t == "InbuiltTrigger");
+    if !is_triggered {
+        return Vec::new();
+    }
+
+    let mut mods = Vec::new();
+    let mk = |stat: &str, value: f64, label: &str| {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("trigger.{stat}"),
+        ))
+        .with_raw_text(label);
+        Modifier::number(stat, ModType::Base, value).with_origin(origin)
+    };
+
+    // 被触发技能冷却 → 触发冷却 + 被触发冷却 BASE（同值，见上文 actionCooldown 退化）。
+    if let Some(cd) = main_skill.cooldown_s
+        && cd > 0.0
+    {
+        mods.push(mk(
+            "TriggeredSkillCooldown",
+            cd,
+            "triggered skill base cooldown",
+        ));
+        mods.push(mk("TriggerCooldownBase", cd, "trigger base cooldown"));
+    }
+
+    // 组内触发源技能有效速率 → TriggerSourceRate BASE（PoB2 EffectiveSourceRate）。
+    if let Some(rate) = in_group_trigger_source_rate(build, data, group, main_skill_id) {
+        mods.push(mk(
+            "TriggerSourceRate",
+            rate,
+            "in-group trigger source effective rate",
+        ));
+    }
+
+    mods
+}
+
+/// 扫描主技能**同插槽组**内的触发源技能有效速率（PoB2 `findTriggerSkill`：取组内最高
+/// cast/attack rate 的非触发伤害技能）。返回 `1/use_time`（次/秒）；无候选返回 `None`。
+///
+/// 候选条件：非辅助、非触发（不含 `Triggered`/`InbuiltTrigger`）、是伤害技能、≠ 主技能，
+/// 且有正的 `use_time_s`。多候选取速率最大者（对齐 PoB2 highest-APS 选取）。
+fn in_group_trigger_source_rate(
+    build: &Build,
+    data: &BuildData,
+    group: &SocketGroup,
+    main_skill_id: &str,
+) -> Option<f64> {
+    let mut best: Option<f64> = None;
+    for gem in &group.gem_skills {
+        if gem.skill_id == main_skill_id {
+            continue;
+        }
+        let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+            continue;
+        };
+        if effect.is_support {
+            continue;
+        }
+        // 源技能自身不应是触发技能（PoB2 findTriggerSkill 跳过 isTriggered）。
+        if effect
+            .skill_types
+            .iter()
+            .any(|t| t == "Triggered" || t == "InbuiltTrigger")
+        {
+            continue;
+        }
+        if !is_damage_skill(data, &gem.skill_id) {
+            continue;
+        }
+        let Some(resolved) =
+            resolve_skill_level_with_gem_bonus(build, data, &gem.skill_id, gem.gem_level)
+        else {
+            continue;
+        };
+        if let Some(use_time) = resolved.use_time_s
+            && use_time > 0.0
+        {
+            let rate = 1.0 / use_time;
+            best = Some(best.map_or(rate, |b: f64| b.max(rate)));
+        }
+    }
+    best
+}
+
 /// 把主技能组内 **support 宝石**的分等级 stat 经 [`map_skill_stat`] 映射为 SupportGem 归因
 /// 的 modifier，注入被支援技能（如「附加闪电伤害」→ `LightningDamageMin/Max` BASE、
 /// 「更多伤害」→ `Damage` MORE）。
@@ -2321,5 +2449,138 @@ mod tests {
         // 非火抗光环不应污染冰/电抗（Purity of Fire 仅给火抗）。
         assert_eq!(aura.cold_resistance, base.cold_resistance);
         assert_eq!(aura.lightning_resistance, base.lightning_resistance);
+    }
+
+    // ── 触发链路 build 层接线（findings 03-01/03-02/03-06）──────────────────
+
+    /// 内建触发主技能（`ElementalStormPlayer`：Spell/Damage，cd 3s，Triggered/InbuiltTrigger）
+    /// → orchestrator 注入触发冷却 → perform fill_trigger 写出非占位 trigger_rate_cap /
+    /// skill_trigger_rate（cd 3s → cap ≈ 1/3.003 ≈ 0.333/s）。
+    #[test]
+    fn inbuilt_trigger_skill_fills_trigger_rate_cap() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 80,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("ElementalStormPlayer", 20))
+            .with_main_socket_group(1);
+
+        let opts = DataOrchestratorOptions {
+            inject_character_base: true,
+            ..Default::default()
+        };
+        let out = calculate_with_data(&build, &data, &opts).expect("trigger calc");
+
+        // cd 3s → cap = 1/ceil_tick(3.0) ≈ 0.333/s。
+        assert!(
+            out.trigger_rate_cap > 0.0,
+            "内建触发应写出非零 trigger_rate_cap，实得 {}",
+            out.trigger_rate_cap
+        );
+        assert!(
+            (out.trigger_rate_cap - 0.333).abs() < 0.05,
+            "cd 3s 触发上限应 ≈0.333/s，实得 {}",
+            out.trigger_rate_cap
+        );
+        assert!(
+            out.skill_trigger_rate > 0.0,
+            "skill_trigger_rate 应非占位 0，实得 {}",
+            out.skill_trigger_rate
+        );
+    }
+
+    /// 非触发主技能（普通法术）→ orchestrator 不注入触发词条 → 触发面板保持占位 0（向后兼容）。
+    #[test]
+    fn non_trigger_skill_leaves_trigger_panel_zero() {
+        let data = repo_data();
+        // FireballPlayer：普通投射法术，非 Triggered/InbuiltTrigger。
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 80,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+            .with_main_socket_group(1);
+
+        let opts = DataOrchestratorOptions::default();
+        let out = calculate_with_data(&build, &data, &opts).expect("non-trigger calc");
+
+        assert_eq!(
+            out.trigger_rate_cap, 0.0,
+            "非触发技能 trigger_rate_cap 应保持 0"
+        );
+        assert_eq!(
+            out.skill_trigger_rate, 0.0,
+            "非触发技能 skill_trigger_rate 应保持 0"
+        );
+    }
+
+    /// `trigger_modifiers` 单元：内建触发 + 有冷却 → 注入 TriggeredSkillCooldown +
+    /// TriggerCooldownBase；非触发技能 → 空（向后兼容门控）。
+    #[test]
+    fn trigger_modifiers_gates_on_triggered_skill_type() {
+        let mut granted_effects = HashMap::new();
+        // 内建触发技能（有冷却）。
+        granted_effects.insert(
+            "TrigSkill".to_string(),
+            pobr_data::catalog::GrantedEffectDef {
+                id: "TrigSkill".into(),
+                is_support: false,
+                active_skill: Some("TrigSkill".into()),
+                cast_time: Some(1000),
+                allowed_active_skill_types: vec![],
+                stat_set: None,
+                cost_types: vec![],
+                skill_types: vec!["Spell".into(), "Triggered".into(), "InbuiltTrigger".into()],
+            },
+        );
+        // 普通技能（非触发）。
+        granted_effects.insert(
+            "NormalSkill".to_string(),
+            pobr_data::catalog::GrantedEffectDef {
+                id: "NormalSkill".into(),
+                is_support: false,
+                active_skill: Some("NormalSkill".into()),
+                cast_time: Some(1000),
+                allowed_active_skill_types: vec![],
+                stat_set: None,
+                cost_types: vec![],
+                skill_types: vec!["Spell".into()],
+            },
+        );
+        let data = BuildData {
+            passive_nodes: HashMap::new(),
+            skill_gems: HashMap::new(),
+            class_attributes: HashMap::new(),
+            granted_effects,
+            granted_effect_levels: HashMap::new(),
+            skill_stat_sets: HashMap::new(),
+            cost_types: Vec::new(),
+            base_items: HashMap::new(),
+        };
+        let build = Build::new();
+        let group = SocketGroup::new();
+
+        // 触发技能 + 有冷却 → 注入两个冷却 BASE。
+        let triggered = ResolvedSkillLevel {
+            cooldown_s: Some(0.5),
+            ..ResolvedSkillLevel::default()
+        };
+        let mods = trigger_modifiers(&build, &data, &triggered, &group, "TrigSkill");
+        let names: Vec<&str> = mods.iter().map(|m| m.name.as_str()).collect();
+        assert!(names.contains(&"TriggeredSkillCooldown"));
+        assert!(names.contains(&"TriggerCooldownBase"));
+
+        // 非触发技能 → 空（不注入任何触发词条）。
+        let normal = ResolvedSkillLevel {
+            cooldown_s: Some(0.5),
+            ..ResolvedSkillLevel::default()
+        };
+        let mods_none = trigger_modifiers(&build, &data, &normal, &group, "NormalSkill");
+        assert!(mods_none.is_empty(), "非触发技能不应注入触发词条");
     }
 }

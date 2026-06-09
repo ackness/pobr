@@ -868,8 +868,44 @@ fn perform_fills_cwc_trigger_rate() {
     perform(&mut env).unwrap();
     // triggerTime 0.3s → ceil_tick ≈ 0.33s → rate ≈ 3.03/s。
     assert!((env.player.output.trigger_rate_cap - 3.03).abs() < 0.2);
-    // CWC 下 skill_trigger_rate == cap（引导驱动）。
-    assert_eq!(
+    // CWC 单被触发技能（无冷却）经单技能轮转：源速率=引导频率 → 稳态速率≈引导频率，
+    // 再被 cap clamp。无冷却时 ≈ cap（finding 03-06：CWC 走 calcMultiSpellRotationImpact）。
+    assert!(
+        (env.player.output.skill_trigger_rate - env.player.output.trigger_rate_cap).abs() < 0.2,
+        "CWC 无冷却 skill_trigger_rate≈cap: rate={} cap={}",
+        env.player.output.skill_trigger_rate,
+        env.player.output.trigger_rate_cap
+    );
+}
+
+/// CWC 被触发技能冷却 > 引导间隔时：rate 被冷却门控，且经单技能轮转后 ≤ cap
+/// （finding 03-06：CWC skill_trigger_rate 走 calc_multi_spell_rotation 单技能路径）。
+#[test]
+fn perform_cwc_trigger_rate_limited_by_triggered_cooldown() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    // 引导间隔 0.1s（快），被触发技能冷却 0.5s（慢）→ 冷却门控。
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("CWCTriggerTime", ModType::Base, 0.1),
+            Modifier::number("TriggeredSkillCooldown", ModType::Base, 0.5),
+        ],
+    );
+    perform(&mut env).unwrap();
+    // 冷却 0.5s 限速 → cap = 1/ceil_tick(0.5) ≈ 1.96/s，远低于引导频率 ~9.9/s。
+    assert!(
+        env.player.output.trigger_rate_cap < 3.0,
+        "被触发冷却应压低 cap: {}",
+        env.player.output.trigger_rate_cap
+    );
+    // 轮转稳态速率不得超过 cap，且为正（被触发技能确实在触发）。
+    assert!(env.player.output.skill_trigger_rate > 0.0);
+    assert!(
+        env.player.output.skill_trigger_rate <= env.player.output.trigger_rate_cap + 1e-6,
+        "skill_trigger_rate {} 不得超过 cap {}",
         env.player.output.skill_trigger_rate,
         env.player.output.trigger_rate_cap
     );

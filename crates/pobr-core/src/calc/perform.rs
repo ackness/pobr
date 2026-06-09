@@ -12,7 +12,10 @@ use super::skill_mechanics::{
     calc_aoe, calc_cooldown, calc_life_cost, calc_mana_cost, calc_projectile_count,
     calc_spirit_reservation,
 };
-use super::trigger::{calc_cwc_trigger_rate_traced, resolve_trigger_rate_traced};
+use super::trigger::{
+    RotationSkill, calc_cwc_trigger_rate_traced, calc_multi_spell_rotation,
+    resolve_trigger_rate_traced,
+};
 use super::{
     BreakdownTable, CalcError, EhpOptions, Env, LeechResource, MinimalInput, MinionOutput,
     OutputTable, RecoupResource, ResistanceSuite, calc_avoidance, calc_crit_extra_reduction,
@@ -370,11 +373,13 @@ fn fill_mechanics(env: &mut Env) {
 /// `effective_action_rate`（占位语义——主技能并非触发源）。触发速率末端再乘 triggerChance
 /// （命中/暴击/显式触发几率折算，PoB2 CalcTriggers.lua L715-777）。
 ///
-/// 无 `TriggerCooldownBase` / `CWCTriggerTime` 词条时两字段保持 0；**且 build 层当前尚未注入
-/// 任一触发词条（TriggerCooldownBase/CWCTriggerTime/TriggerSourceRate/触发上下文），故真实
-/// build 中两分支均不进入、面板为占位 0，待 orchestrator 接线后生效。**
+/// 无 `TriggerCooldownBase` / `CWCTriggerTime` 词条时两字段保持 0（无触发的普通 build 不进入
+/// 任一分支，面板保持 0）。**build 层 `calc_orchestrator` 现已对内建触发（`Triggered` /
+/// `InbuiltTrigger` 主技能）注入 `TriggeredSkillCooldown` + `TriggerCooldownBase`，并在组内有
+/// 触发源技能时注入 `TriggerSourceRate`；CWC 主技能注入 `CWCTriggerTime` + `CWCAddsCastTime`。**
 /// 出处：agent-docs/triggers.md §三 / §4.2；Lane B integration_spec；PoB2 CalcTriggers.lua
-/// L74-86 findTriggerSkill / L702-707 EffectiveSourceRate / L715-777 triggerChance。
+/// L74-86 findTriggerSkill / L702-707 EffectiveSourceRate / L715-777 triggerChance；
+/// CWCHandler L262-263（finding 03-06：CWC 经 calcMultiSpellRotationImpact）。
 fn fill_trigger(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
@@ -413,11 +418,27 @@ fn fill_trigger(env: &mut Env) {
         env.player.output.trigger_rate_cap = tr.trigger_rate_cap;
         env.player.output.skill_trigger_rate = round(tr.skill_trigger_rate * trigger_chance);
     } else if cwc_trigger_time > 0.0 {
-        // CWC：引导触发，被触发技能冷却 clamp。adds_cast_time 由 build 层注入（当前传 0）。
-        let (cwc, _) =
-            calc_cwc_trigger_rate_traced(cwc_trigger_time, triggered_cd, 0.0, icdr, &mut trace);
+        // CWC：引导触发，被触发技能冷却 clamp。adds_cast_time 由 build 层经
+        // `CWCAddsCastTime` BASE 注入（被触发法术 base_cast_time/cast_speed；无则 0）。
+        let adds_cast_time = db.sum(ModType::Base, cfg, &[ModName::from("CWCAddsCastTime")]);
+        let (cwc, _) = calc_cwc_trigger_rate_traced(
+            cwc_trigger_time,
+            triggered_cd,
+            adds_cast_time,
+            icdr,
+            &mut trace,
+        );
         env.player.output.trigger_rate_cap = cwc.trigger_rate_cap;
-        env.player.output.skill_trigger_rate = cwc.trigger_rate_cap;
+        // PoB2 CWCHandler（CalcTriggers.lua L262-263）：cap = min(1/effCD, channellingRate)，
+        // 随后 SkillTriggerRate = calcMultiSpellRotationImpact(triggeredSkills, channellingRate, 0)。
+        // 单被触发技能路径（finding 03-06）：用 channelling_rate 作源速率喂单技能轮转，
+        // 取该技能稳态速率再被 cap clamp。多被触发技能轮转分摊待 gem-link 数据接入后扩展。
+        let rotation = calc_multi_spell_rotation(
+            &[RotationSkill::new(cwc.effective_triggered_cd)],
+            cwc.channelling_trigger_rate,
+        );
+        let rotated = rotation.rates.first().copied().unwrap_or(0.0);
+        env.player.output.skill_trigger_rate = round(rotated.min(cwc.trigger_rate_cap));
     }
 }
 
