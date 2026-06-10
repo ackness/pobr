@@ -34,12 +34,13 @@ use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
-use pobr_core::{CalcConfig, CharacterBase, ModTag, Modifier};
+use pobr_core::{CalcConfig, CampaignProgress, CharacterBase, ModTag, Modifier};
+use pobr_data::catalog::local_mods::WeaponLocalModsDef;
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
-use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect};
+use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect_with_radii};
 
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
@@ -48,15 +49,6 @@ use crate::skill_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat, ma
 
 /// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
 const EXPOSURE_MAGNITUDE: f64 = 20.0;
-
-/// PoE2 属性派生系数（对齐 `pobr_core::CharacterBase`）：每点力量 +2 生命、每点智力 +2
-/// 魔力、每点敏捷 +6 精准。
-const LIFE_PER_STRENGTH: f64 = 2.0;
-const MANA_PER_INTELLIGENCE: f64 = 2.0;
-const ACCURACY_PER_DEXTERITY: f64 = 6.0;
-
-/// PoE2 终局默认元素抗性惩罚（火/冰/电；PoB2 `configInput.resistancePenalty or -60`）。
-const ENDGAME_RESISTANCE_PENALTY: f64 = -60.0;
 
 /// 编排选项：可注入基础 [`MinimalInput`]（角色基础生命/抗性等，来自上层装配）。
 #[derive(Debug, Clone, Default)]
@@ -172,10 +164,13 @@ pub fn calculate_with_data(
         .with_flags(base_cfg.flags | skill_flags)
         .with_damage_keywords(dmg_keywords)
         .with_mode_effective(options.mode_effective);
+    // 敌人档位（19-G3 接线）：build XML Config 显式保存的 `enemyIsBoss` 优先；
+    // 省略时回退调用方编排选项（PoB2 defaultIndex=3 = Pinnacle，与既有调用方一致）。
+    let enemy_tier = build.config.enemy_tier.unwrap_or(options.enemy_tier);
     // 敌人稀有度条件：DPS 默认 vs Boss/Pinnacle/Uber（= Unique）→ 置真，使
     // `... against Rare or Unique Enemies` 这类条件型增伤生效（PoB 的 boss DPS 口径）。
     if matches!(
-        options.enemy_tier,
+        enemy_tier,
         EnemyTier::Boss | EnemyTier::Pinnacle | EnemyTier::Uber
     ) {
         cfg = cfg
@@ -283,6 +278,9 @@ pub fn calculate_with_data(
     }
 
     let mut session = CalculationSession::new(base_input).with_config(cfg);
+    // M0-W3 注入管道：把 GameData 加载的运行时常量包注入 calc（必须在 with_config
+    // 之后——with_config 整体覆盖 cfg）。数据与 Default fallback 逐值相等，零行为变化。
+    session.set_constants(data.constants.clone());
 
     if bypasses_cooldown || cooldown_attack_unmodeled {
         let label = if bypasses_cooldown {
@@ -306,22 +304,17 @@ pub fn calculate_with_data(
     if options.inject_character_base
         && let Some(base) = character_base(build, data)
     {
-        session.add_modifiers(base.modifiers());
-        // PoE2 终局默认元素抗性惩罚（火/冰/电各 -60%；混沌无惩罚）。对应 PoB2 CalcSetup.lua
-        // `configInput.resistancePenalty or -60`——所有终局 build 的基础抗性起点。
-        let pen = |elem: &str| {
-            let origin = ModifierSource::new(SourceId::new(
-                SourceKind::CharacterBase,
-                "base.resist_penalty",
-            ))
-            .with_raw_text("endgame elemental resistance penalty");
-            Modifier::number(elem, ModType::Base, ENDGAME_RESISTANCE_PENALTY).with_origin(origin)
-        };
-        session.add_modifiers([
-            pen("FireResistance"),
-            pen("ColdResistance"),
-            pen("LightningResistance"),
-        ]);
+        // M0-W3：派生系数自注入的 character_constants 域读取（与 Default 逐值相等）。
+        session.add_modifiers(base.modifiers(&data.constants.character_constants));
+        // 元素抗性惩罚（火/冰/电；混沌无惩罚）：XML Config `resistancePenalty` 显式档位
+        // 优先；省略时按 PoB2 CalcSetup.lua `configInput.resistancePenalty or -60`（即
+        // Endgame）。档位 → 惩罚 modifier 走 [`CampaignProgress`] 既有表（带
+        // `campaign.resistance_penalty` 归因；Act1 惩罚为 0、不产生 modifier）。
+        let progress = build
+            .config
+            .campaign_progress
+            .unwrap_or(CampaignProgress::Endgame);
+        session.add_modifiers(progress.modifiers());
     }
 
     // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
@@ -383,7 +376,7 @@ pub fn calculate_with_data(
             let drop_local = |texts: Vec<String>| -> Vec<String> {
                 texts
                     .into_iter()
-                    .filter(|t| !is_weapon_local_mod(t))
+                    .filter(|t| !is_weapon_local_mod(t, &data.local_mods.weapon))
                     .collect()
             };
             filtered.implicit_texts = drop_local(filtered.implicit_texts);
@@ -496,7 +489,7 @@ pub fn calculate_with_data(
     session.add_modifiers(self_buff_offensive_modifiers(build, data));
 
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
-    session.setup_enemy(options.enemy_level, options.enemy_tier);
+    session.setup_enemy(options.enemy_level, enemy_tier);
 
     // 5b. 玩家施加的元素曝光（build config `conditionEnemy*Exposure`）→ enemy 抗性减项
     //     （PoB2 config 默认每点 -20%）。仅有效口径生效，须在 setup_enemy 后。
@@ -527,6 +520,9 @@ pub fn calculate_with_data(
     //     的 +Strength/Dex/Int）。character_base 已注入职业基础派生部分；此处补注入来自
     //     +属性词条的增量（2 life/力量、2 mana/智力、6 accuracy/敏捷），须在全部来源注入后。
     if options.inject_character_base {
+        // PoE2 属性派生系数（每点力量 +2 生命、每点智力 +2 魔力、每点敏捷 +6 精准）：
+        // M0-W3 起自注入的 character_constants 域读取，与 CharacterBase 派生同一来源。
+        let cc = &data.constants.character_constants;
         let str_total = session.base_sum("Strength");
         let dex_total = session.base_sum("Dexterity");
         let int_total = session.base_sum("Intelligence");
@@ -539,9 +535,9 @@ pub fn calculate_with_data(
             Modifier::number(stat, ModType::Base, value).with_origin(origin)
         };
         session.add_modifiers([
-            mk("MaximumLife", LIFE_PER_STRENGTH * str_total),
-            mk("MaximumMana", MANA_PER_INTELLIGENCE * int_total),
-            mk("Accuracy", ACCURACY_PER_DEXTERITY * dex_total),
+            mk("MaximumLife", cc.life_per_strength * str_total),
+            mk("MaximumMana", cc.mana_per_intelligence * int_total),
+            mk("Accuracy", cc.accuracy_per_dexterity * dex_total),
         ]);
     }
 
@@ -951,30 +947,49 @@ fn damage_keywords(build: &Build, data: &BuildData, skill_types: &[String]) -> V
     if skill_types.iter().any(|t| t == "Grenade") {
         names.push("GrenadeDamage".to_string());
     }
-    // 主武器类别 → 武器类型伤害。
+    // 主武器类别 → 武器类型伤害（M0-W3：经注入的 weapon_types 表按 flag 查表）。
     if let Some(item) = build.items.get(&EquipmentSlot::Weapon1)
         && let Some(def) = data.base_items.get(&item.base.to_string())
     {
-        let cls = def.item_class.as_str();
-        // 注：PoE2 内部把「Quarterstaff」基底类名记为 `Warstaff`。
-        let kw = if cls.contains("Crossbow") {
-            Some("CrossbowDamage")
-        } else if cls.contains("Bow") {
-            Some("BowDamage")
-        } else if cls.contains("Warstaff") || cls.contains("Quarterstaff") {
-            Some("QuarterstaffDamage")
-        } else if cls.contains("Mace") {
-            Some("MaceDamage")
-        } else if cls.contains("Spear") {
-            Some("SpearDamage")
-        } else {
-            None
-        };
+        // flag → 伤害 ModName 的 allowlist（L4 代码侧派生）：仅 pobr 已有消费方的
+        // 武器类（与旧 contains 判定逐类等价）。TODO(parity): vendor 还有
+        // Sword/Axe/Claw/... flag，pobr 现无对应 `<X>Damage` 消费链路，不派生。
+        let kw = weapon_type_info(data, &def.item_class).and_then(|w| match w.flag.as_str() {
+            "Crossbow" => Some("CrossbowDamage"),
+            "Bow" => Some("BowDamage"),
+            // vendor 把长杖（Quarterstaff）记 flag = "Staff"（label = Quarterstaff）。
+            "Staff" => Some("QuarterstaffDamage"),
+            "Mace" => Some("MaceDamage"),
+            "Spear" => Some("SpearDamage"),
+            _ => None,
+        });
         if let Some(k) = kw {
             names.push(k.to_string());
         }
     }
     names
+}
+
+/// GGG `item_class` → 注入的武器类型表（`data.constants.weapon_types`，源 vendor
+/// `data.weaponTypeInfo`）条目。键空间差（schema doc 记载）在此收口：
+///
+/// - GGG 把长杖（quarterstaff）item_class 记为 `Warstaff`，vendor 表键为 `Staff`
+///   （`label = "Quarterstaff"`）；
+/// - GGG `Staff`（法杖类基底，仓库数据有 17 条）在 vendor PoE2 基底中**无对应武器
+///   类型条目**——不可误配给表键 `Staff`（那是长杖），也不映射到遗留条目 `Warstaff`，
+///   返回 `None`（与旧散落谓词的行为一致：法杖不近战、无 Using*/伤害关键词）；
+/// - GGG `FishingRod` → 表键 `Fishing Rod`（有空格）。
+fn weapon_type_info<'a>(
+    data: &'a BuildData,
+    item_class: &str,
+) -> Option<&'a pobr_data::catalog::WeaponTypeDef> {
+    let key = match item_class {
+        "Warstaff" => "Staff",
+        "Staff" => return None,
+        "FishingRod" => "Fishing Rod",
+        other => other,
+    };
+    data.constants.weapon_types.get(key)
 }
 
 /// 副手槽是否装备盾牌（PoB2 `Condition:UsingShield`）。据当前激活装备组 `Weapon2` 槽
@@ -1013,40 +1028,39 @@ fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'static str> 
         return Vec::new();
     };
     let cls = def.item_class.as_str();
+    // M0-W3：持握/近战判定从散落的字符串谓词切到注入的 weapon_types 表
+    // （`data.constants.weapon_types` ← `base/weapon_types.json`，源 vendor
+    // `data.weaponTypeInfo`；GGG item_class → 表键映射见 [`weapon_type_info`]）。
+    let info = weapon_type_info(data, cls);
     let mut vars = Vec::new();
-    let two_handed = cls.starts_with("Two Hand") || cls == "Warstaff" || cls == "Staff";
-    if cls == "Warstaff" || cls.contains("Quarterstaff") {
-        vars.push("UsingQuarterstaff");
+    // 武器类型 condition var：表 flag → pobr 已消费的 `Using*` 条件 allowlist
+    // （L4 代码侧派生，与旧 contains 判定逐类等价）。TODO(parity): vendor 还有
+    // Sword/Axe/Claw/Flail/Wand 等 flag，pobr 现无对应 `Using*` 消费方，不置。
+    if let Some(var) = info.and_then(|w| match w.flag.as_str() {
+        // vendor 把长杖（Quarterstaff）记 flag = "Staff"（label = Quarterstaff）。
+        "Staff" => Some("UsingQuarterstaff"),
+        "Mace" => Some("UsingMace"),
+        "Crossbow" => Some("UsingCrossbow"),
+        "Bow" => Some("UsingBow"),
+        "Spear" => Some("UsingSpear"),
+        "Dagger" => Some("UsingDagger"),
+        _ => None,
+    }) {
+        vars.push(var);
     }
-    if cls.contains("Mace") {
-        vars.push("UsingMace");
-    }
-    if cls.contains("Crossbow") {
-        vars.push("UsingCrossbow");
-    } else if cls.contains("Bow") {
-        vars.push("UsingBow");
-    }
-    if cls.contains("Spear") {
-        vars.push("UsingSpear");
-    }
-    if cls.contains("Dagger") {
-        vars.push("UsingDagger");
-    }
-    // 近战单/双手分类（PoB weaponTypeInfo.melee/oneHand）：法器/弓/弩为非近战，不置。
-    let melee = matches!(
-        cls,
-        "Warstaff"
-            | "One Hand Mace"
-            | "Two Hand Mace"
-            | "One Hand Sword"
-            | "Two Hand Sword"
-            | "One Hand Axe"
-            | "Two Hand Axe"
-            | "Spear"
-            | "Dagger"
-            | "Claw"
-            | "Flail"
-    );
+    // 近战 / 双手分类（表 melee / !one_hand）。搬迁不变式 guard（零行为变化）：
+    // TODO(parity): vendor 对 Talisman / Fishing Rod 记 melee=true、且对
+    // Bow/Crossbow/Talisman/Fishing Rod 记 oneHand=false；pobr 旧谓词分别视作
+    // 非近战 / 单手（影响 Using<X>HandedMelee 与 DualWielding 判定）——guard 钉住
+    // 旧行为（schema doc 同款 TODO），数据对齐留独立行为 commit。
+    let melee = info.is_some_and(|w| w.melee) && !matches!(cls, "Talisman" | "FishingRod");
+    let two_handed = match cls {
+        // 旧谓词将这些类视为单手（vendor oneHand=false，见上 TODO(parity)）。
+        "Bow" | "Crossbow" | "Talisman" | "FishingRod" => false,
+        // GGG 法杖类：vendor 表无条目（见 weapon_type_info），旧谓词视为双手。
+        "Staff" => true,
+        _ => info.is_some_and(|w| !w.one_hand),
+    };
     if melee {
         vars.push(if two_handed {
             "UsingTwoHandedMelee"
@@ -1119,7 +1133,7 @@ fn weapon_contribution(
     // 无主手武器 → 空手（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（按职业）、
     // 攻速 1.65、暴击 5%。使空手攻击/通道技能（如 Flame Breath、Monk）有非零基底伤害。
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
-        return Some(unarmed_contribution(build));
+        return Some(unarmed_contribution(build, data));
     };
     let w = data.weapon_base(&item.base.to_string())?;
     let quality = 1.0 + f64::from(item.quality) / 100.0;
@@ -1250,18 +1264,33 @@ fn off_hand_defence(build: &Build, data: &BuildData, idx: usize) -> f64 {
     base * (1.0 + local_pct[idx] / 100.0) * (1.0 + f64::from(item.quality) / 100.0)
 }
 
-/// 空手武器贡献（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（N 按职业）、
-/// 攻速 1.65、暴击 5%。无主手武器时的攻击技能基底。
-fn unarmed_contribution(build: &Build) -> WeaponContribution {
-    // 各职业空手物理上限（PoB2 Data.lua unarmedWeaponData）。
-    let phys_max = match build.character.class_name.as_str() {
-        "Warrior" => 8.0,
-        "Scion" | "Mercenary" | "Druid" => 6.0,
-        _ => 5.0, // Witch/Ranger/Sorceress/Huntress/Monk
-    };
+/// 空手武器贡献（PoB2 `data.unarmedWeaponData[classId]`）：无主手武器时的攻击技能基底。
+///
+/// M0-W3：从硬编码 match 切到注入的 per-class 空手基底表
+/// （`data.constants.unarmed_data` ← `base/unarmed_data.json`；无 GameData 走
+/// Default fallback，与 JSON 逐值相等——搬迁不变式，输出不变）。
+///
+/// TODO(parity): 表中 `crit_chance = 0.05`（旧硬编码原值），与持武器路径
+/// （`weapon_contribution` 的 `raw crit / 100` 产出 `5.0`）单位口径相差 100 倍
+/// （schema doc 同款 TODO）——本切换只搬迁不改值，单位对齐留独立行为 commit。
+fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponContribution {
+    if let Some(e) = data
+        .constants
+        .unarmed_data
+        .for_class(&build.character.class_name)
+    {
+        return WeaponContribution {
+            phys_min: e.physical_min,
+            phys_max: e.physical_max,
+            attack_rate: e.attack_rate,
+            crit_chance: e.crit_chance,
+        };
+    }
+    // 未知职业 fallback：与旧 match 的「其余职业」分支同值（物理 2–5、攻速 1.65、
+    // 暴击 0.05）——9 个已知职业均在表内命中，此分支仅护未知职业名（行为与旧实现一致）。
     WeaponContribution {
         phys_min: 2.0,
-        phys_max,
+        phys_max: 5.0,
         attack_rate: 1.65,
         crit_chance: 0.05,
     }
@@ -1319,9 +1348,16 @@ fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
 
 /// 解析「adds N to M physical damage」→ (N, M)。非此形式返回 `None`。
 fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
+    parse_adds_with_suffix(clean, "physical damage")
+}
+
+/// 解析「adds N to M <suffix>」→ (N, M)（suffix 为不含首空格的伤害后缀，
+/// 如 `physical damage`）。非此形式返回 `None`。
+fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
     let body = clean
         .strip_prefix("adds ")?
-        .strip_suffix(" physical damage")?;
+        .strip_suffix(suffix)?
+        .strip_suffix(' ')?;
     let (lo, hi) = body.split_once(" to ")?;
     Some((lo.trim().parse().ok()?, hi.trim().parse().ok()?))
 }
@@ -1336,11 +1372,19 @@ fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
 
 /// 该词条是否为应从全局剔除的**武器局部**词条（已计入武器 source 乘区）：
 /// 局部物理增伤/附加 + 局部攻击速率（后者作用于武器攻速、不入全局加法桶）。
-fn is_weapon_local_mod(text: &str) -> bool {
+///
+/// 白名单经 `rules` 注入（`overlay/local_mods.json`，M0-W4d 数据化；
+/// fallback = [`WeaponLocalModsDef::default`]，与原硬编码枚举逐值一致）。
+fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> bool {
     let clean = clean_item_text(text);
-    clean.ends_with("% increased physical damage")
-        || clean.ends_with("% increased attack speed")
-        || parse_adds_physical(&clean).is_some()
+    rules
+        .increased_suffixes
+        .iter()
+        .any(|suffix| clean.ends_with(suffix.as_str()))
+        || rules
+            .adds_damage_suffixes
+            .iter()
+            .any(|suffix| parse_adds_with_suffix(&clean, suffix).is_some())
 }
 
 /// 解析护甲件**局部**「N% increased <Armour/Evasion/Energy Shield 组合>」→ 每类型增幅
@@ -1854,8 +1898,15 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
         let mut pos = positions.clone();
         pos.insert(jewel.socket_node, socket_pos);
 
-        let effect = match compute_radius_jewel_effect(jewel.socket_node, radius, &pos, Vec::new())
-        {
+        // 档位有效半径由注入的 jewel_radii 数据解析（M0-W3；无数据时 BuildData
+        // 已回退 Default，与 JSON 逐值相等，输出不变）。
+        let effect = match compute_radius_jewel_effect_with_radii(
+            jewel.socket_node,
+            radius,
+            &data.jewel_radii,
+            &pos,
+            Vec::new(),
+        ) {
             Ok(e) => e,
             Err(_) => continue,
         };
@@ -2117,14 +2168,8 @@ mod tests {
             },
         );
         let data = BuildData {
-            passive_nodes: HashMap::new(),
-            skill_gems: HashMap::new(),
             class_attributes,
-            granted_effects: HashMap::new(),
-            granted_effect_levels: HashMap::new(),
-            skill_stat_sets: HashMap::new(),
-            cost_types: Vec::new(),
-            base_items: HashMap::new(),
+            ..BuildData::empty()
         };
         let build = Build::new().with_character(CharacterIdentity {
             level: 10,
@@ -2171,13 +2216,7 @@ mod tests {
         passive_nodes.insert(12345u32, node);
         let data = BuildData {
             passive_nodes,
-            skill_gems: HashMap::new(),
-            class_attributes: HashMap::new(),
-            granted_effects: HashMap::new(),
-            granted_effect_levels: HashMap::new(),
-            skill_stat_sets: HashMap::new(),
-            cost_types: Vec::new(),
-            base_items: HashMap::new(),
+            ..BuildData::empty()
         };
 
         let build = Build::new().with_tree(PassiveTreeSpec {
@@ -2248,14 +2287,8 @@ mod tests {
             },
         );
         let data = BuildData {
-            passive_nodes: HashMap::new(),
             skill_gems,
-            class_attributes: HashMap::new(),
-            granted_effects: HashMap::new(),
-            granted_effect_levels: HashMap::new(),
-            skill_stat_sets: HashMap::new(),
-            cost_types: Vec::new(),
-            base_items: HashMap::new(),
+            ..BuildData::empty()
         };
         let build = Build::new().add_socket_group(
             SocketGroup::new()
@@ -2337,6 +2370,71 @@ mod tests {
         session.setup_enemy(80, EnemyTier::Pinnacle);
         let out = session.perform_minimal();
         assert!(out.hit_chance <= 1.0);
+    }
+
+    #[test]
+    fn resistance_penalty_follows_campaign_progress() {
+        // resistancePenalty 接线（19-G5）：未配置 → PoB2 默认 Endgame（-60）；
+        // 显式 Act1 → 惩罚 0，三元素抗性各高 60 点（混沌无惩罚，本就不受影响）。
+        let data = repo_data();
+        let character = CharacterIdentity {
+            level: 90,
+            class_name: "Ranger".into(),
+            ascendancy_name: String::new(),
+        };
+        let opts = DataOrchestratorOptions::default();
+
+        let build = Build::new().with_character(character.clone());
+        let endgame = calculate_with_data(&build, &data, &opts).expect("endgame calc");
+
+        let mut act1_build = Build::new().with_character(character);
+        act1_build.config.campaign_progress = Some(CampaignProgress::Act1);
+        let act1 = calculate_with_data(&act1_build, &data, &opts).expect("act1 calc");
+
+        assert_eq!(act1.fire_resistance - endgame.fire_resistance, 60.0);
+        assert_eq!(act1.cold_resistance - endgame.cold_resistance, 60.0);
+        assert_eq!(
+            act1.lightning_resistance - endgame.lightning_resistance,
+            60.0
+        );
+    }
+
+    #[test]
+    fn xml_enemy_tier_overrides_orchestrator_option() {
+        // enemyIsBoss 接线（19-G3）：build XML Config 显式 None 档应覆盖调用方传入的
+        // Pinnacle——普通怪无 Pinnacle 闪避均值倍率，有效口径命中率应更高。
+        let data = BuildData::empty();
+        let base = MinimalInput {
+            base_accuracy: 1000.0,
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            base_action_rate: 1.0,
+            ..MinimalInput::default()
+        };
+        let opts = DataOrchestratorOptions {
+            base_input: base,
+            inject_character_base: false,
+            mode_effective: true,
+            enemy_level: 80,
+            enemy_tier: EnemyTier::Pinnacle,
+            ..Default::default()
+        };
+
+        // XML 省略 enemyIsBoss → 沿用选项 Pinnacle。
+        let pinnacle_build = Build::new();
+        let pinnacle = calculate_with_data(&pinnacle_build, &data, &opts).expect("pinnacle calc");
+
+        // XML 显式 enemyIsBoss=None → 覆盖选项档位。
+        let mut none_build = Build::new();
+        none_build.config.enemy_tier = Some(EnemyTier::None);
+        let none = calculate_with_data(&none_build, &data, &opts).expect("none-tier calc");
+
+        assert!(
+            none.hit_chance > pinnacle.hit_chance,
+            "普通怪档位（闪避更低）命中率应高于 Pinnacle：none={} pinnacle={}",
+            none.hit_chance,
+            pinnacle.hit_chance,
+        );
     }
 
     #[test]
@@ -2570,14 +2668,8 @@ mod tests {
             },
         );
         let data = BuildData {
-            passive_nodes: HashMap::new(),
-            skill_gems: HashMap::new(),
-            class_attributes: HashMap::new(),
             granted_effects,
-            granted_effect_levels: HashMap::new(),
-            skill_stat_sets: HashMap::new(),
-            cost_types: Vec::new(),
-            base_items: HashMap::new(),
+            ..BuildData::empty()
         };
         let build = Build::new();
         let group = SocketGroup::new();
@@ -2599,5 +2691,107 @@ mod tests {
         };
         let mods_none = trigger_modifiers(&build, &data, &normal, &group, "NormalSkill");
         assert!(mods_none.is_empty(), "非触发技能不应注入触发词条");
+    }
+
+    // ── M0-W3：空手基底 / 武器类型查表切换（搬迁不变式回归）──────────────────
+
+    /// 空手基底切到注入表后与旧硬编码 match 逐值一致（`BuildData::empty()` 走
+    /// Default fallback，= JSON 逐值；9 个职业 + 未知职业 fallback 全覆盖）。
+    #[test]
+    fn unarmed_contribution_matches_legacy_hardcoded_values() {
+        let data = BuildData::empty();
+        let legacy: &[(&str, f64)] = &[
+            ("Warrior", 8.0),
+            ("Scion", 6.0),
+            ("Mercenary", 6.0),
+            ("Druid", 6.0),
+            ("Witch", 5.0),
+            ("Ranger", 5.0),
+            ("Sorceress", 5.0),
+            ("Huntress", 5.0),
+            ("Monk", 5.0),
+            // 未知职业：旧 match 的 else 分支（通用 fallback）。
+            ("NoSuchClass", 5.0),
+        ];
+        for &(class, phys_max) in legacy {
+            let build = Build::new().with_character(CharacterIdentity {
+                level: 1,
+                class_name: class.into(),
+                ascendancy_name: String::new(),
+            });
+            let c = unarmed_contribution(&build, &data);
+            assert_eq!(c.phys_min, 2.0, "{class} phys_min");
+            assert_eq!(c.phys_max, phys_max, "{class} phys_max");
+            assert_eq!(c.attack_rate, 1.65, "{class} attack_rate");
+            // 旧硬编码原值 0.05（单位口径 TODO(parity) 见 unarmed_contribution doc）。
+            assert_eq!(c.crit_chance, 0.05, "{class} crit_chance");
+        }
+    }
+
+    /// 测试用武器基底（仅 item_class 参与持握/近战判定）。
+    fn weapon_base_item(name: &str, item_class: &str) -> pobr_data::catalog::BaseItemDef {
+        pobr_data::catalog::BaseItemDef {
+            id: format!("Test/{name}"),
+            name: name.to_string(),
+            item_class: item_class.to_string(),
+            drop_level: 1,
+            width: 1,
+            height: 1,
+            tags: vec![],
+            implicits: vec![],
+            mod_domain: 1,
+            weapon: None,
+            armour: None,
+        }
+    }
+
+    /// 武器类型条件切到注入表后与旧散落谓词逐类等价（含 parity guard：Talisman /
+    /// FishingRod 不近战、GGG `Staff`（法杖）无条件——vendor 出入钉住旧行为）。
+    #[test]
+    fn weapon_type_conditions_match_legacy_predicates() {
+        let mut data = BuildData::empty();
+        let cases: &[(&str, &[&str])] = &[
+            // GGG `Warstaff`（长杖）→ 表键 `Staff`（label=Quarterstaff）。
+            ("Warstaff", &["UsingQuarterstaff", "UsingTwoHandedMelee"]),
+            ("One Hand Mace", &["UsingMace", "UsingOneHandedMelee"]),
+            ("Two Hand Mace", &["UsingMace", "UsingTwoHandedMelee"]),
+            ("Bow", &["UsingBow"]),
+            ("Crossbow", &["UsingCrossbow"]),
+            ("Spear", &["UsingSpear", "UsingOneHandedMelee"]),
+            ("Dagger", &["UsingDagger", "UsingOneHandedMelee"]),
+            ("Claw", &["UsingOneHandedMelee"]),
+            ("Flail", &["UsingOneHandedMelee"]),
+            ("One Hand Sword", &["UsingOneHandedMelee"]),
+            ("Two Hand Sword", &["UsingTwoHandedMelee"]),
+            ("Two Hand Axe", &["UsingTwoHandedMelee"]),
+            // parity guard：旧谓词不视 Talisman / FishingRod 为近战（vendor melee=true，
+            // 出入已记 schema TODO(parity)，行为对齐留独立 commit）。
+            ("Talisman", &[]),
+            ("FishingRod", &[]),
+            // GGG `Staff`（法杖类）：vendor 表无对应条目，无任何武器类型条件。
+            ("Staff", &[]),
+            ("Wand", &[]),
+            ("Sceptre", &[]),
+        ];
+        for &(cls, expected) in cases {
+            let base_name = format!("Test {cls}");
+            data.base_items
+                .insert(base_name.clone(), weapon_base_item(&base_name, cls));
+            let build = Build::new().set_item(
+                EquipmentSlot::Weapon1,
+                Item {
+                    base: ItemBaseId::from(base_name.as_str()),
+                    rarity: ItemRarity::Normal,
+                    quality: 0,
+                    implicit_texts: vec![],
+                    modifier_texts: vec![],
+                    enchant_texts: vec![],
+                    rolled_defence: RolledDefence::default(),
+                    parsed_stats: vec![],
+                },
+            );
+            let vars = weapon_type_conditions(&build, &data);
+            assert_eq!(&vars[..], expected, "item_class = {cls}");
+        }
     }
 }

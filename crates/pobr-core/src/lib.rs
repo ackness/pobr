@@ -11,6 +11,7 @@ pub mod mod_db;
 pub mod mod_parser;
 pub mod modifier;
 pub mod passive;
+pub mod rules;
 pub mod skill_source;
 pub mod trace;
 
@@ -27,6 +28,7 @@ pub use item_text::{ItemTextError, parse_item_text, parse_pob_xml_item};
 pub use mod_db::{ModContribution, ModDb, ModList};
 pub use modifier::{ModTag, ModValue, Modifier};
 pub use passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes};
+pub use rules::{DuplicateHandlerError, Handler, HandlerRegistry};
 pub use skill_source::{
     ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError, SupportGemSpec, SupportIngestError,
     can_support, ingest_active_gem, ingest_gem, ingest_gem_leveled, ingest_support_gem,

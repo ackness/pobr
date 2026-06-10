@@ -2,6 +2,7 @@ use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::{
     CalcConfig, CampaignProgress, CampaignReward, CampaignState, CharacterBase, ModDb,
 };
+use pobr_data::catalog::character_constants::CharacterConstantsDef;
 use pobr_data::prelude::*;
 
 fn db_of(mods: Vec<pobr_core::Modifier>) -> ModDb {
@@ -25,6 +26,23 @@ fn resistance_penalty_table_matches_campaign_progress() {
         -50.0
     );
     assert_eq!(CampaignProgress::Endgame.resistance_penalty(), -60.0);
+}
+
+#[test]
+fn from_resistance_penalty_roundtrips_all_tiers() {
+    // PoB2 `resistancePenalty` list 七档值 → 进度 → 惩罚值闭环一致。
+    for value in [0.0, -10.0, -20.0, -30.0, -40.0, -50.0, -60.0] {
+        let progress =
+            CampaignProgress::from_resistance_penalty(value).expect("档位表内的值应可反查");
+        assert_eq!(progress.resistance_penalty(), value);
+    }
+}
+
+#[test]
+fn from_resistance_penalty_rejects_unknown_values() {
+    // 不在 PoB2 档位表内的值返回 None（调用方回退默认 Endgame）。
+    assert_eq!(CampaignProgress::from_resistance_penalty(-15.0), None);
+    assert_eq!(CampaignProgress::from_resistance_penalty(10.0), None);
 }
 
 #[test]
@@ -131,7 +149,8 @@ fn session_ingests_character_base_and_campaign_modifiers() {
         rewards: vec![CampaignReward::TheFlameCore],
     };
 
-    session.add_modifiers(base.modifiers());
+    // 常量集 = Default fallback（与 base/character_constants.json 逐值相等）。
+    session.add_modifiers(base.modifiers(&CharacterConstantsDef::default()));
     session.add_modifiers(state.modifiers());
 
     let output = session.perform_minimal();

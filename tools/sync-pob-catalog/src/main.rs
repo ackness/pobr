@@ -1,11 +1,17 @@
 use std::env;
+use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use sync_pob_catalog::extract_lua::{
+    DEFAULT_SKILL_FILES, ExtractLuaArgs, resolve_luajit, run_extract_lua,
+};
 use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
+
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -18,11 +24,118 @@ fn main() -> ExitCode {
 }
 
 fn run() -> io::Result<()> {
-    let args = Args::parse(env::args().skip(1))?;
+    let mut raw_args = env::args().skip(1);
+    let command = raw_args.next();
+    match command.as_deref() {
+        Some("extract-lua") => run_extract_lua_command(raw_args),
+        Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
+            run_catalog_command(other, raw_args)
+        }
+        Some("--help") | Some("-h") | None => {
+            Err(io::Error::new(io::ErrorKind::InvalidInput, USAGE))
+        }
+        Some(other) => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("unknown command: {other}\n{USAGE}"),
+        )),
+    }
+}
+
+// ---- extract-lua：vendor Lua → overlay JSON（确定性抽取通道）----
+
+fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()> {
+    let parsed = ExtractCliArgs::parse(args)?;
+    let extract_args = ExtractLuaArgs {
+        vendor_root: parsed.vendor_root,
+        luajit: resolve_luajit(parsed.luajit.as_deref()),
+        files: parsed.files,
+        version_file: parsed.version_file,
+        out_for_meta: parsed
+            .out
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned()),
+    };
+    let json = run_extract_lua(&extract_args)?;
+    match parsed.out {
+        Some(out) => {
+            if let Some(parent) = out.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&out, json)?;
+            eprintln!("extract-lua: wrote {}", out.display());
+            Ok(())
+        }
+        None => {
+            print!("{json}");
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug)]
+struct ExtractCliArgs {
+    vendor_root: PathBuf,
+    out: Option<PathBuf>,
+    files: Vec<String>,
+    luajit: Option<PathBuf>,
+    version_file: Option<PathBuf>,
+}
+
+impl ExtractCliArgs {
+    fn parse(mut args: impl Iterator<Item = String>) -> io::Result<Self> {
+        let mut vendor_root = None;
+        let mut out = None;
+        let mut files = None;
+        let mut luajit = None;
+        let mut version_file = None;
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--vendor-root" => vendor_root = args.next().map(PathBuf::from),
+                "--out" => out = args.next().map(PathBuf::from),
+                "--files" => {
+                    files = args.next().map(|list| {
+                        list.split(',')
+                            .map(str::trim)
+                            .filter(|s| !s.is_empty())
+                            .map(str::to_string)
+                            .collect::<Vec<_>>()
+                    })
+                }
+                "--luajit" => luajit = args.next().map(PathBuf::from),
+                "--version-file" => version_file = args.next().map(PathBuf::from),
+                other => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        format!("unknown argument: {other}\n{USAGE}"),
+                    ));
+                }
+            }
+        }
+        let Some(vendor_root) = vendor_root else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("extract-lua 缺少 --vendor-root <path>\n{USAGE}"),
+            ));
+        };
+        Ok(Self {
+            vendor_root,
+            out,
+            files: files
+                .unwrap_or_else(|| DEFAULT_SKILL_FILES.iter().map(|s| s.to_string()).collect()),
+            luajit,
+            version_file,
+        })
+    }
+}
+
+// ---- 既有 catalog 命令（scan/check/diff/fixture-check）----
+
+fn run_catalog_command(command: &str, args: impl Iterator<Item = String>) -> io::Result<()> {
+    let args = CatalogCliArgs::parse(args)?;
     let catalog = collect_catalog(&args.pob_root)?;
 
-    match args.command {
-        Command::Scan => {
+    match command {
+        "scan" => {
             if let Some(out) = args.out {
                 write_catalog(&catalog, &out)
             } else {
@@ -31,7 +144,7 @@ fn run() -> io::Result<()> {
                 Ok(())
             }
         }
-        Command::Check => {
+        "check" => {
             let Some(catalog_path) = args.catalog else {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
@@ -48,7 +161,7 @@ fn run() -> io::Result<()> {
                 )))
             }
         }
-        Command::Diff => {
+        "diff" => {
             let Some(catalog_path) = args.catalog else {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
@@ -59,7 +172,7 @@ fn run() -> io::Result<()> {
             let diffs = diff_catalogs(&expected, &catalog);
             report_diffs(&diffs, &catalog_path)
         }
-        Command::FixtureCheck => {
+        "fixture-check" => {
             let Some(catalog_path) = args.catalog else {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
@@ -69,6 +182,7 @@ fn run() -> io::Result<()> {
             let diffs = check_against_fixture(&catalog_path, &catalog)?;
             report_diffs(&diffs, &catalog_path)
         }
+        _ => unreachable!("run() 已过滤合法命令"),
     }
 }
 
@@ -89,42 +203,14 @@ fn report_diffs(diffs: &[CatalogDiff], catalog_path: &Path) -> io::Result<()> {
 }
 
 #[derive(Debug)]
-struct Args {
-    command: Command,
+struct CatalogCliArgs {
     pob_root: PathBuf,
     out: Option<PathBuf>,
     catalog: Option<PathBuf>,
 }
 
-#[derive(Debug)]
-enum Command {
-    Scan,
-    Check,
-    Diff,
-    FixtureCheck,
-}
-
-impl Args {
+impl CatalogCliArgs {
     fn parse(mut args: impl Iterator<Item = String>) -> io::Result<Self> {
-        let command = match args.next().as_deref() {
-            Some("scan") => Command::Scan,
-            Some("check") => Command::Check,
-            Some("diff") => Command::Diff,
-            Some("fixture-check") => Command::FixtureCheck,
-            Some("--help") | Some("-h") | None => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "usage: sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]",
-                ));
-            }
-            Some(other) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    format!("unknown command: {other}"),
-                ));
-            }
-        };
-
         let mut pob_root = None;
         let mut out = None;
         let mut catalog = None;
@@ -150,7 +236,6 @@ impl Args {
         };
 
         Ok(Self {
-            command,
             pob_root,
             out,
             catalog,

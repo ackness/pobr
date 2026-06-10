@@ -66,21 +66,23 @@ struct RawMod {
     tags: Vec<usize>,
 }
 
-/// 适配 Stats + Mods 域，写出 `stats.json` / `mods.json` / `i18n/zh-TW/mods.json`。
+/// 适配 Stats + Mods 域，写出 `base/stats.json` / `base/mods.json` /
+/// `i18n/zh-TW/mods.json`（i18n 边车留版本根 `version_dir`）。
 /// 返回 `(stats 条数, mods 入库条数, mods 过滤条数, zh-TW 名称条数)`。
 pub fn adapt(
     en: &Path,
     tw: &Path,
     stat_lookup: &[String],
     tags_lookup: &[String],
+    base_dir: &Path,
     version_dir: &Path,
 ) -> Result<(usize, usize, usize, usize), String> {
-    let stats = adapt_stats(en, version_dir)?;
-    let (kept, filtered, zh) = adapt_mods(en, tw, stat_lookup, tags_lookup, version_dir)?;
+    let stats = adapt_stats(en, base_dir)?;
+    let (kept, filtered, zh) = adapt_mods(en, tw, stat_lookup, tags_lookup, base_dir, version_dir)?;
     Ok((stats, kept, filtered, zh))
 }
 
-fn adapt_stats(en: &Path, version_dir: &Path) -> Result<usize, String> {
+fn adapt_stats(en: &Path, base_dir: &Path) -> Result<usize, String> {
     let raw = read_json::<Vec<RawStat>>(&en.join("Stats.json"))?;
     let mut stats: Vec<StatDef> = raw
         .into_iter()
@@ -93,7 +95,7 @@ fn adapt_stats(en: &Path, version_dir: &Path) -> Result<usize, String> {
         })
         .collect();
     stats.sort_by(|a, b| a.id.cmp(&b.id));
-    write_pretty(&version_dir.join("stats.json"), &stats)?;
+    write_pretty(&base_dir.join("stats.json"), &stats)?;
     Ok(stats.len())
 }
 
@@ -102,6 +104,7 @@ fn adapt_mods(
     tw: &Path,
     stat_lookup: &[String],
     tags_lookup: &[String],
+    base_dir: &Path,
     version_dir: &Path,
 ) -> Result<(usize, usize, usize), String> {
     let raw_mods = read_json::<Vec<RawMod>>(&en.join("Mods.json"))?;
@@ -154,7 +157,7 @@ fn adapt_mods(
     let kept = mods.len();
     let filtered = total - kept;
 
-    write_pretty(&version_dir.join("mods.json"), &mods)?;
+    write_pretty(&base_dir.join("mods.json"), &mods)?;
     write_pretty(&version_dir.join("i18n/zh-TW/mods.json"), &i18n_zh)?;
 
     Ok((kept, filtered, i18n_zh.len()))

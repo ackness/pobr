@@ -25,6 +25,17 @@ pub struct CalcConfig {
     /// 出处：agent-docs/accuracy-and-enemy.md §七（buffMode → mode_effective 口径表）、
     /// devs/docs/architecture/12-combat-mechanics-architecture.md §5。
     pub mode_effective: bool,
+    /// 注入的运行时常量包（M0-W3，架构文档 20 §1 P8/P9）。
+    ///
+    /// calc 公式中的全部游戏常量魔数（抗性边界 / 服务器帧 / 异常基线 / 各类 cap…）
+    /// 改读此包；`Default` = fallback（与 `base/game_constants.json` 逐值相等，
+    /// 无 GameData 时行为不变）。挂在 `CalcConfig` 上是因为 cfg 已线程化到全部
+    /// calc 函数——这是把常量送达每个使用点的最小侵入通道。
+    ///
+    /// 注入入口：`CalculationSession::set_constants`（pobr-build
+    /// `calculate_with_data` 在 `with_config` 之后调用；注意 `with_config`
+    /// 会整体覆盖 cfg，故注入必须在其后）。
+    pub constants: RuntimeConstants,
 }
 
 impl CalcConfig {
@@ -94,6 +105,13 @@ impl CalcConfig {
     /// 设置有效 DPS 口径开关（见 [`CalcConfig::mode_effective`]）。
     pub fn with_mode_effective(mut self, mode_effective: bool) -> Self {
         self.mode_effective = mode_effective;
+        self
+    }
+
+    /// 注入运行时常量包（见 [`CalcConfig::constants`]）。未调用时为 `Default`
+    /// （fallback，与入库 JSON 逐值相等）。
+    pub fn with_constants(mut self, constants: RuntimeConstants) -> Self {
+        self.constants = constants;
         self
     }
 

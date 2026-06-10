@@ -199,8 +199,9 @@ fn fill_mechanics(env: &mut Env) {
                 cfg,
                 &[ModName::from("MaximumChaosResistance")],
             );
-            let max = (pobr_data::constants::DEFAULT_MAX_RESISTANCE + max_bonus)
-                .min(pobr_data::constants::HARD_MAX_RESISTANCE);
+            // M0-W3：抗性边界改读注入常量包（fallback == 旧 const，值不变）。
+            let max = (cfg.constants.character().base_maximum_all_resistances_pct + max_bonus)
+                .min(cfg.constants.game().resist_hard_cap);
             total.min(max)
         },
     };
@@ -287,10 +288,14 @@ fn fill_mechanics(env: &mut Env) {
     );
 
     // --- 防御几率类 ---
-    env.player.output.block_chance =
-        super::block_chance(db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]));
-    env.player.output.spell_block_chance =
-        super::block_chance(db.sum(ModType::Base, cfg, &[ModName::from("SpellBlockChance")]));
+    env.player.output.block_chance = super::block_chance(
+        db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]),
+        cfg.constants.game().block_chance_cap,
+    );
+    env.player.output.spell_block_chance = super::block_chance(
+        db.sum(ModType::Base, cfg, &[ModName::from("SpellBlockChance")]),
+        cfg.constants.game().block_chance_cap,
+    );
 
     // --- ES 充能（Lane2：充能与再生独立；energy_shield_regen 字段保持现有逻辑）---
     let zealots_oath = db.flag(cfg, ModName::from("ZealotsOath"));
@@ -434,8 +439,14 @@ fn fill_trigger(env: &mut Env) {
     if trigger_cd > 0.0 {
         // 冷却驱动：双门控 min(cap, sourceRate) 后乘 triggerChance（对齐 PoB2
         // calcMultiSpellRotationImpact 单技能稳态：rate ≈ min(cap, sourceRate) × geometric(chance)）。
-        let (tr, _) =
-            resolve_trigger_rate_traced(trigger_cd, triggered_cd, icdr, source_rate, &mut trace);
+        let (tr, _) = resolve_trigger_rate_traced(
+            trigger_cd,
+            triggered_cd,
+            icdr,
+            source_rate,
+            cfg.constants.game().server_tick_seconds,
+            &mut trace,
+        );
         env.player.output.trigger_rate_cap = tr.trigger_rate_cap;
         env.player.output.skill_trigger_rate = round(tr.skill_trigger_rate * trigger_chance);
     } else if cwc_trigger_time > 0.0 {
@@ -447,6 +458,7 @@ fn fill_trigger(env: &mut Env) {
             triggered_cd,
             adds_cast_time,
             icdr,
+            cfg.constants.game().server_tick_seconds,
             &mut trace,
         );
         env.player.output.trigger_rate_cap = cwc.trigger_rate_cap;
@@ -457,6 +469,7 @@ fn fill_trigger(env: &mut Env) {
         let rotation = calc_multi_spell_rotation(
             &[RotationSkill::new(cwc.effective_triggered_cd)],
             cwc.channelling_trigger_rate,
+            cfg.constants.game().server_tick_seconds,
         );
         let rotated = rotation.rates.first().copied().unwrap_or(0.0);
         env.player.output.skill_trigger_rate = round(rotated.min(cwc.trigger_rate_cap));
@@ -645,7 +658,8 @@ fn fill_ailments(env: &mut Env) {
         let (bleed_stacked, _) =
             stacking_ailment_dps_traced(bleed_dps, &bleed_stack, AilmentType::Bleed, &mut trace);
         // 叠层 DPS 也吃全局 DotDpsCap（PoB2：DotDpsCap 是叠层后的绝对上限）。
-        env.player.output.bleed_stacked_dps = apply_dot_dps_cap(bleed_stacked);
+        env.player.output.bleed_stacked_dps =
+            apply_dot_dps_cap(bleed_stacked, cfg.constants.game().dot_dps_cap);
         env.player.output.bleed_active_stacks = active_stacks_of(&bleed_stack);
     }
     if fire_hit > 0.0 {
@@ -675,7 +689,8 @@ fn fill_ailments(env: &mut Env) {
         // 仅在携带 `IgniteStacks` 词条时 max_stacks>1；复用上方已解析的 ignite_stack。
         let (ignite_stacked, _) =
             stacking_ailment_dps_traced(ignite_dps, &ignite_stack, AilmentType::Ignite, &mut trace);
-        env.player.output.ignite_stacked_dps = apply_dot_dps_cap(ignite_stacked);
+        env.player.output.ignite_stacked_dps =
+            apply_dot_dps_cap(ignite_stacked, cfg.constants.game().dot_dps_cap);
         env.player.output.ignite_active_stacks = active_stacks_of(&ignite_stack);
     }
     if cold_hit > 0.0 {
@@ -712,7 +727,8 @@ fn fill_ailments(env: &mut Env) {
         // Lane B：中毒叠层（PoisonStacks BASE × 活跃叠层）。复用上方已解析的 poison_stack。
         let (poison_stacked, _) =
             stacking_ailment_dps_traced(poison_dps, &poison_stack, AilmentType::Poison, &mut trace);
-        env.player.output.poison_stacked_dps = apply_dot_dps_cap(poison_stacked);
+        env.player.output.poison_stacked_dps =
+            apply_dot_dps_cap(poison_stacked, cfg.constants.game().dot_dps_cap);
         env.player.output.poison_active_stacks = active_stacks_of(&poison_stack);
     }
     if lightning_hit > 0.0 {
@@ -748,7 +764,7 @@ fn finalize_ailment_dps(
     let effect = ailment_effect_mod(player, cfg);
     let rate = ailment_rate_mod(player, enemy, cfg, ailment_name);
     let scaled = expected_dps * effect * rate;
-    apply_dot_dps_cap(scaled)
+    apply_dot_dps_cap(scaled, cfg.constants.game().dot_dps_cap)
 }
 
 /// 从 ModDb 解析某 damaging ailment 的叠层配置（`<Ailment>Stacks` BASE → max_stacks）+

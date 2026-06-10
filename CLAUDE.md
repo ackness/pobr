@@ -28,6 +28,8 @@ cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 # 工具
 cargo run -p sync-pob-catalog -- scan  --pob-root <PoB路径> [--out catalog.json]
 cargo run -p sync-pob-catalog -- check --pob-root <PoB路径> --catalog catalog.json
+cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src \
+    --out data/4.5.0.3.4/overlay/skill_overrides.json   # vendor Lua → overlay JSON（需 luajit）
 cargo run -p lint-i18n                                  # 语言包完整性检查
 ```
 

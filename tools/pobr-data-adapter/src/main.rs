@@ -1,7 +1,9 @@
 //! pobr-data-adapter：把 pathofexile-dat 的原始 `.dat` JSON 适配为 PoBR 最小 JSON。
 //!
 //! 解析整型外键（ItemClass / Tags / Implicit_Mods → 稳定字符串 ID）、反范式化、
-//! 过滤开发用占位条目，输出按 id 排序的 diff 友好 JSON 到 `data/<patch>/`。
+//! 过滤开发用占位条目，输出按 id 排序的 diff 友好 JSON 到 `data/<patch>/base/`
+//! （三层布局的 base 层，见架构文档 20 §1 P1）；`manifest.json` 与 `i18n/`
+//! 边车留在版本根。
 //!
 //! 用法：
 //! ```text
@@ -20,7 +22,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use pobr_data::catalog::{
-    ArmourBaseStats, BaseItemDef, CATALOG_SCHEMA_VERSION, DataManifest, WeaponBaseStats,
+    ArmourBaseStats, BaseItemDef, CATALOG_SCHEMA_VERSION, DataManifest, DomainSections,
+    WeaponBaseStats,
 };
 use serde::Deserialize;
 
@@ -307,26 +310,25 @@ fn run(args: Args) -> Result<String, String> {
 
     bases.sort_by(|a, b| a.id.cmp(&b.id));
 
-    // 写出
+    // 写出：数据域 JSON 落 base/ 层；manifest 与 i18n 边车留版本根。
     let version_dir = args.out.join(&args.patch);
+    let base_dir = version_dir.join("base");
+    fs::create_dir_all(&base_dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
     fs::create_dir_all(version_dir.join("i18n").join("zh-TW"))
         .map_err(|e| format!("创建输出目录失败：{e}"))?;
 
-    write_pretty(&version_dir.join("base_items.json"), &bases)?;
+    write_pretty(&base_dir.join("base_items.json"), &bases)?;
     write_pretty(&version_dir.join("i18n/zh-TW/base_items.json"), &i18n_zh)?;
 
     // Mods + Stats 域（stat 注册表 + 词缀池）。
     let (stat_count, mod_count, mod_filtered, mod_zh) =
-        mods::adapt(&en, &tw, &stats, &tags, &version_dir)?;
+        mods::adapt(&en, &tw, &stats, &tags, &base_dir, &version_dir)?;
 
     // 技能宝石域（SkillGems / GrantedEffects / GrantedEffectsPerLevel / ActiveSkills）
     let skills = skills::adapt_skills(&en, &tw)?;
-    write_pretty(&version_dir.join("skill_gems.json"), &skills.gems)?;
-    write_pretty(&version_dir.join("granted_effects.json"), &skills.effects)?;
-    write_pretty(
-        &version_dir.join("granted_effect_levels.json"),
-        &skills.levels,
-    )?;
+    write_pretty(&base_dir.join("skill_gems.json"), &skills.gems)?;
+    write_pretty(&base_dir.join("granted_effects.json"), &skills.effects)?;
+    write_pretty(&base_dir.join("granted_effect_levels.json"), &skills.levels)?;
     write_pretty(
         &version_dir.join("i18n/zh-TW/skills.json"),
         &skills.zh_skill_names,
@@ -335,28 +337,32 @@ fn run(args: Args) -> Result<String, String> {
     // 分等级伤害 stat 集（GrantedEffectStatSets* → effect id → 每级伤害）。
     let stat_sets = skills::adapt_stat_sets(&en)?;
     write_pretty(
-        &version_dir.join("granted_effect_stat_sets.json"),
+        &base_dir.join("granted_effect_stat_sets.json"),
         &stat_sets.sets,
     )?;
 
     // 技能消耗资源类型（CostTypes → cost_types FK 目标，解析 Mana/Life/ES/... 资源名）。
     let cost_types = skills::adapt_cost_types(&en)?;
-    write_pretty(&version_dir.join("cost_types.json"), &cost_types)?;
+    write_pretty(&base_dir.join("cost_types.json"), &cost_types)?;
 
     let manifest = DataManifest {
         schema_version: CATALOG_SCHEMA_VERSION,
         poe_version: args.patch.clone(),
         languages: vec!["zh-TW".into()],
-        domains: vec![
-            "base_items".into(),
-            "mods".into(),
-            "stats".into(),
-            "skill_gems".into(),
-            "granted_effects".into(),
-            "granted_effect_levels".into(),
-            "granted_effect_stat_sets".into(),
-            "cost_types".into(),
-        ],
+        domains: DomainSections {
+            base: vec![
+                "base_items".into(),
+                "mods".into(),
+                "stats".into(),
+                "skill_gems".into(),
+                "granted_effects".into(),
+                "granted_effect_levels".into(),
+                "granted_effect_stat_sets".into(),
+                "cost_types".into(),
+            ],
+            overlay: Vec::new(),
+            generated: Vec::new(),
+        },
     };
     write_pretty(&version_dir.join("manifest.json"), &manifest)?;
 

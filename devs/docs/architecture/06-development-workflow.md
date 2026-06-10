@@ -112,6 +112,41 @@ cargo run -p lint-i18n
 
 涉及计算、Modifier、item parser、Build Code、语言包的 PR 需要补对应 fixture 或 golden snapshot。
 
+### 5.1 数据防线（M0 W4b 落地）
+
+数据-框架分离的 CI 防线（对应 `audits/rearchitecture-2026-06-10/20-target-architecture.md` §4
+的"三道 CI 防线"中的 ① + M0 任务清单中的禁内嵌 lint），当前落地两道：
+
+**防线 ① 可再生性检查** — `devs/scripts/regen-check.sh`
+
+- 用 `pipeline/` 本地输入重跑 `pobr-data-adapter`，产物与已提交的 `data/<patch>/` 逐文件
+  byte-diff；任何漂移（内容不一致或重生成文件无对应已提交文件）退出码非零并列出差异文件。
+- 两个域独立探测输入：`pipeline/tables/{English,Traditional Chinese}/`（物品/词缀/技能域）
+  与 `pipeline/tree/data.json`（被动树域）；**本地缺输入时明确报 SKIP（退出码 0），不是失败**
+  ——`pipeline/tables/` 等中间物已 gitignore，CI 环境默认没有。
+- 布局兼容：已提交产物按存在性探测，优先 `data/<ver>/base/<文件>`（三层目录新布局），
+  回退 `data/<ver>/<文件>`（旧平铺布局）。
+- 已知排除：`manifest.json` 暂不参与 diff——当前 manifest 是 `--raw` / `--tree` 多步合并产物，
+  单步重跑得到的域列表不完整；manifest v2（三段 domains）由单一步骤幂等生成后纳入。
+
+**防线 ② 禁内嵌大数组 lint** — `cargo test -p pobr-data --test no_embedded_data`
+
+- 扫描 `crates/pobr-data/src/` 全部 `.rs`：连续字面量元素行 > 200 的数组/常量表即失败
+  （游戏数据必须走数据管线落 `data/<ver>/`，不得写死在框架代码里）。
+- 按文件 allowlist 豁免存量内嵌表：`monster.rs` / `minion.rs` / `constants.rs`
+  （M0 W2/W3 迁库对象）；**新文件不得加入 allowlist**。
+- 实现为 pobr-data 的集成测试，随 `cargo test --workspace` 自动执行，无需单独 CI 步骤。
+
+**M0 后收紧计划**：
+
+1. W2/W3 把 monster/minion/constants 内嵌表迁入 `data/<ver>/` 后，allowlist 清空；
+2. CI 提供（缓存的）pipeline 输入，防线 ① 由 SKIP 改为必跑；manifest v2 落地后把
+   `manifest.json` 纳入 byte-diff；
+3. 后续阶段补齐另两道防线：overlay drift（extract-lua 产物 vs vendor commit diff 报告）
+   与 generated 一致性（precompile 重生 == 已提交）。
+4. 仓库暂无 GitHub workflow；引入后把 `regen-check.sh` 接为独立 job（无输入即 SKIP），
+   lint 已随 `cargo test` 覆盖。
+
 ---
 
 ## 6. 数据生成工具
@@ -122,7 +157,7 @@ cargo run -p lint-i18n
 |------|------|
 | `export-poe-data` | 从 PoB-PoE2/PoE 数据源转换为 PoBR 数据包 |
 | `gen-mod-cache` | 生成 Rust 可读 Modifier cache，并与 fixture 对比 |
-| `sync-pob-catalog` | 从 PoB-PoE2 核心 Lua 文件抽取 output/display/breakdown/quest reward catalog，并检查 PoBR parity matrix |
+| `sync-pob-catalog` | 从 PoB-PoE2 核心 Lua 文件抽取 output/display/breakdown/quest reward catalog，并检查 PoBR parity matrix；`extract-lua` 子命令经 luajit + 最小 stub 环境执行 vendor Lua 数据文件，把人工策展层固化为 `data/<版本>/overlay/*.json`（确定性、可重跑，见工具 README） |
 | `lint-i18n` | 检查语言包完整性、fallback、格式参数 |
 
 生成产物必须可复现：同一输入数据和工具版本生成相同输出。

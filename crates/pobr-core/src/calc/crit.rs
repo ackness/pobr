@@ -21,7 +21,6 @@
 //!       devs/docs/architecture/12-combat-mechanics-architecture.md §4.3；
 //!       PathOfBuilding-PoE2 `src/Modules/CalcOffence.lua`。
 
-use pobr_data::constants::PLAYER_BASE_CRIT_DAMAGE_BONUS;
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation};
@@ -268,7 +267,10 @@ fn resolve_crit_multiplier(
         if let Some(ov) = player.override_(cfg, ModName::from("CriticalStrikeMultiplier")) {
             ov / 100.0
         } else {
-            (PLAYER_BASE_CRIT_DAMAGE_BONUS + base) / 100.0 * (1.0 + inc / 100.0) * more
+            // M0-W3：玩家基础爆伤加成改读注入常量包（fallback == 旧 const，值不变）。
+            (cfg.constants.character().base_critical_hit_damage_bonus + base) / 100.0
+                * (1.0 + inc / 100.0)
+                * more
         };
 
     // 分岔："两次都暴击"的概率额外加权一份爆伤（CalcOffence.lua L3796–3811），

@@ -1,17 +1,34 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "poe_version": "4.5.0.3.4",
   "languages": [
     "zh-TW"
   ],
-  "domains": [
-    "base_items",
-    "mods",
-    "stats",
-    "skill_gems",
-    "granted_effects",
-    "granted_effect_levels",
-    "granted_effect_stat_sets",
-    "cost_types"
-  ]
+  "domains": {
+    "base": [
+      "base_items",
+      "mods",
+      "stats",
+      "skill_gems",
+      "granted_effects",
+      "granted_effect_levels",
+      "granted_effect_stat_sets",
+      "cost_types",
+      "game_constants",
+      "character_constants",
+      "monster_scaling",
+      "non_damaging_ailments",
+      "weapon_types",
+      "unarmed_data",
+      "jewel_radii",
+      "base_player_mods",
+      "enemy_presets"
+    ],
+    "overlay": [
+      "high_precision_mods",
+      "local_mods",
+      "skill_overrides"
+    ],
+    "generated": []
+  }
 }

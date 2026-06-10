@@ -1,8 +1,14 @@
 //! 敌人 modDB 初始化（对齐 PoB2 `CalcSetup.lua` 的 `enemyDB` 注入段）。
 //!
-//! 把怪物等级缩放表（`pobr_data::monster`）+ [`EnemyTier`] 档位加成写入
-//! `Env.enemy.mod_db`，归因到 [`SourceKind::EnemyConfig`]。所有注入都是 BASE/MORE
-//! modifier，由进攻计算（`offence.rs`）在 `mode_effective` 口径下读取。
+//! 把怪物等级缩放表 + [`EnemyTier`] 档位加成写入 `Env.enemy.mod_db`，归因到
+//! [`SourceKind::EnemyConfig`]。所有注入都是 BASE/MORE modifier，由进攻计算
+//! （`offence.rs`）在 `mode_effective` 口径下读取。
+//!
+//! **数据来源（M0-W3）**：百级表与档位预设改读注入的
+//! [`RuntimeConstants`]（`cfg.constants.monster_scaling` / `.enemy_presets`，
+//! 来自 `base/monster_scaling.json` + `base/enemy_presets.json`）；无 GameData 时
+//! 走 `Default` fallback（与 JSON 逐值相等，引用旧 `pobr_data::monster` 准源）——
+//! 两条路径输出逐值一致（搬迁不变式）。
 //!
 //! 设计要点（doc12 §4.2 / §5、accuracy-and-enemy.md §四,§五,§六）：
 //! - **怪物缩放**：`accuracy/evasion/armour` 来自 [`EnemyTierDefaults`]（已含档位倍率）。
@@ -73,18 +79,66 @@ fn push_enemy_condition(db: &mut ModDb, condition: &str, id: &str) {
     );
 }
 
+/// 从注入的运行时常量包计算档位默认值（`cfg.constants` 的 `monster_scaling` +
+/// `enemy_presets`），替代旧 `EnemyTierDefaults::compute` 对 `pobr_data::monster`
+/// 硬编码表的直查。
+///
+/// 公式与旧路径**逐运算同序**（level 先档位下界后 MaxEnemyLevel 上界、倍率先除
+/// 100 再乘表值），且 `Default` fallback 与 JSON 逐值相等——两条路径输出逐 bit
+/// 一致（搬迁不变式，零 parity 变化）。
+///
+/// 注入数据缺档（损坏的 enemy_presets）时回退旧 Rust 准源 `compute`（与 Default
+/// 同值），保持零 I/O 可计算。
+fn tier_defaults_from_constants(
+    constants: &RuntimeConstants,
+    config_level: u32,
+    tier: EnemyTier,
+) -> EnemyTierDefaults {
+    let presets = &constants.enemy_presets;
+    let Some(preset) = presets.tier_for(tier) else {
+        return EnemyTierDefaults::compute(config_level, tier);
+    };
+    let scaling = &constants.monster_scaling;
+    // 保证等级满足档位最低要求，并 clamp 到 MaxEnemyLevel（与旧 compute 同序）。
+    let level = config_level
+        .max(preset.min_level)
+        .min(presets.max_enemy_level);
+    let armour_mult = preset.armour_mult_pct.value() / 100.0;
+    let evasion_mult = preset.evasion_mult_pct.value() / 100.0;
+    EnemyTierDefaults {
+        level,
+        accuracy: scaling.accuracy_at(level),
+        evasion: scaling.evasion_at(level) as f64 * evasion_mult,
+        armour: scaling.armour_at(level) as f64 * armour_mult,
+        life: scaling.life_at(level),
+        elemental_resist: preset.elemental_resist_bonus,
+        chaos_resist: preset.chaos_resist_bonus,
+        pen: preset.pen,
+        damage_taken_more: preset.damage_taken_more(),
+        base_damage_for_ehp: scaling.damage_at(level)
+            * presets.ehp_base_damage_mult
+            * preset.dps_mult.value(),
+    }
+}
+
 /// 按 `(enemy_level, tier)` 初始化 `Env.enemy`：写 `enemy.base`（标量兼容入口）+
 /// `enemy.mod_db`（完整 modifier）。
 ///
 /// `config_level`：用户配置的怪物等级（`0` 表示跟随角色等级，调用方先解析为具体值）。
-/// 当 `config_level == 0` 时回退为 `min(MAX_ENEMY_LEVEL, player.level)`。
+/// 当 `config_level == 0` 时回退为 `min(MaxEnemyLevel, player.level)`（上限读注入的
+/// `cfg.constants.enemy_presets.max_enemy_level`，Default fallback = 85）。
+///
+/// 数据来源：百级表/档位预设读 `env.cfg.constants`（M0-W3 注入管道）——调用方须在
+/// `set_constants` **之后**调用本函数（`calculate_with_data` 已遵守此序；无注入时
+/// Default fallback 与 JSON 逐值相等，输出不变）。
 pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
+    let constants = &env.cfg.constants;
     let resolved_level = if config_level == 0 {
-        (env.player.level as u32).min(MAX_ENEMY_LEVEL)
+        (env.player.level as u32).min(constants.enemy_presets.max_enemy_level)
     } else {
         config_level
     };
-    let defaults = EnemyTierDefaults::compute(resolved_level, tier);
+    let defaults = tier_defaults_from_constants(constants, resolved_level, tier);
 
     // --- 就地更新 env.enemy（对齐 PoB2 CalcSetup.lua:682-691：enemyDB 是持久增量 db，
     // 不整体替换 actor）。base 标量按档位缩放写入；档位 mod **追加**进现有 mod_db，从而
@@ -126,6 +180,13 @@ fn inject_boss_penetration(player_db: &mut ModDb, defaults: &EnemyTierDefaults) 
 }
 
 /// 把 [`EnemyTierDefaults`] + 档位加成写入 enemy modDB（不触碰 base 标量）。
+///
+/// 注意：Boss 共通 mod 组（Curse/Exposure/Slow `-50`、`PoiseThreshold 500`、条件态）
+/// 此处仍按 pobr 现状硬编码注入——`enemy_presets.json` 的 `tiers[].enemy_mods` 里
+/// 额外含 vendor-only 条目（Knockback/MinimumMovementSpeed/附加 Poise/player_mods），
+/// 本 wave 为搬迁不变式（parity 零变化）**不**改为整组数据驱动；行为对齐
+/// （含 Effective 门控口径差异）见 `enemy_presets.rs` 模块 doc 的 TODO(parity)，
+/// 属后续独立 commit。
 fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTier) {
     // 怪物缩放：精准 / 闪避 / 护甲（含档位倍率，已在 defaults 中乘好）。
     push_enemy_number(

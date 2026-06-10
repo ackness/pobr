@@ -25,7 +25,6 @@
 //! 出处：PoB2 `src/Modules/CalcOffence.lua`（`calcAilmentDamage` / `calcDamagingAilmentOutputs`
 //!       / `Calculate scaling threshold ailment chance` / effMult 段）、agent-docs/ailments.md。
 
-use pobr_data::constants::{DOT_DPS_CAP, SHOCK_MIN_EFFECT};
 use pobr_data::monster::{
     CHILL_EFFECT_MULTIPLIER, CHILL_MAX_EFFECT, CHILL_MIN_EFFECT, ELECTROCUTE_DAMAGE_SCALE,
     FREEZE_DAMAGE_SCALE, IGNITE_CHANCE_MULTIPLIER, PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR,
@@ -152,13 +151,14 @@ fn scale_duration(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[ModName]) ->
     base * (1.0 + inc / 100.0)
 }
 
-/// 某伤害异常的有效持续时间（秒）：基础时长（[`GameConstants`]）吃对应 duration mod。
+/// 某伤害异常的有效持续时间（秒）：基础时长（注入常量包 `cfg.constants`）吃对应 duration mod。
 ///
 /// 与各 `*_instance` 内部 `scale_duration` 同源；单独导出供活跃叠层估算
 /// （[`estimate_active_stacks`] 的 `duration_secs` 参数）在构造实例前取用。
 /// 仅支持伤害异常（Bleed/Ignite/Poison）；其余类型返回 0。
 pub fn ailment_duration(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> f64 {
-    let gc = GameConstants::poe2();
+    // M0-W3：异常基线常量改读注入常量包（fallback == 旧 GameConstants::poe2()，值不变）。
+    let gc = cfg.constants.game();
     let (base, specific) = match ailment {
         AilmentType::Bleed => (gc.bleed_base_duration, "BleedDuration"),
         AilmentType::Ignite => (gc.ignite_base_duration, "IgniteDuration"),
@@ -175,7 +175,7 @@ pub fn bleed_instance(
     db: &ModDb,
     cfg: &CalcConfig,
 ) -> AilmentInstance {
-    let gc = GameConstants::poe2();
+    let gc = cfg.constants.game();
     let base_dps = pre_mitigation_phys_hit * gc.bleed_base_fraction;
     // PoE2 伤害异常 magnitude 仅由 `AilmentMagnitude` 缩放（= PoB2 ailmentPercentBase 的
     // calcLib.mod(AilmentMagnitude) 因子，inc+more 聚合）。PoE1 的 BleedDamage/
@@ -207,7 +207,7 @@ pub fn ignite_instance(
     db: &ModDb,
     cfg: &CalcConfig,
 ) -> AilmentInstance {
-    let gc = GameConstants::poe2();
+    let gc = cfg.constants.game();
     let base_dps = pre_mitigation_fire_hit * gc.ignite_base_fraction;
     // PoE2 点燃 magnitude 仅由 `AilmentMagnitude` 缩放（PoB2 ailmentPercentBase 因子）。
     // 出处：PoB2 CalcOffence.lua L5145-5146。
@@ -232,7 +232,7 @@ pub fn ignite_instance(
 
 /// 中毒实例：magnitude = 20% pre-mitigation 命中（物理+混沌）/秒，混沌 DoT，持续 2s。
 pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) -> AilmentInstance {
-    let gc = GameConstants::poe2();
+    let gc = cfg.constants.game();
     let base_dps = pre_mitigation_hit * gc.poison_base_fraction;
     // PoE2 中毒 magnitude 仅由 `AilmentMagnitude` 缩放（PoB2 ailmentPercentBase 因子）。
     // 出处：PoB2 CalcOffence.lua L5145-5146。
@@ -262,8 +262,19 @@ pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) ->
 /// 最大值为 100%（`ShockMaxEffect = 100`，远超通常可达的 50%）。
 /// 出处：agent-docs/ailments.md §感电、PoB2 `nonDamagingAilmentsConfig.Shock`：
 ///   `Shock.effect = 50 * (damage/enemyThreshold)^0.4 * effectMod, clamp [min=20, max=100]`
-pub fn shock_effect(pre_mitigation_lightning_hit: f64, target_ailment_threshold: f64) -> f64 {
-    shock_effect_with_mods(pre_mitigation_lightning_hit, target_ailment_threshold, 1.0)
+/// M0-W3：`min_effect_pct` 由调用方自注入常量包传入
+/// （`cfg.constants.game().shock_min_effect`，fallback == 旧 const = 20，值不变）。
+pub fn shock_effect(
+    pre_mitigation_lightning_hit: f64,
+    target_ailment_threshold: f64,
+    min_effect_pct: f64,
+) -> f64 {
+    shock_effect_with_mods(
+        pre_mitigation_lightning_hit,
+        target_ailment_threshold,
+        1.0,
+        min_effect_pct,
+    )
 }
 
 /// 感电增伤幅度（含 effectMod 乘子）：`50 * (hit/threshold)^0.4 * effectMod`，clamp 到
@@ -276,14 +287,16 @@ pub fn shock_effect_with_mods(
     pre_mitigation_lightning_hit: f64,
     target_ailment_threshold: f64,
     effect_mod: f64,
+    min_effect_pct: f64,
 ) -> f64 {
     if pre_mitigation_lightning_hit <= 0.0 || target_ailment_threshold <= 0.0 {
         return 0.0;
     }
     let ratio = pre_mitigation_lightning_hit / target_ailment_threshold;
-    // 50 * ratio^0.4 * effectMod → 以百分点计；SHOCK_MIN_EFFECT 以整数（20）存储，转为小数比例
+    // 50 * ratio^0.4 * effectMod → 以百分点计；min_effect_pct 以整数百分点（20）传入，
+    // 末端转小数比例（M0-W3：值来自注入常量包 `shock_min_effect`，fallback == 旧 const）。
     let effect_pct = 50.0 * ratio.powf(0.4) * effect_mod;
-    let min_pct = SHOCK_MIN_EFFECT; // 20.0 (percent)
+    let min_pct = min_effect_pct; // 20.0 (percent)
     let max_pct = 100.0;
     round(effect_pct.clamp(min_pct, max_pct) / 100.0)
 }
@@ -351,7 +364,7 @@ fn ailment_resist(enemy: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType)
             type_cfg,
             &[ModName::from(format!("{prefix}Resist"))],
         )
-        .clamp(RESIST_FLOOR, ENEMY_MAX_RESIST)
+        .clamp(type_cfg.constants.game().resist_floor, ENEMY_MAX_RESIST)
 }
 
 /// 受伤链 ModName 集合（DamageTaken / DamageTakenOverTime / 分类型 + 元素）。
@@ -516,7 +529,12 @@ pub fn shock_traced(
     let mag_inc = player.sum(ModType::Inc, cfg, &mag_names);
     let mag_more = player.more(cfg, &mag_names);
     let effect_mod = (1.0 + mag_inc / 100.0) * mag_more;
-    let magnitude = shock_effect_with_mods(weighted_hit, threshold, effect_mod);
+    let magnitude = shock_effect_with_mods(
+        weighted_hit,
+        threshold,
+        effect_mod,
+        cfg.constants.game().shock_min_effect,
+    );
     let node = trace.add_node("ShockEffect", round(magnitude), TraceOperation::Chance);
     // 几率贡献链入感电效果节点，使效果可回溯到 ShockChance 来源。
     trace.add_edge(chance_node, node);
@@ -1360,19 +1378,22 @@ fn ailment_mod_name(ailment: AilmentType) -> &'static str {
 // Feature 3: DotDpsCap
 // ---------------------------------------------------------------------------
 
-/// 应用全局 DoT DPS 上限：`min(dps, DOT_DPS_CAP)`。
+/// 应用全局 DoT DPS 上限：`min(dps, cap)`（cap = `DotDpsCap`）。
 ///
 /// **05-07 硬化（PoB2-faithful）**：PoB2 中 `DotDpsCap` 是 `Data.lua` 硬编码常量
 /// （`data.misc.DotDpsCap = 35791394`），**无任何 modDB / Override 机制**——所有
 /// `m_min(_, data.misc.DotDpsCap)` 调用点（CalcOffence/Calcs/BuildDisplayStats）都直接读常量。
 /// 因此移除原先的 modDB `DotDpsCap` Base 读取（PoE1 风格的伪 override，在 PoE2 不存在），
-/// 始终用常量 `DOT_DPS_CAP`。
+/// 始终用常量值（现经注入常量包 `dot_dps_cap` 传入，无 modDB 通道）。
 ///
 /// 出处：PoB2 `CalcOffence.lua` l.5193
 ///   `local ailmentDPSCapped = m_min(ailmentDPSUncapped, data.misc.DotDpsCap)`
 ///   + `Data.lua` `DotDpsCap = 35791394`（grep 全 src 无 `Override(..,"DotDpsCap")`）。
-pub fn apply_dot_dps_cap(dps: f64) -> f64 {
-    round(dps.min(DOT_DPS_CAP))
+///
+/// M0-W3：`cap` 由调用方自注入常量包传入（`cfg.constants.game().dot_dps_cap`，
+/// fallback == 旧 const = 35791394，值不变）。
+pub fn apply_dot_dps_cap(dps: f64, cap: f64) -> f64 {
+    round(dps.min(cap))
 }
 
 /// 同时应用 effectMod + rateMod + DotDpsCap 到最终 DPS（full pipeline）。
@@ -1383,9 +1404,9 @@ pub fn apply_dot_dps_cap(dps: f64) -> f64 {
 ///
 /// 调用方在叠层（× activeAilments）和 effMult（×敌方减伤）后再调用本函数，
 /// 或在 effMult 之后调用（两种顺序最终结果相同，因为 DotDpsCap 是全局绝对上限）。
-pub fn dps_with_effect_rate_cap(base_dps: f64, effect_mod: f64, rate_mod: f64) -> f64 {
+pub fn dps_with_effect_rate_cap(base_dps: f64, effect_mod: f64, rate_mod: f64, cap: f64) -> f64 {
     let uncapped = round(base_dps * effect_mod * rate_mod);
-    apply_dot_dps_cap(uncapped)
+    apply_dot_dps_cap(uncapped, cap)
 }
 
 /// Traced 版全 pipeline：effectMod + rateMod + DotDpsCap，写入 TraceGraph。
@@ -1395,11 +1416,12 @@ pub fn dps_with_effect_rate_cap_traced(
     base_dps: f64,
     effect_mod: f64,
     rate_mod: f64,
+    cap: f64,
     ailment_name: &str,
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
     let uncapped = round(base_dps * effect_mod * rate_mod);
-    let capped = apply_dot_dps_cap(uncapped);
+    let capped = apply_dot_dps_cap(uncapped, cap);
     let label = format!("{ailment_name}DPSFull");
     let node = trace.add_node(&label, capped, TraceOperation::Aggregate);
 
@@ -1420,7 +1442,7 @@ pub fn dps_with_effect_rate_cap_traced(
         trace.add_edge(rate_n, node);
     }
     if capped < uncapped {
-        let cap_n = trace.add_node("DotDpsCap", DOT_DPS_CAP, TraceOperation::Mitigate);
+        let cap_n = trace.add_node("DotDpsCap", cap, TraceOperation::Mitigate);
         trace.add_edge(cap_n, node);
     }
 

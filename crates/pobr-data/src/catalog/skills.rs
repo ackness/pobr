@@ -1,0 +1,211 @@
+//! 技能宝石 / 授予效果域 schema（`base/skill_gems.json` / `base/granted_effects.json` /
+//! `base/granted_effect_levels.json` / `base/granted_effect_stat_sets.json` /
+//! `base/cost_types.json`，来自 `SkillGems.dat` / `GrantedEffects*` / `CostTypes.dat`）。
+
+use serde::{Deserialize, Serialize};
+
+/// 技能宝石定义（来自 `SkillGems.dat` + `BaseItemTypes` 外键解析）。
+///
+/// 宝石**自身无 Id 列**，其身份取自 `BaseItemType` 指向的基底 Id
+/// （形如 `Metadata/Items/Gems/SkillGemFireball`）。`name` 走 base_items 域，
+/// 此处只存与宝石机制相关的字段。
+///
+/// TODO（后续切片）：分等级 stat 缩放（GrantedEffectStatSetsPerLevel /
+/// GrantedEffectsPerLevel 的 cost / cooldown / 伤害进度）尚未接入；
+/// `GemEffects` FK 指向的 `GemEffects` 表当前 pipeline 未导出，
+/// 故宝石→授予效果的直接连边暂缺，等该表导出后补 `granted_effects: Vec<String>`。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SkillGemDef {
+    /// 稳定 ID，取自 `BaseItemType` 基底的 `Id`。
+    pub id: String,
+    /// 宝石类型（GGG 原始枚举：0=主动技能，1=辅助），保留原值便于排查。
+    pub gem_type: Option<u32>,
+    /// 宝石颜色（GGG 原始枚举：1=红/力，2=绿/敏，3=蓝/智，4=白等）。
+    pub gem_colour: Option<u32>,
+    /// 使用所需最小角色等级。
+    pub min_level_req: u32,
+    /// 力量需求百分比（属性需求权重）。
+    pub str_pct: u32,
+    /// 敏捷需求百分比。
+    pub dex_pct: u32,
+    /// 智慧需求百分比。
+    pub int_pct: u32,
+    /// 是否为辅助宝石（由 `GemType == 1` 判定）。
+    pub is_support: bool,
+}
+
+/// 授予效果定义（来自 `GrantedEffects.dat` + 外键解析）。
+///
+/// 每个宝石/物品最终授予一个或多个 `GrantedEffect`；主动技能效果会关联到一条
+/// `ActiveSkills` 记录（显示名 / 技能类型）。本切片取身份 + 主动技能链接 +
+/// 施放时间 + 允许的主动技能类型枚举 + StatSet/CostTypes 外键索引。
+///
+/// 分等级参数（cost / cooldown / attack time）在独立域
+/// [`SkillLevelDef`]（`granted_effect_levels.json`），以本 `id` 为键。
+///
+/// 分等级**伤害 stat 值**在独立域 [`SkillStatSetDef`]
+/// （`granted_effect_stat_sets.json`），同样以本 `id` 为键（适配器已按 `stat_set`
+/// 外键 join 解析）。`stat_set` 字段保留原始索引备查。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GrantedEffectDef {
+    /// 稳定 ID，即 `GrantedEffects.Id`（如 `FireballPlayer`）。
+    pub id: String,
+    /// 是否为辅助效果。
+    pub is_support: bool,
+    /// 关联的主动技能 Id（解析 `ActiveSkills.Id`；辅助效果为 None）。
+    pub active_skill: Option<String>,
+    /// 施放/吟唱时间（毫秒）。原始值为 0（瞬发/辅助）时归一化为 None。
+    pub cast_time: Option<u32>,
+    /// 允许作用的主动技能类型（GGG 原始枚举值；当前无导出的类型名查表）。
+    pub allowed_active_skill_types: Vec<u32>,
+    /// `GrantedEffectStatSets` 表的外键索引（原始 `StatSet` 列）。分等级伤害 stat 值
+    /// 经此解析（待 stat-set 表下载后接入）；当前仅保留索引备查。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stat_set: Option<u32>,
+    /// 消耗类型外键索引（原始 `CostTypes` 列，如 `[0]`=法力）。与
+    /// [`SkillLevelDef::cost_amounts`] 按位置配对（第 i 个类型消耗第 i 个数量）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cost_types: Vec<u32>,
+    /// 关联主动技能的类型名（`ActiveSkills.ActiveSkillTypes` → `ActiveSkillType.Id` 解析，
+    /// 如 `["Attack","Projectile","Damage"]` / `["Spell","Area"]`）。用于攻击/法术判定
+    /// （攻击技能的击中伤害来自武器基底）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skill_types: Vec<String>,
+}
+
+impl GrantedEffectDef {
+    /// 是否为攻击技能（类型名含 `Attack`）——攻击技能的击中伤害来自武器基底。
+    pub fn is_attack(&self) -> bool {
+        self.skill_types.iter().any(|t| t == "Attack")
+    }
+
+    /// 是否为法术技能（类型名含 `Spell`）——法术不使用武器伤害。
+    pub fn is_spell(&self) -> bool {
+        self.skill_types.iter().any(|t| t == "Spell")
+    }
+
+    /// 是否为**非武器攻击**（类型名含 `NonWeaponAttack`，如 Shield Wall）——攻击的击中
+    /// 基础伤害由技能自身（off-hand stat-set）提供，而非主手武器基底。对应 PoB2
+    /// `skillFlags.shieldAttack`/`NonWeaponAttack`：source 不取 weaponData1，而由
+    /// `setOffHand*` 技能 stat 决定。
+    pub fn is_non_weapon_attack(&self) -> bool {
+        self.skill_types.iter().any(|t| t == "NonWeaponAttack")
+    }
+}
+
+/// 某个授予效果在某一等级上的参数（来自 `GrantedEffectsPerLevel.dat`）。
+///
+/// 与 [`GrantedEffectDef`] 解耦为独立域（一个效果有几十个等级行，避免主表膨胀）。
+/// 收录于 `granted_effect_levels.json`，以 `GrantedEffect` id 为键聚合为升序数组。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillLevelDef {
+    /// 宝石/技能等级（1-based）。
+    pub level: u32,
+    /// 冷却时间（毫秒）。原始 0（无冷却）归一化为 None。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cooldown_ms: Option<u32>,
+    /// 攻击时间（毫秒，攻击型技能）。原始 0（非攻击/由武器决定）归一化为 None。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_time_ms: Option<u32>,
+    /// 各消耗类型的消耗量（与 [`GrantedEffectDef::cost_types`] 按位置配对）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cost_amounts: Vec<u32>,
+    /// 攻击速度乘数（PoB `GrantedEffectsPerLevel.attackSpeedMultiplier`，百分点，可负）。
+    /// 作用于武器攻击速率：`AttackRate × (1 + attackSpeedMultiplier/100)`（如 Flicker -50）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attack_speed_multiplier: Option<f64>,
+    /// 技能伤害基础倍率（PoB `GrantedEffectsPerLevel.baseMultiplier`，如 Flicker L13 = 1.99）。
+    /// 当 stat-set 的 `BaseMultiplier` 缺失时作为 [`SkillStatSetLevel::damage_multiplier`]
+    /// 的回退源（二者同义，PoB 在两表均存）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_multiplier: Option<f64>,
+    /// 技能基础暴击率（PoB `GrantedEffectsPerLevel.critChance`，百分点；如 Comet = 13.0=13%）。
+    /// 法系/攻击技能的固有暴击率来源——攻击技能若 `None` 则回退武器基底暴击。
+    /// `0`（无暴击，如多数 DoT/触发器技能）归一化为 `Some(0.0)` 以区别于「数据缺失」。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crit_chance: Option<f64>,
+}
+
+/// 某授予效果（技能）分等级解析出的**伤害相关 stat 值**集合
+/// （来自 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel.dat` 外键解析）。
+///
+/// 每个主动技能效果关联一个 `GrantedEffectStatSets`（`BaseEffectiveness` +
+/// `ImplicitStats`），其 `GrantedEffectStatSetsPerLevel` 行给出每个宝石等级上
+/// `FloatStats`/`AdditionalStats` 对应的**已解析值**（`BaseResolvedValues` /
+/// `AdditionalStatsValues`）。适配器把 stat 索引解析为稳定 stat id，过滤出伤害族
+/// （`spell_*_base/added_<type>_damage`、`secondary_*_base_<type>_damage`、
+/// `attack_*_added_<type>_damage` 等）后按 effect id 入库。
+///
+/// 收录于 `granted_effect_stat_sets.json`，以 [`GrantedEffectDef::id`] 为键
+/// （player 技能的 stat-set Id 与 effect Id 同名，适配器已在导出时完成 join）。
+/// 这是「宝石 → 技能伤害 → DPS」数据通道的最后一环。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillStatSetDef {
+    /// 授予效果 id（如 `FireballPlayer`），与 [`GrantedEffectDef::id`] 对齐。
+    pub id: String,
+    /// stat-set 的基础效力（`BaseEffectiveness`，备查；分等级值已是解析后的最终量）。
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    pub base_effectiveness: f64,
+    /// 等级无关的常量 stat（`ConstantStats` + 值；如 support 宝石的 `damage_+%_final` 倍率）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub constant_stats: Vec<SkillDamageStat>,
+    /// statSet `baseMods` 中的固有**攻击速度 MORE**（PoB2 `mod("Speed", "MORE", N, ModFlag.Attack)`，
+    /// 百分点；如 Flicker Strike = 285）。这是 PoB2 自带的常量 baseMod，不在 GGG `.dat` 表中——
+    /// 由 vendor Lua 抽取合并。作为 `AttackSpeed` MORE 注入（仅攻击技能链路消费）。`None`=无。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skill_attack_speed_more: Option<f64>,
+    /// 分等级 stat（按宝石等级升序；含基础伤害值 + `damage_+%[_final]` 缩放）。
+    pub levels: Vec<SkillStatSetLevel>,
+}
+
+/// 某授予效果在某宝石等级上的伤害 stat 列表。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillStatSetLevel {
+    /// 宝石等级（1-based，对齐 [`SkillLevelDef::level`]）。
+    pub gem_level: u32,
+    /// 技能伤害倍率（PoB `baseMultiplier` = `1 + GrantedEffectStatSetsPerLevel.BaseMultiplier/10000`）。
+    /// 攻击技能据此把武器+附加伤害放大（如 grenade L18 = 7.57 → 757% 武器伤害）；
+    /// `1.0` = 无倍率（多数法术）。
+    #[serde(default = "one_f64", skip_serializing_if = "is_one_f64")]
+    pub damage_multiplier: f64,
+    /// 该等级上已解析的伤害 stat（stat id → 值）。
+    pub stats: Vec<SkillDamageStat>,
+}
+
+fn one_f64() -> f64 {
+    1.0
+}
+
+fn is_one_f64(v: &f64) -> bool {
+    *v == 1.0
+}
+
+/// 单条已解析的伤害 stat（稳定 stat id + 解析后的数值）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SkillDamageStat {
+    /// 稳定 stat id（如 `spell_minimum_base_fire_damage`）。
+    pub stat: String,
+    /// 该宝石等级上的已解析值（`BaseResolvedValues` / `AdditionalStatsValues`）。
+    pub value: f64,
+}
+
+/// serde 跳过零值 f64（diff 友好）。
+fn is_zero_f64(v: &f64) -> bool {
+    *v == 0.0
+}
+
+/// 技能消耗资源类型定义（来自 `CostTypes.dat`）。
+///
+/// [`GrantedEffectDef::cost_types`] 是本表的整型外键索引；[`SkillLevelDef::cost_amounts`]
+/// 按位置给出每种资源的消耗量。`per_minute` 资源（如 `ManaPerMinute`，按秒持续消耗）
+/// 的 `divisor` 为 60（原始值是「每分钟」，÷60 得每秒）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CostTypeDef {
+    /// 稳定资源 id（如 `Mana` / `Life` / `ES` / `LifePercent` / `ManaPerMinute`）。
+    pub id: String,
+    /// 数值除数（瞬时消耗为 1；per-minute 资源为 60，÷得每秒量）。
+    pub divisor: u32,
+    /// 是否为按时间持续消耗（per-second/per-minute）的资源。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub per_minute: bool,
+}

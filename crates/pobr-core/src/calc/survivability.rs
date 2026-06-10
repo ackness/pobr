@@ -11,7 +11,6 @@
 //! - **Recoup**：承受伤害的一定比例在 8s（或 4s）内返还。
 
 use crate::{CalcConfig, ModDb};
-use pobr_data::constants::BLOCK_CHANCE_CAP;
 use pobr_data::prelude::*;
 
 use super::round;
@@ -126,8 +125,11 @@ pub fn capped_chance(percent_sum: f64, cap: f64) -> f64 {
 ///
 /// **Bug#11 修正（block-chance-cap-wrong）**：PoE2 格挡上限为 90%，非 PoE1 的 75%。
 /// 出处：agent-docs/block.md §被动格挡、PoB2 DeepWiki `BlockChanceCap = 90`。
-pub fn block_chance(percent_sum: f64) -> f64 {
-    capped_chance(percent_sum, BLOCK_CHANCE_CAP)
+///
+/// M0-W3：cap 改由调用方自注入常量包传入
+/// （`cfg.constants.game().block_chance_cap`，fallback == 旧 const，值不变）。
+pub fn block_chance(percent_sum: f64, cap: f64) -> f64 {
+    capped_chance(percent_sum, cap)
 }
 
 // ─────────────────────────────────────────────────────────────────

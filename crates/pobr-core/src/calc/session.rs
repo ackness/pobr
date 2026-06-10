@@ -31,6 +31,15 @@ impl CalculationSession {
         self
     }
 
+    /// 注入运行时常量包（M0-W3 注入管道）：写入 `env.cfg.constants`，随 cfg 线程化
+    /// 到全部 calc 函数。未调用时为 `Default`（fallback，与入库 JSON 逐值相等）。
+    ///
+    /// **顺序约束**：[`with_config`](Self::with_config) 会整体覆盖 cfg（含本字段），
+    /// 故须在其**之后**调用；编排层（pobr-build `calculate_with_data`）遵守此序。
+    pub fn set_constants(&mut self, constants: RuntimeConstants) {
+        self.env.cfg.constants = constants;
+    }
+
     /// 在已注入全部来源后，向计算上下文写入一个资源/属性缩放量（PoB2 PerStat 的分母变量
     /// 的总量，如 `Spirit`/`Strength`/`Level`）。供 `+N to <stat> per M <resource>` 这类
     /// 词条经 [`crate::ModTag::Multiplier`] 在 `perform` 查询时按 `value / div` 展开。

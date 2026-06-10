@@ -181,10 +181,11 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
         classes,
     };
 
-    let version_dir = args.out.join(&args.patch);
-    std::fs::create_dir_all(&version_dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
-    write_pretty(&version_dir.join("passive_tree.json"), &nodes)?;
-    write_pretty(&version_dir.join("passive_tree_meta.json"), &meta)?;
+    // 三层布局：天赋树域 JSON 落 base/ 层。
+    let base_dir = args.out.join(&args.patch).join("base");
+    std::fs::create_dir_all(&base_dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
+    write_pretty(&base_dir.join("passive_tree.json"), &nodes)?;
+    write_pretty(&base_dir.join("passive_tree_meta.json"), &meta)?;
 
     Ok(format!(
         "天赋树适配完成：节点 {}/{} 条（跳过 {} 个布局占位），职业 {} → {}（源 {:.1}MB）",
@@ -192,7 +193,7 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
         total,
         total - nodes.len(),
         meta.classes.len(),
-        version_dir.display(),
+        base_dir.display(),
         raw_mb,
     ))
 }

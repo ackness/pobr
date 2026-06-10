@@ -11,9 +11,11 @@
 
 use std::collections::HashMap;
 
+use pobr_data::catalog::jewel_radii::JewelRadiiDef;
+use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
-    ArmourBaseStats, BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat,
-    SkillGemDef, SkillLevelDef, SkillStatSetDef, WeaponBaseStats,
+    ArmourBaseStats, BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, RuntimeConstants,
+    SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef, WeaponBaseStats,
 };
 use pobr_gamedata::{GameData, LoadError};
 
@@ -89,6 +91,19 @@ pub struct BuildData {
     pub cost_types: Vec<CostTypeDef>,
     /// 物品基底表，以英文 canonical 名称为键（供装备 `Item.base` 名称 → 武器/护甲基底数值）。
     pub base_items: HashMap<String, BaseItemDef>,
+    /// 注入 calc 的运行时常量包（M0-W3 注入管道）：由 `GameData::load_ruleset()`
+    /// 已数据化的域合并而成；未数据化/缺文件的域回退 `Default`（与 JSON 逐值相等）。
+    /// `calculate_with_data` 经 `CalculationSession::set_constants` 注入 pobr-core。
+    pub constants: RuntimeConstants,
+    /// 范围珠宝环形档表（`base/jewel_radii.json`）：距离乘数 + 档位 label→inner/outer。
+    /// 消费侧在本 crate 的树几何（`radius_jewel_grant_texts` → pobr-tree
+    /// `compute_radius_jewel_effect_with_radii`），不经 `RuntimeConstants` 进 pobr-core。
+    /// 数据缺失回退 `Default`（与 JSON 逐值相等）。
+    pub jewel_radii: JewelRadiiDef,
+    /// 局部词条白名单（`overlay/local_mods.json`，M0-W4d 数据化）。
+    /// 数据包缺该 overlay 文件时为内建 fallback [`LocalModsDef::default`]
+    /// （与 JSON 逐值一致的镜像，行为不变）。
+    pub local_mods: LocalModsDef,
 }
 
 impl BuildData {
@@ -147,6 +162,43 @@ impl BuildData {
             .map(|b| (b.name.clone(), b))
             .collect();
 
+        // M0-W3：RuleSet 已数据化的域合并进常量包；None 域保持 Default fallback
+        // （与 JSON 逐值相等，注入/回退两条路径输出一致）。
+        let ruleset = data.load_ruleset()?;
+        let mut constants = RuntimeConstants::default();
+        if let Some(game_constants) = ruleset.game_constants {
+            constants.game_constants = game_constants;
+        }
+        if let Some(character_constants) = ruleset.character_constants {
+            constants.character_constants = character_constants;
+        }
+        if let Some(monster_scaling) = ruleset.monster_scaling {
+            constants.monster_scaling = monster_scaling;
+        }
+        if let Some(enemy_presets) = ruleset.enemy_presets {
+            constants.enemy_presets = enemy_presets;
+        }
+        if let Some(unarmed_data) = ruleset.unarmed_data {
+            constants.unarmed_data = unarmed_data;
+        }
+        if let Some(weapon_types) = ruleset.weapon_types {
+            constants.weapon_types = weapon_types;
+        }
+        // 范围珠宝档位表：数据化域 Some 则覆盖、None 回退 Default（与 JSON 逐值相等）。
+        let jewel_radii = ruleset.jewel_radii.unwrap_or_default();
+
+        // 局部词条白名单：缺 overlay 文件（旧数据包）时降级回内建 fallback
+        // （与 JSON 逐值一致），其余加载/解析错误照常上抛，不静默。
+        let local_mods = match data.local_mods() {
+            Ok(def) => def,
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                LocalModsDef::default()
+            }
+            Err(e) => return Err(e),
+        };
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -156,10 +208,15 @@ impl BuildData {
             skill_stat_sets,
             cost_types,
             base_items,
+            constants,
+            jewel_radii,
+            local_mods,
         })
     }
 
-    /// 构造一个空的 [`BuildData`]（无任何域数据）。用于测试或纯文本路径回退。
+    /// 构造一个空的 [`BuildData`]（无任何域数据；局部词条白名单取内建
+    /// fallback——它是判定规则而非内容数据，空表会让武器局部剔除失效）。
+    /// 用于测试或纯文本路径回退。
     pub fn empty() -> Self {
         Self {
             passive_nodes: HashMap::new(),
@@ -170,6 +227,9 @@ impl BuildData {
             skill_stat_sets: HashMap::new(),
             cost_types: Vec::new(),
             base_items: HashMap::new(),
+            constants: RuntimeConstants::default(),
+            jewel_radii: JewelRadiiDef::default(),
+            local_mods: LocalModsDef::default(),
         }
     }
 

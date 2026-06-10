@@ -9,11 +9,12 @@
 //! fixture 节点按与 socket 距离排列：
 //!   11 → 600，12 → 1000，13 → 1300，14 → 1400，15 → 2000（均在 Small/Medium/Large 范围之外）。
 
+use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::prelude::*;
 use pobr_tree::{
     JEWEL_RADIUS_LARGE, JEWEL_RADIUS_MEDIUM, JEWEL_RADIUS_SMALL, JEWEL_RADIUS_VERY_LARGE,
     JewelRadius, PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER, PassiveTree, RadiusJewelEffect, TreeError,
-    compute_radius_jewel_effect,
+    compute_radius_jewel_effect, compute_radius_jewel_effect_with_radii,
 };
 use std::collections::HashMap;
 
@@ -220,6 +221,136 @@ fn radius_to_units_matches_constants() {
     assert_eq!(JewelRadius::Large.units(), JEWEL_RADIUS_LARGE);
     assert_eq!(JewelRadius::VeryLarge.units(), JEWEL_RADIUS_VERY_LARGE);
     assert_eq!(JewelRadius::Custom(123.0).units(), 123.0);
+}
+
+/// 搬迁不变式（M0-W3）：`JewelRadiiDef::default()` 注入路径与旧硬编码常量路径
+/// **逐值相等**——`units_with_radii(Default)` == `units()`（4 具名档 + Custom）。
+/// 该测试把 pobr-data 的 Default fallback 锚定到本 crate 的旧 Rust 准源常量
+/// （pobr-data 依赖方向上无法直接引用本 crate 常量，由此处锁定）。
+#[test]
+fn default_radii_data_matches_legacy_constants() {
+    let radii = JewelRadiiDef::default();
+    for r in [
+        JewelRadius::Small,
+        JewelRadius::Medium,
+        JewelRadius::Large,
+        JewelRadius::VeryLarge,
+        JewelRadius::Custom(123.0),
+    ] {
+        assert_eq!(
+            r.units_with_radii(&radii),
+            r.units(),
+            "{r:?} 注入 Default 数据与旧常量路径必须逐值相等"
+        );
+    }
+    assert_eq!(
+        radii.distance_multiplier,
+        PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER
+    );
+}
+
+/// 注入路径与 fallback 路径计算结果一致（Default 数据下整套影响范围逐值相等）。
+#[test]
+fn with_radii_default_matches_fallback_function() {
+    let positions = fixture_positions();
+    let radii = JewelRadiiDef::default();
+    for r in [
+        JewelRadius::Small,
+        JewelRadius::Medium,
+        JewelRadius::Large,
+        JewelRadius::VeryLarge,
+    ] {
+        let injected =
+            compute_radius_jewel_effect_with_radii(10, r, &radii, &positions, vec![]).unwrap();
+        let fallback = compute_radius_jewel_effect(10, r, &positions, vec![]).unwrap();
+        assert_eq!(injected, fallback, "{r:?} 注入/回退两条路径输出必须一致");
+    }
+}
+
+/// 注入数据确实被消费：篡改 Small 档 outer 后影响集合随数据变化
+/// （证明计算读的是注入数据而非硬编码常量）。
+#[test]
+fn injected_radii_data_is_actually_consumed() {
+    let positions = fixture_positions();
+    let mut radii = JewelRadiiDef::default();
+    // Small outer 1000 → 1100：有效半径 1200 → 1320，应多捕获 dist 1300 的节点 13
+    // （dist 1400 的节点 14 仍在外）。
+    let bands = radii.tree_versions.get_mut("0_1").unwrap();
+    bands.iter_mut().find(|b| b.label == "Small").unwrap().outer = 1100;
+
+    let effect =
+        compute_radius_jewel_effect_with_radii(10, JewelRadius::Small, &radii, &positions, vec![])
+            .unwrap();
+    assert_eq!(
+        effect.affected_nodes,
+        vec![11, 12, 13],
+        "篡改后的 Small 档（1320）应捕获 dist 600/1000/1300"
+    );
+}
+
+/// 数据缺对应具名档（异常/裁剪数据）时回退硬编码常量，行为与 fallback 一致。
+#[test]
+fn missing_band_falls_back_to_legacy_constant() {
+    let positions = fixture_positions();
+    let mut radii = JewelRadiiDef::default();
+    radii
+        .tree_versions
+        .get_mut("0_1")
+        .unwrap()
+        .retain(|b| b.label != "Small");
+
+    let effect =
+        compute_radius_jewel_effect_with_radii(10, JewelRadius::Small, &radii, &positions, vec![])
+            .unwrap();
+    // 回退 JEWEL_RADIUS_SMALL（1200）：捕获 dist 600/1000。
+    assert_eq!(effect.affected_nodes, vec![11, 12]);
+}
+
+/// 树版本选取：存在多组版本时取最大键（最新一组）。
+#[test]
+fn latest_tree_version_bands_are_used() {
+    let positions = fixture_positions();
+    let mut radii = JewelRadiiDef::default();
+    // 追加更新的 "0_2" 版本：Small outer 改为 1100（有效 1320，多捕获节点 13）。
+    let mut newer = radii.tree_versions["0_1"].clone();
+    newer.iter_mut().find(|b| b.label == "Small").unwrap().outer = 1100;
+    radii.tree_versions.insert("0_2".to_string(), newer);
+
+    let effect =
+        compute_radius_jewel_effect_with_radii(10, JewelRadius::Small, &radii, &positions, vec![])
+            .unwrap();
+    assert_eq!(
+        effect.affected_nodes,
+        vec![11, 12, 13],
+        "应消费最新树版本（0_2）的档位表"
+    );
+}
+
+/// PassiveTree 注入版方法与自由函数一致。
+#[test]
+fn tree_method_with_radii_matches_free_function() {
+    let tree = fixture_tree();
+    let radii = JewelRadiiDef::default();
+
+    let via_method = tree
+        .radius_jewel_effect_with_radii(
+            NodeId(10),
+            JewelRadius::Large,
+            &radii,
+            vec!["m".to_string()],
+        )
+        .unwrap();
+    let via_fn = compute_radius_jewel_effect_with_radii(
+        10,
+        JewelRadius::Large,
+        &radii,
+        &tree.positions,
+        vec!["m".to_string()],
+    )
+    .unwrap();
+
+    assert_eq!(via_method, via_fn);
+    assert_eq!(via_method.affected_nodes, vec![11, 12, 13, 14]);
 }
 
 #[test]

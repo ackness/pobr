@@ -26,8 +26,10 @@ use std::collections::HashMap;
 
 use quick_xml::events::{BytesStart, Event};
 
+use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
 
 use crate::build::{Build, CharacterIdentity, RadiusJewel, SocketGroup};
@@ -90,10 +92,15 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
 
     // 战斗配置（敌人状态 / 条件 / 倍率）→ BuildConfig，经 to_calc_config 进入 cfg，
     // 供条件型词条（`... against Chilled Enemies` 等）按 PoB 保存的开关生效。
-    let (conditions, multipliers, global_texts) = parse_config(xml);
-    build.config.conditions.extend(conditions);
-    build.config.multipliers.extend(multipliers);
-    build.config.global_modifier_texts.extend(global_texts);
+    let parsed = parse_config(xml);
+    build.config.conditions.extend(parsed.conditions);
+    build.config.multipliers.extend(parsed.multipliers);
+    build
+        .config
+        .global_modifier_texts
+        .extend(parsed.global_texts);
+    build.config.campaign_progress = parsed.campaign_progress;
+    build.config.enemy_tier = parsed.enemy_tier;
 
     Ok(build)
 }
@@ -123,16 +130,31 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
     ("VigilantStrikeBypassCD", "VigilantStrikeBypassCD"),
 ];
 
-/// 抽取 `<Config>` 的 `<Input name boolean|number>` → (conditions, multipliers)。
+/// `<Config>` 解析产物：条件 / 倍率 / 全局词条 + 顶层标量配置项。
+#[derive(Debug, Default)]
+struct ParsedConfig {
+    /// 布尔条件覆盖（去 `condition` 前缀后的变量名 → 值）。
+    conditions: HashMap<String, bool>,
+    /// 数值乘子覆盖（去 `multiplier` 前缀后的变量名 → 值）。
+    multipliers: HashMap<String, f64>,
+    /// 全局注入的词条文本（任务奖励等）。
+    global_texts: Vec<String>,
+    /// `resistancePenalty`（list 型，XML 存 number）映射到的战役进度。XML 省略
+    /// 或值不在 PoB2 七档表内时为 `None`（消费方回退 PoB2 默认 Endgame `-60`）。
+    campaign_progress: Option<CampaignProgress>,
+    /// `enemyIsBoss`（list 型，XML 存 string）映射到的敌人档位。XML 省略或字符串
+    /// 不在四档表内时为 `None`（消费方回退编排选项档位，默认即 PoB2 Pinnacle）。
+    enemy_tier: Option<EnemyTier>,
+}
+
+/// 抽取 `<Config>` 的 `<Input name boolean|number|string>` → [`ParsedConfig`]。
 /// 名称去 `condition`/`multiplier` 前缀作为变量名（如 `conditionEnemyChilled` → `EnemyChilled`），
 /// 与计算侧 `ModTag::Condition`/`Multiplier` 变量约定对齐。
 ///
 /// **省略=默认值**（PoB2 `defaultState`）：XML 中出现的 `<Input>` 按其值；未出现的
 /// 布尔条件中，[`DEFAULT_TRUE_CONDITIONS`] 列出的项补 `true`（其余仍由计算侧回退 false）。
-fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<String>) {
-    let mut conditions = HashMap::new();
-    let mut multipliers = HashMap::new();
-    let mut global_texts = Vec::new();
+fn parse_config(xml: &str) -> ParsedConfig {
+    let mut parsed = ParsedConfig::default();
     // 记录 XML 中**出现过**的 `<Input name>`，用于判定哪些 defaultState 项被省略。
     let mut seen_names: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut reader = Reader::from_str(xml);
@@ -147,23 +169,40 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
                 if let Some(var) = name.strip_prefix("condition")
                     && let Some(b) = attr_value(&e, b"boolean")
                 {
-                    conditions.insert(var.to_string(), b == "true");
+                    parsed.conditions.insert(var.to_string(), b == "true");
                 } else if let Some(charge_cond) = use_charge_condition(&name)
                     && let Some(b) = attr_value(&e, b"boolean")
                 {
                     // PoB2 ConfigOptions：`useXCharges` 复选框 → `Condition:UseXCharges` FLAG。
                     // 充能满层默认（current = max）仅在该条件为真时生效（见 charge_multipliers_panel_default）。
-                    conditions.insert(charge_cond.to_string(), b == "true");
+                    parsed
+                        .conditions
+                        .insert(charge_cond.to_string(), b == "true");
                 } else if let Some((_, cond_var)) =
                     DEFAULT_TRUE_CONDITIONS.iter().find(|(n, _)| *n == name)
                     && let Some(b) = attr_value(&e, b"boolean")
                 {
                     // defaultState=true 项**显式出现**时按其值（不再走默认补填）。
-                    conditions.insert((*cond_var).to_string(), b == "true");
+                    parsed
+                        .conditions
+                        .insert((*cond_var).to_string(), b == "true");
                 } else if let Some(var) = name.strip_prefix("multiplier")
                     && let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
                 {
-                    multipliers.insert(var.to_string(), n);
+                    parsed.multipliers.insert(var.to_string(), n);
+                } else if name == "enemyIsBoss" {
+                    // PoB2 ConfigOptions `enemyIsBoss`（list 型，XML 存 string）：
+                    // None/Boss/Pinnacle/Uber 四档 → EnemyTier。表外字符串保持 None，
+                    // 由消费方回退编排选项档位（PoB2 defaultIndex=3 = Pinnacle）。
+                    parsed.enemy_tier =
+                        attr_value(&e, b"string").and_then(|v| EnemyTier::from_pob_str(&v));
+                } else if name == "resistancePenalty" {
+                    // PoB2 ConfigOptions `resistancePenalty`（list 型，XML 存 number）：
+                    // 0/-10/…/-60 七档 → CampaignProgress 既有表。值不在档位表内
+                    // （理论上 PoB2 不会保存）时保持 None，由消费方回退默认 Endgame。
+                    parsed.campaign_progress = attr_value(&e, b"number")
+                        .and_then(|v| v.parse::<f64>().ok())
+                        .and_then(CampaignProgress::from_resistance_penalty);
                 } else if name.starts_with("quest") {
                     // PoB2 任务奖励（`questRewards`）按**全局**作用的永久 modifier 注入：
                     // - Options 型（list）：`string="<所选选项>"`（可多行，逐行注入）；
@@ -171,13 +210,13 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
                     //   = 已领取（默认表 [`DEFAULT_QUEST_STAT_REWARDS`] 补注），
                     //   `boolean="false"` = 显式放弃。
                     if let Some(s) = attr_value(&e, b"string") {
-                        push_quest_lines(&mut global_texts, &s);
+                        push_quest_lines(&mut parsed.global_texts, &s);
                     } else if attr_bool(&e, b"boolean")
                         && let Some((_, stat)) = DEFAULT_QUEST_STAT_REWARDS
                             .iter()
                             .find(|(key, _)| *key == name)
                     {
-                        push_quest_lines(&mut global_texts, stat);
+                        push_quest_lines(&mut parsed.global_texts, stat);
                     }
                 }
             }
@@ -189,7 +228,10 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
     // PoB2 `defaultState = true`：XML 省略的项补 true（已显式出现的不覆盖）。
     for (xml_name, cond_var) in DEFAULT_TRUE_CONDITIONS {
         if !seen_names.contains(*xml_name) {
-            conditions.entry((*cond_var).to_string()).or_insert(true);
+            parsed
+                .conditions
+                .entry((*cond_var).to_string())
+                .or_insert(true);
         }
     }
 
@@ -197,11 +239,11 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
     // （PoB2 ConfigOptions `addQuestModsRewardsConfigOptions` 的 check 默认勾选语义）。
     for (key, stat) in DEFAULT_QUEST_STAT_REWARDS {
         if !seen_names.contains(*key) {
-            push_quest_lines(&mut global_texts, stat);
+            push_quest_lines(&mut parsed.global_texts, stat);
         }
     }
 
-    (conditions, multipliers, global_texts)
+    parsed
 }
 
 /// PoB2 `QuestRewards.lua` 中 Stat 型（check）任务奖励默认表：`(XML <Input name> key,
@@ -954,6 +996,85 @@ Adds 47 to 86 Physical Damage
         assert!(texts.iter().any(|t| t == "+5% to Fire Resistance"));
         // 未提及的默认项仍在。
         assert!(texts.iter().any(|t| t == "+10% to Cold Resistance"));
+    }
+
+    // ── Config resistancePenalty → CampaignProgress（19-G5 接线）─────────────
+
+    #[test]
+    fn resistance_penalty_number_maps_to_campaign_progress() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="40" className="Witch"/>
+    <Config>
+        <Input name="resistancePenalty" number="-10"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        assert_eq!(build.config.campaign_progress, Some(CampaignProgress::Act2));
+    }
+
+    #[test]
+    fn resistance_penalty_omitted_leaves_progress_unset() {
+        // SAMPLE 无 resistancePenalty → None（计算侧回退 PoB2 默认 Endgame -60）。
+        let build = parse_build(SAMPLE).expect("parse");
+        assert_eq!(build.config.campaign_progress, None);
+    }
+
+    #[test]
+    fn resistance_penalty_unknown_value_falls_back_to_unset() {
+        // 不在 PoB2 七档表内的值（理论上不会出现）不强行映射，保持 None。
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="40" className="Witch"/>
+    <Config>
+        <Input name="resistancePenalty" number="-15"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        assert_eq!(build.config.campaign_progress, None);
+    }
+
+    // ── Config enemyIsBoss → EnemyTier（19-G3 接线）─────────────────────────
+
+    #[test]
+    fn enemy_is_boss_string_maps_to_enemy_tier() {
+        for (raw, expected) in [
+            ("None", EnemyTier::None),
+            ("Boss", EnemyTier::Boss),
+            ("Pinnacle", EnemyTier::Pinnacle),
+            ("Uber", EnemyTier::Uber),
+        ] {
+            let xml = format!(
+                r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="90" className="Witch"/>
+    <Config>
+        <Input name="enemyIsBoss" string="{raw}"/>
+    </Config>
+</PathOfBuilding2>"#
+            );
+            let build = parse_build(&xml).expect("parse");
+            assert_eq!(build.config.enemy_tier, Some(expected), "string={raw}");
+        }
+    }
+
+    #[test]
+    fn enemy_is_boss_omitted_or_unknown_leaves_tier_unset() {
+        // SAMPLE 无 enemyIsBoss → None（计算侧回退编排选项，默认 Pinnacle）。
+        let build = parse_build(SAMPLE).expect("parse");
+        assert_eq!(build.config.enemy_tier, None);
+
+        // 表外字符串不强行映射（Placeholder 元素同理不读取）。
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="90" className="Witch"/>
+    <Config>
+        <Input name="enemyIsBoss" string="SuperUber"/>
+        <Placeholder name="enemyLevel" number="82"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        assert_eq!(build.config.enemy_tier, None);
     }
 
     #[test]
