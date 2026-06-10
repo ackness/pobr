@@ -29,6 +29,7 @@ use quick_xml::events::{BytesStart, Event};
 use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
 
 use crate::build::{Build, CharacterIdentity, RadiusJewel, SocketGroup};
@@ -99,6 +100,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
         .global_modifier_texts
         .extend(parsed.global_texts);
     build.config.campaign_progress = parsed.campaign_progress;
+    build.config.enemy_tier = parsed.enemy_tier;
 
     Ok(build)
 }
@@ -140,6 +142,9 @@ struct ParsedConfig {
     /// `resistancePenalty`（list 型，XML 存 number）映射到的战役进度。XML 省略
     /// 或值不在 PoB2 七档表内时为 `None`（消费方回退 PoB2 默认 Endgame `-60`）。
     campaign_progress: Option<CampaignProgress>,
+    /// `enemyIsBoss`（list 型，XML 存 string）映射到的敌人档位。XML 省略或字符串
+    /// 不在四档表内时为 `None`（消费方回退编排选项档位，默认即 PoB2 Pinnacle）。
+    enemy_tier: Option<EnemyTier>,
 }
 
 /// 抽取 `<Config>` 的 `<Input name boolean|number|string>` → [`ParsedConfig`]。
@@ -185,6 +190,12 @@ fn parse_config(xml: &str) -> ParsedConfig {
                     && let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
                 {
                     parsed.multipliers.insert(var.to_string(), n);
+                } else if name == "enemyIsBoss" {
+                    // PoB2 ConfigOptions `enemyIsBoss`（list 型，XML 存 string）：
+                    // None/Boss/Pinnacle/Uber 四档 → EnemyTier。表外字符串保持 None，
+                    // 由消费方回退编排选项档位（PoB2 defaultIndex=3 = Pinnacle）。
+                    parsed.enemy_tier =
+                        attr_value(&e, b"string").and_then(|v| EnemyTier::from_pob_str(&v));
                 } else if name == "resistancePenalty" {
                     // PoB2 ConfigOptions `resistancePenalty`（list 型，XML 存 number）：
                     // 0/-10/…/-60 七档 → CampaignProgress 既有表。值不在档位表内
@@ -1021,6 +1032,49 @@ Adds 47 to 86 Physical Damage
 </PathOfBuilding2>"#;
         let build = parse_build(xml).expect("parse");
         assert_eq!(build.config.campaign_progress, None);
+    }
+
+    // ── Config enemyIsBoss → EnemyTier（19-G3 接线）─────────────────────────
+
+    #[test]
+    fn enemy_is_boss_string_maps_to_enemy_tier() {
+        for (raw, expected) in [
+            ("None", EnemyTier::None),
+            ("Boss", EnemyTier::Boss),
+            ("Pinnacle", EnemyTier::Pinnacle),
+            ("Uber", EnemyTier::Uber),
+        ] {
+            let xml = format!(
+                r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="90" className="Witch"/>
+    <Config>
+        <Input name="enemyIsBoss" string="{raw}"/>
+    </Config>
+</PathOfBuilding2>"#
+            );
+            let build = parse_build(&xml).expect("parse");
+            assert_eq!(build.config.enemy_tier, Some(expected), "string={raw}");
+        }
+    }
+
+    #[test]
+    fn enemy_is_boss_omitted_or_unknown_leaves_tier_unset() {
+        // SAMPLE 无 enemyIsBoss → None（计算侧回退编排选项，默认 Pinnacle）。
+        let build = parse_build(SAMPLE).expect("parse");
+        assert_eq!(build.config.enemy_tier, None);
+
+        // 表外字符串不强行映射（Placeholder 元素同理不读取）。
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="90" className="Witch"/>
+    <Config>
+        <Input name="enemyIsBoss" string="SuperUber"/>
+        <Placeholder name="enemyLevel" number="82"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        assert_eq!(build.config.enemy_tier, None);
     }
 
     #[test]
