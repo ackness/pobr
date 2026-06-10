@@ -12,6 +12,7 @@
 use std::collections::HashMap;
 
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
+use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
     ArmourBaseStats, BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, RuntimeConstants,
     SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef, WeaponBaseStats,
@@ -99,6 +100,10 @@ pub struct BuildData {
     /// `compute_radius_jewel_effect_with_radii`），不经 `RuntimeConstants` 进 pobr-core。
     /// 数据缺失回退 `Default`（与 JSON 逐值相等）。
     pub jewel_radii: JewelRadiiDef,
+    /// 局部词条白名单（`overlay/local_mods.json`，M0-W4d 数据化）。
+    /// 数据包缺该 overlay 文件时为内建 fallback [`LocalModsDef::default`]
+    /// （与 JSON 逐值一致的镜像，行为不变）。
+    pub local_mods: LocalModsDef,
 }
 
 impl BuildData {
@@ -182,6 +187,18 @@ impl BuildData {
         // 范围珠宝档位表：数据化域 Some 则覆盖、None 回退 Default（与 JSON 逐值相等）。
         let jewel_radii = ruleset.jewel_radii.unwrap_or_default();
 
+        // 局部词条白名单：缺 overlay 文件（旧数据包）时降级回内建 fallback
+        // （与 JSON 逐值一致），其余加载/解析错误照常上抛，不静默。
+        let local_mods = match data.local_mods() {
+            Ok(def) => def,
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                LocalModsDef::default()
+            }
+            Err(e) => return Err(e),
+        };
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -193,10 +210,13 @@ impl BuildData {
             base_items,
             constants,
             jewel_radii,
+            local_mods,
         })
     }
 
-    /// 构造一个空的 [`BuildData`]（无任何域数据）。用于测试或纯文本路径回退。
+    /// 构造一个空的 [`BuildData`]（无任何域数据；局部词条白名单取内建
+    /// fallback——它是判定规则而非内容数据，空表会让武器局部剔除失效）。
+    /// 用于测试或纯文本路径回退。
     pub fn empty() -> Self {
         Self {
             passive_nodes: HashMap::new(),
@@ -209,6 +229,7 @@ impl BuildData {
             base_items: HashMap::new(),
             constants: RuntimeConstants::default(),
             jewel_radii: JewelRadiiDef::default(),
+            local_mods: LocalModsDef::default(),
         }
     }
 

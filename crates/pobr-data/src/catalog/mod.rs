@@ -32,6 +32,10 @@ pub mod weapon_types;
 // ---- M0-W3 注入管道：calc 消费的运行时常量包 ----
 pub mod runtime;
 
+// ---- M0-W4d 小查表 overlay schema（取整精度例外表 + 局部词条白名单）----
+pub mod high_precision_mods;
+pub mod local_mods;
+
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};

@@ -23,6 +23,16 @@ impl GameData {
             self.root().join(rel)
         }
     }
+
+    /// 定位某个 **overlay 层**域文件：恒为 `<root>/overlay/<rel>`，不回退版本根
+    /// （overlay 是 vendor 抽取/转录层，旧平铺布局从未有过 overlay 文件，无兼容需求）。
+    ///
+    /// 与 [`Self::domain_path`] 同样**不检查存在性**——缺文件时由加载侧报出带路径的
+    /// [`crate::LoadError::Io`]；是否降级回内建 fallback 由消费方（如 pobr-build 的
+    /// `BuildData::load`）按域裁决。
+    pub(crate) fn overlay_path(&self, rel: &str) -> PathBuf {
+        self.root().join("overlay").join(rel)
+    }
 }
 
 #[cfg(test)]
