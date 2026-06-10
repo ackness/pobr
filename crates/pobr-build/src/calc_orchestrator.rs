@@ -1830,6 +1830,31 @@ fn support_modifiers(
             SourceKind::SupportGem,
             &gem.skill_id,
         ));
+        // （M1-T4.4）兼容 support 的分等级 cost 倍率 → `SupportManaMultiplier` MORE
+        // （PoB2 `CalcActiveSkill.lua:689-691`：`NewMod("SupportManaMultiplier","MORE",
+        // level.manaMultiplier, modSource)`）。只对**兼容名单**注入——被拒 support
+        // 的倍率不吃，对齐 PoB2 拒收。消费侧 = `skill_mechanics::calc_skill_cost`
+        // （倍率连乘截断 4 位小数后，先于 inc/more 链作用于 base cost）。
+        if let Some(mm) = data
+            .granted_effect_levels
+            .get(&gem.skill_id)
+            .and_then(|rows| {
+                rows.iter()
+                    .rfind(|r| r.level <= gem.gem_level)
+                    .or(rows.first())
+            })
+            .and_then(|row| row.mana_multiplier)
+            .filter(|&v| v != 0.0)
+        {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SupportGem,
+                format!("support.{}.manaMultiplier", gem.skill_id),
+            ))
+            .with_raw_text(format!("support {} cost multiplier {mm}%", gem.skill_id));
+            mods.push(
+                Modifier::number("SupportManaMultiplier", ModType::More, mm).with_origin(origin),
+            );
+        }
     }
     mods
 }
