@@ -34,7 +34,7 @@ use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
-use pobr_core::{CalcConfig, CharacterBase, ModTag, Modifier};
+use pobr_core::{CalcConfig, CampaignProgress, CharacterBase, ModTag, Modifier};
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
@@ -54,9 +54,6 @@ const EXPOSURE_MAGNITUDE: f64 = 20.0;
 const LIFE_PER_STRENGTH: f64 = 2.0;
 const MANA_PER_INTELLIGENCE: f64 = 2.0;
 const ACCURACY_PER_DEXTERITY: f64 = 6.0;
-
-/// PoE2 终局默认元素抗性惩罚（火/冰/电；PoB2 `configInput.resistancePenalty or -60`）。
-const ENDGAME_RESISTANCE_PENALTY: f64 = -60.0;
 
 /// 编排选项：可注入基础 [`MinimalInput`]（角色基础生命/抗性等，来自上层装配）。
 #[derive(Debug, Clone, Default)]
@@ -172,10 +169,13 @@ pub fn calculate_with_data(
         .with_flags(base_cfg.flags | skill_flags)
         .with_damage_keywords(dmg_keywords)
         .with_mode_effective(options.mode_effective);
+    // 敌人档位（19-G3 接线）：build XML Config 显式保存的 `enemyIsBoss` 优先；
+    // 省略时回退调用方编排选项（PoB2 defaultIndex=3 = Pinnacle，与既有调用方一致）。
+    let enemy_tier = build.config.enemy_tier.unwrap_or(options.enemy_tier);
     // 敌人稀有度条件：DPS 默认 vs Boss/Pinnacle/Uber（= Unique）→ 置真，使
     // `... against Rare or Unique Enemies` 这类条件型增伤生效（PoB 的 boss DPS 口径）。
     if matches!(
-        options.enemy_tier,
+        enemy_tier,
         EnemyTier::Boss | EnemyTier::Pinnacle | EnemyTier::Uber
     ) {
         cfg = cfg
@@ -307,21 +307,15 @@ pub fn calculate_with_data(
         && let Some(base) = character_base(build, data)
     {
         session.add_modifiers(base.modifiers());
-        // PoE2 终局默认元素抗性惩罚（火/冰/电各 -60%；混沌无惩罚）。对应 PoB2 CalcSetup.lua
-        // `configInput.resistancePenalty or -60`——所有终局 build 的基础抗性起点。
-        let pen = |elem: &str| {
-            let origin = ModifierSource::new(SourceId::new(
-                SourceKind::CharacterBase,
-                "base.resist_penalty",
-            ))
-            .with_raw_text("endgame elemental resistance penalty");
-            Modifier::number(elem, ModType::Base, ENDGAME_RESISTANCE_PENALTY).with_origin(origin)
-        };
-        session.add_modifiers([
-            pen("FireResistance"),
-            pen("ColdResistance"),
-            pen("LightningResistance"),
-        ]);
+        // 元素抗性惩罚（火/冰/电；混沌无惩罚）：XML Config `resistancePenalty` 显式档位
+        // 优先；省略时按 PoB2 CalcSetup.lua `configInput.resistancePenalty or -60`（即
+        // Endgame）。档位 → 惩罚 modifier 走 [`CampaignProgress`] 既有表（带
+        // `campaign.resistance_penalty` 归因；Act1 惩罚为 0、不产生 modifier）。
+        let progress = build
+            .config
+            .campaign_progress
+            .unwrap_or(CampaignProgress::Endgame);
+        session.add_modifiers(progress.modifiers());
     }
 
     // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
@@ -496,7 +490,7 @@ pub fn calculate_with_data(
     session.add_modifiers(self_buff_offensive_modifiers(build, data));
 
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
-    session.setup_enemy(options.enemy_level, options.enemy_tier);
+    session.setup_enemy(options.enemy_level, enemy_tier);
 
     // 5b. 玩家施加的元素曝光（build config `conditionEnemy*Exposure`）→ enemy 抗性减项
     //     （PoB2 config 默认每点 -20%）。仅有效口径生效，须在 setup_enemy 后。
@@ -2337,6 +2331,71 @@ mod tests {
         session.setup_enemy(80, EnemyTier::Pinnacle);
         let out = session.perform_minimal();
         assert!(out.hit_chance <= 1.0);
+    }
+
+    #[test]
+    fn resistance_penalty_follows_campaign_progress() {
+        // resistancePenalty 接线（19-G5）：未配置 → PoB2 默认 Endgame（-60）；
+        // 显式 Act1 → 惩罚 0，三元素抗性各高 60 点（混沌无惩罚，本就不受影响）。
+        let data = repo_data();
+        let character = CharacterIdentity {
+            level: 90,
+            class_name: "Ranger".into(),
+            ascendancy_name: String::new(),
+        };
+        let opts = DataOrchestratorOptions::default();
+
+        let build = Build::new().with_character(character.clone());
+        let endgame = calculate_with_data(&build, &data, &opts).expect("endgame calc");
+
+        let mut act1_build = Build::new().with_character(character);
+        act1_build.config.campaign_progress = Some(CampaignProgress::Act1);
+        let act1 = calculate_with_data(&act1_build, &data, &opts).expect("act1 calc");
+
+        assert_eq!(act1.fire_resistance - endgame.fire_resistance, 60.0);
+        assert_eq!(act1.cold_resistance - endgame.cold_resistance, 60.0);
+        assert_eq!(
+            act1.lightning_resistance - endgame.lightning_resistance,
+            60.0
+        );
+    }
+
+    #[test]
+    fn xml_enemy_tier_overrides_orchestrator_option() {
+        // enemyIsBoss 接线（19-G3）：build XML Config 显式 None 档应覆盖调用方传入的
+        // Pinnacle——普通怪无 Pinnacle 闪避均值倍率，有效口径命中率应更高。
+        let data = BuildData::empty();
+        let base = MinimalInput {
+            base_accuracy: 1000.0,
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            base_action_rate: 1.0,
+            ..MinimalInput::default()
+        };
+        let opts = DataOrchestratorOptions {
+            base_input: base,
+            inject_character_base: false,
+            mode_effective: true,
+            enemy_level: 80,
+            enemy_tier: EnemyTier::Pinnacle,
+            ..Default::default()
+        };
+
+        // XML 省略 enemyIsBoss → 沿用选项 Pinnacle。
+        let pinnacle_build = Build::new();
+        let pinnacle = calculate_with_data(&pinnacle_build, &data, &opts).expect("pinnacle calc");
+
+        // XML 显式 enemyIsBoss=None → 覆盖选项档位。
+        let mut none_build = Build::new();
+        none_build.config.enemy_tier = Some(EnemyTier::None);
+        let none = calculate_with_data(&none_build, &data, &opts).expect("none-tier calc");
+
+        assert!(
+            none.hit_chance > pinnacle.hit_chance,
+            "普通怪档位（闪避更低）命中率应高于 Pinnacle：none={} pinnacle={}",
+            none.hit_chance,
+            pinnacle.hit_chance,
+        );
     }
 
     #[test]

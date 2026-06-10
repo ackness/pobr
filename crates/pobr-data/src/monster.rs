@@ -495,6 +495,21 @@ pub enum EnemyTier {
 }
 
 impl EnemyTier {
+    /// 从 PoB2 `enemyIsBoss` 配置取值字符串解析档位。
+    ///
+    /// PoB2 build XML 把 list 型 `<Input name="enemyIsBoss">` 存为
+    /// `string="None|Boss|Pinnacle|Uber"`（vendor `ConfigOptions.lua` `enemyIsBoss`
+    /// list 各项 `val`）；不在四档表内的字符串返回 `None`（调用方自行回退默认）。
+    pub fn from_pob_str(value: &str) -> Option<Self> {
+        match value {
+            "None" => Some(EnemyTier::None),
+            "Boss" => Some(EnemyTier::Boss),
+            "Pinnacle" => Some(EnemyTier::Pinnacle),
+            "Uber" => Some(EnemyTier::Uber),
+            _ => None,
+        }
+    }
+
     /// 该档位是否为任意 Boss（Boss / Pinnacle / Uber）。
     pub fn is_boss(self) -> bool {
         !matches!(self, EnemyTier::None)
@@ -1100,5 +1115,24 @@ mod tests {
         assert_eq!(PIN_DAMAGE_SCALE, 4.2);
         assert_eq!(BOSS_POISE_THRESHOLD_MORE, 500.0);
         assert_eq!(PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR, 0.5);
+    }
+
+    // -----------------------------------------------------------------------
+    // EnemyTier ↔ PoB2 enemyIsBoss 字符串
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn enemy_tier_parses_pob2_config_strings() {
+        // PoB2 ConfigOptions.lua `enemyIsBoss` list 四档 val 字符串。
+        assert_eq!(EnemyTier::from_pob_str("None"), Some(EnemyTier::None));
+        assert_eq!(EnemyTier::from_pob_str("Boss"), Some(EnemyTier::Boss));
+        assert_eq!(
+            EnemyTier::from_pob_str("Pinnacle"),
+            Some(EnemyTier::Pinnacle)
+        );
+        assert_eq!(EnemyTier::from_pob_str("Uber"), Some(EnemyTier::Uber));
+        // 表外字符串（含大小写不符）不强行映射。
+        assert_eq!(EnemyTier::from_pob_str("uber"), None);
+        assert_eq!(EnemyTier::from_pob_str(""), None);
     }
 }

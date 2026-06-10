@@ -6,8 +6,9 @@
 
 use std::collections::HashMap;
 
-use pobr_core::CalcConfig;
+use pobr_core::{CalcConfig, CampaignProgress};
 use pobr_data::build_config::BanditChoice;
+use pobr_data::monster::EnemyTier;
 use pobr_data::prelude::{DamageType, ModFlags, SkillTypes};
 
 /// PoB「Configuration」面板对应的 Build 级配置。
@@ -32,6 +33,14 @@ pub struct BuildConfig {
     /// 任务奖励 / 全局配置 `<Input string="...">` 词条文本（PoB2 `questRewards` 等），
     /// 按**全局** modifier 注入（如 `15% increased Global Armour, Evasion and Energy Shield`）。
     pub global_modifier_texts: Vec<String>,
+    /// 战役进度（PoB2 Config `resistancePenalty` 档位，决定元素抗性惩罚 0/-10/…/-60）。
+    /// `None` = XML 未显式给出，计算侧按 PoB2 默认
+    /// `configInput.resistancePenalty or -60`（即 [`CampaignProgress::Endgame`]）。
+    pub campaign_progress: Option<CampaignProgress>,
+    /// 敌人档位（PoB2 Config `enemyIsBoss` 四档 None/Boss/Pinnacle/Uber）。
+    /// `None` = XML 未显式给出，计算侧回退编排选项的档位（PoB2 `defaultIndex = 3`
+    /// 即默认 Pinnacle，与 [`EnemyTier::default`] 一致）。
+    pub enemy_tier: Option<EnemyTier>,
 }
 
 impl BuildConfig {
@@ -66,6 +75,18 @@ impl BuildConfig {
 
     pub fn with_multiplier(mut self, key: impl Into<String>, value: f64) -> Self {
         self.multipliers.insert(key.into(), value);
+        self
+    }
+
+    /// 设置战役进度（元素抗性惩罚档位）。
+    pub fn with_campaign_progress(mut self, progress: CampaignProgress) -> Self {
+        self.campaign_progress = Some(progress);
+        self
+    }
+
+    /// 设置敌人档位（`enemyIsBoss`）。
+    pub fn with_enemy_tier(mut self, tier: EnemyTier) -> Self {
+        self.enemy_tier = Some(tier);
         self
     }
 

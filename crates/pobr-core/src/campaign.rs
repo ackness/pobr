@@ -49,6 +49,23 @@ impl CampaignProgress {
         }
     }
 
+    /// 从 PoB2 `resistancePenalty` 配置值（`0 / -10 / … / -60`）反查战役进度。
+    ///
+    /// 对应 vendor `ConfigOptions.lua` `resistancePenalty` list 的七个档位值；
+    /// 值不在档位表内时返回 `None`（调用方自行回退 PoB2 默认 Endgame `-60`）。
+    pub fn from_resistance_penalty(value: f64) -> Option<Self> {
+        const ALL: [CampaignProgress; 7] = [
+            CampaignProgress::Act1,
+            CampaignProgress::Act2,
+            CampaignProgress::Act3,
+            CampaignProgress::Act4,
+            CampaignProgress::Interlude54To59,
+            CampaignProgress::Interlude60To64,
+            CampaignProgress::Endgame,
+        ];
+        ALL.into_iter().find(|p| p.resistance_penalty() == value)
+    }
+
     /// 生成元素抗性惩罚 modifier。无惩罚（Act1）时返回空列表。
     pub fn modifiers(self) -> Vec<Modifier> {
         let penalty = self.resistance_penalty();

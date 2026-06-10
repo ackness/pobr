@@ -28,6 +28,23 @@ fn resistance_penalty_table_matches_campaign_progress() {
 }
 
 #[test]
+fn from_resistance_penalty_roundtrips_all_tiers() {
+    // PoB2 `resistancePenalty` list 七档值 → 进度 → 惩罚值闭环一致。
+    for value in [0.0, -10.0, -20.0, -30.0, -40.0, -50.0, -60.0] {
+        let progress =
+            CampaignProgress::from_resistance_penalty(value).expect("档位表内的值应可反查");
+        assert_eq!(progress.resistance_penalty(), value);
+    }
+}
+
+#[test]
+fn from_resistance_penalty_rejects_unknown_values() {
+    // 不在 PoB2 档位表内的值返回 None（调用方回退默认 Endgame）。
+    assert_eq!(CampaignProgress::from_resistance_penalty(-15.0), None);
+    assert_eq!(CampaignProgress::from_resistance_penalty(10.0), None);
+}
+
+#[test]
 fn resistance_penalty_applies_base_modifier_to_three_elements_only() {
     let db = db_of(CampaignProgress::Act3.modifiers());
     let cfg = CalcConfig::new();
