@@ -122,7 +122,7 @@ cargo run -p lint-i18n
 |------|------|
 | `export-poe-data` | 从 PoB-PoE2/PoE 数据源转换为 PoBR 数据包 |
 | `gen-mod-cache` | 生成 Rust 可读 Modifier cache，并与 fixture 对比 |
-| `sync-pob-catalog` | 从 PoB-PoE2 核心 Lua 文件抽取 output/display/breakdown/quest reward catalog，并检查 PoBR parity matrix |
+| `sync-pob-catalog` | 从 PoB-PoE2 核心 Lua 文件抽取 output/display/breakdown/quest reward catalog，并检查 PoBR parity matrix；`extract-lua` 子命令经 luajit + 最小 stub 环境执行 vendor Lua 数据文件，把人工策展层固化为 `data/<版本>/overlay/*.json`（确定性、可重跑，见工具 README） |
 | `lint-i18n` | 检查语言包完整性、fallback、格式参数 |
 
 生成产物必须可复现：同一输入数据和工具版本生成相同输出。

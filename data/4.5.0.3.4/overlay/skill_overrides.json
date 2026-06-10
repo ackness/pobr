@@ -1,0 +1,733 @@
+{
+  "_meta": {
+    "schema": "skill_overrides/v1",
+    "generator": "sync-pob-catalog extract-lua",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)",
+    "extracted_files": [
+      "Data/Skills/act_dex.lua",
+      "Data/Skills/act_int.lua",
+      "Data/Skills/act_str.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --files act_dex,act_int,act_str --out data/4.5.0.3.4/overlay/skill_overrides.json"
+  },
+  "overrides": [
+    {
+      "skill": "ArcPlayer",
+      "stat": "crit_chance",
+      "value": 9.0
+    },
+    {
+      "skill": "ArcticArmourPlayer",
+      "stat": "crit_chance",
+      "value": 11.0
+    },
+    {
+      "skill": "ArmourBreakerPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -20.0
+    },
+    {
+      "skill": "ArmourPiercingBoltsPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 325.0
+    },
+    {
+      "skill": "ArtilleryBallistaProjectilePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -75.0
+    },
+    {
+      "skill": "BallLightningPlayer",
+      "stat": "crit_chance",
+      "value": 9.0
+    },
+    {
+      "skill": "BearFuryOfTheMountainPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "BearRampagePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "BlackPowderBlitzPlayer",
+      "stat": "crit_chance",
+      "value": 15.0
+    },
+    {
+      "skill": "BloodhoundsMarkExplosionPlayer",
+      "stat": "crit_chance",
+      "value": 5.0
+    },
+    {
+      "skill": "BoneBlastPlayer",
+      "stat": "crit_chance",
+      "value": 14.0
+    },
+    {
+      "skill": "BoneCagePlayer",
+      "stat": "crit_chance",
+      "value": 15.0
+    },
+    {
+      "skill": "BoneshatterPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -40.0
+    },
+    {
+      "skill": "BonestormPlayer",
+      "stat": "crit_chance",
+      "value": 15.0
+    },
+    {
+      "skill": "BriarpatchPlayer",
+      "stat": "crit_chance",
+      "value": 10.0
+    },
+    {
+      "skill": "ClusterGrenadePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "CoilingBoltsPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "CometPlayer",
+      "stat": "crit_chance",
+      "value": 13.0
+    },
+    {
+      "skill": "CrossbowRequiemPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 300.0
+    },
+    {
+      "skill": "CullTheWeakPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "DarkEffigyProjectilePlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "DetonateDeadPlayer",
+      "stat": "crit_chance",
+      "value": 8.0
+    },
+    {
+      "skill": "DetonatingArrowPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -55.0
+    },
+    {
+      "skill": "EarthquakePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "EarthshatterPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -20.0
+    },
+    {
+      "skill": "ElectrocutingArrowPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 10.0
+    },
+    {
+      "skill": "ElementalSunderingPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -45.0
+    },
+    {
+      "skill": "EmberFusilladePlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "EntanglePlayer",
+      "stat": "crit_chance",
+      "value": 10.0
+    },
+    {
+      "skill": "EssenceDrainPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "ExplosiveGrenadePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "ExplosiveShotPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "ExplosiveSpearPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -20.0
+    },
+    {
+      "skill": "ExsanguinatePlayer",
+      "stat": "crit_chance",
+      "value": 8.0
+    },
+    {
+      "skill": "EyeOfWinterPlayer",
+      "stat": "crit_chance",
+      "value": 12.0
+    },
+    {
+      "skill": "FallingThunderPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -40.0
+    },
+    {
+      "skill": "FangsOfFrostPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -15.0
+    },
+    {
+      "skill": "FireballPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "FireboltPlayer",
+      "stat": "crit_chance",
+      "value": 8.0
+    },
+    {
+      "skill": "FirestormPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "FlameWallPlayer",
+      "stat": "crit_chance",
+      "value": 5.0
+    },
+    {
+      "skill": "FlameblastPlayer",
+      "stat": "crit_chance",
+      "value": 8.0
+    },
+    {
+      "skill": "FlashGrenadePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "FlickerStrikePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -50.0
+    },
+    {
+      "skill": "FlickerStrikePlayer",
+      "stat": "skill_attack_speed_more",
+      "stat_set": 1,
+      "value": 285.0
+    },
+    {
+      "skill": "ForgeHammerPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "FortifyingCryShockwavePlayer",
+      "stat": "crit_chance",
+      "value": 5.0
+    },
+    {
+      "skill": "FreezingShardsPlayer",
+      "stat": "crit_chance",
+      "value": 11.0
+    },
+    {
+      "skill": "FrostBombPlayer",
+      "stat": "crit_chance",
+      "value": 13.0
+    },
+    {
+      "skill": "FrostDartsPlayer",
+      "stat": "crit_chance",
+      "value": 13.0
+    },
+    {
+      "skill": "FrostWallPlayer",
+      "stat": "crit_chance",
+      "value": 11.0
+    },
+    {
+      "skill": "FrostboltPlayer",
+      "stat": "crit_chance",
+      "value": 12.0
+    },
+    {
+      "skill": "FrozenLocusPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "FuriousSlamPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "GaleStrikePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "GalvanicFieldBuffPlayer",
+      "stat": "crit_chance",
+      "value": 9.0
+    },
+    {
+      "skill": "GlacialCascadePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "GlacialLancePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -40.0
+    },
+    {
+      "skill": "HailstormRoundsPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -45.0
+    },
+    {
+      "skill": "HammerOfTheGodsPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -50.0
+    },
+    {
+      "skill": "HandOfChayulaPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -11.0
+    },
+    {
+      "skill": "HeartOfIcePlayer",
+      "stat": "crit_chance",
+      "value": 11.0
+    },
+    {
+      "skill": "HexblastPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "HisFoulEmergencePlayer",
+      "stat": "crit_chance",
+      "value": 15.0
+    },
+    {
+      "skill": "HisWinnowingFlamePlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "IceNovaPlayer",
+      "stat": "crit_chance",
+      "value": 12.0
+    },
+    {
+      "skill": "IceShardsPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 450.0
+    },
+    {
+      "skill": "IceShotPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -10.0
+    },
+    {
+      "skill": "IceStrikePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 40.0
+    },
+    {
+      "skill": "IcestormPlayer",
+      "stat": "crit_chance",
+      "value": 11.0
+    },
+    {
+      "skill": "IncineratePlayer",
+      "stat": "crit_chance",
+      "value": 6.0
+    },
+    {
+      "skill": "InfernalCryCorpseExplosionPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "KillingPalmPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "LightningArrowPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -10.0
+    },
+    {
+      "skill": "LightningBoltPlayer",
+      "stat": "crit_chance",
+      "value": 10.0
+    },
+    {
+      "skill": "LightningConduitPlayer",
+      "stat": "crit_chance",
+      "value": 10.0
+    },
+    {
+      "skill": "LightningRodPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 20.0
+    },
+    {
+      "skill": "LightningSpearPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -40.0
+    },
+    {
+      "skill": "LightningWarpPlayer",
+      "stat": "crit_chance",
+      "value": 11.0
+    },
+    {
+      "skill": "LivingBombPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "LunarAssaultPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 10.0
+    },
+    {
+      "skill": "MagmaSprayPlayer",
+      "stat": "crit_chance",
+      "value": 5.0
+    },
+    {
+      "skill": "MagneticSalvoPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -50.0
+    },
+    {
+      "skill": "MoltenBlastPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "OilBarragePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 200.0
+    },
+    {
+      "skill": "OilGrenadePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "OrbOfStormsPlayer",
+      "stat": "crit_chance",
+      "value": 10.0
+    },
+    {
+      "skill": "PerfectStrikePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -70.0
+    },
+    {
+      "skill": "PhantasmalArrowPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "PowerSiphonPlayer",
+      "stat": "crit_chance",
+      "value": 15.0
+    },
+    {
+      "skill": "PrimalStrikesPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -20.0
+    },
+    {
+      "skill": "RainOfArrowsPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -20.0
+    },
+    {
+      "skill": "RapidAssaultPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -60.0
+    },
+    {
+      "skill": "RapidShotPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 450.0
+    },
+    {
+      "skill": "ReapPlayer",
+      "stat": "crit_chance",
+      "value": 14.0
+    },
+    {
+      "skill": "ResonatingShieldPlayer",
+      "stat": "crit_chance",
+      "value": 5.0
+    },
+    {
+      "skill": "RollingMagmaPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -15.0
+    },
+    {
+      "skill": "ScatteringCalamityPlayer",
+      "stat": "crit_chance",
+      "value": 11.0
+    },
+    {
+      "skill": "ShatteringPalmPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "ShieldChargePlayer",
+      "stat": "crit_chance",
+      "value": 5.0
+    },
+    {
+      "skill": "ShieldWallPlayer",
+      "stat": "crit_chance",
+      "value": 5.0
+    },
+    {
+      "skill": "ShockGrenadePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "ShockburstRoundsPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 300.0
+    },
+    {
+      "skill": "ShockchainArrowPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "ShockwaveTotemQuakePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -50.0
+    },
+    {
+      "skill": "SiegeBallistaProjectilePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -75.0
+    },
+    {
+      "skill": "SiegeCascadePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "SnapPlayer",
+      "stat": "crit_chance",
+      "value": 13.0
+    },
+    {
+      "skill": "SnipePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -55.0
+    },
+    {
+      "skill": "SolarOrbPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "SoulrendPlayer",
+      "stat": "crit_chance",
+      "value": 13.0
+    },
+    {
+      "skill": "SparkPlayer",
+      "stat": "crit_chance",
+      "value": 9.0
+    },
+    {
+      "skill": "SpearfieldPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "StaggeringPalmPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "StormLancePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -40.0
+    },
+    {
+      "skill": "StormWavePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "StormcallerArrowPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -20.0
+    },
+    {
+      "skill": "SunderPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -60.0
+    },
+    {
+      "skill": "TempestBellPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 20.0
+    },
+    {
+      "skill": "TempestFlurryPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 40.0
+    },
+    {
+      "skill": "ThrashingVinesPlayer",
+      "stat": "crit_chance",
+      "value": 10.0
+    },
+    {
+      "skill": "ThunderstormPlayer",
+      "stat": "crit_chance",
+      "value": 9.0
+    },
+    {
+      "skill": "TornadoShotPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 20.0
+    },
+    {
+      "skill": "ToxicGrenadePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -25.0
+    },
+    {
+      "skill": "TriggeredTrailOfCaltropsPlayer",
+      "stat": "crit_chance",
+      "value": 5.0
+    },
+    {
+      "skill": "TwisterPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -20.0
+    },
+    {
+      "skill": "UnearthPlayer",
+      "stat": "crit_chance",
+      "value": 15.0
+    },
+    {
+      "skill": "UniqueBreachLightningBoltPlayer",
+      "stat": "crit_chance",
+      "value": 10.0
+    },
+    {
+      "skill": "ValakosChargePlayer",
+      "stat": "crit_chance",
+      "value": 9.0
+    },
+    {
+      "skill": "VileDisruptionPlayer",
+      "stat": "crit_chance",
+      "value": 15.0
+    },
+    {
+      "skill": "VolcanicFissurePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -20.0
+    },
+    {
+      "skill": "VolcanoPlayer",
+      "stat": "crit_chance",
+      "value": 8.0
+    },
+    {
+      "skill": "WalkingCalamityPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "WaveOfFrostPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -45.0
+    },
+    {
+      "skill": "WeaponGrantedChaosboltPlayer",
+      "stat": "crit_chance",
+      "value": 7.0
+    },
+    {
+      "skill": "WhirlingAssaultPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -15.0
+    },
+    {
+      "skill": "WhirlingSlashPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -30.0
+    },
+    {
+      "skill": "WhirlwindLancePlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -40.0
+    },
+    {
+      "skill": "WindSerpentsFuryPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": -60.0
+    },
+    {
+      "skill": "WolfArcticHowlPlayer",
+      "stat": "crit_chance",
+      "value": 10.0
+    },
+    {
+      "skill": "WolfCrossSlashPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 10.0
+    },
+    {
+      "skill": "WyvernDevourPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 70.0
+    },
+    {
+      "skill": "WyvernFlameBreathPlayer",
+      "stat": "attack_speed_multiplier",
+      "value": 700.0
+    }
+  ]
+}
