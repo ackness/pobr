@@ -61,6 +61,10 @@
     "heavy_stun_damage_scale": 0.58,
     "heavy_stun_threshold_modifier": 500.0,
     "heavy_stun_modifier_duration": 16.5,
-    "neg_armour_dmg_bonus_cap": 100.0
+    "neg_armour_dmg_bonus_cap": 100.0,
+    "ehp_calc_max_damage": 100000000.0,
+    "ehp_calc_max_iterations": 50.0,
+    "ehp_calc_speed_up": 8.0,
+    "normal_enemy_dps_mult": 0.227272727272727265
   }
 }
