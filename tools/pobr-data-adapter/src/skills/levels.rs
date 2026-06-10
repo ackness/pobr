@@ -24,9 +24,10 @@ struct RawGrantedEffectPerLevel {
     attack_time: Option<i64>,
     #[serde(rename = "CostAmounts", default)]
     cost_amounts: Vec<i64>,
-    /// 攻击速度乘数（百分点，可负；作用于武器攻击速率）。如 Flicker Strike -50。
-    #[serde(rename = "AttackSpeedMultiplier")]
-    attack_speed_multiplier: Option<i64>,
+    // 注（M1-W0）：`AttackSpeedMultiplier` 列已随扩列下载（4256 行非零），但「表列直读
+    // 替代 skill_overrides merge 来源」是 T4.1/T4.3 的行为改动（需 3578 历史值逐值一致
+    // 验收 + overlay 边车收窄同步）；W0 刻意**不消费**该列，保持 base 为与既往逐字节
+    // 一致的纯 adapter 产物（attack_speed_multiplier 仍由 overlay merge 提供）。
     /// 伤害基础倍率（PoB `baseMultiplier`，stat-set BaseMultiplier 缺失时的回退源）。
     #[serde(rename = "BaseMultiplier")]
     base_multiplier: Option<f64>,
@@ -68,10 +69,8 @@ pub(super) fn adapt_levels(
                 .into_iter()
                 .map(|c| c.max(0) as u32)
                 .collect(),
-            attack_speed_multiplier: raw
-                .attack_speed_multiplier
-                .filter(|&m| m != 0)
-                .map(|m| m as f64),
+            // 见上方 RawGrantedEffectPerLevel 注：T4 前不消费表列，值由 overlay merge 提供。
+            attack_speed_multiplier: None,
             base_multiplier: raw.base_multiplier.filter(|&m| (m - 1.0).abs() > 1e-9),
             // 暴击率原样保留（含 0=无暴击，与「缺失」区分）；分等级值由 PoB 抽取合并。
             crit_chance: raw.crit_chance,
