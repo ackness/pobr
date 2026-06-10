@@ -128,6 +128,94 @@ fn is_mappable_stat(stat: &str) -> bool {
         || stat.ends_with("_damage_+%_final_from_distance")
 }
 
+/// （M1-T4，蓝图 §1.2）从 `GrantedEffectStatSetsPerLevel` 直读技能基础暴击率：
+/// `effect id → gem level → 暴击率（百分点）`，供 [`super::levels::adapt_levels`] 落
+/// `SkillLevelDef::crit_chance`（替代 `overlay/skill_overrides.json` 的 crit merge 来源）。
+///
+/// 列名错位说明（社区 schema vs vendor `Export/spec.lua`，对照表见 `pipeline/README.md`）：
+/// - 社区 `SpellCritChance` = vendor `AttackCritChance`（主列，`/100`）；
+/// - 社区 `AttackCritChance` = vendor `OffhandCritChance`（≠0 时**覆盖**主列，
+///   vendor `Export/Scripts/skills.lua:281-286`）。
+///
+/// statSet 归属（对齐 vendor 按 `GrantedEffect` join 的行为）：主 `StatSet` 优先；主 set
+/// 全程无暴击而某**附加** set（`AdditionalStatSets`，FK → `GrantedEffectStatSets`）有 →
+/// 取第一个有暴击的附加 set（如 GalvanicFieldBuffPlayer 主 set 164 无暴击、附加 set 900
+/// 有 9.0——W0 对拍 201/201 与 vendor 一致的规则）。
+///
+/// 独立函数边界（蓝图 §3.2）：T4 在本文件（T5 owner）内仅新增此函数，不动既有逻辑；
+/// T5 多 statSet 改造时对齐调用点。
+pub(super) fn crit_from_statset_levels(
+    en: &Path,
+) -> Result<BTreeMap<String, BTreeMap<u32, f64>>, String> {
+    /// 暴击两列的最小行读取（与 [`RawStatSetPerLevel`] 分开：本函数只关心暴击列）。
+    #[derive(Deserialize)]
+    struct RawCritRow {
+        #[serde(rename = "StatSet")]
+        stat_set: Option<usize>,
+        #[serde(rename = "GemLevel")]
+        gem_level: Option<i64>,
+        /// 社区列名（= vendor `AttackCritChance` 主列），1/100 百分点（如 900 = 9%）。
+        #[serde(rename = "SpellCritChance")]
+        spell_crit_chance: Option<f64>,
+        /// 社区列名（= vendor `OffhandCritChance` 覆盖列）。
+        #[serde(rename = "AttackCritChance")]
+        attack_crit_chance: Option<f64>,
+    }
+    /// `GrantedEffects` 行的 statSet 归属三列。
+    #[derive(Deserialize)]
+    struct RawEffectSetLink {
+        #[serde(rename = "Id")]
+        id: String,
+        #[serde(rename = "StatSet")]
+        stat_set: Option<i64>,
+        #[serde(rename = "AdditionalStatSets", default)]
+        additional_stat_sets: Vec<i64>,
+    }
+
+    let rows = read_json::<Vec<RawCritRow>>(&en.join("GrantedEffectStatSetsPerLevel.json"))?;
+    // set 行索引 → {gem level → 暴击率}（文件序内同 level 后写覆盖，行内 Offhand 覆盖主列）。
+    let mut crit_by_set: BTreeMap<usize, BTreeMap<u32, f64>> = BTreeMap::new();
+    for row in &rows {
+        let (Some(si), Some(level)) = (row.stat_set, row.gem_level.filter(|&l| l > 0)) else {
+            continue;
+        };
+        let spell = row.spell_crit_chance.unwrap_or(0.0);
+        let offhand = row.attack_crit_chance.unwrap_or(0.0);
+        let value = if offhand != 0.0 {
+            Some(offhand / 100.0)
+        } else if spell != 0.0 {
+            Some(spell / 100.0)
+        } else {
+            None
+        };
+        if let Some(v) = value {
+            crit_by_set.entry(si).or_default().insert(level as u32, v);
+        }
+    }
+
+    let links = read_json::<Vec<RawEffectSetLink>>(&en.join("GrantedEffects.json"))?;
+    let mut out: BTreeMap<String, BTreeMap<u32, f64>> = BTreeMap::new();
+    for link in links {
+        if link.id.is_empty() {
+            continue;
+        }
+        // 候选 set：主 StatSet 在前、AdditionalStatSets 按列序在后；取第一个有暴击值的。
+        let candidates = link
+            .stat_set
+            .into_iter()
+            .chain(link.additional_stat_sets)
+            .filter(|&i| i >= 0)
+            .map(|i| i as usize);
+        for si in candidates {
+            if let Some(map) = crit_by_set.get(&si).filter(|m| !m.is_empty()) {
+                out.insert(link.id, map.clone());
+                break;
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// 是否为**出手速率**（攻速 / 施法速度 / 技能速度）类 stat——即进入 PoB「Speed」乘区、
 /// 影响每秒出手次数的速度 stat。匹配 `*attack_speed_+%[_final]` / `*cast_speed_+%[_final]` /
 /// `*skill_speed_+%[_final]`。

@@ -23,8 +23,10 @@ const BOOTSTRAP_LUA: &str = include_str!("extract_skill_overrides.lua");
 const DEFAULT_LUAJIT_HOMEBREW: &str = "/opt/homebrew/bin/luajit";
 
 /// 默认抽取的 vendor 技能数据文件：玩家主动三系 + 召唤物 / 魂灵 / 其它 +
-/// 辅助三系——覆盖 `.dat` 导出缺失列（critChance / attackSpeedMultiplier /
-/// baseMultiplier）涉及的全部技能来源（消费侧 merge 需要全量，缺一系即丢值）。
+/// 辅助三系——覆盖 `.dat` 通道拿不到的 per-skill 值（baseMultiplier 分等级值 /
+/// statSet baseMods Speed MORE）涉及的全部技能来源（消费侧 merge 需要全量，缺一系
+/// 即丢值）。M1-T4.3 起 critChance / attackSpeedMultiplier 已改 `.dat` 表列直读，
+/// 不再经本通道（见 `extract_skill_overrides.lua` 头注）。
 pub const DEFAULT_SKILL_FILES: &[&str] = &[
     "act_dex", "act_int", "act_str", "minion", "other", "spectre", "sup_dex", "sup_int", "sup_str",
 ];

@@ -21,11 +21,6 @@
   "overrides": [
     {
       "skill": "AcidicConcoctionPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
-    },
-    {
-      "skill": "AcidicConcoctionPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -189,11 +184,6 @@
           3.55
         ]
       ]
-    },
-    {
-      "skill": "AcidicConcoctionPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
     },
     {
       "skill": "AmazonTriggerElementalSurgePlayer",
@@ -694,31 +684,6 @@
       ]
     },
     {
-      "skill": "ApocalypseColdPlayer",
-      "stat": "crit_chance",
-      "value": 12.0
-    },
-    {
-      "skill": "ApocalypseFirePlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "ApocalypseLightningPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "ArcPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
-      "skill": "ArcSkeletonMageMinion",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
       "skill": "ArchonOfChayulaTornadoPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -879,16 +844,6 @@
           5.92
         ]
       ]
-    },
-    {
-      "skill": "ArcticArmourPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
-      "skill": "ArmourBreakerPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -20.0
     },
     {
       "skill": "ArmourBreakerPlayer",
@@ -1058,11 +1013,6 @@
     },
     {
       "skill": "ArmourPiercingBoltsPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 325.0
-    },
-    {
-      "skill": "ArmourPiercingBoltsPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -1226,11 +1176,6 @@
           3.29
         ]
       ]
-    },
-    {
-      "skill": "ArtilleryBallistaProjectilePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -75.0
     },
     {
       "skill": "ArtilleryBallistaProjectilePlayer",
@@ -1407,16 +1352,6 @@
       "skill": "AzmerianSwarmAttack",
       "stat": "base_multiplier",
       "value": 0.75
-    },
-    {
-      "skill": "BallLightningPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
-      "skill": "BearFuryOfTheMountainPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
     },
     {
       "skill": "BearFuryOfTheMountainPlayer",
@@ -1752,11 +1687,6 @@
     },
     {
       "skill": "BearRampagePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
-    },
-    {
-      "skill": "BearRampagePlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -1916,16 +1846,6 @@
           13.57
         ]
       ]
-    },
-    {
-      "skill": "BlackPowderBlitzPlayer",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "BleedingConcoctionPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
     },
     {
       "skill": "BleedingConcoctionPlayer",
@@ -2094,11 +2014,6 @@
       ]
     },
     {
-      "skill": "BleedingConcoctionPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
       "skill": "BloodHuntPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -2265,11 +2180,6 @@
       ]
     },
     {
-      "skill": "BloodMageBloodTendrils",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
       "skill": "BloodhoundsMarkExplosionPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -2432,44 +2342,9 @@
       ]
     },
     {
-      "skill": "BloodhoundsMarkExplosionPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "BoneBlastPlayer",
-      "stat": "crit_chance",
-      "value": 14.0
-    },
-    {
-      "skill": "BoneCagePlayer",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "BoneCultistZealotFirestorm",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "BoneCultistZealotLightningstorm",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "BoneshatterBruteMinion",
-      "stat": "attack_speed_multiplier",
-      "value": 20.0
-    },
-    {
       "skill": "BoneshatterBruteMinion",
       "stat": "base_multiplier",
       "value": 1.8
-    },
-    {
-      "skill": "BoneshatterPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -40.0
     },
     {
       "skill": "BoneshatterPlayer",
@@ -2634,16 +2509,6 @@
       ]
     },
     {
-      "skill": "BonestormPlayer",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "BriarpatchPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
       "skill": "BurdenedWretchSlam",
       "stat": "base_multiplier",
       "value": 3.0
@@ -2652,16 +2517,6 @@
       "skill": "BurdenedWretchSlamUnique",
       "stat": "base_multiplier",
       "value": 3.0
-    },
-    {
-      "skill": "CGEAbyssCocoon3FlameGeyser",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "ChaosFrogExplosionPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
     },
     {
       "skill": "ChaosSpearTriggerChaosSurgePlayer",
@@ -2996,16 +2851,6 @@
       ]
     },
     {
-      "skill": "ChilledGroundBurstWaterDjinn",
-      "stat": "crit_chance",
-      "value": 12.0
-    },
-    {
-      "skill": "ClusterGrenadePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
       "skill": "ClusterGrenadePlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -3170,31 +3015,6 @@
           21.72
         ]
       ]
-    },
-    {
-      "skill": "CoilingBoltsPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "CometPlayer",
-      "stat": "crit_chance",
-      "value": 13.0
-    },
-    {
-      "skill": "CompanionBearMaul",
-      "stat": "attack_speed_multiplier",
-      "value": 20.0
-    },
-    {
-      "skill": "CorpseBeetleExplode",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "CrossbowRequiemPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 300.0
     },
     {
       "skill": "CrossbowRequiemPlayer",
@@ -3364,11 +3184,6 @@
     },
     {
       "skill": "CrushingFearPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
-      "skill": "CrushingFearPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -3535,11 +3350,6 @@
     },
     {
       "skill": "CullTheWeakPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
-      "skill": "CullTheWeakPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -3703,11 +3513,6 @@
           7.45
         ]
       ]
-    },
-    {
-      "skill": "CultistBeastSunder",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "CultistBeastSunder",
@@ -3891,11 +3696,6 @@
       "value": 1.5
     },
     {
-      "skill": "DarkEffigyProjectilePlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
       "skill": "DeathFromAboveDaemonMinion",
       "stat": "base_multiplier",
       "value": 7.63
@@ -3906,29 +3706,9 @@
       "value": 2.0
     },
     {
-      "skill": "DeathStormSkeletonStormMageMinion",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
       "skill": "DestructiveLinkSkeletonBombadierMinion",
       "stat": "base_multiplier",
       "value": 3.0
-    },
-    {
-      "skill": "DetonateDeadPlayer",
-      "stat": "crit_chance",
-      "value": 8.0
-    },
-    {
-      "skill": "DetonateLivingPlayer",
-      "stat": "crit_chance",
-      "value": 12.0
-    },
-    {
-      "skill": "DetonatingArrowPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -55.0
     },
     {
       "skill": "DetonatingArrowPlayer",
@@ -4263,29 +4043,9 @@
       ]
     },
     {
-      "skill": "DoomBlastPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "EDSAbyssMorayClanFlamethrower",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
       "skill": "EDSGolemancerReapLeft",
       "stat": "base_multiplier",
       "value": 1.6
-    },
-    {
-      "skill": "EDSShellMonsterFlamethrower",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "EarthquakePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "EarthquakePlayer",
@@ -4455,11 +4215,6 @@
     },
     {
       "skill": "EarthshatterPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -20.0
-    },
-    {
-      "skill": "EarthshatterPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -4619,11 +4374,6 @@
           3.72
         ]
       ]
-    },
-    {
-      "skill": "ElectrocutingArrowPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 10.0
     },
     {
       "skill": "ElectrocutingArrowPlayer",
@@ -4792,29 +4542,9 @@
       ]
     },
     {
-      "skill": "ElementalSunderingPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -45.0
-    },
-    {
-      "skill": "EmberFusilladePlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
       "skill": "EnemyExplode",
       "stat": "base_multiplier",
       "value": 1.0
-    },
-    {
-      "skill": "EnervatingNovaPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
-      "skill": "EntanglePlayer",
-      "stat": "crit_chance",
-      "value": 10.0
     },
     {
       "skill": "EscapeShotIceFragmentPlayer",
@@ -5149,16 +4879,6 @@
       ]
     },
     {
-      "skill": "EssenceDrainPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "ExpeditionGroundLaser",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
       "skill": "ExplodingPoisonToadPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -5325,16 +5045,6 @@
       ]
     },
     {
-      "skill": "ExplodingPoisonToadPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "ExplosiveConcoctionPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
-    },
-    {
       "skill": "ExplosiveConcoctionPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -5499,16 +5209,6 @@
           3.55
         ]
       ]
-    },
-    {
-      "skill": "ExplosiveConcoctionPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "ExplosiveGrenadePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "ExplosiveGrenadePlayer",
@@ -5678,11 +5378,6 @@
     },
     {
       "skill": "ExplosiveShotPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
-    },
-    {
-      "skill": "ExplosiveShotPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -5849,11 +5544,6 @@
     },
     {
       "skill": "ExplosiveSpearPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -20.0
-    },
-    {
-      "skill": "ExplosiveSpearPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -6017,26 +5707,6 @@
           4.14
         ]
       ]
-    },
-    {
-      "skill": "ExplosiveTeleportSandDjinn",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "ExsanguinatePlayer",
-      "stat": "crit_chance",
-      "value": 8.0
-    },
-    {
-      "skill": "EyeOfWinterPlayer",
-      "stat": "crit_chance",
-      "value": 12.0
-    },
-    {
-      "skill": "FallingThunderPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -40.0
     },
     {
       "skill": "FallingThunderPlayer",
@@ -6206,11 +5876,6 @@
     },
     {
       "skill": "FangsOfFrostPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
-    },
-    {
-      "skill": "FangsOfFrostPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -6376,49 +6041,9 @@
       ]
     },
     {
-      "skill": "FireRuneFireDjinn",
-      "stat": "crit_chance",
-      "per_level": [
-        [
-          1,
-          7.0
-        ]
-      ]
-    },
-    {
-      "skill": "FireballPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "FireboltPlayer",
-      "stat": "crit_chance",
-      "value": 8.0
-    },
-    {
-      "skill": "FirestormPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
       "skill": "FlameSliceFireDjinn",
       "stat": "base_multiplier",
       "value": 4.5
-    },
-    {
-      "skill": "FlameWallPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "FlameblastPlayer",
-      "stat": "crit_chance",
-      "value": 8.0
-    },
-    {
-      "skill": "FlashGrenadePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "FlashGrenadePlayer",
@@ -6581,11 +6206,6 @@
           18.1
         ]
       ]
-    },
-    {
-      "skill": "FlickerStrikePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -50.0
     },
     {
       "skill": "FlickerStrikePlayer",
@@ -6758,11 +6378,6 @@
       "stat": "skill_attack_speed_more",
       "stat_set": 1,
       "value": 285.0
-    },
-    {
-      "skill": "ForgeHammerPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
     },
     {
       "skill": "ForgeHammerPlayer",
@@ -7097,11 +6712,6 @@
       ]
     },
     {
-      "skill": "FortifyingCryShockwavePlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
       "skill": "FragmentationRoundsPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -7424,11 +7034,6 @@
           5.92
         ]
       ]
-    },
-    {
-      "skill": "FragmentsOfThePastPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -40.0
     },
     {
       "skill": "FragmentsOfThePastPlayer",
@@ -7763,46 +7368,6 @@
       ]
     },
     {
-      "skill": "FreezingShardsPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
-      "skill": "FrostBoltSkeletonMageMinion",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
-      "skill": "FrostBombPlayer",
-      "stat": "crit_chance",
-      "value": 13.0
-    },
-    {
-      "skill": "FrostDartsPlayer",
-      "stat": "crit_chance",
-      "value": 13.0
-    },
-    {
-      "skill": "FrostWallPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
-      "skill": "FrostboltPlayer",
-      "stat": "crit_chance",
-      "value": 12.0
-    },
-    {
-      "skill": "FrozenLocusPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
-    },
-    {
-      "skill": "FulminatingConcoctionPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
-    },
-    {
       "skill": "FulminatingConcoctionPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -7967,21 +7532,6 @@
           3.55
         ]
       ]
-    },
-    {
-      "skill": "FulminatingConcoctionPlayer",
-      "stat": "crit_chance",
-      "value": 8.0
-    },
-    {
-      "skill": "FungalArtilleryMortar",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "FuriousSlamPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
     },
     {
       "skill": "FuriousSlamPlayer",
@@ -8152,11 +7702,6 @@
     },
     {
       "skill": "GAAnimateWeaponMaceSlam",
-      "stat": "attack_speed_multiplier",
-      "value": -50.0
-    },
-    {
-      "skill": "GAAnimateWeaponMaceSlam",
       "stat": "base_multiplier",
       "value": 1.8
     },
@@ -8179,11 +7724,6 @@
       "skill": "GADrownedCrawlerSwipe",
       "stat": "base_multiplier",
       "value": 1.2
-    },
-    {
-      "skill": "GAExpeditionShakariMonsterSlam",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
     },
     {
       "skill": "GAExpeditionShakariMonsterSlam",
@@ -8232,18 +7772,8 @@
     },
     {
       "skill": "GAMediumBeetleChargedSunder",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
-      "skill": "GAMediumBeetleChargedSunder",
       "stat": "base_multiplier",
       "value": 2.0
-    },
-    {
-      "skill": "GAMediumBeetleSunder",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "GAMediumBeetleSunder",
@@ -8279,141 +7809,6 @@
       "skill": "GATwilightSoldierStab",
       "stat": "base_multiplier",
       "value": 1.2
-    },
-    {
-      "skill": "GPSPaleWalkerWave",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSAbyssCarrionWingBeamImpact",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSAbyssCocoon3BallSpitImpact",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSAbyssCocoon3BallSpitSmallImpact",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "GSAbyssPaleEliteBeam",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "GSAbyssPaleEliteSnowBallImpact",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "GSAbyssPitArtilleryMortarImpact",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "GSAbyssPrimordialMonsterScreech",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "GSArmourCasterVolatileExplode",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSCenobiteBloaterOnDeath",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSDesertBatZap",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "GSExcavatorOrbDonutExplosion",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSExcavatorOrbExplosion",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSExcavatorRaptorTriangleSlam",
-      "stat": "crit_chance",
-      "value": 5.5
-    },
-    {
-      "skill": "GSExpeditionBoneCultistEggExplosion",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "GSHellscapeDemonEliteBeamNuke",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSHellscapePaleEliteBoltImpact",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSHellscapePaleEliteOmegaBeam",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSMercurialCasterBlast",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSProwlingShadeIceBeam",
-      "stat": "crit_chance",
-      "value": 8.0
-    },
-    {
-      "skill": "GSRagingFireSpiritsVolatileSanctum",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSRagingTimeSpiritsVolatileSanctum",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSRaptorDefenderRailShot",
-      "stat": "crit_chance",
-      "value": 5.5
-    },
-    {
-      "skill": "GSVaalConstructSkitterbotGrenadeExplode",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "GSVaalZealotLightningBlast",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "GSWardboundMinionBlast",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "GaleStrikePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "GaleStrikePlayer",
@@ -8580,11 +7975,6 @@
           7.03
         ]
       ]
-    },
-    {
-      "skill": "GalvanicFieldBuffPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
     },
     {
       "skill": "GalvanicShardsPlayer",
@@ -8917,11 +8307,6 @@
           2.48
         ]
       ]
-    },
-    {
-      "skill": "GasShotSkeletonSniperMinion",
-      "stat": "attack_speed_multiplier",
-      "value": 20.0
     },
     {
       "skill": "GasShotSkeletonSniperMinion",
@@ -9424,11 +8809,6 @@
     },
     {
       "skill": "GlacialCascadePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
-      "skill": "GlacialCascadePlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -9592,11 +8972,6 @@
           3.31
         ]
       ]
-    },
-    {
-      "skill": "GlacialLancePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -40.0
     },
     {
       "skill": "GlacialLancePlayer",
@@ -9770,29 +9145,9 @@
       "value": 1.43
     },
     {
-      "skill": "GraveyardSpookyGhostExplode",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "GreatHuntPackleaderMinion",
-      "stat": "attack_speed_multiplier",
-      "value": 50.0
-    },
-    {
       "skill": "GreatHuntPackleaderMinion",
       "stat": "base_multiplier",
       "value": 10.0
-    },
-    {
-      "skill": "GrimPillarsPlayer",
-      "stat": "crit_chance",
-      "value": 12.0
-    },
-    {
-      "skill": "HailstormRoundsPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -45.0
     },
     {
       "skill": "HailstormRoundsPlayer",
@@ -9962,11 +9317,6 @@
     },
     {
       "skill": "HammerOfTheGodsPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -50.0
-    },
-    {
-      "skill": "HammerOfTheGodsPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -10130,11 +9480,6 @@
           29.38
         ]
       ]
-    },
-    {
-      "skill": "HandOfChayulaPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -11.0
     },
     {
       "skill": "HandOfChayulaPlayer",
@@ -10303,21 +9648,6 @@
       ]
     },
     {
-      "skill": "HandSlamSandDjinn",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "HeartOfIcePlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
-      "skill": "HexblastPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
       "skill": "HighVelocityRoundsPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -10484,16 +9814,6 @@
       ]
     },
     {
-      "skill": "HisFoulEmergencePlayer",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "HisWinnowingFlamePlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
       "skill": "HollowResonancePlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -10658,11 +9978,6 @@
           4.97
         ]
       ]
-    },
-    {
-      "skill": "HuhuGrubLarvaeMortar",
-      "stat": "crit_chance",
-      "value": 5.0
     },
     {
       "skill": "HyenaCentaurMeleeStab",
@@ -10842,16 +10157,6 @@
       ]
     },
     {
-      "skill": "IceNovaPlayer",
-      "stat": "crit_chance",
-      "value": 12.0
-    },
-    {
-      "skill": "IceShardsPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 450.0
-    },
-    {
       "skill": "IceShardsPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -11019,11 +10324,6 @@
     },
     {
       "skill": "IceShotPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -10.0
-    },
-    {
-      "skill": "IceShotPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -11187,11 +10487,6 @@
           12.5
         ]
       ]
-    },
-    {
-      "skill": "IceStrikePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 40.0
     },
     {
       "skill": "IceStrikePlayer",
@@ -11526,11 +10821,6 @@
       ]
     },
     {
-      "skill": "IcestormPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
       "skill": "IncendiaryShotPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -11697,26 +10987,6 @@
       ]
     },
     {
-      "skill": "IncineratePlayer",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "InfernalCryCorpseExplosionPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "JellyfishNettlerArc",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "KillingPalmPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
       "skill": "KillingPalmPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -11881,11 +11151,6 @@
           7.45
         ]
       ]
-    },
-    {
-      "skill": "KnifeThrowSandDjinn",
-      "stat": "crit_chance",
-      "value": 15.0
     },
     {
       "skill": "LeapSlamPlayer",
@@ -12055,11 +11320,6 @@
     },
     {
       "skill": "LightningArrowPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -10.0
-    },
-    {
-      "skill": "LightningArrowPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -12225,21 +11485,6 @@
       ]
     },
     {
-      "skill": "LightningBoltPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "LightningConduitPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "LightningRodPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 20.0
-    },
-    {
       "skill": "LightningRodPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -12400,11 +11645,6 @@
           3.42
         ]
       ]
-    },
-    {
-      "skill": "LightningSpearPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -40.0
     },
     {
       "skill": "LightningSpearPlayer",
@@ -12571,31 +11811,6 @@
           9.1
         ]
       ]
-    },
-    {
-      "skill": "LightningWarpPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
-      "skill": "LivingBombFireDjinn",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "LivingBombPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "LivingLightningZap",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
-      "skill": "LunarAssaultPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 10.0
     },
     {
       "skill": "LunarAssaultPlayer",
@@ -12770,11 +11985,6 @@
     },
     {
       "skill": "MAASExpedition2ShakariTailSwipe",
-      "stat": "attack_speed_multiplier",
-      "value": -5.0
-    },
-    {
-      "skill": "MAASExpedition2ShakariTailSwipe",
       "stat": "base_multiplier",
       "value": 1.45
     },
@@ -12784,169 +11994,9 @@
       "value": 0.1
     },
     {
-      "skill": "MMSBoneRabbleMortar",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "MMSHellscapeDemonEliteTripleMortar",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
       "skill": "MMSVaalGuardGrenade",
       "stat": "base_multiplier",
       "value": 4.4
-    },
-    {
-      "skill": "MPSAbyssCocoon3BallSpit",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSAbyssCocoon3BallSpitSmall",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSAbyssPaleEliteFireball",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "MPSAbyssPaleEliteSnowBall",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSAncestralTotemSpiritSoulCasterProjectile",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "MPSArmourCasterBasic",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSAzmeriPictStaffProj",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "MPSAzmeriPictStaffProj2",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "MPSBloodMageBloodProjectile",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSBoneCultistNecromancerLightning",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSBoneCultistZealotFire",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSBoneCultistZealotLightning",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "MPSBreachEliteBoneProjectile",
-      "stat": "crit_chance",
-      "value": 8.0
-    },
-    {
-      "skill": "MPSBreachEliteFallenLunarisMonsterChaosSpark",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSBrineMaidenIceProjectile",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSCrawGullSpit",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSElectricStingRayProjectile",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSExpeditionBoneCultistProjectiles",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "MPSGoblinShamanBasicProj",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSHellscapeDemonFodderProj",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "MPSHellscapeFleshEliteBasicProj",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSHellscapePaleHammerhead",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSMercurialCasterEnrage",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSRaptorDefenderExplosiveShot",
-      "stat": "crit_chance",
-      "value": 5.5
-    },
-    {
-      "skill": "MPSRedSkeletonCaster",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "MPSSpearfisherSpearThrow",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "MPSTwilightClericProjectile",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSVaalBloodPriestProj",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSVaalConstructCannon",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MPSVaalSunApparitionBasicProj",
-      "stat": "crit_chance",
-      "value": 5.0
     },
     {
       "skill": "MPWAzmeriPitifulFabricationSkullThrow",
@@ -12957,11 +12007,6 @@
       "skill": "MPWCleansedMonstrosityRailgun",
       "stat": "base_multiplier",
       "value": 2.15
-    },
-    {
-      "skill": "MPWExpeditionArbalestSnipe",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "MPWExpeditionArbalestSnipe",
@@ -13155,16 +12200,6 @@
       ]
     },
     {
-      "skill": "MagmaSprayPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "MagneticSalvoPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -50.0
-    },
-    {
       "skill": "MagneticSalvoPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -13329,11 +12364,6 @@
           4.14
         ]
       ]
-    },
-    {
-      "skill": "MassFusilladeFireDjinn",
-      "stat": "crit_chance",
-      "value": 7.0
     },
     {
       "skill": "Melee1HMacePlayer",
@@ -14966,26 +13996,6 @@
       ]
     },
     {
-      "skill": "MetaHollowFormPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
-    },
-    {
-      "skill": "MeteorFireDjinn",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "MidnightStarPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
-      "skill": "MoltenBlastPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
       "skill": "MoltenBlastPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -15480,11 +14490,6 @@
       ]
     },
     {
-      "skill": "NightfallEmbraceTheFallPlayer",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
       "skill": "NightfallSoaringMidnightPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -15649,16 +14654,6 @@
           4.14
         ]
       ]
-    },
-    {
-      "skill": "NightfallSoaringMidnightPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "OilBarragePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 200.0
     },
     {
       "skill": "OilBarragePlayer",
@@ -15828,11 +14823,6 @@
     },
     {
       "skill": "OilGrenadePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
-      "skill": "OilGrenadePlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -15994,24 +14984,9 @@
       ]
     },
     {
-      "skill": "OrbOfStormsPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
       "skill": "ParryPlayer",
       "stat": "base_multiplier",
       "value": 0.65
-    },
-    {
-      "skill": "ParryPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "PerfectStrikePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -70.0
     },
     {
       "skill": "PerfectStrikePlayer",
@@ -16344,11 +15319,6 @@
           1.12
         ]
       ]
-    },
-    {
-      "skill": "PhantasmalArrowPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
     },
     {
       "skill": "PhantasmalArrowPlayer",
@@ -16849,16 +15819,6 @@
       ]
     },
     {
-      "skill": "PowerSiphonPlayer",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "PrimalStrikesPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -20.0
-    },
-    {
       "skill": "PrimalStrikesPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -17038,11 +15998,6 @@
       "skill": "QuillCrabSpikeBurstTropical",
       "stat": "base_multiplier",
       "value": 0.6
-    },
-    {
-      "skill": "RainOfArrowsPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -20.0
     },
     {
       "skill": "RainOfArrowsPlayer",
@@ -17544,11 +16499,6 @@
     },
     {
       "skill": "RapidAssaultPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -60.0
-    },
-    {
-      "skill": "RapidAssaultPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -17711,11 +16661,6 @@
     },
     {
       "skill": "RapidShotPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 450.0
-    },
-    {
-      "skill": "RapidShotPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -17875,11 +16820,6 @@
           3.42
         ]
       ]
-    },
-    {
-      "skill": "ReapPlayer",
-      "stat": "crit_chance",
-      "value": 14.0
     },
     {
       "skill": "ResonatingShieldPlayer",
@@ -18046,11 +16986,6 @@
           2.48
         ]
       ]
-    },
-    {
-      "skill": "ResonatingShieldPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
     },
     {
       "skill": "RighteousDescentPlayer",
@@ -18224,16 +17159,6 @@
       "value": 1.25
     },
     {
-      "skill": "RisenArbalestRainOfArrows",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
-      "skill": "RisenArbalestSnipe",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
       "skill": "RisenArbalestSnipe",
       "stat": "base_multiplier",
       "per_level": [
@@ -18242,11 +17167,6 @@
           2.65
         ]
       ]
-    },
-    {
-      "skill": "RollingMagmaPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
     },
     {
       "skill": "RollingMagmaPlayer",
@@ -18411,19 +17331,9 @@
       ]
     },
     {
-      "skill": "ScatteringCalamityPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
-    },
-    {
       "skill": "SerpentClanTailWhip",
       "stat": "base_multiplier",
       "value": 1.7
-    },
-    {
-      "skill": "ShatteringConcoctionPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
     },
     {
       "skill": "ShatteringConcoctionPlayer",
@@ -18590,11 +17500,6 @@
           3.55
         ]
       ]
-    },
-    {
-      "skill": "ShatteringConcoctionPlayer",
-      "stat": "crit_chance",
-      "value": 11.0
     },
     {
       "skill": "ShatteringPalmExplosionPlayer",
@@ -18764,11 +17669,6 @@
     },
     {
       "skill": "ShatteringPalmPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
-      "skill": "ShatteringPalmPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -18932,11 +17832,6 @@
           2.9
         ]
       ]
-    },
-    {
-      "skill": "ShatteringRoarSkeletalBruteMinion",
-      "stat": "crit_chance",
-      "value": 12.0
     },
     {
       "skill": "ShatteringSpitePlayer",
@@ -19105,34 +18000,9 @@
       ]
     },
     {
-      "skill": "ShellMonsterDeathMortar",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "ShellMonsterDeathMortarPoison",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "ShellMonsterSprayMortar",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "ShellMonsterSprayMortarPoison",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
       "skill": "ShieldBlockPlayer",
       "stat": "base_multiplier",
       "value": 0.8
-    },
-    {
-      "skill": "ShieldBlockPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
     },
     {
       "skill": "ShieldChargePlayer",
@@ -19301,11 +18171,6 @@
       ]
     },
     {
-      "skill": "ShieldChargePlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
       "skill": "ShieldWallPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -19466,16 +18331,6 @@
           8.55
         ]
       ]
-    },
-    {
-      "skill": "ShieldWallPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "ShockGrenadePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "ShockGrenadePlayer",
@@ -19645,11 +18500,6 @@
     },
     {
       "skill": "ShockburstRoundsPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 300.0
-    },
-    {
-      "skill": "ShockburstRoundsPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -19816,11 +18666,6 @@
     },
     {
       "skill": "ShockchainArrowPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
-    },
-    {
-      "skill": "ShockchainArrowPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -19983,11 +18828,6 @@
     },
     {
       "skill": "ShockwaveTotemQuakePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -50.0
-    },
-    {
-      "skill": "ShockwaveTotemQuakePlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -20154,11 +18994,6 @@
     },
     {
       "skill": "SiegeBallistaProjectilePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -75.0
-    },
-    {
-      "skill": "SiegeBallistaProjectilePlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -20322,11 +19157,6 @@
           1.27
         ]
       ]
-    },
-    {
-      "skill": "SiegeCascadePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "SiegeCascadePlayer",
@@ -20657,16 +19487,6 @@
       ]
     },
     {
-      "skill": "SkelemancerSkelenado",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "SkyfallPlayer",
-      "stat": "crit_chance",
-      "value": 14.0
-    },
-    {
       "skill": "SmashToSmithereensPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -20833,16 +19653,6 @@
       ]
     },
     {
-      "skill": "SnapPlayer",
-      "stat": "crit_chance",
-      "value": 13.0
-    },
-    {
-      "skill": "SnipePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -55.0
-    },
-    {
       "skill": "SnipePlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -21003,21 +19813,6 @@
           8.28
         ]
       ]
-    },
-    {
-      "skill": "SolarOrbPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "SoulrendPlayer",
-      "stat": "crit_chance",
-      "value": 13.0
-    },
-    {
-      "skill": "SparkPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
     },
     {
       "skill": "SpearOfSolarisPlayer",
@@ -21187,11 +19982,6 @@
     },
     {
       "skill": "SpearThrowPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
-    },
-    {
-      "skill": "SpearThrowPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -21355,11 +20145,6 @@
           10.34
         ]
       ]
-    },
-    {
-      "skill": "SpearfieldPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
     },
     {
       "skill": "SpiralVolleyPlayer",
@@ -21526,21 +20311,6 @@
           5.46
         ]
       ]
-    },
-    {
-      "skill": "SpookyGhostLightningBounce",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "SpookyWraithProjectileExplosionCold",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "StaggeringPalmPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "StaggeringPalmPlayer",
@@ -22208,11 +20978,6 @@
     },
     {
       "skill": "StormLancePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -40.0
-    },
-    {
-      "skill": "StormLancePlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -22376,11 +21141,6 @@
           4.97
         ]
       ]
-    },
-    {
-      "skill": "StormWavePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
     },
     {
       "skill": "StormWavePlayer",
@@ -22712,11 +21472,6 @@
     },
     {
       "skill": "StormcallerArrowPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -20.0
-    },
-    {
-      "skill": "StormcallerArrowPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -22880,11 +21635,6 @@
           1.66
         ]
       ]
-    },
-    {
-      "skill": "SunderPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -60.0
     },
     {
       "skill": "SunderPlayer",
@@ -23215,31 +21965,6 @@
       ]
     },
     {
-      "skill": "SupportTriggeredAnnihilationPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
-      "skill": "TBAbyssCarrionWingBeam",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "TBExcavatorSceptreErraticBeam",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "TBHellscapePaleLightningBoltSpammableLeft",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "TBVaalPyramidBeam",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
       "skill": "TCHellscapePaleElite2Charge",
       "stat": "base_multiplier",
       "value": 0.3
@@ -23412,16 +22137,6 @@
       ]
     },
     {
-      "skill": "TempestBellPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 20.0
-    },
-    {
-      "skill": "TempestFlurryPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 40.0
-    },
-    {
       "skill": "TempestFlurryPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -23582,16 +22297,6 @@
           3.72
         ]
       ]
-    },
-    {
-      "skill": "TheStarsAnswerCometPlayer",
-      "stat": "crit_chance",
-      "value": 8.0
-    },
-    {
-      "skill": "ThrashingVinesPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
     },
     {
       "skill": "ThunderousLeapPlayer",
@@ -23758,16 +22463,6 @@
           19.91
         ]
       ]
-    },
-    {
-      "skill": "ThunderstormPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
-      "skill": "TornadoShotPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 20.0
     },
     {
       "skill": "TornadoShotPlayer",
@@ -24103,11 +22798,6 @@
     },
     {
       "skill": "ToxicGrenadePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -25.0
-    },
-    {
-      "skill": "ToxicGrenadePlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -24435,21 +23125,6 @@
       ]
     },
     {
-      "skill": "TriggeredBoneShrapnelPlayer",
-      "stat": "crit_chance",
-      "value": 13.0
-    },
-    {
-      "skill": "TriggeredCurseZoneHazardExplosionPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "TriggeredDeadlyCurrentPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
       "skill": "TriggeredDeadlyResolvePlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -24616,36 +23291,6 @@
       ]
     },
     {
-      "skill": "TriggeredDeadlyResolvePlayer",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "TriggeredElementalDischargePlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "TriggeredEmpoweredSparkPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
-      "skill": "TriggeredExplosiveGrowthPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "TriggeredExplosiveGrowthPlayerTwo",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "TriggeredExplosiveTransmutationExplosionPlayer",
-      "stat": "crit_chance",
-      "value": 14.0
-    },
-    {
       "skill": "TriggeredFanTheFlamesPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -24808,11 +23453,6 @@
       ]
     },
     {
-      "skill": "TriggeredFanTheFlamesPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
       "skill": "TriggeredFanTheFlamesPlayerTwo",
       "stat": "base_multiplier",
       "per_level": [
@@ -24973,16 +23613,6 @@
           5.92
         ]
       ]
-    },
-    {
-      "skill": "TriggeredFanTheFlamesPlayerTwo",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "TriggeredFieryDeathPlayer",
-      "stat": "crit_chance",
-      "value": 8.0
     },
     {
       "skill": "TriggeredFistOfKalguurPlayer",
@@ -25149,11 +23779,6 @@
           21.72
         ]
       ]
-    },
-    {
-      "skill": "TriggeredManaFlarePlayer",
-      "stat": "crit_chance",
-      "value": 7.0
     },
     {
       "skill": "TriggeredMoltenShowerPlayer",
@@ -25488,21 +24113,6 @@
       ]
     },
     {
-      "skill": "TriggeredShockingRiftPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
-      "skill": "TriggeredSplinterExplosionHardyTotems",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "TriggeredStaticShocksPlayer",
-      "stat": "crit_chance",
-      "value": 9.0
-    },
-    {
       "skill": "TriggeredSupportFrozenSpiteIceFragmentPlayer",
       "stat": "base_multiplier",
       "value": 0.75
@@ -25668,11 +24278,6 @@
           6.33
         ]
       ]
-    },
-    {
-      "skill": "TriggeredTrailOfCaltropsPlayer",
-      "stat": "crit_chance",
-      "value": 5.0
     },
     {
       "skill": "TriggeredWindDancerPlayer",
@@ -25842,11 +24447,6 @@
     },
     {
       "skill": "TwisterPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -20.0
-    },
-    {
-      "skill": "TwisterPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -26010,51 +24610,6 @@
           5.29
         ]
       ]
-    },
-    {
-      "skill": "UnearthPlayer",
-      "stat": "crit_chance",
-      "value": 15.0
-    },
-    {
-      "skill": "UniqueBreachLightningBoltPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "UrchinSlingProjectile",
-      "stat": "attack_speed_multiplier",
-      "value": -24.0
-    },
-    {
-      "skill": "VaalBloodPriestDetonateDead",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "VaalBloodPriestExsanguinate",
-      "stat": "crit_chance",
-      "value": 5.0
-    },
-    {
-      "skill": "VaalHumanoidShockRifle",
-      "stat": "crit_chance",
-      "value": 6.0
-    },
-    {
-      "skill": "VaalZealotLightningSpark",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "VaalZealotLightningSparkNova",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "ValakosChargePlayer",
-      "stat": "crit_chance",
-      "value": 9.0
     },
     {
       "skill": "VaultingImpactPlayer",
@@ -26221,11 +24776,6 @@
           8.1
         ]
       ]
-    },
-    {
-      "skill": "VileDisruptionPlayer",
-      "stat": "crit_chance",
-      "value": 15.0
     },
     {
       "skill": "VineArrowPlayer",
@@ -26719,11 +25269,6 @@
     },
     {
       "skill": "VolcanicFissurePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -20.0
-    },
-    {
-      "skill": "VolcanicFissurePlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -26887,11 +25432,6 @@
           3.19
         ]
       ]
-    },
-    {
-      "skill": "VolcanoPlayer",
-      "stat": "crit_chance",
-      "value": 8.0
     },
     {
       "skill": "VoltaicBarrierPlayer",
@@ -27393,18 +25933,8 @@
     },
     {
       "skill": "WalkingCalamityPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
-    },
-    {
-      "skill": "WalkingCalamityPlayer",
       "stat": "base_multiplier",
       "value": 0.0
-    },
-    {
-      "skill": "WaveOfFrostPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -45.0
     },
     {
       "skill": "WaveOfFrostPlayer",
@@ -27567,16 +26097,6 @@
           8.55
         ]
       ]
-    },
-    {
-      "skill": "WeaponGrantedChaosboltPlayer",
-      "stat": "crit_chance",
-      "value": 7.0
-    },
-    {
-      "skill": "WhirlingAssaultPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -15.0
     },
     {
       "skill": "WhirlingAssaultPlayer",
@@ -27742,11 +26262,6 @@
     },
     {
       "skill": "WhirlingSlashPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -30.0
-    },
-    {
-      "skill": "WhirlingSlashPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -27906,11 +26421,6 @@
           5.79
         ]
       ]
-    },
-    {
-      "skill": "WhirlwindLancePlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -40.0
     },
     {
       "skill": "WhirlwindLancePlayer",
@@ -28077,11 +26587,6 @@
           9.1
         ]
       ]
-    },
-    {
-      "skill": "WindSerpentsFuryPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -60.0
     },
     {
       "skill": "WindSerpentsFuryPlayer",
@@ -28416,16 +26921,6 @@
       ]
     },
     {
-      "skill": "WolfArcticHowlPlayer",
-      "stat": "crit_chance",
-      "value": 10.0
-    },
-    {
-      "skill": "WolfCrossSlashPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 10.0
-    },
-    {
       "skill": "WolfCrossSlashPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -28590,11 +27085,6 @@
           17.1
         ]
       ]
-    },
-    {
-      "skill": "WolfLeapAttackMinion",
-      "stat": "attack_speed_multiplier",
-      "value": 25.0
     },
     {
       "skill": "WolfLunarBlessingBeamAttackPlayer",
@@ -28932,11 +27422,6 @@
     },
     {
       "skill": "WolfShredPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 100.0
-    },
-    {
-      "skill": "WolfShredPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -29103,11 +27588,6 @@
     },
     {
       "skill": "WyvernDevourPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 70.0
-    },
-    {
-      "skill": "WyvernDevourPlayer",
       "stat": "base_multiplier",
       "per_level": [
         [
@@ -29267,11 +27747,6 @@
           8.55
         ]
       ]
-    },
-    {
-      "skill": "WyvernFlameBreathPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": 700.0
     },
     {
       "skill": "WyvernFlameBreathPlayer",
@@ -29438,11 +27913,6 @@
           3.95
         ]
       ]
-    },
-    {
-      "skill": "WyvernRendPlayer",
-      "stat": "attack_speed_multiplier",
-      "value": -10.0
     },
     {
       "skill": "WyvernRendPlayer",

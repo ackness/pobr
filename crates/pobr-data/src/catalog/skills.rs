@@ -141,11 +141,42 @@ pub struct SkillLevelDef {
     /// 的回退源（二者同义，PoB 在两表均存）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub base_multiplier: Option<f64>,
-    /// 技能基础暴击率（PoB `GrantedEffectsPerLevel.critChance`，百分点；如 Comet = 13.0=13%）。
+    /// 技能基础暴击率（PoB `critChance`，百分点；如 Comet = 13.0=13%）。来源 =
+    /// `GrantedEffectStatSetsPerLevel`（社区 schema 列 `SpellCritChance` = vendor
+    /// `AttackCritChance` 主列 `/100`，社区 `AttackCritChance` = vendor
+    /// `OffhandCritChance`，≠0 时覆盖；vendor `Export/Scripts/skills.lua:281-286`）。
     /// 法系/攻击技能的固有暴击率来源——攻击技能若 `None` 则回退武器基底暴击。
-    /// `0`（无暴击，如多数 DoT/触发器技能）归一化为 `Some(0.0)` 以区别于「数据缺失」。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crit_chance: Option<f64>,
+    /// 辅助宝石 cost 倍率（PoB `manaMultiplier` = `CostMultiplier - 100`，百分点，可负，
+    /// 如 Heightened Curse +30）。`None` = 原始 `CostMultiplier == 100`（无倍率，对齐
+    /// vendor `Export/Scripts/skills.lua:262-264` 的省略条件）。消费侧对被支援技能注入
+    /// `SupportManaMultiplier` MORE（PoB2 `CalcActiveSkill.lua:689-691`）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mana_multiplier: Option<f64>,
+    /// Spirit 扁平保留量（PoB `spiritReservationFlat`，`.dat` 社区列名 `Reservation`，
+    /// 原值；vendor `skills.lua:244-246`）。持续型效果（光环/常驻 buff）的 Spirit
+    /// 预留来源。`None` = 0（无保留）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spirit_reservation_flat: Option<f64>,
+    /// 保留倍率（PoB `reservationMultiplier` = 原值 `- 100`，百分点，可负；`.dat` 社区
+    /// 列名 `EffectOnPlayer`；vendor `skills.lua:247-249`）。`None` = 原始值 == 100。
+    /// 消费侧注入 `ReservationMultiplier` MORE（PoB2 `CalcActiveSkill.lua:692-694`
+    /// support 侧 / `:754-756` active 侧）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reservation_multiplier: Option<f64>,
+    /// 可储存使用次数（PoB `storedUses`，原值；vendor `skills.lua:277-279`）。
+    /// `None` = 0（无储存）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stored_uses: Option<u32>,
+    /// 等级需求（PoB `levelRequirement`）。**PoE2 `.dat` 无 `PlayerLevelReq` 列**——真源
+    /// 是 `SkillGems.ItemExperienceType → ItemExperiencePerLevel.PlayerLevel`（vendor
+    /// `skills.lua:239-240`），该表在钉定补丁 4.5.0.3.4 的 bundle 不可下载（见
+    /// `pipeline/config.json` `_tablesUnavailableForPinnedPatch`）。M1 仅留 schema 席位
+    /// （adapter 恒写 `None`、不消费）；数据由 M5a（createMinionSkills 选级）经
+    /// extract-lua 兜底通道落库。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub level_requirement: Option<u32>,
 }
 
 /// 某授予效果（技能）分等级解析出的**伤害相关 stat 值**集合

@@ -100,7 +100,10 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
     let (gems, gems_total) = gems::adapt_gems(en, &base_ids)?;
     let (effects, effects_total, effect_id_by_index) =
         effects::adapt_effects(en, &active_skills, &skill_type_names)?;
-    let (levels, level_rows_total) = levels::adapt_levels(en, &effect_id_by_index)?;
+    // 暴击率挂在 stat-set 维度（M1-T4 表列直读），先建查表再按 (effect, level) join。
+    let crit_by_effect = stat_sets::crit_from_statset_levels(en)?;
+    let (levels, level_rows_total) =
+        levels::adapt_levels(en, &effect_id_by_index, &crit_by_effect)?;
     let zh_skill_names = effects::adapt_zh_skill_names(tw, &active_skills)?;
 
     Ok(SkillsBundle {

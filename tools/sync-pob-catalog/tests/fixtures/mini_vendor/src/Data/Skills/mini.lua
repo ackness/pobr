@@ -1,15 +1,17 @@
 -- 测试夹具：模仿 vendor Data/Skills/*.lua 的最小结构（与真实文件同一注入约定）
 local skills, mod, flag, skill = ...
 
--- 全等级同值的 critChance + 含 statSets baseMods Speed MORE（模仿 FlickerStrikePlayer）
+-- 全等级同值的 baseMultiplier（触发压缩为单 value）+ 含 statSets baseMods Speed MORE
+-- （模仿 FlickerStrikePlayer；M1-T4.3 后 attackSpeedMultiplier/critChance 不再抽取，
+-- 字段保留在夹具里用于验证「非目标字段被忽略」）
 skills["MiniFlicker"] = {
 	name = "Mini Flicker",
 	skillTypes = { [SkillType.Attack] = true, [SkillType.Melee] = true, },
 	castTime = 1,
 	levels = {
-		[1] = { attackSpeedMultiplier = -50, levelRequirement = 0, cost = { Mana = 12, }, },
-		[2] = { attackSpeedMultiplier = -50, levelRequirement = 3, cost = { Mana = 14, }, },
-		[3] = { attackSpeedMultiplier = -50, levelRequirement = 6, cost = { Mana = 16, }, },
+		[1] = { attackSpeedMultiplier = -50, baseMultiplier = 1.2, levelRequirement = 0, cost = { Mana = 12, }, },
+		[2] = { attackSpeedMultiplier = -50, baseMultiplier = 1.2, levelRequirement = 3, cost = { Mana = 14, }, },
+		[3] = { attackSpeedMultiplier = -50, baseMultiplier = 1.2, levelRequirement = 6, cost = { Mana = 16, }, },
 	},
 	statSets = {
 		[1] = {
@@ -24,14 +26,14 @@ skills["MiniFlicker"] = {
 	},
 }
 
--- 等级间变化的 critChance（触发 per_level 表示）
+-- 等级间变化的 baseMultiplier（触发 per_level 表示）；critChance 为非目标字段（不抽）
 skills["MiniArc"] = {
 	name = "Mini Arc",
 	skillTypes = { [SkillType.Spell] = true, [SkillType.Lightning] = true, },
 	castTime = 1.1,
 	levels = {
-		[1] = { critChance = 9, levelRequirement = 0, cost = { Mana = 8, }, },
-		[2] = { critChance = 9.5, levelRequirement = 3, cost = { Mana = 9, }, },
+		[1] = { critChance = 9, baseMultiplier = 2.0, levelRequirement = 0, cost = { Mana = 8, }, },
+		[2] = { critChance = 9.5, baseMultiplier = 2.65, levelRequirement = 3, cost = { Mana = 9, }, },
 	},
 	statSets = {
 		[1] = {

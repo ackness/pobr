@@ -203,6 +203,11 @@ mod tests {
                 attack_speed_multiplier: None,
                 base_multiplier: None,
                 crit_chance: None,
+                mana_multiplier: None,
+                spirit_reservation_flat: None,
+                reservation_multiplier: None,
+                stored_uses: None,
+                level_requirement: None,
             })
             .collect()
     }
