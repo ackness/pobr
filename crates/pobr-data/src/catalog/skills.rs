@@ -304,4 +304,3 @@ pub struct GemQualityStatsDef {
     /// 品质 stat 表，按 `effect_id` 升序。
     pub effects: Vec<GemQualityStatDef>,
 }
-
