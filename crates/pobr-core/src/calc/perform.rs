@@ -315,14 +315,13 @@ fn fill_mechanics(env: &mut Env) {
     // M2-E2（CalcDefence.lua:2554-2557）：眩晕规避的 ES 减半条件改为
     // 「ES > totalTakenHit 且非 EB」；totalTakenHit 在 Track F 接线前用
     // reference_hit（= life + ES，与 EhpOptions 同源）近似。
-    // TODO(M2-C1)：C-1 合并后 EB flag 改读 DefenceKeystones::energy_shield_protects_mana。
-    let eb_protects_mana = db.flag(cfg, ModName::from("EnergyShieldProtectsMana"));
+    // EB flag 走 C-1 keystone 快照（蓝图 §3.3 契约 2，不散读 flag）。
     let avoidance = calc_avoidance(
         db,
         cfg,
         env.player.output.energy_shield,
         reference_hit,
-        eb_protects_mana,
+        keystones.energy_shield_protects_mana,
     );
     env.player.output.avoid_all_damage_from_hits = avoidance.avoid_all_damage_from_hits;
     env.player.output.avoid_projectile_damage = avoidance.avoid_projectile_damage;
@@ -401,7 +400,7 @@ fn fill_mechanics(env: &mut Env) {
     fill_trigger(env);
 
     // --- Evade 四分型 + Stun（M2 Track E，蓝图 §3.2 预登记的一行调用）---
-    super::defence::fill_evade_stun(env);
+    super::defence::fill_evade_stun(env, &keystones);
 }
 
 /// 触发速率 fill（Lane B）：读冷却驱动 / CWC 触发词条，写 `trigger_rate_cap` /

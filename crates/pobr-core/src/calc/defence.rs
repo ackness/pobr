@@ -370,8 +370,8 @@ pub const AVOID_AILMENT_CAP: f64 = 100.0;
 ///
 /// # 参数
 /// - `total_taken_hit` — 受击总承伤（PoB2 `output.totalTakenHit`，:2555）。
-/// - `energy_shield_protects_mana` — EB keystone flag（:2555）。
-///   TODO(M2-C1)：C-1 合并后调用方改读 `DefenceKeystones::energy_shield_protects_mana`。
+/// - `energy_shield_protects_mana` — EB keystone flag（:2555）；调用方从 C-1
+///   `DefenceKeystones::energy_shield_protects_mana` 快照传入（蓝图 §3.3 契约 2）。
 ///
 /// 出处：agent-docs/active-defences.md §3.2；
 ///       PoB2 `src/Modules/CalcDefence.lua` 规避段 + :2554-2558。
@@ -686,7 +686,9 @@ pub fn calc_evade_suite(
 /// Stun 的 `totalTakenHit`/`PhysicalTakenHit` 在 Track F 接线前以单击参考伤害
 /// （与 `EhpOptions` 的 `reference_hit` 同源 = life + ES；参考击视作纯物理，
 /// 与 ehp.rs 物理参考口径一致）近似，F 接线后换扣池管线真值。
-pub fn fill_evade_stun(env: &mut Env) {
+///
+/// keystone 开关（CI 等）经 `keystones` 快照传入（C-1 契约，蓝图 §3.3，不散读 flag）。
+pub fn fill_evade_stun(env: &mut Env, keystones: &crate::rules::DefenceKeystones) {
     let hit_names = [ModName::from("HitChance")];
     let enemy_hit_mult = (1.0 + env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &hit_names) / 100.0)
         * env.enemy.mod_db.more(&env.cfg, &hit_names);
@@ -721,11 +723,7 @@ pub fn fill_evade_stun(env: &mut Env) {
         total_taken_hit: reference_hit,
         physical_taken_hit: reference_hit,
         avoid_stun: env.player.output.avoid_stun,
-        // TODO(M2-C1)：C-1 合并后改读 DefenceKeystones::chaos_inoculation。
-        chaos_inoculation: env
-            .player
-            .mod_db
-            .flag(&env.cfg, ModName::from("ChaosInoculation")),
+        chaos_inoculation: keystones.chaos_inoculation,
     };
     let stun = super::stun::calc_stun(&env.player.mod_db, &env.cfg, &stun_inputs);
     env.player.output.stun_threshold = stun.threshold;

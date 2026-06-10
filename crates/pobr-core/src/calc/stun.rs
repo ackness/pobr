@@ -5,8 +5,8 @@
 //! `StunDuration`（按服务器帧上取整）。
 //!
 //! 常量全部经 `cfg.constants` 注入（game_constants 已有 stun 全套，蓝图明令勿再加）；
-//! keystone flag（ChaosInoculation）由调用方传入 [`StunInputs`]，本模块不散读
-//! keystone（蓝图 §3.3 契约 2——C-1 `DefenceKeystones` 合并后调用方一行切换）。
+//! keystone flag（ChaosInoculation）由调用方从 C-1 `DefenceKeystones` 快照经
+//! [`StunInputs`] 传入，本模块不散读 keystone（蓝图 §3.3 契约 2）。
 
 use pobr_data::prelude::*;
 
@@ -37,8 +37,8 @@ pub struct StunInputs {
     /// 眩晕规避几率（[`super::calc_avoidance`] 产出 `avoid_stun`，已含 ES 隐式减半；
     /// `notAvoidChance = 100 − avoid_stun`，:2554-2558）。
     pub avoid_stun: f64,
-    /// CI keystone（阈值基底取「CI 前 Life」，:2537-2539）。
-    /// TODO(M2-C1)：C-1 合并后调用方改读 `DefenceKeystones::chaos_inoculation`。
+    /// CI keystone（阈值基底取「CI 前 Life」，:2537-2539）；
+    /// 调用方从 C-1 `DefenceKeystones::chaos_inoculation` 快照传入（蓝图 §3.3 契约 2）。
     pub chaos_inoculation: bool,
 }
 
