@@ -25,8 +25,22 @@ struct RawGrantedEffect {
     active_skill: Option<i64>,
     #[serde(rename = "CastTime")]
     cast_time: Option<i64>,
+    /// require 后缀表达式（FK 索引序列 → `ActiveSkillType`；AND/OR/NOT 是特殊行）。
+    /// = PoB2 spec.lua grantedeffects 列 `SupportTypes`。
     #[serde(rename = "AllowedActiveSkillTypes", default)]
     allowed_active_skill_types: Vec<u32>,
+    /// 兼容 support 并入主动技能的类型名单（= PoB2 spec `AddTypes`）。
+    #[serde(rename = "AddedActiveSkillTypes", default)]
+    added_active_skill_types: Vec<u32>,
+    /// exclude 后缀表达式（= PoB2 spec `ExcludeTypes`）。
+    #[serde(rename = "ExcludedActiveSkillTypes", default)]
+    excluded_active_skill_types: Vec<u32>,
+    /// 主动效果不可被任何 support 支援（spec 列 9）。
+    #[serde(rename = "CannotBeSupported", default)]
+    cannot_be_supported: bool,
+    /// 该 support 仅能支援宝石授予的技能（spec 列 7；社区 schema 列名带 s）。
+    #[serde(rename = "SupportsGemsOnly", default)]
+    supports_gems_only: bool,
     /// `GrantedEffectStatSets` 外键索引（负数/越界归一化为 None）。
     #[serde(rename = "StatSet")]
     stat_set: Option<i64>,
@@ -59,6 +73,22 @@ pub(super) fn adapt_effects(
     let effects_total = raw_effects.len();
     let effect_id_by_index: Vec<String> = raw_effects.iter().map(|r| r.id.clone()).collect();
 
+    // 类型表达式 FK 解析：索引 → `ActiveSkillType.Id` 名称（AND/OR/NOT 即特殊行），
+    // 保留 token 顺序（后缀表达式语义依赖顺序）。悬空 FK 跳过并计数（外键质量报表，
+    // 见蓝图 §5：>0 时列入 commit message）。
+    let mut dangling_type_fk = 0usize;
+    let mut resolve_type_tokens = |idxs: &[u32]| -> Vec<String> {
+        idxs.iter()
+            .filter_map(|&t| match skill_type_names.get(t as usize) {
+                Some(name) if !name.is_empty() => Some(name.clone()),
+                _ => {
+                    dangling_type_fk += 1;
+                    None
+                }
+            })
+            .collect()
+    };
+
     let mut effects = Vec::new();
     for raw in raw_effects {
         if raw.id.is_empty() {
@@ -84,11 +114,18 @@ pub(super) fn adapt_effects(
             is_support: raw.is_support.unwrap_or(false),
             active_skill,
             cast_time,
-            allowed_active_skill_types: raw.allowed_active_skill_types,
+            require_skill_types: resolve_type_tokens(&raw.allowed_active_skill_types),
+            add_skill_types: resolve_type_tokens(&raw.added_active_skill_types),
+            exclude_skill_types: resolve_type_tokens(&raw.excluded_active_skill_types),
+            cannot_be_supported: raw.cannot_be_supported,
+            support_gems_only: raw.supports_gems_only,
             stat_set,
             skill_types,
             cost_types: raw.cost_types,
         });
+    }
+    if dangling_type_fk > 0 {
+        eprintln!("granted_effects: 类型表达式悬空 FK {dangling_type_fk} 处（已跳过）");
     }
     effects.sort_by(|a, b| a.id.cmp(&b.id));
     Ok((effects, effects_total, effect_id_by_index))

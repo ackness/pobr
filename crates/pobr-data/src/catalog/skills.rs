@@ -38,7 +38,8 @@ pub struct SkillGemDef {
 ///
 /// 每个宝石/物品最终授予一个或多个 `GrantedEffect`；主动技能效果会关联到一条
 /// `ActiveSkills` 记录（显示名 / 技能类型）。本切片取身份 + 主动技能链接 +
-/// 施放时间 + 允许的主动技能类型枚举 + StatSet/CostTypes 外键索引。
+/// 施放时间 + support 适用性裁决列（require/add/exclude 类型表达式 +
+/// cannot_be_supported/support_gems_only 布尔）+ StatSet/CostTypes 外键索引。
 ///
 /// 分等级参数（cost / cooldown / attack time）在独立域
 /// [`SkillLevelDef`]（`granted_effect_levels.json`），以本 `id` 为键。
@@ -56,8 +57,29 @@ pub struct GrantedEffectDef {
     pub active_skill: Option<String>,
     /// 施放/吟唱时间（毫秒）。原始值为 0（瞬发/辅助）时归一化为 None。
     pub cast_time: Option<u32>,
-    /// 允许作用的主动技能类型（GGG 原始枚举值；当前无导出的类型名查表）。
-    pub allowed_active_skill_types: Vec<u32>,
+    /// support 适用性 **require 后缀表达式** token 流（`AllowedActiveSkillTypes` 列，
+    /// FK → `ActiveSkillType.Id` 名称；`"AND"/"OR"/"NOT"` 是该表的特殊行，保序保留）。
+    /// 空 = 不限制（接受任何主动技能）。求值语义见 PoB2
+    /// `CalcTools.lua::doesTypeExpressionMatch`（后缀栈机，栈内任一真即匹配）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub require_skill_types: Vec<String>,
+    /// 兼容 support 给主动技能**并入**的类型 token（`AddedActiveSkillTypes` 列；
+    /// 普通名单，非表达式）。对应 PoB2 `addSkillTypes`，参与 support 裁决不动点
+    /// （`CalcActiveSkill.lua:179-210`）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub add_skill_types: Vec<String>,
+    /// support 适用性 **exclude 后缀表达式** token 流（`ExcludedActiveSkillTypes` 列，
+    /// 同 require 的 token 编码）。表达式命中即拒绝支援。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub exclude_skill_types: Vec<String>,
+    /// 主动效果**不可被任何 support 支援**（`CannotBeSupported` 列）。对应 PoB2
+    /// `grantedEffect.cannotBeSupported`（裁决第一段）。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub cannot_be_supported: bool,
+    /// 该 support **仅能支援宝石授予**的技能（`SupportsGemsOnly` 列）。对应 PoB2
+    /// `grantedEffect.supportGemsOnly`（无 gemData 的技能拒收，裁决第二段）。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub support_gems_only: bool,
     /// `GrantedEffectStatSets` 表的外键索引（原始 `StatSet` 列）。分等级伤害 stat 值
     /// 经此解析（待 stat-set 表下载后接入）；当前仅保留索引备查。
     #[serde(default, skip_serializing_if = "Option::is_none")]
