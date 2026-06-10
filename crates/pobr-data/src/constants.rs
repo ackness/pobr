@@ -1,3 +1,14 @@
+//! **降级说明（M0-W3，架构文档 20 §1 P8）**：本文件已从「计算常量准源」降级为
+//! **fallback 层**——数值准源迁移至 `data/<poe_version>/base/game_constants.json`
+//! （schema 见 [`crate::catalog::game_constants`]，由 W2 逐值对照测试锁定与本文件相等）。
+//!
+//! - calc 消费侧（pobr-core）已切换为读注入的 [`crate::catalog::RuntimeConstants`]
+//!   （经 `CalcConfig.constants`），**禁止新增对本文件常量的计算路径消费方**；
+//! - 本文件保留的唯一职责：为 catalog Def 类型的 `Default`（无 GameData 时的
+//!   fallback）提供单一数值出处（`Default` 直接引用这里的 const，避免字面量双权威）；
+//!   枚举与结构类型（`DamageType` / `AilmentType` 等）属 L4 框架语义，长期留此。
+//! - 待 M0 后续 wave 清空全部 fallback 依赖后整体删除数值常量段。
+
 use serde::{Deserialize, Serialize};
 
 /// 默认最大元素 / 混沌抗性（百分比）。超过此值的抗性记为 over-cap。

@@ -45,3 +45,83 @@ pub struct WeaponTypeDef {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
 }
+
+/// 武器类型全表（[`crate::catalog::RuntimeConstants`] 的注入域，M0-W3 注入管道）。
+///
+/// `#[serde(transparent)]`：JSON 形状与 `base/weapon_types.json`（数组）一致。
+/// `Default` = fallback 全表（与 JSON 逐值相等，搬迁不变式）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct WeaponTypeTable(pub Vec<WeaponTypeDef>);
+
+impl Default for WeaponTypeTable {
+    fn default() -> Self {
+        Self(WeaponTypeDef::default_table())
+    }
+}
+
+impl WeaponTypeTable {
+    /// 按武器类型名（PoB base `type`，如 `One Hand Axe`）查条目；未知类型返回
+    /// `None`。键空间陷阱（模块 doc）：GGG `Warstaff`（长杖 item_class）对应本表
+    /// `Staff`、GGG `FishingRod` 对应 `Fishing Rod`——item_class → 表键的映射由
+    /// 调用方做（消费侧，见 pobr-build `calc_orchestrator`）。
+    pub fn get(&self, id: &str) -> Option<&WeaponTypeDef> {
+        self.0.iter().find(|w| w.id == id)
+    }
+}
+
+impl WeaponTypeDef {
+    /// 全表 fallback（M0-W3 注入管道）：无 GameData / 数据目录缺
+    /// `base/weapon_types.json` 时 [`crate::catalog::RuntimeConstants`] 的默认值。
+    ///
+    /// 搬迁不变式：与 JSON 逐值相等（`pobr-gamedata` 测试锁定）。数值出处 =
+    /// vendor `data.weaponTypeInfo`（`Data.lua:532-551`，19 条逐条照搬）；
+    /// pobr 旧 Rust 侧无完整对应表（散落谓词，出入见模块 doc TODO(parity)），
+    /// 故此处为带出处 doc 的字面量。
+    pub fn default_table() -> Vec<Self> {
+        /// 单条目构造（label 见结构体字段 doc，仅两条非空）。
+        fn entry(
+            id: &str,
+            one_hand: bool,
+            melee: bool,
+            flag: &str,
+            label: Option<&str>,
+        ) -> WeaponTypeDef {
+            WeaponTypeDef {
+                id: id.to_string(),
+                one_hand,
+                melee,
+                flag: flag.to_string(),
+                label: label.map(str::to_string),
+            }
+        }
+        // 按 id 升序（与 JSON 排序口径一致，保证 Vec 逐值相等）。
+        vec![
+            entry("Bow", false, false, "Bow", None),
+            entry("Claw", true, true, "Claw", None),
+            entry("Crossbow", false, false, "Crossbow", None),
+            entry("Dagger", true, true, "Dagger", None),
+            entry("Fishing Rod", false, true, "Fishing", None),
+            entry("Flail", true, true, "Flail", None),
+            entry("None", true, true, "Unarmed", None),
+            entry("One Hand Axe", true, true, "Axe", None),
+            entry("One Hand Mace", true, true, "Mace", None),
+            entry("One Hand Sword", true, true, "Sword", None),
+            entry("Spear", true, true, "Spear", None),
+            entry("Staff", false, true, "Staff", Some("Quarterstaff")),
+            entry("Talisman", false, true, "Talisman", None),
+            entry(
+                "Thrusting One Hand Sword",
+                true,
+                true,
+                "Sword",
+                Some("One Hand Sword"),
+            ),
+            entry("Two Hand Axe", false, true, "Axe", None),
+            entry("Two Hand Mace", false, true, "Mace", None),
+            entry("Two Hand Sword", false, true, "Sword", None),
+            entry("Wand", true, false, "Wand", None),
+            entry("Warstaff", false, true, "Warstaff", None),
+        ]
+    }
+}

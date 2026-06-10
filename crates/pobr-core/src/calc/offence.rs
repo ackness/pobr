@@ -156,7 +156,9 @@ fn resolve_resistance(
             ModName::from("MaximumAllElementalResistances"),
         ],
     );
-    let max = (DEFAULT_MAX_RESISTANCE + max_bonus).min(HARD_MAX_RESISTANCE);
+    // M0-W3：默认最大抗性 / 硬上限改读注入常量包（fallback == 旧 const，值不变）。
+    let max = (cfg.constants.character().base_maximum_all_resistances_pct + max_bonus)
+        .min(cfg.constants.game().resist_hard_cap);
     ResistanceResolution {
         final_value: round(total.min(max)),
         max: round(max),
@@ -730,7 +732,7 @@ fn enemy_damage_multiplier(
                 &type_cfg,
                 &[ModName::from(format!("{type_prefix}Resist"))],
             )
-            .clamp(RESIST_FLOOR, ENEMY_MAX_RESIST);
+            .clamp(cfg.constants.game().resist_floor, ENEMY_MAX_RESIST);
         let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
         1.0 - effective_resist / 100.0
     };
@@ -933,7 +935,7 @@ fn apply_server_tick_cap(db: &ModDb, cfg: &CalcConfig, rate: f64) -> f64 {
     if cfg.condition("Channelling") {
         return rate;
     }
-    let server_cap = (1.0 / SERVER_TICK_SECONDS) * repeats(db, cfg);
+    let server_cap = (1.0 / cfg.constants.game().server_tick_seconds) * repeats(db, cfg);
     rate.min(server_cap)
 }
 

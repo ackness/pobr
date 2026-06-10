@@ -18,7 +18,9 @@
 use serde::{Deserialize, Serialize};
 
 /// `base/game_constants.json` 顶层结构：character/monster/game 三段全局常数。
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// `Default` = fallback（三段各自 `Default` 的组合，与入库 JSON 逐值相等，见文末说明）。
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct GameConstantsDef {
     /// 玩家固有常数段（vendor `data.characterConstants`，源 Character.ot）。
     pub character: CharacterConstantsDef,
@@ -189,4 +191,105 @@ pub struct GameMechanicsConstantsDef {
     pub heavy_stun_modifier_duration: f64,
     /// 负护甲增伤上限（%）。Data.lua:194 NegArmourDmgBonusCap = 100。
     pub neg_armour_dmg_bonus_cap: f64,
+}
+
+// ---------------------------------------------------------------------------
+// Default = fallback 值（M0-W3 注入管道，架构文档 20 §1 P8/P9）
+//
+// 语义：`Default` 即「无 GameData 注入时的回退常量集」，必须与
+// `data/<版本>/base/game_constants.json` 逐值相等（由
+// `crates/pobr-gamedata/tests/load_game_constants.rs` 的 default 对照测试锁定）。
+// 有 pobr Rust 准源的字段**直接引用** `crate::constants` / `crate::monster` 的
+// const / `GameConstants::poe2()` 字段（单一数值出处，不复制字面量）；
+// vendor-only 字段（pobr 旧 Rust 无此值）以字面量落值，出处见各字段 doc。
+// ---------------------------------------------------------------------------
+
+impl Default for CharacterConstantsDef {
+    fn default() -> Self {
+        Self {
+            base_maximum_all_resistances_pct: crate::constants::DEFAULT_MAX_RESISTANCE,
+            base_critical_hit_damage_bonus: crate::constants::PLAYER_BASE_CRIT_DAMAGE_BONUS,
+            // vendor-only（Misc.lua:146 / Data.lua:178 DamageReductionCap）。
+            maximum_physical_damage_reduction_pct: 90.0,
+            // vendor-only（Misc.lua:143）。
+            energy_shield_recharge_rate_per_minute_pct: 750.0,
+            // vendor-only（Data.lua:197 EnergyShieldRechargeDelay）。
+            energy_shield_recharge_delay_seconds: 4.0,
+            // vendor-only（Misc.lua:144）。
+            mana_regeneration_rate_per_minute_pct: 240.0,
+        }
+    }
+}
+
+impl Default for MonsterConstantsDef {
+    fn default() -> Self {
+        Self {
+            base_maximum_all_resistances_pct: crate::monster::ENEMY_MAX_RESIST,
+            // vendor-only（Misc.lua:247 / Data.lua:179）。
+            maximum_physical_damage_reduction_pct: 75.0,
+            base_critical_hit_damage_bonus: crate::monster::MONSTER_BASE_CRIT_DAMAGE_BONUS,
+            // vendor-only（Misc.lua:258 / Data.lua:221）。
+            melee_hit_stun_multiplier_pct: 33.0,
+            // vendor-only（Misc.lua:259 / Data.lua:222）。
+            physical_hit_stun_multiplier_pct: 100.0,
+        }
+    }
+}
+
+impl Default for GameMechanicsConstantsDef {
+    fn default() -> Self {
+        // pobr 准源段统一取自 `GameConstants::poe2()`（其内部已引用顶层 const），
+        // 保证与旧 Rust 路径逐 bit 相等。
+        let legacy = crate::constants::GameConstants::poe2();
+        Self {
+            resist_hard_cap: legacy.resist_hard_cap,
+            resist_floor: legacy.resist_floor,
+            server_tick_seconds: legacy.server_tick_seconds,
+            armour_ratio: legacy.armour_ratio,
+            block_chance_cap: legacy.block_chance_cap,
+            dot_dps_cap: crate::constants::DOT_DPS_CAP,
+            shock_min_effect: crate::constants::SHOCK_MIN_EFFECT,
+            shock_default_effect: legacy.shock_default_effect,
+            bleed_base_fraction: legacy.bleed_base_fraction,
+            bleed_base_duration: legacy.bleed_base_duration,
+            ignite_base_fraction: legacy.ignite_base_fraction,
+            ignite_base_duration: legacy.ignite_base_duration,
+            poison_base_fraction: legacy.poison_base_fraction,
+            poison_base_duration: legacy.poison_base_duration,
+            // ---- 以下为 vendor-only 字段（出处见上方各字段 doc 的 Lua 行号）----
+            evade_chance_cap: 95.0,
+            deflection_chance_cap: 95.0,
+            deflect_effect: 40.0,
+            dodge_chance_cap: 75.0,
+            avoid_chance_cap: 75.0,
+            suppression_chance_cap: 100.0,
+            suppression_effect: 50.0,
+            accuracy_falloff_start: 20.0,
+            accuracy_falloff_end: 90.0,
+            max_accuracy_range_penalty: 90.0,
+            chill_max_effect: 50.0,
+            chill_effect_multiplier: 100.0,
+            low_pool_threshold: 0.35,
+            leech_rate_base: 0.02,
+            effective_max_damage_for_leech: 40000.0,
+            culling_strike_normal_threshold: 35.0,
+            culling_strike_magic_threshold: 20.0,
+            culling_strike_rare_threshold: 10.0,
+            culling_strike_unique_threshold: 5.0,
+            min_stun_chance_needed: 20.0,
+            stun_base_mult: 200.0,
+            stun_base_duration_seconds: 0.5,
+            light_stun_minimum_chance_player: 15.0,
+            light_stun_ratio_scale_player: 44.0,
+            light_stun_minimum_chance: 15.0,
+            light_stun_ratio_scale: 58.0,
+            heavy_stun_damage_scale_player: 0.65,
+            heavy_stun_threshold_modifier_player: 100.0,
+            heavy_stun_modifier_duration_player: 10.0,
+            heavy_stun_damage_scale: 0.58,
+            heavy_stun_threshold_modifier: 500.0,
+            heavy_stun_modifier_duration: 16.5,
+            neg_armour_dmg_bonus_cap: 100.0,
+        }
+    }
 }

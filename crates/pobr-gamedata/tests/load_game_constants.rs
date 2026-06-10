@@ -165,3 +165,11 @@ fn ailment_fractions_consistent_with_vendor_per_minute_form() {
         gc.game.shock_min_effect / 100.0
     );
 }
+
+/// M0-W3 fallback 不变式：`GameConstantsDef::default()`（无 GameData 时的回退常量集）
+/// 与入库 JSON **整结构逐值相等**——保证「注入」与「回退」两条 calc 路径输出一致
+/// （搬迁不变式的结构锁，架构文档 20 §1 P8）。
+#[test]
+fn default_fallback_equals_loaded_json_exactly() {
+    assert_eq!(load(), GameConstantsDef::default());
+}

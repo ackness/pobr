@@ -2,6 +2,7 @@ use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::{
     CalcConfig, CampaignProgress, CampaignReward, CampaignState, CharacterBase, ModDb,
 };
+use pobr_data::catalog::character_constants::CharacterConstantsDef;
 use pobr_data::prelude::*;
 
 fn db_of(mods: Vec<pobr_core::Modifier>) -> ModDb {
@@ -148,7 +149,8 @@ fn session_ingests_character_base_and_campaign_modifiers() {
         rewards: vec![CampaignReward::TheFlameCore],
     };
 
-    session.add_modifiers(base.modifiers());
+    // 常量集 = Default fallback（与 base/character_constants.json 逐值相等）。
+    session.add_modifiers(base.modifiers(&CharacterConstantsDef::default()));
     session.add_modifiers(state.modifiers());
 
     let output = session.perform_minimal();

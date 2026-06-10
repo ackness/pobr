@@ -15,6 +15,7 @@ use pobr_core::calc::survivability::{DEFAULT_CHARGE_DURATION_SECONDS, DEFAULT_MA
 use pobr_core::campaign::CampaignProgress;
 use pobr_core::modifier::ModValue;
 use pobr_data::catalog::base_player_mods::{BasePlayerModDef, BasePlayerModTag};
+use pobr_data::catalog::character_constants::CharacterConstantsDef;
 use pobr_data::constants::PLAYER_BASE_CRIT_DAMAGE_BONUS;
 use pobr_data::modifier::ModType;
 use pobr_gamedata::{GameData, repo_data_root};
@@ -101,9 +102,11 @@ fn level_derived_baselines_match_character_base_formulas() {
     let c0 = bare_character(0);
     let c1 = bare_character(1);
     let c2 = bare_character(2);
+    // M0-W3 起公式系数走注入；此处取 Default fallback（与 JSON 逐值相等）。
+    let cc = CharacterConstantsDef::default();
 
     // 形如「value/级 + base」的条目：与对应公式的 (差分, 截距) 逐值对照。
-    type LevelFormula = fn(&CharacterBase) -> f64;
+    type LevelFormula = fn(&CharacterBase, &CharacterConstantsDef) -> f64;
     let cases: [(&str, &str, LevelFormula); 3] = [
         (
             "base_life_per_level",
@@ -124,7 +127,11 @@ fn level_derived_baselines_match_character_base_formulas() {
     for (id, name, f) in cases {
         let e = entry(&mods, id);
         assert_eq!(e.mod_name, name, "{id}: ModName 对齐 character.rs 注入名");
-        assert_eq!(e.value, f(&c2) - f(&c1), "{id}: per-level 值 == 公式差分");
+        assert_eq!(
+            e.value,
+            f(&c2, &cc) - f(&c1, &cc),
+            "{id}: per-level 值 == 公式差分"
+        );
         match e.tags.as_slice() {
             [
                 BasePlayerModTag::Multiplier {
@@ -137,7 +144,7 @@ fn level_derived_baselines_match_character_base_formulas() {
                 assert_eq!(var, "Level", "{id}: 按等级缩放");
                 assert_eq!(*div, 1.0, "{id}: 每 1 级缩放一次");
                 assert_eq!(*limit, None, "{id}: 无缩放上限");
-                assert_eq!(*base, Some(f(&c0)), "{id}: base 常量 == 公式截距");
+                assert_eq!(*base, Some(f(&c0, &cc)), "{id}: base 常量 == 公式截距");
             }
             other => panic!("{id}: 应恰有一个 Multiplier:Level tag，实得 {other:?}"),
         }
@@ -148,7 +155,7 @@ fn level_derived_baselines_match_character_base_formulas() {
     assert_eq!(evasion.mod_name, "Evasion");
     assert!(evasion.tags.is_empty(), "固有闪避与等级无关");
     let injected = c1
-        .modifiers()
+        .modifiers(&cc)
         .into_iter()
         .find(|m| m.name == "Evasion".into())
         .expect("CharacterBase::modifiers() 注入 Evasion BASE");

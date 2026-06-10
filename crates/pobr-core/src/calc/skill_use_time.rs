@@ -101,7 +101,8 @@ pub fn calc_skill_use_time(
     let action_factor = 1.0 + total_action_speed / 100.0;
     let uncapped_rate = tooltip_rate * action_factor;
 
-    let server_rate = 1.0 / SERVER_TICK_SECONDS;
+    // M0-W3：服务器帧时间改读注入常量包（fallback == 旧 const，值不变）。
+    let server_rate = 1.0 / cfg.constants.game().server_tick_seconds;
     let (effective_rate, capped_by_server_tick) = if !is_channelling && uncapped_rate > server_rate
     {
         (server_rate, true)

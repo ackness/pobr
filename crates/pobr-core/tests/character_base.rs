@@ -1,10 +1,16 @@
 use pobr_core::{CalcConfig, CharacterBase, ModDb};
+use pobr_data::catalog::character_constants::CharacterConstantsDef;
 use pobr_data::prelude::*;
 
 fn db_of(mods: Vec<pobr_core::Modifier>) -> ModDb {
     let mut db = ModDb::new();
     db.add_list(mods);
     db
+}
+
+/// 测试用常量集 = Default fallback（与 `base/character_constants.json` 逐值相等）。
+fn constants() -> CharacterConstantsDef {
+    CharacterConstantsDef::default()
 }
 
 #[test]
@@ -20,7 +26,7 @@ fn character_base_derives_life_mana_accuracy_from_level_and_attributes() {
         intelligence: 7.0,
     };
 
-    let db = db_of(base.modifiers());
+    let db = db_of(base.modifiers(&constants()));
     let cfg = CalcConfig::new();
 
     assert_eq!(
@@ -51,7 +57,7 @@ fn character_base_scales_with_level() {
         intelligence: 0.0,
     };
 
-    let db = db_of(base.modifiers());
+    let db = db_of(base.modifiers(&constants()));
     let cfg = CalcConfig::new();
 
     // 12*10 + 16 = 136, 4*10 + 30 = 70, 6*10 - 6 = 54.
@@ -78,7 +84,7 @@ fn character_base_modifiers_carry_character_base_source() {
         intelligence: 1.0,
     };
 
-    for modifier in base.modifiers() {
+    for modifier in base.modifiers(&constants()) {
         let origin = modifier
             .origin
             .as_ref()

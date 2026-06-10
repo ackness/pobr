@@ -35,6 +35,50 @@ pub struct JewelRadiiDef {
     pub tree_versions: BTreeMap<String, Vec<JewelRadiusBandDef>>,
 }
 
+impl Default for JewelRadiiDef {
+    /// `Default` = 注入缺失时的 fallback，与 `base/jewel_radii.json` **逐值相等**
+    /// （搬迁不变式：注入与回退两条路径输出一致）。
+    ///
+    /// 本域的 pobr Rust 准源（`pobr-tree::PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER` /
+    /// `JEWEL_RADIUS_*`）位于**上游依赖方向不可引用**的 crate（pobr-tree 依赖
+    /// pobr-data），故此处以字面量转录 vendor PoB2 `Modules/Data.lua:595-611` +
+    /// `Data/Misc.lua:36`；逐值一致性由两道测试锁定：
+    /// - `pobr-tree` `tests/radius_jewel.rs`：Default 具名档 × 乘数 == 旧常量；
+    /// - `pobr-gamedata` `tests/load_jewel_radii.rs`：Default == JSON 全等。
+    fn default() -> Self {
+        // 档位行构造便捷函数（仅 Default 用）。
+        fn band(label: &str, inner: u32, outer: u32, colour: &str) -> JewelRadiusBandDef {
+            JewelRadiusBandDef {
+                label: label.to_string(),
+                inner,
+                outer,
+                colour: colour.to_string(),
+            }
+        }
+        // vendor `Modules/Data.lua:595-611` `data.jewelRadii["0_1"]`：
+        // 4 个具名档（inner=0 实心圆）在前、8 个 Variable 环形档在后（保持书写顺序）。
+        let bands = vec![
+            band("Small", 0, 1000, "^xBB6600"),
+            band("Medium", 0, 1150, "^x66FFCC"),
+            band("Large", 0, 1300, "^x2222CC"),
+            band("Very Large", 0, 1500, "^xC100FF"),
+            band("Variable", 650, 950, "^xD35400"),
+            band("Variable", 800, 1100, "^x66FFCC"),
+            band("Variable", 950, 1250, "^x2222CC"),
+            band("Variable", 1100, 1400, "^xC100FF"),
+            band("Variable", 1250, 1550, "^x0B9300"),
+            band("Variable", 1400, 1700, "^xFFCC00"),
+            band("Variable", 1650, 1950, "^xFF6600"),
+            band("Variable", 1800, 2100, "^x0099FF"),
+        ];
+        Self {
+            // `Data/Misc.lua:36` PassiveTreeJewelDistanceMultiplier（GameConstants.dat）。
+            distance_multiplier: 1.2,
+            tree_versions: BTreeMap::from([("0_1".to_string(), bands)]),
+        }
+    }
+}
+
 /// 一个环形档位（对应 PoB2 `data.jewelRadii` 的一行）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JewelRadiusBandDef {
@@ -48,4 +92,31 @@ pub struct JewelRadiusBandDef {
     pub outer: u32,
     /// UI 高亮颜色码（PoB2 `col` 字段，`^xRRGGBB` 格式）。vendor-only 展示字段。
     pub colour: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JewelRadiiDef;
+
+    /// Default fallback 结构抽查（完整逐值对照：pobr-tree 旧常量见
+    /// `pobr-tree/tests/radius_jewel.rs`，JSON 全等见
+    /// `pobr-gamedata/tests/load_jewel_radii.rs`）。
+    #[test]
+    fn default_has_vendor_zero_one_table() {
+        let def = JewelRadiiDef::default();
+        assert_eq!(def.distance_multiplier, 1.2);
+        let bands = &def.tree_versions["0_1"];
+        assert_eq!(bands.len(), 12, "4 具名档 + 8 Variable 档");
+        assert_eq!(bands[0].label, "Small");
+        assert_eq!(bands[0].outer, 1000);
+        assert_eq!(bands[3].label, "Very Large");
+        assert_eq!(bands[3].outer, 1500);
+        // Variable 档环宽恒为 300（vendor 表结构性质）。
+        assert!(
+            bands
+                .iter()
+                .filter(|b| b.label == "Variable")
+                .all(|b| b.outer - b.inner == 300)
+        );
+    }
 }

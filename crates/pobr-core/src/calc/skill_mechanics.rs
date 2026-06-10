@@ -437,7 +437,8 @@ pub fn calc_cooldown(
                 cfg,
                 &[ModName::from("AdditionalCooldownUses")],
             ) as u32;
-        let (cd, rounded) = finalize_cooldown(ov, stored_uses);
+        let (cd, rounded) =
+            finalize_cooldown(ov, stored_uses, cfg.constants.game().server_tick_seconds);
         return CooldownResult {
             base_cooldown: cooldown_base,
             recovery_rate: 1.0,
@@ -464,7 +465,11 @@ pub fn calc_cooldown(
             cfg,
             &[ModName::from("AdditionalCooldownUses")],
         ) as u32;
-    let (cd, rounded) = finalize_cooldown(raw_cd, stored_uses);
+    let (cd, rounded) = finalize_cooldown(
+        raw_cd,
+        stored_uses,
+        cfg.constants.game().server_tick_seconds,
+    );
 
     CooldownResult {
         base_cooldown: cooldown_base,
@@ -478,7 +483,7 @@ pub fn calc_cooldown(
 /// 根据储存次数决定是否取整到服务器帧，返回 `(cooldown, rounded_to_tick)`。
 ///
 /// PoB2 L340：有多次储存时不取整（`it doesn't round the cooldown value to server ticks`）。
-fn finalize_cooldown(raw_cd: f64, stored_uses: u32) -> (f64, bool) {
+fn finalize_cooldown(raw_cd: f64, stored_uses: u32, tick_seconds: f64) -> (f64, bool) {
     if raw_cd <= 0.0 {
         return (0.0, false);
     }
@@ -487,7 +492,8 @@ fn finalize_cooldown(raw_cd: f64, stored_uses: u32) -> (f64, bool) {
         (round(raw_cd), false)
     } else {
         // 向上取整到服务器帧：ceil(cd × ServerTickRate) / ServerTickRate
-        let tick_rate = 1.0 / SERVER_TICK_SECONDS;
+        // （M0-W3：tick 改由调用方自注入常量包传入，fallback == 旧 const，值不变）
+        let tick_rate = 1.0 / tick_seconds;
         let rounded = (raw_cd * tick_rate).ceil() / tick_rate;
         (round(rounded), true)
     }

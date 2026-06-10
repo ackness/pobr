@@ -25,14 +25,14 @@ use pobr_data::prelude::SERVER_TICK_SECONDS;
 
 #[test]
 fn server_tick_rate_is_inverse_of_constant() {
-    assert!((server_tick_rate() - 1.0 / SERVER_TICK_SECONDS).abs() < 1e-12);
+    assert!((server_tick_rate(SERVER_TICK_SECONDS) - 1.0 / SERVER_TICK_SECONDS).abs() < 1e-12);
     // ≈ 30.30/s。
-    assert!((server_tick_rate() - 30.303_030_303_03).abs() < 1e-6);
+    assert!((server_tick_rate(SERVER_TICK_SECONDS) - 30.303_030_303_03).abs() < 1e-6);
 }
 
 #[test]
 fn cooldown_is_rounded_up_to_server_frame() {
-    let rate = server_tick_rate();
+    let rate = server_tick_rate(SERVER_TICK_SECONDS);
     // 0.2s 冷却：ceil(0.2 × 30.303) = ceil(6.06) = 7 帧 → 7/30.303 ≈ 0.231s。
     let rounded = round_cooldown_to_tick(0.2, rate);
     assert!((rounded - 7.0 / rate).abs() < 1e-9);
@@ -42,7 +42,7 @@ fn cooldown_is_rounded_up_to_server_frame() {
 #[test]
 fn trigger_rate_cap_formula_matches_doc() {
     // cap = 1 / (ceil(cd × rate) / rate)，对照 agent-docs/triggers.md §3.1。
-    let rate = server_tick_rate();
+    let rate = server_tick_rate(SERVER_TICK_SECONDS);
     let cd = 0.3;
     let cap = trigger_rate_cap(cd, rate);
     let expected = 1.0 / round_cooldown_to_tick(cd, rate);
@@ -51,8 +51,14 @@ fn trigger_rate_cap_formula_matches_doc() {
 
 #[test]
 fn zero_cooldown_yields_zero_cap() {
-    assert_eq!(trigger_rate_cap(0.0, server_tick_rate()), 0.0);
-    assert_eq!(round_cooldown_to_tick(0.0, server_tick_rate()), 0.0);
+    assert_eq!(
+        trigger_rate_cap(0.0, server_tick_rate(SERVER_TICK_SECONDS)),
+        0.0
+    );
+    assert_eq!(
+        round_cooldown_to_tick(0.0, server_tick_rate(SERVER_TICK_SECONDS)),
+        0.0
+    );
 }
 
 #[test]
@@ -79,7 +85,7 @@ fn zero_icdr_falls_back_to_raw_trigger_cd() {
 #[test]
 fn skill_trigger_rate_is_min_of_cap_and_source() {
     // 双门控：源速率 1.5/s 低于上限 → 实际速率被源门控。
-    let r = resolve_trigger_rate(0.15, 0.0, 1.0, 1.5);
+    let r = resolve_trigger_rate(0.15, 0.0, 1.0, 1.5, SERVER_TICK_SECONDS);
     assert!(r.limited_by_source);
     assert!((r.skill_trigger_rate - 1.5).abs() < 1e-6);
     assert!(r.trigger_rate_cap > 1.5);
@@ -88,15 +94,15 @@ fn skill_trigger_rate_is_min_of_cap_and_source() {
 #[test]
 fn fast_source_is_capped_by_rate_cap() {
     // 源速率 50/s 高于上限 → 实际速率 = 上限。
-    let r = resolve_trigger_rate(0.3, 0.0, 1.0, 50.0);
+    let r = resolve_trigger_rate(0.3, 0.0, 1.0, 50.0, SERVER_TICK_SECONDS);
     assert!(!r.limited_by_source);
     assert!((r.skill_trigger_rate - r.trigger_rate_cap).abs() < 1e-9);
 }
 
 #[test]
 fn rate_cap_cooldown_is_frame_aligned() {
-    let rate = server_tick_rate();
-    let r = resolve_trigger_rate(0.25, 0.0, 1.0, 100.0);
+    let rate = server_tick_rate(SERVER_TICK_SECONDS);
+    let r = resolve_trigger_rate(0.25, 0.0, 1.0, 100.0, SERVER_TICK_SECONDS);
     // rate_cap_cooldown 应为帧对齐值，且 cap = 1/它。
     assert!((r.rate_cap_cooldown - round_cooldown_to_tick(0.25, rate)).abs() < 1e-9);
     assert!((r.trigger_rate_cap - 1.0 / r.rate_cap_cooldown).abs() < 1e-6);
@@ -105,8 +111,8 @@ fn rate_cap_cooldown_is_frame_aligned() {
 #[test]
 fn higher_icdr_raises_trigger_rate_cap() {
     // ICDR 越高 → 冷却越短 → 上限越高（单调）。
-    let low = resolve_trigger_rate(0.5, 0.0, 1.0, 100.0);
-    let high = resolve_trigger_rate(0.5, 0.0, 2.0, 100.0);
+    let low = resolve_trigger_rate(0.5, 0.0, 1.0, 100.0, SERVER_TICK_SECONDS);
+    let high = resolve_trigger_rate(0.5, 0.0, 2.0, 100.0, SERVER_TICK_SECONDS);
     assert!(high.trigger_rate_cap > low.trigger_rate_cap);
 }
 
@@ -192,6 +198,7 @@ fn energy_trigger_rate_capped_by_cooldown() {
         0.5,  // 触发宝石冷却 0.5s → cap ≈ 2/s
         0.0,
         1.0,
+        SERVER_TICK_SECONDS,
     );
     assert!(r.limited_by_cooldown, "should be limited by cooldown");
     assert!(r.effective_trigger_rate <= r.cooldown_rate_cap + 1e-6);
@@ -211,6 +218,7 @@ fn energy_trigger_rate_zero_when_no_spells() {
         0.3,
         0.0,
         1.0,
+        SERVER_TICK_SECONDS,
     );
     assert_eq!(r.max_energy, 0.0);
     assert_eq!(r.effective_trigger_rate, 0.0);
@@ -231,6 +239,7 @@ fn energy_trigger_rate_monotone_with_source_rate() {
         0.5,
         0.0,
         1.0,
+        SERVER_TICK_SECONDS,
     );
     let r_high = calc_energy_trigger_rate(
         &spells,
@@ -243,6 +252,7 @@ fn energy_trigger_rate_monotone_with_source_rate() {
         0.5,
         0.0,
         1.0,
+        SERVER_TICK_SECONDS,
     );
     assert!(r_high.effective_trigger_rate >= r_low.effective_trigger_rate);
 }
@@ -257,7 +267,7 @@ fn energy_trigger_rate_monotone_with_source_rate() {
 fn single_skill_rate_approaches_source_rate() {
     // 0.1s 冷却 < 0.25s 触发间隔（4/s）→ 每次机会都能触发，速率≈4/s。
     let skill = RotationSkill::new(0.1);
-    let result = calc_multi_spell_rotation(&[skill], 4.0);
+    let result = calc_multi_spell_rotation(&[skill], 4.0, SERVER_TICK_SECONDS);
     assert!(!result.rates.is_empty());
     // 速率应接近 source_rate（不超过）。
     assert!(result.rates[0] > 3.0);
@@ -271,7 +281,7 @@ fn two_skills_total_rate_bounded_by_source() {
     let a = RotationSkill::new(0.5);
     let b = RotationSkill::new(0.5);
     let source_rate = 4.0;
-    let result = calc_multi_spell_rotation(&[a, b], source_rate);
+    let result = calc_multi_spell_rotation(&[a, b], source_rate, SERVER_TICK_SECONDS);
     let total: f64 = result.rates.iter().sum();
     assert!(
         total <= source_rate + 1e-6,
@@ -285,7 +295,7 @@ fn two_skills_total_rate_bounded_by_source() {
 #[test]
 fn long_cooldown_causes_high_waste_fraction() {
     let skills: Vec<RotationSkill> = (0..3).map(|_| RotationSkill::new(8.0)).collect();
-    let result = calc_multi_spell_rotation(&skills, 8.0);
+    let result = calc_multi_spell_rotation(&skills, 8.0, SERVER_TICK_SECONDS);
     assert!(
         result.wasted_fraction > 0.4,
         "wasted={}",
@@ -299,8 +309,8 @@ fn long_cooldown_causes_high_waste_fraction() {
 fn lower_trigger_chance_reduces_effective_rate() {
     let full = RotationSkill::new(0.3).with_trigger_chance(1.0);
     let half = RotationSkill::new(0.3).with_trigger_chance(0.5);
-    let r_full = calc_multi_spell_rotation(&[full], 4.0);
-    let r_half = calc_multi_spell_rotation(&[half], 4.0);
+    let r_full = calc_multi_spell_rotation(&[full], 4.0, SERVER_TICK_SECONDS);
+    let r_half = calc_multi_spell_rotation(&[half], 4.0, SERVER_TICK_SECONDS);
     assert!(
         r_half.rates[0] < r_full.rates[0],
         "half={} full={}",
@@ -315,17 +325,17 @@ fn lower_trigger_chance_reduces_effective_rate() {
 fn added_cooldown_slows_rotation_rate() {
     let no_add = RotationSkill::new(0.3).with_added_cooldown(0.0);
     let with_add = RotationSkill::new(0.3).with_added_cooldown(1.0);
-    let r_no = calc_multi_spell_rotation(&[no_add], 5.0);
-    let r_with = calc_multi_spell_rotation(&[with_add], 5.0);
+    let r_no = calc_multi_spell_rotation(&[no_add], 5.0, SERVER_TICK_SECONDS);
+    let r_with = calc_multi_spell_rotation(&[with_add], 5.0, SERVER_TICK_SECONDS);
     assert!(r_with.rates[0] <= r_no.rates[0] + 1e-6);
 }
 
 /// 空轮转 / 零源速率应返回空结果，不 panic。
 #[test]
 fn rotation_edge_cases_no_panic() {
-    let empty = calc_multi_spell_rotation(&[], 5.0);
+    let empty = calc_multi_spell_rotation(&[], 5.0, SERVER_TICK_SECONDS);
     assert!(empty.rates.is_empty());
-    let zero = calc_multi_spell_rotation(&[RotationSkill::new(0.3)], 0.0);
+    let zero = calc_multi_spell_rotation(&[RotationSkill::new(0.3)], 0.0, SERVER_TICK_SECONDS);
     assert!(zero.rates.is_empty() || zero.rates.iter().all(|&r| r == 0.0));
 }
 
@@ -335,8 +345,8 @@ fn more_skills_dilute_individual_rates() {
     let skills_1 = [RotationSkill::new(0.5)];
     let skills_2 = [RotationSkill::new(0.5), RotationSkill::new(0.5)];
     let source_rate = 4.0;
-    let r1 = calc_multi_spell_rotation(&skills_1, source_rate);
-    let r2 = calc_multi_spell_rotation(&skills_2, source_rate);
+    let r1 = calc_multi_spell_rotation(&skills_1, source_rate, SERVER_TICK_SECONDS);
+    let r2 = calc_multi_spell_rotation(&skills_2, source_rate, SERVER_TICK_SECONDS);
     // 单技能速率 ≥ 双技能中任意一个的速率（资源稀释）。
     assert!(r1.rates[0] >= r2.rates[0] - 1e-6);
 }
@@ -349,8 +359,8 @@ fn more_skills_dilute_individual_rates() {
 /// 出处：agent-docs/triggers.md §4.2；PoB2 CWCHandler `adjTriggerInterval`。
 #[test]
 fn cwc_adjusted_interval_is_frame_aligned() {
-    let tick_rate = server_tick_rate();
-    let r = calc_cwc_trigger_rate(0.25, 0.0, 0.0, 1.0);
+    let tick_rate = server_tick_rate(SERVER_TICK_SECONDS);
+    let r = calc_cwc_trigger_rate(0.25, 0.0, 0.0, 1.0, SERVER_TICK_SECONDS);
     let expected_interval = round_cooldown_to_tick(0.25, tick_rate);
     assert!((r.adjusted_trigger_interval - expected_interval).abs() < 1e-9);
     assert!((r.channelling_trigger_rate - 1.0 / expected_interval).abs() < 1e-6);
@@ -360,7 +370,7 @@ fn cwc_adjusted_interval_is_frame_aligned() {
 /// 出处：agent-docs/triggers.md §4.2 `TriggerRateCap = min(1/effCDTriggeredSkill, triggerRateOfTrigger)`。
 #[test]
 fn cwc_triggered_cd_limits_rate_when_long() {
-    let r = calc_cwc_trigger_rate(0.1, 0.8, 0.0, 1.0);
+    let r = calc_cwc_trigger_rate(0.1, 0.8, 0.0, 1.0, SERVER_TICK_SECONDS);
     assert!(
         r.limited_by_triggered_cd,
         "triggered_cd=0.8 > triggerTime=0.1 → should limit"
@@ -371,8 +381,8 @@ fn cwc_triggered_cd_limits_rate_when_long() {
 /// ICDR 提高 CWC 触发速率上限（缩短被触发技能有效冷却）。
 #[test]
 fn cwc_icdr_reduces_effective_triggered_cd() {
-    let r_no_icdr = calc_cwc_trigger_rate(0.2, 0.6, 0.0, 1.0);
-    let r_icdr2 = calc_cwc_trigger_rate(0.2, 0.6, 0.0, 2.0);
+    let r_no_icdr = calc_cwc_trigger_rate(0.2, 0.6, 0.0, 1.0, SERVER_TICK_SECONDS);
+    let r_icdr2 = calc_cwc_trigger_rate(0.2, 0.6, 0.0, 2.0, SERVER_TICK_SECONDS);
     // ICDR=2 → effective_cd = 0.6/2 = 0.3 < 0.6。
     assert!(r_icdr2.effective_triggered_cd < r_no_icdr.effective_triggered_cd);
     assert!(r_icdr2.trigger_rate_cap >= r_no_icdr.trigger_rate_cap);
@@ -383,7 +393,7 @@ fn cwc_icdr_reduces_effective_triggered_cd() {
 #[test]
 fn cwc_adds_cast_time_raises_effective_cd() {
     // triggered_cd=0.2, adds_cast_time=0.5 → max(0.2, 0.5)=0.5 → effective_cd=0.5/icdr=0.5。
-    let r = calc_cwc_trigger_rate(0.1, 0.2, 0.5, 1.0);
+    let r = calc_cwc_trigger_rate(0.1, 0.2, 0.5, 1.0, SERVER_TICK_SECONDS);
     assert!(
         (r.effective_triggered_cd - 0.5).abs() < 1e-6,
         "effective_cd={}",
@@ -415,9 +425,10 @@ fn spell_cast_time_to_cooldown_no_bonus() {
 /// 出处：agent-docs/triggers.md §对 pobr 实现的启示 #5。
 #[test]
 fn trace_cooldown_trigger_result_matches_non_traced() {
-    let expected = resolve_trigger_rate(0.3, 0.5, 1.5, 4.0);
+    let expected = resolve_trigger_rate(0.3, 0.5, 1.5, 4.0, SERVER_TICK_SECONDS);
     let mut trace = TraceGraph::new();
-    let (result, rate_node) = resolve_trigger_rate_traced(0.3, 0.5, 1.5, 4.0, &mut trace);
+    let (result, rate_node) =
+        resolve_trigger_rate_traced(0.3, 0.5, 1.5, 4.0, SERVER_TICK_SECONDS, &mut trace);
     // traced 版本与非 traced 版本数值一致。
     assert!((result.skill_trigger_rate - expected.skill_trigger_rate).abs() < 1e-9);
     let node = trace.node(rate_node).unwrap();
@@ -446,6 +457,7 @@ fn trace_energy_trigger_result_matches_non_traced() {
         0.3,
         0.0,
         1.0,
+        SERVER_TICK_SECONDS,
         &mut trace,
     );
     let n = trace.node(node).unwrap();
@@ -457,7 +469,8 @@ fn trace_energy_trigger_result_matches_non_traced() {
 #[test]
 fn trace_cwc_trigger_result_matches_non_traced() {
     let mut trace = TraceGraph::new();
-    let (result, node) = calc_cwc_trigger_rate_traced(0.3, 0.5, 0.2, 1.5, &mut trace);
+    let (result, node) =
+        calc_cwc_trigger_rate_traced(0.3, 0.5, 0.2, 1.5, SERVER_TICK_SECONDS, &mut trace);
     let n = trace.node(node).unwrap();
     assert!((n.value - result.trigger_rate_cap).abs() < 1e-9);
     assert!(trace.nodes().len() >= 4);
@@ -469,7 +482,8 @@ fn trace_cwc_trigger_result_matches_non_traced() {
 #[test]
 fn trace_source_ancestors_reachable_from_rate_node() {
     let mut trace = TraceGraph::new();
-    let (_result, rate_node) = resolve_trigger_rate_traced(0.3, 0.0, 1.0, 4.0, &mut trace);
+    let (_result, rate_node) =
+        resolve_trigger_rate_traced(0.3, 0.0, 1.0, 4.0, SERVER_TICK_SECONDS, &mut trace);
     let ancestors = trace.source_ancestors(rate_node);
     // 至少有 trigger_cd、source_rate 两个 SourceId 节点。
     assert!(

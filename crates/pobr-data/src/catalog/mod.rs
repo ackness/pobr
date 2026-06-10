@@ -29,11 +29,17 @@ pub mod non_damaging_ailments;
 pub mod unarmed_data;
 pub mod weapon_types;
 
+// ---- M0-W3 注入管道：calc 消费的运行时常量包 ----
+pub mod runtime;
+
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};
+pub use runtime::RuntimeConstants;
 pub use skills::{
     CostTypeDef, GrantedEffectDef, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
     SkillStatSetLevel,
 };
 pub use tree::{PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
+pub use unarmed_data::{UnarmedDataTable, UnarmedWeaponDef};
+pub use weapon_types::{WeaponTypeDef, WeaponTypeTable};

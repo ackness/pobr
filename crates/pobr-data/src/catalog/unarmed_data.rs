@@ -43,3 +43,61 @@ pub struct UnarmedWeaponDef {
     /// `class_name` match 一致）。
     pub physical_max: f64,
 }
+
+/// 空手基底全表（[`crate::catalog::RuntimeConstants`] 的注入域，M0-W3 注入管道）。
+///
+/// `#[serde(transparent)]`：JSON 形状与 `base/unarmed_data.json`（数组）一致。
+/// `Default` = fallback 全表（与 JSON 逐值相等，搬迁不变式）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct UnarmedDataTable(pub Vec<UnarmedWeaponDef>);
+
+impl Default for UnarmedDataTable {
+    fn default() -> Self {
+        Self(UnarmedWeaponDef::default_table())
+    }
+}
+
+impl UnarmedDataTable {
+    /// 按职业英文名查空手基底条目；未知职业返回 `None`（消费方回退通用值）。
+    pub fn for_class(&self, class_name: &str) -> Option<&UnarmedWeaponDef> {
+        self.0.iter().find(|e| e.class_name == class_name)
+    }
+}
+
+impl UnarmedWeaponDef {
+    /// 全表 fallback（M0-W3 注入管道）：无 GameData / 数据目录缺
+    /// `base/unarmed_data.json` 时 [`crate::catalog::RuntimeConstants`] 的默认值。
+    ///
+    /// 搬迁不变式：与 JSON 逐值相等（`pobr-gamedata` 测试锁定），数值出处 =
+    /// pobr 旧 Rust 准源 `pobr-build::calc_orchestrator::unarmed_contribution`
+    /// （该准源位于上层 crate，依赖方向不可达，故此处为带出处 doc 的字面量）+
+    /// vendor `Data.lua:554-562`（class_id / weapon_type 等 vendor-only 字段）。
+    pub fn default_table() -> Vec<Self> {
+        /// 单条目构造：weapon_type 全表 `"None"`、攻速 1.65、暴击 0.05、物理下限 2
+        /// 为全职业同值（vendor 同源），仅 class_id/职业名/物理上限逐职业不同。
+        fn entry(class_id: u32, class_name: &str, physical_max: f64) -> UnarmedWeaponDef {
+            UnarmedWeaponDef {
+                class_id,
+                class_name: class_name.to_string(),
+                weapon_type: "None".to_string(),
+                attack_rate: 1.65,
+                crit_chance: 0.05,
+                physical_min: 2.0,
+                physical_max,
+            }
+        }
+        // 按 class_id 升序（与 JSON 排序口径一致，保证 Vec 逐值相等）。
+        vec![
+            entry(0, "Scion", 6.0),
+            entry(1, "Witch", 5.0),
+            entry(2, "Ranger", 5.0),
+            entry(6, "Warrior", 8.0),
+            entry(7, "Sorceress", 5.0),
+            entry(8, "Huntress", 5.0),
+            entry(9, "Mercenary", 6.0),
+            entry(10, "Monk", 5.0),
+            entry(11, "Druid", 6.0),
+        ]
+    }
+}

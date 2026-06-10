@@ -64,15 +64,15 @@ fn poison_magnitude_scales_with_ailment_magnitude() {
 #[test]
 fn shock_effect_is_clamped_between_20_and_100_percent_poe2() {
     // 无击中 → 返回 0（不施加感电）
-    assert_eq!(shock_effect(0.0, 1000.0), 0.0);
+    assert_eq!(shock_effect(0.0, 1000.0, SHOCK_MIN_EFFECT), 0.0);
     // 极大击中 → 感电上限 100%（= 1.0 fraction）
-    let huge = shock_effect(1_000_000.0, 100.0);
+    let huge = shock_effect(1_000_000.0, 100.0, SHOCK_MIN_EFFECT);
     assert_eq!(huge, 1.0);
     // 极小击中（相对阈值）→ 感电下限 20%（= 0.20 fraction）
-    let tiny = shock_effect(1.0, 1_000_000.0);
+    let tiny = shock_effect(1.0, 1_000_000.0, SHOCK_MIN_EFFECT);
     assert_eq!(tiny, 0.20);
     // 满阈值击中（ratio=1）→ 50% 感电（0.5 * 1.0^0.4 = 0.5，fraction 0.50）
-    let at_threshold = shock_effect(1000.0, 1000.0);
+    let at_threshold = shock_effect(1000.0, 1000.0, SHOCK_MIN_EFFECT);
     assert_eq!(at_threshold, 0.50);
 }
 
@@ -1041,7 +1041,7 @@ fn cross_type_source_hit_empty_components() {
 #[test]
 fn apply_dot_dps_cap_passthrough_below_cap() {
     let dps = 1_000_000.0;
-    let capped = apply_dot_dps_cap(dps);
+    let capped = apply_dot_dps_cap(dps, DOT_DPS_CAP);
     assert!(
         (capped - dps).abs() < 1.0,
         "1M DPS < cap → unchanged, got {capped}"
@@ -1055,7 +1055,7 @@ fn apply_dot_dps_cap_passthrough_below_cap() {
 fn apply_dot_dps_cap_clamps_huge_dps() {
     use pobr_data::constants::DOT_DPS_CAP;
     let dps = DOT_DPS_CAP + 1_000_000.0;
-    let capped = apply_dot_dps_cap(dps);
+    let capped = apply_dot_dps_cap(dps, DOT_DPS_CAP);
     assert!(
         (capped - DOT_DPS_CAP).abs() < 1.0,
         "huge DPS clamped to DOT_DPS_CAP={DOT_DPS_CAP}, got {capped}"
@@ -1070,7 +1070,7 @@ fn apply_dot_dps_cap_clamps_huge_dps() {
 fn apply_dot_dps_cap_ignores_moddb_dotdpscap() {
     // modDB 中即便写入低值 DotDpsCap，也不影响 cap（PoB2-faithful：始终用常量）。
     let dps = 50_000.0; // 远低于 DOT_DPS_CAP
-    let capped = apply_dot_dps_cap(dps);
+    let capped = apply_dot_dps_cap(dps, DOT_DPS_CAP);
     assert!(
         (capped - dps).abs() < 1.0,
         "50k < DOT_DPS_CAP → 原样返回（modDB DotDpsCap 不生效），got {capped}"
@@ -1089,7 +1089,7 @@ fn dps_with_effect_rate_cap_applies_cap() {
     let effect_mod = 2.0; // × 2.0 → 120% of cap → 超 cap
     let rate_mod = 1.0;
 
-    let result = dps_with_effect_rate_cap(base_dps, effect_mod, rate_mod);
+    let result = dps_with_effect_rate_cap(base_dps, effect_mod, rate_mod, DOT_DPS_CAP);
     assert!(
         (result - DOT_DPS_CAP).abs() < 1.0,
         "base × 2.0 exceeds cap → clamped to DOT_DPS_CAP, got {result}"
@@ -1106,7 +1106,8 @@ fn dps_with_effect_rate_cap_traced_adds_cap_node_when_truncated() {
 
     // 超 cap 的情况
     let base_dps = DOT_DPS_CAP * 0.7;
-    let (result, node) = dps_with_effect_rate_cap_traced(base_dps, 2.0, 1.0, "Ignite", &mut trace);
+    let (result, node) =
+        dps_with_effect_rate_cap_traced(base_dps, 2.0, 1.0, DOT_DPS_CAP, "Ignite", &mut trace);
 
     // 结果截断到 cap
     assert!(
@@ -1126,7 +1127,7 @@ fn dps_with_effect_rate_cap_traced_no_cap_node_when_not_truncated() {
     let mut trace = TraceGraph::new();
 
     // 很小的 base_dps，不会超 cap
-    let (_, _) = dps_with_effect_rate_cap_traced(100.0, 1.0, 1.0, "Bleed", &mut trace);
+    let (_, _) = dps_with_effect_rate_cap_traced(100.0, 1.0, 1.0, DOT_DPS_CAP, "Bleed", &mut trace);
 
     let has_cap = trace.nodes().iter().any(|n| n.label.contains("DotDpsCap"));
     assert!(!has_cap, "no cap node when DPS is below DOT_DPS_CAP");

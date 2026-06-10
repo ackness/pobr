@@ -67,3 +67,47 @@ pub struct CharacterConstantsDef {
     /// 每等级智力（vendor-only：`Data/Misc.lua:159` `intelligence_per_level = 0`）。
     pub intelligence_per_level: f64,
 }
+
+// ---------------------------------------------------------------------------
+// Default = fallback 值（M0-W3 注入管道，架构文档 20 §1 P8/P9）
+//
+// 语义：`Default` 即「无 GameData 注入时的回退常量集」，必须与
+// `data/<版本>/base/character_constants.json` 逐值相等。
+//
+// 准源说明：本域准源是 `pobr-core/src/character.rs` 的 10 个私有常量，但依赖
+// 方向（pobr-core → pobr-data）不允许在此反向引用，故以字面量落值、逐字段注明
+// 准源常量名；逐值锁定由 `pobr-core/src/character.rs` 的
+// `default_constants_match_legacy_character_source` 测试承担（准源若改值即红）。
+// vendor-only 三个 per-level 字段（pobr 旧 Rust 无此值）出处见各字段 doc。
+// ---------------------------------------------------------------------------
+
+impl Default for CharacterConstantsDef {
+    fn default() -> Self {
+        Self {
+            // 准源 character.rs::BASE_LIFE_CONSTANT。
+            base_life_constant: 16.0,
+            // 准源 character.rs::LIFE_PER_LEVEL。
+            life_per_level: 12.0,
+            // 准源 character.rs::LIFE_PER_STRENGTH。
+            life_per_strength: 2.0,
+            // 准源 character.rs::BASE_MANA_CONSTANT。
+            base_mana_constant: 30.0,
+            // 准源 character.rs::MANA_PER_LEVEL。
+            mana_per_level: 4.0,
+            // 准源 character.rs::MANA_PER_INTELLIGENCE。
+            mana_per_intelligence: 2.0,
+            // 准源 character.rs::BASE_ACCURACY_CONSTANT。
+            base_accuracy_constant: -6.0,
+            // 准源 character.rs::ACCURACY_PER_LEVEL。
+            accuracy_per_level: 6.0,
+            // 准源 character.rs::ACCURACY_PER_DEXTERITY。
+            accuracy_per_dexterity: 6.0,
+            // 准源 character.rs::BASE_EVASION。
+            base_evasion: 7.0,
+            // vendor-only（Data/Misc.lua:157-159，per-level 属性当前均为 0）。
+            strength_per_level: 0.0,
+            dexterity_per_level: 0.0,
+            intelligence_per_level: 0.0,
+        }
+    }
+}

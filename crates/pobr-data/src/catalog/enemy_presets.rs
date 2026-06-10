@@ -43,6 +43,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::monster::{EnemyTier, MAX_ENEMY_LEVEL, MONSTER_BASE_CRIT_DAMAGE_BONUS};
+
 /// 以「偏移 + 分子/分母」表达的精确 f64 值：`value = base + num / den`。
 ///
 /// 两个动机：
@@ -91,6 +93,39 @@ pub struct EnemyPresetsTable {
     /// 四档预设，顺序固定 None → Boss → Pinnacle → Uber
     /// （与 vendor list 顺序及 pobr `EnemyTier` 枚举序一致）。
     pub tiers: Vec<EnemyTierPreset>,
+}
+
+impl EnemyPresetsTable {
+    /// 按档位稳定 ID 查预设（`None`/`Boss`/`Pinnacle`/`Uber`，与
+    /// [`EnemyTier`] 变体名一致）。损坏/缺档数据返回 `None`（消费方自行回退）。
+    pub fn tier(&self, id: &str) -> Option<&EnemyTierPreset> {
+        self.tiers.iter().find(|p| p.id == id)
+    }
+
+    /// 按 [`EnemyTier`] 枚举查预设（`tier(枚举 Debug 名)` 的便捷封装）。
+    pub fn tier_for(&self, tier: EnemyTier) -> Option<&EnemyTierPreset> {
+        let id = match tier {
+            EnemyTier::None => "None",
+            EnemyTier::Boss => "Boss",
+            EnemyTier::Pinnacle => "Pinnacle",
+            EnemyTier::Uber => "Uber",
+        };
+        self.tier(id)
+    }
+}
+
+impl EnemyTierPreset {
+    /// 从 `enemy_mods` 提取 `DamageTaken MORE` 值（Uber = -70，其余档无此条 → 0）。
+    ///
+    /// 与旧 Rust 准源 `EnemyTier::damage_taken_more()` 逐值相等
+    /// （`load_enemy_presets.rs::uber_damage_taken_matches_rust_source` 已锁）。
+    pub fn damage_taken_more(&self) -> f64 {
+        self.enemy_mods
+            .iter()
+            .find(|m| m.name == "DamageTaken" && m.mod_type == "MORE")
+            .map(|m| m.value)
+            .unwrap_or(0.0)
+    }
 }
 
 /// 单个敌人档位预设（`enemyIsBoss` 的一档）。
@@ -149,4 +184,284 @@ pub struct EnemyPresetMod {
     /// pobr 已实现条目按 `setup_env.rs` 现状落值，vendor-only 条目按 vendor 落值
     /// （两侧门控口径差异见模块 doc TODO）。
     pub effective_only: bool,
+}
+
+/// `Default` 构造用：拼一条档位 mod。
+fn preset_mod(
+    name: &str,
+    mod_type: &str,
+    value: f64,
+    source_label: &str,
+    effective_only: bool,
+) -> EnemyPresetMod {
+    EnemyPresetMod {
+        name: name.into(),
+        mod_type: mod_type.into(),
+        value,
+        source_label: source_label.into(),
+        effective_only,
+    }
+}
+
+/// Boss/Pinnacle/Uber 三档共通 enemy mod 组（顺序与 `base/enemy_presets.json` 一致）：
+/// - Curse/Exposure/Slow `MORE -50`（pobr `setup_env.rs` 已注入，Effective 门控）；
+/// - Knockback `MORE -75`、MinimumMovementSpeed `BASE 20`（vendor-only，
+///   ConfigOptions.lua L2002/L2004 等）；
+/// - `uber_damage_taken`：Uber 专属 `DamageTaken MORE -70`（pobr
+///   `EnemyTier::damage_taken_more()`；vendor L2087）；
+/// - `PoiseThreshold MORE 500`（pobr 注入，无门控——pobr 现状口径，见模块 doc TODO）
+///   + 档位附加 poise 条目（Boss=213 "Map Boss" / Pinnacle/Uber=838 "Xesht"，vendor-only）。
+fn boss_enemy_mods(uber_damage_taken: bool, extra_poise: (f64, &str)) -> Vec<EnemyPresetMod> {
+    let mut mods = vec![
+        preset_mod("CurseEffectOnSelf", "MORE", -50.0, "Unique", true),
+        preset_mod("ExposureEffectOnSelf", "MORE", -50.0, "Unique", true),
+        preset_mod("KnockbackDistanceOnSelf", "MORE", -75.0, "Unique", true),
+        preset_mod("SlowEffectOnSelf", "MORE", -50.0, "Unique", true),
+        preset_mod("MinimumMovementSpeed", "BASE", 20.0, "Unique", true),
+    ];
+    if uber_damage_taken {
+        mods.push(preset_mod(
+            "DamageTaken",
+            "MORE",
+            EnemyTier::Uber.damage_taken_more(),
+            "Boss",
+            false,
+        ));
+    }
+    mods.push(preset_mod("PoiseThreshold", "MORE", 500.0, "Unique", false));
+    let (value, label) = extra_poise;
+    mods.push(preset_mod("PoiseThreshold", "MORE", value, label, true));
+    mods
+}
+
+/// Boss/Pinnacle/Uber 三档共通 player mod 组（vendor-only，L2007-2008 等）。
+fn boss_player_mods() -> Vec<EnemyPresetMod> {
+    vec![
+        preset_mod("WarcryPower", "BASE", 20.0, "Boss", false),
+        preset_mod("Multiplier:EnemyPower", "BASE", 20.0, "Boss", false),
+    ]
+}
+
+/// `Default` 构造用：单档预设骨架（pobr 准源标量引用 [`EnemyTier`] 各方法，
+/// 零字面量复制；ExactRatio 分量为 vendor 分数书写形，与 JSON 同构）。
+#[allow(clippy::too_many_arguments)]
+fn tier_preset(
+    tier: EnemyTier,
+    id: &str,
+    label: &str,
+    armour_mult_pct: ExactRatio,
+    evasion_mult_pct: ExactRatio,
+    dps_mult: ExactRatio,
+    chaos_damage_div: f64,
+    enemy_mods: Vec<EnemyPresetMod>,
+    player_mods: Vec<EnemyPresetMod>,
+    conditions: &[&str],
+) -> EnemyTierPreset {
+    EnemyTierPreset {
+        id: id.into(),
+        label: label.into(),
+        is_default: tier == EnemyTier::default(),
+        min_level: tier.min_level(),
+        elemental_resist_bonus: tier.elemental_resist_bonus(),
+        chaos_resist_bonus: tier.chaos_resist_bonus(),
+        armour_mult_pct,
+        evasion_mult_pct,
+        pen: tier.pen(),
+        dps_mult,
+        chaos_damage_div,
+        enemy_mods,
+        player_mods,
+        conditions: conditions.iter().map(|c| (*c).into()).collect(),
+    }
+}
+
+/// 无加成倍率（100%；None/Boss 档护甲/闪避）。
+const RATIO_100: ExactRatio = ExactRatio {
+    base: 100.0,
+    num: 0.0,
+    den: 1.0,
+};
+
+/// fallback（无 GameData 注入时使用）：与 `base/enemy_presets.json` **逐值相等**
+/// （搬迁不变式，W2 测试已锁 JSON == Rust 准源）。
+///
+/// - pobr 准源字段引用 `crate::monster`（`MAX_ENEMY_LEVEL` /
+///   `MONSTER_BASE_CRIT_DAMAGE_BONUS` / [`EnemyTier`] 各方法）；
+/// - ExactRatio 分量为 vendor 分数书写形（`1/4.40`、`100 + 1100/22` 等，
+///   见 [`ExactRatio`] doc——`value()` 与旧 const 逐 bit 相等）；
+/// - vendor-only 字段（speed/crit 占位、chaos_damage_div、Knockback/MMS/
+///   附加 Poise/player_mods）字面量抄录自 ConfigOptions.lua（行号见各处 doc）。
+impl Default for EnemyPresetsTable {
+    fn default() -> Self {
+        Self {
+            max_enemy_level: MAX_ENEMY_LEVEL,
+            // pobr 准源：`EnemyTierDefaults::compute` 内联 `damage * 1.5 * dps_mult` 的 1.5。
+            ehp_base_damage_mult: 1.5,
+            // vendor-only：ConfigOptions.lua L1965 / L1966 占位。
+            default_enemy_speed: 700.0,
+            default_enemy_crit_chance: 5.0,
+            default_enemy_crit_damage_bonus: MONSTER_BASE_CRIT_DAMAGE_BONUS,
+            tiers: vec![
+                tier_preset(
+                    EnemyTier::None,
+                    "None",
+                    "No",
+                    RATIO_100,
+                    RATIO_100,
+                    // normalEnemyDPSMult = 1/4.40
+                    ExactRatio {
+                        base: 0.0,
+                        num: 1.0,
+                        den: 4.4,
+                    },
+                    2.5,
+                    Vec::new(),
+                    Vec::new(),
+                    &[],
+                ),
+                tier_preset(
+                    EnemyTier::Boss,
+                    "Boss",
+                    "Standard Boss",
+                    RATIO_100,
+                    RATIO_100,
+                    // stdBossDPSMult = 4/4.40
+                    ExactRatio {
+                        base: 0.0,
+                        num: 4.0,
+                        den: 4.4,
+                    },
+                    2.5,
+                    boss_enemy_mods(false, (213.0, "Map Boss")),
+                    boss_player_mods(),
+                    &["Unique", "RareOrUnique"],
+                ),
+                tier_preset(
+                    EnemyTier::Pinnacle,
+                    "Pinnacle",
+                    "Guardian/Pinnacle Boss",
+                    // PinnacleArmourMean = 100 + 1100/22（推导见 monster.rs 常量注释）
+                    ExactRatio {
+                        base: 100.0,
+                        num: 1100.0,
+                        den: 22.0,
+                    },
+                    // PinnacleEvasionMean = 100 + 548/22
+                    ExactRatio {
+                        base: 100.0,
+                        num: 548.0,
+                        den: 22.0,
+                    },
+                    // pinnacleBossDPSMult = 8/4.40
+                    ExactRatio {
+                        base: 0.0,
+                        num: 8.0,
+                        den: 4.4,
+                    },
+                    2.5,
+                    boss_enemy_mods(false, (838.0, "Xesht")),
+                    boss_player_mods(),
+                    &["Unique", "RareOrUnique", "PinnacleBoss"],
+                ),
+                tier_preset(
+                    EnemyTier::Uber,
+                    "Uber",
+                    "Uber Pinnacle Boss",
+                    // UberArmourMean = 100 + 175/7
+                    ExactRatio {
+                        base: 100.0,
+                        num: 175.0,
+                        den: 7.0,
+                    },
+                    // UberEvasionMean = 100 + 116/7
+                    ExactRatio {
+                        base: 100.0,
+                        num: 116.0,
+                        den: 7.0,
+                    },
+                    // uberBossDPSMult = 10/4.25
+                    ExactRatio {
+                        base: 0.0,
+                        num: 10.0,
+                        den: 4.25,
+                    },
+                    4.0,
+                    boss_enemy_mods(true, (838.0, "Xesht")),
+                    boss_player_mods(),
+                    &["Unique", "RareOrUnique", "PinnacleBoss"],
+                ),
+            ],
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// fallback 不变式：Default 各档标量与旧 Rust 准源（`EnemyTier` 各方法）逐值相等，
+    /// ExactRatio `value()` 与旧 const 逐 bit 相等
+    /// （Default == JSON 的完整对照在 `pobr-gamedata` ruleset 测试）。
+    #[test]
+    fn default_tier_scalars_match_enemy_tier_methods() {
+        let t = EnemyPresetsTable::default();
+        assert_eq!(t.max_enemy_level, MAX_ENEMY_LEVEL);
+        assert_eq!(
+            t.default_enemy_crit_damage_bonus,
+            MONSTER_BASE_CRIT_DAMAGE_BONUS
+        );
+        for tier in [
+            EnemyTier::None,
+            EnemyTier::Boss,
+            EnemyTier::Pinnacle,
+            EnemyTier::Uber,
+        ] {
+            let p = t.tier_for(tier).expect("四档齐全");
+            assert_eq!(p.min_level, tier.min_level(), "{tier:?} min_level");
+            assert_eq!(
+                p.elemental_resist_bonus,
+                tier.elemental_resist_bonus(),
+                "{tier:?} elemental_resist_bonus"
+            );
+            assert_eq!(
+                p.chaos_resist_bonus,
+                tier.chaos_resist_bonus(),
+                "{tier:?} chaos_resist_bonus"
+            );
+            assert_eq!(
+                p.armour_mult_pct.value(),
+                tier.armour_mult_pct(),
+                "{tier:?} armour_mult_pct 逐 bit"
+            );
+            assert_eq!(
+                p.evasion_mult_pct.value(),
+                tier.evasion_mult_pct(),
+                "{tier:?} evasion_mult_pct 逐 bit"
+            );
+            assert_eq!(p.pen, tier.pen(), "{tier:?} pen");
+            assert_eq!(
+                p.dps_mult.value(),
+                tier.dps_mult(),
+                "{tier:?} dps_mult 逐 bit"
+            );
+            assert_eq!(
+                p.damage_taken_more(),
+                tier.damage_taken_more(),
+                "{tier:?} damage_taken_more"
+            );
+            assert_eq!(
+                p.is_default,
+                tier == EnemyTier::default(),
+                "{tier:?} 默认位"
+            );
+        }
+    }
+
+    /// Default 档位顺序与 vendor list / `EnemyTier` 枚举序一致。
+    #[test]
+    fn default_tiers_in_canonical_order() {
+        let t = EnemyPresetsTable::default();
+        let ids: Vec<&str> = t.tiers.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(ids, ["None", "Boss", "Pinnacle", "Uber"]);
+    }
 }

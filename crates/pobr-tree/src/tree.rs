@@ -10,7 +10,10 @@ use pobr_data::prelude::*;
 
 use crate::error::TreeError;
 use crate::node::{AllocatedNodeMods, collect_allocated_mods};
-use crate::radius_jewel::{JewelRadius, RadiusJewelEffect, compute_radius_jewel_effect};
+use crate::radius_jewel::{
+    JewelRadius, RadiusJewelEffect, compute_radius_jewel_effect,
+    compute_radius_jewel_effect_with_radii,
+};
 
 /// 天赋树：按节点 `skill` id（`u32`）索引的节点拓扑。
 ///
@@ -100,6 +103,9 @@ impl PassiveTree {
     }
 
     /// 计算挂在 `socket` 上的 radius jewel 影响范围（依赖已注入的 `positions`）。
+    ///
+    /// **fallback 入口**（档位半径走 `Default` 数据，与 JSON 逐值相等）；
+    /// 数据注入路径见 [`PassiveTree::radius_jewel_effect_with_radii`]。
     pub fn radius_jewel_effect(
         &self,
         socket: NodeId,
@@ -107,5 +113,25 @@ impl PassiveTree {
         jewel_mod_texts: Vec<String>,
     ) -> Result<RadiusJewelEffect, TreeError> {
         compute_radius_jewel_effect(socket.0, radius, &self.positions, jewel_mod_texts)
+    }
+
+    /// 计算挂在 `socket` 上的 radius jewel 影响范围（数据注入版）。
+    ///
+    /// 档位有效半径由注入的 `radii`（`base/jewel_radii.json`）解析，
+    /// 见 [`compute_radius_jewel_effect_with_radii`]。
+    pub fn radius_jewel_effect_with_radii(
+        &self,
+        socket: NodeId,
+        radius: JewelRadius,
+        radii: &pobr_data::catalog::jewel_radii::JewelRadiiDef,
+        jewel_mod_texts: Vec<String>,
+    ) -> Result<RadiusJewelEffect, TreeError> {
+        compute_radius_jewel_effect_with_radii(
+            socket.0,
+            radius,
+            radii,
+            &self.positions,
+            jewel_mod_texts,
+        )
     }
 }

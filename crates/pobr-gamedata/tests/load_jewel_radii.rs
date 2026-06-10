@@ -28,6 +28,18 @@ fn named_band<'a>(def: &'a JewelRadiiDef, label: &str) -> &'a JewelRadiusBandDef
         .unwrap_or_else(|| panic!("存在 {label} 档"))
 }
 
+/// 搬迁不变式（M0-W3 注入）：`JewelRadiiDef::default()`（注入缺失时的 fallback）
+/// 与 `base/jewel_radii.json` **全等**——保证「无数据走 Default」与「有数据走注入」
+/// 两条路径输出逐值一致。
+#[test]
+fn default_fallback_equals_loaded_json() {
+    assert_eq!(
+        load(),
+        JewelRadiiDef::default(),
+        "Default fallback 必须与 JSON 逐值相等（搬迁不变式）"
+    );
+}
+
 /// 距离乘数逐值等于 pobr-tree 准源常量（= 1.2，源 GameConstants.dat）。
 #[test]
 fn distance_multiplier_matches_pobr_tree_constant() {

@@ -1,5 +1,24 @@
 //! PoE2 怪物等级缩放表与 Boss 档位枚举。
 //!
+//! **降级说明（M0-W3，架构文档 20 §1 P8）**：本文件的**数值段**（百级表 +
+//! 倍率/均值常量 + `EnemyTierDefaults::compute` 查表路径）已从「计算数据准源」
+//! 降级为 **fallback 层**——数值准源迁移至 `data/<poe_version>/base/` 的
+//! `monster_scaling.json` + `enemy_presets.json`（schema 见
+//! [`crate::catalog::monster_scaling`] / [`crate::catalog::enemy_presets`]，
+//! W2 逐值对照测试已锁定与本文件相等）。
+//!
+//! - calc 消费侧（pobr-core `setup_env.rs` 的敌人装配）已切换为读注入的
+//!   [`crate::catalog::RuntimeConstants`]（`cfg.constants.monster_scaling` /
+//!   `.enemy_presets`），**禁止新增对本文件数值的计算路径消费方**；
+//! - 本文件保留的职责：① 为 catalog 表型 `Default`（无 GameData 时的 fallback）
+//!   提供单一数值出处（`Default` 直接引用这里的表/常量，避免字面量双权威）；
+//!   ② [`EnemyTier`] 枚举属 L4 框架语义（config 档位 ID），长期留此；
+//!   ③ 既有测试以本文件为期望值锚点（与「计算路径禁止消费」不冲突）。
+//! - 尚未切换的存量消费点（后续 wave 处理）：`perform.rs` 的异常/姿态阈值查表
+//!   （`enemy_ailment_threshold`/`enemy_poise_threshold`）、`minion.rs` 的
+//!   `MonsterScalingRow`（召唤物基线，函数签名无 cfg 通道）。
+//! - 待 M0 后续 wave 清空全部 fallback 依赖后删除数值段。
+//!
 //! 数据来源：
 //! - `src/Data/Misc.lua`（PathOfBuilding-PoE2 dev 分支）—— `data.monsterAccuracyTable` /
 //!   `data.monsterEvasionTable` / `data.monsterArmourTable` / `data.monsterLifeTable` /
