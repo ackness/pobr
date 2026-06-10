@@ -1,8 +1,15 @@
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::skill_source::{
-    ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError, SupportGemSpec, can_support,
-    ingest_active_gem, ingest_gem, ingest_gem_leveled, ingest_support_gem,
+    ActiveSkillJudgeInput, ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError,
+    SupportGemSpec, SupportJudgeInput, can_support, ingest_active_gem, ingest_gem,
+    ingest_gem_leveled, ingest_support_gem, judge_support,
 };
+use std::collections::HashSet;
+
+/// 构造主动技能类型集合（测试便捷）。
+fn type_set(types: &[&str]) -> HashSet<String> {
+    types.iter().map(|s| s.to_string()).collect()
+}
 use pobr_core::{CalcConfig, ModDb, ModTag};
 use pobr_data::prelude::*;
 
@@ -135,7 +142,7 @@ fn support_gem_mana_multiplier_injects_modifier() {
         .supporting("cleave")
         .with_mana_multiplier(40.0);
 
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     // 只有 mana multiplier modifier，无词条文本 modifier。
     assert_eq!(ingest.modifiers.len(), 1);
@@ -159,7 +166,7 @@ fn support_gem_mana_multiplier_injects_modifier() {
 fn support_gem_without_mana_multiplier_no_extra_mod() {
     let spec = SupportGemSpec::new("added_fire", ["20% increased Fire Damage"]);
 
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     // 只有一个词条 modifier，没有 SupportManaMultiplier。
     let mana_mods: Vec<_> = ingest
@@ -174,7 +181,7 @@ fn support_gem_without_mana_multiplier_no_extra_mod() {
 #[test]
 fn support_mana_multiplier_contributes_to_more_product() {
     let spec = SupportGemSpec::new("multistrike", [] as [&str; 0]).with_mana_multiplier(50.0);
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     let mut db = ModDb::new();
     db.add_list(ingest.modifiers);
@@ -197,7 +204,7 @@ fn support_more_multiplier_isolated_by_skill_types() {
     let spec = SupportGemSpec::new("brutality", ["30% more Damage"])
         .with_supported_skill_types(SkillTypes::ATTACK);
 
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     let more_mods: Vec<_> = ingest
         .modifiers
@@ -232,7 +239,7 @@ fn support_more_multiplier_isolated_by_skill_types() {
 fn support_more_multiplier_without_skill_types_tag_is_global() {
     let spec = SupportGemSpec::new("elemental_focus", ["30% more Fire Damage"]);
 
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     let more_mods: Vec<_> = ingest
         .modifiers
@@ -256,7 +263,7 @@ fn support_inc_modifier_never_gets_skill_types_tag() {
     let spec = SupportGemSpec::new("concentrated_effect", ["40% increased Fire Damage"])
         .with_supported_skill_types(SkillTypes::SPELL);
 
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     let inc_mods: Vec<_> = ingest
         .modifiers
@@ -274,49 +281,171 @@ fn support_inc_modifier_never_gets_skill_types_tag() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TODO(skill-type-gating)：兼容性门控测试
+// skill-type-gating：PoB2 四段裁决测试（CalcTools.lua:84-110）
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// can_support：空 require → 始终允许。
-#[test]
-fn can_support_empty_require_always_ok() {
-    assert!(can_support(SkillTypes::NONE, SkillTypes::NONE).is_ok());
-    assert!(can_support(SkillTypes::NONE, SkillTypes::ATTACK).is_ok());
-    assert!(can_support(SkillTypes::NONE, SkillTypes::SPELL).is_ok());
+/// 构造 require 表达式 token 流（测试便捷）。
+fn tokens(list: &[&str]) -> Vec<String> {
+    list.iter().map(|s| s.to_string()).collect()
 }
 
-/// can_support：有交集 → 允许。
-#[test]
-fn can_support_intersecting_types_ok() {
-    assert!(can_support(SkillTypes::ATTACK, SkillTypes::ATTACK).is_ok());
-    // attack | projectile 辅助支援 attack 主动（有交集）。
-    assert!(
-        can_support(
-            SkillTypes::ATTACK | SkillTypes::PROJECTILE,
-            SkillTypes::ATTACK
-        )
-        .is_ok()
-    );
+/// 默认主动侧输入：宝石授予、可被支援。
+fn active_input(types: &HashSet<String>) -> ActiveSkillJudgeInput<'_> {
+    ActiveSkillJudgeInput {
+        cannot_be_supported: false,
+        from_gem: true,
+        skill_types: types,
+    }
 }
 
-/// can_support：无交集 → 返回 IncompatibleTypes 错误。
+/// 第四段：空 require → 始终允许（无论主动技能类型集合如何）。
 #[test]
-fn can_support_disjoint_types_err() {
-    let result = can_support(SkillTypes::ATTACK, SkillTypes::SPELL);
+fn judge_support_empty_require_always_ok() {
+    let support = SupportJudgeInput::default();
+    for types in [type_set(&[]), type_set(&["Attack"]), type_set(&["Spell"])] {
+        assert!(can_support(&support, &active_input(&types)));
+    }
+}
+
+/// 第四段：require 表达式匹配 → 允许；不匹配 → IncompatibleTypes。
+/// 用真实 token 流：SupportAncestralWarriorTotemPlayer require =
+/// `["Attack","Totemable","AND"]`（后缀 AND，两者皆备才通过）。
+#[test]
+fn judge_support_require_expression() {
+    let require = tokens(&["Attack", "Totemable", "AND"]);
+    let support = SupportJudgeInput {
+        require_skill_types: &require,
+        ..SupportJudgeInput::default()
+    };
+
+    // Attack + Totemable → 匹配。
+    let both = type_set(&["Attack", "Totemable", "Melee"]);
+    assert!(judge_support(&support, &active_input(&both)).is_ok());
+
+    // 仅 Attack（缺 Totemable）→ AND 不成立 → 拒。
+    let only_attack = type_set(&["Attack"]);
     assert!(matches!(
-        result,
+        judge_support(&support, &active_input(&only_attack)),
         Err(SkillGatingError::IncompatibleTypes { .. })
     ));
 }
 
-/// ingest_support_gem 门控：require_skill_types 有效时不兼容则报错。
+/// 第三段：exclude 表达式命中 → Excluded（优先于 require 判定）。
+/// 用真实 token 流：SupportArcaneSurgePlayer exclude =
+/// `["UsedByProxy","Triggered","Persistent","HasReservation",
+///   "ReservationBecomesCost","NOT","AND"]`——栈机语义：前四项任一真即命中
+/// （残留隐式 OR），末段 `ReservationBecomesCost NOT AND` 仅约束最后一项。
+#[test]
+fn judge_support_exclude_expression_hits() {
+    let require = tokens(&["Spell"]);
+    let exclude = tokens(&[
+        "UsedByProxy",
+        "Triggered",
+        "Persistent",
+        "HasReservation",
+        "ReservationBecomesCost",
+        "NOT",
+        "AND",
+    ]);
+    let support = SupportJudgeInput {
+        require_skill_types: &require,
+        exclude_skill_types: &exclude,
+        ..SupportJudgeInput::default()
+    };
+
+    // 普通法术：不命中 exclude，require 匹配 → 通过。
+    let spell = type_set(&["Spell", "Damage"]);
+    assert!(judge_support(&support, &active_input(&spell)).is_ok());
+
+    // 触发法术：exclude 残留栈含 Triggered=true → 命中 → 拒（即使 require 也匹配）。
+    let triggered = type_set(&["Spell", "Triggered"]);
+    assert!(matches!(
+        judge_support(&support, &active_input(&triggered)),
+        Err(SkillGatingError::Excluded { .. })
+    ));
+}
+
+/// 第一段：主动效果 cannotBeSupported → 无条件拒绝（即使 support 无任何限制）。
+#[test]
+fn judge_support_cannot_be_supported_rejects_first() {
+    let support = SupportJudgeInput::default();
+    let types = type_set(&["Spell"]);
+    let active = ActiveSkillJudgeInput {
+        cannot_be_supported: true,
+        from_gem: true,
+        skill_types: &types,
+    };
+    assert_eq!(
+        judge_support(&support, &active),
+        Err(SkillGatingError::CannotBeSupported)
+    );
+}
+
+/// 第二段：supportGemsOnly 且主动技能非宝石授予 → 拒；宝石授予 → 通过。
+#[test]
+fn judge_support_support_gems_only() {
+    let support = SupportJudgeInput {
+        support_gems_only: true,
+        ..SupportJudgeInput::default()
+    };
+    let types = type_set(&["Attack"]);
+
+    // 非宝石授予（如物品授予技能）→ 拒。
+    let from_item = ActiveSkillJudgeInput {
+        cannot_be_supported: false,
+        from_gem: false,
+        skill_types: &types,
+    };
+    assert_eq!(
+        judge_support(&support, &from_item),
+        Err(SkillGatingError::SupportGemsOnly)
+    );
+
+    // 宝石授予 → 通过。
+    assert!(judge_support(&support, &active_input(&types)).is_ok());
+}
+
+/// 裁决顺序：四段按 cannotBeSupported → supportGemsOnly → exclude → require，
+/// 同时满足多个拒绝条件时报最先命中的段（对齐 CalcTools.lua:84-110 早退顺序）。
+#[test]
+fn judge_support_stage_order() {
+    let require = tokens(&["Totemable"]);
+    let exclude = tokens(&["Triggered"]);
+    let support = SupportJudgeInput {
+        support_gems_only: true,
+        exclude_skill_types: &exclude,
+        require_skill_types: &require,
+    };
+    // 同时触发段 2/3/4 → 报段 2（SupportGemsOnly）。
+    let types = type_set(&["Triggered"]);
+    let active = ActiveSkillJudgeInput {
+        cannot_be_supported: false,
+        from_gem: false,
+        skill_types: &types,
+    };
+    assert_eq!(
+        judge_support(&support, &active),
+        Err(SkillGatingError::SupportGemsOnly)
+    );
+    // 段 1 优先于一切。
+    let active1 = ActiveSkillJudgeInput {
+        cannot_be_supported: true,
+        ..active
+    };
+    assert_eq!(
+        judge_support(&support, &active1),
+        Err(SkillGatingError::CannotBeSupported)
+    );
+}
+
+/// ingest_support_gem 门控：require 表达式不匹配则报 Gating 错误。
 #[test]
 fn ingest_support_gem_gates_incompatible_active_skill() {
     let spec = SupportGemSpec::new("melee_physical", ["20% more Physical Damage"])
-        .with_require_skill_types(SkillTypes::ATTACK | SkillTypes::MELEE);
+        .with_require_skill_types(["Attack", "Melee", "AND"]);
 
-    // 对 SPELL 主动技能失败。
-    let result = ingest_support_gem(&spec, SkillTypes::SPELL);
+    // 对纯法术主动技能失败。
+    let result = ingest_support_gem(&spec, &type_set(&["Spell"]));
     assert!(
         result.is_err(),
         "should reject non-attack/melee active skill"
@@ -327,11 +456,21 @@ fn ingest_support_gem_gates_incompatible_active_skill() {
 #[test]
 fn ingest_support_gem_allows_compatible_active_skill() {
     let spec = SupportGemSpec::new("added_fire", ["20% more Fire Damage"])
-        .with_require_skill_types(SkillTypes::ATTACK);
+        .with_require_skill_types(["Attack"]);
 
-    // 对 ATTACK 主动技能成功。
-    let result = ingest_support_gem(&spec, SkillTypes::ATTACK);
+    let result = ingest_support_gem(&spec, &type_set(&["Attack", "Melee"]));
     assert!(result.is_ok(), "should allow attack active skill");
+}
+
+/// ingest_support_gem 门控：exclude 命中时拒收（数值全不吃）。
+#[test]
+fn ingest_support_gem_gates_excluded_active_skill() {
+    let spec = SupportGemSpec::new("arcane_surge", ["10% more Cast Speed"])
+        .with_require_skill_types(["Spell"])
+        .with_exclude_skill_types(["Triggered"]);
+
+    let result = ingest_support_gem(&spec, &type_set(&["Spell", "Triggered"]));
+    assert!(result.is_err(), "excluded active skill should be rejected");
 }
 
 /// ingest_support_gem 门控：require 为空时无论 active skill types 如何都通过。
@@ -339,10 +478,9 @@ fn ingest_support_gem_allows_compatible_active_skill() {
 fn ingest_support_gem_no_require_always_ok() {
     let spec = SupportGemSpec::new("faster_casting", ["20% more Cast Speed"]);
 
-    // 无 require → NONE, ATTACK, SPELL 均通过。
-    for types in [SkillTypes::NONE, SkillTypes::ATTACK, SkillTypes::SPELL] {
+    for types in [type_set(&[]), type_set(&["Attack"]), type_set(&["Spell"])] {
         assert!(
-            ingest_support_gem(&spec, types).is_ok(),
+            ingest_support_gem(&spec, &types).is_ok(),
             "should pass for any active skill types when require is empty"
         );
     }
@@ -359,7 +497,7 @@ fn support_gem_level_mods_attributed_to_skill_level_source() {
         .supporting("cleave")
         .with_level(20, [("ManaCost".to_string(), ModType::Base, 5.0)]);
 
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     let level_mods: Vec<_> = ingest
         .modifiers
@@ -387,7 +525,7 @@ fn support_gem_quality_mods_attributed_to_gem_quality_source() {
     let spec = SupportGemSpec::new("added_fire", [] as [&str; 0])
         .with_quality(20, [("FireDamage".to_string(), ModType::Inc, 10.0)]);
 
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     let quality_mods: Vec<_> = ingest
         .modifiers
@@ -461,7 +599,7 @@ fn ingest_gem_leveled_active_gem() {
 #[test]
 fn support_gem_without_level_quality_no_extra_mods() {
     let spec = SupportGemSpec::new("added_fire", ["20% more Fire Damage"]);
-    let ingest = ingest_support_gem(&spec, SkillTypes::NONE).unwrap();
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
     let level_quality_mods: Vec<_> = ingest
         .modifiers
@@ -530,12 +668,12 @@ fn full_support_gem_spec_end_to_end() {
         .supporting("cleave")
         .with_mana_multiplier(40.0)
         .with_supported_skill_types(SkillTypes::ATTACK)
-        .with_require_skill_types(SkillTypes::ATTACK)
+        .with_require_skill_types(["Attack"])
         .with_level(10, [("ManaCost".to_string(), ModType::Base, 8.0)])
         .with_quality(20, [("AttackSpeed".to_string(), ModType::Inc, 4.0)]);
 
-    // ATTACK 主动技能通过门控。
-    let ingest = ingest_support_gem(&spec, SkillTypes::ATTACK).unwrap();
+    // Attack 主动技能通过门控。
+    let ingest = ingest_support_gem(&spec, &type_set(&["Attack", "Melee"])).unwrap();
 
     // 应有：1 SupportManaMultiplier + 1 攻击词条 more + 1 等级 + 1 品质 = 4 modifier。
     assert_eq!(
@@ -545,9 +683,9 @@ fn full_support_gem_spec_end_to_end() {
         ingest.modifiers.len()
     );
 
-    // SPELL 主动技能被门控拒绝。
-    let rejected = ingest_support_gem(&spec, SkillTypes::SPELL);
-    assert!(rejected.is_err(), "SPELL should be rejected by gating");
+    // 纯法术主动技能被门控拒绝（数值/manaMultiplier 全不吃）。
+    let rejected = ingest_support_gem(&spec, &type_set(&["Spell"]));
+    assert!(rejected.is_err(), "Spell should be rejected by gating");
 }
 
 /// ingest_active_gem（新 API）主动宝石正确归因。
