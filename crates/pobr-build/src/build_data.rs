@@ -11,6 +11,7 @@
 
 use std::collections::HashMap;
 
+use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
     ArmourBaseStats, BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat,
     SkillGemDef, SkillLevelDef, SkillStatSetDef, WeaponBaseStats,
@@ -89,6 +90,10 @@ pub struct BuildData {
     pub cost_types: Vec<CostTypeDef>,
     /// 物品基底表，以英文 canonical 名称为键（供装备 `Item.base` 名称 → 武器/护甲基底数值）。
     pub base_items: HashMap<String, BaseItemDef>,
+    /// 局部词条白名单（`overlay/local_mods.json`，M0-W4d 数据化）。
+    /// 数据包缺该 overlay 文件时为内建 fallback [`LocalModsDef::default`]
+    /// （与 JSON 逐值一致的镜像，行为不变）。
+    pub local_mods: LocalModsDef,
 }
 
 impl BuildData {
@@ -147,6 +152,18 @@ impl BuildData {
             .map(|b| (b.name.clone(), b))
             .collect();
 
+        // 局部词条白名单：缺 overlay 文件（旧数据包）时降级回内建 fallback
+        // （与 JSON 逐值一致），其余加载/解析错误照常上抛，不静默。
+        let local_mods = match data.local_mods() {
+            Ok(def) => def,
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                LocalModsDef::default()
+            }
+            Err(e) => return Err(e),
+        };
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -156,10 +173,13 @@ impl BuildData {
             skill_stat_sets,
             cost_types,
             base_items,
+            local_mods,
         })
     }
 
-    /// 构造一个空的 [`BuildData`]（无任何域数据）。用于测试或纯文本路径回退。
+    /// 构造一个空的 [`BuildData`]（无任何域数据；局部词条白名单取内建
+    /// fallback——它是判定规则而非内容数据，空表会让武器局部剔除失效）。
+    /// 用于测试或纯文本路径回退。
     pub fn empty() -> Self {
         Self {
             passive_nodes: HashMap::new(),
@@ -170,6 +190,7 @@ impl BuildData {
             skill_stat_sets: HashMap::new(),
             cost_types: Vec::new(),
             base_items: HashMap::new(),
+            local_mods: LocalModsDef::default(),
         }
     }
 

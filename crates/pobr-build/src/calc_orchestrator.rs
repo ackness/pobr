@@ -35,6 +35,7 @@ use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
 use pobr_core::{CalcConfig, CampaignProgress, CharacterBase, ModTag, Modifier};
+use pobr_data::catalog::local_mods::WeaponLocalModsDef;
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
@@ -377,7 +378,7 @@ pub fn calculate_with_data(
             let drop_local = |texts: Vec<String>| -> Vec<String> {
                 texts
                     .into_iter()
-                    .filter(|t| !is_weapon_local_mod(t))
+                    .filter(|t| !is_weapon_local_mod(t, &data.local_mods.weapon))
                     .collect()
             };
             filtered.implicit_texts = drop_local(filtered.implicit_texts);
@@ -1313,9 +1314,16 @@ fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
 
 /// 解析「adds N to M physical damage」→ (N, M)。非此形式返回 `None`。
 fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
+    parse_adds_with_suffix(clean, "physical damage")
+}
+
+/// 解析「adds N to M <suffix>」→ (N, M)（suffix 为不含首空格的伤害后缀，
+/// 如 `physical damage`）。非此形式返回 `None`。
+fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
     let body = clean
         .strip_prefix("adds ")?
-        .strip_suffix(" physical damage")?;
+        .strip_suffix(suffix)?
+        .strip_suffix(' ')?;
     let (lo, hi) = body.split_once(" to ")?;
     Some((lo.trim().parse().ok()?, hi.trim().parse().ok()?))
 }
@@ -1330,11 +1338,19 @@ fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
 
 /// 该词条是否为应从全局剔除的**武器局部**词条（已计入武器 source 乘区）：
 /// 局部物理增伤/附加 + 局部攻击速率（后者作用于武器攻速、不入全局加法桶）。
-fn is_weapon_local_mod(text: &str) -> bool {
+///
+/// 白名单经 `rules` 注入（`overlay/local_mods.json`，M0-W4d 数据化；
+/// fallback = [`WeaponLocalModsDef::default`]，与原硬编码枚举逐值一致）。
+fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> bool {
     let clean = clean_item_text(text);
-    clean.ends_with("% increased physical damage")
-        || clean.ends_with("% increased attack speed")
-        || parse_adds_physical(&clean).is_some()
+    rules
+        .increased_suffixes
+        .iter()
+        .any(|suffix| clean.ends_with(suffix.as_str()))
+        || rules
+            .adds_damage_suffixes
+            .iter()
+            .any(|suffix| parse_adds_with_suffix(&clean, suffix).is_some())
 }
 
 /// 解析护甲件**局部**「N% increased <Armour/Evasion/Energy Shield 组合>」→ 每类型增幅
@@ -2111,14 +2127,8 @@ mod tests {
             },
         );
         let data = BuildData {
-            passive_nodes: HashMap::new(),
-            skill_gems: HashMap::new(),
             class_attributes,
-            granted_effects: HashMap::new(),
-            granted_effect_levels: HashMap::new(),
-            skill_stat_sets: HashMap::new(),
-            cost_types: Vec::new(),
-            base_items: HashMap::new(),
+            ..BuildData::empty()
         };
         let build = Build::new().with_character(CharacterIdentity {
             level: 10,
@@ -2165,13 +2175,7 @@ mod tests {
         passive_nodes.insert(12345u32, node);
         let data = BuildData {
             passive_nodes,
-            skill_gems: HashMap::new(),
-            class_attributes: HashMap::new(),
-            granted_effects: HashMap::new(),
-            granted_effect_levels: HashMap::new(),
-            skill_stat_sets: HashMap::new(),
-            cost_types: Vec::new(),
-            base_items: HashMap::new(),
+            ..BuildData::empty()
         };
 
         let build = Build::new().with_tree(PassiveTreeSpec {
@@ -2242,14 +2246,8 @@ mod tests {
             },
         );
         let data = BuildData {
-            passive_nodes: HashMap::new(),
             skill_gems,
-            class_attributes: HashMap::new(),
-            granted_effects: HashMap::new(),
-            granted_effect_levels: HashMap::new(),
-            skill_stat_sets: HashMap::new(),
-            cost_types: Vec::new(),
-            base_items: HashMap::new(),
+            ..BuildData::empty()
         };
         let build = Build::new().add_socket_group(
             SocketGroup::new()
@@ -2629,14 +2627,8 @@ mod tests {
             },
         );
         let data = BuildData {
-            passive_nodes: HashMap::new(),
-            skill_gems: HashMap::new(),
-            class_attributes: HashMap::new(),
             granted_effects,
-            granted_effect_levels: HashMap::new(),
-            skill_stat_sets: HashMap::new(),
-            cost_types: Vec::new(),
-            base_items: HashMap::new(),
+            ..BuildData::empty()
         };
         let build = Build::new();
         let group = SocketGroup::new();

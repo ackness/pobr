@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "schema": "local_mods/v1",
+    "generator": "manual transcription (M0-W4d)",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "source": [
+      "pobr 准源：crates/pobr-build/src/calc_orchestrator.rs::is_weapon_local_mod（搬迁不变式，逐值一致）",
+      "vendor 对照：src/Classes/Item.lua:1655-1682 calcLocal（结构化规则非文本枚举，差异仅记录不改值，见 audits/rearchitecture-2026-06-10/16-items.md）"
+    ],
+    "notes": "条目为 clean_item_text 产物口径（剥 {...} 标记 + trim + 小写）；增删条目=行为变更，须独立 commit 并附 PoB2 依据"
+  },
+  "weapon": {
+    "increased_suffixes": [
+      "% increased physical damage",
+      "% increased attack speed"
+    ],
+    "adds_damage_suffixes": [
+      "physical damage"
+    ]
+  }
+}

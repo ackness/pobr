@@ -24,7 +24,10 @@
       "base_player_mods",
       "enemy_presets"
     ],
-    "overlay": [],
+    "overlay": [
+      "high_precision_mods",
+      "local_mods"
+    ],
     "generated": []
   }
 }
