@@ -91,8 +91,13 @@ pub struct DefenceOutput {
 pub fn calc_defence(actor: &mut Actor, cfg: &CalcConfig, enemy_accuracy: f64) -> DefenceOutput {
     let armour = scaled_defence_stat(&actor.mod_db, cfg, actor.base.armour, "Armour");
     let evasion = scaled_defence_stat(&actor.mod_db, cfg, actor.base.evasion, "Evasion");
-    let energy_shield =
-        scaled_defence_stat(&actor.mod_db, cfg, actor.base.energy_shield, "EnergyShield");
+    // ES→Mana 转换（PoB2 resourceList `EnergyShieldConvertToMana`）：被转出的基底不再
+    // 参与 ES 总值；转换率对全部基底一致，等价于对成品 ES 按 (1 − rate) 缩残
+    // （Mana 侧的转入由 `perform` 注入，见 [`es_to_mana_rate`]）。
+    let es_keep = 1.0 - es_to_mana_rate(&actor.mod_db, cfg);
+    let energy_shield = round(
+        scaled_defence_stat(&actor.mod_db, cfg, actor.base.energy_shield, "EnergyShield") * es_keep,
+    );
     // 防御侧：怪物命中玩家，用 monster_hit_chance（agent-docs/accuracy-and-enemy.md §二）
     let chance_to_be_hit = monster_hit_chance(evasion, enemy_accuracy);
 
@@ -173,6 +178,20 @@ pub fn armour_reduction(armour: f64, raw_hit: f64) -> f64 {
     }
 
     round(armour / (armour + 10.0 * raw_hit))
+}
+
+/// ES→Mana 资源转换比例（PoB2 `EnergyShieldConvertToMana` BASE，上限 100%）→ `[0, 1]`。
+///
+/// 来源词条：`Converts all Energy Shield to Mana`（Eldritch Battery 型关键石，BASE 100）
+/// / `Convert N% of maximum Energy Shield to maximum Mana`。
+pub fn es_to_mana_rate(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("EnergyShieldConvertToMana")],
+    )
+    .clamp(0.0, 100.0)
+        / 100.0
 }
 
 /// per-slot 防御聚合（PoB2 `CalcDefence.lua` + `CalcTools.calcLib.mod({slotName=slot})`）。

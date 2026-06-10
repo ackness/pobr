@@ -39,6 +39,29 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // 未启用该充能时保持 0（PoB2 面板 current=0），避免错误施加 per-charge 增益/罚减。
     env.cfg = super::survivability::charge_multipliers_panel_default(&env.player.mod_db, &env.cfg);
 
+    // ES→Mana 资源转换（PoB2 CalcDefence resourceList `EnergyShieldConvertToMana`，
+    // 如 Eldritch Battery 型关键石「Converts all Energy Shield to Mana」）：ES 的全部
+    // **基底**（逐槽 rolled + 全局 flat，不含 ES inc/more）按比例转入 Mana 池（享 Mana
+    // 全局乘区，PoB2 对非防御目标按 ceil 取整）；ES 侧按 (1 − rate) 缩残（见
+    // calc_defence 的同名查询）。
+    let es_to_mana = super::defence::es_to_mana_rate(&env.player.mod_db, &env.cfg);
+    if es_to_mana > 0.0 {
+        let es_base = env.player.base.energy_shield
+            + env
+                .player
+                .mod_db
+                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]);
+        let converted = (es_base * es_to_mana).ceil();
+        if converted > 0.0 {
+            env.player.mod_db.add_list([crate::Modifier::number(
+                ModName::from("MaximumMana"),
+                ModType::Base,
+                converted,
+            )
+            .with_source("EnergyShield to Mana conversion")]);
+        }
+    }
+
     let mut input = MinimalInput::from(env.player.base);
     // 命中率的敌人闪避来源：优先用 enemy.mod_db 的 Evasion BASE（setup_env 注入，含档位倍率），
     // 回退到 enemy.base.evasion 标量（兼容直接构造 Env 的旧入口）。

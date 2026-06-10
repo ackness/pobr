@@ -505,6 +505,21 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
             }
         }
     }
+    // ES→Mana 资源转换（PoB2 ModParser 2395-2396）：固定全转 / 数值百分比两形。
+    if let Some(num_str) = rest
+        .strip_prefix("convert ")
+        .and_then(|r| r.strip_suffix("% of maximum energy shield to maximum mana"))
+        && let Ok(value) = num_str.trim().parse::<f64>()
+    {
+        return Some(ParseOutcome {
+            mods: vec![
+                Modifier::number("EnergyShieldConvertToMana", ModType::Base, value)
+                    .with_source(source),
+            ],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
     // 数值型 OVERRIDE + 伴随 flag（Chaos Inoculation: Maximum Life is 1 → 免疫混沌）。
     let mods: Vec<Modifier> = match rest {
         "maximum life is 1" => vec![
@@ -513,6 +528,13 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
         ],
         "you have no mana" => {
             vec![Modifier::number("MaximumMana", ModType::Override, 0.0).with_source(source)]
+        }
+        // Eldritch Battery 型关键石（PoB2 `converts all energy shield to mana` → BASE 100）。
+        "converts all energy shield to mana" => {
+            vec![
+                Modifier::number("EnergyShieldConvertToMana", ModType::Base, 100.0)
+                    .with_source(source),
+            ]
         }
         // 纯免疫/条件短语：计算侧暂不消费，归 Unsupported（不报错、不产数值）。
         "immune to chaos damage and bleeding"
