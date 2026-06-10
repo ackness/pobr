@@ -44,8 +44,8 @@ pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};
 pub use runtime::RuntimeConstants;
 pub use skills::{
-    CostTypeDef, GrantedEffectDef, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
-    SkillStatSetLevel,
+    CostTypeDef, GemQualityStatDef, GemQualityStatsDef, GrantedEffectDef, QualityStat,
+    SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef, SkillStatSetLevel,
 };
 pub use tree::{PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
 pub use unarmed_data::{UnarmedDataTable, UnarmedWeaponDef};

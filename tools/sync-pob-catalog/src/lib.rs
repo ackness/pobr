@@ -7,6 +7,7 @@ use pobr_data::prelude::*;
 use regex::Regex;
 
 pub mod extract_lua;
+pub mod extract_quality;
 
 pub fn collect_catalog(pob_root: &Path) -> io::Result<PobCatalog> {
     let modules = pob_root.join("src").join("Modules");

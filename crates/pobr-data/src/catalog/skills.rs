@@ -231,3 +231,46 @@ pub struct CostTypeDef {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub per_minute: bool,
 }
+// ---- M1-T1 宝石品质 stat 域（`overlay/gem_quality_stats.json`）----
+
+/// 单条宝石品质 stat 斜率。
+///
+/// 数据来源：PoB2 导出 `Data/Skills/*.lua` 的 `qualityStats` 字段（原始 `.dat` 为
+/// `GrantedEffectQualityStats.StatValues / 1000`，见 vendor
+/// `Export/Scripts/skills.lua:304-313`；当前钉定补丁该表 bundle 不可下载，
+/// 走 extract-lua 通道，见 `pipeline/config.json` 的 `_tablesUnavailableForPinnedPatch`）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct QualityStat {
+    /// 稳定 stat id（如 `base_spell_%_chance_to_echo`）。
+    pub stat: String,
+    /// 每 1 点品质的 stat 斜率。消费侧按 `trunc(rate × quality)` 叠加进该技能的
+    /// stat 集——**截断取整**（toward zero），对齐 PoB2 `CalcTools.lua:142`
+    /// `math.modf(stat[2] * skillInstance.quality)`。
+    pub per_quality_rate: f64,
+}
+
+/// 某授予效果的品质 stat 表（`overlay/gem_quality_stats.json` 的单条）。
+///
+/// 辅助宝石效果不在表中（PoB2 导出条件 `not (skillGem and granted.IsSupport)`
+/// 已在 vendor 数据侧生效，抽取忠实转录）。
+///
+/// TODO（待 `.dat` 表通道恢复）：`GrantedEffectQualityStats` 的 Alt 列
+/// （`AltStats`/`AltStatValuesPermille`/`AltApplyToStatSets`/`ApplyToStatSets`）
+/// 原样入库不消费——PoB2 导出同样只读主列，行为对齐；语义实现 defer。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GemQualityStatDef {
+    /// 授予效果 id（与 [`GrantedEffectDef::id`] 对齐，如 `CometPlayer`）。
+    pub effect_id: String,
+    /// 品质 stat 斜率列表（保持 vendor 导出顺序；同 stat 多条按加法叠加）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stats: Vec<QualityStat>,
+}
+
+/// `overlay/gem_quality_stats.json` 顶层（消费侧视角：`_meta` 溯源头部由 serde
+/// 默认忽略，消费侧只取 `effects` 列表，按 `effect_id` 升序）。
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct GemQualityStatsDef {
+    /// 品质 stat 表，按 `effect_id` 升序。
+    pub effects: Vec<GemQualityStatDef>,
+}
+

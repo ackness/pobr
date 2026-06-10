@@ -20,3 +20,6 @@ pub mod local_mods;
 
 // ---- M0-W4a per-skill 覆盖值（overlay 层，loader + 专用 merge）----
 pub mod skill_overrides;
+
+// ---- M1-T1 宝石品质 stat 斜率（overlay 层，纯查表）----
+pub mod gem_quality_stats;
