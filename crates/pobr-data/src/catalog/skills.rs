@@ -247,21 +247,6 @@ fn is_zero_f64(v: &f64) -> bool {
     *v == 0.0
 }
 
-/// 技能消耗资源类型定义（来自 `CostTypes.dat`）。
-///
-/// [`GrantedEffectDef::cost_types`] 是本表的整型外键索引；[`SkillLevelDef::cost_amounts`]
-/// 按位置给出每种资源的消耗量。`per_minute` 资源（如 `ManaPerMinute`，按秒持续消耗）
-/// 的 `divisor` 为 60（原始值是「每分钟」，÷60 得每秒）。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CostTypeDef {
-    /// 稳定资源 id（如 `Mana` / `Life` / `ES` / `LifePercent` / `ManaPerMinute`）。
-    pub id: String,
-    /// 数值除数（瞬时消耗为 1；per-minute 资源为 60，÷得每秒量）。
-    pub divisor: u32,
-    /// 是否为按时间持续消耗（per-second/per-minute）的资源。
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub per_minute: bool,
-}
 // ---- M1-T1 宝石品质 stat 域（`overlay/gem_quality_stats.json`）----
 
 /// 单条宝石品质 stat 斜率。
@@ -303,4 +288,20 @@ pub struct GemQualityStatDef {
 pub struct GemQualityStatsDef {
     /// 品质 stat 表，按 `effect_id` 升序。
     pub effects: Vec<GemQualityStatDef>,
+}
+
+/// 技能消耗资源类型定义（来自 `CostTypes.dat`）。
+///
+/// [`GrantedEffectDef::cost_types`] 是本表的整型外键索引；[`SkillLevelDef::cost_amounts`]
+/// 按位置给出每种资源的消耗量。`per_minute` 资源（如 `ManaPerMinute`，按秒持续消耗）
+/// 的 `divisor` 为 60（原始值是「每分钟」，÷60 得每秒）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CostTypeDef {
+    /// 稳定资源 id（如 `Mana` / `Life` / `ES` / `LifePercent` / `ManaPerMinute`）。
+    pub id: String,
+    /// 数值除数（瞬时消耗为 1；per-minute 资源为 60，÷得每秒量）。
+    pub divisor: u32,
+    /// 是否为按时间持续消耗（per-second/per-minute）的资源。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub per_minute: bool,
 }

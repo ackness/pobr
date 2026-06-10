@@ -8,6 +8,11 @@
 //!   并以 JSONL 输出；
 //! - Rust 侧统一做排序、数字格式（serde_json 最短往返表示）与整体文档序列化，
 //!   保证同输入重跑 **byte-stable**。
+//!
+//! 本模块同时承载各 `--what` 抽取目标的**公共层**（luajit JSONL 调用
+//! [`invoke_luajit_jsonl`] / vendor 版本解析 [`read_vendor_version`]）；
+//! 其它目标见 [`crate::extract_stat_map`]（M1-T2）与
+//! [`crate::extract_quality`]（M1-T1）。
 
 use std::fs;
 use std::io::{self, Write};
@@ -29,6 +34,13 @@ const DEFAULT_LUAJIT_HOMEBREW: &str = "/opt/homebrew/bin/luajit";
 /// 不再经本通道（见 `extract_skill_overrides.lua` 头注）。
 pub const DEFAULT_SKILL_FILES: &[&str] = &[
     "act_dex", "act_int", "act_str", "minion", "other", "spectre", "sup_dex", "sup_int", "sup_str",
+];
+
+/// `--what stat-map`（[`crate::extract_stat_map`]）默认抽取的 `Data/Skills/`
+/// 文件：玩家主动三系 + 辅助三系 + 其它。**不含** minion / spectre——
+/// 召唤物 statMap 留 M5a（M1 蓝图 T2.1 范围）。
+pub const DEFAULT_STAT_MAP_SKILL_FILES: &[&str] = &[
+    "act_dex", "act_int", "act_str", "other", "sup_dex", "sup_int", "sup_str",
 ];
 
 /// 当前 overlay 文档 schema 标识（字段演化时递增）
@@ -138,6 +150,17 @@ pub fn assemble_overrides_document(meta: OverlayMeta, mut entries: Vec<SkillOver
 
 /// 启动 luajit 执行引导脚本（脚本经 stdin 注入），解析 JSONL 输出
 fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<SkillOverride>> {
+    invoke_luajit_jsonl(args, BOOTSTRAP_LUA)
+}
+
+/// 通用 luajit JSONL 抽取：注入给定引导脚本（约定参数 = `<vendor_src_dir>
+/// <逗号分隔文件名>`），stdout 逐行解析为 `T`，stderr 非致命告警透传。
+/// 各 `--what` 目标（skill-overrides / stat-map / gem-quality）共用此层，
+/// 避免 luajit 调用同形代码三处漂移。
+pub fn invoke_luajit_jsonl<T: serde::de::DeserializeOwned>(
+    args: &ExtractLuaArgs,
+    bootstrap: &str,
+) -> io::Result<Vec<T>> {
     if args.files.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -166,7 +189,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<SkillOverride>> {
         .stdin
         .take()
         .expect("stdin 已配置为 piped")
-        .write_all(BOOTSTRAP_LUA.as_bytes())?;
+        .write_all(bootstrap.as_bytes())?;
 
     let output = child.wait_with_output()?;
     let stderr_text = String::from_utf8_lossy(&output.stderr);
@@ -189,7 +212,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<SkillOverride>> {
         if line.is_empty() {
             continue;
         }
-        let entry: SkillOverride = serde_json::from_str(line).map_err(|error| {
+        let entry: T = serde_json::from_str(line).map_err(|error| {
             io::Error::other(format!(
                 "引导脚本输出了非法 JSONL 行：{error}；行内容：{line}"
             ))
@@ -199,14 +222,19 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<SkillOverride>> {
     Ok(entries)
 }
 
-/// 读取 vendor 版本文件并构建 `_meta`
-fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
-    let version_path = match &args.version_file {
+/// 解析 vendor 版本文件路径：显式 `--version-file` 优先，否则按约定布局
+/// `vendor/PathOfBuilding-PoE2/src` → `vendor/.pob2-version.txt`。
+pub fn resolve_version_file(args: &ExtractLuaArgs) -> PathBuf {
+    match &args.version_file {
         Some(path) => path.clone(),
-        // 约定布局 vendor/PathOfBuilding-PoE2/src → 版本文件在 vendor/.pob2-version.txt
         None => args.vendor_root.join("../../.pob2-version.txt"),
-    };
-    let version_text = fs::read_to_string(&version_path).map_err(|error| {
+    }
+}
+
+/// 解析 `.pob2-version.txt`：首行为 commit 标题，文件中 40 位 hex 行为完整
+/// hash。返回 `(commit, subject)`。各 `--what` 目标共用。
+pub fn read_vendor_version(version_path: &Path) -> io::Result<(String, String)> {
+    let version_text = fs::read_to_string(version_path).map_err(|error| {
         io::Error::new(
             io::ErrorKind::NotFound,
             format!(
@@ -228,6 +256,12 @@ fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
             version_path.display()
         )));
     }
+    Ok((commit, subject))
+}
+
+/// 读取 vendor 版本文件并构建 `_meta`
+fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
+    let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
 
     let extracted_files: Vec<String> = args
         .files
