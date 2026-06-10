@@ -142,6 +142,65 @@ pub struct OutputTable {
     pub mana_cost: f64,
     pub life_cost: f64,
     pub spirit_reserved: f64,
+
+    // --- M2 防御扩展（W0.2 契约字段：默认 0 中性；A–F track 分批接线写入。
+    //     golden 参照 = examples/demo-bd-test/builds/*/meta.json::player_stats 同名键） ---
+    /// Spirit 池本值（base × inc × more + Override，PoB2 doActorLifeManaSpirit 同构）。
+    pub spirit: f64,
+    /// Spirit 未预留余量（= spirit − spirit_reserved，下限 0）。
+    pub spirit_unreserved: f64,
+    /// 格挡几率上限（%；PoB2 `BlockChanceMax`，CalcDefence.lua:961-966）。
+    pub block_chance_max: f64,
+    /// 法术格挡几率上限（%；PoB2 `SpellBlockChanceMax`）。
+    pub spell_block_chance_max: f64,
+    /// 有效格挡几率（%；lucky/unlucky 幂后，PoB2 `EffectiveBlockChance`，
+    /// CalcDefence.lua:1030-1058）。
+    pub effective_block_chance: f64,
+    /// 有效法术格挡几率（%；PoB2 `EffectiveSpellBlockChance`）。
+    pub effective_spell_block_chance: f64,
+    /// 格挡承伤比例（%；被格挡命中仍承受的伤害份额，PoB2 `BlockEffect`，
+    /// ModParser.lua:2479；0 = 完全格挡）。
+    pub block_effect: f64,
+    /// 偏斜等级（PoB2 `DeflectionRating` = BASE + Evasion/Armour GainAsDeflection，
+    /// CalcDefence.lua:1487-1490）。
+    pub deflection_rating: f64,
+    /// 偏斜几率（%；PoB2 `DeflectChance` = deflectChance(rating, enemyAccuracy)，
+    /// CalcDefence.lua:48-54、:1491）。
+    pub deflect_chance: f64,
+    /// 综合闪避几率（%；PoB2 `EvadeChance`，CalcDefence.lua:1396-1466）。
+    pub evade_chance: f64,
+    /// 近战闪避几率（%；PoB2 `MeleeEvadeChance`，四分型独立 inc 乘区）。
+    pub melee_evade_chance: f64,
+    /// 投射物闪避几率（%；PoB2 `ProjectileEvadeChance`）。
+    pub projectile_evade_chance: f64,
+    /// 法术闪避几率（%；PoB2 `SpellEvadeChance`）。
+    pub spell_evade_chance: f64,
+    /// 法术投射物闪避几率（%；PoB2 `SpellProjectileEvadeChance`）。
+    pub spell_projectile_evade_chance: f64,
+    /// 眩晕阈值（PoB2 `StunThreshold`，基 Life/ES/Mana 词条切换，
+    /// CalcDefence.lua:2525-2643）。
+    pub stun_threshold: f64,
+    /// 受眩晕几率（%；PoB2 `SelfStunChance` = StunBaseMult × 有效伤/阈值）。
+    pub self_stun_chance: f64,
+    /// 受眩晕持续（秒；按 ServerTickRate 上取整）。
+    pub stun_duration: f64,
+    /// 结界池（PoB2 `Ward`，per-slot 聚合 + EnergyShieldToWard，
+    /// CalcDefence.lua:1144-1273）。
+    pub ward: f64,
+    /// 可恢复生命池（PoB2 `LifeRecoverable`，EHP 循环的生命池口径）。
+    pub life_recoverable: f64,
+    /// ES 恢复上限池（PoB2 `EnergyShieldRecoveryCap`，EHP 循环的 ES 池口径）。
+    pub energy_shield_recovery_cap: f64,
+    /// 面板物理减伤（%；PoB2 `PhysicalDamageReduction`，参考击中下的护甲 DR）。
+    pub physical_damage_reduction: f64,
+    /// 致死所需命中数（PoB2 `NumberOfDamagingHits`，CalcDefence.lua:2979-3153）。
+    pub number_of_damaging_hits: f64,
+    /// 计入 not-hit/block/deflect 概率层后的致死命中数（PoB2
+    /// `NumberOfMitigatedDamagingHits`，CalcDefence.lua:3246-3247）。
+    pub number_of_mitigated_hits: f64,
+    /// 旧口径综合 EHP（各类型 max hit 取 min；Track F 切换 `total_ehp` 语义为
+    /// PoB2 口径（mitigatedHits × totalEnemyDamageIn，:3322）后，旧值保留于此作附加指标）。
+    pub total_ehp_lowest_max_hit: f64,
 }
 
 /// 单个召唤物的输出快照（结构同玩家 offence/defence 关键输出的子集）。
@@ -262,6 +321,32 @@ impl Default for OutputTable {
             mana_cost: 0.0,
             life_cost: 0.0,
             spirit_reserved: 0.0,
+            // M2 防御扩展（W0.2）：未接线前全部 0 中性（ParityStatus=Planned，
+            // 不进 extract_display_values）。
+            spirit: 0.0,
+            spirit_unreserved: 0.0,
+            block_chance_max: 0.0,
+            spell_block_chance_max: 0.0,
+            effective_block_chance: 0.0,
+            effective_spell_block_chance: 0.0,
+            block_effect: 0.0,
+            deflection_rating: 0.0,
+            deflect_chance: 0.0,
+            evade_chance: 0.0,
+            melee_evade_chance: 0.0,
+            projectile_evade_chance: 0.0,
+            spell_evade_chance: 0.0,
+            spell_projectile_evade_chance: 0.0,
+            stun_threshold: 0.0,
+            self_stun_chance: 0.0,
+            stun_duration: 0.0,
+            ward: 0.0,
+            life_recoverable: 0.0,
+            energy_shield_recovery_cap: 0.0,
+            physical_damage_reduction: 0.0,
+            number_of_damaging_hits: 0.0,
+            number_of_mitigated_hits: 0.0,
+            total_ehp_lowest_max_hit: 0.0,
         }
     }
 }
@@ -289,6 +374,52 @@ impl From<&MinimalOutput> for OutputTable {
             action_rate: value.action_rate,
             dps: value.dps,
             ..Self::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod m2_default_neutral_tests {
+    use super::OutputTable;
+
+    /// M2-W0.2 中性不变式：新防御扩展字段在 `Default` 下全部为 0（未接线前不影响
+    /// 任何既有输出/比较；A–F track 接线后由 perform fill 写入）。
+    #[test]
+    fn m2_defence_extension_fields_default_to_zero() {
+        let out = OutputTable::default();
+        for (name, v) in [
+            ("spirit", out.spirit),
+            ("spirit_unreserved", out.spirit_unreserved),
+            ("block_chance_max", out.block_chance_max),
+            ("spell_block_chance_max", out.spell_block_chance_max),
+            ("effective_block_chance", out.effective_block_chance),
+            (
+                "effective_spell_block_chance",
+                out.effective_spell_block_chance,
+            ),
+            ("block_effect", out.block_effect),
+            ("deflection_rating", out.deflection_rating),
+            ("deflect_chance", out.deflect_chance),
+            ("evade_chance", out.evade_chance),
+            ("melee_evade_chance", out.melee_evade_chance),
+            ("projectile_evade_chance", out.projectile_evade_chance),
+            ("spell_evade_chance", out.spell_evade_chance),
+            (
+                "spell_projectile_evade_chance",
+                out.spell_projectile_evade_chance,
+            ),
+            ("stun_threshold", out.stun_threshold),
+            ("self_stun_chance", out.self_stun_chance),
+            ("stun_duration", out.stun_duration),
+            ("ward", out.ward),
+            ("life_recoverable", out.life_recoverable),
+            ("energy_shield_recovery_cap", out.energy_shield_recovery_cap),
+            ("physical_damage_reduction", out.physical_damage_reduction),
+            ("number_of_damaging_hits", out.number_of_damaging_hits),
+            ("number_of_mitigated_hits", out.number_of_mitigated_hits),
+            ("total_ehp_lowest_max_hit", out.total_ehp_lowest_max_hit),
+        ] {
+            assert_eq!(v, 0.0, "{name} 默认应为 0（中性）");
         }
     }
 }

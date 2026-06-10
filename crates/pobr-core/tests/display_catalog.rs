@@ -13,12 +13,100 @@ fn catalog_defines_core_display_stats() {
     assert!(ids.contains(&"BlockChance"));
 }
 
+/// 条目状态与 pob_key 完整性：M2-W0.2 起目录含 Computed（已接线）+ Planned（M2 防御
+/// 扩展，待 track 接线）两类；两类都必须带 pob_key（golden 对照键）。
 #[test]
-fn catalog_entries_are_computed_with_pob_keys() {
+fn catalog_entries_have_pob_keys_and_known_status() {
     let catalog = display_catalog();
     for def in &catalog {
-        assert_eq!(def.parity_status, ParityStatus::Computed);
+        assert!(
+            matches!(
+                def.parity_status,
+                ParityStatus::Computed | ParityStatus::Planned
+            ),
+            "{} 状态异常",
+            def.id.as_str()
+        );
         assert!(def.pob_key.is_some(), "{} missing pob_key", def.id.as_str());
+    }
+}
+
+/// 条目数锁定（M2-W0.2）：Planned = 24 个 M2 防御扩展字段；新增条目须显式更新本断言。
+#[test]
+fn catalog_entry_counts_locked() {
+    let catalog = display_catalog();
+    let planned = catalog
+        .iter()
+        .filter(|d| d.parity_status == ParityStatus::Planned)
+        .count();
+    assert_eq!(planned, 24, "Planned 条目数应为 24（M2 防御扩展批）");
+    assert_eq!(catalog.len() - planned, 81, "Computed 条目数变化须显式审查");
+}
+
+/// M2 防御扩展（W0.2）字段批：全部以 Planned 入目录，golden key 与 meta.json 对齐。
+#[test]
+fn catalog_defines_m2_defence_extension_planned_stats() {
+    let catalog = display_catalog();
+    let planned_ids: Vec<&str> = catalog
+        .iter()
+        .filter(|d| d.parity_status == ParityStatus::Planned)
+        .map(|d| d.id.as_str())
+        .collect();
+    for id in [
+        "Spirit",
+        "SpiritUnreserved",
+        "BlockChanceMax",
+        "SpellBlockChanceMax",
+        "EffectiveBlockChance",
+        "EffectiveSpellBlockChance",
+        "BlockEffect",
+        "DeflectionRating",
+        "DeflectChance",
+        "EvadeChance",
+        "MeleeEvadeChance",
+        "ProjectileEvadeChance",
+        "SpellEvadeChance",
+        "SpellProjectileEvadeChance",
+        "StunThreshold",
+        "SelfStunChance",
+        "StunDuration",
+        "Ward",
+        "LifeRecoverable",
+        "EnergyShieldRecoveryCap",
+        "PhysicalDamageReduction",
+        "NumberOfDamagingHits",
+        "NumberOfMitigatedHits",
+        "TotalEHPLowestMaxHit",
+    ] {
+        assert!(planned_ids.contains(&id), "missing planned entry {id}");
+    }
+    // PoB2 golden key 对齐抽查（NumberOfMitigatedHits → NumberOfMitigatedDamagingHits）。
+    let entry = |id: &str| {
+        catalog
+            .iter()
+            .find(|d| d.id.as_str() == id)
+            .unwrap_or_else(|| panic!("{id} not found"))
+    };
+    assert_eq!(
+        entry("NumberOfMitigatedHits").pob_key.as_deref(),
+        Some("NumberOfMitigatedDamagingHits")
+    );
+    assert_eq!(entry("Spirit").pob_key.as_deref(), Some("Spirit"));
+    // 承伤/受眩晕类：越低越好。
+    assert_eq!(entry("BlockEffect").higher_is_better, Some(false));
+    assert_eq!(entry("SelfStunChance").higher_is_better, Some(false));
+    assert_eq!(entry("StunDuration").higher_is_better, Some(false));
+}
+
+/// M2 Planned 条目不进 extract（未接线前对外不可见，行为中性）。
+#[test]
+fn m2_planned_entries_excluded_from_extract() {
+    let values = extract_display_values(&OutputTable::default());
+    for id in ["Spirit", "EffectiveBlockChance", "NumberOfDamagingHits"] {
+        assert!(
+            !values.iter().any(|v| v.id == DisplayStatId::from(id)),
+            "Planned 条目 {id} 不应出现在 extract 输出"
+        );
     }
 }
 
