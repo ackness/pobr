@@ -11,6 +11,7 @@ pub mod minion;
 pub mod offence;
 pub mod output;
 pub mod perform;
+pub mod pool_damage;
 pub mod session;
 pub mod setup_env;
 pub mod skill_mechanics;
@@ -55,6 +56,10 @@ pub use offence::{
 };
 pub use output::{MinionOutput, OutputTable};
 pub use perform::perform;
+pub use pool_damage::{
+    AllyLayer, PoolCtx, PoolState, PoolsAfter, TypedDamage, life_hit_pool_with_loss_prevention,
+    pool_protected, reduce_pools,
+};
 pub use session::CalculationSession;
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 pub use skill_use_time::{SkillUseTime, calc_skill_use_time};
