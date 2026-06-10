@@ -12,6 +12,7 @@ pub mod offence;
 pub mod output;
 pub mod perform;
 pub mod pool_damage;
+pub mod pool_setup;
 pub mod session;
 pub mod setup_env;
 pub mod skill_mechanics;
@@ -58,8 +59,12 @@ pub use offence::{
 pub use output::{MinionOutput, OutputTable};
 pub use perform::perform;
 pub use pool_damage::{
-    AllyLayer, PoolCtx, PoolState, PoolsAfter, TypedDamage, life_hit_pool_with_loss_prevention,
-    pool_protected, reduce_pools,
+    AllyLayer, POB2_DAMAGE_ORDER, PoolCtx, PoolState, PoolsAfter, TypedDamage,
+    apply_protected_layer, extend_total_hit_pool, life_hit_pool_with_loss_prevention,
+    pool_protected, reduce_pools, total_hit_pool_base,
+};
+pub use pool_setup::{
+    MomHitPools, PoolBaseStats, build_pool_ctx, build_pool_state, minimum_es_bypass, mom_hit_pools,
 };
 pub use session::CalculationSession;
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
