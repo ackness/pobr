@@ -312,7 +312,18 @@ fn fill_mechanics(env: &mut Env) {
         es_recharge_per_second(&es_recharge, env.player.output.energy_shield);
 
     // --- 规避几率（Lane2：击中/投射物/各异常）---
-    let avoidance = calc_avoidance(db, cfg, env.player.output.energy_shield);
+    // M2-E2（CalcDefence.lua:2554-2557）：眩晕规避的 ES 减半条件改为
+    // 「ES > totalTakenHit 且非 EB」；totalTakenHit 在 Track F 接线前用
+    // reference_hit（= life + ES，与 EhpOptions 同源）近似。
+    // TODO(M2-C1)：C-1 合并后 EB flag 改读 DefenceKeystones::energy_shield_protects_mana。
+    let eb_protects_mana = db.flag(cfg, ModName::from("EnergyShieldProtectsMana"));
+    let avoidance = calc_avoidance(
+        db,
+        cfg,
+        env.player.output.energy_shield,
+        reference_hit,
+        eb_protects_mana,
+    );
     env.player.output.avoid_all_damage_from_hits = avoidance.avoid_all_damage_from_hits;
     env.player.output.avoid_projectile_damage = avoidance.avoid_projectile_damage;
     env.player.output.avoid_stun = avoidance.avoid_stun;

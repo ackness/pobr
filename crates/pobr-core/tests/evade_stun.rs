@@ -239,3 +239,259 @@ fn perform_fills_evade_suite_into_output() {
     assert!((env.player.output.spell_evade_chance - 47.0).abs() < EPS);
     assert!((env.player.output.spell_projectile_evade_chance - 47.0).abs() < EPS);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Stun 体系（CalcDefence.lua:2525-2643）+ avoid_stun ES 条件修复（:2554-2557）
+// ─────────────────────────────────────────────────────────────────
+
+use pobr_core::calc::defence::calc_avoidance;
+use pobr_core::calc::stun::{StunInputs, calc_stun, calc_stun_threshold};
+
+fn stun_inputs(life: f64) -> StunInputs {
+    StunInputs {
+        life,
+        ..StunInputs::default()
+    }
+}
+
+/// 阈值默认基底 = output.Life（:2542-2543）：life 1000 → 1000。
+#[test]
+fn stun_threshold_defaults_to_life() {
+    let t = calc_stun_threshold(&ModDb::new(), &CalcConfig::default(), &stun_inputs(1000.0));
+    assert!((t - 1000.0).abs() < EPS, "got {t}");
+}
+
+/// ES 基底切换（:2529-2532）：flag + StunThresholdEnergyShieldPercent 50，ES 2000
+/// → 2000×50/100 = 1000（life 被忽略）。
+#[test]
+fn stun_threshold_es_based() {
+    let db = db_with(vec![
+        Modifier::flag("StunThresholdBasedOnEnergyShieldInsteadOfLife"),
+        Modifier::number("StunThresholdEnergyShieldPercent", ModType::Base, 50.0),
+    ]);
+    let inp = StunInputs {
+        life: 5000.0,
+        energy_shield: 2000.0,
+        ..StunInputs::default()
+    };
+    let t = calc_stun_threshold(&db, &CalcConfig::default(), &inp);
+    assert!((t - 1000.0).abs() < EPS, "got {t}");
+}
+
+/// Mana 基底切换（:2533-2536）：flag + StunThresholdManaPercent 100，mana 800 → 800。
+#[test]
+fn stun_threshold_mana_based() {
+    let db = db_with(vec![
+        Modifier::flag("StunThresholdBasedOnManaInsteadOfLife"),
+        Modifier::number("StunThresholdManaPercent", ModType::Base, 100.0),
+    ]);
+    let inp = StunInputs {
+        life: 5000.0,
+        mana: 800.0,
+        ..StunInputs::default()
+    };
+    let t = calc_stun_threshold(&db, &CalcConfig::default(), &inp);
+    assert!((t - 800.0).abs() < EPS, "got {t}");
+}
+
+/// CI 分支（:2537-2539）：阈值取「CI 前 Life」= flat 基础 + ΣBASE MaximumLife，
+/// 而非 CI 后的 output.Life(=1)。
+#[test]
+fn stun_threshold_ci_uses_pre_ci_life() {
+    let db = db_with(vec![Modifier::number("MaximumLife", ModType::Base, 900.0)]);
+    let inp = StunInputs {
+        life: 1.0, // CI 后池
+        life_base_flat: 100.0,
+        chaos_inoculation: true,
+        ..StunInputs::default()
+    };
+    let t = calc_stun_threshold(&db, &CalcConfig::default(), &inp);
+    assert!((t - 1000.0).abs() < EPS, "got {t}");
+}
+
+/// AddESToStunThreshold（:2544-2548）：life 1000 + ES 2000×50% → 2000。
+#[test]
+fn stun_threshold_add_es() {
+    let db = db_with(vec![
+        Modifier::flag("AddESToStunThreshold"),
+        Modifier::number("ESToStunThresholdPercent", ModType::Base, 50.0),
+    ]);
+    let inp = StunInputs {
+        life: 1000.0,
+        energy_shield: 2000.0,
+        ..StunInputs::default()
+    };
+    let t = calc_stun_threshold(&db, &CalcConfig::default(), &inp);
+    assert!((t - 2000.0).abs() < EPS, "got {t}");
+}
+
+/// BASE/INC/MORE 聚合（:2549-2552）：(1000 + 200) × 1.3 × 2（阈值翻倍词条 MORE 100）= 3120。
+#[test]
+fn stun_threshold_aggregation() {
+    let db = db_with(vec![
+        Modifier::number("StunThreshold", ModType::Base, 200.0),
+        Modifier::number("StunThreshold", ModType::Inc, 30.0),
+        Modifier::number("StunThreshold", ModType::More, 100.0),
+    ]);
+    let t = calc_stun_threshold(&db, &CalcConfig::default(), &stun_inputs(1000.0));
+    assert!((t - 3120.0).abs() < EPS, "got {t}");
+}
+
+/// 时长帧上取整（:2594）：base 0.5s / tick 0.033 = 15.15… → ceil 16 帧 → 0.528s。
+#[test]
+fn stun_duration_rounds_up_to_server_tick() {
+    let r = calc_stun(&ModDb::new(), &CalcConfig::default(), &stun_inputs(1000.0));
+    assert!(
+        (r.stun_duration - 0.528).abs() < EPS,
+        "got {}",
+        r.stun_duration
+    );
+}
+
+/// 时长 INC（:2591/:2594）：StunDuration +100% → 1.0/0.033 = 30.3 → 31 帧 → 1.023s。
+#[test]
+fn stun_duration_scales_with_inc() {
+    let db = db_with(vec![Modifier::number("StunDuration", ModType::Inc, 100.0)]);
+    let r = calc_stun(&db, &CalcConfig::default(), &stun_inputs(1000.0));
+    assert!(
+        (r.stun_duration - 1.023).abs() < EPS,
+        "got {}",
+        r.stun_duration
+    );
+}
+
+/// 恢复缩短时长（:2593-2594 分母）：StunRecovery +100% → 0.25/0.033 = 7.57 → 8 帧 → 0.264s。
+#[test]
+fn stun_duration_shortened_by_recovery() {
+    let db = db_with(vec![Modifier::number("StunRecovery", ModType::Inc, 100.0)]);
+    let r = calc_stun(&db, &CalcConfig::default(), &stun_inputs(1000.0));
+    assert!(
+        (r.stun_duration - 0.264).abs() < EPS,
+        "got {}",
+        r.stun_duration
+    );
+}
+
+/// 规避 ≥100%（StunImmune 等）→ 时长 0、几率 0（:2584-2586）。
+#[test]
+fn stun_avoid_100_zeroes_duration_and_chance() {
+    let inp = StunInputs {
+        life: 1000.0,
+        total_taken_hit: 1000.0,
+        physical_taken_hit: 1000.0,
+        avoid_stun: 100.0,
+        ..StunInputs::default()
+    };
+    let r = calc_stun(&ModDb::new(), &CalcConfig::default(), &inp);
+    assert_eq!(r.stun_duration, 0.0);
+    assert_eq!(r.self_stun_chance, 0.0);
+}
+
+/// 受眩晕几率（:2617-2624）：taken 1000 / phys 1000 / 阈值 1000 →
+/// eff = (1000 + 1000×0.25) × 1.0 = 1250；base = min(200×1250/1000, 100) = 100 > 20
+/// → SelfStunChance = 100 × (100−0)/100 = 100。
+#[test]
+fn stun_chance_full_hit_is_100() {
+    let inp = StunInputs {
+        life: 1000.0,
+        total_taken_hit: 1000.0,
+        physical_taken_hit: 1000.0,
+        ..StunInputs::default()
+    };
+    let r = calc_stun(&ModDb::new(), &CalcConfig::default(), &inp);
+    assert!(
+        (r.self_stun_chance - 100.0).abs() < EPS,
+        "got {}",
+        r.self_stun_chance
+    );
+}
+
+/// MinStunChanceNeeded(20) 门槛（:2624）：taken 50 / phys 50 → eff 62.5 →
+/// base = 200×62.5/1000 = 12.5 < 20 → 归 0。
+#[test]
+fn stun_chance_below_min_needed_is_zero() {
+    let inp = StunInputs {
+        life: 1000.0,
+        total_taken_hit: 50.0,
+        physical_taken_hit: 50.0,
+        ..StunInputs::default()
+    };
+    let r = calc_stun(&ModDb::new(), &CalcConfig::default(), &inp);
+    assert_eq!(r.self_stun_chance, 0.0);
+}
+
+/// 几率乘 (1 − 规避)（:2624）：avoid_stun 50 → 100 × 50/100 = 50。
+#[test]
+fn stun_chance_scaled_by_not_avoid() {
+    let inp = StunInputs {
+        life: 1000.0,
+        total_taken_hit: 1000.0,
+        physical_taken_hit: 1000.0,
+        avoid_stun: 50.0,
+        ..StunInputs::default()
+    };
+    let r = calc_stun(&ModDb::new(), &CalcConfig::default(), &inp);
+    assert!(
+        (r.self_stun_chance - 50.0).abs() < EPS,
+        "got {}",
+        r.self_stun_chance
+    );
+}
+
+/// 物理 ×0.25 加权（:2617）：taken 100（全物理）→ eff = 125 →
+/// base = 200×125/1000 = 25 > 20 → 25。
+#[test]
+fn stun_chance_physical_weighted_quarter() {
+    let inp = StunInputs {
+        life: 1000.0,
+        total_taken_hit: 100.0,
+        physical_taken_hit: 100.0,
+        ..StunInputs::default()
+    };
+    let r = calc_stun(&ModDb::new(), &CalcConfig::default(), &inp);
+    assert!(
+        (r.self_stun_chance - 25.0).abs() < EPS,
+        "got {}",
+        r.self_stun_chance
+    );
+}
+
+// --- avoid_stun ES 条件修复（CalcDefence.lua:2554-2557，M2-E2）---
+
+/// ES > totalTakenHit 且非 EB → notAvoid ×0.5 → 隐式 50% 规避。
+#[test]
+fn avoid_stun_es_above_taken_hit_halves() {
+    let r = calc_avoidance(&ModDb::new(), &CalcConfig::default(), 2000.0, 1000.0, false);
+    assert_eq!(r.avoid_stun, 50.0);
+}
+
+/// ES ≤ totalTakenHit → 不减半（旧实现「ES > 0 即减半」在此修正）。
+#[test]
+fn avoid_stun_es_below_taken_hit_no_halving() {
+    let r = calc_avoidance(&ModDb::new(), &CalcConfig::default(), 500.0, 1000.0, false);
+    assert_eq!(r.avoid_stun, 0.0);
+}
+
+/// EB（EnergyShieldProtectsMana）→ 即使 ES > takenHit 也不减半（:2555）。
+#[test]
+fn avoid_stun_eb_disables_es_halving() {
+    let r = calc_avoidance(&ModDb::new(), &CalcConfig::default(), 2000.0, 1000.0, true);
+    assert_eq!(r.avoid_stun, 0.0);
+}
+
+/// perform 端到端：fill_evade_stun 写 stun 三字段。
+/// life 1000、无 ES → 阈值 1000；参考伤 = reference_hit = 1000（视作纯物理）→
+/// eff = 1250 → SelfStunChance 100；avoid_stun = 0 → 时长 0.528s。
+#[test]
+fn perform_fills_stun_into_output() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = Env::new(Actor::new(1, base));
+    perform(&mut env).unwrap();
+
+    assert!((env.player.output.stun_threshold - 1000.0).abs() < EPS);
+    assert!((env.player.output.self_stun_chance - 100.0).abs() < EPS);
+    assert!((env.player.output.stun_duration - 0.528).abs() < EPS);
+}

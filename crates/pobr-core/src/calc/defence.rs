@@ -359,16 +359,29 @@ pub const AVOID_AILMENT_CAP: f64 = 100.0;
 /// - `AvoidAllDamageFromHitsChance` / 投射物规避：BASE 求和后 `min(_, 75)`。
 /// - 异常规避（眩晕/点燃/感电/冰缓/冰冻/中毒/流血/全元素）：上限 100%；
 ///   `<Ailment>Immune` / `ElementalAilmentImmune` 旗标直接置 100。
-/// - **ES 隐式眩晕规避**（PoB2 `CalcDefence.lua` 注释明确）：
-///   受击时有 ES（> 0）→ `notAvoidChance × 0.5`，即被眩晕几率减半 ≡ 等效 AvoidStun +50%。
-///   实现：若 `energy_shield > 0`，眩晕规避 = `1 - (1 - avoid_stun/100) * 0.5`，
-///   折算回百分比后再 clamp 100。
+/// - **ES 隐式眩晕规避**（PoB2 CalcDefence.lua:2554-2557，M2-E2 修复）：
+///   `ES > totalTakenHit` **且无** `EnergyShieldProtectsMana`（EB）才
+///   `notAvoidChance × 0.5`（被眩晕几率减半 ≡ 等效 AvoidStun +50%）。
+///   旧实现的「ES > 0 即减半」过宽——vendor 仅在 ES 能吃下整次受击承伤时给予减半，
+///   EB 时 ES 护 Mana 不护命中池、不享受减半。
+///   `total_taken_hit` 在 Track F 接线前由调用方以单击参考伤害近似（蓝图 Track E）。
 /// - `ShockAvoidAppliesToElementalAilments`（Stormshroud）联动：
 ///   感电规避也加入全元素规避计算。
 ///
+/// # 参数
+/// - `total_taken_hit` — 受击总承伤（PoB2 `output.totalTakenHit`，:2555）。
+/// - `energy_shield_protects_mana` — EB keystone flag（:2555）。
+///   TODO(M2-C1)：C-1 合并后调用方改读 `DefenceKeystones::energy_shield_protects_mana`。
+///
 /// 出处：agent-docs/active-defences.md §3.2；
-///       PoB2 `src/Modules/CalcDefence.lua` 规避段。
-pub fn calc_avoidance(db: &ModDb, cfg: &CalcConfig, energy_shield: f64) -> AvoidanceResult {
+///       PoB2 `src/Modules/CalcDefence.lua` 规避段 + :2554-2558。
+pub fn calc_avoidance(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    energy_shield: f64,
+    total_taken_hit: f64,
+    energy_shield_protects_mana: bool,
+) -> AvoidanceResult {
     // --- 击中规避 ---
     let avoid_all_raw = db.sum(
         ModType::Base,
@@ -453,17 +466,19 @@ pub fn calc_avoidance(db: &ModDb, cfg: &CalcConfig, energy_shield: f64) -> Avoid
     let avoid_bleeding = round(avoid_bleeding_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
     // --- 眩晕规避（含 ES 隐式 50%）---
-    // PoB2 CalcDefence.lua：
+    // PoB2 CalcDefence.lua:2554-2558：
     //   notAvoidChance = StunImmune ? 0 : 100 - min(AvoidStun, 100)
-    //   if ES > 0: notAvoidChance *= 0.5
-    //   effectiveAvoidStun = 100 - notAvoidChance
+    //   if ES > totalTakenHit and not EnergyShieldProtectsMana: notAvoidChance *= 0.5
+    //   StunAvoidChance = 100 - notAvoidChance
     let stun_immune = db.flag(cfg, ModName::from("StunImmune"));
     let avoid_stun = if stun_immune {
         100.0
     } else {
         let stun_raw = db.sum(ModType::Base, cfg, &[ModName::from("AvoidStun")]);
         let not_avoid = (100.0 - stun_raw.min(AVOID_AILMENT_CAP)).max(0.0);
-        let effective_not_avoid = if energy_shield > 0.0 {
+        // :2555-2557 ES 能吃下整次受击承伤且非 EB 时，被眩晕几率减半。
+        let effective_not_avoid = if energy_shield > total_taken_hit && !energy_shield_protects_mana
+        {
             not_avoid * 0.5
         } else {
             not_avoid
@@ -663,10 +678,14 @@ pub fn calc_evade_suite(
 }
 
 /// Track E fill 编排（蓝图 §3.2 预登记：perform `fill_mechanics` 末尾一行调用）：
-/// Evade 四分型写 [`super::OutputTable`]。
+/// Evade 四分型 + Stun 体系写 [`super::OutputTable`]。
 ///
 /// 敌人侧读数（accuracy / `HitChance` 乘区 / `CannotBeEvaded`）先行取出，
-/// 保持 `calc_evade_suite` 只依赖玩家 db（纯函数约定）。
+/// 保持 `calc_evade_suite` / `calc_stun` 只依赖玩家 db（纯函数约定）。
+///
+/// Stun 的 `totalTakenHit`/`PhysicalTakenHit` 在 Track F 接线前以单击参考伤害
+/// （与 `EhpOptions` 的 `reference_hit` 同源 = life + ES；参考击视作纯物理，
+/// 与 ehp.rs 物理参考口径一致）近似，F 接线后换扣池管线真值。
 pub fn fill_evade_stun(env: &mut Env) {
     let hit_names = [ModName::from("HitChance")];
     let enemy_hit_mult = (1.0 + env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &hit_names) / 100.0)
@@ -690,6 +709,28 @@ pub fn fill_evade_stun(env: &mut Env) {
     env.player.output.projectile_evade_chance = suite.projectile;
     env.player.output.spell_evade_chance = suite.spell;
     env.player.output.spell_projectile_evade_chance = suite.spell_projectile;
+
+    // --- Stun 体系（CalcDefence.lua:2525-2643；依赖 fill_mechanics 已写入 avoid_stun）---
+    // F 接线前的受击参考近似（与 EhpOptions reference_hit 同源）。
+    let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
+    let stun_inputs = super::stun::StunInputs {
+        life: env.player.output.life,
+        life_base_flat: env.player.base.life,
+        energy_shield: env.player.output.energy_shield,
+        mana: env.player.output.mana,
+        total_taken_hit: reference_hit,
+        physical_taken_hit: reference_hit,
+        avoid_stun: env.player.output.avoid_stun,
+        // TODO(M2-C1)：C-1 合并后改读 DefenceKeystones::chaos_inoculation。
+        chaos_inoculation: env
+            .player
+            .mod_db
+            .flag(&env.cfg, ModName::from("ChaosInoculation")),
+    };
+    let stun = super::stun::calc_stun(&env.player.mod_db, &env.cfg, &stun_inputs);
+    env.player.output.stun_threshold = stun.threshold;
+    env.player.output.self_stun_chance = stun.self_stun_chance;
+    env.player.output.stun_duration = stun.stun_duration;
 }
 
 // ─────────────────────────────────────────────────────────────────

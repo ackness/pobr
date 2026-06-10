@@ -17,6 +17,7 @@ pub mod setup_env;
 pub mod skill_mechanics;
 pub mod skill_use_time;
 pub mod stat_boundary;
+pub mod stun;
 pub mod survivability;
 pub mod trigger;
 
@@ -64,6 +65,7 @@ pub use session::CalculationSession;
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 pub use skill_use_time::{SkillUseTime, calc_skill_use_time};
 pub use stat_boundary::{StatBoundary, stat_boundary};
+pub use stun::{StunInputs, StunResult, calc_stun, calc_stun_threshold};
 pub use survivability::{
     AllChargeStates, ChargeKind, ChargeState, DEFAULT_CHARGE_DURATION_SECONDS, DEFAULT_MAX_CHARGES,
     LEECH_EFFECTIVE_MAX_HIT_DAMAGE, LEECH_MAX_ES_RATE_PCT, LEECH_MAX_INSTANCE_PCT,

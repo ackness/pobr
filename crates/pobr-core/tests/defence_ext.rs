@@ -152,12 +152,12 @@ fn es_recharge_per_second_gives_absolute_value() {
 // 规避（Avoidance）测试（gap: avoidance-ailment-missing）
 // ─────────────────────────────────────────────────────────────────
 
-/// 无词条 → 全部规避几率为 0（眩晕除外：有 ES 时 = 50%）。
+/// 无词条 → 全部规避几率为 0（眩晕除外：ES > totalTakenHit 时 = 50%）。
 #[test]
 fn avoidance_all_zero_without_modifiers_no_es() {
     let db = ModDb::new();
     let cfg = CalcConfig::default();
-    let result = calc_avoidance(&db, &cfg, 0.0 /* no ES */);
+    let result = calc_avoidance(&db, &cfg, 0.0 /* no ES */, 0.0, false);
 
     assert_eq!(result.avoid_all_damage_from_hits, 0.0);
     assert_eq!(result.avoid_ignite, 0.0);
@@ -170,28 +170,29 @@ fn avoidance_all_zero_without_modifiers_no_es() {
     assert_eq!(result.avoid_stun, 0.0);
 }
 
-/// ES > 0 → 眩晕规避隐式 50%（PoB2 CalcDefence.lua 注释）。
+/// ES > totalTakenHit（且非 EB）→ 眩晕规避隐式 50%（PoB2 CalcDefence.lua:2554-2557）。
 #[test]
 fn avoidance_stun_50pct_implicit_when_es_present() {
     let db = ModDb::new();
     let cfg = CalcConfig::default();
-    let result = calc_avoidance(&db, &cfg, 500.0 /* ES > 0 */);
+    // M2-E2（CalcDefence.lua:2554-2557）：减半条件 = ES > totalTakenHit 且非 EB。
+    let result = calc_avoidance(&db, &cfg, 500.0 /* ES > takenHit */, 100.0, false);
 
     // notAvoidChance = 100; with ES → notAvoidChance *= 0.5 = 50; effectiveAvoid = 50%
     assert_eq!(
         result.avoid_stun, 50.0,
-        "ES > 0 should give 50% implicit stun avoidance"
+        "ES > totalTakenHit should give 50% implicit stun avoidance"
     );
 }
 
-/// AvoidStun 词条 70% + ES 存在（隐式 50% 效果应用于 notAvoidChance）。
+/// AvoidStun 词条 70% + ES > totalTakenHit（隐式减半应用于 notAvoidChance）。
 /// notAvoidChance = 100 - 70 = 30; × 0.5 = 15; effectiveAvoid = 85%.
 #[test]
 fn avoidance_stun_combines_explicit_mod_and_es_implicit() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("AvoidStun", ModType::Base, 70.0));
     let cfg = CalcConfig::default();
-    let result = calc_avoidance(&db, &cfg, 500.0);
+    let result = calc_avoidance(&db, &cfg, 500.0, 100.0, false);
 
     // notAvoid = 100 - 70 = 30; × 0.5 = 15; effectiveAvoid = 85
     assert_eq!(result.avoid_stun, 85.0);
@@ -207,7 +208,7 @@ fn avoidance_all_damage_capped_at_75() {
         90.0,
     ));
     let cfg = CalcConfig::default();
-    let result = calc_avoidance(&db, &cfg, 0.0);
+    let result = calc_avoidance(&db, &cfg, 0.0, 0.0, false);
 
     assert_eq!(result.avoid_all_damage_from_hits, AVOID_HIT_CAP);
 }
@@ -218,7 +219,7 @@ fn avoidance_ailment_capped_at_100() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("AvoidIgnite", ModType::Base, 120.0));
     let cfg = CalcConfig::default();
-    let result = calc_avoidance(&db, &cfg, 0.0);
+    let result = calc_avoidance(&db, &cfg, 0.0, 0.0, false);
 
     assert_eq!(result.avoid_ignite, AVOID_AILMENT_CAP);
 }
@@ -229,7 +230,7 @@ fn avoidance_immune_flag_sets_100() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::flag("IgniteImmune"));
     let cfg = CalcConfig::default();
-    let result = calc_avoidance(&db, &cfg, 0.0);
+    let result = calc_avoidance(&db, &cfg, 0.0, 0.0, false);
 
     assert_eq!(result.avoid_ignite, 100.0);
 }
@@ -240,7 +241,7 @@ fn avoidance_elemental_immune_covers_all_elemental_ailments() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::flag("ElementalAilmentImmune"));
     let cfg = CalcConfig::default();
-    let result = calc_avoidance(&db, &cfg, 0.0);
+    let result = calc_avoidance(&db, &cfg, 0.0, 0.0, false);
 
     assert_eq!(result.avoid_ignite, 100.0);
     assert_eq!(result.avoid_shock, 100.0);
@@ -256,7 +257,7 @@ fn avoidance_stormshroud_shock_applies_to_elemental_ailments() {
     db.add_mod(Modifier::number("AvoidShock", ModType::Base, 50.0));
     db.add_mod(Modifier::flag("ShockAvoidAppliesToElementalAilments"));
     let cfg = CalcConfig::default();
-    let result = calc_avoidance(&db, &cfg, 0.0);
+    let result = calc_avoidance(&db, &cfg, 0.0, 0.0, false);
 
     assert_eq!(result.avoid_shock, 50.0);
     // 点燃 = AvoidIgnite(0) + AvoidElementalAilments(0) + shock_avoid_raw(50) = 50%
