@@ -2,7 +2,7 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
 
-use super::{Actor, round};
+use super::{Actor, Env, round};
 
 /// ES 充能速率 / 延迟的输出（ES recharge，gap: es-recharge-missing）。
 ///
@@ -482,6 +482,214 @@ pub fn calc_avoidance(db: &ModDb, cfg: &CalcConfig, energy_shield: f64) -> Avoid
         avoid_poison,
         avoid_bleeding,
     }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Evade 四分型（M2 Track E，13-G9；PoB2 CalcDefence.lua:1394-1456）
+// ─────────────────────────────────────────────────────────────────
+
+/// Evade 四分型结果（PoB2 `EvadeChance` / `Melee|Projectile|Spell|SpellProjectileEvadeChance`，
+/// CalcDefence.lua:1421-1456）。各值为百分比（0–100，已按 `EvadeChanceMax`/cap 截断）。
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct EvadeSuite {
+    /// 综合闪避几率（split 时为独立公式值，否则 = melee；:1443-1449）。
+    pub evade_chance: f64,
+    /// 近战闪避几率。
+    pub melee: f64,
+    /// 投射物闪避几率。
+    pub projectile: f64,
+    /// 法术闪避几率。
+    pub spell: f64,
+    /// 法术投射物闪避几率。
+    pub spell_projectile: f64,
+}
+
+impl EvadeSuite {
+    /// 五值同值（CannotEvade → 0 / AlwaysEvade → 100 分支用；:1421-1433）。
+    fn uniform(value: f64) -> Self {
+        Self {
+            evade_chance: value,
+            melee: value,
+            projectile: value,
+            spell: value,
+            spell_projectile: value,
+        }
+    }
+}
+
+/// vendor `calcs.monsterHitChance`（CalcDefence.lua:40-46）：怪物命中玩家几率，
+/// **整数百分比**（`m_max(m_min(round(raw), 100), 5)`）。
+///
+/// 与本文件 [`monster_hit_chance`]（fraction 口径、1e-9 精度）刻度不同：evade 公式
+/// 消费的是 vendor 的整数百分比中间值，混用会产生 ±0.5% 级偏差，故独立实现。
+///
+/// 边界：`accuracy < 0` → 5（vendor :41-43）；`evasion <= 0` → 100（vendor 公式
+/// 在 evasion=0 时分子为 0 → raw=100；同时规避 evasion=accuracy=0 的 0/0）。
+fn monster_hit_chance_pct(evasion: f64, accuracy: f64) -> f64 {
+    if accuracy < 0.0 {
+        return 5.0;
+    }
+    if evasion <= 0.0 {
+        return 100.0;
+    }
+    let raw = (1.0 - (0.95 * evasion) / (evasion + 4.0 * accuracy)) * 100.0;
+    raw.round().clamp(5.0, 100.0)
+}
+
+/// `calcLib.mod` 等价：`(1 + Σinc/100) × Πmore`（vendor CalcTools.lua `calcLib.mod`）。
+fn scaling_mod(db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+    (1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)
+}
+
+/// Evade 四分型计算（PoB2 CalcDefence.lua:1394-1456）。
+///
+/// # 公式（逐行对照）
+/// - 四分型有效闪避值（:1394-1397）：`<Type>Evasion = max(round(Evasion × calcLib.mod(<Type>Evasion)), 0)`
+///   （整数取整对齐 vendor `round`）。
+/// - `evadeMax = Override(EvadeChanceMax) || EvadeChanceCap(95)`（:1436；W0.1 把
+///   vendor MAX 词条收敛为 Override，消费侧 clamp 语义不变）。
+/// - 综合（:1437）：`EvadeChance = 100 − (monsterHitChance(Evasion, acc) − ΣBASE EvadeChance) × enemyHitMult`。
+/// - 四分型（:1438-1441）：`max(0, min(evadeMax, (100 − (monsterHitChance(<Type>Evasion, acc)
+///   − ΣBASE EvadeChance) × enemyHitMult) × calcLib.mod(EvadeChance, <Type>EvadeChance)))`；
+///   SpellProjectile 的乘区名集为 `EvadeChance + ProjectileEvadeChance + SpellProjectileEvadeChance`（:1441）。
+/// - split 判定（:1443-1448）：melee 与其余三型**全部不同**才保留综合独立值，否则综合 = melee。
+/// - 综合再 `min(evadeMax)`（:1449）；`UnluckyEvade` → 五值各 `x²/100`（:1450-1456）。
+/// - `CannotEvade`/敌方 `CannotBeEvaded` → 全 0（:1421-1426）；`AlwaysEvade` → 全 100（:1427-1433）。
+///
+/// # 参数
+/// - `enemy_hit_mult` — 敌方 `HitChance` 的 `calcLib.mod`（inc/more 乘区，:1435；由调用方
+///   从敌人 ModDb 读出，保持本函数只依赖玩家 db）。
+/// - `enemy_cannot_be_evaded` — 敌方 `CannotBeEvaded` flag（:1421）。
+///
+/// 注：`EnemyAccuracyDistancePenalty`（:2545-2549）依赖 config 输入，M3 config_interpreter
+/// 接入后在调用方对 `enemy_accuracy` 预折算，本函数公式不变。
+pub fn calc_evade_suite(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    evasion: f64,
+    enemy_accuracy: f64,
+    enemy_hit_mult: f64,
+    enemy_cannot_be_evaded: bool,
+) -> EvadeSuite {
+    // :1421-1426 CannotEvade / 敌方 CannotBeEvaded → 全 0。
+    if db.flag(cfg, ModName::from("CannotEvade")) || enemy_cannot_be_evaded {
+        return EvadeSuite::uniform(0.0);
+    }
+    // :1427-1433 AlwaysEvade（"Attacks cannot Hit you"）→ 全 100。
+    if db.flag(cfg, ModName::from("AlwaysEvade")) {
+        return EvadeSuite::uniform(100.0);
+    }
+
+    // :1394-1397 四分型有效闪避值（vendor 整数取整、下限 0）。
+    let typed_evasion = |name: &str| -> f64 {
+        (evasion * scaling_mod(db, cfg, &[ModName::from(name)]))
+            .round()
+            .max(0.0)
+    };
+    let melee_evasion = typed_evasion("MeleeEvasion");
+    let projectile_evasion = typed_evasion("ProjectileEvasion");
+    let spell_evasion = typed_evasion("SpellEvasion");
+    let spell_projectile_evasion = typed_evasion("SpellProjectileEvasion");
+
+    // :1435-1436 综合 BASE 与上限。
+    let evade_base = db.sum(ModType::Base, cfg, &[ModName::from("EvadeChance")]);
+    let evade_max = db
+        .override_(cfg, ModName::from("EvadeChanceMax"))
+        .unwrap_or(cfg.constants.game().evade_chance_cap)
+        .max(0.0);
+
+    // :1438-1441 四分型独立公式。
+    let typed_chance = |type_evasion: f64, names: &[ModName]| -> f64 {
+        let unscaled = 100.0
+            - (monster_hit_chance_pct(type_evasion, enemy_accuracy) - evade_base) * enemy_hit_mult;
+        (unscaled * scaling_mod(db, cfg, names)).clamp(0.0, evade_max)
+    };
+    let melee = typed_chance(
+        melee_evasion,
+        &[
+            ModName::from("EvadeChance"),
+            ModName::from("MeleeEvadeChance"),
+        ],
+    );
+    let projectile = typed_chance(
+        projectile_evasion,
+        &[
+            ModName::from("EvadeChance"),
+            ModName::from("ProjectileEvadeChance"),
+        ],
+    );
+    let spell = typed_chance(
+        spell_evasion,
+        &[
+            ModName::from("EvadeChance"),
+            ModName::from("SpellEvadeChance"),
+        ],
+    );
+    let spell_projectile = typed_chance(
+        spell_projectile_evasion,
+        &[
+            ModName::from("EvadeChance"),
+            ModName::from("ProjectileEvadeChance"),
+            ModName::from("SpellProjectileEvadeChance"),
+        ],
+    );
+
+    // :1437 综合独立公式（无四分型乘区、不 clamp 0——与 vendor 一致，仅 :1449 上限截断）。
+    let mut evade_chance =
+        100.0 - (monster_hit_chance_pct(evasion, enemy_accuracy) - evade_base) * enemy_hit_mult;
+    // :1443-1448 split 判定：melee 与其余三型全部不同才保留综合，否则综合 = melee。
+    if !(melee != projectile && melee != spell && melee != spell_projectile) {
+        evade_chance = melee;
+    }
+    // :1449 综合上限。
+    evade_chance = evade_chance.min(evade_max);
+
+    // :1450-1456 UnluckyEvade → 各值 x²/100。
+    let unlucky = db.flag(cfg, ModName::from("UnluckyEvade"));
+    let finish = |v: f64| -> f64 {
+        if unlucky {
+            round(v * v / 100.0)
+        } else {
+            round(v)
+        }
+    };
+    EvadeSuite {
+        evade_chance: finish(evade_chance),
+        melee: finish(melee),
+        projectile: finish(projectile),
+        spell: finish(spell),
+        spell_projectile: finish(spell_projectile),
+    }
+}
+
+/// Track E fill 编排（蓝图 §3.2 预登记：perform `fill_mechanics` 末尾一行调用）：
+/// Evade 四分型写 [`super::OutputTable`]。
+///
+/// 敌人侧读数（accuracy / `HitChance` 乘区 / `CannotBeEvaded`）先行取出，
+/// 保持 `calc_evade_suite` 只依赖玩家 db（纯函数约定）。
+pub fn fill_evade_stun(env: &mut Env) {
+    let hit_names = [ModName::from("HitChance")];
+    let enemy_hit_mult = (1.0 + env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &hit_names) / 100.0)
+        * env.enemy.mod_db.more(&env.cfg, &hit_names);
+    let enemy_cannot_be_evaded = env
+        .enemy
+        .mod_db
+        .flag(&env.cfg, ModName::from("CannotBeEvaded"));
+    let enemy_accuracy = env.enemy.base.accuracy;
+
+    let suite = calc_evade_suite(
+        &env.player.mod_db,
+        &env.cfg,
+        env.player.output.evasion,
+        enemy_accuracy,
+        enemy_hit_mult,
+        enemy_cannot_be_evaded,
+    );
+    env.player.output.evade_chance = suite.evade_chance;
+    env.player.output.melee_evade_chance = suite.melee;
+    env.player.output.projectile_evade_chance = suite.projectile;
+    env.player.output.spell_evade_chance = suite.spell;
+    env.player.output.spell_projectile_evade_chance = suite.spell_projectile;
 }
 
 // ─────────────────────────────────────────────────────────────────

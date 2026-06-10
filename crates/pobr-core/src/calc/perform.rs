@@ -174,6 +174,9 @@ fn fill_mechanics(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
 
+    // --- keystone 开关快照（M2 Track C：集中构造一次，下游各机制段只读本结构）---
+    let keystones = crate::rules::DefenceKeystones::from_db(db, cfg);
+
     // --- 技能使用时间 / 有效行动速率 ---
     let base_use_time = if env.player.base.action_rate > 0.0 {
         1.0 / env.player.base.action_rate
@@ -213,8 +216,11 @@ fn fill_mechanics(env: &mut Env) {
         let v = db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
         if v > 0.0 { v } else { 90.0 }
     };
+    // CI 接线（13-G16）：keystone 快照驱动，不再写死 false。CI build 的 ES 作生命池、
+    // 混沌免疫（EhpOptions 语义）。vendor：CalcDefence.lua:85（flag 读出）/:120-123
+    // （Life=1 + FullLife）/:2537-2539（CI 用「CI 前 Life」作眩晕阈值基底）。
     let ehp_opts = EhpOptions {
-        chaos_inoculation: false,
+        chaos_inoculation: keystones.chaos_inoculation,
         physical_overwhelm: db.sum(
             ModType::Base,
             cfg,
@@ -382,6 +388,9 @@ fn fill_mechanics(env: &mut Env) {
 
     // --- 触发速率（Lane B：冷却驱动 / CWC；无触发词条时保持 0）---
     fill_trigger(env);
+
+    // --- Evade 四分型 + Stun（M2 Track E，蓝图 §3.2 预登记的一行调用）---
+    super::defence::fill_evade_stun(env);
 }
 
 /// 触发速率 fill（Lane B）：读冷却驱动 / CWC 触发词条，写 `trigger_rate_cap` /
