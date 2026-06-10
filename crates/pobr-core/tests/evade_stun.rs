@@ -495,3 +495,33 @@ fn perform_fills_stun_into_output() {
     assert!((env.player.output.self_stun_chance - 100.0).abs() < EPS);
     assert!((env.player.output.stun_duration - 0.528).abs() < EPS);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// 抗性下界 −200（M2-E3 选做，13-G13；CalcDefence.lua:886/:919，Data.lua:180）
+// ─────────────────────────────────────────────────────────────────
+
+use pobr_core::calc::{MinimalInput, calculate_minimal};
+
+/// 深负抗触底：base −300 → final = max(min(−300, 75), −200) = −200。
+#[test]
+fn resistance_floored_at_minus_200() {
+    let input = MinimalInput {
+        base_life: 100.0,
+        base_fire_resistance: -300.0,
+        ..MinimalInput::default()
+    };
+    let out = calculate_minimal(&ModDb::new(), &CalcConfig::default(), &input);
+    assert_eq!(out.fire_resistance, -200.0);
+}
+
+/// 下界以内的负抗不受影响：base −60 → final = −60（修复不改常规路径）。
+#[test]
+fn resistance_above_floor_unchanged() {
+    let input = MinimalInput {
+        base_life: 100.0,
+        base_cold_resistance: -60.0,
+        ..MinimalInput::default()
+    };
+    let out = calculate_minimal(&ModDb::new(), &CalcConfig::default(), &input);
+    assert_eq!(out.cold_resistance, -60.0);
+}
