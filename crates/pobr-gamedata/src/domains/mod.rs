@@ -17,3 +17,6 @@ pub mod weapon_types;
 // ---- M0-W4d 小查表（overlay 层）----
 pub mod high_precision_mods;
 pub mod local_mods;
+
+// ---- M0-W4a per-skill 覆盖值（overlay 层，loader + 专用 merge）----
+pub mod skill_overrides;

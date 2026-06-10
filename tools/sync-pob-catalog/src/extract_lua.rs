@@ -22,8 +22,12 @@ const BOOTSTRAP_LUA: &str = include_str!("extract_skill_overrides.lua");
 /// 默认 luajit 路径（macOS Homebrew）；可被 `--luajit` 或 `POBR_LUAJIT` 覆盖
 const DEFAULT_LUAJIT_HOMEBREW: &str = "/opt/homebrew/bin/luajit";
 
-/// 默认抽取的 vendor 技能数据文件（玩家主动技能三系；小表起步，后续按需扩列）
-pub const DEFAULT_SKILL_FILES: &[&str] = &["act_dex", "act_int", "act_str"];
+/// 默认抽取的 vendor 技能数据文件：玩家主动三系 + 召唤物 / 魂灵 / 其它 +
+/// 辅助三系——覆盖 `.dat` 导出缺失列（critChance / attackSpeedMultiplier /
+/// baseMultiplier）涉及的全部技能来源（消费侧 merge 需要全量，缺一系即丢值）。
+pub const DEFAULT_SKILL_FILES: &[&str] = &[
+    "act_dex", "act_int", "act_str", "minion", "other", "spectre", "sup_dex", "sup_int", "sup_str",
+];
 
 /// 当前 overlay 文档 schema 标识（字段演化时递增）
 pub const SKILL_OVERRIDES_SCHEMA: &str = "skill_overrides/v1";
@@ -72,24 +76,10 @@ pub struct ExtractLuaArgs {
     pub out_for_meta: Option<String>,
 }
 
-/// 单条 per-skill 覆盖值。`value` 与 `per_level` 二选一：
-/// 所有等级同值时压缩为 `value`，否则保留 `per_level: [[level, value], ...]`。
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SkillOverride {
-    /// vendor 技能 id（= GrantedEffects.Id，如 `FlickerStrikePlayer`）
-    pub skill: String,
-    /// 入库 stat 名（`crit_chance` / `attack_speed_multiplier` / `skill_attack_speed_more`）
-    pub stat: String,
-    /// statSet 序号（仅 statSet 级覆盖值携带，如 baseMods 的 Speed MORE）
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stat_set: Option<u32>,
-    /// 全等级同值（或与等级无关）时的单值
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<f64>,
-    /// 按等级明细：`[[level, value], ...]`，level 升序
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub per_level: Option<Vec<(u32, f64)>>,
-}
+/// 单条 per-skill 覆盖值——schema 单一来源是
+/// [`pobr_data::catalog::skill_overrides::SkillOverrideEntry`]（生成 / 消费两侧
+/// 共用同一 serde 形状，防止字段漂移）；此处保留原名 re-export 兼容既有引用。
+pub use pobr_data::catalog::skill_overrides::SkillOverrideEntry as SkillOverride;
 
 /// overlay 文档头部元信息：记录 vendor 版本与再生成命令，保证可追溯、可重跑
 #[derive(Debug, Clone, Serialize, Deserialize)]

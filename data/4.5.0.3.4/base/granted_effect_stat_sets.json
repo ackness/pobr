@@ -47362,7 +47362,6 @@
   },
   {
     "id": "FlickerStrikePlayer",
-    "skill_attack_speed_more": 285.0,
     "levels": [
       {
         "gem_level": 1,

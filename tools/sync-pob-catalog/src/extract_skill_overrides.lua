@@ -7,6 +7,7 @@
 --
 --   crit_chance             ← levels[*].critChance
 --   attack_speed_multiplier ← levels[*].attackSpeedMultiplier
+--   base_multiplier         ← levels[*].baseMultiplier
 --   skill_attack_speed_more ← statSets[*].baseMods 中 mod("Speed", "MORE", <number>, ...)
 --
 -- 确定性约定：本脚本只负责"忠实抽取 + 合法 JSON"；最终排序、数字格式与整体
@@ -103,6 +104,7 @@ end
 local LEVEL_STATS = {
 	{ vendorKey = "critChance", stat = "crit_chance" },
 	{ vendorKey = "attackSpeedMultiplier", stat = "attack_speed_multiplier" },
+	{ vendorKey = "baseMultiplier", stat = "base_multiplier" },
 }
 
 local function emitLevelStat(skillId, skill, vendorKey, statName)
@@ -110,8 +112,9 @@ local function emitLevelStat(skillId, skill, vendorKey, statName)
 	if type(levels) ~= "table" then
 		return
 	end
+	local levelKeys = sortedNumericKeys(levels)
 	local rows = {}
-	for _, lvl in ipairs(sortedNumericKeys(levels)) do
+	for _, lvl in ipairs(levelKeys) do
 		local entry = levels[lvl]
 		if type(entry) == "table" and type(entry[vendorKey]) == "number" then
 			rows[#rows + 1] = { level = lvl, value = entry[vendorKey] }
@@ -120,8 +123,11 @@ local function emitLevelStat(skillId, skill, vendorKey, statName)
 	if #rows == 0 then
 		return
 	end
-	-- 所有等级同值 → 压缩为单 value；否则保留 per_level 明细
-	local constant = true
+	-- 压缩条件：该 stat 在 vendor **所有等级**均出现且同值 → 压缩为单 value
+	-- （消费侧把单 value 应用到该技能全部等级行）。只覆盖部分等级（如
+	-- RisenArbalestSnipe 仅 L1 有 baseMultiplier）或值随等级变化 → 保留
+	-- per_level 明细，避免把缺失等级误标为有值。
+	local constant = #rows == #levelKeys
 	for i = 2, #rows do
 		if rows[i].value ~= rows[1].value then
 			constant = false

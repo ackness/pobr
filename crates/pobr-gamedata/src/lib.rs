@@ -40,6 +40,8 @@ pub enum LoadError {
         path: PathBuf,
         source: serde_json::Error,
     },
+    /// overlay merge 失败（如 `skill_overrides.json` 含消费侧未接线的 stat）。
+    Overlay { path: PathBuf, message: String },
 }
 
 impl fmt::Display for LoadError {
@@ -47,6 +49,9 @@ impl fmt::Display for LoadError {
         match self {
             Self::Io { path, source } => write!(f, "读取 {} 失败：{source}", path.display()),
             Self::Parse { path, source } => write!(f, "解析 {} 失败：{source}", path.display()),
+            Self::Overlay { path, message } => {
+                write!(f, "应用 overlay {} 失败：{message}", path.display())
+            }
         }
     }
 }
@@ -130,21 +135,45 @@ impl GameData {
         self.load_domain("granted_effects.json")
     }
 
-    /// 加载授予效果的分等级参数（`granted_effect_id -> 升序等级数组`，cost/cooldown/attack time）。
+    /// 加载授予效果的分等级参数（`granted_effect_id -> 升序等级数组`，cost/cooldown/attack time），
+    /// 并把 `overlay/skill_overrides.json` 的等级类覆盖值（crit_chance /
+    /// attack_speed_multiplier / base_multiplier，vendor PoB2 抽取、`.dat` 导出缺失列）
+    /// merge 到纯 base 之上（overlay 缺失时 = 纯 base，见 [`domains::skill_overrides`]）。
     pub fn granted_effect_levels(
         &self,
     ) -> Result<std::collections::BTreeMap<String, Vec<SkillLevelDef>>, LoadError> {
-        self.load_domain("granted_effect_levels.json")
+        let mut levels = self.load_domain("granted_effect_levels.json")?;
+        if let Some(overrides) = self.skill_overrides()? {
+            domains::skill_overrides::apply_level_overrides(&mut levels, &overrides).map_err(
+                |message| LoadError::Overlay {
+                    path: self.overlay_path("skill_overrides.json"),
+                    message,
+                },
+            )?;
+        }
+        Ok(levels)
     }
 
     /// 加载授予效果的分等级**伤害 stat 集**（按 effect id 排序的数组，每项含每级
     /// 已解析的伤害 stat）。空缺（旧数据包无此域）时返回空 Vec，向后兼容。
+    /// `overlay/skill_overrides.json` 的 statSet 级覆盖值（skill_attack_speed_more，
+    /// PoB2 自带 baseMods 常量，不在 GGG `.dat` 中）在此 merge 到纯 base 之上。
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
-        match self.load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
-            Ok(v) => Ok(v),
-            Err(LoadError::Io { .. }) => Ok(Vec::new()),
-            Err(e) => Err(e),
+        let mut sets =
+            match self.load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
+                Ok(v) => v,
+                Err(LoadError::Io { .. }) => Vec::new(),
+                Err(e) => return Err(e),
+            };
+        if let Some(overrides) = self.skill_overrides()? {
+            domains::skill_overrides::apply_stat_set_overrides(&mut sets, &overrides).map_err(
+                |message| LoadError::Overlay {
+                    path: self.overlay_path("skill_overrides.json"),
+                    message,
+                },
+            )?;
         }
+        Ok(sets)
     }
 
     /// 加载技能消耗资源类型表（按索引升序，[`GrantedEffectDef::cost_types`] 外键目标）。
