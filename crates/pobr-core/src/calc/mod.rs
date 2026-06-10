@@ -20,6 +20,7 @@ pub mod skill_use_time;
 pub mod stat_boundary;
 pub mod stun;
 pub mod survivability;
+pub mod taken;
 pub mod trigger;
 
 pub use actor::{Actor, ActorBaseStats};
@@ -79,6 +80,10 @@ pub use survivability::{
     block_chance, calc_leech, calc_leech_from_db, calc_recoup, calc_recoup_from_db, calc_regen,
     capped_chance, charge_maximum, charge_minimum, regen, regen_with_rate, reservation,
     resolve_all_charges, resolve_charge_state,
+};
+pub use taken::{
+    MitigationCtx, MitigationInputs, armour_applies_pct, build_mitigation_ctx, damage_shift_table,
+    effective_applied_armour, taken_hit_from_damage,
 };
 pub use trigger::{
     CwcTriggerRate, EnergyTriggerRate, RotationResult, RotationSkill, SocketedSpellInfo,
