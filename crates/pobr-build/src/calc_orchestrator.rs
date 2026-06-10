@@ -325,7 +325,7 @@ pub fn calculate_with_data(
         // 1b-i-q. 主技能宝石品质 stat（T1.7）：quality 段经 stat-map 映射注入，
         //         SourceKind::GemQuality 归因（id 前缀 gem.<效果 id>.q<Q>）。
         session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
-        session.add_modifiers(support_modifiers(group, data));
+        session.add_modifiers(support_modifiers(group, data, skill_id));
 
         // 1b-iii. 触发链路（findings 03-01/03-02/03-06）：主技能若为**内建触发**
         // （`skill_types` 含 `Triggered`/`InbuiltTrigger`，对应 PoB2 `isTriggered`）则注入
@@ -1680,23 +1680,148 @@ fn in_group_trigger_source_rate(
     best
 }
 
-/// 把主技能组内 **support 宝石**的分等级 stat 经 [`map_skill_stat`] 映射为 SupportGem 归因
-/// 的 modifier，注入被支援技能（如「附加闪电伤害」→ `LightningDamageMin/Max` BASE、
-/// 「更多伤害」→ `Damage` MORE）。
+/// 组级 support 适用性裁决结果（M1 蓝图契约 C2）。
+///
+/// `compatible` 为 `group.gem_skills` 中**通过 PoB2 四段裁决**的 support 下标（保持
+/// 插槽顺序）；`final_skill_types` 为 addSkillTypes 不动点收敛后的主动技能类型集合
+/// （种子 = 主动效果 `skill_types`，并入所有兼容 support 的 `add_skill_types`）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GroupSupportJudgement {
+    /// 兼容 support 在 `gem_skills` 中的下标（插槽顺序）。
+    compatible: Vec<usize>,
+    /// 不动点收敛后的技能类型集合（供后续 require 裁决 / T4 SupportManaMultiplier 复用）。
+    final_skill_types: std::collections::HashSet<String>,
+}
+
+/// 对一个 socket group 做 **support 适用性裁决 + addSkillTypes 不动点**
+/// （对照 PoB2 `Modules/CalcActiveSkill.lua:179-210`，契约 C2）：
+///
+/// 1. 种子：主动技能（`active_skill_id`）效果的 `skill_types` 集合；
+/// 2. pass1（:182-191）：按插槽顺序逐个 support 经 [`pobr_core::skill_source::can_support`]
+///    四段裁决——兼容者把 `add_skill_types`（普通 token 名单，非表达式）并入集合，
+///    不兼容者进被拒名单；
+/// 3. repeat-until 不动点（:193-208）：重扫被拒名单直到一轮无新增——保证裁决结果
+///    与 support 插槽顺序无关（「A 加类型、B require 该类型」的 BA 排列也能收敛）；
+/// 4. pass2（:210-214）：终态类型集合下**全量重裁决**产出兼容名单（与 PoB2 一致：
+///    pass1 接受的 support 若被后并入的类型 exclude 命中，此处会被拒；其已并入的
+///    add 类型保留，同 PoB2 不回滚）。
+///
+/// 契约 C2 注：签名比蓝图原型多 `active_skill_id`——PoB2 的裁决以**单个主动技能**为
+/// 对象（meta 组里组首非 support 可能是 meta 壳，而非 `resolve_main_skill` 选中的真实
+/// 主技能），调用方已持有解析结果，传入避免在此重复/错误推导。
+fn judge_group_supports(
+    group: &SocketGroup,
+    data: &BuildData,
+    active_skill_id: &str,
+) -> GroupSupportJudgement {
+    use pobr_core::skill_source::{ActiveSkillJudgeInput, SupportJudgeInput, can_support};
+    use std::collections::HashSet;
+
+    let active_effect = data.granted_effects.get(active_skill_id);
+    let mut skill_types: HashSet<String> = active_effect
+        .map(|e| e.skill_types.iter().cloned().collect())
+        .unwrap_or_default();
+    let cannot_be_supported = active_effect.is_some_and(|e| e.cannot_be_supported);
+
+    // 组内 support 下标（保持插槽顺序）；active / 未知效果不参与裁决。
+    let support_indices: Vec<usize> = group
+        .gem_skills
+        .iter()
+        .enumerate()
+        .filter(|(_, g)| {
+            data.granted_effects
+                .get(&g.skill_id)
+                .is_some_and(|e| e.is_support)
+        })
+        .map(|(i, _)| i)
+        .collect();
+
+    // 四段裁决（CalcTools.lua:84-110）：cannotBeSupported → supportGemsOnly →
+    // exclude 表达式 → require 表达式（空 = 接受）。socket group 内技能恒由宝石授予
+    // （from_gem=true）；fromItem 特例 M5c、minionTypes 第二集合 M5a（defer）。
+    let judge = |idx: usize, types: &HashSet<String>| -> bool {
+        data.granted_effects
+            .get(&group.gem_skills[idx].skill_id)
+            .is_some_and(|effect| {
+                can_support(
+                    &SupportJudgeInput {
+                        support_gems_only: effect.support_gems_only,
+                        exclude_skill_types: &effect.exclude_skill_types,
+                        require_skill_types: &effect.require_skill_types,
+                    },
+                    &ActiveSkillJudgeInput {
+                        cannot_be_supported,
+                        from_gem: true,
+                        skill_types: types,
+                    },
+                )
+            })
+    };
+    let merge_add = |idx: usize, types: &mut HashSet<String>| {
+        if let Some(effect) = data.granted_effects.get(&group.gem_skills[idx].skill_id) {
+            for t in &effect.add_skill_types {
+                types.insert(t.clone());
+            }
+        }
+    };
+
+    // pass1：兼容 support 并入 addSkillTypes；不兼容进被拒名单。
+    let mut rejected: Vec<usize> = Vec::new();
+    for &i in &support_indices {
+        if judge(i, &skill_types) {
+            merge_add(i, &mut skill_types);
+        } else {
+            rejected.push(i);
+        }
+    }
+    // repeat-until 不动点：重扫被拒名单直到一轮无新增。
+    loop {
+        let mut newly_accepted = false;
+        let mut still_rejected = Vec::with_capacity(rejected.len());
+        for &i in &rejected {
+            if judge(i, &skill_types) {
+                newly_accepted = true;
+                merge_add(i, &mut skill_types);
+            } else {
+                still_rejected.push(i);
+            }
+        }
+        rejected = still_rejected;
+        if !newly_accepted {
+            break;
+        }
+    }
+    // pass2：终态集合下全量重裁决。
+    let compatible: Vec<usize> = support_indices
+        .into_iter()
+        .filter(|&i| judge(i, &skill_types))
+        .collect();
+    GroupSupportJudgement {
+        compatible,
+        final_skill_types: skill_types,
+    }
+}
+
+/// 把主技能组内**兼容的 support 宝石**的分等级 stat 经 [`map_skill_stat`] 映射为
+/// SupportGem 归因的 modifier，注入被支援技能（如「附加闪电伤害」→
+/// `LightningDamageMin/Max` BASE、「更多伤害」→ `Damage` MORE）。
+///
+/// 注入前经 [`judge_group_supports`]（契约 C2，PoB2 四段裁决 + addSkillTypes 不动点）
+/// 产出兼容名单：**被拒 support 完全不参与**（数值 / manaMultiplier 全不吃，对齐 PoB2
+/// `CalcActiveSkill.lua:210-214` 只把兼容 support 放进 effectList 的拒收语义）。
 ///
 /// 当前作用域为**全局**（单主技能 build 下口径正确：所有 support 倍率作用于唯一计算技能）；
 /// 多主技能的按技能 tag 隔离（仅作用于被支援技能）待 flag 系统接入后细化。active 主技能
 /// 自身伤害已由 [`skill_base_modifiers`] 注入，此处只处理 support。
-fn support_modifiers(group: &SocketGroup, data: &BuildData) -> Vec<Modifier> {
+fn support_modifiers(
+    group: &SocketGroup,
+    data: &BuildData,
+    active_skill_id: &str,
+) -> Vec<Modifier> {
+    let judgement = judge_group_supports(group, data, active_skill_id);
     let mut mods = Vec::new();
-    for gem in &group.gem_skills {
-        let is_support = data
-            .granted_effects
-            .get(&gem.skill_id)
-            .map(|e| e.is_support);
-        if is_support != Some(true) {
-            continue; // 仅 support 效果；active/未知跳过。
-        }
+    for &i in &judgement.compatible {
+        let gem = &group.gem_skills[i];
         // TODO(T1，T3.6 合并后 rebase 追加)：quality 传参改为 gem.quality——support 的
         // 品质表条目不存在（PoB2 导出即跳过），当前恒空段，传 0 与传 gem.quality 等价。
         let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0);
@@ -2966,5 +3091,198 @@ mod tests {
             let vars = weapon_type_conditions(&build, &data);
             assert_eq!(&vars[..], expected, "item_class = {cls}");
         }
+    }
+}
+
+#[cfg(test)]
+mod support_judgement_tests {
+    //! T3.5 组级 support 裁决 + addSkillTypes 不动点单测
+    //! （对照 PoB2 `Modules/CalcActiveSkill.lua:179-210`）。
+
+    use super::{BuildData, GroupSupportJudgement, judge_group_supports, support_modifiers};
+    use crate::build::SocketGroup;
+    use std::collections::HashMap;
+
+    /// 构造一个最小 GrantedEffectDef（裁决相关字段可指定，其余默认）。
+    fn effect(
+        id: &str,
+        is_support: bool,
+        skill_types: &[&str],
+        require: &[&str],
+        add: &[&str],
+        exclude: &[&str],
+        cannot_be_supported: bool,
+    ) -> pobr_data::catalog::GrantedEffectDef {
+        let v = |l: &[&str]| l.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        pobr_data::catalog::GrantedEffectDef {
+            id: id.into(),
+            is_support,
+            active_skill: (!is_support).then(|| id.to_string()),
+            cast_time: Some(1000),
+            require_skill_types: v(require),
+            add_skill_types: v(add),
+            exclude_skill_types: v(exclude),
+            cannot_be_supported,
+            support_gems_only: false,
+            stat_set: None,
+            cost_types: vec![],
+            skill_types: v(skill_types),
+        }
+    }
+
+    /// 数据 + 组装：active 一个 + 给定顺序的若干 support。
+    fn judge(
+        effects: &[pobr_data::catalog::GrantedEffectDef],
+        gem_order: &[&str],
+    ) -> GroupSupportJudgement {
+        let mut granted_effects = HashMap::new();
+        for e in effects {
+            granted_effects.insert(e.id.clone(), e.clone());
+        }
+        let data = BuildData {
+            granted_effects,
+            ..BuildData::empty()
+        };
+        let mut group = SocketGroup::new();
+        for id in gem_order {
+            group = group.with_gem_skill(*id, 20);
+        }
+        judge_group_supports(&group, &data, "MainSpell")
+    }
+
+    /// 兼容名单换算回效果 id（断言可读性）。
+    fn compatible_ids(j: &GroupSupportJudgement, gem_order: &[&str]) -> Vec<String> {
+        j.compatible
+            .iter()
+            .map(|&i| gem_order[i].to_string())
+            .collect()
+    }
+
+    /// 不动点顺序无关（CalcActiveSkill.lua:193-208）：「A 加 Triggered、B require
+    /// Triggered」在 AB 与 BA 两种插槽顺序下裁决结果一致（B 都被接受）。
+    #[test]
+    fn fixed_point_is_slot_order_independent() {
+        let effects = vec![
+            effect(
+                "MainSpell",
+                false,
+                &["Spell", "Damage"],
+                &[],
+                &[],
+                &[],
+                false,
+            ),
+            effect("SupAdd", true, &[], &[], &["Triggered"], &[], false),
+            effect("SupNeed", true, &[], &["Triggered"], &[], &[], false),
+        ];
+        let ab = judge(&effects, &["MainSpell", "SupAdd", "SupNeed"]);
+        let ba = judge(&effects, &["MainSpell", "SupNeed", "SupAdd"]);
+
+        assert_eq!(
+            compatible_ids(&ab, &["MainSpell", "SupAdd", "SupNeed"])
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>(),
+            compatible_ids(&ba, &["MainSpell", "SupNeed", "SupAdd"])
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>(),
+            "AB 与 BA 插槽顺序的兼容名单应一致"
+        );
+        assert_eq!(ab.final_skill_types, ba.final_skill_types);
+        assert_eq!(ab.compatible.len(), 2, "两个 support 都应兼容");
+        assert!(ab.final_skill_types.contains("Triggered"));
+    }
+
+    /// 不兼容 support 被拒，且其 addSkillTypes **不并入**集合
+    /// （CalcActiveSkill.lua:182-191 仅兼容者 merge）。
+    #[test]
+    fn rejected_support_does_not_merge_add_types() {
+        let effects = vec![
+            effect(
+                "MainSpell",
+                false,
+                &["Spell", "Damage"],
+                &[],
+                &[],
+                &[],
+                false,
+            ),
+            effect("SupMelee", true, &[], &["Melee"], &["Area"], &[], false),
+        ];
+        let j = judge(&effects, &["MainSpell", "SupMelee"]);
+        assert!(j.compatible.is_empty(), "require Melee 对法术应被拒");
+        assert!(
+            !j.final_skill_types.contains("Area"),
+            "被拒 support 的 addSkillTypes 不得并入"
+        );
+    }
+
+    /// 主动效果 cannotBeSupported → 一切 support 被拒（裁决第一段，CalcTools.lua:86-88）。
+    #[test]
+    fn cannot_be_supported_rejects_everything() {
+        let effects = vec![
+            effect("MainSpell", false, &["Spell"], &[], &[], &[], true),
+            effect("SupAny", true, &[], &[], &[], &[], false),
+        ];
+        let j = judge(&effects, &["MainSpell", "SupAny"]);
+        assert!(j.compatible.is_empty());
+    }
+
+    /// pass2 终态重裁决（CalcActiveSkill.lua:210-214）：pass1 接受的 support 若被
+    /// 后并入的类型 exclude 命中则最终被拒；已并入的 add 类型保留（同 PoB2 不回滚）。
+    /// 两种插槽顺序结果一致。
+    #[test]
+    fn pass2_rejudges_against_final_type_set() {
+        let effects = vec![
+            effect("MainSpell", false, &["Spell"], &[], &[], &[], false),
+            effect("SupExcl", true, &[], &[], &[], &["Minion"], false),
+            effect("SupAddMinion", true, &[], &[], &["Minion"], &[], false),
+        ];
+        for order in [
+            ["MainSpell", "SupExcl", "SupAddMinion"],
+            ["MainSpell", "SupAddMinion", "SupExcl"],
+        ] {
+            let j = judge(&effects, &order);
+            assert_eq!(
+                compatible_ids(&j, &order),
+                vec!["SupAddMinion"],
+                "exclude 被终态集合命中的 support 应被拒（顺序 {order:?}）"
+            );
+            assert!(j.final_skill_types.contains("Minion"), "已并入类型不回滚");
+        }
+    }
+
+    /// 全空门控 support（无 require/exclude）恒兼容（require 空 = 接受）。
+    #[test]
+    fn empty_gating_always_compatible() {
+        let effects = vec![
+            effect("MainSpell", false, &["Spell"], &[], &[], &[], false),
+            effect("SupPlain", true, &[], &[], &[], &[], false),
+        ];
+        let j = judge(&effects, &["MainSpell", "SupPlain"]);
+        assert_eq!(j.compatible.len(), 1);
+    }
+
+    /// T3.6 注入侧：被拒 support 的 stat **不产生任何 modifier**（数值全不吃）。
+    /// 兼容性由 judge_group_supports 裁决；此处用空 stat 数据，仅验证名单过滤路径
+    /// 不 panic 且产出为空（数值注入的端到端断言见 tests/support_gating.rs）。
+    #[test]
+    fn support_modifiers_skips_rejected_supports() {
+        let effects = vec![
+            effect("MainSpell", false, &["Spell"], &[], &[], &[], false),
+            effect("SupMelee", true, &[], &["Melee"], &[], &[], false),
+        ];
+        let mut granted_effects = HashMap::new();
+        for e in &effects {
+            granted_effects.insert(e.id.clone(), e.clone());
+        }
+        let data = BuildData {
+            granted_effects,
+            ..BuildData::empty()
+        };
+        let group = SocketGroup::new()
+            .with_gem_skill("MainSpell", 20)
+            .with_gem_skill("SupMelee", 20);
+        let mods = support_modifiers(&group, &data, "MainSpell");
+        assert!(mods.is_empty(), "被拒 support 不得注入任何 modifier");
     }
 }
