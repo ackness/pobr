@@ -16,14 +16,21 @@ use pobr_data::passive_tree::PassiveTreeSpec;
 
 use crate::build_config::BuildConfig;
 
-/// 一个宝石的授予效果引用（`<Gem skillId>` + `<Gem level>`），active/support 皆可。
-/// 由计算侧按数据表（`is_support`）分类。
+/// 一个宝石的授予效果引用（`<Gem skillId>` + `<Gem level>` + `<Gem quality>`），
+/// active/support 皆可。由计算侧按数据表（`is_support`）分类。
+///
+/// 契约 C4（M1 蓝图 §3.3）：`quality` 为 T1 份额（default 0 = 无品质）；
+/// `stat_set_index` 由 T5 在 T1 合并后追加。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GemSkillRef {
     /// 授予效果 id（PoB `<Gem skillId>`，如 `SupportAddedLightningDamagePlayer`）。
     pub skill_id: String,
     /// 宝石等级（PoB `<Gem level>`）。
     pub gem_level: u32,
+    /// 宝石品质（PoB `<Gem quality>`，0–23；0 = 无品质）。消费侧按
+    /// `trunc(per_quality_rate × quality)` 叠加品质 stat（见
+    /// `BuildData::effect_stats`，对齐 PoB2 CalcTools.lua `buildSkillInstanceStats`）。
+    pub quality: u32,
 }
 
 /// 一组同插槽的技能宝石（主动技能 + 其辅助）。简化等价物：用稳定 gem id 表示。
@@ -40,6 +47,9 @@ pub struct SocketGroup {
     pub active_skill_id: Option<String>,
     /// 主动技能宝石的等级（PoB `<Gem level>`），用于在分等级数组中定位行。
     pub active_gem_level: Option<u32>,
+    /// 主动技能宝石的品质（PoB `<Gem quality>`），与 [`GemSkillRef::quality`] 同步
+    /// （T1.4：取数侧实际经 `gem_skills` 查品质，本字段供 builder/快照口径对齐）。
+    pub active_gem_quality: Option<u32>,
     /// 该组**每个启用宝石**的授予效果引用（按 PoB Gem 列表顺序，含 active 与 support）；
     /// 供解析 support 宝石的分等级 stat（倍率/附加伤害）注入被支援技能。
     pub gem_skills: Vec<GemSkillRef>,
@@ -57,6 +67,7 @@ impl SocketGroup {
             gem_ids: Vec::new(),
             active_skill_id: None,
             active_gem_level: None,
+            active_gem_quality: None,
             gem_skills: Vec::new(),
             main_active_skill: None,
         }
@@ -85,10 +96,22 @@ impl SocketGroup {
     }
 
     /// 追加一个宝石的授予效果引用（active 或 support；按 PoB Gem 列表顺序）。
-    pub fn with_gem_skill(mut self, skill_id: impl Into<String>, gem_level: u32) -> Self {
+    /// 品质缺省 0（无品质）；带品质用 [`Self::with_gem_skill_quality`]。
+    pub fn with_gem_skill(self, skill_id: impl Into<String>, gem_level: u32) -> Self {
+        self.with_gem_skill_quality(skill_id, gem_level, 0)
+    }
+
+    /// 追加一个带品质的宝石授予效果引用（T1.4，契约 C4）。
+    pub fn with_gem_skill_quality(
+        mut self,
+        skill_id: impl Into<String>,
+        gem_level: u32,
+        quality: u32,
+    ) -> Self {
         self.gem_skills.push(GemSkillRef {
             skill_id: skill_id.into(),
             gem_level,
+            quality,
         });
         self
     }

@@ -322,6 +322,9 @@ pub fn calculate_with_data(
     // 不再有单技能硬编码。
     if let Some((skill, group, skill_id)) = &main_skill {
         session.add_modifiers(skill_base_modifiers(skill));
+        // 1b-i-q. 主技能宝石品质 stat（T1.7）：quality 段经 stat-map 映射注入，
+        //         SourceKind::GemQuality 归因（id 前缀 gem.<效果 id>.q<Q>）。
+        session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
         session.add_modifiers(support_modifiers(group, data));
 
         // 1b-iii. 触发链路（findings 03-01/03-02/03-06）：主技能若为**内建触发**
@@ -1515,6 +1518,33 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
     mods
 }
 
+/// 把主技能宝石的**品质 stat 段**经 [`map_skill_stats`] 映射为 `SourceKind::GemQuality`
+/// 归因的 modifier（T1.7，对应 PoB2 `buildSkillInstanceStats` 的品质前置叠加，
+/// CalcTools.lua:140-145：`stats[stat] += math.modf(rate × quality)`）。
+///
+/// 主技能的品质从该组 `gem_skills` 中按效果 id 反查（`resolve_main_skill` 的选择
+/// 结果即来自其中一项）。归因 id 前缀 `gem.<效果 id>.q<Q>`，与 `skill_source.rs`
+/// 既有约定一致（`quality_source_id`）；[`mapped_stat_modifiers`] 再追加 `.<stat>`
+/// 细分到单条 stat。品质 0 / 无品质表条目（如 support，导出即跳过）返回空。
+fn main_skill_quality_modifiers(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> Vec<Modifier> {
+    let Some(gem) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) else {
+        return Vec::new(); // builder 路径（with_active_skill）无 gem_skills：无品质来源。
+    };
+    if gem.quality == 0 {
+        return Vec::new();
+    }
+    let stats = data.effect_stats(&gem.skill_id, gem.gem_level, gem.quality);
+    mapped_stat_modifiers(
+        &stats.quality,
+        SourceKind::GemQuality,
+        &format!("gem.{skill_id}.q{}", gem.quality),
+    )
+}
+
 /// 是否为非武器攻击的 off-hand 武器基础伤害 stat（由 `non_weapon_attack_contribution` 作为
 /// 武器 source 消费，故从 stat-map 注入路径剔除以避免重复计入）。
 fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
@@ -1663,9 +1693,11 @@ fn support_modifiers(group: &SocketGroup, data: &BuildData) -> Vec<Modifier> {
         if is_support != Some(true) {
             continue; // 仅 support 效果；active/未知跳过。
         }
-        let stats = data.effect_stats(&gem.skill_id, gem.gem_level);
+        // TODO(T1，T3.6 合并后 rebase 追加)：quality 传参改为 gem.quality——support 的
+        // 品质表条目不存在（PoB2 导出即跳过），当前恒空段，传 0 与传 gem.quality 等价。
+        let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0);
         mods.extend(mapped_stat_modifiers(
-            &stats,
+            &stats.base,
             SourceKind::SupportGem,
             &gem.skill_id,
         ));
@@ -1689,7 +1721,10 @@ fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
             if !data.is_aura(&gem.skill_id) || !seen.insert(gem.skill_id.as_str()) {
                 continue;
             }
-            for ds in data.effect_stats(&gem.skill_id, gem.gem_level) {
+            // quality 段并入数值（PoB2 把品质先加进同一 stats 表）；本路径的细分
+            // GemQuality 归因 defer（aura 归因仍记 SkillGem `aura.*`）。
+            let es = data.effect_stats(&gem.skill_id, gem.gem_level, gem.quality);
+            for ds in es.all() {
                 for mapped in map_aura_buff_stat(&ds.stat) {
                     if ds.value == 0.0 {
                         continue;
@@ -1726,7 +1761,9 @@ fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> Vec<Modifie
             if !seen.insert(gem.skill_id.as_str()) {
                 continue;
             }
-            for ds in data.effect_stats(&gem.skill_id, gem.gem_level) {
+            // quality 段并入数值（同 aura 路径口径）；细分 GemQuality 归因 defer。
+            let es = data.effect_stats(&gem.skill_id, gem.gem_level, gem.quality);
+            for ds in es.all() {
                 let Some(mapped) = map_self_buff_offensive_stat(&ds.stat) else {
                     continue;
                 };
@@ -2517,6 +2554,41 @@ mod tests {
             self_buff_offensive_modifiers(&bare, &data).is_empty(),
             "无 Mark build 不应产出 gain-as buff"
         );
+    }
+
+    /// T1.7：主技能品质段经 stat-map 注入，trunc 截断 + SourceKind::GemQuality 归因
+    /// （id 前缀 `gem.<效果 id>.q<Q>`）。合成品质条目（damage_+% 可映射），不依赖
+    /// 任何真实宝石的品质 stat 是否已映射。
+    #[test]
+    fn main_skill_quality_modifiers_truncate_and_attribute_gem_quality() {
+        use pobr_data::catalog::QualityStat;
+        let mut data = repo_data();
+        data.gem_quality_stats.insert(
+            "FireballPlayer".into(),
+            vec![QualityStat {
+                stat: "damage_+%".into(),
+                per_quality_rate: 0.55,
+            }],
+        );
+        // q19：trunc(0.55 × 19) = trunc(10.45) = 10（math.modf 语义，非 round）。
+        let group = SocketGroup::new().with_gem_skill_quality("FireballPlayer", 20, 19);
+        let mods = main_skill_quality_modifiers(&group, &data, "FireballPlayer");
+        assert_eq!(mods.len(), 1, "damage_+% 应映射为一条 Damage INC");
+        let m = &mods[0];
+        assert_eq!(m.name.as_str(), "Damage");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(10.0), "trunc(0.55×19)=10");
+        let origin = m.origin.as_ref().expect("带归因");
+        assert_eq!(origin.source_id.kind, SourceKind::GemQuality);
+        assert!(
+            origin.source_id.id.starts_with("gem.FireballPlayer.q19"),
+            "归因 id 前缀 gem.<id>.q<Q>，实得 {}",
+            origin.source_id.id
+        );
+
+        // 品质 0：不产生任何品质 modifier。
+        let group0 = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
+        assert!(main_skill_quality_modifiers(&group0, &data, "FireballPlayer").is_empty());
     }
 
     #[test]

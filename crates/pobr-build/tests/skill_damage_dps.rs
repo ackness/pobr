@@ -94,9 +94,11 @@ fn fireball_base_damage_drives_nonzero_dps() {
 fn fireball_with_damage_support_raises_hit() {
     let build_data = load_build_data();
 
-    // 该 support 确有可映射的 damage_+% stat（数据通道未断）。
-    let sup = build_data.effect_stats("SupportFerociousRoarPlayer", 20);
+    // 该 support 确有可映射的 damage_+% stat（数据通道未断）。support 无品质表
+    // 条目（PoB2 导出即跳过），quality 传 0，取 base 段。
+    let sup = build_data.effect_stats("SupportFerociousRoarPlayer", 20, 0);
     let inc = sup
+        .base
         .iter()
         .find(|s| s.stat == "damage_+%")
         .expect("support should carry damage_+%");

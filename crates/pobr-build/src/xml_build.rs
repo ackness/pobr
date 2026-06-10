@@ -788,21 +788,28 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             && let Some(gem_id) = attr_value(&e, b"gemId")
                             && !gem_id.is_empty()
                         {
-                            // 捕获每个启用 gem 的 skillId + level（active 与 support 皆收）。
+                            // 捕获每个启用 gem 的 skillId + level + quality（active 与
+                            // support 皆收）。quality 属性缺失/非法按 0（无品质），对齐
+                            // PoB2 SkillsTab.lua 的 `quality` 属性读取（缺省 0）。
                             if let Some(skill_id) = attr_value(&e, b"skillId")
                                 && !skill_id.is_empty()
                             {
                                 let level = attr_value(&e, b"level")
                                     .and_then(|v| v.parse::<u32>().ok())
                                     .unwrap_or(1);
+                                let quality = attr_value(&e, b"quality")
+                                    .and_then(|v| v.parse::<u32>().ok())
+                                    .unwrap_or(0);
                                 // 组内首个启用 gem 视为主动技能（PoB Gem 列表 active 在前）。
                                 if cur.active_skill_id.is_none() {
                                     cur.active_skill_id = Some(skill_id.clone());
                                     cur.active_gem_level = Some(level);
+                                    cur.active_gem_quality = Some(quality);
                                 }
                                 cur.gem_skills.push(crate::build::GemSkillRef {
                                     skill_id,
                                     gem_level: level,
+                                    quality,
                                 });
                             }
                             cur.gem_ids.push(gem_id);

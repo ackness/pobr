@@ -55,6 +55,14 @@
 //! 出处：PoB2 `CalcActiveSkill.lua::initSkill`，`level.*` 字段（cost / duration /
 //! reservationMultiplier / spiritReservationFlat 等）注入 `skillModList`。
 //! PoBR 不维护等级表，数值由调用方提供；归因 id = `gem.<id>.level<N>` / `gem.<id>.q<Q>`。
+//!
+//! **品质数值口径（M1-T1）**：品质 stat 的数据源是
+//! `overlay/gem_quality_stats.json`（`effect_id → [{stat, per_quality_rate}]`），
+//! 叠加值 = `trunc(per_quality_rate × quality)`——**截断取整**（toward zero），对齐
+//! PoB2 `CalcTools.lua:142` `math.modf(stat[2] * skillInstance.quality)`，非 floor。
+//! parity 主路径（orchestrator）的取数实现在 `pobr-build::BuildData::effect_stats`
+//! 的 quality 段；本模块（CLI/Session 最小路径）由调用方按同一口径预先算好
+//! `quality_mods` 传入，两条路径共用 `SourceKind::GemQuality` 与同一归因 id 约定。
 
 use std::collections::HashSet;
 

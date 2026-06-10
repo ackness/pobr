@@ -14,8 +14,9 @@ use std::collections::HashMap;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
-    ArmourBaseStats, BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, RuntimeConstants,
-    SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef, WeaponBaseStats,
+    ArmourBaseStats, BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, QualityStat,
+    RuntimeConstants, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
+    WeaponBaseStats,
 };
 use pobr_gamedata::{GameData, LoadError};
 
@@ -55,6 +56,31 @@ pub struct ResolvedSkillLevel {
     pub skill_attack_speed_more: Option<f64>,
 }
 
+/// 某授予效果在某 (宝石等级, 品质) 上的可映射 stat——按来源分两段（契约 C1）：
+/// `base` = stat-set 分等级行 + 等级无关常量；`quality` = 品质叠加段
+/// （`trunc(per_quality_rate × quality)`，对齐 PoB2 CalcTools.lua:140-145
+/// `buildSkillInstanceStats` 的品质前置叠加）。
+///
+/// 分段保留归因粒度（PoBR 增量资产，20-target §1.1）：quality 段经
+/// `mapped_stat_modifiers` 注入时用 `SourceKind::GemQuality`（id 前缀
+/// `gem.<效果 id>.q<Q>`）。不区分归因的消费点用 [`Self::all`] 合并遍历
+/// （等价于 PoB2 把品质先加进同一 stats 表的数值语义；同 stat 的 BASE/INC
+/// 在 mod_db 内加法合并，与先合后映一致）。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct EffectStats {
+    /// stat-set 分等级行 + 等级无关常量（既有 base 段）。
+    pub base: Vec<SkillDamageStat>,
+    /// 品质叠加段（quality = 0 或无品质表条目时为空）。
+    pub quality: Vec<SkillDamageStat>,
+}
+
+impl EffectStats {
+    /// base + quality 顺序串接的合并视图（不区分归因的取数点遍历用）。
+    pub fn all(&self) -> impl Iterator<Item = &SkillDamageStat> {
+        self.base.iter().chain(self.quality.iter())
+    }
+}
+
 /// 一项已解析的技能资源消耗。
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedCost {
@@ -87,6 +113,9 @@ pub struct BuildData {
     pub granted_effect_levels: HashMap<String, Vec<SkillLevelDef>>,
     /// 授予效果分等级**伤害 stat 集**，以 `GrantedEffects.Id` 为键（每级已解析伤害 stat）。
     pub skill_stat_sets: HashMap<String, SkillStatSetDef>,
+    /// 宝石品质 stat 斜率（`overlay/gem_quality_stats.json`），以 `GrantedEffects.Id`
+    /// 为键。旧数据包无此 overlay 域时为空表（品质不产生 stat，向后兼容）。
+    pub gem_quality_stats: HashMap<String, Vec<QualityStat>>,
     /// 消耗资源类型表（按 `CostTypes` 索引升序；为空表示旧数据包无此域）。
     pub cost_types: Vec<CostTypeDef>,
     /// 物品基底表，以英文 canonical 名称为键（供装备 `Item.base` 名称 → 武器/护甲基底数值）。
@@ -154,6 +183,17 @@ impl BuildData {
             .map(|set| (set.id.clone(), set))
             .collect();
 
+        // 品质 stat 斜率（overlay 域）：缺文件 = 空表（品质不产生 stat，向后兼容）。
+        let gem_quality_stats = data
+            .gem_quality_stats()?
+            .map(|def| {
+                def.effects
+                    .into_iter()
+                    .map(|e| (e.effect_id, e.stats))
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let cost_types = data.cost_types()?;
 
         let base_items = data
@@ -206,6 +246,7 @@ impl BuildData {
             granted_effects,
             granted_effect_levels,
             skill_stat_sets,
+            gem_quality_stats,
             cost_types,
             base_items,
             constants,
@@ -225,6 +266,7 @@ impl BuildData {
             granted_effects: HashMap::new(),
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
+            gem_quality_stats: HashMap::new(),
             cost_types: Vec::new(),
             base_items: HashMap::new(),
             constants: RuntimeConstants::default(),
@@ -313,7 +355,9 @@ impl BuildData {
             .map(|c| c.amount);
 
         // 技能 stat（基础伤害值 + damage% 缩放）：分等级行 + 等级无关常量，供映射注入。
-        let base_damage = self.effect_stats(skill_id, gem_level);
+        // 品质段不在此处（主技能品质由 orchestrator 经 effect_stats 的 quality 段
+        // 单独取数注入，保留 SourceKind::GemQuality 归因粒度），故 quality 传 0。
+        let base_damage = self.effect_stats(skill_id, gem_level, 0).base;
 
         // 技能伤害倍率（PoB baseMultiplier）：优先 stat-set 行；stat-set 缺失（如 Flicker
         // 等 stat-set 为空的技能）时回退到 GrantedEffectsPerLevel 的 base_multiplier
@@ -350,24 +394,57 @@ impl BuildData {
         })
     }
 
-    /// 取某授予效果在某宝石等级上的全部可映射 stat（stat-set 的分等级行 + 等级无关常量）。
+    /// 取某授予效果在某 (宝石等级, 品质) 上的全部可映射 stat（契约 C1，T1 演进）：
+    /// `base` 段 = stat-set 分等级行 + 等级无关常量；`quality` 段 = 品质表斜率 ×
+    /// 品质的**截断取整**叠加。
+    ///
+    /// 品质语义对齐 PoB2 `CalcTools.lua:140-145`（`buildSkillInstanceStats`）：
+    /// `stats[stat] += math.modf(rate × quality)`——`math.modf` 取整数部分即
+    /// **trunc（toward zero）**，非 floor（负斜率时二者不同），Rust 侧用
+    /// [`f64::trunc`] 严格对齐。品质为 0 / 无品质表条目时 `quality` 段为空。
     ///
     /// 对 active 与 **support** 效果同样适用（无 `is_support` 守卫）——support 宝石的
-    /// 倍率 / 附加伤害 stat 经此取出，再由 [`crate::skill_stat_map`] 映射注入被支援技能。
-    /// 等级越界取最接近的 ≤ 行；无 stat-set 数据返回空。
-    pub fn effect_stats(&self, skill_id: &str, gem_level: u32) -> Vec<SkillDamageStat> {
-        let Some(set) = self.skill_stat_sets.get(skill_id) else {
-            return Vec::new();
-        };
-        let mut stats = set
-            .levels
-            .iter()
-            .rfind(|l| l.gem_level <= gem_level)
-            .or(set.levels.first())
-            .map(|level| level.stats.clone())
+    /// 倍率 / 附加伤害 stat 经此取出，再由 [`crate::skill_stat_map`] 映射注入被支援技能
+    /// （support 的品质表条目不存在——PoB2 导出即跳过，quality 段天然为空）。
+    /// 等级越界取最接近的 ≤ 行；无 stat-set 数据时 base 段为空。
+    pub fn effect_stats(&self, skill_id: &str, gem_level: u32, quality: u32) -> EffectStats {
+        let base = self
+            .skill_stat_sets
+            .get(skill_id)
+            .map(|set| {
+                let mut stats = set
+                    .levels
+                    .iter()
+                    .rfind(|l| l.gem_level <= gem_level)
+                    .or(set.levels.first())
+                    .map(|level| level.stats.clone())
+                    .unwrap_or_default();
+                stats.extend(set.constant_stats.iter().cloned());
+                stats
+            })
             .unwrap_or_default();
-        stats.extend(set.constant_stats.iter().cloned());
-        stats
+
+        let quality_stats = if quality > 0 {
+            self.gem_quality_stats
+                .get(skill_id)
+                .map(|rows| {
+                    rows.iter()
+                        .map(|q| SkillDamageStat {
+                            stat: q.stat.clone(),
+                            // trunc（toward zero），对齐 math.modf 整数部分。
+                            value: (q.per_quality_rate * f64::from(quality)).trunc(),
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        EffectStats {
+            base,
+            quality: quality_stats,
+        }
     }
 
     /// 查询某职业的基础属性（按英文 canonical 名）；未知职业返回 `None`。
