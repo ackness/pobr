@@ -197,6 +197,13 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // M2 防御机制词条批（W0.1 契约）：MoM / EB / ES·Ward bypass / taken-as / ArmourAppliesTo
+    // 百分比 / 防御五元资源转换 / block / evade / deflection / 损失防止 / 眩晕等固定句式。
+    // 须在 parse_form 之前（多为非 form 句式或无符号数字开头句式）。
+    if let Some(outcome) = parse_defence_special(&rest, original) {
+        return Ok(outcome);
+    }
+
     // 关键石/无 form 特例：非数字开头、parse_form 必然失败的固定语义短语。
     // 在 parse_form 之前查表，命中即直接产出对应 Modifier（OVERRIDE / flag）。
     if let Some(outcome) = parse_keystone_special(&rest, original) {
@@ -347,6 +354,13 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
         "fire and chaos resistances" => &["fire resistance", "chaos resistance"],
         "cold and chaos resistances" => &["cold resistance", "chaos resistance"],
         "lightning and chaos resistances" => &["lightning resistance", "chaos resistance"],
+        // 攻击+法术双格挡（PoB2 ModParser.lua:378-380）——朴素 " and " 切分会得到无效
+        // 单词（"chance to block attacks"/"spells"），故显式展开。
+        "chance to block attacks and spells"
+        | "chance to block attack and spell damage"
+        | "to block attack and spell damage" => &["chance to block", "spell block chance"],
+        // 异常+眩晕双阈值（PoB2 ModParser.lua:450）。
+        "ailment and stun threshold" => &["stun threshold", "ailment threshold"],
         _ => &[],
     };
     if !aggregate.is_empty() {
@@ -593,7 +607,13 @@ fn parse_buffs_also_grant(rest: &str, source: &str) -> Option<Vec<Modifier>> {
 }
 
 /// 解析「Armour applies to <Fire/Cold/Lightning...> Damage taken from Hits instead of Physical
-/// Damage」→ 对应元素的 `ArmourAppliesTo<Element>` flag。`rest` 已小写归一。非此形式返回 None。
+/// Damage」（PoB2 `ModParser.lua` 2519-2524）。`rest` 已小写归一。非此形式返回 None。
+///
+/// 双轨产出（M2-W0.1 过渡期）：
+/// - **旧 flag 模型**：`ArmourAppliesTo<Element>` flag——现行 `EhpOptions.armour_applies_to_element`
+///   （`[bool;3]`）消费者仍读它，保持行为中性；Track B 切换百分比模型后由 B 移除。
+/// - **新百分比模型**（PoB2 口径）：`ArmourAppliesTo<Element>DamageTaken` BASE 100 +
+///   `ArmourDoesNotApplyToPhysicalDamageTaken` flag（instead 变体专属，对应 vendor 同名 flag）。
 fn parse_armour_applies_to_element(rest: &str, source: &str) -> Option<Vec<Modifier>> {
     let body = rest.strip_prefix("armour applies to ")?;
     // 必须是 instead of physical（重定向语义）。
@@ -601,16 +621,425 @@ fn parse_armour_applies_to_element(rest: &str, source: &str) -> Option<Vec<Modif
         return None;
     }
     let mut mods = Vec::new();
-    for (kw, flag) in [
-        ("fire", "ArmourAppliesToFire"),
-        ("cold", "ArmourAppliesToCold"),
-        ("lightning", "ArmourAppliesToLightning"),
+    for (kw, flag, pascal) in [
+        ("fire", "ArmourAppliesToFire", "Fire"),
+        ("cold", "ArmourAppliesToCold", "Cold"),
+        ("lightning", "ArmourAppliesToLightning", "Lightning"),
     ] {
         if body.contains(kw) {
             mods.push(Modifier::flag(flag).with_source(source));
+            mods.push(
+                Modifier::number(
+                    format!("ArmourAppliesTo{pascal}DamageTaken"),
+                    ModType::Base,
+                    100.0,
+                )
+                .with_source(source),
+            );
         }
     }
-    (!mods.is_empty()).then_some(mods)
+    if mods.is_empty() {
+        return None;
+    }
+    // instead of physical → 物理不再吃护甲（ModParser.lua:2523 同名 flag）。
+    mods.push(Modifier::flag("ArmourDoesNotApplyToPhysicalDamageTaken").with_source(source));
+    Some(mods)
+}
+
+// ---------------------------------------------------------------------------
+// M2 防御机制词条批（W0.1）——契约见 tests/mod_parser_m2_defence.rs「M2 词条覆盖表」。
+// 各 ModName 此时无消费者（A–F track 接线），解析层先行锁定文本 → ModName 契约。
+// ---------------------------------------------------------------------------
+
+/// M2 防御词条总分发：依次尝试各防御句式族，命中即产出 Parsed。
+fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
+    let mods = parse_defence_sentence(rest, original)
+        .or_else(|| parse_mom_family(rest, original))
+        .or_else(|| parse_es_ward_bypass_family(rest, original))
+        .or_else(|| parse_armour_applies_flat(rest, original))
+        .or_else(|| parse_armour_applies_pct(rest, original))
+        .or_else(|| parse_taken_as_family(rest, original))
+        .or_else(|| parse_defence_resource_conversion(rest, original))
+        .or_else(|| parse_deflection_special(rest, original))
+        .or_else(|| parse_defence_numeric_sentence(rest, original))?;
+    Some(ParseOutcome {
+        mods,
+        status: ParseStatus::Parsed,
+        unparsed: None,
+    })
+}
+
+/// 剥离前导「`{N}% of `」（无符号百分比 of 形，PoB 防御句式高频前缀）。
+fn strip_pct_of(text: &str) -> Option<(f64, &str)> {
+    let (num, rest) = take_unsigned_number(text)?;
+    let rest = rest.strip_prefix("% of ")?;
+    Some((num, rest))
+}
+
+/// 防御五元资源词 → Pascal 名（PoB2 `CalcDefence.lua` 1301-1307 resourceList：
+/// Armour / Evasion / EnergyShield / Life / Mana）。
+fn defence_resource_pascal(words: &str) -> Option<&'static str> {
+    Some(match words.trim() {
+        "armour" => "Armour",
+        "evasion" | "evasion rating" => "Evasion",
+        "energy shield" | "maximum energy shield" => "EnergyShield",
+        "life" | "maximum life" => "Life",
+        "mana" | "maximum mana" => "Mana",
+        _ => return None,
+    })
+}
+
+/// 固定语义防御句（flag / 固定数值，PoB2 specialModList）。
+fn parse_defence_sentence(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let mods: Vec<Modifier> = match rest {
+        // EB 关键石（ModParser.lua:2439）：ES 保护 Mana 而非 Life。
+        "energy shield protects mana instead of life" => {
+            vec![Modifier::flag("EnergyShieldProtectsMana")]
+        }
+        // ES 的 inc/red 借给 Ward（ModParser.lua:2506，CalcDefence.lua:1192 消费）。
+        "increases and reductions to maximum energy shield instead apply to ward" => {
+            vec![Modifier::flag("EnergyShieldToWard")]
+        }
+        // 法术格挡 = 攻击格挡（ModParser.lua:3027）。
+        "chance to block spell damage is equal to chance to block attack damage" => {
+            vec![Modifier::flag("SpellBlockChanceIsBlockChance")]
+        }
+        // 闪避 unlucky / 不能闪避 / 必然闪避（ModParser.lua:4992 / :4988 / :4989）。
+        "chance to evade is unlucky" => vec![Modifier::flag("UnluckyEvade")],
+        "cannot evade enemy attacks" => vec![Modifier::flag("CannotEvade")],
+        // 「Attacks cannot Hit you」：前缀 `attacks ` 已被作用域剥离器消费，此处匹配残句
+        // （AlwaysEvade flag 不带 ATTACK 作用域，与 vendor flag 语义一致）。
+        "cannot hit you" => vec![Modifier::flag("AlwaysEvade")],
+        // 偏斜 lucky（ModParser.lua:4161）。
+        "chance to deflect is lucky" => vec![Modifier::flag("DeflectIsLucky")],
+        // 眩晕阈值翻倍（ModParser.lua:5219-5220 → StunThreshold MORE 100）。
+        "your stun threshold is doubled" => {
+            vec![Modifier::number("StunThreshold", ModType::More, 100.0)]
+        }
+        // 混沌不穿 ES（flask 词条裸形，ModParser.lua:5393 同语义去掉 during effect）。
+        "chaos damage does not bypass energy shield"
+        | "chaos damage taken does not bypass energy shield" => {
+            vec![Modifier::flag("ChaosNotBypassEnergyShield")]
+        }
+        _ => return None,
+    };
+    Some(mods.into_iter().map(|m| m.with_source(source)).collect())
+}
+
+/// MoM 族（ModParser.lua:415-418 nameList + :2389 all-damage 100 形）：
+/// `{N}% of [<type>/elemental ]damage [is ]taken from mana before life` →
+/// `[<Type>]DamageTakenFromManaBeforeLife` BASE N（elemental 展开 Lightning/Cold/Fire 三条）。
+fn parse_mom_family(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    // 全额形（ModParser.lua:2389）。
+    if rest == "all damage is taken from mana before life" {
+        return Some(vec![
+            Modifier::number("DamageTakenFromManaBeforeLife", ModType::Base, 100.0)
+                .with_source(source),
+        ]);
+    }
+    let (pct, tail) = strip_pct_of(rest)?;
+    let tail = tail.strip_suffix(" before life")?;
+    let tail = tail
+        .strip_suffix(" is taken from mana")
+        .or_else(|| tail.strip_suffix(" taken from mana"))?;
+    let prefixes: Vec<&'static str> = if tail == "damage" {
+        vec![""]
+    } else if tail == "elemental damage" {
+        // elemental 展开顺序对齐 ModParser.lua:416（Lightning/Cold/Fire）。
+        vec!["Lightning", "Cold", "Fire"]
+    } else {
+        vec![type_pascal(tail.strip_suffix(" damage")?)?]
+    };
+    Some(
+        prefixes
+            .into_iter()
+            .map(|p| {
+                Modifier::number(
+                    format!("{p}DamageTakenFromManaBeforeLife"),
+                    ModType::Base,
+                    pct,
+                )
+                .with_source(source)
+            })
+            .collect(),
+    )
+}
+
+/// ES / Ward bypass 族（ModParser.lua:2485-2501 / :430 / :4970 / :2507）。
+fn parse_es_ward_bypass_family(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    const ALL: [&str; 5] = ["Physical", "Lightning", "Cold", "Fire", "Chaos"];
+    let mk = |t: &str, ty: ModType, v: f64| {
+        Modifier::number(format!("{t}EnergyShieldBypass"), ty, v).with_source(source)
+    };
+    match rest {
+        // 全类型 OVERRIDE 100（ModParser.lua:2485-2491，OVERRIDE 以胜过「does not bypass」）。
+        "all damage taken bypasses energy shield" => {
+            return Some(
+                ALL.iter()
+                    .map(|t| mk(t, ModType::Override, 100.0))
+                    .collect(),
+            );
+        }
+        // 物理 BASE 100（ModParser.lua:2492-2494）。
+        "physical damage taken bypasses energy shield" => {
+            return Some(vec![mk("Physical", ModType::Base, 100.0)]);
+        }
+        // 非混沌四类（ModParser.lua:430 nameList 的裸句形）。
+        "non-chaos damage taken bypasses energy shield" => {
+            return Some(
+                ["Physical", "Lightning", "Cold", "Fire"]
+                    .iter()
+                    .map(|t| mk(t, ModType::Base, 100.0))
+                    .collect(),
+            );
+        }
+        _ => {}
+    }
+    let (pct, tail) = strip_pct_of(rest)?;
+    match tail {
+        // 百分比全类型（ModParser.lua:2495-2501）。
+        "damage taken bypasses energy shield" => {
+            Some(ALL.iter().map(|t| mk(t, ModType::Base, pct)).collect())
+        }
+        // 混沌「does not bypass」抵扣形（ModParser.lua:4970 → BASE -N）。
+        "chaos damage does not bypass energy shield"
+        | "chaos damage taken does not bypass energy shield" => {
+            Some(vec![mk("Chaos", ModType::Base, -pct)])
+        }
+        // Ward bypass（ModParser.lua:2507）。
+        "damage taken bypasses ward" => Some(vec![
+            Modifier::number("WardBypass", ModType::Base, pct).with_source(source),
+        ]),
+        _ => None,
+    }
+}
+
+/// ArmourAppliesTo 全额变体（无百分比，ModParser.lua:2530-2534 / :2541-2542）：
+/// `armour [also ]applies to elemental damage [taken from hits]` → 三元素 BASE 100；
+/// `armour also applies to <type> damage [taken from hits]` → 单类型 BASE 100。
+/// 「instead of physical」变体归 [`parse_armour_applies_to_element`]（在本函数之前命中）。
+fn parse_armour_applies_flat(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let body = rest.strip_prefix("armour ")?;
+    let (also, body) = match body.strip_prefix("also ") {
+        Some(b) => (true, b),
+        None => (false, body),
+    };
+    let body = body.strip_prefix("applies to ")?;
+    if body.contains("instead of physical") {
+        return None;
+    }
+    let body = body.strip_suffix(" taken from hits").unwrap_or(body);
+    let mk = |t: &str| {
+        Modifier::number(
+            format!("ArmourAppliesTo{t}DamageTaken"),
+            ModType::Base,
+            100.0,
+        )
+        .with_source(source)
+    };
+    if body == "elemental damage" || body == "fire, cold and lightning damage" {
+        return Some(vec![mk("Fire"), mk("Cold"), mk("Lightning")]);
+    }
+    // 单类型仅 also 形（vendor :2541-2542 无非 also 单类型句式，保守不吞）。
+    if !also {
+        return None;
+    }
+    Some(vec![mk(type_pascal(body.strip_suffix(" damage")?)?)])
+}
+
+/// ArmourAppliesTo 百分比变体（ModParser.lua:2525-2529 / :2536-2540 / :2543-2544）：
+/// `[+]{N}% of armour [also ]applies to <elemental|fire, cold and lightning|<type>> damage
+/// [taken from hits]` → `ArmourAppliesTo<X>DamageTaken` BASE N。
+fn parse_armour_applies_pct(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let body = rest.strip_prefix('+').unwrap_or(rest);
+    let (pct, tail) = strip_pct_of(body)?;
+    let body = tail.strip_prefix("armour ")?;
+    let body = body.strip_prefix("also ").unwrap_or(body);
+    let body = body.strip_prefix("applies to ")?;
+    let body = body.strip_suffix(" taken from hits").unwrap_or(body);
+    let mk = |t: &str| {
+        Modifier::number(format!("ArmourAppliesTo{t}DamageTaken"), ModType::Base, pct)
+            .with_source(source)
+    };
+    if body == "elemental damage" || body == "fire, cold and lightning damage" {
+        return Some(vec![mk("Fire"), mk("Cold"), mk("Lightning")]);
+    }
+    Some(vec![mk(type_pascal(body.strip_suffix(" damage")?)?)])
+}
+
+/// taken-as 族（ModParser.lua:5599-5608；CalcDefence.lua:356-417 消费）：
+/// - `{N}% of <src> damage taken as <dst>[ damage]` → `<Src>DamageTakenAs<Dst>` BASE N
+/// - `{N}% of <src> damage from hits taken as <dst>[ damage]` → `<Src>DamageFromHitsTakenAs<Dst>`
+/// - `{N}% of physical damage from hits taken as damage of a random element` → 三元素均分 N/3
+fn parse_taken_as_family(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let (pct, tail) = strip_pct_of(rest)?;
+    // 随机元素三均分（ModParser.lua:5605-5609）。
+    if tail == "physical damage from hits taken as damage of a random element" {
+        return Some(
+            ["Fire", "Cold", "Lightning"]
+                .iter()
+                .map(|t| {
+                    Modifier::number(
+                        format!("PhysicalDamageFromHitsTakenAs{t}"),
+                        ModType::Base,
+                        pct / 3.0,
+                    )
+                    .with_source(source)
+                })
+                .collect(),
+        );
+    }
+    let (src_word, after) = tail.split_once(" damage ")?;
+    let src = type_pascal(src_word)?;
+    let (from_hits, after) = match after.strip_prefix("from hits ") {
+        Some(a) => (true, a),
+        None => (false, after),
+    };
+    let after = after.strip_prefix("taken as ")?;
+    let dst = type_pascal(after.strip_suffix(" damage").unwrap_or(after))?;
+    if src == dst {
+        return None;
+    }
+    let name = if from_hits {
+        format!("{src}DamageFromHitsTakenAs{dst}")
+    } else {
+        format!("{src}DamageTakenAs{dst}")
+    };
+    Some(vec![
+        Modifier::number(name, ModType::Base, pct).with_source(source),
+    ])
+}
+
+/// 防御五元资源转换矩阵词条（CalcDefence.lua:1301-1390 消费的 `<Src>ConvertTo<Dst>` /
+/// `<Src>GainAs<Dst>`；IronReflexes 文本见 ModParser.lua:2343）：
+/// - `converts all evasion rating to armour` → flag IronReflexes + EvasionConvertToArmour BASE 100
+/// - `{N}% of <src> converted to <dst>` → `<Src>ConvertTo<Dst>` BASE N
+/// - `gain {N}% of <src> as [extra ]<dst>` → `<Src>GainAs<Dst>` BASE N
+///
+/// src/dst 限于五元资源词（[`defence_resource_pascal`]）；伤害类转换/gain-as-extra 已由
+/// [`parse_conversion_or_gain`]（更早命中）处理，互不重叠。
+fn parse_defence_resource_conversion(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    if rest == "converts all evasion rating to armour" {
+        return Some(vec![
+            Modifier::flag("IronReflexes").with_source(source),
+            Modifier::number("EvasionConvertToArmour", ModType::Base, 100.0).with_source(source),
+        ]);
+    }
+    let (is_gain, body) = match rest.strip_prefix("gain ") {
+        Some(b) => (true, b),
+        None => (false, rest),
+    };
+    let (pct, tail) = strip_pct_of(body)?;
+    let (src_words, dst_words, kind) = if is_gain {
+        let (s, d) = tail.split_once(" as ")?;
+        (s, d.strip_prefix("extra ").unwrap_or(d), "GainAs")
+    } else {
+        let (s, d) = tail.split_once(" converted to ")?;
+        (s, d, "ConvertTo")
+    };
+    let src = defence_resource_pascal(src_words)?;
+    let dst = defence_resource_pascal(dst_words)?;
+    if src == dst {
+        return None;
+    }
+    Some(vec![
+        Modifier::number(format!("{src}{kind}{dst}"), ModType::Base, pct).with_source(source),
+    ])
+}
+
+/// 偏斜（Deflection）句式（ModParser.lua:4158-4160；CalcDefence.lua:1487-1506 消费）：
+/// - `gain deflection rating equal to {N}% of evasion rating` → EvasionGainAsDeflection BASE N
+/// - `gain deflection rating equal to {N}% of armour` → ArmourGainAsDeflection BASE N
+/// - `prevent +{N}% of damage from deflected hits` → DeflectEffect BASE N
+fn parse_deflection_special(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    if let Some(tail) = rest.strip_prefix("gain deflection rating equal to ") {
+        let (pct, of_words) = strip_pct_of(tail)?;
+        let name = match of_words {
+            "evasion rating" | "evasion" => "EvasionGainAsDeflection",
+            "armour" => "ArmourGainAsDeflection",
+            _ => return None,
+        };
+        return Some(vec![
+            Modifier::number(name, ModType::Base, pct).with_source(source),
+        ]);
+    }
+    if let Some(tail) = rest.strip_prefix("prevent ") {
+        let tail = tail.strip_prefix('+').unwrap_or(tail);
+        let (pct, of_words) = strip_pct_of(tail)?;
+        if of_words == "damage from deflected hits" {
+            return Some(vec![
+                Modifier::number("DeflectEffect", ModType::Base, pct).with_source(source),
+            ]);
+        }
+    }
+    None
+}
+
+/// 数值开头/带数值的防御句式（block 承伤、闪避上限、损失防止、无符号 chance-to 族）。
+fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    // 格挡承伤比例（ModParser.lua:2479 → BlockEffect BASE N，PoB2 语义=被格挡命中仍承受 N%）。
+    if let Some(tail) = rest.strip_prefix("you take ") {
+        let (pct, words) = strip_pct_of(tail)?;
+        if words == "damage from blocked hits" {
+            return Some(vec![
+                Modifier::number("BlockEffect", ModType::Base, pct).with_source(source),
+            ]);
+        }
+        return None;
+    }
+    // 闪避几率上限（ModParser.lua:4991 vendor MAX 形；PoBR 无 MAX 类型，以 OVERRIDE 表达
+    // 「上限固定为 N」，消费侧（Track E）按 min(EvadeChance, EvadeChanceMax) clamp）。
+    if let Some(tail) = rest.strip_prefix("maximum chance to evade is ") {
+        let value: f64 = tail.strip_suffix('%')?.trim().parse().ok()?;
+        return Some(vec![
+            Modifier::number("EvadeChanceMax", ModType::Override, value).with_source(source),
+        ]);
+    }
+    // 损失防止双数值形（ModParser.lua:5395-5398）。
+    if let Some(tail) = rest.strip_prefix("when taking damage from hits, ") {
+        let (prevented, t) = strip_pct_of(tail)?;
+        let t = t.strip_prefix("life loss is prevented, then ")?;
+        let (lost, t) = strip_pct_of(t)?;
+        if t == "life loss prevented this way is lost over 4 seconds" {
+            return Some(vec![
+                Modifier::number("LifeLossPrevented", ModType::Base, prevented).with_source(source),
+                Modifier::number("LifeLossLost", ModType::Base, lost).with_source(source),
+            ]);
+        }
+        return None;
+    }
+    // 损失防止单数值形（ModParser.lua:2816）。
+    if let Some((pct, tail)) = strip_pct_of(rest)
+        && tail
+            == "life loss from hits is prevented, then that much life is lost over 4 seconds instead"
+    {
+        return Some(vec![
+            Modifier::number("LifeLossPrevented", ModType::Base, pct).with_source(source),
+        ]);
+    }
+    // 无符号「{N}% chance to <防御几率>」族（block/evade/avoid-stun；带 +N% 符号形走
+    // parse_form + parse_name 的 nameList 路径，两路产出同名 BASE）。
+    let (value, tail) = take_unsigned_number(rest)?;
+    let clause = tail.strip_prefix("% chance to ")?;
+    let names: &[&str] = match clause {
+        "block" | "block attacks" | "block attack damage" => &["BlockChance"],
+        "block spells" | "block spell damage" => &["SpellBlockChance"],
+        "block attacks and spells" | "block attack and spell damage" => {
+            &["BlockChance", "SpellBlockChance"]
+        }
+        "evade" | "evade attacks" | "evade attack hits" => &["EvadeChance"],
+        "evade projectile attacks" => &["ProjectileEvadeChance"],
+        "evade spells" | "evade spell hits" => &["SpellEvadeChance"],
+        "evade melee attacks" => &["MeleeEvadeChance"],
+        "avoid being stunned" => &["AvoidStun"],
+        _ => return None,
+    };
+    Some(
+        names
+            .iter()
+            .map(|n| Modifier::number(*n, ModType::Base, value).with_source(source))
+            .collect(),
+    )
 }
 
 /// 解析 PoB 词条标记 `[A|B]` → `B`（显示名）、`[A]` → `A`。无标记原样返回。
@@ -1253,6 +1682,52 @@ fn parse_name(text: &str) -> Option<ModName> {
         "maximum mana" => "MaximumMana",
         "mana" => "MaximumMana",
         "stun threshold" => "StunThreshold",
+        // 异常阈值（PoB2 ModParser.lua:451；与 stun threshold 组合形见 resolve_names）。
+        "ailment threshold" => "AilmentThreshold",
+        // --- M2 防御词条批（W0.1）：block / evade / deflection / 预留效率 / ward ---
+        // 格挡族（PoB2 ModParser.lua:365-383 nameList）。
+        "to block"
+        | "chance to block"
+        | "block chance"
+        | "to block attacks"
+        | "to block attack damage"
+        | "chance to block attacks"
+        | "chance to block attack damage" => "BlockChance",
+        "spell block chance"
+        | "to block spells"
+        | "to block spell damage"
+        | "chance to block spells"
+        | "chance to block spell damage" => "SpellBlockChance",
+        "maximum block chance" | "maximum chance to block attack damage" => "BlockChanceMax",
+        "maximum chance to block spell damage" => "SpellBlockChanceMax",
+        // 闪避（evade）四分型（PoB2 ModParser.lua:250-259 nameList）。
+        "to evade"
+        | "chance to evade"
+        | "to evade attacks"
+        | "to evade attack hits"
+        | "chance to evade attacks"
+        | "chance to evade attack hits" => "EvadeChance",
+        "chance to evade projectile attacks" => "ProjectileEvadeChance",
+        "chance to evade spells" | "chance to evade spell hits" => "SpellEvadeChance",
+        "chance to evade melee attacks" => "MeleeEvadeChance",
+        // 避免眩晕（PoB2 ModParser.lua:399；calc_avoidance 已消费 AvoidStun BASE）。
+        "to avoid being stunned" | "chance to avoid being stunned" => "AvoidStun",
+        // 偏斜（PoB2 ModParser.lua:360-361）。
+        "deflection rating" => "DeflectionRating",
+        "amount of damage prevented by deflection" => "DeflectEffect",
+        // 预留效率族（PoB2 ModParser.lua:220-231；CalcDefence.lua:172-350 除法语义）。
+        "reservation efficiency" | "reservation efficiency of skills" => "ReservationEfficiency",
+        "mana reservation efficiency" | "mana reservation efficiency of skills" => {
+            "ManaReservationEfficiency"
+        }
+        "life reservation efficiency" | "life reservation efficiency of skills" => {
+            "LifeReservationEfficiency"
+        }
+        "spirit reservation efficiency" | "spirit reservation efficiency of skills" => {
+            "SpiritReservationEfficiency"
+        }
+        // 结界（PoB2 ModParser.lua:241）。
+        "ward" | "maximum ward" => "Ward",
         "accuracy" => "Accuracy",
         "accuracy rating" => "Accuracy",
         "armour" => "Armour",
