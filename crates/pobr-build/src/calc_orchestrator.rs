@@ -491,6 +491,10 @@ pub fn calculate_with_data(
     //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
     session.add_modifiers(self_buff_offensive_modifiers(build, data));
 
+    // 4d.（M1-T4.5）持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
+    //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
+    session.add_modifiers(spirit_reservation_modifiers(build, data));
+
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
     session.setup_enemy(options.enemy_level, enemy_tier);
 
@@ -1780,6 +1784,95 @@ fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> Vec<Modifie
                         .with_origin(origin),
                 );
             }
+        }
+    }
+    mods
+}
+
+/// （M1-T4.5）把所有**已启用持续保留型效果**的 Spirit 预留聚合为
+/// `SkillSpiritReservationBase` BASE modifier（每效果一条，SkillGem 归因），由
+/// perform `fill_skill_mechanics` 汇总落 [`pobr_core::OutputTable`] 的
+/// `spirit_reserved`。超载只**报告不拦截**（与 PoB2 一致：照算并标红，M1 不做
+/// 池侧钳制）。
+///
+/// 口径（对照 PoB2 `CalcDefence.lua:192-249` Reservation 段）：
+/// - 入选 = `skill_types` 含 `HasReservation` 且不含 `ReservationBecomesCost`
+///   （`CalcDefence.lua:194`；后者如 Divine Blessing 类「保留转消耗」）；
+/// - `flat_total` = 效果自身分等级 `spirit_reservation_flat` + 同组 support 的
+///   `spirit_reservation_flat`（PoB2 support 侧注 `ExtraSpirit` BASE，
+///   `CalcActiveSkill.lua:698-700`；`CalcDefence.lua:213-214` 并入 baseFlat）；
+/// - 倍率 = Π(1 + reservation_multiplier/100)，含效果自身
+///   （`CalcActiveSkill.lua:754-756`）与同组 support（`:692-694`）的
+///   `ReservationMultiplier` MORE，乘积**截断到 4 位小数**
+///   （`CalcDefence.lua:197` `floor(More("ReservationMultiplier"), 4)`）；
+/// - 每效果 `reserved = max(round(flat_total × 倍率), 0)`
+///   （`CalcDefence.lua:246-249` 的 M1 子集——`Reserved`/`ReservationEfficiency`
+///   inc/more 词条族与 Spirit 池本值/unreserved 归 M2 Track D，
+///   00-index 裁决 §4-12）。
+///
+/// 同一效果在多组重复出现按 id 去重（与 [`aura_buff_modifiers`] 同口径）；support
+/// 贡献现按组内全量取（T3.6 兼容名单合并后随 `support_modifiers` 同口径收紧）。
+fn spirit_reservation_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    use std::collections::HashSet;
+    /// 取 ≤ gem_level 的最高等级行（与 [`BuildData::resolve_skill_level`] 同规则）。
+    fn level_row<'d>(
+        data: &'d BuildData,
+        id: &str,
+        gem_level: u32,
+    ) -> Option<&'d pobr_data::catalog::SkillLevelDef> {
+        let rows = data.granted_effect_levels.get(id)?;
+        rows.iter().rfind(|r| r.level <= gem_level).or(rows.first())
+    }
+    let mut mods = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            let has = |t: &str| effect.skill_types.iter().any(|x| x == t);
+            if effect.is_support
+                || !has("HasReservation")
+                || has("ReservationBecomesCost")
+                || !seen.insert(gem.skill_id.as_str())
+            {
+                continue;
+            }
+            let own = level_row(data, &gem.skill_id, gem.gem_level);
+            let mut flat = own.and_then(|r| r.spirit_reservation_flat).unwrap_or(0.0);
+            let mut mult = 1.0 + own.and_then(|r| r.reservation_multiplier).unwrap_or(0.0) / 100.0;
+            // 同组 support：spirit flat（ExtraSpirit）+ reservation_multiplier MORE。
+            for sup in &group.gem_skills {
+                if data
+                    .granted_effects
+                    .get(&sup.skill_id)
+                    .is_none_or(|e| !e.is_support)
+                {
+                    continue;
+                }
+                if let Some(row) = level_row(data, &sup.skill_id, sup.gem_level) {
+                    flat += row.spirit_reservation_flat.unwrap_or(0.0);
+                    mult *= 1.0 + row.reservation_multiplier.unwrap_or(0.0) / 100.0;
+                }
+            }
+            // PoB2 对保留倍率乘积截断到 4 位小数后再乘 base（floor(x, 4)）。
+            let mult = (mult * 10000.0).floor() / 10000.0;
+            let reserved = (flat * mult).round().max(0.0);
+            if reserved <= 0.0 {
+                continue;
+            }
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("spirit.{}", gem.skill_id),
+            ))
+            .with_raw_text(format!(
+                "spirit reservation {} ({} × {})",
+                gem.skill_id, flat, mult
+            ));
+            mods.push(
+                Modifier::number("SkillSpiritReservationBase", ModType::Base, reserved)
+                    .with_origin(origin),
+            );
         }
     }
     mods
