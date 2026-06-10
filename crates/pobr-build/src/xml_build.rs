@@ -28,7 +28,7 @@ use quick_xml::events::{BytesStart, Event};
 
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_data::item::{EquipmentSlot, Item};
-use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
 
 use crate::build::{Build, CharacterIdentity, RadiusJewel, SocketGroup};
 use crate::build_code::decode_pob_code;
@@ -53,6 +53,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let header = parse_build_header(xml)?;
 
     let allocated_nodes = parse_passive_nodes(xml)?;
+    let attribute_overrides = parse_attribute_overrides(xml)?;
     let (items, jewels) = parse_items_and_slots(xml)?;
     let radius_jewels = parse_radius_jewels(xml)?;
     let socket_groups = parse_socket_groups(xml)?;
@@ -67,6 +68,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
         .with_view_mode(header.view_mode)
         .with_tree(PassiveTreeSpec {
             allocated_nodes,
+            attribute_overrides,
             ..Default::default()
         });
     if let Some(g) = main_socket_group {
@@ -265,6 +267,60 @@ fn parse_node_csv(value: &str) -> Vec<NodeId> {
         .filter_map(|s| s.trim().parse::<u32>().ok())
         .map(NodeId)
         .collect()
+}
+
+/// 解析激活 Spec 的 `<Overrides><AttributeOverride strNodes/dexNodes/intNodes>` →
+/// 属性小点三选一映射（PoB2 `PassiveSpec.lua::SwitchAttributeNode` 语义）。
+///
+/// 与 [`parse_passive_nodes`] 一致地按 `<Tree activeSpec>` 选 Spec；无 Overrides 的
+/// build 返回空 map（全部属性小点不贡献属性）。
+fn parse_attribute_overrides(xml: &str) -> Result<HashMap<NodeId, AttributeChoice>, XmlError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+
+    let mut active_spec: usize = 1;
+    let mut specs: Vec<HashMap<NodeId, AttributeChoice>> = Vec::new();
+
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
+                let name = element_name(&e);
+                if name == "Tree" {
+                    if let Some(v) = attr_value(&e, b"activeSpec")
+                        && let Ok(n) = v.parse::<usize>()
+                        && n >= 1
+                    {
+                        active_spec = n;
+                    }
+                } else if name == "Spec" {
+                    specs.push(HashMap::new());
+                } else if name == "AttributeOverride"
+                    && let Some(current) = specs.last_mut()
+                {
+                    for (attr, choice) in [
+                        (b"strNodes".as_slice(), AttributeChoice::Strength),
+                        (b"dexNodes".as_slice(), AttributeChoice::Dexterity),
+                        (b"intNodes".as_slice(), AttributeChoice::Intelligence),
+                    ] {
+                        if let Some(v) = attr_value(&e, attr) {
+                            for node in parse_node_csv(&v) {
+                                current.insert(node, choice);
+                            }
+                        }
+                    }
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(XmlError::Parse(e.to_string())),
+            _ => {}
+        }
+    }
+
+    if specs.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let idx = active_spec.saturating_sub(1).min(specs.len() - 1);
+    Ok(specs.swap_remove(idx))
 }
 
 // ── 装备 + 槽位映射 ───────────────────────────────────────────────────────────
@@ -790,6 +846,33 @@ Adds 47 to 86 Physical Damage
         let build = parse_build(SAMPLE).expect("parse");
         let nodes: Vec<u32> = build.tree.allocated_nodes.iter().map(|n| n.0).collect();
         assert_eq!(nodes, vec![100, 200, 300]);
+    }
+
+    #[test]
+    fn parses_attribute_overrides_from_active_spec() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Tree activeSpec="1">
+        <Spec nodes="100,200,300" treeVersion="0_5">
+            <Overrides>
+                <AttributeOverride dexNodes="100,200" intNodes="300" strNodes=""/>
+            </Overrides>
+        </Spec>
+    </Tree>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let ov = &build.tree.attribute_overrides;
+        assert_eq!(ov.get(&NodeId(100)), Some(&AttributeChoice::Dexterity));
+        assert_eq!(ov.get(&NodeId(200)), Some(&AttributeChoice::Dexterity));
+        assert_eq!(ov.get(&NodeId(300)), Some(&AttributeChoice::Intelligence));
+        assert_eq!(ov.len(), 2 + 1);
+    }
+
+    #[test]
+    fn attribute_overrides_default_empty_without_overrides_element() {
+        let build = parse_build(SAMPLE).expect("parse");
+        assert!(build.tree.attribute_overrides.is_empty());
     }
 
     #[test]

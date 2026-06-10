@@ -172,4 +172,16 @@ impl CalculationSession {
     pub fn output(&self) -> &OutputTable {
         &self.env.player.output
     }
+
+    /// 诊断辅助：列出玩家 modDB 中名为 `name` 的全部 modifier（含 cfg 不匹配者），
+    /// 供 parity 调试逐来源核对贡献。
+    pub fn mods_named(&self, name: &str) -> Vec<&Modifier> {
+        let target = ModName::from(name);
+        self.env
+            .player
+            .mod_db
+            .iter_mods()
+            .filter(|m| m.name == target)
+            .collect()
+    }
 }

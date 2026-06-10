@@ -570,6 +570,16 @@ pub fn calculate_with_data(
         }
     }
 
+    // 诊断：POBR_DBG_STAT=<ModName> 时逐来源 dump 该属性的全部 modifier（parity 排查用）。
+    if let Ok(stat) = std::env::var("POBR_DBG_STAT") {
+        for m in session.mods_named(&stat) {
+            eprintln!(
+                "[POBR_DBG] {stat} {:?} {:?} origin={:?} src={:?}",
+                m.mod_type, m.value, m.origin, m.source
+            );
+        }
+    }
+
     // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等
     // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
     session.perform_minimal();
@@ -2120,8 +2130,8 @@ mod tests {
             ..Default::default()
         };
         let out = calculate_with_data(&build, &data, &opts).expect("calc");
-        // 28 + 12*10 + 2*15 = 178。
-        assert_eq!(out.life, 178.0);
+        // 12*10 + 16 + 2*15 = 166（PoB2 `Life BASE 12 × Level + 16`）。
+        assert_eq!(out.life, 166.0);
 
         // 关闭注入 → 无 CharacterBase 生命。
         let opts_off = DataOrchestratorOptions {

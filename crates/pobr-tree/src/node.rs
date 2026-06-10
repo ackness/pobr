@@ -62,7 +62,18 @@ pub fn collect_allocated_mods(
             if node.stats.is_empty() {
                 return None;
             }
-            let modifier_texts = split_lines(&node.stats);
+            let mut modifier_texts = split_lines(&node.stats);
+            // 属性小点（`+5 to any Attribute`）按玩家三选一改写为具体属性
+            // （PoB2 `SwitchAttributeNode` 语义）；无选择时保留原文——下游
+            // mod_parser 不识别 `any attribute`（PoB2 ModParser 同样映射为空），
+            // 该行自然归入 Unsupported、不贡献属性。
+            if let Some(choice) = spec.attribute_overrides.get(node_id) {
+                for text in &mut modifier_texts {
+                    if let Some(rewritten) = rewrite_attribute_choice(text, *choice) {
+                        *text = rewritten;
+                    }
+                }
+            }
             if modifier_texts.is_empty() {
                 return None;
             }
@@ -88,4 +99,20 @@ fn split_lines(stats: &[String]) -> Vec<String> {
         .map(|l| l.trim().to_string())
         .filter(|l| !l.is_empty())
         .collect()
+}
+
+/// 把属性小点词条 `+N to any [Attributes|Attribute]` 按所选属性改写为
+/// `+N to <Strength|Dexterity|Intelligence>`。非属性小点词条返回 `None`（不改写）。
+fn rewrite_attribute_choice(text: &str, choice: AttributeChoice) -> Option<String> {
+    let lower = text.to_ascii_lowercase();
+    let idx = lower.find(" to any ")?;
+    if !lower[idx..].contains("attribute") {
+        return None;
+    }
+    let attr = match choice {
+        AttributeChoice::Strength => "Strength",
+        AttributeChoice::Dexterity => "Dexterity",
+        AttributeChoice::Intelligence => "Intelligence",
+    };
+    Some(format!("{} to {attr}", &text[..idx]))
 }

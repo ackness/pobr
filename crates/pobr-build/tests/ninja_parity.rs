@@ -267,8 +267,8 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Vec<String>) {
 
 /// 已记录的 parity 基线（命中数）——回归门禁的下限。**仅在确认改动整体提升 parity 时上调**，
 /// 永不下调（防止改动悄悄倒退）。对应 commit 当时的 ninja_parity 输出。
-const BASELINE_DEF_HIT5: usize = 74;
-const BASELINE_DEF_HIT10: usize = 88;
+const BASELINE_DEF_HIT5: usize = 88;
+const BASELINE_DEF_HIT10: usize = 106;
 const BASELINE_OFF_HIT5: usize = 23;
 const BASELINE_OFF_HIT10: usize = 31;
 

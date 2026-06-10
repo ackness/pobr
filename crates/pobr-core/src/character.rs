@@ -4,30 +4,37 @@
 //! [`SourceKind::CharacterBase`] 归因的 `BASE` modifier，喂入 `ModDb` 后即可
 //! 参与标准属性管线 `(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`。
 //!
-//! 公式来源见 `agent-docs/attributes.md`（PoE2 0.5.0，对照 PoB-PoE2 `CalcSetup.lua`）。
+//! 公式来源：PoB2 `CalcSetup.lua`（`data.characterConstants`，ModStore Multiplier
+//! 语义 `value × Level + base`，oracle 实证 L99: Life base 1204 = 12×99+16、
+//! Mana base 426 = 4×99+30）。
 
 use pobr_data::prelude::*;
 
 use crate::Modifier;
 
-/// 角色固有基础生命常量项。
-const BASE_LIFE_CONSTANT: f64 = 28.0;
+/// 角色固有基础生命常量项（PoB2 `Life BASE 12 × Level + 16`）。
+const BASE_LIFE_CONSTANT: f64 = 16.0;
 /// 每个玩家等级提供的最大生命。
 const LIFE_PER_LEVEL: f64 = 12.0;
 /// 每 1 点力量提供的最大生命。
 const LIFE_PER_STRENGTH: f64 = 2.0;
 
-/// 角色固有基础魔力常量项。
-const BASE_MANA_CONSTANT: f64 = 34.0;
+/// 角色固有基础魔力常量项（PoB2 `Mana BASE 4 × Level + 30`）。
+const BASE_MANA_CONSTANT: f64 = 30.0;
 /// 每个玩家等级提供的最大魔力。
 const MANA_PER_LEVEL: f64 = 4.0;
 /// 每 1 点智力提供的最大魔力。
 const MANA_PER_INTELLIGENCE: f64 = 2.0;
 
+/// 角色固有精准常量项（PoB2 `Accuracy BASE 6 × Level − 6`）。
+const BASE_ACCURACY_CONSTANT: f64 = -6.0;
 /// 每个玩家等级提供的精准。
 const ACCURACY_PER_LEVEL: f64 = 6.0;
 /// 每 1 点敏捷提供的精准。
 const ACCURACY_PER_DEXTERITY: f64 = 6.0;
+
+/// 角色固有基础闪避（PoB2 `characterConstants.base_evasion_rating`）。
+const BASE_EVASION: f64 = 7.0;
 
 /// PoE2 角色基础值入口。
 ///
@@ -46,21 +53,23 @@ impl CharacterBase {
         f64::from(self.level)
     }
 
-    /// 派生的固有最大生命：`28 + 12*level + 2*Strength`。
+    /// 派生的固有最大生命：`12*level + 16 + 2*Strength`。
     pub fn base_life(&self) -> f64 {
         BASE_LIFE_CONSTANT + LIFE_PER_LEVEL * self.level() + LIFE_PER_STRENGTH * self.strength
     }
 
-    /// 派生的固有最大魔力：`34 + 4*level + 2*Intelligence`。
+    /// 派生的固有最大魔力：`4*level + 30 + 2*Intelligence`。
     pub fn base_mana(&self) -> f64 {
         BASE_MANA_CONSTANT
             + MANA_PER_LEVEL * self.level()
             + MANA_PER_INTELLIGENCE * self.intelligence
     }
 
-    /// 派生的固有精准：`6*level + 6*Dexterity`。
+    /// 派生的固有精准：`6*level − 6 + 6*Dexterity`。
     pub fn base_accuracy(&self) -> f64 {
-        ACCURACY_PER_LEVEL * self.level() + ACCURACY_PER_DEXTERITY * self.dexterity
+        BASE_ACCURACY_CONSTANT
+            + ACCURACY_PER_LEVEL * self.level()
+            + ACCURACY_PER_DEXTERITY * self.dexterity
     }
 
     /// 生成角色基础值的 `BASE` modifier 列表，全部带 `CharacterBase` 归因。
@@ -81,6 +90,7 @@ impl CharacterBase {
                 self.base_accuracy(),
                 "character base accuracy rating",
             ),
+            base_modifier("Evasion", BASE_EVASION, "character base evasion rating"),
         ]
     }
 }

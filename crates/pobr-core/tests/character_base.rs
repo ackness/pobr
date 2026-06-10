@@ -9,10 +9,10 @@ fn db_of(mods: Vec<pobr_core::Modifier>) -> ModDb {
 
 #[test]
 fn character_base_derives_life_mana_accuracy_from_level_and_attributes() {
-    // PoE2 0.5.0 base formulas (agent-docs/attributes.md):
-    // life = 28 + 12*level + 2*Strength
-    // mana = 34 + 4*level + 2*Intelligence
-    // accuracy = 6*level + 6*Dexterity
+    // PoB2 CalcSetup characterConstants（oracle 实证 L99: Life 1204 / Mana 426）:
+    // life = 12*level + 16 + 2*Strength
+    // mana = 4*level + 30 + 2*Intelligence
+    // accuracy = 6*level - 6 + 6*Dexterity
     let base = CharacterBase {
         level: 1,
         strength: 15.0,
@@ -25,15 +25,20 @@ fn character_base_derives_life_mana_accuracy_from_level_and_attributes() {
 
     assert_eq!(
         db.sum(ModType::Base, &cfg, &[ModName::from("MaximumLife")]),
-        70.0
+        58.0
     );
     assert_eq!(
         db.sum(ModType::Base, &cfg, &[ModName::from("MaximumMana")]),
-        52.0
+        48.0
     );
     assert_eq!(
         db.sum(ModType::Base, &cfg, &[ModName::from("Accuracy")]),
-        48.0
+        42.0
+    );
+    // PoB2 characterConstants.base_evasion_rating = 7。
+    assert_eq!(
+        db.sum(ModType::Base, &cfg, &[ModName::from("Evasion")]),
+        7.0
     );
 }
 
@@ -49,18 +54,18 @@ fn character_base_scales_with_level() {
     let db = db_of(base.modifiers());
     let cfg = CalcConfig::new();
 
-    // 28 + 12*10 = 148, 34 + 4*10 = 74, 6*10 = 60.
+    // 12*10 + 16 = 136, 4*10 + 30 = 70, 6*10 - 6 = 54.
     assert_eq!(
         db.sum(ModType::Base, &cfg, &[ModName::from("MaximumLife")]),
-        148.0
+        136.0
     );
     assert_eq!(
         db.sum(ModType::Base, &cfg, &[ModName::from("MaximumMana")]),
-        74.0
+        70.0
     );
     assert_eq!(
         db.sum(ModType::Base, &cfg, &[ModName::from("Accuracy")]),
-        60.0
+        54.0
     );
 }
 

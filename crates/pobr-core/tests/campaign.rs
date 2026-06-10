@@ -136,8 +136,8 @@ fn session_ingests_character_base_and_campaign_modifiers() {
 
     let output = session.perform_minimal();
 
-    // Character base life: 28 + 12 + 30 = 70.
-    assert_eq!(output.life, 70.0);
+    // Character base life: 12*1 + 16 + 2*15 = 58（PoB2 `Life BASE 12 × Level + 16`）。
+    assert_eq!(output.life, 58.0);
     // Fire resistance: Act3 penalty (-20) + The Flame Core (+10) = -10.
     assert_eq!(output.fire_resistance, -10.0);
     assert_eq!(output.cold_resistance, -20.0);

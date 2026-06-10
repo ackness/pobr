@@ -7,10 +7,11 @@ use pobr_data::prelude::*;
 use pobr_tree::{AllocatedNodeMods, PassiveTree, collect_allocated_mods};
 use std::collections::HashMap;
 
-/// 自构造 6 节点 fixture 的 JSON（`PassiveNodeDef` 数组）。
+/// 自构造 7 节点 fixture 的 JSON（`PassiveNodeDef` 数组）。
 ///
 /// skill 1 Normal(有词条) / 2 Notable(2 条) / 3 JewelSocket(应被 gating) /
-/// 4 Keystone(2 条) / 5 Normal(无词条) / 6 Mastery(应被 gating)。
+/// 4 Keystone(2 条) / 5 Normal(无词条) / 6 Mastery(应被 gating) /
+/// 7 属性小点(`+5 to any Attribute`，三选一)。
 fn fixture_json() -> &'static str {
     r#"[
       {
@@ -60,6 +61,14 @@ fn fixture_json() -> &'static str {
         "kind": "mastery",
         "stats": ["mastery effect a", "mastery effect b"],
         "connections": []
+      },
+      {
+        "skill": 7,
+        "id": "node_attribute",
+        "name": "Attribute",
+        "kind": "normal",
+        "stats": ["+5 to any [Attributes|Attribute]"],
+        "connections": []
       }
     ]"#
 }
@@ -68,9 +77,9 @@ fn fixture_json() -> &'static str {
 fn from_json_parses_all_nodes() {
     let tree = PassiveTree::from_json(fixture_json()).expect("fixture should parse");
 
-    assert_eq!(tree.len(), 6);
+    assert_eq!(tree.len(), 7);
     assert!(!tree.is_empty());
-    for skill in [1u32, 2, 3, 4, 5, 6] {
+    for skill in [1u32, 2, 3, 4, 5, 6, 7] {
         assert!(tree.node(NodeId(skill)).is_some());
     }
     assert!(tree.node(NodeId(999)).is_none());
@@ -316,6 +325,7 @@ fn mastery_with_selection_injects_chosen_effect() {
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(1), NodeId(6)],
         mastery_effects,
+        attribute_overrides: HashMap::new(),
     };
 
     // Act
@@ -342,6 +352,7 @@ fn mastery_selection_injects_second_effect() {
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(6)],
         mastery_effects,
+        attribute_overrides: HashMap::new(),
     };
 
     // Act
@@ -361,6 +372,7 @@ fn mastery_without_selection_is_still_gated() {
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(1), NodeId(6)],
         mastery_effects: HashMap::new(), // 无任何选择
+        attribute_overrides: HashMap::new(),
     };
 
     // Act
@@ -397,6 +409,7 @@ fn multiple_mastery_selections_are_independent() {
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(10), NodeId(11)],
         mastery_effects,
+        attribute_overrides: HashMap::new(),
     };
 
     // Act
@@ -425,6 +438,7 @@ fn mastery_selection_source_id_is_passive_node() {
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(6)],
         mastery_effects,
+        attribute_overrides: HashMap::new(),
     };
 
     // Act
@@ -434,4 +448,41 @@ fn mastery_selection_source_id_is_passive_node() {
     let m = &mods[0];
     assert_eq!(m.source_id.kind, SourceKind::PassiveNode);
     assert_eq!(m.source_id.id, "6");
+}
+
+/// 属性小点在 `attribute_overrides` 有选择时，词条改写为所选的具体属性。
+#[test]
+fn attribute_choice_node_rewrites_to_selected_attribute() {
+    let tree = PassiveTree::from_json(fixture_json()).unwrap();
+    let mut attribute_overrides = HashMap::new();
+    attribute_overrides.insert(NodeId(7), AttributeChoice::Dexterity);
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(7)],
+        attribute_overrides,
+        ..Default::default()
+    };
+
+    let mods = tree.compute_node_mods(&spec);
+
+    assert_eq!(mods.len(), 1);
+    assert_eq!(mods[0].modifier_texts, vec!["+5 to Dexterity".to_string()]);
+}
+
+/// 属性小点未做选择时保留原文（下游 mod_parser 不识别 `any attribute`，
+/// 自然归入 Unsupported——与 PoB2 空映射一致，不贡献任何属性）。
+#[test]
+fn attribute_choice_node_without_override_keeps_original_text() {
+    let tree = PassiveTree::from_json(fixture_json()).unwrap();
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(7)],
+        ..Default::default()
+    };
+
+    let mods = tree.compute_node_mods(&spec);
+
+    assert_eq!(mods.len(), 1);
+    assert_eq!(
+        mods[0].modifier_texts,
+        vec!["+5 to any [Attributes|Attribute]".to_string()]
+    );
 }

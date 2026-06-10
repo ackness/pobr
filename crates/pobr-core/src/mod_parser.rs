@@ -298,9 +298,10 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
         "all elemental resistances" => {
             &["fire resistance", "cold resistance", "lightning resistance"]
         }
-        "all attributes" | "any attribute" | "attributes" => {
-            &["strength", "dexterity", "intelligence"]
-        }
+        // 注意：`any attribute`（属性小点三选一）**不在此列**——PoB2 ModParser 把
+        // `+N to any attribute` 映射为空 mod；玩家的选择经 `AttributeOverride` 在
+        // pobr-tree 收集阶段改写为具体属性，未选择的属性小点不贡献属性。
+        "all attributes" | "attributes" => &["strength", "dexterity", "intelligence"],
         // 复合速度（PoE2 常见树/词条）：「Attack and Cast Speed」→ 两条 speed（朴素
         // " and "→", " 切分会得到无效的单词 "attack"，故此处显式展开）。
         "attack and cast speed" | "cast and attack speed" => &["attack speed", "cast speed"],

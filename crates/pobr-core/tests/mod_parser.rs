@@ -233,8 +233,14 @@ fn strips_pob_bracket_markup() {
         .unwrap();
     assert_eq!(o.mods[0].name, ModName::from("ElementalDamage"));
 
-    let o = parse_mod("+5 to any [Attributes|Attribute]").unwrap();
-    assert_eq!(o.mods.len(), 3, "any attribute → str/dex/int");
+    // `any attribute`（属性小点三选一）不展开——PoB2 ModParser 映射为空 mod；
+    // 玩家选择经 AttributeOverride 在树收集阶段改写为具体属性后再解析。
+    assert!(
+        parse_mod("+5 to any [Attributes|Attribute]").is_err(),
+        "any attribute 不直接贡献属性"
+    );
+    let o = parse_mod("+10 to all Attributes").unwrap();
+    assert_eq!(o.mods.len(), 3, "all attributes → str/dex/int");
 }
 
 #[test]
