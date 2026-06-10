@@ -46,3 +46,34 @@ cargo run -p pobr-data-adapter -- --raw ./tables --out ../data --patch <version>
 
 - 新 PoE2 版本：更新 `config.json` 的 `patch`，重跑三步，`data/` 下生成新版本目录，`diff` 审查。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
+- **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本（M1-W0 时 4.5.0.3.4 已 404）。`.cache/`
+  里已缓存的 bundle 可继续离线导出**既有表的全部列**（整张 `.datc64` 在同一 bundle 里）；
+  但**新增整表**若其 bundle 未缓存则无法补下——这类表记录在 `config.json` 的
+  `_tablesUnavailableForPinnedPatch`，数据改走 `sync-pob-catalog extract-lua` 兜底
+  （vendor Lua → `overlay/`），版本升级重下时再移回 `tables` 数组。
+
+## 列名陷阱：社区 schema vs PoB2 spec.lua（M1-W0 2026-06-11 核验）
+
+`pathofexile-dat` 用 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema) 的列名；
+PoB2 `Export/spec.lua` 对**同一物理列**有不同命名。`config.json` 必须用社区名下载，
+adapter 落库时按 PoB2 语义重命名。已核验对照（PoE2 段，validFor=2）：
+
+| 表 | 社区 schema 列名（下载用） | PoB2 spec.lua 名（语义） |
+|----|--------------------------|--------------------------|
+| GrantedEffects | `SupportsGemsOnly` | `SupportGemsOnly`（多个 s） |
+| GrantedEffects | `ExcludedActiveSkillTypes` | `ExcludeTypes` |
+| GrantedEffects | `AllowedActiveSkillTypes` | `SupportTypes`（require 语义） |
+| GrantedEffects | `AddedActiveSkillTypes` | `AddTypes` |
+| GrantedEffects | `AdditionalStatSets` | 同名；**FK 目标是 GrantedEffectStatSets**（非 GrantedEffects） |
+| GrantedEffectsPerLevel | `Reservation` | `SpiritReservation` |
+| GrantedEffectsPerLevel | `EffectOnPlayer` | `ReservationMultiplier`（默认 100，已用全表默认值佐证） |
+| GrantedEffectStatSets | `Label` | `LabelType`（FK → GrantedEffectLabels） |
+| GrantedEffectStatSetsPerLevel | `SpellCritChance` | **`AttackCritChance`**（主暴击列，整体前移一位） |
+| GrantedEffectStatSetsPerLevel | `AttackCritChance` | **`OffhandCritChance`**（副手覆盖列） |
+| SkillGems | `ItemExperienceType` | `GemLevelProgression`（FK → ItemExperiencePerLevel） |
+| ItemExperiencePerLevel | `ItemCurrentLevel` / `Level` | `Level` / `PlayerLevel` |
+
+暴击两列的错位已用 overlay `skill_overrides.json` 的 201 条 crit_chance 全量对拍验证
+（199 条直接命中 `SpellCritChance/100`；2 条位于 AdditionalStatSets 指向的附加 set，同列命中）。
+另注：PoE2 的 `GrantedEffectsPerLevel` **没有** `PlayerLevelReq` 列（PoE1 才有）；等级需求
+走 `SkillGems.ItemExperienceType → ItemExperiencePerLevel` 链（PoB2 `Export/Scripts/skills.lua:240`）。
