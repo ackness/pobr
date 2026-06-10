@@ -7,3 +7,9 @@ edition.workspace = true
 pobr-data.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+# 仅测试用：load_jewel_radii 逐值对照 pobr-tree 现有 Rust 准源常量（搬迁不变式）。
+pobr-tree.workspace = true
+# 仅测试用：load_base_player_mods 逐值对照 pobr-core 现有 Rust 准源（搬迁不变式）。
+pobr-core.workspace = true

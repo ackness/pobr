@@ -1,0 +1,83 @@
+[
+  {
+    "class_id": 0,
+    "class_name": "Scion",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 6.0
+  },
+  {
+    "class_id": 1,
+    "class_name": "Witch",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 5.0
+  },
+  {
+    "class_id": 2,
+    "class_name": "Ranger",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 5.0
+  },
+  {
+    "class_id": 6,
+    "class_name": "Warrior",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 8.0
+  },
+  {
+    "class_id": 7,
+    "class_name": "Sorceress",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 5.0
+  },
+  {
+    "class_id": 8,
+    "class_name": "Huntress",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 5.0
+  },
+  {
+    "class_id": 9,
+    "class_name": "Mercenary",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 6.0
+  },
+  {
+    "class_id": 10,
+    "class_name": "Monk",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 5.0
+  },
+  {
+    "class_id": 11,
+    "class_name": "Druid",
+    "weapon_type": "None",
+    "attack_rate": 1.65,
+    "crit_chance": 0.05,
+    "physical_min": 2.0,
+    "physical_max": 6.0
+  }
+]

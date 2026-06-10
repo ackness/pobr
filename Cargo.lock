@@ -443,7 +443,9 @@ dependencies = [
 name = "pobr-gamedata"
 version = "0.1.0"
 dependencies = [
+ "pobr-core",
  "pobr-data",
+ "pobr-tree",
  "serde",
  "serde_json",
 ]
