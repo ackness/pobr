@@ -570,6 +570,13 @@ pub fn calculate_with_data(
         }
     }
 
+    // 6d. 来源授予的条件 flag → cfg 条件桥接：如「Gain the benefits of Bonded modifiers on
+    //     Runes and Idols」授予 `Condition:CanUseBondedModifiers` flag 后，符文 `Bonded: <mod>`
+    //     词条（挂 Condition tag）才生效（PoB2 ModParser `["^bonded: "]` 语义）。
+    if session.has_flag("Condition:CanUseBondedModifiers") {
+        session.set_condition("CanUseBondedModifiers", true);
+    }
+
     // 诊断：POBR_DBG_STAT=<ModName> 时逐来源 dump 该属性的全部 modifier（parity 排查用）。
     if let Ok(stat) = std::env::var("POBR_DBG_STAT") {
         for m in session.mods_named(&stat) {

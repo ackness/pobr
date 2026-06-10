@@ -164,15 +164,20 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
                     && let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
                 {
                     multipliers.insert(var.to_string(), n);
-                } else if name.starts_with("quest")
-                    && let Some(s) = attr_value(&e, b"string")
-                {
-                    // PoB2 任务奖励（`questRewards`）：`<Input name="quest…" string="<mod text>">`
-                    // 是按**全局**作用的永久 modifier（属性 / 抗性 / 防御 / 恢复…）。逐条收集，
-                    // 由编排器作为全局 modifier text 注入（见 calc_orchestrator）。
-                    let text = s.trim();
-                    if !text.is_empty() {
-                        global_texts.push(text.to_string());
+                } else if name.starts_with("quest") {
+                    // PoB2 任务奖励（`questRewards`）按**全局**作用的永久 modifier 注入：
+                    // - Options 型（list）：`string="<所选选项>"`（可多行，逐行注入）；
+                    // - Stat 型（check，defaultState=true）：`boolean="true"` 或 XML **省略**
+                    //   = 已领取（默认表 [`DEFAULT_QUEST_STAT_REWARDS`] 补注），
+                    //   `boolean="false"` = 显式放弃。
+                    if let Some(s) = attr_value(&e, b"string") {
+                        push_quest_lines(&mut global_texts, &s);
+                    } else if attr_bool(&e, b"boolean")
+                        && let Some((_, stat)) = DEFAULT_QUEST_STAT_REWARDS
+                            .iter()
+                            .find(|(key, _)| *key == name)
+                    {
+                        push_quest_lines(&mut global_texts, stat);
                     }
                 }
             }
@@ -188,7 +193,53 @@ fn parse_config(xml: &str) -> (HashMap<String, bool>, HashMap<String, f64>, Vec<
         }
     }
 
+    // Stat 型任务奖励 defaultState=true：XML 省略的 key 视作已领取，补注默认奖励
+    // （PoB2 ConfigOptions `addQuestModsRewardsConfigOptions` 的 check 默认勾选语义）。
+    for (key, stat) in DEFAULT_QUEST_STAT_REWARDS {
+        if !seen_names.contains(*key) {
+            push_quest_lines(&mut global_texts, stat);
+        }
+    }
+
     (conditions, multipliers, global_texts)
+}
+
+/// PoB2 `QuestRewards.lua` 中 Stat 型（check）任务奖励默认表：`(XML <Input name> key,
+/// 奖励词条)`。仅含 `useConfig=true` 且 `Stat` 单项奖励（Options 型走 string 路径，
+/// 默认 Nothing；`+2 Weapon Set Passive Skill Points` 类 useConfig=false 不参与计算）。
+const DEFAULT_QUEST_STAT_REWARDS: &[(&str, &str)] = &[
+    ("questAct 1ClearfellBeira", "+10% to Cold Resistance"),
+    ("questAct 1FreythornKing In The Mists", "+30 to Spirit"),
+    ("questAct 1Ogham ManorCandlemass", "+20 to maximum Life"),
+    (
+        "questAct 2Spires of DesharSisters of Garukhan Shrine",
+        "+10% to Lightning Resistance",
+    ),
+    ("questAct 3Azak BogIgnagduk", "+30 to Spirit"),
+    (
+        "questAct 3Jiquani's MachinariumBlackjaw",
+        "+10% to Fire Resistance",
+    ),
+    (
+        "questAct 4Eye of HinekoraSilent Hall",
+        "5% increased Maximum Mana",
+    ),
+    (
+        "questInterlude 2Khari CrossingMolten Shrine",
+        "5% increased maximum Life",
+    ),
+    ("questInterlude 3Kriar VillageLythara", "+40 to Spirit"),
+];
+
+/// 任务奖励文本逐行收集（PoB2 `applyModsFromString` 按行拆分；多行选项如
+/// Tribal Medicine 含 `\n\t` 连写多条）。
+fn push_quest_lines(out: &mut Vec<String>, text: &str) {
+    for line in text.lines() {
+        let line = line.trim();
+        if !line.is_empty() {
+            out.push(line.to_string());
+        }
+    }
 }
 
 /// PoB2 充能使用复选框（`use{Power,Frenzy,Endurance}Charges`）→ 计算侧条件变量名。
@@ -873,6 +924,36 @@ Adds 47 to 86 Physical Damage
     fn attribute_overrides_default_empty_without_overrides_element() {
         let build = parse_build(SAMPLE).expect("parse");
         assert!(build.tree.attribute_overrides.is_empty());
+    }
+
+    #[test]
+    fn quest_stat_rewards_default_to_claimed_when_absent() {
+        // SAMPLE 无任何 <Input name="quest…"> → 全部 Stat 型奖励按 defaultState=true 补注。
+        let build = parse_build(SAMPLE).expect("parse");
+        let texts = &build.config.global_modifier_texts;
+        assert!(texts.iter().any(|t| t == "+10% to Fire Resistance"));
+        assert!(texts.iter().any(|t| t == "+20 to maximum Life"));
+        assert!(texts.iter().any(|t| t == "5% increased maximum Life"));
+    }
+
+    #[test]
+    fn quest_stat_reward_skipped_when_explicitly_unchecked() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Config>
+        <Input name="questAct 3Jiquani's MachinariumBlackjaw" boolean="false"/>
+        <Input name="questAct 4Halls Of The DeadNgamahu's Test" string="+5% to Fire Resistance"/>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let texts = &build.config.global_modifier_texts;
+        // 显式放弃的 check 型奖励不注入；其余默认项照常补注。
+        assert!(!texts.iter().any(|t| t == "+10% to Fire Resistance"));
+        // Options 型按所选 string 注入。
+        assert!(texts.iter().any(|t| t == "+5% to Fire Resistance"));
+        // 未提及的默认项仍在。
+        assert!(texts.iter().any(|t| t == "+10% to Cold Resistance"));
     }
 
     #[test]

@@ -533,3 +533,48 @@ fn per_stat_multiplier_floors_non_integral_count_like_pob2() {
     let cfg_integral = CalcConfig::new().with_multiplier("Intelligence", 100.0);
     assert_eq!(modifier.effective_number(&cfg_integral), Some(50.0));
 }
+
+/// `Bonded: <mod>` 符文词条默认不生效——整条挂 `CanUseBondedModifiers` 条件
+/// （PoB2 ModParser `["^bonded: "]`），仅当激活源授予对应 flag 时按 cfg 条件激活。
+#[test]
+fn bonded_prefix_gates_mod_behind_condition() {
+    use pobr_core::{CalcConfig, ModDb};
+
+    let o = parse_mod("Bonded: +20 to maximum Mana").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    let m = &o.mods[0];
+    assert_eq!(m.name, ModName::from("MaximumMana"));
+    assert!(
+        m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Condition { var, negated: false } if var == "CanUseBondedModifiers"
+        )),
+        "Bonded 词条须挂 CanUseBondedModifiers 条件"
+    );
+
+    // 条件未置真 → 不参与聚合；置真 → 生效。
+    let mut db = ModDb::new();
+    db.add_list(o.mods.clone());
+    let off = CalcConfig::new();
+    assert_eq!(
+        db.sum(ModType::Base, &off, &[ModName::from("MaximumMana")]),
+        0.0
+    );
+    let on = CalcConfig::new().with_condition("CanUseBondedModifiers", true);
+    assert_eq!(
+        db.sum(ModType::Base, &on, &[ModName::from("MaximumMana")]),
+        20.0
+    );
+}
+
+/// Bonded 激活源 → `Condition:CanUseBondedModifiers` FLAG（编排层据此置 cfg 条件）。
+#[test]
+fn bonded_enabler_parses_to_condition_flag() {
+    let o = parse_mod("Gain the benefits of Bonded modifiers on Runes and Idols").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(
+        o.mods[0].name,
+        ModName::from("Condition:CanUseBondedModifiers")
+    );
+    assert_eq!(o.mods[0].mod_type, ModType::Flag);
+}

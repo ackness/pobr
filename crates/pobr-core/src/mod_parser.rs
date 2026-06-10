@@ -69,9 +69,30 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
-    // 符文绑定词条前缀（PoB rune「Bonded: <mod>」）——剥离后按普通词条解析。
-    if rest.starts_with("bonded: ") {
-        rest = rest["bonded: ".len()..].to_string();
+    // 符文绑定词条前缀（PoB rune「Bonded: <mod>」）——默认**不生效**：PoB2 ModParser
+    // `["^bonded: "]` 给整条挂 `Condition: CanUseBondedModifiers`，仅当某来源给出
+    // 「Gain the benefits of Bonded modifiers on Runes and Idols」时（flag → cfg 条件，
+    // 见编排层）才激活。递归解析剩余文本后给每条产物补该条件 tag。
+    if let Some(stripped) = rest.strip_prefix("bonded: ") {
+        let mut outcome = parse_mod(stripped)?;
+        for m in &mut outcome.mods {
+            *m = m.clone().with_source(original).with_tag(ModTag::Condition {
+                var: "CanUseBondedModifiers".into(),
+                negated: false,
+            });
+        }
+        return Ok(outcome);
+    }
+
+    // Bonded 激活源（PoB2 ModCache「Gain the benefits of Bonded modifiers on Runes and
+    // Idols」→ `Condition:CanUseBondedModifiers` FLAG）。编排层在全部来源注入后据此
+    // flag 置 cfg 条件。
+    if rest == "gain the benefits of bonded modifiers on runes and idols" {
+        return Ok(ParseOutcome {
+            mods: vec![Modifier::flag("Condition:CanUseBondedModifiers").with_source(original)],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
     }
 
     // 「Has +N to <Defence> per player level」（PoB2 唯一物 implicit，如 Pain Caress）——
