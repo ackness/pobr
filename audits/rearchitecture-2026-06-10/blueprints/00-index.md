@@ -115,8 +115,8 @@ M0 收尾(W3) → M1 → M2 → M3 → M4 → [M5a ∥ M5b ∥ M5c] → M6 → M
 |---|---|---|---|
 | 1 | **DSL 三处方言风险**（M3 ConfigEffect / M5b ValueExpr / M6 template） | 同一套受限语言（架构 §5）：五算子+谓词求值器唯一实现 = `rules/value_expr.rs`，**M3-T1 起建**，M5b 复用并加 enums 闭集，M6 复用并加 `:cap`；schema 形态可异、求值器禁止三套 | m3 §4.4、m5b B-2、m6 §3/§11.2 |
 | 2 | **16-G4 base_items 列落库归属**（roadmap 附 A 标 M1） | 消费阶段自带：block/spirit→M2-D，reload→M4-T4，flask/charm→M3-T4；M1 不做；例外 level_requirement→M1-T4（同表低成本） | m1 §0 范围澄清 + W0/T4 |
-| 3 | **high_precision_mods.json 三处竞产**（M4/M5c/M6 各自兜底建表） | 唯一生产点 = **M4 W-A2**；M5c-E2、M6 只消费，缺失向 M4 返工 | m4 W-A2、m5c E2/§7.1、m6 §1.7/§14.1 |
-| 4 | **local_mods.json 两处竞产**（M5c/M6） | 唯一生产点 = **M5c WI-C1**；M6 只消费 | m5c §7.1、m6 §1.7/§14.1 |
+| 3 | **high_precision_mods.json 三处竞产**（M4/M5c/M6 各自兜底建表） | 初版已由 **M0-W4d** 落库（overlay/high_precision_mods.json，零接线）；**M4 W-A2** 负责接线与字段扩展；M5c-E2、M6 只消费 | m4 W-A2、m5c E2/§7.1、m6 §1.7/§14.1 |
+| 4 | **local_mods.json 两处竞产**（M5c/M6） | 初版已由 **M0-W4d** 落库并接线（overlay/local_mods.json，is_weapon_local_mod 注入化）；**M5c WI-C1** 负责结构化局部结算扩展；M6 只消费 | m5c §7.1、m6 §1.7/§14.1 |
 | 5 | **special_derived.json 两套生产工具**（M5b adapter vs M6 precompile-mods） | M5b-C1 先以 adapter 产 keystone 段；M6-T7 把生产**迁移**进 precompile-mods 并扩展 per-gem/skill_names 段，迁移 commit keystone 段 byte 等价，adapter 步骤退役 | m5b C-1、m6 §1.6 |
 | 6 | **Keystone LIST 展开两套实现**（M3 keystone_merge vs M5b B-5 orchestrator 展开点） | 展开通道唯一 = M3 `calc/keystone_merge.rs` + `set_keystone_mods`；M5b-B5 收窄为解析面条目 + 端到端验证（2→1 人日） | m5b B-5 |
 | 7 | **version-bump-drill.sh 两次"新建"**（M3 vs M6） | M3-T5-F 建第一版；M6-T10 在其上扩展（补 precompile 步），不新建 | m6 §8/T10 |
