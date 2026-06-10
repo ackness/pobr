@@ -70,8 +70,15 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
         .map_err(|e| format!("读取 {} 失败：{e}", args.tree_lua.display()))?;
     let layout = parse_layout(&lua)?;
 
+    // 三层布局：base/ 优先读取既有 passive_tree.json，旧布局（版本根）回退；
+    // 回填后原地写回所读到的位置。
     let version_dir = args.out.join(&args.patch);
-    let tree_path = version_dir.join("passive_tree.json");
+    let layered = version_dir.join("base/passive_tree.json");
+    let tree_path = if layered.exists() {
+        layered
+    } else {
+        version_dir.join("passive_tree.json")
+    };
     let bytes =
         std::fs::read(&tree_path).map_err(|e| format!("读取 {} 失败：{e}", tree_path.display()))?;
     let mut nodes: Vec<PassiveNodeDef> = serde_json::from_slice(&bytes)

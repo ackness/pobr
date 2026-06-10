@@ -9,8 +9,8 @@ fn game_data() -> GameData {
 #[test]
 fn manifest_lists_mods_and_stats_domains() {
     let manifest = game_data().manifest().expect("manifest 可加载");
-    assert!(manifest.domains.iter().any(|d| d == "mods"));
-    assert!(manifest.domains.iter().any(|d| d == "stats"));
+    assert!(manifest.domains.base.iter().any(|d| d == "mods"));
+    assert!(manifest.domains.base.iter().any(|d| d == "stats"));
 }
 
 #[test]

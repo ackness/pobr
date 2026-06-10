@@ -9,11 +9,12 @@ fn game_data() -> GameData {
 #[test]
 fn manifest_lists_skill_gem_domains() {
     let manifest = game_data().manifest().expect("manifest 可加载");
-    assert!(manifest.domains.iter().any(|d| d == "skill_gems"));
-    assert!(manifest.domains.iter().any(|d| d == "granted_effects"));
+    assert!(manifest.domains.base.iter().any(|d| d == "skill_gems"));
+    assert!(manifest.domains.base.iter().any(|d| d == "granted_effects"));
     assert!(
         manifest
             .domains
+            .base
             .iter()
             .any(|d| d == "granted_effect_levels"),
         "manifest 应声明 granted_effect_levels 域"

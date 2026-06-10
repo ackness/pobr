@@ -10,8 +10,8 @@ fn game_data() -> GameData {
 fn manifest_describes_committed_bundle() {
     let manifest = game_data().manifest().expect("manifest 可加载");
     assert_eq!(manifest.poe_version, VERSION);
-    assert_eq!(manifest.schema_version, 1);
-    assert!(manifest.domains.iter().any(|d| d == "base_items"));
+    assert_eq!(manifest.schema_version, 2);
+    assert!(manifest.domains.base.iter().any(|d| d == "base_items"));
     assert!(manifest.languages.iter().any(|l| l == "zh-TW"));
 }
 

@@ -5,3 +5,7 @@ edition.workspace = true
 
 [dependencies]
 serde.workspace = true
+
+[dev-dependencies]
+# 仅供 manifest v1/v2 反序列化单测使用；crate 本体保持零 I/O、不依赖 serde_json。
+serde_json.workspace = true
