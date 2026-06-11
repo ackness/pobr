@@ -16,6 +16,12 @@
 //!
 //! T0 落地时全部阶段为 no-op stub；各 track 在自己的模块里实现后改此处调用体。
 
+use std::collections::HashMap;
+
+use pobr_data::prelude::*;
+
+use crate::Modifier;
+
 use super::Env;
 
 /// 环境终结调度入口（`perform` 开头唯一调用点）。阶段顺序对照 PoB2 perform
@@ -42,9 +48,76 @@ pub fn env_finalize(env: &mut Env) {
 /// T0 占位：no-op。
 pub fn merge_keystones(_env: &mut Env) {}
 
-/// 阶段 2（T3 实现）：EnemyModifier LIST 转发至 enemy db（对照
-/// CalcPerform.lua:486-500 applyEnemyModifiers，按 mod 身份去重）。T0 占位：no-op。
-pub fn forward_enemy_modifiers(_env: &mut Env) {}
+/// 阶段 2（T3-C4-3）：player(+minions) db 的 `EnemyModifier` LIST → enemy db。
+///
+/// 对照 vendor `CalcPerform.lua:486-500 applyEnemyModifiers`（commit `2df5a74`，实读）：
+/// - :491 `actor.modDB:Tabulate(nil, nil, "EnemyModifier")` 逐条取 `value.mod`（inner）；
+///   pobr 等价 = 过滤 `name == "EnemyModifier" && mod_type == List && matches(cfg)` 的
+///   外层条目展开 [`crate::ModValue::NestedMods`] 载荷（[`crate::ModDb::list_nested`]
+///   的透传语义 + 下述来源回退，故直接走 `iter_mods` 以保留外层上下文）。
+/// - :495 `local source = mod.source or value.mod.source`：inner 缺来源时回退**外层**的
+///   `source`/`origin`——解析层只给外层挂 `SourceId` 归因（item/passive/gem ingest），
+///   转发后 inner 仍可回溯到原来源（归因穿透）。
+/// - :487-498 `actor.appliedEnemyModifiers` 实例缓存（调用点 :762 / :1107-1111 多次
+///   触发，已转发 mod 不重复注入；值相等的不同实例各自保留）。pobr 单 perform 内的
+///   无状态等价：enemy db 现存 modifier 指纹**多重集**——候选先抵扣同指纹存量，剩余
+///   才注入，重复调用幂等且不吞值相等的多来源条目。指纹 = 来源回退后 inner 的
+///   `Debug` 序列化（含 name/type/value/tags/flags/source/origin 全字段；与 enemy db
+///   原生注入碰撞需全字段相同，setup_env 系来源串 `enemy <id>` 与词条原文不可能同串）。
+///
+/// 空转兼容：无 `EnemyModifier` 条目时不写任何状态（D1 搬迁不变式锚点）。inner 一律带
+/// `Condition:Effective`（解析层附加），面板口径（`mode_effective == false`）聚合不命中
+/// ——转发本身不改既有输出。
+pub fn forward_enemy_modifiers(env: &mut Env) {
+    let enemy_modifier = ModName::from("EnemyModifier");
+
+    // enemy db 现存指纹多重集（幂等抵扣基底）。
+    let mut existing: HashMap<String, usize> = HashMap::new();
+    for m in env.enemy.mod_db.iter_mods() {
+        *existing.entry(fingerprint(m)).or_insert(0) += 1;
+    }
+
+    // 先只读收集（player + minions），再统一写 enemy（借用分离 + 确定性顺序）。
+    let mut forwarded: Vec<Modifier> = Vec::new();
+    let source_dbs =
+        std::iter::once(&env.player.mod_db).chain(env.minions.iter().map(|m| &m.mod_db));
+    for db in source_dbs {
+        for outer in db.iter_mods() {
+            if outer.name != enemy_modifier
+                || outer.mod_type != ModType::List
+                || !outer.matches(&env.cfg)
+            {
+                continue;
+            }
+            let Some(nested) = outer.value.as_nested_mods() else {
+                continue;
+            };
+            for inner in nested {
+                let mut fwd = inner.clone();
+                // vendor :495 来源回退：inner 缺 source/origin 时继承外层。
+                if fwd.source.is_none() {
+                    fwd.source = outer.source.clone();
+                }
+                if fwd.origin.is_none() {
+                    fwd.origin = outer.origin.clone();
+                }
+                match existing.get_mut(&fingerprint(&fwd)) {
+                    Some(count) if *count > 0 => *count -= 1, // 已转发（幂等抵扣）。
+                    _ => forwarded.push(fwd),
+                }
+            }
+        }
+    }
+    for m in forwarded {
+        env.enemy.mod_db.add_mod(m);
+    }
+}
+
+/// 转发去重指纹：mod 全字段身份（vendor 实例缓存的值域等价，见
+/// [`forward_enemy_modifiers`] 文档）。
+fn fingerprint(m: &Modifier) -> String {
+    format!("{m:?}")
+}
 
 /// 阶段 3（T4 归属）：flask/charm 合并（对照 CalcPerform.lua:1429-1663
 /// mergeFlasks/mergeCharms，mode_combat 门控）。
@@ -73,8 +146,8 @@ mod tests {
     use super::*;
     use crate::calc::{Actor, ActorBaseStats};
 
-    /// T0 不变式：全阶段 no-op，env_finalize 前后 Env 输出相关状态完全不变
-    /// （player/enemy modDB 长度、cfg 条件表均无写入）。
+    /// 空转兼容不变式（原 T0 全 no-op 断言，阶段 2 落地后语义升级为「无
+    /// EnemyModifier / 无 buff spec / 无 flask 时输出逐值不变」，D1 锚点）。
     #[test]
     fn env_finalize_is_noop_in_t0() {
         let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
@@ -87,5 +160,205 @@ mod tests {
         assert_eq!(env.player.mod_db.iter_mods().count(), player_mods_before);
         assert_eq!(env.enemy.mod_db.iter_mods().count(), enemy_mods_before);
         assert_eq!(env.cfg.conditions, conditions_before);
+    }
+}
+
+/// 阶段 2 `forward_enemy_modifiers`（T3-C4-3）：转发 / 归因穿透 / 幂等去重 / 端到端。
+#[cfg(test)]
+mod forward_enemy_modifiers_tests {
+    use super::*;
+    use crate::calc::{Actor, ActorBaseStats};
+    use crate::{CalcConfig, ModTag, ModValue};
+
+    fn condition_tag(var: &str) -> ModTag {
+        ModTag::Condition {
+            var: var.into(),
+            negated: false,
+        }
+    }
+
+    /// 外层 EnemyModifier（带 Item 来源归因）+ inner（无 origin，模拟解析层产物）。
+    fn curse_take_outer() -> Modifier {
+        let inner = Modifier::number("DamageTaken", ModType::Inc, 6.0)
+            .with_source("Enemies you Curse take 6% increased Damage")
+            .with_tag(condition_tag("EnemyCursed"))
+            .with_tag(condition_tag("Effective"));
+        Modifier::new(
+            "EnemyModifier",
+            ModType::List,
+            ModValue::NestedMods(vec![inner]),
+        )
+        .with_source("Enemies you Curse take 6% increased Damage")
+        .with_origin(ModifierSource::new(SourceId::new(
+            SourceKind::ItemEnchant,
+            "item.helmet.enchant",
+        )))
+    }
+
+    /// 有效口径 cfg（敌人被诅咒 + effective）。
+    fn effective_cursed_cfg() -> CalcConfig {
+        CalcConfig::new()
+            .with_condition("EnemyCursed", true)
+            .with_mode_effective(true)
+    }
+
+    /// 转发基线：player db 的 EnemyModifier inner 落 enemy db，敌侧聚合在双条件下命中；
+    /// 面板口径（mode_effective=false）聚合不命中（ninja_parity 不变式的微观锚点）。
+    #[test]
+    fn forwards_nested_mods_to_enemy_db() {
+        let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
+        env.player.mod_db.add_mod(curse_take_outer());
+
+        forward_enemy_modifiers(&mut env);
+
+        let names = [ModName::from("DamageTaken")];
+        assert_eq!(
+            env.enemy
+                .mod_db
+                .sum(ModType::Inc, &effective_cursed_cfg(), &names),
+            6.0,
+            "EnemyCursed + Effective → 敌侧受伤链命中"
+        );
+        let panel_cfg = CalcConfig::new().with_condition("EnemyCursed", true);
+        assert_eq!(
+            env.enemy.mod_db.sum(ModType::Inc, &panel_cfg, &names),
+            0.0,
+            "面板口径（无 Effective）→ 不命中"
+        );
+    }
+
+    /// 归因穿透：inner 无 origin → 转发时回退外层 SourceId（vendor :495 来源回退），
+    /// enemy db 聚合的贡献仍可回溯到原 Item 来源。
+    #[test]
+    fn forwarding_preserves_source_id_attribution() {
+        let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
+        env.player.mod_db.add_mod(curse_take_outer());
+
+        forward_enemy_modifiers(&mut env);
+
+        let contributions = env.enemy.mod_db.contributions(
+            ModType::Inc,
+            &effective_cursed_cfg(),
+            &[ModName::from("DamageTaken")],
+        );
+        assert_eq!(contributions.len(), 1);
+        let origin = contributions[0].origin.as_ref().expect("origin 回退外层");
+        assert_eq!(
+            origin.source_id,
+            SourceId::new(SourceKind::ItemEnchant, "item.helmet.enchant")
+        );
+        // inner 自带 origin 时不被覆盖：再给一条 inner 带独立 origin 的外层。
+        let own_origin = ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.123"));
+        let inner = Modifier::number("ActionSpeed", ModType::Inc, -20.0)
+            .with_origin(own_origin.clone())
+            .with_tag(condition_tag("Effective"));
+        env.player.mod_db.add_mod(
+            Modifier::new(
+                "EnemyModifier",
+                ModType::List,
+                ModValue::NestedMods(vec![inner]),
+            )
+            .with_origin(ModifierSource::new(SourceId::new(
+                SourceKind::Item,
+                "item.boots.explicit",
+            ))),
+        );
+        forward_enemy_modifiers(&mut env);
+        let contributions = env.enemy.mod_db.contributions(
+            ModType::Inc,
+            &CalcConfig::new().with_mode_effective(true),
+            &[ModName::from("ActionSpeed")],
+        );
+        assert_eq!(
+            contributions[0].origin.as_ref().unwrap().source_id,
+            own_origin.source_id,
+            "inner 自带 origin 优先（vendor `mod.source or ...` 短路语义）"
+        );
+    }
+
+    /// 幂等去重（vendor 实例缓存语义，:487-498）：重复调用不重复注入；
+    /// 值相等的多来源条目（同一 perform 内）各自保留。
+    #[test]
+    fn forwarding_is_idempotent_and_keeps_equal_value_duplicates() {
+        let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
+        // 同一 build 内两份完全相同的来源条目（如两颗同词条符文）。
+        env.player.mod_db.add_mod(curse_take_outer());
+        env.player.mod_db.add_mod(curse_take_outer());
+
+        forward_enemy_modifiers(&mut env);
+        let names = [ModName::from("DamageTaken")];
+        let cfg = effective_cursed_cfg();
+        assert_eq!(
+            env.enemy.mod_db.sum(ModType::Inc, &cfg, &names),
+            12.0,
+            "值相等的两份来源各自保留（vendor 按实例缓存，不按值合并）"
+        );
+
+        // 重复调用（vendor applyEnemyModifiers 在 perform 内多点触发）→ 不重复注入。
+        forward_enemy_modifiers(&mut env);
+        forward_enemy_modifiers(&mut env);
+        assert_eq!(
+            env.enemy.mod_db.sum(ModType::Inc, &cfg, &names),
+            12.0,
+            "幂等：已转发条目按指纹多重集抵扣"
+        );
+        assert_eq!(env.enemy.mod_db.iter_mods().count(), 2);
+    }
+
+    /// minion db 的 EnemyModifier 同样转发（vendor :1109 `applyEnemyModifiers(env.minion)`）。
+    #[test]
+    fn forwards_from_minion_db() {
+        let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
+        let mut minion = Actor::new(1, ActorBaseStats::default());
+        minion.mod_db.add_mod(curse_take_outer());
+        env.minions.push(minion);
+
+        forward_enemy_modifiers(&mut env);
+
+        assert_eq!(
+            env.enemy.mod_db.sum(
+                ModType::Inc,
+                &effective_cursed_cfg(),
+                &[ModName::from("DamageTaken")]
+            ),
+            6.0
+        );
+    }
+
+    /// 端到端（独立 fixture，不动 ninja baseline）：session 加敌方向词条 → perform →
+    /// 敌侧受伤链在有效 DPS 口径生效（×1.06）；条件不满足时 DPS 不变。
+    #[test]
+    fn end_to_end_enemy_direction_text_scales_effective_dps() {
+        use crate::calc::{CalculationSession, MinimalInput};
+
+        let input = MinimalInput {
+            base_life: 100.0,
+            base_accuracy: 1000.0,
+            enemy_evasion: 0.0,
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            base_action_rate: 1.0,
+            ..Default::default()
+        };
+        let dps = |enemy_cursed: bool| {
+            let cfg = CalcConfig::attack()
+                .with_damage_type(DamageType::Physical)
+                .with_mode_effective(true)
+                .with_condition("EnemyCursed", enemy_cursed);
+            let mut session = CalculationSession::new(input).with_config(cfg);
+            session
+                .add_modifier_texts(["Enemies you Curse take 6% increased Damage"])
+                .expect("parses");
+            session.perform_minimal().dps
+        };
+
+        let base = dps(false);
+        let cursed = dps(true);
+        assert!(base > 0.0, "fixture 有非零 DPS 基线");
+        assert!(
+            (cursed / base - 1.06).abs() < 1e-9,
+            "敌侧 DamageTaken INC 6 → 有效 DPS ×1.06（实测 {:.6}）",
+            cursed / base
+        );
     }
 }
