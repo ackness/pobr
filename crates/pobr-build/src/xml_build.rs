@@ -37,10 +37,10 @@ use crate::build_code::decode_pob_code;
 use crate::error::{BuildError, XmlError};
 use crate::xml_serde::parse_build_header;
 
-/// 槽位装备 + 珠宝（无固定槽位）的解析产物。
-type EquippedAndJewels = (Vec<(EquipmentSlot, Item)>, Vec<Item>);
-/// 装备槽分配（槽位 → item_id）+ 珠宝 item_id 列表。
-type SlotAssignments = (Vec<(EquipmentSlot, u32)>, Vec<u32>);
+/// 槽位装备 + 珠宝（无固定槽位）+ 激活 ItemSet 的 `useSecondWeaponSet` 标志。
+type EquippedAndJewels = (Vec<(EquipmentSlot, Item)>, Vec<Item>, bool);
+/// 装备槽分配（槽位 → item_id）+ 珠宝 item_id 列表 + `useSecondWeaponSet` 标志。
+type SlotAssignments = (Vec<(EquipmentSlot, u32)>, Vec<u32>, bool);
 
 /// 把一份 PoB Build Code 直接解析为完整 [`Build`]（decode → XML → 解析）。
 ///
@@ -54,9 +54,11 @@ pub fn parse_build_from_code(code: &str) -> Result<Build, BuildError> {
 pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let header = parse_build_header(xml)?;
 
-    let allocated_nodes = parse_passive_nodes(xml)?;
+    // 装备先于天赋树解析：激活 ItemSet 的 `useSecondWeaponSet` 决定武器集专属点的
+    // 生效集（PoB2 CalcSetup.lua:791-792 `Condition:WeaponSet<N>` flag 语义）。
+    let (items, jewels, use_second_weapon_set) = parse_items_and_slots(xml)?;
+    let allocated_nodes = parse_passive_nodes(xml, use_second_weapon_set)?;
     let attribute_overrides = parse_attribute_overrides(xml)?;
-    let (items, jewels) = parse_items_and_slots(xml)?;
     let radius_jewels = parse_radius_jewels(xml)?;
     let socket_groups = parse_socket_groups(xml)?;
     let main_socket_group = parse_main_socket_group(xml);
@@ -312,15 +314,31 @@ fn parse_main_socket_group(xml: &str) -> Option<usize> {
 
 // ── 天赋树 ────────────────────────────────────────────────────────────────────
 
-/// 抽取 `<Tree activeSpec>` 选中 `<Spec nodes>` 的已分配节点 id。
+/// 单个 `<Spec>` 的节点集：全量 `nodes` + 两个武器集专属点列表
+/// （`<WeaponSet1 nodes>` / `<WeaponSet2 nodes>`，PoB2 PassiveSpec.lua:104-144
+/// 解析为 `node.allocMode = 1|2`，未列出的节点 `allocMode = 0` 恒生效）。
+#[derive(Default)]
+struct SpecNodes {
+    nodes: Vec<NodeId>,
+    weapon_set: [Vec<NodeId>; 2],
+}
+
+/// 抽取 `<Tree activeSpec>` 选中 `<Spec nodes>` 的已分配节点 id，并按当前武器集
+/// 过滤掉**非激活武器集**的专属点。
 ///
 /// `activeSpec` 为 1-based 索引；越界 / 缺失时取首个 `<Spec>`。无 `<Spec>` 返回空。
-fn parse_passive_nodes(xml: &str) -> Result<Vec<NodeId>, XmlError> {
+///
+/// 武器集语义（PoB2 CalcSetup.lua:209-233 / :791-792）：武器集专属点
+/// （`allocMode = 1|2`）的全部 mod 追加 `Condition: WeaponSet<N>`，而该条件 flag
+/// 只对当前激活武器集置真（`useSecondWeaponSet` ? 2 : 1）——净效果是非激活集
+/// 专属点的词条**整体不生效**。PoBR 在解析层等价实现：从已分配节点中剔除
+/// 非激活集的专属点（mod 收集 / 范围珠宝计数 / per-X 倍率均随之一致）。
+fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<Vec<NodeId>, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
     let mut active_spec: usize = 1;
-    let mut specs: Vec<Vec<NodeId>> = Vec::new();
+    let mut specs: Vec<SpecNodes> = Vec::new();
 
     loop {
         match reader.read_event() {
@@ -337,7 +355,19 @@ fn parse_passive_nodes(xml: &str) -> Result<Vec<NodeId>, XmlError> {
                     let nodes = attr_value(&e, b"nodes")
                         .map(|v| parse_node_csv(&v))
                         .unwrap_or_default();
-                    specs.push(nodes);
+                    specs.push(SpecNodes {
+                        nodes,
+                        ..Default::default()
+                    });
+                } else if let Some(set_idx) = match name.as_str() {
+                    "WeaponSet1" => Some(0),
+                    "WeaponSet2" => Some(1),
+                    _ => None,
+                } {
+                    // `<WeaponSetN>` 是 `<Spec>` 子元素，归属最近一个 Spec。
+                    if let (Some(spec), Some(v)) = (specs.last_mut(), attr_value(&e, b"nodes")) {
+                        spec.weapon_set[set_idx] = parse_node_csv(&v);
+                    }
                 }
             }
             Ok(Event::Eof) => break,
@@ -350,7 +380,19 @@ fn parse_passive_nodes(xml: &str) -> Result<Vec<NodeId>, XmlError> {
         return Ok(Vec::new());
     }
     let idx = active_spec.saturating_sub(1).min(specs.len() - 1);
-    Ok(specs.swap_remove(idx))
+    let spec = specs.swap_remove(idx);
+
+    // 剔除非激活武器集的专属点（保持原始顺序，确定性）。
+    let inactive: std::collections::HashSet<NodeId> = spec.weapon_set
+        [if use_second_weapon_set { 0 } else { 1 }]
+    .iter()
+    .copied()
+    .collect();
+    Ok(spec
+        .nodes
+        .into_iter()
+        .filter(|n| !inactive.contains(n))
+        .collect())
 }
 
 /// 解析 `nodes="65091,58814,…"` CSV 为 [`NodeId`]，跳过非数字片段。
@@ -422,7 +464,7 @@ fn parse_attribute_overrides(xml: &str) -> Result<HashMap<NodeId, AttributeChoic
 /// 返回 `(EquipmentSlot, Item)` 列表（按槽位 id 字典序，确定性）。
 fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
     let items = parse_item_blocks(xml)?;
-    let (slot_assignments, jewel_ids) = parse_active_item_set(xml)?;
+    let (slot_assignments, jewel_ids, use_second_weapon_set) = parse_active_item_set(xml)?;
 
     let mut out: Vec<(EquipmentSlot, Item)> = Vec::new();
     for (slot, item_id) in slot_assignments {
@@ -442,7 +484,7 @@ fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
         .iter()
         .filter_map(|id| items.get(id).cloned())
         .collect();
-    Ok((out, jewels))
+    Ok((out, jewels, use_second_weapon_set))
 }
 
 /// 解析 `<Sockets><Socket nodeId="N" itemId="M"/>` → 非零 itemId（树上珠宝）。
@@ -692,7 +734,7 @@ fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
     }
 
     let Some(first_set) = sets.first() else {
-        return Ok((Vec::new(), Vec::new()));
+        return Ok((Vec::new(), Vec::new(), false));
     };
     let chosen = active_item_set
         .as_deref()
@@ -711,7 +753,7 @@ fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
             jewel_ids.push(*item_id);
         }
     }
-    Ok((assignments, jewel_ids))
+    Ok((assignments, jewel_ids, chosen.use_second_weapon_set))
 }
 
 /// PoB 珠宝/深渊槽名（`Jewel 12345` / `… Abyssal Socket N` / `… Socket N`）→ 收入珠宝列表。
@@ -939,6 +981,49 @@ Adds 47 to 86 Physical Damage
         let build = parse_build(SAMPLE).expect("parse");
         let nodes: Vec<u32> = build.tree.allocated_nodes.iter().map(|n| n.0).collect();
         assert_eq!(nodes, vec![100, 200, 300]);
+    }
+
+    /// 武器集专属点过滤（PoB2 CalcSetup.lua:209-233/:791-792 + PassiveSpec.lua:104-144）：
+    /// `useSecondWeaponSet=false` 时 WeaponSet2 专属点不生效；WeaponSet1 与通用点保留。
+    #[test]
+    fn weapon_set_nodes_filtered_by_active_set() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Tree activeSpec="1">
+        <Spec nodes="100,200,300,400,500" treeVersion="0_5">
+            <WeaponSet1 nodes="200"/>
+            <WeaponSet2 nodes="400,500"/>
+        </Spec>
+    </Tree>
+    <Items activeItemSet="1">
+        <ItemSet useSecondWeaponSet="false" title="Default" id="1"/>
+    </Items>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let nodes: Vec<u32> = build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+        assert_eq!(nodes, vec![100, 200, 300]);
+    }
+
+    /// `useSecondWeaponSet=true` 时改为剔除 WeaponSet1 专属点。
+    #[test]
+    fn weapon_set_nodes_filtered_when_second_set_active() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Tree activeSpec="1">
+        <Spec nodes="100,200,300,400,500" treeVersion="0_5">
+            <WeaponSet1 nodes="200"/>
+            <WeaponSet2 nodes="400,500"/>
+        </Spec>
+    </Tree>
+    <Items activeItemSet="1">
+        <ItemSet useSecondWeaponSet="true" title="Default" id="1"/>
+    </Items>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let nodes: Vec<u32> = build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+        assert_eq!(nodes, vec![100, 300, 400, 500]);
     }
 
     #[test]
