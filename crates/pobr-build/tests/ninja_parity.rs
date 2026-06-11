@@ -400,11 +400,15 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
 /// M2 F-3 扩列重记（蓝图 §2 Track F commit 3 / §4.2 / 00-index §4 owner 双指标裁决）：
 /// - `DEF_CORE`：旧 8 列子集（扩列稀释防护指标，裁决下限 111——W1 全程冻结基线）；
 /// - `DEF`：扩列后全量 25 列（分母 = golden 可比项总数）。
-const BASELINE_DEF_CORE_HIT5: usize = 114; // 实测 114/144（≥ 裁决下限 111）
-const BASELINE_DEF_HIT5: usize = 308; // 实测 308/450 = 68.4%（F-3 重记）
-const BASELINE_DEF_HIT10: usize = 331; // 实测 331/450 = 73.6%
-const BASELINE_OFF_HIT5: usize = 23;
-const BASELINE_OFF_HIT10: usize = 31;
+///
+/// M2 补刀重记（5 个行为修复：per-slot evasion 词形门控 / 范围珠宝属性小点排除 /
+/// 武器集专属点过滤 / Crimson Power + Body Armour grants 词条族 / 树插槽珠宝
+/// 分配门控）：防御 308→340、核心 114→119、进攻 23→27。
+const BASELINE_DEF_CORE_HIT5: usize = 119; // 实测 119/144（≥ 裁决下限 111）
+const BASELINE_DEF_HIT5: usize = 340; // 实测 340/450 = 75.6%（M2 补刀重记）
+const BASELINE_DEF_HIT10: usize = 354; // 实测 354/450 = 78.7%
+const BASELINE_OFF_HIT5: usize = 27;
+const BASELINE_OFF_HIT10: usize = 32;
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
