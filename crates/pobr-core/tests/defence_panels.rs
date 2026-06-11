@@ -149,3 +149,48 @@ fn spirit_pool_conversion_reduces_base() {
 
     assert_eq!(calc::calc_spirit_pool(&db, &cfg), 70.0);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Ward 池（CalcDefence.lua:1144-1296）
+// ─────────────────────────────────────────────────────────────────
+
+/// 聚合公式（:1158/:1286）：`ΣBASE Ward × (1 + Σinc(Ward,Defences)/100) × more`。
+/// 手算：(34+241+50) × 1.20 = 390。
+#[test]
+fn ward_base_times_increased() {
+    let mut db = db_from_texts(&["+50 to Ward", "20% increased Ward"]);
+    add_base(&mut db, "Ward", 34.0); // 件级注入语义（rolled `Ward:` 行）
+    add_base(&mut db, "Ward", 241.0);
+    let cfg = CalcConfig::new();
+
+    assert_eq!(calc::calc_ward(&db, &cfg, false), 390.0);
+}
+
+/// `EnergyShieldToWard` keystone（:1162-1163）：ES 的 inc 借给 Ward——
+/// inc 名集追加 EnergyShield。手算：100 × (1 + (20+30)/100) = 150。
+#[test]
+fn ward_es_to_ward_borrows_es_increases() {
+    let mut db = db_from_texts(&["20% increased Ward"]);
+    add_base(&mut db, "Ward", 100.0);
+    db.add_list([pobr_core::Modifier::number(
+        "EnergyShield",
+        ModType::Inc,
+        30.0,
+    )]);
+    let cfg = CalcConfig::new();
+
+    assert_eq!(calc::calc_ward(&db, &cfg, false), 120.0, "无 keystone 不借");
+    assert_eq!(
+        calc::calc_ward(&db, &cfg, true),
+        150.0,
+        "keystone 借入 ES inc"
+    );
+}
+
+/// 无 Ward 来源 → 0（verify 零值不误报）。
+#[test]
+fn ward_zero_without_sources() {
+    let db = ModDb::new();
+    let cfg = CalcConfig::new();
+    assert_eq!(calc::calc_ward(&db, &cfg, false), 0.0);
+}

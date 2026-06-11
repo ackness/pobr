@@ -43,6 +43,8 @@ pub struct RolledDefence {
     /// 已掷出的 Spirit（权杖 `Spirit:` 行；PoB2 `item.spiritValue`，已含该件
     /// 局部 `increased Spirit` / `+N to Spirit`，Item.lua:523/:1724-1727）。
     pub spirit: Option<f64>,
+    /// 已掷出的 Ward（`Ward:` 行；PoB2 `armourData.Ward` 同口径）。
+    pub ward: Option<f64>,
 }
 
 #[derive(Debug, Clone)]

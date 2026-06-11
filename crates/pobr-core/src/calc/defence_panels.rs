@@ -193,6 +193,41 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Ward 池（CalcDefence.lua:1144-1273）
+// ─────────────────────────────────────────────────────────────────
+
+/// Ward 池聚合（CalcDefence.lua:1158-1186 per-slot + :1275-1296 全局 BASE）。
+///
+/// `Ward = ΣBASE Ward × calcLib.mod(Ward, Defences)`；`EnergyShieldToWard`
+/// keystone（C-1 快照传入）时 inc 名集追加 `EnergyShield`（ES 的 inc 借给
+/// Ward，:1162-1163 `Sum("INC", slotCfg, "Ward", "Defences", "EnergyShield")`）。
+///
+/// 件级底值（rolled `Ward:` 行 / catalog 基底 ward）由 build 层注入 `Ward`
+/// BASE（SlotName tag），与全局 `+N to Ward` 同桶——「逐件乘全局后求和」与
+/// 「求和后乘全局」等价（同 defence_base_modifiers 的等价性论证；slot-scoped
+/// inc 词条与 `DoubleBodyArmourDefence` 的件级翻倍缺口同 armour 路径，后续补）。
+/// vendor 取整：per-slot 求和后无显式 round，沿用 round 到 1e-9。
+pub fn calc_ward(db: &ModDb, cfg: &CalcConfig, es_to_ward: bool) -> f64 {
+    let base = db.sum(ModType::Base, cfg, &[ModName::from("Ward")]);
+    if base <= 0.0 {
+        return 0.0;
+    }
+    let inc_names: &[ModName] = if es_to_ward {
+        &[
+            ModName::from("Ward"),
+            ModName::from("Defences"),
+            ModName::from("EnergyShield"),
+        ]
+    } else {
+        &[ModName::from("Ward"), ModName::from("Defences")]
+    };
+    let more_names = [ModName::from("Ward"), ModName::from("Defences")];
+    let inc = db.sum(ModType::Inc, cfg, inc_names);
+    let more = db.more(cfg, &more_names);
+    round(base * (1.0 + inc / 100.0) * more)
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Spirit 池（CalcDefence.lua:73-126）
 // ─────────────────────────────────────────────────────────────────
 
@@ -238,7 +273,7 @@ pub fn calc_spirit_pool(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// （spirit_unreserved 读取技能侧已写入的 `spirit_reserved`）。
 ///
 /// keystone 开关经快照传入（C-1 契约，蓝图 §3.3，不散读 flag）。
-pub fn fill_defence_panels(env: &mut Env, _keystones: &crate::rules::DefenceKeystones) {
+pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeystones) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
 
@@ -262,6 +297,9 @@ pub fn fill_defence_panels(env: &mut Env, _keystones: &crate::rules::DefenceKeys
     env.player.output.spirit = calc_spirit_pool(db, cfg);
     env.player.output.spirit_unreserved =
         env.player.output.spirit - env.player.output.spirit_reserved;
+
+    // --- Ward 池（CalcDefence.lua:1144-1296；EnergyShieldToWard 走 C-1 快照）---
+    env.player.output.ward = calc_ward(db, cfg, keystones.energy_shield_to_ward);
 }
 
 #[cfg(test)]

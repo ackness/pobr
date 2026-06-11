@@ -374,6 +374,11 @@ pub fn calculate_with_data(
     //       `item.spiritValue → NewMod("Spirit","BASE")` 等价）。
     session.add_modifiers(item_spirit_modifiers(build, data));
 
+    // 1d'''. 件级 Ward（rolled `Ward:` 行 / catalog 基底 ward）→ `Ward` BASE
+    //        （M2 Track D，13-G14；PoB2 CalcDefence.lua:1158-1186 armourData.Ward
+    //        per-slot 聚合等价）。
+    session.add_modifiers(item_ward_modifiers(build, data));
+
     // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
     //    真实词条中含解析器尚未支持的硬失败形式（如 `[Bleeding] on [Hit]`），逐件
     //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
@@ -954,6 +959,41 @@ fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
                     .with_raw_text(format!("{} item Spirit", item.base));
             mods.push(
                 Modifier::number("Spirit", ModType::Base, value)
+                    .with_origin(origin)
+                    .with_tag(ModTag::SlotName(slot.id().to_string())),
+            );
+        }
+    }
+    mods
+}
+
+/// 件级 Ward → `Ward` BASE 词条（M2 Track D，13-G14）。
+///
+/// 取值口径（PoB2 `armourData.Ward`，CalcDefence.lua:1158-1186 per-slot 聚合）：
+/// - 物品文本带 rolled `Ward: N` 行 → 直接采用（PoB 已逐件折好局部增幅/品质）；
+/// - 否则回退 catalog 基底 `ward` × (1 + 品质/100)（裸装兜底；ward 件的局部
+///   `increased Ward` 词条罕见，全局桶聚合数学等价，暂不做 drop-local）。
+fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for (slot, item) in &build.items {
+        let value = match item.rolled_defence.ward {
+            Some(v) => v,
+            None => {
+                let base = data
+                    .armour_base(&item.base.to_string())
+                    .map_or(0, |a| a.ward);
+                if base == 0 {
+                    continue;
+                }
+                f64::from(base) * (1.0 + f64::from(item.quality) / 100.0)
+            }
+        };
+        if value > 0.0 {
+            let origin =
+                ModifierSource::new(SourceId::new(SourceKind::Item, "base.Ward".to_string()))
+                    .with_raw_text(format!("{} item Ward", item.base));
+            mods.push(
+                Modifier::number("Ward", ModType::Base, value)
                     .with_origin(origin)
                     .with_tag(ModTag::SlotName(slot.id().to_string())),
             );
