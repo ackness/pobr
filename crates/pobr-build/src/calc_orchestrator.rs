@@ -352,7 +352,7 @@ pub fn calculate_with_data(
     // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
     // 不再有单技能硬编码。
     if let Some((skill, group, skill_id)) = &main_skill {
-        session.add_modifiers(skill_base_modifiers(skill));
+        session.add_modifiers(skill_base_modifiers(skill, skill_id));
         // 1b-i-q. 主技能宝石品质 stat（T1.7）：quality 段经 stat-map 映射注入，
         //         SourceKind::GemQuality 归因（id 前缀 gem.<效果 id>.q<Q>）。
         session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
@@ -1494,7 +1494,7 @@ fn item_local_defence_flat(item: &Item) -> [f64; 3] {
 /// 进入 offence 的伤害分量管线。
 ///
 /// 使用时间不在此处（它走 `base_input.base_action_rate`，见 [`calculate_with_data`]）。
-fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
+fn skill_base_modifiers(skill: &ResolvedSkillLevel, skill_id: &str) -> Vec<Modifier> {
     let mut mods = Vec::new();
     let mk = |stat: &str, value: f64, label: &str| {
         let origin =
@@ -1549,6 +1549,7 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
         &base_damage,
         SourceKind::SkillGem,
         "skill",
+        skill_id,
     ));
     mods
 }
@@ -1577,6 +1578,7 @@ fn main_skill_quality_modifiers(
         &stats.quality,
         SourceKind::GemQuality,
         &format!("gem.{skill_id}.q{}", gem.quality),
+        skill_id,
     )
 }
 
@@ -1860,6 +1862,7 @@ fn support_modifiers(
             &stats.base,
             SourceKind::SupportGem,
             &gem.skill_id,
+            &gem.skill_id,
         ));
         // （M1-T4.4）兼容 support 的分等级 cost 倍率 → `SupportManaMultiplier` MORE
         // （PoB2 `CalcActiveSkill.lua:689-691`：`NewMod("SupportManaMultiplier","MORE",
@@ -2131,21 +2134,32 @@ pub fn take_stat_map_compare_records() -> Vec<StatMapCompareRecord> {
 /// [`stat_map_engine::map_stat`] 数据引擎；Compare 两边都跑、记录 diff、
 /// **输出取 Legacy**（纯观测）。无法映射的 stat（未知/条件型/Unsupported）
 /// 静默跳过；零值跳过。
+///
+/// `effect_id`（M1-T2b 接线）：stat 所属 granted effect，per-statSet 覆盖定位。
+/// set_key 传 `None` = 引擎自动取默认 set "1" 覆盖（PoB2 缺省 statSetIndex=1，
+/// vendor `SkillsTab.lua:354`；18 个 ninja build 的 statSetIndex 全为 nil。
+/// statSetIndex 显式选择的 set_key 接线随 T5 多 statSet 模型）。Legacy 通道
+/// 不消费（后缀启发式与 effect 无关）。
 fn mapped_stat_modifiers(
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
     label_prefix: &str,
+    effect_id: &str,
 ) -> Vec<Modifier> {
     let (mode, catalog) =
         STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
     match mode {
         StatMapMode::Legacy => legacy_mapped_stat_modifiers(stats, source_kind, label_prefix),
-        StatMapMode::Data => {
-            data_mapped_stat_modifiers(stats, source_kind, label_prefix, catalog.as_deref())
-        }
+        StatMapMode::Data => data_mapped_stat_modifiers(
+            stats,
+            source_kind,
+            label_prefix,
+            effect_id,
+            catalog.as_deref(),
+        ),
         StatMapMode::Compare => {
             let legacy = legacy_mapped_stat_modifiers(stats, source_kind.clone(), label_prefix);
-            record_stat_map_compare(stats, label_prefix, catalog.as_deref());
+            record_stat_map_compare(stats, label_prefix, effect_id, catalog.as_deref());
             legacy
         }
     }
@@ -2189,14 +2203,14 @@ fn legacy_mapped_stat_modifiers(
     mods
 }
 
-/// Data 通道：statmap 数据引擎。Stage 1 限定：取数点不持有 effect/statSet 上下文，
-/// 统一走 global 表（per-set 覆盖已抽取入库且引擎已支持，effect 级 set_key 接线
-/// 随 T5 多 statSet 模型落地）；`SkillData` 项暂无消费方，忽略（不参与计算，
-/// 不会错算）；Unsupported / Unknown 静默跳过（分类统计走 Compare 模式）。
+/// Data 通道：statmap 数据引擎。effect 上下文 + 默认 set "1"（T2b 接线，见
+/// [`mapped_stat_modifiers`] 文档）；`SkillData` 项暂无消费方，忽略（不参与
+/// 计算，不会错算）；Unsupported / Unknown 静默跳过（分类统计走 Compare 模式）。
 fn data_mapped_stat_modifiers(
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
     label_prefix: &str,
+    effect_id: &str,
     catalog: Option<&StatMapCatalog>,
 ) -> Vec<Modifier> {
     let Some(catalog) = catalog else {
@@ -2208,7 +2222,7 @@ fn data_mapped_stat_modifiers(
             continue; // 与 Legacy 同口径跳零，保证双跑可比。
         }
         let MappedOutcome::Mapped(items) =
-            stat_map_engine::map_stat(catalog, "", None, &ds.stat, ds.value)
+            stat_map_engine::map_stat(catalog, effect_id, None, &ds.stat, ds.value)
         else {
             continue;
         };
@@ -2233,6 +2247,7 @@ fn data_mapped_stat_modifiers(
 fn record_stat_map_compare(
     stats: &[pobr_data::catalog::SkillDamageStat],
     label_prefix: &str,
+    effect_id: &str,
     catalog: Option<&StatMapCatalog>,
 ) {
     for ds in stats {
@@ -2258,9 +2273,9 @@ fn record_stat_map_compare(
                 Vec::new()
             };
         legacy.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        // data 侧注入集合 + 结果分类。
+        // data 侧注入集合 + 结果分类（effect 上下文 + 默认 set "1"，与 Data 通道同口径）。
         let outcome = match catalog {
-            Some(c) => stat_map_engine::map_stat(c, "", None, &ds.stat, ds.value),
+            Some(c) => stat_map_engine::map_stat(c, effect_id, None, &ds.stat, ds.value),
             None => MappedOutcome::Unknown,
         };
         let (mut data, data_note): (Vec<(String, &'static str, f64)>, String) = match &outcome {
@@ -3220,6 +3235,7 @@ mod tests {
                 cannot_be_supported: false,
                 support_gems_only: false,
                 stat_set: None,
+                additional_stat_set_ids: vec![],
                 cost_types: vec![],
                 skill_types: vec!["Spell".into(), "Triggered".into(), "InbuiltTrigger".into()],
             },
@@ -3238,6 +3254,7 @@ mod tests {
                 cannot_be_supported: false,
                 support_gems_only: false,
                 stat_set: None,
+                additional_stat_set_ids: vec![],
                 cost_types: vec![],
                 skill_types: vec!["Spell".into()],
             },
@@ -3402,6 +3419,7 @@ mod support_judgement_tests {
             cannot_be_supported,
             support_gems_only: false,
             stat_set: None,
+            additional_stat_set_ids: vec![],
             cost_types: vec![],
             skill_types: v(skill_types),
         }

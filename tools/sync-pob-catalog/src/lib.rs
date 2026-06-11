@@ -10,6 +10,7 @@ pub mod extract_gem_effects;
 pub mod extract_lua;
 pub mod extract_quality;
 pub mod extract_stat_map;
+pub mod extract_stat_set_labels;
 
 pub fn collect_catalog(pob_root: &Path) -> io::Result<PobCatalog> {
     let modules = pob_root.join("src").join("Modules");

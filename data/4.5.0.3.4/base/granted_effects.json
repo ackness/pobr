@@ -129,6 +129,9 @@
     "active_skill": "acidic_concoction",
     "cast_time": 1000,
     "stat_set": 7594,
+    "additional_stat_set_ids": [
+      "AcidicConcoctionPoisonBurstPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -272,6 +275,10 @@
     "active_skill": "elemental_surge",
     "cast_time": 1000,
     "stat_set": 556,
+    "additional_stat_set_ids": [
+      "AmazonTriggerFireSurgePlayer",
+      "AmazonTriggerLightningSurgePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -548,6 +555,9 @@
     "active_skill": "apocalypse_lightning",
     "cast_time": null,
     "stat_set": 636,
+    "additional_stat_set_ids": [
+      "ApocalypseLightningFinalStrikePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -1188,6 +1198,9 @@
     "active_skill": "artillery_ballista_projectile",
     "cast_time": 1000,
     "stat_set": 7859,
+    "additional_stat_set_ids": [
+      "ArtilleryBallistaProjectileExplodeRogueExileMercenary2"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -1324,6 +1337,10 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1337,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedFire60Convert",
+      "MeleeAtAnimationSpeedLightning60Convert"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -1969,6 +1986,10 @@
     "active_skill": "ball_lightning",
     "cast_time": 1000,
     "stat_set": 70,
+    "additional_stat_set_ids": [
+      "BallLightningInfusedExplosionPlayer",
+      "BallLightningIgnitedGround"
+    ],
     "cost_types": [
       0
     ],
@@ -1998,6 +2019,10 @@
     "active_skill": "ball_lightning",
     "cast_time": 1000,
     "stat_set": 7773,
+    "additional_stat_set_ids": [
+      "BallLightningInfusedExplosionRogueExileSorceress",
+      "BallLightningIgnitedGroundRogueExileSorceress"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -2213,6 +2238,9 @@
     "active_skill": "bear_landslide",
     "cast_time": 1000,
     "stat_set": 618,
+    "additional_stat_set_ids": [
+      "BearLandslideShockwavePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -2831,6 +2859,11 @@
     "active_skill": "bitter_dead",
     "cast_time": 750,
     "stat_set": 690,
+    "additional_stat_set_ids": [
+      "BitterDeadExplosionPlayer",
+      "BitterDeadChillAuraPlayer",
+      "BitterDeadRuneAuraPlayer"
+    ],
     "cost_types": [
       4
     ],
@@ -3310,6 +3343,9 @@
     "active_skill": "ember_fusillade",
     "cast_time": 400,
     "stat_set": 7780,
+    "additional_stat_set_ids": [
+      "BlazingClusterExplosionRogueExileSorceress1"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -3608,6 +3644,9 @@
     "active_skill": "blood_hunt",
     "cast_time": 1000,
     "stat_set": 147,
+    "additional_stat_set_ids": [
+      "BloodHuntExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -3630,6 +3669,10 @@
     "active_skill": "fire_wake_spear",
     "cast_time": 1000,
     "stat_set": 7393,
+    "additional_stat_set_ids": [
+      "BloodKnightBlazingLanceSecondProjectile",
+      "BloodKnightBlazingLanceFlameWall"
+    ],
     "skill_types": [
       "Attack",
       "Projectile",
@@ -4044,6 +4087,9 @@
     "active_skill": "boneshatter_minion",
     "cast_time": 1000,
     "stat_set": 3583,
+    "additional_stat_set_ids": [
+      "BoneshatterShockwaveBruteMinion"
+    ],
     "skill_types": [
       "Attack",
       "MeleeSingleTarget",
@@ -4059,6 +4105,9 @@
     "active_skill": "boneshatter",
     "cast_time": 1000,
     "stat_set": 155,
+    "additional_stat_set_ids": [
+      "BoneshatterShockwavePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -4076,6 +4125,9 @@
     "active_skill": "bonestorm",
     "cast_time": 125,
     "stat_set": 400,
+    "additional_stat_set_ids": [
+      "BonestormExplosionPlayer"
+    ],
     "cost_types": [
       9
     ],
@@ -4099,6 +4151,9 @@
     "active_skill": "bonestorm",
     "cast_time": 125,
     "stat_set": 7853,
+    "additional_stat_set_ids": [
+      "BonestormExplosionRogueExileWitch1"
+    ],
     "skill_types": [
       "Spell",
       "Channel",
@@ -4362,6 +4417,9 @@
     "active_skill": "fragmentation_rounds",
     "cast_time": 1500,
     "stat_set": 7329,
+    "additional_stat_set_ids": [
+      "BurstShotArmourPiercingBoltFreezeShatterMonster"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -7826,7 +7884,10 @@
     "is_support": false,
     "active_skill": "oshabi_orb_projectile",
     "cast_time": 1000,
-    "stat_set": 6640
+    "stat_set": 6640,
+    "additional_stat_set_ids": [
+      "CarnivorousPlantOrbProjectileSecondary"
+    ]
   },
   {
     "id": "CarrionCrowWhirlingBlades",
@@ -7861,6 +7922,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1355,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedFire20Convert",
+      "MeleeAtAnimationSpeedFire60Convert",
+      "MeleeAtAnimationSpeedFire80Convert",
+      "MeleeAtAnimationSpeedFire40ExtraIgnite",
+      "MeleeAtAnimationSpeedFire60ExtraIgnite",
+      "MeleeAtAnimationSpeedFire80ExtraIgnite"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -7878,6 +7947,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1354,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedFire20Convert",
+      "MeleeAtAnimationSpeedFire60Convert",
+      "MeleeAtAnimationSpeedFire80Convert",
+      "MeleeAtAnimationSpeedFire40ExtraIgnite",
+      "MeleeAtAnimationSpeedFire60ExtraIgnite",
+      "MeleeAtAnimationSpeedFire80ExtraIgnite"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -7895,6 +7972,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1357,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedFire20Convert",
+      "MeleeAtAnimationSpeedFire60Convert",
+      "MeleeAtAnimationSpeedFire80Convert",
+      "MeleeAtAnimationSpeedFire40ExtraIgnite",
+      "MeleeAtAnimationSpeedFire60ExtraIgnite",
+      "MeleeAtAnimationSpeedFire80ExtraIgnite"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -7912,6 +7997,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1356,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedFire20Convert",
+      "MeleeAtAnimationSpeedFire60Convert",
+      "MeleeAtAnimationSpeedFire80Convert",
+      "MeleeAtAnimationSpeedFire40ExtraIgnite",
+      "MeleeAtAnimationSpeedFire60ExtraIgnite",
+      "MeleeAtAnimationSpeedFire80ExtraIgnite"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -7929,6 +8022,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1390,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedLightning20Convert",
+      "MeleeAtAnimationSpeedLightning60Convert",
+      "MeleeAtAnimationSpeedLightning80Convert",
+      "MeleeAtAnimationSpeedLightning40ExtraShock",
+      "MeleeAtAnimationSpeedLightning60ExtraShock",
+      "MeleeAtAnimationSpeedLightning80ExtraShock"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -7946,6 +8047,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1389,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedLightning20Convert",
+      "MeleeAtAnimationSpeedLightning60Convert",
+      "MeleeAtAnimationSpeedLightning80Convert",
+      "MeleeAtAnimationSpeedLightning40ExtraShock",
+      "MeleeAtAnimationSpeedLightning60ExtraShock",
+      "MeleeAtAnimationSpeedLightning80ExtraShock"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -7963,6 +8072,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1391,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedLightning20Convert",
+      "MeleeAtAnimationSpeedLightning60Convert",
+      "MeleeAtAnimationSpeedLightning80Convert",
+      "MeleeAtAnimationSpeedLightning40ExtraShock",
+      "MeleeAtAnimationSpeedLightning60ExtraShock",
+      "MeleeAtAnimationSpeedLightning80ExtraShock"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -8248,6 +8365,9 @@
     "active_skill": "cluster_grenade",
     "cast_time": 1000,
     "stat_set": 481,
+    "additional_stat_set_ids": [
+      "ClusterGrenadeMiniPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -8319,6 +8439,9 @@
     "active_skill": "coiling_bolts",
     "cast_time": 1000,
     "stat_set": 217,
+    "additional_stat_set_ids": [
+      "CoilingBoltsChaosPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -8374,6 +8497,10 @@
     "active_skill": "combo_knife_throw",
     "cast_time": 600,
     "stat_set": 264,
+    "additional_stat_set_ids": [
+      "ComboKnifeThrowSecondComboPlayer",
+      "ComboKnifeThrowThirdComboPlayer"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -8395,6 +8522,9 @@
     "active_skill": "comet",
     "cast_time": 1000,
     "stat_set": 255,
+    "additional_stat_set_ids": [
+      "CometFireInfusionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -8917,6 +9047,9 @@
     "active_skill": "conductive_runes",
     "cast_time": 1000,
     "stat_set": 703,
+    "additional_stat_set_ids": [
+      "ConductiveRunesExplosionPlayer"
+    ],
     "cost_types": [
       4
     ],
@@ -9087,6 +9220,9 @@
     "active_skill": "corpse_cloud",
     "cast_time": 800,
     "stat_set": 7427,
+    "additional_stat_set_ids": [
+      "CorpseCloudExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -9129,6 +9265,9 @@
     "active_skill": "corpse_cloud_triggered",
     "cast_time": 800,
     "stat_set": 7586,
+    "additional_stat_set_ids": [
+      "CorpsewadeCorpseCloudExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -9255,6 +9394,9 @@
     "active_skill": "crackling_palm",
     "cast_time": null,
     "stat_set": 677,
+    "additional_stat_set_ids": [
+      "CracklingPalmBoltPlayer"
+    ],
     "skill_types": [
       "Buff",
       "HasReservation",
@@ -9754,6 +9896,9 @@
     "active_skill": "crushing_fear",
     "cast_time": 1000,
     "stat_set": 279,
+    "additional_stat_set_ids": [
+      "CrushingFearNovaPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -11616,6 +11761,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 6388,
+    "additional_stat_set_ids": [
+      "DTTYamaJumpCleave"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -11633,6 +11781,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 6389,
+    "additional_stat_set_ids": [
+      "DTTYamaJumpCleave"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -11779,6 +11930,10 @@
     "active_skill": "dark_tempest",
     "cast_time": 600,
     "stat_set": 275,
+    "additional_stat_set_ids": [
+      "DarkTempestChilledGroundPlayer",
+      "DarkTempestGroundExplosionPlayer"
+    ],
     "cost_types": [
       11
     ],
@@ -15095,6 +15250,9 @@
     "active_skill": "detonate_living",
     "cast_time": 650,
     "stat_set": 687,
+    "additional_stat_set_ids": [
+      "DetonateLivingExplodePlayer"
+    ],
     "cost_types": [
       4
     ],
@@ -15120,6 +15278,9 @@
     "active_skill": "detonating_arrow",
     "cast_time": 1000,
     "stat_set": 7399,
+    "additional_stat_set_ids": [
+      "DetonatingArrowExplosionPlayer"
+    ],
     "cost_types": [
       9
     ],
@@ -15160,6 +15321,9 @@
     "active_skill": "disengage",
     "cast_time": 1000,
     "stat_set": 149,
+    "additional_stat_set_ids": [
+      "DisengageShockwavePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -15185,6 +15349,9 @@
     "active_skill": "disengage",
     "cast_time": 1000,
     "stat_set": 7874,
+    "additional_stat_set_ids": [
+      "DisengageShockwaveRogueExileHuntress1"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -15272,6 +15439,9 @@
     "active_skill": "dominating_aura",
     "cast_time": null,
     "stat_set": 352,
+    "additional_stat_set_ids": [
+      "DominatingAuraMinionPlayer"
+    ],
     "skill_types": [
       "Minion",
       "Aura",
@@ -27274,6 +27444,9 @@
     "active_skill": "earthquake",
     "cast_time": 1000,
     "stat_set": 93,
+    "additional_stat_set_ids": [
+      "EarthquakeAftershockPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -27296,6 +27469,9 @@
     "active_skill": "earthshatter",
     "cast_time": 1000,
     "stat_set": 130,
+    "additional_stat_set_ids": [
+      "EarthshatterSpikePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -27317,6 +27493,9 @@
     "active_skill": "earthshatter",
     "cast_time": 1000,
     "stat_set": 7792,
+    "additional_stat_set_ids": [
+      "EarthshatterSpikeRogueExileWarrior2"
+    ],
     "skill_types": [
       "Attack",
       "Area",
@@ -27402,6 +27581,11 @@
     "active_skill": "elemental_expression",
     "cast_time": null,
     "stat_set": 7597,
+    "additional_stat_set_ids": [
+      "ElementalExpressionFirePlayer",
+      "ElementalExpressionColdPlayer",
+      "ElementalExpressionLightningPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -27453,6 +27637,11 @@
     "active_skill": "elemental_siphon",
     "cast_time": 1000,
     "stat_set": 441,
+    "additional_stat_set_ids": [
+      "ElementalSiphonColdPlayer",
+      "ElementalSiphonFirePlayer",
+      "ElementalSiphonLightningPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -27476,6 +27665,11 @@
     "active_skill": "elemental_storm",
     "cast_time": null,
     "stat_set": 462,
+    "additional_stat_set_ids": [
+      "ElementalStormFirePlayer",
+      "ElementalStormLightningPlayer",
+      "ElementalStormColdPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -27504,6 +27698,11 @@
     "active_skill": "elemental_sundering",
     "cast_time": 1000,
     "stat_set": 551,
+    "additional_stat_set_ids": [
+      "ElementalSunderingColdPlayer",
+      "ElementalSunderingFirePlayer",
+      "ElementalSunderingLightningPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -27555,6 +27754,10 @@
     "active_skill": "ember_fusillade",
     "cast_time": 400,
     "stat_set": 7523,
+    "additional_stat_set_ids": [
+      "EmberFusilladeExplosionPlayer",
+      "EmberFusilladeBeamPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -28142,6 +28345,9 @@
     "active_skill": "entangle",
     "cast_time": 900,
     "stat_set": 575,
+    "additional_stat_set_ids": [
+      "EntangleVinePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -28235,6 +28441,9 @@
     "active_skill": "essence_drain",
     "cast_time": 800,
     "stat_set": 97,
+    "additional_stat_set_ids": [
+      "EssenceDrainDotPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -28261,6 +28470,9 @@
     "active_skill": "essence_drain",
     "cast_time": 800,
     "stat_set": 7847,
+    "additional_stat_set_ids": [
+      "EssenceDrainDotRogueExileWitch2"
+    ],
     "skill_types": [
       "Spell",
       "Projectile",
@@ -28525,6 +28737,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 7191,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedComboTEMP80"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -28646,6 +28861,9 @@
     "active_skill": "explosive_concoction",
     "cast_time": 1000,
     "stat_set": 7590,
+    "additional_stat_set_ids": [
+      "ExplosiveConcoctionSecondPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -28745,6 +28963,9 @@
     "active_skill": "explosive_shot",
     "cast_time": 1000,
     "stat_set": 186,
+    "additional_stat_set_ids": [
+      "ExplosiveShotExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -28770,6 +28991,9 @@
     "active_skill": "explosive_shot",
     "cast_time": 1000,
     "stat_set": 7815,
+    "additional_stat_set_ids": [
+      "ExplosiveShotExplosionRogueExileMercenary1"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -28792,6 +29016,10 @@
     "active_skill": "explosive_spear",
     "cast_time": 1000,
     "stat_set": 437,
+    "additional_stat_set_ids": [
+      "ExplosiveSpearExplodePlayer",
+      "ExplosiveSpearInfusedExplodePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -28824,6 +29052,10 @@
     "active_skill": "explosive_spear",
     "cast_time": 1000,
     "stat_set": 7892,
+    "additional_stat_set_ids": [
+      "ExplosiveSpearExplodeRogueExileHuntress2",
+      "ExplosiveSpearInfusedExplodeRogueExileHuntress2"
+    ],
     "skill_types": [
       "Projectile",
       "ProjectilesFromUser",
@@ -28853,6 +29085,9 @@
     "active_skill": "djinn_explosive_teleport",
     "cast_time": 800,
     "stat_set": 7369,
+    "additional_stat_set_ids": [
+      "ExplosiveTeleportCloneSandDjinn"
+    ],
     "skill_types": [
       "Area",
       "Spell",
@@ -29042,6 +29277,9 @@
     "active_skill": "falling_thunder",
     "cast_time": 1000,
     "stat_set": 54,
+    "additional_stat_set_ids": [
+      "FallingThunderProjectilePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -29065,6 +29303,9 @@
     "active_skill": "fangs_of_frost",
     "cast_time": 1000,
     "stat_set": 533,
+    "additional_stat_set_ids": [
+      "FangsOfFrostBurstPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -29148,6 +29389,9 @@
     "active_skill": "fire_grenade",
     "cast_time": 1000,
     "stat_set": 7352,
+    "additional_stat_set_ids": [
+      "FireBombBurningGroundSkeletonMinion"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -29168,6 +29412,10 @@
     "active_skill": "djinn_fire_rune",
     "cast_time": 1000,
     "stat_set": 7374,
+    "additional_stat_set_ids": [
+      "FireRuneHazardFireDjinn",
+      "FireRuneTornadoFireDjinn"
+    ],
     "skill_types": [
       "Area",
       "Hazard",
@@ -29261,6 +29509,10 @@
     "active_skill": "fireball",
     "cast_time": 1200,
     "stat_set": 7409,
+    "additional_stat_set_ids": [
+      "FireballExplosionPlayer",
+      "FireballSecondaryProjectilePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -29288,6 +29540,9 @@
     "active_skill": "firebolt",
     "cast_time": 900,
     "stat_set": 26,
+    "additional_stat_set_ids": [
+      "FireboltExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -29315,6 +29570,9 @@
     "active_skill": "firebolt",
     "cast_time": 900,
     "stat_set": 1604,
+    "additional_stat_set_ids": [
+      "FireboltExplosionRogueExileSorceress2"
+    ],
     "skill_types": [
       "Projectile",
       "ProjectilesFromUser",
@@ -29339,6 +29597,10 @@
     "active_skill": "firestorm",
     "cast_time": 1400,
     "stat_set": 53,
+    "additional_stat_set_ids": [
+      "FirestormColdInfusionPlayer",
+      "FirestormLightningInfusionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -29368,6 +29630,10 @@
     "active_skill": "firestorm",
     "cast_time": 1400,
     "stat_set": 7750,
+    "additional_stat_set_ids": [
+      "FirestormColdInfusionRogueExileSorceress1",
+      "FirestormLightningInfusionRogueExileSorceress1"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -29484,6 +29750,10 @@
     "active_skill": "flame_wall",
     "cast_time": 1000,
     "stat_set": 133,
+    "additional_stat_set_ids": [
+      "FlameWallProjectileBuffPlayer",
+      "FlameWallLingeringIgnitePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -29700,6 +29970,10 @@
     "active_skill": "forge_hammer",
     "cast_time": 1000,
     "stat_set": 596,
+    "additional_stat_set_ids": [
+      "ForgeHammerFissurePlayer",
+      "ForgeHammerRecallPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -29930,6 +30204,9 @@
     "active_skill": "fragmentation_rounds",
     "cast_time": 1000,
     "stat_set": 195,
+    "additional_stat_set_ids": [
+      "FragmentationRoundsFreezeShatterPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -29954,6 +30231,9 @@
     "active_skill": "fragmentation_rounds",
     "cast_time": 1000,
     "stat_set": 7818,
+    "additional_stat_set_ids": [
+      "FragmentationRoundsFreezeShatterRogueExileMercenary1"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -30164,6 +30444,9 @@
     "active_skill": "skeleton_mage_minion_frostbolt",
     "cast_time": 1250,
     "stat_set": 7349,
+    "additional_stat_set_ids": [
+      "FrostBoltSkeletonMageMinionExplosion"
+    ],
     "skill_types": [
       "Projectile",
       "ProjectilesFromUser",
@@ -30243,6 +30526,10 @@
     "active_skill": "frost_darts",
     "cast_time": 800,
     "stat_set": 611,
+    "additional_stat_set_ids": [
+      "FrostDartsExplodePlayer",
+      "FrostDartsIceMortarPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -30264,6 +30551,9 @@
     "active_skill": "frost_wall_new",
     "cast_time": 800,
     "stat_set": 43,
+    "additional_stat_set_ids": [
+      "FrostWallInfusedPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -30293,6 +30583,9 @@
     "active_skill": "frost_wall_new",
     "cast_time": 800,
     "stat_set": 7869,
+    "additional_stat_set_ids": [
+      "FrostWallInfusedRogueExileMercenary2"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -30319,6 +30612,9 @@
     "active_skill": "frost_bolt",
     "cast_time": 800,
     "stat_set": 7412,
+    "additional_stat_set_ids": [
+      "FrostboltExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -30344,6 +30640,9 @@
     "active_skill": "frost_bolt",
     "cast_time": 800,
     "stat_set": 7774,
+    "additional_stat_set_ids": [
+      "FrostboltExplosionRogueExileSorceress2"
+    ],
     "skill_types": [
       "Spell",
       "Projectile",
@@ -30366,6 +30665,9 @@
     "active_skill": "frostflame_nova",
     "cast_time": 700,
     "stat_set": 673,
+    "additional_stat_set_ids": [
+      "FrostflameNovaColdHitPlayer"
+    ],
     "cost_types": [
       4
     ],
@@ -30394,6 +30696,9 @@
     "active_skill": "frozen_locus",
     "cast_time": 1000,
     "stat_set": 398,
+    "additional_stat_set_ids": [
+      "FrozenLocusExplodePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -30570,6 +30875,9 @@
     "active_skill": "fungal_terrain",
     "cast_time": 1000,
     "stat_set": 259,
+    "additional_stat_set_ids": [
+      "FungalTerrainMushroomPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -30662,6 +30970,9 @@
     "active_skill": "furious_slam",
     "cast_time": 1000,
     "stat_set": 309,
+    "additional_stat_set_ids": [
+      "FuriousSlamEnragedPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -61541,6 +61852,9 @@
     "active_skill": "galvanic_field",
     "cast_time": 650,
     "stat_set": 163,
+    "additional_stat_set_ids": [
+      "GalvanicFieldOrbPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -61581,6 +61895,9 @@
     "active_skill": "galvanic_shards",
     "cast_time": 1000,
     "stat_set": 207,
+    "additional_stat_set_ids": [
+      "GalvanicShardsBeamPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -61605,6 +61922,10 @@
     "active_skill": "gas_arrow",
     "cast_time": 1000,
     "stat_set": 413,
+    "additional_stat_set_ids": [
+      "GasArrowGasDegenPlayer",
+      "GasArrowGasExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -61633,6 +61954,10 @@
     "active_skill": "gas_arrow",
     "cast_time": 1000,
     "stat_set": 7841,
+    "additional_stat_set_ids": [
+      "GasArrowGasDegenRogueExileRanger2",
+      "GasArrowGasExplosionRogueExileRanger2"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -61658,6 +61983,10 @@
     "active_skill": "sniper_gas_shot",
     "cast_time": 1000,
     "stat_set": 7356,
+    "additional_stat_set_ids": [
+      "GasShotCloudSkeletonSniperMinion",
+      "GasShotCloudExplodeSkeletonSniperMinion"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -61679,6 +62008,11 @@
     "active_skill": "gathering_storm",
     "cast_time": 1000,
     "stat_set": 7762,
+    "additional_stat_set_ids": [
+      "GatheringStormPerfectExileMonk1",
+      "GatheringStormExplodeExileMonk1",
+      "GatheringStormExplodeBetterExileMonk1"
+    ],
     "skill_types": [
       "Attack",
       "Channel",
@@ -61698,6 +62032,11 @@
     "active_skill": "gathering_storm",
     "cast_time": 1000,
     "stat_set": 523,
+    "additional_stat_set_ids": [
+      "GatheringStormPerfectPlayer",
+      "GatheringStormExplodePlayer",
+      "GatheringStormExplodeBetterPlayer"
+    ],
     "cost_types": [
       9
     ],
@@ -61720,6 +62059,9 @@
     "active_skill": "gelid_palm",
     "cast_time": null,
     "stat_set": 679,
+    "additional_stat_set_ids": [
+      "GelidPalmBoltPlayer"
+    ],
     "skill_types": [
       "Buff",
       "HasReservation",
@@ -61738,6 +62080,9 @@
     "active_skill": "gemini_surge",
     "cast_time": 1000,
     "stat_set": 559,
+    "additional_stat_set_ids": [
+      "GeminiSurgeFirePlayer"
+    ],
     "skill_types": [
       "Attack",
       "Area",
@@ -62157,6 +62502,9 @@
     "active_skill": "glacial_bolt",
     "cast_time": 800,
     "stat_set": 198,
+    "additional_stat_set_ids": [
+      "GlacialBoltWallPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -62184,6 +62532,9 @@
     "active_skill": "glacial_cascade_attack",
     "cast_time": 1000,
     "stat_set": 7766,
+    "additional_stat_set_ids": [
+      "GlacialCascadeLastSpikeExileMonk1"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -62201,6 +62552,9 @@
     "active_skill": "glacial_cascade_attack",
     "cast_time": 1000,
     "stat_set": 234,
+    "additional_stat_set_ids": [
+      "GlacialCascadeLastSpikePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -62221,6 +62575,9 @@
     "active_skill": "glacial_lance",
     "cast_time": 1000,
     "stat_set": 171,
+    "additional_stat_set_ids": [
+      "GlacialLanceWallsPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -62497,6 +62854,9 @@
     "active_skill": "grim_pillars",
     "cast_time": 700,
     "stat_set": 695,
+    "additional_stat_set_ids": [
+      "GrimPillarsExplodePlayer"
+    ],
     "cost_types": [
       4
     ],
@@ -62743,6 +63103,10 @@
     "active_skill": "hammer_of_ngamahu",
     "cast_time": 1000,
     "stat_set": 7509,
+    "additional_stat_set_ids": [
+      "NgamahuMoltenBlastSecondary",
+      "HammerOfNgamahu"
+    ],
     "cost_types": [
       0
     ],
@@ -64283,6 +64647,9 @@
     "active_skill": "herald_of_ash",
     "cast_time": null,
     "stat_set": 80,
+    "additional_stat_set_ids": [
+      "HeraldOfAshOnKillPlayer"
+    ],
     "skill_types": [
       "Buff",
       "HasReservation",
@@ -64303,6 +64670,9 @@
     "active_skill": "herald_of_blood",
     "cast_time": 1000,
     "stat_set": 508,
+    "additional_stat_set_ids": [
+      "HeraldOfBloodExplosionPlayer"
+    ],
     "skill_types": [
       "OngoingSkill",
       "HasReservation",
@@ -64325,6 +64695,9 @@
     "active_skill": "herald_of_ice",
     "cast_time": null,
     "stat_set": 82,
+    "additional_stat_set_ids": [
+      "HeraldOfIceOnKillPlayer"
+    ],
     "skill_types": [
       "Buff",
       "HasReservation",
@@ -64360,6 +64733,9 @@
     "active_skill": "herald_of_thunder",
     "cast_time": null,
     "stat_set": 84,
+    "additional_stat_set_ids": [
+      "HeraldOfThunderOnKillPlayer"
+    ],
     "skill_types": [
       "Buff",
       "HasReservation",
@@ -64422,6 +64798,9 @@
     "active_skill": "high_velocity_rounds",
     "cast_time": 800,
     "stat_set": 192,
+    "additional_stat_set_ids": [
+      "HighVelocityRoundsArmourBrokenPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -64499,6 +64878,9 @@
     "active_skill": "hollow_focus",
     "cast_time": 1000,
     "stat_set": 7720,
+    "additional_stat_set_ids": [
+      "HollowFocusNovaPlayer"
+    ],
     "skill_types": [
       "OngoingSkill",
       "HasReservation",
@@ -64599,6 +64981,10 @@
     "active_skill": "fire_wake_spear",
     "cast_time": 1000,
     "stat_set": 7394,
+    "additional_stat_set_ids": [
+      "HusbandMonsterBlazingLanceSecondProjectile",
+      "HusbandMonsterBlazingLanceFlameWall"
+    ],
     "skill_types": [
       "Attack",
       "Projectile",
@@ -64819,6 +65205,9 @@
     "active_skill": "hyper_slash",
     "cast_time": 1000,
     "stat_set": 269,
+    "additional_stat_set_ids": [
+      "HyperSlashFinalHitPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -64970,6 +65359,10 @@
     "active_skill": "ice_nova",
     "cast_time": 1000,
     "stat_set": 30,
+    "additional_stat_set_ids": [
+      "IceNovaPlayerOnFrostbolt",
+      "IceNovaColdInfusedPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -64999,6 +65392,9 @@
     "active_skill": "ice_nova",
     "cast_time": 1000,
     "stat_set": 7778,
+    "additional_stat_set_ids": [
+      "IceNovaRogueExileRanger1OnFrostbolt"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -65025,6 +65421,9 @@
     "active_skill": "ice_nova",
     "cast_time": 1000,
     "stat_set": 7776,
+    "additional_stat_set_ids": [
+      "IceNovaRogueExileSorceress2OnFrostbolt"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -65080,6 +65479,9 @@
     "active_skill": "ice_shards",
     "cast_time": 1000,
     "stat_set": 247,
+    "additional_stat_set_ids": [
+      "IceShardsShardPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -65107,6 +65509,9 @@
     "active_skill": "ice_shot",
     "cast_time": 1000,
     "stat_set": 7602,
+    "additional_stat_set_ids": [
+      "IceShotShardPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -65132,6 +65537,9 @@
     "active_skill": "ice_strike",
     "cast_time": 1000,
     "stat_set": 253,
+    "additional_stat_set_ids": [
+      "IceStrikeThirdAttackPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -65198,6 +65606,9 @@
     "active_skill": "icestorm",
     "cast_time": 1200,
     "stat_set": 584,
+    "additional_stat_set_ids": [
+      "IcestormEmpoweredPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -65277,6 +65688,9 @@
     "active_skill": "incendiary_shot",
     "cast_time": 1000,
     "stat_set": 189,
+    "additional_stat_set_ids": [
+      "IncendiaryShotConePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -65301,6 +65715,9 @@
     "active_skill": "incinerate_player",
     "cast_time": 250,
     "stat_set": 117,
+    "additional_stat_set_ids": [
+      "IncinerateGroundPlayer"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -65322,6 +65739,9 @@
     "active_skill": "incinerate_player",
     "cast_time": 250,
     "stat_set": 7746,
+    "additional_stat_set_ids": [
+      "IncinerateGroundRogueExileSorceress1"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -66417,6 +66837,9 @@
     "active_skill": "djinn_knife_throw",
     "cast_time": 800,
     "stat_set": 7367,
+    "additional_stat_set_ids": [
+      "KnifeThrowSandDjinnCascade"
+    ],
     "skill_types": [
       "Area",
       "Spell",
@@ -66961,6 +67384,9 @@
     "active_skill": "lightless_stalker",
     "cast_time": 1000,
     "stat_set": 7951,
+    "additional_stat_set_ids": [
+      "LightlessStalkerPhantasmalEyePlayer"
+    ],
     "skill_types": [
       "Minion",
       "CreatesMinion",
@@ -66975,6 +67401,9 @@
     "active_skill": "lightning_arrow",
     "cast_time": 1000,
     "stat_set": 57,
+    "additional_stat_set_ids": [
+      "LightningArrowArcPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -67176,6 +67605,9 @@
     "active_skill": "lightning_spear",
     "cast_time": 1000,
     "stat_set": 169,
+    "additional_stat_set_ids": [
+      "LightningSpearSecondaryProjectilePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -67695,6 +68127,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1519,
+    "additional_stat_set_ids": [
+      "MAASBaronEndgameBasic80",
+      "MAASBaronEndgameBasic80",
+      "MAASBaronEndgameBasic80"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -67950,6 +68387,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1422,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedUniqueAdditionalActionDist60"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -68290,6 +68730,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1529,
+    "additional_stat_set_ids": [
+      "MAASKaruiCaptainBossUnhingedComboWeapon"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -68375,6 +68818,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1424,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedUniqueAdditionalActionDist60"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -69140,6 +69586,10 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1492,
+    "additional_stat_set_ids": [
+      "MAASViperNapuatziComboSmallStrike",
+      "MAASViperNapuatziComboLargeStrike"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -69157,6 +69607,10 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1496,
+    "additional_stat_set_ids": [
+      "MAASViperNapuatziComboSmallStrike",
+      "MAASViperNapuatziComboLargeStrike"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -69225,6 +69679,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1495,
+    "additional_stat_set_ids": [
+      "MAASViperNapuatziComboSmallStrike"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -72560,6 +73017,9 @@
     "active_skill": "oil_grenade",
     "cast_time": 1500,
     "stat_set": 2586,
+    "additional_stat_set_ids": [
+      "MMSVaalGuardOilTrapOilGround"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -72583,6 +73043,9 @@
     "active_skill": "oil_grenade_triggered",
     "cast_time": 1500,
     "stat_set": 2588,
+    "additional_stat_set_ids": [
+      "MMSVaalGuardOilTrapDeathOilGround"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -73508,6 +73971,9 @@
     "active_skill": "frost_bolt",
     "cast_time": 1000,
     "stat_set": 2448,
+    "additional_stat_set_ids": [
+      "MPSArchitectBossIceSpearFakeImpact"
+    ],
     "skill_types": [
       "Spell",
       "Projectile",
@@ -80540,6 +81006,9 @@
     "active_skill": "magma_barrier_explosion",
     "cast_time": 1000,
     "stat_set": 7796,
+    "additional_stat_set_ids": [
+      "MagmaSpraySmallRogueExileWarrior2"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -80558,6 +81027,9 @@
     "active_skill": "magnetic_salvo",
     "cast_time": 1000,
     "stat_set": 499,
+    "additional_stat_set_ids": [
+      "MagneticSalvoEmpoweredPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -80880,6 +81352,9 @@
     "active_skill": "djinn_mass_fusillade",
     "cast_time": 2300,
     "stat_set": 7379,
+    "additional_stat_set_ids": [
+      "MassFusilladeExplodeFireDjinn"
+    ],
     "skill_types": [
       "Area",
       "Projectile",
@@ -81407,6 +81882,15 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1338,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedComboTEMP40",
+      "MeleeAtAnimationSpeedComboTEMP60",
+      "MeleeAtAnimationSpeedComboTEMP80",
+      "MeleeAtAnimationSpeedComboTEMP120",
+      "MeleeAtAnimationSpeedComboTEMP140",
+      "MeleeAtAnimationSpeedComboTEMP160",
+      "MeleeAtAnimationSpeedComboTEMP180"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81458,6 +81942,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1408,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedChaos20Convert",
+      "MeleeAtAnimationSpeedChaos60Convert",
+      "MeleeAtAnimationSpeedChaos80Convert"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81475,6 +81964,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1412,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedChaosCombo35_80",
+      "MeleeAtAnimationSpeedChaosCombo35_60",
+      "MeleeAtAnimationSpeedChaosCombo35_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81492,6 +81986,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1416,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedChaosCombo70_80",
+      "MeleeAtAnimationSpeedChaosCombo70_60",
+      "MeleeAtAnimationSpeedChaosCombo70_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81509,6 +82008,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1373,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedCold20Convert",
+      "MeleeAtAnimationSpeedCold60Convert",
+      "MeleeAtAnimationSpeedCold80Convert",
+      "MeleeAtAnimationSpeedCold40ExtraFreeze",
+      "MeleeAtAnimationSpeedCold60ExtraFreeze",
+      "MeleeAtAnimationSpeedCold80ExtraFreeze"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81526,6 +82033,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1381,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedColdCombo35_80",
+      "MeleeAtAnimationSpeedColdCombo35_60",
+      "MeleeAtAnimationSpeedColdCombo35_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81543,6 +82055,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1385,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedColdCombo70_80",
+      "MeleeAtAnimationSpeedColdCombo70_60",
+      "MeleeAtAnimationSpeedColdCombo70_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81560,6 +82077,12 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1562,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedComboBrequel90",
+      "MeleeAtAnimationSpeedComboBrequel80",
+      "MeleeAtAnimationSpeedComboBrequel70",
+      "MeleeAtAnimationSpeedComboBrequel60"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81577,6 +82100,13 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1338,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedComboTEMP80",
+      "MeleeAtAnimationSpeedComboTEMP70",
+      "MeleeAtAnimationSpeedComboTEMP60",
+      "MeleeAtAnimationSpeedComboTEMP50",
+      "MeleeAtAnimationSpeedComboTEMP40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81594,6 +82124,13 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1338,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedComboTEMP80",
+      "MeleeAtAnimationSpeedComboTEMP70",
+      "MeleeAtAnimationSpeedComboTEMP60",
+      "MeleeAtAnimationSpeedComboTEMP50",
+      "MeleeAtAnimationSpeedComboTEMP40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81611,6 +82148,13 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1336,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedComboTEMP80",
+      "MeleeAtAnimationSpeedComboTEMP70",
+      "MeleeAtAnimationSpeedComboTEMP60",
+      "MeleeAtAnimationSpeedComboTEMP50",
+      "MeleeAtAnimationSpeedComboTEMP40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81628,6 +82172,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1358,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedFire20Convert",
+      "MeleeAtAnimationSpeedFire60Convert",
+      "MeleeAtAnimationSpeedFire80Convert",
+      "MeleeAtAnimationSpeedFire40ExtraIgnite",
+      "MeleeAtAnimationSpeedFire60ExtraIgnite",
+      "MeleeAtAnimationSpeedFire80ExtraIgnite"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81645,6 +82197,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1365,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedFireCombo35_80",
+      "MeleeAtAnimationSpeedFireCombo35_60",
+      "MeleeAtAnimationSpeedFireCombo35_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81662,6 +82219,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1369,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedFireCombo70_80",
+      "MeleeAtAnimationSpeedFireCombo70_60",
+      "MeleeAtAnimationSpeedFireCombo70_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81696,6 +82258,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1453,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedHookThrowKnockback"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81730,6 +82295,14 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1392,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedLightning20Convert",
+      "MeleeAtAnimationSpeedLightning60Convert",
+      "MeleeAtAnimationSpeedLightning80Convert",
+      "MeleeAtAnimationSpeedLightning40ExtraShock",
+      "MeleeAtAnimationSpeedLightning60ExtraShock",
+      "MeleeAtAnimationSpeedLightning80ExtraShock"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81747,6 +82320,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1399,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedLightningCombo35_80",
+      "MeleeAtAnimationSpeedLightningCombo35_60",
+      "MeleeAtAnimationSpeedLightningCombo35_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81764,6 +82342,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1403,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedLightningCombo70_80",
+      "MeleeAtAnimationSpeedLightningCombo70_60",
+      "MeleeAtAnimationSpeedLightningCombo70_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -81815,6 +82398,9 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1334,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedUniqueAdditionalActionDist60"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -83873,6 +84459,9 @@
     "active_skill": "djinn_meteor",
     "cast_time": 2300,
     "stat_set": 7377,
+    "additional_stat_set_ids": [
+      "MeteorFireDjinnWave"
+    ],
     "skill_types": [
       "Area",
       "Spell",
@@ -83889,6 +84478,9 @@
     "active_skill": "midnight_star",
     "cast_time": 1000,
     "stat_set": 666,
+    "additional_stat_set_ids": [
+      "MidnightStarIceCrystalDetonate"
+    ],
     "skill_types": [
       "OngoingSkill",
       "HasReservation",
@@ -84093,6 +84685,9 @@
     "active_skill": "molten_blast",
     "cast_time": 1000,
     "stat_set": 7507,
+    "additional_stat_set_ids": [
+      "MoltenBlastSecondaryPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -84116,6 +84711,9 @@
     "active_skill": "molten_crash",
     "cast_time": 1400,
     "stat_set": 32,
+    "additional_stat_set_ids": [
+      "MoltenCrashFissurePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -85745,6 +86343,10 @@
     "active_skill": "oil_barrage",
     "cast_time": 1000,
     "stat_set": 569,
+    "additional_stat_set_ids": [
+      "OilBarrageOilPlayer",
+      "OilBarrageEmpoweredPlayer"
+    ],
     "cost_types": [
       0,
       9
@@ -85771,6 +86373,9 @@
     "active_skill": "oil_grenade",
     "cast_time": 1000,
     "stat_set": 361,
+    "additional_stat_set_ids": [
+      "OilGrenadeOilGroundPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -85797,6 +86402,9 @@
     "active_skill": "oil_grenade",
     "cast_time": 1000,
     "stat_set": 7825,
+    "additional_stat_set_ids": [
+      "OilGrenadeOilGroundRogueExileMercenary1"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -86054,6 +86662,9 @@
     "active_skill": "perfect_strike",
     "cast_time": 1000,
     "stat_set": 418,
+    "additional_stat_set_ids": [
+      "PerfectStrikeShockwavePlayer"
+    ],
     "cost_types": [
       9
     ],
@@ -86090,6 +86701,9 @@
     "active_skill": "permafrost_bolts",
     "cast_time": 1000,
     "stat_set": 201,
+    "additional_stat_set_ids": [
+      "PermafrostBoltsConePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -86129,6 +86743,9 @@
     "active_skill": "phantasmal_arrow",
     "cast_time": 1000,
     "stat_set": 408,
+    "additional_stat_set_ids": [
+      "PhantasmalArrowExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -86311,6 +86928,9 @@
     "active_skill": "plasma_blast",
     "cast_time": 1000,
     "stat_set": 204,
+    "additional_stat_set_ids": [
+      "PlasmaBlastExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -86334,6 +86954,9 @@
     "active_skill": "plasma_blast",
     "cast_time": 1000,
     "stat_set": 7867,
+    "additional_stat_set_ids": [
+      "PlasmaBlastExplosionRogueExileMercenary2"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -86704,6 +87327,9 @@
     "active_skill": "playtest_spell",
     "cast_time": 1000,
     "stat_set": 24,
+    "additional_stat_set_ids": [
+      "PlaytestSpellExplosion"
+    ],
     "cost_types": [
       0
     ],
@@ -86731,6 +87357,9 @@
     "active_skill": "plunging_blade",
     "cast_time": 1000,
     "stat_set": 297,
+    "additional_stat_set_ids": [
+      "PlungingBladeExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -86746,6 +87375,9 @@
     "active_skill": "poison_burst_arrow",
     "cast_time": 1000,
     "stat_set": 404,
+    "additional_stat_set_ids": [
+      "PoisonBurstArrowCloudPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -86769,6 +87401,9 @@
     "active_skill": "poison_burst_arrow",
     "cast_time": 1000,
     "stat_set": 7810,
+    "additional_stat_set_ids": [
+      "PoisonBurstArrowCloudRogueExileRanger2"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -86874,6 +87509,11 @@
     "active_skill": "primal_strikes",
     "cast_time": 1000,
     "stat_set": 529,
+    "additional_stat_set_ids": [
+      "PrimalStrikesSecondPlayer",
+      "PrimalStrikesFinalPlayer",
+      "PrimalStrikesStagWavePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -87633,6 +88273,10 @@
     "active_skill": "rapid_assault",
     "cast_time": 1000,
     "stat_set": 144,
+    "additional_stat_set_ids": [
+      "RapidAssaultFinalHitPlayer",
+      "RapidAssaultDetonation"
+    ],
     "cost_types": [
       0
     ],
@@ -87653,6 +88297,10 @@
     "active_skill": "rapid_assault",
     "cast_time": 1000,
     "stat_set": 7887,
+    "additional_stat_set_ids": [
+      "RapidAssaultFinalHitRogueExileHuntress2",
+      "RapidAssaultDetonation"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -88126,6 +88774,9 @@
     "active_skill": "righteous_descent",
     "cast_time": 1000,
     "stat_set": 7713,
+    "additional_stat_set_ids": [
+      "RighteousDescentPlayerBoosted"
+    ],
     "cost_types": [
       0
     ],
@@ -88164,6 +88815,11 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 1380,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedColdCombo35_80",
+      "MeleeAtAnimationSpeedColdCombo35_60",
+      "MeleeAtAnimationSpeedColdCombo35_40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -88366,6 +89022,10 @@
     "active_skill": "rolling_slam",
     "cast_time": 1000,
     "stat_set": 212,
+    "additional_stat_set_ids": [
+      "RollingSlamFirstSlamPlayer",
+      "RollingSlamSecondSlamPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -88383,6 +89043,10 @@
     "active_skill": "rolling_slam",
     "cast_time": 1000,
     "stat_set": 1611,
+    "additional_stat_set_ids": [
+      "RollingSlamFirstSlamRogueExileWarrior1",
+      "RollingSlamSecondSlamRogueExileWarrior1"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -93151,6 +93815,9 @@
     "active_skill": "scattering_calamity",
     "cast_time": 400,
     "stat_set": 7526,
+    "additional_stat_set_ids": [
+      "ScatteringCalamityExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -93697,6 +94364,9 @@
     "active_skill": "channel_shield_charge",
     "cast_time": 1000,
     "stat_set": 34,
+    "additional_stat_set_ids": [
+      "ShieldChargeFinalConePlayer"
+    ],
     "cost_types": [
       9
     ],
@@ -93782,6 +94452,9 @@
     "active_skill": "shockburst_rounds",
     "cast_time": 1000,
     "stat_set": 250,
+    "additional_stat_set_ids": [
+      "ShockburstRoundsExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -93806,6 +94479,9 @@
     "active_skill": "shockchain_arrow",
     "cast_time": 1000,
     "stat_set": 456,
+    "additional_stat_set_ids": [
+      "ShockchainArrowExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -93856,6 +94532,9 @@
     "active_skill": "totem_shockwave_quake",
     "cast_time": 600,
     "stat_set": 60,
+    "additional_stat_set_ids": [
+      "ShockwaveTotemJaggedQuakePlayer"
+    ],
     "skill_types": [
       "Area",
       "Attack",
@@ -93911,6 +94590,9 @@
     "active_skill": "artillery_ballista_projectile",
     "cast_time": 1000,
     "stat_set": 124,
+    "additional_stat_set_ids": [
+      "SiegeBallistaProjectileExplodePlayer"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -93963,6 +94645,9 @@
     "active_skill": "siege_cascade",
     "cast_time": 1000,
     "stat_set": 178,
+    "additional_stat_set_ids": [
+      "SiegeCascadeExplodePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -93989,6 +94674,9 @@
     "active_skill": "siege_cascade",
     "cast_time": 1000,
     "stat_set": 7862,
+    "additional_stat_set_ids": [
+      "SiegeCascadeExplodeRogueExileMercenary2"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -94084,6 +94772,9 @@
     "active_skill": "siphoning_strike",
     "cast_time": 1000,
     "stat_set": 392,
+    "additional_stat_set_ids": [
+      "SiphoningStrikePulsePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -94370,6 +95061,9 @@
     "active_skill": "skyfall",
     "cast_time": 1000,
     "stat_set": 685,
+    "additional_stat_set_ids": [
+      "SkyfallInfusedPlayer"
+    ],
     "cost_types": [
       4
     ],
@@ -94512,6 +95206,10 @@
     "active_skill": "snap",
     "cast_time": 500,
     "stat_set": 7414,
+    "additional_stat_set_ids": [
+      "SnapLightningPlayer",
+      "SnapFirePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -94563,6 +95261,10 @@
     "active_skill": "snipe",
     "cast_time": 1000,
     "stat_set": 126,
+    "additional_stat_set_ids": [
+      "SnipeExplosionPlayer",
+      "SnipeFrozenExplosionPlayer"
+    ],
     "cost_types": [
       9
     ],
@@ -94587,6 +95289,10 @@
     "active_skill": "snipe",
     "cast_time": 1000,
     "stat_set": 1615,
+    "additional_stat_set_ids": [
+      "SnipeExplosionRogueExileRanger1",
+      "SnipeFrozenExplosionRogueExileRanger1"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -94632,6 +95338,9 @@
     "active_skill": "solar_orb",
     "cast_time": 800,
     "stat_set": 7408,
+    "additional_stat_set_ids": [
+      "SolarOrbAuraPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -94659,6 +95368,9 @@
     "active_skill": "solar_orb",
     "cast_time": 800,
     "stat_set": 7748,
+    "additional_stat_set_ids": [
+      "SolarOrbAuraRogueExileSorceress2"
+    ],
     "skill_types": [
       "Spell",
       "Damage",
@@ -94806,6 +95518,9 @@
     "active_skill": "soulrend",
     "cast_time": 800,
     "stat_set": 120,
+    "additional_stat_set_ids": [
+      "SoulrendDotPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -94855,6 +95570,9 @@
     "active_skill": "spark",
     "cast_time": 700,
     "stat_set": 38,
+    "additional_stat_set_ids": [
+      "SparkColdInfusedPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -94928,6 +95646,10 @@
     "active_skill": "spear_of_solaris",
     "cast_time": 1000,
     "stat_set": 542,
+    "additional_stat_set_ids": [
+      "SpearOfSolarisPulsePlayer",
+      "SpearOfSolarisGroundPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -94953,6 +95675,10 @@
     "active_skill": "spear_of_solaris",
     "cast_time": 1000,
     "stat_set": 7895,
+    "additional_stat_set_ids": [
+      "SpearOfSolarisPulseRogueExileHuntress2",
+      "SpearOfSolarisGroundRogueExileHuntress2"
+    ],
     "skill_types": [
       "Attack",
       "Area",
@@ -94975,6 +95701,9 @@
     "active_skill": "player_ranged_spear",
     "cast_time": 1000,
     "stat_set": 306,
+    "additional_stat_set_ids": [
+      "SpearThrowFrenzyChargePlayer"
+    ],
     "skill_types": [
       "Attack",
       "Projectile",
@@ -95013,6 +95742,9 @@
     "active_skill": "spearfield",
     "cast_time": 1000,
     "stat_set": 160,
+    "additional_stat_set_ids": [
+      "SpearfieldHazardPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -95033,6 +95765,9 @@
     "active_skill": "spearfield",
     "cast_time": 1000,
     "stat_set": 7880,
+    "additional_stat_set_ids": [
+      "SpearfieldHazardRogueExileHuntress1"
+    ],
     "skill_types": [
       "Attack",
       "Area",
@@ -95444,6 +96179,10 @@
     "active_skill": "stampede",
     "cast_time": 1000,
     "stat_set": 7517,
+    "additional_stat_set_ids": [
+      "StampedeSlamPlayer",
+      "StampedeEruptionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -95465,6 +96204,10 @@
     "active_skill": "stampede",
     "cast_time": 1000,
     "stat_set": 7787,
+    "additional_stat_set_ids": [
+      "StampedeSlamRogueExileWarrior2",
+      "StampedeEruptionRogueExileWarrior2"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -95483,6 +96226,9 @@
     "active_skill": "starborn_onslaught",
     "cast_time": 1000,
     "stat_set": 8092,
+    "additional_stat_set_ids": [
+      "StarbornOnslaughtExplosions"
+    ],
     "cost_types": [
       0
     ],
@@ -95535,6 +96281,9 @@
     "active_skill": "storm_blade",
     "cast_time": 1000,
     "stat_set": 295,
+    "additional_stat_set_ids": [
+      "StormBladeBlastPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -95568,6 +96317,11 @@
     "active_skill": "storm_lance",
     "cast_time": 1000,
     "stat_set": 545,
+    "additional_stat_set_ids": [
+      "StormLanceInfusedPlayer",
+      "StormLanceBeamPlayer",
+      "StormLanceDetonatedBeamPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -95598,6 +96352,11 @@
     "active_skill": "storm_lance",
     "cast_time": 1000,
     "stat_set": 7898,
+    "additional_stat_set_ids": [
+      "StormLanceInfusedRogueExileHuntress2",
+      "StormLanceBeamRogueExileHuntress2",
+      "StormLanceDetonatedBeamRogueExileHuntress2"
+    ],
     "skill_types": [
       "Projectile",
       "ProjectilesFromUser",
@@ -95660,6 +96419,9 @@
     "active_skill": "stormblast_bolts",
     "cast_time": 1000,
     "stat_set": 183,
+    "additional_stat_set_ids": [
+      "StormblastBoltsExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -95686,6 +96448,9 @@
     "active_skill": "stormcaller_arrow",
     "cast_time": 1000,
     "stat_set": 406,
+    "additional_stat_set_ids": [
+      "StormcallerArrowBoltPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -96385,6 +97150,9 @@
     "active_skill": "new_sunder",
     "cast_time": 1000,
     "stat_set": 99,
+    "additional_stat_set_ids": [
+      "SunderShockwavePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -96405,6 +97173,9 @@
     "active_skill": "supercharged_slam",
     "cast_time": 1000,
     "stat_set": 221,
+    "additional_stat_set_ids": [
+      "SuperchargedSlamAftershockPlayer"
+    ],
     "cost_types": [
       9
     ],
@@ -96424,6 +97195,9 @@
     "active_skill": "supercharged_slam",
     "cast_time": 1000,
     "stat_set": 1607,
+    "additional_stat_set_ids": [
+      "SuperchargedSlamAftershockRogueExileWarrior1"
+    ],
     "skill_types": [
       "Attack",
       "Area",
@@ -108023,6 +108797,10 @@
     "active_skill": "tempest_bell",
     "cast_time": 1000,
     "stat_set": 394,
+    "additional_stat_set_ids": [
+      "TempestBellSlamPlayer",
+      "TempestBellShockwavePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -108050,6 +108828,10 @@
     "active_skill": "tempest_flurry",
     "cast_time": 1000,
     "stat_set": 385,
+    "additional_stat_set_ids": [
+      "TempestFlurryPlayerThirdStrike",
+      "TempestFlurryPlayerFinalStrike"
+    ],
     "cost_types": [
       0
     ],
@@ -108318,6 +109100,9 @@
     "active_skill": "the_stars_answer_comet",
     "cast_time": null,
     "stat_set": 631,
+    "additional_stat_set_ids": [
+      "TheStarsAnswerEmpoweredCometPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -108694,6 +109479,9 @@
     "active_skill": "tornado_shot",
     "cast_time": 1000,
     "stat_set": 485,
+    "additional_stat_set_ids": [
+      "TornadoShotNovaPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -108728,6 +109516,9 @@
     "active_skill": "tornado_shot",
     "cast_time": 1000,
     "stat_set": 7808,
+    "additional_stat_set_ids": [
+      "TornadoShotNovaRogueExileRanger2"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -108759,6 +109550,9 @@
     "active_skill": "toxic_domain",
     "cast_time": 1000,
     "stat_set": 7952,
+    "additional_stat_set_ids": [
+      "ToxicDomainPustuleExplosion"
+    ],
     "cost_types": [
       0
     ],
@@ -108781,6 +109575,10 @@
     "active_skill": "toxic_grenade",
     "cast_time": 1000,
     "stat_set": 358,
+    "additional_stat_set_ids": [
+      "ToxicGrenadeCloudPlayer",
+      "ToxicGrenadeCloudExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -108809,6 +109607,9 @@
     "active_skill": "toxic_growth",
     "cast_time": 1000,
     "stat_set": 7401,
+    "additional_stat_set_ids": [
+      "ToxicGrowthBurstPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -108835,6 +109636,9 @@
     "active_skill": "toxic_growth",
     "cast_time": 1000,
     "stat_set": 7805,
+    "additional_stat_set_ids": [
+      "ToxicGrowthBurstRogueExileRanger2"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -109414,6 +110218,11 @@
     "active_skill": "triggered_catalysing_discharge",
     "cast_time": null,
     "stat_set": 1283,
+    "additional_stat_set_ids": [
+      "TriggeredCatalysingDischargeFirePlayer",
+      "TriggeredCatalysingDischargeLightningPlayer",
+      "TriggeredCatalysingDischargeColdPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -109435,6 +110244,9 @@
     "active_skill": "triggered_caustic_cloud",
     "cast_time": 1000,
     "stat_set": 592,
+    "additional_stat_set_ids": [
+      "TriggeredCausticCloudExplosionPlayer"
+    ],
     "skill_types": [
       "Damage",
       "Area",
@@ -109738,6 +110550,9 @@
     "active_skill": "triggered_empowered_spark",
     "cast_time": 1000,
     "stat_set": 650,
+    "additional_stat_set_ids": [
+      "TriggeredEmpoweredSparkColdInfusedPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -109757,6 +110572,9 @@
     "active_skill": "triggered_empowered_spark",
     "cast_time": 1000,
     "stat_set": 648,
+    "additional_stat_set_ids": [
+      "TriggeredEmpoweredSparkColdInfusedPlayerTwo"
+    ],
     "cost_types": [
       0
     ],
@@ -109822,6 +110640,12 @@
     "active_skill": "explosive_transmutation",
     "cast_time": null,
     "stat_set": 712,
+    "additional_stat_set_ids": [
+      "ExplosiveTransmutationColdPlayer",
+      "ExplosiveTransmutationFirePlayer",
+      "ExplosiveTransmutationLightningPlayer",
+      "ExplosiveTransmutationChaosPlayer"
+    ],
     "cost_types": [
       4
     ],
@@ -110004,6 +110828,10 @@
     "active_skill": "triggered_gas_cloud",
     "cast_time": 1000,
     "stat_set": 502,
+    "additional_stat_set_ids": [
+      "TriggeredGasCloudGasDegenPlayer",
+      "TriggeredGasCloudGasExplosionPlayer"
+    ],
     "skill_types": [
       "Triggerable",
       "Triggered",
@@ -110259,6 +111087,9 @@
     "active_skill": "poison_spore_support",
     "cast_time": 1000,
     "stat_set": 1274,
+    "additional_stat_set_ids": [
+      "TriggeredPoisonSporesExplosion"
+    ],
     "cost_types": [
       0
     ],
@@ -110321,6 +111152,9 @@
     "active_skill": "triggered_shocking_rift",
     "cast_time": null,
     "stat_set": 1209,
+    "additional_stat_set_ids": [
+      "TriggeredShockingRiftFinalPulsePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -110672,6 +111506,9 @@
     "active_skill": "triple_slash",
     "cast_time": 1000,
     "stat_set": 267,
+    "additional_stat_set_ids": [
+      "TripleSlashThirdHitPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -111097,6 +111934,9 @@
     "active_skill": "atziri_herald",
     "cast_time": 1000,
     "stat_set": 8251,
+    "additional_stat_set_ids": [
+      "UniqueAtziriHeraldExplosionPlayer"
+    ],
     "skill_types": [
       "OngoingSkill",
       "HasReservation",
@@ -111148,6 +111988,10 @@
     "active_skill": "unique_dusk_vigil_triggered_blazing_cluster",
     "cast_time": 400,
     "stat_set": 7528,
+    "additional_stat_set_ids": [
+      "EmberFusilladeExplosionPlayer",
+      "EmberFusilladeBeamPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -111172,6 +112016,9 @@
     "active_skill": "unique_earthbound_triggered_spark",
     "cast_time": 700,
     "stat_set": 40,
+    "additional_stat_set_ids": [
+      "UniqueEarthboundTriggeredSparkColdInfusedPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -111201,6 +112048,9 @@
     "active_skill": "herald_of_ash",
     "cast_time": null,
     "stat_set": 7735,
+    "additional_stat_set_ids": [
+      "UniqueHeraldOfAshOnKillPlayer"
+    ],
     "skill_types": [
       "Buff",
       "HasReservation",
@@ -111221,6 +112071,9 @@
     "active_skill": "herald_of_ice",
     "cast_time": null,
     "stat_set": 7737,
+    "additional_stat_set_ids": [
+      "UniqueHeraldOfIceOnKillPlayer"
+    ],
     "skill_types": [
       "Buff",
       "HasReservation",
@@ -111240,6 +112093,9 @@
     "active_skill": "herald_of_thunder",
     "cast_time": null,
     "stat_set": 7739,
+    "additional_stat_set_ids": [
+      "UniqueHeraldOfThunderOnKillPlayer"
+    ],
     "skill_types": [
       "Buff",
       "HasReservation",
@@ -112141,6 +112997,9 @@
     "active_skill": "valakos_charge",
     "cast_time": null,
     "stat_set": 7968,
+    "additional_stat_set_ids": [
+      "ValakosChargeArcPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -112197,6 +113056,9 @@
     "active_skill": "vaulting_impact",
     "cast_time": 1000,
     "stat_set": 7761,
+    "additional_stat_set_ids": [
+      "VaultingImpactDazedPlayer"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -112214,6 +113076,9 @@
     "active_skill": "vaulting_impact",
     "cast_time": 1000,
     "stat_set": 458,
+    "additional_stat_set_ids": [
+      "VaultingImpactDazedPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -112296,6 +113161,9 @@
     "active_skill": "vine_arrow",
     "cast_time": 1000,
     "stat_set": 425,
+    "additional_stat_set_ids": [
+      "VineArrowFlowerPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -112325,6 +113193,9 @@
     "active_skill": "vine_arrow",
     "cast_time": 1000,
     "stat_set": 7813,
+    "additional_stat_set_ids": [
+      "VineArrowFlowerRogueExileRanger2"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -112351,6 +113222,9 @@
     "active_skill": "viper_napuatzi_lightning_spear",
     "cast_time": 1000,
     "stat_set": 2284,
+    "additional_stat_set_ids": [
+      "ViperNapuatziLightningSpearSecondary"
+    ],
     "skill_types": [
       "Attack",
       "Projectile",
@@ -112463,6 +113337,10 @@
     "active_skill": "volatile_dead",
     "cast_time": 800,
     "stat_set": 113,
+    "additional_stat_set_ids": [
+      "VolatileDeadExplosionPlayer",
+      "VolatileDeadIgniteAuraPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -112512,6 +113390,10 @@
     "active_skill": "volcano",
     "cast_time": 800,
     "stat_set": 282,
+    "additional_stat_set_ids": [
+      "VolcanoProjectilePlayer",
+      "VolcanoSlamPlayer"
+    ],
     "cost_types": [
       0,
       9
@@ -113155,6 +114037,9 @@
     "active_skill": "walking_calamity_meteor",
     "cast_time": 1000,
     "stat_set": 628,
+    "additional_stat_set_ids": [
+      "WalkingCalamityMeteorLargePlayer"
+    ],
     "skill_types": [
       "Attack",
       "Triggered",
@@ -113464,6 +114349,9 @@
     "active_skill": "whirling_slash",
     "cast_time": 1000,
     "stat_set": 158,
+    "additional_stat_set_ids": [
+      "WhirlingSlashSandstormPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -113485,6 +114373,9 @@
     "active_skill": "whirling_slash",
     "cast_time": 1000,
     "stat_set": 7876,
+    "additional_stat_set_ids": [
+      "WhirlingSlashSandstormRogueExileHuntress1"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -113503,6 +114394,9 @@
     "active_skill": "whirlwind_lance",
     "cast_time": 1000,
     "stat_set": 527,
+    "additional_stat_set_ids": [
+      "WhirlwindLanceStormPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -113532,6 +114426,9 @@
     "active_skill": "whirlwind_lance",
     "cast_time": 1000,
     "stat_set": 7878,
+    "additional_stat_set_ids": [
+      "WhirlwindLanceStormRogueExileHuntress1"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -113575,6 +114472,13 @@
     "active_skill": "melee",
     "cast_time": 1000,
     "stat_set": 7920,
+    "additional_stat_set_ids": [
+      "MeleeAtAnimationSpeedComboTEMP80",
+      "MeleeAtAnimationSpeedComboTEMP70",
+      "MeleeAtAnimationSpeedComboTEMP60",
+      "MeleeAtAnimationSpeedComboTEMP50",
+      "MeleeAtAnimationSpeedComboTEMP40"
+    ],
     "skill_types": [
       "Attack",
       "RangedAttack",
@@ -113624,6 +114528,9 @@
     "active_skill": "wind_serpents_fury",
     "cast_time": 1000,
     "stat_set": 535,
+    "additional_stat_set_ids": [
+      "WindSerpentsFurySnakePlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -113646,6 +114553,9 @@
     "active_skill": "wind_serpents_fury",
     "cast_time": 1000,
     "stat_set": 7882,
+    "additional_stat_set_ids": [
+      "WindSerpentsFurySnakeRogueExileHuntress1"
+    ],
     "skill_types": [
       "Attack",
       "Melee",
@@ -113665,6 +114575,9 @@
     "active_skill": "wing_blast",
     "cast_time": 500,
     "stat_set": 566,
+    "additional_stat_set_ids": [
+      "WingBlastStunExplosionPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -113791,6 +114704,9 @@
     "active_skill": "wolf_cross_slash",
     "cast_time": 1000,
     "stat_set": 583,
+    "additional_stat_set_ids": [
+      "WolfCrossSlashMarkConsumedPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -113991,6 +114907,10 @@
     "active_skill": "shred",
     "cast_time": 1000,
     "stat_set": 578,
+    "additional_stat_set_ids": [
+      "WolfShredThirdPlayer",
+      "WolfShredFinalPlayer"
+    ],
     "cost_types": [
       0
     ],
@@ -114064,6 +114984,9 @@
     "active_skill": "rend",
     "cast_time": 1000,
     "stat_set": 291,
+    "additional_stat_set_ids": [
+      "WyvernRendEmpoweredPlayer"
+    ],
     "cost_types": [
       0
     ],

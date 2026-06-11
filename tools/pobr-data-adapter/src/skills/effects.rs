@@ -44,6 +44,10 @@ struct RawGrantedEffect {
     /// `GrantedEffectStatSets` 外键索引（负数/越界归一化为 None）。
     #[serde(rename = "StatSet")]
     stat_set: Option<i64>,
+    /// **附加** statSet 外键索引（M1-T5.2；FK → `GrantedEffectStatSets`，
+    /// W0 核验：目标是 statSet 表而非另一行 GrantedEffects）。列序保留。
+    #[serde(rename = "AdditionalStatSets", default)]
+    additional_stat_sets: Vec<i64>,
     /// 消耗类型外键索引列表（如 `[0]`）。
     #[serde(rename = "CostTypes", default)]
     cost_types: Vec<u32>,
@@ -68,15 +72,28 @@ pub(super) fn adapt_effects(
 ) -> Result<(Vec<GrantedEffectDef>, usize, Vec<String>), String> {
     let active_ids: Vec<String> = active_skills.iter().map(|a| a.id.clone()).collect();
 
-    // raw_effects 按文件顺序即 `_index` 顺序；先建 `_index -> Id` 表供 per-level FK 解析。
+    // raw_effects 按文件顺序即 `_index` 顺序；先建 `_index -> Id` 表供 per-level 行解析。
     let raw_effects = read_json::<Vec<RawGrantedEffect>>(&en.join("GrantedEffects.json"))?;
     let effects_total = raw_effects.len();
     let effect_id_by_index: Vec<String> = raw_effects.iter().map(|r| r.id.clone()).collect();
+
+    // statSet `_index -> Id` 查表（AdditionalStatSets FK 解析为稳定 id，T5.2）。
+    #[derive(Deserialize)]
+    struct RawStatSetId {
+        #[serde(rename = "Id")]
+        id: String,
+    }
+    let stat_set_ids: Vec<String> =
+        read_json::<Vec<RawStatSetId>>(&en.join("GrantedEffectStatSets.json"))?
+            .into_iter()
+            .map(|r| r.id)
+            .collect();
 
     // 类型表达式 FK 解析：索引 → `ActiveSkillType.Id` 名称（AND/OR/NOT 即特殊行），
     // 保留 token 顺序（后缀表达式语义依赖顺序）。悬空 FK 跳过并计数（外键质量报表，
     // 见蓝图 §5：>0 时列入 commit message）。
     let mut dangling_type_fk = 0usize;
+    let mut dangling_statset_fk = 0usize;
     let mut resolve_type_tokens = |idxs: &[u32]| -> Vec<String> {
         idxs.iter()
             .filter_map(|&t| match skill_type_names.get(t as usize) {
@@ -109,6 +126,20 @@ pub(super) fn adapt_effects(
             .unwrap_or_default();
         let cast_time = raw.cast_time.filter(|&t| t > 0).map(|t| t as u32);
         let stat_set = raw.stat_set.filter(|&i| i >= 0).map(|i| i as u32);
+        // 附加 statSet：FK 索引 → 稳定 id（悬空 FK 跳过并计入外键质量报表）。
+        let additional_stat_set_ids: Vec<String> = raw
+            .additional_stat_sets
+            .iter()
+            .filter_map(|&i| {
+                let resolved = usize::try_from(i)
+                    .ok()
+                    .and_then(|i| stat_set_ids.get(i).filter(|s| !s.is_empty()).cloned());
+                if resolved.is_none() {
+                    dangling_statset_fk += 1;
+                }
+                resolved
+            })
+            .collect();
         effects.push(GrantedEffectDef {
             id: raw.id,
             is_support: raw.is_support.unwrap_or(false),
@@ -120,12 +151,16 @@ pub(super) fn adapt_effects(
             cannot_be_supported: raw.cannot_be_supported,
             support_gems_only: raw.supports_gems_only,
             stat_set,
+            additional_stat_set_ids,
             skill_types,
             cost_types: raw.cost_types,
         });
     }
     if dangling_type_fk > 0 {
         eprintln!("granted_effects: 类型表达式悬空 FK {dangling_type_fk} 处（已跳过）");
+    }
+    if dangling_statset_fk > 0 {
+        eprintln!("granted_effects: AdditionalStatSets 悬空 FK {dangling_statset_fk} 处（已跳过）");
     }
     effects.sort_by(|a, b| a.id.cmp(&b.id));
     Ok((effects, effects_total, effect_id_by_index))

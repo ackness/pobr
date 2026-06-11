@@ -49,7 +49,7 @@ pub use runtime::RuntimeConstants;
 pub use skills::{
     CostTypeDef, GemEffectDef, GemEffectsDef, GemQualityStatDef, GemQualityStatsDef,
     GrantedEffectDef, QualityStat, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
-    SkillStatSetLevel,
+    SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef,
 };
 pub use tree::{PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
 pub use unarmed_data::{UnarmedDataTable, UnarmedWeaponDef};

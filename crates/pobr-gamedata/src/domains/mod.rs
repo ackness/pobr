@@ -29,3 +29,6 @@ pub mod skill_stat_map;
 
 // ---- M1-T5.1 宝石→授予效果连边（overlay 层，merge 进 skill_gems + meta 展开索引）----
 pub mod gem_effects;
+
+// ---- M1-T5.2 statSet label / vendor 导出序号边车（overlay 层，merge 进 stat sets）----
+pub mod stat_set_labels;

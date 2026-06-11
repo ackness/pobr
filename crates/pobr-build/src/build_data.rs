@@ -185,7 +185,7 @@ impl BuildData {
         let skill_stat_sets = data
             .skill_stat_sets()?
             .into_iter()
-            .map(|set| (set.id.clone(), set))
+            .map(|set| (set.effect_id.clone(), set))
             .collect();
 
         // 品质 stat 斜率（overlay 域）：缺文件 = 空表（品质不产生 stat，向后兼容）。
@@ -378,12 +378,14 @@ impl BuildData {
         // 单独取数注入，保留 SourceKind::GemQuality 归因粒度），故 quality 传 0。
         let base_damage = self.effect_stats(skill_id, gem_level, 0).base;
 
-        // 技能伤害倍率（PoB baseMultiplier）：优先 stat-set 行；stat-set 缺失（如 Flicker
-        // 等 stat-set 为空的技能）时回退到 GrantedEffectsPerLevel 的 base_multiplier
+        // 技能伤害倍率（PoB baseMultiplier）：优先**主 statSet** 行（T5.2 多 set 下
+        // 缺省主 set，与单 set 时代一致）；stat-set 缺失（如 Flicker 等 stat-set 为空
+        // 的技能）时回退到 GrantedEffectsPerLevel 的 base_multiplier
         // （二者同义，PoB 在两表均存；grenade 的 stat-set 7.57 与 per-level 一致，不受影响）。
         let damage_multiplier = self
             .skill_stat_sets
             .get(skill_id)
+            .and_then(|def| def.sets.first())
             .and_then(|set| {
                 set.levels
                     .iter()
@@ -394,10 +396,12 @@ impl BuildData {
             .or(row.base_multiplier)
             .unwrap_or(1.0);
 
-        // statSet baseMods 固有攻击速度 MORE（PoB2 自带常量，如 Flicker 285）。等级无关。
+        // statSet baseMods 固有攻击速度 MORE（PoB2 自带常量，如 Flicker 285）。等级无关；
+        // overlay merge 写入主 set。
         let skill_attack_speed_more = self
             .skill_stat_sets
             .get(skill_id)
+            .and_then(|def| def.sets.first())
             .and_then(|set| set.skill_attack_speed_more);
 
         Some(ResolvedSkillLevel {
@@ -427,9 +431,12 @@ impl BuildData {
     /// （support 的品质表条目不存在——PoB2 导出即跳过，quality 段天然为空）。
     /// 等级越界取最接近的 ≤ 行；无 stat-set 数据时 base 段为空。
     pub fn effect_stats(&self, skill_id: &str, gem_level: u32, quality: u32) -> EffectStats {
+        // T5.2 多 set 模型下缺省取**主 set**（sets[0]），与单 set 时代一致；
+        // 形态选择（`<Gem statSetIndex>`）由 T5.4/T5.5 接入。
         let base = self
             .skill_stat_sets
             .get(skill_id)
+            .and_then(|def| def.sets.first())
             .map(|set| {
                 let mut stats = set
                     .levels

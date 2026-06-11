@@ -96,6 +96,12 @@ pub struct GrantedEffectDef {
     /// 经此解析（待 stat-set 表下载后接入）；当前仅保留索引备查。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stat_set: Option<u32>,
+    /// **附加** statSet 的稳定 id（`AdditionalStatSets` 列，FK → `GrantedEffectStatSets.Id`
+    /// ——W0 核验修正：FK 目标是 statSet 表而非另一行 GrantedEffects；列序保留）。
+    /// 技能形态变体（如 IceNova → `IceNovaPlayerOnFrostbolt` / `IceNovaColdInfusedPlayer`），
+    /// 与 [`SkillStatSetDef::sets`] 的 `sets[1..]` 一一对应（M1-T5.2）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_stat_set_ids: Vec<String>,
     /// 消耗类型外键索引（原始 `CostTypes` 列，如 `[0]`=法力）。与
     /// [`SkillLevelDef::cost_amounts`] 按位置配对（第 i 个类型消耗第 i 个数量）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -191,23 +197,51 @@ pub struct SkillLevelDef {
     pub level_requirement: Option<u32>,
 }
 
-/// 某授予效果（技能）分等级解析出的**伤害相关 stat 值**集合
-/// （来自 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel.dat` 外键解析）。
+/// 某授予效果（技能）的**全部 statSet**（主 set + 附加 set，M1-T5.2 多 set 建模）。
 ///
-/// 每个主动技能效果关联一个 `GrantedEffectStatSets`（`BaseEffectiveness` +
-/// `ImplicitStats`），其 `GrantedEffectStatSetsPerLevel` 行给出每个宝石等级上
-/// `FloatStats`/`AdditionalStats` 对应的**已解析值**（`BaseResolvedValues` /
-/// `AdditionalStatsValues`）。适配器把 stat 索引解析为稳定 stat id，过滤出伤害族
-/// （`spell_*_base/added_<type>_damage`、`secondary_*_base_<type>_damage`、
-/// `attack_*_added_<type>_damage` 等）后按 effect id 入库。
+/// 主 set = `GrantedEffects.StatSet` 指向的 `GrantedEffectStatSets` 行；附加 set =
+/// `GrantedEffects.AdditionalStatSets` 列序指向的各行（如 IceNova →
+/// `IceNovaPlayerOnFrostbolt` / `IceNovaColdInfusedPlayer`，技能形态变体）。
+/// 附加 set 在入库时已按 vendor 导出语义与主 set **合并**（constant/分等级 stat
+/// 拼接、效力回退，见 [`StatSetDef`]），消费侧选中即用、无需再 merge。
 ///
 /// 收录于 `granted_effect_stat_sets.json`，以 [`GrantedEffectDef::id`] 为键
-/// （player 技能的 stat-set Id 与 effect Id 同名，适配器已在导出时完成 join）。
-/// 这是「宝石 → 技能伤害 → DPS」数据通道的最后一环。
+/// （适配器已在导出时完成 join）。这是「宝石 → 技能伤害 → DPS」数据通道的最后一环。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SkillStatSetDef {
     /// 授予效果 id（如 `FireballPlayer`），与 [`GrantedEffectDef::id`] 对齐。
-    pub id: String,
+    pub effect_id: String,
+    /// statSet 列表：`sets[0]` 恒为主 set，其后为附加 set（`AdditionalStatSets` 列序）。
+    /// 消费缺省取主 set（PoB2 `<Gem statSetIndex>` 缺省 1 = 第一个 set）。
+    pub sets: Vec<StatSetDef>,
+}
+
+/// 单个 statSet（来自 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`）。
+///
+/// 附加 set（`sets[1..]`）的内容已按 PoB2 导出脚本的 base-merge 语义入库
+/// （vendor `Export/Scripts/skills.lua:498-553`）：
+/// - `constant_stats` = 主 set 常量 ++ 本 set 常量（`:502-504` tableConcat）；
+/// - `base_effectiveness`：本 set 原始值为默认 1 时回退主 set（`:506-508`）；
+/// - 分等级行与主 set 行**按数组位置配对**，stat = 主行 ++ 本行（`:541-549`）；
+/// - `damage_multiplier`：本行 `BaseMultiplier ≠ 0` 取本行，否则取主配对行
+///   （`:533-541`；`UseSetAttackMulti` 列未下载，两分支终值同为本行 `/10000+1`，
+///   缺失时回退主行为保守近似）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StatSetDef {
+    /// statSet 稳定 id（`GrantedEffectStatSets.Id`，如 `IceNovaColdInfusedPlayer`；
+    /// 主 set 通常与 effect id 同名）。
+    pub set_id: String,
+    /// 形态 label 文本（如 `Cold-Infused`）。来源 = `overlay/stat_set_labels.json`
+    /// （vendor 抽取——`.dat` `Label` 列的 FK 目标表 `GrantedEffectLabels` 不可下载），
+    /// 加载期 merge；base 产物 / 无 vendor 对应时为 `None`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    /// PoB2 导出 statSets 列表中的 1-based 序号（vendor 模板 `#set` 顺序，=
+    /// `<Gem statSetIndex>` 的索引语义）。vendor 模板会策展跳过个别 set（如
+    /// IceNovaPlayerOnFrostbolt），故与 `sets` 数组下标**不必然一致**。来源同
+    /// `label`（overlay merge）；`None` = vendor 未导出该 set（不可被 statSetIndex 选中）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vendor_set_index: Option<u32>,
     /// stat-set 的基础效力（`BaseEffectiveness`，备查；分等级值已是解析后的最终量）。
     #[serde(default, skip_serializing_if = "is_zero_f64")]
     pub base_effectiveness: f64,
@@ -337,6 +371,35 @@ pub struct GemEffectDef {
 pub struct GemEffectsDef {
     /// 宝石→效果连边表，按 `gem_id` 升序。
     pub gems: Vec<GemEffectDef>,
+}
+
+// ---- M1-T5.2 statSet label 边车（`overlay/stat_set_labels.json`）----
+
+/// 单条 statSet 的 vendor 导出序号 + label 文本（`overlay/stat_set_labels.json` 的单条）。
+///
+/// 数据来源：vendor `Export/Skills/*.txt` 模板（`#skill`/`#set` 行 → 导出顺序与
+/// set id）join vendor `Data/Skills/*.lua`（`statSets[i].label` 文本，原始 `.dat`
+/// `GrantedEffectStatSets.Label` 的 FK 目标表 `GrantedEffectLabels` 不可下载）。
+/// 由 `sync-pob-catalog extract-lua --what stat-set-labels` 确定性抽取。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StatSetLabelDef {
+    /// 所属授予效果 id（模板 `#skill` 行）。
+    pub skill: String,
+    /// statSet 稳定 id（模板 `#set` 行）。
+    pub set_id: String,
+    /// PoB2 导出 statSets 列表中的 1-based 序号（= `<Gem statSetIndex>` 索引语义）。
+    pub set_index: u32,
+    /// label 文本（vendor `LabelType.Label`，缺省回退技能显示名——见
+    /// `Export/Scripts/skills.lua:478`，抽取忠实转录导出产物）。
+    pub label: String,
+}
+
+/// `overlay/stat_set_labels.json` 顶层（消费侧视角：`_meta` 忽略，按
+/// `(skill, set_index)` 升序）。
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct StatSetLabelsDef {
+    /// statSet label 表。
+    pub labels: Vec<StatSetLabelDef>,
 }
 
 /// 技能消耗资源类型定义（来自 `CostTypes.dat`）。

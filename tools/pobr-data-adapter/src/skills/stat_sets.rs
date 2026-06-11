@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use pobr_data::catalog::{SkillDamageStat, SkillStatSetDef, SkillStatSetLevel};
+use pobr_data::catalog::{SkillDamageStat, SkillStatSetDef, SkillStatSetLevel, StatSetDef};
 use serde::Deserialize;
 
 use crate::read_json;
@@ -24,10 +24,16 @@ struct RawGrantedEffectStatSetLink {
     /// `GrantedEffectStatSets` 行索引（负数/缺失 → 无 stat set）。
     #[serde(rename = "StatSet")]
     stat_set: Option<i64>,
+    /// **附加** statSet 行索引（M1-T5.2 多 set；FK → `GrantedEffectStatSets`，列序保留）。
+    #[serde(rename = "AdditionalStatSets", default)]
+    additional_stat_sets: Vec<i64>,
 }
 
 #[derive(Deserialize)]
 struct RawStatSet {
+    /// statSet 稳定 id（如 `IceNovaColdInfusedPlayer`）。
+    #[serde(rename = "Id", default)]
+    id: String,
     #[serde(rename = "BaseEffectiveness")]
     base_effectiveness: Option<f64>,
     /// 等级无关常量 stat（`Stats` 行索引）与其值（位置配对；如 support `damage_+%_final`）。
@@ -59,13 +65,13 @@ struct RawStatSetPerLevel {
     base_multiplier: Option<i64>,
 }
 
-/// 分等级伤害 stat 集适配产物。
+/// 分等级 stat 集适配产物。
 pub struct StatSetsBundle {
-    /// 含至少一条伤害 stat 的授予效果，按 effect id 排序。
+    /// 含至少一条 stat 的授予效果（主 set + 附加 set，T5.2），按 effect id 排序。
     pub sets: Vec<SkillStatSetDef>,
     /// `GrantedEffectStatSets` 总行数（用于汇报）。
     pub sets_total: usize,
-    /// 入库的伤害分等级行总数。
+    /// 入库的分等级行总数（含附加 set）。
     pub damage_levels_total: usize,
 }
 
@@ -158,13 +164,18 @@ pub(super) fn crit_from_statset_levels(
 }
 
 /// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`
-/// 外键）为「effect id → 分等级 stat」域。
+/// 外键）为「effect id → 多 statSet 分等级 stat」域（M1-T5.2 多 set 建模）。
 ///
 /// 解析方式（对照 PoB2 `Export/Scripts/skills.lua` 的 statSets 处理）：
-/// - `GrantedEffects.StatSet` 行索引 → `GrantedEffectStatSets` 行（取 `BaseEffectiveness`）；
-/// - `GrantedEffectStatSetsPerLevel`（按 `StatSet` 行索引分组）每行的
-///   `FloatStats[i]`↔`BaseResolvedValues[i]`、`AdditionalStats[i]`↔`AdditionalStatsValues[i]`
-///   位置配对，stat 行索引经 `Stats` 解析为稳定 id。
+/// - 主 set：`GrantedEffects.StatSet` 行索引 → `GrantedEffectStatSets` 行；
+/// - 附加 set：`GrantedEffects.AdditionalStatSets` 列序（W0 核验：FK 目标是
+///   `GrantedEffectStatSets`，蓝图 §1.4「指向另一行 GrantedEffects」有误已修正）；
+/// - 每行 `FloatStats[i]`↔`BaseResolvedValues[i]`、`AdditionalStats[i]`↔
+///   `AdditionalStatsValues[i]` 位置配对，stat 行索引经 `Stats` 解析为稳定 id；
+/// - 附加 set 按 vendor 导出语义与主 set **合并入库**（`skills.lua:498-553`）：
+///   常量 stat 拼接（主 ++ 本 set）、分等级行与主 set 行按数组位置配对拼接、
+///   `BaseEffectiveness` 为默认 1 时回退主 set、`BaseMultiplier ≠ 0` 取本行否则
+///   回退主配对行——消费侧选中即用，无需运行时 merge。
 ///
 /// **全量 stat 入库（M1-T5.3，蓝图 15-G2 修复方向）**：数据层不再施加任何 stat 白名单
 /// （原 `is_mappable_stat` 后缀启发式已删除）——statmap 数据引擎（`pobr-core::rules::
@@ -174,7 +185,8 @@ pub(super) fn crit_from_statset_levels(
 /// 一起删除。
 ///
 /// 验证基准：FireballPlayer L1 → `spell_minimum/maximum_base_fire_damage` = 8 / 12
-/// （与 PoB 自身 `Data/Skills/act_int.lua` 解析后逐字一致）。
+/// （与 PoB 自身 `Data/Skills/act_int.lua` 解析后逐字一致；主 set 内容与单 set 时代
+/// 逐值一致——消费缺省主 set ⇒ 搬迁不变式）。
 pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
     // stat 行索引 → 稳定 id（按 `_index` 落位，越界为空串）。
     let raw_stats = read_json::<Vec<RawStatId>>(&en.join("Stats.json"))?;
@@ -188,7 +200,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
     let sets_total = sets.len();
     let links = read_json::<Vec<RawGrantedEffectStatSetLink>>(&en.join("GrantedEffects.json"))?;
 
-    // per-level 行按 StatSet 行索引分组。
+    // per-level 行按 StatSet 行索引分组（文件序 = vendor GetRowList 序，位置配对依据）。
     let per_level =
         read_json::<Vec<RawStatSetPerLevel>>(&en.join("GrantedEffectStatSetsPerLevel.json"))?;
     let mut rows_by_set: BTreeMap<usize, Vec<&RawStatSetPerLevel>> = BTreeMap::new();
@@ -198,86 +210,164 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
         }
     }
 
+    // 单行的 stat 位置配对解析（全量入库，不过滤）。
+    let resolve_row_stats = |row: &RawStatSetPerLevel| -> Vec<SkillDamageStat> {
+        row.float_stats
+            .iter()
+            .zip(row.base_resolved_values.iter())
+            .chain(
+                row.additional_stats
+                    .iter()
+                    .zip(row.additional_stats_values.iter()),
+            )
+            .filter_map(|(&stat_idx, &value)| {
+                stat_id
+                    .get(stat_idx)
+                    .filter(|s| !s.is_empty())
+                    .map(|sid| SkillDamageStat {
+                        stat: sid.clone(),
+                        value: value as f64,
+                    })
+            })
+            .collect()
+    };
+    // 常量 stat 位置配对解析。
+    let resolve_constants = |set: &RawStatSet| -> Vec<SkillDamageStat> {
+        set.constant_stats
+            .iter()
+            .zip(set.constant_stats_values.iter())
+            .filter_map(|(&stat_idx, &value)| {
+                stat_id
+                    .get(stat_idx)
+                    .filter(|s| !s.is_empty())
+                    .map(|sid| SkillDamageStat {
+                        stat: sid.clone(),
+                        value: value as f64,
+                    })
+            })
+            .collect()
+    };
+    let raw_multiplier = |row: &RawStatSetPerLevel| {
+        1.0 + f64::from(row.base_multiplier.unwrap_or(0) as i32) / 10000.0
+    };
+
     let mut out = Vec::new();
     let mut damage_levels_total = 0usize;
     for link in &links {
         if link.id.is_empty() {
             continue;
         }
-        let Some(si) = link.stat_set.filter(|&i| i >= 0).map(|i| i as usize) else {
+        let Some(main_idx) = link.stat_set.filter(|&i| i >= 0).map(|i| i as usize) else {
             continue;
         };
-        let Some(set) = sets.get(si) else { continue };
+        let Some(main_set) = sets.get(main_idx) else {
+            continue;
+        };
 
-        // 等级无关常量 stat（如 support `damage_+%_final` 倍率）。全量入库，不过滤。
-        let mut constant_stats = Vec::new();
-        for (&stat_idx, &value) in set
-            .constant_stats
-            .iter()
-            .zip(set.constant_stats_values.iter())
-        {
-            if let Some(sid) = stat_id.get(stat_idx).filter(|s| !s.is_empty()) {
-                constant_stats.push(SkillDamageStat {
-                    stat: sid.clone(),
-                    value: value as f64,
-                });
-            }
-        }
+        let main_constants = resolve_constants(main_set);
+        let main_rows = rows_by_set.get(&main_idx).map(Vec::as_slice).unwrap_or(&[]);
 
-        let rows = rows_by_set.get(&si).map(Vec::as_slice).unwrap_or(&[]);
-
-        let mut levels = Vec::new();
-        for row in rows {
+        // 主 set：单 set 时代的原样解析（搬迁不变式锚点）。
+        let mut main_levels = Vec::new();
+        for row in main_rows {
             let Some(gem_level) = row.gem_level.filter(|&l| l > 0).map(|l| l as u32) else {
                 continue;
             };
-            let pairs = row
-                .float_stats
-                .iter()
-                .zip(row.base_resolved_values.iter())
-                .chain(
-                    row.additional_stats
-                        .iter()
-                        .zip(row.additional_stats_values.iter()),
-                );
-            let mut stats = Vec::new();
-            for (&stat_idx, &value) in pairs {
-                let Some(sid) = stat_id.get(stat_idx).filter(|s| !s.is_empty()) else {
-                    continue;
-                };
-                stats.push(SkillDamageStat {
-                    stat: sid.clone(),
-                    value: value as f64,
-                });
-            }
-            // 伤害倍率 = 1 + BaseMultiplier/10000（攻击技能武器伤害倍率，如 grenade 7.57）。
-            let damage_multiplier =
-                1.0 + f64::from(row.base_multiplier.unwrap_or(0) as i32) / 10000.0;
+            let stats = resolve_row_stats(row);
+            let damage_multiplier = raw_multiplier(row);
             // 收录有 stat 或有非平凡倍率的等级行。
             if !stats.is_empty() || (damage_multiplier - 1.0).abs() > f64::EPSILON {
-                levels.push(SkillStatSetLevel {
+                main_levels.push(SkillStatSetLevel {
                     gem_level,
                     damage_multiplier,
                     stats,
                 });
             }
         }
-        if levels.is_empty() && constant_stats.is_empty() {
+        main_levels.sort_by_key(|l| l.gem_level);
+
+        let mut def_sets = vec![StatSetDef {
+            set_id: main_set.id.clone(),
+            // label / vendor 导出序号来自 overlay/stat_set_labels.json（vendor 抽取，
+            // `.dat` Label 列的 FK 目标表不可下载），加载期 merge，适配阶段留空。
+            label: None,
+            vendor_set_index: None,
+            base_effectiveness: main_set.base_effectiveness.unwrap_or(0.0),
+            constant_stats: main_constants.clone(),
+            // statSet baseMods（如 Flicker `Speed MORE 285`）不在 GGG `.dat` 表中，是 PoB2
+            // 自带常量，由 overlay/skill_overrides.json 加载期 merge，适配阶段留空。
+            skill_attack_speed_more: None,
+            levels: main_levels,
+        }];
+
+        // 附加 set（vendor base-merge 语义，skills.lua:498-553）。
+        for &add_raw in &link.additional_stat_sets {
+            let Some(add_idx) = usize::try_from(add_raw).ok() else {
+                continue;
+            };
+            let Some(add_set) = sets.get(add_idx) else {
+                continue;
+            };
+            // 常量：主 ++ 本 set（:502-504 tableConcat）。
+            let mut constant_stats = main_constants.clone();
+            constant_stats.extend(resolve_constants(add_set));
+            // 效力：本 set 原始值为导出默认 1 时回退主 set（:506-508）。
+            let base_effectiveness = match add_set.base_effectiveness {
+                Some(v) if v != 1.0 => v,
+                _ => main_set.base_effectiveness.unwrap_or(0.0),
+            };
+            // 分等级：本 set 行与主 set 行按数组位置配对（:521 `skill.baseStatRow[indx]`），
+            // stat = 主配对行 ++ 本行（:541-549 tableConcat）。
+            let add_rows = rows_by_set.get(&add_idx).map(Vec::as_slice).unwrap_or(&[]);
+            let mut levels = Vec::new();
+            for (indx, row) in add_rows.iter().enumerate() {
+                let Some(gem_level) = row.gem_level.filter(|&l| l > 0).map(|l| l as u32) else {
+                    continue;
+                };
+                let paired = main_rows.get(indx);
+                let mut stats = paired.map(|p| resolve_row_stats(p)).unwrap_or_default();
+                stats.extend(resolve_row_stats(row));
+                // 倍率：本行 BaseMultiplier ≠ 0 取本行（:533-541 两分支终值同为本行
+                // `/10000+1`；UseSetAttackMulti 列未下载），否则回退主配对行。
+                let damage_multiplier = if row.base_multiplier.unwrap_or(0) != 0 {
+                    raw_multiplier(row)
+                } else {
+                    paired.map(|p| raw_multiplier(p)).unwrap_or(1.0)
+                };
+                if !stats.is_empty() || (damage_multiplier - 1.0).abs() > f64::EPSILON {
+                    levels.push(SkillStatSetLevel {
+                        gem_level,
+                        damage_multiplier,
+                        stats,
+                    });
+                }
+            }
+            levels.sort_by_key(|l| l.gem_level);
+            def_sets.push(StatSetDef {
+                set_id: add_set.id.clone(),
+                label: None,
+                vendor_set_index: None,
+                base_effectiveness,
+                constant_stats,
+                skill_attack_speed_more: None,
+                levels,
+            });
+        }
+
+        // 全部 set 皆空（无常量、无等级行）→ 跳过该效果（与单 set 时代口径一致）。
+        if def_sets
+            .iter()
+            .all(|s| s.levels.is_empty() && s.constant_stats.is_empty())
+        {
             continue;
         }
-        levels.sort_by_key(|l| l.gem_level);
-        damage_levels_total += levels.len();
+        damage_levels_total += def_sets.iter().map(|s| s.levels.len()).sum::<usize>();
         out.push(SkillStatSetDef {
-            id: link.id.clone(),
-            base_effectiveness: set.base_effectiveness.unwrap_or(0.0),
-            constant_stats,
-            // statSet baseMods（如 Flicker `Speed MORE 285`）不在 GGG `.dat` 表中，是 PoB2 自带常量，
-            // 由 vendor Lua 合并入 JSON（同 crit_chance 先例），适配阶段留空。
-            skill_attack_speed_more: None,
-            levels,
+            effect_id: link.id.clone(),
+            sets: def_sets,
         });
     }
-    out.sort_by(|a, b| a.id.cmp(&b.id));
+    out.sort_by(|a, b| a.effect_id.cmp(&b.effect_id));
 
     Ok(StatSetsBundle {
         sets: out,

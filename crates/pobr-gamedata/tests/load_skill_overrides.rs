@@ -105,8 +105,9 @@ fn merged_levels_spot_values() {
     let sets = data.skill_stat_sets().expect("加载 stat-set 域");
     let flicker_set = sets
         .iter()
-        .find(|s| s.id == "FlickerStrikePlayer")
-        .expect("FlickerStrikePlayer stat-set 存在");
+        .find(|s| s.effect_id == "FlickerStrikePlayer")
+        .and_then(|def| def.sets.first())
+        .expect("FlickerStrikePlayer 主 stat-set 存在");
     assert_eq!(flicker_set.skill_attack_speed_more, Some(285.0));
 }
 
@@ -157,5 +158,9 @@ fn pure_base_has_no_overlay_fields() {
         "attack_speed_multiplier 是表列直读的 base 字段（M1-T4.3），纯 base 不得为空"
     );
     let sets = data.skill_stat_sets().expect("纯 base stat-set 可加载");
-    assert!(sets.iter().all(|s| s.skill_attack_speed_more.is_none()));
+    assert!(
+        sets.iter()
+            .flat_map(|s| &s.sets)
+            .all(|s| s.skill_attack_speed_more.is_none())
+    );
 }

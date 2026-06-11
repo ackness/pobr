@@ -17,8 +17,9 @@ fn previously_filtered_stats_are_now_ingested() {
     // 非伤害 stat（vendor Data/Skills/act_int.lua IceNovaPlayer statSets[1]）。
     let ice = sets
         .iter()
-        .find(|s| s.id == "IceNovaPlayer")
-        .expect("IceNovaPlayer stat set present");
+        .find(|s| s.effect_id == "IceNovaPlayer")
+        .and_then(|s| s.sets.first())
+        .expect("IceNovaPlayer 主 stat set present");
     let has_const = |stat: &str| ice.constant_stats.iter().any(|c| c.stat == stat);
     assert!(
         has_const("base_skill_effect_duration"),

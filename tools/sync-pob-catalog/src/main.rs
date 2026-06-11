@@ -11,11 +11,12 @@ use sync_pob_catalog::extract_lua::{
 };
 use sync_pob_catalog::extract_quality::run_extract_gem_quality;
 use sync_pob_catalog::extract_stat_map::run_extract_stat_map;
+use sync_pob_catalog::extract_stat_set_labels::run_extract_stat_set_labels;
 use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -77,6 +78,7 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
         Some("gem-quality") => run_extract_gem_quality(&extract_args)?,
         Some("stat-map") => run_extract_stat_map(&extract_args)?,
         Some("gem-effects") => run_extract_gem_effects(&extract_args)?,
+        Some("stat-set-labels") => run_extract_stat_set_labels(&extract_args)?,
         Some(other) => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,

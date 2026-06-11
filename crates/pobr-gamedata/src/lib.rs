@@ -173,10 +173,13 @@ impl GameData {
         Ok(levels)
     }
 
-    /// 加载授予效果的分等级**伤害 stat 集**（按 effect id 排序的数组，每项含每级
-    /// 已解析的伤害 stat）。空缺（旧数据包无此域）时返回空 Vec，向后兼容。
-    /// `overlay/skill_overrides.json` 的 statSet 级覆盖值（skill_attack_speed_more，
-    /// PoB2 自带 baseMods 常量，不在 GGG `.dat` 中）在此 merge 到纯 base 之上。
+    /// 加载授予效果的**多 statSet 分等级 stat 集**（按 effect id 排序的数组，
+    /// 每项 = 主 set + 附加 set，M1-T5.2）。空缺（旧数据包无此域）时返回空 Vec，
+    /// 向后兼容。两个 overlay 在此 merge 到纯 base 之上：
+    /// - `skill_overrides.json` 的 statSet 级覆盖值（skill_attack_speed_more，
+    ///   PoB2 自带 baseMods 常量，不在 GGG `.dat` 中）；
+    /// - `stat_set_labels.json` 的形态 label / vendor 导出序号（`.dat` `Label`
+    ///   列的 FK 目标表不可下载，vendor 抽取）。
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
         let mut sets =
             match self.load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
@@ -191,6 +194,30 @@ impl GameData {
                     message,
                 },
             )?;
+        }
+        if let Some(labels) = self.stat_set_labels()? {
+            // (skill, set_id) → (vendor 导出序号, label)。
+            let by_key: std::collections::BTreeMap<(&str, &str), (u32, &str)> = labels
+                .labels
+                .iter()
+                .map(|l| {
+                    (
+                        (l.skill.as_str(), l.set_id.as_str()),
+                        (l.set_index, l.label.as_str()),
+                    )
+                })
+                .collect();
+            for def in &mut sets {
+                for set in &mut def.sets {
+                    if let Some(&(idx, label)) =
+                        by_key.get(&(def.effect_id.as_str(), set.set_id.as_str()))
+                    {
+                        set.vendor_set_index = Some(idx);
+                        set.label = Some(label.to_string());
+                    }
+                    // vendor 未导出该 set（模板策展跳过）→ label/序号保持 None。
+                }
+            }
         }
         Ok(sets)
     }
