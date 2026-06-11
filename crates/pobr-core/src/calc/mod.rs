@@ -4,6 +4,7 @@ pub mod breakdown;
 pub mod crit;
 pub mod damage;
 pub mod defence;
+pub mod defence_panels;
 pub mod ehp;
 pub mod env;
 pub mod error;
@@ -41,6 +42,7 @@ pub use defence::{
     fill_evade_stun, hit_chance, monster_hit_chance, taken_mult_for_type,
     taken_mult_for_type_default, taken_mult_for_type_with_source, taken_mult_over_time,
 };
+pub use defence_panels::{BlockResult, calc_block, fill_defence_panels};
 pub use ehp::{
     EhpOptions, EhpResult, ResistanceSuite, calc_ehp, calc_ehp_with_opts, max_hit_for_type,
     physical_max_hit, physical_taken_fraction,

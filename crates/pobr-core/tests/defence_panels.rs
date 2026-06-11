@@ -1,0 +1,115 @@
+//! M2 Track D 集成测试：Block / Spirit / Ward / Deflection 面板族 + 预留 efficiency。
+//!
+//! 期望值全部手算自 PoB2 公式，注释标注 CalcDefence.lua 行号
+//! （蓝图 m2-defence §4.1 门禁 6：公式单测带 vendor 行号 + 手算期望值）。
+
+use pobr_core::{CalcConfig, ModDb, calc};
+use pobr_data::prelude::*;
+
+/// 文本词条 → ModDb（经 mod_parser，W0.1 词条覆盖表即接口契约）。
+fn db_from_texts(texts: &[&str]) -> ModDb {
+    let mut db = ModDb::new();
+    for text in texts {
+        let outcome = pobr_core::mod_parser::parse_mod(text)
+            .unwrap_or_else(|e| panic!("解析 `{text}` 失败：{e:?}"));
+        assert!(
+            !outcome.mods.is_empty(),
+            "`{text}` 应解析出词条（Unsupported 会静默丢失覆盖）"
+        );
+        db.add_list(outcome.mods);
+    }
+    db
+}
+
+/// 直接注入数值词条（build 层注入语义，如 ShieldBlockChance）。
+fn add_base(db: &mut ModDb, name: &str, value: f64) {
+    db.add_list([pobr_core::Modifier::number(name, ModType::Base, value)]);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Block（CalcDefence.lua:961-1058）
+// ─────────────────────────────────────────────────────────────────
+
+/// 无任何词条：格挡 0，上限 = 角色固有 BaseBlockChanceMax 50
+/// （Misc.lua:147；CalcSetup.lua:28）。
+#[test]
+fn block_defaults_without_sources() {
+    let db = ModDb::new();
+    let cfg = CalcConfig::new();
+
+    let block = calc::calc_block(&db, &cfg);
+
+    assert_eq!(block.block_chance, 0.0);
+    assert_eq!(block.block_chance_max, 50.0);
+    assert_eq!(block.spell_block_chance_max, 50.0);
+    assert_eq!(block.effective_block_chance, 0.0);
+    assert_eq!(block.block_effect_taken_pct, 0.0, "默认完全格挡（承伤 0%）");
+}
+
+/// 盾基底 + inc 乘区：`(26 + 0) × 1.07 = 27.82`（CalcDefence.lua:989-991；
+/// warrior-titan-shield-wall 的黄金形态：Tawhoan Tower Shield 基底 26 + 树 7% inc）。
+#[test]
+fn block_shield_base_times_increased() {
+    let mut db = db_from_texts(&["7% increased Block chance"]);
+    add_base(&mut db, "ShieldBlockChance", 26.0);
+    let cfg = CalcConfig::new();
+
+    let block = calc::calc_block(&db, &cfg);
+
+    assert!(
+        (block.block_chance - 27.82).abs() < 1e-9,
+        "(26+0)×1.07 = 27.82，得 {}",
+        block.block_chance
+    );
+    assert_eq!(
+        block.effective_block_chance, 27.82,
+        "无 luck flag 时有效值 = 原值"
+    );
+}
+
+/// BlockChanceMax 体系（:961-965）：上限 = 50 固有 + ΣBASE BlockChanceMax，
+/// 总量超限被 cap；BlockChanceCap 90 为硬上限。
+#[test]
+fn block_capped_by_max_chain() {
+    let mut db = db_from_texts(&["+5% to Maximum Block Chance"]);
+    add_base(&mut db, "ShieldBlockChance", 30.0);
+    add_base(&mut db, "BlockChance", 40.0); // 30+40=70 > 55
+    let cfg = CalcConfig::new();
+
+    let block = calc::calc_block(&db, &cfg);
+
+    assert_eq!(block.block_chance_max, 55.0, "50 固有 + 5 词条");
+    assert_eq!(block.block_chance, 55.0, "70 被上限 55 截断");
+}
+
+/// 法术格挡（:1003-1014）：独立 BASE/乘区；`SpellBlockChanceIsBlockChance`
+/// flag（ModParser.lua:3027）时等同攻击格挡。
+#[test]
+fn spell_block_independent_and_flag_unified() {
+    // 独立路径：20% spell block 词条 → spell=20，攻击不受影响。
+    let db = db_from_texts(&["20% chance to Block Spell Damage"]);
+    let cfg = CalcConfig::new();
+    let block = calc::calc_block(&db, &cfg);
+    assert_eq!(block.spell_block_chance, 20.0);
+    assert_eq!(block.block_chance, 0.0);
+
+    // flag 路径：法术格挡 = 攻击格挡。
+    let mut db =
+        db_from_texts(&["Chance to Block Spell Damage is equal to Chance to Block Attack Damage"]);
+    add_base(&mut db, "ShieldBlockChance", 26.0);
+    let block = calc::calc_block(&db, &cfg);
+    assert_eq!(block.spell_block_chance, block.block_chance);
+    assert_eq!(block.spell_block_chance, 26.0);
+}
+
+/// 格挡承伤（:1054-1058 / ModParser.lua:2479）：`You take 30% of Damage from
+/// Blocked Hits` → 承伤份额 30%。
+#[test]
+fn block_effect_taken_share() {
+    let db = db_from_texts(&["You take 30% of Damage from Blocked Hits"]);
+    let cfg = CalcConfig::new();
+
+    let block = calc::calc_block(&db, &cfg);
+
+    assert_eq!(block.block_effect_taken_pct, 30.0);
+}

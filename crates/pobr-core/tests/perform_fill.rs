@@ -73,9 +73,12 @@ fn perform_fills_bleed_dps_only_with_bleed_chance() {
     assert!(with_chance.player.output.bleed_dps > 0.0);
 }
 
-/// PoE2 格挡上限测试（Bug#11：上限为 90%，非 PoE1 的 75%）。
+/// PoE2 格挡上限测试（M2 Track D 后走 BlockChanceMax 体系）。
 ///
-/// 出处：agent-docs/block.md §被动格挡、PoB2 `BlockChanceCap = 90`。
+/// 角色固有格挡上限 = 50%（`BaseBlockChanceMax`，Misc.lua:147 /
+/// CalcSetup.lua:28），硬上限 `BlockChanceCap` = 90 仅对堆了
+/// `+Maximum Block Chance` 词条的 build 生效（CalcDefence.lua:961-965）。
+/// 旧断言（95→90）缺 BlockChanceMax 层，按 vendor 模型修正为 95→50。
 #[test]
 fn perform_fills_block_chance() {
     let base = ActorBaseStats {
@@ -85,13 +88,28 @@ fn perform_fills_block_chance() {
     let mut env = player_with(
         base,
         vec![
-            // 95% block → capped at PoE2 limit 90%
+            // 95% block → 先被默认格挡上限 50%（BaseBlockChanceMax）截断。
             Modifier::number("BlockChance", ModType::Base, 95.0),
         ],
     );
     perform(&mut env).unwrap();
 
-    // PoE2: block capped at 90 (not PoE1's 75).
+    assert_eq!(env.player.output.block_chance, 50.0);
+    assert_eq!(env.player.output.block_chance_max, 50.0);
+
+    // 抬高上限词条后随之上移，仍被硬上限 90 封顶（50 固有 + 50 词条 → cap 90）。
+    let mut env = player_with(
+        ActorBaseStats {
+            life: 1000.0,
+            ..ActorBaseStats::default()
+        },
+        vec![
+            Modifier::number("BlockChance", ModType::Base, 95.0),
+            Modifier::number("BlockChanceMax", ModType::Base, 50.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.block_chance_max, 90.0);
     assert_eq!(env.player.output.block_chance, 90.0);
 }
 

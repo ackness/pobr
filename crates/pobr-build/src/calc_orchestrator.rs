@@ -364,6 +364,11 @@ pub fn calculate_with_data(
     //     `increased Armour/Evasion/EnergyShield` 词条经 add_item 注入 INC，于此 base 上缩放。
     session.add_modifiers(defence_base_modifiers(build, data));
 
+    // 1d'. 盾牌基底格挡 → `ShieldBlockChance` BASE（M2 Track D，13-G8）。
+    //      PoB2 CalcDefence.lua:975-980 读 Weapon 2/3 `armourData.BlockChance`
+    //      作为盾基底；catalog 值经 overlay/base_item_overrides merge 注入。
+    session.add_modifiers(shield_block_modifiers(build, data));
+
     // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
     //    真实词条中含解析器尚未支持的硬失败形式（如 `[Bleeding] on [Hit]`），逐件
     //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
@@ -823,6 +828,41 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
                 );
             }
         }
+    }
+    mods
+}
+
+/// 盾牌基底格挡 → `ShieldBlockChance` BASE 词条（M2 Track D，13-G8；PoB2
+/// CalcDefence.lua:975-980 `Weapon 2/3 armourData.BlockChance` 等价注入）。
+///
+/// 基底值取 catalog `ArmourBaseStats::block_chance`（overlay merge 后的 vendor
+/// `ShieldTypes.Block`）。盾上的局部 block 词条（`+N% chance to Block` /
+/// `increased Block chance`）**不**做 drop-local：vendor 把它们折入件级底值
+/// （Item.lua:1825-1826 `floor(base × (1+局部inc) + 局部BASE)`），PoBR 留在全局桶
+/// 后经 `(base + ΣBASE) × mod` 聚合数学等价（仅差 vendor 件级 floor）。
+fn shield_block_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    // PoBR 槽位模型仅 Weapon2 为副手（无 Weapon3 双武器集切换）。
+    let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
+        return mods;
+    };
+    let Some(block) = data
+        .armour_base(&item.base.to_string())
+        .and_then(|a| a.block_chance)
+    else {
+        return mods;
+    };
+    if block > 0.0 {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::Item,
+            "base.ShieldBlockChance".to_string(),
+        ))
+        .with_raw_text(format!("{} base block chance", item.base));
+        mods.push(
+            Modifier::number("ShieldBlockChance", ModType::Base, block)
+                .with_origin(origin)
+                .with_tag(ModTag::SlotName(EquipmentSlot::Weapon2.id().to_string())),
+        );
     }
     mods
 }

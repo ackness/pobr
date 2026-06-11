@@ -407,6 +407,9 @@ fn fill_mechanics(env: &mut Env) {
 
     // --- Evade 四分型 + Stun（M2 Track E，蓝图 §3.2 预登记的一行调用）---
     super::defence::fill_evade_stun(env, &keystones);
+
+    // --- Block/Spirit/Ward/Deflection 面板族（M2 Track D，蓝图 §3.2 预登记的一行调用）---
+    super::defence_panels::fill_defence_panels(env, &keystones);
 }
 
 /// 触发速率 fill（Lane B）：读冷却驱动 / CWC 触发词条，写 `trigger_rate_cap` /
