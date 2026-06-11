@@ -10,10 +10,13 @@ pub mod buff_refs;
 pub mod extract_bases;
 pub mod extract_config_options;
 pub mod extract_gem_effects;
+pub mod extract_item_overlay;
 pub mod extract_lua;
+pub mod extract_minions;
 pub mod extract_quality;
 pub mod extract_stat_map;
 pub mod extract_stat_set_labels;
+pub mod mirage_configs;
 
 pub fn collect_catalog(pob_root: &Path) -> io::Result<PobCatalog> {
     let modules = pob_root.join("src").join("Modules");

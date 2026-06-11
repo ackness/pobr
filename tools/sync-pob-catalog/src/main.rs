@@ -8,18 +8,26 @@ use sync_pob_catalog::buff_refs::run_check_buff_refs;
 use sync_pob_catalog::extract_bases::{DEFAULT_BASE_FILES, run_extract_bases};
 use sync_pob_catalog::extract_config_options::run_extract_config_options;
 use sync_pob_catalog::extract_gem_effects::run_extract_gem_effects;
+use sync_pob_catalog::extract_item_overlay::{
+    DEFAULT_UNIQUE_FILES, run_extract_catalysts, run_extract_mod_scalability, run_extract_runes,
+    run_extract_uniques,
+};
 use sync_pob_catalog::extract_lua::{
     DEFAULT_SKILL_FILES, DEFAULT_STAT_MAP_SKILL_FILES, ExtractLuaArgs, resolve_luajit,
     run_extract_lua,
 };
+use sync_pob_catalog::extract_minions::{
+    MinionsKind, run_extract_minion_list, run_extract_minions,
+};
 use sync_pob_catalog::extract_quality::run_extract_gem_quality;
 use sync_pob_catalog::extract_stat_map::run_extract_stat_map;
 use sync_pob_catalog::extract_stat_set_labels::run_extract_stat_set_labels;
+use sync_pob_catalog::mirage_configs::run_gen_mirage_configs;
 use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|config-options] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|config-options|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -37,6 +45,7 @@ fn run() -> io::Result<()> {
     match command.as_deref() {
         Some(cmd @ ("extract-lua" | "extract-bases")) => run_extract_command(cmd, raw_args),
         Some("check-buff-refs") => run_check_buff_refs_command(raw_args),
+        Some("gen-mirage-configs") => run_gen_mirage_configs_command(raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
         }
@@ -66,6 +75,15 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             Some("gem-effects") => &["Gems"],
             // config-options 恒读 Modules/ConfigOptions.lua（headless 引导，--files 仅占位）
             Some("config-options") => &["ConfigOptions"],
+            // pre-M5 数据生产目标：minions/spectres/mod-scalability/runes/catalysts
+            // 抽取文件固定（runner 内校验）；uniques 用 itemTypes 全集；minion-list
+            // 复用全量技能文件（与 skill-overrides 同集）。
+            Some("minions") => &["Minions"],
+            Some("spectres") => &["Spectres"],
+            Some("mod-scalability") => &["ModScalability"],
+            Some("runes") => &["ModRunes"],
+            Some("catalysts") => &["Item"],
+            Some("uniques") => DEFAULT_UNIQUE_FILES,
             _ => DEFAULT_SKILL_FILES,
         }
     };
@@ -102,6 +120,13 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             Some("gem-effects") => run_extract_gem_effects(&extract_args)?,
             Some("stat-set-labels") => run_extract_stat_set_labels(&extract_args)?,
             Some("config-options") => run_extract_config_options(&extract_args)?,
+            Some("minions") => run_extract_minions(&extract_args, MinionsKind::Minions)?,
+            Some("spectres") => run_extract_minions(&extract_args, MinionsKind::Spectres)?,
+            Some("minion-list") => run_extract_minion_list(&extract_args)?,
+            Some("mod-scalability") => run_extract_mod_scalability(&extract_args)?,
+            Some("runes") => run_extract_runes(&extract_args)?,
+            Some("uniques") => run_extract_uniques(&extract_args)?,
+            Some("catalysts") => run_extract_catalysts(&extract_args)?,
             Some(other) => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
@@ -117,6 +142,38 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             }
             fs::write(&out, json)?;
             eprintln!("{command}: wrote {}", out.display());
+            Ok(())
+        }
+        None => {
+            print!("{json}");
+            Ok(())
+        }
+    }
+}
+
+// ---- gen-mirage-configs：工具内嵌 5 条 mirage 配置 → overlay JSON ----
+
+fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Result<()> {
+    let parsed = ExtractCliArgs::parse(args)?;
+    let extract_args = ExtractLuaArgs {
+        vendor_root: parsed.vendor_root,
+        luajit: resolve_luajit(parsed.luajit.as_deref()),
+        // 仅为复用 ExtractLuaArgs 形状；本命令不执行 luajit。
+        files: vec!["CalcMirages".to_string()],
+        version_file: parsed.version_file,
+        out_for_meta: parsed
+            .out
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned()),
+    };
+    let json = run_gen_mirage_configs(&extract_args)?;
+    match parsed.out {
+        Some(out) => {
+            if let Some(parent) = out.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&out, json)?;
+            eprintln!("gen-mirage-configs: wrote {}", out.display());
             Ok(())
         }
         None => {

@@ -28,12 +28,22 @@
       "base_item_overrides",
       "buff_definitions",
       "config_options",
+
+      "catalysts",
       "gem_effects",
       "gem_quality_stats",
+      "granted_effect_minions",
       "high_precision_mods",
       "local_mods",
+      "minions",
+      "mirage_configs",
+      "mod_scalability",
+      "runes",
       "skill_overrides",
-      "stat_set_labels"
+      "special_mods",
+      "spectres",
+      "stat_set_labels",
+      "uniques"
     ],
     "generated": []
   }
