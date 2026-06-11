@@ -188,6 +188,16 @@ pub fn calculate_with_data(
     if main_hand_offhand_is_shield(build, data) {
         cfg = cfg.with_condition("UsingShield", true);
     }
+    // 「Body Armour grants <mod>」前缀族的装备条件（PoB2 ModParser.lua:1418 / :3255-3268
+    // `ItemCondition{itemSlot="Body Armour", rarityCond="NORMAL"}`）：体甲槽有装备且
+    // 稀有度为 Normal 时置真。build-state 默认，全 build 一致，非特化。
+    if build
+        .items
+        .get(&EquipmentSlot::BodyArmour)
+        .is_some_and(|item| item.rarity == pobr_data::item::ItemRarity::Normal)
+    {
+        cfg = cfg.with_condition("NormalBodyArmourEquipped", true);
+    }
     // 主手武器类别 → 持握条件（使「... with Quarterstaves」「while Dual Wielding」等树/词条生效）。
     // 注：冷却限速技能（如榴弹）当前 rate 模型把攻速 inc/more 乘到 cd-capped base 上（近似），
     // 一旦补全武器类攻速会错误放大 grenade rate（真值应 cooldown-governed：Speed=1/cooldown ×

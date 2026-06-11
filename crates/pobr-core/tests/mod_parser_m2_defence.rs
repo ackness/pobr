@@ -492,3 +492,55 @@ fn m2_coverage_negative_guards() {
         );
     }
 }
+
+/// M2 补刀：Blood Mage「Crimson Power」percent-stat 生命（ModParser.lua:2808-2813）
+/// 与 Smith of Kitava「Body Armour grants」前缀族（:1418 / :3255-3268）。
+#[test]
+fn m2_followup_ascendancy_defence_words() {
+    use pobr_core::modifier::ModTag;
+
+    // Crimson Power：体甲件级 ES 的 N% 作额外生命（PercentStat 等价为 Multiplier）。
+    let o = parse_mod(
+        "Gain additional maximum Life equal to 100% of the [ItemEnergyShield|Item Energy Shield] on [Equipped] Body Armour",
+    )
+    .expect("parses");
+    assert_eq!(o.status, ParseStatus::Parsed);
+    let m = &o.mods[0];
+    assert_eq!(m.name.as_str(), "MaximumLife");
+    assert_eq!(m.mod_type, ModType::Base);
+    assert!(m.tags.iter().any(|t| matches!(
+        t,
+        ModTag::Multiplier { var, div, .. } if var == "EnergyShieldOnbodyarmour" && *div == 1.0
+    )));
+    // 50% 变体 → div = 2（floor(bodyES/2)）。
+    let o = parse_mod(
+        "Gain additional maximum Life equal to 50% of the Energy Shield on Equipped Body Armour",
+    )
+    .expect("parses");
+    assert!(o.mods[0].tags.iter().any(|t| matches!(
+        t,
+        ModTag::Multiplier { var, div, .. } if var == "EnergyShieldOnbodyarmour" && *div == 2.0
+    )));
+
+    // Body Armour grants 前缀：内层照常解析，全部 mod 追加 Normal 体甲装备条件。
+    let o = parse_mod("Body Armour grants 30% increased [Spirit]").expect("parses");
+    assert_eq!(o.status, ParseStatus::Parsed);
+    let m = &o.mods[0];
+    assert_eq!(m.name.as_str(), "Spirit");
+    assert_eq!(m.mod_type, ModType::Inc);
+    assert!(m.tags.iter().any(|t| matches!(
+        t,
+        ModTag::Condition { var, negated: false } if var == "NormalBodyArmourEquipped"
+    )));
+    // taken-as 内层（Molten Symbol）：前缀条件叠加在既有 taken-as 产物上。
+    let o = parse_mod(
+        "Body Armour grants 25% of [Physical|Physical] Damage from [HitDamage|Hits] taken as [Fire] Damage",
+    )
+    .expect("parses");
+    let m = &o.mods[0];
+    assert_eq!(m.name.as_str(), "PhysicalDamageFromHitsTakenAsFire");
+    assert!(m.tags.iter().any(|t| matches!(
+        t,
+        ModTag::Condition { var, negated: false } if var == "NormalBodyArmourEquipped"
+    )));
+}

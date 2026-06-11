@@ -117,6 +117,23 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     }
 
     let mut flags = ModFlags::NONE;
+    // 「Body Armour grants <mod>」前缀（PoB2 ModParser.lua:1418 通用前缀 tag +
+    // :3255-3268 Smith of Kitava 特例族）：内层词条照常递归解析，全部产出 mod 追加
+    // 「身穿 Normal 品质体甲」条件（vendor `ItemCondition{itemSlot="Body Armour",
+    // rarityCond="NORMAL"}` 等价），条件由编排层按体甲槽位实际装备置真。
+    // 内层解析硬失败时整条照常 Err（与无前缀时一致，skip-and-collect）。
+    if let Some(stripped) = rest.strip_prefix("body armour grants ") {
+        let mut outcome = parse_mod(stripped)?;
+        for m in &mut outcome.mods {
+            m.tags.push(ModTag::Condition {
+                var: "NormalBodyArmourEquipped".into(),
+                negated: false,
+            });
+            m.source = Some(original.into());
+        }
+        return Ok(outcome);
+    }
+
     let mut prefix_tags: Vec<ModTag> = Vec::new();
     // 「Empowered Attacks deal ...」（PoB2 `Condition:Empowered` + Attack flag）。须先于
     // 通用 `attacks deal` 前缀，否则会被后者截断丢失 Empowered 条件。Empowered 默认不激活
@@ -1013,6 +1030,39 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
             ]);
         }
         return None;
+    }
+    // Blood Mage「Crimson Power」（ModParser.lua:2811-2813）：体甲件级 ES 的 N% 作
+    // 额外生命 flat → `MaximumLife` BASE 1 × ⌊bodyES × N/100⌋。Multiplier 变量
+    // `EnergyShieldOnbodyarmour` 与编排层 per_slot_defence_multipliers 注入键一致
+    // （vendor `PercentStat{stat="EnergyShieldOnBody Armour", percent=N}` 等价）。
+    if let Some(tail) = rest.strip_prefix("gain additional maximum life equal to ") {
+        let (pct, t) = strip_pct_of(tail)?;
+        let t = t.strip_prefix("the ").unwrap_or(t);
+        let t = t.strip_prefix("item ").unwrap_or(t);
+        if t == "energy shield on equipped body armour" && pct > 0.0 {
+            return Some(vec![
+                Modifier::number("MaximumLife", ModType::Base, 1.0)
+                    .with_tag(ModTag::Multiplier {
+                        var: "EnergyShieldOnbodyarmour".into(),
+                        div: 100.0 / pct,
+                        limit: None,
+                    })
+                    .with_source(source),
+            ]);
+        }
+        return None;
+    }
+    // 同族 100% 句式变体（ModParser.lua:2808-2810）。
+    if rest == "gain energy shield from equipped body armour as extra maximum life" {
+        return Some(vec![
+            Modifier::number("MaximumLife", ModType::Base, 1.0)
+                .with_tag(ModTag::Multiplier {
+                    var: "EnergyShieldOnbodyarmour".into(),
+                    div: 1.0,
+                    limit: None,
+                })
+                .with_source(source),
+        ]);
     }
     // 损失防止单数值形（ModParser.lua:2816）。
     if let Some((pct, tail)) = strip_pct_of(rest)
