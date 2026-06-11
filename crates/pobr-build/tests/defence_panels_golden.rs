@@ -91,6 +91,35 @@ fn block_chance_zero_on_non_shield_builds() {
     assert_eq!(out.block_chance, 0.0);
 }
 
+/// `DeflectChance`/`DeflectionRating` @5%（13-G10）：huntress/monk 系
+/// `Gain Deflection Rating equal to N% of Evasion` build 是现成 fixture；
+/// 无 deflect 来源的 build 双值保持 0（verify 零值不误报）。
+#[test]
+fn deflection_matches_golden() {
+    let data = load_data();
+    for name in [
+        "huntress-spirit-walker-twister", // rating 5666.7 / chance 37
+        "monk-martial-artist-twister",    // rating 11229.76 / chance 58
+        "warrior-titan-shield-wall",      // rating 0.84 / chance 0
+        "sorceress-stormweaver-comet",    // 0 / 0
+    ] {
+        let dir = builds_dir().join(name);
+        let golden_rating = golden_stat(&dir, "DeflectionRating").expect("golden DeflectionRating");
+        let golden_chance = golden_stat(&dir, "DeflectChance").expect("golden DeflectChance");
+        let out = run_build(name, &data);
+        // rating < 1 时 vendor 给 0 几率（CalcDefence.lua:49-51），rating 本身按 @5% 比对。
+        if golden_rating >= 1.0 {
+            assert_within_5pct(
+                "DeflectionRating",
+                name,
+                out.deflection_rating,
+                golden_rating,
+            );
+        }
+        assert_within_5pct("DeflectChance", name, out.deflect_chance, golden_chance);
+    }
+}
+
 /// `Spirit` 池本值 @5%（13-G11）：覆盖纯任务奖励（100）、权杖 rolled `Spirit:`
 /// 行（druid 433）、`+N to Spirit` 装备/树词条（mercenary 336）三类来源形态。
 #[test]

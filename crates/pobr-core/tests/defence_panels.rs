@@ -194,3 +194,57 @@ fn ward_zero_without_sources() {
     let cfg = CalcConfig::new();
     assert_eq!(calc::calc_ward(&db, &cfg, false), 0.0);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Deflection（CalcDefence.lua:48-54 / :1487-1506）
+// ─────────────────────────────────────────────────────────────────
+
+/// `deflectChance` 公式手算（:48-54）：rating=5000、acc=2000 →
+/// notDeflect = 2000/(2000+600)×150−50 = 65.3846…，chance = 100−round(65) = 35。
+#[test]
+fn deflection_chance_formula() {
+    let mut db = ModDb::new();
+    add_base(&mut db, "DeflectionRating", 5000.0);
+    let cfg = CalcConfig::new();
+
+    let d = calc::calc_deflection(&db, &cfg, 0.0, 0.0, 2000.0);
+
+    assert_eq!(d.rating, 5000.0);
+    assert_eq!(d.chance, 35.0);
+    assert_eq!(d.effect_pct, 40.0, "基础 DeflectEffect 40（Misc.lua:111）");
+}
+
+/// GainAs 合成（:1490）：rating = 0 + (evasion×30% + armour×20%) × (1+inc)；
+/// 手算：(10000×0.30 + 5000×0.20) × 1.10 = 4400。inc 只作用于 GainAs 部分。
+#[test]
+fn deflection_rating_gain_as_with_increased() {
+    let mut db = db_from_texts(&[
+        "Gain Deflection Rating equal to 30% of Evasion Rating",
+        "Gain Deflection Rating equal to 20% of Armour",
+        "10% increased Deflection Rating",
+    ]);
+    add_base(&mut db, "DeflectionRating", 100.0);
+    let cfg = CalcConfig::new();
+
+    let d = calc::calc_deflection(&db, &cfg, 5000.0, 10000.0, 2000.0);
+
+    // 100（裸 BASE 不吃乘区）+ 4000×1.1 = 4500。
+    assert_eq!(d.rating, 4500.0);
+}
+
+/// rating < 1 → 0 几率（:49-51）；DeflectIsLucky 幂（:1492-1495）。
+#[test]
+fn deflection_zero_and_lucky() {
+    let db = ModDb::new();
+    let cfg = CalcConfig::new();
+    assert_eq!(
+        calc::calc_deflection(&db, &cfg, 0.0, 0.0, 2000.0).chance,
+        0.0
+    );
+
+    // lucky：35% → (1−0.65²)×100 = 57.75。
+    let mut db = db_from_texts(&["Chance to Deflect is Lucky"]);
+    add_base(&mut db, "DeflectionRating", 5000.0);
+    let d = calc::calc_deflection(&db, &cfg, 0.0, 0.0, 2000.0);
+    assert!((d.chance - 57.75).abs() < 1e-9, "got {}", d.chance);
+}

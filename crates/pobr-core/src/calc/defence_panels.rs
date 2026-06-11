@@ -228,6 +228,88 @@ pub fn calc_ward(db: &ModDb, cfg: &CalcConfig, es_to_ward: bool) -> f64 {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Deflection（CalcDefence.lua:48-54 / :1487-1506）
+// ─────────────────────────────────────────────────────────────────
+
+/// Deflection 面板结果。
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct DeflectionResult {
+    /// 偏斜等级（rating）。
+    pub rating: f64,
+    /// 偏斜几率（%；DeflectIsLucky 幂后）。
+    pub chance: f64,
+    /// 偏斜减伤幅度（%；基础 40 + ΣBASE DeflectEffect，clamp [0,100]；
+    /// Track F 折入 mitigation 层）。
+    pub effect_pct: f64,
+}
+
+/// `calcs.deflectChance` 等价（CalcDefence.lua:48-54）：
+/// `chanceToNotDeflect = acc/(acc + deflection×0.12) × 150 − 50`，
+/// `chance = clamp(100 − round(notDeflect), 0, DeflectionChanceCap)`；
+/// `deflection < 1` → 0。
+fn deflect_chance_pct(deflection: f64, accuracy: f64, cap: f64) -> f64 {
+    if deflection < 1.0 {
+        return 0.0;
+    }
+    let chance_to_not_deflect = accuracy / (accuracy + deflection * 0.12) * 150.0 - 50.0;
+    (100.0 - chance_to_not_deflect.round()).clamp(0.0, cap)
+}
+
+/// Deflection 合成（CalcDefence.lua:1490-1497）。
+///
+/// `DeflectionRating = ΣBASE DeflectionRating + (Evasion × ΣBASE
+/// EvasionGainAsDeflection/100 + Armour × ΣBASE ArmourGainAsDeflection/100)
+/// × calcLib.mod(DeflectionRating)`——vendor 括号语义：inc/more 乘区**只作用于
+/// GainAs 派生部分**（:1490 原文）。`DeflectChance = deflectChance(rating,
+/// enemyAccuracy)`；`DeflectIsLucky` → `(1−(1−p)²)`（:1492-1495）；
+/// `DeflectEffect = clamp(基础 40 + ΣBASE, 0, 100)`（:1496，常量
+/// `cfg.constants.game().deflect_effect`）。
+pub fn calc_deflection(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    armour: f64,
+    evasion: f64,
+    enemy_accuracy: f64,
+) -> DeflectionResult {
+    let rating_names = [ModName::from("DeflectionRating")];
+    let gain_from_evasion = evasion
+        * db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("EvasionGainAsDeflection")],
+        )
+        / 100.0;
+    let gain_from_armour = armour
+        * db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("ArmourGainAsDeflection")],
+        )
+        / 100.0;
+    let rating = db.sum(ModType::Base, cfg, &rating_names)
+        + (gain_from_evasion + gain_from_armour) * scaling_mod(db, cfg, &rating_names);
+
+    let mut chance = deflect_chance_pct(
+        rating,
+        enemy_accuracy,
+        cfg.constants.game().deflection_chance_cap,
+    );
+    // :1492-1495 DeflectIsLucky 幂。
+    if db.flag(cfg, ModName::from("DeflectIsLucky")) {
+        chance = luck_transform(chance, true, false);
+    }
+    let effect_pct = (cfg.constants.game().deflect_effect
+        + db.sum(ModType::Base, cfg, &[ModName::from("DeflectEffect")]))
+    .clamp(0.0, 100.0);
+
+    DeflectionResult {
+        rating: round(rating),
+        chance: round(chance),
+        effect_pct: round(effect_pct),
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Spirit 池（CalcDefence.lua:73-126）
 // ─────────────────────────────────────────────────────────────────
 
@@ -300,6 +382,18 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
 
     // --- Ward 池（CalcDefence.lua:1144-1296；EnergyShieldToWard 走 C-1 快照）---
     env.player.output.ward = calc_ward(db, cfg, keystones.energy_shield_to_ward);
+
+    // --- Deflection（CalcDefence.lua:48-54 / :1487-1506）---
+    // 敌人命中读数同 Track E evade 路径（env.enemy.base.accuracy）。
+    let deflect = calc_deflection(
+        db,
+        cfg,
+        env.player.output.armour,
+        env.player.output.evasion,
+        env.enemy.base.accuracy,
+    );
+    env.player.output.deflection_rating = deflect.rating;
+    env.player.output.deflect_chance = deflect.chance;
 }
 
 #[cfg(test)]
