@@ -176,8 +176,9 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
-    // 防御 flag 词条：「Armour applies to <Element(s)> Damage taken from Hits instead of
-    // Physical Damage」→ `ArmourAppliesTo<Element>` flag（EHP 据此让该元素改走护甲）。
+    // 防御词条：「Armour applies to <Element(s)> Damage taken from Hits instead of
+    // Physical Damage」→ `ArmourAppliesTo<X>DamageTaken` BASE 100 + 物理 DoesNotApply flag
+    // （13-G7 百分比模型，M2 Track B-2 起为唯一形态；EHP 据此让该元素改走护甲）。
     if let Some(mods) = parse_armour_applies_to_element(&rest, original) {
         return Ok(ParseOutcome {
             mods,
@@ -609,11 +610,11 @@ fn parse_buffs_also_grant(rest: &str, source: &str) -> Option<Vec<Modifier>> {
 /// 解析「Armour applies to <Fire/Cold/Lightning...> Damage taken from Hits instead of Physical
 /// Damage」（PoB2 `ModParser.lua` 2519-2524）。`rest` 已小写归一。非此形式返回 None。
 ///
-/// 双轨产出（M2-W0.1 过渡期）：
-/// - **旧 flag 模型**：`ArmourAppliesTo<Element>` flag——现行 `EhpOptions.armour_applies_to_element`
-///   （`[bool;3]`）消费者仍读它，保持行为中性；Track B 切换百分比模型后由 B 移除。
-/// - **新百分比模型**（PoB2 口径）：`ArmourAppliesTo<Element>DamageTaken` BASE 100 +
-///   `ArmourDoesNotApplyToPhysicalDamageTaken` flag（instead 变体专属，对应 vendor 同名 flag）。
+/// 产出（13-G7 百分比模型，PoB2 口径；M2 Track B-2 移除了 W0.1 过渡期的
+/// `ArmourAppliesTo<Element>` 旧 flag 双轨——消费侧 perform 已改由
+/// `taken::build_mitigation_ctx` 的百分比快照派生）：
+/// `ArmourAppliesTo<Element>DamageTaken` BASE 100 +
+/// `ArmourDoesNotApplyToPhysicalDamageTaken` flag（instead 变体专属，对应 vendor 同名 flag）。
 fn parse_armour_applies_to_element(rest: &str, source: &str) -> Option<Vec<Modifier>> {
     let body = rest.strip_prefix("armour applies to ")?;
     // 必须是 instead of physical（重定向语义）。
@@ -621,13 +622,12 @@ fn parse_armour_applies_to_element(rest: &str, source: &str) -> Option<Vec<Modif
         return None;
     }
     let mut mods = Vec::new();
-    for (kw, flag, pascal) in [
-        ("fire", "ArmourAppliesToFire", "Fire"),
-        ("cold", "ArmourAppliesToCold", "Cold"),
-        ("lightning", "ArmourAppliesToLightning", "Lightning"),
+    for (kw, pascal) in [
+        ("fire", "Fire"),
+        ("cold", "Cold"),
+        ("lightning", "Lightning"),
     ] {
         if body.contains(kw) {
-            mods.push(Modifier::flag(flag).with_source(source));
             mods.push(
                 Modifier::number(
                     format!("ArmourAppliesTo{pascal}DamageTaken"),

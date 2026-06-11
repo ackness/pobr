@@ -5,8 +5,9 @@
 //! ModDb 查询名以本表为准；改名 = 破坏性变更，须同步全部消费者。
 //!
 //! vendor 参照逐行标注（`vendor/PathOfBuilding-PoE2/src/Modules/ModParser.lua` /
-//! `CalcDefence.lua` 行号，2026-06-11 核实）。W0.1 为纯解析增量：除 ArmourAppliesTo
-//! 「instead of physical」双轨外，所有新 ModName 在本批合并时无 calc 消费者。
+//! `CalcDefence.lua` 行号，2026-06-11 核实）。W0.1 为纯解析增量（所有新 ModName 在该批
+//! 合并时无 calc 消费者）；W0.1 过渡期 ArmourAppliesTo「instead of physical」的旧 flag
+//! 双轨已由 Track B-2 收敛为百分比单一形态（覆盖表 3）。
 
 use pobr_core::ModValue;
 use pobr_core::mod_parser::{ParseStatus, parse_mod};
@@ -167,16 +168,15 @@ fn m2_coverage_es_ward_bypass() {
 #[test]
 fn m2_coverage_armour_applies_to() {
     use ModType::*;
-    // ModParser.lua:2519-2524「instead of physical」——双轨：旧 flag（现行 [bool;3] 消费者，
-    // 行为中性）+ 新百分比 BASE 100 + ArmourDoesNotApplyToPhysicalDamageTaken flag。
+    // ModParser.lua:2519-2524「instead of physical」——百分比 BASE 100 +
+    // ArmourDoesNotApplyToPhysicalDamageTaken flag（13-G7 单一形态；W0.1 过渡期的
+    // ArmourAppliesTo<Element> 旧 flag 双轨已由 Track B-2 移除，消费侧 perform 改由
+    // taken::build_mitigation_ctx 百分比快照派生 [bool;3]）。
     assert_parses(
         "Armour applies to Fire, Cold and Lightning Damage taken from Hits instead of Physical Damage",
         &[
-            N("ArmourAppliesToFire", Flag, FLAG),
             N("ArmourAppliesToFireDamageTaken", Base, 100.0),
-            N("ArmourAppliesToCold", Flag, FLAG),
             N("ArmourAppliesToColdDamageTaken", Base, 100.0),
-            N("ArmourAppliesToLightning", Flag, FLAG),
             N("ArmourAppliesToLightningDamageTaken", Base, 100.0),
             N("ArmourDoesNotApplyToPhysicalDamageTaken", Flag, FLAG),
         ],

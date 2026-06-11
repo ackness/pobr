@@ -19,11 +19,11 @@ use super::trigger::{
 };
 use super::{
     BreakdownTable, CalcError, EhpOptions, Env, LeechResource, MinimalInput, MinionOutput,
-    OutputTable, RecoupResource, ResistanceSuite, calc_avoidance, calc_crit_extra_reduction,
-    calc_defence, calc_ehp_with_opts, calc_es_recharge, calc_leech_from_db, calc_recoup_from_db,
-    calc_regen, calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy,
-    enemy_crit_effect, es_recharge_per_second, reservation, resolve_all_charges, round,
-    taken_mult_for_type_default,
+    MitigationInputs, OutputTable, RecoupResource, ResistanceSuite, build_mitigation_ctx,
+    calc_avoidance, calc_crit_extra_reduction, calc_defence, calc_ehp_with_opts, calc_es_recharge,
+    calc_leech_from_db, calc_recoup_from_db, calc_regen, calc_skill_use_time,
+    calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect, es_recharge_per_second,
+    reservation, resolve_all_charges, round, taken_mult_for_type_default,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -215,30 +215,50 @@ fn fill_mechanics(env: &mut Env) {
         },
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
-    // 防御机制选项：敌人物理压制 + 「Armour applies to <Element> instead of Physical」。
-    // 减伤上限：PoB2 `Max('DamageReductionMax') or DamageReductionCap(=90)`（CalcDefence.lua:1862）。
-    // 无词条时 max_of 返回 0 → 取默认 90。
-    let dr_max_pct = {
-        let v = db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
-        if v > 0.0 { v } else { 90.0 }
-    };
+    // M2 Track B-2（13-G7）：减伤侧统一整备 MitigationCtx——ArmourAppliesTo 改百分比模型
+    // （词条单一来源：ModParser.lua:2519-2544 三变体 → ArmourAppliesTo<X>DamageTaken BASE
+    // + ArmourDoesNotApplyToPhysicalDamageTaken flag；合成 CalcDefence.lua:2336-2362、
+    // 物理隐式 BASE 100 见 :1862-1863），DamageReductionMax / overwhelm 一并入 ctx
+    // （per-type 上限 :2333；全局缺省走 cfg.constants）。
+    let mit_ctx = build_mitigation_ctx(
+        db,
+        cfg,
+        &MitigationInputs {
+            armour: env.player.output.armour,
+            evasion: env.player.output.evasion,
+            energy_shield: env.player.output.energy_shield,
+            resist_pct: [
+                0.0, // 物理无抗性（减伤走护甲/flat DR）
+                resistances.fire,
+                resistances.cold,
+                resistances.lightning,
+                resistances.chaos,
+            ],
+            // 偏斜乘数：Track D 接 DeflectChance/DeflectEffect 输出后由 F 折入；当前 0 → 1。
+            deflect_chance_pct: 0.0,
+            deflect_effect_pct: 0.0,
+        },
+    );
+    let phys = DamageType::Physical as usize;
+    // 「instead of physical」全量重定向（物理护甲清零**仅此变体**，flag 经
+    // armour_applies_pct 把物理份额归 0）。旧 EhpOptions 的 [bool;3] 只能表达该形态：
+    // 元素吃全额护甲 + 物理清零；百分比/also 变体在旧 max-hit 口径下维持原行为
+    // （物理保留护甲、元素暂不吃护甲），完整百分比口径由 Track F 消费
+    // taken_hit_from_damage 后生效（蓝图 m2-defence §2 Track B 过渡语义）。
+    let instead_redirect = mit_ctx.armour_applies_pct[phys] <= 0.0;
     // CI 接线（13-G16）：keystone 快照驱动，不再写死 false。CI build 的 ES 作生命池、
     // 混沌免疫（EhpOptions 语义）。vendor：CalcDefence.lua:85（flag 读出）/:120-123
     // （Life=1 + FullLife）/:2537-2539（CI 用「CI 前 Life」作眩晕阈值基底）。
     let ehp_opts = EhpOptions {
         chaos_inoculation: keystones.chaos_inoculation,
-        physical_overwhelm: db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("EnemyPhysicalOverwhelm")],
-        ) / 100.0,
+        physical_overwhelm: mit_ctx.overwhelm_pct[phys] / 100.0,
         armour_applies_to_element: [
-            db.flag(cfg, ModName::from("ArmourAppliesToFire")),
-            db.flag(cfg, ModName::from("ArmourAppliesToCold")),
-            db.flag(cfg, ModName::from("ArmourAppliesToLightning")),
+            instead_redirect && mit_ctx.armour_applies_pct[DamageType::Fire as usize] > 0.0,
+            instead_redirect && mit_ctx.armour_applies_pct[DamageType::Cold as usize] > 0.0,
+            instead_redirect && mit_ctx.armour_applies_pct[DamageType::Lightning as usize] > 0.0,
         ],
         damage_reduction_caps: crate::calc::ehp::DamageReductionCaps {
-            global: dr_max_pct / 100.0,
+            global: mit_ctx.dr_max_pct[phys] / 100.0,
         },
     };
     let ehp = calc_ehp_with_opts(
