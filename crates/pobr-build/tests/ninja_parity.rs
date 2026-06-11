@@ -408,9 +408,13 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
 /// M2 补刀重记 2（Kalandra's Touch 镜射 / Ring 3 分配门控 / Buffs also grant
 /// 归 Unsupported / 槽位加成效果缩放）：防御 340→363（80.7%，**≥80% 验收达标**）、
 /// 核心 119→129（≥ 裁决下限 111）。
-const BASELINE_DEF_CORE_HIT5: usize = 129; // 实测 129/144 = 89.6%
-const BASELINE_DEF_HIT5: usize = 363; // 实测 363/450 = 80.7%（M2 补刀重记 2）
-const BASELINE_DEF_HIT10: usize = 377; // 实测 377/450 = 83.8%
+///
+/// M2 补刀重记 3（固定物理/元素减伤 + Take no Extra Damage from Crits /
+/// Hulking Form 小点效果缩放 / 激活 Flask·Charm 注入 + ArmourDefense）：
+/// 防御 363→369（82.0%）、核心 129→130。
+const BASELINE_DEF_CORE_HIT5: usize = 130; // 实测 130/144 = 90.3%
+const BASELINE_DEF_HIT5: usize = 369; // 实测 369/450 = 82.0%（M2 补刀重记 3）
+const BASELINE_DEF_HIT10: usize = 385; // 实测 385/450 = 85.6%
 const BASELINE_OFF_HIT5: usize = 27;
 const BASELINE_OFF_HIT10: usize = 32;
 
