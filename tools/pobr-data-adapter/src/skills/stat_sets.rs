@@ -178,7 +178,7 @@ pub(super) fn crit_from_statset_levels(
 ///   回退主配对行——消费侧选中即用，无需运行时 merge。
 ///
 /// **全量 stat 入库（M1-T5.3，蓝图 15-G2 修复方向）**：数据层不再施加任何 stat 白名单
-/// （原 `is_mappable_stat` 后缀启发式已删除）——statmap 数据引擎（`pobr-core::rules::
+/// （原 adapter 端白名单后缀谓词已删除）——statmap 数据引擎（`pobr-core::rules::
 /// stat_map_engine`，T2）需要看到全部 stat 才能穷举对照。**搬迁不变式保障**：同一谓词
 /// 已平移到消费侧 legacy 路径（`pobr-build::legacy_stat_filter`，在 `mapped_stat_modifiers`
 /// 的 Legacy 通道入口过滤），保证 ninja parity 逐值不变；该消费侧过滤随 T2.4 删 legacy

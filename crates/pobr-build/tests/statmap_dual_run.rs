@@ -1,41 +1,32 @@
-//! statmap 双跑对照（M1-T2.3/T2b，蓝图 18-G3 / 15-G2 / 风险 R5）：Legacy 后缀
-//! 启发式 vs Data 数据引擎（`overlay/skill_stat_map.json` + `rules/stat_map_engine`）。
+//! statmap 数据通道观测 + oracle 对拍（M1-T2.3/T2.4 收尾形态）。
 //!
-//! 三个 `#[ignore]` 测试（手动跑，产报告不设门禁——切换门禁见蓝图 T2.4 四前置条件）：
+//! Legacy 后缀启发式与双跑 L1/L2 diff 已随 T2.4 删除（历史报告与逐行裁决归档
+//! `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`）；
+//! 本文件保留 **Compare 观测框架回归门禁** 与 **oracle 抽样对拍**（蓝图 §6 Q4
+//! 裁决：Compare 枚举与报告框架长期保留，M3 config / M6 parser 双跑复用同模式）：
 //!
 //! ```bash
-//! cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture
+//! # Compare 纯观测契约（常跑，非 ignore）：
+//! cargo test -p pobr-build --test statmap_dual_run
+//! # 观测记录定位工具（手动跑）：
+//! POBR_L2_BUILD=<build目录名> cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture runtime
 //! # oracle 抽样需要 vendor PoB2 源码 + luajit：
 //! POBR_POB2_SRC=/path/to/PathOfBuilding-PoE2/src \
 //!   cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture oracle
 //! ```
 //!
-//! - **L1 映射级 diff**（穷举终版，T5.3 全量 stat 入库后）：枚举
-//!   `granted_effect_stat_sets.json` 全量 distinct stat × 两引擎。带 per-statSet
-//!   覆盖的 (effect, stat) 对**按 effect 上下文单独出行**（默认 set "1"，与引擎
-//!   `set_key=None` 口径一致），其余 stat 走 global 行去重。分类计数
-//!   （`both_equal / both_diff / legacy_only / data_only / both_absent`），明细落
-//!   `target/statmap-diff/L1.jsonl`，汇总落 `L1-summary.md`；
-//! - **L2 端到端 diff**：18 个 ninja build 分别以 Legacy / Data 跑
-//!   `calculate_with_data`，逐 OutputTable 标量字段 diff，按 build 分组落
-//!   `target/statmap-diff/L2-<build>.md`（roadmap R5 缓解原文）；
+//! - **Compare 纯观测契约**：同一 build 以 Data 与 Compare 各跑一次，输出逐字段
+//!   一致（Compare 不改变计算结果），且 Compare 跑后能取出映射级 outcome 记录；
 //! - **oracle 抽样**（≥50 条 stat，覆盖 div/mult/base/value/tag/flags/per-set
 //!   各形态）：`tools/pob2-oracle/statmap_oracle.lua` 跑 PoB2 真实
 //!   `mergeSkillInstanceMods`（受控值经 `extraStats` 注入）取注入后 modList，
 //!   名字/flags/tag 经引擎翻译层归一后与 `stat_map_engine::map_stat` 输出逐项
-//!   对拍，报告落 `oracle-report.md`。
-//!
-//! Legacy 侧口径：T5.3 全量入库后，legacy 真实注入 = `legacy_stat_filter`
-//! （原 adapter 白名单的消费侧平移）∧ `map_skill_stats`——L1 的 legacy 探针
-//! 与 `calc_orchestrator::legacy_mapped_stat_modifiers` 同一谓词链。
+//!   对拍，报告落 `target/statmap-diff/oracle-report.md`。
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::io::Write;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use pobr_build::legacy_stat_filter::is_mappable_stat;
-use pobr_build::skill_stat_map::map_skill_stats;
 use pobr_build::{
     BuildData, DataOrchestratorOptions, StatMapMode, calculate_with_data, parse_build_from_code,
 };
@@ -68,243 +59,7 @@ fn load_stat_map_catalog(data: &GameData) -> StatMapCatalog {
     )
 }
 
-/// 注入项的可比较形态（名字 / 聚合类型 / 数值；flags/tag 进 detail 字符串供
-/// 人工 review——legacy 不产 flags，计入比较键会把"修对的作用域限定"误报为 diff）。
-type Injection = (String, &'static str, f64);
-
-/// Legacy 通道：与 `calc_orchestrator::legacy_mapped_stat_modifiers` 同一谓词链
-/// （`legacy_stat_filter::is_mappable_stat` ∧ `map_skill_stats`）+ 同一
-/// value × scale 口径。
-fn legacy_injections(stat: &str, value: f64) -> Vec<Injection> {
-    if !is_mappable_stat(stat) {
-        return Vec::new(); // T5.3 消费侧兜底：白名单外的 stat legacy 视为不存在。
-    }
-    let mut v: Vec<Injection> = map_skill_stats(stat)
-        .into_iter()
-        .map(|m| {
-            (
-                m.mod_name.clone(),
-                m.mod_type.as_trace_label(),
-                value * m.scale,
-            )
-        })
-        .collect();
-    v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    v
-}
-
-/// Data 通道（与 orchestrator Data 模式同口径：effect 上下文 + 默认 set "1"，
-/// `SkillData` 项无消费方不计入比较）。返回（注入集合, 状态, 备注, 细节）。
-fn data_injections(
-    catalog: &StatMapCatalog,
-    effect_id: &str,
-    stat: &str,
-    value: f64,
-) -> (Vec<Injection>, &'static str, String, String) {
-    match stat_map_engine::map_stat(catalog, effect_id, None, stat, value) {
-        MappedOutcome::Mapped(items) => {
-            let mut v: Vec<Injection> = Vec::new();
-            let mut detail = Vec::new();
-            for item in &items {
-                match item {
-                    MappedItem::Modifier(m) => {
-                        v.push((
-                            m.name.to_string(),
-                            m.mod_type.as_trace_label(),
-                            m.value.as_number().unwrap_or(0.0),
-                        ));
-                        detail.push(format!(
-                            "{} {} {:?} flags={:#x} kw={:#x} tags={}",
-                            m.name.as_str(),
-                            m.mod_type.as_trace_label(),
-                            m.value,
-                            m.flags.bits(),
-                            m.keyword_flags.bits(),
-                            m.tags.len()
-                        ));
-                    }
-                    MappedItem::SkillData { key, value } => {
-                        detail.push(format!("skill_data {key}={value}"));
-                    }
-                }
-            }
-            v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            (v, "mapped", String::new(), detail.join("; "))
-        }
-        MappedOutcome::Unsupported(reason) => (
-            Vec::new(),
-            "unsupported",
-            reason.category().to_string(),
-            format!("{reason:?}"),
-        ),
-        MappedOutcome::Unknown => (Vec::new(), "unknown", String::new(), String::new()),
-    }
-}
-
-fn injections_equal(a: &[Injection], b: &[Injection]) -> bool {
-    a.len() == b.len()
-        && a.iter()
-            .zip(b)
-            .all(|(x, y)| x.0 == y.0 && x.1 == y.1 && (x.2 - y.2).abs() < 1e-9)
-}
-
-/// L1 映射级 diff（穷举终版）：granted_effect_stat_sets 全量 distinct stat ×
-/// 两引擎；带 per-set 覆盖的 (effect, stat) 对按 effect 上下文单独出行。
-///
-/// 探针值取 100.0（merge 公式对 value 线性/常量覆盖两形态都可见；div/mult/base
-/// 的数值差异在比较里直接体现）。
-#[test]
-#[ignore = "diff 报告生成（手动跑）：cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture"]
-fn l1_mapping_level_diff() {
-    const PROBE_VALUE: f64 = 100.0;
-    let game_data = load_game_data();
-    let catalog = load_stat_map_catalog(&game_data);
-    let data = BuildData::load(&game_data).expect("load BuildData");
-
-    // 行集设计（穷举 = 实际消费面的全部 (effect, stat) 出现）：
-    // - **per-set 上下文行**：该 (effect, stat) 存在默认 set "1" 覆盖（与引擎
-    //   set_key=None / orchestrator Data 通道同口径）——映射依赖 effect，逐对出行；
-    // - **global 行**：该 stat 存在 ≥1 个**无覆盖**的 carrier effect——这些出现的
-    //   映射与 effect 无关，按 stat 去重一行，并注记无覆盖 carrier（误映射证据指针）。
-    // 仅在带覆盖 effect 上出现的 stat 不再出 global 行（global 探针对它是不存在的
-    // 消费路径，会虚报 legacy_only）。多 set 模型（T5.2）：universe 收全部 set。
-    let mut per_set_rows: BTreeSet<(String, String)> = BTreeSet::new();
-    let mut no_override_carriers: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for set_def in data.skill_stat_sets.values() {
-        let effect_id = &set_def.effect_id;
-        let mut collect = |stat: &str| {
-            if catalog.has_per_set_override(effect_id, "1", stat) {
-                per_set_rows.insert((effect_id.clone(), stat.to_string()));
-            } else {
-                no_override_carriers
-                    .entry(stat.to_string())
-                    .or_default()
-                    .insert(effect_id.clone());
-            }
-        };
-        for set in &set_def.sets {
-            for cs in &set.constant_stats {
-                collect(&cs.stat);
-            }
-            for level in &set.levels {
-                for ds in &level.stats {
-                    collect(&ds.stat);
-                }
-            }
-        }
-    }
-    let stats: BTreeSet<String> = no_override_carriers.keys().cloned().collect();
-
-    let mut counts: BTreeMap<&'static str, u64> = BTreeMap::new();
-    let mut unsupported_counts: BTreeMap<String, u64> = BTreeMap::new();
-    let mut legacy_only_rows: Vec<String> = Vec::new();
-    let mut both_diff_rows: Vec<String> = Vec::new();
-    let mut out = std::fs::File::create(report_dir().join("L1.jsonl")).expect("create L1.jsonl");
-
-    // 行集合：global 行（effect=""）+ per-set 上下文行。
-    let rows: Vec<(String, String)> = stats
-        .iter()
-        .map(|s| (String::new(), s.clone()))
-        .chain(per_set_rows.iter().cloned())
-        .collect();
-    for (effect, stat) in &rows {
-        let legacy = legacy_injections(stat, PROBE_VALUE);
-        let (data_side, data_status, data_note, data_detail) =
-            data_injections(&catalog, effect, stat, PROBE_VALUE);
-        let classification = match (legacy.is_empty(), data_side.is_empty()) {
-            (true, true) => "both_absent",
-            (false, true) => "legacy_only",
-            (true, false) => "data_only",
-            (false, false) if injections_equal(&legacy, &data_side) => "both_equal",
-            (false, false) => "both_diff",
-        };
-        *counts.entry(classification).or_default() += 1;
-        if data_status == "unsupported" {
-            *unsupported_counts.entry(data_note.clone()).or_default() += 1;
-        }
-        // global 行附"无覆盖 carrier"注记（legacy_only 的误映射裁决需要知道该
-        // stat 实际出现在哪些 effect 上、且这些 effect 没有 per-set 覆盖）。
-        let carriers = if effect.is_empty() {
-            let set = no_override_carriers.get(stat).cloned().unwrap_or_default();
-            let sample: Vec<_> = set.iter().take(4).cloned().collect();
-            format!(" carriers({})={}", set.len(), sample.join(","))
-        } else {
-            String::new()
-        };
-        let row_label = if effect.is_empty() {
-            stat.clone()
-        } else {
-            format!("{effect}::{stat}")
-        };
-        match classification {
-            "legacy_only" => legacy_only_rows.push(format!(
-                "{row_label} | legacy={legacy:?} | data={data_status}:{data_note}{carriers}"
-            )),
-            "both_diff" => both_diff_rows.push(format!(
-                "{row_label} | legacy={legacy:?} | data={data_detail}{carriers}"
-            )),
-            _ => {}
-        }
-        // 明细 JSONL（行集字典序遍历 → 重跑确定性；serde_json 序列化转义）。
-        let line = serde_json::json!({
-            "effect": effect,
-            "stat": stat,
-            "classification": classification,
-            "legacy": legacy.iter().map(|(n, t, v)| format!("{n} {t} {v}")).collect::<Vec<_>>(),
-            "data": data_side.iter().map(|(n, t, v)| format!("{n} {t} {v}")).collect::<Vec<_>>(),
-            "data_status": data_status,
-            "data_note": data_note,
-            "data_detail": data_detail,
-        });
-        writeln!(out, "{line}").expect("write L1.jsonl");
-    }
-
-    // 汇总 markdown（人工 review 输入，结论登记 m1-statmap-switch-log.md）。
-    let mut summary = String::new();
-    summary.push_str("# statmap L1 映射级 diff（穷举终版，M1-T2b）\n\n");
-    summary.push_str(&format!(
-        "- distinct stat：{}；per-set 上下文行：{}；总行数：{}\n",
-        stats.len(),
-        per_set_rows.len(),
-        rows.len()
-    ));
-    summary.push_str("- legacy 口径 = `legacy_stat_filter::is_mappable_stat` ∧ `map_skill_stats`（T5.3 消费侧兜底同谓词链）\n");
-    summary.push_str("- data 口径 = `stat_map_engine::map_stat(effect, set=None→\"1\", stat)`（orchestrator Data 模式同口径）\n\n");
-    summary.push_str("| 分类 | 行数 |\n|---|---|\n");
-    for (k, v) in &counts {
-        summary.push_str(&format!("| {k} | {v} |\n"));
-    }
-    summary.push_str("\n## data 侧 Unsupported 分类\n\n| 分类 | 行数 |\n|---|---|\n");
-    for (k, v) in &unsupported_counts {
-        summary.push_str(&format!("| {k} | {v} |\n"));
-    }
-    summary.push_str("\n## legacy_only 全量明细\n\n");
-    for row in &legacy_only_rows {
-        summary.push_str(&format!("- {row}\n"));
-    }
-    summary.push_str("\n## both_diff 全量明细\n\n");
-    for row in &both_diff_rows {
-        summary.push_str(&format!("- {row}\n"));
-    }
-    std::fs::write(report_dir().join("L1-summary.md"), &summary).expect("write L1-summary.md");
-
-    println!("== statmap L1 映射级 diff（{} 行）==", rows.len());
-    for (k, v) in &counts {
-        println!("  {k:<12} {v}");
-    }
-    println!("  -- data 侧 Unsupported 分类 --");
-    for (k, v) in &unsupported_counts {
-        println!("  unsupported:{k:<24} {v}");
-    }
-    println!("明细：target/statmap-diff/L1.jsonl + L1-summary.md");
-    assert!(!stats.is_empty(), "stat 集合不应为空");
-    assert!(
-        counts.get("both_equal").copied().unwrap_or(0) > 0,
-        "两引擎应至少有相等映射（翻译表从 legacy 反推）"
-    );
-}
-
-// ---- L2 端到端 diff ----
+// ---- Compare 观测框架 ----
 
 fn builds_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -360,85 +115,9 @@ fn scalar_fields(out: &OutputTable) -> Vec<(&'static str, f64)> {
     ]
 }
 
-/// L2 端到端 diff：18 个 ninja build 分别以 Legacy / Data 跑，逐字段 diff
-/// 按 build 分组落 markdown（roadmap R5 缓解："双跑 + 按 ninja build 分组 diff"）。
-#[test]
-#[ignore = "diff 报告生成（手动跑）：cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture"]
-fn l2_per_build_end_to_end_diff() {
-    let game_data = load_game_data();
-    let catalog = Arc::new(load_stat_map_catalog(&game_data));
-    let data = BuildData::load(&game_data).expect("load BuildData");
-
-    let mut dirs: Vec<PathBuf> = std::fs::read_dir(builds_dir())
-        .expect("read builds dir")
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.is_dir() && p.join("code.txt").exists())
-        .collect();
-    dirs.sort();
-    assert!(!dirs.is_empty(), "demo builds 应存在");
-
-    let mut summary: Vec<(String, usize)> = Vec::new();
-    for dir in &dirs {
-        let name = dir.file_name().unwrap().to_string_lossy().to_string();
-        let Ok(code) = std::fs::read_to_string(dir.join("code.txt")) else {
-            continue;
-        };
-        let Ok(build) = parse_build_from_code(code.trim()) else {
-            continue;
-        };
-        let legacy_out = calculate_with_data(&build, &data, &opts(StatMapMode::Legacy, None)).ok();
-        let data_out = calculate_with_data(
-            &build,
-            &data,
-            &opts(StatMapMode::Data, Some(catalog.clone())),
-        )
-        .ok();
-        let (Some(legacy_out), Some(data_out)) = (legacy_out, data_out) else {
-            summary.push((format!("{name} (计算失败)"), 0));
-            continue;
-        };
-
-        let mut report = String::new();
-        report.push_str(&format!("# statmap L2 diff — {name}\n\n"));
-        report.push_str("Legacy（skill_stat_map.rs 启发式 + legacy_stat_filter 兜底）vs Data（overlay + stat_map_engine，effect 上下文 + 默认 set \"1\"）。\n\n");
-        report.push_str("| 字段 | Legacy | Data | Δ | Δ% |\n|---|---|---|---|---|\n");
-        let mut diff_count = 0usize;
-        for ((label, lv), (_, dv)) in scalar_fields(&legacy_out)
-            .into_iter()
-            .zip(scalar_fields(&data_out))
-        {
-            if (lv - dv).abs() < 1e-9 {
-                continue;
-            }
-            diff_count += 1;
-            let pct = if lv != 0.0 {
-                format!("{:+.2}%", (dv - lv) / lv * 100.0)
-            } else {
-                "n/a".to_string()
-            };
-            report.push_str(&format!(
-                "| {label} | {lv:.4} | {dv:.4} | {:+.4} | {pct} |\n",
-                dv - lv
-            ));
-        }
-        if diff_count == 0 {
-            report.push_str("| (无差异) | — | — | — | — |\n");
-        }
-        std::fs::write(report_dir().join(format!("L2-{name}.md")), report)
-            .expect("write L2 report");
-        summary.push((name, diff_count));
-    }
-
-    println!("== statmap L2 端到端 diff（Legacy vs Data，按 build 分组）==");
-    for (name, n) in &summary {
-        println!("  {name:<44} 差异字段 {n}");
-    }
-    println!("报告：target/statmap-diff/L2-<build>.md");
-}
-
-/// Compare 模式纯观测契约：同一 build 以 Legacy 与 Compare 各跑一次，输出
-/// **逐字段一致**（Compare 不改变计算结果）；且 Compare 跑后能取出映射级记录。
-/// 非 ignore——这是双跑框架本身的回归门禁（不依赖报告人工 review）。
+/// Compare 模式纯观测契约：同一 build 以 Data 与 Compare 各跑一次，输出
+/// **逐字段一致**（Compare 不改变计算结果）；且 Compare 跑后能取出映射级
+/// outcome 观测记录。非 ignore——这是观测框架本身的回归门禁。
 #[test]
 fn compare_mode_is_pure_observation() {
     let game_data = load_game_data();
@@ -454,8 +133,8 @@ fn compare_mode_is_pure_observation() {
     };
     let build = parse_build_from_code(code.trim()).expect("parse build");
 
-    let legacy_out =
-        calculate_with_data(&build, &data, &opts(StatMapMode::Legacy, None)).expect("legacy run");
+    let data_out =
+        calculate_with_data(&build, &data, &opts(StatMapMode::Data, None)).expect("data run");
     // 清空历史记录，确保取到的是本次 Compare 的。
     let _ = pobr_build::take_stat_map_compare_records();
     let compare_out = calculate_with_data(
@@ -464,29 +143,35 @@ fn compare_mode_is_pure_observation() {
         &opts(StatMapMode::Compare, Some(catalog.clone())),
     )
     .expect("compare run");
-    for ((label, lv), (_, cv)) in scalar_fields(&legacy_out)
+    for ((label, dv), (_, cv)) in scalar_fields(&data_out)
         .into_iter()
         .zip(scalar_fields(&compare_out))
     {
         assert!(
-            (lv - cv).abs() < 1e-12,
-            "Compare 模式改变了输出字段 {label}：legacy={lv} compare={cv}"
+            (dv - cv).abs() < 1e-12,
+            "Compare 模式改变了输出字段 {label}：data={dv} compare={cv}"
         );
     }
     let records = pobr_build::take_stat_map_compare_records();
     assert!(
         !records.is_empty(),
-        "Compare 模式应记录映射级对照（主技能/品质/support 取数点至少其一）"
+        "Compare 模式应记录映射级 outcome（主技能/品质/support 取数点至少其一）"
+    );
+    assert!(
+        records
+            .iter()
+            .all(|r| matches!(r.classification, "mapped" | "unsupported" | "unknown")),
+        "观测记录分类应为 mapped/unsupported/unknown"
     );
     // 记录已取出 → 再取应为空（take 语义）。
     assert!(pobr_build::take_stat_map_compare_records().is_empty());
 }
 
-/// L2 差异定位辅助：对单个 build（env `POBR_L2_BUILD`，缺省 stormweaver）以
-/// Compare 模式跑一次，打印**运行时**逐 stat 映射级对照记录（取数点上下文）——
-/// L2 字段级偏移的根因定位工具（哪个 stat 在哪个取数点两引擎注入不同）。
+/// 观测记录定位辅助：对单个 build（env `POBR_L2_BUILD`，缺省 stormweaver）以
+/// Compare 模式跑一次，打印**运行时**逐 stat 映射级 outcome 记录（取数点上下
+/// 文）——字段级偏移的根因定位工具（哪个 stat 在哪个取数点未映射/Unsupported）。
 #[test]
-#[ignore = "L2 差异定位（手动跑）：POBR_L2_BUILD=<build目录名> cargo test … runtime_compare_records"]
+#[ignore = "观测定位（手动跑）：POBR_L2_BUILD=<build目录名> cargo test … runtime_compare_records"]
 fn l2_runtime_compare_records() {
     let build_name =
         std::env::var("POBR_L2_BUILD").unwrap_or_else(|_| "sorceress-stormweaver-comet".into());
@@ -500,9 +185,12 @@ fn l2_runtime_compare_records() {
     let _ = calculate_with_data(&build, &data, &opts(StatMapMode::Compare, Some(catalog)))
         .expect("compare run");
     let records = pobr_build::take_stat_map_compare_records();
-    println!("== {build_name} 运行时映射级对照（{} 条）==", records.len());
+    println!(
+        "== {build_name} 运行时映射级 outcome 观测（{} 条）==",
+        records.len()
+    );
     for r in &records {
-        if r.classification != "both_equal" && r.classification != "both_absent" {
+        if r.classification != "mapped" {
             println!(
                 "  [{}] {} @ {} :: {}",
                 r.classification, r.stat, r.label, r.detail

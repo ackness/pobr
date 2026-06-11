@@ -47,7 +47,6 @@ use crate::buff_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
-use crate::skill_stat_map::map_skill_stats;
 
 /// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
 const EXPOSURE_MAGNITUDE: f64 = 20.0;
@@ -77,8 +76,8 @@ pub struct DataOrchestratorOptions {
     pub enemy_tier: EnemyTier,
     /// 有效 DPS 口径开关（`true` → 计入命中 / 敌人减伤；`false` → 面板口径）。
     pub mode_effective: bool,
-    /// statmap 映射通道（M1-T2.3 双跑，契约 C3）。默认 [`StatMapMode::Data`]
-    /// （T2.4 切换 commit）；`Compare` 纯观测（输出取 Legacy，diff 记录经
+    /// statmap 映射通道（M1-T2.3/T2.4，契约 C3）。默认 [`StatMapMode::Data`]；
+    /// `Compare` 纯观测（输出与 Data 一致，outcome 记录经
     /// [`take_stat_map_compare_records`] 取出）。
     pub stat_map_mode: StatMapMode,
     /// statmap 数据目录（`overlay/skill_stat_map.json` 经 gamedata 加载注入）。
@@ -108,16 +107,15 @@ impl Default for DataOrchestratorOptions {
 /// 运行时枚举而非 cargo feature：18 build 双跑在同一进程内完成，报告好做。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StatMapMode {
-    /// 既有 Rust 后缀启发式（`skill_stat_map.rs`，T2.4 删除对象）。**回退通道**：
-    /// 切换后若 ninja 倒退，把 `#[default]` 移回此行即一行回退（蓝图 §5 R5）。
-    Legacy,
     /// 数据引擎（`overlay/skill_stat_map.json` + `rules/stat_map_engine`）。
     /// **默认**（M1-T2.4 切换 commit；四前置条件核对单见
     /// `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`）。
     #[default]
     Data,
-    /// 双跑对照：两边都算、记录映射级 diff，**输出取 Legacy**（纯观测，
-    /// 不改变任何计算结果）。
+    /// 观测对照：Data 计算 + 逐 stat 记录映射 outcome（**输出与 Data 一致**，
+    /// 纯观测不改变任何计算结果；记录经 [`take_stat_map_compare_records`] 取出）。
+    /// Legacy 启发式删除（T2.4）后保留为长期对照框架——M3 config / M6 parser
+    /// 双跑复用同模式（蓝图 §6 Q4 裁决）。删旧码后的切换回退 = revert 删除 commit。
     Compare,
 }
 
@@ -1596,7 +1594,7 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel, skill_id: &str) -> Vec<Modif
     mods
 }
 
-/// 把主技能宝石的**品质 stat 段**经 [`map_skill_stats`] 映射为 `SourceKind::GemQuality`
+/// 把主技能宝石的**品质 stat 段**经 [`mapped_stat_modifiers`] 映射为 `SourceKind::GemQuality`
 /// 归因的 modifier（T1.7，对应 PoB2 `buildSkillInstanceStats` 的品质前置叠加，
 /// CalcTools.lua:140-145：`stats[stat] += math.modf(rate × quality)`）。
 ///
@@ -2129,7 +2127,7 @@ fn spirit_reservation_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier
 // 不持有编排选项——按 §3.2 共享规则（本文件只改 mapped_stat_modifiers +
 // OrchestratorOptions 字段、主流程接线 ≤3 行），模式与 catalog 经线程局部上下文
 // 传递：`calculate_with_data` 开头安装、guard 离开作用域复位。单次计算单线程、
-// 安装/复位确定性，不构成共享可变状态；T2.4 切换默认 Data 后此缝随 Legacy 一并收敛。
+// 安装/复位确定性，不构成共享可变状态。
 
 use std::cell::RefCell;
 
@@ -2141,21 +2139,22 @@ thread_local! {
 struct StatMapCtx {
     mode: StatMapMode,
     catalog: Option<std::sync::Arc<StatMapCatalog>>,
-    /// Compare 模式的映射级 diff 记录（跨 guard 存活，由
+    /// Compare 模式的映射级 outcome 观测记录（跨 guard 存活，由
     /// [`take_stat_map_compare_records`] 取出）。
     compare_records: Vec<StatMapCompareRecord>,
 }
 
-/// Compare 模式产出的单条映射级 diff 记录（按 stat 一条）。
+/// Compare 模式产出的单条映射级 outcome 观测记录（按 stat 一条）。
 #[derive(Debug, Clone)]
 pub struct StatMapCompareRecord {
     /// stat 稳定 id。
     pub stat: String,
     /// 取数点标签（skill / gem.<id>.qN / support id）。
     pub label: String,
-    /// 分类：`both_equal` / `both_diff` / `legacy_only` / `data_only` / `both_absent`。
+    /// 分类：`mapped` / `unsupported` / `unknown`（数据通道 outcome 观测；
+    /// Legacy 删除前为双跑五分类 diff）。
     pub classification: &'static str,
-    /// 细节（两侧注入项列表 / 数据侧 Unsupported 分类）。
+    /// 细节（注入项列表 / Unsupported 分类）。
     pub detail: String,
 }
 
@@ -2185,22 +2184,23 @@ impl Drop for StatMapCtxGuard {
     }
 }
 
-/// 取出（并清空）当前线程累计的 Compare 模式 diff 记录。
+/// 取出（并清空）当前线程累计的 Compare 模式 outcome 观测记录。
 pub fn take_stat_map_compare_records() -> Vec<StatMapCompareRecord> {
     STAT_MAP_CTX.with(|ctx| std::mem::take(&mut ctx.borrow_mut().compare_records))
 }
 
-/// 把一组已解析 stat 映射为带 `source_kind` 归因的 modifier——statmap 双跑分发点
-/// （蓝图 T2.3 接缝）：Legacy 走 [`map_skill_stats`] 后缀启发式；Data 走
-/// [`stat_map_engine::map_stat`] 数据引擎；Compare 两边都跑、记录 diff、
-/// **输出取 Legacy**（纯观测）。无法映射的 stat（未知/条件型/Unsupported）
+/// 把一组已解析 stat 映射为带 `source_kind` 归因的 modifier——statmap 通道分发点
+/// （蓝图 T2.3 接缝，T2.4 后 Legacy 启发式已删除）：Data 走
+/// [`stat_map_engine::map_stat`] 数据引擎；Compare = Data 计算 + 逐 stat 记录
+/// 映射 outcome 观测（**输出与 Data 一致**，纯观测不改结果，记录经
+/// [`take_stat_map_compare_records`] 取出——长期对照工具，M3 config / M6 parser
+/// 双跑复用同模式，蓝图 §6 Q4 裁决）。无法映射的 stat（Unsupported / Unknown）
 /// 静默跳过；零值跳过。
 ///
 /// `effect_id`（M1-T2b 接线）：stat 所属 granted effect，per-statSet 覆盖定位。
 /// set_key 传 `None` = 引擎自动取默认 set "1" 覆盖（PoB2 缺省 statSetIndex=1，
 /// vendor `SkillsTab.lua:354`；18 个 ninja build 的 statSetIndex 全为 nil。
-/// statSetIndex 显式选择的 set_key 接线随 T5 多 statSet 模型）。Legacy 通道
-/// 不消费（后缀启发式与 effect 无关）。
+/// statSetIndex 显式选择的 set_key 接线随 W-J 多 set merge）。
 fn mapped_stat_modifiers(
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
@@ -2210,7 +2210,6 @@ fn mapped_stat_modifiers(
     let (mode, catalog) =
         STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
     match mode {
-        StatMapMode::Legacy => legacy_mapped_stat_modifiers(stats, source_kind, label_prefix),
         StatMapMode::Data => data_mapped_stat_modifiers(
             stats,
             source_kind,
@@ -2219,54 +2218,21 @@ fn mapped_stat_modifiers(
             catalog.as_deref(),
         ),
         StatMapMode::Compare => {
-            let legacy = legacy_mapped_stat_modifiers(stats, source_kind.clone(), label_prefix);
-            record_stat_map_compare(stats, label_prefix, effect_id, catalog.as_deref());
-            legacy
+            record_stat_map_observation(stats, label_prefix, effect_id, catalog.as_deref());
+            data_mapped_stat_modifiers(
+                stats,
+                source_kind,
+                label_prefix,
+                effect_id,
+                catalog.as_deref(),
+            )
         }
     }
-}
-
-/// Legacy 通道：既有 Rust 后缀启发式（`skill_stat_map.rs`，T2.4 删除对象）。
-fn legacy_mapped_stat_modifiers(
-    stats: &[pobr_data::catalog::SkillDamageStat],
-    source_kind: SourceKind,
-    label_prefix: &str,
-) -> Vec<Modifier> {
-    let mut mods = Vec::new();
-    for ds in stats {
-        if ds.value == 0.0 {
-            continue;
-        }
-        // T5.3 消费侧兜底过滤（搬迁不变式）：全量 stat 入库后，Legacy 通道只看
-        // 历史 adapter 白名单命中的 stat——谓词原样平移自 adapter（见
-        // `legacy_stat_filter`），随 T2.4 删 legacy 一起删除。
-        if !crate::legacy_stat_filter::is_mappable_stat(&ds.stat) {
-            continue;
-        }
-        // 分类型组合 final（如 Lightning Attunement `*_cold_and_fire_damage_+%_final`）展开为
-        // 多条分类型 MORE——用 [`map_skill_stats`] 取全部，避免漏算半边惩罚。
-        for mapped in map_skill_stats(&ds.stat) {
-            let origin = ModifierSource::new(SourceId::new(
-                source_kind.clone(),
-                format!("{label_prefix}.{}", ds.stat),
-            ))
-            .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
-            mods.push(
-                Modifier::number(
-                    mapped.mod_name.as_str(),
-                    mapped.mod_type,
-                    ds.value * mapped.scale,
-                )
-                .with_origin(origin),
-            );
-        }
-    }
-    mods
 }
 
 /// Data 通道：statmap 数据引擎。effect 上下文 + 默认 set "1"（T2b 接线，见
 /// [`mapped_stat_modifiers`] 文档）；`SkillData` 项暂无消费方，忽略（不参与
-/// 计算，不会错算）；Unsupported / Unknown 静默跳过（分类统计走 Compare 模式）。
+/// 计算，不会错算）；Unsupported / Unknown 静默跳过（分类观测走 Compare 模式）。
 fn data_mapped_stat_modifiers(
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
@@ -2280,7 +2246,7 @@ fn data_mapped_stat_modifiers(
     let mut mods = Vec::new();
     for ds in stats {
         if ds.value == 0.0 {
-            continue; // 与 Legacy 同口径跳零，保证双跑可比。
+            continue; // 跳零值 stat（无信息量，与历史口径一致）。
         }
         let MappedOutcome::Mapped(items) =
             stat_map_engine::map_stat(catalog, effect_id, None, &ds.stat, ds.value)
@@ -2302,10 +2268,11 @@ fn data_mapped_stat_modifiers(
     mods
 }
 
-/// Compare 模式：逐 stat 比对两通道注入集合（名字 / 聚合类型 / 数值），分类记录
-/// 进线程局部缓冲（L1 映射级 diff 的实跑视角；穷举视角见
-/// `crates/pobr-build/tests/statmap_dual_run.rs`）。
-fn record_stat_map_compare(
+/// Compare 模式：逐 stat 记录数据通道映射 outcome 观测（分类
+/// `mapped` / `unsupported:<类别>` / `unknown`），进线程局部缓冲。Legacy 启发式
+/// 已删除（T2.4），本函数保留为长期对照/观测框架——M3 config / M6 parser 双跑
+/// 复用同模式（蓝图 §6 Q4 裁决：保留枚举与报告框架）。
+fn record_stat_map_observation(
     stats: &[pobr_data::catalog::SkillDamageStat],
     label_prefix: &str,
     effect_id: &str,
@@ -2315,33 +2282,14 @@ fn record_stat_map_compare(
         if ds.value == 0.0 {
             continue;
         }
-        // legacy 侧注入集合（名字, 类型, 值）。与 `legacy_mapped_stat_modifiers` 同口径：
-        // 历史 adapter 白名单（T5.3 平移到 `legacy_stat_filter`）外的 stat 在 legacy 侧
-        // 视为不存在（全量入库前根本不会进库），diff 分类才能忠实反映两通道差异。
-        let mut legacy: Vec<(String, &'static str, f64)> =
-            if crate::legacy_stat_filter::is_mappable_stat(&ds.stat) {
-                map_skill_stats(&ds.stat)
-                    .into_iter()
-                    .map(|m| {
-                        (
-                            m.mod_name.clone(),
-                            m.mod_type.as_trace_label(),
-                            ds.value * m.scale,
-                        )
-                    })
-                    .collect()
-            } else {
-                Vec::new()
-            };
-        legacy.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        // data 侧注入集合 + 结果分类（effect 上下文 + 默认 set "1"，与 Data 通道同口径）。
+        // 数据通道 outcome（effect 上下文 + 默认 set "1"，与 Data 通道同口径）。
         let outcome = match catalog {
             Some(c) => stat_map_engine::map_stat(c, effect_id, None, &ds.stat, ds.value),
             None => MappedOutcome::Unknown,
         };
-        let (mut data, data_note): (Vec<(String, &'static str, f64)>, String) = match &outcome {
-            MappedOutcome::Mapped(items) => (
-                items
+        let (classification, detail): (&'static str, String) = match &outcome {
+            MappedOutcome::Mapped(items) => {
+                let mut injected: Vec<(String, &'static str, f64)> = items
                     .iter()
                     .filter_map(|item| match item {
                         MappedItem::Modifier(m) => Some((
@@ -2349,31 +2297,17 @@ fn record_stat_map_compare(
                             m.mod_type.as_trace_label(),
                             m.value.as_number().unwrap_or(0.0),
                         )),
-                        MappedItem::SkillData { .. } => None, // 无消费方，不计入比较
+                        MappedItem::SkillData { .. } => None, // 无消费方，不计入
                     })
-                    .collect(),
-                String::new(),
-            ),
-            MappedOutcome::Unsupported(reason) => {
-                (Vec::new(), format!("unsupported:{}", reason.category()))
+                    .collect();
+                injected.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                ("mapped", format!("data={injected:?}"))
             }
-            MappedOutcome::Unknown => (Vec::new(), "unknown".to_string()),
+            MappedOutcome::Unsupported(reason) => {
+                ("unsupported", format!("unsupported:{}", reason.category()))
+            }
+            MappedOutcome::Unknown => ("unknown", String::new()),
         };
-        data.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-        let eq = legacy.len() == data.len()
-            && legacy
-                .iter()
-                .zip(&data)
-                .all(|(a, b)| a.0 == b.0 && a.1 == b.1 && (a.2 - b.2).abs() < 1e-9);
-        let classification = match (legacy.is_empty(), data.is_empty()) {
-            (true, true) => "both_absent",
-            (false, true) => "legacy_only",
-            (true, false) => "data_only",
-            (false, false) if eq => "both_equal",
-            (false, false) => "both_diff",
-        };
-        let detail = format!("legacy={legacy:?} data={data:?} {data_note}");
         STAT_MAP_CTX.with(|ctx| {
             ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
                 stat: ds.stat.clone(),

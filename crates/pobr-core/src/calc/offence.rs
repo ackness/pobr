@@ -867,7 +867,7 @@ pub(crate) fn more_factor_traced(
 /// `Speed = 1 / (baseTime / ((1+inc/100)*more) + TotalAttackTime + TotalCastTime)`）。
 ///
 /// 这类常量来自技能 statSet 的 `total_cast_time_+_ms` / `total_attack_time_+_ms`
-/// constantStat（如 Comet +1000ms = +1.0s），由 [`crate::skill_stat_map`] 映射为
+/// constantStat（如 Comet +1000ms = +1.0s），由 statmap 数据引擎（`crate::rules::stat_map_engine`）映射为
 /// `TotalCastTime`/`TotalAttackTime` BASE 注入。无此词条时返回原速率（加法项为 0）。
 ///
 /// `scaled_rate` 为已应用速度 inc/more（但**未应用** ActionSpeed）的速率；本函数把它转回
