@@ -108,3 +108,41 @@ PoB2 依据 `Modules/CalcActiveSkill.lua`：`isGlobalEffect`（:68-80）、
    常量逐值持平（T2.4 的 23→22 例外已在 02bbf58 独立 commit 显式审查）；
 3. 解析/数据面：本阶段 oracle 对拍（quality golden + statmap 71 条）齐备；
    W-J 各 commit 无 regen 产物变更。
+
+## 5. 补刀波（2026-06-11）：逐 build 偏差归因 + 根因登记
+
+> 方法：ninja_parity --nocapture 逐字段 diff × pob2-oracle headless 中间值对拍
+> （druid-oracle-comet / coiling-bolts / ice-shot / flicker-strike / DD 五个最差
+> build），把进攻偏差拆解为「等级解析 / inc-more 桶 / crit 链 / 配置条件」四类。
+
+### 5.1 已修复（M1 范围内，commit 5961e28）
+
+**宝石等级类别匹配缺口**：`+N to Level of all <category> Skills` 旧实现只支持
+单 token 类别，多词类别（`Cold Spell`/`Physical Spell`/`Melee`×多词变体）与
+技能名类别（`Shield Wall`/`Ember Fusillade`）整串不匹配被静默丢弃。对齐 PoB2
+`ModParser.lua:3480-3496`（gemIdLookup 命中 → 名字匹配；多词 → keywordList）+
+`CalcSetup.lua:404-435 applyGemMods`（keywordList 逐 token `gemIsType`，全中
+才生效）。5 个 build 的 DPS 向 golden 收敛（comet 0.23x→0.46x、DD 0.05x→0.09x、
+双 shield-wall 0.39/0.47x→0.49/0.55x、ember 0.12x→0.18x），hit 计数不变
+（深坑未越 5% 阈），零回归。
+
+附带暴露：`cost_multiplier.rs` oracle 锚 301 实为 `floor(232×1.3)`（ER 被
+require `GeneratesEnergy` 拒收）与旧注释 `floor(211×1.43)` 的数值巧合；已按
+实际链路重锚 479 并在测试 doc 登记 PoB2 golden 577 的余差构成。
+
+### 5.2 根因登记（超出 M1 范围，记录不修）
+
+| 根因 | 证据（oracle/vendor） | 受影响 build/字段 | 归属 |
+|---|---|---|---|
+| 敌人配置条件链（Critical Weakness 20 层 → enemy `SelfCritChance` BASE +10；cursed-enemy per-curse gain-as ×5 咒；conditionCritRecently 等速度条件） | `ConfigOptions.lua:1889-1894`；coiling 的 `DamageGainAs_Physical=150` = 30%×5 咒（item 词条 per Curse on target） | comet/frost-bomb/coiling/essence-drain 等 CritChance 全线低估；coiling DPS 0.10x 的主因 | M3（config/敌人状态） |
+| mode_effective 专属 crit 机制：`CritChanceLucky`（lucky 二掷）、`InevitableCriticalHits`（CritChance 置 100 + 折算 mult，`CalcOffence.lua:3618-3725`） | comet oracle PreEffective 69.92 → final 100 | druid 双 build、frost-bomb 的 CritChance=100 与 CritMultiplier 偏差 | M4（offence 深化） |
+| 特殊技能 skill_data：corpse 爆炸 `corpse_explosion_monster_life_permillage_physical`（DD 主伤害来源，statmap 引擎 Unsupported:skill_data_key 上报中） | L2 运行时 outcome 观测 | DD TotalDPS 0.09x（最大单点缺口） | M5b（特殊 statdesc） |
+| meta gem 二段 support 形态（Spellslinger → `SupportSpellslingerPlayer`，GemEffects `SecondarySupportName` 通道）+ 能量链（ER/Boundless 的 manaMultiplier 取舍） | oracle skillInfo.supports 含 `SupportSpellslingerPlayer L18`；vendor `act_int.lua:19984-19998` | comet 组 support 裁决/ cost 链余差 | M1 验收已登记缺口（T5 延伸），实施归 M4 前置 |
+| DistanceRamp tag（Close Combat II）：核实 PoB2 在 ninja 夹具同环境下 `skillDist=nil`（`enemyDistance` 仅 Placeholder，`CalcActiveSkill.lua:629/642` 只读 configInput）→ PoB2 同样跳过该 mod；PoBR Unsupported:tag 与之同口径，**非缺口** | `ModStore.lua:557-573` | flicker 等近战（无 parity 影响） | 无需修 |
+
+### 5.3 门禁状态（补刀波收尾时点）
+
+fmt --check / clippy -D warnings / test --workspace（1221 passed）全绿；
+ninja_parity：防御 114/144=79.2%@5%、进攻 22/80=27.5%@5%（= baseline 常量，
+零回归）。M1 进攻 ≥40%@5% 验收目标仍未达成；按上表归因，剩余大头在
+M3 配置条件链与 M4 crit/特殊机制，不在 M1 技能/宝石数据链路内。
