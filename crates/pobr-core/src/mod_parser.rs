@@ -1543,14 +1543,14 @@ fn strip_per_slot_stat_suffix(text: &str) -> Option<(String, ModTag)> {
         .strip_prefix("item ")
         .or_else(|| rest.strip_prefix("total "))
         .unwrap_or(rest);
-    let stat_var = per_slot_defence_var(rest.trim())?;
 
-    // slot-clause：`[equipped] <slot words>`。
+    // slot-clause：`[equipped] <slot words>`（先解析槽位——evasion 词形门控依赖槽位）。
     let slot_words = slot_clause
         .trim()
         .strip_prefix("equipped ")
         .unwrap_or(slot_clause.trim());
     let slot_id = slot_words_to_id(slot_words.trim())?;
+    let stat_var = per_slot_defence_var(rest.trim(), slot_id)?;
 
     let tag = ModTag::Multiplier {
         var: format!("{stat_var}On{slot_id}"),
@@ -1562,10 +1562,21 @@ fn strip_per_slot_stat_suffix(text: &str) -> Option<(String, ModTag)> {
 
 /// 防御属性词 → per-槽位缩放变量前缀（`Armour`/`Evasion`/`EnergyShield`）。
 /// 仅识别可按装备件求和的防御属性；其它返回 `None`。
-fn per_slot_defence_var(words: &str) -> Option<&'static str> {
+///
+/// Evasion 词形按 vendor 精确门控（PoB2 ModParser.lua）：
+/// - `evasion rating`（带 rating）仅 body armour（:1598-1600）/ shield（:1608）/
+///   armour items（:1601）有模式；
+/// - 裸 `evasion`（无 rating）**仅 boots**（:1614-1615）有模式。
+///
+/// 因此 `per N Item Evasion on Equipped Body Armour`（无 `rating`，PoE2 0.5 树节点
+/// 34324 的实际文本）在 PoB2 不匹配任何模式、整条 mod 无效——18-build golden 的
+/// flat ES 印证（flicker/twister 的 golden 不含该项）。PoBR 同步不剥离（归
+/// Unsupported，不贡献数值），与 golden 对齐。
+fn per_slot_defence_var(words: &str, slot_id: &str) -> Option<&'static str> {
     Some(match words {
         "armour" => "Armour",
-        "evasion" | "evasion rating" => "Evasion",
+        "evasion rating" if slot_id != "boots" => "Evasion",
+        "evasion" if slot_id == "boots" => "Evasion",
         "energy shield" | "maximum energy shield" => "EnergyShield",
         _ => return None,
     })
@@ -1823,6 +1834,31 @@ mod per_slot_defence_tests {
             t,
             ModTag::Multiplier { var, div, .. } if var == "ArmourOnbodyarmour" && *div == 10.0
         )));
+    }
+
+    /// 裸 `evasion`（无 `rating`）在 body armour 不剥离——vendor 模式仅
+    /// `evasion rating on equipped body armour`（ModParser.lua:1598-1600），裸
+    /// `evasion` 仅 boots（:1614-1615）。PoE2 0.5 树节点文本
+    /// `per 12 Item Evasion on Equipped Body Armour` 在 PoB2 无效（golden 印证），
+    /// PoBR 同步整条归 Unsupported。
+    #[test]
+    fn bare_evasion_on_body_armour_does_not_strip() {
+        assert!(
+            strip_per_slot_stat_suffix(
+                "+1 to maximum energy shield per 12 item evasion on equipped body armour"
+            )
+            .is_none()
+        );
+        // 带 rating 的 body armour 词形与裸 evasion 的 boots 词形仍接受。
+        assert!(
+            strip_per_slot_stat_suffix(
+                "+1 to maximum energy shield per 12 evasion rating on equipped body armour"
+            )
+            .is_some()
+        );
+        assert!(
+            strip_per_slot_stat_suffix("+2 to armour per 10 evasion on equipped boots").is_some()
+        );
     }
 
     /// 未知防御属性 / 未知槽位不剥离（保守落回常规解析，不误吞）。
