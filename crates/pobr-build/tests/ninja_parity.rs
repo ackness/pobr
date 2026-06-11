@@ -337,3 +337,110 @@ fn parity_baseline_report() {
         pct(off.hit10, off.total),
     );
 }
+
+/// M2 F-2：EHP 新旧口径 18-build 双跑对照报告（蓝图 m2-defence §2 Track F commit 2）。
+///
+/// 逐 build 打印：TotalEHP（旧 lowest-max-hit 口径 / 新 PoB2 口径 / PoB2 golden）+
+/// 致死击数 + 单击总进伤 + 各类型 max hit（旧/新/golden）。打印型仪表盘（不设门禁；
+/// 口径切换与 baseline 重记在 F-3 显式审查 commit）：
+/// `cargo test -p pobr-build --test ninja_parity -- ehp_dual_run_report --nocapture`
+#[test]
+fn ehp_dual_run_report() {
+    let data = load_data();
+    let builds = discover_builds();
+    assert!(!builds.is_empty(), "no builds discovered");
+
+    // golden 的 Infinity 经 sanitize 变为 1e308——展示与比值口径按 ∞ 处理。
+    let fmt_v = |v: f64| -> String {
+        if !v.is_finite() || v >= 1e307 {
+            "inf".into()
+        } else {
+            format!("{v:.0}")
+        }
+    };
+    let fmt_ratio = |pobr: f64, golden: Option<f64>| -> String {
+        match golden {
+            Some(g) if g >= 1e307 || !g.is_finite() => {
+                if !pobr.is_finite() {
+                    "✓inf".into()
+                } else {
+                    "fin/inf".into()
+                }
+            }
+            Some(g) if g != 0.0 => format!("{:.2}x", pobr / g),
+            Some(_) => "g=0".into(),
+            None => "—".into(),
+        }
+    };
+
+    eprintln!("\n========== M2 F-2 EHP 双跑对照（旧 lowest-max-hit vs 新 PoB2 口径） ==========");
+    for dir in &builds {
+        let name = dir.file_name().unwrap().to_string_lossy();
+        let g = golden_stats(dir);
+        let Some(out) = run_build(dir, &data) else {
+            eprintln!("\n##### {name} :: PARSE/CALC FAILED #####");
+            continue;
+        };
+        eprintln!("\n##### {name} #####");
+        let g_ehp = golden(&g, "TotalEHP");
+        eprintln!(
+            "  TotalEHP        old {:>12}  new {:>12}  golden {:>12}  old {}  new {}",
+            fmt_v(out.total_ehp_lowest_max_hit),
+            fmt_v(out.total_ehp_pob2),
+            g_ehp.map_or("—".into(), fmt_v),
+            fmt_ratio(out.total_ehp_lowest_max_hit, g_ehp),
+            fmt_ratio(out.total_ehp_pob2, g_ehp),
+        );
+        eprintln!(
+            "  hitsToDie {:>8}  mitigatedHits {:>8}  enemyDamageIn {:>8}",
+            fmt_v(out.number_of_damaging_hits),
+            fmt_v(out.number_of_mitigated_hits),
+            fmt_v(out.total_enemy_damage_in),
+        );
+        for (label, key, old_v, new_v) in [
+            (
+                "PhysMaxHit",
+                "PhysicalMaximumHitTaken",
+                out.physical_max_hit,
+                out.physical_max_hit_pob2,
+            ),
+            (
+                "FireMaxHit",
+                "FireMaximumHitTaken",
+                out.fire_max_hit,
+                out.fire_max_hit_pob2,
+            ),
+            (
+                "ColdMaxHit",
+                "ColdMaximumHitTaken",
+                out.cold_max_hit,
+                out.cold_max_hit_pob2,
+            ),
+            (
+                "LightMaxHit",
+                "LightningMaximumHitTaken",
+                out.lightning_max_hit,
+                out.lightning_max_hit_pob2,
+            ),
+            (
+                "ChaosMaxHit",
+                "ChaosMaximumHitTaken",
+                out.chaos_max_hit,
+                out.chaos_max_hit_pob2,
+            ),
+        ] {
+            let gv = golden(&g, key);
+            eprintln!(
+                "  {label:<14}  old {:>12}  new {:>12}  golden {:>12}  old {}  new {}",
+                fmt_v(old_v),
+                fmt_v(new_v),
+                gv.map_or("—".into(), fmt_v),
+                fmt_ratio(old_v, gv),
+                fmt_ratio(new_v, gv),
+            );
+        }
+    }
+    eprintln!(
+        "\n（F-1 双跑：total_ehp 字段仍为旧口径；新值挂 total_ehp_pob2/*_max_hit_pob2，切换在 F-3）"
+    );
+}
