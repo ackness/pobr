@@ -151,6 +151,7 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     env.enemy.base.cold_resistance = defaults.elemental_resist;
     env.enemy.base.lightning_resistance = defaults.elemental_resist;
     inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier);
+    inject_ehp_damage_placeholder(&mut env.enemy.mod_db, constants, defaults.level, tier);
 
     // Boss 自带元素穿透作用在**玩家**伤害的减抗上 → 注入 player modDB
     // （`offence.rs::penetration_value` 从玩家 db 读 `ElementalPenetration`）。
@@ -281,6 +282,35 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
     }
     if tier.is_pinnacle_or_uber() {
         push_enemy_condition(db, "PinnacleBoss", "pinnacle_boss");
+    }
+}
+
+/// EHP 进伤 placeholder 注入（M2 F-1）：把 vendor ConfigOptions.lua:1982-1996 的
+/// 敌人单击伤害默认占位（`enemy<X>Damage` config placeholder）落成 enemy modDB 的
+/// `Enemy<X>Damage` BASE——`default = round(monsterDamageTable[lv] ×
+/// ehp_base_damage_mult × DPSMult)`，chaos 再 `round(/chaos_damage_div)`
+/// （数值装配在 `ehp::enemy_damage_placeholder`）。
+///
+/// 行为中性：注入的 ModName 当前仅被 EHP 新管线（`ehp::assemble_enemy_damage`）
+/// 消费，全部产出挂新字段——既有输出 parity 逐值不变。M3 config_interpreter 接管
+/// `enemy<X>Damage` configInput 后，本注入退化为无 config 时的 placeholder 路径。
+fn inject_ehp_damage_placeholder(
+    db: &mut ModDb,
+    constants: &RuntimeConstants,
+    level: u32,
+    tier: EnemyTier,
+) {
+    let damage = super::ehp::enemy_damage_placeholder(constants, level, tier);
+    for (name, value) in [
+        ("EnemyPhysicalDamage", damage.physical),
+        ("EnemyFireDamage", damage.fire),
+        ("EnemyColdDamage", damage.cold),
+        ("EnemyLightningDamage", damage.lightning),
+        ("EnemyChaosDamage", damage.chaos),
+    ] {
+        if value > 0.0 {
+            push_enemy_number(db, name, ModType::Base, value, "ehp_damage_placeholder");
+        }
     }
 }
 

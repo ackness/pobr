@@ -203,6 +203,23 @@ pub struct OutputTable {
     /// 旧口径综合 EHP（各类型 max hit 取 min；Track F 切换 `total_ehp` 语义为
     /// PoB2 口径（mitigatedHits × totalEnemyDamageIn，:3322）后，旧值保留于此作附加指标）。
     pub total_ehp_lowest_max_hit: f64,
+
+    // --- M2 Track F（F-1）：PoB2 口径双跑并行字段。F-1 期间 `total_ehp` /
+    //     `*_max_hit` 维持旧口径不动，新口径值挂本组字段（18-build 新旧对照报告
+    //     消费）；F-3 口径切换 commit 把它们搬进规范字段并审查 baseline。 ---
+    /// 新口径综合 EHP（PoB2 `TotalEHP = TotalNumberOfHits × totalEnemyDamageIn`，
+    /// CalcDefence.lua:3322；无敌人进伤时 0 中性）。
+    pub total_ehp_pob2: f64,
+    /// 敌人单击总进伤（PoB2 `totalEnemyDamageIn`，mult/crit 之前 Σ placeholder，
+    /// CalcDefence.lua:2136）。
+    pub total_enemy_damage_in: f64,
+    /// 新口径各类型最大承受命中（PoB2 `<X>MaximumHitTaken`，TotalHitPool 池扩展层 +
+    /// taken-as，CalcDefence.lua:3540-3697）。
+    pub physical_max_hit_pob2: f64,
+    pub fire_max_hit_pob2: f64,
+    pub cold_max_hit_pob2: f64,
+    pub lightning_max_hit_pob2: f64,
+    pub chaos_max_hit_pob2: f64,
 }
 
 /// 单个召唤物的输出快照（结构同玩家 offence/defence 关键输出的子集）。
@@ -349,6 +366,14 @@ impl Default for OutputTable {
             number_of_damaging_hits: 0.0,
             number_of_mitigated_hits: 0.0,
             total_ehp_lowest_max_hit: 0.0,
+            // M2 Track F（F-1）：双跑并行字段，默认 0 中性。
+            total_ehp_pob2: 0.0,
+            total_enemy_damage_in: 0.0,
+            physical_max_hit_pob2: 0.0,
+            fire_max_hit_pob2: 0.0,
+            cold_max_hit_pob2: 0.0,
+            lightning_max_hit_pob2: 0.0,
+            chaos_max_hit_pob2: 0.0,
         }
     }
 }
@@ -420,6 +445,13 @@ mod m2_default_neutral_tests {
             ("number_of_damaging_hits", out.number_of_damaging_hits),
             ("number_of_mitigated_hits", out.number_of_mitigated_hits),
             ("total_ehp_lowest_max_hit", out.total_ehp_lowest_max_hit),
+            ("total_ehp_pob2", out.total_ehp_pob2),
+            ("total_enemy_damage_in", out.total_enemy_damage_in),
+            ("physical_max_hit_pob2", out.physical_max_hit_pob2),
+            ("fire_max_hit_pob2", out.fire_max_hit_pob2),
+            ("cold_max_hit_pob2", out.cold_max_hit_pob2),
+            ("lightning_max_hit_pob2", out.lightning_max_hit_pob2),
+            ("chaos_max_hit_pob2", out.chaos_max_hit_pob2),
         ] {
             assert_eq!(v, 0.0, "{name} 默认应为 0（中性）");
         }

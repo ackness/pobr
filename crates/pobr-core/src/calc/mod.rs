@@ -47,8 +47,11 @@ pub use defence_panels::{
     fill_defence_panels,
 };
 pub use ehp::{
-    EhpOptions, EhpResult, ResistanceSuite, calc_ehp, calc_ehp_with_opts, max_hit_for_type,
-    physical_max_hit, physical_taken_fraction,
+    EhpLoopParams, EhpOptions, EhpResult, EnemyDamageIn, MaxHitInputs, NotHitSuite,
+    ResistanceSuite, assemble_enemy_damage, calc_ehp, calc_ehp_with_opts, enemy_crit_effect_ehp,
+    enemy_damage_placeholder, fill_ehp_pob2, max_hit_for_type, max_hit_pob2, not_hit_suite,
+    number_of_hits_to_die, physical_max_hit, physical_taken_fraction, taken_hit_per_type,
+    total_hit_pools,
 };
 pub use env::Env;
 pub use error::CalcError;
