@@ -167,6 +167,15 @@ fn m2_ehp_calc_constants_pinned_to_pob2_source() {
     assert_eq!(gc.game.normal_enemy_dps_mult, 1.0 / 4.40);
 }
 
+/// M2-F：max-hit 转换平滑迭代数锁定（vendor Modules/Data.lua:241
+/// maxHitSmoothingPasses = 8，CalcDefence.lua:3669 消费）。
+#[test]
+fn m2_max_hit_smoothing_passes_pinned_to_pob2_source() {
+    let gc = load();
+
+    assert_eq!(gc.game.max_hit_smoothing_passes, 8.0);
+}
+
 /// M2-D：Block 面板族常量锁定——基础格挡上限 50%
 /// （vendor Data/Misc.lua:147 `object_inherent_base_maximum_block_%_from_ot`，
 /// CalcSetup.lua:28 注入 `BaseBlockChanceMax` BASE）。

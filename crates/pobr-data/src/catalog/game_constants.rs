@@ -213,6 +213,12 @@ pub struct GameMechanicsConstantsDef {
     #[serde(default = "default_normal_enemy_dps_mult")]
     pub normal_enemy_dps_mult: f64,
 
+    // ---- M2-F：max-hit 转换平滑迭代数（vendor-only，Data.lua:241）。----
+    /// max-hit 多转换分支（`useConversionSmoothing`）的平滑迭代上限。
+    /// Data.lua:241 maxHitSmoothingPasses = 8（CalcDefence.lua:3669 消费）。
+    #[serde(default = "default_max_hit_smoothing_passes")]
+    pub max_hit_smoothing_passes: f64,
+
     // ---- M2-D：Block 面板族（vendor-only）。----
     /// 基础格挡上限（%，`BaseBlockChanceMax` 的角色固有 BASE）。
     /// Misc.lua:147 `object_inherent_base_maximum_block_%_from_ot` = 50
@@ -236,6 +242,9 @@ fn default_ehp_calc_speed_up() -> f64 {
 }
 fn default_normal_enemy_dps_mult() -> f64 {
     1.0 / 4.40
+}
+fn default_max_hit_smoothing_passes() -> f64 {
+    8.0
 }
 
 // ---------------------------------------------------------------------------
@@ -340,6 +349,8 @@ impl Default for GameMechanicsConstantsDef {
             ehp_calc_max_iterations: default_ehp_calc_max_iterations(),
             ehp_calc_speed_up: default_ehp_calc_speed_up(),
             normal_enemy_dps_mult: default_normal_enemy_dps_mult(),
+            // M2-F：max-hit 转换平滑迭代数（Data.lua:241）。
+            max_hit_smoothing_passes: default_max_hit_smoothing_passes(),
             // M2-D：Block 面板族（Misc.lua:147 / CalcSetup.lua:28）。
             base_block_chance_max: default_base_block_chance_max(),
         }
