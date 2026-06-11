@@ -146,6 +146,11 @@ pub struct Build {
     /// `jewels` 注入珠宝**自身**的全局词条，本列表额外按半径几何把 `also grant` 展开为
     /// 「半径内已分配对应种类节点数 × 授予」的全局 mod（见 `calc_orchestrator`）。
     pub radius_jewels: Vec<RadiusJewel>,
+    /// **激活态**的药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`）。
+    /// PoB2 在 EFFECTIVE buff 模式下把激活 flask/charm 的 buff 词条（`during effect`
+    /// 族等）计入玩家 modDB；PoBR 在编排层把这些物品的可解析词条按全局注入
+    /// （见 `calc_orchestrator`）。非激活槽不进入本列表。
+    pub flask_charm_items: Vec<Item>,
     /// 技能宝石组。
     pub socket_groups: Vec<SocketGroup>,
     /// 主技能组索引（PoB `<Build mainSocketGroup>`，**1-based**，指向 `socket_groups`）。
@@ -201,6 +206,12 @@ impl Build {
     /// 设定范围珠宝（radius jewel）几何展开列表，返回新副本。
     pub fn with_radius_jewels(mut self, radius_jewels: Vec<RadiusJewel>) -> Self {
         self.radius_jewels = radius_jewels;
+        self
+    }
+
+    /// 设定激活态药剂/护符列表，返回新副本。
+    pub fn with_flask_charm_items(mut self, items: Vec<Item>) -> Self {
+        self.flask_charm_items = items;
         self
     }
 

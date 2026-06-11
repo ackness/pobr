@@ -525,6 +525,28 @@ pub fn calculate_with_data(
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
+    // 2b''. 激活态药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`）：
+    //       可解析词条按全局注入（skip-and-collect 容错——flask 本地词条如
+    //       『increased Amount Recovered』与触发行『Used when ...』天然不可解析，
+    //       不进入计算）。对应 PoB2 EFFECTIVE buff 模式下激活 flask/charm 的 buff
+    //       词条计入玩家 modDB（如『Defend with 200% of Armour during effect』→
+    //       ArmourDefense，ModParser.lua:2619）。
+    for fc in &build.flask_charm_items {
+        let filtered = filter_item_parseable(fc);
+        let texts: Vec<&str> = filtered
+            .implicit_texts
+            .iter()
+            .chain(&filtered.modifier_texts)
+            .chain(&filtered.enchant_texts)
+            .map(String::as_str)
+            .collect();
+        if !texts.is_empty() {
+            session
+                .add_modifier_texts(texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
+    }
+
     // 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
     //      已分配**对应种类节点数 × 授予，展开为全局 modifier text 注入（PoB2 几何口径）。
     //      与装备/天赋路径一致，先 skip-and-collect 过滤硬失败词条，避免单条中止整批。

@@ -976,6 +976,19 @@ fn parse_deflection_special(rest: &str, source: &str) -> Option<Vec<Modifier>> {
 
 /// 数值开头/带数值的防御句式（block 承伤、闪避上限、损失防止、无符号 chance-to 族）。
 fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    // 『Defend with N% of Armour [during effect]』（ModParser.lua:2616/:2619 →
+    // ArmourDefense MAX N−100；during effect 变体同样无条件——flask/charm 激活态由
+    // 编排层注入门控）。消费：taken.rs `max_of("ArmourDefense")/100` 入 effArmour
+    // （CalcDefence.lua:1392/:2344）。PoBR 无 MAX 类型，以 BASE 表达（消费侧 max_of）。
+    if let Some(tail) = rest.strip_prefix("defend with ") {
+        let (pct, words) = strip_pct_of(tail)?;
+        if matches!(words, "armour" | "armour during effect") {
+            return Some(vec![
+                Modifier::number("ArmourDefense", ModType::Base, pct - 100.0).with_source(source),
+            ]);
+        }
+        return None;
+    }
     // 格挡承伤比例（ModParser.lua:2479 → BlockEffect BASE N，PoB2 语义=被格挡命中仍承受 N%）。
     if let Some(tail) = rest.strip_prefix("you take ") {
         let (pct, words) = strip_pct_of(tail)?;

@@ -568,3 +568,21 @@ fn m2_followup_flat_dr_and_crit_reduction() {
         &[N("ReduceCritExtraDamage", Base, 100.0)],
     );
 }
+
+/// M2 补刀：『Defend with N% of Armour』族（charm『For Utopia』等）。
+#[test]
+fn m2_followup_armour_defense() {
+    use ModType::*;
+
+    // ModParser.lua:2616 裸形 → ArmourDefense N−100（vendor MAX；PoBR 消费侧
+    // taken.rs max_of(BASE)，以 BASE 表达同语义）。
+    assert_parses(
+        "Defend with 120% of Armour",
+        &[N("ArmourDefense", Base, 20.0)],
+    );
+    // :2619 during effect 变体同样无条件（flask/charm 激活态由编排层门控）。
+    assert_parses(
+        "Defend with 200% of Armour during effect",
+        &[N("ArmourDefense", Base, 100.0)],
+    );
+}
