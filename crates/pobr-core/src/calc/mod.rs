@@ -1,5 +1,6 @@
 pub mod actor;
 pub mod ailment;
+pub mod ailment_apply;
 pub mod breakdown;
 pub mod crit;
 pub mod damage;
