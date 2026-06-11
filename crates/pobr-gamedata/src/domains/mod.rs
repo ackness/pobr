@@ -35,3 +35,7 @@ pub mod stat_set_labels;
 
 // ---- M2-D1 基底物品覆盖值（overlay 层，loader + 专用 merge：block/spirit）----
 pub mod base_item_overrides;
+
+// ---- M3 前置：config 选项目录 + 内建 buff 定义（overlay 层，纯查表）----
+pub mod buff_definitions;
+pub mod config_options;

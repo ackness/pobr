@@ -11,10 +11,13 @@
 //! keystone 开关快照）；config_interpreter / stat_map_engine / buff_expander /
 //! special_mod 等解释器随后续阶段进驻。
 
+pub mod buff_expander;
+pub mod config_interpreter;
 pub mod keystone_registry;
 pub mod registry;
 pub mod skill_type_expr;
 pub mod stat_map_engine;
+pub mod value_expr;
 
 pub use keystone_registry::DefenceKeystones;
 pub use registry::{DuplicateHandlerError, Handler, HandlerRegistry};
