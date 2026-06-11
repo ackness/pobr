@@ -32,3 +32,9 @@ pub mod gem_effects;
 
 // ---- M1-T5.2 statSet label / vendor 导出序号边车（overlay 层，merge 进 stat sets）----
 pub mod stat_set_labels;
+
+// ---- pre-M5 数据前置（overlay 层，纯 loader 零接线；一表一文件）----
+pub mod granted_effect_minions; // M5a：宝石→召唤物外键边车
+pub mod minions; // M5a：召唤物条目
+pub mod mirage_configs; // M5a-D2：mirage 配置
+pub mod spectres; // M5a：魂灵条目

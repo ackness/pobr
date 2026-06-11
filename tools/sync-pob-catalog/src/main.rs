@@ -9,14 +9,18 @@ use sync_pob_catalog::extract_lua::{
     DEFAULT_SKILL_FILES, DEFAULT_STAT_MAP_SKILL_FILES, ExtractLuaArgs, resolve_luajit,
     run_extract_lua,
 };
+use sync_pob_catalog::extract_minions::{
+    MinionsKind, run_extract_minion_list, run_extract_minions,
+};
 use sync_pob_catalog::extract_quality::run_extract_gem_quality;
 use sync_pob_catalog::extract_stat_map::run_extract_stat_map;
 use sync_pob_catalog::extract_stat_set_labels::run_extract_stat_set_labels;
+use sync_pob_catalog::mirage_configs::run_gen_mirage_configs;
 use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|minions|spectres|minion-list] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -33,6 +37,7 @@ fn run() -> io::Result<()> {
     let command = raw_args.next();
     match command.as_deref() {
         Some("extract-lua") => run_extract_lua_command(raw_args),
+        Some("gen-mirage-configs") => run_gen_mirage_configs_command(raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
         }
@@ -56,6 +61,10 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
     let default_files: &[&str] = match parsed.what.as_deref() {
         Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
         Some("gem-effects") => &["Gems"],
+        // pre-M5a 数据生产目标：minions/spectres 抽取文件固定（runner 内校验）；
+        // minion-list 复用全量技能文件（与 skill-overrides 同集）。
+        Some("minions") => &["Minions"],
+        Some("spectres") => &["Spectres"],
         _ => DEFAULT_SKILL_FILES,
     };
     let extract_args = ExtractLuaArgs {
@@ -79,6 +88,9 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
         Some("stat-map") => run_extract_stat_map(&extract_args)?,
         Some("gem-effects") => run_extract_gem_effects(&extract_args)?,
         Some("stat-set-labels") => run_extract_stat_set_labels(&extract_args)?,
+        Some("minions") => run_extract_minions(&extract_args, MinionsKind::Minions)?,
+        Some("spectres") => run_extract_minions(&extract_args, MinionsKind::Spectres)?,
+        Some("minion-list") => run_extract_minion_list(&extract_args)?,
         Some(other) => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -93,6 +105,38 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
             }
             fs::write(&out, json)?;
             eprintln!("extract-lua: wrote {}", out.display());
+            Ok(())
+        }
+        None => {
+            print!("{json}");
+            Ok(())
+        }
+    }
+}
+
+// ---- gen-mirage-configs：工具内嵌 5 条 mirage 配置 → overlay JSON ----
+
+fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Result<()> {
+    let parsed = ExtractCliArgs::parse(args)?;
+    let extract_args = ExtractLuaArgs {
+        vendor_root: parsed.vendor_root,
+        luajit: resolve_luajit(parsed.luajit.as_deref()),
+        // 仅为复用 ExtractLuaArgs 形状；本命令不执行 luajit。
+        files: vec!["CalcMirages".to_string()],
+        version_file: parsed.version_file,
+        out_for_meta: parsed
+            .out
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned()),
+    };
+    let json = run_gen_mirage_configs(&extract_args)?;
+    match parsed.out {
+        Some(out) => {
+            if let Some(parent) = out.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&out, json)?;
+            eprintln!("gen-mirage-configs: wrote {}", out.display());
             Ok(())
         }
         None => {

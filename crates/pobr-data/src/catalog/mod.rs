@@ -42,6 +42,14 @@ pub mod skill_overrides;
 // ---- M1-T2 SkillStatMap overlay schema（vendor Lua 抽取，skill_stat_map/v1）----
 pub mod stat_map;
 
+// ---- pre-M5 数据前置（M5a/M5b/M5c 蓝图的数据生产项，零消费接线）----
+pub mod actors; // M5a：minions / spectres / granted_effect_minions（vendor 抽取）
+pub mod triggers; // M5a-D2：mirage_configs（工具内嵌生成）；M4-T5 trigger_configs 同文件扩展
+
+pub use actors::{
+    GrantedEffectMinionDef, GrantedEffectMinionsDef, LuaValueDef, MinionEntryDef, MinionModDef,
+    MinionsDef,
+};
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};
@@ -52,5 +60,6 @@ pub use skills::{
     SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef,
 };
 pub use tree::{PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
+pub use triggers::{MirageConfigDef, MirageConfigsDef, MirageSourceFilterDef, MirageTriggerDef};
 pub use unarmed_data::{UnarmedDataTable, UnarmedWeaponDef};
 pub use weapon_types::{WeaponTypeDef, WeaponTypeTable};

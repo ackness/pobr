@@ -27,10 +27,15 @@
     "overlay": [
       "gem_effects",
       "gem_quality_stats",
+      "granted_effect_minions",
       "high_precision_mods",
       "local_mods",
+      "minions",
+      "mirage_configs",
       "skill_overrides",
-      "stat_set_labels"
+      "spectres",
+      "stat_set_labels",
+      "uniques"
     ],
     "generated": []
   }
