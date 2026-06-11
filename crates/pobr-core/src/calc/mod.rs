@@ -84,7 +84,7 @@ pub use survivability::{
     RECOUP_DURATION_4S, RECOUP_DURATION_DEFAULT, RecoupResource, RecoupResult, Reservation,
     block_chance, calc_leech, calc_leech_from_db, calc_recoup, calc_recoup_from_db, calc_regen,
     capped_chance, charge_maximum, charge_minimum, regen, regen_with_rate, reservation,
-    resolve_all_charges, resolve_charge_state,
+    reservation_with_efficiency, resolve_all_charges, resolve_charge_state,
 };
 pub use taken::{
     MitigationCtx, MitigationInputs, armour_applies_pct, build_mitigation_ctx, damage_shift_table,

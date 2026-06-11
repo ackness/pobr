@@ -274,15 +274,32 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.total_ehp = ehp.total_ehp;
 
     // --- 预留 / 剩余 ---
+    // M2 Track D（13-G11）：补 ReservationMultiplier more 与 Reservation
+    // Efficiency 除法语义（CalcDefence.lua:197/:240-241/:249-258）——
+    // mult = floor(More(ReservationMultiplier), 4)；efficiency inc/more 为**除数**；
+    // 除数下界钳极小正数：efficiency −100% 时 raw 发散，由 reservation 的
+    // [0, pool] clamp 收口为「池满预留」，与 vendor 语义一致。
+    let reservation_mult =
+        (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
+    let res_eff_divisor = |kind: &str| -> f64 {
+        let names = [
+            ModName::from(format!("{kind}ReservationEfficiency").as_str()),
+            ModName::from("ReservationEfficiency"),
+        ];
+        let inc = db.sum(ModType::Inc, cfg, &names).max(-100.0);
+        ((1.0 + inc / 100.0) * db.more(cfg, &names)).max(1e-12)
+    };
+    let life_factor = reservation_mult / res_eff_divisor("Life");
+    let mana_factor = reservation_mult / res_eff_divisor("Mana");
     let life_res = reservation(
         env.player.output.life,
-        db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]),
-        db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]),
+        db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * life_factor,
+        db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor,
     );
     let mana_res = reservation(
         env.player.output.mana,
-        db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]),
-        db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]),
+        db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]) * mana_factor,
+        db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor,
     );
     env.player.output.life_reserved = life_res.reserved;
     env.player.output.life_unreserved = life_res.unreserved;

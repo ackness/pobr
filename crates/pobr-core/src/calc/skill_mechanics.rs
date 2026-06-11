@@ -680,8 +680,21 @@ pub fn calc_spirit_reservation(
     let more = db.more(cfg, &reservation_more_names);
     let extra_flat = db.sum(ModType::Base, cfg, &extra_spirit_names);
 
-    // Spirit 保留 = base × more + extra_flat（扁平加值，按 PoB2 CalcOffence.lua 保留段）
-    let reserved = (base_spirit_reservation * more + extra_flat)
+    // M2 Track D（13-G11）：补 Spirit Reservation Efficiency 除法语义
+    // （CalcDefence.lua:240-241/:249-258——`efficiency = max(Σinc(<X>Reservation
+    // Efficiency, ReservationEfficiency), −100)` 与同名 more 同为**除数**；
+    // 效率提高 → 预留变少）。除数 ≤ 0（efficiency −100%）→ 预留发散，
+    // 由消费侧池 clamp 收口。
+    let eff_names = [
+        ModName::from("SpiritReservationEfficiency"),
+        ModName::from("ReservationEfficiency"),
+    ];
+    let eff_inc = db.sum(ModType::Inc, cfg, &eff_names).max(-100.0);
+    let eff_divisor = ((1.0 + eff_inc / 100.0) * db.more(cfg, &eff_names)).max(1e-12);
+
+    // Spirit 保留 = base × more ÷ efficiency + extra_flat
+    // （扁平加值，按 PoB2 CalcOffence.lua 保留段 + CalcDefence.lua 效率除数）
+    let reserved = (base_spirit_reservation * more / eff_divisor + extra_flat)
         .floor()
         .max(0.0);
 

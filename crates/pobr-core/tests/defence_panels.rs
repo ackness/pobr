@@ -248,3 +248,54 @@ fn deflection_zero_and_lucky() {
     let d = calc::calc_deflection(&db, &cfg, 0.0, 0.0, 2000.0);
     assert!((d.chance - 57.75).abs() < 1e-9, "got {}", d.chance);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Reservation Efficiency（CalcDefence.lua:172-350）
+// ─────────────────────────────────────────────────────────────────
+
+/// 效率除法（:240-241/:249-258）：`reserved = (flat + pool×pct) × mult ÷
+/// (1+eff/100) ÷ effMore`。手算：pool 1000、50% 预留、20% 效率 →
+/// 500 / 1.2 = 416.666…。
+#[test]
+fn reservation_efficiency_divides() {
+    let r = calc::reservation_with_efficiency(1000.0, 0.0, 50.0, 1.0, 20.0, 1.0);
+    assert!(
+        (r.reserved - 500.0 / 1.2).abs() < 1e-6,
+        "got {}",
+        r.reserved
+    );
+
+    // 负效率（reduced efficiency）→ 预留变多：500 / 0.8 = 625。
+    let r = calc::reservation_with_efficiency(1000.0, 0.0, 50.0, 1.0, -20.0, 1.0);
+    assert_eq!(r.reserved, 625.0);
+
+    // 效率 −100%（除数 0）→ 发散，钳到池满（vendor :251 more>0 守卫之外的退化边界）。
+    let r = calc::reservation_with_efficiency(1000.0, 100.0, 0.0, 1.0, -100.0, 1.0);
+    assert_eq!(r.reserved, 1000.0);
+}
+
+/// ReservationMultiplier（:197 `floor(more, 4)`）：mult 1.3 → 预留 ×1.3；
+/// floor 到四位小数（1.23456 → 1.2345）。
+#[test]
+fn reservation_multiplier_floor4() {
+    let r = calc::reservation_with_efficiency(1000.0, 100.0, 0.0, 1.3, 0.0, 1.0);
+    assert_eq!(r.reserved, 130.0);
+
+    let r = calc::reservation_with_efficiency(10000.0, 10000.0, 0.0, 1.23456, 0.0, 1.0);
+    // floor(1.23456, 4) = 1.2345 → 10000×1.2345 = 12345 → clamp 池 10000。
+    assert_eq!(r.reserved, 10000.0);
+    let r = calc::reservation_with_efficiency(100000.0, 10000.0, 0.0, 1.23456, 0.0, 1.0);
+    assert_eq!(r.reserved, 12345.0);
+}
+
+/// Spirit 技能预留效率（skill_mechanics 段）：`25% increased Spirit Reservation
+/// Efficiency` → base 100 × mult 1 ÷ 1.25 = 80（floor）。
+#[test]
+fn spirit_reservation_efficiency_via_texts() {
+    let db = db_from_texts(&["25% increased Spirit Reservation Efficiency"]);
+    let cfg = CalcConfig::new();
+
+    let r = calc::skill_mechanics::calc_spirit_reservation(&db, &cfg, 100.0);
+
+    assert_eq!(r.final_cost, 80.0);
+}
