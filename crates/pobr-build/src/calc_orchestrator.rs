@@ -139,6 +139,22 @@ pub fn calculate_with_data(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Result<OutputTable, BuildError> {
+    // Ring 3 门控（PoB2 CalcSetup.lua:821）：树上未分配『+1 Ring Slot』
+    // （vendor flag `AdditionalRingSlot`，ModParser.lua:3128；Ritualist
+    // 『Unfurled Finger』）时，Ring 3 物品整体忽略——一次性从 build 视图剔除，
+    // 使后续全部消费点（注入/宝石等级扫描/文本收集）一致生效。
+    let ring3_gated;
+    let build = if build.items.contains_key(&EquipmentSlot::Ring3)
+        && !additional_ring_slot_allocated(build, data)
+    {
+        let mut gated = build.clone();
+        gated.items.remove(&EquipmentSlot::Ring3);
+        ring3_gated = gated;
+        &ring3_gated
+    } else {
+        build
+    };
+
     // 主技能分等级参数（cast/attack 时间 → 行动速率；cost / cooldown 经 BASE 词条注入）。
     // 在建 session 前先解析，以便把行动速率写入 base_input + 据其类型设 cfg 伤害 flag。
     let main_skill = resolve_main_skill(build, data);
@@ -814,6 +830,19 @@ fn additional_gem_levels(build: &Build, skill_types: &[String]) -> u32 {
         scan(jewel, &mut total);
     }
     total
+}
+
+/// 树上是否分配了『+1 Ring Slot』词条节点（vendor flag `AdditionalRingSlot`，
+/// ModParser.lua:3128；Ring 3 槽门控见 CalcSetup.lua:821——未分配时
+/// 「ignore item in Ring 3」）。按节点词条文本判定，与具体升华解耦。
+fn additional_ring_slot_allocated(build: &Build, data: &BuildData) -> bool {
+    build.tree.allocated_nodes.iter().any(|id| {
+        data.passive_nodes.get(&id.0).is_some_and(|node| {
+            node.stats
+                .iter()
+                .any(|s| s.trim().eq_ignore_ascii_case("+1 ring slot"))
+        })
+    })
 }
 
 /// Kalandra's Touch『Reflects opposite Ring』：该戒指自身无词缀，计算时复制**对侧
@@ -2314,6 +2343,87 @@ mod kalandra_tests {
         assert!(kalandra_reflected_ring(&build, EquipmentSlot::Ring1, &kalandra).is_none());
         let build2 = Build::new().set_item(EquipmentSlot::Amulet, kalandra.clone());
         assert!(kalandra_reflected_ring(&build2, EquipmentSlot::Amulet, &kalandra).is_none());
+    }
+}
+
+#[cfg(test)]
+mod ring3_tests {
+    use super::{DataOrchestratorOptions, calculate_with_data};
+    use crate::build::Build;
+    use crate::build_data::BuildData;
+    use pobr_core::calc::MinimalInput;
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
+    use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+    use std::collections::HashMap;
+
+    fn life_ring() -> Item {
+        Item {
+            base: ItemBaseId::from("Ring"),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            implicit_texts: vec![],
+            modifier_texts: vec!["+30 to maximum Life".into()],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            parsed_stats: vec![],
+        }
+    }
+
+    fn ring_slot_data() -> BuildData {
+        // 『+1 Ring Slot』词条节点（Ritualist『Unfurled Finger』形态）。
+        let node = pobr_data::catalog::PassiveNodeDef {
+            skill: 34785,
+            id: "ascendancy_ritualist_unfurled_finger".into(),
+            name: Some("Unfurled Finger".into()),
+            kind: pobr_data::catalog::PassiveNodeKind::Notable,
+            stats: vec!["+1 Ring Slot".into()],
+            group: None,
+            orbit: None,
+            orbit_index: None,
+            x: None,
+            y: None,
+            connections: vec![],
+            ascendancy_id: Some("Huntress3".into()),
+        };
+        let mut passive_nodes = HashMap::new();
+        passive_nodes.insert(34785u32, node);
+        BuildData {
+            passive_nodes,
+            ..BuildData::empty()
+        }
+    }
+
+    fn base_opts() -> DataOrchestratorOptions {
+        DataOrchestratorOptions {
+            base_input: MinimalInput {
+                base_life: 100.0,
+                ..MinimalInput::default()
+            },
+            inject_character_base: false,
+            ..Default::default()
+        }
+    }
+
+    /// 未分配『+1 Ring Slot』→ Ring 3 物品整体忽略（PoB2 CalcSetup.lua:821
+    /// 「ignore item in Ring 3 if The Unseen Hand is not allocated」同语义）。
+    #[test]
+    fn ring3_ignored_without_additional_ring_slot() {
+        let build = Build::new().set_item(EquipmentSlot::Ring3, life_ring());
+        let out = calculate_with_data(&build, &ring_slot_data(), &base_opts()).expect("calc");
+        assert_eq!(out.life, 100.0, "未分配 +1 Ring Slot 时 Ring 3 不参与计算");
+    }
+
+    /// 分配『+1 Ring Slot』节点后 Ring 3 词条生效。
+    #[test]
+    fn ring3_counts_with_additional_ring_slot() {
+        let build = Build::new()
+            .set_item(EquipmentSlot::Ring3, life_ring())
+            .with_tree(PassiveTreeSpec {
+                allocated_nodes: vec![NodeId(34785)],
+                ..Default::default()
+            });
+        let out = calculate_with_data(&build, &ring_slot_data(), &base_opts()).expect("calc");
+        assert_eq!(out.life, 130.0, "分配 +1 Ring Slot 后 Ring 3 词条生效");
     }
 }
 

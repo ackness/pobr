@@ -77,6 +77,10 @@ pub enum EquipmentSlot {
     Amulet,
     Ring1,
     Ring2,
+    /// 第三戒指槽（Ritualist『Unfurled Finger』+1 Ring Slot；PoB2 `Ring 3`）。
+    /// 仅在树上分配 AdditionalRingSlot 词条节点时参与计算（PoB2
+    /// CalcSetup.lua:821 门控，由编排层执行）。
+    Ring3,
     Belt,
 }
 
@@ -93,6 +97,7 @@ impl EquipmentSlot {
             Self::Amulet => "amulet",
             Self::Ring1 => "ring1",
             Self::Ring2 => "ring2",
+            Self::Ring3 => "ring3",
             Self::Belt => "belt",
         }
     }

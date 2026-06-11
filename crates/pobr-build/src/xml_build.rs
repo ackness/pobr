@@ -766,7 +766,7 @@ fn is_jewel_slot(name: &str) -> bool {
     name.starts_with("Jewel") || name.contains("Socket")
 }
 
-/// PoB `<Slot name>` → [`EquipmentSlot`]。枚举外槽名（Charm/Flask/Ring 3/防具切换组等）
+/// PoB `<Slot name>` → [`EquipmentSlot`]。枚举外槽名（Charm/Flask/防具切换组等）
 /// 返回 `None`（这些来源不进入当前装备计算）。武器组按 `use_second_weapon_set` 切换。
 fn slot_from_pob_name(name: &str, use_second_weapon_set: bool) -> Option<EquipmentSlot> {
     match name {
@@ -777,6 +777,9 @@ fn slot_from_pob_name(name: &str, use_second_weapon_set: bool) -> Option<Equipme
         "Amulet" => Some(EquipmentSlot::Amulet),
         "Ring 1" => Some(EquipmentSlot::Ring1),
         "Ring 2" => Some(EquipmentSlot::Ring2),
+        // 第三戒指槽（Ritualist『Unfurled Finger』）；是否参与计算由编排层按
+        // AdditionalRingSlot 分配状态门控（PoB2 CalcSetup.lua:821）。
+        "Ring 3" => Some(EquipmentSlot::Ring3),
         "Belt" => Some(EquipmentSlot::Belt),
         "Weapon 1" if !use_second_weapon_set => Some(EquipmentSlot::Weapon1),
         "Weapon 2" if !use_second_weapon_set => Some(EquipmentSlot::Weapon2),
