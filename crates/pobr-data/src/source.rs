@@ -22,6 +22,15 @@ pub enum SourceKind {
     CampaignReward,
     GameConstant,
     Derived,
+    /// config 选项条目注入（M3 D4）。id 约定 `"config.<var>"`，如 `config.conditionMoving`。
+    ConfigOption,
+    /// buff/aura/curse 注入（M3 D4）。id 约定 `"buff.<id>"` / `"aura.<skill_id>"` /
+    /// `"curse.<skill_id>"`。
+    Buff,
+    /// 药剂/护符词条合入（M3 D4）。id 约定 `"flask.<slot>"`。
+    Flask,
+    /// 词条授予的 keystone（mergeKeystones 注入，M3 D4）。id 约定 `"keystone.<name>"`。
+    GrantedKeystone,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

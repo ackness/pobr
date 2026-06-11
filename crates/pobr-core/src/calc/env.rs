@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use pobr_data::prelude::*;
 
 use crate::CalcConfig;
 
+use super::session::BuffSpec;
 use super::{Actor, ActorBaseStats};
 
 #[derive(Debug, Clone)]
@@ -12,6 +15,15 @@ pub struct Env {
     /// 玩家召唤物（Lane4）。每个召唤物是独立 `Actor`，复用 player 的 offence/defence
     /// 管线。无召唤物时为空（向后兼容：行为与无此字段时一致）。
     pub minions: Vec<Actor>,
+    /// 玩家的 buff 技能规格（M3 T0-4，蓝图 §2.4 契约；`session::add_buff_skill` 写入）。
+    ///
+    /// 蓝图原文记为 `player.buff_skills`——因 `Actor` 定义在 T0 归属外的 actor.rs
+    /// 且 minion buff 未落地，本波收在 `Env` 顶层（语义即玩家侧）；T3 消费时如需
+    /// per-actor 再迁。**本阶段零消费**：空与否输出逐值不变。
+    pub buff_skills: Vec<BuffSpec>,
+    /// keystone 名 → modifier 列表（M3 T0-4；`session::set_keystone_mods` 写入，
+    /// T5 `merge_keystones`（env_finalize 阶段 1/5）消费）。**本阶段零消费**。
+    pub keystone_mods: BTreeMap<String, Vec<crate::Modifier>>,
 }
 
 impl Env {
@@ -21,6 +33,8 @@ impl Env {
             enemy: Actor::new(1, ActorBaseStats::default()),
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),
             minions: Vec::new(),
+            buff_skills: Vec::new(),
+            keystone_mods: BTreeMap::new(),
         }
     }
 

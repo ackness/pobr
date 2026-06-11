@@ -29,6 +29,7 @@ pub mod calc_cache;
 pub mod calc_orchestrator;
 pub mod comparison;
 pub mod error;
+pub mod handlers;
 pub mod import_detect;
 pub mod snapshot;
 pub mod xml_build;

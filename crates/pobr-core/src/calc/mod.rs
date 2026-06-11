@@ -7,6 +7,7 @@ pub mod defence;
 pub mod defence_panels;
 pub mod ehp;
 pub mod env;
+pub mod env_finalize;
 pub mod error;
 pub mod minion;
 pub mod offence;
@@ -75,7 +76,7 @@ pub use pool_damage::{
 pub use pool_setup::{
     MomHitPools, PoolBaseStats, build_pool_ctx, build_pool_state, minimum_es_bypass, mom_hit_pools,
 };
-pub use session::CalculationSession;
+pub use session::{BuffKind, BuffSpec, CalculationSession};
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 pub use skill_use_time::{SkillUseTime, calc_skill_use_time};
 pub use stat_boundary::{StatBoundary, stat_boundary};

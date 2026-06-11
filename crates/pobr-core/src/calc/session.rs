@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use pobr_data::prelude::*;
 
 use crate::item::ingest_item;
@@ -7,6 +9,47 @@ use crate::skill_source::{GemModSource, ingest_gem};
 use crate::{CalcConfig, Modifier};
 
 use super::{Actor, ActorBaseStats, Env, MinimalInput, MinimalOutput, OutputTable, perform};
+
+/// buff 技能九类分发类别（M3 T0 接口契约，蓝图 m3-orchestration.md §2.4）。
+///
+/// 对应 PoB2 CalcPerform.lua:1831-2984 的 buff 分发九类。M3 实际实现
+/// Aura/Curse/Debuff 三类的消费（T3 buff_pass），其余 kind 进框架但暂走
+/// 「原值直注」兼容路径（行为与现状一致）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BuffKind {
+    Buff,
+    Guard,
+    Warcry,
+    Aura,
+    AuraDebuff,
+    Debuff,
+    Curse,
+    CurseBuff,
+    Link,
+}
+
+/// 一个 buff 技能的注入规格（M3 T0 接口契约，蓝图 §2.4；字段语义对照 PoB2 buff 表）。
+///
+/// pobr-build（T3）从 granted_effects 数据构造；分类规则：`skill_types` 含 Aura→Aura、
+/// 含 Mark→Curse(is_mark)、granted_effect 的 buff 语义列（M1 statmap 边车）→其余类。
+#[derive(Debug, Clone)]
+pub struct BuffSpec {
+    /// buff 名（PoB2 buff.name，`AffectedBy<名>` 条件用）。
+    pub name: String,
+    pub kind: BuffKind,
+    /// 来源技能（归因 + curse priority socket 计算）。
+    pub skill_id: String,
+    /// buff 携带词条（granted_effect stat 经 statmap/映射产物）。
+    pub mods: Vec<Modifier>,
+    /// 默认 1.0（PoB2 calcLib.mod Magnitude 的来源值）。
+    pub magnitude: f64,
+    /// socket group 槽名（curse priority）。
+    pub slot: Option<String>,
+    /// 组内宝石序（curse priority，cap 8）。
+    pub socket_index: u32,
+    pub is_mark: bool,
+    pub ignore_curse_limit: bool,
+}
 
 #[derive(Debug, Clone)]
 pub struct CalculationSession {
@@ -135,6 +178,23 @@ impl CalculationSession {
     /// 接入一颗辅助宝石（`SourceKind::SupportGem` 归因）。`add_gem` 的便捷封装。
     pub fn add_support_gem(&mut self, gem: &GemModSource) -> Result<(), ParseError> {
         self.add_gem(gem)
+    }
+
+    /// 注入一个 buff 技能规格（M3 T0-4 接口契约，蓝图 §2.4）。
+    ///
+    /// **本阶段只存不消费**：spec 入 `Env::buff_skills`，等 T3 的 `buff_pass`
+    /// （env_finalize 阶段 4）落地后才参与计算——在此之前调用本 API 对输出逐值无影响。
+    pub fn add_buff_skill(&mut self, spec: BuffSpec) {
+        self.env.buff_skills.push(spec);
+    }
+
+    /// 注入「keystone 名 → 该 keystone 的 modifier 列表」映射（M3 T0-4 接口契约，
+    /// 蓝图 §2.4，T5 mergeKeystones 消费）。
+    ///
+    /// **本阶段只存不消费**：map 入 `Env::keystone_mods`，等 T5 的 `merge_keystones`
+    /// （env_finalize 阶段 1/5）落地后，词条授予的 keystone 才据此注入 modDB。
+    pub fn set_keystone_mods(&mut self, map: BTreeMap<String, Vec<Modifier>>) {
+        self.env.keystone_mods = map;
     }
 
     /// 按 `(config_level, tier)` 初始化敌人（怪物缩放 + 档位加成），写入 `Env.enemy`

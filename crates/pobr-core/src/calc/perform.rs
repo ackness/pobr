@@ -34,6 +34,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         ));
     }
 
+    super::env_finalize::env_finalize(env); // M3 环境终结阶段（T0 全 no-op；蓝图 §1 D1）
+
     // 充能 multiplier：按 PoB2 口径，仅 `Condition:UseXCharges` 为真（或常驻满层）时把
     // PowerCharge/FrenzyCharge/EnduranceCharge 置为最大层，供 `per X charge` 词条展开。
     // 未启用该充能时保持 0（PoB2 面板 current=0），避免错误施加 per-charge 增益/罚减。

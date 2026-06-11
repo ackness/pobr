@@ -25,6 +25,26 @@ pub struct CalcConfig {
     /// 出处：agent-docs/accuracy-and-enemy.md §七（buffMode → mode_effective 口径表）、
     /// devs/docs/architecture/12-combat-mechanics-architecture.md §5。
     pub mode_effective: bool,
+    /// buffMode 三态之 buffs 维度（PoB2 CalcSetup.lua:582-605：BUFFED/COMBAT/EFFECTIVE
+    /// 均含 buffs）。门控 `env_finalize` 的 buff_pass 整段（aura/curse/debuff 分发）。
+    ///
+    /// 默认 **false**（与 `mode_effective` 默认一致）——未显式置位的既有调用方逐值不变；
+    /// pobr-build 编排入口对 MAIN 口径显式置 true（PoB2 非 CALCS 模式恒 EFFECTIVE）。
+    /// 蓝图 m3-orchestration.md §1 D5。
+    pub mode_buffs: bool,
+    /// buffMode 三态之 combat 维度（PoB2 CalcSetup.lua:582-605：COMBAT/EFFECTIVE 含
+    /// combat）。门控 doActorMisc 等价段（expand_misc_buffs）、战斗条件自动置位
+    /// （CalcPerform.lua:242-260）、flask/charm 合并。
+    ///
+    /// 默认 **false**，语义与 [`CalcConfig::mode_buffs`] 同步引入（M3 T0-2，蓝图 D5）。
+    pub mode_combat: bool,
+    /// 跨 actor multiplier 快照（M3 T0 为 S2-D 预留，本阶段零消费）。
+    ///
+    /// 对应 PoB2 ModStore EvalMod 的 `actor`/`limitActor` tag：`Multiplier`/`PerStat`
+    /// 读取上下文切到 `env.player`/`env.minion`/parent 时，从此表按
+    /// `"<actor>.<var>"`（如 `"player.PowerCharges"`）取对方 actor 的值。
+    /// 由编排层在只读快照阶段回填；空表 = 行为与引入前逐值一致。
+    pub actor_multipliers: HashMap<String, f64>,
     /// 注入的运行时常量包（M0-W3，架构文档 20 §1 P8/P9）。
     ///
     /// calc 公式中的全部游戏常量魔数（抗性边界 / 服务器帧 / 异常基线 / 各类 cap…）
@@ -105,6 +125,18 @@ impl CalcConfig {
     /// 设置有效 DPS 口径开关（见 [`CalcConfig::mode_effective`]）。
     pub fn with_mode_effective(mut self, mode_effective: bool) -> Self {
         self.mode_effective = mode_effective;
+        self
+    }
+
+    /// 设置 buffMode 之 buffs 维度（见 [`CalcConfig::mode_buffs`]）。
+    pub fn with_mode_buffs(mut self, mode_buffs: bool) -> Self {
+        self.mode_buffs = mode_buffs;
+        self
+    }
+
+    /// 设置 buffMode 之 combat 维度（见 [`CalcConfig::mode_combat`]）。
+    pub fn with_mode_combat(mut self, mode_combat: bool) -> Self {
+        self.mode_combat = mode_combat;
         self
     }
 
