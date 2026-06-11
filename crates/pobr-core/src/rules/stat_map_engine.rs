@@ -245,6 +245,96 @@ fn map_entry(entry: &StatMapEntry, stat_value: f64) -> MappedOutcome {
     MappedOutcome::Mapped(items)
 }
 
+// ---- W-J：未选 statSet 的 global-only merge（蓝图 §2 W-J / §6 Q3）----
+
+/// vendor `isGlobalEffect`（`Modules/CalcActiveSkill.lua:68-80`）等价判定：
+/// modOrGroup 的**任一** mod 带 `type == "GlobalEffect"` tag 即视为 global。
+///
+/// vendor 形态：`local modList = modOrGroup.name and { modOrGroup } or modOrGroup`
+/// ——有 name 即单 mod（查自身 tags），无 name 即 group（逐个成员查 tags）。
+/// 抽取层把两种形态分别记为 `kind == "mod"/"flag"/"skill_data"`（tags 直挂）与
+/// `kind == "group"`（成员在 [`StatMapMod::mods`]）；vendor 无嵌套 group，此处
+/// 递归是忠实的保守泛化（任一层命中即 global）。
+///
+/// 判定粒度 = **modOrGroup 整体**（vendor `:103` 对 map 的每个元素判一次）：group
+/// 任一成员带 tag 则整个 group 按 global 注入（含不带 tag 的成员），不做成员级拆分。
+pub fn is_global_effect(element: &StatMapMod) -> bool {
+    if element.kind == "group" {
+        return element.mods.iter().any(is_global_effect);
+    }
+    element
+        .tags
+        .iter()
+        .any(|tag| matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect"))
+}
+
+/// 条目级 global 记账探针：该 (effect, set, stat) 的 statmap 条目是否含**任一**
+/// global modOrGroup。
+///
+/// 对应 vendor 选中 set merge 时的 `selectedGlobalStats[stat] = true` 记账
+/// （`CalcActiveSkill.lua:104-106`：`if isGlobal and not onlyGlobals`）——调用方
+/// 对**选中 set** 的每条 stat 调用本函数收集集合，未选 set 的 global-only merge
+/// 对集合内 stat 整条跳过（`:107` `not (onlyGlobals and selectedGlobalStats[stat])`；
+/// `selectedGlobalStats` 在 onlyGlobals 阶段不再变更，故 stat 级跳过与 vendor
+/// 元素级条件等价）。条目 miss / `_unextractable`（mods 为空）按无 global 处理。
+pub fn stat_has_global_mods(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+) -> bool {
+    catalog
+        .lookup(effect_id, set_key, stat)
+        .is_some_and(|entry| entry.mods.iter().any(is_global_effect))
+}
+
+/// 未选 statSet 的 **global-only** 映射（vendor `mergeStatSet(set, onlyGlobals=true)`，
+/// `CalcActiveSkill.lua:92-141` 的 `:124-129` 调用 + `:103-107` 注入条件）：
+/// 只保留 [`is_global_effect`] 命中的 modOrGroup 参与 merge 公式与翻译，
+/// 非 global 元素**静默跳过**（vendor 同口径——未选 set 的局部 mod 本就不该注入，
+/// 不属于 Unsupported）。过滤后无 global 元素 → `Mapped(空)`。
+///
+/// `set_key` 应传**未选 set** 的 vendor 序号（per-set 覆盖按该 set 自身的 statMap
+/// 链查，miss 落回 global——vendor `set.statMap` metatable `__index` 同语义）。
+/// 选中 set 已按 global 记账的 stat 由调用方跳过（见 [`stat_has_global_mods`]）。
+///
+/// **第一批边界**：`GlobalEffect` tag 本身仍在 tag 翻译边界之外（buff 域随 M3
+/// buff_pass 接入，`m1-statmap-switch-log.md` §5）——当前 global 元素会因
+/// [`UnsupportedReason::UnsupportedTag`] 整条上报、注入为零（宁可跳过不可错算）；
+/// M3 接通 GlobalEffect tag 后本路径**自动**开始产出注入项，无需再改本函数。
+pub fn map_stat_global_only(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> MappedOutcome {
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return MappedOutcome::Unknown;
+    };
+    if entry.unextractable {
+        // 抽取失真：内容未知（mods 为空），按 Unsupported 上报可见（注入同样为零）。
+        return MappedOutcome::Unsupported(UnsupportedReason::Unextractable);
+    }
+    // 注：entry 带 `skill_flag` 时其 flag 不是 modOrGroup（vendor statSet flags 路径
+    // 消费），global-only 视角下无 global 元素 → 自然落入 `Mapped(空)`，与 vendor
+    // 未选 set 不收 flags 的行为一致（flags 仅在选中 set 生效）。
+    let entry_params = MergeParams {
+        div: entry.div,
+        mult: entry.mult,
+        base: entry.base,
+        value: entry.value,
+    };
+    let mut items = Vec::new();
+    for element in entry.mods.iter().filter(|e| is_global_effect(e)) {
+        if let Err(reason) = collect_element(element, &entry_params, stat_value, &mut items) {
+            // 与 map_entry 同口径：任一保留元素不可翻译 → 整条跳过（成组语义）。
+            return MappedOutcome::Unsupported(reason);
+        }
+    }
+    MappedOutcome::Mapped(items)
+}
+
 /// entry / group 级 merge 参数（vendor `map.div/mult/base/value`）。
 struct MergeParams {
     div: Option<f64>,
@@ -1352,6 +1442,134 @@ mod tests {
             map_stat(&catalog, "Other", None, "nonexistent_stat", 1.0),
             MappedOutcome::Unknown
         );
+    }
+
+    // ---- W-J：isGlobalEffect / global-only merge ----
+
+    /// isGlobalEffect 等价（CalcActiveSkill.lua:68-80）：单 mod 查自身 tags；
+    /// group 任一成员命中即 global；flag/skill_data 形态同样按 tags 判。
+    #[test]
+    fn is_global_effect_matches_vendor_predicate() {
+        let m = |json: &str| -> StatMapMod { serde_json::from_str(json).expect("mod JSON 合法") };
+        // 单 mod：带 / 不带 GlobalEffect tag。
+        assert!(is_global_effect(&m(
+            r#"{ "kind": "mod", "name": "Damage", "mod_type": "INC",
+                 "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] }"#
+        )));
+        assert!(!is_global_effect(&m(
+            r#"{ "kind": "mod", "name": "Damage", "mod_type": "INC",
+                 "tags": [ { "type": "Condition", "var": "Leeching" } ] }"#
+        )));
+        assert!(!is_global_effect(&m(
+            r#"{ "kind": "mod", "name": "Damage", "mod_type": "INC" }"#
+        )));
+        // group：任一成员带 tag → 整组 global；全员不带 → 非 global。
+        assert!(is_global_effect(&m(r#"{ "kind": "group", "mods": [
+                 { "kind": "mod", "name": "Damage", "mod_type": "INC" },
+                 { "kind": "mod", "name": "CastSpeed", "mod_type": "INC",
+                   "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] }"#)));
+        assert!(!is_global_effect(&m(r#"{ "kind": "group", "mods": [
+                 { "kind": "mod", "name": "Damage", "mod_type": "INC" },
+                 { "kind": "mod", "name": "ColdDamage", "mod_type": "MORE" } ] }"#)));
+        // skill_data 形态（vendor skill() 构造器同样可带 GlobalEffect tag）。
+        assert!(is_global_effect(&m(
+            r#"{ "kind": "skill_data", "value": { "key": "duration" },
+                 "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] }"#
+        )));
+    }
+
+    /// global-only 双 set 用例（对照 CalcActiveSkill.lua:124-140，蓝图 W-J 门禁）：
+    /// 选中 set 全量 merge + global 记账；未选 set 仅 global 元素参与、
+    /// 非 global 静默跳过（Mapped 空）、记账命中 stat 由调用方整条跳过。
+    #[test]
+    fn global_only_merge_dual_set_semantics() {
+        // 合成双 set 目录（DemonForm 形态：global = GlobalEffect Buff tag 的 INC，
+        // 见 other.lua:4384-4386；local = 普通分等级 stat）：
+        // set "1"（选中）：alpha（global+local 混合条目）、beta（纯 local）；
+        // set "2"（未选）：alpha（per-set 覆盖，global）、beta（纯 local）、
+        //                 gamma（global，仅经 global 表可见）。
+        let catalog = catalog_json(
+            r#"{
+              "global": {
+                "alpha": { "mods": [
+                    { "kind": "mod", "name": "Damage", "mod_type": "INC" },
+                    { "kind": "mod", "name": "CastSpeed", "mod_type": "INC",
+                      "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] },
+                "beta": { "mods": [ { "kind": "mod", "name": "ColdDamage", "mod_type": "INC" } ] },
+                "gamma": { "mods": [ { "kind": "mod", "name": "AttackSpeed", "mod_type": "INC",
+                      "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] }
+              },
+              "per_stat_set": {
+                "Foo": { "2": {
+                  "alpha": { "mods": [ { "kind": "mod", "name": "SkillSpeed", "mod_type": "INC",
+                      "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] }
+                } }
+              }
+            }"#,
+        );
+        // ① 选中 set "1" merge 时的记账（:104-106）：alpha 含 global 元素 → 记账；
+        //    beta 纯 local → 不记账。
+        assert!(stat_has_global_mods(&catalog, "Foo", Some("1"), "alpha"));
+        assert!(!stat_has_global_mods(&catalog, "Foo", Some("1"), "beta"));
+        // 未选 set "2" 视角：alpha 走 per-set 覆盖链，同样含 global。
+        assert!(stat_has_global_mods(&catalog, "Foo", Some("2"), "alpha"));
+        // ② 未选 set 的 global-only：纯 local 条目 → 静默无注入（Mapped 空，
+        //    非 Unsupported——vendor :107 直接不收，不属于"不支持"）。
+        assert_eq!(
+            map_stat_global_only(&catalog, "Foo", Some("2"), "beta", 10.0),
+            MappedOutcome::Mapped(Vec::new())
+        );
+        // ③ global 元素保留参与翻译——第一批 GlobalEffect tag 仍在翻译边界外
+        //    （buff 域 M3），整条 Unsupported 上报、注入为零（宁可跳过不可错算）。
+        for stat in ["alpha", "gamma"] {
+            assert!(
+                matches!(
+                    map_stat_global_only(&catalog, "Foo", Some("2"), stat, 10.0),
+                    MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+                ),
+                "global 元素应整条上报（M3 前注入为零）：{stat}"
+            );
+        }
+        // ④ 调用方记账跳过语义：alpha 在选中 set 已按 global 记账 → 未选 set 不再
+        //    调用 map_stat_global_only（vendor selectedGlobalStats 的 stat 级等价，
+        //    见 stat_has_global_mods 文档）。记账探针 + global-only 组合即 :107 全条件。
+        // ⑤ 条目双 miss → Unknown。
+        assert_eq!(
+            map_stat_global_only(&catalog, "Foo", Some("2"), "nonexistent", 1.0),
+            MappedOutcome::Unknown
+        );
+    }
+
+    /// global-only 的元素粒度与 skill_flag 行为：group 整体按 global 保留（含不带
+    /// tag 的成员，vendor :103 粒度 = modOrGroup）；skill_flag 条目无 modOrGroup →
+    /// global-only 下自然 Mapped 空（flags 仅在选中 set 生效）。
+    #[test]
+    fn global_only_group_granularity_and_skill_flag() {
+        let entry: StatMapEntry = serde_json::from_str(
+            r#"{ "mods": [
+                 { "kind": "group", "mods": [
+                     { "kind": "mod", "name": "Damage", "mod_type": "INC" },
+                     { "kind": "mod", "name": "CastSpeed", "mod_type": "INC",
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] },
+                 { "kind": "mod", "name": "ColdDamage", "mod_type": "MORE" } ] }"#,
+        )
+        .expect("条目 JSON 合法");
+        // group 任一成员 global → 整组保留；兄弟普通 mod 不沾染。
+        assert!(is_global_effect(&entry.mods[0]));
+        assert!(!is_global_effect(&entry.mods[1]));
+        // skill_flag 条目：无 modOrGroup → global-only 下 Mapped 空。
+        let catalog =
+            catalog_json(r#"{ "global": { "skill_can_fire_arrows": { "skill_flag": "arrow" } } }"#);
+        assert_eq!(
+            map_stat_global_only(&catalog, "Any", None, "skill_can_fire_arrows", 1.0),
+            MappedOutcome::Mapped(Vec::new())
+        );
+        // 抽取失真条目 → Unsupported 上报（内容未知，可见性优先；注入同为零）。
+        let catalog = catalog_json(r#"{ "global": { "broken": { "_unextractable": true } } }"#);
+        assert!(matches!(
+            map_stat_global_only(&catalog, "Any", None, "broken", 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::Unextractable)
+        ));
     }
 
     /// Unsupported 分类标签稳定（双跑报告聚合键）。
