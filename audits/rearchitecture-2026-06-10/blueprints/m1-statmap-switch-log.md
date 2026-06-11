@@ -1,19 +1,20 @@
-# M1 statmap 切换审查记录（T2b 终版）
+# M1 statmap 切换审查记录（T2.4 终稿归档）
 
 > 蓝图 T2.3/T2.4 的切换审查档案：Legacy（`pobr-build/src/skill_stat_map.rs` 751 行
 > 后缀启发式）→ Data（`overlay/skill_stat_map.json` + `pobr-core::rules::stat_map_engine`）。
-> 本文件登记双跑 diff 终版结论 + oracle 抽样结果 + T2.4 四前置条件核对单。
+> 本文件登记双跑 diff 终版结论 + oracle 抽样结果 + T2.4 四前置条件核对单 +
+> 切换/删除 commit 序列（§6）。
 > vendor 基准：PathOfBuilding-PoE2 @ `2df5a7433dd2`（overlay `_meta.vendor_commit`）。
 
-## 0. T2.4 前置条件状态
+## 0. T2.4 前置条件状态（全绿，切换已执行）
 
 - [x] **前置条件 1**：L1 `legacy_only` 39 行，**逐条已附 PoB2 依据证明 legacy 误映射 /
   超映射**（§2.2 三类裁决，全部核实）——按验收口径（为空 **或** 逐条有据）达成。
 - [x] **前置条件 2**：L2 18 build 全部 review：10 个 build 逐字段一致；8 个 build
   的每处变化均为"修对"且附 SkillStatMap / Data/Skills 条目出处（§3）。
 - [x] **前置条件 3**：oracle 抽样 **71/71 PASS**（≥50 达标；§4）。
-- [ ] **前置条件 4**：默认 mode 切 `Data` 的行为 commit + ninja baseline 更新 commit
-  ——**不在 T2b 范围**，由 T2.4 执行（回退 = OrchestratorOptions 默认值改回 Legacy 一行）。
+- [x] **前置条件 4**：默认 mode 切 `Data` 的行为 commit（`bf71975`）+ ninja baseline
+  独立更新 commit（`02bbf58`，显式审查）已合并——commit 序列与实测结果见 §6。
 
 ## 1. 双跑口径（终版）
 
@@ -140,6 +141,10 @@ gemling-grenade / pathfinder-ice-shot**（后三个 + deadeye 的 Elemental Arma
 > 风险登记（R5 机制）：Close Combat 两 build 与 Spell Cascade 三 build 在 ninja
 > 基准（PoB2 网站口径）下若以 effective 模式计算，切换后会进补偿清单——T2.4 切换
 > commit 时按 L2 表逐 build 核对 OFF_HIT5 变化方向，不回滚正确行为。
+>
+> **切换实测兑现（§6 commit ①）**：8 个变化 build 与本表逐一对应、无表外变化；
+> OFF_HIT5 唯一掉出项 = deadeye（1.02x→0.77x，Multishot less 假命中拆除）已按
+> 本预案进补偿清单；stormweaver 1.32x→0.92x 反向**进** @10%（修对即收敛）。
 
 ## 4. oracle 抽样（前置条件 3）
 
@@ -157,13 +162,33 @@ duration）8 / per-set 覆盖 12（计数有交叠）。对拍法 = vendor
 
 ## 5. 遗留 / 移交
 
-- **T2.4（默认切 Data + baseline 更新 + 删 legacy）**：前置条件 1–3 已备齐，待独立
-  行为 commit 显式审查执行；删除对象 = `skill_stat_map.rs`、`legacy_stat_filter.rs`、
-  `StatMapMode::Legacy` 分支（Compare 建议保留，蓝图 §6 Q4）。
 - per-set 覆盖默认 set `"1"`；XML `statSetIndex` 显式选择（T5.4 已入模型）与引擎
-  set_key 的接线在 T2.4 切换时一并核对（当前 18 build 全默认，无行为差）。
+  set_key 的接线已在切换时核对：18 个 ninja build 的 decoded.xml `statSetIndex`
+  全为 nil（默认），`mapped_stat_modifiers` 当前恒传 `set_key=None`（= 默认
+  set "1"，与 PoB2 缺省一致），无行为差；显式 set_key 接线随 W-J 多 set
+  global-only merge 落地。
 - `GlobalEffect` tag 条目（buff 族）/ scalar 条目 / DistanceRamp（effective mode）/
   KeywordFlag TOTEM·WARCRY 位 / MinionModifier LIST（M5a）/ setOffHand* skillData
-  通道：按 §2.2 分类 defer，均有上报分类可追踪。
+  通道：按 §2.2 分类 defer，均有上报分类可追踪。光环/Mark 自身 buff 的两个
+  legacy 存留映射（GlobalEffect Buff 族的临时通道）已迁 `buff_stat_map.rs`
+  存活，buff 域数据化（W-J/M3）后退役。
 - `unknown_mod_name 386`：PoBR 未消费的 PoB2 名（AilmentMagnitude / AreaOfEffect /
   Duration / EnemyIgniteChance 族等）——随 M4 进攻深化逐名接入，引擎只需扩直通表。
+- **进攻 @5% 缺口**（切换后 22/80=27.5%，阶段验收目标 ≥40%@5%）：补偿清单 =
+  effective 模式 DistanceRamp/skillDist（M3 config）、buff 域（W-J/M3）、
+  unknown_mod_name 直通表扩展（M4）、grenade 冷却吞吐 / Mirage 数据（M4/M5a）。
+
+## 6. T2.4 切换/删除 commit 序列（2026-06-11 执行归档）
+
+严格串行、独占 commit 序列（蓝图 T2.4；W-J 接线 commit 等切换 commit 合并后进行）：
+
+| # | commit | 内容 | 结果 |
+|---|---|---|---|
+| ① | `bf71975` | **行为**：`DataOrchestratorOptions.stat_map_mode` 默认 Legacy→Data（一行回退点）；catalog 随 `BuildData::load` 加载、`calculate_with_data` 缺省回退（全部既有调用方自给自足） | 防御 114/120 逐值不变；进攻 hit5 23→22 / hit10 32 不变；8 个变化 build 与 §3 L2 表逐一对应、全部修对 |
+| ② | `02bbf58` | **baseline 独立更新**（显式审查）：DEF 111/117→114/120（锁棘轮）、OFF_HIT10 31→32（stormweaver 进 @10%）、OFF_HIT5 23→22（**已审查例外**：deadeye 假命中拆除，依据 `sup_dex.lua:3154-3156` + `SkillStatMap.lua:929-931`，进补偿清单、不回滚正确行为——§3 风险登记预案兑现） | 门禁恢复全绿 |
+| 补 | `4cc2d19` | 切换后续：pob2_parity 嵌入式旧样本（deadeye）容差放宽（同一补偿结，0.817x→0.613x） | — |
+| ③a | `f1d9851` | **搬迁**：`map_aura_buff_stat`/`map_self_buff_offensive_stat` 原样平移 `buff_stat_map.rs`（aura/self-buff 注入路径不在 statmap 双跑范围，数据引擎对 GlobalEffect Buff 族按保守 Unsupported——删整文件前迁出存活） | 纯移动零行为 |
+| ③b | `0c634b4` | **纯删除**：`skill_stat_map.rs`（751 行）+ `legacy_stat_filter.rs`（T5.3 消费侧兜底）+ `StatMapMode::Legacy` 变体/分支；Compare 保留为长期观测框架（蓝图 §6 Q4 + 00-index §2.2，语义改为 Data 计算 + outcome 记录，输出与 Data 一致）；statmap_dual_run.rs 收敛（删 L1/L2 legacy 双跑，保留 Compare 契约门禁 + 定位工具 + oracle 对拍） | 删后 ninja 逐值不变（114/120/22/32）；源码 `grep -r is_mappable_stat` 零命中（剩余命中均为 audits/ 历史审计文档） |
+
+回退路径（蓝图 §5 R5）：删旧码前 = `#[default]` 移回 Legacy 一行；删旧码后 =
+revert `0c634b4`（删除 commit 独立可逆）。
