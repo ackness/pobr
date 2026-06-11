@@ -37,7 +37,7 @@
 use std::collections::BTreeMap;
 
 use pobr_data::catalog::stat_map::{SkillStatMapDef, StatMapEntry, StatMapMod, StatMapValue};
-use pobr_data::modifier::ModType;
+use pobr_data::modifier::{KeywordFlags, ModFlags, ModType};
 
 use crate::modifier::{ModTag, Modifier};
 
@@ -63,14 +63,22 @@ impl StatMapCatalog {
 
     /// 查条目：`set_key` 给定时先查 `per_stat_set[effect_id][set_key]`，
     /// miss 落回 `global`。
+    ///
+    /// `set_key = None` = 调用方未做 statSet 选择 → 取**默认 set "1"** 的覆盖表：
+    /// PoB2 缺省 statSetIndex 恒为 1（vendor `SkillsTab.lua:354`
+    /// `gemInstance.statSet = { index = tonumber(child.attrib.statSetIndex) or 1 }`，
+    /// `CalcActiveSkill.lua:171` `statSet = …statSets[activeEffect.statSet.index]`），
+    /// 选中 set 的 statMap miss 时经 metatable 链落回全局表（`Data.lua` statMap
+    /// `__index`）。非 "1" 的 set 覆盖只有显式 `set_key` 才会命中（statSetIndex
+    /// 选择接线随 T5 多 statSet 模型）。
     fn lookup(&self, effect_id: &str, set_key: Option<&str>, stat: &str) -> Option<&StatMapEntry> {
-        if let Some(key) = set_key
-            && let Some(entry) = self
-                .def
-                .per_stat_set
-                .get(effect_id)
-                .and_then(|sets| sets.get(key))
-                .and_then(|map| map.get(stat))
+        let key = set_key.unwrap_or("1");
+        if let Some(entry) = self
+            .def
+            .per_stat_set
+            .get(effect_id)
+            .and_then(|sets| sets.get(key))
+            .and_then(|map| map.get(stat))
         {
             return Some(entry);
         }
@@ -85,6 +93,33 @@ impl StatMapCatalog {
     /// global 段 stat id 迭代（双跑 L1 穷举用）。
     pub fn global_stats(&self) -> impl Iterator<Item = &str> {
         self.def.global.keys().map(String::as_str)
+    }
+
+    /// 指定 (effect, set, stat) 是否存在 per-statSet 覆盖（双跑 L1 用：仅当存在
+    /// 覆盖时才需要按 effect 上下文单独出 diff 行，其余 stat 走 global 行去重）。
+    pub fn has_per_set_override(&self, effect_id: &str, set_key: &str, stat: &str) -> bool {
+        self.def
+            .per_stat_set
+            .get(effect_id)
+            .and_then(|sets| sets.get(set_key))
+            .is_some_and(|map| map.contains_key(stat))
+    }
+
+    /// per-statSet 段迭代（双跑报告 / oracle 抽样选样用）：
+    /// `(effect_id, set_key, stat, entry)`。
+    pub fn per_set_entries(&self) -> impl Iterator<Item = (&str, &str, &str, &StatMapEntry)> {
+        self.def.per_stat_set.iter().flat_map(|(effect, sets)| {
+            sets.iter().flat_map(move |(set_key, map)| {
+                map.iter().map(move |(stat, entry)| {
+                    (effect.as_str(), set_key.as_str(), stat.as_str(), entry)
+                })
+            })
+        })
+    }
+
+    /// global 段条目迭代（oracle 抽样选样用）。
+    pub fn global_entries(&self) -> impl Iterator<Item = (&str, &StatMapEntry)> {
+        self.def.global.iter().map(|(k, v)| (k.as_str(), v))
     }
 }
 
@@ -307,10 +342,13 @@ fn collect_mod(
     let translated = translate_mod_name(name, &element.flags, &element.keyword_flags)?;
     let mut modifier = if mod_type == ModType::Flag {
         // FLAG mod 的 merge 值仅 Lua 真值语义（任意 number 含 0 均 truthy）→ Bool(true)。
-        Modifier::flag(translated)
+        Modifier::flag(translated.name)
     } else {
-        Modifier::number(translated, mod_type, merged_value)
+        Modifier::number(translated.name, mod_type, merged_value)
     };
+    modifier = modifier
+        .with_flags(translated.flags)
+        .with_keyword_flags(translated.keyword_flags);
     for tag in &element.tags {
         modifier = modifier.with_tag(translate_tag(tag)?);
     }
@@ -390,97 +428,196 @@ fn damage_bound_mod_name(name: &str) -> Option<String> {
     None
 }
 
-/// ModName 翻译层（PoB2 名 + ModFlag 组合 → PoBR 名）。
+/// 名字翻译产物：PoBR ModName + 直译后的 ModFlags / KeywordFlags。
+///
+/// pub 供双跑 oracle 对拍（vendor `mergeSkillInstanceMods` 注入的 modList 用
+/// PoB2 名，对拍前经本翻译层归一，见 `pobr-build/tests/statmap_dual_run.rs`）。
+#[derive(Debug, Clone, PartialEq)]
+pub struct TranslatedName {
+    /// PoBR ModName。
+    pub name: String,
+    /// 直译后的作用域 flags（PoB2 `band(cfg.flags, mod.flags) == mod.flags` 与
+    /// PoBR [`ModFlags::is_subset_of`] 同语义，逐位对齐）。
+    pub flags: ModFlags,
+    /// 直译后的 keyword flags（PoB2 `MatchKeywordFlags` ANY 语义同
+    /// [`KeywordFlags::matches_context`]）。
+    pub keyword_flags: KeywordFlags,
+}
+
+impl TranslatedName {
+    fn bare(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            flags: ModFlags::NONE,
+            keyword_flags: KeywordFlags::NONE,
+        }
+    }
+}
+
+/// ModFlag token 直译（PoBR [`ModFlags`] 已移植子集；匹配语义两边一致——
+/// PoB2 `ModList.lua` 子集判定 = PoBR `Modifier::matches` 的 `is_subset_of`）。
+/// 子集外 token（Hit/Dot/Thorns/Weapon/武器类…）→ 条目 Unsupported（PoBR cfg
+/// 不会置这些位，附上会让 mod 永不匹配 = 静默欠算，宁可整条上报）。
+fn translate_mod_flags(tokens: &[String]) -> Result<ModFlags, UnsupportedReason> {
+    let mut flags = ModFlags::NONE;
+    for token in tokens {
+        flags |= match token.as_str() {
+            "Attack" => ModFlags::ATTACK,
+            "Spell" => ModFlags::SPELL,
+            "Melee" => ModFlags::MELEE,
+            "Projectile" => ModFlags::PROJECTILE,
+            "Area" => ModFlags::AREA,
+            _ => return Err(UnsupportedReason::UnsupportedFlags(tokens.join("|"))),
+        };
+    }
+    Ok(flags)
+}
+
+/// 名字本身已承载作用域、且 PoBR 当前无消费方的惰性名：其 KeywordFlag 仅是
+/// 冗余作用域限定（如 vendor `SkillStatMap.lua:556` `mod("WarcrySpeed","INC",nil,
+/// 0,KeywordFlag.Warcry)`——WarcrySpeed 名字即 Warcry 作用域），安全丢弃：
+/// 该名无任何 PoBR 查询方，丢弃不会改变任何现有计算。
+const SCOPE_NAMED_INERT: [&str; 2] = ["WarcrySpeed", "TotemPlacementSpeed"];
+
+/// KeywordFlag token 直译（位值两边均对齐 PoB2 `Global.lua:263-292`）。
+fn translate_keyword_flags(
+    tokens: &[String],
+    name: &str,
+) -> Result<KeywordFlags, UnsupportedReason> {
+    let mut flags = KeywordFlags::NONE;
+    for token in tokens {
+        // 惰性作用域名上的冗余 keyword（见 [`SCOPE_NAMED_INERT`]）→ 丢弃。
+        if matches!(token.as_str(), "Warcry" | "Totem") && SCOPE_NAMED_INERT.contains(&name) {
+            continue;
+        }
+        let bit = match token.as_str() {
+            "Aura" => KeywordFlags::AURA,
+            "Curse" => KeywordFlags::CURSE,
+            "Hit" => KeywordFlags::HIT,
+            "Ailment" => KeywordFlags::AILMENT,
+            "Poison" => KeywordFlags::POISON,
+            "Bleed" => KeywordFlags::BLEED,
+            "Ignite" => KeywordFlags::IGNITE,
+            "PhysicalDot" => KeywordFlags::PHYSICAL_DOT,
+            "LightningDot" => KeywordFlags::LIGHTNING_DOT,
+            "ColdDot" => KeywordFlags::COLD_DOT,
+            "FireDot" => KeywordFlags::FIRE_DOT,
+            "ChaosDot" => KeywordFlags::CHAOS_DOT,
+            _ => {
+                return Err(UnsupportedReason::UnsupportedKeywordFlags(tokens.join("|")));
+            }
+        };
+        flags = flags | bit;
+    }
+    Ok(flags)
+}
+
+/// ModName 翻译层（PoB2 名 + ModFlag/KeywordFlag 组合 → PoBR 名 + flags）。
 ///
 /// 框架语义 L4（蓝图 §6 Q2 裁决：名字随机制不随版本变，留 Rust 常量表）。
-/// 初版覆盖 = legacy `pobr-build::skill_stat_map` 既有映射族的反推；未知名归
-/// [`UnsupportedReason::UnknownModName`]，由双跑 diff 驱动补全。
+/// 初版覆盖 = legacy `pobr-build::skill_stat_map` 既有映射族的反推，双跑 diff
+/// 驱动补全（M1-T2b）；未知名归 [`UnsupportedReason::UnknownModName`] 上报。
 ///
-/// flag 语义分派（PoB2 用 ModFlag 限定作用域，PoBR 现阶段用独立 ModName 表达）：
-/// - `Speed` + Attack → `AttackSpeed`；+ Cast → `CastSpeed`；裸 → `SkillSpeed`；
-/// - `Damage` + Attack → `AttackDamage`；+ Spell → `Damage`（PoBR 不读 SpellDamage，
-///   对齐 legacy 注）；+ Area → `AreaDamage`；裸 → `Damage`；
-/// - 其余名字仅接受空 flag；伤害基值族（`<Type>Min/Max`）额外允许丢弃
-///   Attack/Spell flag 与 KeywordFlag（legacy 同口径：单主技能全局注入）。
-fn translate_mod_name(
+/// flag 处理分两层：
+/// - **名字分派**（PoBR 用独立 ModName 表达的速度/伤害桶）：`Speed` + Attack →
+///   `AttackSpeed`；+ Cast → `CastSpeed`；裸 → `SkillSpeed`。`Damage` 的
+///   Attack/Spell/Area 单 flag 同 legacy 口径分派（PoBR `calc::damage` 按 cfg
+///   flag 加读 `AttackDamage`/`AreaDamage` 桶，两种表达等价）；
+/// - **flags 直译**（其余组合）：经 [`translate_mod_flags`] 附在 Modifier 上，
+///   匹配语义与 PoB2 子集判定逐位一致（如 `support_melee_physical_damage_+%_final`
+///   per-set 条目 `mod("PhysicalDamage","MORE",nil,ModFlag.Melee)` →
+///   `PhysicalDamage` MORE + `MELEE`，cfg 取 skill_types 派生 flags）。
+///
+/// 伤害基值族（`<Type>Min/Max`）维持丢弃 Attack/Spell flag 与 KeywordFlag
+/// （legacy 同口径：单主技能全局注入，作用域限定无差异）。
+pub fn translate_mod_name(
     name: &str,
     flags: &[String],
     keyword_flags: &[String],
-) -> Result<String, UnsupportedReason> {
-    let flags_label = || flags.join("|");
+) -> Result<TranslatedName, UnsupportedReason> {
     // 伤害基值族：允许丢弃 Attack/Spell flag 与 KeywordFlag（作用域限定在单主
     // 技能口径下无差异；legacy 同样 flag-blind 注入）。
     if let Some(bound_name) = damage_bound_mod_name(name) {
         let droppable = |f: &String| f == "Attack" || f == "Spell";
         if !flags.iter().all(droppable) {
-            return Err(UnsupportedReason::UnsupportedFlags(flags_label()));
+            return Err(UnsupportedReason::UnsupportedFlags(flags.join("|")));
         }
         if !keyword_flags.iter().all(|f| f == "Attack" || f == "Spell") {
             return Err(UnsupportedReason::UnsupportedKeywordFlags(
                 keyword_flags.join("|"),
             ));
         }
-        return Ok(bound_name);
+        return Ok(TranslatedName::bare(bound_name));
     }
-    // flag 语义分派族。
-    match name {
+    // 名字分派族：分派吃掉的 flag 从直译集合移除，剩余 flag 照常直译。
+    let (base_name, remaining_flags): (&str, Vec<String>) = match name {
         "Speed" => {
-            return match flags {
-                [] => Ok("SkillSpeed".to_string()),
-                [f] if f == "Attack" => Ok("AttackSpeed".to_string()),
-                [f] if f == "Cast" => Ok("CastSpeed".to_string()),
-                _ => Err(UnsupportedReason::UnsupportedFlags(flags_label())),
-            };
+            if let Some(pos) = flags.iter().position(|f| f == "Attack") {
+                let mut rest = flags.to_vec();
+                rest.remove(pos);
+                ("AttackSpeed", rest)
+            } else if let Some(pos) = flags.iter().position(|f| f == "Cast") {
+                let mut rest = flags.to_vec();
+                rest.remove(pos);
+                ("CastSpeed", rest)
+            } else {
+                ("SkillSpeed", flags.to_vec())
+            }
         }
-        "Damage" => {
-            return match flags {
-                [] => Ok("Damage".to_string()),
-                [f] if f == "Attack" => Ok("AttackDamage".to_string()),
-                [f] if f == "Spell" => Ok("Damage".to_string()),
-                [f] if f == "Area" => Ok("AreaDamage".to_string()),
-                _ => Err(UnsupportedReason::UnsupportedFlags(flags_label())),
-            };
-        }
-        _ => {}
-    }
-    // 其余名字第一批仅接受无 flag（带 flag 的作用域语义待 ModFlags 管线接入）。
-    if !flags.is_empty() {
-        return Err(UnsupportedReason::UnsupportedFlags(flags_label()));
-    }
-    if !keyword_flags.is_empty() {
-        return Err(UnsupportedReason::UnsupportedKeywordFlags(
-            keyword_flags.join("|"),
-        ));
-    }
-    // 直译常量表（PoB2 名 → PoBR 名）。
-    let direct = match name {
-        "CritChance" => "CriticalStrikeChance",
-        "CritMultiplier" => "CriticalStrikeMultiplier",
-        // 同名直通族。
-        "PhysicalDamage"
+        "Damage" => match flags {
+            [f] if f == "Attack" => ("AttackDamage", Vec::new()),
+            [f] if f == "Spell" => ("Damage", Vec::new()),
+            [f] if f == "Area" => ("AreaDamage", Vec::new()),
+            _ => ("Damage", flags.to_vec()),
+        },
+        _ => (name, flags.to_vec()),
+    };
+    // 名字翻译（分派后的 base_name）。
+    let translated: String = match base_name {
+        "CritChance" => "CriticalStrikeChance".to_string(),
+        "CritMultiplier" => "CriticalStrikeMultiplier".to_string(),
+        // 同名直通族（PoBR calc 消费名或惰性作用域名）。
+        "Damage"
+        | "AttackDamage"
+        | "AreaDamage"
+        | "AttackSpeed"
+        | "CastSpeed"
+        | "SkillSpeed"
+        | "PhysicalDamage"
         | "FireDamage"
         | "ColdDamage"
         | "LightningDamage"
         | "ChaosDamage"
         | "ElementalDamage"
-        | "AreaDamage"
         | "FirePenetration"
         | "ColdPenetration"
         | "LightningPenetration"
         | "ChaosPenetration"
         | "ElementalPenetration"
         | "TotalCastTime"
-        | "TotalAttackTime" => name,
+        | "TotalAttackTime"
+        // vendor `SkillStatMap.lua:554-557`（skill_speed_+% 同条目三 mod）与
+        // `:2400-2401`（summon_totem_cast_speed_+%）：警吼/图腾速度的独立名。
+        // PoBR 当前无消费方（惰性注入，名字即作用域，不会错算），保留 PoB2 原名
+        // 以免 legacy 把 TotemPlacementSpeed 误并入 CastSpeed（legacy 误映射，
+        // 见 m1-statmap-switch-log.md）。
+        | "WarcrySpeed"
+        | "TotemPlacementSpeed" => base_name.to_string(),
         other => {
             // 转换 / gain-as 族（`Skill<From>DamageConvertTo<To>` /
             // `[Skill]<From>DamageGainAs<To>`）：PoB2 与 PoBR 命名一致，按形态直通。
             if is_conversion_mod_name(other) {
-                return Ok(other.to_string());
+                other.to_string()
+            } else {
+                return Err(UnsupportedReason::UnknownModName(other.to_string()));
             }
-            return Err(UnsupportedReason::UnknownModName(other.to_string()));
         }
     };
-    Ok(direct.to_string())
+    Ok(TranslatedName {
+        flags: translate_mod_flags(&remaining_flags)?,
+        keyword_flags: translate_keyword_flags(keyword_flags, &translated)?,
+        name: translated,
+    })
 }
 
 /// 转换 / gain-as ModName 形态校验：`[Skill]<From>DamageConvertTo<To>` /
@@ -498,11 +635,13 @@ fn is_conversion_mod_name(name: &str) -> bool {
     false
 }
 
-/// tag 翻译（第一批：Condition / Multiplier / PerStat → PoBR [`ModTag`]）。
+/// tag 翻译（第一批：Condition / ActorCondition(enemy) / Multiplier / PerStat →
+/// PoBR [`ModTag`]）。
 ///
 /// 其余 tag 类型整条 Unsupported；已支持类型出现**约定外的键**同样 Unsupported
 /// （宁可跳过——多余键往往携带额外语义，静默丢键 = 错算）。
-fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, UnsupportedReason> {
+/// pub 供双跑 oracle 对拍（vendor modList 的 tag 经同一翻译归一后比对）。
+pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, UnsupportedReason> {
     let tag_type = match tag.get("type") {
         Some(StatMapValue::Text(t)) => t.as_str(),
         _ => return Err(UnsupportedReason::UnsupportedTag("<missing type>".into())),
@@ -530,6 +669,34 @@ fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Unsuppo
             };
             let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
             Ok(ModTag::Condition { var, negated })
+        }
+        // 敌方状态条件（vendor 如 `SkillStatMap.lua:1119` `{ type = "ActorCondition",
+        // actor = "enemy", var = "Burning" }`）：PoBR 既有约定把敌方条件折算为
+        // `Enemy<Var>` 条件变量（`mod_parser.rs:950-964`，编排层经 build config
+        // 注入 `EnemyBurning` 等），翻译为同名 Condition tag。actor ≠ enemy
+        // （player/parent…）第一批不支持。
+        "ActorCondition" => {
+            if !keys_subset_of(&["type", "actor", "var", "neg"]) {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "ActorCondition 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            if text("actor").as_deref() != Some("enemy") {
+                return Err(UnsupportedReason::UnsupportedTag(
+                    "ActorCondition 非 enemy actor".into(),
+                ));
+            }
+            let Some(var) = text("var") else {
+                return Err(UnsupportedReason::UnsupportedTag(
+                    "ActorCondition 缺 var".into(),
+                ));
+            };
+            let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
+            Ok(ModTag::Condition {
+                var: format!("Enemy{var}"),
+                negated,
+            })
         }
         "Multiplier" => {
             if !keys_subset_of(&["type", "var", "div", "limit"]) {
@@ -804,6 +971,145 @@ mod tests {
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedKeywordFlags(_))
         ));
+    }
+
+    /// ModFlag 直译：已移植子集附在 Modifier 上（PoB2 子集匹配语义两边一致）。
+    /// vendor `sup_str.lua` Melee Physical Damage statMap：
+    /// `mod("PhysicalDamage","MORE",nil,ModFlag.Melee)`。
+    #[test]
+    fn supported_mod_flags_are_attached() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "PhysicalDamage", "mod_type": "MORE", "flags": ["Melee"] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 25.0));
+        assert_eq!(mods[0].name.as_str(), "PhysicalDamage");
+        assert_eq!(mods[0].flags, ModFlags::MELEE);
+        // 子集外 token（Hit）→ 整条 Unsupported（cfg 不置该位，附上 = 静默欠算）。
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "PhysicalDamage", "mod_type": "MORE", "flags": ["Hit"] } ] }"#,
+        );
+        assert!(matches!(
+            map_entry(&entry, 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedFlags(_))
+        ));
+    }
+
+    /// gain-as + ModFlag.Attack（vendor `SkillStatMap.lua:1116`
+    /// `non_skill_base_all_damage_%_to_gain_as_chaos_with_attacks`）：
+    /// 名直通 + ATTACK flag 附着（攻击 cfg 下生效，法术不吃——对齐 PoB2 作用域）。
+    #[test]
+    fn gain_as_with_attack_flag_translates() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "DamageGainAsChaos", "mod_type": "BASE", "flags": ["Attack"] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 30.0));
+        assert_eq!(mods[0].name.as_str(), "DamageGainAsChaos");
+        assert_eq!(mods[0].flags, ModFlags::ATTACK);
+        assert_eq!(mods[0].value.as_number(), Some(30.0));
+    }
+
+    /// Speed 分派吃掉 Attack 后剩余 flag 照常直译（Attack+Melee → AttackSpeed+MELEE）。
+    #[test]
+    fn speed_dispatch_keeps_remaining_flags() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Speed", "mod_type": "INC", "flags": ["Attack", "Melee"] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 10.0));
+        assert_eq!(mods[0].name.as_str(), "AttackSpeed");
+        assert_eq!(mods[0].flags, ModFlags::MELEE);
+    }
+
+    /// `skill_speed_+%` 全条目三 mod（vendor `SkillStatMap.lua:554-557`）：
+    /// Speed → SkillSpeed；WarcrySpeed/TotemPlacementSpeed 惰性名直通
+    /// （WarcrySpeed 的冗余 KeywordFlag.Warcry 安全丢弃）。
+    #[test]
+    fn skill_speed_entry_maps_all_three_mods() {
+        let entry = entry_json(
+            r#"{ "mods": [
+                 { "kind": "mod", "name": "Speed", "mod_type": "INC" },
+                 { "kind": "mod", "name": "WarcrySpeed", "mod_type": "INC", "keyword_flags": ["Warcry"] },
+                 { "kind": "mod", "name": "TotemPlacementSpeed", "mod_type": "INC" } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 20.0));
+        assert_eq!(
+            mods.iter().map(|m| m.name.as_str()).collect::<Vec<_>>(),
+            vec!["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"]
+        );
+        assert!(mods.iter().all(|m| m.value.as_number() == Some(20.0)));
+        // 非惰性名上的 Warcry keyword 仍拒绝（无对应 KeywordFlags 位）。
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC", "keyword_flags": ["Warcry"] } ] }"#,
+        );
+        assert!(matches!(
+            map_entry(&entry, 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedKeywordFlags(_))
+        ));
+    }
+
+    /// 已移植 KeywordFlag 位直译附着（如 KeywordFlag.Bleed）。
+    #[test]
+    fn ported_keyword_flags_are_attached() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC", "keyword_flags": ["Bleed"] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 15.0));
+        assert_eq!(mods[0].keyword_flags, KeywordFlags::BLEED);
+    }
+
+    /// ActorCondition(enemy) → `Enemy<Var>` Condition（vendor `SkillStatMap.lua:1119`
+    /// + PoBR `mod_parser.rs:950-964` 敌方条件命名约定）。
+    #[test]
+    fn enemy_actor_condition_translates() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "DamageGainAsFire", "mod_type": "BASE",
+                 "tags": [ { "type": "ActorCondition", "actor": "enemy", "var": "Burning" } ] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 40.0));
+        assert_eq!(
+            mods[0].tags,
+            vec![ModTag::Condition {
+                var: "EnemyBurning".into(),
+                negated: false
+            }]
+        );
+        // 非 enemy actor → Unsupported。
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC",
+                 "tags": [ { "type": "ActorCondition", "actor": "parent", "var": "Stationary" } ] } ] }"#,
+        );
+        assert!(matches!(
+            map_entry(&entry, 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
+    }
+
+    /// set_key=None 自动取默认 set "1" 覆盖（PoB2 缺省 statSetIndex=1，
+    /// `SkillsTab.lua:354` / `CalcActiveSkill.lua:166-171`）。
+    #[test]
+    fn none_set_key_uses_default_set_one() {
+        let catalog = catalog_json(
+            r#"{
+              "global": {
+                "damage_+%": { "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC" } ] }
+              },
+              "per_stat_set": {
+                "FooPlayer": { "1": {
+                  "damage_+%": { "mods": [ { "kind": "mod", "name": "FireDamage", "mod_type": "INC" } ] }
+                } },
+                "BarPlayer": { "2": {
+                  "damage_+%": { "mods": [ { "kind": "mod", "name": "ColdDamage", "mod_type": "INC" } ] }
+                } }
+              }
+            }"#,
+        );
+        // 默认 set "1" 覆盖命中。
+        let outcome = map_stat(&catalog, "FooPlayer", None, "damage_+%", 10.0);
+        assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "FireDamage");
+        // 非 "1" 的 set 覆盖不被默认选择（需显式 set_key，T5 接线）。
+        let outcome = map_stat(&catalog, "BarPlayer", None, "damage_+%", 10.0);
+        assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "Damage");
+        let outcome = map_stat(&catalog, "BarPlayer", Some("2"), "damage_+%", 10.0);
+        assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "ColdDamage");
     }
 
     /// 转换 / gain-as 名直通；非法类型词不通过。
