@@ -28,6 +28,7 @@ use quick_xml::events::{BytesStart, Event};
 
 use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
+use pobr_core::rules::config_interpreter::{ConfigInputValue, RawConfigInputs};
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
@@ -142,20 +143,73 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
 ];
 
 /// `<Config>` 解析产物：条件 / 倍率 / 全局词条 + 顶层标量配置项。
+///
+/// **双跑期临时导出**（M3-T1 A5，蓝图 D3 点 1）：旧 parse_config 路径仍是现网
+/// 唯一消费路径；结构体以 `doc(hidden)` pub 暴露字段，仅供双跑集成测试对照新
+/// 解释器产出。双跑报告审查、新增覆盖逐类打开后，本结构与旧路径一并删除
+/// （独立 commit）。
+#[doc(hidden)]
 #[derive(Debug, Default)]
-struct ParsedConfig {
+pub struct ParsedConfig {
     /// 布尔条件覆盖（去 `condition` 前缀后的变量名 → 值）。
-    conditions: HashMap<String, bool>,
+    pub conditions: HashMap<String, bool>,
     /// 数值乘子覆盖（去 `multiplier` 前缀后的变量名 → 值）。
-    multipliers: HashMap<String, f64>,
+    pub multipliers: HashMap<String, f64>,
     /// 全局注入的词条文本（任务奖励等）。
-    global_texts: Vec<String>,
+    pub global_texts: Vec<String>,
     /// `resistancePenalty`（list 型，XML 存 number）映射到的战役进度。XML 省略
     /// 或值不在 PoB2 七档表内时为 `None`（消费方回退 PoB2 默认 Endgame `-60`）。
-    campaign_progress: Option<CampaignProgress>,
+    pub campaign_progress: Option<CampaignProgress>,
     /// `enemyIsBoss`（list 型，XML 存 string）映射到的敌人档位。XML 省略或字符串
     /// 不在四档表内时为 `None`（消费方回退编排选项档位，默认即 PoB2 Pinnacle）。
-    enemy_tier: Option<EnemyTier>,
+    pub enemy_tier: Option<EnemyTier>,
+}
+
+/// 抽取 `<Config>` 全部 `<Input name bool|number|string>` 为类型化原始键值
+/// （M3-T1 A5 新产线：本函数**不做任何语义判读**，解释统一走
+/// `pobr_core::rules::config_interpreter::interpret` + `ConfigCatalog`）。
+///
+/// 与旧 [`parse_config`] 的扫描范围一致：遍历整份 XML 的 `Input` 元素（PoB2
+/// 实际只在 `<Config>` 下保存 Input）。同名重复出现时后写覆盖（与旧路径
+/// HashMap 插入语义一致）。三型判读顺序 boolean → number → string；无任一
+/// 载荷属性的 `<Input>` 跳过。
+pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
+    let mut inputs = RawConfigInputs::new();
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Input" => {
+                let Some(name) = attr_value(&e, b"name") else {
+                    continue;
+                };
+                let value = if let Some(b) = attr_value(&e, b"boolean") {
+                    ConfigInputValue::Bool(b == "true")
+                } else if let Some(n) =
+                    attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
+                {
+                    ConfigInputValue::Number(n)
+                } else if let Some(s) = attr_value(&e, b"string") {
+                    ConfigInputValue::Text(s)
+                } else {
+                    continue;
+                };
+                inputs.values.insert(name, value);
+            }
+            Ok(Event::Eof) | Err(_) => break,
+            _ => {}
+        }
+    }
+    inputs
+}
+
+/// **双跑期临时导出**：旧 `<Config>` 解析路径（现网行为参照）。
+///
+/// 仅供集成测试对照 `parse_config_inputs` + config_interpreter 新路径
+/// （断言「旧 ⊆ 新且交集逐值相等」，蓝图 D3 点 1）；禁止新增业务消费方。
+#[doc(hidden)]
+pub fn parse_config_legacy(xml: &str) -> ParsedConfig {
+    parse_config(xml)
 }
 
 /// 抽取 `<Config>` 的 `<Input name boolean|number|string>` → [`ParsedConfig`]。
@@ -164,6 +218,9 @@ struct ParsedConfig {
 ///
 /// **省略=默认值**（PoB2 `defaultState`）：XML 中出现的 `<Input>` 按其值；未出现的
 /// 布尔条件中，[`DEFAULT_TRUE_CONDITIONS`] 列出的项补 `true`（其余仍由计算侧回退 false）。
+///
+/// **双跑期临时保留**（M3-T1 A5）：本函数为现网行为参照，逻辑冻结；新产线见
+/// [`parse_config_inputs`]。双跑报告审查后删除（独立 commit）。
 fn parse_config(xml: &str) -> ParsedConfig {
     let mut parsed = ParsedConfig::default();
     // 记录 XML 中**出现过**的 `<Input name>`，用于判定哪些 defaultState 项被省略。
