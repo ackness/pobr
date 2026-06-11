@@ -480,14 +480,32 @@ fn translate_mod_flags(tokens: &[String]) -> Result<ModFlags, UnsupportedReason>
 const SCOPE_NAMED_INERT: [&str; 2] = ["WarcrySpeed", "TotemPlacementSpeed"];
 
 /// KeywordFlag token 直译（位值两边均对齐 PoB2 `Global.lua:263-292`）。
+///
+/// 返回 `(keyword_flags, extra_mod_flags)`：`KeywordFlag.Attack` / `KeywordFlag.Spell`
+/// 折算为 [`ModFlags::ATTACK`] / [`ModFlags::SPELL`]——PoB2 对这两个 keyword 的
+/// ANY 匹配（`MatchKeywordFlags`，cfg.keywordFlags 由技能类型派生含 Attack/Spell）
+/// 与 PoBR cfg.flags 的 ATTACK/SPELL 子集匹配门控等价（cfg.flags 同样由
+/// skill_types 派生，`calc_orchestrator.rs:1125-1129`）。例
+/// `support_attack_skills_elemental_damage_+%_final`（vendor `sup_str.lua:2825-2827`
+/// `mod("ElementalDamage","MORE",nil,0,KeywordFlag.Attack)`）。
 fn translate_keyword_flags(
     tokens: &[String],
     name: &str,
-) -> Result<KeywordFlags, UnsupportedReason> {
+) -> Result<(KeywordFlags, ModFlags), UnsupportedReason> {
     let mut flags = KeywordFlags::NONE;
+    let mut extra_mod_flags = ModFlags::NONE;
     for token in tokens {
         // 惰性作用域名上的冗余 keyword（见 [`SCOPE_NAMED_INERT`]）→ 丢弃。
         if matches!(token.as_str(), "Warcry" | "Totem") && SCOPE_NAMED_INERT.contains(&name) {
+            continue;
+        }
+        // Attack/Spell keyword → 等价 ModFlags 门控（见函数文档）。
+        if token == "Attack" {
+            extra_mod_flags |= ModFlags::ATTACK;
+            continue;
+        }
+        if token == "Spell" {
+            extra_mod_flags |= ModFlags::SPELL;
             continue;
         }
         let bit = match token.as_str() {
@@ -509,7 +527,7 @@ fn translate_keyword_flags(
         };
         flags = flags | bit;
     }
-    Ok(flags)
+    Ok((flags, extra_mod_flags))
 }
 
 /// ModName 翻译层（PoB2 名 + ModFlag/KeywordFlag 组合 → PoBR 名 + flags）。
@@ -613,9 +631,10 @@ pub fn translate_mod_name(
             }
         }
     };
+    let (kw, extra_mod_flags) = translate_keyword_flags(keyword_flags, &translated)?;
     Ok(TranslatedName {
-        flags: translate_mod_flags(&remaining_flags)?,
-        keyword_flags: translate_keyword_flags(keyword_flags, &translated)?,
+        flags: translate_mod_flags(&remaining_flags)? | extra_mod_flags,
+        keyword_flags: kw,
         name: translated,
     })
 }
@@ -1054,6 +1073,20 @@ mod tests {
         );
         let mods = expect_modifiers(map_entry(&entry, 15.0));
         assert_eq!(mods[0].keyword_flags, KeywordFlags::BLEED);
+    }
+
+    /// KeywordFlag.Attack/Spell → 等价 ModFlags 门控（vendor `sup_str.lua:2825-2827`
+    /// Elemental Armament：`mod("ElementalDamage","MORE",nil,0,KeywordFlag.Attack)`；
+    /// PoB2 ANY keyword 匹配与 PoBR cfg.flags ATTACK 子集匹配同为"仅攻击技能生效"）。
+    #[test]
+    fn attack_spell_keywords_become_mod_flags() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "ElementalDamage", "mod_type": "MORE", "keyword_flags": ["Attack"] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 25.0));
+        assert_eq!(mods[0].name.as_str(), "ElementalDamage");
+        assert_eq!(mods[0].flags, ModFlags::ATTACK);
+        assert_eq!(mods[0].keyword_flags, KeywordFlags::NONE);
     }
 
     /// ActorCondition(enemy) → `Enemy<Var>` Condition（vendor `SkillStatMap.lua:1119`
