@@ -32,3 +32,6 @@ pub mod gem_effects;
 
 // ---- M1-T5.2 statSet label / vendor 导出序号边车（overlay 层，merge 进 stat sets）----
 pub mod stat_set_labels;
+
+// ---- M6 前置：ModParser 解析规则六表（overlay 层，消费侧 = M6-B scan 引擎）----
+pub mod parser_rules;
