@@ -40,6 +40,8 @@
 
 ## 1. 归因 RFC 草案（P17 / R8）——**蓝图内直接给出，实施前评审通过是 T2 合并前置条件**
 
+> 2026-06-11 更新：本节已扩写为正式 RFC [m4-rfc-attribution-passes.md](m4-rfc-attribution-passes.md)（含开放问题 2 的 per-hand 形态裁决、direct 算法精确定义、ModFlags 30 位规范附录）；评审与修订以该文档为准，本节保留为摘要。
+
 ### 1.1 问题陈述
 
 PoB2 进攻是 **2×2 嵌套 pass**：外层 MH/OH（`CalcOffence.lua:2369-2449` passList），内层暴击/非暴击（`:3978-3980` `for pass=1,2; cfg.skillCond["CriticalStrike"]=(pass==1)`），末端 `combineStat`（`:2453-2538`，8 种模式）合并双手、`AverageHit = hitAvg×(1-c)+critAvg×c`（`:4395`）合并暴击。PoBR 的核心卖点是 source-level 归因（TraceGraph DAG + AttributionReport direct/marginal），当前模型假设"一个输出 stat = 一条聚合链"。双 pass 打破该假设：**同一个 SourceId 在不同 pass 内贡献不同**（per-hand 词条只进对应手、`on Critical Hit` 条件词条只进暴击 pass），合并节点是非平凡多入度算子（部分非线性）。若无结构化设计，归因会退化为"只能解释合并前某一条腿"。
