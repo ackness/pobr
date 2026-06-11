@@ -8,6 +8,7 @@ use regex::Regex;
 
 pub mod extract_lua;
 pub mod extract_quality;
+pub mod extract_stat_map;
 
 pub fn collect_catalog(pob_root: &Path) -> io::Result<PobCatalog> {
     let modules = pob_root.join("src").join("Modules");
