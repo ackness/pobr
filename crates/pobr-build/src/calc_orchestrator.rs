@@ -608,12 +608,22 @@ pub fn calculate_with_data(
         session.set_condition("CanUseBondedModifiers", true);
     }
 
+    // 诊断：POBR_DBG_UNSUPPORTED=1 时 dump 全部未解析词条文本（parity 排查用）。
+    if std::env::var("POBR_DBG_UNSUPPORTED").is_ok() {
+        for t in session.unsupported_modifier_texts() {
+            eprintln!("[POBR_UNSUP] {t}");
+        }
+    }
     // 诊断：POBR_DBG_STAT=<ModName> 时逐来源 dump 该属性的全部 modifier（parity 排查用）。
     if let Ok(stat) = std::env::var("POBR_DBG_STAT") {
         for m in session.mods_named(&stat) {
             eprintln!(
-                "[POBR_DBG] {stat} {:?} {:?} origin={:?} src={:?}",
-                m.mod_type, m.value, m.origin, m.source
+                "[POBR_DBG] {stat} {:?} {:?} tags={:?} src={:?} origin={:?}",
+                m.mod_type,
+                m.value,
+                m.tags,
+                m.source,
+                m.origin.as_ref().map(|o| &o.source_id)
             );
         }
     }
@@ -2029,6 +2039,16 @@ fn parse_grant_line(line: &str) -> Option<(GrantTargetKind, String)> {
     }
 }
 
+/// 属性小点判定（PoB2 tree.lua `isAttribute=true` 节点的 PoBR 等价）：词条为
+/// `+N to any [Attributes|Attribute]` 三选一形式。catalog 不带 isAttribute 旗标，
+/// 按节点词条文本判定（与 pobr-tree 属性三选一改写使用同一文本形式）。
+fn is_attribute_node(def: &pobr_data::catalog::PassiveNodeDef) -> bool {
+    def.stats.iter().any(|s| {
+        let lower = s.to_ascii_lowercase();
+        lower.contains(" to any ") && lower.contains("attribute")
+    })
+}
+
 /// 把所有范围珠宝的 `also grant` 词条按半径几何展开为全局 modifier 文本。
 ///
 /// 对每个珠宝：以插槽节点坐标为圆心、按 `Radius:` 档位筛出**已分配**节点，按种类计数
@@ -2086,7 +2106,10 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
             Err(_) => continue,
         };
 
-        // 半径内已分配节点按种类计数。
+        // 半径内已分配节点按种类计数。Small 排除属性小点（`+5 to any Attribute`
+        // 三选一节点）：vendor `<Kind> Passive Skills in Radius also grant` 处理函数
+        // 要求 `node.type == "Normal" and not node.isAttribute`（PoB2
+        // ModParser.lua:6855-6857，tree.lua 对应节点带 `isAttribute=true`）。
         let (mut notables, mut smalls) = (0usize, 0usize);
         for &skill in &effect.affected_nodes {
             let Some(def) = data.passive_nodes.get(&skill) else {
@@ -2094,7 +2117,9 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
             };
             match def.kind {
                 pobr_data::catalog::PassiveNodeKind::Notable => notables += 1,
-                pobr_data::catalog::PassiveNodeKind::Normal => smalls += 1,
+                pobr_data::catalog::PassiveNodeKind::Normal if !is_attribute_node(def) => {
+                    smalls += 1;
+                }
                 _ => {}
             }
         }
@@ -2124,7 +2149,14 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
 fn filter_parseable(texts: Vec<String>) -> Vec<String> {
     texts
         .into_iter()
-        .filter(|text| parse_mod(text).is_ok())
+        .filter(|text| {
+            let ok = parse_mod(text).is_ok();
+            // 诊断：POBR_DBG_DROPPED=1 时 dump 被结构性丢弃的词条（parity 排查用）。
+            if !ok && std::env::var("POBR_DBG_DROPPED").is_ok() {
+                eprintln!("[POBR_DROP] {text}");
+            }
+            ok
+        })
         .collect()
 }
 
