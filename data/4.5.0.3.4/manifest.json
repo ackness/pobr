@@ -29,6 +29,7 @@
       "gem_quality_stats",
       "high_precision_mods",
       "local_mods",
+      "mod_parser_rules",
       "skill_overrides",
       "stat_set_labels"
     ],
