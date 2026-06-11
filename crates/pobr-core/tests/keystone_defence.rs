@@ -153,7 +153,12 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
         "CI 应使混沌 max hit = ∞（实际 {}）",
         output.chaos_max_hit
     );
-    assert_eq!(output.fire_max_hit, 500.0, "CI 下元素池 = ES（500）");
+    // F-3 口径切换后 max hit 走 PoB2 TotalHitPool：CI 下 = LifeRecoverable(1) + ES(500)
+    // = 501（vendor :3540-3545 池基底含 Life 1；旧口径的 500 是 ES 单池近似）。
+    assert_eq!(
+        output.fire_max_hit, 501.0,
+        "CI 下命中池 = Life(1) + ES(500)"
+    );
     assert!(output.total_ehp.is_finite());
 }
 

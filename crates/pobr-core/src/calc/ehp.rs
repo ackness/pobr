@@ -940,14 +940,20 @@ pub fn not_hit_suite(out: &OutputTable) -> NotHitSuite {
     }
 }
 
-/// EHP PoB2 口径 fill（M2 F-1；perform `fill_mechanics` 末尾一行调用，须在
-/// `fill_evade_stun` / `fill_defence_panels` **之后**——not-hit/block/deflect 层
-/// 读它们写入的 OutputTable 字段，未接线字段默认 0 → 中性 1.0）。
+/// EHP PoB2 口径 fill（M2 F-1 产出 / F-3 口径切换；perform `fill_mechanics` 末尾
+/// 一行调用，须在 `fill_evade_stun` / `fill_defence_panels` **之后**——
+/// not-hit/block/deflect 层读它们写入的 OutputTable 字段，未接线字段默认 0 → 中性 1.0）。
 ///
-/// 产出（全部新字段，parity 逐值不变）：
-/// `life_recoverable` / `energy_shield_recovery_cap` / `physical_damage_reduction` /
-/// `number_of_damaging_hits` / `number_of_mitigated_hits` / `total_enemy_damage_in` /
-/// `total_ehp_pob2` / `*_max_hit_pob2`。`total_ehp` 仍旧口径（F-3 切换）。
+/// **F-3 口径切换**（蓝图 m2-defence §2 Track F commit 3，裁决 P11）：
+/// - `total_ehp` = 新口径（`mitigatedHits / (1−notHit) × totalEnemyDamageIn`，
+///   CalcDefence.lua:3271/:3322）；旧 lowest-max-hit 值保留在
+///   `total_ehp_lowest_max_hit`（perform 旧管线照常写入，不删码——revert 本函数
+///   末尾的切换段即回旧口径，蓝图 §5 R2 行）。
+/// - `*_max_hit` = 新口径（TotalHitPool 池扩展层 + taken-as，:3540-3697）；
+///   `*_max_hit_pob2` 保留为同值别名（双跑报告/下游兼容）。
+/// - `avoid_stun` / Stun 体系换**真值** totalTakenHit（per-hit taken 伤害，
+///   :2444 聚合 → :2554-2557 ES 减半条件 / :2525-2643 阈值几率）——替换
+///   Track E 接线期的 reference_hit 近似。
 pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &ResistanceSuite) {
     struct Computed {
         life_recoverable: f64,
@@ -958,6 +964,10 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
         total_in: f64,
         total_ehp_pob2: f64,
         max_hits: [f64; 5],
+        avoid_stun: f64,
+        stun_threshold: f64,
+        self_stun_chance: f64,
+        stun_duration: f64,
     }
     let computed = {
         let db = &env.player.mod_db;
@@ -1037,6 +1047,33 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
         // ---- per-type TakenHit + 面板 DR（:2171-2444）----
         let (taken_hit, dr_pct) = taken_hit_per_type(&enemy_in.damage, &mit);
 
+        // ---- avoid_stun / Stun 真值接线（F-3；蓝图 Track E「F 接线后换真值」）----
+        // vendor totalTakenHit = Σ <X>TakenHit（:2444）；ES 减半条件
+        // `ES > totalTakenHit && !EnergyShieldProtectsMana`（:2554-2557）；
+        // SelfStunChance 的有效伤用 totalTakenHit/PhysicalTakenHit（:2525-2643）。
+        let total_taken_hit = taken_hit.total();
+        let avoidance = crate::calc::defence::calc_avoidance(
+            db,
+            cfg,
+            out.energy_shield,
+            total_taken_hit,
+            keystones.energy_shield_protects_mana,
+        );
+        let stun = crate::calc::stun::calc_stun(
+            db,
+            cfg,
+            &crate::calc::stun::StunInputs {
+                life: out.life,
+                life_base_flat: env.player.base.life,
+                energy_shield: out.energy_shield,
+                mana: out.mana,
+                total_taken_hit,
+                physical_taken_hit: taken_hit.physical,
+                avoid_stun: avoidance.avoid_stun,
+                chaos_inoculation: keystones.chaos_inoculation,
+            },
+        );
+
         // ---- 致死击数（:3148-3153）----
         // preventedLifeLossTotal > 0 → LimitEHPSpeedup（:3151）。
         let below_half_effective =
@@ -1113,6 +1150,10 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
             total_in: enemy_in.total_in,
             total_ehp_pob2,
             max_hits,
+            avoid_stun: avoidance.avoid_stun,
+            stun_threshold: stun.threshold,
+            self_stun_chance: stun.self_stun_chance,
+            stun_duration: stun.stun_duration,
         }
     };
 
@@ -1129,4 +1170,19 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
     out.cold_max_hit_pob2 = computed.max_hits[DamageType::Cold as usize];
     out.lightning_max_hit_pob2 = computed.max_hits[DamageType::Lightning as usize];
     out.chaos_max_hit_pob2 = computed.max_hits[DamageType::Chaos as usize];
+
+    // ═══ F-3 口径切换段（revert 本段即回旧口径，蓝图 §5 R2 行）═══
+    // canonical 字段改挂新口径值；旧 lowest-max-hit 口径已由 perform 旧管线写入
+    // `total_ehp_lowest_max_hit` 保留（不删码）。
+    out.total_ehp = computed.total_ehp_pob2;
+    out.physical_max_hit = computed.max_hits[DamageType::Physical as usize];
+    out.fire_max_hit = computed.max_hits[DamageType::Fire as usize];
+    out.cold_max_hit = computed.max_hits[DamageType::Cold as usize];
+    out.lightning_max_hit = computed.max_hits[DamageType::Lightning as usize];
+    out.chaos_max_hit = computed.max_hits[DamageType::Chaos as usize];
+    // avoid_stun / Stun 体系真值（覆盖 fill_evade_stun 的 reference_hit 近似产出）。
+    out.avoid_stun = computed.avoid_stun;
+    out.stun_threshold = computed.stun_threshold;
+    out.self_stun_chance = computed.self_stun_chance;
+    out.stun_duration = computed.stun_duration;
 }

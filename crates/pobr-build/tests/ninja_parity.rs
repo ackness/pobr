@@ -78,16 +78,31 @@ struct Row {
     pobr: f64,
 }
 
+/// golden 经 sanitize 后 `Infinity` → `1e308`；≥ 此阈值按 ∞ 等价处理（比值口径）。
+const GOLDEN_INF: f64 = 1e307;
+
+/// ∞ 等价判定（pobr 的 `f64::INFINITY` 与 golden 的 sanitize 占位都算）。
+fn is_inf_like(v: f64) -> bool {
+    !v.is_finite() || v >= GOLDEN_INF
+}
+
 fn ratio(pobr: f64, golden: f64) -> f64 {
-    if golden == 0.0 {
+    if is_inf_like(golden) {
+        // 双方皆 ∞ → 命中（1.0）；golden ∞ 而 pobr 有限 → 0（脱靶）。
+        if is_inf_like(pobr) { 1.0 } else { 0.0 }
+    } else if golden == 0.0 {
         if pobr == 0.0 { 1.0 } else { f64::INFINITY }
     } else {
         pobr / golden
     }
 }
 
-/// 防御/属性面板列（与技能管线无关，反映 base/树/装备聚合 parity）。
-fn defensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
+/// 防御/属性面板**核心列**（W1 全程的旧 8 列基线口径；扩列稀释防护的子集指标，
+/// 蓝图 §4.2-1 / 00-index §4 owner 双指标裁决）。
+fn defensive_core_rows(
+    out: &OutputTable,
+    g: &serde_json::Map<String, serde_json::Value>,
+) -> Vec<Row> {
     vec![
         Row {
             label: "Life",
@@ -130,6 +145,108 @@ fn defensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
             pobr: out.lightning_resistance,
         },
     ]
+}
+
+/// 防御扩展列（M2 F-3 扩列 8→25：EHP/max-hit 新口径 + Block/Spirit/Evade/
+/// Deflect/池口径面板，蓝图 §2 Track F「defensive_rows 扩列」清单）。
+fn defensive_extended_rows(
+    out: &OutputTable,
+    g: &serde_json::Map<String, serde_json::Value>,
+) -> Vec<Row> {
+    vec![
+        Row {
+            label: "TotalEHP",
+            golden: golden(g, "TotalEHP"),
+            pobr: out.total_ehp,
+        },
+        Row {
+            label: "PhysMaxHit",
+            golden: golden(g, "PhysicalMaximumHitTaken"),
+            pobr: out.physical_max_hit,
+        },
+        Row {
+            label: "FireMaxHit",
+            golden: golden(g, "FireMaximumHitTaken"),
+            pobr: out.fire_max_hit,
+        },
+        Row {
+            label: "ColdMaxHit",
+            golden: golden(g, "ColdMaximumHitTaken"),
+            pobr: out.cold_max_hit,
+        },
+        Row {
+            label: "LightMaxHit",
+            golden: golden(g, "LightningMaximumHitTaken"),
+            pobr: out.lightning_max_hit,
+        },
+        Row {
+            label: "ChaosMaxHit",
+            golden: golden(g, "ChaosMaximumHitTaken"),
+            pobr: out.chaos_max_hit,
+        },
+        Row {
+            label: "EffBlock",
+            golden: golden(g, "EffectiveBlockChance"),
+            pobr: out.effective_block_chance,
+        },
+        Row {
+            label: "EffSpellBlock",
+            golden: golden(g, "EffectiveSpellBlockChance"),
+            pobr: out.effective_spell_block_chance,
+        },
+        Row {
+            label: "Spirit",
+            golden: golden(g, "Spirit"),
+            pobr: out.spirit,
+        },
+        Row {
+            label: "SpiritUnres",
+            golden: golden(g, "SpiritUnreserved"),
+            pobr: out.spirit_unreserved,
+        },
+        Row {
+            label: "EvadeChance",
+            golden: golden(g, "EvadeChance"),
+            pobr: out.evade_chance,
+        },
+        Row {
+            label: "MeleeEvade",
+            golden: golden(g, "MeleeEvadeChance"),
+            pobr: out.melee_evade_chance,
+        },
+        Row {
+            label: "LifeUnres",
+            golden: golden(g, "LifeUnreserved"),
+            pobr: out.life_unreserved,
+        },
+        Row {
+            label: "ManaUnres",
+            golden: golden(g, "ManaUnreserved"),
+            pobr: out.mana_unreserved,
+        },
+        Row {
+            label: "ESRecoveryCap",
+            golden: golden(g, "EnergyShieldRecoveryCap"),
+            pobr: out.energy_shield_recovery_cap,
+        },
+        Row {
+            label: "PhysDR",
+            golden: golden(g, "PhysicalDamageReduction"),
+            pobr: out.physical_damage_reduction,
+        },
+        Row {
+            label: "DeflectChance",
+            golden: golden(g, "DeflectChance"),
+            pobr: out.deflect_chance,
+        },
+    ]
+}
+
+/// 全量防御列 = 核心 8 列 + 扩展 17 列（≈ 蓝图「8→~24 列」）。
+fn defensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
+    let mut rows = defensive_core_rows(out, g);
+    rows.extend(defensive_extended_rows(out, g));
+    rows
 }
 
 /// 进攻列（技能管线完整度强相关，单列报告）。
@@ -203,6 +320,13 @@ fn tally_rows(rows: &[Row]) -> Tally {
 
 /// 打印逐 stat 对照表并返回命中聚合（复用 [`tally_rows`] 的计数口径）。
 fn print_rows(rows: &[Row]) -> Tally {
+    let fmt = |v: f64| -> String {
+        if is_inf_like(v) {
+            "inf".into()
+        } else {
+            format!("{v:.2}")
+        }
+    };
     for r in rows {
         match r.golden {
             Some(gv) => {
@@ -215,8 +339,11 @@ fn print_rows(rows: &[Row]) -> Tally {
                     " "
                 };
                 eprintln!(
-                    "  {mark} {:<16}{:>14.2}{:>14.2}{:>9.2}x",
-                    r.label, r.pobr, gv, rt
+                    "  {mark} {:<16}{:>14}{:>14}{:>9.2}x",
+                    r.label,
+                    fmt(r.pobr),
+                    fmt(gv),
+                    rt
                 );
             }
             None => eprintln!("    {:<16}{:>14.2}{:>14}{:>10}", r.label, r.pobr, "—", "—"),
@@ -226,12 +353,13 @@ fn print_rows(rows: &[Row]) -> Tally {
 }
 
 /// 遍历全部 build 计算防御/进攻命中聚合。`verbose` 控制是否逐 build 打印对照表。
-/// 返回 `(防御 Tally, 进攻 Tally, 解析/计算失败的 build 名)`。
-fn compute_tallies(verbose: bool) -> (Tally, Tally, Vec<String>) {
+/// 返回 `(防御核心 8 列 Tally, 防御全量 25 列 Tally, 进攻 Tally, 解析/计算失败的 build 名)`。
+fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
     let data = load_data();
     let builds = discover_builds();
     assert!(!builds.is_empty(), "no builds discovered");
 
+    let mut def_core = Tally::default();
     let mut def = Tally::default();
     let mut off = Tally::default();
     let mut failed_parse = Vec::new();
@@ -247,6 +375,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Vec<String>) {
             continue;
         };
         let (def_rows, off_rows) = (defensive_rows(&out, &g), offensive_rows(&out, &g));
+        def_core.add(tally_rows(&defensive_core_rows(&out, &g)));
         if verbose {
             eprintln!("\n##### {name} #####");
             eprintln!(
@@ -262,21 +391,32 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Vec<String>) {
             off.add(tally_rows(&off_rows));
         }
     }
-    (def, off, failed_parse)
+    (def_core, def, off, failed_parse)
 }
 
 /// 已记录的 parity 基线（命中数）——回归门禁的下限。**仅在确认改动整体提升 parity 时上调**，
 /// 永不下调（防止改动悄悄倒退）。对应 commit 当时的 ninja_parity 输出。
-const BASELINE_DEF_HIT5: usize = 111;
-const BASELINE_DEF_HIT10: usize = 117;
+///
+/// M2 F-3 扩列重记（蓝图 §2 Track F commit 3 / §4.2 / 00-index §4 owner 双指标裁决）：
+/// - `DEF_CORE`：旧 8 列子集（扩列稀释防护指标，裁决下限 111——W1 全程冻结基线）；
+/// - `DEF`：扩列后全量 25 列（分母 = golden 可比项总数）。
+const BASELINE_DEF_CORE_HIT5: usize = 114; // 实测 114/144（≥ 裁决下限 111）
+const BASELINE_DEF_HIT5: usize = 308; // 实测 308/450 = 68.4%（F-3 重记）
+const BASELINE_DEF_HIT10: usize = 331; // 实测 331/450 = 73.6%
 const BASELINE_OFF_HIT5: usize = 23;
 const BASELINE_OFF_HIT10: usize = 31;
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
 fn parity_no_regression() {
-    let (def, off, failed) = compute_tallies(false);
+    let (def_core, def, off, failed) = compute_tallies(false);
     assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
+    // owner 双指标裁决之一：旧 8 列子集 ≥ 111（防「扩列稀释」掩盖回退）。
+    assert!(
+        def_core.hit5 >= BASELINE_DEF_CORE_HIT5,
+        "defensive core-8 @5% regressed: {} < baseline {BASELINE_DEF_CORE_HIT5}",
+        def_core.hit5
+    );
     assert!(
         def.hit5 >= BASELINE_DEF_HIT5,
         "defensive @5% regressed: {} < baseline {BASELINE_DEF_HIT5}",
@@ -302,7 +442,7 @@ fn parity_no_regression() {
 /// 主基线报告：逐 build 打印防御 + 进攻对照，并汇总聚合命中率。
 #[test]
 fn parity_baseline_report() {
-    let (def, off, failed_parse) = compute_tallies(true);
+    let (def_core, def, off, failed_parse) = compute_tallies(true);
     let builds = discover_builds();
 
     eprintln!(
@@ -319,13 +459,22 @@ fn parity_baseline_report() {
     }
     let pct = |n: usize, d: usize| 100.0 * n as f64 / d.max(1) as f64;
     eprintln!(
-        "defensive parity: {}/{} = {:.1}% @5%  |  {}/{} = {:.1}% @10%",
+        "defensive parity (25 cols): {}/{} = {:.1}% @5%  |  {}/{} = {:.1}% @10%",
         def.hit5,
         def.total,
         pct(def.hit5, def.total),
         def.hit10,
         def.total,
         pct(def.hit10, def.total),
+    );
+    eprintln!(
+        "defensive core-8 subset:    {}/{} = {:.1}% @5%  |  {}/{} = {:.1}% @10%",
+        def_core.hit5,
+        def_core.total,
+        pct(def_core.hit5, def_core.total),
+        def_core.hit10,
+        def_core.total,
+        pct(def_core.hit10, def_core.total),
     );
     eprintln!(
         "offensive parity: {}/{} = {:.1}% @5%  |  {}/{} = {:.1}% @10%",
@@ -338,11 +487,12 @@ fn parity_baseline_report() {
     );
 }
 
-/// M2 F-2：EHP 新旧口径 18-build 双跑对照报告（蓝图 m2-defence §2 Track F commit 2）。
+/// M2 F-2/F-3：EHP 新旧口径 18-build 双跑对照报告（蓝图 m2-defence §2 Track F）。
 ///
-/// 逐 build 打印：TotalEHP（旧 lowest-max-hit 口径 / 新 PoB2 口径 / PoB2 golden）+
-/// 致死击数 + 单击总进伤 + 各类型 max hit（旧/新/golden）。打印型仪表盘（不设门禁；
-/// 口径切换与 baseline 重记在 F-3 显式审查 commit）：
+/// F-3 口径切换后：canonical `total_ehp`/`*_max_hit` 即新口径，「old」列取
+/// `total_ehp_lowest_max_hit`（旧管线仍双跑产出，revert 通道保留）；per-type
+/// max hit 旧值不再单列（新旧在中性输入下数学等价，见 F-2 报告 §3.1）。
+/// 打印型仪表盘（不设门禁）：
 /// `cargo test -p pobr-build --test ninja_parity -- ehp_dual_run_report --nocapture`
 #[test]
 fn ehp_dual_run_report() {
@@ -397,50 +547,115 @@ fn ehp_dual_run_report() {
             fmt_v(out.number_of_mitigated_hits),
             fmt_v(out.total_enemy_damage_in),
         );
-        for (label, key, old_v, new_v) in [
+        for (label, key, now_v) in [
             (
                 "PhysMaxHit",
                 "PhysicalMaximumHitTaken",
                 out.physical_max_hit,
-                out.physical_max_hit_pob2,
             ),
-            (
-                "FireMaxHit",
-                "FireMaximumHitTaken",
-                out.fire_max_hit,
-                out.fire_max_hit_pob2,
-            ),
-            (
-                "ColdMaxHit",
-                "ColdMaximumHitTaken",
-                out.cold_max_hit,
-                out.cold_max_hit_pob2,
-            ),
+            ("FireMaxHit", "FireMaximumHitTaken", out.fire_max_hit),
+            ("ColdMaxHit", "ColdMaximumHitTaken", out.cold_max_hit),
             (
                 "LightMaxHit",
                 "LightningMaximumHitTaken",
                 out.lightning_max_hit,
-                out.lightning_max_hit_pob2,
             ),
-            (
-                "ChaosMaxHit",
-                "ChaosMaximumHitTaken",
-                out.chaos_max_hit,
-                out.chaos_max_hit_pob2,
-            ),
+            ("ChaosMaxHit", "ChaosMaximumHitTaken", out.chaos_max_hit),
         ] {
             let gv = golden(&g, key);
             eprintln!(
-                "  {label:<14}  old {:>12}  new {:>12}  golden {:>12}  old {}  new {}",
-                fmt_v(old_v),
-                fmt_v(new_v),
+                "  {label:<14}  now {:>12}  golden {:>12}  {}",
+                fmt_v(now_v),
                 gv.map_or("—".into(), fmt_v),
-                fmt_ratio(old_v, gv),
-                fmt_ratio(new_v, gv),
+                fmt_ratio(now_v, gv),
             );
         }
     }
     eprintln!(
-        "\n（F-1 双跑：total_ehp 字段仍为旧口径；新值挂 total_ehp_pob2/*_max_hit_pob2，切换在 F-3）"
+        "\n（F-3 已切换：total_ehp/*_max_hit = PoB2 口径；旧 lowest-max-hit 口径保留在 total_ehp_lowest_max_hit）"
     );
+}
+
+/// M2 阶段验收专项 fixture（蓝图 §4.2-3「MoM/CI/taken-as/盾 block 四类」，@5% 对 golden）。
+///
+/// 四类覆盖方式：
+/// - **MoM**：sorceress-stormweaver-comet（`DamageTakenFromManaBeforeLife` 来源；
+///   mana 池折入 TotalHitPool）——TotalEHP / PhysicalMaximumHitTaken @5%；
+/// - **CI**：monk-invoker-frost-bomb（CI keystone）——TotalEHP @5% +
+///   ChaosMaximumHitTaken 双 ∞（混沌免疫）；
+/// - **盾 block**：warrior-titan / warrior-smith-of-kitava——EffectiveBlockChance /
+///   EffectiveSpellBlockChance @5%（block 概率层；TotalEHP 残差 0.24-0.48x 为
+///   已知缺口：护甲聚合上游 + 格挡回复 GainWhenHit（vendor :3168-3177）未实现，
+///   见 F-3 commit message 残差清单，不在本断言内）；
+/// - **taken-as**：18-build golden 无该词条载体，由 pobr-core 合成 fixture 覆盖
+///   （`tests/taken_as.rs` Lightning Coil 型 + `tests/ehp_pob2.rs` 端到端，
+///   期望值手算自 CalcDefence.lua:356-455 公式）。
+#[test]
+fn m2_f3_specialty_fixtures() {
+    let data = load_data();
+    let dir = builds_dir();
+    let run = |name: &str| -> (OutputTable, serde_json::Map<String, serde_json::Value>) {
+        let d = dir.join(name);
+        let g = golden_stats(&d);
+        let out = run_build(&d, &data).unwrap_or_else(|| panic!("{name} 计算失败"));
+        (out, g)
+    };
+    let assert_5pct = |build: &str, stat: &str, pobr: f64, golden_v: Option<f64>| {
+        let gv = golden_v.unwrap_or_else(|| panic!("{build} golden 缺 {stat}"));
+        let rt = ratio(pobr, gv);
+        assert!(
+            (rt - 1.0).abs() < TOL,
+            "{build} {stat}: pobr {pobr:.1} vs golden {gv:.1} = {rt:.3}x（超 5% 容差）"
+        );
+    };
+
+    // MoM 类。
+    let (out, g) = run("sorceress-stormweaver-comet");
+    assert_5pct(
+        "sorceress-stormweaver-comet",
+        "TotalEHP",
+        out.total_ehp,
+        golden(&g, "TotalEHP"),
+    );
+    assert_5pct(
+        "sorceress-stormweaver-comet",
+        "PhysicalMaximumHitTaken",
+        out.physical_max_hit,
+        golden(&g, "PhysicalMaximumHitTaken"),
+    );
+
+    // CI 类。
+    let (out, g) = run("monk-invoker-frost-bomb");
+    assert_5pct(
+        "monk-invoker-frost-bomb",
+        "TotalEHP",
+        out.total_ehp,
+        golden(&g, "TotalEHP"),
+    );
+    // CI 混沌免疫：双方皆 ∞（golden 经 sanitize 为 1e308 占位）。
+    assert!(
+        is_inf_like(out.chaos_max_hit)
+            && golden(&g, "ChaosMaximumHitTaken").is_some_and(is_inf_like),
+        "CI 混沌免疫应双 ∞"
+    );
+
+    // 盾 block 类（两个 warrior build 的 block 概率层）。
+    for name in [
+        "warrior-titan-shield-wall",
+        "warrior-smith-of-kitava-shield-wall",
+    ] {
+        let (out, g) = run(name);
+        assert_5pct(
+            name,
+            "EffectiveBlockChance",
+            out.effective_block_chance,
+            golden(&g, "EffectiveBlockChance"),
+        );
+        assert_5pct(
+            name,
+            "EffectiveSpellBlockChance",
+            out.effective_spell_block_chance,
+            golden(&g, "EffectiveSpellBlockChance"),
+        );
+    }
 }

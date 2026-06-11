@@ -31,7 +31,8 @@ fn catalog_entries_have_pob_keys_and_known_status() {
     }
 }
 
-/// 条目数锁定（M2-W0.2）：Planned = 24 个 M2 防御扩展字段；新增条目须显式更新本断言。
+/// 条目数锁定（M2-W0.2 / F-3 更新）：M2 防御扩展批 24 个字段已于 F-3 全部翻
+/// Computed → Planned = 0、Computed = 105；新增条目须显式更新本断言。
 #[test]
 fn catalog_entry_counts_locked() {
     let catalog = display_catalog();
@@ -39,17 +40,24 @@ fn catalog_entry_counts_locked() {
         .iter()
         .filter(|d| d.parity_status == ParityStatus::Planned)
         .count();
-    assert_eq!(planned, 24, "Planned 条目数应为 24（M2 防御扩展批）");
-    assert_eq!(catalog.len() - planned, 81, "Computed 条目数变化须显式审查");
+    assert_eq!(
+        planned, 0,
+        "Planned 条目数应为 0（M2 防御扩展批已全部接线）"
+    );
+    assert_eq!(
+        catalog.len() - planned,
+        105,
+        "Computed 条目数变化须显式审查"
+    );
 }
 
-/// M2 防御扩展（W0.2）字段批：全部以 Planned 入目录，golden key 与 meta.json 对齐。
+/// M2 防御扩展字段批：F-3 后全部为 Computed，golden key 与 meta.json 对齐。
 #[test]
-fn catalog_defines_m2_defence_extension_planned_stats() {
+fn catalog_defines_m2_defence_extension_stats_computed() {
     let catalog = display_catalog();
-    let planned_ids: Vec<&str> = catalog
+    let computed_ids: Vec<&str> = catalog
         .iter()
-        .filter(|d| d.parity_status == ParityStatus::Planned)
+        .filter(|d| d.parity_status == ParityStatus::Computed)
         .map(|d| d.id.as_str())
         .collect();
     for id in [
@@ -78,7 +86,7 @@ fn catalog_defines_m2_defence_extension_planned_stats() {
         "NumberOfMitigatedHits",
         "TotalEHPLowestMaxHit",
     ] {
-        assert!(planned_ids.contains(&id), "missing planned entry {id}");
+        assert!(computed_ids.contains(&id), "missing computed entry {id}");
     }
     // PoB2 golden key 对齐抽查（NumberOfMitigatedHits → NumberOfMitigatedDamagingHits）。
     let entry = |id: &str| {
@@ -98,14 +106,14 @@ fn catalog_defines_m2_defence_extension_planned_stats() {
     assert_eq!(entry("StunDuration").higher_is_better, Some(false));
 }
 
-/// M2 Planned 条目不进 extract（未接线前对外不可见，行为中性）。
+/// M2 防御扩展条目 F-3 翻 Computed 后进 extract（对外可见，默认 0 中性值）。
 #[test]
-fn m2_planned_entries_excluded_from_extract() {
+fn m2_defence_extension_entries_included_in_extract() {
     let values = extract_display_values(&OutputTable::default());
     for id in ["Spirit", "EffectiveBlockChance", "NumberOfDamagingHits"] {
         assert!(
-            !values.iter().any(|v| v.id == DisplayStatId::from(id)),
-            "Planned 条目 {id} 不应出现在 extract 输出"
+            values.iter().any(|v| v.id == DisplayStatId::from(id)),
+            "Computed 条目 {id} 应出现在 extract 输出"
         );
     }
 }

@@ -479,9 +479,11 @@ fn avoid_stun_eb_disables_es_halving() {
     assert_eq!(r.avoid_stun, 0.0);
 }
 
-/// perform 端到端：fill_evade_stun 写 stun 三字段。
-/// life 1000、无 ES → 阈值 1000；参考伤 = reference_hit = 1000（视作纯物理）→
-/// eff = 1250 → SelfStunChance 100；avoid_stun = 0 → 时长 0.528s。
+/// perform 端到端：stun 三字段产出（M2 F-3 起 totalTakenHit 用扣池管线真值，
+/// 蓝图 Track E「F 接线后换真值」）。
+///
+/// 裸 Env（无 setup_enemy → 进伤 0）：阈值 1000 不变；有效眩晕伤害 0 →
+/// SelfStunChance 0（中性）；时长仍按公式 0.528s（given-stunned 口径，:2584-2595）。
 #[test]
 fn perform_fills_stun_into_output() {
     let base = ActorBaseStats {
@@ -489,6 +491,25 @@ fn perform_fills_stun_into_output() {
         ..ActorBaseStats::default()
     };
     let mut env = Env::new(Actor::new(1, base));
+    perform(&mut env).unwrap();
+
+    assert!((env.player.output.stun_threshold - 1000.0).abs() < EPS);
+    assert!((env.player.output.self_stun_chance - 0.0).abs() < EPS);
+    assert!((env.player.output.stun_duration - 0.528).abs() < EPS);
+}
+
+/// perform 端到端（带敌人）：真值 totalTakenHit 驱动 SelfStunChance。
+/// life 1000、无减伤：Pinnacle@82 单击 taken 总伤 4246、物理 965 →
+/// eff = 4246 + 965×0.25 = 4487.25 → base = min(200×4487.25/1000, 100) = 100
+/// （:2617/:2623）；avoid 0 → SelfStunChance 100。
+#[test]
+fn perform_fills_stun_with_enemy_taken_hit() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = Env::new(Actor::new(1, base));
+    pobr_core::calc::setup_enemy(&mut env, 82, pobr_data::monster::EnemyTier::Pinnacle);
     perform(&mut env).unwrap();
 
     assert!((env.player.output.stun_threshold - 1000.0).abs() < EPS);

@@ -41,7 +41,11 @@ fn perform_fills_ehp_from_pools_and_resistances() {
     perform(&mut env).unwrap();
 
     assert_eq!(env.player.output.life, 1000.0);
-    assert!(env.player.output.total_ehp > 0.0);
+    // F-3 口径切换：`total_ehp` = PoB2 口径（致死击数 × 单击进伤）；裸 Env 无
+    // setup_enemy → 无进伤 placeholder → 0 中性。旧 lowest-max-hit 口径保留在
+    // `total_ehp_lowest_max_hit`（CalcDefence.lua:3322 / 蓝图 m2-defence §2 F-3）。
+    assert_eq!(env.player.output.total_ehp, 0.0);
+    assert!(env.player.output.total_ehp_lowest_max_hit > 0.0);
     // With 0% resist, an element max hit equals the life pool.
     assert_eq!(env.player.output.fire_max_hit, 1000.0);
 }
@@ -1227,10 +1231,12 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
         ],
     );
     perform(&mut env2).unwrap();
+    // F-3 口径切换后 canonical max hit 走 PoB2 管线，末端 vendor round
+    // （CalcDefence.lua:3696）→ 1388.89 取整为 1389，容差放宽到 1。
     let expected = 1000.0 / 0.72;
     assert!(
-        (env2.player.output.physical_max_hit - expected).abs() < 1e-3,
-        "physical_max_hit = {} (期望 {} = 1000/0.72)",
+        (env2.player.output.physical_max_hit - expected).abs() < 1.0,
+        "physical_max_hit = {} (期望 ≈{} = 1000/0.72，vendor round)",
         env2.player.output.physical_max_hit,
         expected
     );

@@ -39,13 +39,16 @@ pub struct OutputTable {
     pub poison_dps: f64,
     /// 感电增伤幅度（fraction，如 0.20）。
     pub shock_effect: f64,
-    /// 各伤害类型最大可承受单次命中。
+    /// 各伤害类型最大可承受单次命中（M2 F-3 起 = PoB2 口径：TotalHitPool 池扩展层 +
+    /// taken-as，CalcDefence.lua:3540-3697；`*_max_hit_pob2` 为同值别名）。
     pub physical_max_hit: f64,
     pub fire_max_hit: f64,
     pub cold_max_hit: f64,
     pub lightning_max_hit: f64,
     pub chaos_max_hit: f64,
-    /// 综合 EHP（取各类型 max hit 最低）。
+    /// 综合 EHP（M2 F-3 起 = PoB2 口径：`TotalNumberOfHits × totalEnemyDamageIn`，
+    /// CalcDefence.lua:3322；无敌人进伤时 0 中性。旧 lowest-max-hit 口径保留在
+    /// `total_ehp_lowest_max_hit`）。
     pub total_ehp: f64,
     /// 生命 / 法力预留与剩余。
     pub life_reserved: f64,
@@ -200,13 +203,13 @@ pub struct OutputTable {
     /// 计入 not-hit/block/deflect 概率层后的致死命中数（PoB2
     /// `NumberOfMitigatedDamagingHits`，CalcDefence.lua:3246-3247）。
     pub number_of_mitigated_hits: f64,
-    /// 旧口径综合 EHP（各类型 max hit 取 min；Track F 切换 `total_ehp` 语义为
-    /// PoB2 口径（mitigatedHits × totalEnemyDamageIn，:3322）后，旧值保留于此作附加指标）。
+    /// 旧口径综合 EHP（各类型 max hit 取 min）。F-3 已切换 `total_ehp` 语义为
+    /// PoB2 口径（mitigatedHits × totalEnemyDamageIn，:3322），旧值保留于此作
+    /// 附加指标（旧管线不删码，revert F-3 切换段即回旧口径——蓝图 §5 R2 行）。
     pub total_ehp_lowest_max_hit: f64,
 
-    // --- M2 Track F（F-1）：PoB2 口径双跑并行字段。F-1 期间 `total_ehp` /
-    //     `*_max_hit` 维持旧口径不动，新口径值挂本组字段（18-build 新旧对照报告
-    //     消费）；F-3 口径切换 commit 把它们搬进规范字段并审查 baseline。 ---
+    // --- M2 Track F：PoB2 口径字段（F-1 双跑并行产出 → F-3 切换后与 canonical
+    //     `total_ehp`/`*_max_hit` 同值，保留为别名供双跑报告/下游兼容消费）。 ---
     /// 新口径综合 EHP（PoB2 `TotalEHP = TotalNumberOfHits × totalEnemyDamageIn`，
     /// CalcDefence.lua:3322；无敌人进伤时 0 中性）。
     pub total_ehp_pob2: f64,

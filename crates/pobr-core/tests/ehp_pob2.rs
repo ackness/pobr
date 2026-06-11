@@ -6,7 +6,8 @@
 //! - 新 max hit：:3540-3697（TotalHitPool 池扩展层 + 二次方程解 + 平滑）；
 //! - not-hit 层：:2015-2026；mitigation 层：:3155-3247；TotalEHP：:3322。
 //!
-//! F-1 双跑不变式：新口径值全部挂新字段，`total_ehp`/`*_max_hit` 旧口径逐值不变。
+//! F-3 口径切换后：canonical `total_ehp`/`*_max_hit` = 新口径值（`*_pob2` 为同值
+//! 别名），旧 lowest-max-hit 口径保留在 `total_ehp_lowest_max_hit`（蓝图 §5 R2 行）。
 
 use pobr_core::calc::actor::{Actor, ActorBaseStats};
 use pobr_core::calc::env::Env;
@@ -431,7 +432,7 @@ fn not_hit_suite_combines_evade_and_avoidance() {
 // ─────────────────────────────────────────────────────────────────
 
 /// 端到端（setup_enemy 注入 placeholder → perform）：新字段全部产出，
-/// 且 F-1 双跑不变式成立——`total_ehp`（旧口径）== `total_ehp_lowest_max_hit`。
+/// 且 F-3 切换不变式成立——canonical `total_ehp` == `total_ehp_pob2`。
 #[test]
 fn perform_fills_pob2_ehp_fields_with_enemy() {
     // Arrange
@@ -463,9 +464,13 @@ fn perform_fills_pob2_ehp_fields_with_enemy() {
     // 面板物理减伤（护甲 1500 vs 进伤 → DR > 0）。
     assert!(out.physical_damage_reduction > 0.0);
 
-    // F-1 双跑不变式：旧口径 total_ehp 原值不动、同步挂附加指标字段。
-    assert_eq!(out.total_ehp, out.total_ehp_lowest_max_hit);
+    // F-3 口径切换：canonical `total_ehp` = 新口径值（`total_ehp_pob2` 保留为同值
+    // 别名）；旧 lowest-max-hit 口径保留在 `total_ehp_lowest_max_hit`（不删码）。
+    assert_eq!(out.total_ehp, out.total_ehp_pob2);
+    assert_eq!(out.physical_max_hit, out.physical_max_hit_pob2);
+    assert_eq!(out.chaos_max_hit, out.chaos_max_hit_pob2);
     assert!(out.total_ehp > 0.0);
+    assert!(out.total_ehp_lowest_max_hit > 0.0);
 }
 
 /// 裸 Env（无 setup_enemy → 无进伤 placeholder）：新管线中性短路——
@@ -487,9 +492,12 @@ fn perform_without_enemy_damage_is_neutral() {
     assert_eq!(out.total_enemy_damage_in, 0.0);
     assert!(out.number_of_damaging_hits.is_infinite());
     assert_eq!(out.total_ehp_pob2, 0.0);
-    // 旧口径不受影响。
+    // F-3 口径切换：canonical total_ehp = 新口径 → 无进伤时 0 中性；
+    // 旧 lowest-max-hit 口径保留在附加字段（向后兼容）。
+    assert_eq!(out.total_ehp, 0.0);
+    assert!(out.total_ehp_lowest_max_hit > 0.0);
+    // max hit 新管线在中性输入下与旧自洽迭代解数学等价（F-2 报告 §3.1）。
     assert_eq!(out.fire_max_hit, 1000.0);
-    assert_eq!(out.total_ehp, out.total_ehp_lowest_max_hit);
 }
 
 /// MoM build 端到端：30% MoM（DamageTakenFromManaBeforeLife BASE 30）应显著提高

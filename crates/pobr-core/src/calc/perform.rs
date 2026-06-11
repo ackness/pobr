@@ -292,8 +292,9 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.lightning_max_hit = apply_dt(ehp.lightning_max_hit, DamageType::Lightning);
     env.player.output.chaos_max_hit = apply_dt(ehp.chaos_max_hit, DamageType::Chaos);
     env.player.output.total_ehp = ehp.total_ehp;
-    // M2 F-1 双跑：旧 lowest-max-hit 口径同步挂附加指标字段（F-3 切换 `total_ehp`
-    // 语义为 PoB2 口径后，本字段保留旧口径供回退与对照，不删码——蓝图 §5 R2 行）。
+    // 旧 lowest-max-hit 口径附加指标（F-3 后唯一权威出口：上面写入的 canonical
+    // `total_ehp`/`*_max_hit` 会在 `fill_ehp_pob2` 末尾被新口径覆盖；本段旧管线
+    // 不删码，revert fill_ehp_pob2 的切换段即回旧口径——蓝图 §5 R2 行）。
     env.player.output.total_ehp_lowest_max_hit = ehp.total_ehp;
 
     // --- 预留 / 剩余 ---
@@ -451,9 +452,10 @@ fn fill_mechanics(env: &mut Env) {
     // --- Block/Spirit/Ward/Deflection 面板族（M2 Track D，蓝图 §3.2 预登记的一行调用）---
     super::defence_panels::fill_defence_panels(env, &keystones);
 
-    // --- EHP PoB2 口径新管线（M2 Track F-1，双跑并行产出；须在 D/E 两个 fill 之后
-    //     ——not-hit/block/deflect 层读其 OutputTable 输出，缺省 0 → 中性 1.0）。
-    //     `total_ehp` 仍旧口径、新值挂新字段，parity 逐值不变；口径切换在 F-3。---
+    // --- EHP PoB2 口径管线（M2 Track F；须在 D/E 两个 fill 之后——not-hit/block/
+    //     deflect 层读其 OutputTable 输出，缺省 0 → 中性 1.0）。F-3 起在末尾把
+    //     canonical `total_ehp`/`*_max_hit` 切换为新口径值，并以真值 totalTakenHit
+    //     覆盖 avoid_stun / Stun 体系。---
     super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
 }
 

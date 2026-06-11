@@ -5,7 +5,8 @@
 //! parity 检查消费。计算内部只用稳定 ID；显示文本走 i18n（尚未实现）。
 //!
 //! - [`display_catalog`]：静态声明全部展示字段（id / 分类 / 值类型 / higher-is-better /
-//!   PoB key）。已计算的标 `Computed`，尚未落地的标 `Planned`。
+//!   PoB key）。已计算的标 `Computed`，尚未落地的标 `Planned`（M2 防御扩展批已于
+//!   F-3 全部翻 `Computed`）。
 //! - [`extract_display_values`]：从一个 `OutputTable` 抽取每个 `Computed` 字段的当前取值。
 
 use pobr_data::prelude::*;
@@ -20,12 +21,9 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     let computed = |id: &str, cat: Cat, vt: Vt, pob: &str| {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
-    // M2 防御扩展（W0.2）：字段已入 OutputTable（默认 0 中性），计算尚未接线 → Planned。
-    // 各 track（C/D/E/F）接线后由 F 在 W2 统一翻 Computed（output.rs/display_catalog
-    // 在 W0 后冻结，唯一例外是 F 的语义切换）。
-    let planned = |id: &str, cat: Cat, vt: Vt, pob: &str| {
-        DisplayStatDefinition::planned(id, cat, vt).with_pob_key(pob)
-    };
+    // M2 防御扩展（W0.2 入目录时为 Planned）：C/D/E/F 各 track 接线完成后由
+    // F-3（W2 语义切换 commit，蓝图 §3.1「output.rs/display_catalog 冻结的唯一例外」）
+    // 统一翻 Computed——24 个扩展字段全部由 perform fill 阶段产出。
 
     vec![
         // --- Offence ---
@@ -354,92 +352,93 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "SkillTriggerRate",
         ),
-        // --- M2 防御扩展（W0.2 / Planned；golden 参照 meta.json::player_stats 同名键） ---
+        // --- M2 防御扩展（W0.2 入目录 → F-3 翻 Computed；golden 参照
+        //     meta.json::player_stats 同名键） ---
         // Spirit 池（Track D 接线）。
-        planned("Spirit", Cat::Resource, Vt::Number, "Spirit"),
-        planned(
+        computed("Spirit", Cat::Resource, Vt::Number, "Spirit"),
+        computed(
             "SpiritUnreserved",
             Cat::Resource,
             Vt::Number,
             "SpiritUnreserved",
         ),
         // Block 族（Track D；CalcDefence.lua:961-1058）。
-        planned(
+        computed(
             "BlockChanceMax",
             Cat::Avoidance,
             Vt::Percent,
             "BlockChanceMax",
         ),
-        planned(
+        computed(
             "SpellBlockChanceMax",
             Cat::Avoidance,
             Vt::Percent,
             "SpellBlockChanceMax",
         ),
-        planned(
+        computed(
             "EffectiveBlockChance",
             Cat::Avoidance,
             Vt::Percent,
             "EffectiveBlockChance",
         ),
-        planned(
+        computed(
             "EffectiveSpellBlockChance",
             Cat::Avoidance,
             Vt::Percent,
             "EffectiveSpellBlockChance",
         ),
         // 格挡承伤比例：越低越好（被格挡命中仍承受的份额）。
-        planned("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect")
+        computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect")
             .with_higher_is_better(Some(false)),
         // Deflection（Track D；CalcDefence.lua:48-54、:1487-1506）。
-        planned(
+        computed(
             "DeflectionRating",
             Cat::Avoidance,
             Vt::Number,
             "DeflectionRating",
         ),
-        planned(
+        computed(
             "DeflectChance",
             Cat::Avoidance,
             Vt::Percent,
             "DeflectChance",
         ),
         // Evade 四分型 + 综合（Track E；CalcDefence.lua:1396-1466）。
-        planned("EvadeChance", Cat::Avoidance, Vt::Percent, "EvadeChance"),
-        planned(
+        computed("EvadeChance", Cat::Avoidance, Vt::Percent, "EvadeChance"),
+        computed(
             "MeleeEvadeChance",
             Cat::Avoidance,
             Vt::Percent,
             "MeleeEvadeChance",
         ),
-        planned(
+        computed(
             "ProjectileEvadeChance",
             Cat::Avoidance,
             Vt::Percent,
             "ProjectileEvadeChance",
         ),
-        planned(
+        computed(
             "SpellEvadeChance",
             Cat::Avoidance,
             Vt::Percent,
             "SpellEvadeChance",
         ),
-        planned(
+        computed(
             "SpellProjectileEvadeChance",
             Cat::Avoidance,
             Vt::Percent,
             "SpellProjectileEvadeChance",
         ),
         // Stun 体系（Track E；CalcDefence.lua:2525-2643）。
-        planned("StunThreshold", Cat::Defence, Vt::Number, "StunThreshold"),
-        planned(
+        computed("StunThreshold", Cat::Defence, Vt::Number, "StunThreshold"),
+        computed(
             "SelfStunChance",
             Cat::Defence,
             Vt::Percent,
             "SelfStunChance",
         )
         .with_higher_is_better(Some(false)),
-        planned(
+        computed(
             "StunDuration",
             Cat::Defence,
             Vt::TimeSeconds,
@@ -447,41 +446,41 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         )
         .with_higher_is_better(Some(false)),
         // Ward 池（Track D；CalcDefence.lua:1144-1273）。
-        planned("Ward", Cat::Resource, Vt::Number, "Ward"),
+        computed("Ward", Cat::Resource, Vt::Number, "Ward"),
         // 池口径（Track F；EHP 循环消费的池快照口径）。
-        planned(
+        computed(
             "LifeRecoverable",
             Cat::Resource,
             Vt::Number,
             "LifeRecoverable",
         ),
-        planned(
+        computed(
             "EnergyShieldRecoveryCap",
             Cat::Resource,
             Vt::Number,
             "EnergyShieldRecoveryCap",
         ),
-        planned(
+        computed(
             "PhysicalDamageReduction",
             Cat::Mitigation,
             Vt::Percent,
             "PhysicalDamageReduction",
         ),
         // EHP 新口径（Track F；CalcDefence.lua:2979-3153、:3246-3247、:3322）。
-        planned(
+        computed(
             "NumberOfDamagingHits",
             Cat::Mitigation,
             Vt::Number,
             "NumberOfDamagingHits",
         ),
-        planned(
+        computed(
             "NumberOfMitigatedHits",
             Cat::Mitigation,
             Vt::Number,
             "NumberOfMitigatedDamagingHits",
         ),
         // 旧 lowest-max-hit 口径保留为附加指标（F 切换 total_ehp 语义后仍可对照）。
-        planned(
+        computed(
             "TotalEHPLowestMaxHit",
             Cat::Mitigation,
             Vt::Number,
@@ -608,8 +607,7 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "TriggerRateCap" => output.trigger_rate_cap,
         "SkillTriggerRate" => output.skill_trigger_rate,
 
-        // --- M2 防御扩展（W0.2）：映射先行就位；条目为 Planned 时不进 extract，
-        //     F 在 W2 翻 Computed 后自动生效 ---
+        // --- M2 防御扩展（W0.2 映射先行就位；F-3 条目翻 Computed 后进 extract） ---
         "Spirit" => output.spirit,
         "SpiritUnreserved" => output.spirit_unreserved,
         "BlockChanceMax" => output.block_chance_max,
