@@ -7,6 +7,13 @@ pub enum ModValue {
     Number(f64),
     Bool(bool),
     Text(String),
+    /// 嵌套 modifier 载荷（PoB2 LIST mod 的 table 值形态）。
+    ///
+    /// 典型用途：`EnemyModifier` 词条——外层 mod 落在 player db 上，内层 mods 由
+    /// 编排层（env_finalize 的 `forward_enemy_modifiers`）经 [`crate::ModDb::list_nested`]
+    /// 透传转发到目标 db。数值/布尔/文本通道对该变体一律返回 `None`（不参与
+    /// sum/more/flag/override 聚合）。
+    NestedMods(Vec<Modifier>),
 }
 
 impl ModValue {
@@ -14,7 +21,7 @@ impl ModValue {
         match self {
             Self::Number(value) => Some(*value),
             Self::Bool(value) => Some(if *value { 1.0 } else { 0.0 }),
-            Self::Text(_) => None,
+            Self::Text(_) | Self::NestedMods(_) => None,
         }
     }
 
@@ -22,14 +29,22 @@ impl ModValue {
         match self {
             Self::Bool(value) => Some(*value),
             Self::Number(value) => Some(*value != 0.0),
-            Self::Text(_) => None,
+            Self::Text(_) | Self::NestedMods(_) => None,
         }
     }
 
     pub fn as_text(&self) -> Option<&str> {
         match self {
             Self::Text(value) => Some(value),
-            Self::Number(_) | Self::Bool(_) => None,
+            Self::Number(_) | Self::Bool(_) | Self::NestedMods(_) => None,
+        }
+    }
+
+    /// 嵌套 modifier 载荷（仅 [`Self::NestedMods`] 返回 `Some`）。
+    pub fn as_nested_mods(&self) -> Option<&[Modifier]> {
+        match self {
+            Self::NestedMods(mods) => Some(mods),
+            Self::Number(_) | Self::Bool(_) | Self::Text(_) => None,
         }
     }
 }

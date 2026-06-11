@@ -463,8 +463,25 @@ impl ModDb {
             .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))
             .filter_map(|modifier| match &modifier.value {
                 ModValue::Text(value) => Some(value.clone()),
-                ModValue::Number(_) | ModValue::Bool(_) => None,
+                ModValue::Number(_) | ModValue::Bool(_) | ModValue::NestedMods(_) => None,
             })
+            .collect()
+    }
+
+    /// List 通道的嵌套 modifier 透传：收集 `name` 名下 List 型、`matches(cfg)` 通过的
+    /// [`ModValue::NestedMods`] 载荷（按桶内插入序克隆展开）。
+    ///
+    /// 供编排层把 `EnemyModifier` 等「外层落 player db、内层转发目标 db」的嵌套词条
+    /// 取出转发（M3 env_finalize `forward_enemy_modifiers`）；本方法只透传不求值，
+    /// 内层 mod 的 `matches`/`effective_number` 由目标 db 聚合时按目标上下文结算。
+    pub fn list_nested(&self, cfg: &CalcConfig, name: ModName) -> Vec<Modifier> {
+        self.mods
+            .get(&name)
+            .into_iter()
+            .flat_map(|mods| mods.iter())
+            .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))
+            .filter_map(|modifier| modifier.value.as_nested_mods())
+            .flat_map(|nested| nested.iter().cloned())
             .collect()
     }
 }

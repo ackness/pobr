@@ -1,4 +1,6 @@
-use pobr_core::{CalcConfig, ModDb, ModList, ModTag, Modifier, TraceGraph, TraceOperation};
+use pobr_core::{
+    CalcConfig, ModDb, ModList, ModTag, ModValue, Modifier, TraceGraph, TraceOperation,
+};
 use pobr_data::prelude::*;
 
 #[test]
@@ -368,4 +370,47 @@ fn get_multiplier_matches_pob2_getmultiplier_semantics() {
     ));
     let cfg_c = CalcConfig::attack().with_multiplier("Virulence", 50.0);
     assert_eq!(db_ovr.get_multiplier("Virulence", &cfg_c), 99.0);
+}
+
+#[test]
+fn list_nested_passes_through_nested_mods_without_evaluating() {
+    // M3 C4-1：`EnemyModifier` 类嵌套 LIST 载荷——`list_nested` 只透传内层 mods，
+    // 不参与数值聚合；文本 List 通道（`list`）对嵌套载荷保持不可见。
+    let mut db = ModDb::new();
+    let inner = Modifier::number("DamageTaken", ModType::Inc, 10.0).with_tag(ModTag::Condition {
+        var: "Effective".to_string(),
+        negated: false,
+    });
+    db.add_mod(Modifier::new(
+        "EnemyModifier",
+        ModType::List,
+        ModValue::NestedMods(vec![inner.clone()]),
+    ));
+    // 同名文本 List 条目：两条通道互不串扰。
+    db.add_mod(Modifier::text(
+        "EnemyModifier",
+        ModType::List,
+        "placeholder",
+    ));
+
+    let cfg = CalcConfig::new();
+    let name = ModName::from("EnemyModifier");
+
+    assert_eq!(db.list_nested(&cfg, name.clone()), vec![inner]);
+    assert_eq!(db.list(&cfg, name.clone()), vec!["placeholder".to_string()]);
+    // 嵌套载荷不进入任何标量聚合通道。
+    assert_eq!(
+        db.sum(ModType::List, &cfg, std::slice::from_ref(&name)),
+        0.0
+    );
+    assert!(!db.flag(&cfg, name));
+}
+
+#[test]
+fn nested_mods_value_has_no_scalar_views() {
+    let value = ModValue::NestedMods(vec![Modifier::flag("Onslaught")]);
+    assert_eq!(value.as_number(), None);
+    assert_eq!(value.as_bool(), None);
+    assert_eq!(value.as_text(), None);
+    assert_eq!(value.as_nested_mods().map(<[Modifier]>::len), Some(1));
 }

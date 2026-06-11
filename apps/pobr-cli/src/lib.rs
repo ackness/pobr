@@ -178,7 +178,8 @@ pub fn parse_mod(text: &str) -> Result<ParseModReport, CliError> {
             value: match &m.value {
                 ModValue::Number(n) => Some(*n),
                 ModValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-                ModValue::Text(_) => None,
+                // 文本/嵌套载荷无标量值（嵌套 mod 由编排层转发，不在摘要里展开）。
+                ModValue::Text(_) | ModValue::NestedMods(_) => None,
             },
             source: m.source.clone(),
         })
@@ -282,7 +283,8 @@ pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
                 value: match &m.value {
                     ModValue::Number(n) => Some(*n),
                     ModValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-                    ModValue::Text(_) => None,
+                    // 文本/嵌套载荷无标量值（嵌套 mod 由编排层转发，不在摘要里展开）。
+                    ModValue::Text(_) | ModValue::NestedMods(_) => None,
                 },
                 source_id: sid,
             }
