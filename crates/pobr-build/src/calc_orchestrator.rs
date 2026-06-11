@@ -555,6 +555,45 @@ pub fn calculate_with_data(
         session
             .add_passive_nodes(&passive_nodes)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
+
+        // 3b. 小点效果缩放（Titan『Hulking Form』等『N% increased effect of Small
+        //     Passive Skills』）：vendor CalcSetup.lua:286-292 先对全部已分配节点求
+        //     SmallPassiveSkillEffect INC 总和，:271-277 再对每个『Normal 且非属性
+        //     小点且非飞升』节点的 modList 整体 ScaleAddList ×(1+inc/100)。PoBR 等价
+        //     实现：基础份已按 1.0 注入（上方 add_passive_nodes），此处对受影响小点
+        //     追加 **数值副本 × inc/100**（BASE/INC 的加性副本与整体缩放逐值相等；
+        //     小点无 MORE 数值词条，flag 副本为无操作，均跳过）。
+        let small_inc = small_passive_effect_inc(build, data);
+        if small_inc > 0.0 {
+            let small_nodes: Vec<AllocatedNode> = passive_nodes
+                .iter()
+                .filter(|n| {
+                    data.passive_nodes.get(&n.node_id.0).is_some_and(|def| {
+                        def.kind == pobr_data::catalog::PassiveNodeKind::Normal
+                            && def.ascendancy_id.is_none()
+                            && !is_attribute_node(def)
+                    })
+                })
+                .cloned()
+                .collect();
+            if !small_nodes.is_empty() {
+                let ingest = pobr_core::passive::ingest_passive_nodes(&small_nodes)
+                    .map_err(|e| BuildError::Parse(e.to_string()))?;
+                let scaled: Vec<Modifier> = ingest
+                    .modifiers
+                    .into_iter()
+                    .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
+                    .filter_map(|m| match m.value {
+                        pobr_core::ModValue::Number(v) => Some(Modifier {
+                            value: pobr_core::ModValue::Number(v * small_inc / 100.0),
+                            ..m
+                        }),
+                        _ => None,
+                    })
+                    .collect();
+                session.add_modifiers(scaled);
+            }
+        }
     }
 
     // 4. 技能宝石：按 active/support 分类，经各自归因入口注入。
@@ -952,6 +991,34 @@ fn clean_grant_text(text: &str) -> String {
         }
     }
     out
+}
+
+/// 小点效果总 INC（『N% increased effect of Small Passive Skills』词条族 →
+/// SmallPassiveSkillEffect INC，vendor ModParser.lua:3281；Titan『Hulking Form』）。
+///
+/// 来源扫描：全部已分配节点词条（vendor CalcSetup.lua:286-290 对 nodeList 求
+/// `Sum("INC", nil, "SmallPassiveSkillEffect")`——该词条只存在于树节点）。文本先经
+/// [`clean_grant_text`] 剥标记小写归一再固定句式比对。珠宝半径变体
+/// （JewelSmallPassiveSkillEffect，ModParser.lua:6842）走独立机制，不在此消费。
+fn small_passive_effect_inc(build: &Build, data: &BuildData) -> f64 {
+    let mut inc = 0.0;
+    for id in &build.tree.allocated_nodes {
+        let Some(node) = data.passive_nodes.get(&id.0) else {
+            continue;
+        };
+        for s in &node.stats {
+            let t = clean_grant_text(s);
+            if let Some(idx) = t.find("% increased effect of small passive skills")
+                && t[idx + "% increased effect of small passive skills".len()..]
+                    .trim()
+                    .is_empty()
+                && let Ok(num) = t[..idx].trim().parse::<f64>()
+            {
+                inc += num;
+            }
+        }
+    }
+    inc
 }
 
 /// Kalandra's Touch『Reflects opposite Ring』：该戒指自身无词缀，计算时复制**对侧
