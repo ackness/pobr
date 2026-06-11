@@ -20,6 +20,7 @@
 //!
 //! 设计约束：确定性、不可变、零网络 I/O（分享链接只识别 + 提取 key，抓取由上层做）。
 
+pub mod buff_stat_map;
 pub mod build;
 pub mod build_code;
 pub mod build_config;
@@ -29,7 +30,6 @@ pub mod calc_orchestrator;
 pub mod comparison;
 pub mod error;
 pub mod import_detect;
-pub mod skill_stat_map;
 pub mod snapshot;
 pub mod xml_build;
 pub mod xml_serde;
@@ -37,10 +37,11 @@ pub mod xml_serde;
 pub use build::{Build, CharacterIdentity, SocketGroup};
 pub use build_code::{decode_pob_code, encode_pob_code};
 pub use build_config::BuildConfig;
-pub use build_data::{BuildData, ClassBaseAttributes, ResolvedSkillLevel};
+pub use build_data::{BuildData, ClassBaseAttributes, EffectStats, ResolvedSkillLevel};
 pub use calc_cache::CalcCache;
 pub use calc_orchestrator::{
-    DataOrchestratorOptions, OrchestratorOptions, calculate, calculate_with_data,
+    DataOrchestratorOptions, OrchestratorOptions, StatMapCompareRecord, StatMapMode, calculate,
+    calculate_with_data, take_stat_map_compare_records,
 };
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};

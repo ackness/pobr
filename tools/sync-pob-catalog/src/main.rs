@@ -4,14 +4,19 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use sync_pob_catalog::extract_gem_effects::run_extract_gem_effects;
 use sync_pob_catalog::extract_lua::{
-    DEFAULT_SKILL_FILES, ExtractLuaArgs, resolve_luajit, run_extract_lua,
+    DEFAULT_SKILL_FILES, DEFAULT_STAT_MAP_SKILL_FILES, ExtractLuaArgs, resolve_luajit,
+    run_extract_lua,
 };
+use sync_pob_catalog::extract_quality::run_extract_gem_quality;
+use sync_pob_catalog::extract_stat_map::run_extract_stat_map;
+use sync_pob_catalog::extract_stat_set_labels::run_extract_stat_set_labels;
 use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -45,17 +50,42 @@ fn run() -> io::Result<()> {
 
 fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
+    // 缺省 --files 按抽取目标取各自约定：stat-map 不含 minion/spectre（M1 蓝图 T2.1，
+    // 召唤物 statMap 留 M5a）；gem-effects 恒读 Data/Gems.lua（--files 仅为公共
+    // 调用层占位）；其余目标用全量技能文件。
+    let default_files: &[&str] = match parsed.what.as_deref() {
+        Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
+        Some("gem-effects") => &["Gems"],
+        _ => DEFAULT_SKILL_FILES,
+    };
     let extract_args = ExtractLuaArgs {
         vendor_root: parsed.vendor_root,
         luajit: resolve_luajit(parsed.luajit.as_deref()),
-        files: parsed.files,
+        files: parsed
+            .files
+            .unwrap_or_else(|| default_files.iter().map(|s| s.to_string()).collect()),
         version_file: parsed.version_file,
         out_for_meta: parsed
             .out
             .as_ref()
             .map(|p| p.to_string_lossy().into_owned()),
     };
-    let json = run_extract_lua(&extract_args)?;
+    // 抽取目标分发：skill-overrides（缺省，per-skill 覆盖值）/ gem-quality（宝石品质
+    // stat 斜率，M1-T1）/ stat-map（SkillStatMap 全局 + per-set 覆盖，M1-T2）/
+    // gem-effects（宝石→授予效果连边，M1-T5.1）。
+    let json = match parsed.what.as_deref() {
+        None | Some("skill-overrides") => run_extract_lua(&extract_args)?,
+        Some("gem-quality") => run_extract_gem_quality(&extract_args)?,
+        Some("stat-map") => run_extract_stat_map(&extract_args)?,
+        Some("gem-effects") => run_extract_gem_effects(&extract_args)?,
+        Some("stat-set-labels") => run_extract_stat_set_labels(&extract_args)?,
+        Some(other) => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("extract-lua 未知抽取目标 --what {other}\n{USAGE}"),
+            ));
+        }
+    };
     match parsed.out {
         Some(out) => {
             if let Some(parent) = out.parent() {
@@ -76,9 +106,12 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
 struct ExtractCliArgs {
     vendor_root: PathBuf,
     out: Option<PathBuf>,
-    files: Vec<String>,
+    /// 显式 `--files` 列表；`None` = 按 `--what` 取各目标的缺省文件集。
+    files: Option<Vec<String>>,
     luajit: Option<PathBuf>,
     version_file: Option<PathBuf>,
+    /// 抽取目标（`None` = 缺省 skill-overrides）。
+    what: Option<String>,
 }
 
 impl ExtractCliArgs {
@@ -88,8 +121,10 @@ impl ExtractCliArgs {
         let mut files = None;
         let mut luajit = None;
         let mut version_file = None;
+        let mut what = None;
         while let Some(arg) = args.next() {
             match arg.as_str() {
+                "--what" => what = args.next(),
                 "--vendor-root" => vendor_root = args.next().map(PathBuf::from),
                 "--out" => out = args.next().map(PathBuf::from),
                 "--files" => {
@@ -120,10 +155,10 @@ impl ExtractCliArgs {
         Ok(Self {
             vendor_root,
             out,
-            files: files
-                .unwrap_or_else(|| DEFAULT_SKILL_FILES.iter().map(|s| s.to_string()).collect()),
+            files,
             luajit,
             version_file,
+            what,
         })
     }
 }

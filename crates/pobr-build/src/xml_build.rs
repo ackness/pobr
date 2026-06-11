@@ -788,21 +788,35 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             && let Some(gem_id) = attr_value(&e, b"gemId")
                             && !gem_id.is_empty()
                         {
-                            // 捕获每个启用 gem 的 skillId + level（active 与 support 皆收）。
+                            // 捕获每个启用 gem 的 skillId + level + quality（active 与
+                            // support 皆收）。quality 属性缺失/非法按 0（无品质），对齐
+                            // PoB2 SkillsTab.lua 的 `quality` 属性读取（缺省 0）。
                             if let Some(skill_id) = attr_value(&e, b"skillId")
                                 && !skill_id.is_empty()
                             {
                                 let level = attr_value(&e, b"level")
                                     .and_then(|v| v.parse::<u32>().ok())
                                     .unwrap_or(1);
+                                let quality = attr_value(&e, b"quality")
+                                    .and_then(|v| v.parse::<u32>().ok())
+                                    .unwrap_or(0);
+                                // statSet 形态选择（T5.4，PoB2 SkillsTab.lua:354 读 /
+                                // :489 写）：非法/缺失/字面量 "nil"（PoB2 缺省序列化
+                                // 产物）→ None（缺省主 set）。`statSetIndexCalcs`
+                                // （calcs 页独立选择）M1 不做，忽略。
+                                let stat_set_index = attr_value(&e, b"statSetIndex")
+                                    .and_then(|v| v.parse::<u32>().ok());
                                 // 组内首个启用 gem 视为主动技能（PoB Gem 列表 active 在前）。
                                 if cur.active_skill_id.is_none() {
                                     cur.active_skill_id = Some(skill_id.clone());
                                     cur.active_gem_level = Some(level);
+                                    cur.active_gem_quality = Some(quality);
                                 }
                                 cur.gem_skills.push(crate::build::GemSkillRef {
                                     skill_id,
                                     gem_level: level,
+                                    quality,
+                                    stat_set_index,
                                 });
                             }
                             cur.gem_ids.push(gem_id);
@@ -1128,6 +1142,30 @@ Adds 47 to 86 Physical Damage
             Some("FireballPlayer")
         );
         assert_eq!(enabled[0].active_gem_level, Some(18));
+    }
+
+    /// T5.4：`<Gem statSetIndex>` 解析——数字 → Some(n)；PoB2 缺省序列化字面量
+    /// `"nil"` / 缺失 → None（缺省主 set）；`statSetIndexCalcs` 忽略。
+    #[test]
+    fn parses_gem_stat_set_index() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="1" className="Witch"/>
+    <Skills activeSkillSet="1">
+        <SkillSet id="1">
+            <Skill enabled="true">
+                <Gem gemId="g1" skillId="IceNovaPlayer" level="20" statSetIndex="2" statSetIndexCalcs="3" enabled="true"/>
+                <Gem gemId="g2" skillId="ArcPlayer" level="20" statSetIndex="nil" statSetIndexCalcs="nil" enabled="true"/>
+                <Gem gemId="g3" skillId="SparkPlayer" level="20" enabled="true"/>
+            </Skill>
+        </SkillSet>
+    </Skills>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let gems = &build.socket_groups[0].gem_skills;
+        assert_eq!(gems[0].stat_set_index, Some(2), "数字属性解析为 Some");
+        assert_eq!(gems[1].stat_set_index, None, "字面量 nil 归一化为 None");
+        assert_eq!(gems[2].stat_set_index, None, "缺失属性为 None");
     }
 
     #[test]

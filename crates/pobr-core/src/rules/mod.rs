@@ -11,5 +11,7 @@
 //! buff_expander / special_mod / keystone_registry 等解释器随 M1+ 各阶段进驻。
 
 pub mod registry;
+pub mod skill_type_expr;
+pub mod stat_map_engine;
 
 pub use registry::{DuplicateHandlerError, Handler, HandlerRegistry};

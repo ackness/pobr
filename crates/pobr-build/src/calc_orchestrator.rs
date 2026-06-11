@@ -33,6 +33,7 @@
 use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
 use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
+use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome, StatMapCatalog};
 use pobr_core::skill_source::GemModSource;
 use pobr_core::{CalcConfig, CampaignProgress, CharacterBase, ModTag, Modifier};
 use pobr_data::catalog::local_mods::WeaponLocalModsDef;
@@ -42,10 +43,10 @@ use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect_with_radii};
 
+use crate::buff_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
-use crate::skill_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat, map_skill_stats};
 
 /// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
 const EXPOSURE_MAGNITUDE: f64 = 20.0;
@@ -75,6 +76,14 @@ pub struct DataOrchestratorOptions {
     pub enemy_tier: EnemyTier,
     /// 有效 DPS 口径开关（`true` → 计入命中 / 敌人减伤；`false` → 面板口径）。
     pub mode_effective: bool,
+    /// statmap 映射通道（M1-T2.3/T2.4，契约 C3）。默认 [`StatMapMode::Data`]；
+    /// `Compare` 纯观测（输出与 Data 一致，outcome 记录经
+    /// [`take_stat_map_compare_records`] 取出）。
+    pub stat_map_mode: StatMapMode,
+    /// statmap 数据目录（`overlay/skill_stat_map.json` 经 gamedata 加载注入）。
+    /// `None`（默认）= 回退 [`BuildData::stat_map_catalog`]（`BuildData::load`
+    /// 已随数据包加载）；两处均无时数据通道按全 miss 处理。
+    pub stat_map_catalog: Option<std::sync::Arc<StatMapCatalog>>,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -86,8 +95,28 @@ impl Default for DataOrchestratorOptions {
             enemy_level: 0,
             enemy_tier: EnemyTier::default(),
             mode_effective: false,
+            stat_map_mode: StatMapMode::default(),
+            stat_map_catalog: None,
         }
     }
+}
+
+/// statmap 映射通道选择（M1-T2.3 双跑框架，契约 C3；蓝图 §6 Q4 裁决：Compare
+/// 作为长期对照工具保留——M3 config / M6 parser 双跑复用同模式）。
+///
+/// 运行时枚举而非 cargo feature：18 build 双跑在同一进程内完成，报告好做。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum StatMapMode {
+    /// 数据引擎（`overlay/skill_stat_map.json` + `rules/stat_map_engine`）。
+    /// **默认**（M1-T2.4 切换 commit；四前置条件核对单见
+    /// `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`）。
+    #[default]
+    Data,
+    /// 观测对照：Data 计算 + 逐 stat 记录映射 outcome（**输出与 Data 一致**，
+    /// 纯观测不改变任何计算结果；记录经 [`take_stat_map_compare_records`] 取出）。
+    /// Legacy 启发式删除（T2.4）后保留为长期对照框架——M3 config / M6 parser
+    /// 双跑复用同模式（蓝图 §6 Q4 裁决）。删旧码后的切换回退 = revert 删除 commit。
+    Compare,
 }
 
 /// 对一个 [`Build`] 执行 minimal 计算，返回标量 [`OutputTable`]。
@@ -139,6 +168,17 @@ pub fn calculate_with_data(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Result<OutputTable, BuildError> {
+    // （M1-T2.3/T2.4）statmap 通道上下文：guard 作用域 = 本次计算；默认 Data
+    // （T2.4 切换）。catalog 优先取编排选项显式注入，缺省回退 BuildData 随数据包
+    // 加载的目录；Compare 纯观测（diff 记录由调用方 take 取出）。
+    let _stat_map_guard = install_stat_map_context(
+        options.stat_map_mode,
+        options
+            .stat_map_catalog
+            .clone()
+            .or_else(|| data.stat_map_catalog.clone()),
+    );
+
     // 主技能分等级参数（cast/attack 时间 → 行动速率；cost / cooldown 经 BASE 词条注入）。
     // 在建 session 前先解析，以便把行动速率写入 base_input + 据其类型设 cfg 伤害 flag。
     let main_skill = resolve_main_skill(build, data);
@@ -321,8 +361,23 @@ pub fn calculate_with_data(
     // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
     // 不再有单技能硬编码。
     if let Some((skill, group, skill_id)) = &main_skill {
-        session.add_modifiers(skill_base_modifiers(skill));
-        session.add_modifiers(support_modifiers(group, data));
+        // 选中 statSet 的 per-set 覆盖键（W-J：statSetIndex 显式选择接进引擎 set_key）。
+        let main_set_key = group
+            .gem_skills
+            .iter()
+            .find(|g| g.skill_id == *skill_id)
+            .and_then(|g| data.selected_set_key(skill_id, g.stat_set_index));
+        session.add_modifiers(skill_base_modifiers(
+            skill,
+            skill_id,
+            main_set_key.as_deref(),
+        ));
+        // 1b-i-q. 主技能宝石品质 stat（T1.7）：quality 段经 stat-map 映射注入，
+        //         SourceKind::GemQuality 归因（id 前缀 gem.<效果 id>.q<Q>）。
+        session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
+        // 1b-i-g. 主技能未选 statSet 的 global-only merge（W-J，CalcActiveSkill.lua:124-140）。
+        session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
+        session.add_modifiers(support_modifiers(group, data, skill_id));
 
         // 1b-iii. 触发链路（findings 03-01/03-02/03-06）：主技能若为**内建触发**
         // （`skill_types` 含 `Triggered`/`InbuiltTrigger`，对应 PoB2 `isTriggered`）则注入
@@ -488,6 +543,10 @@ pub fn calculate_with_data(
     //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
     session.add_modifiers(self_buff_offensive_modifiers(build, data));
 
+    // 4d.（M1-T4.5）持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
+    //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
+    session.add_modifiers(spirit_reservation_modifiers(build, data));
+
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
     session.setup_enemy(options.enemy_level, enemy_tier);
 
@@ -602,18 +661,25 @@ fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// 在单个宝石组内选出主技能 `(skill_id, gem_level)`：
+/// 在单个宝石组内选出主技能 `(skill_id, gem_level, stat_set_index)`：
 /// 1. 收集**非辅助**宝石（保持顺序，含 meta 壳）= PoB `socketGroupSkillList`。
 /// 2. 用 `main_active_skill`（1-based，缺省 1，越界 clamp）选第 N 个。
 /// 3. 若选中项是伤害技能 → 用它；否则（meta 壳 / 非伤害）穿透到组内首个伤害技能候选。
 /// 4. `gem_skills` 为空（仅由 builder 的 `with_active_skill` 构造、未填 gem_skills）时回退到
 ///    `active_skill_id`——保持公共 builder/测试 API 的向后兼容。
 ///
+/// 5. （T5.6 meta/复合宝石展开）组内宝石**自身**皆非伤害技能时，按
+///    `BuildData::gem_effects` 的附加授予效果外键（`additionalGrantedEffects`，
+///    PoB2 `CalcSetup.lua:1714-1718` 将其一并加入 socketGroupSkillList）正向解析——
+///    取首个附加伤害效果（如 ShockwaveTotem → ShockwaveTotemQuakePlayer）。
+///    保守口径：仅在常规候选全部落空时展开（PoB2 把附加效果计入 mainActiveSkill
+///    序号空间，完整对齐留 defer——18 build 实测无此序号用例）。
+///
 /// 返回 `None` 表示该组无任何伤害技能候选（纯光环/meta 组），交由上层回退扫描其他组。
 fn pick_group_main_skill<'b>(
-    build_data: &BuildData,
+    build_data: &'b BuildData,
     group: &'b SocketGroup,
-) -> Option<(&'b str, u32)> {
+) -> Option<(&'b str, u32, Option<u32>)> {
     // 非辅助宝石列表（meta 壳算入），与 PoB socketGroupSkillList 一致。`gem_skills` 存的是
     // 授予效果 id，故经 granted_effects.is_support 判定（未知效果按非 support 处理，宁可保留）。
     let actives: Vec<&crate::build::GemSkillRef> = group
@@ -639,23 +705,44 @@ fn pick_group_main_skill<'b>(
 
         // 指定项即伤害技能 → 直接用；否则（meta 壳等）穿透到组内首个伤害技能。
         if is_damage_skill(build_data, &chosen.skill_id) {
-            return Some((chosen.skill_id.as_str(), chosen.gem_level));
+            return Some((
+                chosen.skill_id.as_str(),
+                chosen.gem_level,
+                chosen.stat_set_index,
+            ));
         }
         if let Some(dmg) = actives
             .iter()
             .find(|g| is_damage_skill(build_data, &g.skill_id))
         {
-            return Some((dmg.skill_id.as_str(), dmg.gem_level));
+            return Some((dmg.skill_id.as_str(), dmg.gem_level, dmg.stat_set_index));
+        }
+        // T5.6：组内宝石自身皆非伤害技能 → 展开附加授予效果（meta/复合宝石外键，
+        // overlay/gem_effects.json）。等级/形态沿用宿主宝石（PoB2 附加效果与宿主
+        // 同 gemInstance）。
+        if let Some(expanded) = actives.iter().find_map(|g| {
+            build_data
+                .gem_effects
+                .get(&g.skill_id)
+                .and_then(|link| {
+                    link.additional_granted_effect_ids
+                        .iter()
+                        .find(|eid| is_damage_skill(build_data, eid))
+                })
+                .map(|eid| (eid.as_str(), g.gem_level, g.stat_set_index))
+        }) {
+            return Some(expanded);
         }
         // gem_skills 非空但无伤害技能候选 → 该组无主技能（纯 meta/光环组）。
         return None;
     }
 
-    // 回退：无 gem_skills（builder/测试用 with_active_skill 构造）时用 active_skill_id。
+    // 回退：无 gem_skills（builder/测试用 with_active_skill 构造）时用 active_skill_id
+    // （builder 路径无 statSetIndex 概念 → 缺省主 set）。
     group
         .active_skill_id
         .as_deref()
-        .map(|id| (id, group.active_gem_level.unwrap_or(1)))
+        .map(|id| (id, group.active_gem_level.unwrap_or(1), None))
 }
 
 /// 解析 build 的主技能分等级参数：优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+
@@ -669,21 +756,23 @@ fn pick_group_main_skill<'b>(
 /// 技能 id；支持多主动技能组（如 Cast on Crit + Comet）按 `mainActiveSkill` 精确选中主技能。
 fn resolve_main_skill<'b>(
     build: &'b Build,
-    data: &BuildData,
+    data: &'b BuildData,
 ) -> Option<(ResolvedSkillLevel, &'b SocketGroup, &'b str)> {
     // 优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+ 组内 mainActiveSkill。
     if let Some(n) = build.main_socket_group
         && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
-        && let Some((skill_id, level)) = pick_group_main_skill(data, group)
-        && let Some(resolved) = resolve_skill_level_with_gem_bonus(build, data, skill_id, level)
+        && let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
+        && let Some(resolved) =
+            resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)
     {
         return Some((resolved, group, skill_id));
     }
 
     // 回退：扫描所有启用组，取首个有伤害技能候选的组（同样按 mainActiveSkill 在组内选）。
     for group in build.enabled_socket_groups() {
-        if let Some((skill_id, level)) = pick_group_main_skill(data, group)
-            && let Some(resolved) = resolve_skill_level_with_gem_bonus(build, data, skill_id, level)
+        if let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
+            && let Some(resolved) =
+                resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)
         {
             return Some((resolved, group, skill_id));
         }
@@ -710,6 +799,7 @@ fn resolve_skill_level_with_gem_bonus(
     data: &BuildData,
     skill_id: &str,
     base_level: u32,
+    set_index: Option<u32>,
 ) -> Option<ResolvedSkillLevel> {
     let skill_types = data
         .granted_effects
@@ -723,14 +813,14 @@ fn resolve_skill_level_with_gem_bonus(
     let bonus = if is_grenade {
         0
     } else {
-        additional_gem_levels(build, skill_types)
+        additional_gem_levels(build, skill_types, skill_id)
     };
-    data.resolve_skill_level(skill_id, base_level.saturating_add(bonus))
+    data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)
 }
 
 /// 扫描全部已装备物品（implicit/explicit/enchant）的「`+N to Level of all <X> Skills`」，
 /// 返回对主技能 `skill_types` 生效的等级加成之和。珠宝亦计入（多为全局 mod 载体）。
-fn additional_gem_levels(build: &Build, skill_types: &[String]) -> u32 {
+fn additional_gem_levels(build: &Build, skill_types: &[String], skill_id: &str) -> u32 {
     let mut total = 0u32;
     let scan = |item: &Item, total: &mut u32| {
         for text in item
@@ -740,7 +830,7 @@ fn additional_gem_levels(build: &Build, skill_types: &[String]) -> u32 {
             .chain(&item.enchant_texts)
         {
             if let Some((n, category)) = parse_gem_level_bonus(text)
-                && gem_level_category_matches(&category, skill_types)
+                && gem_level_category_matches(&category, skill_types, skill_id)
             {
                 *total += n;
             }
@@ -770,14 +860,43 @@ fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
     Some((n, category))
 }
 
-/// 宝石等级加成的 `<category>` 是否对主技能 `skill_types` 生效。
-/// 裸「all skills」/「skill gems」无条件全匹配；否则需主技能 `skill_types` 含该类别
-/// （大小写不敏感，如 `projectile` 匹配 `Projectile`、`attack` 匹配 `Attack`）。
-fn gem_level_category_matches(category: &str, skill_types: &[String]) -> bool {
+/// 宝石等级加成的 `<category>` 是否对主技能生效。对齐 PoB2 语义
+/// （`ModParser.lua:3480-3496` GemProperty 构造 + `CalcSetup.lua:404-435`
+/// `applyGemMods` + `CalcTools.lua:113-126` `gemIsType`）：
+/// - 裸「all skills」/「skill gems」无条件全匹配；
+/// - 整串 = 技能名（PoB2 `gemIdLookup` 命中分支，对应 `gemIsType` 的
+///   `type == gemData.name:lower()`，如「Shield Wall Skills」「Ember Fusillade
+///   Skills」）→ 按主技能名（由授予效果 id 推导）匹配；
+/// - 否则按空白分词（PoB2 多词类别 = `keywordList`）：**每个** token 都须命中
+///   主技能 `skill_types`（`applyGemMods` 对 keywordList 逐项 `gemIsType`，任一
+///   不中即整条不生效——如「Cold Spell」需同时具备 `Cold` 与 `Spell`）。单词
+///   类别是该规则的退化情形，语义不变。
+fn gem_level_category_matches(category: &str, skill_types: &[String], skill_id: &str) -> bool {
     if category.is_empty() || category == "skill gems" {
         return true;
     }
-    skill_types.iter().any(|t| t.eq_ignore_ascii_case(category))
+    if category == skill_name_from_id(skill_id) {
+        return true;
+    }
+    category
+        .split_whitespace()
+        .all(|tok| skill_types.iter().any(|t| t.eq_ignore_ascii_case(tok)))
+}
+
+/// 由授予效果 id 推导技能显示名（小写、CamelCase 拆词）：剥 `Player` 后缀后按
+/// 大写边界插空格（`ShieldWallPlayer` → `shield wall`）。与 PoB2 导出的 skillId
+/// 命名惯例一致（`Export/Scripts/skills.lua`：id = 显示名去空格 + actor 后缀），
+/// 供 `gem_level_category_matches` 的技能名类别分支（`gemIdLookup` 等价）使用。
+fn skill_name_from_id(skill_id: &str) -> String {
+    let stem = skill_id.strip_suffix("Player").unwrap_or(skill_id);
+    let mut out = String::with_capacity(stem.len() + 4);
+    for (i, ch) in stem.chars().enumerate() {
+        if ch.is_ascii_uppercase() && i > 0 {
+            out.push(' ');
+        }
+        out.push(ch.to_ascii_lowercase());
+    }
+    out
 }
 
 /// 把全部装备护甲件的**件级**防御底值（armour/evasion/ES）注入为 Item 归因的 BASE 词条，
@@ -1456,7 +1575,12 @@ fn item_local_defence_flat(item: &Item) -> [f64; 3] {
 /// 进入 offence 的伤害分量管线。
 ///
 /// 使用时间不在此处（它走 `base_input.base_action_rate`，见 [`calculate_with_data`]）。
-fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
+/// `set_key` = 选中 statSet 的 per-set 覆盖键（W-J 接线，见 [`mapped_stat_modifiers`]）。
+fn skill_base_modifiers(
+    skill: &ResolvedSkillLevel,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> Vec<Modifier> {
     let mut mods = Vec::new();
     let mk = |stat: &str, value: f64, label: &str| {
         let origin =
@@ -1511,7 +1635,134 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel) -> Vec<Modifier> {
         &base_damage,
         SourceKind::SkillGem,
         "skill",
+        skill_id,
+        set_key,
     ));
+    mods
+}
+
+/// 把主技能宝石的**品质 stat 段**经 [`mapped_stat_modifiers`] 映射为 `SourceKind::GemQuality`
+/// 归因的 modifier（T1.7，对应 PoB2 `buildSkillInstanceStats` 的品质前置叠加，
+/// CalcTools.lua:140-145：`stats[stat] += math.modf(rate × quality)`）。
+///
+/// 主技能的品质从该组 `gem_skills` 中按效果 id 反查（`resolve_main_skill` 的选择
+/// 结果即来自其中一项）。归因 id 前缀 `gem.<效果 id>.q<Q>`，与 `skill_source.rs`
+/// 既有约定一致（`quality_source_id`）；[`mapped_stat_modifiers`] 再追加 `.<stat>`
+/// 细分到单条 stat。品质 0 / 无品质表条目（如 support，导出即跳过）返回空。
+fn main_skill_quality_modifiers(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> Vec<Modifier> {
+    let Some(gem) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) else {
+        return Vec::new(); // builder 路径（with_active_skill）无 gem_skills：无品质来源。
+    };
+    if gem.quality == 0 {
+        return Vec::new();
+    }
+    let stats = data.effect_stats(
+        &gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+    );
+    // 品质段属于选中 set 的 stats 表（PoB2 先叠后映），per-set 覆盖键同主路径。
+    let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+    mapped_stat_modifiers(
+        &stats.quality,
+        SourceKind::GemQuality,
+        &format!("gem.{skill_id}.q{}", gem.quality),
+        skill_id,
+        set_key.as_deref(),
+    )
+}
+
+/// （M1-W-J）主技能**未选 statSet** 的 global-only merge（PoB2
+/// `calcs.mergeSkillInstanceMods`，`Modules/CalcActiveSkill.lua:124-140`）：
+/// 选中 set 之外的每个 vendor 导出 set，其 stats 仅注入 statmap 条目中带
+/// `GlobalEffect` tag 的 modOrGroup（`isGlobalEffect`，`:68-80`）；选中 set 已按
+/// global 记账的 stat 整条跳过（`selectedGlobalStats`，`:104-107`）。
+///
+/// 取数源 = [`BuildData::unselected_set_stats`]（buildSkillInstanceStats 表语义，
+/// 品质逐 set 叠加、同 stat 合并）；映射 = `stat_map_engine::map_stat_global_only`
+/// （per-set 覆盖链按**该未选 set** 的 set_key 查）。
+///
+/// **第一批边界**：`GlobalEffect` tag 本身仍在 tag 翻译边界外（buff 域随 M3
+/// buff_pass 接入，切换日志 §5）——当前 global 条目整条 Unsupported、注入为零，
+/// 本接线为结构就位；M3 接通后自动产出注入项（FlameWall 投射物 buff 等，
+/// Q3 影响面实测见 m1-acceptance-report.md）。零值跳过（与各取数点同口径）。
+fn unselected_set_global_modifiers(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> Vec<Modifier> {
+    let Some(gem) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) else {
+        return Vec::new(); // builder 路径（with_active_skill）无 gem_skills：无 statSet 上下文。
+    };
+    let unselected = data.unselected_set_stats(
+        &gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+    );
+    if unselected.is_empty() {
+        return Vec::new();
+    }
+    let Some(catalog) = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone()) else {
+        return Vec::new(); // 无 catalog：数据通道全 miss，与 mapped_stat_modifiers 同口径。
+    };
+    // selectedGlobalStats 记账（:104-106）：选中 set 的 stats 表中按 global 记账的
+    // stat，未选 set 不再重复注入（onlyGlobals 阶段记账不变，stat 级跳过等价 :107）。
+    let selected_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+    let selected_stats = data.effect_stats(
+        &gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+    );
+    let selected_globals: std::collections::HashSet<&str> = selected_stats
+        .all()
+        .filter(|ds| {
+            stat_map_engine::stat_has_global_mods(
+                &catalog,
+                skill_id,
+                selected_key.as_deref(),
+                &ds.stat,
+            )
+        })
+        .map(|ds| ds.stat.as_str())
+        .collect();
+    let mut mods = Vec::new();
+    for set in &unselected {
+        for ds in &set.stats {
+            if ds.value == 0.0 || selected_globals.contains(ds.stat.as_str()) {
+                continue;
+            }
+            let MappedOutcome::Mapped(items) = stat_map_engine::map_stat_global_only(
+                &catalog,
+                skill_id,
+                Some(&set.set_key),
+                &ds.stat,
+                ds.value,
+            ) else {
+                continue; // Unsupported（含 GlobalEffect tag 第一批边界）/ Unknown：跳过。
+            };
+            for item in items {
+                let MappedItem::Modifier(modifier) = item else {
+                    continue; // SkillData：无消费方。
+                };
+                let origin = ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("skill.{skill_id}.set{}.{}", set.set_key, ds.stat),
+                ))
+                .with_raw_text(format!(
+                    "unselected statSet {} global {} ({})",
+                    set.set_id, ds.stat, ds.value
+                ));
+                mods.push(modifier.with_origin(origin));
+            }
+        }
+    }
     mods
 }
 
@@ -1631,9 +1882,13 @@ fn in_group_trigger_source_rate(
         if !is_damage_skill(data, &gem.skill_id) {
             continue;
         }
-        let Some(resolved) =
-            resolve_skill_level_with_gem_bonus(build, data, &gem.skill_id, gem.gem_level)
-        else {
+        let Some(resolved) = resolve_skill_level_with_gem_bonus(
+            build,
+            data,
+            &gem.skill_id,
+            gem.gem_level,
+            gem.stat_set_index,
+        ) else {
             continue;
         };
         if let Some(use_time) = resolved.use_time_s
@@ -1646,29 +1901,187 @@ fn in_group_trigger_source_rate(
     best
 }
 
-/// 把主技能组内 **support 宝石**的分等级 stat 经 [`map_skill_stat`] 映射为 SupportGem 归因
-/// 的 modifier，注入被支援技能（如「附加闪电伤害」→ `LightningDamageMin/Max` BASE、
-/// 「更多伤害」→ `Damage` MORE）。
+/// 组级 support 适用性裁决结果（M1 蓝图契约 C2）。
+///
+/// `compatible` 为 `group.gem_skills` 中**通过 PoB2 四段裁决**的 support 下标（保持
+/// 插槽顺序）；`final_skill_types` 为 addSkillTypes 不动点收敛后的主动技能类型集合
+/// （种子 = 主动效果 `skill_types`，并入所有兼容 support 的 `add_skill_types`）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GroupSupportJudgement {
+    /// 兼容 support 在 `gem_skills` 中的下标（插槽顺序）。
+    compatible: Vec<usize>,
+    /// 不动点收敛后的技能类型集合（供后续 require 裁决 / T4 SupportManaMultiplier 复用）。
+    final_skill_types: std::collections::HashSet<String>,
+}
+
+/// 对一个 socket group 做 **support 适用性裁决 + addSkillTypes 不动点**
+/// （对照 PoB2 `Modules/CalcActiveSkill.lua:179-210`，契约 C2）：
+///
+/// 1. 种子：主动技能（`active_skill_id`）效果的 `skill_types` 集合；
+/// 2. pass1（:182-191）：按插槽顺序逐个 support 经 [`pobr_core::skill_source::can_support`]
+///    四段裁决——兼容者把 `add_skill_types`（普通 token 名单，非表达式）并入集合，
+///    不兼容者进被拒名单；
+/// 3. repeat-until 不动点（:193-208）：重扫被拒名单直到一轮无新增——保证裁决结果
+///    与 support 插槽顺序无关（「A 加类型、B require 该类型」的 BA 排列也能收敛）；
+/// 4. pass2（:210-214）：终态类型集合下**全量重裁决**产出兼容名单（与 PoB2 一致：
+///    pass1 接受的 support 若被后并入的类型 exclude 命中，此处会被拒；其已并入的
+///    add 类型保留，同 PoB2 不回滚）。
+///
+/// 契约 C2 注：签名比蓝图原型多 `active_skill_id`——PoB2 的裁决以**单个主动技能**为
+/// 对象（meta 组里组首非 support 可能是 meta 壳，而非 `resolve_main_skill` 选中的真实
+/// 主技能），调用方已持有解析结果，传入避免在此重复/错误推导。
+fn judge_group_supports(
+    group: &SocketGroup,
+    data: &BuildData,
+    active_skill_id: &str,
+) -> GroupSupportJudgement {
+    use pobr_core::skill_source::{ActiveSkillJudgeInput, SupportJudgeInput, can_support};
+    use std::collections::HashSet;
+
+    let active_effect = data.granted_effects.get(active_skill_id);
+    let mut skill_types: HashSet<String> = active_effect
+        .map(|e| e.skill_types.iter().cloned().collect())
+        .unwrap_or_default();
+    let cannot_be_supported = active_effect.is_some_and(|e| e.cannot_be_supported);
+
+    // 组内 support 下标（保持插槽顺序）；active / 未知效果不参与裁决。
+    let support_indices: Vec<usize> = group
+        .gem_skills
+        .iter()
+        .enumerate()
+        .filter(|(_, g)| {
+            data.granted_effects
+                .get(&g.skill_id)
+                .is_some_and(|e| e.is_support)
+        })
+        .map(|(i, _)| i)
+        .collect();
+
+    // 四段裁决（CalcTools.lua:84-110）：cannotBeSupported → supportGemsOnly →
+    // exclude 表达式 → require 表达式（空 = 接受）。socket group 内技能恒由宝石授予
+    // （from_gem=true）；fromItem 特例 M5c、minionTypes 第二集合 M5a（defer）。
+    let judge = |idx: usize, types: &HashSet<String>| -> bool {
+        data.granted_effects
+            .get(&group.gem_skills[idx].skill_id)
+            .is_some_and(|effect| {
+                can_support(
+                    &SupportJudgeInput {
+                        support_gems_only: effect.support_gems_only,
+                        exclude_skill_types: &effect.exclude_skill_types,
+                        require_skill_types: &effect.require_skill_types,
+                    },
+                    &ActiveSkillJudgeInput {
+                        cannot_be_supported,
+                        from_gem: true,
+                        skill_types: types,
+                    },
+                )
+            })
+    };
+    let merge_add = |idx: usize, types: &mut HashSet<String>| {
+        if let Some(effect) = data.granted_effects.get(&group.gem_skills[idx].skill_id) {
+            for t in &effect.add_skill_types {
+                types.insert(t.clone());
+            }
+        }
+    };
+
+    // pass1：兼容 support 并入 addSkillTypes；不兼容进被拒名单。
+    let mut rejected: Vec<usize> = Vec::new();
+    for &i in &support_indices {
+        if judge(i, &skill_types) {
+            merge_add(i, &mut skill_types);
+        } else {
+            rejected.push(i);
+        }
+    }
+    // repeat-until 不动点：重扫被拒名单直到一轮无新增。
+    loop {
+        let mut newly_accepted = false;
+        let mut still_rejected = Vec::with_capacity(rejected.len());
+        for &i in &rejected {
+            if judge(i, &skill_types) {
+                newly_accepted = true;
+                merge_add(i, &mut skill_types);
+            } else {
+                still_rejected.push(i);
+            }
+        }
+        rejected = still_rejected;
+        if !newly_accepted {
+            break;
+        }
+    }
+    // pass2：终态集合下全量重裁决。
+    let compatible: Vec<usize> = support_indices
+        .into_iter()
+        .filter(|&i| judge(i, &skill_types))
+        .collect();
+    GroupSupportJudgement {
+        compatible,
+        final_skill_types: skill_types,
+    }
+}
+
+/// 把主技能组内**兼容的 support 宝石**的分等级 stat 经 [`map_skill_stat`] 映射为
+/// SupportGem 归因的 modifier，注入被支援技能（如「附加闪电伤害」→
+/// `LightningDamageMin/Max` BASE、「更多伤害」→ `Damage` MORE）。
+///
+/// 注入前经 [`judge_group_supports`]（契约 C2，PoB2 四段裁决 + addSkillTypes 不动点）
+/// 产出兼容名单：**被拒 support 完全不参与**（数值 / manaMultiplier 全不吃，对齐 PoB2
+/// `CalcActiveSkill.lua:210-214` 只把兼容 support 放进 effectList 的拒收语义）。
 ///
 /// 当前作用域为**全局**（单主技能 build 下口径正确：所有 support 倍率作用于唯一计算技能）；
 /// 多主技能的按技能 tag 隔离（仅作用于被支援技能）待 flag 系统接入后细化。active 主技能
 /// 自身伤害已由 [`skill_base_modifiers`] 注入，此处只处理 support。
-fn support_modifiers(group: &SocketGroup, data: &BuildData) -> Vec<Modifier> {
+fn support_modifiers(
+    group: &SocketGroup,
+    data: &BuildData,
+    active_skill_id: &str,
+) -> Vec<Modifier> {
+    let judgement = judge_group_supports(group, data, active_skill_id);
     let mut mods = Vec::new();
-    for gem in &group.gem_skills {
-        let is_support = data
-            .granted_effects
-            .get(&gem.skill_id)
-            .map(|e| e.is_support);
-        if is_support != Some(true) {
-            continue; // 仅 support 效果；active/未知跳过。
-        }
-        let stats = data.effect_stats(&gem.skill_id, gem.gem_level);
+    for &i in &judgement.compatible {
+        let gem = &group.gem_skills[i];
+        // TODO(T1，T3.6 合并后 rebase 追加)：quality 传参改为 gem.quality——support 的
+        // 品质表条目不存在（PoB2 导出即跳过），当前恒空段，传 0 与传 gem.quality 等价。
+        let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0, gem.stat_set_index);
+        // support 的 set_key 取自身选中 set（per-set 覆盖以 support 效果 id 定位）。
+        // 注：vendor 对 support 效果不传 statSet（CalcActiveSkill.lua:130 全 set 全量
+        // merge）——多 set support 的附加 set 全量 merge 当前缺口见 m1 验收报告。
+        let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
         mods.extend(mapped_stat_modifiers(
-            &stats,
+            &stats.base,
             SourceKind::SupportGem,
             &gem.skill_id,
+            &gem.skill_id,
+            set_key.as_deref(),
         ));
+        // （M1-T4.4）兼容 support 的分等级 cost 倍率 → `SupportManaMultiplier` MORE
+        // （PoB2 `CalcActiveSkill.lua:689-691`：`NewMod("SupportManaMultiplier","MORE",
+        // level.manaMultiplier, modSource)`）。只对**兼容名单**注入——被拒 support
+        // 的倍率不吃，对齐 PoB2 拒收。消费侧 = `skill_mechanics::calc_skill_cost`
+        // （倍率连乘截断 4 位小数后，先于 inc/more 链作用于 base cost）。
+        if let Some(mm) = data
+            .granted_effect_levels
+            .get(&gem.skill_id)
+            .and_then(|rows| {
+                rows.iter()
+                    .rfind(|r| r.level <= gem.gem_level)
+                    .or(rows.first())
+            })
+            .and_then(|row| row.mana_multiplier)
+            .filter(|&v| v != 0.0)
+        {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SupportGem,
+                format!("support.{}.manaMultiplier", gem.skill_id),
+            ))
+            .with_raw_text(format!("support {} cost multiplier {mm}%", gem.skill_id));
+            mods.push(
+                Modifier::number("SupportManaMultiplier", ModType::More, mm).with_origin(origin),
+            );
+        }
     }
     mods
 }
@@ -1689,7 +2102,15 @@ fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
             if !data.is_aura(&gem.skill_id) || !seen.insert(gem.skill_id.as_str()) {
                 continue;
             }
-            for ds in data.effect_stats(&gem.skill_id, gem.gem_level) {
+            // quality 段并入数值（PoB2 把品质先加进同一 stats 表）；本路径的细分
+            // GemQuality 归因 defer（aura 归因仍记 SkillGem `aura.*`）。
+            let es = data.effect_stats(
+                &gem.skill_id,
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            );
+            for ds in es.all() {
                 for mapped in map_aura_buff_stat(&ds.stat) {
                     if ds.value == 0.0 {
                         continue;
@@ -1726,7 +2147,14 @@ fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> Vec<Modifie
             if !seen.insert(gem.skill_id.as_str()) {
                 continue;
             }
-            for ds in data.effect_stats(&gem.skill_id, gem.gem_level) {
+            // quality 段并入数值（同 aura 路径口径）；细分 GemQuality 归因 defer。
+            let es = data.effect_stats(
+                &gem.skill_id,
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            );
+            for ds in es.all() {
                 let Some(mapped) = map_self_buff_offensive_stat(&ds.stat) else {
                     continue;
                 };
@@ -1748,37 +2176,304 @@ fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> Vec<Modifie
     mods
 }
 
-/// 把一组已解析 stat 经 [`map_skill_stat`] 映射为带 `source_kind` 归因的 modifier。
-/// 无法映射的 stat（未知/条件型）静默跳过；零值跳过。
+/// （M1-T4.5）把所有**已启用持续保留型效果**的 Spirit 预留聚合为
+/// `SkillSpiritReservationBase` BASE modifier（每效果一条，SkillGem 归因），由
+/// perform `fill_skill_mechanics` 汇总落 [`pobr_core::OutputTable`] 的
+/// `spirit_reserved`。超载只**报告不拦截**（与 PoB2 一致：照算并标红，M1 不做
+/// 池侧钳制）。
+///
+/// 口径（对照 PoB2 `CalcDefence.lua:192-249` Reservation 段）：
+/// - 入选 = `skill_types` 含 `HasReservation` 且不含 `ReservationBecomesCost`
+///   （`CalcDefence.lua:194`；后者如 Divine Blessing 类「保留转消耗」）；
+/// - `flat_total` = 效果自身分等级 `spirit_reservation_flat` + 同组 support 的
+///   `spirit_reservation_flat`（PoB2 support 侧注 `ExtraSpirit` BASE，
+///   `CalcActiveSkill.lua:698-700`；`CalcDefence.lua:213-214` 并入 baseFlat）；
+/// - 倍率 = Π(1 + reservation_multiplier/100)，含效果自身
+///   （`CalcActiveSkill.lua:754-756`）与同组 support（`:692-694`）的
+///   `ReservationMultiplier` MORE，乘积**截断到 4 位小数**
+///   （`CalcDefence.lua:197` `floor(More("ReservationMultiplier"), 4)`）；
+/// - 每效果 `reserved = max(round(flat_total × 倍率), 0)`
+///   （`CalcDefence.lua:246-249` 的 M1 子集——`Reserved`/`ReservationEfficiency`
+///   inc/more 词条族与 Spirit 池本值/unreserved 归 M2 Track D，
+///   00-index 裁决 §4-12）。
+///
+/// 同一效果在多组重复出现按 id 去重（与 [`aura_buff_modifiers`] 同口径）；support
+/// 贡献现按组内全量取（T3.6 兼容名单合并后随 `support_modifiers` 同口径收紧）。
+fn spirit_reservation_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    use std::collections::HashSet;
+    /// 取 ≤ gem_level 的最高等级行（与 [`BuildData::resolve_skill_level`] 同规则）。
+    fn level_row<'d>(
+        data: &'d BuildData,
+        id: &str,
+        gem_level: u32,
+    ) -> Option<&'d pobr_data::catalog::SkillLevelDef> {
+        let rows = data.granted_effect_levels.get(id)?;
+        rows.iter().rfind(|r| r.level <= gem_level).or(rows.first())
+    }
+    let mut mods = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            let has = |t: &str| effect.skill_types.iter().any(|x| x == t);
+            if effect.is_support
+                || !has("HasReservation")
+                || has("ReservationBecomesCost")
+                || !seen.insert(gem.skill_id.as_str())
+            {
+                continue;
+            }
+            let own = level_row(data, &gem.skill_id, gem.gem_level);
+            let mut flat = own.and_then(|r| r.spirit_reservation_flat).unwrap_or(0.0);
+            let mut mult = 1.0 + own.and_then(|r| r.reservation_multiplier).unwrap_or(0.0) / 100.0;
+            // 同组 support：spirit flat（ExtraSpirit）+ reservation_multiplier MORE。
+            for sup in &group.gem_skills {
+                if data
+                    .granted_effects
+                    .get(&sup.skill_id)
+                    .is_none_or(|e| !e.is_support)
+                {
+                    continue;
+                }
+                if let Some(row) = level_row(data, &sup.skill_id, sup.gem_level) {
+                    flat += row.spirit_reservation_flat.unwrap_or(0.0);
+                    mult *= 1.0 + row.reservation_multiplier.unwrap_or(0.0) / 100.0;
+                }
+            }
+            // PoB2 对保留倍率乘积截断到 4 位小数后再乘 base（floor(x, 4)）。
+            let mult = (mult * 10000.0).floor() / 10000.0;
+            let reserved = (flat * mult).round().max(0.0);
+            if reserved <= 0.0 {
+                continue;
+            }
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("spirit.{}", gem.skill_id),
+            ))
+            .with_raw_text(format!(
+                "spirit reservation {} ({} × {})",
+                gem.skill_id, flat, mult
+            ));
+            mods.push(
+                Modifier::number("SkillSpiritReservationBase", ModType::Base, reserved)
+                    .with_origin(origin),
+            );
+        }
+    }
+    mods
+}
+
+// ---- statmap 双跑上下文（M1-T2.3）----
+//
+// `mapped_stat_modifiers` 是自由函数、三个取数点（skill_base / quality / support）
+// 不持有编排选项——按 §3.2 共享规则（本文件只改 mapped_stat_modifiers +
+// OrchestratorOptions 字段、主流程接线 ≤3 行），模式与 catalog 经线程局部上下文
+// 传递：`calculate_with_data` 开头安装、guard 离开作用域复位。单次计算单线程、
+// 安装/复位确定性，不构成共享可变状态。
+
+use std::cell::RefCell;
+
+thread_local! {
+    static STAT_MAP_CTX: RefCell<StatMapCtx> = RefCell::new(StatMapCtx::default());
+}
+
+#[derive(Default)]
+struct StatMapCtx {
+    mode: StatMapMode,
+    catalog: Option<std::sync::Arc<StatMapCatalog>>,
+    /// Compare 模式的映射级 outcome 观测记录（跨 guard 存活，由
+    /// [`take_stat_map_compare_records`] 取出）。
+    compare_records: Vec<StatMapCompareRecord>,
+}
+
+/// Compare 模式产出的单条映射级 outcome 观测记录（按 stat 一条）。
+#[derive(Debug, Clone)]
+pub struct StatMapCompareRecord {
+    /// stat 稳定 id。
+    pub stat: String,
+    /// 取数点标签（skill / gem.<id>.qN / support id）。
+    pub label: String,
+    /// 分类：`mapped` / `unsupported` / `unknown`（数据通道 outcome 观测；
+    /// Legacy 删除前为双跑五分类 diff）。
+    pub classification: &'static str,
+    /// 细节（注入项列表 / Unsupported 分类）。
+    pub detail: String,
+}
+
+/// 安装本次计算的 statmap 上下文，返回离开作用域自动复位的 guard。
+fn install_stat_map_context(
+    mode: StatMapMode,
+    catalog: Option<std::sync::Arc<StatMapCatalog>>,
+) -> StatMapCtxGuard {
+    STAT_MAP_CTX.with(|ctx| {
+        let mut ctx = ctx.borrow_mut();
+        ctx.mode = mode;
+        ctx.catalog = catalog;
+    });
+    StatMapCtxGuard
+}
+
+struct StatMapCtxGuard;
+
+impl Drop for StatMapCtxGuard {
+    fn drop(&mut self) {
+        STAT_MAP_CTX.with(|ctx| {
+            let mut ctx = ctx.borrow_mut();
+            ctx.mode = StatMapMode::default();
+            ctx.catalog = None;
+            // compare_records 保留——调用方在 calculate 返回后 take。
+        });
+    }
+}
+
+/// 取出（并清空）当前线程累计的 Compare 模式 outcome 观测记录。
+pub fn take_stat_map_compare_records() -> Vec<StatMapCompareRecord> {
+    STAT_MAP_CTX.with(|ctx| std::mem::take(&mut ctx.borrow_mut().compare_records))
+}
+
+/// 把一组已解析 stat 映射为带 `source_kind` 归因的 modifier——statmap 通道分发点
+/// （蓝图 T2.3 接缝，T2.4 后 Legacy 启发式已删除）：Data 走
+/// [`stat_map_engine::map_stat`] 数据引擎；Compare = Data 计算 + 逐 stat 记录
+/// 映射 outcome 观测（**输出与 Data 一致**，纯观测不改结果，记录经
+/// [`take_stat_map_compare_records`] 取出——长期对照工具，M3 config / M6 parser
+/// 双跑复用同模式，蓝图 §6 Q4 裁决）。无法映射的 stat（Unsupported / Unknown）
+/// 静默跳过；零值跳过。
+///
+/// `effect_id`（M1-T2b 接线）：stat 所属 granted effect，per-statSet 覆盖定位。
+/// `set_key`（M1-W-J 接线）：**选中** statSet 的 vendor 1-based 导出序号十进制
+/// 字符串（[`BuildData::selected_set_key`]）；`None` = 引擎自动取默认 set "1"
+/// 覆盖（PoB2 缺省 statSetIndex=1，vendor `SkillsTab.lua:354`；18 个 ninja build
+/// 的 statSetIndex 全为 nil = 与 None 等价）。未选 set 的 global-only merge 走
+/// [`unselected_set_global_modifiers`]，不经本分发点。
 fn mapped_stat_modifiers(
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
     label_prefix: &str,
+    effect_id: &str,
+    set_key: Option<&str>,
 ) -> Vec<Modifier> {
+    let (mode, catalog) =
+        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
+    match mode {
+        StatMapMode::Data => data_mapped_stat_modifiers(
+            stats,
+            source_kind,
+            label_prefix,
+            effect_id,
+            set_key,
+            catalog.as_deref(),
+        ),
+        StatMapMode::Compare => {
+            record_stat_map_observation(
+                stats,
+                label_prefix,
+                effect_id,
+                set_key,
+                catalog.as_deref(),
+            );
+            data_mapped_stat_modifiers(
+                stats,
+                source_kind,
+                label_prefix,
+                effect_id,
+                set_key,
+                catalog.as_deref(),
+            )
+        }
+    }
+}
+
+/// Data 通道：statmap 数据引擎。effect 上下文 + 选中 set 覆盖键（T2b/W-J 接线，
+/// 见 [`mapped_stat_modifiers`] 文档）；`SkillData` 项暂无消费方，忽略（不参与
+/// 计算，不会错算）；Unsupported / Unknown 静默跳过（分类观测走 Compare 模式）。
+fn data_mapped_stat_modifiers(
+    stats: &[pobr_data::catalog::SkillDamageStat],
+    source_kind: SourceKind,
+    label_prefix: &str,
+    effect_id: &str,
+    set_key: Option<&str>,
+    catalog: Option<&StatMapCatalog>,
+) -> Vec<Modifier> {
+    let Some(catalog) = catalog else {
+        return Vec::new(); // 未注入 catalog：数据通道全 miss（蓝图 Data 模式必带 catalog）。
+    };
     let mut mods = Vec::new();
     for ds in stats {
         if ds.value == 0.0 {
-            continue;
+            continue; // 跳零值 stat（无信息量，与历史口径一致）。
         }
-        // 分类型组合 final（如 Lightning Attunement `*_cold_and_fire_damage_+%_final`）展开为
-        // 多条分类型 MORE——用 [`map_skill_stats`] 取全部，避免漏算半边惩罚。
-        for mapped in map_skill_stats(&ds.stat) {
+        let MappedOutcome::Mapped(items) =
+            stat_map_engine::map_stat(catalog, effect_id, set_key, &ds.stat, ds.value)
+        else {
+            continue;
+        };
+        for item in items {
+            let MappedItem::Modifier(modifier) = item else {
+                continue; // SkillData：第一批无消费方。
+            };
             let origin = ModifierSource::new(SourceId::new(
                 source_kind.clone(),
                 format!("{label_prefix}.{}", ds.stat),
             ))
             .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
-            mods.push(
-                Modifier::number(
-                    mapped.mod_name.as_str(),
-                    mapped.mod_type,
-                    ds.value * mapped.scale,
-                )
-                .with_origin(origin),
-            );
+            mods.push(modifier.with_origin(origin));
         }
     }
     mods
+}
+
+/// Compare 模式：逐 stat 记录数据通道映射 outcome 观测（分类
+/// `mapped` / `unsupported:<类别>` / `unknown`），进线程局部缓冲。Legacy 启发式
+/// 已删除（T2.4），本函数保留为长期对照/观测框架——M3 config / M6 parser 双跑
+/// 复用同模式（蓝图 §6 Q4 裁决：保留枚举与报告框架）。
+fn record_stat_map_observation(
+    stats: &[pobr_data::catalog::SkillDamageStat],
+    label_prefix: &str,
+    effect_id: &str,
+    set_key: Option<&str>,
+    catalog: Option<&StatMapCatalog>,
+) {
+    for ds in stats {
+        if ds.value == 0.0 {
+            continue;
+        }
+        // 数据通道 outcome（effect 上下文 + 选中 set 覆盖键，与 Data 通道同口径）。
+        let outcome = match catalog {
+            Some(c) => stat_map_engine::map_stat(c, effect_id, set_key, &ds.stat, ds.value),
+            None => MappedOutcome::Unknown,
+        };
+        let (classification, detail): (&'static str, String) = match &outcome {
+            MappedOutcome::Mapped(items) => {
+                let mut injected: Vec<(String, &'static str, f64)> = items
+                    .iter()
+                    .filter_map(|item| match item {
+                        MappedItem::Modifier(m) => Some((
+                            m.name.to_string(),
+                            m.mod_type.as_trace_label(),
+                            m.value.as_number().unwrap_or(0.0),
+                        )),
+                        MappedItem::SkillData { .. } => None, // 无消费方，不计入
+                    })
+                    .collect();
+                injected.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                ("mapped", format!("data={injected:?}"))
+            }
+            MappedOutcome::Unsupported(reason) => {
+                ("unsupported", format!("unsupported:{}", reason.category()))
+            }
+            MappedOutcome::Unknown => ("unknown", String::new()),
+        };
+        STAT_MAP_CTX.with(|ctx| {
+            ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
+                stat: ds.stat.clone(),
+                label: label_prefix.to_string(),
+                classification,
+                detail,
+            });
+        });
+    }
 }
 
 /// 从职业名 + 等级派生 [`CharacterBase`]（属性取职业起始值；树/装备属性加成走
@@ -2010,7 +2705,7 @@ fn collect_item_texts(build: &Build) -> Vec<String> {
 
 #[cfg(test)]
 mod gem_level_tests {
-    use super::{gem_level_category_matches, parse_gem_level_bonus};
+    use super::{gem_level_category_matches, parse_gem_level_bonus, skill_name_from_id};
 
     fn types(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| s.to_string()).collect()
@@ -2050,21 +2745,105 @@ mod gem_level_tests {
     fn category_matches_by_skill_type_tag() {
         let grenade = types(&["Attack", "Projectile", "Grenade"]);
         // Explosive Grenade（Attack + Projectile）吃 attack 与 projectile 两类加成。
-        assert!(gem_level_category_matches("attack", &grenade));
-        assert!(gem_level_category_matches("projectile", &grenade));
+        assert!(gem_level_category_matches(
+            "attack",
+            &grenade,
+            "ExplosiveGrenadePlayer"
+        ));
+        assert!(gem_level_category_matches(
+            "projectile",
+            &grenade,
+            "ExplosiveGrenadePlayer"
+        ));
         // 不匹配的类别（如 spell）不生效。
-        assert!(!gem_level_category_matches("spell", &grenade));
+        assert!(!gem_level_category_matches(
+            "spell",
+            &grenade,
+            "ExplosiveGrenadePlayer"
+        ));
         // 裸「all skills」（空类别）无条件全匹配。
-        assert!(gem_level_category_matches("", &grenade));
-        assert!(gem_level_category_matches("skill gems", &grenade));
+        assert!(gem_level_category_matches("", &grenade, ""));
+        assert!(gem_level_category_matches("skill gems", &grenade, ""));
     }
 
     #[test]
     fn category_match_is_case_insensitive() {
         assert!(gem_level_category_matches(
             "projectile",
-            &types(&["Projectile"])
+            &types(&["Projectile"]),
+            "IceShotPlayer"
         ));
+    }
+
+    /// 多词类别 = PoB2 `keywordList`：每个 token 都须命中 `skill_types`
+    /// （CalcSetup.lua:414-419 对 keywordList 逐项 `gemIsType`，任一不中即拒）。
+    #[test]
+    fn multi_word_category_requires_all_tokens() {
+        // Comet（Cold + Spell）吃「+5 to Level of all Cold Spell Skills」。
+        let comet = types(&["Spell", "Damage", "Area", "Cold"]);
+        assert!(gem_level_category_matches(
+            "cold spell",
+            &comet,
+            "CometPlayer"
+        ));
+        // Detonate Dead（Spell + Fire + Physical）吃「Physical Spell」。
+        let dd = types(&["Spell", "Area", "Fire", "Physical"]);
+        assert!(gem_level_category_matches(
+            "physical spell",
+            &dd,
+            "DetonateDeadPlayer"
+        ));
+        // 缺任一 token 即不匹配：Fireball（Fire + Spell）不吃「Cold Spell」。
+        let fireball = types(&["Spell", "Fire", "Projectile"]);
+        assert!(!gem_level_category_matches(
+            "cold spell",
+            &fireball,
+            "FireballPlayer"
+        ));
+        // 「corrupted skill gems」之类含非类型 token 的类别保持不匹配（与 PoB2
+        // corrupted 特判暂缺一致——宁可跳过不可错算）。
+        assert!(!gem_level_category_matches(
+            "corrupted skill",
+            &comet,
+            "CometPlayer"
+        ));
+    }
+
+    /// 整串技能名类别 = PoB2 `gemIdLookup` 命中分支（`gemIsType` 名字相等）。
+    #[test]
+    fn skill_name_category_matches_main_skill() {
+        let wall = types(&["Attack", "Wall", "Physical", "Melee"]);
+        // 「+2 to Level of all Shield Wall Skills」对 Shield Wall 生效——
+        // 注意「shield」不是其 skill_type（RequiresShield 才是），只能走名字分支。
+        assert!(gem_level_category_matches(
+            "shield wall",
+            &wall,
+            "ShieldWallPlayer"
+        ));
+        // 对别的技能不生效。
+        assert!(!gem_level_category_matches(
+            "shield wall",
+            &types(&["Spell", "Fire"]),
+            "EmberFusilladePlayer"
+        ));
+        // Ember Fusillade 同理。
+        assert!(gem_level_category_matches(
+            "ember fusillade",
+            &types(&["Spell", "Fire", "Projectile"]),
+            "EmberFusilladePlayer"
+        ));
+    }
+
+    #[test]
+    fn derives_skill_name_from_granted_effect_id() {
+        assert_eq!(skill_name_from_id("ShieldWallPlayer"), "shield wall");
+        assert_eq!(
+            skill_name_from_id("EmberFusilladePlayer"),
+            "ember fusillade"
+        );
+        assert_eq!(skill_name_from_id("CometPlayer"), "comet");
+        // 无 Player 后缀的 id 原样拆词。
+        assert_eq!(skill_name_from_id("IceNova"), "ice nova");
     }
 }
 
@@ -2271,6 +3050,8 @@ mod tests {
                 dex_pct: 0,
                 int_pct: 0,
                 is_support: false,
+                granted_effect_id: None,
+                additional_granted_effect_ids: Vec::new(),
             },
         );
         skill_gems.insert(
@@ -2284,6 +3065,8 @@ mod tests {
                 dex_pct: 0,
                 int_pct: 0,
                 is_support: true,
+                granted_effect_id: None,
+                additional_granted_effect_ids: Vec::new(),
             },
         );
         let data = BuildData {
@@ -2519,6 +3302,151 @@ mod tests {
         );
     }
 
+    /// T1.7：主技能品质段经 stat-map 注入，trunc 截断 + SourceKind::GemQuality 归因
+    /// （id 前缀 `gem.<效果 id>.q<Q>`）。合成品质条目（damage_+% 可映射），不依赖
+    /// 任何真实宝石的品质 stat 是否已映射。
+    #[test]
+    fn main_skill_quality_modifiers_truncate_and_attribute_gem_quality() {
+        use pobr_data::catalog::QualityStat;
+        let mut data = repo_data();
+        data.gem_quality_stats.insert(
+            "FireballPlayer".into(),
+            vec![QualityStat {
+                stat: "damage_+%".into(),
+                per_quality_rate: 0.55,
+            }],
+        );
+        // 直接调取数点（不经 calculate_with_data）：手动安装 Data 通道上下文
+        // （T2.4 切换后默认走数据引擎，catalog 取 BuildData 随数据包加载的目录）。
+        let _guard =
+            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
+        // q19：trunc(0.55 × 19) = trunc(10.45) = 10（math.modf 语义，非 round）。
+        let group = SocketGroup::new().with_gem_skill_quality("FireballPlayer", 20, 19);
+        let mods = main_skill_quality_modifiers(&group, &data, "FireballPlayer");
+        assert_eq!(mods.len(), 1, "damage_+% 应映射为一条 Damage INC");
+        let m = &mods[0];
+        assert_eq!(m.name.as_str(), "Damage");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(10.0), "trunc(0.55×19)=10");
+        let origin = m.origin.as_ref().expect("带归因");
+        assert_eq!(origin.source_id.kind, SourceKind::GemQuality);
+        assert!(
+            origin.source_id.id.starts_with("gem.FireballPlayer.q19"),
+            "归因 id 前缀 gem.<id>.q<Q>，实得 {}",
+            origin.source_id.id
+        );
+
+        // 品质 0：不产生任何品质 modifier。
+        let group0 = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
+        assert!(main_skill_quality_modifiers(&group0, &data, "FireballPlayer").is_empty());
+    }
+
+    /// W-J：选中 statSet 的 per-set 覆盖键接进引擎 set_key——statSetIndex=2 时
+    /// 同一 stat 走 set "2" 的覆盖条目（合成目录），缺省走 set "1"/global。
+    #[test]
+    fn selected_set_key_threads_per_set_override() {
+        use pobr_core::rules::stat_map_engine::StatMapCatalog;
+        let mut data = repo_data();
+        // 合成多 set 效果：主 set vendor 序号 1、附加 set 序号 2（同一 stat）。
+        data.skill_stat_sets.insert(
+            "SynthEff".to_string(),
+            pobr_data::catalog::SkillStatSetDef {
+                effect_id: "SynthEff".into(),
+                sets: vec![
+                    synth_stat_set("SynthMain", Some(1)),
+                    synth_stat_set("SynthAlt", Some(2)),
+                ],
+            },
+        );
+        // 合成目录：global → Damage INC；per-set "2" 覆盖 → ColdDamage INC。
+        let catalog: StatMapCatalog = StatMapCatalog::new(
+            serde_json::from_str(
+                r#"{
+                  "global": { "synth_stat_+%": { "mods": [
+                      { "kind": "mod", "name": "Damage", "mod_type": "INC" } ] } },
+                  "per_stat_set": { "SynthEff": { "2": { "synth_stat_+%": { "mods": [
+                      { "kind": "mod", "name": "ColdDamage", "mod_type": "INC" } ] } } } }
+                }"#,
+            )
+            .expect("合成 statmap 合法"),
+        );
+        let _guard =
+            install_stat_map_context(StatMapMode::default(), Some(std::sync::Arc::new(catalog)));
+        let skill = ResolvedSkillLevel {
+            base_damage: vec![pobr_data::catalog::SkillDamageStat {
+                stat: "synth_stat_+%".into(),
+                value: 25.0,
+            }],
+            damage_multiplier: 1.0,
+            ..Default::default()
+        };
+        // statSetIndex=2 → per-set 覆盖命中（ColdDamage）。
+        let set_key = data.selected_set_key("SynthEff", Some(2));
+        assert_eq!(set_key.as_deref(), Some("2"));
+        let mods = skill_base_modifiers(&skill, "SynthEff", set_key.as_deref());
+        let mapped: Vec<&str> = mods
+            .iter()
+            .filter(|m| m.mod_type == ModType::Inc)
+            .map(|m| m.name.as_str())
+            .collect();
+        assert_eq!(mapped, vec!["ColdDamage"], "set 2 覆盖应命中");
+        // 缺省（主 set，键 "1"，无覆盖）→ 落回 global（Damage）。
+        let set_key = data.selected_set_key("SynthEff", None);
+        assert_eq!(set_key.as_deref(), Some("1"));
+        let mods = skill_base_modifiers(&skill, "SynthEff", set_key.as_deref());
+        let mapped: Vec<&str> = mods
+            .iter()
+            .filter(|m| m.mod_type == ModType::Inc)
+            .map(|m| m.name.as_str())
+            .collect();
+        assert_eq!(mapped, vec!["Damage"], "缺省应落回 global");
+    }
+
+    /// 合成 stat set（W-J 测试共用）：单等级行 `synth_stat_+%`。
+    fn synth_stat_set(set_id: &str, vendor_idx: Option<u32>) -> pobr_data::catalog::StatSetDef {
+        pobr_data::catalog::StatSetDef {
+            set_id: set_id.into(),
+            label: None,
+            vendor_set_index: vendor_idx,
+            base_effectiveness: 0.0,
+            constant_stats: Vec::new(),
+            skill_attack_speed_more: None,
+            levels: vec![pobr_data::catalog::SkillStatSetLevel {
+                gem_level: 1,
+                damage_multiplier: 1.0,
+                stats: vec![pobr_data::catalog::SkillDamageStat {
+                    stat: "synth_stat_+%".into(),
+                    value: 25.0,
+                }],
+            }],
+        }
+    }
+
+    /// W-J：主技能未选 statSet 的 global-only merge——真实数据（FlameWall 多 set
+    /// 载体）路径全程可达；GlobalEffect tag 在 M3 前为翻译边界（切换日志 §5），
+    /// 当前注入恒为零（结构就位、不错算）。非 global stat 永不从未选 set 注入。
+    #[test]
+    fn unselected_set_global_only_zero_injection_before_m3() {
+        let data = repo_data();
+        // 前置：FlameWall 确为多 set（vendor 导出 ≥2），未选 set 快照非空。
+        let unsel = data.unselected_set_stats("FlameWallPlayer", 20, 0, None);
+        assert!(
+            !unsel.is_empty(),
+            "FlameWallPlayer 应有未选 set（set 2 = 投射物 buff 形态）"
+        );
+        let _guard =
+            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
+        let group = SocketGroup::new().with_gem_skill("FlameWallPlayer", 20);
+        let mods = unselected_set_global_modifiers(&group, &data, "FlameWallPlayer");
+        assert!(
+            mods.is_empty(),
+            "M3 接通 GlobalEffect tag 前未选 set 注入应为零，实得 {mods:?}"
+        );
+        // builder 路径（无 gem_skills）：无 statSet 上下文 → 空。
+        let empty_group = SocketGroup::new();
+        assert!(unselected_set_global_modifiers(&empty_group, &data, "FlameWallPlayer").is_empty());
+    }
+
     #[test]
     fn aura_gem_injects_defensive_buff() {
         // 数据驱动：已启用的 Discipline（ES 光环）+ Purity of Fire（火抗光环）应分别抬升
@@ -2607,6 +3535,70 @@ mod tests {
         );
     }
 
+    /// T5.6 meta/复合宝石展开：组内宝石自身皆非伤害技能时，经 gem_effects 外键
+    /// 取附加授予效果中的伤害技能为主技能（PoB2 CalcSetup.lua:1714-1718 把
+    /// additionalGrantedEffects 一并加入 socketGroupSkillList）。
+    #[test]
+    fn meta_gem_expands_additional_granted_effect_as_main_skill() {
+        // 本测试模块无共享 effect 构造器（support 裁决测试模块私有），就地构造。
+        let mk_effect = |id: &str, skill_types: &[&str]| pobr_data::catalog::GrantedEffectDef {
+            id: id.into(),
+            is_support: false,
+            active_skill: Some(id.to_string()),
+            cast_time: Some(1000),
+            require_skill_types: vec![],
+            add_skill_types: vec![],
+            exclude_skill_types: vec![],
+            cannot_be_supported: false,
+            support_gems_only: false,
+            stat_set: None,
+            additional_stat_set_ids: vec![],
+            cost_types: vec![],
+            skill_types: skill_types.iter().map(|s| s.to_string()).collect(),
+        };
+        let mut granted_effects = HashMap::new();
+        // 宿主效果：召唤类（非攻非法），自身不是伤害技能候选。
+        granted_effects.insert(
+            "SummonShellPlayer".to_string(),
+            mk_effect("SummonShellPlayer", &["Totem"]),
+        );
+        // 附加效果：真正的伤害法术。
+        granted_effects.insert(
+            "ShellQuakePlayer".to_string(),
+            mk_effect("ShellQuakePlayer", &["Spell", "Damage"]),
+        );
+        let mut gem_effects = HashMap::new();
+        gem_effects.insert(
+            "SummonShellPlayer".to_string(),
+            pobr_data::catalog::GemEffectDef {
+                gem_id: "Metadata/Items/Gems/SkillGemShell".into(),
+                variant_id: "Shell".into(),
+                granted_effect_id: "SummonShellPlayer".into(),
+                additional_granted_effect_ids: vec!["ShellQuakePlayer".into()],
+                additional_stat_set_ids: vec![],
+            },
+        );
+        let data = BuildData {
+            granted_effects,
+            gem_effects,
+            ..BuildData::empty()
+        };
+        let group = SocketGroup::new().with_gem_skill("SummonShellPlayer", 12);
+        let picked = pick_group_main_skill(&data, &group);
+        assert_eq!(
+            picked,
+            Some(("ShellQuakePlayer", 12, None)),
+            "附加授予效果应被正向展开为主技能（等级沿用宿主宝石）"
+        );
+
+        // 外键缺失（旧数据包无 overlay）→ 维持 None（纯召唤组无主技能，向后兼容）。
+        let data_no_link = BuildData {
+            granted_effects: data.granted_effects.clone(),
+            ..BuildData::empty()
+        };
+        assert_eq!(pick_group_main_skill(&data_no_link, &group), None);
+    }
+
     /// 非触发主技能（普通法术）→ orchestrator 不注入触发词条 → 触发面板保持占位 0（向后兼容）。
     #[test]
     fn non_trigger_skill_leaves_trigger_panel_zero() {
@@ -2647,8 +3639,13 @@ mod tests {
                 is_support: false,
                 active_skill: Some("TrigSkill".into()),
                 cast_time: Some(1000),
-                allowed_active_skill_types: vec![],
+                require_skill_types: vec![],
+                add_skill_types: vec![],
+                exclude_skill_types: vec![],
+                cannot_be_supported: false,
+                support_gems_only: false,
                 stat_set: None,
+                additional_stat_set_ids: vec![],
                 cost_types: vec![],
                 skill_types: vec!["Spell".into(), "Triggered".into(), "InbuiltTrigger".into()],
             },
@@ -2661,8 +3658,13 @@ mod tests {
                 is_support: false,
                 active_skill: Some("NormalSkill".into()),
                 cast_time: Some(1000),
-                allowed_active_skill_types: vec![],
+                require_skill_types: vec![],
+                add_skill_types: vec![],
+                exclude_skill_types: vec![],
+                cannot_be_supported: false,
+                support_gems_only: false,
                 stat_set: None,
+                additional_stat_set_ids: vec![],
                 cost_types: vec![],
                 skill_types: vec!["Spell".into()],
             },
@@ -2793,5 +3795,199 @@ mod tests {
             let vars = weapon_type_conditions(&build, &data);
             assert_eq!(&vars[..], expected, "item_class = {cls}");
         }
+    }
+}
+
+#[cfg(test)]
+mod support_judgement_tests {
+    //! T3.5 组级 support 裁决 + addSkillTypes 不动点单测
+    //! （对照 PoB2 `Modules/CalcActiveSkill.lua:179-210`）。
+
+    use super::{BuildData, GroupSupportJudgement, judge_group_supports, support_modifiers};
+    use crate::build::SocketGroup;
+    use std::collections::HashMap;
+
+    /// 构造一个最小 GrantedEffectDef（裁决相关字段可指定，其余默认）。
+    fn effect(
+        id: &str,
+        is_support: bool,
+        skill_types: &[&str],
+        require: &[&str],
+        add: &[&str],
+        exclude: &[&str],
+        cannot_be_supported: bool,
+    ) -> pobr_data::catalog::GrantedEffectDef {
+        let v = |l: &[&str]| l.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        pobr_data::catalog::GrantedEffectDef {
+            id: id.into(),
+            is_support,
+            active_skill: (!is_support).then(|| id.to_string()),
+            cast_time: Some(1000),
+            require_skill_types: v(require),
+            add_skill_types: v(add),
+            exclude_skill_types: v(exclude),
+            cannot_be_supported,
+            support_gems_only: false,
+            stat_set: None,
+            additional_stat_set_ids: vec![],
+            cost_types: vec![],
+            skill_types: v(skill_types),
+        }
+    }
+
+    /// 数据 + 组装：active 一个 + 给定顺序的若干 support。
+    fn judge(
+        effects: &[pobr_data::catalog::GrantedEffectDef],
+        gem_order: &[&str],
+    ) -> GroupSupportJudgement {
+        let mut granted_effects = HashMap::new();
+        for e in effects {
+            granted_effects.insert(e.id.clone(), e.clone());
+        }
+        let data = BuildData {
+            granted_effects,
+            ..BuildData::empty()
+        };
+        let mut group = SocketGroup::new();
+        for id in gem_order {
+            group = group.with_gem_skill(*id, 20);
+        }
+        judge_group_supports(&group, &data, "MainSpell")
+    }
+
+    /// 兼容名单换算回效果 id（断言可读性）。
+    fn compatible_ids(j: &GroupSupportJudgement, gem_order: &[&str]) -> Vec<String> {
+        j.compatible
+            .iter()
+            .map(|&i| gem_order[i].to_string())
+            .collect()
+    }
+
+    /// 不动点顺序无关（CalcActiveSkill.lua:193-208）：「A 加 Triggered、B require
+    /// Triggered」在 AB 与 BA 两种插槽顺序下裁决结果一致（B 都被接受）。
+    #[test]
+    fn fixed_point_is_slot_order_independent() {
+        let effects = vec![
+            effect(
+                "MainSpell",
+                false,
+                &["Spell", "Damage"],
+                &[],
+                &[],
+                &[],
+                false,
+            ),
+            effect("SupAdd", true, &[], &[], &["Triggered"], &[], false),
+            effect("SupNeed", true, &[], &["Triggered"], &[], &[], false),
+        ];
+        let ab = judge(&effects, &["MainSpell", "SupAdd", "SupNeed"]);
+        let ba = judge(&effects, &["MainSpell", "SupNeed", "SupAdd"]);
+
+        assert_eq!(
+            compatible_ids(&ab, &["MainSpell", "SupAdd", "SupNeed"])
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>(),
+            compatible_ids(&ba, &["MainSpell", "SupNeed", "SupAdd"])
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>(),
+            "AB 与 BA 插槽顺序的兼容名单应一致"
+        );
+        assert_eq!(ab.final_skill_types, ba.final_skill_types);
+        assert_eq!(ab.compatible.len(), 2, "两个 support 都应兼容");
+        assert!(ab.final_skill_types.contains("Triggered"));
+    }
+
+    /// 不兼容 support 被拒，且其 addSkillTypes **不并入**集合
+    /// （CalcActiveSkill.lua:182-191 仅兼容者 merge）。
+    #[test]
+    fn rejected_support_does_not_merge_add_types() {
+        let effects = vec![
+            effect(
+                "MainSpell",
+                false,
+                &["Spell", "Damage"],
+                &[],
+                &[],
+                &[],
+                false,
+            ),
+            effect("SupMelee", true, &[], &["Melee"], &["Area"], &[], false),
+        ];
+        let j = judge(&effects, &["MainSpell", "SupMelee"]);
+        assert!(j.compatible.is_empty(), "require Melee 对法术应被拒");
+        assert!(
+            !j.final_skill_types.contains("Area"),
+            "被拒 support 的 addSkillTypes 不得并入"
+        );
+    }
+
+    /// 主动效果 cannotBeSupported → 一切 support 被拒（裁决第一段，CalcTools.lua:86-88）。
+    #[test]
+    fn cannot_be_supported_rejects_everything() {
+        let effects = vec![
+            effect("MainSpell", false, &["Spell"], &[], &[], &[], true),
+            effect("SupAny", true, &[], &[], &[], &[], false),
+        ];
+        let j = judge(&effects, &["MainSpell", "SupAny"]);
+        assert!(j.compatible.is_empty());
+    }
+
+    /// pass2 终态重裁决（CalcActiveSkill.lua:210-214）：pass1 接受的 support 若被
+    /// 后并入的类型 exclude 命中则最终被拒；已并入的 add 类型保留（同 PoB2 不回滚）。
+    /// 两种插槽顺序结果一致。
+    #[test]
+    fn pass2_rejudges_against_final_type_set() {
+        let effects = vec![
+            effect("MainSpell", false, &["Spell"], &[], &[], &[], false),
+            effect("SupExcl", true, &[], &[], &[], &["Minion"], false),
+            effect("SupAddMinion", true, &[], &[], &["Minion"], &[], false),
+        ];
+        for order in [
+            ["MainSpell", "SupExcl", "SupAddMinion"],
+            ["MainSpell", "SupAddMinion", "SupExcl"],
+        ] {
+            let j = judge(&effects, &order);
+            assert_eq!(
+                compatible_ids(&j, &order),
+                vec!["SupAddMinion"],
+                "exclude 被终态集合命中的 support 应被拒（顺序 {order:?}）"
+            );
+            assert!(j.final_skill_types.contains("Minion"), "已并入类型不回滚");
+        }
+    }
+
+    /// 全空门控 support（无 require/exclude）恒兼容（require 空 = 接受）。
+    #[test]
+    fn empty_gating_always_compatible() {
+        let effects = vec![
+            effect("MainSpell", false, &["Spell"], &[], &[], &[], false),
+            effect("SupPlain", true, &[], &[], &[], &[], false),
+        ];
+        let j = judge(&effects, &["MainSpell", "SupPlain"]);
+        assert_eq!(j.compatible.len(), 1);
+    }
+
+    /// T3.6 注入侧：被拒 support 的 stat **不产生任何 modifier**（数值全不吃）。
+    /// 兼容性由 judge_group_supports 裁决；此处用空 stat 数据，仅验证名单过滤路径
+    /// 不 panic 且产出为空（数值注入的端到端断言见 tests/support_gating.rs）。
+    #[test]
+    fn support_modifiers_skips_rejected_supports() {
+        let effects = vec![
+            effect("MainSpell", false, &["Spell"], &[], &[], &[], false),
+            effect("SupMelee", true, &[], &["Melee"], &[], &[], false),
+        ];
+        let mut granted_effects = HashMap::new();
+        for e in &effects {
+            granted_effects.insert(e.id.clone(), e.clone());
+        }
+        let data = BuildData {
+            granted_effects,
+            ..BuildData::empty()
+        };
+        let group = SocketGroup::new()
+            .with_gem_skill("MainSpell", 20)
+            .with_gem_skill("SupMelee", 20);
+        let mods = support_modifiers(&group, &data, "MainSpell");
+        assert!(mods.is_empty(), "被拒 support 不得注入任何 modifier");
     }
 }

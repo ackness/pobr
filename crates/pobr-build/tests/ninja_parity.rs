@@ -67,6 +67,7 @@ fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
         enemy_tier: EnemyTier::Pinnacle,
         mode_effective: false,
         extra_modifier_texts: vec![],
+        ..Default::default()
     };
     calculate_with_data(&build, data, &opts).ok()
 }
@@ -267,10 +268,16 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Vec<String>) {
 
 /// 已记录的 parity 基线（命中数）——回归门禁的下限。**仅在确认改动整体提升 parity 时上调**，
 /// 永不下调（防止改动悄悄倒退）。对应 commit 当时的 ninja_parity 输出。
-const BASELINE_DEF_HIT5: usize = 111;
-const BASELINE_DEF_HIT10: usize = 117;
-const BASELINE_OFF_HIT5: usize = 23;
-const BASELINE_OFF_HIT10: usize = 31;
+///
+/// **已审查例外**（M1-T2.4 statmap 切换，独立 baseline commit 显式登记）：
+/// OFF_HIT5 23→22——deadeye-explosive-grenade 的 TotalDPS 由 Legacy「过算抵消
+/// 欠算」假命中（1.02x）回归真实 0.77x（Multishot −25% less `sup_dex.lua:3154-3156`
+/// 与 LightningPen +30 `SkillStatMap.lua:929-931`，均为修对）。补偿清单与逐 build
+/// 依据见 `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md` §3。
+const BASELINE_DEF_HIT5: usize = 114;
+const BASELINE_DEF_HIT10: usize = 120;
+const BASELINE_OFF_HIT5: usize = 22;
+const BASELINE_OFF_HIT10: usize = 32;
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

@@ -125,9 +125,28 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/mods.json")))
     }
 
-    /// 加载技能宝石定义（身份取自基底 id）。
+    /// 加载技能宝石定义（身份取自基底 id），并把 `overlay/gem_effects.json` 的
+    /// 宝石→授予效果连边（`granted_effect_id` / `additional_granted_effect_ids`，
+    /// vendor `Data/Gems.lua` 抽取——`.dat` `GemEffects` 表不可下载，M1-T5.1）按
+    /// `gem_id` merge 到纯 base 之上（overlay 缺失时 = 纯 base，连边字段保持空）。
     pub fn skill_gems(&self) -> Result<Vec<SkillGemDef>, LoadError> {
-        self.load_domain("skill_gems.json")
+        let mut gems: Vec<SkillGemDef> = self.load_domain("skill_gems.json")?;
+        if let Some(effects) = self.gem_effects()? {
+            let by_gem: std::collections::BTreeMap<&str, &pobr_data::catalog::GemEffectDef> =
+                effects
+                    .gems
+                    .iter()
+                    .map(|g| (g.gem_id.as_str(), g))
+                    .collect();
+            for gem in &mut gems {
+                if let Some(link) = by_gem.get(gem.id.as_str()) {
+                    gem.granted_effect_id = Some(link.granted_effect_id.clone());
+                    gem.additional_granted_effect_ids = link.additional_granted_effect_ids.clone();
+                }
+                // overlay 中无该宝石（如纯怪物/废弃宝石）→ 连边字段保持空，不报错。
+            }
+        }
+        Ok(gems)
     }
 
     /// 加载授予效果定义（含解析后的主动技能链接 + StatSet/CostTypes 索引）。
@@ -154,10 +173,13 @@ impl GameData {
         Ok(levels)
     }
 
-    /// 加载授予效果的分等级**伤害 stat 集**（按 effect id 排序的数组，每项含每级
-    /// 已解析的伤害 stat）。空缺（旧数据包无此域）时返回空 Vec，向后兼容。
-    /// `overlay/skill_overrides.json` 的 statSet 级覆盖值（skill_attack_speed_more，
-    /// PoB2 自带 baseMods 常量，不在 GGG `.dat` 中）在此 merge 到纯 base 之上。
+    /// 加载授予效果的**多 statSet 分等级 stat 集**（按 effect id 排序的数组，
+    /// 每项 = 主 set + 附加 set，M1-T5.2）。空缺（旧数据包无此域）时返回空 Vec，
+    /// 向后兼容。两个 overlay 在此 merge 到纯 base 之上：
+    /// - `skill_overrides.json` 的 statSet 级覆盖值（skill_attack_speed_more，
+    ///   PoB2 自带 baseMods 常量，不在 GGG `.dat` 中）；
+    /// - `stat_set_labels.json` 的形态 label / vendor 导出序号（`.dat` `Label`
+    ///   列的 FK 目标表不可下载，vendor 抽取）。
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
         let mut sets =
             match self.load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
@@ -172,6 +194,30 @@ impl GameData {
                     message,
                 },
             )?;
+        }
+        if let Some(labels) = self.stat_set_labels()? {
+            // (skill, set_id) → (vendor 导出序号, label)。
+            let by_key: std::collections::BTreeMap<(&str, &str), (u32, &str)> = labels
+                .labels
+                .iter()
+                .map(|l| {
+                    (
+                        (l.skill.as_str(), l.set_id.as_str()),
+                        (l.set_index, l.label.as_str()),
+                    )
+                })
+                .collect();
+            for def in &mut sets {
+                for set in &mut def.sets {
+                    if let Some(&(idx, label)) =
+                        by_key.get(&(def.effect_id.as_str(), set.set_id.as_str()))
+                    {
+                        set.vendor_set_index = Some(idx);
+                        set.label = Some(label.to_string());
+                    }
+                    // vendor 未导出该 set（模板策展跳过）→ label/序号保持 None。
+                }
+            }
         }
         Ok(sets)
     }

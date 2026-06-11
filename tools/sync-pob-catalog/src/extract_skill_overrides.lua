@@ -3,12 +3,16 @@
 -- 在**最小 stub 环境**下加载 vendor/PathOfBuilding-PoE2 的 Data/Skills/<file>.lua
 -- （这些文件以 `local skills, mod, flag, skill = ...` 接收注入，顶层只引用
 -- SkillType/ModFlag/KeywordFlag 三个全局；参考 HeadlessWrapper 的思路但不全量启动），
--- 抽取三类 per-skill 覆盖值并以 JSONL（每行一个 JSON 对象）写到 stdout：
+-- 抽取两类 per-skill 覆盖值并以 JSONL（每行一个 JSON 对象）写到 stdout：
 --
---   crit_chance             ← levels[*].critChance
---   attack_speed_multiplier ← levels[*].attackSpeedMultiplier
 --   base_multiplier         ← levels[*].baseMultiplier
 --   skill_attack_speed_more ← statSets[*].baseMods 中 mod("Speed", "MORE", <number>, ...)
+--
+-- 通道收窄（M1-T4.3）：critChance / attackSpeedMultiplier **不再抽取**——二者已是
+-- `.dat` 表列（GrantedEffectStatSetsPerLevel 暴击两列 / GrantedEffectsPerLevel
+-- AttackSpeedMultiplier），由 pobr-data-adapter 直读落 base/（历史 overlay 值
+-- 3911 + 3578 条逐值一致验收后切换）。本边车仅保留 `.dat` 通道中确实拿不到的部分
+-- （statSet baseMods 常量；baseMultiplier 分等级值的表列直读归 T5 多 statSet 改造）。
 --
 -- 确定性约定：本脚本只负责"忠实抽取 + 合法 JSON"；最终排序、数字格式与整体
 -- 文档（_meta + overrides）的 byte-stable 序列化由 Rust 侧统一完成。
@@ -100,10 +104,8 @@ end
 ----------------------------------------------------------------------
 -- 抽取并输出 JSONL
 ----------------------------------------------------------------------
--- levels 内 vendor 字段名 → 入库 stat 名
+-- levels 内 vendor 字段名 → 入库 stat 名（M1-T4.3 收窄：crit/attspd 改表列直读，见头注）
 local LEVEL_STATS = {
-	{ vendorKey = "critChance", stat = "crit_chance" },
-	{ vendorKey = "attackSpeedMultiplier", stat = "attack_speed_multiplier" },
 	{ vendorKey = "baseMultiplier", stat = "base_multiplier" },
 }
 

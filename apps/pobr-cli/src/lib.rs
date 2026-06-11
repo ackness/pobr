@@ -397,6 +397,7 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         enemy_level: req.enemy_level,
         enemy_tier: req.enemy_tier,
         mode_effective: req.mode_effective,
+        ..Default::default()
     };
     let out = calculate_with_data(&build, &build_data, &opts)?;
 

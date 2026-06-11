@@ -20,3 +20,15 @@ pub mod local_mods;
 
 // ---- M0-W4a per-skill 覆盖值（overlay 层，loader + 专用 merge）----
 pub mod skill_overrides;
+
+// ---- M1-T1 宝石品质 stat 斜率（overlay 层，纯查表）----
+pub mod gem_quality_stats;
+
+// ---- M1-T2 SkillStatMap 映射表（overlay 层，消费侧 = stat_map_engine）----
+pub mod skill_stat_map;
+
+// ---- M1-T5.1 宝石→授予效果连边（overlay 层，merge 进 skill_gems + meta 展开索引）----
+pub mod gem_effects;
+
+// ---- M1-T5.2 statSet label / vendor 导出序号边车（overlay 层，merge 进 stat sets）----
+pub mod stat_set_labels;

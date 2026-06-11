@@ -42,6 +42,7 @@ fn panel_opts() -> DataOrchestratorOptions {
         enemy_tier: EnemyTier::None,
         mode_effective: false,
         extra_modifier_texts: vec![],
+        ..Default::default()
     }
 }
 
@@ -88,15 +89,23 @@ fn fireball_base_damage_drives_nonzero_dps() {
     assert!(out.action_rate > 0.0, "action_rate should be > 0");
 }
 
-/// P0-2 support 宝石注入：同组的「更多/增加伤害」support 宝石的 `damage_+%` 应抬升击中伤害。
-/// `SupportFerociousRoarPlayer` 带 `damage_+%`（INC Damage），加入 Fireball 组后击中显著提升。
+/// P0-2 support 宝石注入：同组**兼容**的「增加伤害」support 宝石的 `damage_+%` 应抬升击中。
+///
+/// M1-T3.6 起注入前经组级适用性裁决（PoB2 CalcTools.lua:84-110 +
+/// CalcActiveSkill.lua:179-210）：本测试原用 `SupportFerociousRoarPlayer`（require
+/// `[Warcry]`——PoB2 中 Ferocious Roar 只能支援战吼），对 Fireball（法术）属误注入，
+/// 裁决后正确拒收（拒收断言见 tests/support_gating.rs）。改用
+/// `SupportMetaCastFireSpellOnHitPlayer`（require `[Spell, Triggerable, Fire, AND,
+/// AND]`，Fireball 全部具备）验证兼容 support 的 INC Damage 注入通道。
 #[test]
 fn fireball_with_damage_support_raises_hit() {
     let build_data = load_build_data();
 
-    // 该 support 确有可映射的 damage_+% stat（数据通道未断）。
-    let sup = build_data.effect_stats("SupportFerociousRoarPlayer", 20);
+    // 该 support 确有可映射的 damage_+% stat（数据通道未断）。support 无品质表
+    // 条目（PoB2 导出即跳过），quality 传 0，取 base 段。
+    let sup = build_data.effect_stats("SupportMetaCastFireSpellOnHitPlayer", 20, 0, None);
     let inc = sup
+        .base
         .iter()
         .find(|s| s.stat == "damage_+%")
         .expect("support should carry damage_+%");
@@ -105,7 +114,7 @@ fn fireball_with_damage_support_raises_hit() {
     let base = calculate_with_data(&fireball_build(20), &build_data, &panel_opts())
         .expect("no-support calc");
 
-    // 同组加入带 damage_+% 的 support → 注入 Damage INC。
+    // 同组加入带 damage_+% 的兼容 support → 注入 Damage INC。
     let with_support = Build::new()
         .with_character(CharacterIdentity {
             level: 90,
@@ -118,12 +127,12 @@ fn fireball_with_damage_support_raises_hit() {
                 .with_gem("Metadata/Items/Gems/Fireball")
                 .with_active_skill("FireballPlayer", 20)
                 .with_gem_skill("FireballPlayer", 20)
-                .with_gem_skill("SupportFerociousRoarPlayer", 20),
+                .with_gem_skill("SupportMetaCastFireSpellOnHitPlayer", 20),
         );
     let boosted =
         calculate_with_data(&with_support, &build_data, &panel_opts()).expect("with-support calc");
 
-    // damage_+% 是 INC：击中 = base × (1 + inc/100)。inc≈129 → 约 2.29×。
+    // damage_+% 是 INC：击中 = base × (1 + inc/100)。L20 inc=200 → ×3。
     let expected = base.total_hit_avg * (1.0 + inc.value / 100.0);
     assert!(
         (boosted.total_hit_avg - expected).abs() < 1.0,

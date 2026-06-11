@@ -69,7 +69,8 @@ fn extract_captures_expected_overrides() {
         "0000000000000000000000000000000000000000"
     );
 
-    // 排序契约：(skill, stat, stat_set) 升序
+    // 排序契约：(skill, stat, stat_set) 升序；M1-T4.3 通道收窄——critChance /
+    // attackSpeedMultiplier（夹具中仍存在）不得被抽取（已改 `.dat` 表列直读）。
     let keys: Vec<(&str, &str)> = doc
         .overrides
         .iter()
@@ -78,19 +79,19 @@ fn extract_captures_expected_overrides() {
     assert_eq!(
         keys,
         vec![
-            ("MiniArc", "crit_chance"),
-            ("MiniFlicker", "attack_speed_multiplier"),
+            ("MiniArc", "base_multiplier"),
+            ("MiniFlicker", "base_multiplier"),
             ("MiniFlicker", "skill_attack_speed_more"),
         ]
     );
 
     let arc = &doc.overrides[0];
     assert_eq!(arc.value, None, "变值 stat 不应压缩为单值");
-    assert_eq!(arc.per_level, Some(vec![(1, 9.0), (2, 9.5)]));
+    assert_eq!(arc.per_level, Some(vec![(1, 2.0), (2, 2.65)]));
 
-    let flicker_asm = &doc.overrides[1];
-    assert_eq!(flicker_asm.value, Some(-50.0), "常量 stat 应压缩为单值");
-    assert_eq!(flicker_asm.per_level, None);
+    let flicker_bm = &doc.overrides[1];
+    assert_eq!(flicker_bm.value, Some(1.2), "常量 stat 应压缩为单值");
+    assert_eq!(flicker_bm.per_level, None);
 
     let flicker_more = &doc.overrides[2];
     assert_eq!(flicker_more.stat_set, Some(1));

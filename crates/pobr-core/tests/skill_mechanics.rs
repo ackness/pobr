@@ -415,6 +415,75 @@ fn mana_cost_generic_cost_inc() {
     assert!((result.final_cost - 24.0).abs() < 1e-9);
 }
 
+/// 辅助宝石 cost 正倍率（M1-T4.4）：SupportManaMultiplier MORE +30 →
+/// finalBase = floor(10 × 1.3) = 13（PoB2 CalcOffence.lua:2052/:2076-2077，
+/// 先于 inc/more 链作用于 base）。
+#[test]
+fn mana_cost_support_multiplier_positive() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "SupportManaMultiplier",
+        ModType::More,
+        30.0,
+    ));
+    let cfg = CalcConfig::attack();
+    let result = calc_mana_cost(&db, &cfg, 10.0);
+    assert!((result.final_cost - 13.0).abs() < 1e-9);
+}
+
+/// 辅助宝石 cost 负倍率（M1-T4.4）：SupportManaMultiplier MORE -50 →
+/// finalBase = floor(9 × 0.5) = 4（mult 截断 4 位小数后 floor，**不**走
+/// inc/more 链的负值 ceil 分支——base 段恒 floor，对齐 PoB2 m_floor）。
+#[test]
+fn mana_cost_support_multiplier_negative() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "SupportManaMultiplier",
+        ModType::More,
+        -50.0,
+    ));
+    let cfg = CalcConfig::attack();
+    let result = calc_mana_cost(&db, &cfg, 9.0);
+    assert!((result.final_cost - 4.0).abs() < 1e-9);
+}
+
+/// 多个辅助倍率连乘 + 截断 4 位小数后才乘 base：+30% × +10% = 1.43 →
+/// floor(20 × 1.43) = 28；再叠 +50% ManaCost INC → floor(28 × 1.5) = 42
+/// （SupportManaMultiplier 先于 inc 链，分步取整）。
+#[test]
+fn mana_cost_support_multiplier_stacks_then_inc_applies() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "SupportManaMultiplier",
+        ModType::More,
+        30.0,
+    ));
+    db.add_mod(Modifier::number(
+        "SupportManaMultiplier",
+        ModType::More,
+        10.0,
+    ));
+    db.add_mod(Modifier::number("ManaCost", ModType::Inc, 50.0));
+    let cfg = CalcConfig::attack();
+    let result = calc_mana_cost(&db, &cfg, 20.0);
+    assert!((result.final_cost - 42.0).abs() < 1e-9);
+}
+
+/// Spirit 保留**不**吃辅助宝石通用 cost 倍率（PoB2 Reservation 段只认
+/// ReservationMultiplier；SupportManaMultiplier 仅进 costs 通用路径）。
+#[test]
+fn spirit_reservation_ignores_support_mana_multiplier() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "SupportManaMultiplier",
+        ModType::More,
+        50.0,
+    ));
+    let cfg = CalcConfig::attack();
+    let result = calc_spirit_reservation(&db, &cfg, 30.0);
+    assert!((result.final_cost - 30.0).abs() < 1e-9);
+}
+
 /// Spirit 保留：base=30，ReservationMultiplier MORE +20% → reserved = floor(30 × 1.2) = 36。
 #[test]
 fn spirit_reservation_with_multiplier() {

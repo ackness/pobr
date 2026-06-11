@@ -25,9 +25,12 @@
       "enemy_presets"
     ],
     "overlay": [
+      "gem_effects",
+      "gem_quality_stats",
       "high_precision_mods",
       "local_mods",
-      "skill_overrides"
+      "skill_overrides",
+      "stat_set_labels"
     ],
     "generated": []
   }

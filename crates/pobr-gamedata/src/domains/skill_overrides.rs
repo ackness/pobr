@@ -29,7 +29,7 @@ use pobr_data::catalog::skill_overrides::{
     OVERRIDE_STAT_ATTACK_SPEED_MULTIPLIER, OVERRIDE_STAT_BASE_MULTIPLIER,
     OVERRIDE_STAT_CRIT_CHANCE, OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE, SkillOverridesDef,
 };
-use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef};
+use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef, StatSetDef};
 
 use crate::{GameData, LoadError};
 
@@ -124,6 +124,9 @@ pub fn apply_level_overrides(
 
 /// 把 overlay 的 statSet 级覆盖值（skill_attack_speed_more）merge 进
 /// `granted_effect_stat_sets` 域。语义见模块文档规则 5。
+///
+/// T5.2 多 set 模型下写入**主 set**（`sets[0]`）——与单 set 时代「首条生效」
+/// 等价（消费缺省主 set；per-set 精确归属待 overlay 条目带 set id 时再细化）。
 pub fn apply_stat_set_overrides(
     sets: &mut Vec<SkillStatSetDef>,
     overrides: &SkillOverridesDef,
@@ -139,29 +142,38 @@ pub fn apply_stat_set_overrides(
                 entry.skill, entry.stat
             ));
         };
-        match sets.iter_mut().find(|s| s.id == entry.skill) {
-            // 首条生效（同 id 多 statSet 时按 stat_set 升序取第一条）。
-            Some(set) => {
-                if set.skill_attack_speed_more.is_none() {
-                    set.skill_attack_speed_more = Some(value);
+        match sets
+            .iter_mut()
+            .find(|s| s.effect_id == entry.skill)
+            .and_then(|def| def.sets.first_mut())
+        {
+            // 首条生效（同 skill 多条 overlay 条目时按 stat_set 升序取第一条）。
+            Some(main_set) => {
+                if main_set.skill_attack_speed_more.is_none() {
+                    main_set.skill_attack_speed_more = Some(value);
                 }
             }
-            // base 无该 effect 的 stat-set 条目 → 追加最小条目，不丢值。
+            // base 无该 effect 的 stat-set 条目 → 追加最小条目（合成主 set），不丢值。
             None => {
                 sets.push(SkillStatSetDef {
-                    id: entry.skill.clone(),
-                    base_effectiveness: 0.0,
-                    constant_stats: Vec::new(),
-                    skill_attack_speed_more: Some(value),
-                    levels: Vec::new(),
+                    effect_id: entry.skill.clone(),
+                    sets: vec![StatSetDef {
+                        set_id: entry.skill.clone(),
+                        label: None,
+                        vendor_set_index: None,
+                        base_effectiveness: 0.0,
+                        constant_stats: Vec::new(),
+                        skill_attack_speed_more: Some(value),
+                        levels: Vec::new(),
+                    }],
                 });
                 appended = true;
             }
         }
     }
-    // 追加后恢复按 id 排序（与 base 域排序契约一致，消费确定性）。
+    // 追加后恢复按 effect id 排序（与 base 域排序契约一致，消费确定性）。
     if appended {
-        sets.sort_by(|a, b| a.id.cmp(&b.id));
+        sets.sort_by(|a, b| a.effect_id.cmp(&b.effect_id));
     }
     Ok(())
 }
@@ -171,7 +183,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use pobr_data::catalog::skill_overrides::{SkillOverrideEntry, SkillOverridesDef};
-    use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef};
+    use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef, StatSetDef};
 
     use super::{apply_level_overrides, apply_stat_set_overrides};
 
@@ -203,6 +215,11 @@ mod tests {
                 attack_speed_multiplier: None,
                 base_multiplier: None,
                 crit_chance: None,
+                mana_multiplier: None,
+                spirit_reservation_flat: None,
+                reservation_multiplier: None,
+                stored_uses: None,
+                level_requirement: None,
             })
             .collect()
     }
@@ -265,15 +282,21 @@ mod tests {
         assert!(apply_level_overrides(&mut levels, &ov).is_err());
     }
 
-    /// 规则 5：sasm 写入既有 stat-set（首条生效）；base 无条目时追加最小条目并保持排序。
+    /// 规则 5：sasm 写入既有 effect 的**主 set**（首条生效）；base 无条目时追加
+    /// 最小条目（合成主 set）并保持排序。
     #[test]
     fn stat_set_speed_more_merges_or_appends() {
         let mut sets = vec![SkillStatSetDef {
-            id: "Flicker".into(),
-            base_effectiveness: 0.0,
-            constant_stats: Vec::new(),
-            skill_attack_speed_more: None,
-            levels: Vec::new(),
+            effect_id: "Flicker".into(),
+            sets: vec![StatSetDef {
+                set_id: "Flicker".into(),
+                label: None,
+                vendor_set_index: None,
+                base_effectiveness: 0.0,
+                constant_stats: Vec::new(),
+                skill_attack_speed_more: None,
+                levels: Vec::new(),
+            }],
         }];
         let mut first = entry("Flicker", "skill_attack_speed_more", Some(285.0), None);
         first.stat_set = Some(1);
@@ -284,13 +307,13 @@ mod tests {
         apply_stat_set_overrides(&mut sets, &ov).unwrap();
 
         assert_eq!(sets.len(), 2);
-        assert_eq!(sets[0].id, "Aardvark", "追加后按 id 排序");
-        assert_eq!(sets[0].skill_attack_speed_more, Some(50.0));
-        assert!(sets[0].levels.is_empty());
+        assert_eq!(sets[0].effect_id, "Aardvark", "追加后按 effect id 排序");
+        assert_eq!(sets[0].sets[0].skill_attack_speed_more, Some(50.0));
+        assert!(sets[0].sets[0].levels.is_empty());
         assert_eq!(
-            sets[1].skill_attack_speed_more,
+            sets[1].sets[0].skill_attack_speed_more,
             Some(285.0),
-            "同 id 多条时首条生效"
+            "同 skill 多条时首条生效（写入主 set）"
         );
     }
 }

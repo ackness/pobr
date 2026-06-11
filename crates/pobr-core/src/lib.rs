@@ -30,8 +30,9 @@ pub use modifier::{ModTag, ModValue, Modifier};
 pub use passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes};
 pub use rules::{DuplicateHandlerError, Handler, HandlerRegistry};
 pub use skill_source::{
-    ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError, SupportGemSpec, SupportIngestError,
-    can_support, ingest_active_gem, ingest_gem, ingest_gem_leveled, ingest_support_gem,
+    ActiveSkillJudgeInput, ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError,
+    SupportGemSpec, SupportIngestError, SupportJudgeInput, can_support, ingest_active_gem,
+    ingest_gem, ingest_gem_leveled, ingest_support_gem, judge_support,
 };
 pub use trace::{
     TraceEdge, TraceGraph, TraceNode, TraceNodeId, TraceOperation, TraceOutput, TracedValue,

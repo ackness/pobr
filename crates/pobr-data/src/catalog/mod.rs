@@ -39,13 +39,17 @@ pub mod local_mods;
 // ---- M0-W4a per-skill 覆盖值 overlay schema（vendor Lua 抽取）----
 pub mod skill_overrides;
 
+// ---- M1-T2 SkillStatMap overlay schema（vendor Lua 抽取，skill_stat_map/v1）----
+pub mod stat_map;
+
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};
 pub use runtime::RuntimeConstants;
 pub use skills::{
-    CostTypeDef, GrantedEffectDef, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
-    SkillStatSetLevel,
+    CostTypeDef, GemEffectDef, GemEffectsDef, GemQualityStatDef, GemQualityStatsDef,
+    GrantedEffectDef, QualityStat, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
+    SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef,
 };
 pub use tree::{PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
 pub use unarmed_data::{UnarmedDataTable, UnarmedWeaponDef};

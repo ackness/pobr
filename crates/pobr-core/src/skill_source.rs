@@ -32,13 +32,19 @@
 //!
 //! ## skill-type-gating（兼容性门控）
 //!
-//! [`SupportGemSpec::require_skill_types`] 列出辅助宝石要求主动技能具备的 skill types
-//! （对照 PoB2 `CalcTools.lua::canGrantedEffectSupportActiveSkill`：`requireSkillTypes`
-//! 若非空需与 `activeSkill.skillTypes` 有交集才能支援）。
+//! 对照 PoB2 `CalcTools.lua:84-110 canGrantedEffectSupportActiveSkill` 的**全语义四段**：
+//! ① 主动效果 `cannotBeSupported` → 拒；② support `supportGemsOnly` 且主动技能非宝石
+//! 授予 → 拒；③ `excludeSkillTypes` 后缀表达式命中 → 拒；④ `requireSkillTypes`
+//! 后缀表达式（空 = 接受）。表达式求值走 [`crate::rules::skill_type_expr`]。
 //!
-//! [`can_support`] 函数供调用方在注入前检查兼容性；[`ingest_support_gem`] 若
-//! `SupportGemSpec::require_skill_types` 不为空且与 `active_skill_types` 无交集，
-//! 则返回 `Err(SkillGatingError::IncompatibleTypes)`。
+//! **defer**（蓝图 T3.4 裁决）：`fromItem` 特例（CalcTools.lua:93，物品授予 support，
+//! M5c）、`isTrigger` 且非玩家 actor（CalcTools.lua:106，玩家 build 恒不触发，M5a）、
+//! `minionTypes` 第二集合（CalcTools.lua:98-103，M5a minion 链路）。
+//!
+//! [`can_support`]/[`judge_support`] 供调用方在注入前裁决；[`ingest_support_gem`]
+//! 被拒时返回 `Err(SupportIngestError::Gating)`。组级 addSkillTypes 不动点
+//! （CalcActiveSkill.lua:179-210）在 pobr-build orchestrator 的
+//! `judge_group_supports` 实现（契约 C2）。
 //!
 //! ## level/quality 缩放
 //!
@@ -49,35 +55,57 @@
 //! 出处：PoB2 `CalcActiveSkill.lua::initSkill`，`level.*` 字段（cost / duration /
 //! reservationMultiplier / spiritReservationFlat 等）注入 `skillModList`。
 //! PoBR 不维护等级表，数值由调用方提供；归因 id = `gem.<id>.level<N>` / `gem.<id>.q<Q>`。
+//!
+//! **品质数值口径（M1-T1）**：品质 stat 的数据源是
+//! `overlay/gem_quality_stats.json`（`effect_id → [{stat, per_quality_rate}]`），
+//! 叠加值 = `trunc(per_quality_rate × quality)`——**截断取整**（toward zero），对齐
+//! PoB2 `CalcTools.lua:142` `math.modf(stat[2] * skillInstance.quality)`，非 floor。
+//! parity 主路径（orchestrator）的取数实现在 `pobr-build::BuildData::effect_stats`
+//! 的 quality 段；本模块（CLI/Session 最小路径）由调用方按同一口径预先算好
+//! `quality_mods` 传入，两条路径共用 `SourceKind::GemQuality` 与同一归因 id 约定。
+
+use std::collections::HashSet;
 
 use pobr_data::prelude::*;
 
 use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
+use crate::rules::skill_type_expr;
 use crate::{ModTag, Modifier};
 
 // ────────────────────────────────────────────────────
 // Public error type
 // ────────────────────────────────────────────────────
 
-/// 辅助宝石兼容性门控失败。
+/// 辅助宝石兼容性门控失败（PoB2 四段裁决的拒绝原因，按裁决顺序）。
 #[derive(Debug, Clone, PartialEq)]
 pub enum SkillGatingError {
-    /// 辅助宝石要求的 skill types 与主动技能的 skill types 无交集，不能支援。
+    /// 主动效果 `cannotBeSupported`——不可被任何 support 支援（裁决第一段）。
+    CannotBeSupported,
+    /// support `supportGemsOnly` 且主动技能非宝石授予（裁决第二段）。
+    SupportGemsOnly,
+    /// exclude 后缀表达式命中（裁决第三段）。
+    Excluded { exclude: Vec<String> },
+    /// require 后缀表达式未命中（裁决第四段；空 require 恒接受）。
     IncompatibleTypes {
-        required: SkillTypes,
-        active: SkillTypes,
+        required: Vec<String>,
+        active: Vec<String>,
     },
 }
 
 impl std::fmt::Display for SkillGatingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::CannotBeSupported => write!(f, "active skill cannot be supported"),
+            Self::SupportGemsOnly => {
+                write!(f, "support gems only: active skill is not granted by a gem")
+            }
+            Self::Excluded { exclude } => {
+                write!(f, "active skill matches exclude expression {exclude:?}")
+            }
             Self::IncompatibleTypes { required, active } => {
                 write!(
                     f,
-                    "support gem requires skill types {:#x} but active skill has {:#x}",
-                    required.bits(),
-                    active.bits(),
+                    "support gem requires skill types {required:?} but active skill has {active:?}",
                 )
             }
         }
@@ -192,13 +220,17 @@ pub struct SupportGemSpec {
     /// `SkillTypes::NONE` → 不附加 tag（全局生效，与原行为兼容）。
     pub supported_skill_types: SkillTypes,
 
-    // ── TODO(skill-type-gating) ───────────────────
-    /// 辅助宝石要求主动技能必须具备的 skill types（兼容性门控）。
+    // ── skill-type-gating（PoB2 四段裁决的 support 侧输入）─────────
+    /// require 后缀表达式 token 流（兼容性门控第四段）。
     ///
-    /// 对照 PoB2 `CalcTools.lua::canGrantedEffectSupportActiveSkill`：
-    /// `requireSkillTypes` 若非空需与 `activeSkill.skillTypes` 有交集。
-    /// `SkillTypes::NONE` → 无门控（默认，始终允许支援）。
-    pub require_skill_types: SkillTypes,
+    /// 对照 PoB2 `CalcTools.lua:84-110 canGrantedEffectSupportActiveSkill`：
+    /// `requireSkillTypes` 非空时须经 `doesTypeExpressionMatch` 匹配主动技能
+    /// 类型集合。空 → 无门控（默认，始终允许支援）。
+    pub require_skill_types: Vec<String>,
+    /// exclude 后缀表达式 token 流（兼容性门控第三段；命中即拒）。空 → 不排除。
+    pub exclude_skill_types: Vec<String>,
+    /// 仅能支援宝石授予的技能（兼容性门控第二段，PoB2 `supportGemsOnly`）。
+    pub support_gems_only: bool,
 
     // ── TODO(level/quality 归因) ──────────────────
     /// 当前宝石等级（用于 `SourceKind::SkillLevel` 归因）。
@@ -230,7 +262,9 @@ impl SupportGemSpec {
             supported_gem_id: None,
             mana_multiplier: None,
             supported_skill_types: SkillTypes::NONE,
-            require_skill_types: SkillTypes::NONE,
+            require_skill_types: Vec::new(),
+            exclude_skill_types: Vec::new(),
+            support_gems_only: false,
             level: None,
             quality: None,
             level_mods: Vec::new(),
@@ -256,9 +290,27 @@ impl SupportGemSpec {
         self
     }
 
-    /// 设定兼容性门控（skill-type-gating）。
-    pub fn with_require_skill_types(mut self, types: SkillTypes) -> Self {
-        self.require_skill_types = types;
+    /// 设定 require 后缀表达式（skill-type-gating 第四段）。
+    pub fn with_require_skill_types(
+        mut self,
+        tokens: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.require_skill_types = tokens.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// 设定 exclude 后缀表达式（skill-type-gating 第三段）。
+    pub fn with_exclude_skill_types(
+        mut self,
+        tokens: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.exclude_skill_types = tokens.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// 设定 supportGemsOnly（skill-type-gating 第二段）。
+    pub fn with_support_gems_only(mut self, only: bool) -> Self {
+        self.support_gems_only = only;
         self
     }
 
@@ -366,28 +418,76 @@ pub struct GemIngest {
 }
 
 // ────────────────────────────────────────────────────
-// Public helpers — skill-type-gating check
+// Public helpers — skill-type-gating check（PoB2 全语义四段）
 // ────────────────────────────────────────────────────
 
-/// 检查辅助宝石是否能支援给定 skill types 的主动技能。
+/// 辅助效果侧的裁决输入（数据来自 `GrantedEffectDef` 的 support 行）。
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SupportJudgeInput<'a> {
+    /// 仅能支援宝石授予的技能（PoB2 `supportGemsOnly`）。
+    pub support_gems_only: bool,
+    /// exclude 后缀表达式 token 流（命中即拒）。
+    pub exclude_skill_types: &'a [String],
+    /// require 后缀表达式 token 流（空 = 接受一切）。
+    pub require_skill_types: &'a [String],
+}
+
+/// 主动技能侧的裁决输入。
+#[derive(Debug, Clone, Copy)]
+pub struct ActiveSkillJudgeInput<'a> {
+    /// 主动效果自身不可被支援（PoB2 `cannotBeSupported`，裁决第一段）。
+    pub cannot_be_supported: bool,
+    /// 主动技能是否来自宝石（PoB2 `activeEffect.gemData` 存在）。socket group 内
+    /// 宝石技能恒为 `true`；物品授予技能（fromItem）M5c 接入时为 `false`。
+    pub from_gem: bool,
+    /// 当前技能类型集合（组级裁决不动点过程中含已并入的 addSkillTypes）。
+    pub skill_types: &'a HashSet<String>,
+}
+
+/// 裁决辅助宝石能否支援主动技能，返回拒绝原因。
 ///
-/// 对照 PoB2 `CalcTools.lua::canGrantedEffectSupportActiveSkill`：
-/// - `require_skill_types` 为空 → 始终允许；
-/// - `require_skill_types` 非空 → 需与 `active_skill_types` 有交集。
+/// 对照 PoB2 `CalcTools.lua:84-110 canGrantedEffectSupportActiveSkill` 的四段顺序：
+/// 1. 主动效果 `cannotBeSupported` → 拒（CalcTools.lua:86-88）；
+/// 2. support `supportGemsOnly` 且主动技能非宝石授予 → 拒（:89-91）；
+/// 3. `excludeSkillTypes` 后缀表达式命中 → 拒（:104-105）；
+/// 4. `requireSkillTypes` 后缀表达式：空 = 接受，否则须匹配（:109）。
 ///
-/// 返回 `Ok(())` 表示兼容；`Err(SkillGatingError::IncompatibleTypes)` 表示不兼容。
-pub fn can_support(
-    require_skill_types: SkillTypes,
-    active_skill_types: SkillTypes,
+/// **defer**：`fromItem` 特例（:93，M5c）、`isTrigger` 非玩家 actor（:106-108，
+/// 玩家 build 恒不触发，M5a）、`minionTypes` 第二集合（:98-103，M5a）。
+pub fn judge_support(
+    support: &SupportJudgeInput<'_>,
+    active: &ActiveSkillJudgeInput<'_>,
 ) -> Result<(), SkillGatingError> {
-    if require_skill_types.is_empty() || require_skill_types.intersects(active_skill_types) {
+    if active.cannot_be_supported {
+        return Err(SkillGatingError::CannotBeSupported);
+    }
+    if support.support_gems_only && !active.from_gem {
+        return Err(SkillGatingError::SupportGemsOnly);
+    }
+    if !support.exclude_skill_types.is_empty()
+        && skill_type_expr::matches(support.exclude_skill_types, active.skill_types)
+    {
+        return Err(SkillGatingError::Excluded {
+            exclude: support.exclude_skill_types.to_vec(),
+        });
+    }
+    if support.require_skill_types.is_empty()
+        || skill_type_expr::matches(support.require_skill_types, active.skill_types)
+    {
         Ok(())
     } else {
+        let mut active_sorted: Vec<String> = active.skill_types.iter().cloned().collect();
+        active_sorted.sort();
         Err(SkillGatingError::IncompatibleTypes {
-            required: require_skill_types,
-            active: active_skill_types,
+            required: support.require_skill_types.to_vec(),
+            active: active_sorted,
         })
     }
+}
+
+/// [`judge_support`] 的布尔便捷封装（契约 C2 的 orchestrator 消费形态）。
+pub fn can_support(support: &SupportJudgeInput<'_>, active: &ActiveSkillJudgeInput<'_>) -> bool {
+    judge_support(support, active).is_ok()
 }
 
 // ────────────────────────────────────────────────────
@@ -503,17 +603,30 @@ impl std::error::Error for SupportIngestError {
 ///    `ModName("SupportManaMultiplier")` More modifier（归因到辅助宝石 source）。
 /// 2. **more-multiplier 隔离**：若 `spec.supported_skill_types` 非空，给所有 `More`
 ///    modifier 附加 `ModTag::SkillTypes`，使其只对匹配的技能生效。
-/// 3. **skill-type-gating**：若 `spec.require_skill_types` 非空，先调用 [`can_support`]
-///    检查与 `active_skill_types` 的兼容性，不兼容则返回
-///    `Err(SupportIngestError::Gating(...))`。
+/// 3. **skill-type-gating**：经 [`judge_support`]（PoB2 四段裁决）检查与
+///    `active_skill_types` 的兼容性，被拒返回 `Err(SupportIngestError::Gating(...))`。
+///    本最小路径假定主动技能来自宝石且可被支援（`cannot_be_supported=false`、
+///    `from_gem=true`）；完整主动侧输入 + 组级 addSkillTypes 不动点在 orchestrator
+///    的 `judge_group_supports`（契约 C2）。
 /// 4. **level/quality 归因**：把 `spec.level_mods` / `spec.quality_mods` 注入为
 ///    `SourceKind::SkillLevel` / `SourceKind::GemQuality` 归因的 modifier。
 pub fn ingest_support_gem(
     spec: &SupportGemSpec,
-    active_skill_types: SkillTypes,
+    active_skill_types: &HashSet<String>,
 ) -> Result<GemIngest, SupportIngestError> {
-    // ── TODO(skill-type-gating) ──────────────────────────────────────────────
-    can_support(spec.require_skill_types, active_skill_types)?;
+    // ── skill-type-gating（PoB2 四段裁决，CalcTools.lua:84-110）────────────
+    judge_support(
+        &SupportJudgeInput {
+            support_gems_only: spec.support_gems_only,
+            exclude_skill_types: &spec.exclude_skill_types,
+            require_skill_types: &spec.require_skill_types,
+        },
+        &ActiveSkillJudgeInput {
+            cannot_be_supported: false,
+            from_gem: true,
+            skill_types: active_skill_types,
+        },
+    )?;
 
     let source_id = spec.source_id();
     let parent_source_id = spec.parent_source_id();

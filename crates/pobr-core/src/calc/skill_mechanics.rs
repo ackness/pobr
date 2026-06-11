@@ -12,8 +12,9 @@
 //! ## 延迟 (defer)
 //! - 复杂投射物链交互的完整数值（DistanceRamp/PointBlank/FarShot 伤害修正）。
 //! - AreaEffect 对 DoT 的特例（`bleedDurationIsSkillDuration` 等时长转移）。
-//! - SupportManaMultiplier（辅助宝石 cost 倍率，需 gem level table）。
 //! - Spirit 保留池公式（见 recovery-charges-buffs.md；本模块仅计算技能侧保留量）。
+//!
+//! SupportManaMultiplier 已于 M1-T4.4 落地（见 §4 cost 公式），不再 defer。
 
 use pobr_data::prelude::*;
 
@@ -542,8 +543,10 @@ pub fn calc_cooldown_traced(
 
 /// 技能消耗计算结果（单一资源类型）。
 ///
-/// 公式（对照 PoB2 cost 段，通用路径，不含 SupportManaMultiplier defer）：
-/// `cost = floor(base_cost × (1 + Σinc/100)) × Πmore`（各乘区逐步取整，对齐 PoB2 分步取整逻辑）。
+/// 公式（对照 PoB2 cost 段，通用路径，M1-T4.4 起含 SupportManaMultiplier）：
+/// `cost = floor(floor(base_cost × floor4(ΠSupportManaMultiplier)) × (1 + Σinc/100)) × Πmore`
+/// （辅助宝石 cost 倍率先于 inc/more 作用于 base 并取整；各乘区逐步取整，
+/// 对齐 PoB2 分步取整逻辑）。
 ///
 /// 出处：`agent-docs/skill-mechanics.md` §消耗；
 ///       PoB2 `CalcOffence.lua` L2040+（`ManaCost / LifeCost / ESCost`）。
@@ -559,7 +562,8 @@ pub struct SkillCostResult {
     pub no_cost: bool,
 }
 
-/// 计算技能资源消耗（Mana / Life / ES，不含 Spirit 保留与辅助宝石倍率 defer）。
+/// 计算技能资源消耗（Mana / Life / ES，不含 Spirit 保留——Spirit 走
+/// [`calc_spirit_reservation`]，辅助宝石通用 cost 倍率不增加 Spirit 保留）。
 ///
 /// `resource_mod_prefix`：ModName 前缀（如 `"Mana"` 对应 `ManaCost` INC/MORE）。
 /// `base_cost`：宝石原始消耗值（已除以 Divisor）。
@@ -567,7 +571,15 @@ pub struct SkillCostResult {
 ///
 /// 免消耗检查：`HasNoCost` flag → `final_cost = 0`。
 ///
-/// 出处：PoB2 `CalcOffence.lua` L2120-2160（通用路径 `!unaffectedByGenericCostMults`）。
+/// 辅助宝石 cost 倍率（M1-T4.4）：`SupportManaMultiplier` MORE（来源 = 兼容
+/// support 的分等级 `mana_multiplier`，PoB2 `CalcActiveSkill.lua:689-691`）——
+/// 乘积**截断到 4 位小数**后先作用于 base 并 floor，再进 inc/more 链：
+/// PoB2 `CalcOffence.lua:2052` `mult = floor(More(skillCfg, "SupportManaMultiplier"), 4)`、
+/// `:2076-2077` `finalBaseCost = m_floor(baseCost × mult + baseCostNoMult)`。
+/// 通用路径对全部上述资源生效（PoB2 仅 Soul 标 `unaffectedByGenericCostMults`，
+/// 本函数不处理 Soul）。
+///
+/// 出处：PoB2 `CalcOffence.lua` L2050-2160（通用路径）。
 pub fn calc_skill_cost(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -584,6 +596,15 @@ pub fn calc_skill_cost(
             no_cost: true,
         };
     }
+
+    // 辅助宝石 cost 倍率：连乘截断 4 位小数 → 作用于 base → floor
+    // （PoB2 CalcOffence.lua:2052/:2076-2077，先于 inc/more 链）。
+    let support_mult_names = [ModName::from("SupportManaMultiplier")];
+    let support_mult = {
+        let m = db.more(cfg, &support_mult_names);
+        (m * 10000.0).floor() / 10000.0
+    };
+    let base_cost_after_support = (base_cost * support_mult).floor();
 
     let type_cost_name = format!("{resource_mod_prefix}Cost");
     let generic_cost_name = "Cost";
@@ -602,10 +623,11 @@ pub fn calc_skill_cost(
     //   1) `floor(finalBaseCost × (1+inc/100))` (inc 正 → floor，inc 负 → ceil)
     //   2) `floor/ceil(step1 × moreType)` (more < 1 → ceil)
     //   3) `floor/ceil(step2 × moreGeneric)`
+    // finalBaseCost = 上方 base_cost_after_support（已含 SupportManaMultiplier）。
     let after_inc = if inc >= 0.0 {
-        (base_cost * (1.0 + inc / 100.0)).floor()
+        (base_cost_after_support * (1.0 + inc / 100.0)).floor()
     } else {
-        (base_cost * (1.0 + inc / 100.0)).ceil()
+        (base_cost_after_support * (1.0 + inc / 100.0)).ceil()
     };
     let after_more_type = if more_type < 1.0 {
         (after_inc * more_type).ceil()
@@ -727,6 +749,13 @@ pub fn calc_skill_cost_traced(
         trace,
         format!("{type_cost_name} MORE factor"),
     );
+    // 辅助宝石 cost 倍率（M1-T4.4）：作为独立乘区节点入图（SupportGem 来源可回溯）。
+    let support_mult_node = db.more_traced(
+        cfg,
+        &[ModName::from("SupportManaMultiplier")],
+        trace,
+        "SupportManaMultiplier MORE factor",
+    );
     let cost_node = trace.add_node(
         format!("{resource_mod_prefix} final cost"),
         result.final_cost,
@@ -735,6 +764,7 @@ pub fn calc_skill_cost_traced(
     trace.add_edge(base_node, cost_node);
     trace.add_edge(inc_node.node_id, cost_node);
     trace.add_edge(more_type_node.node_id, cost_node);
+    trace.add_edge(support_mult_node.node_id, cost_node);
 
     (result, cost_node)
 }

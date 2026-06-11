@@ -7,15 +7,25 @@
     { "name": "Tags", "columns": ["Id","DisplayString"] },
     { "name": "Mods", "columns": ["Id","Name","ModType","Domain","GenerationType","Level","Stat1","Stat2","Stat3","Stat4","Stat1Value","Stat2Value","Stat3Value","Stat4Value","Tags","SpawnWeight_Tags","Families"] },
     { "name": "Stats", "columns": ["Id","IsLocal","Semantic","Category"] },
-    { "name": "SkillGems", "columns": ["BaseItemType","GemType","GemColour","MinLevelReq","StrengthRequirementPercent","DexterityRequirementPercent","IntelligenceRequirementPercent","GemEffects"] },
-    { "name": "GrantedEffects", "columns": ["Id","IsSupport","ActiveSkill","StatSet","CastTime","CostTypes","AllowedActiveSkillTypes","AddedActiveSkillTypes"] },
-    { "name": "GrantedEffectsPerLevel", "columns": ["GrantedEffect","Level","Cooldown","CostAmounts","AttackTime"] },
-    { "name": "GrantedEffectStatSets", "columns": ["Id","BaseEffectiveness","IncrementalEffectiveness","DamageIncrementalEffectiveness","ImplicitStats","ConstantStats","ConstantStatsValues"] },
-    { "name": "GrantedEffectStatSetsPerLevel", "columns": ["StatSet","GemLevel","BaseMultiplier","BaseResolvedValues","FloatStats","FloatStatsValues","AdditionalStats","AdditionalStatsValues"] },
+    { "name": "SkillGems", "columns": ["BaseItemType","GemType","GemColour","MinLevelReq","StrengthRequirementPercent","DexterityRequirementPercent","IntelligenceRequirementPercent","GemEffects","ItemExperienceType"] },
+    { "name": "GrantedEffects", "columns": ["Id","IsSupport","ActiveSkill","StatSet","CastTime","CostTypes","AllowedActiveSkillTypes","AddedActiveSkillTypes","ExcludedActiveSkillTypes","SupportsGemsOnly","CannotBeSupported","AdditionalStatSets"] },
+    { "name": "GrantedEffectsPerLevel", "columns": ["GrantedEffect","Level","Cooldown","CostAmounts","AttackTime","CostMultiplier","StoredUses","Reservation","EffectOnPlayer","AttackSpeedMultiplier"] },
+    { "name": "GrantedEffectStatSets", "columns": ["Id","BaseEffectiveness","IncrementalEffectiveness","DamageIncrementalEffectiveness","ImplicitStats","ConstantStats","ConstantStatsValues","Label"] },
+    { "name": "GrantedEffectStatSetsPerLevel", "columns": ["StatSet","GemLevel","BaseMultiplier","BaseResolvedValues","FloatStats","FloatStatsValues","AdditionalStats","AdditionalStatsValues","SpellCritChance","AttackCritChance"] },
     { "name": "ActiveSkills", "columns": ["Id","DisplayedName","Description","ActiveSkillTypes","GrantedEffect"] },
     { "name": "ActiveSkillType", "columns": ["Id"] },
     { "name": "CostTypes", "columns": ["Id","Stat","FormatText","Divisor","PerMinute"] },
     { "name": "WeaponTypes", "columns": ["BaseItemType","CritChance","Speed","DamageMin","DamageMax","RangeMax"] },
     { "name": "ArmourTypes", "columns": ["BaseItemType","Armour","Evasion","EnergyShield","Ward"] }
-  ]
+  ],
+  "_tablesUnavailableForPinnedPatch": {
+    "_note": "M1-W0（2026-06-11）核验：以下整表所在 bundle 不在本地缓存，而 CDN 已下线 4.5.0.3.4（patch 服务器现指向 4.5.1.1.6，旧版 404），无法补下。这些表的数据改走 extract-lua 兜底通道（vendor Data/Gems.lua + Data/Skills/*.lua → overlay/，见 m1 蓝图 Q1）。版本升级重下时应把下列条目移回 tables 数组。",
+    "tables": [
+      { "name": "GemEffects", "columns": ["Id","Name","GrantedEffect","SupportName","GemTags","AdditionalGrantedEffects"] },
+      { "name": "GrantedEffectQualityStats", "columns": ["GrantedEffect","Stats","StatsValuesPermille","ApplyToStatSets","AltStats","AltStatValuesPermille","AltApplyToStatSets"] },
+      { "name": "GrantedEffectLabels", "columns": ["Id","Text"] },
+      { "name": "SupportGems", "columns": ["SkillGem","Family"] },
+      { "name": "ItemExperiencePerLevel", "columns": ["ItemExperienceType","ItemCurrentLevel","Level"] }
+    ]
+  }
 }
