@@ -54,12 +54,17 @@ pub fn parse_build_from_code(code: &str) -> Result<Build, BuildError> {
 pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let header = parse_build_header(xml)?;
 
-    // 装备先于天赋树解析：激活 ItemSet 的 `useSecondWeaponSet` 决定武器集专属点的
-    // 生效集（PoB2 CalcSetup.lua:791-792 `Condition:WeaponSet<N>` flag 语义）。
-    let (items, jewels, use_second_weapon_set) = parse_items_and_slots(xml)?;
+    // 激活 ItemSet 的 `useSecondWeaponSet` 决定武器集专属点的生效集
+    // （PoB2 CalcSetup.lua:791-792 `Condition:WeaponSet<N>` flag 语义）；
+    // 再以过滤后的已分配节点集门控树插槽珠宝（珠宝 mod 只经已分配 socket 节点
+    // 的 modList 进入计算，PoB2 CalcSetup.lua:175-244 仅遍历 `spec.allocNodes`）。
+    let use_second_weapon_set = parse_active_item_set(xml)?.2;
     let allocated_nodes = parse_passive_nodes(xml, use_second_weapon_set)?;
+    let allocated_set: std::collections::HashSet<u32> =
+        allocated_nodes.iter().map(|n| n.0).collect();
+    let (items, jewels, _) = parse_items_and_slots(xml, &allocated_set)?;
     let attribute_overrides = parse_attribute_overrides(xml)?;
-    let radius_jewels = parse_radius_jewels(xml)?;
+    let radius_jewels = parse_radius_jewels(xml, &allocated_set)?;
     let socket_groups = parse_socket_groups(xml)?;
     let main_socket_group = parse_main_socket_group(xml);
 
@@ -462,7 +467,16 @@ fn parse_attribute_overrides(xml: &str) -> Result<HashMap<NodeId, AttributeChoic
 
 /// 抽取 `<Item id>` 文本块并按 `<Items activeItemSet>` 选中的 `<ItemSet>` 槽位映射，
 /// 返回 `(EquipmentSlot, Item)` 列表（按槽位 id 字典序，确定性）。
-fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
+///
+/// 树插槽珠宝按 `allocated`（已分配节点集，武器集过滤后）门控：珠宝 mod 在 PoB2 只经
+/// **已分配** socket 节点的 modList 进入计算（CalcSetup.lua:175-244 仅遍历
+/// `spec.allocNodes`；PassiveSpec 把珠宝 modList 挂在 socket 节点上）——未分配插槽的
+/// 珠宝整体不生效。ItemSet 侧 `Jewel*`/`*Socket*` 槽名路径维持原样（PoE2 build XML
+/// 的树珠宝走 `<Sockets><Socket>`，ItemSet 内仅 `<SocketIdURL>` 无 itemId，不经此路径）。
+fn parse_items_and_slots(
+    xml: &str,
+    allocated: &std::collections::HashSet<u32>,
+) -> Result<EquippedAndJewels, XmlError> {
     let items = parse_item_blocks(xml)?;
     let (slot_assignments, jewel_ids, use_second_weapon_set) = parse_active_item_set(xml)?;
 
@@ -474,9 +488,15 @@ fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
     }
     out.sort_by_key(|(slot, _)| slot.id());
 
-    // 树上珠宝在 `<Tree><Spec><Sockets><Socket nodeId itemId/>`（非 ItemSet），单独收集。
+    // 树上珠宝在 `<Tree><Spec><Sockets><Socket nodeId itemId/>`（非 ItemSet），单独收集；
+    // 仅保留 socket 节点已分配的珠宝。
     let mut all_jewel_ids = jewel_ids;
-    all_jewel_ids.extend(parse_tree_socket_item_ids(xml)?);
+    all_jewel_ids.extend(
+        parse_socket_node_items(xml)?
+            .into_iter()
+            .filter(|(node, _)| allocated.contains(node))
+            .map(|(_, item)| item),
+    );
     all_jewel_ids.sort_unstable();
     all_jewel_ids.dedup();
 
@@ -485,28 +505,6 @@ fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
         .filter_map(|id| items.get(id).cloned())
         .collect();
     Ok((out, jewels, use_second_weapon_set))
-}
-
-/// 解析 `<Sockets><Socket nodeId="N" itemId="M"/>` → 非零 itemId（树上珠宝）。
-fn parse_tree_socket_item_ids(xml: &str) -> Result<Vec<u32>, XmlError> {
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
-    let mut ids = Vec::new();
-    loop {
-        match reader.read_event() {
-            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Socket" => {
-                if let Some(id) = attr_value(&e, b"itemId").and_then(|v| v.parse::<u32>().ok())
-                    && id != 0
-                {
-                    ids.push(id);
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(e) => return Err(XmlError::Parse(e.to_string())),
-            _ => {}
-        }
-    }
-    Ok(ids)
 }
 
 /// 解析树插槽 `<Socket nodeId="N" itemId="M"/>` → `(socket_node, item_id)`（itemId≠0）。
@@ -577,11 +575,18 @@ fn parse_raw_item_texts(xml: &str) -> Result<std::collections::HashMap<u32, Stri
 ///
 /// 仅收集**确实带 `also grant` 行**的珠宝；无该词条的珠宝不产生条目（其全局词条仍由
 /// `jewels` 路径注入，不重复）。
-fn parse_radius_jewels(xml: &str) -> Result<Vec<RadiusJewel>, XmlError> {
+fn parse_radius_jewels(
+    xml: &str,
+    allocated: &std::collections::HashSet<u32>,
+) -> Result<Vec<RadiusJewel>, XmlError> {
     let socket_items = parse_socket_node_items(xml)?;
     let raw_texts = parse_raw_item_texts(xml)?;
     let mut out = Vec::new();
     for (socket_node, item_id) in socket_items {
+        // 未分配 socket 的珠宝整体不生效（与 parse_items_and_slots 同一门控）。
+        if !allocated.contains(&socket_node) {
+            continue;
+        }
         let Some(text) = raw_texts.get(&item_id) else {
             continue;
         };
