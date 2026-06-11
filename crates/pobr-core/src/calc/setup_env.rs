@@ -312,6 +312,20 @@ fn inject_ehp_damage_placeholder(
             push_enemy_number(db, name, ModType::Base, value, "ehp_damage_placeholder");
         }
     }
+    // 敌方元素穿透 placeholder（vendor ConfigOptions.lua:2072-2074 / :2113-2115：
+    // Pinnacle/Uber 预设把 `enemy{Lightning,Cold,Fire}Pen` 的 config placeholder 置为
+    // `pinnacleBossPen = 15/5 = 3` / `uberBossPen = 40/5 = 8`，Modules/Data.lua:231/:233；
+    // 防御侧消费在 CalcDefence.lua:2328（EnemyCannotPen 门控）/:2363
+    // `resMult = 1 − max(resist − enemyPen, 0)/100`）。数据走 enemy_presets.json
+    // `tiers[].pen`；chaos/physical 无 pen（vendor 预设仅设三元素）。
+    // 仅 EHP 新管线（`ehp::fill_ehp_pob2`）消费本组 ModName。
+    let presets = &constants.enemy_presets;
+    let pen = presets.tier_for(tier).map_or(0.0, |preset| preset.pen);
+    if pen != 0.0 {
+        for name in ["EnemyFirePen", "EnemyColdPen", "EnemyLightningPen"] {
+            push_enemy_number(db, name, ModType::Base, pen, "boss_ele_pen_placeholder");
+        }
+    }
 }
 
 /// 曝光取最强（PoB2 `ExposureMin` 逻辑）：把 enemy modDB 内各元素的 `<Element>Exposure BASE`

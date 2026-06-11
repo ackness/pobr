@@ -981,6 +981,18 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
         let mom = mom_hit_pools(&ctx, &base);
 
         // ---- 减伤快照（Track B 契约；deflect 折入 Track D 输出，:2433）----
+        // 敌方元素穿透（vendor CalcDefence.lua:2328/:2363）：`resMult = 1 −
+        // max(resist − enemyPen, 0)/100`（仅 resist > 0 时扣减；负抗不受 pen 影响）。
+        // pen 来源 = setup_enemy 注入的 `Enemy<X>Pen` placeholder（Pinnacle 3 / Uber 8，
+        // ConfigOptions.lua:2072-2074、Modules/Data.lua:231）；物理/混沌无 pen。
+        let enemy_pen = |name: &str| enemy_db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+        let resist_after_pen = |resist: f64, pen: f64| -> f64 {
+            if resist > 0.0 {
+                (resist - pen).max(0.0)
+            } else {
+                resist
+            }
+        };
         let deflect_effect_pct = (cfg.constants.game().deflect_effect
             + db.sum(ModType::Base, cfg, &[ModName::from("DeflectEffect")]))
         .clamp(0.0, 100.0);
@@ -993,9 +1005,9 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
                 energy_shield: out.energy_shield,
                 resist_pct: [
                     0.0,
-                    resistances.fire,
-                    resistances.cold,
-                    resistances.lightning,
+                    resist_after_pen(resistances.fire, enemy_pen("EnemyFirePen")),
+                    resist_after_pen(resistances.cold, enemy_pen("EnemyColdPen")),
+                    resist_after_pen(resistances.lightning, enemy_pen("EnemyLightningPen")),
                     resistances.chaos,
                 ],
                 deflect_chance_pct: out.deflect_chance,
