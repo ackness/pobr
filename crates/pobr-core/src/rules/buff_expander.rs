@@ -184,10 +184,7 @@ fn expand_one(
         for tag in &template.tags {
             match tag {
                 EffectTag::Condition { var, neg } => {
-                    modifier = modifier.with_tag(ModTag::Condition {
-                        var: var.clone(),
-                        negated: *neg,
-                    });
+                    modifier = modifier.with_tag(ModTag::condition(var.clone(), *neg));
                 }
                 EffectTag::Multiplier {
                     var,
@@ -195,11 +192,7 @@ fn expand_one(
                     limit,
                     actor: None,
                 } => {
-                    modifier = modifier.with_tag(ModTag::Multiplier {
-                        var: var.clone(),
-                        div: *div,
-                        limit: *limit,
-                    });
+                    modifier = modifier.with_tag(ModTag::multiplier(var.clone(), *div, *limit));
                 }
                 EffectTag::Multiplier { actor: Some(_), .. } | EffectTag::ActorCondition { .. } => {
                     out.diagnostics.push(format!(

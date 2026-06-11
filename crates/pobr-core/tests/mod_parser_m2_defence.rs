@@ -530,7 +530,7 @@ fn m2_followup_ascendancy_defence_words() {
     assert_eq!(m.mod_type, ModType::Inc);
     assert!(m.tags.iter().any(|t| matches!(
         t,
-        ModTag::Condition { var, negated: false } if var == "NormalBodyArmourEquipped"
+        ModTag::Condition { var, negated: false, .. } if var == "NormalBodyArmourEquipped"
     )));
     // taken-as 内层（Molten Symbol）：前缀条件叠加在既有 taken-as 产物上。
     let o = parse_mod(
@@ -541,7 +541,7 @@ fn m2_followup_ascendancy_defence_words() {
     assert_eq!(m.name.as_str(), "PhysicalDamageFromHitsTakenAsFire");
     assert!(m.tags.iter().any(|t| matches!(
         t,
-        ModTag::Condition { var, negated: false } if var == "NormalBodyArmourEquipped"
+        ModTag::Condition { var, negated: false, .. } if var == "NormalBodyArmourEquipped"
     )));
 }
 

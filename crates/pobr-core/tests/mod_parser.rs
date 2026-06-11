@@ -15,10 +15,11 @@ fn parses_increased_damage_with_condition_tag() {
     assert_eq!(modifier.name, ModName::from("FireDamage"));
     assert_eq!(modifier.mod_type, ModType::Inc);
     assert_eq!(modifier.value, ModValue::Number(20.0));
-    assert!(modifier.tags.contains(&ModTag::Condition {
-        var: "FullLife".into(),
-        negated: false,
-    }));
+    assert!(
+        modifier
+            .tags
+            .contains(&ModTag::condition("FullLife", false))
+    );
 }
 
 #[test]
@@ -92,11 +93,11 @@ fn parses_multiplier_tag_with_limitless_charge_scaling() {
 
     assert_eq!(modifier.name, ModName::from("Damage"));
     assert_eq!(modifier.mod_type, ModType::Inc);
-    assert!(modifier.tags.contains(&ModTag::Multiplier {
-        var: "PowerCharge".into(),
-        div: 1.0,
-        limit: None,
-    }));
+    assert!(
+        modifier
+            .tags
+            .contains(&ModTag::multiplier("PowerCharge", 1.0, None))
+    );
 }
 
 #[test]
@@ -108,11 +109,11 @@ fn parses_per_resource_scaling_with_divisor() {
     let modifier = &outcome.mods[0];
     assert_eq!(modifier.name, ModName::from("Armour"));
     assert_eq!(modifier.mod_type, ModType::Base);
-    assert!(modifier.tags.contains(&ModTag::Multiplier {
-        var: "Spirit".into(),
-        div: 1.0,
-        limit: None,
-    }));
+    assert!(
+        modifier
+            .tags
+            .contains(&ModTag::multiplier("Spirit", 1.0, None))
+    );
     // effective_number 按 cfg.multipliers[Spirit] / div 展开：336 Spirit → 2 * 336 = 672。
     let cfg = CalcConfig::new().with_multiplier("Spirit", 336.0);
     assert_eq!(modifier.effective_number(&cfg), Some(672.0));
@@ -126,11 +127,11 @@ fn parses_per_n_attribute_scaling() {
     let outcome = parse_mod("+5 to maximum Mana per 10 Intelligence").unwrap();
     let modifier = &outcome.mods[0];
     assert_eq!(modifier.name, ModName::from("MaximumMana"));
-    assert!(modifier.tags.contains(&ModTag::Multiplier {
-        var: "Intelligence".into(),
-        div: 10.0,
-        limit: None,
-    }));
+    assert!(
+        modifier
+            .tags
+            .contains(&ModTag::multiplier("Intelligence", 10.0, None))
+    );
     let cfg = CalcConfig::new().with_multiplier("Intelligence", 100.0);
     assert_eq!(modifier.effective_number(&cfg), Some(50.0));
 }
@@ -141,11 +142,11 @@ fn parses_per_resource_without_divisor() {
     let outcome = parse_mod("+1 to Accuracy per Strength").unwrap();
     let modifier = &outcome.mods[0];
     assert_eq!(modifier.name, ModName::from("Accuracy"));
-    assert!(modifier.tags.contains(&ModTag::Multiplier {
-        var: "Strength".into(),
-        div: 1.0,
-        limit: None,
-    }));
+    assert!(
+        modifier
+            .tags
+            .contains(&ModTag::multiplier("Strength", 1.0, None))
+    );
 }
 
 #[test]
@@ -510,11 +511,11 @@ fn per_stat_multiplier_floors_non_integral_count_like_pob2() {
 
     let outcome = parse_mod("+5 to maximum Mana per 10 Intelligence").unwrap();
     let modifier = &outcome.mods[0];
-    assert!(modifier.tags.contains(&ModTag::Multiplier {
-        var: "Intelligence".into(),
-        div: 10.0,
-        limit: None,
-    }));
+    assert!(
+        modifier
+            .tags
+            .contains(&ModTag::multiplier("Intelligence", 10.0, None))
+    );
     // 95 Int → floor(9.5 + 0.0001) = 9 → 5 * 9 = 45。
     let cfg_non_integral = CalcConfig::new().with_multiplier("Intelligence", 95.0);
     assert_eq!(modifier.effective_number(&cfg_non_integral), Some(45.0));
@@ -536,7 +537,7 @@ fn bonded_prefix_gates_mod_behind_condition() {
     assert!(
         m.tags.iter().any(|t| matches!(
             t,
-            ModTag::Condition { var, negated: false } if var == "CanUseBondedModifiers"
+            ModTag::Condition { var, negated: false, .. } if var == "CanUseBondedModifiers"
         )),
         "Bonded 词条须挂 CanUseBondedModifiers 条件"
     );

@@ -165,4 +165,27 @@ impl CalcConfig {
     pub fn multiplier(&self, name: &str) -> f64 {
         self.multipliers.get(name).copied().unwrap_or(0.0)
     }
+
+    /// 写入跨 actor multiplier 快照（见 [`CalcConfig::actor_multipliers`]；键形如
+    /// `"player.PowerCharge"`）。供编排层在只读快照阶段回填 / 测试构造。
+    pub fn with_actor_multiplier(
+        mut self,
+        actor: crate::ActorRef,
+        var: impl AsRef<str>,
+        value: f64,
+    ) -> Self {
+        self.actor_multipliers
+            .insert(format!("{}.{}", actor.key(), var.as_ref()), value);
+        self
+    }
+
+    /// 按 actor 维度读跨 actor multiplier 快照（[`ModTag`](crate::ModTag) 的
+    /// `actor`/`limit_actor` 求值通道）。缺键＝0.0——保守等价 PoB2 ModStore.lua
+    /// getActor 缺位时 mod 不生效的口径。
+    pub fn actor_multiplier(&self, actor: crate::ActorRef, var: &str) -> f64 {
+        self.actor_multipliers
+            .get(&format!("{}.{}", actor.key(), var))
+            .copied()
+            .unwrap_or(0.0)
+    }
 }

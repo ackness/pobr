@@ -462,10 +462,7 @@ fn apply_flags_and_tags(
     for tag in tags {
         match tag {
             EffectTag::Condition { var: cond, neg } => {
-                modifier = modifier.with_tag(ModTag::Condition {
-                    var: cond.clone(),
-                    negated: *neg,
-                });
+                modifier = modifier.with_tag(ModTag::condition(cond.clone(), *neg));
             }
             EffectTag::Multiplier {
                 var: mult,
@@ -480,11 +477,7 @@ fn apply_flags_and_tags(
                     ));
                     return None;
                 }
-                modifier = modifier.with_tag(ModTag::Multiplier {
-                    var: mult.clone(),
-                    div: *div,
-                    limit: *limit,
-                });
+                modifier = modifier.with_tag(ModTag::multiplier(mult.clone(), *div, *limit));
             }
             EffectTag::ActorCondition { .. } => {
                 outcome.diagnostics.push(format!(
@@ -795,13 +788,7 @@ mod tests {
             modifier.origin.as_ref().unwrap().source_id.kind,
             SourceKind::EnemyConfig
         );
-        assert_eq!(
-            modifier.tags,
-            vec![ModTag::Condition {
-                var: "Effective".to_string(),
-                negated: false
-            }]
-        );
+        assert_eq!(modifier.tags, vec![ModTag::condition("Effective", false)]);
         // 带 tag 的条件性 FLAG 不回填全局 conditions 表。
         assert!(outcome.conditions.is_empty());
     }

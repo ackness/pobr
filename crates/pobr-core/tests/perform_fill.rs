@@ -1186,13 +1186,8 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
         let def = minion_def_zombie();
         // 通道 1：召唤物「每个召唤物 +X% 增伤」（Multiplier:SummonedMinion 引用数量）。
         let entry = MinionModifierEntry {
-            inner: Modifier::number("Damage", ModType::Inc, 10.0).with_tag(
-                pobr_core::ModTag::Multiplier {
-                    var: "SummonedMinion".into(),
-                    div: 1.0,
-                    limit: None,
-                },
-            ),
+            inner: Modifier::number("Damage", ModType::Inc, 10.0)
+                .with_tag(pobr_core::ModTag::multiplier("SummonedMinion", 1.0, None)),
             minion_type: None,
         };
         env.add_minion_from_def(
