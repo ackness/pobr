@@ -347,6 +347,11 @@ pub fn calculate_with_data(
     // M0-W3 注入管道：把 GameData 加载的运行时常量包注入 calc（必须在 with_config
     // 之后——with_config 整体覆盖 cfg）。数据与 Default fallback 逐值相等，零行为变化。
     session.set_constants(data.constants.clone());
+    // M3-T2 B3：内建 buff 定义 + handler 注册表注入（env_finalize 阶段 6
+    // doActorMisc 等价展开的数据/裁决来源）。整段吃 `cfg.mode_combat` 门控——
+    // 默认 false（B4 自动置位是独立行为 commit），故本注入零行为变化。
+    session.set_buff_definitions(data.buff_definitions.clone());
+    session.set_buff_handler_registry(std::sync::Arc::new(crate::handlers::build_registry()));
 
     if bypasses_cooldown || cooldown_attack_unmodeled {
         let label = if bypasses_cooldown {

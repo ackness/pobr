@@ -12,6 +12,21 @@ fn load() -> BuffDefinitionsDef {
     GameData::new(repo_data_root().join(VERSION))
         .buff_definitions()
         .expect("buff_definitions 可加载")
+        .expect("仓库数据包含 overlay/buff_definitions.json")
+}
+
+/// 文件缺失（旧数据包）= `Ok(None)`，不报错（向后兼容口径）。
+#[test]
+fn missing_overlay_file_is_none() {
+    let dir = std::env::temp_dir().join(format!(
+        "pobr-gamedata-buff-defs-missing-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).expect("建临时版本目录");
+    let loaded = GameData::new(&dir)
+        .buff_definitions()
+        .expect("缺文件不应报错");
+    assert!(loaded.is_none());
 }
 
 fn find<'a>(doc: &'a BuffDefinitionsDef, id: &str) -> &'a BuffDef {
