@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- M3-T1 A5 fixture：customMods 多行（含颜色码与一行不可解析文本） -->
+<PathOfBuilding>
+  <Build level="1" className="Monk" ascendClassName="None"/>
+  <Config>
+    <Input name="customMods" string="^x7070FF20% increased Fire Damage&#10;utterly unparseable nonsense line&#10;+10 to Spirit"/>
+  </Config>
+</PathOfBuilding>
