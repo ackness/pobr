@@ -2742,6 +2742,7 @@ mod tests {
             mod_domain: 1,
             weapon: None,
             armour: None,
+            spirit: None,
         }
     }
 

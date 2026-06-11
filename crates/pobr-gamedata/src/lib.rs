@@ -94,9 +94,17 @@ impl GameData {
         self.load_json_at(self.domain_path(rel))
     }
 
-    /// 加载物品基底定义（英文 canonical 名称）。
+    /// 加载物品基底定义（英文 canonical 名称），并把
+    /// `overlay/base_item_overrides.json` 的基底覆盖值（盾牌 `block_chance` /
+    /// 权杖 `spirit`——对应 `.dat` 表 bundle 被 CDN 剪除、由 vendor `Data/Bases`
+    /// 抽取兜底）merge 到纯 base 之上（overlay 缺失时 = 纯 base，见
+    /// [`domains::base_item_overrides`]）。
     pub fn base_items(&self) -> Result<Vec<BaseItemDef>, LoadError> {
-        self.load_domain("base_items.json")
+        let mut bases: Vec<BaseItemDef> = self.load_domain("base_items.json")?;
+        if let Some(overrides) = self.base_item_overrides()? {
+            domains::base_item_overrides::apply_base_item_overrides(&mut bases, &overrides);
+        }
+        Ok(bases)
     }
 
     /// 加载某语言的物品基底名称边车（`id -> 本地化名称`）。

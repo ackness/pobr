@@ -16,6 +16,6 @@
     { "name": "ActiveSkillType", "columns": ["Id"] },
     { "name": "CostTypes", "columns": ["Id","Stat","FormatText","Divisor","PerMinute"] },
     { "name": "WeaponTypes", "columns": ["BaseItemType","CritChance","Speed","DamageMin","DamageMax","RangeMax"] },
-    { "name": "ArmourTypes", "columns": ["BaseItemType","Armour","Evasion","EnergyShield","Ward"] }
+    { "name": "ArmourTypes", "columns": ["BaseItemType","Armour","Evasion","EnergyShield","Ward","IncreasedMovementSpeed"] }
   ]
 }

@@ -1,0 +1,836 @@
+{
+  "_meta": {
+    "schema": "base_item_overrides/v1",
+    "generator": "sync-pob-catalog extract-bases",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)",
+    "extracted_files": [
+      "Data/Bases/sceptre.lua",
+      "Data/Bases/shield.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-bases --vendor-root vendor/PathOfBuilding-PoE2/src --files sceptre,shield --out data/4.5.0.3.4/overlay/base_item_overrides.json"
+  },
+  "overrides": [
+    {
+      "name": "Aegis Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Aged Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Ancestor Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Ancient Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Aromatic Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Array Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Aureate Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Avian Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Baroque Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Barricade Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Blacksteel Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Blacksteel Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Bladeguard Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Blazon Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Braced Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Bulwark Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Carved Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Chiseled Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Clasped Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Coiled Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Crescent Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Crucible Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Cultist Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Defiant Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Deified Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Dekharan Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Descry Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Desert Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Devotional Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Devouring Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Edged Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Effigial Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Emblem Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Empyreal Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Engraved Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Feathered Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Fortress Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Fur-lined Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Glowering Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Golden Flame",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Golden Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Goldworked Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Grand Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Gutspike Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Hallowed Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Hardwood Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Heraldric Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Intricate Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Iron Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Ironwood Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Jingling Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Jingling Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Laminate Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Leather Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Lupine Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Mammoth Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Mercenary Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Metalworked Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Mosaic Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Noble Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Oak Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Ochre Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Omen Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Omen Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Ornate Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Painted Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Painted Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Painted Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Pearl Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Pelage Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Phalanx Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Pious Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Plated Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Polished Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Quartered Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Rampart Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Rattling Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Ridged Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Ringed Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Royal Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Aegis Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Ancestor Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Ancient Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Array Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Aureate Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Avian Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Baroque Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Barricade Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Blacksteel Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Blacksteel Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Bladeguard Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Blazon Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Braced Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Bulwark Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Carved Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Chiseled Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Crescent Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Crucible Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Defiant Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Deified Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Dekharan Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Desert Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Edged Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Effigial Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Emblem Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Empyreal Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Feathered Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Fortress Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Glowering Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Golden Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Goldworked Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Grand Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Gutspike Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Hardwood Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Heraldric Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Intricate Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Iron Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Jingling Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Jingling Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Laminate Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Leather Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Mammoth Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Mosaic Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Noble Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Omen Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Ornate Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Painted Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Pearl Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Pelage Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Phalanx Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Plated Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Polished Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Quartered Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Rampart Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Ridged Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Ringed Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Royal Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Sectarian Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Seer Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Sekheman Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Sigil Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Soaring Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Spiked Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Spikeward Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Splintered Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Stoic Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Stone Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Stone Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Stratified Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Studded Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Tawhoan Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Vaal Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Vaal Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Wayward Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runeforged Wooden Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runemastered Array Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runemastered Barricade Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Blacksteel Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Blazon Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runemastered Braced Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Crescent Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runemastered Crucible Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Effigial Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Emblem Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runemastered Hardwood Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runemastered Heraldric Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Intricate Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runemastered Iron Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runemastered Jingling Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runemastered Leather Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runemastered Omen Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runemastered Ornate Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runemastered Painted Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Plated Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runemastered Rampart Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Ridged Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runemastered Sigil Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Runemastered Spiked Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Runemastered Splintered Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Vaal Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Wooden Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Sectarian Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Seer Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Sekheman Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Shrine Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Shrine Sceptre (Purity of Cold)",
+      "spirit": 100
+    },
+    {
+      "name": "Shrine Sceptre (Purity of Fire)",
+      "spirit": 100
+    },
+    {
+      "name": "Shrine Sceptre (Purity of Lighting)",
+      "spirit": 100
+    },
+    {
+      "name": "Sigil Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Soaring Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Spiked Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Spikeward Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Splintered Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Stoic Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Stoic Sceptre",
+      "spirit": 100
+    },
+    {
+      "name": "Stone Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Stone Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Stratified Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Studded Targe",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Tawhoan Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Vaal Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Vaal Tower Shield",
+      "block_chance": 26.0
+    },
+    {
+      "name": "Wayward Crest Shield",
+      "block_chance": 25.0
+    },
+    {
+      "name": "Wooden Buckler",
+      "block_chance": 20.0
+    },
+    {
+      "name": "Wrath Sceptre",
+      "spirit": 100
+    }
+  ]
+}

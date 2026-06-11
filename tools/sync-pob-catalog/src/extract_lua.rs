@@ -197,8 +197,26 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<SkillOverride>> {
     Ok(entries)
 }
 
-/// 读取 vendor 版本文件并构建 `_meta`
+/// 读取 vendor 版本文件并构建 `_meta`（skill_overrides 专用参数的薄封装）
 fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
+    build_overlay_meta(
+        args,
+        SKILL_OVERRIDES_SCHEMA,
+        "sync-pob-catalog extract-lua",
+        "Data/Skills",
+        "extract-lua",
+    )
+}
+
+/// 读取 vendor 版本文件并构建任意 overlay 文档的 `_meta`（extract-lua /
+/// extract-bases 共用：schema / generator / vendor 文件目录前缀 / 子命令名参数化）。
+pub fn build_overlay_meta(
+    args: &ExtractLuaArgs,
+    schema: &str,
+    generator: &str,
+    file_dir_prefix: &str,
+    subcommand: &str,
+) -> io::Result<OverlayMeta> {
     let version_path = match &args.version_file {
         Some(path) => path.clone(),
         // 约定布局 vendor/PathOfBuilding-PoE2/src → 版本文件在 vendor/.pob2-version.txt
@@ -230,13 +248,13 @@ fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     let extracted_files: Vec<String> = args
         .files
         .iter()
-        .map(|name| format!("Data/Skills/{name}.lua"))
+        .map(|name| format!("{file_dir_prefix}/{name}.lua"))
         .collect();
 
     // regen_command 按约定写 canonical 相对路径（从仓库根执行），与实际传入的
     // 绝对路径解耦，保证不同机器上重跑产物 byte 一致。
     let mut regen = format!(
-        "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --files {}",
+        "cargo run -p sync-pob-catalog -- {subcommand} --vendor-root vendor/PathOfBuilding-PoE2/src --files {}",
         args.files.join(",")
     );
     if let Some(out) = &args.out_for_meta {
@@ -244,8 +262,8 @@ fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     }
 
     Ok(OverlayMeta {
-        schema: SKILL_OVERRIDES_SCHEMA.to_string(),
-        generator: "sync-pob-catalog extract-lua".to_string(),
+        schema: schema.to_string(),
+        generator: generator.to_string(),
         vendor: "PathOfBuilding-PoE2".to_string(),
         vendor_commit: commit,
         vendor_commit_subject: subject,

@@ -4,6 +4,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use sync_pob_catalog::extract_bases::{DEFAULT_BASE_FILES, run_extract_bases};
 use sync_pob_catalog::extract_lua::{
     DEFAULT_SKILL_FILES, ExtractLuaArgs, resolve_luajit, run_extract_lua,
 };
@@ -11,7 +12,7 @@ use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog <extract-lua|extract-bases> --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -27,7 +28,7 @@ fn run() -> io::Result<()> {
     let mut raw_args = env::args().skip(1);
     let command = raw_args.next();
     match command.as_deref() {
-        Some("extract-lua") => run_extract_lua_command(raw_args),
+        Some(cmd @ ("extract-lua" | "extract-bases")) => run_extract_command(cmd, raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
         }
@@ -41,10 +42,16 @@ fn run() -> io::Result<()> {
     }
 }
 
-// ---- extract-lua：vendor Lua → overlay JSON（确定性抽取通道）----
+// ---- extract-lua / extract-bases：vendor Lua → overlay JSON（确定性抽取通道）----
 
-fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()> {
-    let parsed = ExtractCliArgs::parse(args)?;
+fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io::Result<()> {
+    // 缺省抽取文件集按子命令选择（技能数据 vs 基底数据）。
+    let default_files: &[&str] = if command == "extract-bases" {
+        DEFAULT_BASE_FILES
+    } else {
+        DEFAULT_SKILL_FILES
+    };
+    let parsed = ExtractCliArgs::parse(args, default_files)?;
     let extract_args = ExtractLuaArgs {
         vendor_root: parsed.vendor_root,
         luajit: resolve_luajit(parsed.luajit.as_deref()),
@@ -55,14 +62,18 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
             .as_ref()
             .map(|p| p.to_string_lossy().into_owned()),
     };
-    let json = run_extract_lua(&extract_args)?;
+    let json = if command == "extract-bases" {
+        run_extract_bases(&extract_args)?
+    } else {
+        run_extract_lua(&extract_args)?
+    };
     match parsed.out {
         Some(out) => {
             if let Some(parent) = out.parent() {
                 fs::create_dir_all(parent)?;
             }
             fs::write(&out, json)?;
-            eprintln!("extract-lua: wrote {}", out.display());
+            eprintln!("{command}: wrote {}", out.display());
             Ok(())
         }
         None => {
@@ -82,7 +93,7 @@ struct ExtractCliArgs {
 }
 
 impl ExtractCliArgs {
-    fn parse(mut args: impl Iterator<Item = String>) -> io::Result<Self> {
+    fn parse(mut args: impl Iterator<Item = String>, default_files: &[&str]) -> io::Result<Self> {
         let mut vendor_root = None;
         let mut out = None;
         let mut files = None;
@@ -120,8 +131,7 @@ impl ExtractCliArgs {
         Ok(Self {
             vendor_root,
             out,
-            files: files
-                .unwrap_or_else(|| DEFAULT_SKILL_FILES.iter().map(|s| s.to_string()).collect()),
+            files: files.unwrap_or_else(|| default_files.iter().map(|s| s.to_string()).collect()),
             luajit,
             version_file,
         })

@@ -175,6 +175,10 @@ struct RawArmourType {
     energy_shield: Option<i64>,
     #[serde(rename = "Ward")]
     ward: Option<i64>,
+    /// 移动速度修正原始值（万分比，负值为减速；如 `-300` = 3% 移速惩罚）。
+    /// 旧导出（无此列的 tables 快照）回退 `None`，产物字段保持缺省（schema 兼容）。
+    #[serde(rename = "IncreasedMovementSpeed", default)]
+    increased_movement_speed: Option<i64>,
 }
 
 fn nn(v: Option<i64>) -> u32 {
@@ -216,6 +220,17 @@ fn weapon_armour_lookups(en: &Path) -> Result<BaseStatsLookups, String> {
                     evasion: nn(a.evasion),
                     energy_shield: nn(a.energy_shield),
                     ward: nn(a.ward),
+                    // 盾牌格挡（`ShieldTypes.Block`）：对应 bundle 已被 CDN 对钉定
+                    // patch 剪除，`.dat` 路线不可得 → 恒 None，由 overlay
+                    // `base_item_overrides.json` 在 gamedata 加载侧 merge 填充
+                    // （蓝图 m2-defence §6 开放问题 1 的双路线兜底）。
+                    block_chance: None,
+                    // 移速惩罚：PoB2 口径 `-raw/10000`（Export/Scripts/bases.lua:298），
+                    // 如 raw=-300 → 0.03（3% 减速）；raw=0 → None（diff 友好）。
+                    movement_penalty: a
+                        .increased_movement_speed
+                        .filter(|&v| v != 0)
+                        .map(|v| -(v as f64) / 10000.0),
                 },
             );
         }
@@ -305,6 +320,9 @@ fn run(args: Args) -> Result<String, String> {
             mod_domain: raw.mod_domain.unwrap_or(0),
             weapon: weapon_map.get(&index).cloned(),
             armour: armour_map.get(&index).cloned(),
+            // 基底 Spirit（`ItemSpirit.SpiritGranted`）：同 block_chance，`.dat`
+            // bundle 不可得 → 恒 None，由 overlay 在 gamedata 加载侧 merge 填充。
+            spirit: None,
         });
     }
 

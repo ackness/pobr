@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use pobr_data::prelude::*;
 use regex::Regex;
 
+pub mod extract_bases;
 pub mod extract_lua;
 
 pub fn collect_catalog(pob_root: &Path) -> io::Result<PobCatalog> {

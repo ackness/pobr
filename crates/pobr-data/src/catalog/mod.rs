@@ -39,6 +39,10 @@ pub mod local_mods;
 // ---- M0-W4a per-skill 覆盖值 overlay schema（vendor Lua 抽取）----
 pub mod skill_overrides;
 
+// ---- M2-D1 基底物品覆盖值 overlay schema（vendor Data/Bases 抽取：block/spirit）----
+pub mod base_item_overrides;
+
+pub use base_item_overrides::{BaseItemOverrideEntry, BaseItemOverridesDef};
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};

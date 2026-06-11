@@ -167,6 +167,17 @@ fn m2_ehp_calc_constants_pinned_to_pob2_source() {
     assert_eq!(gc.game.normal_enemy_dps_mult, 1.0 / 4.40);
 }
 
+/// M2-D：Block 面板族常量锁定——基础格挡上限 50%
+/// （vendor Data/Misc.lua:147 `object_inherent_base_maximum_block_%_from_ot`，
+/// CalcSetup.lua:28 注入 `BaseBlockChanceMax` BASE）。
+#[test]
+fn m2_block_constants_pinned_to_pob2_source() {
+    let gc = load();
+    assert_eq!(gc.game.base_block_chance_max, 50.0);
+    // Data.lua:185 BlockChanceCap = 90（既有字段，一并核对消费侧 clamp 边界）。
+    assert_eq!(gc.game.block_chance_cap, 90.0);
+}
+
 /// vendor `data.misc` 派生口径核对：异常基线 fraction = PercentPerMinute/60/100，
 /// JSON 与 vendor 派生值一致（Misc.lua:86-88 → 900/1200/1200）。
 #[test]

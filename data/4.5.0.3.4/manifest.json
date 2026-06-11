@@ -27,7 +27,8 @@
     "overlay": [
       "high_precision_mods",
       "local_mods",
-      "skill_overrides"
+      "skill_overrides",
+      "base_item_overrides"
     ],
     "generated": []
   }

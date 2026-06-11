@@ -20,3 +20,6 @@ pub mod local_mods;
 
 // ---- M0-W4a per-skill 覆盖值（overlay 层，loader + 专用 merge）----
 pub mod skill_overrides;
+
+// ---- M2-D1 基底物品覆盖值（overlay 层，loader + 专用 merge：block/spirit）----
+pub mod base_item_overrides;
