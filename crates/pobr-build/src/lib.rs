@@ -20,6 +20,7 @@
 //!
 //! 设计约束：确定性、不可变、零网络 I/O（分享链接只识别 + 提取 key，抓取由上层做）。
 
+pub mod buff_stat_map;
 pub mod build;
 pub mod build_code;
 pub mod build_config;

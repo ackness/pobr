@@ -43,10 +43,11 @@ use pobr_data::monster::EnemyTier;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect_with_radii};
 
+use crate::buff_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
-use crate::skill_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat, map_skill_stats};
+use crate::skill_stat_map::map_skill_stats;
 
 /// 元素曝光默认幅度（PoB2 ConfigOptions.lua：每个 `conditionEnemy*Exposure` = -20% 抗）。
 const EXPOSURE_MAGNITUDE: f64 = 20.0;
