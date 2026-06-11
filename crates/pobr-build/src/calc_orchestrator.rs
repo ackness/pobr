@@ -647,9 +647,16 @@ fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
 /// 4. `gem_skills` 为空（仅由 builder 的 `with_active_skill` 构造、未填 gem_skills）时回退到
 ///    `active_skill_id`——保持公共 builder/测试 API 的向后兼容。
 ///
+/// 5. （T5.6 meta/复合宝石展开）组内宝石**自身**皆非伤害技能时，按
+///    `BuildData::gem_effects` 的附加授予效果外键（`additionalGrantedEffects`，
+///    PoB2 `CalcSetup.lua:1714-1718` 将其一并加入 socketGroupSkillList）正向解析——
+///    取首个附加伤害效果（如 ShockwaveTotem → ShockwaveTotemQuakePlayer）。
+///    保守口径：仅在常规候选全部落空时展开（PoB2 把附加效果计入 mainActiveSkill
+///    序号空间，完整对齐留 defer——18 build 实测无此序号用例）。
+///
 /// 返回 `None` 表示该组无任何伤害技能候选（纯光环/meta 组），交由上层回退扫描其他组。
 fn pick_group_main_skill<'b>(
-    build_data: &BuildData,
+    build_data: &'b BuildData,
     group: &'b SocketGroup,
 ) -> Option<(&'b str, u32, Option<u32>)> {
     // 非辅助宝石列表（meta 壳算入），与 PoB socketGroupSkillList 一致。`gem_skills` 存的是
@@ -689,6 +696,22 @@ fn pick_group_main_skill<'b>(
         {
             return Some((dmg.skill_id.as_str(), dmg.gem_level, dmg.stat_set_index));
         }
+        // T5.6：组内宝石自身皆非伤害技能 → 展开附加授予效果（meta/复合宝石外键，
+        // overlay/gem_effects.json）。等级/形态沿用宿主宝石（PoB2 附加效果与宿主
+        // 同 gemInstance）。
+        if let Some(expanded) = actives.iter().find_map(|g| {
+            build_data
+                .gem_effects
+                .get(&g.skill_id)
+                .and_then(|link| {
+                    link.additional_granted_effect_ids
+                        .iter()
+                        .find(|eid| is_damage_skill(build_data, eid))
+                })
+                .map(|eid| (eid.as_str(), g.gem_level, g.stat_set_index))
+        }) {
+            return Some(expanded);
+        }
         // gem_skills 非空但无伤害技能候选 → 该组无主技能（纯 meta/光环组）。
         return None;
     }
@@ -712,7 +735,7 @@ fn pick_group_main_skill<'b>(
 /// 技能 id；支持多主动技能组（如 Cast on Crit + Comet）按 `mainActiveSkill` 精确选中主技能。
 fn resolve_main_skill<'b>(
     build: &'b Build,
-    data: &BuildData,
+    data: &'b BuildData,
 ) -> Option<(ResolvedSkillLevel, &'b SocketGroup, &'b str)> {
     // 优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+ 组内 mainActiveSkill。
     if let Some(n) = build.main_socket_group
@@ -3214,6 +3237,70 @@ mod tests {
             "skill_trigger_rate 应非占位 0，实得 {}",
             out.skill_trigger_rate
         );
+    }
+
+    /// T5.6 meta/复合宝石展开：组内宝石自身皆非伤害技能时，经 gem_effects 外键
+    /// 取附加授予效果中的伤害技能为主技能（PoB2 CalcSetup.lua:1714-1718 把
+    /// additionalGrantedEffects 一并加入 socketGroupSkillList）。
+    #[test]
+    fn meta_gem_expands_additional_granted_effect_as_main_skill() {
+        // 本测试模块无共享 effect 构造器（support 裁决测试模块私有），就地构造。
+        let mk_effect = |id: &str, skill_types: &[&str]| pobr_data::catalog::GrantedEffectDef {
+            id: id.into(),
+            is_support: false,
+            active_skill: Some(id.to_string()),
+            cast_time: Some(1000),
+            require_skill_types: vec![],
+            add_skill_types: vec![],
+            exclude_skill_types: vec![],
+            cannot_be_supported: false,
+            support_gems_only: false,
+            stat_set: None,
+            additional_stat_set_ids: vec![],
+            cost_types: vec![],
+            skill_types: skill_types.iter().map(|s| s.to_string()).collect(),
+        };
+        let mut granted_effects = HashMap::new();
+        // 宿主效果：召唤类（非攻非法），自身不是伤害技能候选。
+        granted_effects.insert(
+            "SummonShellPlayer".to_string(),
+            mk_effect("SummonShellPlayer", &["Totem"]),
+        );
+        // 附加效果：真正的伤害法术。
+        granted_effects.insert(
+            "ShellQuakePlayer".to_string(),
+            mk_effect("ShellQuakePlayer", &["Spell", "Damage"]),
+        );
+        let mut gem_effects = HashMap::new();
+        gem_effects.insert(
+            "SummonShellPlayer".to_string(),
+            pobr_data::catalog::GemEffectDef {
+                gem_id: "Metadata/Items/Gems/SkillGemShell".into(),
+                variant_id: "Shell".into(),
+                granted_effect_id: "SummonShellPlayer".into(),
+                additional_granted_effect_ids: vec!["ShellQuakePlayer".into()],
+                additional_stat_set_ids: vec![],
+            },
+        );
+        let data = BuildData {
+            granted_effects,
+            gem_effects,
+            ..BuildData::empty()
+        };
+        let group = SocketGroup::new().with_gem_skill("SummonShellPlayer", 12);
+        let picked = pick_group_main_skill(&data, &group);
+        assert_eq!(
+            picked,
+            Some(("ShellQuakePlayer", 12, None)),
+            "附加授予效果应被正向展开为主技能（等级沿用宿主宝石）"
+        );
+
+        // 外键缺失（旧数据包无 overlay）→ 维持 None（纯召唤组无主技能，向后兼容）。
+        let data_no_link = BuildData {
+            granted_effects: data.granted_effects.clone(),
+            ..BuildData::empty()
+        };
+        assert_eq!(pick_group_main_skill(&data_no_link, &group), None);
     }
 
     /// 非触发主技能（普通法术）→ orchestrator 不注入触发词条 → 触发面板保持占位 0（向后兼容）。
