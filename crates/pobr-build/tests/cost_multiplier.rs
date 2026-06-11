@@ -21,18 +21,27 @@ fn repo_data() -> BuildData {
 }
 
 /// oracle 对拍（蓝图 T4.4 验收）：druid-oracle-comet——Comet + 兼容 cost 倍率
-/// support Energy Retention(+10%) × Magnified Area II(+30%)。
+/// support（当前兼容集 = Magnified Area II(+30%)）。
 ///
-/// **倍率链中间值与 PoB2 逐位一致**：PoB2 headless oracle（`tools/pob2-oracle/run.sh`，
-/// 与 meta.json `player_stats.ManaCost = 577` 一致）给出
-/// `ManaCostRaw = 577.72 = 404 × 1.43`，其中 404 = Comet **L29**（XML L19 + PoB2
-/// 侧 +10 gem level）的 base cost，1.43 = `floor4(More("SupportManaMultiplier"))`
-/// ——同组的 Boundless Energy II(+15%) 被 PoB2 裁决拒收、倍率不计入。
-/// PoBR 端 T3.6 裁决得到**同一兼容集**、同一倍率 1.43；当前 gem level bonus 解析
-/// 为 L22（XML L19 + 3，+10 缺口是 T4 之外的既有 gem-level 链路差异，oracle
-/// `skillInfo.activeGemLevel = 29` 备查），base cost 211 →
-/// `floor(211 × 1.43) = 301`。倍率链对拍以「同 base 下与 PoB2 公式逐位一致」为
-/// 断言口径；gem level 解析对齐后本测试的预期值随 base 变化（届时应趋向 577）。
+/// **PoB2 golden**：headless oracle（`tools/pob2-oracle/run.sh`，与 meta.json
+/// `player_stats.ManaCost = 577` 一致）给出 `ManaCostRaw = 577.72 = 404 × 1.43`，
+/// 404 = Comet **L29** 的 base cost，1.43 = `floor4(More("SupportManaMultiplier"))`。
+///
+/// **PoBR 现行口径与已知残差**（2026-06 补刀波核对）：
+/// - 等级解析：L28 = XML L19 + 物品 +9（`+3/+1 spell` + `+5 cold spell`——多词
+///   类别按 PoB2 `CalcSetup.lua:414-419` keywordList 全 token 匹配）。与 PoB2 的
+///   L29 余 +1 差（来源在物品文本通道之外，oracle `skillInfo.activeGemLevel = 29`
+///   备查）。
+/// - 倍率链：PoBR 兼容集 = MagArea II → `floor4(1.3) = 1.3`。PoB2 的 1.43 还含
+///   Energy Retention(+10%)——但 ER 与 Boundless Energy II **都** require
+///   `GeneratesEnergy`（vendor `sup_int.lua:4200/1041`，Comet 类型表无此 token），
+///   PoB2 却只计 ER 不计 Boundless（1.43 ≠ 1.1×1.15×1.3）；该差异属 meta gem
+///   （Spellslinger）能量链路（M1 验收报告已登记的 meta gem 缺口），非
+///   doesTypeExpressionMatch 语义差。PoBR 按 require 表达式拒收两者，宁可跳过
+///   不可错算。
+/// - 历史注记：本测试旧锚 301 曾被解读为 `floor(211 × 1.43)`（L22 + ER 计入），
+///   实为 `floor(232 × 1.3)`（L23 + ER 不计入）的数值巧合——两式同值 301。
+///   等级修复后两种解读分道（527 vs 479），按实际链路锚定 479。
 #[test]
 fn oracle_druid_comet_mana_cost_with_support_multipliers() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -46,27 +55,29 @@ fn oracle_druid_comet_mana_cost_with_support_multipliers() {
     };
     let out = calculate_with_data(&build, &data, &opts).expect("calc");
 
-    // oracle 倍率中间值：floor4(1.1 × 1.3) = 1.43（兼容名单口径，PoB2 同值）。
-    let oracle_mult = 1.43;
-    // PoBR 解析行的 base cost（Comet L22 = 211）：用与 PoB2 同一公式推算预期。
-    // 若 gem level 解析链路改变（向 PoB2 的 L29/404 收敛），在 Comet 等级表中
-    // 找到与输出匹配的行，保证断言锚定的是**倍率链**而非等级解析。
+    // 现行兼容集倍率：floor4(1.3) = 1.3（MagArea II；ER/Boundless 被 require
+    // `GeneratesEnergy` 拒收，见函数 doc）。
+    let support_mult = 1.3;
+    // 断言锚定**倍率链**而非等级解析：输出必须 = floor(base × 1.3)，且 base 是
+    // Comet 某等级行的 cost（等级解析改动时本断言仍约束链路形状）。
     let comet_rows = &data.granted_effect_levels["CometPlayer"];
     let matched = comet_rows.iter().find(|r| {
         r.cost_amounts
             .first()
-            .is_some_and(|&c| (f64::from(c) * oracle_mult).floor() == out.mana_cost)
+            .is_some_and(|&c| (f64::from(c) * support_mult).floor() == out.mana_cost)
     });
     assert!(
         matched.is_some(),
-        "mana cost {} 必须 = floor(base × 1.43)（PoB2 oracle 倍率链），且 base 是 \
+        "mana cost {} 必须 = floor(base × 1.3)（现行兼容集倍率链），且 base 是 \
          Comet 某等级行的 cost——倍率链或兼容裁决漂移",
         out.mana_cost
     );
-    // 当前等级解析口径下的具体值锚定（等级链路改动时显式更新此行并复核 oracle）。
+    // 当前等级解析口径下的具体值锚定（等级/链路改动时显式更新此行并复核 oracle）：
+    // Comet L28 base 369 × 1.3 → floor = 479（PoB2 golden 577 = 404 × 1.43，
+    // 余差 = +1 gem level + ER 倍率，均登记在 doc）。
     assert_eq!(
-        out.mana_cost, 301.0,
-        "Comet L22 base 211 × 1.43 → floor = 301"
+        out.mana_cost, 479.0,
+        "Comet L28 base 369 × 1.3 → floor = 479"
     );
 }
 

@@ -813,14 +813,14 @@ fn resolve_skill_level_with_gem_bonus(
     let bonus = if is_grenade {
         0
     } else {
-        additional_gem_levels(build, skill_types)
+        additional_gem_levels(build, skill_types, skill_id)
     };
     data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)
 }
 
 /// 扫描全部已装备物品（implicit/explicit/enchant）的「`+N to Level of all <X> Skills`」，
 /// 返回对主技能 `skill_types` 生效的等级加成之和。珠宝亦计入（多为全局 mod 载体）。
-fn additional_gem_levels(build: &Build, skill_types: &[String]) -> u32 {
+fn additional_gem_levels(build: &Build, skill_types: &[String], skill_id: &str) -> u32 {
     let mut total = 0u32;
     let scan = |item: &Item, total: &mut u32| {
         for text in item
@@ -830,7 +830,7 @@ fn additional_gem_levels(build: &Build, skill_types: &[String]) -> u32 {
             .chain(&item.enchant_texts)
         {
             if let Some((n, category)) = parse_gem_level_bonus(text)
-                && gem_level_category_matches(&category, skill_types)
+                && gem_level_category_matches(&category, skill_types, skill_id)
             {
                 *total += n;
             }
@@ -860,14 +860,43 @@ fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
     Some((n, category))
 }
 
-/// 宝石等级加成的 `<category>` 是否对主技能 `skill_types` 生效。
-/// 裸「all skills」/「skill gems」无条件全匹配；否则需主技能 `skill_types` 含该类别
-/// （大小写不敏感，如 `projectile` 匹配 `Projectile`、`attack` 匹配 `Attack`）。
-fn gem_level_category_matches(category: &str, skill_types: &[String]) -> bool {
+/// 宝石等级加成的 `<category>` 是否对主技能生效。对齐 PoB2 语义
+/// （`ModParser.lua:3480-3496` GemProperty 构造 + `CalcSetup.lua:404-435`
+/// `applyGemMods` + `CalcTools.lua:113-126` `gemIsType`）：
+/// - 裸「all skills」/「skill gems」无条件全匹配；
+/// - 整串 = 技能名（PoB2 `gemIdLookup` 命中分支，对应 `gemIsType` 的
+///   `type == gemData.name:lower()`，如「Shield Wall Skills」「Ember Fusillade
+///   Skills」）→ 按主技能名（由授予效果 id 推导）匹配；
+/// - 否则按空白分词（PoB2 多词类别 = `keywordList`）：**每个** token 都须命中
+///   主技能 `skill_types`（`applyGemMods` 对 keywordList 逐项 `gemIsType`，任一
+///   不中即整条不生效——如「Cold Spell」需同时具备 `Cold` 与 `Spell`）。单词
+///   类别是该规则的退化情形，语义不变。
+fn gem_level_category_matches(category: &str, skill_types: &[String], skill_id: &str) -> bool {
     if category.is_empty() || category == "skill gems" {
         return true;
     }
-    skill_types.iter().any(|t| t.eq_ignore_ascii_case(category))
+    if category == skill_name_from_id(skill_id) {
+        return true;
+    }
+    category
+        .split_whitespace()
+        .all(|tok| skill_types.iter().any(|t| t.eq_ignore_ascii_case(tok)))
+}
+
+/// 由授予效果 id 推导技能显示名（小写、CamelCase 拆词）：剥 `Player` 后缀后按
+/// 大写边界插空格（`ShieldWallPlayer` → `shield wall`）。与 PoB2 导出的 skillId
+/// 命名惯例一致（`Export/Scripts/skills.lua`：id = 显示名去空格 + actor 后缀），
+/// 供 `gem_level_category_matches` 的技能名类别分支（`gemIdLookup` 等价）使用。
+fn skill_name_from_id(skill_id: &str) -> String {
+    let stem = skill_id.strip_suffix("Player").unwrap_or(skill_id);
+    let mut out = String::with_capacity(stem.len() + 4);
+    for (i, ch) in stem.chars().enumerate() {
+        if ch.is_ascii_uppercase() && i > 0 {
+            out.push(' ');
+        }
+        out.push(ch.to_ascii_lowercase());
+    }
+    out
 }
 
 /// 把全部装备护甲件的**件级**防御底值（armour/evasion/ES）注入为 Item 归因的 BASE 词条，
@@ -2676,7 +2705,7 @@ fn collect_item_texts(build: &Build) -> Vec<String> {
 
 #[cfg(test)]
 mod gem_level_tests {
-    use super::{gem_level_category_matches, parse_gem_level_bonus};
+    use super::{gem_level_category_matches, parse_gem_level_bonus, skill_name_from_id};
 
     fn types(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| s.to_string()).collect()
@@ -2716,21 +2745,105 @@ mod gem_level_tests {
     fn category_matches_by_skill_type_tag() {
         let grenade = types(&["Attack", "Projectile", "Grenade"]);
         // Explosive Grenade（Attack + Projectile）吃 attack 与 projectile 两类加成。
-        assert!(gem_level_category_matches("attack", &grenade));
-        assert!(gem_level_category_matches("projectile", &grenade));
+        assert!(gem_level_category_matches(
+            "attack",
+            &grenade,
+            "ExplosiveGrenadePlayer"
+        ));
+        assert!(gem_level_category_matches(
+            "projectile",
+            &grenade,
+            "ExplosiveGrenadePlayer"
+        ));
         // 不匹配的类别（如 spell）不生效。
-        assert!(!gem_level_category_matches("spell", &grenade));
+        assert!(!gem_level_category_matches(
+            "spell",
+            &grenade,
+            "ExplosiveGrenadePlayer"
+        ));
         // 裸「all skills」（空类别）无条件全匹配。
-        assert!(gem_level_category_matches("", &grenade));
-        assert!(gem_level_category_matches("skill gems", &grenade));
+        assert!(gem_level_category_matches("", &grenade, ""));
+        assert!(gem_level_category_matches("skill gems", &grenade, ""));
     }
 
     #[test]
     fn category_match_is_case_insensitive() {
         assert!(gem_level_category_matches(
             "projectile",
-            &types(&["Projectile"])
+            &types(&["Projectile"]),
+            "IceShotPlayer"
         ));
+    }
+
+    /// 多词类别 = PoB2 `keywordList`：每个 token 都须命中 `skill_types`
+    /// （CalcSetup.lua:414-419 对 keywordList 逐项 `gemIsType`，任一不中即拒）。
+    #[test]
+    fn multi_word_category_requires_all_tokens() {
+        // Comet（Cold + Spell）吃「+5 to Level of all Cold Spell Skills」。
+        let comet = types(&["Spell", "Damage", "Area", "Cold"]);
+        assert!(gem_level_category_matches(
+            "cold spell",
+            &comet,
+            "CometPlayer"
+        ));
+        // Detonate Dead（Spell + Fire + Physical）吃「Physical Spell」。
+        let dd = types(&["Spell", "Area", "Fire", "Physical"]);
+        assert!(gem_level_category_matches(
+            "physical spell",
+            &dd,
+            "DetonateDeadPlayer"
+        ));
+        // 缺任一 token 即不匹配：Fireball（Fire + Spell）不吃「Cold Spell」。
+        let fireball = types(&["Spell", "Fire", "Projectile"]);
+        assert!(!gem_level_category_matches(
+            "cold spell",
+            &fireball,
+            "FireballPlayer"
+        ));
+        // 「corrupted skill gems」之类含非类型 token 的类别保持不匹配（与 PoB2
+        // corrupted 特判暂缺一致——宁可跳过不可错算）。
+        assert!(!gem_level_category_matches(
+            "corrupted skill",
+            &comet,
+            "CometPlayer"
+        ));
+    }
+
+    /// 整串技能名类别 = PoB2 `gemIdLookup` 命中分支（`gemIsType` 名字相等）。
+    #[test]
+    fn skill_name_category_matches_main_skill() {
+        let wall = types(&["Attack", "Wall", "Physical", "Melee"]);
+        // 「+2 to Level of all Shield Wall Skills」对 Shield Wall 生效——
+        // 注意「shield」不是其 skill_type（RequiresShield 才是），只能走名字分支。
+        assert!(gem_level_category_matches(
+            "shield wall",
+            &wall,
+            "ShieldWallPlayer"
+        ));
+        // 对别的技能不生效。
+        assert!(!gem_level_category_matches(
+            "shield wall",
+            &types(&["Spell", "Fire"]),
+            "EmberFusilladePlayer"
+        ));
+        // Ember Fusillade 同理。
+        assert!(gem_level_category_matches(
+            "ember fusillade",
+            &types(&["Spell", "Fire", "Projectile"]),
+            "EmberFusilladePlayer"
+        ));
+    }
+
+    #[test]
+    fn derives_skill_name_from_granted_effect_id() {
+        assert_eq!(skill_name_from_id("ShieldWallPlayer"), "shield wall");
+        assert_eq!(
+            skill_name_from_id("EmberFusilladePlayer"),
+            "ember fusillade"
+        );
+        assert_eq!(skill_name_from_id("CometPlayer"), "comet");
+        // 无 Player 后缀的 id 原样拆词。
+        assert_eq!(skill_name_from_id("IceNova"), "ice nova");
     }
 }
 
