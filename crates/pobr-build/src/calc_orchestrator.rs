@@ -409,6 +409,10 @@ pub fn calculate_with_data(
     //    真实词条中含解析器尚未支持的硬失败形式（如 `[Bleeding] on [Hit]`），逐件
     //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
     //    skip-and-collect 语义）。
+    // 槽位加成效果（『N% increased bonuses gained from Equipped Rings and Amulets』，
+    // Ritualist 等）：对应槽位物品词条按 scale 追加缩放副本（PoB2 CalcPerform.lua:
+    // 1326-1370 `EffectOfBonusesFrom<Slot>` ScaleAddMod 语义；仅 scale>0 生效）。
+    let bonus_scales = slot_bonus_effect_scales(build, data);
     for (slot, item) in build.equipped_items() {
         // Kalandra's Touch『Reflects opposite Ring』：镜射对侧戒指的全部词条
         // （vendor CalcSetup.lua:1221-1243），来源仍归 Kalandra 所在槽。
@@ -478,6 +482,31 @@ pub fn calculate_with_data(
         session
             .add_item(slot, &filtered)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
+
+        // 槽位加成效果副本：该槽位有 `EffectOfBonusesFrom<Slot>` INC 时，把本件已
+        // 注入词条的**数值副本 × scale** 追加注入（vendor CalcPerform.lua:1347-1369
+        // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`；flag 副本
+        // 为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
+        // :1328-1334 的对侧取词条一致。
+        if let Some(&(_, scale)) = bonus_scales
+            .iter()
+            .find(|(s, scale)| *s == slot && *scale > 0.0)
+        {
+            let ingest = pobr_core::ingest_item(slot, &filtered)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+            let scaled: Vec<Modifier> = ingest
+                .modifiers
+                .into_iter()
+                .filter_map(|m| match m.value {
+                    pobr_core::ModValue::Number(v) => Some(Modifier {
+                        value: pobr_core::ModValue::Number(v * scale),
+                        ..m
+                    }),
+                    _ => None,
+                })
+                .collect();
+            session.add_modifiers(scaled);
+        }
     }
 
     // 2b. 珠宝（天赋树/深渊槽）：词条按**全局**注入（多数珠宝为全局 mod；radius 珠宝
@@ -843,6 +872,86 @@ fn additional_ring_slot_allocated(build: &Build, data: &BuildData) -> bool {
                 .any(|s| s.trim().eq_ignore_ascii_case("+1 ring slot"))
         })
     })
+}
+
+/// 槽位加成效果缩放：『N% increased bonuses gained from Equipped Rings and Amulets』
+/// 词条族 → 每槽位 INC 缩放系数（vendor `EffectOfBonusesFrom<Slot>`，
+/// ModParser.lua:4866-4880；Ritualist『Sacrificial Heart』等）。
+///
+/// 来源扫描：树上已分配节点词条 + 全部装备词条（vendor 为 modDB 全局 `Sum("INC")`，
+/// CalcPerform.lua:1326）。文本先剥 `{tag}`/`[A|B]` 标记再小写比对。
+fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSlot, f64)> {
+    use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3};
+    let mut scales: Vec<(EquipmentSlot, f64)> = Vec::new();
+    let mut add = |slots: &[EquipmentSlot], inc: f64| {
+        for s in slots {
+            match scales.iter_mut().find(|(slot, _)| slot == s) {
+                Some((_, v)) => *v += inc,
+                None => scales.push((*s, inc)),
+            }
+        }
+    };
+    let mut texts: Vec<String> = Vec::new();
+    for id in &build.tree.allocated_nodes {
+        if let Some(node) = data.passive_nodes.get(&id.0) {
+            texts.extend(node.stats.iter().map(|s| clean_grant_text(s)));
+        }
+    }
+    for (_, item) in build.equipped_items() {
+        for t in item
+            .implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+        {
+            texts.push(clean_grant_text(t));
+        }
+    }
+    for t in &texts {
+        let Some(idx) = t.find("% increased bonuses gained from ") else {
+            continue;
+        };
+        let Ok(num) = t[..idx].trim().parse::<f64>() else {
+            continue;
+        };
+        let target = t[idx + "% increased bonuses gained from ".len()..].trim();
+        // vendor ModParser.lua:4866-4880 的四个戒指/项链变体（quiver/focus 走独立
+        // 机制，暂不消费——与 vendor 的 CalcSetup 特例路径对应）。
+        match target {
+            "equipped rings and amulets" => add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0),
+            "equipped rings" => add(&[Ring1, Ring2, Ring3], num / 100.0),
+            "left equipped ring" => add(&[Ring1], num / 100.0),
+            "right equipped ring" => add(&[Ring2], num / 100.0),
+            _ => {}
+        }
+    }
+    scales
+}
+
+/// 剥离 `{tag}` 与 `[A|B]`（取显示名 B）/`[A]` 标记并小写归一，供
+/// [`slot_bonus_effect_scales`] 的固定句式比对（与 mod_parser 内部清洗同语义）。
+fn clean_grant_text(text: &str) -> String {
+    let no_braces = clean_item_text(text);
+    if !no_braces.contains('[') {
+        return no_braces;
+    }
+    let mut out = String::with_capacity(no_braces.len());
+    let mut chars = no_braces.chars();
+    while let Some(c) = chars.next() {
+        if c == '[' {
+            let mut inner = String::new();
+            for ic in chars.by_ref() {
+                if ic == ']' {
+                    break;
+                }
+                inner.push(ic);
+            }
+            out.push_str(inner.rsplit('|').next().unwrap_or(&inner));
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 
 /// Kalandra's Touch『Reflects opposite Ring』：该戒指自身无词缀，计算时复制**对侧
