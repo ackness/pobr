@@ -65,8 +65,11 @@ pub fn buff_pass(_env: &mut Env) {}
 pub fn expand_misc_buffs(_env: &mut Env) {}
 
 /// 阶段 7（T4 实现）：非伤害异常施加——Chill/Shock 的 Val/Base/Override 折算后写
-/// enemy db（对照 CalcPerform.lua:3076-3180）。T0 占位：no-op。
-pub fn apply_nondamaging_ailments(_env: &mut Env) {}
+/// enemy db（对照 CalcPerform.lua:3076-3180）。实现体在 [`super::ailment_apply`]；
+/// 无来源词条时空转（empty-spin 不变式保持）。
+pub fn apply_nondamaging_ailments(env: &mut Env) {
+    super::ailment_apply::apply_nondamaging_ailments(env);
+}
 
 #[cfg(test)]
 mod tests {
