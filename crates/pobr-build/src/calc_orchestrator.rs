@@ -394,6 +394,9 @@ pub fn calculate_with_data(
     //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
     //    skip-and-collect 语义）。
     for (slot, item) in build.equipped_items() {
+        // Kalandra's Touch『Reflects opposite Ring』：镜射对侧戒指的全部词条
+        // （vendor CalcSetup.lua:1221-1243），来源仍归 Kalandra 所在槽。
+        let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
         let mut filtered = filter_item_parseable(item);
         // 主手武器：剔除局部物理增伤/附加（已作为武器 source 独立乘区 × baseMultiplier 计入
         // weapon_contribution）；留在全局会重复且错误地并入加法桶（PoB 是独立乘区）。
@@ -801,13 +804,54 @@ fn additional_gem_levels(build: &Build, skill_types: &[String]) -> u32 {
             }
         }
     };
-    for (_slot, item) in build.equipped_items() {
+    for (slot, item) in build.equipped_items() {
+        // Kalandra's Touch 镜射对侧戒指词条（含 `+N to Level of all <X> Skills`），
+        // 与主注入路径同语义（vendor CalcSetup.lua:1221-1243 复制完整 modList）。
+        let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
         scan(item, &mut total);
     }
     for jewel in &build.jewels {
         scan(jewel, &mut total);
     }
     total
+}
+
+/// Kalandra's Touch『Reflects opposite Ring』：该戒指自身无词缀，计算时复制**对侧
+/// 戒指**的全部词条（implicit / explicit / enchant 全列）。
+///
+/// vendor 依据：CalcSetup.lua:1221-1243——`otherRing.modList` 全量 `ScaleAddMod`
+/// （scale=1，仅滤 `SocketedIn` tag——PoBR 词条无该 tag 形态）；对侧映射仅
+/// `Ring 1 ↔ Ring 2`（:1228），Ring 3 不参与；对侧同为 Kalandra 时不复制
+/// （`not otherRing.name:match("Kalandra's Touch")` 同语义）。
+///
+/// 识别按词条文本 `Reflects opposite Ring`（ModParser.lua:3404-3407 display-only
+/// 行，PoBR 侧作为镜射标记），与显示名解耦。命中时返回对侧戒指（调用方以其词条
+/// 顶替 Kalandra 槽注入，归因槽位仍为 Kalandra 所在槽）。
+fn kalandra_reflected_ring<'a>(
+    build: &'a Build,
+    slot: EquipmentSlot,
+    item: &Item,
+) -> Option<&'a Item> {
+    let reflects = |it: &Item| {
+        it.implicit_texts
+            .iter()
+            .chain(&it.modifier_texts)
+            .chain(&it.enchant_texts)
+            .any(|t| clean_item_text(t).eq_ignore_ascii_case("reflects opposite ring"))
+    };
+    if !reflects(item) {
+        return None;
+    }
+    let other_slot = match slot {
+        EquipmentSlot::Ring1 => EquipmentSlot::Ring2,
+        EquipmentSlot::Ring2 => EquipmentSlot::Ring1,
+        _ => return None,
+    };
+    let other = build.items.get(&other_slot)?;
+    if reflects(other) {
+        return None;
+    }
+    Some(other)
 }
 
 /// 解析「`+N to Level of all <category> Skills`」→ `(N, category 小写)`。非此形式返回 `None`。
@@ -2223,6 +2267,54 @@ fn collect_item_texts(build: &Build) -> Vec<String> {
         texts.extend(item.modifier_texts.iter().cloned());
     }
     texts
+}
+
+#[cfg(test)]
+mod kalandra_tests {
+    use super::kalandra_reflected_ring;
+    use crate::build::Build;
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
+
+    fn ring(texts: &[&str]) -> Item {
+        Item {
+            base: ItemBaseId::from("Ring"),
+            rarity: ItemRarity::Unique,
+            quality: 0,
+            implicit_texts: vec![],
+            modifier_texts: texts.iter().map(|s| s.to_string()).collect(),
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            parsed_stats: vec![],
+        }
+    }
+
+    /// Kalandra（Ring1）镜射 Ring2 全词条（vendor CalcSetup.lua:1221-1243）。
+    #[test]
+    fn kalandra_ring1_reflects_ring2() {
+        let kalandra = ring(&["Reflects opposite Ring"]);
+        let other = ring(&["+13% to all Elemental Resistances", "+208 to maximum Mana"]);
+        let build = Build::new()
+            .set_item(EquipmentSlot::Ring1, kalandra.clone())
+            .set_item(EquipmentSlot::Ring2, other.clone());
+        let reflected = kalandra_reflected_ring(&build, EquipmentSlot::Ring1, &kalandra)
+            .expect("应镜射对侧戒指");
+        assert_eq!(reflected.modifier_texts, other.modifier_texts);
+        // 非 Kalandra 戒指不受影响。
+        assert!(kalandra_reflected_ring(&build, EquipmentSlot::Ring2, &other).is_none());
+    }
+
+    /// 双 Kalandra 互不复制（vendor `not otherRing.name:match(...)` 同语义）；
+    /// 非戒指槽不参与。
+    #[test]
+    fn kalandra_double_or_non_ring_no_reflect() {
+        let kalandra = ring(&["Reflects opposite Ring"]);
+        let build = Build::new()
+            .set_item(EquipmentSlot::Ring1, kalandra.clone())
+            .set_item(EquipmentSlot::Ring2, kalandra.clone());
+        assert!(kalandra_reflected_ring(&build, EquipmentSlot::Ring1, &kalandra).is_none());
+        let build2 = Build::new().set_item(EquipmentSlot::Amulet, kalandra.clone());
+        assert!(kalandra_reflected_ring(&build2, EquipmentSlot::Amulet, &kalandra).is_none());
+    }
 }
 
 #[cfg(test)]
