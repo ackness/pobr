@@ -76,12 +76,13 @@ pub struct DataOrchestratorOptions {
     pub enemy_tier: EnemyTier,
     /// 有效 DPS 口径开关（`true` → 计入命中 / 敌人减伤；`false` → 面板口径）。
     pub mode_effective: bool,
-    /// statmap 映射通道（M1-T2.3 双跑，契约 C3）。默认 [`StatMapMode::Legacy`]
-    /// 保 baseline 逐值不动；`Compare` 纯观测（输出取 Legacy，diff 记录经
+    /// statmap 映射通道（M1-T2.3 双跑，契约 C3）。默认 [`StatMapMode::Data`]
+    /// （T2.4 切换 commit）；`Compare` 纯观测（输出取 Legacy，diff 记录经
     /// [`take_stat_map_compare_records`] 取出）。
     pub stat_map_mode: StatMapMode,
-    /// statmap 数据目录（`overlay/skill_stat_map.json` 经 gamedata 加载注入；
-    /// `Data`/`Compare` 模式必需，`None` 时数据通道按全 miss 处理）。
+    /// statmap 数据目录（`overlay/skill_stat_map.json` 经 gamedata 加载注入）。
+    /// `None`（默认）= 回退 [`BuildData::stat_map_catalog`]（`BuildData::load`
+    /// 已随数据包加载）；两处均无时数据通道按全 miss 处理。
     pub stat_map_catalog: Option<std::sync::Arc<StatMapCatalog>>,
 }
 
@@ -106,10 +107,13 @@ impl Default for DataOrchestratorOptions {
 /// 运行时枚举而非 cargo feature：18 build 双跑在同一进程内完成，报告好做。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StatMapMode {
-    /// 既有 Rust 后缀启发式（`skill_stat_map.rs`，T2.4 切换后删除）。默认。
-    #[default]
+    /// 既有 Rust 后缀启发式（`skill_stat_map.rs`，T2.4 删除对象）。**回退通道**：
+    /// 切换后若 ninja 倒退，把 `#[default]` 移回此行即一行回退（蓝图 §5 R5）。
     Legacy,
     /// 数据引擎（`overlay/skill_stat_map.json` + `rules/stat_map_engine`）。
+    /// **默认**（M1-T2.4 切换 commit；四前置条件核对单见
+    /// `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`）。
+    #[default]
     Data,
     /// 双跑对照：两边都算、记录映射级 diff，**输出取 Legacy**（纯观测，
     /// 不改变任何计算结果）。
@@ -165,10 +169,16 @@ pub fn calculate_with_data(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Result<OutputTable, BuildError> {
-    // （M1-T2.3 双跑）statmap 通道上下文：guard 作用域 = 本次计算；默认 Legacy
-    // 零行为变化，Compare 纯观测（diff 记录由调用方 take 取出）。
-    let _stat_map_guard =
-        install_stat_map_context(options.stat_map_mode, options.stat_map_catalog.clone());
+    // （M1-T2.3/T2.4）statmap 通道上下文：guard 作用域 = 本次计算；默认 Data
+    // （T2.4 切换）。catalog 优先取编排选项显式注入，缺省回退 BuildData 随数据包
+    // 加载的目录；Compare 纯观测（diff 记录由调用方 take 取出）。
+    let _stat_map_guard = install_stat_map_context(
+        options.stat_map_mode,
+        options
+            .stat_map_catalog
+            .clone()
+            .or_else(|| data.stat_map_catalog.clone()),
+    );
 
     // 主技能分等级参数（cast/attack 时间 → 行动速率；cost / cooldown 经 BASE 词条注入）。
     // 在建 session 前先解析，以便把行动速率写入 base_input + 据其类型设 cfg 伤害 flag。
@@ -2167,7 +2177,7 @@ impl Drop for StatMapCtxGuard {
     fn drop(&mut self) {
         STAT_MAP_CTX.with(|ctx| {
             let mut ctx = ctx.borrow_mut();
-            ctx.mode = StatMapMode::Legacy;
+            ctx.mode = StatMapMode::default();
             ctx.catalog = None;
             // compare_records 保留——调用方在 calculate 返回后 take。
         });
@@ -3130,6 +3140,10 @@ mod tests {
                 per_quality_rate: 0.55,
             }],
         );
+        // 直接调取数点（不经 calculate_with_data）：手动安装 Data 通道上下文
+        // （T2.4 切换后默认走数据引擎，catalog 取 BuildData 随数据包加载的目录）。
+        let _guard =
+            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
         // q19：trunc(0.55 × 19) = trunc(10.45) = 10（math.modf 语义，非 round）。
         let group = SocketGroup::new().with_gem_skill_quality("FireballPlayer", 20, 19);
         let mods = main_skill_quality_modifiers(&group, &data, "FireballPlayer");

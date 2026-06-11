@@ -10,7 +10,9 @@
 //! 其按域 loader，落地为确定性内存结构。
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
+use pobr_core::rules::stat_map_engine::StatMapCatalog;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
@@ -138,6 +140,11 @@ pub struct BuildData {
     /// 数据包缺该 overlay 文件时为内建 fallback [`LocalModsDef::default`]
     /// （与 JSON 逐值一致的镜像，行为不变）。
     pub local_mods: LocalModsDef,
+    /// statmap 数据目录（`overlay/skill_stat_map.json` → [`StatMapCatalog`]，
+    /// M1-T2.4 切换后默认 [`crate::StatMapMode::Data`] 通道的数据源）。
+    /// `calculate_with_data` 在编排选项未显式注入 catalog 时回退此处；
+    /// 缺 overlay 文件（旧数据包）= `None`（数据通道全 miss，不注入任何映射）。
+    pub stat_map_catalog: Option<Arc<StatMapCatalog>>,
 }
 
 impl BuildData {
@@ -256,6 +263,12 @@ impl BuildData {
             Err(e) => return Err(e),
         };
 
+        // statmap 数据目录（M1-T2.4 切换：默认 Data 通道的数据源）。缺 overlay
+        // 文件（旧数据包）= `None`（数据通道全 miss），其余加载/解析错误照常上抛。
+        let stat_map_catalog = data
+            .skill_stat_map()?
+            .map(|def| Arc::new(StatMapCatalog::new(def)));
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -270,6 +283,7 @@ impl BuildData {
             constants,
             jewel_radii,
             local_mods,
+            stat_map_catalog,
         })
     }
 
@@ -291,6 +305,7 @@ impl BuildData {
             constants: RuntimeConstants::default(),
             jewel_radii: JewelRadiiDef::default(),
             local_mods: LocalModsDef::default(),
+            stat_map_catalog: None,
         }
     }
 
