@@ -12,5 +12,6 @@
 
 pub mod registry;
 pub mod skill_type_expr;
+pub mod stat_map_engine;
 
 pub use registry::{DuplicateHandlerError, Handler, HandlerRegistry};
