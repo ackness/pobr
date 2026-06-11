@@ -404,9 +404,13 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
 /// M2 补刀重记（5 个行为修复：per-slot evasion 词形门控 / 范围珠宝属性小点排除 /
 /// 武器集专属点过滤 / Crimson Power + Body Armour grants 词条族 / 树插槽珠宝
 /// 分配门控）：防御 308→340、核心 114→119、进攻 23→27。
-const BASELINE_DEF_CORE_HIT5: usize = 119; // 实测 119/144（≥ 裁决下限 111）
-const BASELINE_DEF_HIT5: usize = 340; // 实测 340/450 = 75.6%（M2 补刀重记）
-const BASELINE_DEF_HIT10: usize = 354; // 实测 354/450 = 78.7%
+///
+/// M2 补刀重记 2（Kalandra's Touch 镜射 / Ring 3 分配门控 / Buffs also grant
+/// 归 Unsupported / 槽位加成效果缩放）：防御 340→363（80.7%，**≥80% 验收达标**）、
+/// 核心 119→129（≥ 裁决下限 111）。
+const BASELINE_DEF_CORE_HIT5: usize = 129; // 实测 129/144 = 89.6%
+const BASELINE_DEF_HIT5: usize = 363; // 实测 363/450 = 80.7%（M2 补刀重记 2）
+const BASELINE_DEF_HIT10: usize = 377; // 实测 377/450 = 83.8%
 const BASELINE_OFF_HIT5: usize = 27;
 const BASELINE_OFF_HIT10: usize = 32;
 
