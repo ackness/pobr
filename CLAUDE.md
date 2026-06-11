@@ -11,13 +11,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 常用命令
 
 ```bash
-cargo test --workspace                                 # 全部测试（CI gate）
+cargo nextest run --workspace                          # 全部测试（本地推荐，稳态 ~6s；不含 doctest）
+cargo test --workspace                                 # 全部测试（CI gate；本地慢约 20 倍，仅在无 nextest 时用）
 cargo build --workspace                                # 只编译 lib/bin
 cargo clippy --workspace --all-targets -- -D warnings  # lint（CI gate，warning 即失败）
 cargo fmt --check                                      # 格式检查（CI gate）
 
-cargo test -p pobr-core --test mod_db                  # 单个测试套件
-cargo test -p pobr-core --test mod_db -- sum_traced    # 单个用例（名称子串过滤）
+cargo nextest run -p pobr-core --test mod_db           # 单个测试套件
+cargo nextest run -p pobr-core -E 'test(sum_traced)'   # 单个用例（filterset 过滤）
 cargo bench -p pobr-core --bench mod_db_bench          # ModDB 热查询基准（criterion）
 
 # CLI（apps/pobr-cli，二进制名 pobr）
@@ -34,6 +35,7 @@ cargo run -p lint-i18n                                  # 语言包完整性检�
 ```
 
 - Rust **edition 2024**；workspace 版本统一 `0.1.0`。
+- 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以加速 ~99 个测试二进制的链接（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`。注意：改动该配置会触发全量重编译，重编译后的首轮测试会因 macOS 扫描新二进制而偏慢，属一次性成本。
 - CI gate（见 `devs/docs/architecture/06-development-workflow.md`）= fmt + clippy + test。涉及计算/Modifier/parser 的改动需补对应的集成测试或 golden fixture。
 
 ## Workspace 结构
