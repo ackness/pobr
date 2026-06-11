@@ -2,7 +2,7 @@ use std::fmt;
 
 use pobr_data::prelude::*;
 
-use crate::{ModTag, Modifier};
+use crate::{ModTag, ModValue, Modifier};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseStatus {
@@ -216,6 +216,16 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             status: ParseStatus::Unsupported,
             unparsed: Some(original.to_string()),
         });
+    }
+
+    // 敌方向词条（M3 T3-C4-2，蓝图 §6.4；迁移清单
+    // audits/rearchitecture-2026-06-10/blueprints/m3-t3-c4-modlist.md）：
+    // `Enemies you Curse ...` / `Nearby Enemies ...` / `Enemies in your Presence ...`
+    // → 外层 `EnemyModifier` LIST（`ModValue::NestedMods` 载荷）落 player db，inner 为
+    // 正常解析的敌侧 mod；由 env_finalize 阶段 2（forward_enemy_modifiers）转发到
+    // enemy db。PoB2 `applyToEnemy` 前缀语义（ModParser.lua:1367-1417 + :6733-6748）。
+    if let Some(outcome) = parse_enemy_direction(&rest, original) {
+        return outcome;
     }
 
     // M2 防御机制词条批（W0.1 契约）：MoM / EB / ES·Ward bypass / taken-as / ArmourAppliesTo
@@ -588,6 +598,168 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
         status: ParseStatus::Parsed,
         unparsed: None,
     })
+}
+
+/// 敌方向词条（M3 T3-C4-2，蓝图 §6.4；迁移清单 m3-t3-c4-modlist.md §1）。`rest` 已小写
+/// 归一。非敌方向前缀返回 `None`（走后续解析路径）。
+///
+/// PoB2 `applyToEnemy` 前缀语义（vendor commit `2df5a74`，行号实读核对）：前缀剥离后
+/// 剩余文本按普通词条递归解析，产物逐条包成
+/// `mod("EnemyModifier", "LIST", { mod = <inner> })`（ModParser.lua:6733-6748 包装段；
+/// 前缀自带 `tag` 经 :6637 起的 Combine 段并入 **inner** tagList）。pobr 等价：单条外层
+/// `Modifier{ name: "EnemyModifier", mod_type: List, value: NestedMods([inner...]) }` 落
+/// player db，由 env_finalize 阶段 2（`forward_enemy_modifiers`，对照 CalcPerform.lua:486-500
+/// applyEnemyModifiers）转发到 enemy db。
+///
+/// inner 统一附加：
+/// - 前缀语义条件（vendor enemy-actor 条件 → pobr `Enemy<X>` cfg 约定，对照本文件
+///   ` against <X> enemies` 后缀族注释）；`EnemyInPresence` 保留 vendor 原名
+///   （CalcPerform.lua:449 玩家侧派生条件）。
+/// - `Condition:Effective`（pobr 敌侧 debuff 统一口径，对照 `calc/setup_env.rs::
+///   push_enemy_effective_number` 与 vendor ConfigOptions.lua 敌况条目的 Effective 门控，
+///   如 :1682/:1737/:1878）——面板口径（`mode_effective == false`）转发后输出逐值不变。
+///
+/// 递归解析硬失败时整行照常 `Err`（与迁移前 skip-and-collect 行为一致）；软 Unsupported
+/// 归 Unsupported（原文回收）。
+fn parse_enemy_direction(rest: &str, original: &str) -> Option<Result<ParseOutcome, ParseError>> {
+    // (前缀, inner 名加 `Taken` 后缀, inner 附加条件变量)。
+    const ENEMY_PREFIXES: &[(&str, bool, Option<&str>)] = &[
+        // ModParser.lua:1367 `^enemies you curse take `（Condition Cursed + modSuffix "Taken"）。
+        ("enemies you curse take ", true, Some("EnemyCursed")),
+        // ModParser.lua:1368 `^enemies you curse `（Condition Cursed）。
+        ("enemies you curse ", false, Some("EnemyCursed")),
+        // ModParser.lua:1371-1373 `^nearby enemies take/have/deal `。
+        ("nearby enemies take ", true, None),
+        ("nearby enemies have ", false, None),
+        ("nearby enemies deal ", false, None),
+        // ModParser.lua:1416-1417 `^enemies in your presence [hgd][ae][via][enl] `
+        // （ActorCondition enemy EnemyInPresence；have/gain/deal 谓词在 inner 解析时剥离）。
+        ("enemies in your presence ", false, Some("EnemyInPresence")),
+    ];
+    let (remainder, taken, condition) =
+        ENEMY_PREFIXES
+            .iter()
+            .find_map(|(prefix, taken, condition)| {
+                rest.strip_prefix(prefix)
+                    .map(|remainder| (remainder, *taken, *condition))
+            })?;
+
+    let inner = match parse_enemy_inner(remainder, taken, original) {
+        Ok(Some(mods)) => mods,
+        Ok(None) => {
+            return Some(Ok(ParseOutcome {
+                mods: Vec::new(),
+                status: ParseStatus::Unsupported,
+                unparsed: Some(original.into()),
+            }));
+        }
+        Err(err) => return Some(Err(err)),
+    };
+
+    let inner: Vec<Modifier> = inner
+        .into_iter()
+        .map(|mut m| {
+            if let Some(var) = condition {
+                m.tags.push(ModTag::Condition {
+                    var: var.into(),
+                    negated: false,
+                });
+            }
+            m.tags.push(ModTag::Condition {
+                var: "Effective".into(),
+                negated: false,
+            });
+            m
+        })
+        .collect();
+
+    Some(Ok(ParseOutcome {
+        mods: vec![
+            Modifier::new("EnemyModifier", ModType::List, ModValue::NestedMods(inner))
+                .with_source(original),
+        ],
+        status: ParseStatus::Parsed,
+        unparsed: None,
+    }))
+}
+
+/// 敌方向词条的 inner 解析：固定语义特例优先，否则剥可选谓词动词（`have `/`deal `）后
+/// 按普通词条递归。`taken` 为真时 inner 名追加 `Taken` 后缀（PoB2 `modSuffix = "Taken"`，
+/// ModParser.lua:6683 `name .. misc.modSuffix`）。返回 `Ok(None)` 表示软 Unsupported。
+fn parse_enemy_inner(
+    remainder: &str,
+    taken: bool,
+    original: &str,
+) -> Result<Option<Vec<Modifier>>, ParseError> {
+    // `are intimidated` → Condition:Intimidated flag（buff-flag 表 ModParser.lua:6283
+    // `["intimidated"]`；全行缓存 ModCache.lua:5030 逐字段核对）。
+    if remainder == "are intimidated" {
+        return Ok(Some(vec![
+            Modifier::flag("Condition:Intimidated").with_source(original),
+        ]));
+    }
+    // `are hindered[, with N% reduced movement speed]` → Condition:Hindered flag
+    // （专条 ModParser.lua:4293 + buff-flag 表 :6290 `["hindered,? with (%d+)%% reduced
+    //   movement speed"]`——移速数字属 Hinder 定义的展示文本，vendor 不另产 mod；
+    //   ModCache.lua:5028/:5055）。
+    if remainder == "are hindered"
+        || (remainder.starts_with("are hindered, with ")
+            && remainder.ends_with("% reduced movement speed"))
+    {
+        return Ok(Some(vec![
+            Modifier::flag("Condition:Hindered").with_source(original),
+        ]));
+    }
+    // `are slowed by N%` → ActionSpeed INC -N（ModParser.lua:2862；ModCache.lua:5031。
+    // vendor 把 EnemyInPresence 条件挂外层 EnemyModifier，pobr 统一挂 inner——单 cfg
+    // 模型下聚合时点等价，且避免条件在 env_finalize 阶段 2 之后才置真时被转发截断）。
+    if let Some(num_str) = remainder
+        .strip_prefix("are slowed by ")
+        .and_then(|r| r.strip_suffix('%'))
+        && let Ok(value) = num_str.trim().parse::<f64>()
+    {
+        return Ok(Some(vec![
+            Modifier::number("ActionSpeed", ModType::Inc, -value).with_source(original),
+        ]));
+    }
+
+    // 可选谓词动词剥离（vendor 前缀 :1373/:1417 已含谓词；`gain N% of ...` 不剥，
+    // 由递归内 parse_conversion_or_gain 收口）。
+    let body = remainder
+        .strip_prefix("have ")
+        .or_else(|| remainder.strip_prefix("deal "))
+        .unwrap_or(remainder);
+
+    // `N% increased/reduced cooldown recovery rate` → CooldownRecovery INC ±N
+    // （ModCache.lua:5037）。该名仅在敌方向通道内解析、不进 parse_name 通用表——玩家侧
+    // 同名词条有独立消费链（skill_mechanics::calc_cooldown），通用化属行为 commit
+    // （清单 §2-R1）。
+    if let Some((form, after)) = parse_form(body)
+        && matches!(form.kind, FormKind::Inc)
+        && after.trim() == "cooldown recovery rate"
+    {
+        return Ok(Some(vec![
+            Modifier::number("CooldownRecovery", ModType::Inc, form.value).with_source(original),
+        ]));
+    }
+
+    let outcome = parse_mod(body)?;
+    match outcome.status {
+        ParseStatus::Parsed => {
+            let mods = outcome
+                .mods
+                .into_iter()
+                .map(|mut m| {
+                    if taken {
+                        m.name = ModName::from(format!("{}Taken", m.name));
+                    }
+                    m.with_source(original)
+                })
+                .collect();
+            Ok(Some(mods))
+        }
+        ParseStatus::Unsupported => Ok(None),
+    }
 }
 
 /// 解析「Armour applies to <Fire/Cold/Lightning...> Damage taken from Hits instead of Physical
@@ -2101,5 +2273,169 @@ mod per_slot_defence_tests {
         let cfg_both =
             CalcConfig::new().with_keyword_flags(KeywordFlags::CURSE | KeywordFlags::AURA);
         assert!(m.matches(&cfg_both), "Curse+Aura → ALL 命中");
+    }
+}
+
+/// 敌方向词条（M3 T3-C4-2）：外层 `EnemyModifier` LIST + NestedMods inner。
+/// 用例文本取自 ninja_parity 18-build 语料原文（含 PoB `[内部名|显示名]` 标记），
+/// 期望产物逐字段对照 vendor ModCache.lua 缓存（行号见迁移清单 m3-t3-c4-modlist.md §1.2）。
+#[cfg(test)]
+mod enemy_direction_tests {
+    use super::*;
+
+    /// 取唯一外层 EnemyModifier 的 inner 列表（断言外层形态）。
+    fn nested(text: &str) -> Vec<Modifier> {
+        let outcome = parse_mod(text).expect("parses");
+        assert_eq!(outcome.status, ParseStatus::Parsed);
+        assert_eq!(outcome.mods.len(), 1, "单条外层 EnemyModifier");
+        let outer = &outcome.mods[0];
+        assert_eq!(outer.name, ModName::from("EnemyModifier"));
+        assert_eq!(outer.mod_type, ModType::List);
+        outer
+            .value
+            .as_nested_mods()
+            .expect("NestedMods 载荷")
+            .to_vec()
+    }
+
+    fn has_condition(m: &Modifier, var: &str) -> bool {
+        m.tags
+            .iter()
+            .any(|t| matches!(t, ModTag::Condition { var: v, negated: false } if v == var))
+    }
+
+    /// `Enemies you Curse take ...`（ModParser.lua:1367：Condition Cursed + modSuffix Taken）。
+    #[test]
+    fn parses_enemies_you_curse_take_increased_damage() {
+        let inner = nested("Enemies you Curse take 6% increased Damage");
+        assert_eq!(inner.len(), 1);
+        let m = &inner[0];
+        assert_eq!(m.name, ModName::from("DamageTaken"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(6.0));
+        assert!(has_condition(m, "EnemyCursed"), "前缀语义条件");
+        assert!(has_condition(m, "Effective"), "敌侧 debuff 口径门控");
+    }
+
+    /// `Enemies you Curse are Hindered, with N% reduced Movement Speed`
+    /// （ModCache.lua:5055：仅 Condition:Hindered flag，移速数字不另产 mod）。
+    #[test]
+    fn parses_enemies_you_curse_are_hindered() {
+        let inner =
+            nested("Enemies you [Curse] are [Hinder|Hindered], with 15% reduced Movement Speed");
+        assert_eq!(inner.len(), 1);
+        let m = &inner[0];
+        assert_eq!(m.name, ModName::from("Condition:Hindered"));
+        assert_eq!(m.mod_type, ModType::Flag);
+        assert_eq!(m.value.as_bool(), Some(true));
+        assert!(has_condition(m, "EnemyCursed"));
+    }
+
+    /// `Enemies in your Presence are Slowed by N%`（ModParser.lua:2862 →
+    /// ActionSpeed INC -N；ModCache.lua:5031）。
+    #[test]
+    fn parses_presence_slowed() {
+        let inner = nested("Enemies in your [Presence|Presence] are [Slow|Slowed] by 20%");
+        assert_eq!(inner.len(), 1);
+        let m = &inner[0];
+        assert_eq!(m.name, ModName::from("ActionSpeed"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(-20.0));
+        assert!(has_condition(m, "EnemyInPresence"));
+        assert!(has_condition(m, "Effective"));
+    }
+
+    /// `Enemies in your Presence have N% reduced Cooldown Recovery Rate`
+    /// （ModCache.lua:5037 → CooldownRecovery INC -N，敌方向通道内专名）。
+    #[test]
+    fn parses_presence_cooldown_recovery() {
+        let inner =
+            nested("Enemies in your [Presence|Presence] have 10% reduced Cooldown Recovery Rate");
+        assert_eq!(inner.len(), 1);
+        let m = &inner[0];
+        assert_eq!(m.name, ModName::from("CooldownRecovery"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(-10.0));
+        assert!(has_condition(m, "EnemyInPresence"));
+    }
+
+    /// `Enemies in your Presence Gain N% of Damage as Extra Chaos Damage`
+    /// （ModCache.lua:5024 同形 12% 变体 → DamageGainAsChaos BASE N）。
+    #[test]
+    fn parses_presence_gain_as_extra_chaos() {
+        let inner = nested("Enemies in your Presence Gain 7% of Damage as Extra Chaos Damage");
+        assert_eq!(inner.len(), 1);
+        let m = &inner[0];
+        assert_eq!(m.name, ModName::from("DamageGainAsChaos"));
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(7.0));
+        assert!(has_condition(m, "EnemyInPresence"));
+    }
+
+    /// `Enemies in your Presence are Intimidated`（ModCache.lua:5030 →
+    /// Condition:Intimidated FLAG）；`... are Hindered`（ModCache.lua:5028）。
+    #[test]
+    fn parses_presence_intimidated_and_hindered_flags() {
+        for (text, flag_name) in [
+            (
+                "Enemies in your Presence are Intimidated",
+                "Condition:Intimidated",
+            ),
+            (
+                "Enemies in your Presence are Hindered",
+                "Condition:Hindered",
+            ),
+        ] {
+            let inner = nested(text);
+            assert_eq!(inner.len(), 1, "{text}");
+            let m = &inner[0];
+            assert_eq!(m.name, ModName::from(flag_name));
+            assert_eq!(m.mod_type, ModType::Flag);
+            assert!(has_condition(m, "EnemyInPresence"));
+        }
+    }
+
+    /// `Nearby Enemies take ...` 分类型受伤（ModParser.lua:1371 modSuffix Taken）——
+    /// `Taken` 后缀拼到分类型名上，DamageType tag 保留（敌侧分类型受伤链消费形态）。
+    #[test]
+    fn parses_nearby_enemies_take_typed_damage() {
+        let inner = nested("Nearby Enemies take 10% increased Physical Damage");
+        assert_eq!(inner.len(), 1);
+        let m = &inner[0];
+        assert_eq!(m.name, ModName::from("PhysicalDamageTaken"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert!(
+            m.tags
+                .iter()
+                .any(|t| matches!(t, ModTag::DamageType(DamageType::Physical))),
+            "分类型 tag 保留"
+        );
+    }
+
+    /// inner 条件门控语义：双条件（语义条件 + Effective）都满足才参与聚合。
+    #[test]
+    fn inner_mod_requires_both_conditions() {
+        use crate::CalcConfig;
+
+        let inner = nested("Enemies you Curse take 6% increased Damage");
+        let m = &inner[0];
+
+        assert!(!m.matches(&CalcConfig::new()), "无条件 → 不命中");
+        let cfg_cursed = CalcConfig::new().with_condition("EnemyCursed", true);
+        assert!(
+            !m.matches(&cfg_cursed),
+            "缺 Effective → 不命中（面板口径不变）"
+        );
+        let cfg_both = cfg_cursed.with_mode_effective(true);
+        assert!(m.matches(&cfg_both), "EnemyCursed + Effective → 命中");
+    }
+
+    /// 范围控制回归锚（迁移清单 §2）：玩家侧 `Cooldown Recovery Rate` 词条族**不**随
+    /// 敌方向通道引入而解析（有独立消费链，通用化属行为 commit，§2-R1）；未迁移的
+    /// 敌方向词条（如 Malediction）仍硬 Err（行为与迁移前一致）。
+    #[test]
+    fn unmigrated_lines_stay_err() {
+        assert!(parse_mod("5% increased Cooldown Recovery Rate").is_err());
+        assert!(parse_mod("Nearby Enemies have Malediction").is_err());
     }
 }
