@@ -710,6 +710,16 @@ fn parse_defence_sentence(rest: &str, source: &str) -> Option<Vec<Modifier>> {
         | "chaos damage taken does not bypass energy shield" => {
             vec![Modifier::flag("ChaosNotBypassEnergyShield")]
         }
+        // 暴击不造成额外伤害（ModParser.lua:6129 → ReduceCritExtraDamage BASE 100；
+        // CalcDefence.lua:1961 `CritExtraDamageReduction = min(Σ, 100)` 消费，进
+        // EnemyCritEffect :2070）。
+        "take no extra damage from critical hits" => {
+            vec![Modifier::number(
+                "ReduceCritExtraDamage",
+                ModType::Base,
+                100.0,
+            )]
+        }
         _ => return None,
     };
     Some(mods.into_iter().map(|m| m.with_source(source)).collect())
@@ -1042,6 +1052,19 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
     // 无符号「{N}% chance to <防御几率>」族（block/evade/avoid-stun；带 +N% 符号形走
     // parse_form + parse_name 的 nameList 路径，两路产出同名 BASE）。
     let (value, tail) = take_unsigned_number(rest)?;
+    // 「{N}% additional <减伤>」族（form ModParser.lua:75 `additional` → BASE +
+    // nameList :263/:265；CalcDefence.lua:2381 `totalReduct = min(DRmax,
+    // armourReduct + reduction)` 消费固定减伤）。
+    if let Some(clause) = tail.strip_prefix("% additional ") {
+        let name = match clause {
+            "physical damage reduction" => "PhysicalDamageReduction",
+            "elemental damage reduction" => "ElementalDamageReduction",
+            _ => return None,
+        };
+        return Some(vec![
+            Modifier::number(name, ModType::Base, value).with_source(source),
+        ]);
+    }
     let clause = tail.strip_prefix("% chance to ")?;
     let names: &[&str] = match clause {
         "block" | "block attacks" | "block attack damage" => &["BlockChance"],

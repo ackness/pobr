@@ -544,3 +544,27 @@ fn m2_followup_ascendancy_defence_words() {
         ModTag::Condition { var, negated: false } if var == "NormalBodyArmourEquipped"
     )));
 }
+
+/// M2 补刀：固定减伤 / 暴击额外伤害减免词条（ninja 18-build 实测掉词补齐）。
+#[test]
+fn m2_followup_flat_dr_and_crit_reduction() {
+    use ModType::*;
+
+    // 「N% additional Physical Damage Reduction」（form ModParser.lua:75 `additional`
+    // → BASE + nameList :263）；CalcDefence.lua:2381 固定减伤与护甲减伤相加后 clamp。
+    assert_parses(
+        "8% additional Physical Damage Reduction",
+        &[N("PhysicalDamageReduction", Base, 8.0)],
+    );
+    // 元素变体（nameList :265）。
+    assert_parses(
+        "5% additional Elemental Damage Reduction",
+        &[N("ElementalDamageReduction", Base, 5.0)],
+    );
+    // 「Take no Extra Damage from Critical Hits」（ModParser.lua:6129 →
+    // ReduceCritExtraDamage BASE 100；CalcDefence.lua:1961/:2070 消费）。
+    assert_parses(
+        "Take no Extra Damage from Critical Hits",
+        &[N("ReduceCritExtraDamage", Base, 100.0)],
+    );
+}
