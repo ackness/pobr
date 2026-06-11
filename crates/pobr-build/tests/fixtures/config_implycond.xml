@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- M3-T1 A5 fixture：implyCond 链（UsedSkillRecently 族）——
+     conditionAttackedRecently → 蕴含 UsedSkillRecently；
+     conditionCritRecently → 蕴含 SkillCritRecently + CritInPast8Sec -->
+<PathOfBuilding>
+  <Build level="1" className="Ranger" ascendClassName="None"/>
+  <Config>
+    <Input name="conditionAttackedRecently" boolean="true"/>
+    <Input name="conditionCritRecently" boolean="true"/>
+  </Config>
+</PathOfBuilding>

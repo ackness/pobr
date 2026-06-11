@@ -9,7 +9,10 @@
 //! （pobr-build `BuildData::load`）对 `None` 回退 `Default`（fallback 与 JSON
 //! 逐值相等，搬迁不变式）。阶段 2 各域 agent 在此逐域追加加载。
 
+use std::collections::HashMap;
+
 use pobr_data::catalog::character_constants::CharacterConstantsDef;
+use pobr_data::catalog::config_def::ConfigOptionDef;
 use pobr_data::catalog::enemy_presets::EnemyPresetsTable;
 use pobr_data::catalog::game_constants::GameConstantsDef;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
@@ -24,9 +27,41 @@ use crate::{GameData, LoadError};
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ParserRules;
 
-/// config 选项目录占位（M3 起由 `overlay/config_options.json` 填充）。
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ConfigCatalog;
+/// config 选项目录（M3-T1 A3：`overlay/config_options.json` 实体化）。
+///
+/// `options` 保持文件序（`var` 升序，byte-stable）；`by_var` 为 var → 下标
+/// 索引，供 `config_interpreter` 消费方按 XML `<Input name>` 直查条目。
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ConfigCatalog {
+    /// 全部条目（schema 见 [`pobr_data::catalog::config_def`]）。
+    pub options: Vec<ConfigOptionDef>,
+    /// `var` → [`Self::options`] 下标。
+    pub by_var: HashMap<String, usize>,
+}
+
+impl ConfigCatalog {
+    /// 从条目列表构建（同 `var` 重复时后写覆盖——overlay 产物按 var 唯一，
+    /// 此分支实际不可达，保守取后写与 loader 容错一致）。
+    pub fn new(options: Vec<ConfigOptionDef>) -> Self {
+        let by_var = options
+            .iter()
+            .enumerate()
+            .map(|(index, option)| (option.var.clone(), index))
+            .collect();
+        Self { options, by_var }
+    }
+
+    /// 按 `var` 查条目。
+    pub fn get(&self, var: &str) -> Option<&ConfigOptionDef> {
+        self.by_var.get(var).map(|&index| &self.options[index])
+    }
+
+    /// 未通过抽取期 oracle 对拍的条目数（`verified:false`，parity 报表单列，
+    /// 蓝图 §4.6 A6 监控口径）。
+    pub fn unverified_count(&self) -> usize {
+        self.options.iter().filter(|o| !o.verified).count()
+    }
+}
 
 /// 注入计算引擎的规则/常量聚合。
 ///
@@ -98,6 +133,12 @@ impl GameData {
             Err(LoadError::Io { .. }) => None,
             Err(e) => return Err(e),
         };
+        // R7 缺表容忍：表不存在 → None，消费方回退旧 parse_config 路径。
+        let config_catalog = match self.config_options() {
+            Ok(v) => Some(ConfigCatalog::new(v.options)),
+            Err(LoadError::Io { .. }) => None,
+            Err(e) => return Err(e),
+        };
         Ok(RuleSet {
             parser_rules: None,
             game_constants,
@@ -107,7 +148,7 @@ impl GameData {
             enemy_presets,
             unarmed_data,
             weapon_types,
-            config_catalog: None,
+            config_catalog,
         })
     }
 }
@@ -214,6 +255,53 @@ mod tests {
             loaded,
             pobr_data::catalog::weapon_types::WeaponTypeTable::default(),
             "JSON 与 Default fallback 必须逐值相等（搬迁不变式）",
+        );
+    }
+
+    /// 仓库数据目录：config_catalog 域已接通（M3-T1 A3）——条目数覆盖 vendor 542+、
+    /// `by_var` 索引与条目一一对应、典型条目可查；并打印 `verified:false` 条目数
+    /// （蓝图 §4.6 A6：未对拍条目入 parity 报表口径）。
+    #[test]
+    fn repo_data_ruleset_loads_config_catalog() {
+        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let ruleset = data.load_ruleset().unwrap();
+        let catalog = ruleset.config_catalog.expect("config_catalog 域应已接通");
+        assert!(
+            catalog.options.len() >= 542,
+            "config 条目数 {} 低于 vendor 静态条目数 542",
+            catalog.options.len()
+        );
+        // vendor ConfigOptions.lua 存在 1 处同 var 条目（conditionEnemyExitedPresenceRecently
+        // 同 var 承载 Exited/Entered 两条，vendor 侧本身共用同一输入键）——by_var 按
+        // 后写覆盖收敛为唯一索引。
+        let unique_vars: std::collections::BTreeSet<&str> =
+            catalog.options.iter().map(|o| o.var.as_str()).collect();
+        assert_eq!(
+            catalog.by_var.len(),
+            unique_vars.len(),
+            "by_var 索引必须与去重后的 var 集一一对应"
+        );
+        for (var, &index) in &catalog.by_var {
+            assert_eq!(&catalog.options[index].var, var, "by_var 索引指向错误条目");
+        }
+        let stationary = catalog
+            .get("conditionStationary")
+            .expect("conditionStationary 条目存在");
+        assert_eq!(
+            stationary.input_type,
+            pobr_data::catalog::config_def::ConfigInputType::Count
+        );
+        assert!(catalog.get("不存在的var").is_none());
+
+        // A6 监控：verified:false 条目数（运行时照用，parity 报告单列）。
+        let unverified = catalog.unverified_count();
+        println!(
+            "config_catalog verified:false 条目数 = {unverified} / {}",
+            catalog.options.len()
+        );
+        assert!(
+            unverified <= 54,
+            "verified:false 条目数 {unverified} 超过 handler 预算口径 54（DSL 切分失败信号）"
         );
     }
 

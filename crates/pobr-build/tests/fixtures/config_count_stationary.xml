@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- M3-T1 A5 fixture：count 型 conditionStationary（number=5 → Multiplier:StationarySeconds=5 + Condition:Stationary） -->
+<PathOfBuilding>
+  <Build level="1" className="Witch" ascendClassName="None"/>
+  <Config>
+    <Input name="conditionStationary" number="5"/>
+  </Config>
+</PathOfBuilding>

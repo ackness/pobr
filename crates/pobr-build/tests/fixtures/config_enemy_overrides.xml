@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- M3-T1 A5 fixture：enemy 抗性数值覆盖 + enemyIsBoss=None + enemy 条件 -->
+<PathOfBuilding>
+  <Build level="1" className="Sorceress" ascendClassName="None"/>
+  <Config>
+    <Input name="enemyLightningResist" number="75"/>
+    <Input name="enemyFireResist" number="-10"/>
+    <Input name="conditionEnemyShocked" boolean="true"/>
+    <Input name="enemyIsBoss" string="None"/>
+  </Config>
+</PathOfBuilding>

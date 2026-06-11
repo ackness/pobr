@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- M3-T1 A5 fixture：list 型选项——resistancePenalty 数值档（XML 存 number）
+     + 任务奖励 Options 型（XML 存 string，多行选项含 \n\t 连写） -->
+<PathOfBuilding>
+  <Build level="1" className="Warrior" ascendClassName="None"/>
+  <Config>
+    <Input name="resistancePenalty" number="-30"/>
+    <Input name="questAct 2Valley of the TitansMedallion" string="30% increased Charm Charges Gained&#10;&#9;+1 Charm Slot"/>
+  </Config>
+</PathOfBuilding>
