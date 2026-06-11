@@ -9,7 +9,7 @@
 //! 设计约束：本 crate 不持有文件 I/O，[`GameData`] 由调用方构造并传入；本模块只读
 //! 其按域 loader，落地为确定性内存结构。
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
@@ -81,6 +81,21 @@ impl EffectStats {
     pub fn all(&self) -> impl Iterator<Item = &SkillDamageStat> {
         self.base.iter().chain(self.quality.iter())
     }
+}
+
+/// 某授予效果一个**未选 statSet** 的 stat 快照（W-J global-only merge 取数源，
+/// 见 [`BuildData::unselected_set_stats`]）。
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnselectedSetStats {
+    /// statmap per-set 覆盖定位键 = vendor 1-based 导出序号的十进制字符串
+    /// （[`pobr_data::catalog::stat_map::SkillStatMapDef::per_stat_set`] 键约定，
+    /// 供 `stat_map_engine::map_stat_global_only` 的 `set_key` 直传）。
+    pub set_key: String,
+    /// statSet 稳定 id（归因 label / 调试用，如 `FlameWallProjectileBuffPlayer`）。
+    pub set_id: String,
+    /// 该 set 在 (gem_level, quality) 上的 stat 表——同 stat 已加法合并、按
+    /// stat 字典序（vendor `buildSkillInstanceStats` 表语义，CalcTools.lua:138-200）。
+    pub stats: Vec<SkillDamageStat>,
 }
 
 /// 一项已解析的技能资源消耗。
@@ -464,8 +479,9 @@ impl BuildData {
     /// `set_index` = PoB `<Gem statSetIndex>`（1-based vendor 导出序号，见
     /// [`pobr_data::catalog::StatSetDef::vendor_set_index`]）；`None` / 未命中
     /// 回退主 set。**未选 set 的 global-only merge 本签名不做**（PoB2
-    /// `CalcActiveSkill.lua:124-140` 依赖 statmap mod 的 GlobalEffect tag，
-    /// T2 数据落地后由 W-J 联合项补，当前保守跳过）。
+    /// `CalcActiveSkill.lua:124-140` 依赖 statmap mod 的 GlobalEffect tag）——
+    /// 未选 set 的取数走 [`Self::unselected_set_stats`]（W-J），由调用方经
+    /// `stat_map_engine::map_stat_global_only` 过滤注入。
     ///
     /// 品质语义对齐 PoB2 `CalcTools.lua:140-145`（`buildSkillInstanceStats`）：
     /// `stats[stat] += math.modf(rate × quality)`——`math.modf` 取整数部分即
@@ -519,6 +535,83 @@ impl BuildData {
             base,
             quality: quality_stats,
         }
+    }
+
+    /// 取某授予效果在某 (宝石等级, 品质, statSet 形态) 下**未选 set** 的 stat 快照
+    /// （W-J global-only merge 的取数源，PoB2 `CalcActiveSkill.lua:124-140`：
+    /// 选中 set 之外的每个 statSet 以 `onlyGlobals=true` 参与 merge）。
+    ///
+    /// - 选中 set 判定与 [`Self::effect_stats`] 同规则（[`Self::select_stat_set`]：
+    ///   `set_index` 命中 vendor 序号否则回退主 set），返回其余 set；
+    /// - vendor 未导出的 set（`vendor_set_index = None`，模板策展跳过，如
+    ///   IceNovaPlayerOnFrostbolt）不在 PoB2 `grantedEffect.statSets` 列表，
+    ///   **不参与** global merge，此处同样剔除；
+    /// - 每个 set 的 stats 按 vendor `buildSkillInstanceStats`（CalcTools.lua:138-200）
+    ///   的**表语义**构造：品质段（trunc，品质表按 effect 共享、逐 set 都先叠加）+
+    ///   分等级行（≤ gem_level 最高行，越界取首行）+ 等级无关常量，**同 stat 加法
+    ///   合并**、键按字典序（确定性）。与 [`Self::effect_stats`] 的分段串接不同——
+    ///   statmap 条目可能带 `value` 覆盖（非线性），全局-only 查表必须以合并后的
+    ///   单值为输入才与 vendor 逐 stat 单次 merge 一致。
+    ///
+    /// 无多 set / 效果未知时返回空。注：未选 set 的 `baseMods`（PoBR 蒸馏字段
+    /// `skill_attack_speed_more`，无 GlobalEffect tag）按 vendor `:131-135`
+    /// 只收 global baseMod 的语义**恒不注入**，故本快照不含该字段。
+    pub fn unselected_set_stats(
+        &self,
+        skill_id: &str,
+        gem_level: u32,
+        quality: u32,
+        set_index: Option<u32>,
+    ) -> Vec<UnselectedSetStats> {
+        let Some(def) = self.skill_stat_sets.get(skill_id) else {
+            return Vec::new();
+        };
+        let selected_id = self
+            .select_stat_set(skill_id, set_index)
+            .map(|s| s.set_id.as_str());
+        let mut out = Vec::new();
+        for set in &def.sets {
+            // vendor 未导出（无序号）不参与；选中 set 本身跳过。
+            let Some(idx) = set.vendor_set_index else {
+                continue;
+            };
+            if Some(set.set_id.as_str()) == selected_id {
+                continue;
+            }
+            // buildSkillInstanceStats 表语义：同 stat 加法合并（BTreeMap 字典序确定性）。
+            let mut acc: BTreeMap<String, f64> = BTreeMap::new();
+            if quality > 0
+                && let Some(rows) = self.gem_quality_stats.get(skill_id)
+            {
+                for q in rows {
+                    // trunc（toward zero），与 effect_stats 的品质段同语义。
+                    *acc.entry(q.stat.clone()).or_default() +=
+                        (q.per_quality_rate * f64::from(quality)).trunc();
+                }
+            }
+            if let Some(level) = set
+                .levels
+                .iter()
+                .rfind(|l| l.gem_level <= gem_level)
+                .or(set.levels.first())
+            {
+                for s in &level.stats {
+                    *acc.entry(s.stat.clone()).or_default() += s.value;
+                }
+            }
+            for s in &set.constant_stats {
+                *acc.entry(s.stat.clone()).or_default() += s.value;
+            }
+            out.push(UnselectedSetStats {
+                set_key: idx.to_string(),
+                set_id: set.set_id.clone(),
+                stats: acc
+                    .into_iter()
+                    .map(|(stat, value)| SkillDamageStat { stat, value })
+                    .collect(),
+            });
+        }
+        out
     }
 
     /// 查询某职业的基础属性（按英文 canonical 名）；未知职业返回 `None`。
@@ -626,6 +719,104 @@ mod tests {
             bd.resolve_skill_level_with_set("Synth", 1, Some(2))
                 .is_none()
         );
+    }
+
+    /// W-J：未选 set 快照——选中判定与 effect_stats 同规则；vendor 未导出 set 剔除；
+    /// 品质段逐 set 叠加（trunc）；同 stat 加法合并、字典序确定性。
+    #[test]
+    fn unselected_set_stats_snapshot_semantics() {
+        use pobr_data::catalog::{QualityStat, SkillDamageStat, SkillStatSetLevel, StatSetDef};
+        fn set(
+            set_id: &str,
+            vendor_idx: Option<u32>,
+            level_stats: Vec<(&str, f64)>,
+            constant_stats: Vec<(&str, f64)>,
+        ) -> StatSetDef {
+            let ds = |v: Vec<(&str, f64)>| {
+                v.into_iter()
+                    .map(|(stat, value)| SkillDamageStat {
+                        stat: stat.into(),
+                        value,
+                    })
+                    .collect::<Vec<_>>()
+            };
+            StatSetDef {
+                set_id: set_id.into(),
+                label: None,
+                vendor_set_index: vendor_idx,
+                base_effectiveness: 0.0,
+                constant_stats: ds(constant_stats),
+                skill_attack_speed_more: None,
+                levels: vec![SkillStatSetLevel {
+                    gem_level: 1,
+                    damage_multiplier: 1.0,
+                    stats: ds(level_stats),
+                }],
+            }
+        }
+        let mut bd = BuildData::empty();
+        bd.skill_stat_sets.insert(
+            "Synth".to_string(),
+            pobr_data::catalog::SkillStatSetDef {
+                effect_id: "Synth".into(),
+                sets: vec![
+                    set("SynthMain", Some(1), vec![("alpha", 10.0)], vec![]),
+                    // 分等级行与常量同 stat（beta）→ 加法合并为 5+2=7。
+                    set(
+                        "SynthAlt",
+                        Some(2),
+                        vec![("beta", 5.0)],
+                        vec![("beta", 2.0), ("gamma", 1.0)],
+                    ),
+                    // vendor 未导出（模板策展跳过）→ 不参与 global merge。
+                    set("SynthHidden", None, vec![("hidden", 99.0)], vec![]),
+                ],
+            },
+        );
+        // 品质表按 effect 共享：未选 set 同样先叠加（trunc(0.55×19)=10）。
+        bd.gem_quality_stats.insert(
+            "Synth".into(),
+            vec![QualityStat {
+                stat: "beta".into(),
+                per_quality_rate: 0.55,
+            }],
+        );
+
+        // 缺省（None）→ 选中主 set，未选 = 仅 SynthAlt（Hidden 剔除）。
+        let unsel = bd.unselected_set_stats("Synth", 1, 19, None);
+        assert_eq!(unsel.len(), 1);
+        assert_eq!(unsel[0].set_key, "2");
+        assert_eq!(unsel[0].set_id, "SynthAlt");
+        // beta = 品质 10 + 分等级 5 + 常量 2 = 17；gamma = 1；字典序。
+        assert_eq!(
+            unsel[0]
+                .stats
+                .iter()
+                .map(|s| (s.stat.as_str(), s.value))
+                .collect::<Vec<_>>(),
+            vec![("beta", 17.0), ("gamma", 1.0)]
+        );
+
+        // 显式选中 set 2 → 未选 = 主 set（品质同样叠加进其快照）。
+        let unsel = bd.unselected_set_stats("Synth", 1, 0, Some(2));
+        assert_eq!(unsel.len(), 1);
+        assert_eq!(unsel[0].set_key, "1");
+        assert_eq!(unsel[0].set_id, "SynthMain");
+        assert_eq!(
+            unsel[0]
+                .stats
+                .iter()
+                .map(|s| (s.stat.as_str(), s.value))
+                .collect::<Vec<_>>(),
+            vec![("alpha", 10.0)]
+        );
+
+        // 序号未命中（越界）→ 选中回退主 set，未选与缺省一致；未知效果 → 空。
+        assert_eq!(
+            bd.unselected_set_stats("Synth", 1, 19, Some(7)),
+            bd.unselected_set_stats("Synth", 1, 19, None)
+        );
+        assert!(bd.unselected_set_stats("NoSuch", 1, 20, None).is_empty());
     }
 
     /// M1-T5.1：宝石→效果连边经 overlay/gem_effects.json merge 进 SkillGemDef，
