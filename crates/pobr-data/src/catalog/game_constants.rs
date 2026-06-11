@@ -191,6 +191,60 @@ pub struct GameMechanicsConstantsDef {
     pub heavy_stun_modifier_duration: f64,
     /// 负护甲增伤上限（%）。Data.lua:194 NegArmourDmgBonusCap = 100。
     pub neg_armour_dmg_bonus_cap: f64,
+
+    // ---- M2-W0.4：EHP 循环魔数 + 普通怪 DPS 乘数（vendor-only，Data.lua:228-239）。
+    //      `#[serde(default)]`：旧 JSON 缺字段时回退 Default 同值（schema 兼容 R7）。----
+    /// EHP 循环单击伤害上限（精度上界）。Data.lua:237 ehpCalcMaxDamage = 100000000。
+    #[serde(default = "default_ehp_calc_max_damage")]
+    pub ehp_calc_max_damage: f64,
+    /// EHP 循环最大迭代数（超限则高 EHP 被低估）。Data.lua:239
+    /// ehpCalcMaxIterationsToCalc = 50。
+    #[serde(default = "default_ehp_calc_max_iterations")]
+    pub ehp_calc_max_iterations: f64,
+    /// EHP 递归加速因子（loss-prevention 时消费侧 cap 4）。Data.lua:235 ehpCalcSpeedUp = 8。
+    #[serde(default = "default_ehp_calc_speed_up")]
+    pub ehp_calc_speed_up: f64,
+    /// 普通怪 DPS 乘数（敌人进伤 placeholder 装配，= 1/4.40）。Data.lua:228
+    /// normalEnemyDPSMult。
+    ///
+    /// 注：入库 JSON 写作 `0.227272727272727265`——该十进制串在 serde_json（默认
+    /// feature，无 float_roundtrip）下恰解析为与 Rust `1.0/4.40` 逐 bit 相等的 f64；
+    /// 朴素 17 位短表示会差 1 ULP。逐 bit 相等由 gamedata 加载测试锁定。
+    #[serde(default = "default_normal_enemy_dps_mult")]
+    pub normal_enemy_dps_mult: f64,
+
+    // ---- M2-F：max-hit 转换平滑迭代数（vendor-only，Data.lua:241）。----
+    /// max-hit 多转换分支（`useConversionSmoothing`）的平滑迭代上限。
+    /// Data.lua:241 maxHitSmoothingPasses = 8（CalcDefence.lua:3669 消费）。
+    #[serde(default = "default_max_hit_smoothing_passes")]
+    pub max_hit_smoothing_passes: f64,
+
+    // ---- M2-D：Block 面板族（vendor-only）。----
+    /// 基础格挡上限（%，`BaseBlockChanceMax` 的角色固有 BASE）。
+    /// Misc.lua:147 `object_inherent_base_maximum_block_%_from_ot` = 50
+    /// （CalcSetup.lua:28 注入 `BaseBlockChanceMax` BASE）。
+    #[serde(default = "default_base_block_chance_max")]
+    pub base_block_chance_max: f64,
+}
+
+// serde default 函数（与 `Default` 落值同源，单一数值出处）。
+fn default_ehp_calc_max_damage() -> f64 {
+    100_000_000.0
+}
+fn default_base_block_chance_max() -> f64 {
+    50.0
+}
+fn default_ehp_calc_max_iterations() -> f64 {
+    50.0
+}
+fn default_ehp_calc_speed_up() -> f64 {
+    8.0
+}
+fn default_normal_enemy_dps_mult() -> f64 {
+    1.0 / 4.40
+}
+fn default_max_hit_smoothing_passes() -> f64 {
+    8.0
 }
 
 // ---------------------------------------------------------------------------
@@ -290,6 +344,15 @@ impl Default for GameMechanicsConstantsDef {
             heavy_stun_threshold_modifier: 500.0,
             heavy_stun_modifier_duration: 16.5,
             neg_armour_dmg_bonus_cap: 100.0,
+            // M2-W0.4：EHP 循环魔数 + 普通怪 DPS 乘数（Data.lua:228/235/237/239）。
+            ehp_calc_max_damage: default_ehp_calc_max_damage(),
+            ehp_calc_max_iterations: default_ehp_calc_max_iterations(),
+            ehp_calc_speed_up: default_ehp_calc_speed_up(),
+            normal_enemy_dps_mult: default_normal_enemy_dps_mult(),
+            // M2-F：max-hit 转换平滑迭代数（Data.lua:241）。
+            max_hit_smoothing_passes: default_max_hit_smoothing_passes(),
+            // M2-D：Block 面板族（Misc.lua:147 / CalcSetup.lua:28）。
+            base_block_chance_max: default_base_block_chance_max(),
         }
     }
 }

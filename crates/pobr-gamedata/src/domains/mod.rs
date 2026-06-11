@@ -32,3 +32,6 @@ pub mod gem_effects;
 
 // ---- M1-T5.2 statSet label / vendor 导出序号边车（overlay 层，merge 进 stat sets）----
 pub mod stat_set_labels;
+
+// ---- M2-D1 基底物品覆盖值（overlay 层，loader + 专用 merge：block/spirit）----
+pub mod base_item_overrides;

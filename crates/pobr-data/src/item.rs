@@ -40,6 +40,11 @@ pub struct RolledDefence {
     pub armour: Option<f64>,
     pub evasion: Option<f64>,
     pub energy_shield: Option<f64>,
+    /// 已掷出的 Spirit（权杖 `Spirit:` 行；PoB2 `item.spiritValue`，已含该件
+    /// 局部 `increased Spirit` / `+N to Spirit`，Item.lua:523/:1724-1727）。
+    pub spirit: Option<f64>,
+    /// 已掷出的 Ward（`Ward:` 行；PoB2 `armourData.Ward` 同口径）。
+    pub ward: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -72,6 +77,10 @@ pub enum EquipmentSlot {
     Amulet,
     Ring1,
     Ring2,
+    /// 第三戒指槽（Ritualist『Unfurled Finger』+1 Ring Slot；PoB2 `Ring 3`）。
+    /// 仅在树上分配 AdditionalRingSlot 词条节点时参与计算（PoB2
+    /// CalcSetup.lua:821 门控，由编排层执行）。
+    Ring3,
     Belt,
 }
 
@@ -88,6 +97,7 @@ impl EquipmentSlot {
             Self::Amulet => "amulet",
             Self::Ring1 => "ring1",
             Self::Ring2 => "ring2",
+            Self::Ring3 => "ring3",
             Self::Belt => "belt",
         }
     }

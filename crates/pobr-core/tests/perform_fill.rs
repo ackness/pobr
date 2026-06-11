@@ -41,7 +41,11 @@ fn perform_fills_ehp_from_pools_and_resistances() {
     perform(&mut env).unwrap();
 
     assert_eq!(env.player.output.life, 1000.0);
-    assert!(env.player.output.total_ehp > 0.0);
+    // F-3 口径切换：`total_ehp` = PoB2 口径（致死击数 × 单击进伤）；裸 Env 无
+    // setup_enemy → 无进伤 placeholder → 0 中性。旧 lowest-max-hit 口径保留在
+    // `total_ehp_lowest_max_hit`（CalcDefence.lua:3322 / 蓝图 m2-defence §2 F-3）。
+    assert_eq!(env.player.output.total_ehp, 0.0);
+    assert!(env.player.output.total_ehp_lowest_max_hit > 0.0);
     // With 0% resist, an element max hit equals the life pool.
     assert_eq!(env.player.output.fire_max_hit, 1000.0);
 }
@@ -73,9 +77,12 @@ fn perform_fills_bleed_dps_only_with_bleed_chance() {
     assert!(with_chance.player.output.bleed_dps > 0.0);
 }
 
-/// PoE2 格挡上限测试（Bug#11：上限为 90%，非 PoE1 的 75%）。
+/// PoE2 格挡上限测试（M2 Track D 后走 BlockChanceMax 体系）。
 ///
-/// 出处：agent-docs/block.md §被动格挡、PoB2 `BlockChanceCap = 90`。
+/// 角色固有格挡上限 = 50%（`BaseBlockChanceMax`，Misc.lua:147 /
+/// CalcSetup.lua:28），硬上限 `BlockChanceCap` = 90 仅对堆了
+/// `+Maximum Block Chance` 词条的 build 生效（CalcDefence.lua:961-965）。
+/// 旧断言（95→90）缺 BlockChanceMax 层，按 vendor 模型修正为 95→50。
 #[test]
 fn perform_fills_block_chance() {
     let base = ActorBaseStats {
@@ -85,13 +92,28 @@ fn perform_fills_block_chance() {
     let mut env = player_with(
         base,
         vec![
-            // 95% block → capped at PoE2 limit 90%
+            // 95% block → 先被默认格挡上限 50%（BaseBlockChanceMax）截断。
             Modifier::number("BlockChance", ModType::Base, 95.0),
         ],
     );
     perform(&mut env).unwrap();
 
-    // PoE2: block capped at 90 (not PoE1's 75).
+    assert_eq!(env.player.output.block_chance, 50.0);
+    assert_eq!(env.player.output.block_chance_max, 50.0);
+
+    // 抬高上限词条后随之上移，仍被硬上限 90 封顶（50 固有 + 50 词条 → cap 90）。
+    let mut env = player_with(
+        ActorBaseStats {
+            life: 1000.0,
+            ..ActorBaseStats::default()
+        },
+        vec![
+            Modifier::number("BlockChance", ModType::Base, 95.0),
+            Modifier::number("BlockChanceMax", ModType::Base, 50.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.block_chance_max, 90.0);
     assert_eq!(env.player.output.block_chance, 90.0);
 }
 
@@ -463,7 +485,13 @@ fn perform_fills_life_leech_from_physical_hit() {
     assert!(with_leech.player.output.life_leech_rate > 0.0);
 }
 
-/// Recoup 接入：LifeRecoup BASE → life_recoup_rate > 0（以 10% 生命估算受击）。
+/// Recoup 接入（M2 F-4 基数替换，13-G15 部分）：基数 = mitigated EHP 循环累计的
+/// recoupable 伤害（vendor CalcDefence.lua:489/:537/:3119-3123/:3347-3361），
+/// 不再用 life×10% 估算。
+///
+/// 手算：life 1000、Pinnacle@82 单击进伤 4246（965×4+386）× EnemyCritEffect 1.015
+/// （1 + 5%×30%/100，:2065-2071）= 4309.69 taken（无减伤）→ 1 击致死、recoupable
+/// 累计 = 4309.69；LifeRecoup 20% → 4309.69×0.2/8s = 107.74225/s。
 #[test]
 fn perform_fills_life_recoup_rate() {
     let base = ActorBaseStats {
@@ -474,9 +502,30 @@ fn perform_fills_life_recoup_rate() {
         base,
         vec![Modifier::number("LifeRecoup", ModType::Base, 20.0)],
     );
+    pobr_core::calc::setup_enemy(&mut env, 82, pobr_data::monster::EnemyTier::Pinnacle);
     perform(&mut env).unwrap();
-    // damage_taken_estimate = 1000 * 0.1 = 100；recoup 20% = 20 在 8s 内 → 2.5/s。
-    assert!((env.player.output.life_recoup_rate - 2.5).abs() < 1e-9);
+    assert!(
+        (env.player.output.life_recoup_rate - 107.74225).abs() < 1e-6,
+        "life_recoup_rate = {}（期望 107.74225 = 4246×1.015×20%/8s）",
+        env.player.output.life_recoup_rate
+    );
+}
+
+/// F-4 基数语义：裸 Env（无敌人进伤）→ recoupable 基数 0 → 速率 0
+/// （与 vendor 无进伤语义一致；旧 life×10% 估算口径在此废止）。
+#[test]
+fn perform_recoup_rate_zero_without_enemy_damage() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![Modifier::number("LifeRecoup", ModType::Base, 20.0)],
+    );
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.life_recoup_rate, 0.0);
+    assert_eq!(env.player.output.es_recoup_rate, 0.0);
 }
 
 /// regen 超集：XRecoveryRate 全局恢复速率乘进 regen（calc_regen 行为超集）。
@@ -1209,10 +1258,12 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
         ],
     );
     perform(&mut env2).unwrap();
+    // F-3 口径切换后 canonical max hit 走 PoB2 管线，末端 vendor round
+    // （CalcDefence.lua:3696）→ 1388.89 取整为 1389，容差放宽到 1。
     let expected = 1000.0 / 0.72;
     assert!(
-        (env2.player.output.physical_max_hit - expected).abs() < 1e-3,
-        "physical_max_hit = {} (期望 {} = 1000/0.72)",
+        (env2.player.output.physical_max_hit - expected).abs() < 1.0,
+        "physical_max_hit = {} (期望 ≈{} = 1000/0.72，vendor round)",
         env2.player.output.physical_max_hit,
         expected
     );

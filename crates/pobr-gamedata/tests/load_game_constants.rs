@@ -151,6 +151,42 @@ fn vendor_only_values_pinned_to_pob2_source() {
     assert_eq!(gc.game.neg_armour_dmg_bonus_cap, 100.0);
 }
 
+/// M2-W0.4：EHP 循环魔数 + 普通怪 DPS 乘数逐值锁定
+/// （vendor Modules/Data.lua:228 / :235 / :237 / :239）。
+#[test]
+fn m2_ehp_calc_constants_pinned_to_pob2_source() {
+    let gc = load();
+
+    // Modules/Data.lua:237 ehpCalcMaxDamage = 100000000
+    assert_eq!(gc.game.ehp_calc_max_damage, 100_000_000.0);
+    // Modules/Data.lua:239 ehpCalcMaxIterationsToCalc = 50
+    assert_eq!(gc.game.ehp_calc_max_iterations, 50.0);
+    // Modules/Data.lua:235 ehpCalcSpeedUp = 8
+    assert_eq!(gc.game.ehp_calc_speed_up, 8.0);
+    // Modules/Data.lua:228 normalEnemyDPSMult = 1 / 4.40（IEEE754 逐 bit 相等）
+    assert_eq!(gc.game.normal_enemy_dps_mult, 1.0 / 4.40);
+}
+
+/// M2-F：max-hit 转换平滑迭代数锁定（vendor Modules/Data.lua:241
+/// maxHitSmoothingPasses = 8，CalcDefence.lua:3669 消费）。
+#[test]
+fn m2_max_hit_smoothing_passes_pinned_to_pob2_source() {
+    let gc = load();
+
+    assert_eq!(gc.game.max_hit_smoothing_passes, 8.0);
+}
+
+/// M2-D：Block 面板族常量锁定——基础格挡上限 50%
+/// （vendor Data/Misc.lua:147 `object_inherent_base_maximum_block_%_from_ot`，
+/// CalcSetup.lua:28 注入 `BaseBlockChanceMax` BASE）。
+#[test]
+fn m2_block_constants_pinned_to_pob2_source() {
+    let gc = load();
+    assert_eq!(gc.game.base_block_chance_max, 50.0);
+    // Data.lua:185 BlockChanceCap = 90（既有字段，一并核对消费侧 clamp 边界）。
+    assert_eq!(gc.game.block_chance_cap, 90.0);
+}
+
 /// vendor `data.misc` 派生口径核对：异常基线 fraction = PercentPerMinute/60/100，
 /// JSON 与 vendor 派生值一致（Misc.lua:86-88 → 900/1200/1200）。
 #[test]

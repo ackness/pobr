@@ -4,6 +4,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use sync_pob_catalog::extract_bases::{DEFAULT_BASE_FILES, run_extract_bases};
 use sync_pob_catalog::extract_gem_effects::run_extract_gem_effects;
 use sync_pob_catalog::extract_lua::{
     DEFAULT_SKILL_FILES, DEFAULT_STAT_MAP_SKILL_FILES, ExtractLuaArgs, resolve_luajit,
@@ -16,7 +17,7 @@ use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -32,7 +33,7 @@ fn run() -> io::Result<()> {
     let mut raw_args = env::args().skip(1);
     let command = raw_args.next();
     match command.as_deref() {
-        Some("extract-lua") => run_extract_lua_command(raw_args),
+        Some(cmd @ ("extract-lua" | "extract-bases")) => run_extract_command(cmd, raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
         }
@@ -46,17 +47,22 @@ fn run() -> io::Result<()> {
     }
 }
 
-// ---- extract-lua：vendor Lua → overlay JSON（确定性抽取通道）----
+// ---- extract-lua / extract-bases：vendor Lua → overlay JSON（确定性抽取通道）----
 
-fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()> {
+fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
-    // 缺省 --files 按抽取目标取各自约定：stat-map 不含 minion/spectre（M1 蓝图 T2.1，
+    // 缺省 --files：extract-bases 取基底数据文件集（Data/Bases）；extract-lua 按
+    // `--what` 抽取目标取各自约定——stat-map 不含 minion/spectre（M1 蓝图 T2.1，
     // 召唤物 statMap 留 M5a）；gem-effects 恒读 Data/Gems.lua（--files 仅为公共
     // 调用层占位）；其余目标用全量技能文件。
-    let default_files: &[&str] = match parsed.what.as_deref() {
-        Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
-        Some("gem-effects") => &["Gems"],
-        _ => DEFAULT_SKILL_FILES,
+    let default_files: &[&str] = if command == "extract-bases" {
+        DEFAULT_BASE_FILES
+    } else {
+        match parsed.what.as_deref() {
+            Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
+            Some("gem-effects") => &["Gems"],
+            _ => DEFAULT_SKILL_FILES,
+        }
     };
     let extract_args = ExtractLuaArgs {
         vendor_root: parsed.vendor_root,
@@ -70,20 +76,31 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
             .as_ref()
             .map(|p| p.to_string_lossy().into_owned()),
     };
-    // 抽取目标分发：skill-overrides（缺省，per-skill 覆盖值）/ gem-quality（宝石品质
-    // stat 斜率，M1-T1）/ stat-map（SkillStatMap 全局 + per-set 覆盖，M1-T2）/
-    // gem-effects（宝石→授予效果连边，M1-T5.1）。
-    let json = match parsed.what.as_deref() {
-        None | Some("skill-overrides") => run_extract_lua(&extract_args)?,
-        Some("gem-quality") => run_extract_gem_quality(&extract_args)?,
-        Some("stat-map") => run_extract_stat_map(&extract_args)?,
-        Some("gem-effects") => run_extract_gem_effects(&extract_args)?,
-        Some("stat-set-labels") => run_extract_stat_set_labels(&extract_args)?,
-        Some(other) => {
+    // 抽取目标分发：extract-bases（基底物品覆盖值，M2-D1）；extract-lua 按 `--what`
+    // ——skill-overrides（缺省，per-skill 覆盖值）/ gem-quality（宝石品质 stat 斜率，
+    // M1-T1）/ stat-map（SkillStatMap 全局 + per-set 覆盖，M1-T2）/ gem-effects
+    // （宝石→授予效果连边，M1-T5.1）/ stat-set-labels（M1-T5.2）。
+    let json = if command == "extract-bases" {
+        if let Some(what) = parsed.what.as_deref() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                format!("extract-lua 未知抽取目标 --what {other}\n{USAGE}"),
+                format!("extract-bases 不支持 --what {what}\n{USAGE}"),
             ));
+        }
+        run_extract_bases(&extract_args)?
+    } else {
+        match parsed.what.as_deref() {
+            None | Some("skill-overrides") => run_extract_lua(&extract_args)?,
+            Some("gem-quality") => run_extract_gem_quality(&extract_args)?,
+            Some("stat-map") => run_extract_stat_map(&extract_args)?,
+            Some("gem-effects") => run_extract_gem_effects(&extract_args)?,
+            Some("stat-set-labels") => run_extract_stat_set_labels(&extract_args)?,
+            Some(other) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("extract-lua 未知抽取目标 --what {other}\n{USAGE}"),
+                ));
+            }
         }
     };
     match parsed.out {
@@ -92,7 +109,7 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
                 fs::create_dir_all(parent)?;
             }
             fs::write(&out, json)?;
-            eprintln!("extract-lua: wrote {}", out.display());
+            eprintln!("{command}: wrote {}", out.display());
             Ok(())
         }
         None => {

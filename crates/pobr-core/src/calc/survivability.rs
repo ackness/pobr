@@ -30,14 +30,53 @@ pub struct Reservation {
 ///
 /// `flat` 是固定预留之和，`percent` 是百分比预留之和（如 50 表示 50%）。
 /// 结果钳到 `[0, pool]`，`unreserved = pool - reserved`。
+/// 中性 multiplier/efficiency 的便捷封装（见 [`reservation_with_efficiency`]）。
 pub fn reservation(pool: f64, flat: f64, percent: f64) -> Reservation {
+    reservation_with_efficiency(pool, flat, percent, 1.0, 0.0, 1.0)
+}
+
+/// 预留量计算——含 `ReservationMultiplier` 与 Reservation Efficiency
+/// （M2 Track D，13-G11；PoB2 CalcDefence.lua:172-350
+/// `doActorLifeManaSpiritReservation`）。
+///
+/// vendor 逐技能公式（:249-258）：
+/// `reservedFlat = max(round(baseFlat × mult × (100+inc)/100 × more
+/// / (1 + efficiency/100) / efficiencyMore), 0)`，其中
+/// - `mult = floor(More(ReservationMultiplier), 4)`（:197，小数四位向下取整）；
+/// - `efficiency = max(Σinc(<X>ReservationEfficiency, ReservationEfficiency), −100)`
+///   （:240，**除法**语义——效率提高 → 预留变少）；
+/// - `efficiencyMore = More(同名集)`（:241，同为除数）。
+///
+/// PoBR 聚合口径（无逐技能粒度时）：`raw = (flat + pool×pct/100) × mult ÷
+/// (1+eff_inc/100) ÷ eff_more`——乘除因子对加总后的预留量整体应用，与 vendor
+/// 「逐技能应用后求和」在因子全局一致时等价。`eff_inc` 在本函数内钳到 −100
+/// 下界（vendor :240）；除数 ≤ 0（efficiency = −100）时预留视为无穷 → 钳到池满。
+pub fn reservation_with_efficiency(
+    pool: f64,
+    flat: f64,
+    percent: f64,
+    reservation_mult_more: f64,
+    efficiency_inc: f64,
+    efficiency_more: f64,
+) -> Reservation {
     if pool <= 0.0 {
         return Reservation {
             reserved: 0.0,
             unreserved: 0.0,
         };
     }
-    let raw = flat + pool * (percent / 100.0);
+    // vendor :197 `floor(more, 4)`（小数四位向下取整）。
+    let mult = (reservation_mult_more * 10_000.0).floor() / 10_000.0;
+    let divisor = (1.0 + efficiency_inc.max(-100.0) / 100.0) * efficiency_more;
+    let base_raw = (flat + pool * (percent / 100.0)) * mult;
+    let raw = if divisor > 0.0 {
+        base_raw / divisor
+    } else if base_raw > 0.0 {
+        // efficiency −100%：除数归零 → 预留发散，钳到池满。
+        pool
+    } else {
+        0.0
+    };
     let reserved = round(raw.clamp(0.0, pool));
     Reservation {
         reserved,

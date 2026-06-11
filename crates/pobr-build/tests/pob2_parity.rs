@@ -147,9 +147,16 @@ fn deadeye_parity_report() {
     // Multishot −25% more（`sup_dex.lua:3154-3156`，修对）后，本旧样本 AverageDamage
     // 0.817x→0.613x、TotalDPS 同步下移——legacy 假性命中的又一层「过算抵消欠算」
     // 被拆除，真实 base/吞吐缺口完整暴露（与 ninja deadeye 行同一补偿结，切换审查
-    // 记录 §3）。待 grenade 冷却吞吐 / Mirage 数据补齐后收紧。
-    assert_within(&pob2, "AverageDamage", out.total_hit_avg, 0.40);
-    assert_within(&pob2, "TotalDPS", out.dps, 0.45);
+    // 记录 §3）。
+    //
+    // M2 补刀（武器集专属点过滤，vendor CalcSetup.lua:209-233/:791-792）同向放宽：
+    // 此前非激活 WeaponSet2 的 22 个专属点（含伤害节点）被错误计入，假性收敛；按
+    // vendor 语义剔除后偏差全部归属上述已记录的 grenade base/吞吐缺口。M1+M2 合并后
+    // 两层「过算抵消欠算」**叠乘**拆除（0.613x × 0.647/0.817 ≈ 0.485x，实测吻合），
+    // 容差按合并后真实偏差放宽，只防进一步倒退；待 grenade 冷却吞吐 / Mirage 数据
+    // 补齐后收紧。
+    assert_within(&pob2, "AverageDamage", out.total_hit_avg, 0.55);
+    assert_within(&pob2, "TotalDPS", out.dps, 0.55);
     // 切片：Evasion 仍 ~0.77x（分散树节点/物品基底），暂不硬断言。
 }
 

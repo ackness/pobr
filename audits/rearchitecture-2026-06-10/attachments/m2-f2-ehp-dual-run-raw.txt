@@ -1,0 +1,165 @@
+========== M2 F-2 EHP 双跑对照（旧 lowest-max-hit vs 新 PoB2 口径） ==========
+
+##### druid-oracle-comet #####
+  TotalEHP        old         9167  new        25083  golden        23313  old 0.39x  new 1.08x
+  hitsToDie        6  mitigatedHits        6  enemyDamageIn     4246
+  PhysMaxHit      old         9167  new         9167  golden         8865  old 1.03x  new 1.03x
+  FireMaxHit      old        31114  new        31139  golden        27278  old 1.14x  new 1.14x
+  ColdMaxHit      old        36093  new        36118  golden        31171  old 1.16x  new 1.16x
+  LightMaxHit     old        36093  new        36118  golden        31171  old 1.16x  new 1.16x
+  ChaosMaxHit     old          inf  new          inf  golden          inf  old ✓inf  new ✓inf
+
+##### druid-oracle-ember-fusillade #####
+  TotalEHP        old            0  new        16241  golden        20821  old 0.00x  new 0.78x
+  hitsToDie        4  mitigatedHits        4  enemyDamageIn     4246
+  PhysMaxHit      old            0  new         7261  golden         8221  old 0.00x  new 0.88x
+  FireMaxHit      old            0  new        20625  golden        29211  old 0.00x  new 0.71x
+  ColdMaxHit      old            0  new        19510  golden        29211  old 0.00x  new 0.67x
+  LightMaxHit     old            0  new        21875  golden        29211  old 0.00x  new 0.75x
+  ChaosMaxHit     old          inf  new          inf  golden          inf  old ✓inf  new ✓inf
+
+##### huntress-ritualist-bow-shot #####
+  TotalEHP        old         5223  new         7026  golden         6024  old 0.87x  new 1.17x
+  hitsToDie        2  mitigatedHits        2  enemyDamageIn     4246
+  PhysMaxHit      old         6215  new         6370  golden         4968  old 1.25x  new 1.28x
+  FireMaxHit      old         7063  new         7238  golden         7391  old 0.96x  new 0.98x
+  ColdMaxHit      old         5223  new         5353  golden         4099  old 1.27x  new 1.31x
+  LightMaxHit     old         9865  new        10111  golden         7391  old 1.33x  new 1.37x
+  ChaosMaxHit     old         6626  new         6917  golden        10536  old 0.63x  new 0.66x
+
+##### huntress-spirit-walker-twister #####
+  TotalEHP        old         4431  new        20446  golden        19859  old 0.22x  new 1.03x
+  hitsToDie        2  mitigatedHits        3  enemyDamageIn     4246
+  PhysMaxHit      old         4431  new         4770  golden         4747  old 0.93x  new 1.00x
+  FireMaxHit      old        17726  new        18367  golden        16343  old 1.08x  new 1.12x
+  ColdMaxHit      old        17726  new        18367  golden        16343  old 1.08x  new 1.12x
+  LightMaxHit     old        17726  new        18367  golden        16343  old 1.08x  new 1.12x
+  ChaosMaxHit     old         6404  new         6732  golden         7634  old 0.84x  new 0.88x
+
+##### mercenary-gemling-legionnaire-explosive-grenade #####
+  TotalEHP        old         2942  new        10529  golden        15887  old 0.19x  new 0.66x
+  hitsToDie        2  mitigatedHits        2  enemyDamageIn     4246
+  PhysMaxHit      old         2942  new         3056  golden         4252  old 0.69x  new 0.72x
+  FireMaxHit      old        11234  new        11234  golden        13957  old 0.80x  new 0.80x
+  ColdMaxHit      old        11234  new        11234  golden        13957  old 0.80x  new 0.80x
+  LightMaxHit     old        11234  new        11234  golden        13957  old 0.80x  new 0.80x
+  ChaosMaxHit     old         5282  new         5283  golden         7353  old 0.72x  new 0.72x
+
+##### mercenary-tactician-wolf-pack #####
+  TotalEHP        old         3777  new        34486  golden       116555  old 0.03x  new 0.30x
+  hitsToDie        4  mitigatedHits        4  enemyDamageIn     4246
+  PhysMaxHit      old         3777  new         4511  golden         5313  old 0.71x  new 0.85x
+  FireMaxHit      old        11894  new        15529  golden        15713  old 0.76x  new 0.99x
+  ColdMaxHit      old        11894  new        15529  golden        15713  old 0.76x  new 0.99x
+  LightMaxHit     old        11894  new        15529  golden        15713  old 0.76x  new 0.99x
+  ChaosMaxHit     old        10620  new        13140  golden        15307  old 0.69x  new 0.86x
+
+##### monk-invoker-frost-bomb #####
+  TotalEHP        old        10005  new        24786  golden        22699  old 0.44x  new 1.09x
+  hitsToDie        6  mitigatedHits        6  enemyDamageIn     4246
+  PhysMaxHit      old        10005  new        10006  golden         9599  old 1.04x  new 1.04x
+  FireMaxHit      old        40020  new        40024  golden        34282  old 1.17x  new 1.17x
+  ColdMaxHit      old        40020  new        40024  golden        34282  old 1.17x  new 1.17x
+  LightMaxHit     old        40020  new        40024  golden        34282  old 1.17x  new 1.17x
+  ChaosMaxHit     old          inf  new          inf  golden          inf  old ✓inf  new ✓inf
+
+##### monk-martial-artist-flicker-strike #####
+  TotalEHP        old         7135  new        40140  golden        33544  old 0.21x  new 1.20x
+  hitsToDie        4  mitigatedHits        4  enemyDamageIn     4246
+  PhysMaxHit      old         7135  new         7136  golden         6258  old 1.14x  new 1.14x
+  FireMaxHit      old        21620  new        21623  golden        17383  old 1.24x  new 1.24x
+  ColdMaxHit      old        29728  new        29732  golden        23178  old 1.28x  new 1.28x
+  LightMaxHit     old        28538  new        28542  golden        22350  old 1.28x  new 1.28x
+  ChaosMaxHit     old          inf  new          inf  golden          inf  old ✓inf  new ✓inf
+
+##### monk-martial-artist-twister #####
+  TotalEHP        old         4257  new        35546  golden        31556  old 0.13x  new 1.13x
+  hitsToDie        2  mitigatedHits        3  enemyDamageIn     4246
+  PhysMaxHit      old         4257  new         4359  golden         4126  old 1.03x  new 1.06x
+  FireMaxHit      old        18511  new        18953  golden        15869  old 1.17x  new 1.19x
+  ColdMaxHit      old        17740  new        18163  golden        15281  old 1.16x  new 1.19x
+  LightMaxHit     old        17030  new        17437  golden        14736  old 1.16x  new 1.18x
+  ChaosMaxHit     old        10314  new        10677  golden        10487  old 0.98x  new 1.02x
+
+##### ranger-deadeye-explosive-grenade #####
+  TotalEHP        old         2857  new        18375  golden        17665  old 0.16x  new 1.04x
+  hitsToDie        1  mitigatedHits        2  enemyDamageIn     4246
+  PhysMaxHit      old         2857  new         2940  golden         2935  old 0.97x  new 1.00x
+  FireMaxHit      old         6750  new         6753  golden         6303  old 1.07x  new 1.07x
+  ColdMaxHit      old         6443  new         6446  golden         6035  old 1.07x  new 1.07x
+  LightMaxHit     old         5062  new         5065  golden         4808  old 1.05x  new 1.05x
+  ChaosMaxHit     old         9145  new         9145  golden         9145  old 1.00x  new 1.00x
+
+##### ranger-pathfinder-ice-shot #####
+  TotalEHP        old         6058  new        24938  golden        23831  old 0.25x  new 1.05x
+  hitsToDie        3  mitigatedHits        4  enemyDamageIn     4246
+  PhysMaxHit      old         6071  new         6607  golden         6404  old 0.95x  new 1.03x
+  FireMaxHit      old        24283  new        25447  golden        21886  old 1.11x  new 1.16x
+  ColdMaxHit      old        24283  new        25447  golden        21886  old 1.11x  new 1.16x
+  LightMaxHit     old        24283  new        25447  golden        21886  old 1.11x  new 1.16x
+  ChaosMaxHit     old         6058  new         6513  golden         6322  old 0.96x  new 1.03x
+
+##### sorceress-chronomancer-essence-drain #####
+  TotalEHP        old        15190  new        48668  golden        58624  old 0.26x  new 0.83x
+  hitsToDie       10  mitigatedHits       10  enemyDamageIn     4246
+  PhysMaxHit      old        15190  new        15988  golden        20275  old 0.75x  new 0.79x
+  FireMaxHit      old        59871  new        63067  golden        71617  old 0.84x  new 0.88x
+  ColdMaxHit      old        59871  new        63067  golden        71617  old 0.84x  new 0.88x
+  LightMaxHit     old        59871  new        63067  golden        71617  old 0.84x  new 0.88x
+  ChaosMaxHit     old          inf  new          inf  golden          inf  old ✓inf  new ✓inf
+
+##### sorceress-disciple-of-varashta-comet #####
+  TotalEHP        old        11810  new        30614  golden        36292  old 0.33x  new 0.84x
+  hitsToDie        7  mitigatedHits        7  enemyDamageIn     4246
+  PhysMaxHit      old        11810  new        11810  golden        12082  old 0.98x  new 0.98x
+  FireMaxHit      old        47169  new        47173  golden        40729  old 1.16x  new 1.16x
+  ColdMaxHit      old        49134  new        49139  golden        42237  old 1.16x  new 1.16x
+  LightMaxHit     old        47169  new        47173  golden        40729  old 1.16x  new 1.16x
+  ChaosMaxHit     old          inf  new          inf  golden          inf  old ✓inf  new ✓inf
+
+##### sorceress-stormweaver-comet #####
+  TotalEHP        old         2568  new        13957  golden        12980  old 0.20x  new 1.08x
+  hitsToDie        3  mitigatedHits        3  enemyDamageIn     4246
+  PhysMaxHit      old         2568  new         5873  golden         5825  old 0.44x  new 1.01x
+  FireMaxHit      old        10272  new        23492  golden        18203  old 0.56x  new 1.29x
+  ColdMaxHit      old        10272  new        23492  golden        20804  old 0.49x  new 1.13x
+  LightMaxHit     old        10272  new        23492  golden        20804  old 0.49x  new 1.13x
+  ChaosMaxHit     old         8299  new        21519  golden        21326  old 0.39x  new 1.01x
+
+##### warrior-smith-of-kitava-shield-wall #####
+  TotalEHP        old         3946  new        18895  golden        76433  old 0.05x  new 0.25x
+  hitsToDie        4  mitigatedHits        4  enemyDamageIn     4246
+  PhysMaxHit      old         3946  new         4147  golden         7358  old 0.54x  new 0.56x
+  FireMaxHit      old        10607  new        13256  golden        15459  old 0.69x  new 0.86x
+  ColdMaxHit      old         6027  new         8402  golden        15459  old 0.39x  new 0.54x
+  LightMaxHit     old         4572  new         6798  golden        15459  old 0.30x  new 0.44x
+  ChaosMaxHit     old        10607  new        10607  golden        14706  old 0.72x  new 0.72x
+
+##### warrior-titan-shield-wall #####
+  TotalEHP        old         4189  new        25292  golden        50244  old 0.08x  new 0.50x
+  hitsToDie        5  mitigatedHits        6  enemyDamageIn     4246
+  PhysMaxHit      old         4189  new         4808  golden         6466  old 0.65x  new 0.74x
+  FireMaxHit      old        11010  new        15060  golden        15641  old 0.70x  new 0.96x
+  ColdMaxHit      old        11010  new        15060  golden        15641  old 0.70x  new 0.96x
+  LightMaxHit     old        11450  new        15595  golden        16086  old 0.71x  new 0.97x
+  ChaosMaxHit     old        11368  new        13620  golden        13470  old 0.84x  new 1.01x
+
+##### witch-abyssal-lich-detonate-dead #####
+  TotalEHP        old        14217  new        25085  golden        22863  old 0.62x  new 1.10x
+  hitsToDie        6  mitigatedHits        6  enemyDamageIn     4246
+  PhysMaxHit      old        14217  new        18816  golden        17464  old 0.81x  new 1.08x
+  FireMaxHit      old        17996  new        23817  golden        21297  old 0.85x  new 1.12x
+  ColdMaxHit      old        27876  new        36893  golden        32340  old 0.86x  new 1.14x
+  LightMaxHit     old        18956  new        25088  golden        22390  old 0.85x  new 1.12x
+  ChaosMaxHit     old        32000  new        41197  golden        38316  old 0.84x  new 1.08x
+
+##### witch-blood-mage-coiling-bolts #####
+  TotalEHP        old         1659  new         7813  golden         9153  old 0.18x  new 0.85x
+  hitsToDie        2  mitigatedHits        2  enemyDamageIn     4246
+  PhysMaxHit      old         1659  new         5749  golden         6900  old 0.24x  new 0.83x
+  FireMaxHit      old         2183  new         7565  golden         8734  old 0.25x  new 0.87x
+  ColdMaxHit      old         3254  new        11273  golden        12777  old 0.25x  new 0.88x
+  LightMaxHit     old         2024  new         7012  golden         8117  old 0.25x  new 0.86x
+  ChaosMaxHit     old         6638  new        22998  golden        27599  old 0.24x  new 0.83x
+
+（F-1 双跑：total_ehp 字段仍为旧口径；新值挂 total_ehp_pob2/*_max_hit_pob2，切换在 F-3）

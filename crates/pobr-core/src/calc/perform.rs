@@ -19,11 +19,11 @@ use super::trigger::{
 };
 use super::{
     BreakdownTable, CalcError, EhpOptions, Env, LeechResource, MinimalInput, MinionOutput,
-    OutputTable, RecoupResource, ResistanceSuite, calc_avoidance, calc_crit_extra_reduction,
-    calc_defence, calc_ehp_with_opts, calc_es_recharge, calc_leech_from_db, calc_recoup_from_db,
-    calc_regen, calc_skill_use_time, calc_taken_multi_suite, calculate_minimal_vs_enemy,
-    enemy_crit_effect, es_recharge_per_second, reservation, resolve_all_charges, round,
-    taken_mult_for_type_default,
+    MitigationInputs, OutputTable, RecoupResource, ResistanceSuite, build_mitigation_ctx,
+    calc_avoidance, calc_crit_extra_reduction, calc_defence, calc_ehp_with_opts, calc_es_recharge,
+    calc_leech_from_db, calc_recoup_from_db, calc_regen, calc_skill_use_time,
+    calc_taken_multi_suite, calculate_minimal_vs_enemy, enemy_crit_effect, es_recharge_per_second,
+    reservation, resolve_all_charges, round, taken_mult_for_type_default,
 };
 use crate::{TraceGraph, TraceOperation};
 
@@ -39,26 +39,32 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // 未启用该充能时保持 0（PoB2 面板 current=0），避免错误施加 per-charge 增益/罚减。
     env.cfg = super::survivability::charge_multipliers_panel_default(&env.player.mod_db, &env.cfg);
 
-    // ES→Mana 资源转换（PoB2 CalcDefence resourceList `EnergyShieldConvertToMana`，
-    // 如 Eldritch Battery 型关键石「Converts all Energy Shield to Mana」）：ES 的全部
-    // **基底**（逐槽 rolled + 全局 flat，不含 ES inc/more）按比例转入 Mana 池（享 Mana
-    // 全局乘区，PoB2 对非防御目标按 ceil 取整）；ES 侧按 (1 − rate) 缩残（见
-    // calc_defence 的同名查询）。
-    let es_to_mana = super::defence::es_to_mana_rate(&env.player.mod_db, &env.cfg);
-    if es_to_mana > 0.0 {
-        let es_base = env.player.base.energy_shield
-            + env
-                .player
-                .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]);
-        let converted = (es_base * es_to_mana).ceil();
-        if converted > 0.0 {
-            env.player.mod_db.add_list([crate::Modifier::number(
-                ModName::from("MaximumMana"),
-                ModType::Base,
-                converted,
-            )
-            .with_source("EnergyShield to Mana conversion")]);
+    // 五元防御资源转换矩阵（M2 C-3，PoB2 CalcDefence.lua:1301-1390）：defence 源
+    // （Armour/Evasion/ES）→ 非 defence 目标（Life/Mana）的转入量在 minimal 计算前
+    // 注入为 MaximumLife/MaximumMana BASE（对应 PoB2 `NewMod("Extra"..name, "BASE", …)`
+    // :1383，享 Life/Mana 全局乘区）。既有 ES→Mana 专用通道（es_to_mana_rate）已并入
+    // 本矩阵（ES 侧缩残在 calc_defence 内部完成）；矩阵无词条时转入恒 0，本段空转。
+    {
+        let keystones = crate::rules::DefenceKeystones::from_db(&env.player.mod_db, &env.cfg);
+        let resources = super::defence::calc_defence_resources(
+            &env.player.mod_db,
+            &env.cfg,
+            &env.player.base,
+            &keystones,
+        );
+        let extras = [
+            ("MaximumLife", resources.extra_life),
+            ("MaximumMana", resources.extra_mana),
+        ];
+        for (name, value) in extras {
+            if value > 0.0 {
+                env.player.mod_db.add_list([crate::Modifier::number(
+                    ModName::from(name),
+                    ModType::Base,
+                    value,
+                )
+                .with_source("defence resource conversion")]);
+            }
         }
     }
 
@@ -174,6 +180,9 @@ fn fill_mechanics(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
 
+    // --- keystone 开关快照（M2 Track C：集中构造一次，下游各机制段只读本结构）---
+    let keystones = crate::rules::DefenceKeystones::from_db(db, cfg);
+
     // --- 技能使用时间 / 有效行动速率 ---
     let base_use_time = if env.player.base.action_rate > 0.0 {
         1.0 / env.player.base.action_rate
@@ -206,27 +215,50 @@ fn fill_mechanics(env: &mut Env) {
         },
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
-    // 防御机制选项：敌人物理压制 + 「Armour applies to <Element> instead of Physical」。
-    // 减伤上限：PoB2 `Max('DamageReductionMax') or DamageReductionCap(=90)`（CalcDefence.lua:1862）。
-    // 无词条时 max_of 返回 0 → 取默认 90。
-    let dr_max_pct = {
-        let v = db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
-        if v > 0.0 { v } else { 90.0 }
-    };
+    // M2 Track B-2（13-G7）：减伤侧统一整备 MitigationCtx——ArmourAppliesTo 改百分比模型
+    // （词条单一来源：ModParser.lua:2519-2544 三变体 → ArmourAppliesTo<X>DamageTaken BASE
+    // + ArmourDoesNotApplyToPhysicalDamageTaken flag；合成 CalcDefence.lua:2336-2362、
+    // 物理隐式 BASE 100 见 :1862-1863），DamageReductionMax / overwhelm 一并入 ctx
+    // （per-type 上限 :2333；全局缺省走 cfg.constants）。
+    let mit_ctx = build_mitigation_ctx(
+        db,
+        cfg,
+        &MitigationInputs {
+            armour: env.player.output.armour,
+            evasion: env.player.output.evasion,
+            energy_shield: env.player.output.energy_shield,
+            resist_pct: [
+                0.0, // 物理无抗性（减伤走护甲/flat DR）
+                resistances.fire,
+                resistances.cold,
+                resistances.lightning,
+                resistances.chaos,
+            ],
+            // 偏斜乘数：Track D 接 DeflectChance/DeflectEffect 输出后由 F 折入；当前 0 → 1。
+            deflect_chance_pct: 0.0,
+            deflect_effect_pct: 0.0,
+        },
+    );
+    let phys = DamageType::Physical as usize;
+    // 「instead of physical」全量重定向（物理护甲清零**仅此变体**，flag 经
+    // armour_applies_pct 把物理份额归 0）。旧 EhpOptions 的 [bool;3] 只能表达该形态：
+    // 元素吃全额护甲 + 物理清零；百分比/also 变体在旧 max-hit 口径下维持原行为
+    // （物理保留护甲、元素暂不吃护甲），完整百分比口径由 Track F 消费
+    // taken_hit_from_damage 后生效（蓝图 m2-defence §2 Track B 过渡语义）。
+    let instead_redirect = mit_ctx.armour_applies_pct[phys] <= 0.0;
+    // CI 接线（13-G16）：keystone 快照驱动，不再写死 false。CI build 的 ES 作生命池、
+    // 混沌免疫（EhpOptions 语义）。vendor：CalcDefence.lua:85（flag 读出）/:120-123
+    // （Life=1 + FullLife）/:2537-2539（CI 用「CI 前 Life」作眩晕阈值基底）。
     let ehp_opts = EhpOptions {
-        chaos_inoculation: false,
-        physical_overwhelm: db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("EnemyPhysicalOverwhelm")],
-        ) / 100.0,
+        chaos_inoculation: keystones.chaos_inoculation,
+        physical_overwhelm: mit_ctx.overwhelm_pct[phys] / 100.0,
         armour_applies_to_element: [
-            db.flag(cfg, ModName::from("ArmourAppliesToFire")),
-            db.flag(cfg, ModName::from("ArmourAppliesToCold")),
-            db.flag(cfg, ModName::from("ArmourAppliesToLightning")),
+            instead_redirect && mit_ctx.armour_applies_pct[DamageType::Fire as usize] > 0.0,
+            instead_redirect && mit_ctx.armour_applies_pct[DamageType::Cold as usize] > 0.0,
+            instead_redirect && mit_ctx.armour_applies_pct[DamageType::Lightning as usize] > 0.0,
         ],
         damage_reduction_caps: crate::calc::ehp::DamageReductionCaps {
-            global: dr_max_pct / 100.0,
+            global: mit_ctx.dr_max_pct[phys] / 100.0,
         },
     };
     let ehp = calc_ehp_with_opts(
@@ -260,17 +292,38 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.lightning_max_hit = apply_dt(ehp.lightning_max_hit, DamageType::Lightning);
     env.player.output.chaos_max_hit = apply_dt(ehp.chaos_max_hit, DamageType::Chaos);
     env.player.output.total_ehp = ehp.total_ehp;
+    // 旧 lowest-max-hit 口径附加指标（F-3 后唯一权威出口：上面写入的 canonical
+    // `total_ehp`/`*_max_hit` 会在 `fill_ehp_pob2` 末尾被新口径覆盖；本段旧管线
+    // 不删码，revert fill_ehp_pob2 的切换段即回旧口径——蓝图 §5 R2 行）。
+    env.player.output.total_ehp_lowest_max_hit = ehp.total_ehp;
 
     // --- 预留 / 剩余 ---
+    // M2 Track D（13-G11）：补 ReservationMultiplier more 与 Reservation
+    // Efficiency 除法语义（CalcDefence.lua:197/:240-241/:249-258）——
+    // mult = floor(More(ReservationMultiplier), 4)；efficiency inc/more 为**除数**；
+    // 除数下界钳极小正数：efficiency −100% 时 raw 发散，由 reservation 的
+    // [0, pool] clamp 收口为「池满预留」，与 vendor 语义一致。
+    let reservation_mult =
+        (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
+    let res_eff_divisor = |kind: &str| -> f64 {
+        let names = [
+            ModName::from(format!("{kind}ReservationEfficiency").as_str()),
+            ModName::from("ReservationEfficiency"),
+        ];
+        let inc = db.sum(ModType::Inc, cfg, &names).max(-100.0);
+        ((1.0 + inc / 100.0) * db.more(cfg, &names)).max(1e-12)
+    };
+    let life_factor = reservation_mult / res_eff_divisor("Life");
+    let mana_factor = reservation_mult / res_eff_divisor("Mana");
     let life_res = reservation(
         env.player.output.life,
-        db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]),
-        db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]),
+        db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * life_factor,
+        db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * life_factor,
     );
     let mana_res = reservation(
         env.player.output.mana,
-        db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]),
-        db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]),
+        db.sum(ModType::Base, cfg, &[ModName::from("ManaReserved")]) * mana_factor,
+        db.sum(ModType::Inc, cfg, &[ModName::from("ManaReservedPercent")]) * mana_factor,
     );
     env.player.output.life_reserved = life_res.reserved;
     env.player.output.life_unreserved = life_res.unreserved;
@@ -306,7 +359,17 @@ fn fill_mechanics(env: &mut Env) {
         es_recharge_per_second(&es_recharge, env.player.output.energy_shield);
 
     // --- 规避几率（Lane2：击中/投射物/各异常）---
-    let avoidance = calc_avoidance(db, cfg, env.player.output.energy_shield);
+    // M2-E2（CalcDefence.lua:2554-2557）：眩晕规避的 ES 减半条件改为
+    // 「ES > totalTakenHit 且非 EB」；totalTakenHit 在 Track F 接线前用
+    // reference_hit（= life + ES，与 EhpOptions 同源）近似。
+    // EB flag 走 C-1 keystone 快照（蓝图 §3.3 契约 2，不散读 flag）。
+    let avoidance = calc_avoidance(
+        db,
+        cfg,
+        env.player.output.energy_shield,
+        reference_hit,
+        keystones.energy_shield_protects_mana,
+    );
     env.player.output.avoid_all_damage_from_hits = avoidance.avoid_all_damage_from_hits;
     env.player.output.avoid_projectile_damage = avoidance.avoid_projectile_damage;
     env.player.output.avoid_stun = avoidance.avoid_stun;
@@ -368,20 +431,43 @@ fn fill_mechanics(env: &mut Env) {
     )
     .display_rate_per_second;
 
-    // --- Recoup（Lane A：事件触发，面板口径以「假设受到 10% 生命的伤害」估算返还速率）---
-    // 无 Recoup 词条时 calc_recoup_from_db 返回 rate=0（短路），不影响面板。
-    let damage_taken_estimate = env.player.output.life * RECOUP_DAMAGE_BASIS_FRACTION;
-    env.player.output.life_recoup_rate =
-        calc_recoup_from_db(db, cfg, damage_taken_estimate, RecoupResource::Life).rate_per_second;
-    env.player.output.es_recoup_rate =
-        calc_recoup_from_db(db, cfg, damage_taken_estimate, RecoupResource::EnergyShield)
-            .rate_per_second;
-
     // --- 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗）---
     fill_skill_mechanics(env);
 
     // --- 触发速率（Lane B：冷却驱动 / CWC；无触发词条时保持 0）---
     fill_trigger(env);
+
+    // --- Evade 四分型 + Stun（M2 Track E，蓝图 §3.2 预登记的一行调用）---
+    super::defence::fill_evade_stun(env, &keystones);
+
+    // --- Block/Spirit/Ward/Deflection 面板族（M2 Track D，蓝图 §3.2 预登记的一行调用）---
+    super::defence_panels::fill_defence_panels(env, &keystones);
+
+    // --- EHP PoB2 口径管线（M2 Track F；须在 D/E 两个 fill 之后——not-hit/block/
+    //     deflect 层读其 OutputTable 输出，缺省 0 → 中性 1.0）。F-3 起在末尾把
+    //     canonical `total_ehp`/`*_max_hit` 切换为新口径值，并以真值 totalTakenHit
+    //     覆盖 avoid_stun / Stun 体系。---
+    let recoupable_total = super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
+
+    // --- Recoup（M2 F-4，13-G15 部分：基数替换）---
+    // 旧口径 = life × 10% 估算（与受击管线脱钩）；新口径 = reduce_pools 在
+    // mitigated EHP 循环上累计的 recoupable 伤害（vendor reducePoolsByDamage
+    // :489/:537 记录 damageTakenThatCanBeRecouped → :3119-3123 累计 →
+    // :3347-3361 `TotalRecoupRecovery = Recoup%/100 × totalDamage`、
+    // :3382 `RecoupRecoveryMax = Total / recoupTime`——calc_recoup_from_db 的
+    // total/duration×rateMod 公式骨架不变，仅 damage_taken 入参换真值）。
+    // 无敌人进伤（裸 Env）→ 基数 0 → 速率 0（与 vendor 无进伤语义一致）。
+    let (life_recoup_rate, es_recoup_rate) = {
+        let db = &env.player.mod_db;
+        let cfg = &env.cfg;
+        (
+            calc_recoup_from_db(db, cfg, recoupable_total, RecoupResource::Life).rate_per_second,
+            calc_recoup_from_db(db, cfg, recoupable_total, RecoupResource::EnergyShield)
+                .rate_per_second,
+        )
+    };
+    env.player.output.life_recoup_rate = life_recoup_rate;
+    env.player.output.es_recoup_rate = es_recoup_rate;
 }
 
 /// 触发速率 fill（Lane B）：读冷却驱动 / CWC 触发词条，写 `trigger_rate_cap` /
@@ -515,12 +601,6 @@ fn trigger_chance_multiplier(cfg: &CalcConfig, output: &OutputTable) -> f64 {
     }
     chance.clamp(0.0, 1.0)
 }
-
-/// Recoup 面板估算基准：以「假设受到玩家最大生命 10%」的伤害估算每秒返还速率。
-///
-/// Recoup 本质是受击事件触发；面板口径需要一个固定的受击伤害基准。10% 生命是常见
-/// 估算约定（PoB2 面板亦用假设受击量）。真实受击伤害来源待 Build 层事件接入后替换。
-const RECOUP_DAMAGE_BASIS_FRACTION: f64 = 0.1;
 
 /// 技能功能 fill（Lane C）：AoE 半径 / 投射物数量 / 冷却 / 资源消耗。
 ///

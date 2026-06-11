@@ -2,7 +2,7 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
 
-use super::{Actor, round};
+use super::{Actor, Env, round};
 
 /// ES 充能速率 / 延迟的输出（ES recharge，gap: es-recharge-missing）。
 ///
@@ -89,15 +89,15 @@ pub struct DefenceOutput {
 }
 
 pub fn calc_defence(actor: &mut Actor, cfg: &CalcConfig, enemy_accuracy: f64) -> DefenceOutput {
-    let armour = scaled_defence_stat(&actor.mod_db, cfg, actor.base.armour, "Armour");
-    let evasion = scaled_defence_stat(&actor.mod_db, cfg, actor.base.evasion, "Evasion");
-    // ES→Mana 转换（PoB2 resourceList `EnergyShieldConvertToMana`）：被转出的基底不再
-    // 参与 ES 总值；转换率对全部基底一致，等价于对成品 ES 按 (1 − rate) 缩残
-    // （Mana 侧的转入由 `perform` 注入，见 [`es_to_mana_rate`]）。
-    let es_keep = 1.0 - es_to_mana_rate(&actor.mod_db, cfg);
-    let energy_shield = round(
-        scaled_defence_stat(&actor.mod_db, cfg, actor.base.energy_shield, "EnergyShield") * es_keep,
-    );
+    // 五元资源转换矩阵（M2 C-3，CalcDefence.lua:1301-1390）：三防经
+    // ConvertTo/GainAs 矩阵 + Body Armour 翻倍 flag 后聚合。既有 ES→Mana 专用通道
+    // （es_to_mana_rate）已并入矩阵；Mana/Life 侧的转入量由 `perform` 在 minimal
+    // 计算前注入（见 [`calc_defence_resources`]），此处仅消费三防终值。
+    let keystones = crate::rules::DefenceKeystones::from_db(&actor.mod_db, cfg);
+    let resources = calc_defence_resources(&actor.mod_db, cfg, &actor.base, &keystones);
+    let armour = resources.armour;
+    let evasion = resources.evasion;
+    let energy_shield = resources.energy_shield;
     // 防御侧：怪物命中玩家，用 monster_hit_chance（agent-docs/accuracy-and-enemy.md §二）
     let chance_to_be_hit = monster_hit_chance(evasion, enemy_accuracy);
 
@@ -180,55 +180,228 @@ pub fn armour_reduction(armour: f64, raw_hit: f64) -> f64 {
     round(armour / (armour + 10.0 * raw_hit))
 }
 
-/// ES→Mana 资源转换比例（PoB2 `EnergyShieldConvertToMana` BASE，上限 100%）→ `[0, 1]`。
+// ─────────────────────────────────────────────────────────────────
+// 五元防御资源转换矩阵（M2 Track C-3，13-G6）
+// vendor：CalcDefence.lua:1301-1390（resourceList 矩阵）、
+//         :1150-1290 / :806-808（Body Armour 翻倍 flag）
+// ─────────────────────────────────────────────────────────────────
+
+/// 矩阵的五元资源词（顺序 = PoB2 resourceList 处理序，CalcDefence.lua:1300-1306；
+/// 前 [`MATRIX_DEFENCE_COUNT`] 个为 defence 资源，享 per-slot 聚合）。
+/// `<Src>ConvertTo<Dst>` / `<Src>GainAs<Dst>` 词条名由本表拼接（W0.1 解析表即契约）。
+const MATRIX_RESOURCES: [&str; 5] = ["Armour", "Evasion", "EnergyShield", "Life", "Mana"];
+/// defence 资源个数（`MATRIX_RESOURCES` 前缀：Armour/Evasion/EnergyShield）。
+const MATRIX_DEFENCE_COUNT: usize = 3;
+/// Body Armour 槽位 ID（`EquipmentSlot::BodyArmour.id()`，翻倍 flag 的作用槽）。
+const BODY_ARMOUR_SLOT: &str = "bodyarmour";
+
+/// 五元资源转换矩阵的输出：三防终值 + 非 defence 目标（Life/Mana）的转入量。
 ///
-/// 来源词条：`Converts all Energy Shield to Mana`（Eldritch Battery 型关键石，BASE 100）
-/// / `Convert N% of maximum Energy Shield to maximum Mana`。
-pub fn es_to_mana_rate(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("EnergyShieldConvertToMana")],
-    )
-    .clamp(0.0, 100.0)
-        / 100.0
+/// `extra_life` / `extra_mana` 对应 PoB2 `NewMod("Extra"..name, "BASE", …)`
+/// （CalcDefence.lua:1383）语义——由 `perform` 在 minimal 计算前注入为
+/// `MaximumLife` / `MaximumMana` BASE（享 Life/Mana 全局乘区）。
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct DefenceResources {
+    pub armour: f64,
+    pub evasion: f64,
+    pub energy_shield: f64,
+    /// defence 源转入 Life 的量（PoB2 `ExtraLife` BASE 语义）。
+    pub extra_life: f64,
+    /// defence 源转入 Mana 的量（含既有 ES→Mana 通道，PoB2 `ExtraMana` BASE 语义）。
+    pub extra_mana: f64,
 }
 
-/// per-slot 防御聚合（PoB2 `CalcDefence.lua` + `CalcTools.calcLib.mod({slotName=slot})`）。
+/// 五元防御资源转换矩阵 + per-slot 聚合（PoB2 CalcDefence.lua:1301-1390）。
 ///
-/// 每个槽位的防御底值（`SlotName`-tagged BASE，如各护甲件 rolled 底值）按
-/// **该槽位的** inc/more 与**全局** inc/more 合并缩放后求和：
-/// ```text
-/// per_slot(slot) = slot_base × (1 + (Σglobal_inc + Σslot_inc(slot))/100) × (Π global_more × Π slot_more(slot))
-/// total = Σ_slots per_slot(slot) + global_base × (1 + Σglobal_inc/100) × Π global_more
-/// ```
-/// - slot-scoped inc（`from Equipped <Slot>`）与 global inc **同加法桶相加**（非独立乘区，
-///   避免 `g×s` 交叉项高估，对齐 PoB2）。
-/// - 无槽位的 flat BASE（`base` 入参 + 全局 `+to Armour` 等）作为「无槽位底」，只享全局乘区。
-fn scaled_defence_stat(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
-    // PoB2 `CalcDefence.lua` resourceList：每个防御属性的全局 inc/more 缩放名集。
-    // 组合名 `ArmourAndEvasion`/`Defences` 按 PoB2 纳入对应属性；`*AndEnergyShield`
-    // 组合名不在任何集内（仅作护甲件局部 rolled 底值，全局出现时对总值无效）。
-    let names = defence_scaling_names(name);
-    // BASE 词条只挂在本体属性名下（per-slot 底值 + 无槽位全局底）。
-    let base_name = ModName::from(name);
-
-    let global_inc = db.sum_global_only(ModType::Inc, cfg, &names);
-    let global_more = db.more_global_only(cfg, &names);
-
-    // 无槽位底：调用方传入的 base（如树 flat）+ 无 SlotName tag 的 BASE 词条，只享全局乘区。
-    let global_base =
-        base + db.sum_global_only(ModType::Base, cfg, std::slice::from_ref(&base_name));
-    let mut total = global_base * (1.0 + global_inc / 100.0) * global_more;
-
-    // 各槽位底：用「全局 inc + 该槽 inc」加法桶 × 「全局 more × 该槽 more」连乘。
-    for (slot, slot_base) in db.slot_bases(cfg, &base_name) {
-        let slot_inc = db.sum_for_slot(ModType::Inc, cfg, &names, &slot);
-        let slot_more = db.more_for_slot(cfg, &names, &slot);
-        total += slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
+/// 流程（与 vendor 一致，源按 `MATRIX_RESOURCES` 顺序**串行**处理——先处理源收到的
+/// 转入会被后处理源再转换，反之不会）：
+/// 1. `<Src>ConvertTo<Dst>` BASE 求和，per-pair cap 100；某源总转换 >100 时按比例
+///    归一化（:1311-1320。vendor 该归一化循环因 `ipairs` 误用实际不生效，此处按
+///    蓝图裁决实现真归一化）；
+/// 2. 槽位底值（装备 rolled 件级底，`SlotName`-tagged BASE）+ Body Armour 翻倍 flag
+///    （:1150-1290 / :806-808；vendor 当前版把翻倍写在 gear 统计段、resourceList 重读
+///    raw 值是其自身 quirk，按蓝图裁决作用于矩阵槽位底）：
+///    - `DoubleBodyArmourDefence`：armour/evasion/ES 皆 ×2（:1161/:1189/:1214/:1232）；
+///    - `Unbreakable`：armour ×2（:1217）；与 `IronReflexes` 同时成立 evasion ×2（:1235-1237）；
+///    - `EnergyShieldToWard`：装备 ES 槽位底不再聚合进 ES（转 Ward，Track D 消费；:1192-1205）。
+/// 3. 逐源转换（:1327-1373）：`rate = ConvertTo + GainAs`（GainAs 不减源）；
+///    - defence 源：槽位底 × rate → defence 目标进**同槽位**桶 / 非 defence 目标进全局
+///      转入量；全局底 × rate → 目标全局；源按 `(100 − totalConversion)/100` 缩残一次
+///      （蓝图裁决：vendor 的 per-target 重复缩残是 bug，不复刻）；
+///    - 非 defence 源（Life/Mana）：`ceil(全局底 × rate/100)` 进目标（:1364-1366）；
+///      源本体的扣减属 doActorLifeManaSpirit 域（:73-126，M1/M3），矩阵不减。
+/// 4. defence 资源 per-slot 聚合（:1374-1381，等价旧 `scaled_defence_stat`）：
+///    `total = global_base × (1 + Σg_inc/100) × Πg_more
+///           + Σ_slots slot_base × (1 + (Σg_inc + Σslot_inc)/100) × (Πg_more × Πslot_more)`
+///    slot-scoped inc 与 global inc 同加法桶（对齐 PoB2 `calcLib.mod({slotName=slot})`）。
+///
+/// 无任何矩阵词条与 keystone 时本函数与旧三次 `scaled_defence_stat` 调用**逐位等值**
+/// （缩残因子恒 1.0、转入恒 0.0，浮点运算序一致）。
+pub fn calc_defence_resources(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base: &super::ActorBaseStats,
+    keystones: &crate::rules::DefenceKeystones,
+) -> DefenceResources {
+    // ── 1) ConvertTo 速率矩阵：per-pair cap 100 + 行归一化（:1311-1320）──
+    let mut conv = [[0.0_f64; MATRIX_RESOURCES.len()]; MATRIX_RESOURCES.len()];
+    let mut total_conv = [0.0_f64; MATRIX_RESOURCES.len()];
+    for (s, src) in MATRIX_RESOURCES.iter().enumerate() {
+        for (t, dst) in MATRIX_RESOURCES.iter().enumerate() {
+            if s == t {
+                continue;
+            }
+            let name = ModName::from(format!("{src}ConvertTo{dst}"));
+            conv[s][t] = db.sum(ModType::Base, cfg, &[name]).clamp(0.0, 100.0);
+            total_conv[s] += conv[s][t];
+        }
+        if total_conv[s] > 100.0 {
+            let factor = 100.0 / total_conv[s];
+            for rate in &mut conv[s] {
+                *rate *= factor;
+            }
+            total_conv[s] = 100.0;
+        }
     }
 
-    round(total)
+    // ── 2) defence 槽位底值 + Body Armour 翻倍 flag ──
+    let mut slots: [Vec<(String, f64)>; MATRIX_DEFENCE_COUNT] = [
+        db.slot_bases(cfg, &ModName::from("Armour")),
+        db.slot_bases(cfg, &ModName::from("Evasion")),
+        // EnergyShieldToWard：装备 ES 槽位底转 Ward（Track D），不再聚合进 ES（:1192-1205）。
+        if keystones.energy_shield_to_ward {
+            Vec::new()
+        } else {
+            db.slot_bases(cfg, &ModName::from("EnergyShield"))
+        },
+    ];
+    for (idx, slot_list) in slots.iter_mut().enumerate() {
+        for (slot, value) in slot_list.iter_mut() {
+            if slot != BODY_ARMOUR_SLOT {
+                continue;
+            }
+            if keystones.double_body_armour_defence {
+                *value *= 2.0; // :1214/:1232（armour/evasion）、:1189（ES）
+            }
+            match idx {
+                0 if keystones.unbreakable => *value *= 2.0, // :1217
+                1 if keystones.unbreakable && keystones.iron_reflexes => *value *= 2.0, // :1235-1237 / :806-808
+                _ => {}
+            }
+        }
+    }
+
+    // ── 3) 逐源串行转换（:1327-1373）──
+    // 全局底输入：defence 用本体属性名 BASE；Life/Mana 的 flat BASE 名为 Maximum*。
+    let base_inputs = [
+        base.armour,
+        base.evasion,
+        base.energy_shield,
+        base.life,
+        base.mana,
+    ];
+    let global_base_names = [
+        "Armour",
+        "Evasion",
+        "EnergyShield",
+        "MaximumLife",
+        "MaximumMana",
+    ];
+    // received：各资源收到的全局转入量（defence 源处理时并入其全局底；非 defence 即 Extra*）。
+    let mut received = [0.0_f64; MATRIX_RESOURCES.len()];
+    // kept_global：defence 源缩残后的留存全局底（聚合用）。
+    let mut kept_global = [0.0_f64; MATRIX_DEFENCE_COUNT];
+    for (s, src) in MATRIX_RESOURCES.iter().enumerate() {
+        // 源处理时点的全局底 = 入参基底 + 全局 flat BASE + 此前源转入（串行语义，:1328-1329
+        // `globalBase = Sum(BASE, source.mods) + source.globalBase`）。
+        let global_s = base_inputs[s]
+            + db.sum_global_only(ModType::Base, cfg, &[ModName::from(global_base_names[s])])
+            + received[s];
+        let is_defence_src = s < MATRIX_DEFENCE_COUNT;
+        if is_defence_src {
+            // defence 源：此前转入并入全局底参与本源转换/缩残（归 kept_global），清零防双计；
+            // 非 defence 源保留 received（即 Extra* 输出，vendor `res.globalBase` 同语义）。
+            received[s] = 0.0;
+        }
+        // 槽位快照：本源全部目标都从同一快照取值（vendor 在 target 循环内边转边缩残属
+        // bug，蓝图裁决不复刻）。
+        let slots_snapshot = if is_defence_src {
+            slots[s].clone()
+        } else {
+            Vec::new()
+        };
+        for (t, dst) in MATRIX_RESOURCES.iter().enumerate() {
+            if t == s {
+                continue;
+            }
+            // GainAs 叠加在 ConvertTo 之上、不减源（:1336-1337 `rate = conversionRate + gainRate`）。
+            let gain = db
+                .sum(
+                    ModType::Base,
+                    cfg,
+                    &[ModName::from(format!("{src}GainAs{dst}"))],
+                )
+                .max(0.0);
+            let rate = conv[s][t] + gain;
+            if rate <= 0.0 {
+                continue;
+            }
+            if is_defence_src {
+                // defence 源：槽位底逐槽转移（defence 目标进同槽位桶，享目标的槽位乘区；
+                // 非 defence 目标进全局转入，:1340-1352）。
+                for (slot, value) in &slots_snapshot {
+                    if *value <= 0.0 {
+                        continue;
+                    }
+                    let target_base = value * rate / 100.0;
+                    if t < MATRIX_DEFENCE_COUNT {
+                        slots[t].push((slot.clone(), target_base));
+                    } else {
+                        received[t] += target_base;
+                    }
+                }
+                // 全局底部分（:1355）。
+                received[t] += global_s * rate / 100.0;
+            } else {
+                // 非 defence 源：全局 ceil 取整（:1364-1366）。
+                received[t] += (global_s * rate / 100.0).ceil();
+            }
+        }
+        if is_defence_src {
+            // 源缩残一次：仅 ConvertTo 计入 totalConversion，GainAs 不减源（:1352/:1360）。
+            let keep = (100.0 - total_conv[s]) / 100.0;
+            for (_, value) in slots[s].iter_mut() {
+                *value *= keep;
+            }
+            kept_global[s] = global_s * keep;
+        }
+    }
+
+    // ── 4) defence 资源 per-slot 聚合（:1374-1381，旧 scaled_defence_stat 等价式）──
+    let mut out = [0.0_f64; MATRIX_DEFENCE_COUNT];
+    for (s, value) in out.iter_mut().enumerate() {
+        // 全局 inc/more 缩放名集（组合名语义见 [`defence_scaling_names`]）。
+        let names = defence_scaling_names(MATRIX_RESOURCES[s]);
+        let global_inc = db.sum_global_only(ModType::Inc, cfg, &names);
+        let global_more = db.more_global_only(cfg, &names);
+        // 全局底 = 缩残后留存 + 后处理源的转入（处理后收到的转入不再被本源转换，串行语义）。
+        let mut total = (kept_global[s] + received[s]) * (1.0 + global_inc / 100.0) * global_more;
+        for (slot, slot_base) in &slots[s] {
+            let slot_inc = db.sum_for_slot(ModType::Inc, cfg, &names, slot);
+            let slot_more = db.more_for_slot(cfg, &names, slot);
+            total +=
+                slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
+        }
+        *value = round(total);
+    }
+
+    DefenceResources {
+        armour: out[0],
+        evasion: out[1],
+        energy_shield: out[2],
+        extra_life: received[3],
+        extra_mana: received[4],
+    }
 }
 
 /// 某防御属性的全局/槽位 inc·more 缩放名集（PoB2 `CalcDefence.lua` resourceList `mods`）。
@@ -359,16 +532,29 @@ pub const AVOID_AILMENT_CAP: f64 = 100.0;
 /// - `AvoidAllDamageFromHitsChance` / 投射物规避：BASE 求和后 `min(_, 75)`。
 /// - 异常规避（眩晕/点燃/感电/冰缓/冰冻/中毒/流血/全元素）：上限 100%；
 ///   `<Ailment>Immune` / `ElementalAilmentImmune` 旗标直接置 100。
-/// - **ES 隐式眩晕规避**（PoB2 `CalcDefence.lua` 注释明确）：
-///   受击时有 ES（> 0）→ `notAvoidChance × 0.5`，即被眩晕几率减半 ≡ 等效 AvoidStun +50%。
-///   实现：若 `energy_shield > 0`，眩晕规避 = `1 - (1 - avoid_stun/100) * 0.5`，
-///   折算回百分比后再 clamp 100。
+/// - **ES 隐式眩晕规避**（PoB2 CalcDefence.lua:2554-2557，M2-E2 修复）：
+///   `ES > totalTakenHit` **且无** `EnergyShieldProtectsMana`（EB）才
+///   `notAvoidChance × 0.5`（被眩晕几率减半 ≡ 等效 AvoidStun +50%）。
+///   旧实现的「ES > 0 即减半」过宽——vendor 仅在 ES 能吃下整次受击承伤时给予减半，
+///   EB 时 ES 护 Mana 不护命中池、不享受减半。
+///   `total_taken_hit` 在 Track F 接线前由调用方以单击参考伤害近似（蓝图 Track E）。
 /// - `ShockAvoidAppliesToElementalAilments`（Stormshroud）联动：
 ///   感电规避也加入全元素规避计算。
 ///
+/// # 参数
+/// - `total_taken_hit` — 受击总承伤（PoB2 `output.totalTakenHit`，:2555）。
+/// - `energy_shield_protects_mana` — EB keystone flag（:2555）；调用方从 C-1
+///   `DefenceKeystones::energy_shield_protects_mana` 快照传入（蓝图 §3.3 契约 2）。
+///
 /// 出处：agent-docs/active-defences.md §3.2；
-///       PoB2 `src/Modules/CalcDefence.lua` 规避段。
-pub fn calc_avoidance(db: &ModDb, cfg: &CalcConfig, energy_shield: f64) -> AvoidanceResult {
+///       PoB2 `src/Modules/CalcDefence.lua` 规避段 + :2554-2558。
+pub fn calc_avoidance(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    energy_shield: f64,
+    total_taken_hit: f64,
+    energy_shield_protects_mana: bool,
+) -> AvoidanceResult {
     // --- 击中规避 ---
     let avoid_all_raw = db.sum(
         ModType::Base,
@@ -453,17 +639,19 @@ pub fn calc_avoidance(db: &ModDb, cfg: &CalcConfig, energy_shield: f64) -> Avoid
     let avoid_bleeding = round(avoid_bleeding_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
     // --- 眩晕规避（含 ES 隐式 50%）---
-    // PoB2 CalcDefence.lua：
+    // PoB2 CalcDefence.lua:2554-2558：
     //   notAvoidChance = StunImmune ? 0 : 100 - min(AvoidStun, 100)
-    //   if ES > 0: notAvoidChance *= 0.5
-    //   effectiveAvoidStun = 100 - notAvoidChance
+    //   if ES > totalTakenHit and not EnergyShieldProtectsMana: notAvoidChance *= 0.5
+    //   StunAvoidChance = 100 - notAvoidChance
     let stun_immune = db.flag(cfg, ModName::from("StunImmune"));
     let avoid_stun = if stun_immune {
         100.0
     } else {
         let stun_raw = db.sum(ModType::Base, cfg, &[ModName::from("AvoidStun")]);
         let not_avoid = (100.0 - stun_raw.min(AVOID_AILMENT_CAP)).max(0.0);
-        let effective_not_avoid = if energy_shield > 0.0 {
+        // :2555-2557 ES 能吃下整次受击承伤且非 EB 时，被眩晕几率减半。
+        let effective_not_avoid = if energy_shield > total_taken_hit && !energy_shield_protects_mana
+        {
             not_avoid * 0.5
         } else {
             not_avoid
@@ -482,6 +670,238 @@ pub fn calc_avoidance(db: &ModDb, cfg: &CalcConfig, energy_shield: f64) -> Avoid
         avoid_poison,
         avoid_bleeding,
     }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Evade 四分型（M2 Track E，13-G9；PoB2 CalcDefence.lua:1394-1456）
+// ─────────────────────────────────────────────────────────────────
+
+/// Evade 四分型结果（PoB2 `EvadeChance` / `Melee|Projectile|Spell|SpellProjectileEvadeChance`，
+/// CalcDefence.lua:1421-1456）。各值为百分比（0–100，已按 `EvadeChanceMax`/cap 截断）。
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct EvadeSuite {
+    /// 综合闪避几率（split 时为独立公式值，否则 = melee；:1443-1449）。
+    pub evade_chance: f64,
+    /// 近战闪避几率。
+    pub melee: f64,
+    /// 投射物闪避几率。
+    pub projectile: f64,
+    /// 法术闪避几率。
+    pub spell: f64,
+    /// 法术投射物闪避几率。
+    pub spell_projectile: f64,
+}
+
+impl EvadeSuite {
+    /// 五值同值（CannotEvade → 0 / AlwaysEvade → 100 分支用；:1421-1433）。
+    fn uniform(value: f64) -> Self {
+        Self {
+            evade_chance: value,
+            melee: value,
+            projectile: value,
+            spell: value,
+            spell_projectile: value,
+        }
+    }
+}
+
+/// vendor `calcs.monsterHitChance`（CalcDefence.lua:40-46）：怪物命中玩家几率，
+/// **整数百分比**（`m_max(m_min(round(raw), 100), 5)`）。
+///
+/// 与本文件 [`monster_hit_chance`]（fraction 口径、1e-9 精度）刻度不同：evade 公式
+/// 消费的是 vendor 的整数百分比中间值，混用会产生 ±0.5% 级偏差，故独立实现。
+///
+/// 边界：`accuracy < 0` → 5（vendor :41-43）；`evasion <= 0` → 100（vendor 公式
+/// 在 evasion=0 时分子为 0 → raw=100；同时规避 evasion=accuracy=0 的 0/0）。
+fn monster_hit_chance_pct(evasion: f64, accuracy: f64) -> f64 {
+    if accuracy < 0.0 {
+        return 5.0;
+    }
+    if evasion <= 0.0 {
+        return 100.0;
+    }
+    let raw = (1.0 - (0.95 * evasion) / (evasion + 4.0 * accuracy)) * 100.0;
+    raw.round().clamp(5.0, 100.0)
+}
+
+/// `calcLib.mod` 等价：`(1 + Σinc/100) × Πmore`（vendor CalcTools.lua `calcLib.mod`）。
+fn scaling_mod(db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+    (1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)
+}
+
+/// Evade 四分型计算（PoB2 CalcDefence.lua:1394-1456）。
+///
+/// # 公式（逐行对照）
+/// - 四分型有效闪避值（:1394-1397）：`<Type>Evasion = max(round(Evasion × calcLib.mod(<Type>Evasion)), 0)`
+///   （整数取整对齐 vendor `round`）。
+/// - `evadeMax = Override(EvadeChanceMax) || EvadeChanceCap(95)`（:1436；W0.1 把
+///   vendor MAX 词条收敛为 Override，消费侧 clamp 语义不变）。
+/// - 综合（:1437）：`EvadeChance = 100 − (monsterHitChance(Evasion, acc) − ΣBASE EvadeChance) × enemyHitMult`。
+/// - 四分型（:1438-1441）：`max(0, min(evadeMax, (100 − (monsterHitChance(<Type>Evasion, acc)
+///   − ΣBASE EvadeChance) × enemyHitMult) × calcLib.mod(EvadeChance, <Type>EvadeChance)))`；
+///   SpellProjectile 的乘区名集为 `EvadeChance + ProjectileEvadeChance + SpellProjectileEvadeChance`（:1441）。
+/// - split 判定（:1443-1448）：melee 与其余三型**全部不同**才保留综合独立值，否则综合 = melee。
+/// - 综合再 `min(evadeMax)`（:1449）；`UnluckyEvade` → 五值各 `x²/100`（:1450-1456）。
+/// - `CannotEvade`/敌方 `CannotBeEvaded` → 全 0（:1421-1426）；`AlwaysEvade` → 全 100（:1427-1433）。
+///
+/// # 参数
+/// - `enemy_hit_mult` — 敌方 `HitChance` 的 `calcLib.mod`（inc/more 乘区，:1435；由调用方
+///   从敌人 ModDb 读出，保持本函数只依赖玩家 db）。
+/// - `enemy_cannot_be_evaded` — 敌方 `CannotBeEvaded` flag（:1421）。
+///
+/// 注：`EnemyAccuracyDistancePenalty`（:2545-2549）依赖 config 输入，M3 config_interpreter
+/// 接入后在调用方对 `enemy_accuracy` 预折算，本函数公式不变。
+pub fn calc_evade_suite(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    evasion: f64,
+    enemy_accuracy: f64,
+    enemy_hit_mult: f64,
+    enemy_cannot_be_evaded: bool,
+) -> EvadeSuite {
+    // :1421-1426 CannotEvade / 敌方 CannotBeEvaded → 全 0。
+    if db.flag(cfg, ModName::from("CannotEvade")) || enemy_cannot_be_evaded {
+        return EvadeSuite::uniform(0.0);
+    }
+    // :1427-1433 AlwaysEvade（"Attacks cannot Hit you"）→ 全 100。
+    if db.flag(cfg, ModName::from("AlwaysEvade")) {
+        return EvadeSuite::uniform(100.0);
+    }
+
+    // :1394-1397 四分型有效闪避值（vendor 整数取整、下限 0）。
+    let typed_evasion = |name: &str| -> f64 {
+        (evasion * scaling_mod(db, cfg, &[ModName::from(name)]))
+            .round()
+            .max(0.0)
+    };
+    let melee_evasion = typed_evasion("MeleeEvasion");
+    let projectile_evasion = typed_evasion("ProjectileEvasion");
+    let spell_evasion = typed_evasion("SpellEvasion");
+    let spell_projectile_evasion = typed_evasion("SpellProjectileEvasion");
+
+    // :1435-1436 综合 BASE 与上限。
+    let evade_base = db.sum(ModType::Base, cfg, &[ModName::from("EvadeChance")]);
+    let evade_max = db
+        .override_(cfg, ModName::from("EvadeChanceMax"))
+        .unwrap_or(cfg.constants.game().evade_chance_cap)
+        .max(0.0);
+
+    // :1438-1441 四分型独立公式。
+    let typed_chance = |type_evasion: f64, names: &[ModName]| -> f64 {
+        let unscaled = 100.0
+            - (monster_hit_chance_pct(type_evasion, enemy_accuracy) - evade_base) * enemy_hit_mult;
+        (unscaled * scaling_mod(db, cfg, names)).clamp(0.0, evade_max)
+    };
+    let melee = typed_chance(
+        melee_evasion,
+        &[
+            ModName::from("EvadeChance"),
+            ModName::from("MeleeEvadeChance"),
+        ],
+    );
+    let projectile = typed_chance(
+        projectile_evasion,
+        &[
+            ModName::from("EvadeChance"),
+            ModName::from("ProjectileEvadeChance"),
+        ],
+    );
+    let spell = typed_chance(
+        spell_evasion,
+        &[
+            ModName::from("EvadeChance"),
+            ModName::from("SpellEvadeChance"),
+        ],
+    );
+    let spell_projectile = typed_chance(
+        spell_projectile_evasion,
+        &[
+            ModName::from("EvadeChance"),
+            ModName::from("ProjectileEvadeChance"),
+            ModName::from("SpellProjectileEvadeChance"),
+        ],
+    );
+
+    // :1437 综合独立公式（无四分型乘区、不 clamp 0——与 vendor 一致，仅 :1449 上限截断）。
+    let mut evade_chance =
+        100.0 - (monster_hit_chance_pct(evasion, enemy_accuracy) - evade_base) * enemy_hit_mult;
+    // :1443-1448 split 判定：melee 与其余三型全部不同才保留综合，否则综合 = melee。
+    if !(melee != projectile && melee != spell && melee != spell_projectile) {
+        evade_chance = melee;
+    }
+    // :1449 综合上限。
+    evade_chance = evade_chance.min(evade_max);
+
+    // :1450-1456 UnluckyEvade → 各值 x²/100。
+    let unlucky = db.flag(cfg, ModName::from("UnluckyEvade"));
+    let finish = |v: f64| -> f64 {
+        if unlucky {
+            round(v * v / 100.0)
+        } else {
+            round(v)
+        }
+    };
+    EvadeSuite {
+        evade_chance: finish(evade_chance),
+        melee: finish(melee),
+        projectile: finish(projectile),
+        spell: finish(spell),
+        spell_projectile: finish(spell_projectile),
+    }
+}
+
+/// Track E fill 编排（蓝图 §3.2 预登记：perform `fill_mechanics` 末尾一行调用）：
+/// Evade 四分型 + Stun 体系写 [`super::OutputTable`]。
+///
+/// 敌人侧读数（accuracy / `HitChance` 乘区 / `CannotBeEvaded`）先行取出，
+/// 保持 `calc_evade_suite` / `calc_stun` 只依赖玩家 db（纯函数约定）。
+///
+/// Stun 的 `totalTakenHit`/`PhysicalTakenHit` 在 Track F 接线前以单击参考伤害
+/// （与 `EhpOptions` 的 `reference_hit` 同源 = life + ES；参考击视作纯物理，
+/// 与 ehp.rs 物理参考口径一致）近似，F 接线后换扣池管线真值。
+///
+/// keystone 开关（CI 等）经 `keystones` 快照传入（C-1 契约，蓝图 §3.3，不散读 flag）。
+pub fn fill_evade_stun(env: &mut Env, keystones: &crate::rules::DefenceKeystones) {
+    let hit_names = [ModName::from("HitChance")];
+    let enemy_hit_mult = (1.0 + env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &hit_names) / 100.0)
+        * env.enemy.mod_db.more(&env.cfg, &hit_names);
+    let enemy_cannot_be_evaded = env
+        .enemy
+        .mod_db
+        .flag(&env.cfg, ModName::from("CannotBeEvaded"));
+    let enemy_accuracy = env.enemy.base.accuracy;
+
+    let suite = calc_evade_suite(
+        &env.player.mod_db,
+        &env.cfg,
+        env.player.output.evasion,
+        enemy_accuracy,
+        enemy_hit_mult,
+        enemy_cannot_be_evaded,
+    );
+    env.player.output.evade_chance = suite.evade_chance;
+    env.player.output.melee_evade_chance = suite.melee;
+    env.player.output.projectile_evade_chance = suite.projectile;
+    env.player.output.spell_evade_chance = suite.spell;
+    env.player.output.spell_projectile_evade_chance = suite.spell_projectile;
+
+    // --- Stun 体系（CalcDefence.lua:2525-2643；依赖 fill_mechanics 已写入 avoid_stun）---
+    // F 接线前的受击参考近似（与 EhpOptions reference_hit 同源）。
+    let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
+    let stun_inputs = super::stun::StunInputs {
+        life: env.player.output.life,
+        life_base_flat: env.player.base.life,
+        energy_shield: env.player.output.energy_shield,
+        mana: env.player.output.mana,
+        total_taken_hit: reference_hit,
+        physical_taken_hit: reference_hit,
+        avoid_stun: env.player.output.avoid_stun,
+        chaos_inoculation: keystones.chaos_inoculation,
+    };
+    let stun = super::stun::calc_stun(&env.player.mod_db, &env.cfg, &stun_inputs);
+    env.player.output.stun_threshold = stun.threshold;
+    env.player.output.self_stun_chance = stun.self_stun_chance;
+    env.player.output.stun_duration = stun.stun_duration;
 }
 
 // ─────────────────────────────────────────────────────────────────

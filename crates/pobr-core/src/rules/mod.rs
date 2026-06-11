@@ -7,11 +7,14 @@
 //! 由本层的 [`registry::HandlerRegistry`] 在 Rust 侧裁决执行。
 //!
 //! 本层保持纯函数 + 零 I/O：数据由 pobr-gamedata 加载、pobr-build 注入（P9）。
-//! M0-W1 仅落 handler 注册表骨架；config_interpreter / stat_map_engine /
-//! buff_expander / special_mod / keystone_registry 等解释器随 M1+ 各阶段进驻。
+//! M0-W1 落 handler 注册表骨架；M2 Track C 落 [`keystone_registry`]（防御
+//! keystone 开关快照）；config_interpreter / stat_map_engine / buff_expander /
+//! special_mod 等解释器随后续阶段进驻。
 
+pub mod keystone_registry;
 pub mod registry;
 pub mod skill_type_expr;
 pub mod stat_map_engine;
 
+pub use keystone_registry::DefenceKeystones;
 pub use registry::{DuplicateHandlerError, Handler, HandlerRegistry};

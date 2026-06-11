@@ -5,7 +5,8 @@
 //! parity 检查消费。计算内部只用稳定 ID；显示文本走 i18n（尚未实现）。
 //!
 //! - [`display_catalog`]：静态声明全部展示字段（id / 分类 / 值类型 / higher-is-better /
-//!   PoB key）。已计算的标 `Computed`，尚未落地的标 `Planned`。
+//!   PoB key）。已计算的标 `Computed`，尚未落地的标 `Planned`（M2 防御扩展批已于
+//!   F-3 全部翻 `Computed`）。
 //! - [`extract_display_values`]：从一个 `OutputTable` 抽取每个 `Computed` 字段的当前取值。
 
 use pobr_data::prelude::*;
@@ -20,6 +21,9 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     let computed = |id: &str, cat: Cat, vt: Vt, pob: &str| {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
+    // M2 防御扩展（W0.2 入目录时为 Planned）：C/D/E/F 各 track 接线完成后由
+    // F-3（W2 语义切换 commit，蓝图 §3.1「output.rs/display_catalog 冻结的唯一例外」）
+    // 统一翻 Computed——24 个扩展字段全部由 perform fill 阶段产出。
 
     vec![
         // --- Offence ---
@@ -348,6 +352,140 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "SkillTriggerRate",
         ),
+        // --- M2 防御扩展（W0.2 入目录 → F-3 翻 Computed；golden 参照
+        //     meta.json::player_stats 同名键） ---
+        // Spirit 池（Track D 接线）。
+        computed("Spirit", Cat::Resource, Vt::Number, "Spirit"),
+        computed(
+            "SpiritUnreserved",
+            Cat::Resource,
+            Vt::Number,
+            "SpiritUnreserved",
+        ),
+        // Block 族（Track D；CalcDefence.lua:961-1058）。
+        computed(
+            "BlockChanceMax",
+            Cat::Avoidance,
+            Vt::Percent,
+            "BlockChanceMax",
+        ),
+        computed(
+            "SpellBlockChanceMax",
+            Cat::Avoidance,
+            Vt::Percent,
+            "SpellBlockChanceMax",
+        ),
+        computed(
+            "EffectiveBlockChance",
+            Cat::Avoidance,
+            Vt::Percent,
+            "EffectiveBlockChance",
+        ),
+        computed(
+            "EffectiveSpellBlockChance",
+            Cat::Avoidance,
+            Vt::Percent,
+            "EffectiveSpellBlockChance",
+        ),
+        // 格挡承伤比例：越低越好（被格挡命中仍承受的份额）。
+        computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect")
+            .with_higher_is_better(Some(false)),
+        // Deflection（Track D；CalcDefence.lua:48-54、:1487-1506）。
+        computed(
+            "DeflectionRating",
+            Cat::Avoidance,
+            Vt::Number,
+            "DeflectionRating",
+        ),
+        computed(
+            "DeflectChance",
+            Cat::Avoidance,
+            Vt::Percent,
+            "DeflectChance",
+        ),
+        // Evade 四分型 + 综合（Track E；CalcDefence.lua:1396-1466）。
+        computed("EvadeChance", Cat::Avoidance, Vt::Percent, "EvadeChance"),
+        computed(
+            "MeleeEvadeChance",
+            Cat::Avoidance,
+            Vt::Percent,
+            "MeleeEvadeChance",
+        ),
+        computed(
+            "ProjectileEvadeChance",
+            Cat::Avoidance,
+            Vt::Percent,
+            "ProjectileEvadeChance",
+        ),
+        computed(
+            "SpellEvadeChance",
+            Cat::Avoidance,
+            Vt::Percent,
+            "SpellEvadeChance",
+        ),
+        computed(
+            "SpellProjectileEvadeChance",
+            Cat::Avoidance,
+            Vt::Percent,
+            "SpellProjectileEvadeChance",
+        ),
+        // Stun 体系（Track E；CalcDefence.lua:2525-2643）。
+        computed("StunThreshold", Cat::Defence, Vt::Number, "StunThreshold"),
+        computed(
+            "SelfStunChance",
+            Cat::Defence,
+            Vt::Percent,
+            "SelfStunChance",
+        )
+        .with_higher_is_better(Some(false)),
+        computed(
+            "StunDuration",
+            Cat::Defence,
+            Vt::TimeSeconds,
+            "StunDuration",
+        )
+        .with_higher_is_better(Some(false)),
+        // Ward 池（Track D；CalcDefence.lua:1144-1273）。
+        computed("Ward", Cat::Resource, Vt::Number, "Ward"),
+        // 池口径（Track F；EHP 循环消费的池快照口径）。
+        computed(
+            "LifeRecoverable",
+            Cat::Resource,
+            Vt::Number,
+            "LifeRecoverable",
+        ),
+        computed(
+            "EnergyShieldRecoveryCap",
+            Cat::Resource,
+            Vt::Number,
+            "EnergyShieldRecoveryCap",
+        ),
+        computed(
+            "PhysicalDamageReduction",
+            Cat::Mitigation,
+            Vt::Percent,
+            "PhysicalDamageReduction",
+        ),
+        // EHP 新口径（Track F；CalcDefence.lua:2979-3153、:3246-3247、:3322）。
+        computed(
+            "NumberOfDamagingHits",
+            Cat::Mitigation,
+            Vt::Number,
+            "NumberOfDamagingHits",
+        ),
+        computed(
+            "NumberOfMitigatedHits",
+            Cat::Mitigation,
+            Vt::Number,
+            "NumberOfMitigatedDamagingHits",
+        ),
+        // 旧 lowest-max-hit 口径保留为附加指标（F 切换 total_ehp 语义后仍可对照）。
+        computed(
+            "TotalEHPLowestMaxHit",
+            Cat::Mitigation,
+            Vt::Number,
+            "TotalEHPLowestMaxHit",
+        ),
     ]
 }
 
@@ -468,6 +606,32 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         // --- Trigger ---
         "TriggerRateCap" => output.trigger_rate_cap,
         "SkillTriggerRate" => output.skill_trigger_rate,
+
+        // --- M2 防御扩展（W0.2 映射先行就位；F-3 条目翻 Computed 后进 extract） ---
+        "Spirit" => output.spirit,
+        "SpiritUnreserved" => output.spirit_unreserved,
+        "BlockChanceMax" => output.block_chance_max,
+        "SpellBlockChanceMax" => output.spell_block_chance_max,
+        "EffectiveBlockChance" => output.effective_block_chance,
+        "EffectiveSpellBlockChance" => output.effective_spell_block_chance,
+        "BlockEffect" => output.block_effect,
+        "DeflectionRating" => output.deflection_rating,
+        "DeflectChance" => output.deflect_chance,
+        "EvadeChance" => output.evade_chance,
+        "MeleeEvadeChance" => output.melee_evade_chance,
+        "ProjectileEvadeChance" => output.projectile_evade_chance,
+        "SpellEvadeChance" => output.spell_evade_chance,
+        "SpellProjectileEvadeChance" => output.spell_projectile_evade_chance,
+        "StunThreshold" => output.stun_threshold,
+        "SelfStunChance" => output.self_stun_chance,
+        "StunDuration" => output.stun_duration,
+        "Ward" => output.ward,
+        "LifeRecoverable" => output.life_recoverable,
+        "EnergyShieldRecoveryCap" => output.energy_shield_recovery_cap,
+        "PhysicalDamageReduction" => output.physical_damage_reduction,
+        "NumberOfDamagingHits" => output.number_of_damaging_hits,
+        "NumberOfMitigatedHits" => output.number_of_mitigated_hits,
+        "TotalEHPLowestMaxHit" => output.total_ehp_lowest_max_hit,
 
         _ => 0.0,
     }

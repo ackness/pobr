@@ -138,7 +138,9 @@ struct ResistanceResolution {
 /// 解析一条元素抗性：
 /// - total = base + Σ`<element>Resistance` Base
 /// - max   = min(75 + Σ`Maximum<element>Resistance` + Σ`MaximumAllElementalResistances`, 90)
-/// - final = min(total, max)（负抗性无下限）
+/// - final = max(min(total, max), −200)（M2-E3：负抗下界 `resist_floor`，
+///   PoB2 CalcDefence.lua:886 `min = data.misc.ResistFloor` / :919
+///   `final = m_max(m_min(total, max), min)`，Data.lua:180 ResistFloor = −200）
 /// - over  = max(total - max, 0)
 fn resolve_resistance(
     db: &ModDb,
@@ -160,7 +162,8 @@ fn resolve_resistance(
     let max = (cfg.constants.character().base_maximum_all_resistances_pct + max_bonus)
         .min(cfg.constants.game().resist_hard_cap);
     ResistanceResolution {
-        final_value: round(total.min(max)),
+        // M2-E3（CalcDefence.lua:886/:919）：final 受 resist_floor(−200) 下界保护。
+        final_value: round(total.min(max).max(cfg.constants.game().resist_floor)),
         max: round(max),
         over_cap: round((total - max).max(0.0)),
     }

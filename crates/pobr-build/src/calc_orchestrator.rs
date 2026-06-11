@@ -179,6 +179,22 @@ pub fn calculate_with_data(
             .or_else(|| data.stat_map_catalog.clone()),
     );
 
+    // Ring 3 门控（PoB2 CalcSetup.lua:821）：树上未分配『+1 Ring Slot』
+    // （vendor flag `AdditionalRingSlot`，ModParser.lua:3128；Ritualist
+    // 『Unfurled Finger』）时，Ring 3 物品整体忽略——一次性从 build 视图剔除，
+    // 使后续全部消费点（注入/宝石等级扫描/文本收集）一致生效。
+    let ring3_gated;
+    let build = if build.items.contains_key(&EquipmentSlot::Ring3)
+        && !additional_ring_slot_allocated(build, data)
+    {
+        let mut gated = build.clone();
+        gated.items.remove(&EquipmentSlot::Ring3);
+        ring3_gated = gated;
+        &ring3_gated
+    } else {
+        build
+    };
+
     // 主技能分等级参数（cast/attack 时间 → 行动速率；cost / cooldown 经 BASE 词条注入）。
     // 在建 session 前先解析，以便把行动速率写入 base_input + 据其类型设 cfg 伤害 flag。
     let main_skill = resolve_main_skill(build, data);
@@ -227,6 +243,16 @@ pub fn calculate_with_data(
     // 是否为盾牌类基底判定——build-state 默认，全 build 一致，非特化。
     if main_hand_offhand_is_shield(build, data) {
         cfg = cfg.with_condition("UsingShield", true);
+    }
+    // 「Body Armour grants <mod>」前缀族的装备条件（PoB2 ModParser.lua:1418 / :3255-3268
+    // `ItemCondition{itemSlot="Body Armour", rarityCond="NORMAL"}`）：体甲槽有装备且
+    // 稀有度为 Normal 时置真。build-state 默认，全 build 一致，非特化。
+    if build
+        .items
+        .get(&EquipmentSlot::BodyArmour)
+        .is_some_and(|item| item.rarity == pobr_data::item::ItemRarity::Normal)
+    {
+        cfg = cfg.with_condition("NormalBodyArmourEquipped", true);
     }
     // 主手武器类别 → 持握条件（使「... with Quarterstaves」「while Dual Wielding」等树/词条生效）。
     // 注：冷却限速技能（如榴弹）当前 rate 模型把攻速 inc/more 乘到 cd-capped base 上（近似），
@@ -419,11 +445,33 @@ pub fn calculate_with_data(
     //     `increased Armour/Evasion/EnergyShield` 词条经 add_item 注入 INC，于此 base 上缩放。
     session.add_modifiers(defence_base_modifiers(build, data));
 
+    // 1d'. 盾牌基底格挡 → `ShieldBlockChance` BASE（M2 Track D，13-G8）。
+    //      PoB2 CalcDefence.lua:975-980 读 Weapon 2/3 `armourData.BlockChance`
+    //      作为盾基底；catalog 值经 overlay/base_item_overrides merge 注入。
+    session.add_modifiers(shield_block_modifiers(build, data));
+
+    // 1d''. 件级 Spirit（权杖 rolled `Spirit:` 行 / catalog 基底 spirit）→
+    //       `Spirit` BASE（M2 Track D，13-G11；PoB2 CalcSetup.lua:1275-1277
+    //       `item.spiritValue → NewMod("Spirit","BASE")` 等价）。
+    session.add_modifiers(item_spirit_modifiers(build, data));
+
+    // 1d'''. 件级 Ward（rolled `Ward:` 行 / catalog 基底 ward）→ `Ward` BASE
+    //        （M2 Track D，13-G14；PoB2 CalcDefence.lua:1158-1186 armourData.Ward
+    //        per-slot 聚合等价）。
+    session.add_modifiers(item_ward_modifiers(build, data));
+
     // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
     //    真实词条中含解析器尚未支持的硬失败形式（如 `[Bleeding] on [Hit]`），逐件
     //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
     //    skip-and-collect 语义）。
+    // 槽位加成效果（『N% increased bonuses gained from Equipped Rings and Amulets』，
+    // Ritualist 等）：对应槽位物品词条按 scale 追加缩放副本（PoB2 CalcPerform.lua:
+    // 1326-1370 `EffectOfBonusesFrom<Slot>` ScaleAddMod 语义；仅 scale>0 生效）。
+    let bonus_scales = slot_bonus_effect_scales(build, data);
     for (slot, item) in build.equipped_items() {
+        // Kalandra's Touch『Reflects opposite Ring』：镜射对侧戒指的全部词条
+        // （vendor CalcSetup.lua:1221-1243），来源仍归 Kalandra 所在槽。
+        let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
         let mut filtered = filter_item_parseable(item);
         // 主手武器：剔除局部物理增伤/附加（已作为武器 source 独立乘区 × baseMultiplier 计入
         // weapon_contribution）；留在全局会重复且错误地并入加法桶（PoB 是独立乘区）。
@@ -466,9 +514,54 @@ pub fn calculate_with_data(
             filtered.modifier_texts = drop_def(filtered.modifier_texts);
             filtered.enchant_texts = drop_def(filtered.enchant_texts);
         }
+        // 带 Spirit 基底的件（权杖）：剔除局部 `increased Spirit` / `+N to Spirit`
+        // ——已折入 rolled `Spirit:` 行（Item.lua:1724-1727 calcLocal 折算）或由
+        // item_spirit_modifiers 按基底重算；留在全局会双计（M2 Track D，13-G11）。
+        let has_spirit_base = item.rolled_defence.spirit.is_some()
+            || data
+                .base_items
+                .get(&item.base.to_string())
+                .and_then(|b| b.spirit)
+                .is_some();
+        if has_spirit_base {
+            let drop_spirit = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| !is_local_spirit_mod(&clean_item_text(t)))
+                    .collect()
+            };
+            filtered.implicit_texts = drop_spirit(filtered.implicit_texts);
+            filtered.modifier_texts = drop_spirit(filtered.modifier_texts);
+            filtered.enchant_texts = drop_spirit(filtered.enchant_texts);
+        }
         session
             .add_item(slot, &filtered)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
+
+        // 槽位加成效果副本：该槽位有 `EffectOfBonusesFrom<Slot>` INC 时，把本件已
+        // 注入词条的**数值副本 × scale** 追加注入（vendor CalcPerform.lua:1347-1369
+        // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`；flag 副本
+        // 为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
+        // :1328-1334 的对侧取词条一致。
+        if let Some(&(_, scale)) = bonus_scales
+            .iter()
+            .find(|(s, scale)| *s == slot && *scale > 0.0)
+        {
+            let ingest = pobr_core::ingest_item(slot, &filtered)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+            let scaled: Vec<Modifier> = ingest
+                .modifiers
+                .into_iter()
+                .filter_map(|m| match m.value {
+                    pobr_core::ModValue::Number(v) => Some(Modifier {
+                        value: pobr_core::ModValue::Number(v * scale),
+                        ..m
+                    }),
+                    _ => None,
+                })
+                .collect();
+            session.add_modifiers(scaled);
+        }
     }
 
     // 2b. 珠宝（天赋树/深渊槽）：词条按**全局**注入（多数珠宝为全局 mod；radius 珠宝
@@ -485,6 +578,28 @@ pub fn calculate_with_data(
         session
             .add_modifier_texts(texts)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
+    }
+
+    // 2b''. 激活态药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`）：
+    //       可解析词条按全局注入（skip-and-collect 容错——flask 本地词条如
+    //       『increased Amount Recovered』与触发行『Used when ...』天然不可解析，
+    //       不进入计算）。对应 PoB2 EFFECTIVE buff 模式下激活 flask/charm 的 buff
+    //       词条计入玩家 modDB（如『Defend with 200% of Armour during effect』→
+    //       ArmourDefense，ModParser.lua:2619）。
+    for fc in &build.flask_charm_items {
+        let filtered = filter_item_parseable(fc);
+        let texts: Vec<&str> = filtered
+            .implicit_texts
+            .iter()
+            .chain(&filtered.modifier_texts)
+            .chain(&filtered.enchant_texts)
+            .map(String::as_str)
+            .collect();
+        if !texts.is_empty() {
+            session
+                .add_modifier_texts(texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
     }
 
     // 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
@@ -517,6 +632,45 @@ pub fn calculate_with_data(
         session
             .add_passive_nodes(&passive_nodes)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
+
+        // 3b. 小点效果缩放（Titan『Hulking Form』等『N% increased effect of Small
+        //     Passive Skills』）：vendor CalcSetup.lua:286-292 先对全部已分配节点求
+        //     SmallPassiveSkillEffect INC 总和，:271-277 再对每个『Normal 且非属性
+        //     小点且非飞升』节点的 modList 整体 ScaleAddList ×(1+inc/100)。PoBR 等价
+        //     实现：基础份已按 1.0 注入（上方 add_passive_nodes），此处对受影响小点
+        //     追加 **数值副本 × inc/100**（BASE/INC 的加性副本与整体缩放逐值相等；
+        //     小点无 MORE 数值词条，flag 副本为无操作，均跳过）。
+        let small_inc = small_passive_effect_inc(build, data);
+        if small_inc > 0.0 {
+            let small_nodes: Vec<AllocatedNode> = passive_nodes
+                .iter()
+                .filter(|n| {
+                    data.passive_nodes.get(&n.node_id.0).is_some_and(|def| {
+                        def.kind == pobr_data::catalog::PassiveNodeKind::Normal
+                            && def.ascendancy_id.is_none()
+                            && !is_attribute_node(def)
+                    })
+                })
+                .cloned()
+                .collect();
+            if !small_nodes.is_empty() {
+                let ingest = pobr_core::passive::ingest_passive_nodes(&small_nodes)
+                    .map_err(|e| BuildError::Parse(e.to_string()))?;
+                let scaled: Vec<Modifier> = ingest
+                    .modifiers
+                    .into_iter()
+                    .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
+                    .filter_map(|m| match m.value {
+                        pobr_core::ModValue::Number(v) => Some(Modifier {
+                            value: pobr_core::ModValue::Number(v * small_inc / 100.0),
+                            ..m
+                        }),
+                        _ => None,
+                    })
+                    .collect();
+                session.add_modifiers(scaled);
+            }
+        }
     }
 
     // 4. 技能宝石：按 active/support 分类，经各自归因入口注入。
@@ -632,12 +786,22 @@ pub fn calculate_with_data(
         session.set_condition("CanUseBondedModifiers", true);
     }
 
+    // 诊断：POBR_DBG_UNSUPPORTED=1 时 dump 全部未解析词条文本（parity 排查用）。
+    if std::env::var("POBR_DBG_UNSUPPORTED").is_ok() {
+        for t in session.unsupported_modifier_texts() {
+            eprintln!("[POBR_UNSUP] {t}");
+        }
+    }
     // 诊断：POBR_DBG_STAT=<ModName> 时逐来源 dump 该属性的全部 modifier（parity 排查用）。
     if let Ok(stat) = std::env::var("POBR_DBG_STAT") {
         for m in session.mods_named(&stat) {
             eprintln!(
-                "[POBR_DBG] {stat} {:?} {:?} origin={:?} src={:?}",
-                m.mod_type, m.value, m.origin, m.source
+                "[POBR_DBG] {stat} {:?} {:?} tags={:?} src={:?} origin={:?}",
+                m.mod_type,
+                m.value,
+                m.tags,
+                m.source,
+                m.origin.as_ref().map(|o| &o.source_id)
             );
         }
     }
@@ -836,13 +1000,175 @@ fn additional_gem_levels(build: &Build, skill_types: &[String], skill_id: &str) 
             }
         }
     };
-    for (_slot, item) in build.equipped_items() {
+    for (slot, item) in build.equipped_items() {
+        // Kalandra's Touch 镜射对侧戒指词条（含 `+N to Level of all <X> Skills`），
+        // 与主注入路径同语义（vendor CalcSetup.lua:1221-1243 复制完整 modList）。
+        let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
         scan(item, &mut total);
     }
     for jewel in &build.jewels {
         scan(jewel, &mut total);
     }
     total
+}
+
+/// 树上是否分配了『+1 Ring Slot』词条节点（vendor flag `AdditionalRingSlot`，
+/// ModParser.lua:3128；Ring 3 槽门控见 CalcSetup.lua:821——未分配时
+/// 「ignore item in Ring 3」）。按节点词条文本判定，与具体升华解耦。
+fn additional_ring_slot_allocated(build: &Build, data: &BuildData) -> bool {
+    build.tree.allocated_nodes.iter().any(|id| {
+        data.passive_nodes.get(&id.0).is_some_and(|node| {
+            node.stats
+                .iter()
+                .any(|s| s.trim().eq_ignore_ascii_case("+1 ring slot"))
+        })
+    })
+}
+
+/// 槽位加成效果缩放：『N% increased bonuses gained from Equipped Rings and Amulets』
+/// 词条族 → 每槽位 INC 缩放系数（vendor `EffectOfBonusesFrom<Slot>`，
+/// ModParser.lua:4866-4880；Ritualist『Sacrificial Heart』等）。
+///
+/// 来源扫描：树上已分配节点词条 + 全部装备词条（vendor 为 modDB 全局 `Sum("INC")`，
+/// CalcPerform.lua:1326）。文本先剥 `{tag}`/`[A|B]` 标记再小写比对。
+fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSlot, f64)> {
+    use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3};
+    let mut scales: Vec<(EquipmentSlot, f64)> = Vec::new();
+    let mut add = |slots: &[EquipmentSlot], inc: f64| {
+        for s in slots {
+            match scales.iter_mut().find(|(slot, _)| slot == s) {
+                Some((_, v)) => *v += inc,
+                None => scales.push((*s, inc)),
+            }
+        }
+    };
+    let mut texts: Vec<String> = Vec::new();
+    for id in &build.tree.allocated_nodes {
+        if let Some(node) = data.passive_nodes.get(&id.0) {
+            texts.extend(node.stats.iter().map(|s| clean_grant_text(s)));
+        }
+    }
+    for (_, item) in build.equipped_items() {
+        for t in item
+            .implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+        {
+            texts.push(clean_grant_text(t));
+        }
+    }
+    for t in &texts {
+        let Some(idx) = t.find("% increased bonuses gained from ") else {
+            continue;
+        };
+        let Ok(num) = t[..idx].trim().parse::<f64>() else {
+            continue;
+        };
+        let target = t[idx + "% increased bonuses gained from ".len()..].trim();
+        // vendor ModParser.lua:4866-4880 的四个戒指/项链变体（quiver/focus 走独立
+        // 机制，暂不消费——与 vendor 的 CalcSetup 特例路径对应）。
+        match target {
+            "equipped rings and amulets" => add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0),
+            "equipped rings" => add(&[Ring1, Ring2, Ring3], num / 100.0),
+            "left equipped ring" => add(&[Ring1], num / 100.0),
+            "right equipped ring" => add(&[Ring2], num / 100.0),
+            _ => {}
+        }
+    }
+    scales
+}
+
+/// 剥离 `{tag}` 与 `[A|B]`（取显示名 B）/`[A]` 标记并小写归一，供
+/// [`slot_bonus_effect_scales`] 的固定句式比对（与 mod_parser 内部清洗同语义）。
+fn clean_grant_text(text: &str) -> String {
+    let no_braces = clean_item_text(text);
+    if !no_braces.contains('[') {
+        return no_braces;
+    }
+    let mut out = String::with_capacity(no_braces.len());
+    let mut chars = no_braces.chars();
+    while let Some(c) = chars.next() {
+        if c == '[' {
+            let mut inner = String::new();
+            for ic in chars.by_ref() {
+                if ic == ']' {
+                    break;
+                }
+                inner.push(ic);
+            }
+            out.push_str(inner.rsplit('|').next().unwrap_or(&inner));
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// 小点效果总 INC（『N% increased effect of Small Passive Skills』词条族 →
+/// SmallPassiveSkillEffect INC，vendor ModParser.lua:3281；Titan『Hulking Form』）。
+///
+/// 来源扫描：全部已分配节点词条（vendor CalcSetup.lua:286-290 对 nodeList 求
+/// `Sum("INC", nil, "SmallPassiveSkillEffect")`——该词条只存在于树节点）。文本先经
+/// [`clean_grant_text`] 剥标记小写归一再固定句式比对。珠宝半径变体
+/// （JewelSmallPassiveSkillEffect，ModParser.lua:6842）走独立机制，不在此消费。
+fn small_passive_effect_inc(build: &Build, data: &BuildData) -> f64 {
+    let mut inc = 0.0;
+    for id in &build.tree.allocated_nodes {
+        let Some(node) = data.passive_nodes.get(&id.0) else {
+            continue;
+        };
+        for s in &node.stats {
+            let t = clean_grant_text(s);
+            if let Some(idx) = t.find("% increased effect of small passive skills")
+                && t[idx + "% increased effect of small passive skills".len()..]
+                    .trim()
+                    .is_empty()
+                && let Ok(num) = t[..idx].trim().parse::<f64>()
+            {
+                inc += num;
+            }
+        }
+    }
+    inc
+}
+
+/// Kalandra's Touch『Reflects opposite Ring』：该戒指自身无词缀，计算时复制**对侧
+/// 戒指**的全部词条（implicit / explicit / enchant 全列）。
+///
+/// vendor 依据：CalcSetup.lua:1221-1243——`otherRing.modList` 全量 `ScaleAddMod`
+/// （scale=1，仅滤 `SocketedIn` tag——PoBR 词条无该 tag 形态）；对侧映射仅
+/// `Ring 1 ↔ Ring 2`（:1228），Ring 3 不参与；对侧同为 Kalandra 时不复制
+/// （`not otherRing.name:match("Kalandra's Touch")` 同语义）。
+///
+/// 识别按词条文本 `Reflects opposite Ring`（ModParser.lua:3404-3407 display-only
+/// 行，PoBR 侧作为镜射标记），与显示名解耦。命中时返回对侧戒指（调用方以其词条
+/// 顶替 Kalandra 槽注入，归因槽位仍为 Kalandra 所在槽）。
+fn kalandra_reflected_ring<'a>(
+    build: &'a Build,
+    slot: EquipmentSlot,
+    item: &Item,
+) -> Option<&'a Item> {
+    let reflects = |it: &Item| {
+        it.implicit_texts
+            .iter()
+            .chain(&it.modifier_texts)
+            .chain(&it.enchant_texts)
+            .any(|t| clean_item_text(t).eq_ignore_ascii_case("reflects opposite ring"))
+    };
+    if !reflects(item) {
+        return None;
+    }
+    let other_slot = match slot {
+        EquipmentSlot::Ring1 => EquipmentSlot::Ring2,
+        EquipmentSlot::Ring2 => EquipmentSlot::Ring1,
+        _ => return None,
+    };
+    let other = build.items.get(&other_slot)?;
+    if reflects(other) {
+        return None;
+    }
+    Some(other)
 }
 
 /// 解析「`+N to Level of all <category> Skills`」→ `(N, category 小写)`。非此形式返回 `None`。
@@ -941,6 +1267,146 @@ fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
                         .with_tag(ModTag::SlotName(slot_id.to_string())),
                 );
             }
+        }
+    }
+    mods
+}
+
+/// 盾牌基底格挡 → `ShieldBlockChance` BASE 词条（M2 Track D，13-G8；PoB2
+/// CalcDefence.lua:975-980 `Weapon 2/3 armourData.BlockChance` 等价注入）。
+///
+/// 基底值取 catalog `ArmourBaseStats::block_chance`（overlay merge 后的 vendor
+/// `ShieldTypes.Block`）。盾上的局部 block 词条（`+N% chance to Block` /
+/// `increased Block chance`）**不**做 drop-local：vendor 把它们折入件级底值
+/// （Item.lua:1825-1826 `floor(base × (1+局部inc) + 局部BASE)`），PoBR 留在全局桶
+/// 后经 `(base + ΣBASE) × mod` 聚合数学等价（仅差 vendor 件级 floor）。
+fn shield_block_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    // PoBR 槽位模型仅 Weapon2 为副手（无 Weapon3 双武器集切换）。
+    let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
+        return mods;
+    };
+    let Some(block) = data
+        .armour_base(&item.base.to_string())
+        .and_then(|a| a.block_chance)
+    else {
+        return mods;
+    };
+    if block > 0.0 {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::Item,
+            "base.ShieldBlockChance".to_string(),
+        ))
+        .with_raw_text(format!("{} base block chance", item.base));
+        mods.push(
+            Modifier::number("ShieldBlockChance", ModType::Base, block)
+                .with_origin(origin)
+                .with_tag(ModTag::SlotName(EquipmentSlot::Weapon2.id().to_string())),
+        );
+    }
+    mods
+}
+
+/// 件级局部 Spirit 词条判定（cleaned 文本）：`N% increased spirit` /
+/// `N% reduced spirit` / `+N to spirit`（仅裸 Spirit 形——`spirit reservation
+/// efficiency` 等长名不匹配）。PoB2 在权杖上把这两形折入 `item.spiritValue`
+/// （Item.lua:1724-1727 calcLocal），全局不再生效。
+fn is_local_spirit_mod(clean: &str) -> bool {
+    let parse_n = |s: &str| -> bool { s.trim().parse::<f64>().is_ok() };
+    if let Some(rest) = clean.strip_suffix("% increased spirit") {
+        return parse_n(rest);
+    }
+    if let Some(rest) = clean.strip_suffix("% reduced spirit") {
+        return parse_n(rest);
+    }
+    if let Some(body) = clean.strip_suffix(" to spirit")
+        && let Some(num) = body.strip_prefix('+')
+    {
+        return parse_n(num);
+    }
+    false
+}
+
+/// 件级 Spirit → `Spirit` BASE 词条（M2 Track D，13-G11）。
+///
+/// 取值口径（PoB2 Item.lua:523/:818/:1724-1727）：
+/// - 物品文本带 rolled `Spirit: N` 行 → 直接采用（已含该件局部
+///   `increased Spirit` / `+N to Spirit` 折算）；
+/// - 否则回退 catalog 基底 `spirit`（overlay merge 的 vendor `ItemSpirit` 值），
+///   × (1 + 局部 inc/100) + 局部 flat（裸装 / 测试夹具兜底，vendor 同公式后 round）。
+///
+/// 对应局部词条已在 `calculate_with_data` 的 drop-spirit 段从全局注入剔除。
+fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for (slot, item) in &build.items {
+        let base_spirit = data
+            .base_items
+            .get(&item.base.to_string())
+            .and_then(|b| b.spirit);
+        let value = match item.rolled_defence.spirit {
+            Some(v) => v,
+            None => {
+                let Some(base) = base_spirit else { continue };
+                let (mut inc, mut flat) = (0.0, 0.0);
+                for t in weapon_mod_texts(item) {
+                    let clean = clean_item_text(t);
+                    if let Some(rest) = clean.strip_suffix("% increased spirit") {
+                        inc += rest.trim().parse::<f64>().unwrap_or(0.0);
+                    } else if let Some(rest) = clean.strip_suffix("% reduced spirit") {
+                        inc -= rest.trim().parse::<f64>().unwrap_or(0.0);
+                    } else if let Some(body) = clean.strip_suffix(" to spirit")
+                        && let Some(num) = body.strip_prefix('+')
+                    {
+                        flat += num.trim().parse::<f64>().unwrap_or(0.0);
+                    }
+                }
+                ((f64::from(base) + flat) * (1.0 + inc / 100.0)).round()
+            }
+        };
+        if value > 0.0 {
+            let origin =
+                ModifierSource::new(SourceId::new(SourceKind::Item, "base.Spirit".to_string()))
+                    .with_raw_text(format!("{} item Spirit", item.base));
+            mods.push(
+                Modifier::number("Spirit", ModType::Base, value)
+                    .with_origin(origin)
+                    .with_tag(ModTag::SlotName(slot.id().to_string())),
+            );
+        }
+    }
+    mods
+}
+
+/// 件级 Ward → `Ward` BASE 词条（M2 Track D，13-G14）。
+///
+/// 取值口径（PoB2 `armourData.Ward`，CalcDefence.lua:1158-1186 per-slot 聚合）：
+/// - 物品文本带 rolled `Ward: N` 行 → 直接采用（PoB 已逐件折好局部增幅/品质）；
+/// - 否则回退 catalog 基底 `ward` × (1 + 品质/100)（裸装兜底；ward 件的局部
+///   `increased Ward` 词条罕见，全局桶聚合数学等价，暂不做 drop-local）。
+fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for (slot, item) in &build.items {
+        let value = match item.rolled_defence.ward {
+            Some(v) => v,
+            None => {
+                let base = data
+                    .armour_base(&item.base.to_string())
+                    .map_or(0, |a| a.ward);
+                if base == 0 {
+                    continue;
+                }
+                f64::from(base) * (1.0 + f64::from(item.quality) / 100.0)
+            }
+        };
+        if value > 0.0 {
+            let origin =
+                ModifierSource::new(SourceId::new(SourceKind::Item, "base.Ward".to_string()))
+                    .with_raw_text(format!("{} item Ward", item.base));
+            mods.push(
+                Modifier::number("Ward", ModType::Base, value)
+                    .with_origin(origin)
+                    .with_tag(ModTag::SlotName(slot.id().to_string())),
+            );
         }
     }
     mods
@@ -2549,6 +3015,16 @@ fn parse_grant_line(line: &str) -> Option<(GrantTargetKind, String)> {
     }
 }
 
+/// 属性小点判定（PoB2 tree.lua `isAttribute=true` 节点的 PoBR 等价）：词条为
+/// `+N to any [Attributes|Attribute]` 三选一形式。catalog 不带 isAttribute 旗标，
+/// 按节点词条文本判定（与 pobr-tree 属性三选一改写使用同一文本形式）。
+fn is_attribute_node(def: &pobr_data::catalog::PassiveNodeDef) -> bool {
+    def.stats.iter().any(|s| {
+        let lower = s.to_ascii_lowercase();
+        lower.contains(" to any ") && lower.contains("attribute")
+    })
+}
+
 /// 把所有范围珠宝的 `also grant` 词条按半径几何展开为全局 modifier 文本。
 ///
 /// 对每个珠宝：以插槽节点坐标为圆心、按 `Radius:` 档位筛出**已分配**节点，按种类计数
@@ -2606,7 +3082,10 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
             Err(_) => continue,
         };
 
-        // 半径内已分配节点按种类计数。
+        // 半径内已分配节点按种类计数。Small 排除属性小点（`+5 to any Attribute`
+        // 三选一节点）：vendor `<Kind> Passive Skills in Radius also grant` 处理函数
+        // 要求 `node.type == "Normal" and not node.isAttribute`（PoB2
+        // ModParser.lua:6855-6857，tree.lua 对应节点带 `isAttribute=true`）。
         let (mut notables, mut smalls) = (0usize, 0usize);
         for &skill in &effect.affected_nodes {
             let Some(def) = data.passive_nodes.get(&skill) else {
@@ -2614,7 +3093,9 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
             };
             match def.kind {
                 pobr_data::catalog::PassiveNodeKind::Notable => notables += 1,
-                pobr_data::catalog::PassiveNodeKind::Normal => smalls += 1,
+                pobr_data::catalog::PassiveNodeKind::Normal if !is_attribute_node(def) => {
+                    smalls += 1;
+                }
                 _ => {}
             }
         }
@@ -2644,7 +3125,14 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
 fn filter_parseable(texts: Vec<String>) -> Vec<String> {
     texts
         .into_iter()
-        .filter(|text| parse_mod(text).is_ok())
+        .filter(|text| {
+            let ok = parse_mod(text).is_ok();
+            // 诊断：POBR_DBG_DROPPED=1 时 dump 被结构性丢弃的词条（parity 排查用）。
+            if !ok && std::env::var("POBR_DBG_DROPPED").is_ok() {
+                eprintln!("[POBR_DROP] {text}");
+            }
+            ok
+        })
         .collect()
 }
 
@@ -2701,6 +3189,135 @@ fn collect_item_texts(build: &Build) -> Vec<String> {
         texts.extend(item.modifier_texts.iter().cloned());
     }
     texts
+}
+
+#[cfg(test)]
+mod kalandra_tests {
+    use super::kalandra_reflected_ring;
+    use crate::build::Build;
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
+
+    fn ring(texts: &[&str]) -> Item {
+        Item {
+            base: ItemBaseId::from("Ring"),
+            rarity: ItemRarity::Unique,
+            quality: 0,
+            implicit_texts: vec![],
+            modifier_texts: texts.iter().map(|s| s.to_string()).collect(),
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            parsed_stats: vec![],
+        }
+    }
+
+    /// Kalandra（Ring1）镜射 Ring2 全词条（vendor CalcSetup.lua:1221-1243）。
+    #[test]
+    fn kalandra_ring1_reflects_ring2() {
+        let kalandra = ring(&["Reflects opposite Ring"]);
+        let other = ring(&["+13% to all Elemental Resistances", "+208 to maximum Mana"]);
+        let build = Build::new()
+            .set_item(EquipmentSlot::Ring1, kalandra.clone())
+            .set_item(EquipmentSlot::Ring2, other.clone());
+        let reflected = kalandra_reflected_ring(&build, EquipmentSlot::Ring1, &kalandra)
+            .expect("应镜射对侧戒指");
+        assert_eq!(reflected.modifier_texts, other.modifier_texts);
+        // 非 Kalandra 戒指不受影响。
+        assert!(kalandra_reflected_ring(&build, EquipmentSlot::Ring2, &other).is_none());
+    }
+
+    /// 双 Kalandra 互不复制（vendor `not otherRing.name:match(...)` 同语义）；
+    /// 非戒指槽不参与。
+    #[test]
+    fn kalandra_double_or_non_ring_no_reflect() {
+        let kalandra = ring(&["Reflects opposite Ring"]);
+        let build = Build::new()
+            .set_item(EquipmentSlot::Ring1, kalandra.clone())
+            .set_item(EquipmentSlot::Ring2, kalandra.clone());
+        assert!(kalandra_reflected_ring(&build, EquipmentSlot::Ring1, &kalandra).is_none());
+        let build2 = Build::new().set_item(EquipmentSlot::Amulet, kalandra.clone());
+        assert!(kalandra_reflected_ring(&build2, EquipmentSlot::Amulet, &kalandra).is_none());
+    }
+}
+
+#[cfg(test)]
+mod ring3_tests {
+    use super::{DataOrchestratorOptions, calculate_with_data};
+    use crate::build::Build;
+    use crate::build_data::BuildData;
+    use pobr_core::calc::MinimalInput;
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
+    use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+    use std::collections::HashMap;
+
+    fn life_ring() -> Item {
+        Item {
+            base: ItemBaseId::from("Ring"),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            implicit_texts: vec![],
+            modifier_texts: vec!["+30 to maximum Life".into()],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            parsed_stats: vec![],
+        }
+    }
+
+    fn ring_slot_data() -> BuildData {
+        // 『+1 Ring Slot』词条节点（Ritualist『Unfurled Finger』形态）。
+        let node = pobr_data::catalog::PassiveNodeDef {
+            skill: 34785,
+            id: "ascendancy_ritualist_unfurled_finger".into(),
+            name: Some("Unfurled Finger".into()),
+            kind: pobr_data::catalog::PassiveNodeKind::Notable,
+            stats: vec!["+1 Ring Slot".into()],
+            group: None,
+            orbit: None,
+            orbit_index: None,
+            x: None,
+            y: None,
+            connections: vec![],
+            ascendancy_id: Some("Huntress3".into()),
+        };
+        let mut passive_nodes = HashMap::new();
+        passive_nodes.insert(34785u32, node);
+        BuildData {
+            passive_nodes,
+            ..BuildData::empty()
+        }
+    }
+
+    fn base_opts() -> DataOrchestratorOptions {
+        DataOrchestratorOptions {
+            base_input: MinimalInput {
+                base_life: 100.0,
+                ..MinimalInput::default()
+            },
+            inject_character_base: false,
+            ..Default::default()
+        }
+    }
+
+    /// 未分配『+1 Ring Slot』→ Ring 3 物品整体忽略（PoB2 CalcSetup.lua:821
+    /// 「ignore item in Ring 3 if The Unseen Hand is not allocated」同语义）。
+    #[test]
+    fn ring3_ignored_without_additional_ring_slot() {
+        let build = Build::new().set_item(EquipmentSlot::Ring3, life_ring());
+        let out = calculate_with_data(&build, &ring_slot_data(), &base_opts()).expect("calc");
+        assert_eq!(out.life, 100.0, "未分配 +1 Ring Slot 时 Ring 3 不参与计算");
+    }
+
+    /// 分配『+1 Ring Slot』节点后 Ring 3 词条生效。
+    #[test]
+    fn ring3_counts_with_additional_ring_slot() {
+        let build = Build::new()
+            .set_item(EquipmentSlot::Ring3, life_ring())
+            .with_tree(PassiveTreeSpec {
+                allocated_nodes: vec![NodeId(34785)],
+                ..Default::default()
+            });
+        let out = calculate_with_data(&build, &ring_slot_data(), &base_opts()).expect("calc");
+        assert_eq!(out.life, 130.0, "分配 +1 Ring Slot 后 Ring 3 词条生效");
+    }
 }
 
 #[cfg(test)]
@@ -3744,6 +4361,7 @@ mod tests {
             mod_domain: 1,
             weapon: None,
             armour: None,
+            spirit: None,
         }
     }
 

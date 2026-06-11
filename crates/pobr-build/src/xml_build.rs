@@ -37,10 +37,11 @@ use crate::build_code::decode_pob_code;
 use crate::error::{BuildError, XmlError};
 use crate::xml_serde::parse_build_header;
 
-/// 槽位装备 + 珠宝（无固定槽位）的解析产物。
-type EquippedAndJewels = (Vec<(EquipmentSlot, Item)>, Vec<Item>);
-/// 装备槽分配（槽位 → item_id）+ 珠宝 item_id 列表。
-type SlotAssignments = (Vec<(EquipmentSlot, u32)>, Vec<u32>);
+/// 槽位装备 + 珠宝（无固定槽位）+ 激活 ItemSet 的 `useSecondWeaponSet` 标志。
+type EquippedAndJewels = (Vec<(EquipmentSlot, Item)>, Vec<Item>, Vec<Item>, bool);
+/// 装备槽分配（槽位 → item_id）+ 珠宝 item_id 列表 + 激活 Flask/Charm item_id 列表
+/// + `useSecondWeaponSet` 标志。
+type SlotAssignments = (Vec<(EquipmentSlot, u32)>, Vec<u32>, Vec<u32>, bool);
 
 /// 把一份 PoB Build Code 直接解析为完整 [`Build`]（decode → XML → 解析）。
 ///
@@ -54,10 +55,17 @@ pub fn parse_build_from_code(code: &str) -> Result<Build, BuildError> {
 pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let header = parse_build_header(xml)?;
 
-    let allocated_nodes = parse_passive_nodes(xml)?;
+    // 激活 ItemSet 的 `useSecondWeaponSet` 决定武器集专属点的生效集
+    // （PoB2 CalcSetup.lua:791-792 `Condition:WeaponSet<N>` flag 语义）；
+    // 再以过滤后的已分配节点集门控树插槽珠宝（珠宝 mod 只经已分配 socket 节点
+    // 的 modList 进入计算，PoB2 CalcSetup.lua:175-244 仅遍历 `spec.allocNodes`）。
+    let use_second_weapon_set = parse_active_item_set(xml)?.3;
+    let allocated_nodes = parse_passive_nodes(xml, use_second_weapon_set)?;
+    let allocated_set: std::collections::HashSet<u32> =
+        allocated_nodes.iter().map(|n| n.0).collect();
+    let (items, jewels, flask_charms, _) = parse_items_and_slots(xml, &allocated_set)?;
     let attribute_overrides = parse_attribute_overrides(xml)?;
-    let (items, jewels) = parse_items_and_slots(xml)?;
-    let radius_jewels = parse_radius_jewels(xml)?;
+    let radius_jewels = parse_radius_jewels(xml, &allocated_set)?;
     let socket_groups = parse_socket_groups(xml)?;
     let main_socket_group = parse_main_socket_group(xml);
 
@@ -85,6 +93,9 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     }
     if !radius_jewels.is_empty() {
         build = build.with_radius_jewels(radius_jewels);
+    }
+    if !flask_charms.is_empty() {
+        build = build.with_flask_charm_items(flask_charms);
     }
     for group in socket_groups {
         build = build.add_socket_group(group);
@@ -312,15 +323,31 @@ fn parse_main_socket_group(xml: &str) -> Option<usize> {
 
 // ── 天赋树 ────────────────────────────────────────────────────────────────────
 
-/// 抽取 `<Tree activeSpec>` 选中 `<Spec nodes>` 的已分配节点 id。
+/// 单个 `<Spec>` 的节点集：全量 `nodes` + 两个武器集专属点列表
+/// （`<WeaponSet1 nodes>` / `<WeaponSet2 nodes>`，PoB2 PassiveSpec.lua:104-144
+/// 解析为 `node.allocMode = 1|2`，未列出的节点 `allocMode = 0` 恒生效）。
+#[derive(Default)]
+struct SpecNodes {
+    nodes: Vec<NodeId>,
+    weapon_set: [Vec<NodeId>; 2],
+}
+
+/// 抽取 `<Tree activeSpec>` 选中 `<Spec nodes>` 的已分配节点 id，并按当前武器集
+/// 过滤掉**非激活武器集**的专属点。
 ///
 /// `activeSpec` 为 1-based 索引；越界 / 缺失时取首个 `<Spec>`。无 `<Spec>` 返回空。
-fn parse_passive_nodes(xml: &str) -> Result<Vec<NodeId>, XmlError> {
+///
+/// 武器集语义（PoB2 CalcSetup.lua:209-233 / :791-792）：武器集专属点
+/// （`allocMode = 1|2`）的全部 mod 追加 `Condition: WeaponSet<N>`，而该条件 flag
+/// 只对当前激活武器集置真（`useSecondWeaponSet` ? 2 : 1）——净效果是非激活集
+/// 专属点的词条**整体不生效**。PoBR 在解析层等价实现：从已分配节点中剔除
+/// 非激活集的专属点（mod 收集 / 范围珠宝计数 / per-X 倍率均随之一致）。
+fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<Vec<NodeId>, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
     let mut active_spec: usize = 1;
-    let mut specs: Vec<Vec<NodeId>> = Vec::new();
+    let mut specs: Vec<SpecNodes> = Vec::new();
 
     loop {
         match reader.read_event() {
@@ -337,7 +364,19 @@ fn parse_passive_nodes(xml: &str) -> Result<Vec<NodeId>, XmlError> {
                     let nodes = attr_value(&e, b"nodes")
                         .map(|v| parse_node_csv(&v))
                         .unwrap_or_default();
-                    specs.push(nodes);
+                    specs.push(SpecNodes {
+                        nodes,
+                        ..Default::default()
+                    });
+                } else if let Some(set_idx) = match name.as_str() {
+                    "WeaponSet1" => Some(0),
+                    "WeaponSet2" => Some(1),
+                    _ => None,
+                } {
+                    // `<WeaponSetN>` 是 `<Spec>` 子元素，归属最近一个 Spec。
+                    if let (Some(spec), Some(v)) = (specs.last_mut(), attr_value(&e, b"nodes")) {
+                        spec.weapon_set[set_idx] = parse_node_csv(&v);
+                    }
                 }
             }
             Ok(Event::Eof) => break,
@@ -350,7 +389,19 @@ fn parse_passive_nodes(xml: &str) -> Result<Vec<NodeId>, XmlError> {
         return Ok(Vec::new());
     }
     let idx = active_spec.saturating_sub(1).min(specs.len() - 1);
-    Ok(specs.swap_remove(idx))
+    let spec = specs.swap_remove(idx);
+
+    // 剔除非激活武器集的专属点（保持原始顺序，确定性）。
+    let inactive: std::collections::HashSet<NodeId> = spec.weapon_set
+        [if use_second_weapon_set { 0 } else { 1 }]
+    .iter()
+    .copied()
+    .collect();
+    Ok(spec
+        .nodes
+        .into_iter()
+        .filter(|n| !inactive.contains(n))
+        .collect())
 }
 
 /// 解析 `nodes="65091,58814,…"` CSV 为 [`NodeId`]，跳过非数字片段。
@@ -420,9 +471,19 @@ fn parse_attribute_overrides(xml: &str) -> Result<HashMap<NodeId, AttributeChoic
 
 /// 抽取 `<Item id>` 文本块并按 `<Items activeItemSet>` 选中的 `<ItemSet>` 槽位映射，
 /// 返回 `(EquipmentSlot, Item)` 列表（按槽位 id 字典序，确定性）。
-fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
+///
+/// 树插槽珠宝按 `allocated`（已分配节点集，武器集过滤后）门控：珠宝 mod 在 PoB2 只经
+/// **已分配** socket 节点的 modList 进入计算（CalcSetup.lua:175-244 仅遍历
+/// `spec.allocNodes`；PassiveSpec 把珠宝 modList 挂在 socket 节点上）——未分配插槽的
+/// 珠宝整体不生效。ItemSet 侧 `Jewel*`/`*Socket*` 槽名路径维持原样（PoE2 build XML
+/// 的树珠宝走 `<Sockets><Socket>`，ItemSet 内仅 `<SocketIdURL>` 无 itemId，不经此路径）。
+fn parse_items_and_slots(
+    xml: &str,
+    allocated: &std::collections::HashSet<u32>,
+) -> Result<EquippedAndJewels, XmlError> {
     let items = parse_item_blocks(xml)?;
-    let (slot_assignments, jewel_ids) = parse_active_item_set(xml)?;
+    let (slot_assignments, jewel_ids, flask_charm_ids, use_second_weapon_set) =
+        parse_active_item_set(xml)?;
 
     let mut out: Vec<(EquipmentSlot, Item)> = Vec::new();
     for (slot, item_id) in slot_assignments {
@@ -432,9 +493,15 @@ fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
     }
     out.sort_by_key(|(slot, _)| slot.id());
 
-    // 树上珠宝在 `<Tree><Spec><Sockets><Socket nodeId itemId/>`（非 ItemSet），单独收集。
+    // 树上珠宝在 `<Tree><Spec><Sockets><Socket nodeId itemId/>`（非 ItemSet），单独收集；
+    // 仅保留 socket 节点已分配的珠宝。
     let mut all_jewel_ids = jewel_ids;
-    all_jewel_ids.extend(parse_tree_socket_item_ids(xml)?);
+    all_jewel_ids.extend(
+        parse_socket_node_items(xml)?
+            .into_iter()
+            .filter(|(node, _)| allocated.contains(node))
+            .map(|(_, item)| item),
+    );
     all_jewel_ids.sort_unstable();
     all_jewel_ids.dedup();
 
@@ -442,29 +509,11 @@ fn parse_items_and_slots(xml: &str) -> Result<EquippedAndJewels, XmlError> {
         .iter()
         .filter_map(|id| items.get(id).cloned())
         .collect();
-    Ok((out, jewels))
-}
-
-/// 解析 `<Sockets><Socket nodeId="N" itemId="M"/>` → 非零 itemId（树上珠宝）。
-fn parse_tree_socket_item_ids(xml: &str) -> Result<Vec<u32>, XmlError> {
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
-    let mut ids = Vec::new();
-    loop {
-        match reader.read_event() {
-            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Socket" => {
-                if let Some(id) = attr_value(&e, b"itemId").and_then(|v| v.parse::<u32>().ok())
-                    && id != 0
-                {
-                    ids.push(id);
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(e) => return Err(XmlError::Parse(e.to_string())),
-            _ => {}
-        }
-    }
-    Ok(ids)
+    let flask_charms: Vec<Item> = flask_charm_ids
+        .iter()
+        .filter_map(|id| items.get(id).cloned())
+        .collect();
+    Ok((out, jewels, flask_charms, use_second_weapon_set))
 }
 
 /// 解析树插槽 `<Socket nodeId="N" itemId="M"/>` → `(socket_node, item_id)`（itemId≠0）。
@@ -535,11 +584,18 @@ fn parse_raw_item_texts(xml: &str) -> Result<std::collections::HashMap<u32, Stri
 ///
 /// 仅收集**确实带 `also grant` 行**的珠宝；无该词条的珠宝不产生条目（其全局词条仍由
 /// `jewels` 路径注入，不重复）。
-fn parse_radius_jewels(xml: &str) -> Result<Vec<RadiusJewel>, XmlError> {
+fn parse_radius_jewels(
+    xml: &str,
+    allocated: &std::collections::HashSet<u32>,
+) -> Result<Vec<RadiusJewel>, XmlError> {
     let socket_items = parse_socket_node_items(xml)?;
     let raw_texts = parse_raw_item_texts(xml)?;
     let mut out = Vec::new();
     for (socket_node, item_id) in socket_items {
+        // 未分配 socket 的珠宝整体不生效（与 parse_items_and_slots 同一门控）。
+        if !allocated.contains(&socket_node) {
+            continue;
+        }
         let Some(text) = raw_texts.get(&item_id) else {
             continue;
         };
@@ -633,7 +689,9 @@ fn parse_item_blocks(xml: &str) -> Result<std::collections::HashMap<u32, Item>, 
 struct ItemSetData {
     id: String,
     use_second_weapon_set: bool,
-    slots: Vec<(String, u32)>,
+    /// `(槽名, item_id, active)`——`active` 仅对 Flask/Charm 槽有意义
+    /// （PoB `<Slot active="true">` 表示药剂/护符启用态）。
+    slots: Vec<(String, u32, bool)>,
 }
 
 /// 从 `<ItemSet>` 标签读取 id 与 `useSecondWeaponSet`（槽位随后由 `<Slot>` 填充）。
@@ -675,7 +733,8 @@ fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
                             attr_value(&e, b"itemId").and_then(|v| v.parse::<u32>().ok()),
                         )
                     {
-                        cur.slots.push((slot_name, item_id));
+                        cur.slots
+                            .push((slot_name, item_id, attr_bool(&e, b"active")));
                     }
                 }
                 _ => {}
@@ -692,7 +751,7 @@ fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
     }
 
     let Some(first_set) = sets.first() else {
-        return Ok((Vec::new(), Vec::new()));
+        return Ok((Vec::new(), Vec::new(), Vec::new(), false));
     };
     let chosen = active_item_set
         .as_deref()
@@ -701,7 +760,8 @@ fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
 
     let mut assignments = Vec::new();
     let mut jewel_ids = Vec::new();
-    for (slot_name, item_id) in &chosen.slots {
+    let mut flask_charm_ids = Vec::new();
+    for (slot_name, item_id, active) in &chosen.slots {
         if *item_id == 0 {
             continue;
         }
@@ -709,9 +769,23 @@ fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
             assignments.push((slot, *item_id));
         } else if is_jewel_slot(slot_name) {
             jewel_ids.push(*item_id);
+        } else if *active && is_flask_charm_slot(slot_name) {
+            // 仅**激活态**（`active="true"`）的药剂/护符进入计算——对应 PoB2 flask/charm
+            // 启用 toggle（CalcSetup 仅把激活 flask 的 buff modList 计入玩家 modDB）。
+            flask_charm_ids.push(*item_id);
         }
     }
-    Ok((assignments, jewel_ids))
+    Ok((
+        assignments,
+        jewel_ids,
+        flask_charm_ids,
+        chosen.use_second_weapon_set,
+    ))
+}
+
+/// PoB 药剂/护符槽名（`Flask 1`/`Flask 2`/`Charm 1..3`）。
+fn is_flask_charm_slot(name: &str) -> bool {
+    name.starts_with("Flask ") || name.starts_with("Charm ")
 }
 
 /// PoB 珠宝/深渊槽名（`Jewel 12345` / `… Abyssal Socket N` / `… Socket N`）→ 收入珠宝列表。
@@ -719,7 +793,7 @@ fn is_jewel_slot(name: &str) -> bool {
     name.starts_with("Jewel") || name.contains("Socket")
 }
 
-/// PoB `<Slot name>` → [`EquipmentSlot`]。枚举外槽名（Charm/Flask/Ring 3/防具切换组等）
+/// PoB `<Slot name>` → [`EquipmentSlot`]。枚举外槽名（Charm/Flask/防具切换组等）
 /// 返回 `None`（这些来源不进入当前装备计算）。武器组按 `use_second_weapon_set` 切换。
 fn slot_from_pob_name(name: &str, use_second_weapon_set: bool) -> Option<EquipmentSlot> {
     match name {
@@ -730,6 +804,9 @@ fn slot_from_pob_name(name: &str, use_second_weapon_set: bool) -> Option<Equipme
         "Amulet" => Some(EquipmentSlot::Amulet),
         "Ring 1" => Some(EquipmentSlot::Ring1),
         "Ring 2" => Some(EquipmentSlot::Ring2),
+        // 第三戒指槽（Ritualist『Unfurled Finger』）；是否参与计算由编排层按
+        // AdditionalRingSlot 分配状态门控（PoB2 CalcSetup.lua:821）。
+        "Ring 3" => Some(EquipmentSlot::Ring3),
         "Belt" => Some(EquipmentSlot::Belt),
         "Weapon 1" if !use_second_weapon_set => Some(EquipmentSlot::Weapon1),
         "Weapon 2" if !use_second_weapon_set => Some(EquipmentSlot::Weapon2),
@@ -953,6 +1030,49 @@ Adds 47 to 86 Physical Damage
         let build = parse_build(SAMPLE).expect("parse");
         let nodes: Vec<u32> = build.tree.allocated_nodes.iter().map(|n| n.0).collect();
         assert_eq!(nodes, vec![100, 200, 300]);
+    }
+
+    /// 武器集专属点过滤（PoB2 CalcSetup.lua:209-233/:791-792 + PassiveSpec.lua:104-144）：
+    /// `useSecondWeaponSet=false` 时 WeaponSet2 专属点不生效；WeaponSet1 与通用点保留。
+    #[test]
+    fn weapon_set_nodes_filtered_by_active_set() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Tree activeSpec="1">
+        <Spec nodes="100,200,300,400,500" treeVersion="0_5">
+            <WeaponSet1 nodes="200"/>
+            <WeaponSet2 nodes="400,500"/>
+        </Spec>
+    </Tree>
+    <Items activeItemSet="1">
+        <ItemSet useSecondWeaponSet="false" title="Default" id="1"/>
+    </Items>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let nodes: Vec<u32> = build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+        assert_eq!(nodes, vec![100, 200, 300]);
+    }
+
+    /// `useSecondWeaponSet=true` 时改为剔除 WeaponSet1 专属点。
+    #[test]
+    fn weapon_set_nodes_filtered_when_second_set_active() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Tree activeSpec="1">
+        <Spec nodes="100,200,300,400,500" treeVersion="0_5">
+            <WeaponSet1 nodes="200"/>
+            <WeaponSet2 nodes="400,500"/>
+        </Spec>
+    </Tree>
+    <Items activeItemSet="1">
+        <ItemSet useSecondWeaponSet="true" title="Default" id="1"/>
+    </Items>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let nodes: Vec<u32> = build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+        assert_eq!(nodes, vec![100, 300, 400, 500]);
     }
 
     #[test]

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// `name` 为英文 canonical；其它语言的名称走 `i18n/<lang>/base_items.json` 边车
 /// （`id -> 本地化名称`）。武器/护甲数值（如 PhysicalMin/Max）来自独立的
 /// `WeaponTypes` / `ArmourTypes` 表，后续切片接入。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BaseItemDef {
     /// 稳定 ID，即 `.dat` 的 `Id`（如 `Metadata/Items/Weapons/.../FourOneHandAxe1`）。
     pub id: String,
@@ -32,6 +32,14 @@ pub struct BaseItemDef {
     /// 护甲基底数值（来自 `ArmourTypes.dat`；非护甲为 `None`）——armour/evasion/ES 局部基底。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub armour: Option<ArmourBaseStats>,
+    /// 基底固有 Spirit（如权杖 `spirit = 100`；来源 `ItemSpirit.dat` 的 `SpiritGranted`）。
+    ///
+    /// 该表对应 bundle 已被 CDN 对钉定 patch 剪除（.dat 路线不可得），当前由
+    /// `overlay/base_item_overrides.json`（vendor `Data/Bases/*.lua` 确定性抽取，
+    /// `sync-pob-catalog extract-bases`）经 gamedata merge 填充——蓝图 m2-defence
+    /// §6 开放问题 2 的双路线兜底。无 Spirit 的基底为 `None`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spirit: Option<u32>,
 }
 
 /// 武器基底数值（`WeaponTypes.dat` 外键解析；攻击技能伤害的基底，对照 PoB2
@@ -51,13 +59,24 @@ pub struct WeaponBaseStats {
 }
 
 /// 护甲基底数值（`ArmourTypes.dat` 外键解析；armour/evasion/ES/ward 局部基底）。
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ArmourBaseStats {
     pub armour: u32,
     pub evasion: u32,
     pub energy_shield: u32,
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub ward: u32,
+    /// 盾牌基底格挡几率（%；来源 `ShieldTypes.dat` 的 `Block` 列，对照 PoB2
+    /// `Export/Scripts/bases.lua:277-279`）。该表 bundle 已被 CDN 对钉定 patch
+    /// 剪除，当前由 `overlay/base_item_overrides.json` 经 gamedata merge 填充
+    /// （双路线兜底，见 [`BaseItemDef::spirit`] 说明）。非盾为 `None`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block_chance: Option<f64>,
+    /// 移动速度惩罚（小数，如 `0.03` = 3% 减速；`ArmourTypes.dat` 的
+    /// `IncreasedMovementSpeed` 原始值按 PoB2 口径换算 `-raw/10000`，
+    /// 对照 `Export/Scripts/bases.lua:298-300`）。无惩罚为 `None`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub movement_penalty: Option<f64>,
 }
 
 /// serde 跳过零值 u32（diff 友好）。
