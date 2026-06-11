@@ -42,9 +42,17 @@ pub mod skill_overrides;
 // ---- M1-T2 SkillStatMap overlay schema（vendor Lua 抽取，skill_stat_map/v1）----
 pub mod stat_map;
 
+// ---- M6 前置：ModParser 解析规则 overlay schema（mod_parser_rules/v1）----
+pub mod parser_rules;
+
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};
+pub use parser_rules::{
+    FlagPhraseDef, FlagTypeDef, FlagTypeModDef, FormDef, MOD_PARSER_RULES_SCHEMA,
+    ModParserRulesDoc, NameMapDef, PhraseNamesDef, PhraseValueDef, PreFlagDef, RuleEffectsDef,
+    TagPhraseDef, TagTemplate,
+};
 pub use runtime::RuntimeConstants;
 pub use skills::{
     CostTypeDef, GemEffectDef, GemEffectsDef, GemQualityStatDef, GemQualityStatsDef,

@@ -1,0 +1,309 @@
+{
+  "_meta": {
+    "schema": "mod_parser_rules/v1",
+    "generator": "hand-curated mini fixture (entries copied verbatim from data/4.5.0.3.4/overlay/mod_parser_rules.json)",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)",
+    "extracted_files": [
+      "Modules/ModParser.lua"
+    ],
+    "regen_command": "（mini fixture：A→B 契约用，手工维护，不参与 drift）"
+  },
+  "forms": [
+    {
+      "pattern": "^(%d+)%% increased",
+      "form": "INC",
+      "literal": "% increased",
+      "anchored": true
+    },
+    {
+      "pattern": "^([%+%-][%d%.]+)%%? to",
+      "form": "BASE",
+      "literal": " to",
+      "anchored": true
+    },
+    {
+      "pattern": "adds (%d+) to (%d+) (%a+) damage",
+      "form": "DMG",
+      "literal": " damage"
+    }
+  ],
+  "name_map": [
+    {
+      "phrase": "strength",
+      "names": [
+        "Str"
+      ]
+    },
+    {
+      "phrase": "attributes",
+      "names": [
+        "Str",
+        "Dex",
+        "Int",
+        "All"
+      ]
+    },
+    {
+      "phrase": "mana cost of attacks",
+      "names": [
+        "ManaCost"
+      ],
+      "tags": [
+        {
+          "type": "SkillType",
+          "skill_type": "Attack"
+        }
+      ]
+    }
+  ],
+  "flag_phrases": [
+    {
+      "phrase": "with maces",
+      "flags": [
+        "Hit",
+        "Mace"
+      ]
+    },
+    {
+      "phrase": "with axes or swords",
+      "flags": [
+        "Hit"
+      ],
+      "tags": [
+        {
+          "type": "ModFlagOr",
+          "mod_flags": [
+            "Axe",
+            "Sword"
+          ]
+        }
+      ]
+    },
+    {
+      "phrase": "with bows",
+      "flags": [
+        "Hit",
+        "Bow"
+      ]
+    }
+  ],
+  "pre_flags": [
+    {
+      "pattern": "^minions [cthd][ae][ukva][sel]e? ",
+      "literal": "minions ",
+      "anchored": true,
+      "add_to_minion": true
+    },
+    {
+      "pattern": "^enemies (%a+) by you take ",
+      "literal": " by you take ",
+      "anchored": true,
+      "tags": [
+        {
+          "type": "Condition",
+          "var": "$1:cap"
+        }
+      ],
+      "apply_to_enemy": true,
+      "mod_suffix": "Taken",
+      "inferred": true
+    },
+    {
+      "pattern": "^take ",
+      "literal": "take ",
+      "anchored": true,
+      "mod_suffix": "Taken"
+    }
+  ],
+  "tag_phrases": [
+    {
+      "pattern": "per power charge",
+      "literal": "per power charge",
+      "tags": [
+        {
+          "type": "Multiplier",
+          "var": "PowerCharge"
+        }
+      ]
+    },
+    {
+      "pattern": "per (%d+) rage",
+      "literal": " rage",
+      "tags": [
+        {
+          "type": "Multiplier",
+          "div": "$1",
+          "var": "Rage"
+        }
+      ],
+      "inferred": true
+    },
+    {
+      "pattern": "per (%d+)%% (%a+) effect on enemy",
+      "literal": " effect on enemy",
+      "tags": [
+        {
+          "type": "Multiplier",
+          "actor": "enemy",
+          "div": "$1",
+          "var": "$2:cap+Effect"
+        }
+      ],
+      "inferred": true
+    },
+    {
+      "pattern": "per (%d+) rampage kills",
+      "literal": " rampage kills",
+      "handler_id": "tag_phrase:232c0dcf75c8"
+    }
+  ],
+  "suffix_types": [
+    {
+      "phrase": "as extra fire damage",
+      "value": "GainAsFire"
+    },
+    {
+      "phrase": "converted to cold damage",
+      "value": "ConvertToCold"
+    },
+    {
+      "phrase": "leeched as life",
+      "value": "LifeLeech"
+    }
+  ],
+  "damage_types": [
+    {
+      "phrase": "physical",
+      "value": "Physical"
+    },
+    {
+      "phrase": "fire",
+      "value": "Fire"
+    },
+    {
+      "phrase": "chaos",
+      "value": "Chaos"
+    }
+  ],
+  "pen_types": [
+    {
+      "phrase": "fire resistance",
+      "value": "FirePenetration"
+    },
+    {
+      "phrase": "elemental resistances",
+      "value": "ElementalPenetration"
+    },
+    {
+      "phrase": "chaos resistance",
+      "value": "ChaosPenetration"
+    }
+  ],
+  "regen_types": [
+    {
+      "phrase": "life",
+      "names": [
+        "LifeRegen"
+      ]
+    },
+    {
+      "phrase": "life and mana",
+      "names": [
+        "LifeRegen",
+        "ManaRegen"
+      ]
+    },
+    {
+      "phrase": "maximum life",
+      "names": [
+        "LifeRegen"
+      ]
+    }
+  ],
+  "degen_types": [
+    {
+      "phrase": "life",
+      "names": [
+        "LifeDegen"
+      ]
+    },
+    {
+      "phrase": "mana",
+      "names": [
+        "ManaDegen"
+      ]
+    },
+    {
+      "phrase": "energy shield",
+      "names": [
+        "EnergyShieldDegen"
+      ]
+    }
+  ],
+  "cost_types_map": [
+    {
+      "phrase": "life",
+      "names": [
+        "LifeCost"
+      ]
+    },
+    {
+      "phrase": "mana",
+      "names": [
+        "ManaCost"
+      ]
+    },
+    {
+      "phrase": "rage",
+      "names": [
+        "RageCost"
+      ]
+    }
+  ],
+  "base_cost_types": [
+    {
+      "phrase": "life",
+      "names": [
+        "LifeCostNoMult"
+      ]
+    },
+    {
+      "phrase": "mana",
+      "names": [
+        "ManaCostNoMult"
+      ]
+    },
+    {
+      "phrase": "energy shield",
+      "names": [
+        "EnergyShieldCostNoMult"
+      ]
+    }
+  ],
+  "flag_types": [
+    {
+      "phrase": "phasing",
+      "condition": "Condition:Phasing"
+    },
+    {
+      "phrase": "hexproof",
+      "mod": {
+        "name": "CurseEffectOnSelf",
+        "mod_type": "MORE",
+        "value": -100.0
+      }
+    },
+    {
+      "phrase": "no life regeneration",
+      "condition": "NoLifeRegen"
+    }
+  ],
+  "unsupported": [
+    "mirrored"
+  ],
+  "unsupported_pobr_extra": [
+    "split"
+  ]
+}
