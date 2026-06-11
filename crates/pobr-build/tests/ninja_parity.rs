@@ -67,6 +67,7 @@ fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
         enemy_tier: EnemyTier::Pinnacle,
         mode_effective: false,
         extra_modifier_texts: vec![],
+        ..Default::default()
     };
     calculate_with_data(&build, data, &opts).ok()
 }

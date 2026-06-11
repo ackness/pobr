@@ -40,7 +40,8 @@ pub use build_config::BuildConfig;
 pub use build_data::{BuildData, ClassBaseAttributes, EffectStats, ResolvedSkillLevel};
 pub use calc_cache::CalcCache;
 pub use calc_orchestrator::{
-    DataOrchestratorOptions, OrchestratorOptions, calculate, calculate_with_data,
+    DataOrchestratorOptions, OrchestratorOptions, StatMapCompareRecord, StatMapMode, calculate,
+    calculate_with_data, take_stat_map_compare_records,
 };
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};

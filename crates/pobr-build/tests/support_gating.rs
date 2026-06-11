@@ -32,6 +32,7 @@ fn panel_opts() -> DataOrchestratorOptions {
         enemy_tier: EnemyTier::None,
         mode_effective: false,
         extra_modifier_texts: vec![],
+        ..Default::default()
     }
 }
 

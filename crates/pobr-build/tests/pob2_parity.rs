@@ -75,6 +75,7 @@ fn report(name: &str, code: &str, data: &BuildData) -> (OutputTable, HashMap<Str
         enemy_tier: EnemyTier::Pinnacle,
         mode_effective: false,
         extra_modifier_texts: vec![],
+        ..Default::default()
     };
     let out = calculate_with_data(&build, data, &opts).expect("calc");
 

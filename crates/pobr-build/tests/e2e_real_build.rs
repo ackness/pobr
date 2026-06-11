@@ -73,6 +73,7 @@ fn deadeye_e2e_full_pipeline_succeeds() {
         enemy_tier: EnemyTier::Pinnacle,
         mode_effective: true,
         extra_modifier_texts: vec![],
+        ..Default::default()
     };
 
     let out = calculate_with_data(&build, &build_data, &opts)
