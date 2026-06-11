@@ -45,6 +45,7 @@ pub mod stat_map;
 // ---- pre-M5 数据前置（M5a/M5b/M5c 蓝图的数据生产项，零消费接线）----
 pub mod actors; // M5a：minions / spectres / granted_effect_minions（vendor 抽取）
 pub mod item_overlay; // M5c：mod_scalability / catalysts / runes / uniques（vendor 抽取）
+pub mod parser_rules; // M5b：special_mods 模板（人工策展 + vendor_pattern 对账）
 pub mod triggers; // M5a-D2：mirage_configs（工具内嵌生成）；M4-T5 trigger_configs 同文件扩展
 
 pub use actors::{
@@ -58,6 +59,10 @@ pub use item_overlay::{
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};
+pub use parser_rules::{
+    ModTemplateDef, SpecialModsDef, SpecialTemplateDef, TemplateNameDef, TemplateScalarDef,
+    TemplateTagDef, TemplateValueDef, ValueExprDef, ValueOpDef,
+};
 pub use runtime::RuntimeConstants;
 pub use skills::{
     CostTypeDef, GemEffectDef, GemEffectsDef, GemQualityStatDef, GemQualityStatsDef,

@@ -40,5 +40,6 @@ pub mod minions; // M5a：召唤物条目
 pub mod mirage_configs; // M5a-D2：mirage 配置
 pub mod mod_scalability; // M5c：{range:x} 可缩放性表
 pub mod runes; // M5c：符文/魂核词条表
+pub mod special_mods; // M5b：special 词条模板
 pub mod spectres; // M5a：魂灵条目
 pub mod uniques; // M5c：传奇 raw+索引双层
