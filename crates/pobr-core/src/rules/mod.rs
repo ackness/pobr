@@ -10,8 +10,11 @@
 //! M0-W1 仅落 handler 注册表骨架；config_interpreter / stat_map_engine /
 //! buff_expander / special_mod / keystone_registry 等解释器随 M1+ 各阶段进驻。
 
+pub mod buff_expander;
+pub mod config_interpreter;
 pub mod registry;
 pub mod skill_type_expr;
 pub mod stat_map_engine;
+pub mod value_expr;
 
 pub use registry::{DuplicateHandlerError, Handler, HandlerRegistry};

@@ -42,6 +42,11 @@ pub mod skill_overrides;
 // ---- M1-T2 SkillStatMap overlay schema（vendor Lua 抽取，skill_stat_map/v1）----
 pub mod stat_map;
 
+// ---- M3 前置：受限 DSL 单点 schema + config 选项目录 + 内建 buff 定义 ----
+pub mod buffs;
+pub mod config_def;
+pub mod value_expr;
+
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
 pub use mods::{ModDef, ModStat, StatDef};
