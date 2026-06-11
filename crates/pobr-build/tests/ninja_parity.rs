@@ -272,7 +272,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Vec<String>) {
 /// **已审查例外**（M1-T2.4 statmap 切换，独立 baseline commit 显式登记）：
 /// OFF_HIT5 23→22——deadeye-explosive-grenade 的 TotalDPS 由 Legacy「过算抵消
 /// 欠算」假命中（1.02x）回归真实 0.77x（Multishot −25% less `sup_dex.lua:3154-3156`
-/// + LightningPen +30 `SkillStatMap.lua:929-931`，均为修对）。补偿清单与逐 build
+/// 与 LightningPen +30 `SkillStatMap.lua:929-931`，均为修对）。补偿清单与逐 build
 /// 依据见 `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md` §3。
 const BASELINE_DEF_HIT5: usize = 114;
 const BASELINE_DEF_HIT10: usize = 120;
