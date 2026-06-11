@@ -2162,6 +2162,12 @@ fn legacy_mapped_stat_modifiers(
         if ds.value == 0.0 {
             continue;
         }
+        // T5.3 消费侧兜底过滤（搬迁不变式）：全量 stat 入库后，Legacy 通道只看
+        // 历史 adapter 白名单命中的 stat——谓词原样平移自 adapter（见
+        // `legacy_stat_filter`），随 T2.4 删 legacy 一起删除。
+        if !crate::legacy_stat_filter::is_mappable_stat(&ds.stat) {
+            continue;
+        }
         // 分类型组合 final（如 Lightning Attunement `*_cold_and_fire_damage_+%_final`）展开为
         // 多条分类型 MORE——用 [`map_skill_stats`] 取全部，避免漏算半边惩罚。
         for mapped in map_skill_stats(&ds.stat) {
@@ -2233,17 +2239,24 @@ fn record_stat_map_compare(
         if ds.value == 0.0 {
             continue;
         }
-        // legacy 侧注入集合（名字, 类型, 值）。
-        let mut legacy: Vec<(String, &'static str, f64)> = map_skill_stats(&ds.stat)
-            .into_iter()
-            .map(|m| {
-                (
-                    m.mod_name.clone(),
-                    m.mod_type.as_trace_label(),
-                    ds.value * m.scale,
-                )
-            })
-            .collect();
+        // legacy 侧注入集合（名字, 类型, 值）。与 `legacy_mapped_stat_modifiers` 同口径：
+        // 历史 adapter 白名单（T5.3 平移到 `legacy_stat_filter`）外的 stat 在 legacy 侧
+        // 视为不存在（全量入库前根本不会进库），diff 分类才能忠实反映两通道差异。
+        let mut legacy: Vec<(String, &'static str, f64)> =
+            if crate::legacy_stat_filter::is_mappable_stat(&ds.stat) {
+                map_skill_stats(&ds.stat)
+                    .into_iter()
+                    .map(|m| {
+                        (
+                            m.mod_name.clone(),
+                            m.mod_type.as_trace_label(),
+                            ds.value * m.scale,
+                        )
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
         legacy.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         // data 侧注入集合 + 结果分类。
         let outcome = match catalog {

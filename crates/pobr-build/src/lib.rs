@@ -29,6 +29,7 @@ pub mod calc_orchestrator;
 pub mod comparison;
 pub mod error;
 pub mod import_detect;
+pub mod legacy_stat_filter;
 pub mod skill_stat_map;
 pub mod snapshot;
 pub mod xml_build;
