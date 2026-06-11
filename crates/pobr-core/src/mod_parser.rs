@@ -716,6 +716,12 @@ fn parse_defence_sentence(rest: &str, source: &str) -> Option<Vec<Modifier>> {
         "your stun threshold is doubled" => {
             vec![Modifier::number("StunThreshold", ModType::More, 100.0)]
         }
+        // Eternal Life 关键石（ModParser.lua:3121；Lich 树「Eternal Life」节点文本）：
+        // 有 ES 时生命不变——扣池/池层走 EternalLife 互斥分支
+        // （CalcDefence.lua:587-594 / :2948-2950，消费者仅 M2-F 新管线，旧口径无感）。
+        "your life cannot change while you have energy shield" => {
+            vec![Modifier::flag("EternalLife")]
+        }
         // 混沌不穿 ES（flask 词条裸形，ModParser.lua:5393 同语义去掉 during effect）。
         "chaos damage does not bypass energy shield"
         | "chaos damage taken does not bypass energy shield" => {

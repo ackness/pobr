@@ -99,6 +99,12 @@ fn m2_coverage_mom_and_eb() {
         "Energy Shield protects Mana instead of Life",
         &[N("EnergyShieldProtectsMana", Flag, FLAG)],
     );
+    // ModParser.lua:3121 EternalLife flag（Lich 树「Eternal Life」节点文本；
+    // CalcDefence.lua:587-594 / :2948-2950 互斥 ES 分支消费——M2-F 新管线）。
+    assert_parses(
+        "Your Life cannot change while you have Energy Shield",
+        &[N("EternalLife", Flag, FLAG)],
+    );
 }
 
 /// 覆盖表 2：ES / Ward bypass 族（ModParser.lua:2485-2507 / :430 / :4970 / :5393）。
