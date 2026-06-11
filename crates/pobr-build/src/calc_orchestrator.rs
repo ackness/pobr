@@ -361,10 +361,22 @@ pub fn calculate_with_data(
     // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
     // 不再有单技能硬编码。
     if let Some((skill, group, skill_id)) = &main_skill {
-        session.add_modifiers(skill_base_modifiers(skill, skill_id));
+        // 选中 statSet 的 per-set 覆盖键（W-J：statSetIndex 显式选择接进引擎 set_key）。
+        let main_set_key = group
+            .gem_skills
+            .iter()
+            .find(|g| g.skill_id == *skill_id)
+            .and_then(|g| data.selected_set_key(skill_id, g.stat_set_index));
+        session.add_modifiers(skill_base_modifiers(
+            skill,
+            skill_id,
+            main_set_key.as_deref(),
+        ));
         // 1b-i-q. 主技能宝石品质 stat（T1.7）：quality 段经 stat-map 映射注入，
         //         SourceKind::GemQuality 归因（id 前缀 gem.<效果 id>.q<Q>）。
         session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
+        // 1b-i-g. 主技能未选 statSet 的 global-only merge（W-J，CalcActiveSkill.lua:124-140）。
+        session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
         session.add_modifiers(support_modifiers(group, data, skill_id));
 
         // 1b-iii. 触发链路（findings 03-01/03-02/03-06）：主技能若为**内建触发**
@@ -1534,7 +1546,12 @@ fn item_local_defence_flat(item: &Item) -> [f64; 3] {
 /// 进入 offence 的伤害分量管线。
 ///
 /// 使用时间不在此处（它走 `base_input.base_action_rate`，见 [`calculate_with_data`]）。
-fn skill_base_modifiers(skill: &ResolvedSkillLevel, skill_id: &str) -> Vec<Modifier> {
+/// `set_key` = 选中 statSet 的 per-set 覆盖键（W-J 接线，见 [`mapped_stat_modifiers`]）。
+fn skill_base_modifiers(
+    skill: &ResolvedSkillLevel,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> Vec<Modifier> {
     let mut mods = Vec::new();
     let mk = |stat: &str, value: f64, label: &str| {
         let origin =
@@ -1590,6 +1607,7 @@ fn skill_base_modifiers(skill: &ResolvedSkillLevel, skill_id: &str) -> Vec<Modif
         SourceKind::SkillGem,
         "skill",
         skill_id,
+        set_key,
     ));
     mods
 }
@@ -1619,12 +1637,104 @@ fn main_skill_quality_modifiers(
         gem.quality,
         gem.stat_set_index,
     );
+    // 品质段属于选中 set 的 stats 表（PoB2 先叠后映），per-set 覆盖键同主路径。
+    let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
     mapped_stat_modifiers(
         &stats.quality,
         SourceKind::GemQuality,
         &format!("gem.{skill_id}.q{}", gem.quality),
         skill_id,
+        set_key.as_deref(),
     )
+}
+
+/// （M1-W-J）主技能**未选 statSet** 的 global-only merge（PoB2
+/// `calcs.mergeSkillInstanceMods`，`Modules/CalcActiveSkill.lua:124-140`）：
+/// 选中 set 之外的每个 vendor 导出 set，其 stats 仅注入 statmap 条目中带
+/// `GlobalEffect` tag 的 modOrGroup（`isGlobalEffect`，`:68-80`）；选中 set 已按
+/// global 记账的 stat 整条跳过（`selectedGlobalStats`，`:104-107`）。
+///
+/// 取数源 = [`BuildData::unselected_set_stats`]（buildSkillInstanceStats 表语义，
+/// 品质逐 set 叠加、同 stat 合并）；映射 = `stat_map_engine::map_stat_global_only`
+/// （per-set 覆盖链按**该未选 set** 的 set_key 查）。
+///
+/// **第一批边界**：`GlobalEffect` tag 本身仍在 tag 翻译边界外（buff 域随 M3
+/// buff_pass 接入，切换日志 §5）——当前 global 条目整条 Unsupported、注入为零，
+/// 本接线为结构就位；M3 接通后自动产出注入项（FlameWall 投射物 buff 等，
+/// Q3 影响面实测见 m1-acceptance-report.md）。零值跳过（与各取数点同口径）。
+fn unselected_set_global_modifiers(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> Vec<Modifier> {
+    let Some(gem) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) else {
+        return Vec::new(); // builder 路径（with_active_skill）无 gem_skills：无 statSet 上下文。
+    };
+    let unselected = data.unselected_set_stats(
+        &gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+    );
+    if unselected.is_empty() {
+        return Vec::new();
+    }
+    let Some(catalog) = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone()) else {
+        return Vec::new(); // 无 catalog：数据通道全 miss，与 mapped_stat_modifiers 同口径。
+    };
+    // selectedGlobalStats 记账（:104-106）：选中 set 的 stats 表中按 global 记账的
+    // stat，未选 set 不再重复注入（onlyGlobals 阶段记账不变，stat 级跳过等价 :107）。
+    let selected_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+    let selected_stats = data.effect_stats(
+        &gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+    );
+    let selected_globals: std::collections::HashSet<&str> = selected_stats
+        .all()
+        .filter(|ds| {
+            stat_map_engine::stat_has_global_mods(
+                &catalog,
+                skill_id,
+                selected_key.as_deref(),
+                &ds.stat,
+            )
+        })
+        .map(|ds| ds.stat.as_str())
+        .collect();
+    let mut mods = Vec::new();
+    for set in &unselected {
+        for ds in &set.stats {
+            if ds.value == 0.0 || selected_globals.contains(ds.stat.as_str()) {
+                continue;
+            }
+            let MappedOutcome::Mapped(items) = stat_map_engine::map_stat_global_only(
+                &catalog,
+                skill_id,
+                Some(&set.set_key),
+                &ds.stat,
+                ds.value,
+            ) else {
+                continue; // Unsupported（含 GlobalEffect tag 第一批边界）/ Unknown：跳过。
+            };
+            for item in items {
+                let MappedItem::Modifier(modifier) = item else {
+                    continue; // SkillData：无消费方。
+                };
+                let origin = ModifierSource::new(SourceId::new(
+                    SourceKind::SkillGem,
+                    format!("skill.{skill_id}.set{}.{}", set.set_key, ds.stat),
+                ))
+                .with_raw_text(format!(
+                    "unselected statSet {} global {} ({})",
+                    set.set_id, ds.stat, ds.value
+                ));
+                mods.push(modifier.with_origin(origin));
+            }
+        }
+    }
+    mods
 }
 
 /// 是否为非武器攻击的 off-hand 武器基础伤害 stat（由 `non_weapon_attack_contribution` 作为
@@ -1907,11 +2017,16 @@ fn support_modifiers(
         // TODO(T1，T3.6 合并后 rebase 追加)：quality 传参改为 gem.quality——support 的
         // 品质表条目不存在（PoB2 导出即跳过），当前恒空段，传 0 与传 gem.quality 等价。
         let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0, gem.stat_set_index);
+        // support 的 set_key 取自身选中 set（per-set 覆盖以 support 效果 id 定位）。
+        // 注：vendor 对 support 效果不传 statSet（CalcActiveSkill.lua:130 全 set 全量
+        // merge）——多 set support 的附加 set 全量 merge 当前缺口见 m1 验收报告。
+        let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
         mods.extend(mapped_stat_modifiers(
             &stats.base,
             SourceKind::SupportGem,
             &gem.skill_id,
             &gem.skill_id,
+            set_key.as_deref(),
         ));
         // （M1-T4.4）兼容 support 的分等级 cost 倍率 → `SupportManaMultiplier` MORE
         // （PoB2 `CalcActiveSkill.lua:689-691`：`NewMod("SupportManaMultiplier","MORE",
@@ -2198,14 +2313,17 @@ pub fn take_stat_map_compare_records() -> Vec<StatMapCompareRecord> {
 /// 静默跳过；零值跳过。
 ///
 /// `effect_id`（M1-T2b 接线）：stat 所属 granted effect，per-statSet 覆盖定位。
-/// set_key 传 `None` = 引擎自动取默认 set "1" 覆盖（PoB2 缺省 statSetIndex=1，
-/// vendor `SkillsTab.lua:354`；18 个 ninja build 的 statSetIndex 全为 nil。
-/// statSetIndex 显式选择的 set_key 接线随 W-J 多 set merge）。
+/// `set_key`（M1-W-J 接线）：**选中** statSet 的 vendor 1-based 导出序号十进制
+/// 字符串（[`BuildData::selected_set_key`]）；`None` = 引擎自动取默认 set "1"
+/// 覆盖（PoB2 缺省 statSetIndex=1，vendor `SkillsTab.lua:354`；18 个 ninja build
+/// 的 statSetIndex 全为 nil = 与 None 等价）。未选 set 的 global-only merge 走
+/// [`unselected_set_global_modifiers`]，不经本分发点。
 fn mapped_stat_modifiers(
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
     label_prefix: &str,
     effect_id: &str,
+    set_key: Option<&str>,
 ) -> Vec<Modifier> {
     let (mode, catalog) =
         STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
@@ -2215,29 +2333,38 @@ fn mapped_stat_modifiers(
             source_kind,
             label_prefix,
             effect_id,
+            set_key,
             catalog.as_deref(),
         ),
         StatMapMode::Compare => {
-            record_stat_map_observation(stats, label_prefix, effect_id, catalog.as_deref());
+            record_stat_map_observation(
+                stats,
+                label_prefix,
+                effect_id,
+                set_key,
+                catalog.as_deref(),
+            );
             data_mapped_stat_modifiers(
                 stats,
                 source_kind,
                 label_prefix,
                 effect_id,
+                set_key,
                 catalog.as_deref(),
             )
         }
     }
 }
 
-/// Data 通道：statmap 数据引擎。effect 上下文 + 默认 set "1"（T2b 接线，见
-/// [`mapped_stat_modifiers`] 文档）；`SkillData` 项暂无消费方，忽略（不参与
+/// Data 通道：statmap 数据引擎。effect 上下文 + 选中 set 覆盖键（T2b/W-J 接线，
+/// 见 [`mapped_stat_modifiers`] 文档）；`SkillData` 项暂无消费方，忽略（不参与
 /// 计算，不会错算）；Unsupported / Unknown 静默跳过（分类观测走 Compare 模式）。
 fn data_mapped_stat_modifiers(
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
     label_prefix: &str,
     effect_id: &str,
+    set_key: Option<&str>,
     catalog: Option<&StatMapCatalog>,
 ) -> Vec<Modifier> {
     let Some(catalog) = catalog else {
@@ -2249,7 +2376,7 @@ fn data_mapped_stat_modifiers(
             continue; // 跳零值 stat（无信息量，与历史口径一致）。
         }
         let MappedOutcome::Mapped(items) =
-            stat_map_engine::map_stat(catalog, effect_id, None, &ds.stat, ds.value)
+            stat_map_engine::map_stat(catalog, effect_id, set_key, &ds.stat, ds.value)
         else {
             continue;
         };
@@ -2276,15 +2403,16 @@ fn record_stat_map_observation(
     stats: &[pobr_data::catalog::SkillDamageStat],
     label_prefix: &str,
     effect_id: &str,
+    set_key: Option<&str>,
     catalog: Option<&StatMapCatalog>,
 ) {
     for ds in stats {
         if ds.value == 0.0 {
             continue;
         }
-        // 数据通道 outcome（effect 上下文 + 默认 set "1"，与 Data 通道同口径）。
+        // 数据通道 outcome（effect 上下文 + 选中 set 覆盖键，与 Data 通道同口径）。
         let outcome = match catalog {
-            Some(c) => stat_map_engine::map_stat(c, effect_id, None, &ds.stat, ds.value),
+            Some(c) => stat_map_engine::map_stat(c, effect_id, set_key, &ds.stat, ds.value),
             None => MappedOutcome::Unknown,
         };
         let (classification, detail): (&'static str, String) = match &outcome {
@@ -3098,6 +3226,112 @@ mod tests {
         // 品质 0：不产生任何品质 modifier。
         let group0 = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
         assert!(main_skill_quality_modifiers(&group0, &data, "FireballPlayer").is_empty());
+    }
+
+    /// W-J：选中 statSet 的 per-set 覆盖键接进引擎 set_key——statSetIndex=2 时
+    /// 同一 stat 走 set "2" 的覆盖条目（合成目录），缺省走 set "1"/global。
+    #[test]
+    fn selected_set_key_threads_per_set_override() {
+        use pobr_core::rules::stat_map_engine::StatMapCatalog;
+        let mut data = repo_data();
+        // 合成多 set 效果：主 set vendor 序号 1、附加 set 序号 2（同一 stat）。
+        data.skill_stat_sets.insert(
+            "SynthEff".to_string(),
+            pobr_data::catalog::SkillStatSetDef {
+                effect_id: "SynthEff".into(),
+                sets: vec![
+                    synth_stat_set("SynthMain", Some(1)),
+                    synth_stat_set("SynthAlt", Some(2)),
+                ],
+            },
+        );
+        // 合成目录：global → Damage INC；per-set "2" 覆盖 → ColdDamage INC。
+        let catalog: StatMapCatalog = StatMapCatalog::new(
+            serde_json::from_str(
+                r#"{
+                  "global": { "synth_stat_+%": { "mods": [
+                      { "kind": "mod", "name": "Damage", "mod_type": "INC" } ] } },
+                  "per_stat_set": { "SynthEff": { "2": { "synth_stat_+%": { "mods": [
+                      { "kind": "mod", "name": "ColdDamage", "mod_type": "INC" } ] } } } }
+                }"#,
+            )
+            .expect("合成 statmap 合法"),
+        );
+        let _guard =
+            install_stat_map_context(StatMapMode::default(), Some(std::sync::Arc::new(catalog)));
+        let skill = ResolvedSkillLevel {
+            base_damage: vec![pobr_data::catalog::SkillDamageStat {
+                stat: "synth_stat_+%".into(),
+                value: 25.0,
+            }],
+            damage_multiplier: 1.0,
+            ..Default::default()
+        };
+        // statSetIndex=2 → per-set 覆盖命中（ColdDamage）。
+        let set_key = data.selected_set_key("SynthEff", Some(2));
+        assert_eq!(set_key.as_deref(), Some("2"));
+        let mods = skill_base_modifiers(&skill, "SynthEff", set_key.as_deref());
+        let mapped: Vec<&str> = mods
+            .iter()
+            .filter(|m| m.mod_type == ModType::Inc)
+            .map(|m| m.name.as_str())
+            .collect();
+        assert_eq!(mapped, vec!["ColdDamage"], "set 2 覆盖应命中");
+        // 缺省（主 set，键 "1"，无覆盖）→ 落回 global（Damage）。
+        let set_key = data.selected_set_key("SynthEff", None);
+        assert_eq!(set_key.as_deref(), Some("1"));
+        let mods = skill_base_modifiers(&skill, "SynthEff", set_key.as_deref());
+        let mapped: Vec<&str> = mods
+            .iter()
+            .filter(|m| m.mod_type == ModType::Inc)
+            .map(|m| m.name.as_str())
+            .collect();
+        assert_eq!(mapped, vec!["Damage"], "缺省应落回 global");
+    }
+
+    /// 合成 stat set（W-J 测试共用）：单等级行 `synth_stat_+%`。
+    fn synth_stat_set(set_id: &str, vendor_idx: Option<u32>) -> pobr_data::catalog::StatSetDef {
+        pobr_data::catalog::StatSetDef {
+            set_id: set_id.into(),
+            label: None,
+            vendor_set_index: vendor_idx,
+            base_effectiveness: 0.0,
+            constant_stats: Vec::new(),
+            skill_attack_speed_more: None,
+            levels: vec![pobr_data::catalog::SkillStatSetLevel {
+                gem_level: 1,
+                damage_multiplier: 1.0,
+                stats: vec![pobr_data::catalog::SkillDamageStat {
+                    stat: "synth_stat_+%".into(),
+                    value: 25.0,
+                }],
+            }],
+        }
+    }
+
+    /// W-J：主技能未选 statSet 的 global-only merge——真实数据（FlameWall 多 set
+    /// 载体）路径全程可达；GlobalEffect tag 在 M3 前为翻译边界（切换日志 §5），
+    /// 当前注入恒为零（结构就位、不错算）。非 global stat 永不从未选 set 注入。
+    #[test]
+    fn unselected_set_global_only_zero_injection_before_m3() {
+        let data = repo_data();
+        // 前置：FlameWall 确为多 set（vendor 导出 ≥2），未选 set 快照非空。
+        let unsel = data.unselected_set_stats("FlameWallPlayer", 20, 0, None);
+        assert!(
+            !unsel.is_empty(),
+            "FlameWallPlayer 应有未选 set（set 2 = 投射物 buff 形态）"
+        );
+        let _guard =
+            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
+        let group = SocketGroup::new().with_gem_skill("FlameWallPlayer", 20);
+        let mods = unselected_set_global_modifiers(&group, &data, "FlameWallPlayer");
+        assert!(
+            mods.is_empty(),
+            "M3 接通 GlobalEffect tag 前未选 set 注入应为零，实得 {mods:?}"
+        );
+        // builder 路径（无 gem_skills）：无 statSet 上下文 → 空。
+        let empty_group = SocketGroup::new();
+        assert!(unselected_set_global_modifiers(&empty_group, &data, "FlameWallPlayer").is_empty());
     }
 
     #[test]

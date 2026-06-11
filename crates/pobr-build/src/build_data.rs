@@ -354,6 +354,17 @@ impl BuildData {
         }
     }
 
+    /// 选中 statSet 的 statmap **per-set 覆盖定位键**（vendor 1-based 导出序号的
+    /// 十进制字符串，W-J 接线）：选中规则与 [`Self::select_stat_set`] 一致
+    /// （`set_index` 命中 vendor 序号否则回退主 set）。无 stat-set 数据 / 选中 set
+    /// 无 vendor 序号（未导出）→ `None`（调用方落引擎默认 set `"1"`，与 PoB2 缺省
+    /// `statSetIndex=1` 等价，vendor `SkillsTab.lua:354`）。
+    pub fn selected_set_key(&self, skill_id: &str, set_index: Option<u32>) -> Option<String> {
+        self.select_stat_set(skill_id, set_index)
+            .and_then(|s| s.vendor_set_index)
+            .map(|i| i.to_string())
+    }
+
     /// 解析某主动技能在某等级上的参数：cast/attack 时间（秒）、各资源消耗、冷却（秒）。
     /// statSet 形态取缺省主 set；带形态选择用 [`Self::resolve_skill_level_with_set`]。
     ///
@@ -489,7 +500,7 @@ impl BuildData {
     /// [`f64::trunc`] 严格对齐。品质为 0 / 无品质表条目时 `quality` 段为空。
     ///
     /// 对 active 与 **support** 效果同样适用（无 `is_support` 守卫）——support 宝石的
-    /// 倍率 / 附加伤害 stat 经此取出，再由 [`crate::skill_stat_map`] 映射注入被支援技能
+    /// 倍率 / 附加伤害 stat 经此取出，再由 statmap 数据引擎（`pobr-core::rules::stat_map_engine`）映射注入被支援技能
     /// （support 的品质表条目不存在——PoB2 导出即跳过，quality 段天然为空）。
     /// 等级越界取最接近的 ≤ 行；无 stat-set 数据时 base 段为空。
     pub fn effect_stats(
