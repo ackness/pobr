@@ -147,7 +147,9 @@ pub struct OutputTable {
     //     golden 参照 = examples/demo-bd-test/builds/*/meta.json::player_stats 同名键） ---
     /// Spirit 池本值（base × inc × more + Override，PoB2 doActorLifeManaSpirit 同构）。
     pub spirit: f64,
-    /// Spirit 未预留余量（= spirit − spirit_reserved，下限 0）。
+    /// Spirit 未预留余量（= spirit − spirit_reserved；vendor CalcDefence.lua:337
+    /// 无下限，超订为负——golden `SpiritUnreserved` 存在 −130 等负值，
+    /// W0.2 原注释「下限 0」与 vendor/golden 不符，D-3 接线时修正）。
     pub spirit_unreserved: f64,
     /// 格挡几率上限（%；PoB2 `BlockChanceMax`，CalcDefence.lua:961-966）。
     pub block_chance_max: f64,

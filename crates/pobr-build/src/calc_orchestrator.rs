@@ -369,6 +369,11 @@ pub fn calculate_with_data(
     //      作为盾基底；catalog 值经 overlay/base_item_overrides merge 注入。
     session.add_modifiers(shield_block_modifiers(build, data));
 
+    // 1d''. 件级 Spirit（权杖 rolled `Spirit:` 行 / catalog 基底 spirit）→
+    //       `Spirit` BASE（M2 Track D，13-G11；PoB2 CalcSetup.lua:1275-1277
+    //       `item.spiritValue → NewMod("Spirit","BASE")` 等价）。
+    session.add_modifiers(item_spirit_modifiers(build, data));
+
     // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
     //    真实词条中含解析器尚未支持的硬失败形式（如 `[Bleeding] on [Hit]`），逐件
     //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
@@ -415,6 +420,26 @@ pub fn calculate_with_data(
             filtered.implicit_texts = drop_def(filtered.implicit_texts);
             filtered.modifier_texts = drop_def(filtered.modifier_texts);
             filtered.enchant_texts = drop_def(filtered.enchant_texts);
+        }
+        // 带 Spirit 基底的件（权杖）：剔除局部 `increased Spirit` / `+N to Spirit`
+        // ——已折入 rolled `Spirit:` 行（Item.lua:1724-1727 calcLocal 折算）或由
+        // item_spirit_modifiers 按基底重算；留在全局会双计（M2 Track D，13-G11）。
+        let has_spirit_base = item.rolled_defence.spirit.is_some()
+            || data
+                .base_items
+                .get(&item.base.to_string())
+                .and_then(|b| b.spirit)
+                .is_some();
+        if has_spirit_base {
+            let drop_spirit = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| !is_local_spirit_mod(&clean_item_text(t)))
+                    .collect()
+            };
+            filtered.implicit_texts = drop_spirit(filtered.implicit_texts);
+            filtered.modifier_texts = drop_spirit(filtered.modifier_texts);
+            filtered.enchant_texts = drop_spirit(filtered.enchant_texts);
         }
         session
             .add_item(slot, &filtered)
@@ -863,6 +888,76 @@ fn shield_block_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
                 .with_origin(origin)
                 .with_tag(ModTag::SlotName(EquipmentSlot::Weapon2.id().to_string())),
         );
+    }
+    mods
+}
+
+/// 件级局部 Spirit 词条判定（cleaned 文本）：`N% increased spirit` /
+/// `N% reduced spirit` / `+N to spirit`（仅裸 Spirit 形——`spirit reservation
+/// efficiency` 等长名不匹配）。PoB2 在权杖上把这两形折入 `item.spiritValue`
+/// （Item.lua:1724-1727 calcLocal），全局不再生效。
+fn is_local_spirit_mod(clean: &str) -> bool {
+    let parse_n = |s: &str| -> bool { s.trim().parse::<f64>().is_ok() };
+    if let Some(rest) = clean.strip_suffix("% increased spirit") {
+        return parse_n(rest);
+    }
+    if let Some(rest) = clean.strip_suffix("% reduced spirit") {
+        return parse_n(rest);
+    }
+    if let Some(body) = clean.strip_suffix(" to spirit")
+        && let Some(num) = body.strip_prefix('+')
+    {
+        return parse_n(num);
+    }
+    false
+}
+
+/// 件级 Spirit → `Spirit` BASE 词条（M2 Track D，13-G11）。
+///
+/// 取值口径（PoB2 Item.lua:523/:818/:1724-1727）：
+/// - 物品文本带 rolled `Spirit: N` 行 → 直接采用（已含该件局部
+///   `increased Spirit` / `+N to Spirit` 折算）；
+/// - 否则回退 catalog 基底 `spirit`（overlay merge 的 vendor `ItemSpirit` 值），
+///   × (1 + 局部 inc/100) + 局部 flat（裸装 / 测试夹具兜底，vendor 同公式后 round）。
+///
+/// 对应局部词条已在 `calculate_with_data` 的 drop-spirit 段从全局注入剔除。
+fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    for (slot, item) in &build.items {
+        let base_spirit = data
+            .base_items
+            .get(&item.base.to_string())
+            .and_then(|b| b.spirit);
+        let value = match item.rolled_defence.spirit {
+            Some(v) => v,
+            None => {
+                let Some(base) = base_spirit else { continue };
+                let (mut inc, mut flat) = (0.0, 0.0);
+                for t in weapon_mod_texts(item) {
+                    let clean = clean_item_text(t);
+                    if let Some(rest) = clean.strip_suffix("% increased spirit") {
+                        inc += rest.trim().parse::<f64>().unwrap_or(0.0);
+                    } else if let Some(rest) = clean.strip_suffix("% reduced spirit") {
+                        inc -= rest.trim().parse::<f64>().unwrap_or(0.0);
+                    } else if let Some(body) = clean.strip_suffix(" to spirit")
+                        && let Some(num) = body.strip_prefix('+')
+                    {
+                        flat += num.trim().parse::<f64>().unwrap_or(0.0);
+                    }
+                }
+                ((f64::from(base) + flat) * (1.0 + inc / 100.0)).round()
+            }
+        };
+        if value > 0.0 {
+            let origin =
+                ModifierSource::new(SourceId::new(SourceKind::Item, "base.Spirit".to_string()))
+                    .with_raw_text(format!("{} item Spirit", item.base));
+            mods.push(
+                Modifier::number("Spirit", ModType::Base, value)
+                    .with_origin(origin)
+                    .with_tag(ModTag::SlotName(slot.id().to_string())),
+            );
+        }
     }
     mods
 }

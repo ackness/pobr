@@ -113,3 +113,39 @@ fn block_effect_taken_share() {
 
     assert_eq!(block.block_effect_taken_pct, 30.0);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Spirit 池（CalcDefence.lua:73-126）
+// ─────────────────────────────────────────────────────────────────
+
+/// 池公式（:87-95）：`(ΣBASE × (1−conv) + extra) × (1+inc) × more`，round 取整。
+/// 手算：(100+30) × 1.20 = 156。
+#[test]
+fn spirit_pool_base_times_increased() {
+    let mut db = db_from_texts(&["+30 to Spirit"]);
+    add_base(&mut db, "Spirit", 100.0); // 任务奖励 / 件级注入语义
+    db.add_list([pobr_core::Modifier::number("Spirit", ModType::Inc, 20.0)]);
+    let cfg = CalcConfig::new();
+
+    assert_eq!(calc::calc_spirit_pool(&db, &cfg), 156.0);
+}
+
+/// 空来源下限 1（:95 `m_max(round(...), 1)`，与 Life/Mana 一致）。
+#[test]
+fn spirit_pool_floor_is_one() {
+    let db = ModDb::new();
+    let cfg = CalcConfig::new();
+
+    assert_eq!(calc::calc_spirit_pool(&db, &cfg), 1.0);
+}
+
+/// 转换扣减（:92）：`SpiritConvertToEnergyShield` 30 → 100×0.7 = 70。
+#[test]
+fn spirit_pool_conversion_reduces_base() {
+    let mut db = ModDb::new();
+    add_base(&mut db, "Spirit", 100.0);
+    add_base(&mut db, "SpiritConvertToEnergyShield", 30.0);
+    let cfg = CalcConfig::new();
+
+    assert_eq!(calc::calc_spirit_pool(&db, &cfg), 70.0);
+}

@@ -90,3 +90,22 @@ fn block_chance_zero_on_non_shield_builds() {
     assert_eq!(out.effective_block_chance, 0.0);
     assert_eq!(out.block_chance, 0.0);
 }
+
+/// `Spirit` 池本值 @5%（13-G11）：覆盖纯任务奖励（100）、权杖 rolled `Spirit:`
+/// 行（druid 433）、`+N to Spirit` 装备/树词条（mercenary 336）三类来源形态。
+#[test]
+fn spirit_pool_matches_golden() {
+    let data = load_data();
+    for name in [
+        "warrior-titan-shield-wall",     // 100（仅任务奖励）
+        "huntress-ritualist-bow-shot",   // 100
+        "druid-oracle-comet",            // 433（权杖 213 + 任务 100 + 树/装备）
+        "mercenary-tactician-wolf-pack", // 336
+        "monk-invoker-frost-bomb",       // 343
+    ] {
+        let dir = builds_dir().join(name);
+        let golden = golden_stat(&dir, "Spirit").expect("golden Spirit");
+        let out = run_build(name, &data);
+        assert_within_5pct("Spirit", name, out.spirit, golden);
+    }
+}

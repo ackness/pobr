@@ -193,6 +193,43 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Spirit 池（CalcDefence.lua:73-126）
+// ─────────────────────────────────────────────────────────────────
+
+/// Spirit 池本值（CalcDefence.lua:87-95，Life/Mana/Spirit 统一公式）。
+///
+/// `Spirit = Override ‖ max(round((ΣBASE Spirit × (1−conv/100) + ΣBASE ExtraSpirit)
+/// × (1+Σinc/100) × Πmore), 1)`，其中
+/// `conv = min(ΣBASE SpiritConvertTo{EnergyShield,Armour,Evasion}, 100)`（:92）。
+/// 取整为 vendor `round`（最近整数）；下限 1 与 Life/Mana 一致（:95）。
+///
+/// 来源：基底 Spirit（权杖 `Spirit:` 行 / catalog `spirit`，build 层注入
+/// `Spirit` BASE）+ 任务奖励 `+30/+30/+40 to Spirit`（xml_build 全局词条）+
+/// 树/装备 `+N to Spirit`。
+pub fn calc_spirit_pool(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let names = [ModName::from("Spirit")];
+    if let Some(v) = db.override_(cfg, ModName::from("Spirit")) {
+        return v;
+    }
+    let base = db.sum(ModType::Base, cfg, &names);
+    let extra = db.sum(ModType::Base, cfg, &[ModName::from("ExtraSpirit")]);
+    let conv = db
+        .sum(
+            ModType::Base,
+            cfg,
+            &[
+                ModName::from("SpiritConvertToEnergyShield"),
+                ModName::from("SpiritConvertToArmour"),
+                ModName::from("SpiritConvertToEvasion"),
+            ],
+        )
+        .min(100.0);
+    ((base * (1.0 - conv / 100.0) + extra) * scaling_mod(db, cfg, &names))
+        .round()
+        .max(1.0)
+}
+
+// ─────────────────────────────────────────────────────────────────
 // fill 编排（perform 一行调用，蓝图 §3.2 预登记）
 // ─────────────────────────────────────────────────────────────────
 
@@ -216,6 +253,15 @@ pub fn fill_defence_panels(env: &mut Env, _keystones: &crate::rules::DefenceKeys
     env.player.output.effective_block_chance = block.effective_block_chance;
     env.player.output.effective_spell_block_chance = block.effective_spell_block_chance;
     env.player.output.block_effect = block.block_effect_taken_pct;
+
+    // --- Spirit 池本值 + 未预留余量（CalcDefence.lua:73-126 / :330-337）---
+    // 技能侧 spirit_reserved 由 fill_skill_mechanics（M1-T4.5 链路）先行写入，
+    // 本段只做池本值与差值（00-index 裁决 #12 分工）。
+    // vendor :337 `Unreserved = max − reserved` 无下限——超订（reserved > 池）
+    // 为负，与 golden（SpiritUnreserved 可为 −130 等）一致。
+    env.player.output.spirit = calc_spirit_pool(db, cfg);
+    env.player.output.spirit_unreserved =
+        env.player.output.spirit - env.player.output.spirit_reserved;
 }
 
 #[cfg(test)]

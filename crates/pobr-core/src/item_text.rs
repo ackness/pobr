@@ -370,10 +370,17 @@ fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
             out.evasion = Some(out.evasion.unwrap_or(0.0) + n);
             return true;
         }
-    } else if let Some(rest) = line.strip_prefix("Energy Shield:")
+    } else if let Some(rest) = line.strip_prefix("Energy Shield:") {
+        if let Some(n) = parse_num(rest) {
+            out.energy_shield = Some(out.energy_shield.unwrap_or(0.0) + n);
+            return true;
+        }
+    } else if let Some(rest) = line.strip_prefix("Spirit:")
         && let Some(n) = parse_num(rest)
     {
-        out.energy_shield = Some(out.energy_shield.unwrap_or(0.0) + n);
+        // 权杖 `Spirit: N` 行（PoB2 `item.spiritValue`，Item.lua:523）——
+        // 已含该件局部 Spirit 词条折算（M2 Track D，13-G11）。
+        out.spirit = Some(out.spirit.unwrap_or(0.0) + n);
         return true;
     }
     false
@@ -393,6 +400,7 @@ fn is_metadata_line(line: &str) -> bool {
         "Evasion:",
         "Evasion Rating:",
         "Energy Shield:",
+        "Spirit:",
         "Ward:",
         "Block:",
         "Quality:",
