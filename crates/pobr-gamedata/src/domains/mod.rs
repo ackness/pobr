@@ -32,3 +32,7 @@ pub mod gem_effects;
 
 // ---- M1-T5.2 statSet label / vendor 导出序号边车（overlay 层，merge 进 stat sets）----
 pub mod stat_set_labels;
+
+// ---- M3 前置：config 选项目录 + 内建 buff 定义（overlay 层，纯查表）----
+pub mod buff_definitions;
+pub mod config_options;
