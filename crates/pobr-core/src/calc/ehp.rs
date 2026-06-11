@@ -647,12 +647,41 @@ pub fn number_of_hits_to_die(
     ctx: &PoolCtx,
     params: &EhpLoopParams,
 ) -> f64 {
+    number_of_hits_to_die_tracked(damage_in, pools_full, ctx, params).0
+}
+
+/// 致死击数 + per-type recoupable 累计（M2 F-4，13-G15 部分）。
+///
+/// vendor `DamageIn.TrackRecoupable` 路径（CalcDefence.lua:3232-3236 置位、
+/// :3119-3123 把 `poolTable.damageTakenThatCanBeRecouped`（reducePoolsByDamage
+/// :489/:537 在 allies 层之后、aegis/guard/ward/ES 之前记录的 per-type
+/// damageRemainder）累计进 `<X>RecoupableDamageTaken`）。与 vendor 同口径：
+/// **仅顶层（cycles==1）循环累计**——加速递归（cycles>1）置 TrackRecoupable=false
+/// （:3046-3049）；顶层放大击（iterationMultiplier 缩放后的 hit）按缩放后伤害
+/// 记入，与 vendor 行为一致。
+pub fn number_of_hits_to_die_tracked(
+    damage_in: &TypedDamage,
+    pools_full: &PoolState,
+    ctx: &PoolCtx,
+    params: &EhpLoopParams,
+) -> (f64, [f64; 5]) {
     let mut iterations = 0.0;
-    hits_to_die_inner(damage_in, pools_full, ctx, params, 1.0, &mut iterations)
+    let mut recoupable = [0.0_f64; 5];
+    let hits = hits_to_die_inner(
+        damage_in,
+        pools_full,
+        ctx,
+        params,
+        1.0,
+        &mut iterations,
+        &mut recoupable,
+    );
+    (hits, recoupable)
 }
 
 /// `numberOfHitsToDie` 递归本体（`cycles`/`iterations` 对应 vendor DamageIn 同名键，
 /// iterations 跨递归共享预算）。
+#[allow(clippy::too_many_arguments)]
 fn hits_to_die_inner(
     damage_in: &TypedDamage,
     pools_full: &PoolState,
@@ -660,6 +689,7 @@ fn hits_to_die_inner(
     params: &EhpLoopParams,
     cycles: f64,
     iterations: &mut f64,
+    recoupable: &mut [f64; 5],
 ) -> f64 {
     // :2984-2994 进伤为 0 → ∞；WardNotBreak 且单击总伤低于 Ward → ∞。
     let per_hit_total = damage_in.total();
@@ -685,6 +715,12 @@ fn hits_to_die_inner(
         let hit = scale_damage(damage_in, iteration_multiplier);
         let after = reduce_pools(&pool, &hit, ctx);
         last_overkill = after.overkill;
+        // F-4：recoupable 累计（仅顶层 cycles==1，vendor :3046-3049/:3119-3123）。
+        if cycles <= 1.0 {
+            for (acc, v) in recoupable.iter_mut().zip(after.recoupable_by_type) {
+                *acc += v;
+            }
+        }
         pool = after.pools;
         // :3084 存活且单击伤害已超上限 → 视为可承受无限击。
         if pool.life > 0.0 && per_hit_total >= params.max_damage {
@@ -701,6 +737,7 @@ fn hits_to_die_inner(
                 params,
                 cycles * params.speed_up,
                 iterations,
+                recoupable,
             );
             // :3112 递归已知无限存活 → 直接 ∞。
             if recursive_hits.is_infinite() {
@@ -954,7 +991,16 @@ pub fn not_hit_suite(out: &OutputTable) -> NotHitSuite {
 /// - `avoid_stun` / Stun 体系换**真值** totalTakenHit（per-hit taken 伤害，
 ///   :2444 聚合 → :2554-2557 ES 减半条件 / :2525-2643 阈值几率）——替换
 ///   Track E 接线期的 reference_hit 近似。
-pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &ResistanceSuite) {
+///
+/// 返回值（M2 F-4，13-G15 部分）：mitigated EHP 循环累计的 recoupable 伤害总量
+/// （vendor `Σ <X>RecoupableDamageTaken`，:3347-3357）——perform 以此作 recoup
+/// 面板速率的承伤基数（替换旧 life×10% 估算）。无 recoup 词条 / 未重算
+/// mitigated 循环时为 0（消费侧 recoup pct 同为 0 → 速率 0，语义一致）。
+pub fn fill_ehp_pob2(
+    env: &mut Env,
+    keystones: &DefenceKeystones,
+    resistances: &ResistanceSuite,
+) -> f64 {
     struct Computed {
         life_recoverable: f64,
         es_recovery_cap: f64,
@@ -968,6 +1014,7 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
         stun_threshold: f64,
         self_stun_chance: f64,
         stun_duration: f64,
+        recoupable_total: f64,
     }
     let computed = {
         let db = &env.player.mod_db;
@@ -1098,17 +1145,27 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
         // PoE2 无法术抑制（suppression=1）；specificTypeAvoidance 无来源（avoid 层
         // 全部折入 not-hit）→ averageAvoidChance = 0。
         let configured_damage_chance = 100.0 * block_effect_mult * deflect_mult;
-        let any_recoup = out.life_recoup_rate > 0.0 || out.es_recoup_rate > 0.0;
-        let n_mitigated = if (configured_damage_chance - 100.0).abs() > f64::EPSILON
+        // F-4：anyRecoup 改读词条本体（vendor :1795-1812 `Σ <Resource>Recoup` BASE；
+        // recoup 速率字段此时尚未写入——其基数正来自本段的 mitigated 循环累计）。
+        let any_recoup = ["LifeRecoup", "ManaRecoup", "EnergyShieldRecoup"]
+            .iter()
+            .any(|name| db.sum(ModType::Base, cfg, &[ModName::from(*name)]) > 0.0);
+        let (n_mitigated, recoupable_total) = if (configured_damage_chance - 100.0).abs()
+            > f64::EPSILON
             || any_recoup
             || prevented_total
         {
             let mitigated_in = scale_damage(&taken_hit, block_effect_mult * deflect_mult);
             let m_params =
                 EhpLoopParams::from_constants(&cfg.constants, any_recoup || prevented_total);
-            number_of_hits_to_die(&mitigated_in, &pools, &ctx, &m_params)
+            // F-4（13-G15 部分）：mitigated 循环同步累计 recoupable（vendor
+            // :3232-3236 TrackRecoupable 置位于 NumberOfMitigatedDamagingHits 重算前；
+            // :3347-3361 totalDamage = Σ <X>RecoupableDamageTaken 作 recoup 基数）。
+            let (hits, recoupable) =
+                number_of_hits_to_die_tracked(&mitigated_in, &pools, &ctx, &m_params);
+            (hits, recoupable.iter().sum::<f64>())
         } else {
-            n_hits
+            (n_hits, 0.0)
         };
 
         // ---- TotalEHP（:3271 TotalNumberOfHits + :3322）----
@@ -1154,6 +1211,7 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
             stun_threshold: stun.threshold,
             self_stun_chance: stun.self_stun_chance,
             stun_duration: stun.stun_duration,
+            recoupable_total,
         }
     };
 
@@ -1185,4 +1243,6 @@ pub fn fill_ehp_pob2(env: &mut Env, keystones: &DefenceKeystones, resistances: &
     out.stun_threshold = computed.stun_threshold;
     out.self_stun_chance = computed.self_stun_chance;
     out.stun_duration = computed.stun_duration;
+
+    computed.recoupable_total
 }

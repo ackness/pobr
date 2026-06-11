@@ -431,15 +431,6 @@ fn fill_mechanics(env: &mut Env) {
     )
     .display_rate_per_second;
 
-    // --- Recoup（Lane A：事件触发，面板口径以「假设受到 10% 生命的伤害」估算返还速率）---
-    // 无 Recoup 词条时 calc_recoup_from_db 返回 rate=0（短路），不影响面板。
-    let damage_taken_estimate = env.player.output.life * RECOUP_DAMAGE_BASIS_FRACTION;
-    env.player.output.life_recoup_rate =
-        calc_recoup_from_db(db, cfg, damage_taken_estimate, RecoupResource::Life).rate_per_second;
-    env.player.output.es_recoup_rate =
-        calc_recoup_from_db(db, cfg, damage_taken_estimate, RecoupResource::EnergyShield)
-            .rate_per_second;
-
     // --- 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗）---
     fill_skill_mechanics(env);
 
@@ -456,7 +447,27 @@ fn fill_mechanics(env: &mut Env) {
     //     deflect 层读其 OutputTable 输出，缺省 0 → 中性 1.0）。F-3 起在末尾把
     //     canonical `total_ehp`/`*_max_hit` 切换为新口径值，并以真值 totalTakenHit
     //     覆盖 avoid_stun / Stun 体系。---
-    super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
+    let recoupable_total = super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
+
+    // --- Recoup（M2 F-4，13-G15 部分：基数替换）---
+    // 旧口径 = life × 10% 估算（与受击管线脱钩）；新口径 = reduce_pools 在
+    // mitigated EHP 循环上累计的 recoupable 伤害（vendor reducePoolsByDamage
+    // :489/:537 记录 damageTakenThatCanBeRecouped → :3119-3123 累计 →
+    // :3347-3361 `TotalRecoupRecovery = Recoup%/100 × totalDamage`、
+    // :3382 `RecoupRecoveryMax = Total / recoupTime`——calc_recoup_from_db 的
+    // total/duration×rateMod 公式骨架不变，仅 damage_taken 入参换真值）。
+    // 无敌人进伤（裸 Env）→ 基数 0 → 速率 0（与 vendor 无进伤语义一致）。
+    let (life_recoup_rate, es_recoup_rate) = {
+        let db = &env.player.mod_db;
+        let cfg = &env.cfg;
+        (
+            calc_recoup_from_db(db, cfg, recoupable_total, RecoupResource::Life).rate_per_second,
+            calc_recoup_from_db(db, cfg, recoupable_total, RecoupResource::EnergyShield)
+                .rate_per_second,
+        )
+    };
+    env.player.output.life_recoup_rate = life_recoup_rate;
+    env.player.output.es_recoup_rate = es_recoup_rate;
 }
 
 /// 触发速率 fill（Lane B）：读冷却驱动 / CWC 触发词条，写 `trigger_rate_cap` /
@@ -590,12 +601,6 @@ fn trigger_chance_multiplier(cfg: &CalcConfig, output: &OutputTable) -> f64 {
     }
     chance.clamp(0.0, 1.0)
 }
-
-/// Recoup 面板估算基准：以「假设受到玩家最大生命 10%」的伤害估算每秒返还速率。
-///
-/// Recoup 本质是受击事件触发；面板口径需要一个固定的受击伤害基准。10% 生命是常见
-/// 估算约定（PoB2 面板亦用假设受击量）。真实受击伤害来源待 Build 层事件接入后替换。
-const RECOUP_DAMAGE_BASIS_FRACTION: f64 = 0.1;
 
 /// 技能功能 fill（Lane C）：AoE 半径 / 投射物数量 / 冷却 / 资源消耗。
 ///
