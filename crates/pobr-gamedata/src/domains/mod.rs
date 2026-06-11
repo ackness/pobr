@@ -40,6 +40,9 @@ pub mod base_item_overrides;
 pub mod buff_definitions;
 pub mod config_options;
 
+// ---- M3 S1-C：curse 优先级数据表（overlay 层，纯查表；消费侧 = M3-T3 buff_pass）----
+pub mod curse_priority;
+
 // ---- pre-M5 数据前置（overlay 层，纯 loader 零接线；一表一文件）----
 pub mod catalysts; // M5c：催化剂品质标签匹配表
 pub mod granted_effect_minions; // M5a：宝石→召唤物外键边车

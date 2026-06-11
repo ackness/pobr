@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "schema": "curse_priority/v1",
+    "generator": "sync-pob-catalog extract-lua --what curse-priority",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)",
+    "extracted_files": [
+      "Modules/Data.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --what curse-priority --out data/4.5.0.3.4/overlay/curse_priority.json"
+  },
+  "curse_base": {
+    "Assassin's Mark": 11,
+    "Conductivity": 7,
+    "Despair": 8,
+    "Elemental Weakness": 4,
+    "Enfeeble": 2,
+    "Flammability": 5,
+    "Frostbite": 6,
+    "Poacher's Mark": 13,
+    "Punishment": 9,
+    "Sniper's Mark": 12,
+    "Temporal Chains": 1,
+    "Vulnerability": 3,
+    "Warlord's Mark": 10
+  },
+  "socket_priority_base": 100,
+  "slot_weights": {
+    "Amulet": 2000,
+    "Body Armour": 5000,
+    "Boots": 7000,
+    "Gloves": 6000,
+    "Helmet": 3000,
+    "Ring 1": 8000,
+    "Ring 2": 9000,
+    "Ring 3": 10000,
+    "Weapon 1": 1000,
+    "Weapon 2": 4000
+  },
+  "curse_from_equipment": 11000,
+  "curse_from_aura": 20000
+}

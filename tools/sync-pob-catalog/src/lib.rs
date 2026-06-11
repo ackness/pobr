@@ -9,6 +9,7 @@ use regex::Regex;
 pub mod buff_refs;
 pub mod extract_bases;
 pub mod extract_config_options;
+pub mod extract_curse_priority;
 pub mod extract_gem_effects;
 pub mod extract_item_overlay;
 pub mod extract_lua;

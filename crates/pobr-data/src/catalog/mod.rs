@@ -52,6 +52,9 @@ pub mod buffs;
 pub mod config_def;
 pub mod value_expr;
 
+// ---- M3 S1-C：curse 优先级数据表 overlay schema（vendor 抽取，curse_priority/v1）----
+pub mod curse_priority;
+
 // ---- pre-M5 数据前置（M5a/M5b/M5c 蓝图的数据生产项，零消费接线）----
 pub mod actors; // M5a：minions / spectres / granted_effect_minions（vendor 抽取）
 pub mod item_overlay; // M5c：mod_scalability / catalysts / runes / uniques（vendor 抽取）
