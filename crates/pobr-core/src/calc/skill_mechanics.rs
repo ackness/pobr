@@ -12,8 +12,9 @@
 //! ## 延迟 (defer)
 //! - 复杂投射物链交互的完整数值（DistanceRamp/PointBlank/FarShot 伤害修正）。
 //! - AreaEffect 对 DoT 的特例（`bleedDurationIsSkillDuration` 等时长转移）。
-//! - SupportManaMultiplier（辅助宝石 cost 倍率，需 gem level table）。
 //! - Spirit 保留池公式（见 recovery-charges-buffs.md；本模块仅计算技能侧保留量）。
+//!
+//! SupportManaMultiplier 已于 M1-T4.4 落地（见 §4 cost 公式），不再 defer。
 
 use pobr_data::prelude::*;
 
