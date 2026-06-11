@@ -70,7 +70,7 @@ fn incompatible_support_is_rejected_end_to_end() {
     let build_data = load_build_data();
 
     // 前置：该 support 确实带可映射的 damage_+%（数据通道未断，拒收不是「没数值」的假阳性）。
-    let sup = build_data.effect_stats("SupportFerociousRoarPlayer", 20, 0);
+    let sup = build_data.effect_stats("SupportFerociousRoarPlayer", 20, 0, None);
     let inc = sup
         .base
         .iter()
@@ -110,7 +110,7 @@ fn incompatible_support_is_rejected_end_to_end() {
 fn compatible_support_still_injects() {
     let build_data = load_build_data();
 
-    let sup = build_data.effect_stats("SupportMetaCastFireSpellOnHitPlayer", 20, 0);
+    let sup = build_data.effect_stats("SupportMetaCastFireSpellOnHitPlayer", 20, 0, None);
     let inc = sup
         .base
         .iter()

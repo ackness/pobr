@@ -16,11 +16,11 @@ use pobr_data::passive_tree::PassiveTreeSpec;
 
 use crate::build_config::BuildConfig;
 
-/// 一个宝石的授予效果引用（`<Gem skillId>` + `<Gem level>` + `<Gem quality>`），
-/// active/support 皆可。由计算侧按数据表（`is_support`）分类。
+/// 一个宝石的授予效果引用（`<Gem skillId>` + `<Gem level>` + `<Gem quality>` +
+/// `<Gem statSetIndex>`），active/support 皆可。由计算侧按数据表（`is_support`）分类。
 ///
-/// 契约 C4（M1 蓝图 §3.3）：`quality` 为 T1 份额（default 0 = 无品质）；
-/// `stat_set_index` 由 T5 在 T1 合并后追加。
+/// 契约 C4（M1 蓝图 §3.3）收口：`quality` 为 T1 份额（default 0 = 无品质），
+/// `stat_set_index` 为 T5 份额（形态选择）。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GemSkillRef {
     /// 授予效果 id（PoB `<Gem skillId>`，如 `SupportAddedLightningDamagePlayer`）。
@@ -31,6 +31,12 @@ pub struct GemSkillRef {
     /// `trunc(per_quality_rate × quality)` 叠加品质 stat（见
     /// `BuildData::effect_stats`，对齐 PoB2 CalcTools.lua `buildSkillInstanceStats`）。
     pub quality: u32,
+    /// statSet 形态选择（PoB `<Gem statSetIndex>`，**1-based**，索引 PoB2 导出的
+    /// statSets 列表 = `StatSetDef::vendor_set_index` 语义；vendor SkillsTab.lua:354
+    /// 读 / :489 写）。`None` = 未指定（缺省主 set；PoB2 序列化缺省态为字面量
+    /// `"nil"`，解析归一化为 `None`）。`statSetIndexCalcs`（calcs 页独立选择）
+    /// M1 不做，解析忽略。
+    pub stat_set_index: Option<u32>,
 }
 
 /// 一组同插槽的技能宝石（主动技能 + 其辅助）。简化等价物：用稳定 gem id 表示。
@@ -112,6 +118,23 @@ impl SocketGroup {
             skill_id: skill_id.into(),
             gem_level,
             quality,
+            stat_set_index: None,
+        });
+        self
+    }
+
+    /// 追加一个带 statSet 形态选择的宝石授予效果引用（T5.4，契约 C4）。
+    pub fn with_gem_skill_stat_set(
+        mut self,
+        skill_id: impl Into<String>,
+        gem_level: u32,
+        stat_set_index: u32,
+    ) -> Self {
+        self.gem_skills.push(GemSkillRef {
+            skill_id: skill_id.into(),
+            gem_level,
+            quality: 0,
+            stat_set_index: Some(stat_set_index),
         });
         self
     }

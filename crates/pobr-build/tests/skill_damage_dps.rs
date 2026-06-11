@@ -103,7 +103,7 @@ fn fireball_with_damage_support_raises_hit() {
 
     // 该 support 确有可映射的 damage_+% stat（数据通道未断）。support 无品质表
     // 条目（PoB2 导出即跳过），quality 传 0，取 base 段。
-    let sup = build_data.effect_stats("SupportMetaCastFireSpellOnHitPlayer", 20, 0);
+    let sup = build_data.effect_stats("SupportMetaCastFireSpellOnHitPlayer", 20, 0, None);
     let inc = sup
         .base
         .iter()

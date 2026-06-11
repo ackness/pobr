@@ -71,7 +71,7 @@ fn quality_segment_truncates_toward_zero() {
         ],
     );
 
-    let es = bd.effect_stats("SynthSkill", 20, 19);
+    let es = bd.effect_stats("SynthSkill", 20, 19, None);
     let get = |stat: &str| {
         es.quality
             .iter()
@@ -87,8 +87,12 @@ fn quality_segment_truncates_toward_zero() {
     );
 
     // 品质 0 → 空段；未知技能 → 空段。
-    assert!(bd.effect_stats("SynthSkill", 20, 0).quality.is_empty());
-    assert!(bd.effect_stats("NoSuch", 20, 20).quality.is_empty());
+    assert!(
+        bd.effect_stats("SynthSkill", 20, 0, None)
+            .quality
+            .is_empty()
+    );
+    assert!(bd.effect_stats("NoSuch", 20, 20, None).quality.is_empty());
 }
 
 /// 真实数据 + oracle 对拍：q20 各效果的品质段与 PoB2 `buildSkillInstanceStats`
@@ -97,7 +101,7 @@ fn quality_segment_truncates_toward_zero() {
 fn quality_segment_matches_pob2_oracle() {
     let bd = load_data();
     let seg = |skill: &str, level: u32, q: u32| -> Vec<(String, f64)> {
-        bd.effect_stats(skill, level, q)
+        bd.effect_stats(skill, level, q, None)
             .quality
             .iter()
             .filter(|s| s.value != 0.0)

@@ -640,7 +640,7 @@ fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// 在单个宝石组内选出主技能 `(skill_id, gem_level)`：
+/// 在单个宝石组内选出主技能 `(skill_id, gem_level, stat_set_index)`：
 /// 1. 收集**非辅助**宝石（保持顺序，含 meta 壳）= PoB `socketGroupSkillList`。
 /// 2. 用 `main_active_skill`（1-based，缺省 1，越界 clamp）选第 N 个。
 /// 3. 若选中项是伤害技能 → 用它；否则（meta 壳 / 非伤害）穿透到组内首个伤害技能候选。
@@ -651,7 +651,7 @@ fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
 fn pick_group_main_skill<'b>(
     build_data: &BuildData,
     group: &'b SocketGroup,
-) -> Option<(&'b str, u32)> {
+) -> Option<(&'b str, u32, Option<u32>)> {
     // 非辅助宝石列表（meta 壳算入），与 PoB socketGroupSkillList 一致。`gem_skills` 存的是
     // 授予效果 id，故经 granted_effects.is_support 判定（未知效果按非 support 处理，宁可保留）。
     let actives: Vec<&crate::build::GemSkillRef> = group
@@ -677,23 +677,28 @@ fn pick_group_main_skill<'b>(
 
         // 指定项即伤害技能 → 直接用；否则（meta 壳等）穿透到组内首个伤害技能。
         if is_damage_skill(build_data, &chosen.skill_id) {
-            return Some((chosen.skill_id.as_str(), chosen.gem_level));
+            return Some((
+                chosen.skill_id.as_str(),
+                chosen.gem_level,
+                chosen.stat_set_index,
+            ));
         }
         if let Some(dmg) = actives
             .iter()
             .find(|g| is_damage_skill(build_data, &g.skill_id))
         {
-            return Some((dmg.skill_id.as_str(), dmg.gem_level));
+            return Some((dmg.skill_id.as_str(), dmg.gem_level, dmg.stat_set_index));
         }
         // gem_skills 非空但无伤害技能候选 → 该组无主技能（纯 meta/光环组）。
         return None;
     }
 
-    // 回退：无 gem_skills（builder/测试用 with_active_skill 构造）时用 active_skill_id。
+    // 回退：无 gem_skills（builder/测试用 with_active_skill 构造）时用 active_skill_id
+    // （builder 路径无 statSetIndex 概念 → 缺省主 set）。
     group
         .active_skill_id
         .as_deref()
-        .map(|id| (id, group.active_gem_level.unwrap_or(1)))
+        .map(|id| (id, group.active_gem_level.unwrap_or(1), None))
 }
 
 /// 解析 build 的主技能分等级参数：优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+
@@ -712,16 +717,18 @@ fn resolve_main_skill<'b>(
     // 优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+ 组内 mainActiveSkill。
     if let Some(n) = build.main_socket_group
         && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
-        && let Some((skill_id, level)) = pick_group_main_skill(data, group)
-        && let Some(resolved) = resolve_skill_level_with_gem_bonus(build, data, skill_id, level)
+        && let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
+        && let Some(resolved) =
+            resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)
     {
         return Some((resolved, group, skill_id));
     }
 
     // 回退：扫描所有启用组，取首个有伤害技能候选的组（同样按 mainActiveSkill 在组内选）。
     for group in build.enabled_socket_groups() {
-        if let Some((skill_id, level)) = pick_group_main_skill(data, group)
-            && let Some(resolved) = resolve_skill_level_with_gem_bonus(build, data, skill_id, level)
+        if let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
+            && let Some(resolved) =
+                resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)
         {
             return Some((resolved, group, skill_id));
         }
@@ -748,6 +755,7 @@ fn resolve_skill_level_with_gem_bonus(
     data: &BuildData,
     skill_id: &str,
     base_level: u32,
+    set_index: Option<u32>,
 ) -> Option<ResolvedSkillLevel> {
     let skill_types = data
         .granted_effects
@@ -763,7 +771,7 @@ fn resolve_skill_level_with_gem_bonus(
     } else {
         additional_gem_levels(build, skill_types)
     };
-    data.resolve_skill_level(skill_id, base_level.saturating_add(bonus))
+    data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)
 }
 
 /// 扫描全部已装备物品（implicit/explicit/enchant）的「`+N to Level of all <X> Skills`」，
@@ -1573,7 +1581,12 @@ fn main_skill_quality_modifiers(
     if gem.quality == 0 {
         return Vec::new();
     }
-    let stats = data.effect_stats(&gem.skill_id, gem.gem_level, gem.quality);
+    let stats = data.effect_stats(
+        &gem.skill_id,
+        gem.gem_level,
+        gem.quality,
+        gem.stat_set_index,
+    );
     mapped_stat_modifiers(
         &stats.quality,
         SourceKind::GemQuality,
@@ -1698,9 +1711,13 @@ fn in_group_trigger_source_rate(
         if !is_damage_skill(data, &gem.skill_id) {
             continue;
         }
-        let Some(resolved) =
-            resolve_skill_level_with_gem_bonus(build, data, &gem.skill_id, gem.gem_level)
-        else {
+        let Some(resolved) = resolve_skill_level_with_gem_bonus(
+            build,
+            data,
+            &gem.skill_id,
+            gem.gem_level,
+            gem.stat_set_index,
+        ) else {
             continue;
         };
         if let Some(use_time) = resolved.use_time_s
@@ -1857,7 +1874,7 @@ fn support_modifiers(
         let gem = &group.gem_skills[i];
         // TODO(T1，T3.6 合并后 rebase 追加)：quality 传参改为 gem.quality——support 的
         // 品质表条目不存在（PoB2 导出即跳过），当前恒空段，传 0 与传 gem.quality 等价。
-        let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0);
+        let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0, gem.stat_set_index);
         mods.extend(mapped_stat_modifiers(
             &stats.base,
             SourceKind::SupportGem,
@@ -1911,7 +1928,12 @@ fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
             }
             // quality 段并入数值（PoB2 把品质先加进同一 stats 表）；本路径的细分
             // GemQuality 归因 defer（aura 归因仍记 SkillGem `aura.*`）。
-            let es = data.effect_stats(&gem.skill_id, gem.gem_level, gem.quality);
+            let es = data.effect_stats(
+                &gem.skill_id,
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            );
             for ds in es.all() {
                 for mapped in map_aura_buff_stat(&ds.stat) {
                     if ds.value == 0.0 {
@@ -1950,7 +1972,12 @@ fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> Vec<Modifie
                 continue;
             }
             // quality 段并入数值（同 aura 路径口径）；细分 GemQuality 归因 defer。
-            let es = data.effect_stats(&gem.skill_id, gem.gem_level, gem.quality);
+            let es = data.effect_stats(
+                &gem.skill_id,
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            );
             for ds in es.all() {
                 let Some(mapped) = map_self_buff_offensive_stat(&ds.stat) else {
                     continue;
