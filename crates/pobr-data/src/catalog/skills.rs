@@ -10,10 +10,11 @@ use serde::{Deserialize, Serialize};
 /// （形如 `Metadata/Items/Gems/SkillGemFireball`）。`name` 走 base_items 域，
 /// 此处只存与宝石机制相关的字段。
 ///
-/// TODO（后续切片）：分等级 stat 缩放（GrantedEffectStatSetsPerLevel /
-/// GrantedEffectsPerLevel 的 cost / cooldown / 伤害进度）尚未接入；
-/// `GemEffects` FK 指向的 `GemEffects` 表当前 pipeline 未导出，
-/// 故宝石→授予效果的直接连边暂缺，等该表导出后补 `granted_effects: Vec<String>`。
+/// 宝石→授予效果的连边（M1-T5.1，契约 C5）：`granted_effect_id` /
+/// `additional_granted_effect_ids` 不在 base 产物中（`GemEffects` 表所在 bundle
+/// 在钉定补丁不可下载，见 `pipeline/config.json` `_tablesUnavailableForPinnedPatch`），
+/// 由 `pobr-gamedata` 在加载时从 `overlay/gem_effects.json`（[`GemEffectDef`]，
+/// extract-lua 自 vendor `Data/Gems.lua` 抽取）merge 填充；adapter 恒写空。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SkillGemDef {
     /// 稳定 ID，取自 `BaseItemType` 基底的 `Id`。
@@ -32,6 +33,17 @@ pub struct SkillGemDef {
     pub int_pct: u32,
     /// 是否为辅助宝石（由 `GemType == 1` 判定）。
     pub is_support: bool,
+    /// 宝石授予的主效果 id（`GemEffects.GrantedEffect` → `GrantedEffects.Id`，
+    /// 如 `IceNovaPlayer`）。来源 = `overlay/gem_effects.json` 加载期 merge；
+    /// base 产物 / 旧数据包恒为 `None`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub granted_effect_id: Option<String>,
+    /// 宝石**附加**授予的效果 id（`GemEffects.AdditionalGrantedEffects` 列序，
+    /// 如 InfernalCry → `InfernalCryCorpseExplosionPlayer`）。对应 PoB2
+    /// `additionalGrantedEffectId1..N`（`Export/Scripts/skills.lua:919-923`），
+    /// meta/复合宝石展开（T5.6）的外键。来源同 `granted_effect_id`。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_granted_effect_ids: Vec<String>,
 }
 
 /// 授予效果定义（来自 `GrantedEffects.dat` + 外键解析）。
@@ -288,6 +300,43 @@ pub struct GemQualityStatDef {
 pub struct GemQualityStatsDef {
     /// 品质 stat 表，按 `effect_id` 升序。
     pub effects: Vec<GemQualityStatDef>,
+}
+
+// ---- M1-T5.1 宝石↔效果外键域（`overlay/gem_effects.json`）----
+
+/// 单个宝石变体的授予效果连边（`overlay/gem_effects.json` 的单条）。
+///
+/// 数据来源：vendor PoB2 `Data/Gems.lua`（由 `Export/Scripts/skills.lua:898-925`
+/// 自 `.dat` `SkillGems.GemEffects` → `GemEffects` 表导出；该表所在 bundle 在钉定
+/// 补丁 4.5.0.3.4 不可下载，按 owner 裁决「生产工具定层」走 extract-lua → overlay/，
+/// 后续 `.dat` 通道恢复则迁 base/，迁移 commit byte 等价）。
+/// `sync-pob-catalog extract-lua --what gem-effects` 确定性抽取。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GemEffectDef {
+    /// 宝石基底 id（vendor `gameId` = `BaseItemTypes.Id`，与 [`SkillGemDef::id`] 对齐）。
+    pub gem_id: String,
+    /// 宝石效果变体 id（vendor `variantId` = `GemEffects.Id`，如 `IceNova`）。
+    /// 当前数据 1 gem ↔ 1 变体（vendor Gems.lua 无重复 gameId，抽取时已校验）。
+    pub variant_id: String,
+    /// 授予的主效果 id（`GemEffects.GrantedEffect` → `GrantedEffects.Id`）。
+    pub granted_effect_id: String,
+    /// 附加授予的效果 id（`GemEffects.AdditionalGrantedEffects` 列序 =
+    /// vendor `additionalGrantedEffectId1..N`）。meta/复合宝石展开外键（18-G5）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_granted_effect_ids: Vec<String>,
+    /// 主效果的附加 statSet id（`GrantedEffects.AdditionalStatSets` →
+    /// `GrantedEffectStatSets.Id`，vendor `additionalStatSet1..N`）。与
+    /// [`GrantedEffectDef::additional_stat_set_ids`]（`.dat` 直读）互为对照边车。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub additional_stat_set_ids: Vec<String>,
+}
+
+/// `overlay/gem_effects.json` 顶层（消费侧视角：`_meta` 溯源头部由 serde 默认
+/// 忽略，消费侧只取 `gems` 列表，按 `gem_id` 升序）。
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct GemEffectsDef {
+    /// 宝石→效果连边表，按 `gem_id` 升序。
+    pub gems: Vec<GemEffectDef>,
 }
 
 /// 技能消耗资源类型定义（来自 `CostTypes.dat`）。

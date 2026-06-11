@@ -60,6 +60,11 @@ pub(super) fn adapt_gems(
             dex_pct: clamp_u32(raw.dex_pct),
             int_pct: clamp_u32(raw.int_pct),
             is_support,
+            // 宝石→效果连边不在 adapter 产物中（GemEffects 表不可下载，T5.1），
+            // 由 gamedata 加载期从 overlay/gem_effects.json merge（serde skip，
+            // base 产物 byte 不变）。
+            granted_effect_id: None,
+            additional_granted_effect_ids: Vec::new(),
         });
     }
     gems.sort_by(|a, b| a.id.cmp(&b.id));

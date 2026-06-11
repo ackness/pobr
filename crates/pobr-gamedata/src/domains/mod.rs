@@ -26,3 +26,6 @@ pub mod gem_quality_stats;
 
 // ---- M1-T2 SkillStatMap 映射表（overlay 层，消费侧 = stat_map_engine）----
 pub mod skill_stat_map;
+
+// ---- M1-T5.1 宝石→授予效果连边（overlay 层，merge 进 skill_gems + meta 展开索引）----
+pub mod gem_effects;

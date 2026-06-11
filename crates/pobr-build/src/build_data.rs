@@ -14,8 +14,8 @@ use std::collections::HashMap;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
-    ArmourBaseStats, BaseItemDef, CostTypeDef, GrantedEffectDef, PassiveNodeDef, QualityStat,
-    RuntimeConstants, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
+    ArmourBaseStats, BaseItemDef, CostTypeDef, GemEffectDef, GrantedEffectDef, PassiveNodeDef,
+    QualityStat, RuntimeConstants, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
     WeaponBaseStats,
 };
 use pobr_gamedata::{GameData, LoadError};
@@ -116,6 +116,11 @@ pub struct BuildData {
     /// 宝石品质 stat 斜率（`overlay/gem_quality_stats.json`），以 `GrantedEffects.Id`
     /// 为键。旧数据包无此 overlay 域时为空表（品质不产生 stat，向后兼容）。
     pub gem_quality_stats: HashMap<String, Vec<QualityStat>>,
+    /// 宝石→授予效果连边（`overlay/gem_effects.json`，M1-T5.1），以**主效果 id**
+    /// （`granted_effect_id`）为键——meta/复合宝石展开（T5.6）按 socket group 里
+    /// 宝石的 `skill_id`（= 主效果 id）正向查附加效果。旧数据包无此 overlay 域时
+    /// 为空表（无展开，向后兼容）。
+    pub gem_effects: HashMap<String, GemEffectDef>,
     /// 消耗资源类型表（按 `CostTypes` 索引升序；为空表示旧数据包无此域）。
     pub cost_types: Vec<CostTypeDef>,
     /// 物品基底表，以英文 canonical 名称为键（供装备 `Item.base` 名称 → 武器/护甲基底数值）。
@@ -194,6 +199,18 @@ impl BuildData {
             })
             .unwrap_or_default();
 
+        // 宝石→效果连边（overlay 域，T5.1）：按主效果 id 建索引（meta 展开正向查询键）。
+        // 缺文件 = 空表（无展开，向后兼容）。
+        let gem_effects = data
+            .gem_effects()?
+            .map(|def| {
+                def.gems
+                    .into_iter()
+                    .map(|g| (g.granted_effect_id.clone(), g))
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let cost_types = data.cost_types()?;
 
         let base_items = data
@@ -247,6 +264,7 @@ impl BuildData {
             granted_effect_levels,
             skill_stat_sets,
             gem_quality_stats,
+            gem_effects,
             cost_types,
             base_items,
             constants,
@@ -267,6 +285,7 @@ impl BuildData {
             granted_effect_levels: HashMap::new(),
             skill_stat_sets: HashMap::new(),
             gem_quality_stats: HashMap::new(),
+            gem_effects: HashMap::new(),
             cost_types: Vec::new(),
             base_items: HashMap::new(),
             constants: RuntimeConstants::default(),
@@ -496,6 +515,28 @@ mod tests {
         // Ranger 起始：7 str / 15 dex / 7 int（passive_tree_meta）。
         assert_eq!(ranger.dexterity, 15);
         assert!(bd.class_attributes("NoSuchClass").is_none());
+    }
+
+    /// M1-T5.1：宝石→效果连边经 overlay/gem_effects.json merge 进 SkillGemDef，
+    /// 并按主效果 id 建 meta 展开索引（gem_effects）。
+    #[test]
+    fn gem_effect_links_loaded_from_overlay() {
+        let data = GameData::new(repo_version_dir());
+        let bd = BuildData::load(&data).expect("load");
+        let ice = bd
+            .skill_gems
+            .get("Metadata/Items/Gems/SkillGemIceNova")
+            .expect("IceNova gem present");
+        assert_eq!(ice.granted_effect_id.as_deref(), Some("IceNovaPlayer"));
+        // meta 展开索引按主效果 id 可查（GemSkillRef.skill_id = 主效果 id）。
+        assert!(bd.gem_effects.contains_key("IceNovaPlayer"));
+        // 附加授予效果外键（18-G5）：Blasphemy 宝石主效果 BlasphemyPlayer 附带
+        // SupportBlasphemyPlayer（vendor Gems.lua additionalGrantedEffectId1）。
+        let blasphemy = bd.gem_effects.get("BlasphemyPlayer").expect("Blasphemy");
+        assert_eq!(
+            blasphemy.additional_granted_effect_ids,
+            ["SupportBlasphemyPlayer"]
+        );
     }
 
     #[test]

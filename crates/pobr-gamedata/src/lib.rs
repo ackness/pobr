@@ -125,9 +125,28 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/mods.json")))
     }
 
-    /// 加载技能宝石定义（身份取自基底 id）。
+    /// 加载技能宝石定义（身份取自基底 id），并把 `overlay/gem_effects.json` 的
+    /// 宝石→授予效果连边（`granted_effect_id` / `additional_granted_effect_ids`，
+    /// vendor `Data/Gems.lua` 抽取——`.dat` `GemEffects` 表不可下载，M1-T5.1）按
+    /// `gem_id` merge 到纯 base 之上（overlay 缺失时 = 纯 base，连边字段保持空）。
     pub fn skill_gems(&self) -> Result<Vec<SkillGemDef>, LoadError> {
-        self.load_domain("skill_gems.json")
+        let mut gems: Vec<SkillGemDef> = self.load_domain("skill_gems.json")?;
+        if let Some(effects) = self.gem_effects()? {
+            let by_gem: std::collections::BTreeMap<&str, &pobr_data::catalog::GemEffectDef> =
+                effects
+                    .gems
+                    .iter()
+                    .map(|g| (g.gem_id.as_str(), g))
+                    .collect();
+            for gem in &mut gems {
+                if let Some(link) = by_gem.get(gem.id.as_str()) {
+                    gem.granted_effect_id = Some(link.granted_effect_id.clone());
+                    gem.additional_granted_effect_ids = link.additional_granted_effect_ids.clone();
+                }
+                // overlay 中无该宝石（如纯怪物/废弃宝石）→ 连边字段保持空，不报错。
+            }
+        }
+        Ok(gems)
     }
 
     /// 加载授予效果定义（含解析后的主动技能链接 + StatSet/CostTypes 索引）。

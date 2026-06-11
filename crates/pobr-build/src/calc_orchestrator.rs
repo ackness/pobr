@@ -2799,6 +2799,8 @@ mod tests {
                 dex_pct: 0,
                 int_pct: 0,
                 is_support: false,
+                granted_effect_id: None,
+                additional_granted_effect_ids: Vec::new(),
             },
         );
         skill_gems.insert(
@@ -2812,6 +2814,8 @@ mod tests {
                 dex_pct: 0,
                 int_pct: 0,
                 is_support: true,
+                granted_effect_id: None,
+                additional_granted_effect_ids: Vec::new(),
             },
         );
         let data = BuildData {

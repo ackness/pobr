@@ -25,6 +25,7 @@
       "enemy_presets"
     ],
     "overlay": [
+      "gem_effects",
       "gem_quality_stats",
       "high_precision_mods",
       "local_mods",

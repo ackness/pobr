@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use pobr_data::prelude::*;
 use regex::Regex;
 
+pub mod extract_gem_effects;
 pub mod extract_lua;
 pub mod extract_quality;
 pub mod extract_stat_map;
