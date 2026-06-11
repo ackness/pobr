@@ -59,10 +59,56 @@ pub fn merge_flasks_charms(_env: &mut Env) {}
 /// `cfg.mode_buffs` 门控（D5）。T0 占位：no-op。
 pub fn buff_pass(_env: &mut Env) {}
 
-/// 阶段 6（T2 实现）：doActorMisc 等价——内建 buff flag 经 `buff_definitions.json`
-/// 展开为 mods（对照 CalcPerform.lua:503-765，整段 `cfg.mode_combat` 门控）。
-/// T0 占位：no-op。
-pub fn expand_misc_buffs(_env: &mut Env) {}
+/// 阶段 6（T2 实现，蓝图 §5.3 B3）：doActorMisc 等价——内建 buff flag 经
+/// `Env::buff_definitions`（`overlay/buff_definitions.json` 注入）展开为 mods
+/// 写回 `env.player.mod_db`，附带条件写 `env.cfg.conditions`（对照
+/// CalcPerform.lua:503-765，整段 `cfg.mode_combat` 门控——默认 false 即 no-op，
+/// 搬迁不变式锚点；B4 的 mode_combat 自动置位是独立行为 commit）。
+///
+/// 归因：`(SourceKind::Buff, "buff.<id>")`；同 id 已展开过（同一 Env 重复
+/// `perform`）的 def 跳过，保证幂等不重复计入。
+pub fn expand_misc_buffs(env: &mut Env) {
+    use pobr_data::source::SourceKind;
+
+    use crate::rules::buff_expander::{self, BuffExpandState};
+
+    if !env.cfg.mode_combat || env.buff_definitions.is_empty() {
+        return;
+    }
+
+    // 幂等护栏：剔除本 Env 已展开过的 def（按归因 id `buff.<id>` 判定）。
+    let expanded_ids: std::collections::BTreeSet<&str> = env
+        .player
+        .mod_db
+        .iter_mods()
+        .filter_map(|m| m.origin.as_ref())
+        .filter(|o| o.source_id.kind == SourceKind::Buff)
+        .map(|o| o.source_id.id.as_str())
+        .collect();
+    let pending: Vec<_> = env
+        .buff_definitions
+        .iter()
+        .filter(|def| !expanded_ids.contains(format!("buff.{}", def.id).as_str()))
+        .cloned()
+        .collect();
+    if pending.is_empty() {
+        return;
+    }
+
+    let expansion = buff_expander::expand_misc_buffs(
+        &BuffExpandState {
+            db: &env.player.mod_db,
+            cfg: &env.cfg,
+            mode_combat: env.cfg.mode_combat,
+        },
+        &pending,
+        &env.buff_handler_registry,
+    );
+    env.player.mod_db.add_list(expansion.mods);
+    for condition in expansion.conditions_set {
+        env.cfg.conditions.insert(condition, true);
+    }
+}
 
 /// 阶段 7（T4 实现）：非伤害异常施加——Chill/Shock 的 Val/Base/Override 折算后写
 /// enemy db（对照 CalcPerform.lua:3076-3180）。T0 占位：no-op。

@@ -1,10 +1,13 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
+use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::prelude::*;
 
 use crate::item::ingest_item;
 use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
 use crate::passive::{AllocatedNode, ingest_passive_nodes};
+use crate::rules::HandlerRegistry;
 use crate::skill_source::{GemModSource, ingest_gem};
 use crate::{CalcConfig, Modifier};
 
@@ -195,6 +198,21 @@ impl CalculationSession {
     /// （env_finalize 阶段 1/5）落地后，词条授予的 keystone 才据此注入 modDB。
     pub fn set_keystone_mods(&mut self, map: BTreeMap<String, Vec<Modifier>>) {
         self.env.keystone_mods = map;
+    }
+
+    /// 注入内建 buff 定义表（M3-T2 B3；`overlay/buff_definitions.json` 经
+    /// pobr-gamedata 加载后由编排层喂入）。env_finalize 阶段 6
+    /// `expand_misc_buffs` 消费——整段吃 `cfg.mode_combat` 门控（默认 false），
+    /// 故未显式置位 mode_combat 时注入与否输出逐值不变。
+    pub fn set_buff_definitions(&mut self, defs: Vec<BuffDef>) {
+        self.env.buff_definitions = defs;
+    }
+
+    /// 注入 handler 注册表（数据条目 `handler_id` → Rust 真逻辑；聚合点 =
+    /// pobr-build `handlers::build_registry()`）。未调用时为空注册表——
+    /// handler 条目保守零输出（进 unhandled 报表，宁缺勿错值）。
+    pub fn set_buff_handler_registry(&mut self, registry: Arc<HandlerRegistry>) {
+        self.env.buff_handler_registry = registry;
     }
 
     /// 按 `(config_level, tier)` 初始化敌人（怪物缩放 + 档位加成），写入 `Env.enemy`

@@ -1,8 +1,11 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
+use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::prelude::*;
 
 use crate::CalcConfig;
+use crate::rules::HandlerRegistry;
 
 use super::session::BuffSpec;
 use super::{Actor, ActorBaseStats};
@@ -24,6 +27,15 @@ pub struct Env {
     /// keystone 名 → modifier 列表（M3 T0-4；`session::set_keystone_mods` 写入，
     /// T5 `merge_keystones`（env_finalize 阶段 1/5）消费）。**本阶段零消费**。
     pub keystone_mods: BTreeMap<String, Vec<crate::Modifier>>,
+    /// 内建 buff 定义表（M3-T2 B3；`overlay/buff_definitions.json` 经
+    /// `session::set_buff_definitions` 注入，env_finalize 阶段 6
+    /// `expand_misc_buffs` 消费）。`cfg.mode_combat` 默认 false →
+    /// 注入与否输出逐值不变（B4 置位是独立行为 commit）。
+    pub buff_definitions: Vec<BuffDef>,
+    /// handler 注册表（数据条目 `handler_id` → Rust 真逻辑；pobr-build
+    /// `handlers::build_registry()` 经 `session::set_buff_handler_registry`
+    /// 注入）。缺省空注册表 = handler 条目保守零输出（进 unhandled 报表）。
+    pub buff_handler_registry: Arc<HandlerRegistry>,
 }
 
 impl Env {
@@ -35,6 +47,8 @@ impl Env {
             minions: Vec::new(),
             buff_skills: Vec::new(),
             keystone_mods: BTreeMap::new(),
+            buff_definitions: Vec::new(),
+            buff_handler_registry: Arc::new(HandlerRegistry::new()),
         }
     }
 

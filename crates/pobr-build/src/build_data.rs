@@ -13,6 +13,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
+use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
@@ -160,6 +161,12 @@ pub struct BuildData {
     /// `calculate_with_data` 在编排选项未显式注入 catalog 时回退此处；
     /// 缺 overlay 文件（旧数据包）= `None`（数据通道全 miss，不注入任何映射）。
     pub stat_map_catalog: Option<Arc<StatMapCatalog>>,
+    /// 内建 buff 定义表（`overlay/buff_definitions.json`，M3-T2 B3）。
+    /// `calculate_with_data` 经 `CalculationSession::set_buff_definitions` 注入，
+    /// env_finalize 阶段 6（doActorMisc 等价）消费——整段 `cfg.mode_combat`
+    /// 门控（默认 false），注入本身零行为变化。缺 overlay 文件（旧数据包）
+    /// = 空表（无内建 buff 展开，向后兼容）。
+    pub buff_definitions: Vec<BuffDef>,
 }
 
 impl BuildData {
@@ -284,6 +291,13 @@ impl BuildData {
             .skill_stat_map()?
             .map(|def| Arc::new(StatMapCatalog::new(def)));
 
+        // 内建 buff 定义（overlay 域，M3-T2）：缺文件 = 空表（无内建 buff 展开，
+        // 向后兼容），其余加载/解析错误照常上抛。
+        let buff_definitions = data
+            .buff_definitions()?
+            .map(|def| def.buffs)
+            .unwrap_or_default();
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -299,6 +313,7 @@ impl BuildData {
             jewel_radii,
             local_mods,
             stat_map_catalog,
+            buff_definitions,
         })
     }
 
@@ -321,6 +336,7 @@ impl BuildData {
             jewel_radii: JewelRadiiDef::default(),
             local_mods: LocalModsDef::default(),
             stat_map_catalog: None,
+            buff_definitions: Vec::new(),
         }
     }
 

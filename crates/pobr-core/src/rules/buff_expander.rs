@@ -13,8 +13,7 @@
 //! mod 值 = Literal | coeff × effect | rounding(coeff × scale)
 //! ```
 //!
-//! 归因：SourceId = `(SourceKind::Derived, "buff.<id>")`——M3-T0 落
-//! `SourceKind::Buff` 变体后改用（单行替换，见蓝图 D4）。
+//! 归因：SourceId = `(SourceKind::Buff, "buff.<id>")`（蓝图 D4）。
 
 use pobr_data::catalog::buffs::{BuffDef, BuffModValue, BuffModeGate, Rounding};
 use pobr_data::catalog::value_expr::EffectTag;
@@ -25,7 +24,24 @@ use pobr_data::stat::StatId;
 use crate::config::CalcConfig;
 use crate::mod_db::ModDb;
 use crate::modifier::{ModTag, ModValue, Modifier};
-use crate::rules::registry::HandlerRegistry;
+use crate::rules::registry::{DuplicateHandlerError, HandlerRegistry};
+
+/// buff 域 handler 注册（蓝图 §2.4 契约 3；聚合点 = pobr-build
+/// `handlers::build_registry()` 逐行 append 调用本函数）。
+///
+/// **当前注册集合为空**：`buff_definitions.json` 的四个 handler 条目
+/// （`buff:fortify` / `buff:elusive` / `buff:fanaticism` / `buff:onslaught_flask`）
+/// 都需要现行 [`Handler`](crate::rules::registry::Handler) 签名（`Fn(&[f64])`）
+/// 之外的上下文——fortify 要读 db 的 `FortificationStacks` override/Max 链
+/// （CalcPerform.lua:523-539）、elusive 要读 `ElusiveEffect` Max/Override
+/// （:612-632）、fanaticism 要读主技能 selfCast 状态（:574-580）、
+/// onslaught_flask 要读 flaskData（:543-560，依赖 T4 flask merge）。
+/// 待 T1 按蓝图 §2.4 预留把 handler 签名扩为携带 `&CalcConfig`/db 上下文后，
+/// 在本函数内补注册（预算 ≤8）；在此之前这四条经
+/// [`BuffExpansion::unhandled`] 进覆盖率报表（保守零输出，宁缺勿错值）。
+pub fn register_handlers(_registry: &mut HandlerRegistry) -> Result<(), DuplicateHandlerError> {
+    Ok(())
+}
 
 /// 展开输入状态（只读快照）。
 #[derive(Debug, Clone, Copy)]
@@ -139,6 +155,9 @@ fn expand_one(
             ));
             continue;
         };
+        // vendor `Speed` + ModFlag.Attack/Cast → pobr 速度 bucket stat 名
+        // （速度语义折进名字，与 mod_parser 命名约定一致）。
+        let (mod_name, template_flags) = fold_vendor_speed(&template.name, &template.flags);
         let number = match &template.value {
             BuffModValue::Literal { value } => *value,
             BuffModValue::PerEffect { coeff } => coeff * effect,
@@ -148,7 +167,7 @@ fn expand_one(
         };
 
         let mut modifier = Modifier::new(
-            template.name.as_str(),
+            mod_name.as_str(),
             mod_type,
             if mod_type == ModType::Flag {
                 ModValue::Bool(true)
@@ -162,7 +181,7 @@ fn expand_one(
         // M4-W-A1 ModFlags 扩位后回补）。
         let mut flags = ModFlags::NONE;
         let mut unmapped = None;
-        for flag in &template.flags {
+        for flag in &template_flags {
             match map_mod_flag(flag) {
                 Some(bit) => flags |= bit,
                 None => {
@@ -229,6 +248,28 @@ fn apply_rounding(value: f64, rounding: Rounding) -> f64 {
     }
 }
 
+/// vendor 渲染名折叠：PoB2 用 `Speed` + `ModFlag.Attack/Cast` 区分攻速/施法速，
+/// pobr 速度 bucket（skill_use_time `SPEED_BUCKET`）按 stat 名聚合
+/// `AttackSpeed`/`CastSpeed`/`SkillSpeed`（与 mod_parser 对
+/// `increased Attack Speed` 的命名一致——速度语义折进名字，不留 flag 位）。
+/// 折叠后从 flag 列表移除已消费的 `Attack`/`Cast`；非 `Speed` 名原样透传。
+fn fold_vendor_speed(name: &str, flags: &[String]) -> (String, Vec<String>) {
+    if name != "Speed" {
+        return (name.to_string(), flags.to_vec());
+    }
+    let without = |consumed: &str| -> Vec<String> {
+        flags.iter().filter(|f| *f != consumed).cloned().collect()
+    };
+    if flags.iter().any(|f| f == "Attack") {
+        ("AttackSpeed".to_string(), without("Attack"))
+    } else if flags.iter().any(|f| f == "Cast") {
+        ("CastSpeed".to_string(), without("Cast"))
+    } else {
+        // vendor 无修饰的 Speed（攻法通吃）→ 双 bucket 共有名。
+        ("SkillSpeed".to_string(), flags.to_vec())
+    }
+}
+
 fn map_mod_flag(name: &str) -> Option<ModFlags> {
     match name {
         "Attack" => Some(ModFlags::ATTACK),
@@ -250,10 +291,11 @@ fn parse_mod_type(literal: &str) -> Option<ModType> {
     }
 }
 
-/// 归因：`(Derived, "buff.<id>")`——T0 落 `SourceKind::Buff` 后单行切换。
+/// 归因：`(Buff, "buff.<id>")`（蓝图 D4；`buff.` 前缀是 doActorMisc 等价段的
+/// 专属命名空间——aura/curse 走 `aura.`/`curse.` 前缀）。
 fn attach_origin(modifier: Modifier, def: &BuffDef) -> Modifier {
     modifier.with_origin(ModifierSource::new(SourceId::new(
-        SourceKind::Derived,
+        SourceKind::Buff,
         format!("buff.{}", def.id),
     )))
 }
@@ -322,7 +364,7 @@ mod tests {
     }
 
     /// Onslaught 基线：无 effect 词条 → effect = floor(10×1) = 10 →
-    /// Speed INC 20（Attack）+ MovementSpeed INC 10。
+    /// Speed INC 20（vendor Attack flag 折叠为 AttackSpeed）+ MovementSpeed INC 10。
     #[test]
     fn onslaught_baseline() {
         let mut db = ModDb::new();
@@ -334,16 +376,51 @@ mod tests {
             &HandlerRegistry::new(),
         );
         assert_eq!(out.mods.len(), 2);
-        assert_eq!(out.mods[0].name.as_str(), "Speed");
+        assert_eq!(out.mods[0].name.as_str(), "AttackSpeed");
         assert_eq!(out.mods[0].value.as_number(), Some(20.0));
-        assert_eq!(out.mods[0].flags, ModFlags::ATTACK);
+        assert_eq!(out.mods[0].flags, ModFlags::NONE);
         assert_eq!(out.mods[1].name.as_str(), "MovementSpeed");
         assert_eq!(out.mods[1].value.as_number(), Some(10.0));
-        // 归因占位：Derived + buff.<id>（T0 落 SourceKind::Buff 后切换）。
+        // 归因：SourceKind::Buff + "buff.<id>"（蓝图 D4）。
+        let origin = out.mods[0].origin.as_ref().unwrap();
+        assert_eq!(origin.source_id.kind, SourceKind::Buff);
+        assert_eq!(origin.source_id.id, "buff.Onslaught");
+    }
+
+    /// vendor `Speed` 折叠：Attack → AttackSpeed（消费该 flag）、
+    /// Cast → CastSpeed、无修饰 → SkillSpeed（攻法双 bucket 共有名）；
+    /// 非 Speed 名原样透传。
+    #[test]
+    fn vendor_speed_fold() {
+        let attack = vec!["Attack".to_string()];
         assert_eq!(
-            out.mods[0].origin.as_ref().unwrap().source_id.id,
-            "buff.Onslaught"
+            fold_vendor_speed("Speed", &attack),
+            ("AttackSpeed".to_string(), Vec::new())
         );
+        let cast = vec!["Cast".to_string()];
+        assert_eq!(
+            fold_vendor_speed("Speed", &cast),
+            ("CastSpeed".to_string(), Vec::new())
+        );
+        assert_eq!(
+            fold_vendor_speed("Speed", &[]),
+            ("SkillSpeed".to_string(), Vec::new())
+        );
+        assert_eq!(
+            fold_vendor_speed("WarcrySpeed", &[]),
+            ("WarcrySpeed".to_string(), Vec::new())
+        );
+    }
+
+    /// 契约 3 注册函数：当前为空注册（四个 handler 条目均需扩签名后的上下文，
+    /// 见 `register_handlers` 文档）；可重复调用、不与既有注册冲突。
+    #[test]
+    fn register_handlers_is_empty_and_reentrant() {
+        let mut registry = HandlerRegistry::new();
+        register_handlers(&mut registry).unwrap();
+        assert!(registry.is_empty(), "buff handler 当前应为零注册");
+        register_handlers(&mut registry).unwrap();
+        assert!(registry.ids().all(|id| id.starts_with("buff:")));
     }
 
     /// 蓝图 B3 数值锚点：OnslaughtEffect 23% + BuffEffectOnSelf 10% →
