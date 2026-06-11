@@ -25,6 +25,7 @@
       "enemy_presets"
     ],
     "overlay": [
+      "catalysts",
       "gem_effects",
       "gem_quality_stats",
       "granted_effect_minions",
@@ -32,6 +33,8 @@
       "local_mods",
       "minions",
       "mirage_configs",
+      "mod_scalability",
+      "runes",
       "skill_overrides",
       "spectres",
       "stat_set_labels",

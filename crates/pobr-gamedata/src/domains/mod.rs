@@ -34,7 +34,11 @@ pub mod gem_effects;
 pub mod stat_set_labels;
 
 // ---- pre-M5 数据前置（overlay 层，纯 loader 零接线；一表一文件）----
+pub mod catalysts; // M5c：催化剂品质标签匹配表
 pub mod granted_effect_minions; // M5a：宝石→召唤物外键边车
 pub mod minions; // M5a：召唤物条目
 pub mod mirage_configs; // M5a-D2：mirage 配置
+pub mod mod_scalability; // M5c：{range:x} 可缩放性表
+pub mod runes; // M5c：符文/魂核词条表
 pub mod spectres; // M5a：魂灵条目
+pub mod uniques; // M5c：传奇 raw+索引双层

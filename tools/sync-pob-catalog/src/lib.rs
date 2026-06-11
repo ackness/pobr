@@ -7,6 +7,7 @@ use pobr_data::prelude::*;
 use regex::Regex;
 
 pub mod extract_gem_effects;
+pub mod extract_item_overlay;
 pub mod extract_lua;
 pub mod extract_minions;
 pub mod extract_quality;

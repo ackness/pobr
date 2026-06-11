@@ -5,6 +5,10 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use sync_pob_catalog::extract_gem_effects::run_extract_gem_effects;
+use sync_pob_catalog::extract_item_overlay::{
+    DEFAULT_UNIQUE_FILES, run_extract_catalysts, run_extract_mod_scalability, run_extract_runes,
+    run_extract_uniques,
+};
 use sync_pob_catalog::extract_lua::{
     DEFAULT_SKILL_FILES, DEFAULT_STAT_MAP_SKILL_FILES, ExtractLuaArgs, resolve_luajit,
     run_extract_lua,
@@ -20,7 +24,7 @@ use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|minions|spectres|minion-list] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -61,10 +65,15 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
     let default_files: &[&str] = match parsed.what.as_deref() {
         Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
         Some("gem-effects") => &["Gems"],
-        // pre-M5a 数据生产目标：minions/spectres 抽取文件固定（runner 内校验）；
-        // minion-list 复用全量技能文件（与 skill-overrides 同集）。
+        // pre-M5 数据生产目标：minions/spectres/mod-scalability/runes/catalysts
+        // 抽取文件固定（runner 内校验）；uniques 用 itemTypes 全集；minion-list
+        // 复用全量技能文件（与 skill-overrides 同集）。
         Some("minions") => &["Minions"],
         Some("spectres") => &["Spectres"],
+        Some("mod-scalability") => &["ModScalability"],
+        Some("runes") => &["ModRunes"],
+        Some("catalysts") => &["Item"],
+        Some("uniques") => DEFAULT_UNIQUE_FILES,
         _ => DEFAULT_SKILL_FILES,
     };
     let extract_args = ExtractLuaArgs {
@@ -91,6 +100,10 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
         Some("minions") => run_extract_minions(&extract_args, MinionsKind::Minions)?,
         Some("spectres") => run_extract_minions(&extract_args, MinionsKind::Spectres)?,
         Some("minion-list") => run_extract_minion_list(&extract_args)?,
+        Some("mod-scalability") => run_extract_mod_scalability(&extract_args)?,
+        Some("runes") => run_extract_runes(&extract_args)?,
+        Some("uniques") => run_extract_uniques(&extract_args)?,
+        Some("catalysts") => run_extract_catalysts(&extract_args)?,
         Some(other) => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
