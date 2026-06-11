@@ -4,6 +4,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use sync_pob_catalog::buff_refs::run_check_buff_refs;
+use sync_pob_catalog::extract_config_options::run_extract_config_options;
 use sync_pob_catalog::extract_gem_effects::run_extract_gem_effects;
 use sync_pob_catalog::extract_lua::{
     DEFAULT_SKILL_FILES, DEFAULT_STAT_MAP_SKILL_FILES, ExtractLuaArgs, resolve_luajit,
@@ -16,7 +18,7 @@ use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|config-options] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]";
 
 fn main() -> ExitCode {
     match run() {
@@ -33,6 +35,7 @@ fn run() -> io::Result<()> {
     let command = raw_args.next();
     match command.as_deref() {
         Some("extract-lua") => run_extract_lua_command(raw_args),
+        Some("check-buff-refs") => run_check_buff_refs_command(raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
         }
@@ -56,6 +59,8 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
     let default_files: &[&str] = match parsed.what.as_deref() {
         Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
         Some("gem-effects") => &["Gems"],
+        // config-options 恒读 Modules/ConfigOptions.lua（headless 引导，--files 仅占位）
+        Some("config-options") => &["ConfigOptions"],
         _ => DEFAULT_SKILL_FILES,
     };
     let extract_args = ExtractLuaArgs {
@@ -79,6 +84,7 @@ fn run_extract_lua_command(args: impl Iterator<Item = String>) -> io::Result<()>
         Some("stat-map") => run_extract_stat_map(&extract_args)?,
         Some("gem-effects") => run_extract_gem_effects(&extract_args)?,
         Some("stat-set-labels") => run_extract_stat_set_labels(&extract_args)?,
+        Some("config-options") => run_extract_config_options(&extract_args)?,
         Some(other) => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -160,6 +166,59 @@ impl ExtractCliArgs {
             version_file,
             what,
         })
+    }
+}
+
+// ---- check-buff-refs：buff_definitions.json vendor 行段 hash 对账 ----
+
+fn run_check_buff_refs_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
+    let mut vendor_root = None;
+    let mut defs = None;
+    let mut write = false;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--vendor-root" => vendor_root = args.next().map(PathBuf::from),
+            "--defs" => defs = args.next().map(PathBuf::from),
+            "--write" => write = true,
+            other => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("unknown argument: {other}\n{USAGE}"),
+                ));
+            }
+        }
+    }
+    let (Some(vendor_root), Some(defs)) = (vendor_root, defs) else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("check-buff-refs 需要 --vendor-root <path> 与 --defs <path>\n{USAGE}"),
+        ));
+    };
+    let drifts = run_check_buff_refs(&vendor_root, &defs, write)?;
+    if drifts.is_empty() {
+        eprintln!("check-buff-refs: 全部 vendor_ref 行段 hash 一致");
+        return Ok(());
+    }
+    for drift in &drifts {
+        eprintln!(
+            "check-buff-refs: DRIFT `{}` 登记 {} 实算 {}",
+            drift.id,
+            drift.recorded,
+            drift.actual.as_deref().unwrap_or("<行号越界>")
+        );
+    }
+    if write {
+        eprintln!(
+            "check-buff-refs: 已回写 {} 条 hash 到 {}（请人工复核归纳内容仍忠实 vendor）",
+            drifts.len(),
+            defs.display()
+        );
+        Ok(())
+    } else {
+        Err(io::Error::other(format!(
+            "check-buff-refs: {} 条 vendor_ref 行段漂移（vendor 升级后须人工复核 + --write 刷新）",
+            drifts.len()
+        )))
     }
 }
 
