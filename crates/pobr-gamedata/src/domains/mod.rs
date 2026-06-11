@@ -23,3 +23,6 @@ pub mod skill_overrides;
 
 // ---- M1-T1 宝石品质 stat 斜率（overlay 层，纯查表）----
 pub mod gem_quality_stats;
+
+// ---- M1-T2 SkillStatMap 映射表（overlay 层，消费侧 = stat_map_engine）----
+pub mod skill_stat_map;
