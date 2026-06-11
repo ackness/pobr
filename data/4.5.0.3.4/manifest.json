@@ -37,6 +37,7 @@
       "local_mods",
       "minions",
       "mirage_configs",
+      "mod_parser_rules",
       "mod_scalability",
       "runes",
       "skill_overrides",

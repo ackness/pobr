@@ -19,6 +19,7 @@ use sync_pob_catalog::extract_lua::{
 use sync_pob_catalog::extract_minions::{
     MinionsKind, run_extract_minion_list, run_extract_minions,
 };
+use sync_pob_catalog::extract_parser_rules::{diff_parser_rules, run_extract_parser_rules};
 use sync_pob_catalog::extract_quality::run_extract_gem_quality;
 use sync_pob_catalog::extract_stat_map::run_extract_stat_map;
 use sync_pob_catalog::extract_stat_set_labels::run_extract_stat_set_labels;
@@ -27,7 +28,7 @@ use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|config-options|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|config-options|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -46,6 +47,7 @@ fn run() -> io::Result<()> {
         Some(cmd @ ("extract-lua" | "extract-bases")) => run_extract_command(cmd, raw_args),
         Some("check-buff-refs") => run_check_buff_refs_command(raw_args),
         Some("gen-mirage-configs") => run_gen_mirage_configs_command(raw_args),
+        Some("parser-rules-drift") => run_parser_rules_drift_command(raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
         }
@@ -84,6 +86,8 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             Some("runes") => &["ModRunes"],
             Some("catalysts") => &["Item"],
             Some("uniques") => DEFAULT_UNIQUE_FILES,
+            // parser-rules 恒读 Modules/ModParser.lua（headless 全量引导，--files 仅占位）
+            Some("parser-rules") => &["ModParser"],
             _ => DEFAULT_SKILL_FILES,
         }
     };
@@ -103,7 +107,7 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
     // ——skill-overrides（缺省，per-skill 覆盖值）/ gem-quality（宝石品质 stat 斜率，
     // M1-T1）/ stat-map（SkillStatMap 全局 + per-set 覆盖，M1-T2）/ gem-effects
     // （宝石→授予效果连边，M1-T5.1）/ stat-set-labels（M1-T5.2）/ config-options
-    // （ConfigOptions 目录，M3 前置）。
+    // （ConfigOptions 目录，M3 前置）/ parser-rules（ModParser 解析规则六表，M6 前置）。
     let json = if command == "extract-bases" {
         if let Some(what) = parsed.what.as_deref() {
             return Err(io::Error::new(
@@ -127,6 +131,7 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             Some("runes") => run_extract_runes(&extract_args)?,
             Some("uniques") => run_extract_uniques(&extract_args)?,
             Some("catalysts") => run_extract_catalysts(&extract_args)?,
+            Some("parser-rules") => run_extract_parser_rules(&extract_args)?,
             Some(other) => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
@@ -295,6 +300,85 @@ fn run_check_buff_refs_command(mut args: impl Iterator<Item = String>) -> io::Re
             drifts.len()
         )))
     }
+}
+
+// ---- parser-rules drift diff：重抽 vs 已提交 byte-diff（M6 前置任务 3）----
+
+fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
+    let mut vendor_root = None;
+    let mut committed = None;
+    let mut luajit = None;
+    let mut version_file = None;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--vendor-root" => vendor_root = args.next().map(PathBuf::from),
+            "--committed" => committed = args.next().map(PathBuf::from),
+            "--luajit" => luajit = args.next().map(PathBuf::from),
+            "--version-file" => version_file = args.next().map(PathBuf::from),
+            other => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("unknown argument: {other}\n{USAGE}"),
+                ));
+            }
+        }
+    }
+    let Some(vendor_root) = vendor_root else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("parser-rules-drift 缺少 --vendor-root <path>\n{USAGE}"),
+        ));
+    };
+    let Some(committed) = committed else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("parser-rules-drift 缺少 --committed <path>\n{USAGE}"),
+        ));
+    };
+
+    let committed_text = fs::read_to_string(&committed).map_err(|error| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("无法读取已提交文件 {}：{error}", committed.display()),
+        )
+    })?;
+    // _meta.regen_command 的 --out 以已提交文件自记的值为准（与 --committed 的
+    // 路径拼写解耦，避免绝对/相对路径差异造成假 drift）。
+    let committed_out = serde_json::from_str::<serde_json::Value>(&committed_text)
+        .ok()
+        .and_then(|doc| {
+            let regen = doc
+                .get("_meta")?
+                .get("regen_command")?
+                .as_str()?
+                .to_string();
+            let (_, out) = regen.split_once(" --out ")?;
+            Some(out.trim().to_string())
+        });
+    let extract_args = ExtractLuaArgs {
+        vendor_root,
+        luajit: resolve_luajit(luajit.as_deref()),
+        files: vec!["ModParser".to_string()],
+        version_file,
+        out_for_meta: committed_out.or_else(|| Some(committed.to_string_lossy().into_owned())),
+    };
+    let regenerated = run_extract_parser_rules(&extract_args)?;
+    let drift = diff_parser_rules(&committed_text, &regenerated)?;
+    if drift.identical {
+        println!(
+            "parser-rules-drift: no drift detected against {}",
+            committed.display()
+        );
+        return Ok(());
+    }
+    for line in &drift.lines {
+        println!("{line}");
+    }
+    Err(io::Error::other(format!(
+        "parser-rules drift detected against {}（{} 处差异摘要）",
+        committed.display(),
+        drift.lines.len()
+    )))
 }
 
 // ---- 既有 catalog 命令（scan/check/diff/fixture-check）----

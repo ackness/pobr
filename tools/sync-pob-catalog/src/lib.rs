@@ -13,6 +13,7 @@ pub mod extract_gem_effects;
 pub mod extract_item_overlay;
 pub mod extract_lua;
 pub mod extract_minions;
+pub mod extract_parser_rules;
 pub mod extract_quality;
 pub mod extract_stat_map;
 pub mod extract_stat_set_labels;

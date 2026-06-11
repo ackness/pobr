@@ -50,3 +50,6 @@ pub mod runes; // M5c：符文/魂核词条表
 pub mod special_mods; // M5b：special 词条模板
 pub mod spectres; // M5a：魂灵条目
 pub mod uniques; // M5c：传奇 raw+索引双层
+
+// ---- M6 前置：ModParser 解析规则六表（overlay 层，消费侧 = M6-B scan 引擎）----
+pub mod parser_rules;
