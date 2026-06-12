@@ -100,6 +100,80 @@ impl DamageComponent {
     pub fn avg(&self) -> f64 {
         (self.min + self.max) / 2.0
     }
+
+    /// 带 lucky 掷骰的平均击中伤害（M4-T3 W-C2，PoB2 `CalcOffence.lua:4043-4046`）。
+    ///
+    /// `avg = (min/2 + max/2) × (1 − p) + (min/3 + 2×max/3) × p`，其中 `p` 为 lucky
+    /// 几率（分数 0..=1，越界 clamp）。lucky = 掷两次取高，均值偏向 max。
+    /// `p = 0` 时与 [`avg`](Self::avg) 逐位一致（旧路径保留）。
+    /// 几率求取见 [`lucky_hit_chance`]（按 pass × damage_type 在 crit_pass 内消费）。
+    pub fn avg_with_lucky(&self, lucky_chance: f64) -> f64 {
+        let p = lucky_chance.clamp(0.0, 1.0);
+        let not_lucky = self.min / 2.0 + self.max / 2.0;
+        let lucky = self.min / 3.0 + 2.0 * self.max / 3.0;
+        not_lucky * (1.0 - p) + lucky * p
+    }
+}
+
+/// 单分量的 lucky 几率（分数 0..=1；M4-T3 W-C2，PoB2 `CalcOffence.lua:4036-4042`）。
+///
+/// 全额 lucky（=1）的旗标来源（任一命中即 1）：
+/// - `LuckyHits`：恒 lucky；
+/// - `CritLucky`：仅暴击 pass（vendor `pass == 1`）——注意与 `crit.rs` 的
+///   `CritChanceLucky`（暴击**几率**掷骰）是两个机制，不要合并；
+/// - `LightningNoCritLucky`：仅非暴击 pass 且 Lightning 分量（vendor `pass == 2`）；
+/// - `ElementalLuckHits`：三元素分量（Lightning/Cold/Fire）。
+///
+/// 否则 `p = min(Sum(BASE, "<Type>LuckyHitsChance", "LuckyHitsChance"), 100) / 100`。
+pub fn lucky_hit_chance(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    is_crit_pass: bool,
+) -> f64 {
+    if db.flag(cfg, ModName::from("LuckyHits"))
+        || (!is_crit_pass
+            && damage_type == DamageType::Lightning
+            && db.flag(cfg, ModName::from("LightningNoCritLucky")))
+        || (is_crit_pass && db.flag(cfg, ModName::from("CritLucky")))
+        || (damage_type.is_elemental() && db.flag(cfg, ModName::from("ElementalLuckHits")))
+    {
+        return 1.0;
+    }
+    let prefix = type_prefix(damage_type);
+    let names = [
+        ModName::from(format!("{prefix}LuckyHitsChance")),
+        ModName::from("LuckyHitsChance"),
+    ];
+    db.sum(ModType::Base, cfg, &names).min(100.0) / 100.0
+}
+
+/// canDeal / `DealNo<Type>` 门控（M4-T3 W-C3，蓝图 §3.3 契约 3 冻结签名；
+/// PoB2 `CalcOffence.lua:2226-2230`，消费点 `:3989/:4793/:5451`——hit / ailment / DoT 共用）。
+///
+/// `canDeal[type] = not Flag("DealNo"..type, "DealNoDamage")`；不能造成的类型分量
+/// **就地清零**（min/max → 0，分量保留——下游求和/分桶语义等价 vendor 的跳过）。
+///
+/// **顺序关键**（蓝图 §2 W-C3）：转换先发生，清零的是**转换后残留**——本函数必须在
+/// 转换链（[`calculate_components`] / [`convert_damage`]）之后调用。如 Avatar of Fire
+/// 形态：物理转火后残留物理被 `DealNoPhysical` 清零、已转出的火焰保留。
+///
+/// 签名说明：蓝图契约 3 写作 `&mut Vec<DamageComponent>`；本实现取更通用的
+/// `&mut [DamageComponent]`（clippy `ptr_arg`），调用方传 `&mut vec` 经 deref 直接兼容、
+/// 调用形状不变。
+pub fn apply_can_deal(components: &mut [DamageComponent], db: &ModDb, cfg: &CalcConfig) {
+    let deal_no_damage = db.flag(cfg, ModName::from("DealNoDamage"));
+    for component in components.iter_mut() {
+        let gated = deal_no_damage
+            || db.flag(
+                cfg,
+                ModName::from(format!("DealNo{}", type_prefix(component.damage_type))),
+            );
+        if gated {
+            component.min = 0.0;
+            component.max = 0.0;
+        }
+    }
 }
 
 /// 计算顺序固定的全部伤害类型，保证分量向量确定性排序。

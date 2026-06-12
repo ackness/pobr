@@ -40,8 +40,8 @@ pub use buff_pass::{
 };
 pub use crit::{CritOutcome, resolve_crit, resolve_crit_traced};
 pub use damage::{
-    ConversionRules, DAMAGE_TYPES, DamageComponent, convert_damage, gain_as_extra,
-    normalize_conversion, sum_avg,
+    ConversionRules, DAMAGE_TYPES, DamageComponent, apply_can_deal, convert_damage, gain_as_extra,
+    lucky_hit_chance, normalize_conversion, sum_avg,
 };
 pub use defence::{
     ANY_TAKEN_REFLECT_ENABLED, AVOID_AILMENT_CAP, AVOID_HIT_CAP, AvoidanceResult,
