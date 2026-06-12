@@ -729,18 +729,9 @@ fn parse_enemy_inner(
         .or_else(|| remainder.strip_prefix("deal "))
         .unwrap_or(remainder);
 
-    // `N% increased/reduced cooldown recovery rate` → CooldownRecovery INC ±N
-    // （ModCache.lua:5037）。该名仅在敌方向通道内解析、不进 parse_name 通用表——玩家侧
-    // 同名词条有独立消费链（skill_mechanics::calc_cooldown），通用化属行为 commit
-    // （清单 §2-R1）。
-    if let Some((form, after)) = parse_form(body)
-        && matches!(form.kind, FormKind::Inc)
-        && after.trim() == "cooldown recovery rate"
-    {
-        return Ok(Some(vec![
-            Modifier::number("CooldownRecovery", ModType::Inc, form.value).with_source(original),
-        ]));
-    }
+    // `N% increased/reduced cooldown recovery rate`（ModCache.lua:5037）自 R1 通用化
+    // （parse_name `cooldown recovery rate` → CooldownRecovery）起走下方通用递归，
+    // 不再需要通道内专名特例。
 
     let outcome = parse_mod(body)?;
     match outcome.status {
@@ -1966,6 +1957,17 @@ fn parse_name(text: &str) -> Option<ModName> {
         // 恢复速率（perform.rs::calc_regen 读 ManaRegen/LifeRegen）。
         "mana regeneration rate" => "ManaRegen",
         "life regeneration rate" => "LifeRegen",
+        // 冷却恢复速率族（PoB2 ModParser.lua:660-662 nameList 三别名 →
+        // `CooldownRecovery`；oracle：ModCache.lua:1069 `10% increased Cooldown
+        // Recovery Rate` = `CooldownRecovery INC 10`，flags=0）。消费链：
+        // skill_mechanics::calc_cooldown / offence::apply_cooldown_cap /
+        // perform::cooldown_recovery_multiplier（触发 ICDR）。
+        // 注意 `... for Grenade Skills` 变体（vendor modTagList :1073 SkillType.Grenade
+        // tag）仍 Err——pobr `SkillTypes` 为 u64 位掩码，Grenade=159（Global.lua:504）
+        // 超出可表示范围，tag 维度落地前不解析（见迁移清单 §2-R1 残余登记）。
+        "cooldown recovery" | "cooldown recovery speed" | "cooldown recovery rate" => {
+            "CooldownRecovery"
+        }
         // 冰冻 Poise 积累（玩家侧 FreezeBuildup，PoB2 命名）；计算侧暂只消费
         // EnemyFreezeBuildup/ImmobilisationBuildup，此名先消 Err、备后续接入。
         "freeze buildup" => "FreezeBuildup",
@@ -2336,7 +2338,7 @@ mod enemy_direction_tests {
     }
 
     /// `Enemies in your Presence have N% reduced Cooldown Recovery Rate`
-    /// （ModCache.lua:5037 → CooldownRecovery INC -N，敌方向通道内专名）。
+    /// （ModCache.lua:5037 → CooldownRecovery INC -N；R1 起经 parse_name 通用递归）。
     #[test]
     fn parses_presence_cooldown_recovery() {
         let inner =
@@ -2420,12 +2422,93 @@ mod enemy_direction_tests {
         assert!(m.matches(&cfg_both), "EnemyCursed + Effective → 命中");
     }
 
-    /// 范围控制回归锚（迁移清单 §2）：玩家侧 `Cooldown Recovery Rate` 词条族**不**随
-    /// 敌方向通道引入而解析（有独立消费链，通用化属行为 commit，§2-R1）；未迁移的
-    /// 敌方向词条（如 Malediction）仍硬 Err（行为与迁移前一致）。
+    /// 范围控制回归锚（迁移清单 §2）：未迁移的敌方向词条（如 Malediction）仍硬 Err
+    /// （行为与迁移前一致）。玩家侧 `Cooldown Recovery Rate` 已由 §2-R1 行为 commit
+    /// 通用化，正向用例见 [`cooldown_recovery_tests`]。
     #[test]
     fn unmigrated_lines_stay_err() {
-        assert!(parse_mod("5% increased Cooldown Recovery Rate").is_err());
         assert!(parse_mod("Nearby Enemies have Malediction").is_err());
+    }
+}
+
+/// R1：玩家侧 Cooldown Recovery Rate 族通用化（迁移清单 §2-R1）。
+/// vendor 依据：ModParser.lua:660-662 nameList（`cooldown recovery` /
+/// `cooldown recovery speed` / `cooldown recovery rate` → `CooldownRecovery`）；
+/// oracle 全行缓存 ModCache.lua:1069（INC 形）。用例文本取自 ninja_parity 语料原文。
+#[cfg(test)]
+mod cooldown_recovery_tests {
+    use super::*;
+
+    /// `N% increased Cooldown Recovery Rate`（语料 ×8 的 5% 形；ModCache.lua:1069
+    /// 同形 10% → `CooldownRecovery INC 10`，flags=0）。
+    #[test]
+    fn parses_increased_cooldown_recovery_rate() {
+        // Arrange（语料原文含 PoB `[内部名|显示名]` 标记）。
+        let text = "5% increased [CooldownRecovery|Cooldown Recovery Rate]";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        assert_eq!(outcome.status, ParseStatus::Parsed);
+        assert_eq!(outcome.mods.len(), 1);
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("CooldownRecovery"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(5.0));
+        assert!(m.flags.is_empty());
+        assert!(m.tags.is_empty());
+    }
+
+    /// `N% reduced Cooldown Recovery Rate` → INC 负值（vendor RED 形 → `-num INC`，
+    /// ModParser.lua:6511-6513）。
+    #[test]
+    fn parses_reduced_cooldown_recovery_rate() {
+        // Arrange
+        let text = "12% reduced Cooldown Recovery Rate";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("CooldownRecovery"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(-12.0));
+    }
+
+    /// `Bonded: N% increased Cooldown Recovery Rate`（语料 ×8）——经 Bonded 前缀递归，
+    /// 产物带 `CanUseBondedModifiers` 条件（默认不激活，激活源词条置真）。
+    #[test]
+    fn parses_bonded_cooldown_recovery_with_condition() {
+        // Arrange
+        let text = "Bonded: 10% increased Cooldown Recovery Rate";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("CooldownRecovery"));
+        assert_eq!(m.value.as_number(), Some(10.0));
+        assert!(
+            m.tags.iter().any(|t| matches!(
+                t,
+                ModTag::Condition { var, negated: false, .. } if var == "CanUseBondedModifiers"
+            )),
+            "Bonded 前缀条件保留"
+        );
+    }
+
+    /// 范围控制锚：`... for Grenade Skills` 变体（vendor modTagList ModParser.lua:1073
+    /// SkillType.Grenade tag）仍 Err——pobr `SkillTypes` u64 位掩码无法表示
+    /// Grenade=159（Global.lua:504），tag 维度落地前不解析（迁移清单 §2-R1 残余）。
+    #[test]
+    fn grenade_scoped_cooldown_recovery_stays_err() {
+        // Arrange（语料原文）
+        let text = "15% increased Cooldown Recovery Rate for [Grenade] Skills";
+
+        // Act + Assert
+        assert!(parse_mod(text).is_err());
     }
 }
