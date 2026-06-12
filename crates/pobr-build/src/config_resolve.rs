@@ -165,7 +165,36 @@ fn merge_multipliers(multipliers: &mut HashMap<String, f64>, outcome: &ConfigOut
 
 /// enemy 桶 FLAG `Condition:<X>` → cfg 条件 `Enemy<X>` 反桥（见模块注释）。
 /// `or_insert` 不覆盖显式值（XML `boolean="false"` 在解释侧本就不激活）。
+///
+/// （M4-L）额外**未前缀**桥：敌侧数值 mod 的 `Condition` tag 按敌方自身状态名
+/// （无 Enemy 前缀）查 cfg 条件——curse 域同约定（`stat_map_engine::map_curse_stat`
+/// doc：「var 即敌方自身状态，不加 Enemy 前缀」；vendor 等价 = enemyDB 内 mod 的
+/// Condition tag 查 enemyDB 自身 conditions）。pobr 单条件命名空间下不能盲目
+/// 全量去前缀（`Condition:Chilled` 会污染玩家侧 `Chilled`），故只对**被敌侧
+/// 数值 mod tag 实际引用**的 var 同步落未前缀条件（当前 catalog 引用集 =
+/// `ApplyCriticalWeakness`/`OnProfaneGround`/`<Ailment>Config` 族，全部为敌方
+/// 专属名，无玩家名空间碰撞）。范例链（vendor ConfigOptions.lua:1889-1894）：
+/// `conditionEnemyCriticalWeakness` → enemy FLAG `Condition:ApplyCriticalWeakness`，
+/// 叠 `enemyCriticalWeaknessStacks`（placeholder 20）→ enemy `SelfCritChance BASE 10`
+/// {Condition:ApplyCriticalWeakness}——未前缀条件落位后该 mod 在暴击聚合命中
+/// （CalcOffence.lua:3677 段敌侧 SelfCritChance 进暴击率底材）。
 fn bridge_enemy_conditions(conditions: &mut HashMap<String, bool>, outcome: &ConfigOutcome) {
+    use pobr_core::ModTag;
+    use std::collections::HashSet;
+
+    // 敌侧数值 mod 的 Condition tag 引用集（同 actor；跨 actor tag 非本语义）。
+    let referenced: HashSet<&str> = outcome
+        .enemy_mods
+        .iter()
+        .filter(|m| m.mod_type != ModType::Flag)
+        .flat_map(|m| m.tags.iter())
+        .filter_map(|tag| match tag {
+            ModTag::Condition {
+                var, actor: None, ..
+            } => Some(var.as_str()),
+            _ => None,
+        })
+        .collect();
     for modifier in &outcome.enemy_mods {
         if modifier.mod_type != ModType::Flag {
             continue;
@@ -175,6 +204,9 @@ fn bridge_enemy_conditions(conditions: &mut HashMap<String, bool>, outcome: &Con
         };
         let enabled = matches!(modifier.value, pobr_core::ModValue::Bool(true));
         conditions.entry(format!("Enemy{var}")).or_insert(enabled);
+        if referenced.contains(var) {
+            conditions.entry(var.to_string()).or_insert(enabled);
+        }
     }
 }
 
@@ -454,6 +486,49 @@ mod tests {
             .expect("SelfCritChance 应进 enemy 注入列表");
         assert_eq!(crit.value.as_number(), Some(5.0), "10 层 × 0.5%");
         assert!(!crit.tags.is_empty(), "保留 ApplyCriticalWeakness 门控 tag");
+    }
+
+    /// （M4-L）敌侧条件未前缀桥：`conditionEnemyCriticalWeakness` →
+    /// `EnemyApplyCriticalWeakness`（既有前缀桥）+ `ApplyCriticalWeakness`
+    /// （未前缀，因 `enemyCriticalWeaknessStacks` 的 SelfCritChance mod tag
+    /// 引用它——vendor ConfigOptions.lua:1893 `{type="Condition",
+    /// var="ApplyCriticalWeakness"}`）。未被敌侧数值 mod 引用的条件
+    /// （如 Chilled）**不**落未前缀名（玩家名空间防污染）。
+    #[test]
+    fn enemy_condition_unprefixed_bridge_for_referenced_vars() {
+        let catalog = load_catalog();
+        let build = build_with_inputs(
+            RawConfigInputs::new()
+                .with(
+                    "conditionEnemyCriticalWeakness",
+                    ConfigInputValue::Bool(true),
+                )
+                .with("conditionEnemyChilled", ConfigInputValue::Bool(true)),
+        );
+        let resolved = resolve_config(&build, Some(&catalog));
+        assert_eq!(
+            resolved.config.conditions.get("EnemyApplyCriticalWeakness"),
+            Some(&true),
+            "既有 Enemy 前缀桥保持"
+        );
+        assert_eq!(
+            resolved.config.conditions.get("ApplyCriticalWeakness"),
+            Some(&true),
+            "被 SelfCritChance tag 引用 → 未前缀条件落位"
+        );
+        assert_eq!(resolved.config.conditions.get("EnemyChilled"), Some(&true));
+        assert_eq!(
+            resolved.config.conditions.get("Chilled"),
+            None,
+            "未被敌侧数值 mod 引用 → 不落未前缀名（防玩家侧 Chilled 污染）"
+        );
+        // 未前缀桥的消费端形态：SelfCritChance BASE 10（placeholder 20 层 × 0.5）。
+        let crit = resolved
+            .enemy_mods
+            .iter()
+            .find(|m| m.name.as_str() == "SelfCritChance")
+            .expect("placeholder 默认 20 层 → SelfCritChance 应在 enemy 注入列表");
+        assert_eq!(crit.value.as_number(), Some(10.0));
     }
 
     /// M3-W4 commit B 端到端：multiplierNearby* handler 经主路径生效——
