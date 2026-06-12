@@ -689,7 +689,19 @@ fn parse_radius_jewels(
             .filter(|l| l.contains("in Radius also grant"))
             .map(strip_brace_tags)
             .collect();
-        if grant_lines.is_empty() {
+        // `N% increased Effect of Notable Passive Skills in Radius`（vendor
+        // ModParser.lua:6847）：同珠宝多行取末行（vendor 后写覆盖语义）。
+        let notable_effect_inc: u32 = text
+            .lines()
+            .map(str::trim)
+            .map(strip_brace_tags)
+            .filter_map(|l| {
+                l.strip_suffix("% increased Effect of Notable Passive Skills in Radius")
+                    .and_then(|n| n.trim().parse::<u32>().ok())
+            })
+            .next_back()
+            .unwrap_or(0);
+        if grant_lines.is_empty() && notable_effect_inc == 0 {
             continue;
         }
         let radius_label = text
@@ -701,6 +713,7 @@ fn parse_radius_jewels(
             socket_node,
             radius_label,
             grant_lines,
+            notable_effect_inc,
         });
     }
     // 确定性：按插槽节点、再按行排序。

@@ -168,6 +168,11 @@ pub struct RadiusJewel {
     pub radius_label: Option<String>,
     /// `... Passive Skills in Radius also grant <mod>` 行（原文，含种类前缀）。
     pub grant_lines: Vec<String>,
+    /// `N% increased Effect of Notable Passive Skills in Radius`（Time-Lost 珠宝；
+    /// vendor ModParser.lua:6847 → `JewelNotablePassiveSkillEffect` INC，消费点
+    /// CalcSetup.lua:246-275 对半径内 Notable 节点 modList 整体 ScaleAddList）。
+    /// 同珠宝多行时取末行（vendor `localNotableIncEffect = mod.value` 后写覆盖）。
+    pub notable_effect_inc: u32,
 }
 
 /// PoB Build 的内存状态。
