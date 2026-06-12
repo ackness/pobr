@@ -146,3 +146,34 @@ huntress 0.27→0.44x、monk 0.22→0.23x——余差均为 pre-crit per-hit 段
   基础版 +10 INC → druid pre-effective 15.19 vs 14.49 过聚合，喂进必暴
   roll-down 使 CritMult 1.74 vs 1.69）。属树数据 schema（PassiveNodeDef 无
   options 字段）+ 适配器改造，归数据线独立做。
+
+## 7. M4-K grenade per-hit 校正——结果（2026-06-13）
+
+j3 例外注释预告的「per-hit 缺口 = 宝石等级 gating」路径，两段修复
+（commit `5ebb1a0` 等级链 + `20e5bdb` 油涂品质）：
+
+| 段 | 根因 | 修复 | oracle 双证 |
+|---|---|---|---|
+| 等级链 | Wave9 对 `skill_types[Grenade]` 暂关 `+N to Level of all <X> Skills`（当时 Speed ×1.95 双计会放大）；j3 修 Speed 后该 gating 反成主缺口 | 解除 gating（vendor applyGemMods 无 grenade 特例）。聚合路径本就正确：gemling 20+4=24（项链 +2 Projectile + 树 +2；Weapon 1 Swap 槽 +3 Attack vendor 不计、PoBR 无 swap 槽天然一致）、deadeye 21+6=27（武器 +3 Attack + 项链 +3 Projectile） | GemLevel 24 / 27 逐位 ✓ |
+| Gemling 品质 +5 | **非升华节点**：j3 疑为 Gemling 升华，实为项链 enchant『Allocates Paragon』授予的油涂池 notable 20686（`+5% to Quality of all Skills` + `+5 to all Attributes`）。双段缺路：① GGG data.json 不含主图外油涂 notable（整池 27 个缺失）；② `gem_property_bonuses` 只扫 `tree.allocated_nodes`，授予节点漏扫 | ① `pobr-data-adapter --tree-anoints <tree.lua>` 回填通道（4844→4871 节点）；② GemProperty 扫描纳入 `granted_passive_defs`（与 append_granted_passives 共享解析，幂等去重） | quality 31 逐位 ✓ |
+
+**收敛（golden 比值）**：
+- deadeye：TotalDPS/CombinedDPS 0.52x → **0.82x**（Speed 1.00x ✓ 保持）
+- gemling：TotalDPS/CombinedDPS 0.27x → **0.37x**；Speed 0.97→1.00x ✓ 新命中、Mana 0.94→0.95 ✓ 新命中
+- 油涂池连带（全部朝 golden）：twister Speed 0.91→0.97x ✓ 新命中 + TotalDPS 0.26→0.27、stormweaver-comet 0.64→0.67、ember-fusillade 0.20→0.21
+- 聚合：def@5% 377→379、core@5% 131→132、off@5% 41→42
+
+**剩余登记（deadeye 未回 1.0x 带，per-hit ~0.82x）**：
+- §6 暂缓项「attack/spell area damage」（ModParser.lua:721-722，deadeye 树 41 INC）
+  的启用前提『grenade Speed 段冷却线修复后』**已满足**（Speed 1.00x ✓、双计已拆），
+  归 parser 短语线启用（vendor IncDamage 371，该项即占 41）；
+- 其余为伤害向量量级线（deadeye 链 = Convert Fire→Lightning 100% + gain-as
+  45/20/5 大档，vendor mainHandOutput Lightning HitAverage 91407 占主导），
+  待 per-hit 逐分量对拍（oracle dump 已留 /tmp 复现命令：`tools/pob2-oracle/run.sh
+  examples/demo-bd-test/builds/ranger-deadeye-explosive-grenade/decoded.xml`）。
+- dashboard `AverageDamage` 行恒等式 `dps/action_rate` 对 grenade build 含
+  GrenadeActivateTwice ×1.5 端因子（golden 的 AverageDamage 不含），该行比值带
+  结构性 1.5x 偏置（deadeye 显示 1.22x = 真实 per-hit 0.82x × 1.5）——读数注意，
+  列口径是否拆端因子归 dashboard 线裁决。
+
+baseline 按惯例本波不动（所有列 ≥ 基线），回升入带后随主线合并 bump。

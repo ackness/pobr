@@ -1175,11 +1175,6 @@ fn resolve_main_skill<'b>(
     None
 }
 
-// NOTE(Wave9): 宝石等级加成（A）已实现于 resolve_skill_level_with_gem_bonus，但单独落地会
-// 回归 deadeye grenade 的进攻 parity（其 per-hit 在正确 +6 等级下 ≈ golden 的 1.58×；
-// 见报告）。在 grenade per-hit 校正（B）落地前，加成对 grenade 类标签**暂不启用**，避免门禁
-// 倒退；非 grenade 技能不受影响。该 gating 按 skill_types[Grenade] 标签，绝不按 build/skill id。
-
 /// 在基础宝石等级上叠加来自装备的「`+N to Level of all <X> Skills`」加成后解析分等级参数。
 ///
 /// PoE2 宝石等级加成（通用、高价值）：装备 implicit/explicit/enchant 文本中的
@@ -1189,6 +1184,11 @@ fn resolve_main_skill<'b>(
 ///
 /// 等级越界由 [`BuildData::resolve_skill_level`] 的 `rfind(level ≤ gem_level)` 自然 clamp
 /// （分等级数据通常覆盖到 ~40 级）。通用：按 `skill_types` 标签匹配，绝不按 build/skill id 特化。
+///
+/// 历史：M4 Wave9 曾对 `skill_types[Grenade]` 暂关此加成（当时 Speed ×1.95 双计 +
+/// GrenadeActivateTwice 形成吞吐过算，正确 +N 等级会进一步放大）；M4-j3 冷却管辖速率
+/// 修复 Speed 后该过算消失、per-hit 低估暴露为主缺口，M4-k 解除 gating（vendor
+/// CalcSetup.lua 宝石等级段对所有技能一致叠加，无 grenade 特例）。
 fn resolve_skill_level_with_gem_bonus(
     build: &Build,
     data: &BuildData,
@@ -1196,20 +1196,7 @@ fn resolve_skill_level_with_gem_bonus(
     base_level: u32,
     set_index: Option<u32>,
 ) -> Option<ResolvedSkillLevel> {
-    let skill_types = data
-        .granted_effects
-        .get(skill_id)
-        .map(|e| e.skill_types.as_slice())
-        .unwrap_or(&[]);
-    // grenade 类技能（`skill_types` 含 `Grenade`）的 per-hit 当前过算（≈1.58×，见 Wave9 报告）；
-    // 在 grenade per-hit 校正（B）落地前，对 grenade 技能**不应用**宝石等级加成——否则正确的
-    // +N 等级会把过算的 per-hit 进一步放大、回归门禁。非 grenade 技能正常享加成（通用、按标签）。
-    let is_grenade = skill_types.iter().any(|t| t == "Grenade");
-    let bonus = if is_grenade {
-        0
-    } else {
-        additional_gem_levels(build, data, skill_id)
-    };
+    let bonus = additional_gem_levels(build, data, skill_id);
     data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)
 }
 
@@ -1253,6 +1240,20 @@ fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPropertyBonus
             for stat in &node.stats {
                 scan_text(stat);
             }
+        }
+    }
+    // 油涂授予 notable（`Allocates <name>` enchant → GrantedPassive，与
+    // append_granted_passives 同源解析）：vendor 授予节点 modList 与已分配节点
+    // 一样进全局 modDB（CalcSetup.lua:1322-1331），GemProperty 扫描须同等覆盖
+    // （如 gemling『Allocates Paragon』的 `+5% to Quality of all Skills`）。
+    let allocated: std::collections::HashSet<u32> =
+        build.tree.allocated_nodes.iter().map(|id| id.0).collect();
+    for def in granted_passive_defs(build, data) {
+        if allocated.contains(&def.skill) {
+            continue; // 已分配，幂等（与授予注入同语义）。
+        }
+        for stat in &def.stats {
+            scan_text(stat);
         }
     }
     out
@@ -4568,6 +4569,27 @@ fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<AllocatedNode> 
 /// [`AllocatedNode`]。已分配节点跳过（vendor `allocNodes[id]` 幂等同语义）。
 /// 同名 notable（切换类变体等）按最小 skill id 取（确定性）。
 fn append_granted_passives(build: &Build, data: &BuildData, nodes: &mut Vec<AllocatedNode>) {
+    let mut allocated: std::collections::HashSet<u32> = nodes.iter().map(|n| n.node_id.0).collect();
+    for def in granted_passive_defs(build, data) {
+        if !allocated.insert(def.skill) {
+            continue; // 已分配/已授予，幂等。
+        }
+        nodes.push(AllocatedNode {
+            node_id: pobr_data::passive_tree::NodeId(def.skill),
+            ascendancy: def.ascendancy_id.is_some(),
+            // 树 stat 同样可能折行（与 combine_wrapped_then_filter 同源数据）。
+            modifier_texts: combine_wrapped_then_filter(def.stats.clone()),
+        });
+    }
+}
+
+/// 解析全部装备/珠宝词条行的 `GrantedPassive`（`Allocates <name>` enchant），按
+/// 名称匹配 Notable 节点定义并去重返回（[`append_granted_passives`] 与
+/// [`gem_property_bonuses`] 的共享解析；语义注释见前者）。
+fn granted_passive_defs<'d>(
+    build: &Build,
+    data: &'d BuildData,
+) -> Vec<&'d pobr_data::catalog::PassiveNodeDef> {
     use pobr_core::ModValue;
 
     // 收集授予名（装备三段 + 珠宝词条；解析失败行静默跳过——与 skip-and-collect 同口径）。
@@ -4598,7 +4620,7 @@ fn append_granted_passives(build: &Build, data: &BuildData, nodes: &mut Vec<Allo
         }
     }
     if granted.is_empty() {
-        return;
+        return Vec::new();
     }
 
     // notable 名（小写）→ 节点（同名取最小 skill id，确定性）。
@@ -4619,21 +4641,17 @@ fn append_granted_passives(build: &Build, data: &BuildData, nodes: &mut Vec<Allo
             .or_insert(def);
     }
 
-    let mut allocated: std::collections::HashSet<u32> = nodes.iter().map(|n| n.node_id.0).collect();
+    let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    let mut out = Vec::new();
     for name in granted {
         let Some(def) = by_name.get(name.to_ascii_lowercase().as_str()) else {
             continue; // 未知名（树外/变体），欠算安全跳过。
         };
-        if !allocated.insert(def.skill) {
-            continue; // 已分配/已授予，幂等。
+        if seen.insert(def.skill) {
+            out.push(*def);
         }
-        nodes.push(AllocatedNode {
-            node_id: pobr_data::passive_tree::NodeId(def.skill),
-            ascendancy: def.ascendancy_id.is_some(),
-            // 树 stat 同样可能折行（与 combine_wrapped_then_filter 同源数据）。
-            modifier_texts: combine_wrapped_then_filter(def.stats.clone()),
-        });
     }
+    out
 }
 
 /// 树节点词条的「折行合并」解析（M4-H；vendor `PassiveTree.lua:445-462`：单行
@@ -5295,6 +5313,63 @@ mod tests {
             rolled_defence: RolledDefence::default(),
             parsed_stats: vec![],
         }
+    }
+
+    /// 油涂授予 notable 进 GemProperty 扫描（M4-K；vendor 授予节点 modList 与
+    /// 已分配节点一样进全局 modDB，CalcSetup.lua:1322-1331 + applyGemMods）：
+    /// 项链 enchant『Allocates Paragon』→ 油涂池节点 20686（--tree-anoints 回填）
+    /// 的 `+5% to Quality of all Skills` 应产出 Quality +5 全匹配词条。
+    #[test]
+    fn granted_anoint_notable_feeds_gem_property_scan() {
+        let data = repo_data();
+        let amulet = Item {
+            base: ItemBaseId::from("Solar Amulet"),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            implicit_texts: vec![],
+            modifier_texts: vec![],
+            enchant_texts: vec!["Allocates Paragon".into()],
+            rolled_defence: RolledDefence::default(),
+            parsed_stats: vec![],
+        };
+        let build = Build::new().set_item(EquipmentSlot::Amulet, amulet);
+
+        // 名称解析：Paragon = 油涂池节点 20686（不在主图，仅授予可达）。
+        let defs = granted_passive_defs(&build, &data);
+        assert_eq!(
+            defs.iter().map(|d| d.skill).collect::<Vec<_>>(),
+            vec![20686],
+            "Allocates Paragon 应解析到油涂池节点 20686"
+        );
+
+        // GemProperty 扫描：+5% Quality（裸 all Skills，无属性需求）。
+        let bonuses = gem_property_bonuses(&build, &data);
+        assert!(
+            bonuses.contains(&GemPropertyBonus {
+                value: 5,
+                kind: GemPropertyKind::Quality,
+                category: String::new(),
+                attr_req: None,
+            }),
+            "授予 Paragon 应产出 Quality +5 全匹配词条，实得 {bonuses:?}"
+        );
+
+        // 幂等：树上已分配同一节点时不重复计入。
+        let allocated = Build::new()
+            .set_item(EquipmentSlot::Amulet, {
+                let mut a = build.items[&EquipmentSlot::Amulet].clone();
+                a.enchant_texts = vec!["Allocates Paragon".into()];
+                a
+            })
+            .with_tree(PassiveTreeSpec {
+                allocated_nodes: vec![NodeId(20686)],
+                ..Default::default()
+            });
+        let quality_count = gem_property_bonuses(&allocated, &data)
+            .iter()
+            .filter(|b| b.kind == GemPropertyKind::Quality && b.value == 5)
+            .count();
+        assert_eq!(quality_count, 1, "已分配 + 授予应只计一次");
     }
 
     fn repo_data() -> BuildData {

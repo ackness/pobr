@@ -123,7 +123,7 @@ fn parse_switchable_variants(lua: &str) -> Result<BTreeMap<u32, Vec<PassiveNodeV
 }
 
 /// 配平块内顶层键（Lua table key）。
-enum BlockKey {
+pub(crate) enum BlockKey {
     /// `[123]=` 数值键。
     Num(u32),
     /// `["Abyssal Lich"]=` 或 `Druid=` 字符串键。
@@ -134,7 +134,7 @@ enum BlockKey {
 ///
 /// 支持三种键形态：`[123]={`、`["Name with space"]={`、`BareWord={`；
 /// 标量字段（`id=64801,`/`name="..."`）不产出。
-fn iter_keyed_blocks(block: &str) -> Vec<(BlockKey, &str)> {
+pub(crate) fn iter_keyed_blocks(block: &str) -> Vec<(BlockKey, &str)> {
     let inner = &block[1..block.len() - 1];
     let mut out = Vec::new();
     let bytes = inner.as_bytes();
@@ -217,7 +217,7 @@ fn parse_block_key(inner: &str, at: usize) -> Option<(BlockKey, usize)> {
 
 /// 解析块内 `marker` 处的字符串数组（如 `stats={ [1]="...", [2]="..." }`），
 /// 按数值索引排序展开；无该子块返回空。
-fn parse_string_array(block: &str, marker: &str) -> Vec<String> {
+pub(crate) fn parse_string_array(block: &str, marker: &str) -> Vec<String> {
     let Some(sub) = balanced_block(block, marker) else {
         return Vec::new();
     };
@@ -248,7 +248,7 @@ fn parse_string_array(block: &str, marker: &str) -> Vec<String> {
 }
 
 /// 块内顶层标量字符串字段（如 `name="Jagged Shards"`）。
-fn string_field(block: &str, field: &str) -> Option<String> {
+pub(crate) fn string_field(block: &str, field: &str) -> Option<String> {
     let top = strip_nested_blocks(block);
     let mut search_from = 0;
     while let Some(rel) = top[search_from..].find(field) {

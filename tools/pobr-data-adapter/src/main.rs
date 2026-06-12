@@ -14,9 +14,13 @@
 //! # isSwitchable 按职业/飞升变体回填（vendor tree.lua → 既有 passive_tree.json）
 //! cargo run -p pobr-data-adapter -- --tree-variants vendor/PathOfBuilding-PoE2/src/TreeData/0_5/tree.lua \
 //!     --out data --patch 4.5.0.3.4
+//! # 油涂 notable 池回填（vendor tree.lua → 追加 passive_tree.json 缺失 notable）
+//! cargo run -p pobr-data-adapter -- --tree-anoints vendor/PathOfBuilding-PoE2/src/TreeData/0_5/tree.lua \
+//!     --out data --patch 4.5.0.3.4
 //! ```
 
 mod tree;
+mod tree_anoints;
 mod tree_coords;
 mod tree_variants;
 
@@ -43,6 +47,7 @@ fn main() -> ExitCode {
         Ok(Mode::Tree(args)) => tree::run(args),
         Ok(Mode::TreeCoords(args)) => tree_coords::run(args),
         Ok(Mode::TreeVariants(args)) => tree_variants::run(args),
+        Ok(Mode::TreeAnoints(args)) => tree_anoints::run(args),
         Err(err) => Err(err),
     };
     match result {
@@ -71,6 +76,8 @@ enum Mode {
     TreeCoords(tree_coords::TreeCoordsArgs),
     /// 从 vendor `tree.lua` 回填 isSwitchable 节点的按职业/飞升变体。
     TreeVariants(tree_variants::TreeVariantsArgs),
+    /// 从 vendor `tree.lua` 追加 `passive_tree.json` 缺失的油涂 notable 池。
+    TreeAnoints(tree_anoints::TreeAnointsArgs),
 }
 
 fn parse_args() -> Result<Mode, String> {
@@ -78,6 +85,7 @@ fn parse_args() -> Result<Mode, String> {
     let mut tree = None;
     let mut tree_coords = None;
     let mut tree_variants = None;
+    let mut tree_anoints = None;
     let mut out = None;
     let mut patch = None;
     let mut it = std::env::args().skip(1);
@@ -88,6 +96,7 @@ fn parse_args() -> Result<Mode, String> {
             "--tree" => tree = Some(PathBuf::from(take("--tree")?)),
             "--tree-coords" => tree_coords = Some(PathBuf::from(take("--tree-coords")?)),
             "--tree-variants" => tree_variants = Some(PathBuf::from(take("--tree-variants")?)),
+            "--tree-anoints" => tree_anoints = Some(PathBuf::from(take("--tree-anoints")?)),
             "--out" => out = Some(PathBuf::from(take("--out")?)),
             "--patch" => patch = Some(take("--patch")?),
             other => return Err(format!("未知参数：{other}")),
@@ -100,12 +109,16 @@ fn parse_args() -> Result<Mode, String> {
         tree.is_some(),
         tree_coords.is_some(),
         tree_variants.is_some(),
+        tree_anoints.is_some(),
     ]
     .into_iter()
     .filter(|&b| b)
     .count();
     if mode_count > 1 {
-        return Err("--raw / --tree / --tree-coords / --tree-variants 互斥，请分别运行".into());
+        return Err(
+            "--raw / --tree / --tree-coords / --tree-variants / --tree-anoints 互斥，请分别运行"
+                .into(),
+        );
     }
     if let Some(raw) = raw {
         Ok(Mode::BaseItems(Args { raw, out, patch }))
@@ -127,9 +140,16 @@ fn parse_args() -> Result<Mode, String> {
             out,
             patch,
         }))
+    } else if let Some(tree_lua) = tree_anoints {
+        Ok(Mode::TreeAnoints(tree_anoints::TreeAnointsArgs {
+            tree_lua,
+            out,
+            patch,
+        }))
     } else {
         Err("缺少 --raw <pipeline/tables> / --tree <data.json> / \
-             --tree-coords <tree.lua> / --tree-variants <tree.lua>"
+             --tree-coords <tree.lua> / --tree-variants <tree.lua> / \
+             --tree-anoints <tree.lua>"
             .into())
     }
 }
