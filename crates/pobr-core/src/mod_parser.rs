@@ -198,6 +198,16 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // 玩家侧穿透（M3-W3 R3）：`[Attack ]Damage Penetrates N% [of ][Enemy ]<X> Resistance(s)`
+    // → `<X>Penetration` BASE N（vendor PEN form；消费链 offence::penetration_value）。
+    if let Some(mods) = parse_penetration(&rest, original) {
+        return Ok(ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     // 防御词条：「Armour applies to <Element(s)> Damage taken from Hits instead of
     // Physical Damage」→ `ArmourAppliesTo<X>DamageTaken` BASE 100 + 物理 DoesNotApply flag
     // （13-G7 百分比模型，M2 Track B-2 起为唯一形态；EHP 据此让该元素改走护甲）。
@@ -527,6 +537,48 @@ fn parse_conversion_or_gain(rest: &str, source: &str) -> Option<Vec<Modifier>> {
     ])
 }
 
+/// 玩家侧穿透词条（M3-W3 R3，迁移清单 §2-R3；`rest` 已小写规范）：
+///
+/// `[attack ]damage penetrates N% [of ][enemy ]<X> resistance(s)` → `<X>Penetration` BASE N
+///
+/// vendor 对照（commit `2df5a74`，行号实读）：
+/// - PEN form：ModParser.lua:96-98（`penetrates? (%d+)%%` / `... of` / `... of enemy`）；
+/// - 穿透名表：penTypes ModParser.lua:6215-6221（fire/cold/lightning/chaos resistance →
+///   `<X>Penetration`，`elemental resistance(s)` → `ElementalPenetration`）；
+/// - PEN 分支取名 :6466-6472，modType 维持默认 `BASE`（:6505 起的 form 链无 PEN 分支）；
+/// - oracle 全行缓存：ModCache.lua:4549 `Attack Damage Penetrates 15% of Enemy Elemental
+///   Resistances` = `ElementalPenetration BASE 15, flags=1(ModFlag.Attack)`；
+///   :4893 裸形 8% = `flags=0`；:4874 `Damage Penetrates 15% Cold Resistance`（无 of 形）。
+///
+/// 消费链：`offence::penetration_value`（玩家 db `<X>Penetration` + 共享
+/// `ElementalPenetration`，对已 clamp 的敌抗下调、不破 0）。带尾缀变体（如
+/// `... while shapeshifted`）不在本形态内 → 返回 `None` 走后续路径（维持 Err）。
+fn parse_penetration(rest: &str, original: &str) -> Option<Vec<Modifier>> {
+    // `attack ` 前缀 → ATTACK flag（oracle ModCache.lua:4549 flags=1）。
+    let (body, flags) = match rest.strip_prefix("attack ") {
+        Some(stripped) => (stripped, ModFlags::ATTACK),
+        None => (rest, ModFlags::NONE),
+    };
+    let after = body.strip_prefix("damage penetrates ")?;
+    let (value, after_num) = take_unsigned_number(after)?;
+    let tail = after_num.strip_prefix("% ")?;
+    let tail = tail.strip_prefix("of ").unwrap_or(tail);
+    let tail = tail.strip_prefix("enemy ").unwrap_or(tail);
+    let name = match tail {
+        "fire resistance" => "FirePenetration",
+        "cold resistance" => "ColdPenetration",
+        "lightning resistance" => "LightningPenetration",
+        "chaos resistance" => "ChaosPenetration",
+        "elemental resistance" | "elemental resistances" => "ElementalPenetration",
+        _ => return None,
+    };
+    let mut m = Modifier::number(name, ModType::Base, value).with_source(original);
+    if !flags.is_empty() {
+        m = m.with_flags(flags);
+    }
+    Some(vec![m])
+}
+
 /// 关键石/无 form 特例短语表（`rest` 已小写规范）。这些行非数字开头，parse_form 必然
 /// 失败；命中固定语义短语时直接产出对应 [`Modifier`]（OVERRIDE 数值型 / flag）。
 ///
@@ -729,18 +781,9 @@ fn parse_enemy_inner(
         .or_else(|| remainder.strip_prefix("deal "))
         .unwrap_or(remainder);
 
-    // `N% increased/reduced cooldown recovery rate` → CooldownRecovery INC ±N
-    // （ModCache.lua:5037）。该名仅在敌方向通道内解析、不进 parse_name 通用表——玩家侧
-    // 同名词条有独立消费链（skill_mechanics::calc_cooldown），通用化属行为 commit
-    // （清单 §2-R1）。
-    if let Some((form, after)) = parse_form(body)
-        && matches!(form.kind, FormKind::Inc)
-        && after.trim() == "cooldown recovery rate"
-    {
-        return Ok(Some(vec![
-            Modifier::number("CooldownRecovery", ModType::Inc, form.value).with_source(original),
-        ]));
-    }
+    // `N% increased/reduced cooldown recovery rate`（ModCache.lua:5037）自 R1 通用化
+    // （parse_name `cooldown recovery rate` → CooldownRecovery）起走下方通用递归，
+    // 不再需要通道内专名特例。
 
     let outcome = parse_mod(body)?;
     match outcome.status {
@@ -1966,6 +2009,17 @@ fn parse_name(text: &str) -> Option<ModName> {
         // 恢复速率（perform.rs::calc_regen 读 ManaRegen/LifeRegen）。
         "mana regeneration rate" => "ManaRegen",
         "life regeneration rate" => "LifeRegen",
+        // 冷却恢复速率族（PoB2 ModParser.lua:660-662 nameList 三别名 →
+        // `CooldownRecovery`；oracle：ModCache.lua:1069 `10% increased Cooldown
+        // Recovery Rate` = `CooldownRecovery INC 10`，flags=0）。消费链：
+        // skill_mechanics::calc_cooldown / offence::apply_cooldown_cap /
+        // perform::cooldown_recovery_multiplier（触发 ICDR）。
+        // 注意 `... for Grenade Skills` 变体（vendor modTagList :1073 SkillType.Grenade
+        // tag）仍 Err——pobr `SkillTypes` 为 u64 位掩码，Grenade=159（Global.lua:504）
+        // 超出可表示范围，tag 维度落地前不解析（见迁移清单 §2-R1 残余登记）。
+        "cooldown recovery" | "cooldown recovery speed" | "cooldown recovery rate" => {
+            "CooldownRecovery"
+        }
         // 冰冻 Poise 积累（玩家侧 FreezeBuildup，PoB2 命名）；计算侧暂只消费
         // EnemyFreezeBuildup/ImmobilisationBuildup，此名先消 Err、备后续接入。
         "freeze buildup" => "FreezeBuildup",
@@ -2336,7 +2390,7 @@ mod enemy_direction_tests {
     }
 
     /// `Enemies in your Presence have N% reduced Cooldown Recovery Rate`
-    /// （ModCache.lua:5037 → CooldownRecovery INC -N，敌方向通道内专名）。
+    /// （ModCache.lua:5037 → CooldownRecovery INC -N；R1 起经 parse_name 通用递归）。
     #[test]
     fn parses_presence_cooldown_recovery() {
         let inner =
@@ -2420,12 +2474,186 @@ mod enemy_direction_tests {
         assert!(m.matches(&cfg_both), "EnemyCursed + Effective → 命中");
     }
 
-    /// 范围控制回归锚（迁移清单 §2）：玩家侧 `Cooldown Recovery Rate` 词条族**不**随
-    /// 敌方向通道引入而解析（有独立消费链，通用化属行为 commit，§2-R1）；未迁移的
-    /// 敌方向词条（如 Malediction）仍硬 Err（行为与迁移前一致）。
+    /// 范围控制回归锚（迁移清单 §2）：未迁移的敌方向词条（如 Malediction）仍硬 Err
+    /// （行为与迁移前一致）。玩家侧 `Cooldown Recovery Rate` 已由 §2-R1 行为 commit
+    /// 通用化，正向用例见 [`cooldown_recovery_tests`]。
     #[test]
     fn unmigrated_lines_stay_err() {
-        assert!(parse_mod("5% increased Cooldown Recovery Rate").is_err());
         assert!(parse_mod("Nearby Enemies have Malediction").is_err());
+    }
+}
+
+/// R1：玩家侧 Cooldown Recovery Rate 族通用化（迁移清单 §2-R1）。
+/// vendor 依据：ModParser.lua:660-662 nameList（`cooldown recovery` /
+/// `cooldown recovery speed` / `cooldown recovery rate` → `CooldownRecovery`）；
+/// oracle 全行缓存 ModCache.lua:1069（INC 形）。用例文本取自 ninja_parity 语料原文。
+#[cfg(test)]
+mod cooldown_recovery_tests {
+    use super::*;
+
+    /// `N% increased Cooldown Recovery Rate`（语料 ×8 的 5% 形；ModCache.lua:1069
+    /// 同形 10% → `CooldownRecovery INC 10`，flags=0）。
+    #[test]
+    fn parses_increased_cooldown_recovery_rate() {
+        // Arrange（语料原文含 PoB `[内部名|显示名]` 标记）。
+        let text = "5% increased [CooldownRecovery|Cooldown Recovery Rate]";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        assert_eq!(outcome.status, ParseStatus::Parsed);
+        assert_eq!(outcome.mods.len(), 1);
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("CooldownRecovery"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(5.0));
+        assert!(m.flags.is_empty());
+        assert!(m.tags.is_empty());
+    }
+
+    /// `N% reduced Cooldown Recovery Rate` → INC 负值（vendor RED 形 → `-num INC`，
+    /// ModParser.lua:6511-6513）。
+    #[test]
+    fn parses_reduced_cooldown_recovery_rate() {
+        // Arrange
+        let text = "12% reduced Cooldown Recovery Rate";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("CooldownRecovery"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(-12.0));
+    }
+
+    /// `Bonded: N% increased Cooldown Recovery Rate`（语料 ×8）——经 Bonded 前缀递归，
+    /// 产物带 `CanUseBondedModifiers` 条件（默认不激活，激活源词条置真）。
+    #[test]
+    fn parses_bonded_cooldown_recovery_with_condition() {
+        // Arrange
+        let text = "Bonded: 10% increased Cooldown Recovery Rate";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("CooldownRecovery"));
+        assert_eq!(m.value.as_number(), Some(10.0));
+        assert!(
+            m.tags.iter().any(|t| matches!(
+                t,
+                ModTag::Condition { var, negated: false, .. } if var == "CanUseBondedModifiers"
+            )),
+            "Bonded 前缀条件保留"
+        );
+    }
+
+    /// 范围控制锚：`... for Grenade Skills` 变体（vendor modTagList ModParser.lua:1073
+    /// SkillType.Grenade tag）仍 Err——pobr `SkillTypes` u64 位掩码无法表示
+    /// Grenade=159（Global.lua:504），tag 维度落地前不解析（迁移清单 §2-R1 残余）。
+    #[test]
+    fn grenade_scoped_cooldown_recovery_stays_err() {
+        // Arrange（语料原文）
+        let text = "15% increased Cooldown Recovery Rate for [Grenade] Skills";
+
+        // Act + Assert
+        assert!(parse_mod(text).is_err());
+    }
+}
+
+/// R3：玩家侧穿透词条（迁移清单 §2-R3）。vendor 依据：PEN form ModParser.lua:96-98 +
+/// penTypes :6215-6221 + PEN 分支 :6466-6472（modType 默认 BASE）。
+/// 用例文本取自 ninja_parity 语料原文，期望产物逐字段对照 vendor ModCache.lua 全行缓存。
+#[cfg(test)]
+mod penetration_tests {
+    use super::*;
+
+    /// `Attack Damage Penetrates 15% of Enemy Elemental Resistances`（语料 ×2）——
+    /// oracle ModCache.lua:4549：`ElementalPenetration BASE 15, flags=1(ModFlag.Attack)`。
+    #[test]
+    fn parses_attack_damage_penetrates_enemy_elemental() {
+        // Arrange（语料原文含 PoB `[内部名|显示名]` 标记）
+        let text =
+            "[Attack] Damage Penetrates 15% of Enemy [ElementalDamage|Elemental] [Resistances]";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        assert_eq!(outcome.status, ParseStatus::Parsed);
+        assert_eq!(outcome.mods.len(), 1);
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("ElementalPenetration"));
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(15.0));
+        assert!(
+            m.flags.intersects(ModFlags::ATTACK),
+            "attack 前缀 → flags=1"
+        );
+    }
+
+    /// 裸形 `Damage Penetrates 8% of Enemy Elemental Resistances`（语料 ×1）——
+    /// oracle ModCache.lua:4893：`ElementalPenetration BASE 8, flags=0`。
+    #[test]
+    fn parses_bare_damage_penetrates_enemy_elemental() {
+        // Arrange
+        let text = "Damage Penetrates 8% of Enemy Elemental Resistances";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("ElementalPenetration"));
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(8.0));
+        assert!(m.flags.is_empty(), "裸形 flags=0");
+    }
+
+    /// 无 `of` 单元素形 `Damage Penetrates N% Cold Resistance`（语料 ×2 的 18% 形）——
+    /// 同形 oracle ModCache.lua:4874（15% 变体）：`ColdPenetration BASE`。
+    #[test]
+    fn parses_damage_penetrates_single_element_without_of() {
+        // Arrange（语料原文）
+        let text = "Damage [Penetration|Penetrates] 18% [Resistances|Cold Resistance]";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("ColdPenetration"));
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(18.0));
+    }
+
+    /// 单元素 lightning 变体（语料 ×2：8%/10%）——penTypes ModParser.lua:6216。
+    #[test]
+    fn parses_damage_penetrates_lightning_resistance() {
+        // Arrange
+        let text = "Damage Penetrates 8% Lightning Resistance";
+
+        // Act
+        let outcome = parse_mod(text).expect("parses");
+
+        // Assert
+        let m = &outcome.mods[0];
+        assert_eq!(m.name, ModName::from("LightningPenetration"));
+        assert_eq!(m.value.as_number(), Some(8.0));
+    }
+
+    /// 范围控制锚：带尾缀变体（`... while Shapeshifted`，ModCache.lua:4877 带条件 tag）
+    /// 不在本形态内，仍 Err——条件尾缀属后续波次。
+    #[test]
+    fn suffixed_penetration_variant_stays_err() {
+        // Arrange
+        let text = "Damage Penetrates 15% of Enemy Elemental Resistances while Shapeshifted";
+
+        // Act + Assert
+        assert!(parse_mod(text).is_err());
     }
 }
