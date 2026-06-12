@@ -56,6 +56,15 @@ pub struct WeaponBaseStats {
     /// 攻击射程（`RangeMax`）。
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub range: u32,
+    /// 弩装填时间（毫秒；M4-T4 W-D2）。真源 = `WeaponTypes.dat` 的 `ReloadTime`
+    /// 列（vendor `Export/spec.lua:62483`、`Export/Scripts/bases.lua:268-269`
+    /// `ReloadTimeBase = ReloadTime/1000`，仅 >0 时导出）。本地 pipeline/tables
+    /// 快照缺失（drill F3/F8）期间由 `overlay/base_item_overrides.json`
+    /// （vendor `Data/Bases/crossbow.lua` 的 `ReloadTimeBase` 秒值 ×1000，
+    /// `sync-pob-catalog extract-bases`）经 gamedata merge 填充——与
+    /// [`BaseItemDef::spirit`] 同款双路线兜底。非弩为 `None`。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reload_time_ms: Option<u32>,
 }
 
 /// 护甲基底数值（`ArmourTypes.dat` 外键解析；armour/evasion/ES/ward 局部基底）。
@@ -82,4 +91,36 @@ pub struct ArmourBaseStats {
 /// serde 跳过零值 u32（diff 友好）。
 fn is_zero_u32(v: &u32) -> bool {
     *v == 0
+}
+
+#[cfg(test)]
+mod m4_t4_reload_tests {
+    use super::WeaponBaseStats;
+
+    /// reload_time_ms serde 往返无损；None 不落盘（既有 base JSON 零 diff）、
+    /// 旧 JSON（无键）反序列化为 None（schema 向后兼容）。
+    #[test]
+    fn reload_time_round_trip_and_backward_compatible() {
+        let weapon = WeaponBaseStats {
+            physical_min: 7,
+            physical_max: 12,
+            speed_ms: 625,
+            crit_chance: 500,
+            range: 120,
+            reload_time_ms: Some(800),
+        };
+        let json = serde_json::to_string(&weapon).unwrap();
+        assert!(json.contains(r#""reload_time_ms":800"#));
+        let parsed: WeaponBaseStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, weapon, "serde 往返必须无损");
+
+        let none = WeaponBaseStats {
+            reload_time_ms: None,
+            ..weapon
+        };
+        let json = serde_json::to_string(&none).unwrap();
+        assert!(!json.contains("reload_time_ms"), "None 不落盘：{json}");
+        let legacy: WeaponBaseStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(legacy.reload_time_ms, None, "旧 JSON 缺键回退 None");
+    }
 }

@@ -7,6 +7,8 @@
 --
 --   base_multiplier         ← levels[*].baseMultiplier
 --   skill_attack_speed_more ← statSets[*].baseMods 中 mod("Speed", "MORE", <number>, ...)
+--   dot_is_*                ← statSets[*].baseMods 中 skill("dotIs*", true)（M4-T4 W-D1：
+--                             技能 DoT 的 dotCfg flag 剥除布尔；`.dat` 无对应列）
 --
 -- 通道收窄（M1-T4.3）：critChance / attackSpeedMultiplier **不再抽取**——二者已是
 -- `.dat` 表列（GrantedEffectStatSetsPerLevel 暴击两列 / GrantedEffectsPerLevel
@@ -189,11 +191,64 @@ local function emitStatSetSpeedMore(skillId, skill)
 	end
 end
 
+-- statSets[*].baseMods 中的 skill("dotIs*", true) 布尔（M4-T4 W-D1）。
+-- vendor 0.18.0 全量 Data/Skills 仅 TornadoShotPlayer statSets[2] 一处
+-- （dotIsArea）；dotIsSpell/dotIsProjectile 走 SkillStatMap（stat 驱动，
+-- 已入 overlay/skill_stat_map.json 的 skill_data kind），不经本通道。
+-- 抽取按固定键序保证确定性；value 恒 1（vendor 只标 true）。
+local DOT_FLAG_KEYS = {
+	{ vendorKey = "dotIsArea", stat = "dot_is_area" },
+	{ vendorKey = "dotIsProjectile", stat = "dot_is_projectile" },
+	{ vendorKey = "dotIsSpell", stat = "dot_is_spell" },
+	{ vendorKey = "dotIsAttack", stat = "dot_is_attack" },
+	{ vendorKey = "dotIsHit", stat = "dot_is_hit" },
+}
+
+local function emitStatSetDotFlags(skillId, skill)
+	local statSets = skill.statSets
+	if type(statSets) ~= "table" then
+		return
+	end
+	for _, setIndex in ipairs(sortedNumericKeys(statSets)) do
+		local set = statSets[setIndex]
+		if type(set) == "table" and type(set.baseMods) == "table" then
+			for _, spec in ipairs(DOT_FLAG_KEYS) do
+				local found = false
+				for _, m in ipairs(set.baseMods) do
+					-- skill(...) 经 makeSkillDataMod 捕获为
+					-- { name = "SkillData", type = "LIST", value = { key, value } }。
+					if
+						type(m) == "table"
+						and m.name == "SkillData"
+						and type(m.value) == "table"
+						and m.value.key == spec.vendorKey
+						and m.value.value == true
+					then
+						found = true
+					end
+				end
+				if found then
+					print(
+						'{"skill":"'
+							.. jsonEscape(skillId)
+							.. '","stat":"'
+							.. spec.stat
+							.. '","stat_set":'
+							.. string.format("%d", setIndex)
+							.. ',"value":1}'
+					)
+				end
+			end
+		end
+	end
+end
+
 for skillId, skill in pairs(skills) do
 	if type(skill) == "table" then
 		for _, spec in ipairs(LEVEL_STATS) do
 			emitLevelStat(skillId, skill, spec.vendorKey, spec.stat)
 		end
 		emitStatSetSpeedMore(skillId, skill)
+		emitStatSetDotFlags(skillId, skill)
 	end
 end

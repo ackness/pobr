@@ -187,7 +187,9 @@ impl GameData {
     /// - `skill_overrides.json` 的 statSet 级覆盖值（skill_attack_speed_more，
     ///   PoB2 自带 baseMods 常量，不在 GGG `.dat` 中）；
     /// - `stat_set_labels.json` 的形态 label / vendor 导出序号（`.dat` `Label`
-    ///   列的 FK 目标表不可下载，vendor 抽取）。
+    ///   列的 FK 目标表不可下载，vendor 抽取）；
+    /// - `skill_overrides.json` 的 dotIs* 布尔（M4-T4 W-D1，labels 之后 merge，
+    ///   set 定位依赖 vendor 序号）。
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
         let mut sets =
             match self.load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
@@ -195,8 +197,9 @@ impl GameData {
                 Err(LoadError::Io { .. }) => Vec::new(),
                 Err(e) => return Err(e),
             };
-        if let Some(overrides) = self.skill_overrides()? {
-            domains::skill_overrides::apply_stat_set_overrides(&mut sets, &overrides).map_err(
+        let overrides = self.skill_overrides()?;
+        if let Some(overrides) = &overrides {
+            domains::skill_overrides::apply_stat_set_overrides(&mut sets, overrides).map_err(
                 |message| LoadError::Overlay {
                     path: self.overlay_path("skill_overrides.json"),
                     message,
@@ -226,6 +229,18 @@ impl GameData {
                     // vendor 未导出该 set（模板策展跳过）→ label/序号保持 None。
                 }
             }
+        }
+        // dotIs* 布尔（M4-T4 W-D1）必须在 labels merge 之后——set 定位依赖
+        // 上面刚回填的 `vendor_set_index`（overlay 条目的 `stat_set` 是 vendor
+        // statSets 序号）。labels 边车缺失时仅 `stat_set = None`（主 set）条目
+        // 可命中，其余保守跳过（默认全 false 不剥 flag）。
+        if let Some(overrides) = &overrides {
+            domains::skill_overrides::apply_dot_flag_overrides(&mut sets, overrides).map_err(
+                |message| LoadError::Overlay {
+                    path: self.overlay_path("skill_overrides.json"),
+                    message,
+                },
+            )?;
         }
         Ok(sets)
     }

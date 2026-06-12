@@ -21,6 +21,8 @@ skills["MiniFlicker"] = {
 			},
 			baseMods = {
 				mod("Speed", "MORE", 285, ModFlag.Attack),
+				skill("dotIsArea", true), -- M4-T4 W-D1：dotIs* 布尔（statSet 级）
+				skill("radius", 18), -- 非布尔 skillData：不属抽取目标，应被忽略
 			},
 		},
 	},

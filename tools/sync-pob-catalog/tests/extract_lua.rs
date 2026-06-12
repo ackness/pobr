@@ -81,6 +81,7 @@ fn extract_captures_expected_overrides() {
         vec![
             ("MiniArc", "base_multiplier"),
             ("MiniFlicker", "base_multiplier"),
+            ("MiniFlicker", "dot_is_area"),
             ("MiniFlicker", "skill_attack_speed_more"),
         ]
     );
@@ -93,7 +94,11 @@ fn extract_captures_expected_overrides() {
     assert_eq!(flicker_bm.value, Some(1.2), "常量 stat 应压缩为单值");
     assert_eq!(flicker_bm.per_level, None);
 
-    let flicker_more = &doc.overrides[2];
+    let flicker_dot = &doc.overrides[2];
+    assert_eq!(flicker_dot.stat_set, Some(1), "dotIs* 恒带 statSet 序号");
+    assert_eq!(flicker_dot.value, Some(1.0), "dotIs* 布尔以 value 1 入库");
+
+    let flicker_more = &doc.overrides[3];
     assert_eq!(flicker_more.stat_set, Some(1));
     assert_eq!(flicker_more.value, Some(285.0));
 }

@@ -297,6 +297,9 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             // statSet baseMods（如 Flicker `Speed MORE 285`）不在 GGG `.dat` 表中，是 PoB2
             // 自带常量，由 overlay/skill_overrides.json 加载期 merge，适配阶段留空。
             skill_attack_speed_more: None,
+            // dotIs* 同为 vendor baseMods 布尔（M4-T4 W-D1），`.dat` 无列，
+            // overlay 加载期 merge，适配阶段保持保守默认（全 false）。
+            dot_flags: Default::default(),
             levels: main_levels,
         }];
 
@@ -350,6 +353,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 base_effectiveness,
                 constant_stats,
                 skill_attack_speed_more: None,
+                dot_flags: Default::default(),
                 levels,
             });
         }

@@ -24,6 +24,11 @@ pub struct BaseItemOverrideEntry {
     /// 基底固有 Spirit（vendor `spirit`，如权杖 100）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spirit: Option<u32>,
+    /// 弩装填时间（毫秒；vendor `weapon.ReloadTimeBase` 秒值 ×1000，源头 =
+    /// `WeaponTypes.ReloadTime`——M4-T4 W-D2，本地 `.dat` 快照缺失期间的
+    /// vendor 抽取兜底，消费侧写入 [`super::WeaponBaseStats::reload_time_ms`]）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reload_time_ms: Option<u32>,
 }
 
 /// `overlay/base_item_overrides.json` 顶层（消费侧视角：`_meta` 头部为生成溯源
