@@ -673,6 +673,14 @@ pub fn calculate_with_data(
         }
     }
 
+    // 3c.（M3 T5-E2）词条授予 keystone 的 mod 映射：树上 keystone 节点（**排除已点**）
+    //     的 stats 解析为 keystone 名 → mods，经 `session.set_keystone_mods` 注入；
+    //     env_finalize 阶段 1/5 的 merge_keystones 按 player db 的 `Keystone` LIST
+    //     词条（「You have <X>」/ 裸名行）消费。已点 keystone 的 mods 已由上方
+    //     add_passive_nodes 注入，从 map 排除即 PoB2 `env.keystonesAdded` 去重的
+    //     pobr 等价（CalcPerform.lua:66-76；树路径模型差异见 keystone_merge.rs 模块注释）。
+    session.set_keystone_mods(keystone_mod_map(data, &passive_nodes));
+
     // 4. 技能宝石：按 active/support 分类，经各自归因入口注入。
     for gem in resolve_gems(build, data) {
         if gem.is_support {
@@ -2973,6 +2981,43 @@ fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<AllocatedNode> 
             }
         })
         .collect()
+}
+
+/// （M3 T5-E2）keystone 名 → 该 keystone 的 modifier 列表（树 keystone 节点 stats
+/// 经 passive ingest 解析）。供「You have \<Keystone\>」类授予词条在 env_finalize
+/// `merge_keystones`（CalcPerform.lua:66-76 等价）阶段注入。
+///
+/// **排除已点 keystone**：其 mods 已由 `add_passive_nodes` 以 Tree 归因注入，map
+/// 缺键＝merge 静默跳过——等价 PoB2 `env.keystonesAdded` 对树/词条双来源的去重。
+fn keystone_mod_map(
+    data: &BuildData,
+    allocated: &[AllocatedNode],
+) -> std::collections::BTreeMap<String, Vec<Modifier>> {
+    let allocated_ids: std::collections::HashSet<u32> =
+        allocated.iter().map(|n| n.node_id.0).collect();
+    let mut map = std::collections::BTreeMap::new();
+    for (id, def) in &data.passive_nodes {
+        if def.kind != pobr_data::catalog::PassiveNodeKind::Keystone || allocated_ids.contains(id) {
+            continue;
+        }
+        let Some(name) = def.name.clone() else {
+            continue;
+        };
+        let node = AllocatedNode {
+            node_id: pobr_data::passive_tree::NodeId(*id),
+            ascendancy: def.ascendancy_id.is_some(),
+            modifier_texts: filter_parseable(def.stats.clone()),
+        };
+        // 解析失败（硬错）/ 零产出的 keystone 不入 map（merge 端静默跳过，欠算安全）。
+        let Ok(ingest) = pobr_core::passive::ingest_passive_nodes(std::slice::from_ref(&node))
+        else {
+            continue;
+        };
+        if !ingest.modifiers.is_empty() {
+            map.insert(name, ingest.modifiers);
+        }
+    }
+    map
 }
 
 /// 把 `Radius:` 档位文本映射为 [`JewelRadius`]。未识别/缺失时回退 `Large`

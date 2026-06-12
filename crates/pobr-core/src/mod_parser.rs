@@ -95,6 +95,19 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // 词条授予 keystone（M3 T5-E2，蓝图 §8.2）：PoB2 `ModParser.lua:6151-6153` 把
+    // `data.keystones`（Data.lua:304-340）每个名字注册为 specialModList **整行**匹配 →
+    // `mod("Keystone", "LIST", name)`。pobr 同语义：裸 keystone 名整行 /「you have
+    // <keystone>」句式 → `Modifier{name:"Keystone", List, Text(canonical 名)}`；实际
+    // mods 由 env_finalize 阶段 1/5 的 merge_keystones 查 `Env::keystone_mods` 注入。
+    if let Some(name) = parse_keystone_grant(&rest) {
+        return Ok(ParseOutcome {
+            mods: vec![Modifier::text("Keystone", ModType::List, name).with_source(original)],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     // 「Has +N to <Defence> per player level」（PoB2 唯一物 implicit，如 Pain Caress）——
     // PoB2 `ModParser.lua` 3400-3402 映射为 **`<Defence>PerLevel` BASE**（局部件级 per-level
     // 底值，由 Item.lua `GetArmourDataValue` 按 `PerLevel × level` 折入该件防御底，享该件
@@ -1114,6 +1127,56 @@ fn strip_pob_brackets(text: &str) -> String {
     out
 }
 
+/// 全部非 timeless-jewel 专属 keystone 名（vendor `Data.lua:304-340 data.keystones`，
+/// canonical 大小写）。版本更新随 vendor 同步（version-bump-drill 校验项）。
+const KEYSTONE_NAMES: [&str; 35] = [
+    "Acrobatics",
+    "Ancestral Bond",
+    "Avatar of Fire",
+    "Blackflame Covenant",
+    "Blood Magic",
+    "Bulwark",
+    "Chaos Inoculation",
+    "Conduit",
+    "Crimson Assault",
+    "Dance with Death",
+    "Eldritch Battery",
+    "Elemental Equilibrium",
+    "Eternal Youth",
+    "Giant's Blood",
+    "Glancing Blows",
+    "Heartstopper",
+    "Hollow Palm Technique",
+    "Iron Reflexes",
+    "Lord of the Wilds",
+    "Mind Over Matter",
+    "Necromantic Talisman",
+    "Oasis",
+    "Pain Attunement",
+    "Primal Hunger",
+    "Resolute Technique",
+    "Resonance",
+    "Ritual Cadence",
+    "Scarred Faith",
+    "Trusted Kinship",
+    "Unwavering Stance",
+    "Vaal Pact",
+    "Walker of the Wilds",
+    "Whispers of Doom",
+    "Wildsurge Incantation",
+    "Zealot's Oath",
+];
+
+/// keystone 授予词条识别：裸 keystone 名整行（PoB2 specialModList 注册形态）或
+/// 「you have <keystone>」句式。命中返回 canonical 名（保持 vendor 大小写）。
+fn parse_keystone_grant(rest: &str) -> Option<&'static str> {
+    let candidate = rest.strip_prefix("you have ").unwrap_or(rest);
+    KEYSTONE_NAMES
+        .iter()
+        .find(|name| name.eq_ignore_ascii_case(candidate))
+        .copied()
+}
+
 fn normalize_spaces(text: &str) -> String {
     text.split_whitespace()
         .collect::<Vec<_>>()
@@ -1858,6 +1921,34 @@ mod per_slot_defence_tests {
         m.tags
             .iter()
             .any(|t| matches!(t, ModTag::Condition { var: v, negated: false, .. } if v == var))
+    }
+
+    /// keystone 授予词条（M3 T5-E2）：裸名整行 /「You have <X>」→ `Keystone` LIST
+    /// Text(canonical 名)；非整行匹配不误伤。
+    #[test]
+    fn parses_keystone_grant_to_keystone_list() {
+        for text in ["Iron Reflexes", "You have Iron Reflexes"] {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "Keystone", "{text}");
+            assert_eq!(m.mod_type, ModType::List, "{text}");
+            assert_eq!(
+                m.value,
+                crate::ModValue::Text("Iron Reflexes".into()),
+                "{text}"
+            );
+        }
+        // 整行才算授予；带尾缀的条件句式不在本段（保持 Unsupported/其它路径）。
+        if let Ok(out) = parse_mod("You have Iron Reflexes while at maximum Frenzy Charges") {
+            assert!(
+                out.mods
+                    .iter()
+                    .all(|m| m.name.as_str() != "Keystone" || m.mod_type != ModType::List),
+                "非整行 keystone 句式不得误产 Keystone LIST"
+            );
+        }
     }
 
     /// 「Melee Damage」映射到 `MeleeDamage`（此前缺失，导致近战增伤词条被丢弃）。

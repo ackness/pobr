@@ -9,6 +9,7 @@ pub mod ehp;
 pub mod env;
 pub mod env_finalize;
 pub mod error;
+pub mod keystone_merge;
 pub mod minion;
 pub mod offence;
 pub mod output;
