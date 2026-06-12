@@ -448,7 +448,7 @@ fn exposure_takes_strongest_single_source() {
     enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
     enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 30.0));
 
-    reduce_enemy_exposure(&mut enemy, &CalcConfig::attack());
+    reduce_enemy_exposure(&mut enemy, &ModDb::new(), &CalcConfig::attack());
 
     let fire_resist = enemy.sum(
         ModType::Base,
@@ -459,6 +459,57 @@ fn exposure_takes_strongest_single_source() {
         (fire_resist + 30.0).abs() < 1e-6,
         "曝光取最强 30 → FireResist BASE -30, got {}",
         fire_resist
+    );
+}
+
+// M4-H S6：曝光效果缩放（vendor CalcPerform.lua:3222-3227）。
+
+#[test]
+fn exposure_effect_inc_scales_magnitude_before_effect_on_self() {
+    // 玩家 FireExposureEffect INC 60（Potent Exposure 类）+ boss effect-on-self −50%：
+    // floor(20 × 1.6 × 0.5) = 16（vendor :3227；stormweaver-comet oracle 实测 −16）。
+    let actor = Actor::new(85, ActorBaseStats::default());
+    let mut env = Env::new(actor);
+    setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
+    env.enemy
+        .mod_db
+        .add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
+    env.player
+        .mod_db
+        .add_mod(Modifier::number("FireExposureEffect", ModType::Inc, 60.0));
+    let cfg = effective_attack();
+    reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &cfg);
+
+    let fire = env
+        .enemy
+        .mod_db
+        .sum(ModType::Base, &cfg, &[ModName::from("FireResist")]);
+    // Pinnacle base 50 − 16 = 34。
+    assert!(
+        (fire - 34.0).abs() < 1e-6,
+        "曝光 20×1.6×0.5=16 → FireResist 50-16=34, got {fire}"
+    );
+}
+
+#[test]
+fn extra_exposure_adds_before_scaling() {
+    // 玩家 ExtraExposure BASE 10：先加量再缩放（vendor :3222/:3227）：
+    // floor((20+10) × 1.0 × 1.0) = 30。
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("ExtraExposure", ModType::Base, 10.0));
+
+    reduce_enemy_exposure(&mut enemy, &player, &CalcConfig::attack());
+
+    let fire = enemy.sum(
+        ModType::Base,
+        &CalcConfig::attack(),
+        &[ModName::from("FireResist")],
+    );
+    assert!(
+        (fire + 30.0).abs() < 1e-6,
+        "(20+10)×1 = 30 → FireResist -30, got {fire}"
     );
 }
 
@@ -475,7 +526,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
         .mod_db
         .add_mod(Modifier::number("FireExposure", ModType::Base, 25.0));
     let cfg_eff = effective_attack();
-    reduce_enemy_exposure(&mut env.enemy.mod_db, &cfg_eff);
+    reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &cfg_eff);
     let fire_eff = env
         .enemy
         .mod_db
@@ -495,7 +546,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
         .mod_db
         .add_mod(Modifier::number("FireExposure", ModType::Base, 25.0));
     let cfg_panel = CalcConfig::attack();
-    reduce_enemy_exposure(&mut env2.enemy.mod_db, &cfg_panel);
+    reduce_enemy_exposure(&mut env2.enemy.mod_db, &env2.player.mod_db, &cfg_panel);
     let fire_panel =
         env2.enemy
             .mod_db

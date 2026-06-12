@@ -310,30 +310,64 @@ fn inject_ehp_damage_placeholder(
     }
 }
 
-/// 曝光取最强（PoB2 `ExposureMin` 逻辑）：把 enemy modDB 内各元素的 `<Element>Exposure BASE`
-/// 多来源归约为**最强一份**，并写入对应 `<Element>Resist BASE -magnitude`。
+/// 曝光取最强 + 效果缩放（PoB2 CalcPerform.lua:3215-3247 "Apply exposures"）：
+/// 把 enemy modDB 内各元素的 `<Element>Exposure BASE` 多来源归约为**最强一份**，
+/// 经玩家侧效果缩放后写入对应 `<Element>Resist BASE -magnitude`：
+///
+/// ```text
+/// magnitude = floor( (value + extraExposure)                  -- :3222 玩家 ExtraExposure/Extra<El>Exposure BASE
+///                    × (1 + <El>ExposureEffect_inc / 100)     -- :3223 玩家曝光效果 INC（global+skill 合并近似）
+///                    × ExposureEffectOnSelf_more )            -- :3224 敌侧 effect-on-self（Boss MORE −50）
+/// magnitude = max(magnitude, Override(ExposureMin))           -- :3238-3241
+/// ```
+///
+/// vendor 对每个曝光来源独立缩放后取 max（skill-scoped effect 只放大该技能的
+/// 曝光，:3226-3231）；PoBR 扁平 db 无 per-source skill 域，先 `max_of` 原始值
+/// 再统一缩放——多来源且效果系数不同的场景登记 TODO(parity)（样本单来源）。
 ///
 /// 调用时机：下游 wave 把玩家施加的曝光 debuff（`FireExposure BASE 20` 等）注入
 /// enemy modDB **之后**调用本函数完成归约。曝光约定为正数 magnitude（如 `20`），
-/// 写入 `*Resist BASE` 时取负。归因记到产生最强曝光那条 modifier 的 `SourceId`
-/// （若可得），否则记 `EnemyConfig`。
+/// 写入 `*Resist BASE` 时取负。归因记到 `EnemyConfig` 下的 exposure 子来源。
 ///
-/// 出处：agent-docs/debuffs.md §曝光（`magnitude = max(magnitude, value)`）；
+/// 出处：agent-docs/debuffs.md §曝光；PoB2 CalcPerform.lua:3215-3247；
 ///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2。
-pub fn reduce_enemy_exposure(db: &mut ModDb, cfg: &crate::CalcConfig) {
-    // PoB2 `CalcPerform.lua:3225` `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")`：
-    // 曝光 magnitude 先乘该 effect-on-self（Boss `MORE -50` → 0.5）再折入抗性。该 mod 带
-    // `Condition:Effective` 门控，面板口径（`mode_effective == false`）不匹配 → 因子 1.0，
-    // 与历史输出一致。
-    let exposure_effect = db.more(cfg, &[ModName::from("ExposureEffectOnSelf")]);
-    for (exposure_name, resist_name) in [
-        ("FireExposure", "FireResist"),
-        ("ColdExposure", "ColdResist"),
-        ("LightningExposure", "LightningResist"),
+pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::CalcConfig) {
+    // `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")`（:3224）：
+    // Boss `MORE -50` → 0.5。该 mod 带 `Condition:Effective` 门控，面板口径
+    // （`mode_effective == false`）不匹配 → 因子 1.0，与历史输出一致。
+    let exposure_effect_on_self = db.more(cfg, &[ModName::from("ExposureEffectOnSelf")]);
+    for (element, exposure_name, resist_name) in [
+        ("Fire", "FireExposure", "FireResist"),
+        ("Cold", "ColdExposure", "ColdResist"),
+        ("Lightning", "LightningExposure", "LightningResist"),
     ] {
         let raw = db.max_of(ModType::Base, cfg, &[ModName::from(exposure_name)]);
-        // 先乘 effect-on-self 再向下取整（PoB2 `m_floor((value + extraExposure) * ... * effectOnSelf)`）。
-        let magnitude = (raw * exposure_effect).floor();
+        if raw <= 0.0 {
+            continue;
+        }
+        // :3222 玩家额外曝光量（BASE，加在缩放前）。
+        let extra = player_db.sum(
+            ModType::Base,
+            cfg,
+            &[
+                ModName::from("ExtraExposure"),
+                ModName::from(format!("Extra{element}Exposure")),
+            ],
+        );
+        // :3223 玩家曝光效果 INC（vendor 分 global + skill 两路求和后相加；
+        // PoBR 扁平 db 单路求和近似）。
+        let effect_inc = player_db.sum(
+            ModType::Inc,
+            cfg,
+            &[ModName::from(format!("{element}ExposureEffect"))],
+        );
+        // :3227 m_floor((value + extra) × (1 + effect/100) × effectOnSelf)。
+        let mut magnitude =
+            ((raw + extra) * (1.0 + effect_inc / 100.0) * exposure_effect_on_self).floor();
+        // :3238-3241 玩家 ExposureMin Override 抬底。
+        if let Some(min) = player_db.override_(cfg, ModName::from("ExposureMin")) {
+            magnitude = magnitude.max(min);
+        }
         if magnitude > 0.0 {
             db.add_mod(
                 Modifier::number(ModName::from(resist_name), ModType::Base, -magnitude)
