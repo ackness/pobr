@@ -57,6 +57,10 @@ impl ConfigInputValue {
 pub struct RawConfigInputs {
     /// 显式输入（XML `<Input>` 解析产物）。
     pub values: BTreeMap<String, ConfigInputValue>,
+    /// 占位输入（XML `<Placeholder>` 解析产物）。vendor 仅对个别标量按
+    /// 「Input 缺省 → Placeholder 兜底」消费（如 `enemyLevel`，
+    /// ConfigTab.lua:872-877）；解释器主流程不读本表，消费方按需取用。
+    pub placeholders: BTreeMap<String, ConfigInputValue>,
 }
 
 impl RawConfigInputs {

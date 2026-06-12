@@ -856,7 +856,16 @@ pub fn calculate_with_data(
     session.add_modifiers(spirit_reservation_modifiers(build, data));
 
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
-    session.setup_enemy(options.enemy_level, enemy_tier);
+    //    敌人等级解析对齐 vendor（CalcSetup.lua:529 `env.enemyLevel =
+    //    build.configTab.enemyLevel or m_min(data.misc.MaxEnemyLevel, charLevel)`）：
+    //    调用方显式等级（编排选项 ≠0）优先；否则 build XML Config 的 `enemyLevel`
+    //    标量；两者皆缺回落 0 → setup_enemy 内部按 min(MaxEnemyLevel, 角色等级) 推导。
+    let enemy_level = if options.enemy_level != 0 {
+        options.enemy_level
+    } else {
+        config_enemy_level(build).unwrap_or(0)
+    };
+    session.setup_enemy(enemy_level, enemy_tier);
 
     // 5a'. config 解释器的 enemy 桶产物（M3-T1 A5 主路径）：enemy 条件 actor 化
     //      条目（vendor `enemyModList:NewMod("Condition:<X>", FLAG, ...)`，带
@@ -988,6 +997,23 @@ pub fn calculate_with_data(
 /// PoB `socketGroupSkillList` 把全部非辅助宝石（含 meta 壳）当作主动技能项，`mainActiveSkill`
 /// 按序号在其中选；但 meta 壳本身无独立伤害/施放时间，需穿透到组内真正的伤害技能。本判定
 /// 通用按标签（is_attack/is_spell + 非 Meta）筛，绝不针对单个技能 id。
+/// build XML Config 的 `enemyLevel` 标量（vendor `build.configTab.enemyLevel`，
+/// CalcSetup.lua:529 中**优先于**角色等级推导）。解析序对齐
+/// ConfigTab.lua:872-877：`<Input>` 显式值 → `<Placeholder>` 占位值（ninja 导出
+/// 常见形态）→ 皆缺/非正数视为缺省（返回 None，调用方回落角色等级推导）。
+/// vendor 两路均 clamp 到 `MaxEnemyLevel`；setup_enemy 的百级表查表自带 clamp，
+/// 此处不重复。
+fn config_enemy_level(build: &Build) -> Option<u32> {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+    let raw = &build.config.raw_inputs;
+    let read = |m: &std::collections::BTreeMap<String, ConfigInputValue>| match m.get("enemyLevel")
+    {
+        Some(ConfigInputValue::Number(n)) if *n >= 1.0 => Some(*n as u32),
+        _ => None,
+    };
+    read(&raw.values).or_else(|| read(&raw.placeholders))
+}
+
 fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
     data.granted_effects
         .get(skill_id)

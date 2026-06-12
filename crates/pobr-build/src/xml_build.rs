@@ -189,13 +189,20 @@ pub struct ParsedConfig {
 /// 实际只在 `<Config>` 下保存 Input）。同名重复出现时后写覆盖（与旧路径
 /// HashMap 插入语义一致）。三型判读顺序 boolean → number → string；无任一
 /// 载荷属性的 `<Input>` 跳过。
+///
+/// `<Placeholder>` 元素（PoB2 ConfigTab 保存的占位值，SkillsTab.lua 同级
+/// `setInputAndPlaceholder`）另落 `placeholders` 表——vendor 仅对个别标量按
+/// 「Input 缺省 → Placeholder 兜底」消费（如 `enemyLevel`，ConfigTab.lua:872-877），
+/// 解释器主流程不读该表。
 pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
     let mut inputs = RawConfigInputs::new();
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Input" => {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e))
+                if matches!(element_name(&e).as_str(), "Input" | "Placeholder") =>
+            {
                 let Some(name) = attr_value(&e, b"name") else {
                     continue;
                 };
@@ -210,7 +217,11 @@ pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
                 } else {
                     continue;
                 };
-                inputs.values.insert(name, value);
+                if element_name(&e) == "Input" {
+                    inputs.values.insert(name, value);
+                } else {
+                    inputs.placeholders.insert(name, value);
+                }
             }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}
@@ -1301,6 +1312,14 @@ Adds 47 to 86 Physical Damage
 </PathOfBuilding2>"#;
         let build = parse_build(xml).expect("parse");
         assert_eq!(build.config.enemy_tier, None);
+        // M4-G：`<Placeholder>` 落 raw_inputs.placeholders（不混入 values——
+        // 解释器激活语义只认 Input）；enemyLevel 消费方按
+        // 「Input 缺省 → Placeholder 兜底」读取（vendor ConfigTab.lua:872-877）。
+        assert!(!build.config.raw_inputs.values.contains_key("enemyLevel"));
+        assert_eq!(
+            build.config.raw_inputs.placeholders.get("enemyLevel"),
+            Some(&pobr_core::rules::config_interpreter::ConfigInputValue::Number(82.0))
+        );
     }
 
     #[test]
