@@ -1638,9 +1638,11 @@ fn parse_ailment_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>> {
 ///
 /// vendor：form `(%d+)%% chance` 段吃掉数值，名表含前导 `to`——
 /// `to poison`/`to cause poison`/`to poison on hit` → `PoisonChance`
-/// （ModParser.lua:834-836）。可带尾缀「 with attacks」（modTagList:1032
-/// `keywordFlags = KeywordFlag.Attack`；PoBR 无 Attack keyword 位，按既有
-/// 约定折为 `ModFlags::ATTACK`，子集匹配同语义）。
+/// （ModParser.lua:834-836）；`to cause bleeding [on hit]`/`to inflict
+/// bleeding [on hit]`/`to bleed` → `BleedChance`（:841-845）。可带尾缀
+/// 「 with attacks」（modTagList:1032 `keywordFlags = KeywordFlag.Attack`；
+/// PoBR 无 Attack keyword 位，按既有约定折为 `ModFlags::ATTACK`，子集匹配
+/// 同语义）。
 ///
 /// 消费链：`ailment::flat_chance_traced`（`<Ailment>Chance`/`AilmentChance`
 /// base+inc+more，几率为 0 不施加）。
@@ -1654,6 +1656,12 @@ fn parse_ailment_chance_sentence(rest: &str, source: &str) -> Option<Vec<Modifie
     let name = match clause {
         // ModParser.lua:834-836。
         "poison" | "cause poison" | "poison on hit" => "PoisonChance",
+        // ModParser.lua:841-845（cause/inflict × [on hit] + 裸 bleed）。
+        "cause bleeding"
+        | "cause bleeding on hit"
+        | "inflict bleeding"
+        | "inflict bleeding on hit"
+        | "bleed" => "BleedChance",
         _ => return None,
     };
     let mut m = Modifier::number(name, ModType::Base, value).with_source(source);
@@ -3003,6 +3011,49 @@ mod per_slot_defence_tests {
             assert_eq!(out.mods[1].mod_type, ModType::Base, "{text}");
             assert_eq!(out.mods[1].value.as_number(), Some(1.0), "{text}");
         }
+    }
+
+    /// 「N% chance to inflict Bleeding on Hit [with Attacks]」（vendor
+    /// ModParser.lua:841-845 名表）→ `BleedChance` BASE（M4-l §7.2 族 5）。
+    #[test]
+    fn parses_bleed_chance_on_hit_base() {
+        // Arrange：树小点原文（bracket 标记）+ 名表各别名。
+        let cases = [
+            (
+                "5% chance to inflict [Bleeding|Bleeding] on [HitDamage|Hit]",
+                5.0,
+                ModFlags::NONE,
+            ),
+            (
+                "25% chance to inflict Bleeding on Hit with Attacks",
+                25.0,
+                ModFlags::ATTACK,
+            ),
+            ("10% chance to Cause Bleeding", 10.0, ModFlags::NONE),
+            ("15% chance to Bleed", 15.0, ModFlags::NONE),
+        ];
+        for (text, value, flags) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "BleedChance", "{text}");
+            assert_eq!(m.mod_type, ModType::Base, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
+            assert_eq!(m.flags, flags, "{text}");
+        }
+    }
+
+    /// 条件形「on Critical Hit」不在名表（vendor 走独立 modTag 链，未接入）→
+    /// 维持 Err（skip-and-collect），不被裸 bleed 分支误吞。
+    #[test]
+    fn bleed_chance_on_critical_stays_unparsed() {
+        // Arrange / Act
+        let out = parse_mod("10% chance to inflict Bleeding on Critical Hit with Attacks");
+        // Assert
+        assert!(out.is_err());
     }
 
     /// `with poison` / `with bleeding`（ANY，无 MatchAll）→ 对应 KeywordFlag，不带 MATCH_ALL。
