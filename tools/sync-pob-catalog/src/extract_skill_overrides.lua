@@ -11,6 +11,12 @@
 --                             技能 DoT 的 dotCfg flag 剥除布尔；`.dat` 无对应列）
 --   explode_corpse          ← statSets[*].baseMods 中 skill("explodeCorpse", true)（M4-G：
 --                             尸体爆炸基伤门控布尔，CalcOffence.lua:2213；`.dat` 无对应列）
+--   implicit_stat           ← statSets[*].stats 中**任何等级行都没有数值**的条目
+--                             （= GGG `.dat` GrantedEffectStatSets.ImplicitStats 列，适配器
+--                             未下载；vendor 消费值恒 1，CalcTools.lua:152
+--                             `statSetLevel[index] or 1`）。M4-H：**策展白名单**抽取——
+--                             vendor 全量隐式 stat 4394 条多为显示/行为噪声，仅抽取
+--                             PoBR statmap→calc 有消费方的 stat（见 IMPLICIT_STAT_KEYS）
 --
 -- 通道收窄（M1-T4.3）：critChance / attackSpeedMultiplier **不再抽取**——二者已是
 -- `.dat` 表列（GrantedEffectStatSetsPerLevel 暴击两列 / GrantedEffectsPerLevel
@@ -250,6 +256,66 @@ local function emitStatSetDotFlags(skillId, skill)
 	end
 end
 
+-- M4-H：隐式 stat 策展白名单（PoBR statmap→calc 消费链已接通的 stat id）。
+-- 当前 = crit/lucky flag 族（statmap → BifurcateCrit / LuckyHits，消费点
+-- calc::crit::resolve_crit / calc::damage::lucky_hit_chance）：
+--   attacks_roll_crits_twice             （Garukhan's Resolve，sup_dex.lua:2421）
+--   attack_damage_is_lucky_if_surrounded （Defy I/II，sup_str）
+--   no_critical_strike_multiplier        （statmap → NoCritMultiplier；当前 vendor
+--                                          无隐式实例，前瞻保留）
+local IMPLICIT_STAT_KEYS = {
+	"attack_damage_is_lucky_if_surrounded",
+	"attacks_roll_crits_twice",
+	"no_critical_strike_multiplier",
+}
+
+local function emitStatSetImplicitStats(skillId, skill)
+	local statSets = skill.statSets
+	if type(statSets) ~= "table" then
+		return
+	end
+	local wanted = {}
+	for _, key in ipairs(IMPLICIT_STAT_KEYS) do
+		wanted[key] = true
+	end
+	for _, setIndex in ipairs(sortedNumericKeys(statSets)) do
+		local set = statSets[setIndex]
+		if type(set) == "table" and type(set.stats) == "table" then
+			-- 收集该 set 中无任何等级数值的白名单 stat（按白名单固定序输出，确定性）。
+			local implicit = {}
+			for index, stat in ipairs(set.stats) do
+				if wanted[stat] then
+					local hasValue = false
+					if type(set.levels) == "table" then
+						for _, lvl in pairs(set.levels) do
+							if type(lvl) == "table" and lvl[index] ~= nil then
+								hasValue = true
+								break
+							end
+						end
+					end
+					if not hasValue then
+						implicit[stat] = true
+					end
+				end
+			end
+			for _, key in ipairs(IMPLICIT_STAT_KEYS) do
+				if implicit[key] then
+					print(
+						'{"skill":"'
+							.. jsonEscape(skillId)
+							.. '","stat":"implicit_stat","stat_set":'
+							.. string.format("%d", setIndex)
+							.. ',"stat_id":"'
+							.. jsonEscape(key)
+							.. '"}'
+					)
+				end
+			end
+		end
+	end
+end
+
 for skillId, skill in pairs(skills) do
 	if type(skill) == "table" then
 		for _, spec in ipairs(LEVEL_STATS) do
@@ -257,5 +323,6 @@ for skillId, skill in pairs(skills) do
 		end
 		emitStatSetSpeedMore(skillId, skill)
 		emitStatSetDotFlags(skillId, skill)
+		emitStatSetImplicitStats(skillId, skill)
 	end
 end

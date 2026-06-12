@@ -29,15 +29,18 @@ use pobr_data::catalog::skill_overrides::{
     OVERRIDE_DOT_FLAG_STATS, OVERRIDE_STAT_ATTACK_SPEED_MULTIPLIER, OVERRIDE_STAT_BASE_MULTIPLIER,
     OVERRIDE_STAT_CRIT_CHANCE, OVERRIDE_STAT_DOT_IS_AREA, OVERRIDE_STAT_DOT_IS_ATTACK,
     OVERRIDE_STAT_DOT_IS_HIT, OVERRIDE_STAT_DOT_IS_PROJECTILE, OVERRIDE_STAT_DOT_IS_SPELL,
-    OVERRIDE_STAT_EXPLODE_CORPSE, OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE, SkillOverridesDef,
+    OVERRIDE_STAT_EXPLODE_CORPSE, OVERRIDE_STAT_IMPLICIT_STAT,
+    OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE, SkillOverridesDef,
 };
 use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef, StatSetDef};
 
 /// 是否为 statSet 级 stat（由 [`apply_stat_set_overrides`] /
-/// [`apply_dot_flag_overrides`] 消费，等级域 merge 跳过）。
+/// [`apply_dot_flag_overrides`] / [`apply_implicit_stat_overrides`] 消费，
+/// 等级域 merge 跳过）。
 fn is_stat_set_stat(stat: &str) -> bool {
     stat == OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE
         || stat == OVERRIDE_STAT_EXPLODE_CORPSE
+        || stat == OVERRIDE_STAT_IMPLICIT_STAT
         || OVERRIDE_DOT_FLAG_STATS.contains(&stat)
 }
 
@@ -177,6 +180,7 @@ pub fn apply_stat_set_overrides(
                         skill_attack_speed_more: Some(value),
                         dot_flags: Default::default(),
                         explode_corpse: false,
+                        implicit_stats: Vec::new(),
                         levels: Vec::new(),
                     }],
                 });
@@ -257,6 +261,47 @@ pub fn apply_dot_flag_overrides(
     Ok(())
 }
 
+/// 把 overlay 的 statSet 级**隐式 stat**（M4-H，`implicit_stat` 条目）merge 进
+/// `granted_effect_stat_sets` 域。
+///
+/// 与 [`apply_dot_flag_overrides`] 同一 set 定位语义（vendor 序号优先，`None` →
+/// 主 set；未命中跳过——保守默认 = 该 stat 不注入，欠算安全）。同一 set 内按
+/// stat id 去重 + 字典序（消费确定性）。缺 `stat_id` 报错不静默。
+pub fn apply_implicit_stat_overrides(
+    sets: &mut [SkillStatSetDef],
+    overrides: &SkillOverridesDef,
+) -> Result<(), String> {
+    for entry in &overrides.overrides {
+        if entry.stat != OVERRIDE_STAT_IMPLICIT_STAT {
+            continue;
+        }
+        let Some(stat_id) = &entry.stat_id else {
+            return Err(format!(
+                "skill_overrides 条目（skill `{}`，stat `{}`）缺 stat_id",
+                entry.skill, entry.stat
+            ));
+        };
+        let Some(def) = sets.iter_mut().find(|s| s.effect_id == entry.skill) else {
+            continue; // vendor-only 技能，保守默认。
+        };
+        let target = match entry.stat_set {
+            Some(idx) => def
+                .sets
+                .iter_mut()
+                .find(|s| s.vendor_set_index == Some(idx)),
+            None => def.sets.first_mut(),
+        };
+        let Some(set) = target else {
+            continue; // vendor 序号未命中（模板策展跳过的 set），保守默认。
+        };
+        if !set.implicit_stats.iter().any(|s| s == stat_id) {
+            set.implicit_stats.push(stat_id.clone());
+            set.implicit_stats.sort();
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -279,6 +324,7 @@ mod tests {
             stat_set: None,
             value,
             per_level,
+            stat_id: None,
         }
     }
 
@@ -318,6 +364,7 @@ mod tests {
             skill_attack_speed_more: None,
             dot_flags: Default::default(),
             explode_corpse: false,
+            implicit_stats: Vec::new(),
             levels: Vec::new(),
         }
     }
@@ -451,5 +498,38 @@ mod tests {
 
         let bad = entry("Known", "dot_is_hit", None, None);
         assert!(apply_dot_flag_overrides(&mut sets, &doc(vec![bad])).is_err());
+    }
+
+    /// implicit_stat merge（M4-H）：按 vendor 序号定位、push 去重排序；
+    /// 未命中跳过；缺 stat_id 报错；等级域 merge 对该 stat 跳过不报错。
+    #[test]
+    fn implicit_stat_merge_targets_set_and_dedupes() {
+        use super::apply_implicit_stat_overrides;
+        let mut sets = vec![SkillStatSetDef {
+            effect_id: "SupportGarukhansResolvePlayer".into(),
+            sets: vec![bare_set("SupportGarukhansResolvePlayer", Some(1))],
+        }];
+        let mut e = entry("SupportGarukhansResolvePlayer", "implicit_stat", None, None);
+        e.stat_set = Some(1);
+        e.stat_id = Some("attacks_roll_crits_twice".into());
+        let dup = e.clone();
+        let mut miss = entry("VendorOnly", "implicit_stat", None, None);
+        miss.stat_id = Some("whatever".into());
+        let ov = doc(vec![e, dup, miss]);
+
+        // 等级域：implicit_stat 是 statSet 级，不得被规则 4 误报。
+        let mut levels =
+            BTreeMap::from([("SupportGarukhansResolvePlayer".to_string(), bare_rows())]);
+        apply_level_overrides(&mut levels, &ov).unwrap();
+
+        apply_implicit_stat_overrides(&mut sets, &ov).unwrap();
+        assert_eq!(
+            sets[0].sets[0].implicit_stats,
+            vec!["attacks_roll_crits_twice".to_string()],
+            "去重后单条"
+        );
+
+        let bad = entry("SupportGarukhansResolvePlayer", "implicit_stat", None, None);
+        assert!(apply_implicit_stat_overrides(&mut sets, &doc(vec![bad])).is_err());
     }
 }

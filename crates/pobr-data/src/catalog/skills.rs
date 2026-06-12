@@ -267,6 +267,17 @@ pub struct StatSetDef {
     /// extract-lua skill_overrides 通道在加载期 merge。缺省 false = 不注入。
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub explode_corpse: bool,
+    /// 隐式（无每级数值）stat（M4-H）：vendor statSet `stats` 列表中**任何等级行
+    /// 都没有数值**的条目（= GGG `.dat` `GrantedEffectStatSets.ImplicitStats` 列，
+    /// 适配器未下载该列）。vendor 消费值恒 1（`CalcTools.lua:152`
+    /// `statSetLevel[index] or 1`），多为行为 flag stat（如 Garukhan's Resolve 的
+    /// `attacks_roll_crits_twice` → statmap flag BifurcateCrit）。
+    ///
+    /// 数据来源 = extract-lua skill_overrides 通道（`implicit_stat` 条目，**策展
+    /// 白名单**——vendor 全量 4394 条多为显示/行为噪声，仅抽取 PoBR calc 有消费方
+    /// 的 stat），加载期 merge。消费 = `effect_stats` 以值 1 并入 base 段。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub implicit_stats: Vec<String>,
     /// 分等级 stat（按宝石等级升序；含基础伤害值 + `damage_+%[_final]` 缩放）。
     pub levels: Vec<SkillStatSetLevel>,
 }
@@ -468,6 +479,7 @@ mod m4_t4_dot_flags_tests {
             skill_attack_speed_more: None,
             dot_flags: DotFlags::default(),
             explode_corpse: false,
+            implicit_stats: Vec::new(),
             levels: Vec::new(),
         }
     }

@@ -64,6 +64,37 @@ fn crit_chance_cap_default_100_and_override() {
     approx(crit.pre_effective_chance, 0.50);
 }
 
+/// CritChanceBase OVERRIDE（vendor CalcOffence.lua:3667-3676 baseCritOverride）：
+/// 直接**替换**底材基础暴击（如 Blood Mage『Sunder the Flesh』= 15%），
+/// 与 BASE/INC 正常叠乘。
+#[test]
+fn crit_chance_base_override_replaces_weapon_base() {
+    let cfg = CalcConfig::attack();
+    let enemy = ModDb::new();
+
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("CritChanceBase", ModType::Override, 15.0));
+    db.add_mod(Modifier::number(
+        "CriticalStrikeChance",
+        ModType::Inc,
+        100.0,
+    ));
+
+    // 底材 7%（gem 基础暴击）被 15% 覆盖：15 × (1+100/100) = 30%。
+    let crit = resolve_crit(&db, &enemy, &cfg, 1.0, 0.07, false);
+    approx(crit.chance, 0.30);
+
+    // 无 OVERRIDE 时维持底材：7 × 2 = 14%。
+    let mut plain = ModDb::new();
+    plain.add_mod(Modifier::number(
+        "CriticalStrikeChance",
+        ModType::Inc,
+        100.0,
+    ));
+    let crit = resolve_crit(&plain, &enemy, &cfg, 1.0, 0.07, false);
+    approx(crit.chance, 0.14);
+}
+
 // ─────────────────────────── mode_effective 命中降级 ───────────────────────────
 
 /// mode_effective=true 时有效暴击 = 暴击几率 × 命中率；PreEffective 保留降级前值。

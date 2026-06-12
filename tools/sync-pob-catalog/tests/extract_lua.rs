@@ -131,6 +131,7 @@ fn assemble_document_is_deterministic_and_sorted() {
         stat_set,
         value: Some(1.0),
         per_level: None,
+        stat_id: None,
     };
     let shuffled = vec![
         entry("B", "crit_chance", None),

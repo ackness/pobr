@@ -628,6 +628,14 @@ impl BuildData {
                     .map(|level| level.stats.clone())
                     .unwrap_or_default();
                 stats.extend(set.constant_stats.iter().cloned());
+                // 隐式 stat（M4-H，策展白名单经 overlay merge 入库）：vendor 对
+                // statSet `stats` 中无每级数值的条目按值 1 并入
+                // （CalcTools.lua:152 `statSetLevel[index] or 1`，如 Garukhan's
+                // Resolve 的 `attacks_roll_crits_twice` → statmap BifurcateCrit）。
+                stats.extend(set.implicit_stats.iter().map(|stat| SkillDamageStat {
+                    stat: stat.clone(),
+                    value: 1.0,
+                }));
                 stats
             })
             .unwrap_or_default();
@@ -798,6 +806,7 @@ mod tests {
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
                 explode_corpse: false,
+                implicit_stats: Vec::new(),
                 levels: vec![SkillStatSetLevel {
                     gem_level: 1,
                     damage_multiplier: 1.0,
@@ -869,6 +878,7 @@ mod tests {
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
                 explode_corpse: false,
+                implicit_stats: Vec::new(),
                 levels: vec![SkillStatSetLevel {
                     gem_level: 1,
                     damage_multiplier: 1.0,

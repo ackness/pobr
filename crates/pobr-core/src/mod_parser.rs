@@ -177,6 +177,12 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     } else if let Some(stripped) = rest.strip_prefix("attack skills deal ") {
         flags |= ModFlags::ATTACK;
         rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("attacks have ") {
+        // 「Attacks have +N% to Critical Hit Chance」族（树 notable『Struck Through』
+        // 等）：vendor `["^attacks [ghd][ae][iva][eln] "] = { flags = ModFlag.Attack }`
+        // （ModParser.lua:1266，have/gain/deal 同一前缀类）。
+        flags |= ModFlags::ATTACK;
+        rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("attacks ") {
         flags |= ModFlags::ATTACK;
         rest = stripped.into();
@@ -184,6 +190,11 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         flags |= ModFlags::SPELL;
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spell skills deal ") {
+        flags |= ModFlags::SPELL;
+        rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("spells have ") {
+        // vendor `["^spells [hgdf][aei][ivar][nel] a? ?"] = { flags = ModFlag.Spell }`
+        // （ModParser.lua:1270，have/gain/deal/fire 同一前缀类）。
         flags |= ModFlags::SPELL;
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spells ") {
@@ -637,6 +648,47 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
             }
         }
     }
+    // 「Allocates <Notable>」（油涂/anoint 附魔）：vendor `["allocates (.+)"]` →
+    // `mod("GrantedPassive", "LIST", passive)`（ModParser.lua:5809），消费 =
+    // CalcSetup.lua:1322-1331（notableMap 查名并入 allocNodes）。PoBR 同语义：
+    // `GrantedPassive` LIST Text(名)，编排层 `append_granted_passives` 按名匹配
+    // Notable 节点追加为 AllocatedNode。Forbidden Flame/Flesh 条件形（:5808
+    // `allocates X if you have the matching modifier on forbidden Y`）未建模 →
+    // Unsupported（不误当无条件授予）。
+    if let Some(name) = rest.strip_prefix("allocates ") {
+        if name.contains("if you have the matching modifier") {
+            return Some(ParseOutcome {
+                mods: Vec::new(),
+                status: ParseStatus::Unsupported,
+                unparsed: Some(source.into()),
+            });
+        }
+        return Some(ParseOutcome {
+            mods: vec![
+                Modifier::text("GrantedPassive", ModType::List, name.trim()).with_source(source),
+            ],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+    // 「Base Critical Hit Chance for Spells is N%」（Blood Mage 升华『Sunder the
+    // Flesh』）：vendor `["base critical hit chance for spells is (%d+)%%"]` →
+    // `mod("CritChanceBase", "OVERRIDE", num, { type = "SkillType", skillType =
+    // SkillType.Spell })`（ModParser.lua:5801）。消费点 = `calc::crit::resolve_crit`
+    // （CalcOffence.lua:3667-3676 baseCritOverride 直接替换底材基础暴击）。
+    if let Some(num_str) = rest.strip_prefix("base critical hit chance for spells is ")
+        && let Ok(value) = num_str.trim_end_matches('%').trim().parse::<f64>()
+    {
+        return Some(ParseOutcome {
+            mods: vec![
+                Modifier::number("CritChanceBase", ModType::Override, value)
+                    .with_source(source)
+                    .with_tag(ModTag::SkillTypes(SkillTypes::SPELL)),
+            ],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
     // ES→Mana 资源转换（PoB2 ModParser 2395-2396）：固定全转 / 数值百分比两形。
     if let Some(num_str) = rest
         .strip_prefix("convert ")
@@ -667,6 +719,14 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
                 Modifier::number("EnergyShieldConvertToMana", ModType::Base, 100.0)
                     .with_source(source),
             ]
+        }
+        // 必然暴击（Oracle 升华 notable『Forced Outcome』，tree 55135）：vendor
+        // `["inevitable critical hits"] = { flag("InevitableCriticalHits") }`
+        // （ModParser.lua:3393）。消费点 = `calc::crit::resolve_crit` 步骤 6
+        // （CalcOffence.lua:3712-3739：crit 置 100% + 几何级数 less 爆伤，仅
+        // mode_effective）。
+        "inevitable critical hits" => {
+            vec![Modifier::flag("InevitableCriticalHits").with_source(source)]
         }
         // 纯免疫/条件短语：计算侧暂不消费，归 Unsupported（不报错、不产数值）。
         "immune to chaos damage and bleeding"
@@ -2234,6 +2294,70 @@ mod per_slot_defence_tests {
                 "非整行 keystone 句式不得误产 Keystone LIST"
             );
         }
+    }
+
+    /// 「Attacks have +N% to Critical Hit Chance」（树 notable『Struck Through』）：
+    /// vendor `^attacks [ghd][ae][iva][eln] ` 前缀类（ModParser.lua:1266）→
+    /// ATTACK flag + CriticalStrikeChance BASE。
+    #[test]
+    fn parses_attacks_have_crit_chance_base() {
+        let out = parse_mod("Attacks have +1% to Critical Hit Chance").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "CriticalStrikeChance");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(1.0));
+        assert!(m.flags.intersects(ModFlags::ATTACK));
+    }
+
+    /// 「Base Critical Hit Chance for Spells is N%」（Blood Mage『Sunder the Flesh』）：
+    /// vendor ModParser.lua:5801 → `CritChanceBase` OVERRIDE + SkillType.Spell tag。
+    #[test]
+    fn parses_base_crit_chance_for_spells_override() {
+        let out = parse_mod("Base Critical Hit Chance for [Spell|Spells] is 15%").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "CritChanceBase");
+        assert_eq!(m.mod_type, ModType::Override);
+        assert_eq!(m.value.as_number(), Some(15.0));
+        assert!(
+            m.tags
+                .iter()
+                .any(|t| matches!(t, ModTag::SkillTypes(st) if st.contains(SkillTypes::SPELL)))
+        );
+    }
+
+    /// 「Allocates <Notable>」（油涂附魔）：vendor ModParser.lua:5809 →
+    /// GrantedPassive LIST Text(名)；Forbidden Flame/Flesh 条件形归 Unsupported。
+    #[test]
+    fn parses_allocates_to_granted_passive_list() {
+        let out = parse_mod("Allocates Vulgar Methods").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "GrantedPassive");
+        assert_eq!(m.mod_type, ModType::List);
+        assert_eq!(m.value, crate::ModValue::Text("vulgar methods".into()));
+
+        let out =
+            parse_mod("Allocates Tenacity if you have the matching modifier on Forbidden Flesh")
+                .expect("soft unsupported");
+        assert_eq!(out.status, ParseStatus::Unsupported);
+        assert!(out.mods.is_empty());
+    }
+
+    /// 「Inevitable Critical Hits」（Oracle 升华『Forced Outcome』）：vendor
+    /// ModParser.lua:3393 → InevitableCriticalHits flag。树文本带内部名标记。
+    #[test]
+    fn parses_inevitable_critical_hits_flag() {
+        let out = parse_mod("[InevitableCriticalHits|Inevitable Critical Hits]").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "InevitableCriticalHits");
+        assert_eq!(m.mod_type, ModType::Flag);
     }
 
     /// 「Melee Damage」映射到 `MeleeDamage`（此前缺失，导致近战增伤词条被丢弃）。

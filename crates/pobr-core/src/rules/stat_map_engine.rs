@@ -31,13 +31,15 @@
 //!   （PoBR 无 skillData 表，伤害基值经 modifier 管线消费，对齐 legacy 口径）；
 //!   `duration` 出 [`MappedItem::SkillData`]（消费方接入前调用方可忽略）；其余键
 //!   Unsupported 统计。
-//! - **flag 构造器**（vendor `flag(name)`，技能行为开关如 `projectile`）：PoBR
-//!   当前无消费方，第一批全部 Unsupported。
+//! - **flag 构造器**（vendor `flag(name)`，技能行为开关如 `projectile`）：
+//!   白名单翻译有 ModDb flag 消费方的名字（M4-H：crit/lucky 族），其余
+//!   Unsupported（见 [`is_consumable_flag`]）。
 
 use std::collections::BTreeMap;
 
 use pobr_data::catalog::stat_map::{SkillStatMapDef, StatMapEntry, StatMapMod, StatMapValue};
 use pobr_data::modifier::{KeywordFlags, ModFlags, ModType};
+use pobr_data::skill::SkillTypes;
 
 use crate::modifier::{ModTag, Modifier};
 
@@ -768,16 +770,43 @@ fn collect_element(
         }
         "mod" => collect_mod(element, params.merge(stat_value), items),
         "flag" => {
-            // vendor flag(name) = 技能行为开关（projectile / unarmedMelee…）；PoBR
-            // 第一批无消费方 → 未知名上报（与 mod 的未知名同分类，diff 驱动补全）。
-            Err(UnsupportedReason::UnknownModName(format!(
-                "flag:{}",
-                element.name.as_deref().unwrap_or("?")
-            )))
+            // vendor flag(name) 多为技能行为开关（projectile / unarmedMelee…），
+            // PoBR 无消费方 → 未知名上报；**白名单**翻译有 ModDb flag 消费方的
+            // 名字（M4-H：crit/lucky 族，消费点 = calc::crit::resolve_crit 与
+            // calc::damage::lucky_hit_chance），tag 照常翻译（如 Garukhan's
+            // Resolve `attacks_roll_crits_twice` → flag("BifurcateCrit",
+            // SkillType.Attack)，SkillStatMap.lua:1011-1013）。
+            let name = element.name.as_deref().unwrap_or("?");
+            if !is_consumable_flag(name) {
+                return Err(UnsupportedReason::UnknownModName(format!("flag:{name}")));
+            }
+            let mut modifier = Modifier::flag(name);
+            for tag in &element.tags {
+                modifier = modifier.with_tag(translate_tag(tag)?);
+            }
+            items.push(MappedItem::Modifier(Box::new(modifier)));
+            Ok(())
         }
         "skill_data" => collect_skill_data(element, params.merge(stat_value), items),
         other => Err(UnsupportedReason::UnsupportedKind(other.to_string())),
     }
+}
+
+/// statmap `flag()` 构造器名字白名单：PoBR ModDb 有 `flag()` 消费方的旗标
+/// （crit/lucky 族——`calc::crit::resolve_crit` 步骤 4/5/6/爆伤 +
+/// `calc::damage::lucky_hit_chance`）。白名单外的 flag 名维持未知名上报
+/// （多为技能行为开关，错注会污染 ModDb flag 查询）。
+fn is_consumable_flag(name: &str) -> bool {
+    matches!(
+        name,
+        "BifurcateCrit"
+            | "CritChanceLucky"
+            | "InevitableCriticalHits"
+            | "NoCritMultiplier"
+            | "LuckyHits"
+            | "CritLucky"
+            | "ElementalLuckHits"
+    )
 }
 
 /// 翻译 `mod()` 构造器：名字（含 flag 语义分派）→ PoBR ModName，tag → [`ModTag`]。
@@ -1115,6 +1144,10 @@ pub fn translate_mod_name(
     let translated: String = match base_name {
         "CritChance" => "CriticalStrikeChance".to_string(),
         "CritMultiplier" => "CriticalStrikeMultiplier".to_string(),
+        // 暴击上限（M4-H）：vendor 同名（如 Garukhan's Resolve
+        // `maximum_critical_strike_chance_is_%` → CritChanceCap OVERRIDE 50），
+        // 消费方 = `calc::crit::crit_chance_cap`。
+        "CritChanceCap" => base_name.to_string(),
         // 同名直通族（PoBR calc 消费名或惰性作用域名）。
         "Damage"
         | "AttackDamage"
@@ -1278,6 +1311,30 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             };
             Ok(ModTag::multiplier(var, number("div").unwrap_or(1.0), None))
         }
+        // 技能类型限定（vendor `{ type = "SkillType", skillType = SkillType.X }`，
+        // 如 Garukhan `attacks_roll_crits_twice` 的 Attack 限定）→
+        // [`ModTag::SkillTypes`]（`Modifier::matches` 按 `cfg.skill_types`
+        // intersects 判定）。第一批仅 Attack/Spell（编排层 `skill_type_bits`
+        // 当前只填这两个判别位——其余类型位未注入 cfg，盲翻会让 mod 恒不生效，
+        // 维持 Unsupported 整条跳过）。`neg` 变体同样不支持。
+        "SkillType" => {
+            if !keys_subset_of(&["type", "skillType"]) {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "SkillType 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            let bits = match text("skillType").as_deref() {
+                Some("Attack") => SkillTypes::ATTACK,
+                Some("Spell") => SkillTypes::SPELL,
+                other => {
+                    return Err(UnsupportedReason::UnsupportedTag(format!(
+                        "SkillType 未支持类型：{other:?}"
+                    )));
+                }
+            };
+            Ok(ModTag::SkillTypes(bits))
+        }
         other => Err(UnsupportedReason::UnsupportedTag(other.to_string())),
     }
 }
@@ -1307,6 +1364,63 @@ mod tests {
                 .collect(),
             other => panic!("期望 Mapped，得到 {other:?}"),
         }
+    }
+
+    // ---- flag 构造器白名单（M4-H）----
+
+    /// 白名单 flag（BifurcateCrit）+ SkillType tag → FLAG modifier +
+    /// `ModTag::SkillTypes(ATTACK)`（Garukhan `attacks_roll_crits_twice` 实形，
+    /// SkillStatMap.lua:1011-1013）。
+    #[test]
+    fn flag_kind_whitelist_translates_with_skill_type_tag() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "flag", "name": "BifurcateCrit", "mod_type": "FLAG",
+                 "value": true,
+                 "tags": [ { "type": "SkillType", "skillType": "Attack" } ] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 1.0));
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name.as_str(), "BifurcateCrit");
+        assert_eq!(mods[0].mod_type, ModType::Flag);
+        assert!(
+            mods[0]
+                .tags
+                .iter()
+                .any(|t| matches!(t, ModTag::SkillTypes(st) if st.contains(SkillTypes::ATTACK)))
+        );
+    }
+
+    /// 白名单外 flag 维持未知名上报；SkillType 未支持类型整条跳过。
+    #[test]
+    fn flag_kind_outside_whitelist_or_unknown_skill_type_unsupported() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "flag", "name": "projectile", "mod_type": "FLAG" } ] }"#,
+        );
+        assert!(matches!(
+            map_entry(&entry, 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnknownModName(_))
+        ));
+
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "flag", "name": "BifurcateCrit", "mod_type": "FLAG",
+                 "tags": [ { "type": "SkillType", "skillType": "Minion" } ] } ] }"#,
+        );
+        assert!(matches!(
+            map_entry(&entry, 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
+    }
+
+    /// CritChanceCap 直通（Garukhan constant stat 50 → OVERRIDE）。
+    #[test]
+    fn crit_chance_cap_override_passthrough() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "CritChanceCap", "mod_type": "OVERRIDE" } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 50.0));
+        assert_eq!(mods[0].name.as_str(), "CritChanceCap");
+        assert_eq!(mods[0].mod_type, ModType::Override);
+        assert_eq!(mods[0].value.as_number(), Some(50.0));
     }
 
     // ---- merge 公式四参全覆盖（蓝图 T2 局部门禁）----
