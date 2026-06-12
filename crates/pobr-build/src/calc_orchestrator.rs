@@ -223,10 +223,24 @@ pub fn calculate_with_data(
         // （M3-T3 C5-2 切换，D5 MAIN 口径）：vendor 非 CALCS 模式 buffMode 恒
         // "EFFECTIVE"（CalcSetup.lua:583-597 → env.mode_buffs = true），编排入口
         // 对应恒置 mode_buffs——buff_pass（aura 乘区 / curse priority+limit）启用。
-        // mode_effective 维持调用方选项（D5：敌侧 debuff/curse 既有口径不动）；
-        // mode_combat 置位属 B4 独立行为 commit。双跑依据 m3-c5-dualrun-report.md
-        // （18-build display 全列逐值持平 + curse 面板加法型）。
-        .with_mode_buffs(true);
+        // mode_effective 维持调用方选项（D5：敌侧 debuff/curse 既有口径不动）。
+        // 双跑依据 m3-c5-dualrun-report.md（18-build display 全列逐值持平 +
+        // curse 面板加法型）。
+        .with_mode_buffs(true)
+        // （M3-T2 B4，D5 MAIN 口径）：同上 vendor 裁决（CalcSetup.lua:583-597
+        // buffMode "EFFECTIVE" → env.mode_combat = true）。激活面：战斗条件自动
+        // 置位（下方 combat_conditions）+ env_finalize 阶段 3 flask/charm 合并
+        // （编排路径暂无 FlaskBuff/CharmBuff 载荷，T4 槽位接线后生效）+ 阶段 6
+        // buff_expander（trigger flag 未置仍零输出）。
+        .with_mode_combat(true);
+    // （M3-T2 B4）主技能派生战斗条件（vendor CalcPerform.lua:242-266 实读，
+    // `if env.mode_combat` 段）：attack/spell/Movement/Minion/Vaal/Channel →
+    // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免。
+    if let Some(effect) = main_effect {
+        for cond in combat_conditions(&effect.skill_types, skill_flags) {
+            cfg = cfg.with_condition(cond, true);
+        }
+    }
     // 敌人档位（19-G3 接线）：build XML Config 显式保存的 `enemyIsBoss` 优先；
     // 省略时回退调用方编排选项（PoB2 defaultIndex=3 = Pinnacle，与既有调用方一致）。
     let enemy_tier = build.config.enemy_tier.unwrap_or(options.enemy_tier);
@@ -1709,6 +1723,50 @@ fn skill_type_flags(skill_types: &[String]) -> ModFlags {
         }
     }
     flags
+}
+
+/// （M3-T2 B4）主技能派生的战斗条件（vendor `CalcPerform.lua:242-266` 实读，
+/// `if env.mode_combat` 段）。
+///
+/// vendor 逐行对照：
+/// - **豁免**（:248 `not skillData.triggered and not trap/mine/totem`）：PoE2
+///   数据 token 等价 = `Triggered`/`InbuiltTrigger`（triggered，与
+///   `trigger_modifiers` 同判定）、`RemoteMined`（mine）、`SummonsTotem`
+///   （totem）；trap 在 PoE2 入库数据无 token（0 命中），无对应豁免项。
+/// - attack → `AttackedRecently` **elseif** spell → `CastSpellRecently`
+///   （:249-253，互斥分支照搬）；
+/// - `SkillType.Movement` → `UsedMovementSkillRecently`（:254-256）；
+/// - minion 且非 duration → `UsedMinionSkillRecently`（:257-259，vendor
+///   `skillFlags.minion and not skillFlags.duration`→ token `Minion` 且无
+///   `Duration`）；
+/// - `SkillType.Vaal` → `UsedVaalSkillRecently`（:260-262；PoE2 入库数据无
+///   `Vaal` token，保留对齐 vendor，恒不触发）；
+/// - `SkillType.Channel` → `Channelling`（:264-266，offence 的引导分支
+///   `offence.rs` 既有消费方）。
+fn combat_conditions(skill_types: &[String], skill_flags: ModFlags) -> Vec<&'static str> {
+    let has = |t: &str| skill_types.iter().any(|x| x == t);
+    if has("Triggered") || has("InbuiltTrigger") || has("RemoteMined") || has("SummonsTotem") {
+        return Vec::new();
+    }
+    let mut conds = Vec::new();
+    if skill_flags.intersects(ModFlags::ATTACK) {
+        conds.push("AttackedRecently");
+    } else if skill_flags.intersects(ModFlags::SPELL) {
+        conds.push("CastSpellRecently");
+    }
+    if has("Movement") {
+        conds.push("UsedMovementSkillRecently");
+    }
+    if has("Minion") && !has("Duration") {
+        conds.push("UsedMinionSkillRecently");
+    }
+    if has("Vaal") {
+        conds.push("UsedVaalSkillRecently");
+    }
+    if has("Channel") {
+        conds.push("Channelling");
+    }
+    conds
 }
 
 /// 攻击技能的武器基底贡献：物理击中伤害（已乘品质）+ 攻击速率 + 暴击率。
@@ -4418,6 +4476,102 @@ mod tests {
         assert!(
             boosted > base,
             "20% inc AuraEffect 放大 aura buff：base={base} boosted={boosted}"
+        );
+    }
+
+    // ── M3-T2 B4：mode_combat 战斗条件自动置位 ──────────────────────────────
+
+    /// combat_conditions 逐分支对照 vendor CalcPerform.lua:242-266：attack/spell
+    /// 互斥、Movement/Minion/Channel 叠加、Duration 抑制 minion、豁免清空。
+    #[test]
+    fn combat_conditions_follow_vendor_branches() {
+        let types = |ts: &[&str]| ts.iter().map(|t| t.to_string()).collect::<Vec<_>>();
+        // attack 优先于 spell（vendor elseif）。
+        assert_eq!(
+            combat_conditions(&types(&["Attack"]), ModFlags::ATTACK),
+            vec!["AttackedRecently"]
+        );
+        assert_eq!(
+            combat_conditions(&types(&["Spell"]), ModFlags::SPELL),
+            vec!["CastSpellRecently"]
+        );
+        assert_eq!(
+            combat_conditions(
+                &types(&["Attack", "Spell"]),
+                ModFlags::ATTACK | ModFlags::SPELL
+            ),
+            vec!["AttackedRecently"],
+            "attack elseif spell（:249-253 互斥）"
+        );
+        // Movement / Channel 与 attack/spell 叠加。
+        assert_eq!(
+            combat_conditions(&types(&["Attack", "Movement"]), ModFlags::ATTACK),
+            vec!["AttackedRecently", "UsedMovementSkillRecently"]
+        );
+        assert_eq!(
+            combat_conditions(&types(&["Spell", "Channel"]), ModFlags::SPELL),
+            vec!["CastSpellRecently", "Channelling"]
+        );
+        // minion 且非 duration（:257-259）。
+        assert_eq!(
+            combat_conditions(&types(&["Spell", "Minion"]), ModFlags::SPELL),
+            vec!["CastSpellRecently", "UsedMinionSkillRecently"]
+        );
+        assert_eq!(
+            combat_conditions(&types(&["Spell", "Minion", "Duration"]), ModFlags::SPELL),
+            vec!["CastSpellRecently"],
+            "Duration 抑制 UsedMinionSkillRecently"
+        );
+        // 豁免（:248）：triggered / mine / totem 整段清空。
+        for exempt in ["Triggered", "InbuiltTrigger", "RemoteMined", "SummonsTotem"] {
+            assert!(
+                combat_conditions(&types(&["Attack", exempt]), ModFlags::ATTACK).is_empty(),
+                "{exempt} 应豁免战斗条件"
+            );
+        }
+    }
+
+    /// B4 端到端（既有消费方 = Channelling）：Channel 主技能（Bonestorm，
+    /// cast 0.125s）+ 5000% cast speed → 速率远超服务器帧 cap（~30.3/s），但
+    /// B4 据 SkillType.Channel 自动置 Channelling（vendor :264-266）→ 引导技能
+    /// 不受帧 cap（offence::apply_server_tick_cap / skill_use_time 同口径）。
+    /// 对照非 Channel 法术（Fireball，cast 1.2s）同 cast speed 被 cap 截断。
+    #[test]
+    fn channel_main_skill_sets_channelling_condition() {
+        let data = repo_data();
+        let mk = |skill: &str| {
+            Build::new()
+                .with_character(CharacterIdentity {
+                    level: 90,
+                    class_name: "Witch".into(),
+                    ascendancy_name: String::new(),
+                })
+                .add_socket_group(SocketGroup::new().with_gem_skill(skill, 20))
+                .with_main_socket_group(1)
+        };
+        let opts = DataOrchestratorOptions {
+            inject_character_base: true,
+            extra_modifier_texts: vec!["5000% increased Cast Speed".into()],
+            ..Default::default()
+        };
+        let server_cap = 1.0 / 0.033; // ≈ 30.3/s（game_constants server_tick_seconds）
+
+        let channel = calculate_with_data(&mk("BonestormPlayer"), &data, &opts).expect("calc");
+        let channel_sut = channel.skill_use_time.expect("skill_use_time filled");
+        assert!(
+            !channel_sut.capped_by_server_tick && channel.effective_action_rate > server_cap,
+            "Channel 主技能应自动置 Channelling（不受帧 cap）：rate={} capped={}",
+            channel.effective_action_rate,
+            channel_sut.capped_by_server_tick
+        );
+
+        let spell = calculate_with_data(&mk("FireballPlayer"), &data, &opts).expect("calc");
+        let spell_sut = spell.skill_use_time.expect("skill_use_time filled");
+        assert!(
+            spell_sut.capped_by_server_tick && spell.effective_action_rate <= server_cap + 1e-9,
+            "非 Channel 法术不置 Channelling（帧 cap 生效）：rate={} capped={}",
+            spell.effective_action_rate,
+            spell_sut.capped_by_server_tick
         );
     }
 
