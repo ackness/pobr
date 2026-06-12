@@ -200,6 +200,20 @@ impl CalculationSession {
         self.env.keystone_mods = map;
     }
 
+    /// 注入 curse 优先级数据表（M3-T3 C3；`overlay/curse_priority.json` 经
+    /// pobr-gamedata 加载后由编排层喂入，照 [`set_buff_definitions`] 先例）。
+    /// env_finalize 阶段 4 `buff_pass` 的 curse priority 计算消费——整段吃
+    /// `cfg.mode_buffs` 门控（默认 false），故未显式置位时注入与否输出逐值不变。
+    /// 未注入/缺表 = 权重全 0 回退（R7 缺表容忍）。
+    ///
+    /// [`set_buff_definitions`]: Self::set_buff_definitions
+    pub fn set_curse_priority(
+        &mut self,
+        def: pobr_data::catalog::curse_priority::CursePriorityDef,
+    ) {
+        self.env.curse_priority = Some(def);
+    }
+
     /// 注入内建 buff 定义表（M3-T2 B3；`overlay/buff_definitions.json` 经
     /// pobr-gamedata 加载后由编排层喂入）。env_finalize 阶段 6
     /// `expand_misc_buffs` 消费——整段吃 `cfg.mode_combat` 门控（默认 false），

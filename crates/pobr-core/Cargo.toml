@@ -6,6 +6,12 @@ edition.workspace = true
 [dependencies]
 pobr-data.workspace = true
 
+[features]
+# M3 T3 双计防护（蓝图 §6.1）：buff_pass 的 Aura kind 消费开关。默认关 = Aura 空转
+# （编排层 aura_buff_modifiers 旧静态直注照旧）；开（测试/C5 双跑用）= aura 乘区路径，
+# 编排层同名 feature 关闭静态直注。C5 切换收尾后删 flag、删旧码。
+buff-pass-aura = []
+
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }
 # 仅测试侧反序列化 statmap 条目 fixture（lib 本体维持零 I/O / 零 serde_json）。

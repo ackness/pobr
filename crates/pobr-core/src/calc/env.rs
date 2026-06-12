@@ -2,11 +2,13 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use pobr_data::catalog::buffs::BuffDef;
+use pobr_data::catalog::curse_priority::CursePriorityDef;
 use pobr_data::prelude::*;
 
 use crate::CalcConfig;
 use crate::rules::HandlerRegistry;
 
+use super::buff_pass::CursePassOutput;
 use super::session::BuffSpec;
 use super::{Actor, ActorBaseStats};
 
@@ -36,6 +38,16 @@ pub struct Env {
     /// `handlers::build_registry()` 经 `session::set_buff_handler_registry`
     /// 注入）。缺省空注册表 = handler 条目保守零输出（进 unhandled 报表）。
     pub buff_handler_registry: Arc<HandlerRegistry>,
+    /// curse 优先级数据表（M3-T3 C3；`overlay/curse_priority.json` 经 pobr-gamedata
+    /// 加载、`session::set_curse_priority` 注入——照 `buff_definitions` 先例）。
+    /// env_finalize 阶段 4 `buff_pass` 的 curse priority 计算消费；`None`（缺表/
+    /// 未注入）= 权重全 0 的 [`CursePriorityDef::default`] 回退（R7 缺表容忍）。
+    pub curse_priority: Option<CursePriorityDef>,
+    /// curse 面板输出桥（`buff_pass` 写入，`perform` 末端回填
+    /// [`super::OutputTable`] 的 `enemy_curse_limit`/`curse_slots`——env_finalize
+    /// 先于 `OutputTable::from` 整表覆盖，故经此字段中转）。`None` = buff_pass
+    /// 未运行（mode_buffs 关 / 无 spec），输出字段维持 Default 0。
+    pub curse_pass_output: Option<CursePassOutput>,
 }
 
 impl Env {
@@ -49,6 +61,8 @@ impl Env {
             keystone_mods: BTreeMap::new(),
             buff_definitions: Vec::new(),
             buff_handler_registry: Arc::new(HandlerRegistry::new()),
+            curse_priority: None,
+            curse_pass_output: None,
         }
     }
 
