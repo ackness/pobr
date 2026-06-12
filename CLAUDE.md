@@ -6,20 +6,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 构建环境
 
-本仓库位于本地 APFS 盘（`origin` = `git@github.com:ackness/pobr.git`），**直接使用普通 cargo 命令**，无需 target-dir 重定向或 `CARGO_INCREMENTAL=0`。
+本仓库位于本地 APFS 盘（`origin` = `git@github.com:ackness/pobr.git`），**直接使用普通 cargo 命令**，无需 `CARGO_INCREMENTAL=0`。
+
+- 全局已启用 sccache（`~/.cargo/config.toml` 的 `rustc-wrapper = "sccache"`）：第三方依赖的编译产物跨 target 目录复用，新 worktree 冷编译代价很低；workspace 自身 crate 走增量编译不受影响。
+- 每个 worktree / 并行会话使用**自己的 `./target`**。**禁止**设置共享 `CARGO_TARGET_DIR`——并发 cargo 会在构建目录锁上串行排队，单条命令可被阻塞数分钟到数十分钟（症状：CPU ~10% 长时间无输出；stderr 的 `Blocking waiting for file lock` 提示不要用 `| tail` 等管道吞掉）。
+- 同一 target 目录下 cargo 命令**一次一条、前台执行**，禁止后台叠加。
+- worktree 用完即删其 `target/`（重建有 sccache 兜底）；主 target 膨胀时（deps 内旧指纹产物累积）做一次 `cargo clean` 重建。
+
+## 验证分层（重要：避免无谓的全量测试）
+
+| 阶段 | 命令 | 说明 |
+|------|------|------|
+| 编辑循环中 | `cargo check -p <crate>` | 只查类型/借用错误，热态 <1s |
+| 完成一个完整任务后 | `cargo nextest run -p <crate> --test <suite>`（或 `-E 'test(...)'`） | 只跑改动相关的定向测试，**不要跑全量** |
+| 提交/合并门禁前 | `cargo nextest run --workspace` + clippy + fmt | 全量只在这一刻跑（稳态 ~6s，慢则在等锁） |
 
 ## 常用命令
 
 ```bash
 cargo nextest run --workspace                          # 全部测试（本地推荐，稳态 ~6s；不含 doctest）
 cargo test --workspace                                 # 全部测试（CI gate；本地慢约 20 倍，仅在无 nextest 时用）
-cargo build --workspace                                # 只编译 lib/bin
 cargo clippy --workspace --all-targets -- -D warnings  # lint（CI gate，warning 即失败）
 cargo fmt --check                                      # 格式检查（CI gate）
 
 cargo nextest run -p pobr-core --test mod_db           # 单个测试套件
 cargo nextest run -p pobr-core -E 'test(sum_traced)'   # 单个用例（filterset 过滤）
 cargo bench -p pobr-core --bench mod_db_bench          # ModDB 热查询基准（criterion）
+
+# PoB2 parity 仪表盘：逐 build 打印 PoBR vs PoB2 对照 + 聚合命中率
+cargo test -p pobr-build --test ninja_parity -- --nocapture
+# 其中 parity_no_regression 用例是回归门禁（命中率不得低于已记录基线）
 
 # CLI（apps/pobr-cli，二进制名 pobr）
 cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
@@ -32,38 +48,38 @@ cargo run -p sync-pob-catalog -- check --pob-root <PoB路径> --catalog catalog.
 cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src \
     --out data/4.5.0.3.4/overlay/skill_overrides.json   # vendor Lua → overlay JSON（需 luajit）
 cargo run -p lint-i18n                                  # 语言包完整性检查
+tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle：dump Lua 侧完整计算分解为 JSON（需 luajit；非 workspace 成员）
 ```
 
 - Rust **edition 2024**；workspace 版本统一 `0.1.0`。
-- 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以加速 ~99 个测试二进制的链接（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`。注意：改动该配置会触发全量重编译，重编译后的首轮测试会因 macOS 扫描新二进制而偏慢，属一次性成本。
+- 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以加速 ~100 个测试二进制的链接（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`（会触发全量重编译）。
 - CI gate（见 `devs/docs/architecture/06-development-workflow.md`）= fmt + clippy + test。涉及计算/Modifier/parser 的改动需补对应的集成测试或 golden fixture。
 
 ## Workspace 结构
 
-`devs/docs/architecture/` 描述目标架构；当前实现进度见各 crate。14 个 member 中，除 `pobr-item` 外均已落地实现：
+`devs/docs/architecture/`（00–15 共 16 篇）描述目标架构与路线图；当前实现进度见 `11-implementation-progress.md`。14 个 member 中，除 `pobr-item` 外均已落地实现：
 
 | Crate | 职责 | 依赖 |
 |-------|------|------|
-| `crates/pobr-data` | 纯数据定义，零逻辑、零 I/O。所有 crate 的底层依赖。含 `catalog.rs`（入库 JSON schema：`BaseItemDef`/`StatDef`/`ModDef`/`SkillGemDef`/`GrantedEffectDef`/`PassiveNodeDef`/`DataManifest` 等）、`damage.rs`（`AilmentInstance`/`DebuffInstance`）、`build_config.rs`、`display_stat.rs`（`DisplayStatDefinition`/`DisplayStatValue`/`ParityStatus`）、`stat.rs`（含 `BoundarySpec`） | 仅 `serde` |
-| `crates/pobr-core` | Modifier 解析/存储/聚合 + 计算引擎 + source-level 归因 + 来源接入（item/passive/gem ingest）。零 I/O | `pobr-data` |
-| `crates/pobr-gamedata` | 运行时数据 loader——数据系统里唯一持有文件 I/O 的层。把 `data/<poe_version>/` 入库 JSON 反序列化为 `pobr-data::catalog` 类型（`GameData::new(version_dir)`，按域懒加载 + i18n 边车） | `pobr-data` + `serde_json` |
-| `crates/pobr-i18n` | 语言包加载 / fallback / 显示文本映射；`en-US`（canonical）+ `zh-TW`，locale toml 经 `include_str!` 内嵌。`Translator`/`LanguageId`/`stat_text` | `pobr-data` + `toml` |
-| `crates/pobr-tree` | 天赋树拓扑、allocated node mod 收集、范围珠宝（first pass）。节点数据用 `pobr-data::catalog::PassiveNodeDef` | `pobr-data` |
-| `crates/pobr-build` | Build 状态、PoB Build Code 编解码（XML ↔ zlib ↔ URL-safe Base64，padding 容错）、导入识别、`CalcOrchestrator`（带缓存）、Build 对比 | `pobr-data`/`pobr-core`/`pobr-tree`/`pobr-item` + `quick-xml`/`base64`/`flate2` |
-| `crates/pobr-trade` | Trade 查询/价格抽象：`TradeBackend` trait + 离线 `MockBackend`（测试不联网；真实 HTTP 后续接入） | `pobr-data` |
-| `crates/pobr-item` | **占位骨架（仍未实现）**——raw item 解析/自定义物品。raw item 文本解析当前已由 `pobr-core::item_text` + `item::ingest_item` 承担；本 crate 的职责边界（custom item 编辑态）待厘清后实现 | `pobr-data` + `pobr-core` |
+| `crates/pobr-data` | 纯数据定义，零逻辑、零 I/O，所有 crate 的底层依赖。核心是 `catalog.rs`（入库 JSON schema：`BaseItemDef`/`StatDef`/`ModDef`/`SkillGemDef`/`GrantedEffectDef`/`PassiveNodeDef`/`DataManifest` 等），另有 damage/build_config/display_stat/stat/monster 等域类型 | 仅 `serde` |
+| `crates/pobr-core` | Modifier 解析/存储/聚合 + 计算引擎 + source-level 归因 + 来源接入（item/passive/gem/flask ingest）。零 I/O | `pobr-data` |
+| `crates/pobr-gamedata` | 运行时数据 loader——数据系统里唯一持有文件 I/O 的层。把 `data/<poe_version>/` 入库 JSON 反序列化为 `pobr-data::catalog` 类型（`GameData::new(version_dir)`，按域懒加载 + i18n 边车；`repo_data_root()` 定位仓库数据目录） | `pobr-data` + `serde_json` |
+| `crates/pobr-i18n` | 语言包加载 / fallback / 显示文本映射；`en-US`（canonical）+ `zh-TW`，locale toml 经 `include_str!` 内嵌 | `pobr-data` + `toml` |
+| `crates/pobr-tree` | 天赋树拓扑、allocated node mod 收集、范围珠宝（first pass） | `pobr-data` |
+| `crates/pobr-build` | Build 状态、PoB Build Code 编解码（XML ↔ zlib ↔ URL-safe Base64，padding 容错）、导入识别、`CalcOrchestrator`（带缓存）、Build 对比。**parity 测试的主战场**（见下） | `pobr-data`/`pobr-core`/`pobr-tree`/`pobr-item` + `quick-xml`/`base64`/`flate2` |
+| `crates/pobr-trade` | Trade 查询/价格抽象：`TradeBackend` trait + 离线 `MockBackend`（测试不联网） | `pobr-data` |
+| `crates/pobr-item` | **占位骨架（仍未实现）**——raw item 文本解析当前由 `pobr-core::item_text` + `item::ingest_item` 承担；本 crate 的职责边界（custom item 编辑态）待厘清 | `pobr-data` + `pobr-core` |
 | `apps/pobr-cli` | CLI：`calculate` / `parse-mod` / `decode-code` / `encode-code`（命令逻辑在 lib，便于测试） | `pobr-build`/`pobr-core`/`pobr-i18n` |
-| `apps/pobr-wasm` | Web/WASM API：默认 features 为纯 Rust JSON 入出（`calculate_json`/`translate`），`wasm` feature 下 wasm-bindgen 绑定 | `pobr-build`/`pobr-core`/`pobr-i18n` |
-| `apps/pobr-desktop` | 桌面入口最小骨架（headless 不验证 GUI；egui 等重 GUI 框架后续接入） | `pobr-build`/`pobr-core`/`pobr-i18n` |
-| `tools/pobr-data-adapter` | 数据管线适配器——把 GGG `.dat` 导出解析外键、反范式化为入库最小 JSON 落到 `data/<poe_version>/`。仅离线工具 | `pobr-data` + `serde_json` |
-| `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、parity 检查/diff、self-contained fixture。仅工具 | `pobr-data` + `regex`/`serde_json` |
+| `apps/pobr-wasm` | Web/WASM API：默认 features 纯 Rust JSON 入出，`wasm` feature 下 wasm-bindgen 绑定 | 同上 |
+| `apps/pobr-desktop` | 桌面入口最小骨架（headless 不验证 GUI） | 同上 |
+| `tools/pobr-data-adapter` | 数据管线适配器——GGG `.dat` 导出 → 解析外键、反范式化为入库最小 JSON 落到 `data/<poe_version>/`。必需列缺失 fail-fast；产物 `_meta.regen_command` 记录再生成命令 | `pobr-data` + `serde_json` |
+| `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、parity 检查/diff、vendor Lua → overlay JSON | `pobr-data` + `regex`/`serde_json` |
 | `tools/lint-i18n` | 语言包完整性检查（非 canonical 语言不得有 en-US 之外的多余 key） | `pobr-i18n` |
+| `tools/pob2-oracle` | **非 workspace 成员**（纯 Lua wrapper）：把 vendored PoB2 引导成 headless，加载 build 并 dump Lua 侧完整计算分解（中间值+最终值）为 JSON，用于钉死逐分量偏差。不修改 vendor 源 | luajit |
 
 依赖方向只能向下，`pobr-data` 是最底层、不依赖任何项目内 crate。计算核心保持纯函数 + 确定性，不引入共享可变状态。
 
-**数据管线**：`GGG .dat 导出` →（`pobr-data-adapter` 离线适配）→ `data/<poe_version>/*.json`（schema = `pobr-data::catalog`）→（`pobr-gamedata` 运行时 loader）→ 上层计算。I/O 收口在 `pobr-gamedata` 一处；`pobr-data`/`pobr-core` 维持零 I/O。
-
-> 历史整合：`devs/docs/integration-inventory.md` 记录了一次从外部沙箱实现迁移到本仓库的清单（冲突一律保留本仓库权威实现）；上层 crate 与部分 calc 机制由此落地。
+**数据管线**：`GGG .dat 导出` →（`pobr-data-adapter` 离线适配）→ `data/<poe_version>/*.json`（schema = `pobr-data::catalog`，当前版本 `4.5.0.3.4/`，含 `overlay/` 人工修正层）→（`pobr-gamedata` 运行时 loader）→ 上层计算。I/O 收口在 `pobr-gamedata` 一处；`pobr-data`/`pobr-core` 维持零 I/O。
 
 ## 计算引擎架构（pobr-core）
 
@@ -71,16 +87,27 @@ cargo run -p lint-i18n                                  # 语言包完整性检�
 
 - **`mod_parser.rs`** — 英文 PoB 兼容的 modifier 文本解析。识别 `N% increased/reduced`（→ Inc）、`N% more/less`（→ More）、`+N`/`N`（→ Base）以及前缀（`attacks/spells deal`）和后缀 tag（`while on full life`、`per X charge`）。无法解析的文本归为 `ParseStatus::Unsupported`（不报错，收集起来）。
 - **`modifier.rs`** — `Modifier { name, mod_type, value, source(原文), origin(归因), flags, keyword_flags, tags }`。`matches(cfg)` 判定是否适用，`effective_number(cfg)` 应用 Multiplier tag。
-- **`mod_db.rs`** — 按 `ModName` 索引的 Modifier 库：`sum`(Base/Inc 相加) / `more`(连乘 `Π(1+v/100)`) / `flag` / `override_`(后写覆盖) / `list`；`sum_traced`/`more_traced`/`flag_traced`/`override_traced`/`contributions` 返回带来源贡献构建 TraceGraph；`filtered`/`iter_mods` 供归因重算。标准属性管线 `(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`。`ModList` 支持 parent 链式聚合。
-- **`config.rs::CalcConfig`** — 计算上下文：flags / keyword_flags / skill_types / damage_type / conditions / multipliers（如 `Channelling` 条件）。`CalcConfig::attack()` 是常用预设。
-- **`trace.rs::TraceGraph` + `attribution.rs`** — source-level 归因（PoBR 相对 PoB 的核心增量）。DAG 把每个输出回溯到 `SourceId`；`attribute()` + `AttributionReport::direct()` 给出 direct / marginal / interaction 三种口径（移除某来源重算得边际贡献）。
-- **来源接入**：`item.rs::ingest_item` / `item_text.rs::parse_item_text` / `passive.rs::ingest_passive_nodes` / `skill_source.rs::ingest_gem` 把装备/天赋/宝石转为带 `SourceId` 归因的 modifier 注入 ModDb。
+- **`mod_db.rs`** — 按 `ModName` 索引的 Modifier 库：`sum`(Base/Inc 相加) / `more`(连乘 `Π(1+v/100)`) / `flag` / `override_`(后写覆盖) / `list`；`*_traced` 变体返回带来源贡献构建 TraceGraph；`filtered`/`iter_mods` 供归因重算。标准属性管线 `(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`。`ModList` 支持 parent 链式聚合；敌方侧有独立 enemy ModDb。
+- **`config.rs::CalcConfig`** — 计算上下文：flags / keyword_flags / skill_types / damage_type / conditions / multipliers。`CalcConfig::attack()` 是常用预设。
+- **`trace.rs::TraceGraph` + `attribution.rs`** — source-level 归因（PoBR 相对 PoB 的核心增量）。DAG 把每个输出回溯到 `SourceId`；`attribute()` + `AttributionReport::direct()` 给出 direct / marginal / interaction 三种口径。
+- **来源接入**：`item.rs::ingest_item`（含 flask/charm 词条分支）/ `item_text.rs::parse_item_text` / `passive.rs::ingest_passive_nodes` / `skill_source.rs::ingest_gem` 把装备/天赋/宝石转为带 `SourceId` 归因的 modifier 注入 ModDb。
 - **`calc/`** — 计算编排：
   - `session.rs::CalculationSession` 是高层入口：`new(MinimalInput)` → `add_modifier_texts(...)` / `add_item`/`add_passive_nodes`/`add_gem` → `perform_minimal()` → `MinimalOutput`；`snapshot()` 供归因，`output()` 取完整 `OutputTable`。
-  - `perform.rs::perform(env)` 编排 minimal offence + defence，并在末尾 fill 机制阶段（抗性边界/技能时间/伤害向量/异常/EHP/预留·恢复·格挡·抑制）写入 `OutputTable`。
+  - `perform.rs::perform(env)` 编排 minimal offence + defence，并在末尾 fill 机制阶段（抗性边界/技能时间/伤害向量/异常/EHP/预留·恢复·格挡·抑制）写入 `OutputTable`。env finalize 分阶段接入 buff/flask/charm 等动态来源（部分按 `mode_combat`/`mode_buffs` 门控）。
   - `offence.rs` 算 life/mana/抗性/暴击/命中/DPS（`calculate_minimal` + 归因版 `calculate_minimal_traced`）。`defence.rs` 算 armour/evasion/ES、命中率 `accuracy/(accuracy+(evasion/4)^0.8)`、护甲减伤 `armour/(armour+10*raw_hit)`。
-  - 机制模块：`stat_boundary.rs`（抗性 uncapped/max/final/overcap/missing + floor）、`skill_use_time.rs`（speed bucket + action speed 独立乘区 + 服务器帧 cap + channelling）、`damage.rs`（按伤害类型分桶 + 转换归一化 + gain-as-extra + increased double-dip）、`ailment.rs`（流血/点燃/中毒 magnitude + 感电 + 腐化之血）、`ehp.rs`（各类型 max hit + EHP）、`survivability.rs`（预留/恢复/格挡/法术抑制）。
-  - `display_catalog.rs`（在 pobr-core 根）—— 强类型展示字段目录（`display_catalog()` 列出 Computed/Planned + `ParityStatus`）+ `extract_display_values(&OutputTable)`，对应 PoB `BuildDisplayStats`。
+  - 机制模块：`stat_boundary.rs`（抗性边界）、`skill_use_time.rs`（speed bucket + action speed + 服务器帧 cap + channelling）、`damage.rs`（伤害分桶/转换归一化/gain-as-extra/double-dip）、`ailment.rs`（异常 magnitude）、`ehp.rs`（max hit + EHP）、`survivability.rs`（预留/恢复/格挡/法术抑制）、buff_pass（aura 乘区 + curse priority/limit）。
+  - `display_catalog.rs`（在 pobr-core 根）—— 强类型展示字段目录 + `extract_display_values(&OutputTable)`，对应 PoB `BuildDisplayStats`。
+- **过渡用 feature gate**：`buff-pass-aura`（pobr-core，pobr-build 转发）——M3 双计防护开关，默认关；行为切换 commit 落地后会删除。同类"先接线零行为、feature/mode 门控、最后单 commit 翻开关"是本仓库行为变更的标准模式。
+
+## Parity 体系（回归基准）
+
+PoB2 兼容是硬回归基准，三层校验互补：
+
+1. **`crates/pobr-build/tests/ninja_parity.rs`** — 遍历 `examples/demo-bd-test/builds/*/`（真实 PoB2 build + `meta.json::player_stats` 黄金数值），零硬编码对比全部职业/技能；`parity_no_regression` 断言聚合命中率不低于基线。防御/属性与 DPS 分列报告，未完成的 offence 管线不会掩盖防御侧信号。
+2. **golden / dual-run 套件** — `golden_regression.rs`、`statmap_dual_run.rs`、`config_dualrun.rs`、`defence_panels_golden.rs`、`pob2_parity.rs` 等钉住中间值与配置语义。
+3. **`tools/pob2-oracle`** — 需要逐分量定位偏差时，从 vendored PoB2 直接 dump Lua 侧计算分解对照。
+
+`vendor/PathOfBuilding-PoE2/` 是完整检出（版本见 `vendor/.pob2-version.txt`），公式核对直接读本地 Lua（`CalcOffence.lua`/`CalcDefence.lua`/`CalcPerform.lua` 等），不要去网上找。
 
 ## 游戏机制资料库（agent-docs/）
 
@@ -88,7 +115,7 @@ cargo run -p lint-i18n                                  # 语言包完整性检�
 
 **实现任何机制前的查证顺序**（见 `06-development-workflow.md` §2.1.1）：
 1. 先查 `agent-docs/` 对应主题；
-2. 对照 PoB-PoE2 Lua 计算实现（`CalcSetup.lua` / `CalcPerform.lua` / `CalcOffence.lua` / `CalcDefence.lua` / `ConfigOptions.lua` / `QuestRewards.lua` / `Data.lua` 等）；
+2. 对照 vendored PoB-PoE2 Lua 计算实现；
 3. 对照官方 patch notes / PoE2 Wiki / PoE2DB / 游戏数据。
 
 `agent-docs/` 是**开发输入资料，不是最终权威**；与一手数据冲突时以可验证来源为准，并直接修正文档（保留来源说明）。注意 PoB 公式多基于 PoE1，与 PoE2 存在差异（如护甲系数 `*5` vs `*10`），文档中已标注。
@@ -97,5 +124,5 @@ cargo run -p lint-i18n                                  # 语言包完整性检�
 
 - **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本走 `pobr-i18n`（`en-US`/`zh-TW`）。
 - **不可变 / 确定性**：calc 函数对 `Env` 的可变写入集中在 `perform`，并行化只在只读快照阶段展开。
-- **PoB2 兼容是回归基准**：Build Code 走 XML → deflate → URL-safe Base64（`pobr-build::{decode,encode}_pob_code`，已用真实 PoB2 ninja code 验证；样本见 `examples/demo-bd-test/`）；自定义/复制物品需保留原始文本块以便和 PoB2 对比。
+- **Build Code** 走 XML → deflate → URL-safe Base64（`pobr-build::{decode,encode}_pob_code`，已用真实 PoB2 ninja code 验证）；自定义/复制物品需保留原始文本块以便和 PoB2 对比。
 - 文档以可执行契约为主；改变 crate 边界、聚合语义、catalog/parity 规则时同步更新 `devs/docs/architecture/*`。
