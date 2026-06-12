@@ -599,3 +599,104 @@ fn charm_slots_implicit_parses_to_charm_limit_base() {
         "非 charm slot 词条不应产出 CharmLimit"
     );
 }
+
+// ===========================================================================
+// M4-T1 W-A1 commit-2：武器后缀双写通道（condition 字符串 + feature 下武器位）
+// ===========================================================================
+
+/// feature `modflags-pob2` 关（默认）：武器后缀只产 condition，flags 为空
+/// （双写通道零行为，搬迁不变式锚点）。
+#[cfg(not(feature = "modflags-pob2"))]
+#[test]
+fn weapon_suffix_produces_no_flags_under_legacy_table() {
+    let o = parse_mod("10% increased Attack Speed with Maces").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    let m = &o.mods[0];
+    assert!(m.tags.contains(&ModTag::condition("UsingMace", false)));
+    assert!(m.flags.is_empty(), "feature 关不得产出武器位");
+
+    // 空手后缀整条仅在 feature 下解析（旧表无 Unarmed 位/条件通道）。
+    assert!(
+        parse_mod("10% increased Attack Speed with Unarmed Attacks").is_err(),
+        "feature 关维持 Unsupported"
+    );
+}
+
+/// feature 开：`with Maces` / `with One Handed Melee Weapons` / `with Unarmed
+/// Attacks` 三条词条的解析→匹配端到端（蓝图 W-A1 测试计划）。
+#[cfg(feature = "modflags-pob2")]
+mod weapon_bits_e2e {
+    use super::*;
+    use pobr_core::CalcConfig;
+
+    /// `with Maces`：MACE 位 + UsingMace 条件双写；cfg 武器位与条件齐备才匹配。
+    #[test]
+    fn with_maces_parses_and_matches_per_weapon_bits() {
+        let o = parse_mod("10% increased Attack Speed with Maces").unwrap();
+        let m = &o.mods[0];
+        assert!(m.tags.contains(&ModTag::condition("UsingMace", false)));
+        assert!(m.flags.is_subset_of(ModFlags::MACE));
+        assert_eq!(m.flags.bits(), ModFlags::MACE.bits());
+
+        // cfg = 持单手锤（编排侧 weapon_cfg_flags 派生口径）+ UsingMace 条件。
+        let mace_cfg = CalcConfig::attack()
+            .with_flags(
+                ModFlags::ATTACK | ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
+            )
+            .with_condition("UsingMace", true);
+        assert!(m.matches(&mace_cfg));
+
+        // 持弓：bit 与 condition 两通道一致拒绝。
+        let bow_cfg = CalcConfig::attack()
+            .with_flags(ModFlags::ATTACK | ModFlags::weapon_flags("Bow", "Bow", false, false));
+        assert!(!m.matches(&bow_cfg));
+    }
+
+    /// `with One Handed Melee Weapons`：Weapon1H|WeaponMelee 位（vendor :1017）。
+    #[test]
+    fn with_one_handed_melee_weapons_matches_weapon_class_bits() {
+        let o = parse_mod("8% increased Attack Speed with One Handed Melee Weapons").unwrap();
+        let m = &o.mods[0];
+        assert!(
+            m.tags
+                .contains(&ModTag::condition("UsingOneHandedMelee", false))
+        );
+        assert_eq!(
+            m.flags.bits(),
+            (ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE).bits()
+        );
+
+        let dagger_cfg = CalcConfig::attack()
+            .with_flags(ModFlags::ATTACK | ModFlags::weapon_flags("Dagger", "Dagger", true, true))
+            .with_condition("UsingOneHandedMelee", true);
+        assert!(m.matches(&dagger_cfg));
+
+        // 双手武器：Weapon1H 缺位 → 拒绝。
+        let th_cfg = CalcConfig::attack()
+            .with_flags(
+                ModFlags::ATTACK | ModFlags::weapon_flags("Two Hand Mace", "Mace", false, true),
+            )
+            .with_condition("UsingOneHandedMelee", true);
+        assert!(!m.matches(&th_cfg));
+    }
+
+    /// `with Unarmed Attacks`：UNARMED 位（vendor :1006，feature 下新解锁短语）。
+    #[test]
+    fn with_unarmed_attacks_matches_unarmed_bit() {
+        let o = parse_mod("10% increased Attack Speed with Unarmed Attacks").unwrap();
+        assert_eq!(o.status, ParseStatus::Parsed);
+        let m = &o.mods[0];
+        assert_eq!(m.flags.bits(), ModFlags::UNARMED.bits());
+
+        // 空手（编排侧 weapon_cfg_flags 空主手分支）。
+        let unarmed_cfg = CalcConfig::attack()
+            .with_flags(ModFlags::ATTACK | ModFlags::weapon_flags("None", "Unarmed", true, true));
+        assert!(m.matches(&unarmed_cfg));
+
+        // 持武器 → UNARMED 缺位 → 拒绝。
+        let mace_cfg = CalcConfig::attack().with_flags(
+            ModFlags::ATTACK | ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
+        );
+        assert!(!m.matches(&mace_cfg));
+    }
+}

@@ -141,6 +141,76 @@ impl ModFlags {
     pub const WEAPON_MASK: Self = Self(0xF_5FFF_0000);
 }
 
+/// 武器位派生（W-A1 commit-2，feature 双态都编译——feature 关时恒空，
+/// 调用方无须自带 `#[cfg]`，双写通道零行为）。
+impl ModFlags {
+    /// `weapon_types.json` 的 `flag` 名 → 武器类型位（vendor `ModFlag[info.flag]`，
+    /// `CalcActiveSkill.lua:291`）。名称→位映射表留代码侧（P1 L4 刹车：位枚举是
+    /// 框架语义）；未知 flag 名 / feature 关 → `None`。
+    #[cfg(feature = "modflags-pob2")]
+    pub fn weapon_type_bit(flag: &str) -> Option<Self> {
+        Some(match flag {
+            "Axe" => Self::AXE,
+            "Bow" => Self::BOW,
+            "Claw" => Self::CLAW,
+            "Dagger" => Self::DAGGER,
+            "Mace" => Self::MACE,
+            "Staff" => Self::STAFF,
+            "Sword" => Self::SWORD,
+            "Wand" => Self::WAND,
+            "Unarmed" => Self::UNARMED,
+            "Fishing" => Self::FISHING,
+            "Crossbow" => Self::CROSSBOW,
+            "Flail" => Self::FLAIL,
+            "Spear" => Self::SPEAR,
+            "Warstaff" => Self::WARSTAFF,
+            "Talisman" => Self::TALISMAN,
+            _ => return None,
+        })
+    }
+    /// feature 关：旧 5 位表无武器位，恒 `None`（双写零行为）。
+    #[cfg(not(feature = "modflags-pob2"))]
+    pub fn weapon_type_bit(_flag: &str) -> Option<Self> {
+        None
+    }
+
+    /// 武器条目 → 完整武器位集（vendor `CalcActiveSkill.lua:274-309 getWeaponFlags`
+    /// 主干逐字对照）：
+    /// - `flags = ModFlag[info.flag]`（武器类型位；未知 flag → 空）；
+    /// - `type ~= "None"`（非空手）时再并 `Weapon` + `Weapon1H`/`Weapon2H`
+    ///   （`info.oneHand`）+ `WeaponMelee`/`WeaponRanged`（`info.melee`）。
+    ///
+    /// 入参对应 `weapon_types.json` 条目字段（`WeaponTypeDef` 的
+    /// id/flag/one_hand/melee）。`countsAsAll1H`/`asThoughUsing` 分支本阶段不做
+    /// （无消费 build，登记 M5+，蓝图 W-A1）；`MeleeHit` 不在 getWeaponFlags 内
+    /// （vendor 由技能侧 `:537` 另并，归 T2 per-hand cfg）。
+    #[cfg(feature = "modflags-pob2")]
+    pub fn weapon_flags(type_id: &str, flag: &str, one_hand: bool, melee: bool) -> Self {
+        let Some(mut flags) = Self::weapon_type_bit(flag) else {
+            return Self::NONE;
+        };
+        if type_id != "None" {
+            flags |= Self::WEAPON;
+            flags |= if one_hand {
+                Self::WEAPON_1H
+            } else {
+                Self::WEAPON_2H
+            };
+            flags |= if melee {
+                Self::WEAPON_MELEE
+            } else {
+                Self::WEAPON_RANGED
+            };
+        }
+        flags
+    }
+    /// feature 关：恒 `NONE`（双写零行为）。
+    #[cfg(not(feature = "modflags-pob2"))]
+    pub fn weapon_flags(_type_id: &str, _flag: &str, _one_hand: bool, _melee: bool) -> Self {
+        Self::NONE
+    }
+}
+
 impl BitOr for ModFlags {
     type Output = Self;
 
@@ -334,6 +404,37 @@ mod modflags_pob2_tests {
         );
     }
 
+    /// getWeaponFlags 派生（vendor CalcActiveSkill.lua:274-309）：武器类型位 +
+    /// Weapon + 1H/2H + Melee/Ranged；空手（type=None）只有 Unarmed 位。
+    #[test]
+    fn weapon_flags_derivation_matches_get_weapon_flags() {
+        // One Hand Mace（one_hand=true, melee=true, flag=Mace）
+        assert_eq!(
+            ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
+            ModFlags::MACE | ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE
+        );
+        // Bow（one_hand=false, melee=false）
+        assert_eq!(
+            ModFlags::weapon_flags("Bow", "Bow", false, false),
+            ModFlags::BOW | ModFlags::WEAPON | ModFlags::WEAPON_2H | ModFlags::WEAPON_RANGED
+        );
+        // 长杖（weapon_types 表 id=Staff / flag=Staff，label=Quarterstaff）
+        assert_eq!(
+            ModFlags::weapon_flags("Staff", "Staff", false, true),
+            ModFlags::STAFF | ModFlags::WEAPON | ModFlags::WEAPON_2H | ModFlags::WEAPON_MELEE
+        );
+        // 空手：type == "None" → 不并 Weapon/1H2H/MeleeRanged（vendor :296 守卫）。
+        assert_eq!(
+            ModFlags::weapon_flags("None", "Unarmed", true, true),
+            ModFlags::UNARMED
+        );
+        // 未知 flag 名 → 空。
+        assert_eq!(
+            ModFlags::weapon_flags("Sceptre", "Sceptre", true, false),
+            ModFlags::NONE
+        );
+    }
+
     /// 新位宽下 `is_subset_of` 语义不变（既有语义测试在新表的搬迁锚点）。
     #[test]
     fn is_subset_of_semantics_hold_on_new_bits() {
@@ -358,6 +459,16 @@ mod modflags_legacy_tests {
         assert_eq!(ModFlags::MELEE.bits(), 1 << 2);
         assert_eq!(ModFlags::PROJECTILE.bits(), 1 << 3);
         assert_eq!(ModFlags::AREA.bits(), 1 << 4);
+    }
+
+    /// feature 关：武器位派生恒空（双写通道零行为，搬迁不变式）。
+    #[test]
+    fn weapon_derivation_is_inert() {
+        assert_eq!(ModFlags::weapon_type_bit("Mace"), None);
+        assert_eq!(
+            ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
+            ModFlags::NONE
+        );
     }
 }
 

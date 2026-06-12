@@ -14,5 +14,11 @@ flate2 = "1"
 quick-xml = "0.36"
 thiserror = "2"
 
+[features]
+# M4-T1 W-A1 转发（双跑总开关，devs/scripts/modflags-dualrun.sh 用）：开 =
+# ModFlags 走 PoB2 全位表 + 武器位双写通道（cfg 侧 weapon_cfg_flags / 解析侧
+# mod_parser / WeaponContribution::flags）。默认关零行为。
+modflags-pob2 = ["pobr-core/modflags-pob2", "pobr-data/modflags-pob2"]
+
 [dev-dependencies]
 serde_json = { workspace = true }
