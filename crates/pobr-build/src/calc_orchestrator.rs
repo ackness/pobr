@@ -691,10 +691,13 @@ pub fn calculate_with_data(
         // 注入词条的**数值副本 × scale** 追加注入（vendor CalcPerform.lua:1347-1369
         // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`；flag 副本
         // 为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
-        // :1328-1334 的对侧取词条一致。
+        // :1328-1334 的对侧取词条一致。负向 scale（focus -50%，CalcSetup.lua:
+        // 1209-1220）同路径：全值 + 负副本 = 净 ×(1+scale)，与 vendor
+        // combinedList+ScaleAddList 合并等价（vendor 对缩放副本取
+        // `m_modf(round(v*scale,2))` 截断，此处保留浮点，逐件 ≤0.5 偏差）。
         if let Some(&(_, scale)) = bonus_scales
             .iter()
-            .find(|(s, scale)| *s == slot && *scale > 0.0)
+            .find(|(s, scale)| *s == slot && *scale != 0.0)
         {
             let ingest = pobr_core::ingest_item(slot, &filtered)
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
@@ -1442,6 +1445,16 @@ fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSl
         .get(&Weapon2)
         .and_then(|item| data.base_items.get(&item.base.to_string()))
         .is_some_and(|def| def.item_class == "Quiver");
+    // （M4-n）focus 变体（vendor CalcSetup.lua:1209-1220：`item.type == "Focus"`
+    // 时对该件全局 modList 整体 ScaleAddList(scale-1)，scale 来自
+    // `EffectOfBonusesFromFocus`，ModParser.lua:4867『N% reduced bonuses gained
+    // from equipped focus』→ INC -N；Disciple of Varashta『Instruments of
+    // Power』节点 20701 携带）——仅副手槽实为 focus 时收集。
+    let weapon2_is_focus = build
+        .items
+        .get(&Weapon2)
+        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .is_some_and(|def| def.item_class == "Focus");
     let mut texts: Vec<String> = Vec::new();
     for id in &build.tree.allocated_nodes {
         if let Some(node) = data.passive_nodes.get(&id.0) {
@@ -1478,22 +1491,36 @@ fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSl
         }
     }
     for t in &texts {
-        let Some(idx) = t.find("% increased bonuses gained from ") else {
-            continue;
+        // increased（正向）与 reduced（负向，vendor 仅 focus 变体）两种前缀。
+        const INC_NEEDLE: &str = "% increased bonuses gained from ";
+        const RED_NEEDLE: &str = "% reduced bonuses gained from ";
+        let (idx, needle, sign) = match t.find(INC_NEEDLE) {
+            Some(i) => (i, INC_NEEDLE, 1.0),
+            None => match t.find(RED_NEEDLE) {
+                Some(i) => (i, RED_NEEDLE, -1.0),
+                None => continue,
+            },
         };
         let Ok(num) = t[..idx].trim().parse::<f64>() else {
             continue;
         };
-        let target = t[idx + "% increased bonuses gained from ".len()..].trim();
+        let num = num * sign;
+        let target = t[idx + needle.len()..].trim();
         // vendor ModParser.lua:4866-4880 的戒指/项链变体 + :4866 quiver 变体
         // （`EffectOfBonusesFromQuiver`，消费点 = CalcSetup.lua:1366-1373 的
-        // Weapon 2 箭袋特例；focus 仍走独立机制，暂不消费）。
-        match target {
-            "equipped rings and amulets" => add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0),
-            "equipped rings" => add(&[Ring1, Ring2, Ring3], num / 100.0),
-            "left equipped ring" => add(&[Ring1], num / 100.0),
-            "right equipped ring" => add(&[Ring2], num / 100.0),
-            "equipped quiver" if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
+        // Weapon 2 箭袋特例）+ :4867 focus 变体（`EffectOfBonusesFromFocus`
+        // INC -N，消费点 = CalcSetup.lua:1209-1220 的 Focus 件特例——仅数值
+        // BASE/INC/MORE 词条被缩放，LIST/FLAG 经 MergeMod(skipNonAdditive)
+        // 丢弃缩放副本保持全值，与本消费点的 Number-only 过滤一致）。
+        match (target, sign > 0.0) {
+            ("equipped rings and amulets", true) => {
+                add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0)
+            }
+            ("equipped rings", true) => add(&[Ring1, Ring2, Ring3], num / 100.0),
+            ("left equipped ring", true) => add(&[Ring1], num / 100.0),
+            ("right equipped ring", true) => add(&[Ring2], num / 100.0),
+            ("equipped quiver", true) if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
+            ("equipped focus", false) if weapon2_is_focus => add(&[Weapon2], num / 100.0),
             _ => {}
         }
     }
