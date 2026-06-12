@@ -189,3 +189,55 @@ fn list_options_fixture() {
         "任务奖励 mod 应带 Quest source"
     );
 }
+
+/// commit ④ 端到端：customMods 经 parse_build → calculate_with_data 主路径
+/// 生效（vendor ConfigOptions.lua:2278-2296）；不可解析行不阻断、可解析行
+/// 进计算。
+#[test]
+fn custom_mods_feed_calculation_end_to_end() {
+    use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
+    use pobr_core::calc::MinimalInput;
+
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PathOfBuilding2>
+  <Build level="1" className="Monk" ascendClassName="None"/>
+  <Config>
+    <Input name="customMods" string="^x7070FF+50 to maximum Life&#10;utterly unparseable nonsense line"/>
+  </Config>
+</PathOfBuilding2>"#;
+    let build = parse_build(xml).expect("parse build");
+    // 对照组：同一 build、无 customMods（隔离 quest 默认奖励等共同贡献）。
+    let plain = parse_build(&xml.replace(
+        r#"<Input name="customMods" string="^x7070FF+50 to maximum Life&#10;utterly unparseable nonsense line"/>"#,
+        "",
+    ))
+    .expect("parse plain build");
+    let data = BuildData::load(&GameData::new(repo_data_root().join("4.5.0.3.4")))
+        .expect("load build data");
+    let opts = DataOrchestratorOptions {
+        base_input: MinimalInput {
+            base_life: 100.0,
+            ..MinimalInput::default()
+        },
+        inject_character_base: false,
+        ..Default::default()
+    };
+    let with_custom = calculate_with_data(&build, &data, &opts).expect("calculate");
+    let without = calculate_with_data(&plain, &data, &opts).expect("calculate plain");
+    // +50 base Life 经全局 increased Life（quest 默认奖励 5%）= +52.5。
+    assert_eq!(
+        with_custom.life - without.life,
+        52.5,
+        "customMods 的 +50 Life 应进计算（with={} without={}）",
+        with_custom.life,
+        without.life
+    );
+
+    // 缺 catalog（BuildData::empty）→ R7 回退：customMods 不消费，与对照组等值。
+    let empty_with = calculate_with_data(&build, &BuildData::empty(), &opts).expect("calc empty");
+    let empty_plain = calculate_with_data(&plain, &BuildData::empty(), &opts).expect("calc empty");
+    assert_eq!(
+        empty_with.life, empty_plain.life,
+        "缺 catalog 回退旧路径，customMods 不生效"
+    );
+}

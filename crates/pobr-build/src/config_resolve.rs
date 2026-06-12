@@ -68,6 +68,13 @@ pub(crate) struct ResolvedConfig {
     ///   （vendor `enemyModList:NewMod(..., "BASE", val, "EnemyConfig")` 形态，
     ///   ConfigOptions.lua:2143-2157 / 1892-1894 / 1782-1842）。
     pub enemy_mods: Vec<Modifier>,
+    /// customMods 行通道（commit ④，vendor ConfigOptions.lua:2278-2296：逐行
+    /// StripEscapes + parseMod，source=Custom）：解释器剥色码后的原文行，
+    /// build 层喂 `session.add_modifier_texts`——不可解析行自然落
+    /// `ParseStatus::Unsupported` 可见性通道（结构性硬失败行经
+    /// filter_parseable 跳过，与其余 text 注入通道同口径）。缺 catalog 时为空
+    /// （旧路径从不消费 customMods）。
+    pub custom_mod_lines: Vec<String>,
 }
 
 /// 解析 build config 的消费视图（详见模块注释）。
@@ -78,6 +85,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
             config: build.config.clone(),
             player_mods: Vec::new(),
             enemy_mods: Vec::new(),
+            custom_mod_lines: Vec::new(),
         };
     };
 
@@ -120,6 +128,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         config,
         player_mods,
         enemy_mods,
+        custom_mod_lines: outcome.custom_mod_lines.clone(),
     }
 }
 
@@ -441,5 +450,26 @@ mod tests {
             .expect("SelfCritChance 应进 enemy 注入列表");
         assert_eq!(crit.value.as_number(), Some(5.0), "10 层 × 0.5%");
         assert!(!crit.tags.is_empty(), "保留 ApplyCriticalWeakness 门控 tag");
+    }
+
+    /// commit ④：customMods 行通道经 resolve 透传（StripEscapes 已在解释器
+    /// 完成；vendor ConfigOptions.lua:2278-2296）。
+    #[test]
+    fn custom_mod_lines_passed_through() {
+        let catalog = load_catalog();
+        let build = build_with_inputs(RawConfigInputs::new().with(
+            "customMods",
+            ConfigInputValue::Text("^x7070FF20% increased Fire Damage\n+10 to Spirit".into()),
+        ));
+        let resolved = resolve_config(&build, Some(&catalog));
+        assert_eq!(
+            resolved.custom_mod_lines,
+            vec![
+                "20% increased Fire Damage".to_string(),
+                "+10 to Spirit".to_string()
+            ]
+        );
+        // 缺 catalog → 旧路径从不消费 customMods，通道为空。
+        assert!(resolve_config(&build, None).custom_mod_lines.is_empty());
     }
 }

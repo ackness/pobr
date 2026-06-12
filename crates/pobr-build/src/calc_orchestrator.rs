@@ -649,6 +649,20 @@ pub fn calculate_with_data(
         session.add_modifiers(resolved_config.player_mods.clone());
     }
 
+    // 2e. customMods 行通道（M3 commit ④，vendor ConfigOptions.lua:2278-2296：
+    //     逐行 StripEscapes + parseMod，source=Custom）：解释器剥色码后按行
+    //     喂 add_modifier_texts——不可解析行自然落 `ParseStatus::Unsupported`
+    //     可见性通道（session.unsupported_modifier_texts）；结构性硬失败行
+    //     经 filter_parseable 跳过（与 2c quest / 装备文本通道同口径）。
+    if !resolved_config.custom_mod_lines.is_empty() {
+        let texts = filter_parseable(resolved_config.custom_mod_lines.clone());
+        if !texts.is_empty() {
+            session
+                .add_modifier_texts(&texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
+    }
+
     // 3. 天赋树：NodeId → 节点 mod 文本（节点级归因）。
     let passive_nodes = resolve_passive_nodes(build, data);
     if !passive_nodes.is_empty() {
