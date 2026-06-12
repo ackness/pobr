@@ -3971,7 +3971,12 @@ fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
 /// - （M4-L）其余主动技能：statset stat 经 [`debuff_stat_modifiers`]（debuff 域
 ///   `GlobalEffect effectType=Debuff`）映射出敌侧载荷非空 →
 ///   [`BuffKind::Debuff`]（vendor buff 循环遍历**全部** activeSkillList，
-///   CalcPerform.lua:1847 / Debuff 分支 :2219-2285——非主技能同样对敌注入）。
+///   CalcPerform.lua:1847 / Debuff 分支 :2219-2285——非主技能同样对敌注入）；
+///   （M4-n）同一扫描下经 [`player_buff_stat_modifiers`]（buff 域
+///   `GlobalEffect effectType=Buff`）映射出**玩家侧**载荷非空 →
+///   [`BuffKind::Buff`]（vendor Buff 分支 :1949-1962；典型 = 武器授予的
+///   Pinnacle of Power `<El>Can<Ailment>` flag 族 + 数值允收名单）。两类载荷
+///   可同时产出（vendor buffList 同样允许混挂）。
 ///
 /// `slot` = socket group 槽名原文（PoB XML `slot` attr，如 `Weapon 1`，与
 /// curse_priority.json 槽位权重键同源）；`socket_index` = 组内宝石序（1-based，
@@ -4010,21 +4015,51 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                     gem.stat_set_index,
                 );
                 let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-                let mods = debuff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
-                if mods.is_empty() || !seen.insert(gem.skill_id.as_str()) {
+                let debuff_mods =
+                    debuff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+                // （M4-n）玩家侧 Buff 载荷：buff 授予类主动技能（武器授予的
+                // Pinnacle of Power（other.lua:12503，fromItem）等——PoB 把
+                // `Grants Skill` 写成带 `source="Item:…"` 的 socket group，
+                // 与显式组同走本扫描，seen 去重）statSet 的 GlobalEffect
+                // effectType=Buff 条目经 [`player_buff_stat_modifiers`]（statmap
+                // buff 域，数值允收名单 + `<El>Can<Ailment>` flag 通道）映射为
+                // 玩家侧 modifier → BuffSpec(kind=Buff)，buff_pass Buff 分支
+                // （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db
+                // （vendor buff 循环写全局，对位 GlobalEffect/Buff 全局作用域）。
+                // 与 support_buff_specs 的 support 路无交集（此处仅主动技能）。
+                let buff_mods =
+                    player_buff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+                if (debuff_mods.is_empty() && buff_mods.is_empty())
+                    || !seen.insert(gem.skill_id.as_str())
+                {
                     continue;
                 }
-                specs.push(BuffSpec {
-                    name: buff_skill_name(data, &gem.skill_id),
-                    kind: BuffKind::Debuff,
-                    skill_id: gem.skill_id.clone(),
-                    mods,
-                    magnitude: 1.0,
-                    slot: group.slot.clone(),
-                    socket_index,
-                    is_mark: false,
-                    ignore_curse_limit: false,
-                });
+                if !debuff_mods.is_empty() {
+                    specs.push(BuffSpec {
+                        name: buff_skill_name(data, &gem.skill_id),
+                        kind: BuffKind::Debuff,
+                        skill_id: gem.skill_id.clone(),
+                        mods: debuff_mods,
+                        magnitude: 1.0,
+                        slot: group.slot.clone(),
+                        socket_index,
+                        is_mark: false,
+                        ignore_curse_limit: false,
+                    });
+                }
+                if !buff_mods.is_empty() {
+                    specs.push(BuffSpec {
+                        name: buff_skill_name(data, &gem.skill_id),
+                        kind: BuffKind::Buff,
+                        skill_id: gem.skill_id.clone(),
+                        mods: buff_mods,
+                        magnitude: 1.0,
+                        slot: group.slot.clone(),
+                        socket_index,
+                        is_mark: false,
+                        ignore_curse_limit: false,
+                    });
+                }
                 continue;
             }
             if !seen.insert(gem.skill_id.as_str()) {
@@ -6617,6 +6652,45 @@ mod tests {
             "Condition:BannerPlanted 直译保留，实得 {:?}",
             acc.tags
         );
+    }
+
+    /// （M4-n）Pinnacle of Power（武器 Adonia's Ego 授予，other.lua:12503，
+    /// fromItem buff 技能）→ BuffSpec(kind=Buff)：statmap buff 域 flag 通道产出
+    /// 六枚 `<El>Can<Ailment>` FLAG（GlobalEffect/Buff 载荷）；同条目首元素
+    /// scalar `Damage MORE` 不连坐（逐元素独立处置，零数值注入）。
+    /// stormweaver-comet IgniteDPS 跨类型通行证（m4-skill-gaps.md §7.4）。
+    #[test]
+    fn buff_skill_specs_emits_buff_kind_for_pinnacle_of_power_flags() {
+        let data = repo_data();
+        let build = Build::new()
+            .add_socket_group(SocketGroup::new().with_gem_skill("PinnacleOfPowerPlayer", 20));
+
+        let specs = buff_skill_specs(&build, &data);
+        let pinnacle = specs
+            .iter()
+            .find(|s| s.skill_id == "PinnacleOfPowerPlayer")
+            .expect("Pinnacle of Power spec（Buff 类）");
+        assert_eq!(pinnacle.kind, BuffKind::Buff);
+
+        let flags: Vec<&str> = pinnacle
+            .mods
+            .iter()
+            .filter(|m| m.mod_type == ModType::Flag)
+            .map(|m| m.name.as_str())
+            .collect();
+        for expected in [
+            "ColdCanIgnite",
+            "ColdCanShock",
+            "FireCanFreeze",
+            "FireCanShock",
+            "LightningCanFreeze",
+            "LightningCanIgnite",
+        ] {
+            assert!(
+                flags.contains(&expected),
+                "缺 {expected} flag，实得 {flags:?}"
+            );
+        }
     }
 
     /// （M4-m）quiver 加成效果（vendor `EffectOfBonusesFromQuiver`，

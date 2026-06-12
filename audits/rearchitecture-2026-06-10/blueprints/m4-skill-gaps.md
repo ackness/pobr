@@ -229,6 +229,21 @@ vendor IgniteDPS 1910.98 的全链路已钉死（oracle dump + 逐 mod Tabulate�
   注入面）。接通后该 build TotalDotDPS 0.00x 预期直接回 ~0.9x 带
   （effMult 0.66/duration 4s/StackPotential 0.37 等中间值 PoBR 机制均已同构）。
 
+**M4-n 已闭环（2026-06-13）**：① 子障碍①经 `map_player_buff_stat` **逐元素
+独立处置**（vendor merge 循环对 modOrGroup 本就逐元素，CalcActiveSkill.lua:96-117
+无成组耦合；scalar `Damage MORE` 维持零注入 + 全败 Unsupported 上报不退化）；
+② 子障碍②走既有 socket-group 扫描（PoB 把 `Grants Skill` 写成
+`source="Item:…"` 组）——`buff_skill_specs` 非 aura/curse 分支补 Buff 载荷产线
+（`player_buff_stat_modifiers` + 新 flag 通道 `<Type>Can<Ailment>` 族允收）→
+`BuffSpec(kind=Buff)` → buff_pass Buff 分支入 player db。连带补 parser 名族
+`flammability magnitude`/`chance to ignite` → `EnemyIgniteChance`（vendor
+ModParser.lua:773-777；oracle Tabulate 钉源 Tree:38068『Elemental Ailment
+Chance』24 INC——§7.4 原文「无任何 flat IgniteChance 词条」漏看了该 INC 腿）。
+**收敛**：TotalDotDPS 0.00x → **0.83x**、CombinedDPS 0.83x → **0.90x ✓ 新命中**；
+其余 17 build 全列零变动。余差单源 = 击中量级线（PoBR ignite 来源
+cold 8053/12077 vs vendor 8673/13006 = 0.93x，与 TotalDPS 0.91x 同根因，
+量级线已另册登记；几率经阈值缩放二次折入故 DPS ≈ 0.93²）。
+
 **剩余登记（暴击线尾差，单一根因）**：
 - **切换类节点 class 变体（isSwitchable options）未建模**——tree.lua 节点的
   `options.<Class>` 子表会按职业整体替换 stats：witch 51335『Affliction
