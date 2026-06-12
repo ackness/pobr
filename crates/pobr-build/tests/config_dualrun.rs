@@ -514,7 +514,23 @@ fn dual_run_old_subset_of_new() {
             classify_condition(var, *value, &catalog, &outcome, &source, &mut summary);
         }
         for (var, value) in &old.multipliers {
-            classify_multiplier(var, *value, &catalog, &outcome, &source, &mut summary);
+            // vendor 聚合口径（M3-W4 commit B，ConfigOptions.lua:1106-1111）：
+            // `multiplierNearbyRareOrUniqueEnemies` 的 apply **双写**
+            // `Multiplier:NearbyRareOrUniqueEnemies` 与 `Multiplier:NearbyEnemies`
+            // （:1108），modDB Sum 相加——旧路径前缀通道只记本 var、漏聚合。
+            // handler 已按 vendor 口径把 rare 计数加进 NearbyEnemies 标量，
+            // 故交集断言的期望值 = 旧值 + rare 计数（行为提升，非口径漂移）。
+            let expected = if var == "NearbyEnemies" {
+                *value
+                    + old
+                        .multipliers
+                        .get("NearbyRareOrUniqueEnemies")
+                        .copied()
+                        .unwrap_or(0.0)
+            } else {
+                *value
+            };
+            classify_multiplier(var, expected, &catalog, &outcome, &source, &mut summary);
         }
         classify_quests(&inputs, &catalog, &outcome, &source, &mut summary);
 

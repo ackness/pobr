@@ -3,7 +3,7 @@
 //! `overlay/special_mods.json` / `overlay/config_options.json` 等数据表中，
 //! 无法用受限模板 DSL 表达的条目（约 10%，见架构文档 20 §5 的 DSL 硬边界）
 //! 只携带一个稳定字符串 `handler_id`；运行时经本注册表查到对应 Rust 闭包执行，
-//! 产出 Modifier 列表。注册表本身零 I/O、注册集合在启动期固定。
+//! 产出 [`HandlerOutcome`]。注册表本身零 I/O、注册集合在启动期固定。
 //!
 //! 监控约束（架构文档 20 §5）：handler 条目数应 <100；逼近 special 总量 10%
 //! 即判数据切分失败、回看裁决 P4。
@@ -11,14 +11,104 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use crate::config::CalcConfig;
+use crate::mod_db::ModDb;
 use crate::modifier::Modifier;
 
-/// handler 闭包：输入数据条目捕获的数值占位参数（`$1..$n` 已求值），
-/// 输出该条目展开的 Modifier 列表。
+/// handler 输入上下文（M3-W4 签名扩展，蓝图 m3-orchestration §11 Q3）。
 ///
-/// M0 骨架签名——后续接入 special_mods/config 时按需扩上下文参数
-/// （如 `&CalcConfig` / 条目元数据），届时同步更新全部已注册 handler。
-pub type Handler = Box<dyn Fn(&[f64]) -> Vec<Modifier> + Send + Sync>;
+/// 各字段「按需」可用——同一 handler 在不同消费点拿到的上下文不同：
+/// - **config 消费点**（`config_interpreter::interpret`，build 层解释原始
+///   `<Input>` 时）：只有 `inputs`（条目解析后的数值占位参数）；db / cfg /
+///   主技能上下文尚未建立 → `None`。
+/// - **buff 消费点**（`buff_expander::expand_misc_buffs`，env_finalize 阶段 6）：
+///   `player_db` / `enemy_db` / `cfg` 来自 `Env` 只读快照；`main_skill` 待
+///   编排层接线（接通前 `None`）。
+///
+/// handler 对缺席字段必须**保守零输出**（宁缺勿错值）——这是「实现但
+/// 上下文门控」与 stub 的分界：前者逻辑完整、字段接通即生效。
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HandlerCtx<'a> {
+    /// 数据条目捕获的数值占位参数（`$1..$n` 已求值；config 单输入记 input）。
+    pub inputs: &'a [f64],
+    /// 玩家 modDB 只读引用（buff 消费点提供；config 消费点 `None`）。
+    pub player_db: Option<&'a ModDb>,
+    /// 敌人 modDB 只读引用（同上按需）。
+    pub enemy_db: Option<&'a ModDb>,
+    /// 计算上下文只读引用（flag/sum 查询用；按需）。
+    pub cfg: Option<&'a CalcConfig>,
+    /// 主技能上下文（vendor `SkillName` tag / `mainSkill.…selfCast` 门控用；
+    /// 按需——消费点未接线时 `None`，依赖它的 handler 保守零输出）。
+    pub main_skill: Option<&'a MainSkillCtx>,
+}
+
+impl<'a> HandlerCtx<'a> {
+    /// 仅携带数值占位参数的上下文（config 消费点形态）。
+    pub fn with_inputs(inputs: &'a [f64]) -> Self {
+        Self {
+            inputs,
+            ..Self::default()
+        }
+    }
+
+    /// 首个数值占位参数（config 单输入条目的便捷读法；缺省 0.0）。
+    pub fn input(&self) -> f64 {
+        self.inputs.first().copied().unwrap_or(0.0)
+    }
+}
+
+/// 主技能上下文（[`HandlerCtx::main_skill`]）。
+///
+/// 对应 vendor 两类门控：`{ type = "SkillName", skillName = … }` tag
+/// （ConfigOptions.lua BypassCD 族）按 `skill_name` 匹配；
+/// `mainSkill.activeEffect.srcInstance.selfCast`（CalcPerform.lua:574
+/// Fanaticism）按 `self_cast` 判定。
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct MainSkillCtx {
+    /// 主技能显示名（vendor `SkillName` tag 的 `skillName` 对照口径）。
+    pub skill_name: String,
+    /// 主技能是否自施放（非 triggered/totem/trap/mine 的玩家亲手施放）。
+    pub self_cast: bool,
+}
+
+/// handler 产出（M3-W4 签名扩展）。
+///
+/// 四路输出由消费点按各自通道落位：
+/// - `player_mods` / `enemy_mods` → 对应 actor 的 modDB（config 消费点经
+///   `ConfigOutcome` 注入桶、buff 消费点经 `BuffExpansion`），归因 SourceId
+///   由消费点统一附加（handler 不自带 origin）；
+/// - `conditions` → cfg 条件表（config 消费点 `ConfigOutcome::conditions`、
+///   buff 消费点 `BuffExpansion::conditions_set`，仅 true 项）；
+/// - `scalars` → cfg multiplier 表（**加法合并**，对应 vendor
+///   `modDB.multipliers[var] = (… or 0) + v` 形态）。
+#[derive(Debug, Clone, Default)]
+pub struct HandlerOutcome {
+    /// 写入玩家 modDB 的 modifier。
+    pub player_mods: Vec<Modifier>,
+    /// 写入敌人 modDB 的 modifier。
+    pub enemy_mods: Vec<Modifier>,
+    /// 条件置位（`(var, enabled)`）。
+    pub conditions: Vec<(String, bool)>,
+    /// multiplier 标量（`(var, value)`，加法合并）。
+    pub scalars: Vec<(String, f64)>,
+}
+
+impl HandlerOutcome {
+    /// 仅产玩家 modifier 的便捷构造。
+    pub fn player_mods(mods: Vec<Modifier>) -> Self {
+        Self {
+            player_mods: mods,
+            ..Self::default()
+        }
+    }
+}
+
+/// handler 闭包：输入 [`HandlerCtx`]（数值占位参数 + 按需只读上下文），
+/// 输出 [`HandlerOutcome`]（player/enemy mods + 条件 + 标量）。
+///
+/// M3-W4 起的正式签名（前身 `Fn(&[f64]) -> Vec<Modifier>` 为 M0 骨架，
+/// 蓝图 §11 Q3 裁决扩展——enemyIsBoss 等条目需写 enemy 侧 / 读 db 状态）。
+pub type Handler = Box<dyn Fn(&HandlerCtx<'_>) -> HandlerOutcome + Send + Sync>;
 
 /// 重复注册同一 `handler_id` 的错误（注册集合必须唯一且启动期确定）。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,30 +188,71 @@ mod tests {
     use super::*;
 
     fn noop_handler() -> Handler {
-        Box::new(|_| Vec::new())
+        Box::new(|_| HandlerOutcome::default())
     }
 
-    /// 注册后可按 id 取回并调用，产出 Modifier。
+    /// 注册后可按 id 取回并调用，产出 HandlerOutcome（mods + 条件 + 标量）。
     #[test]
     fn register_then_get_and_invoke() {
         let mut registry = HandlerRegistry::new();
         registry
             .register(
                 "test:scaled_life",
-                Box::new(|nums| {
-                    vec![Modifier::number(
-                        "Life",
-                        ModType::Base,
-                        nums.first().copied().unwrap_or(0.0),
-                    )]
+                Box::new(|ctx| HandlerOutcome {
+                    player_mods: vec![Modifier::number("Life", ModType::Base, ctx.input())],
+                    conditions: vec![("FullLife".to_string(), true)],
+                    scalars: vec![("LifeScale".to_string(), 2.0)],
+                    ..HandlerOutcome::default()
                 }),
             )
             .unwrap();
 
         let handler = registry.get("test:scaled_life").expect("已注册");
-        let mods = handler(&[50.0]);
-        assert_eq!(mods.len(), 1);
-        assert_eq!(mods[0].value.as_number(), Some(50.0));
+        let out = handler(&HandlerCtx::with_inputs(&[50.0]));
+        assert_eq!(out.player_mods.len(), 1);
+        assert_eq!(out.player_mods[0].value.as_number(), Some(50.0));
+        assert_eq!(out.conditions, vec![("FullLife".to_string(), true)]);
+        assert_eq!(out.scalars, vec![("LifeScale".to_string(), 2.0)]);
+        assert!(out.enemy_mods.is_empty());
+    }
+
+    /// HandlerCtx 缺省形态：无 db/cfg/主技能上下文，input() 缺省 0.0。
+    #[test]
+    fn ctx_defaults_are_conservative() {
+        let ctx = HandlerCtx::default();
+        assert_eq!(ctx.input(), 0.0);
+        assert!(ctx.player_db.is_none());
+        assert!(ctx.enemy_db.is_none());
+        assert!(ctx.cfg.is_none());
+        assert!(ctx.main_skill.is_none());
+    }
+
+    /// ctx 按需携带 db/cfg：handler 能经只读引用做聚合查询。
+    #[test]
+    fn ctx_carries_db_and_cfg_readonly() {
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::number("Life", ModType::Base, 40.0));
+        let cfg = CalcConfig::new();
+        let ctx = HandlerCtx {
+            inputs: &[],
+            player_db: Some(&db),
+            enemy_db: None,
+            cfg: Some(&cfg),
+            main_skill: None,
+        };
+        let handler: Handler = Box::new(|ctx| {
+            let (Some(db), Some(cfg)) = (ctx.player_db, ctx.cfg) else {
+                return HandlerOutcome::default();
+            };
+            let life = db.sum(
+                ModType::Base,
+                cfg,
+                &[pobr_data::modifier::ModName::from("Life")],
+            );
+            HandlerOutcome::player_mods(vec![Modifier::number("X", ModType::Base, life)])
+        });
+        let out = handler(&ctx);
+        assert_eq!(out.player_mods[0].value.as_number(), Some(40.0));
     }
 
     /// 同 id 重复注册报错，不静默覆盖既有 handler。
