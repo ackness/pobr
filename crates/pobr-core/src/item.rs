@@ -149,3 +149,155 @@ fn ingest_section(
 
     Ok(())
 }
+
+// ── flask / charm 词条接入（M3-T4 D2，蓝图 m3-orchestration.md §7.2）───────────
+//
+// flask/charm 词条**不直接**进入聚合：解析产物包进一个 List 型「载荷 mod」
+// （[`FLASK_BUFF_LIST_NAME`] / [`CHARM_BUFF_LIST_NAME`]，`ModValue::NestedMods`），
+// 由 `calc/env_finalize.rs` 阶段 3 `merge_flasks_charms` 在 `mode_combat` 门控下
+// 按 effect 乘区缩放后并入 player db（对照 vendor CalcPerform.lua:1429-1663
+// mergeFlasks/mergeCharms 的「收集 → ScaleAddList → AddList」两段式）。
+// List mod 不参与 sum/more/flag 聚合 → 载荷在未合并前对输出零影响（搬迁不变式）。
+//
+// 范围声明（M3）：只覆盖「词条进计算 + 吃 effect 乘区」；充能/持续时间/恢复模型
+// （vendor flaskData.duration/charges、calcFlaskRecovery）不建。
+
+/// flask 词条载荷 List mod 名（`merge_flasks_charms` 消费）。
+pub const FLASK_BUFF_LIST_NAME: &str = "FlaskBuff";
+/// charm 词条载荷 List mod 名（`merge_flasks_charms` 消费）。
+pub const CHARM_BUFF_LIST_NAME: &str = "CharmBuff";
+/// 载荷内「本件局部 effect inc」词条名（vendor `item.flaskData.effectInc` 等价，
+/// 来自本件 `N% increased/reduced effect` 行）。merge 阶段读出后**不注入**。
+pub const LOCAL_UTILITY_EFFECT_NAME: &str = "LocalUtilityEffect";
+
+/// flask / charm 分类。PoE2 charm 在 .dat 的 item_class 同为 `UtilityFlask`
+/// （基底 id `Metadata/Items/Flasks/FourCharm*`），按基底名判别。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UtilityItemKind {
+    Flask,
+    Charm,
+}
+
+/// 按基底名判别 flask/charm（PoE2 charm 基底名恒含 "Charm"：Thawing/Ruby/… Charm；
+/// magic 名形如 "Sapphire Charm of Lightning" 亦命中 contains）。
+pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
+    if item.base.to_string().contains("Charm") {
+        UtilityItemKind::Charm
+    } else {
+        UtilityItemKind::Flask
+    }
+}
+
+/// 把一件**激活态** flask/charm 的词条解析为载荷 List mod（零直接聚合影响）。
+///
+/// - 归因：`SourceId(SourceKind::Flask, "flask.<slot_key>")`（蓝图 D4），
+///   `slot_key` = 槽名小写去空格（`"Charm 1"` → `charm1`）；内层 mod 各自带
+///   origin（slot + raw_text），merge 注入后可逐词条回溯。
+/// - `N% increased/reduced effect` → 载荷内 [`LOCAL_UTILITY_EFFECT_NAME`] Inc。
+/// - `Grants Onslaught [during effect]` → `Onslaught` Flag（merge 后由
+///   env_finalize 阶段 6 buff_definitions `OnslaughtFlask` 消费）。
+/// - 其余行剥 `... during effect` 后缀复用 [`parse_mod`]（激活态语义已由槽位
+///   `active` 门控承担）；不可解析行（含解析硬错误——flask 文本多为触发/恢复行，
+///   按编排层 skip-and-collect 容错口径）收集进 [`ItemIngest::unsupported`]。
+/// - 全部行不可解析时不产出载荷（空载荷零噪声）。
+pub fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
+    let slot_key: String = slot_name
+        .to_lowercase()
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    let source_id = SourceId::new(SourceKind::Flask, format!("flask.{slot_key}"));
+    let make_origin = |text: &str| {
+        ModifierSource::new(source_id.clone())
+            .with_slot(slot_key.clone())
+            .with_raw_text(text.to_string())
+    };
+
+    let mut nested: Vec<Modifier> = Vec::new();
+    let mut ingest = ItemIngest::default();
+    for text in item
+        .implicit_texts
+        .iter()
+        .chain(&item.modifier_texts)
+        .chain(&item.enchant_texts)
+    {
+        if let Some(value) = parse_local_effect_inc(text) {
+            nested.push(
+                Modifier::number(LOCAL_UTILITY_EFFECT_NAME, ModType::Inc, value)
+                    .with_source(text.clone())
+                    .with_origin(make_origin(text)),
+            );
+            continue;
+        }
+        if let Some(flag) = parse_granted_buff_flag(text) {
+            nested.push(
+                flag.with_source(text.clone())
+                    .with_origin(make_origin(text)),
+            );
+            continue;
+        }
+        match parse_mod(strip_during_effect(text)) {
+            Ok(outcome) if outcome.status == ParseStatus::Parsed => {
+                for modifier in outcome.mods {
+                    nested.push(modifier.with_origin(make_origin(text)));
+                }
+            }
+            // Unsupported 或硬错误：报告原行（含后缀），与物品文本逐行可对照。
+            Ok(_) | Err(_) => ingest.unsupported.push(text.clone()),
+        }
+    }
+
+    if nested.is_empty() {
+        return ingest;
+    }
+    let list_name = match classify_utility_item(item) {
+        UtilityItemKind::Flask => FLASK_BUFF_LIST_NAME,
+        UtilityItemKind::Charm => CHARM_BUFF_LIST_NAME,
+    };
+    ingest.modifiers.push(
+        Modifier::new(
+            ModName::from(list_name),
+            ModType::List,
+            crate::ModValue::NestedMods(nested),
+        )
+        // source = 基底名：merge 阶段 `Using<BaseName>` 条件的来源
+        // （vendor CalcPerform.lua:1536/:1647 `Using..baseName:gsub("%s+","")`）。
+        .with_source(item.base.to_string())
+        .with_origin(ModifierSource::new(source_id).with_slot(slot_key)),
+    );
+    ingest
+}
+
+/// `N% increased effect` / `N% reduced effect`（大小写不敏感）→ 本件局部 effect inc。
+fn parse_local_effect_inc(text: &str) -> Option<f64> {
+    let lower = text.trim().to_lowercase();
+    let (number, sign) = lower
+        .strip_suffix("% increased effect")
+        .map(|n| (n, 1.0))
+        .or_else(|| lower.strip_suffix("% reduced effect").map(|n| (n, -1.0)))?;
+    number.parse::<f64>().ok().map(|value| value * sign)
+}
+
+/// `Grants <Buff名> [during effect]` → 对应 Flag mod（当前白名单：Onslaught，
+/// 对应 buff_definitions `OnslaughtFlask.trigger_flag`）。
+fn parse_granted_buff_flag(text: &str) -> Option<Modifier> {
+    let lower = text.trim().to_lowercase();
+    let granted = lower.strip_prefix("grants ")?;
+    let granted = granted.strip_suffix(" during effect").unwrap_or(granted);
+    match granted {
+        "onslaught" => Some(Modifier::flag("Onslaught")),
+        _ => None,
+    }
+}
+
+/// 剥 `... during [flask] effect` 后缀（大小写不敏感），返回正文切片。
+fn strip_during_effect(text: &str) -> &str {
+    let trimmed = text.trim();
+    let lower = trimmed.to_lowercase();
+    for suffix in [" during flask effect", " during effect"] {
+        if lower.ends_with(suffix) {
+            return trimmed[..trimmed.len() - suffix.len()].trim_end();
+        }
+    }
+    trimmed
+}

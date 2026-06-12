@@ -76,6 +76,31 @@
 
 - parser 规则 precompile（M6）未落地，drill 步骤 4 恒 SKIP；M6 落地后接入。
 
+### F8 flask/charm 基底数据列（adapter 增列）被输入快照缺失阻塞（M3-T4 D2 / Q4 侦察结论）
+
+- **Q4 结论（charm 基底可得性）**：PoE2 charm 在 `.dat` **没有独立 item_class**——
+  `base_items.json` 实查 13 个 charm 基底（Thawing/Staunching/Ruby/… Charm）均为
+  `item_class = "UtilityFlask"`、基底 id `Metadata/Items/Flasks/FourCharm*`；
+  LifeFlask×9 / ManaFlask×9 另列。**无需补 ItemClasses 表**，charm/flask 判别走
+  基底名（已在 `pobr-core::item::classify_utility_item` 落地）。
+- **阻塞**：`flask{duration, charges, buff_stats[]}/charm{...}` 数据列的真源是
+  `Flasks` `.dat` 表（含 BuffDefinition/BuffStatValues 外键），该表不在
+  `pipeline/config.json` tables 清单；本地 `pipeline/tables/` 快照**整目录缺失**
+  （F3 漂移的恶化形态），且 CDN 已下线 4.5.0.3.4（同 `_tablesUnavailableForPinnedPatch`
+  注记）→ adapter 无法重跑，**任何 base_items.json 增列都无法按「重跑 byte-diff
+  仅新列增量」纪律产出**。按蓝图 Q4「缺口登记不硬造」处理：本波 adapter 不增列。
+- **现状口径**：charm/flask **物品文本词条**已进计算（item.rs flask 分支 →
+  FlaskBuff/CharmBuff 载荷 → env_finalize 阶段 3 merge，mode_combat 门控）；缺的是
+  **基底常驻 buff**（vendor `item.base.charm.buff`，如 Ruby Charm
+  `+25% to Fire Resistance`、Thawing Charm `Immune to Freeze`——PoB2 XML 物品文本
+  不含这些行）与 duration/charges（M3 范围声明本就不建模）。
+- **吸收路径（登记 M5/M6 数据化清单）**：
+  1. 版本升级重下时把 `Flasks`（及其 BuffDefinitions 关联表）加入
+     `pipeline/config.json` tables，adapter 增列 `flask{}/charm{}`（L1 搬迁）；
+  2. 在此之前如需 charm 基底 buff，走 extract-lua 兜底通道（vendor
+     `Data/Bases/flask.lua` 的 `charm{duration, chargesUsed, chargesMax, buff[]}` /
+     `flask{...}` 字段，与 GemEffects 等同例）→ `overlay/flask_bases.json`。
+
 ## 模拟数值变更演练记录（蓝图 §8.3「人工模拟一处数值变更」）
 
 1. 复制 vendor 检出 → 临时副本，改 `src/Modules/Data.lua:282`

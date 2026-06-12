@@ -321,3 +321,119 @@ fn catalyst_scaling_is_deferred_no_field_in_model() {
         "催化剂未建模：accessory 不应因品质产生任何额外 modifier"
     );
 }
+
+// ── flask / charm 载荷接入（M3-T4 D2，item.rs flask 分支）────────────────────
+
+use pobr_core::item::{
+    CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, LOCAL_UTILITY_EFFECT_NAME, UtilityItemKind,
+    classify_utility_item, ingest_flask_charm,
+};
+
+fn utility_item(base: &str, implicits: &[&str], explicits: &[&str]) -> Item {
+    Item {
+        base: ItemBaseId::from(base),
+        rarity: ItemRarity::Magic,
+        quality: 0,
+        implicit_texts: implicits.iter().map(|t| (*t).to_string()).collect(),
+        modifier_texts: explicits.iter().map(|t| (*t).to_string()).collect(),
+        enchant_texts: Vec::new(),
+        rolled_defence: RolledDefence::default(),
+        parsed_stats: Vec::new(),
+    }
+}
+
+/// charm 词条 → CharmBuff 载荷（List 嵌套），归因 SourceId(Flask, "flask.charm1")；
+/// 载荷对聚合零影响（List 不参与 sum——未合并前逐值不变的微观锚点）。
+#[test]
+fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
+    let charm = utility_item(
+        "Sapphire Charm of Lightning",
+        &["Used when you take Cold damage from a Hit"],
+        &["+15% to Lightning Resistance"],
+    );
+    assert_eq!(classify_utility_item(&charm), UtilityItemKind::Charm);
+
+    let ingest = ingest_flask_charm("Charm 1", &charm);
+    assert_eq!(
+        ingest.unsupported,
+        vec!["Used when you take Cold damage from a Hit".to_string()],
+        "触发行不可解析 → unsupported 原行收集"
+    );
+    assert_eq!(ingest.modifiers.len(), 1, "仅一个载荷 mod");
+    let carrier = &ingest.modifiers[0];
+    assert_eq!(carrier.name, ModName::from(CHARM_BUFF_LIST_NAME));
+    assert_eq!(carrier.mod_type, ModType::List);
+    assert_eq!(
+        carrier.source.as_deref(),
+        Some("Sapphire Charm of Lightning")
+    );
+    let origin = carrier.origin.as_ref().expect("carrier origin");
+    assert_eq!(
+        origin.source_id,
+        SourceId::new(SourceKind::Flask, "flask.charm1")
+    );
+
+    let nested = carrier.value.as_nested_mods().expect("nested payload");
+    assert_eq!(nested.len(), 1);
+    assert_eq!(nested[0].name, ModName::from("LightningResistance"));
+    assert_eq!(
+        nested[0].origin.as_ref().unwrap().source_id,
+        SourceId::new(SourceKind::Flask, "flask.charm1"),
+        "内层 mod 各自带 Flask 归因"
+    );
+
+    // List 载荷对聚合零影响（未合并前逐值不变）。
+    let mut db = ModDb::new();
+    db.add_mod(carrier.clone());
+    assert_eq!(
+        db.sum(
+            ModType::Base,
+            &CalcConfig::new(),
+            &[ModName::from("LightningResistance")]
+        ),
+        0.0
+    );
+}
+
+/// flask 特殊行：`Grants Onslaught during effect` → Onslaught Flag；
+/// `N% increased effect` → LocalUtilityEffect；`... during effect` 后缀剥除复用 parser。
+#[test]
+fn ingest_flask_parses_onslaught_local_effect_and_during_effect_suffix() {
+    let flask = utility_item(
+        "Quicksilver Flask",
+        &[],
+        &[
+            "Grants Onslaught during effect",
+            "25% increased effect",
+            "10% increased Movement Speed during effect",
+        ],
+    );
+    assert_eq!(classify_utility_item(&flask), UtilityItemKind::Flask);
+
+    let ingest = ingest_flask_charm("Flask 1", &flask);
+    assert!(ingest.unsupported.is_empty(), "{:?}", ingest.unsupported);
+    let carrier = &ingest.modifiers[0];
+    assert_eq!(carrier.name, ModName::from(FLASK_BUFF_LIST_NAME));
+    let nested = carrier.value.as_nested_mods().unwrap();
+    assert_eq!(nested.len(), 3);
+    assert_eq!(nested[0].name, ModName::from("Onslaught"));
+    assert_eq!(nested[0].mod_type, ModType::Flag);
+    assert_eq!(nested[1].name, ModName::from(LOCAL_UTILITY_EFFECT_NAME));
+    assert_eq!(nested[1].value.as_number(), Some(25.0));
+    assert_eq!(nested[2].name, ModName::from("MovementSpeed"));
+    assert_eq!(nested[2].mod_type, ModType::Inc);
+    assert_eq!(nested[2].value.as_number(), Some(10.0));
+}
+
+/// 全部行不可解析 → 不产出空载荷（零噪声）。
+#[test]
+fn ingest_flask_charm_emits_no_payload_when_nothing_parses() {
+    let charm = utility_item(
+        "Thawing Charm",
+        &["Used when you become Frozen"],
+        &["Energy Shield Recharge starts on use"],
+    );
+    let ingest = ingest_flask_charm("Charm 2", &charm);
+    assert!(ingest.modifiers.is_empty());
+    assert_eq!(ingest.unsupported.len(), 2);
+}

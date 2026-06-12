@@ -121,13 +121,191 @@ fn fingerprint(m: &Modifier) -> String {
     format!("{m:?}")
 }
 
-/// 阶段 3（T4 归属）：flask/charm 合并（对照 CalcPerform.lua:1429-1663
-/// mergeFlasks/mergeCharms，mode_combat 门控）。
+/// 阶段 3（M3-T4 D2）：flask/charm 词条合并——载荷 List mod 经 effect 乘区缩放后
+/// 并入 player db（对照 vendor `CalcPerform.lua:1429-1663` mergeFlasks/mergeCharms，
+/// 行号实读）。
 ///
-/// **本波（M3 当前 stage）永久 no-op 占位**：flask 基底数据列（base_items.json
-/// `flask{}`/`charm{}`）前置未落（蓝图 §0.1 假设 9），T4 的 adapter 增列 +
-/// xml_build 槽位 patch 就绪后才接实现体。
-pub fn merge_flasks_charms(_env: &mut Env) {}
+/// 输入是 [`crate::item::ingest_flask_charm`] 产出的 `FlaskBuff`/`CharmBuff` 载荷
+/// （`ModValue::NestedMods`，仅**激活态**槽位被 build 层接入——vendor
+/// CalcSetup.lua:1014-1028 `slot.active` 门控 env.flasks/charms，flask 与 charm 同口径）。
+///
+/// vendor 对照（行号）：
+/// - :1656-1663 整段 `env.mode_combat` 门控 → `cfg.mode_combat`（D5，默认 false 零行为）；
+/// - :1405/:1495 flask effect = `Σ INC FlaskEffect + item.flaskData.effectInc`（局部份
+///   即载荷内 `LocalUtilityEffect`）；:1587/:1602 charm 同构（`CharmEffect`）；
+/// - :1589 `charmLimit = min(Override(CharmLimit) or Σ BASE CharmLimit, 3)`，cap 经
+///   `cfg.constants.game().charm_limit_cap` 注入（禁新魔数）；:1640-1643 超限 charm
+///   不并入（按载荷插入序扣减——vendor `pairs()` 序本身未定义，此处取确定性序）；
+/// - :1493-1530 `ScaleAddList(modList, effectMod)`：数值 mod 缩放（默认精度
+///   `m_modf(round(v×scale, 2))` 截断，ModStore.lua:75；原值非整数走
+///   `defaultHighPrecision=1` 位 floor，Data.lua:413），flag 不缩放；
+/// - :41-63 `mergeBuff`：同组（同 base）同参数 mod 取**最大值**不叠加；
+/// - :1535-1542/:1646-1647 条件：`UsingFlask`/`UsingCharm` + `Using<Base名去空格>` +
+///   `UsingLifeFlask`（基底名含 "Life Flask" 且无 `CannotRecoverLifeOutsideLeech`）/
+///   `UsingManaFlask`；
+/// - :1561 `FlasksDoNotApplyToPlayer` → flask 的 buff 与条件整体不落 player。
+///
+/// 已知差异（M3 范围声明，蓝图 §7.2）：充能/持续/恢复模型（flaskData.duration/charges、
+/// calcFlaskRecovery、Mageblood 特判 :1387-1403）不建；`MagicUtilityFlaskEffect`/
+/// `MagicCharmEffect`（:1406/:1588，需 rarity 通道）、minion 侧应用（:1568-1586）、
+/// `highPrecisionMods` 按词条覆盖精度表均不实现；charm 基底常驻 buff
+/// （vendor `item.base.charm.buff`，如 Ruby Charm `+25% to Fire Resistance`）依赖
+/// 基底数据列（缺口已登记 drill-findings-m3.md F8），当前仅物品文本词条进入。
+///
+/// 归因：载荷与内层 mod 均带 `SourceId(SourceKind::Flask, "flask.<slot>")`（ingest 落），
+/// 合并注入后逐词条可回溯。幂等：player db 已存在非 List 的 Flask 来源 mod 时跳过
+/// （同一 Env 重复 perform 不重复并入）。空转兼容：无载荷 / `mode_combat == false`
+/// 时不写任何状态（D1 搬迁不变式锚点）。
+pub fn merge_flasks_charms(env: &mut Env) {
+    use std::collections::BTreeMap;
+
+    use crate::ModValue;
+    use crate::item::{CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, LOCAL_UTILITY_EFFECT_NAME};
+
+    /// vendor ScaleAddMod 默认精度（ModStore.lua:69-76）：整数原值
+    /// `m_modf(round(v×scale,2))` 截断；非整数原值 floor 到 `defaultHighPrecision=1` 位。
+    fn scale_value(value: f64, scale: f64) -> f64 {
+        if scale == 1.0 {
+            return value;
+        }
+        let scaled = value * scale;
+        if value.fract() == 0.0 {
+            ((scaled * 100.0 + 0.5).floor() / 100.0).trunc()
+        } else {
+            (scaled * 10.0).floor() / 10.0
+        }
+    }
+
+    /// vendor mergeBuff（CalcPerform.lua:41-63）：同参数（name/type/flags/keywordFlags/
+    /// tags）已存在时数值取最大、不叠加；否则追加。
+    fn merge_buff_max(group: &mut Vec<Modifier>, candidate: Modifier) {
+        let same_params = |a: &Modifier, b: &Modifier| {
+            a.name == b.name
+                && a.mod_type == b.mod_type
+                && a.flags == b.flags
+                && a.keyword_flags == b.keyword_flags
+                && a.tags == b.tags
+        };
+        if candidate.mod_type != ModType::List
+            && let Some(existing) = group.iter_mut().find(|m| same_params(m, &candidate))
+        {
+            if let (Some(new), Some(old)) =
+                (candidate.value.as_number(), existing.value.as_number())
+                && new > old
+            {
+                *existing = candidate;
+            }
+            return;
+        }
+        group.push(candidate);
+    }
+
+    if !env.cfg.mode_combat {
+        return;
+    }
+    // 幂等护栏：非 List 的 Flask 来源 mod 已存在 = 本 Env 已并入过。
+    let already_merged = env.player.mod_db.iter_mods().any(|m| {
+        m.mod_type != ModType::List
+            && m.origin
+                .as_ref()
+                .is_some_and(|o| o.source_id.kind == SourceKind::Flask)
+    });
+    if already_merged {
+        return;
+    }
+
+    let flask_list = ModName::from(FLASK_BUFF_LIST_NAME);
+    let charm_list = ModName::from(CHARM_BUFF_LIST_NAME);
+    let local_effect = ModName::from(LOCAL_UTILITY_EFFECT_NAME);
+
+    let carriers: Vec<Modifier> = env
+        .player
+        .mod_db
+        .iter_mods()
+        .filter(|m| {
+            m.mod_type == ModType::List
+                && (m.name == flask_list || m.name == charm_list)
+                && m.matches(&env.cfg)
+                && m.value.as_nested_mods().is_some()
+        })
+        .cloned()
+        .collect();
+    if carriers.is_empty() {
+        return;
+    }
+
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let flask_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("FlaskEffect")]);
+    let charm_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("CharmEffect")]);
+    let charm_limit_name = ModName::from("CharmLimit");
+    let mut charm_budget = db
+        .override_(cfg, charm_limit_name.clone())
+        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[charm_limit_name]))
+        .min(cfg.constants.game().charm_limit_cap);
+    let flasks_do_not_apply = db.flag(cfg, ModName::from("FlasksDoNotApplyToPlayer"));
+    let cannot_recover_life = db.flag(cfg, ModName::from("CannotRecoverLifeOutsideLeech"));
+
+    // mergeBuff 分组：`(is_charm, base 名)` → 同组同参数取最大（BTreeMap 确定性序）。
+    let mut groups: BTreeMap<(bool, String), Vec<Modifier>> = BTreeMap::new();
+    let mut conditions: Vec<String> = Vec::new();
+    for carrier in &carriers {
+        let is_charm = carrier.name == charm_list;
+        if is_charm {
+            if charm_budget < 1.0 {
+                continue; // :1640-1643 超出 charm limit。
+            }
+            charm_budget -= 1.0;
+        } else if flasks_do_not_apply {
+            continue; // :1561（buff 与条件同 gate）。
+        }
+        let nested = carrier.value.as_nested_mods().unwrap_or(&[]);
+        let local_inc: f64 = nested
+            .iter()
+            .filter(|m| m.name == local_effect)
+            .filter_map(|m| m.value.as_number())
+            .sum();
+        let global_inc = if is_charm {
+            charm_effect_inc
+        } else {
+            flask_effect_inc
+        };
+        let effect_mod = 1.0 + (global_inc + local_inc) / 100.0;
+
+        let base_name = carrier.source.clone().unwrap_or_default();
+        conditions.push(if is_charm { "UsingCharm" } else { "UsingFlask" }.to_string());
+        if !base_name.is_empty() {
+            let compact: String = base_name.chars().filter(|c| !c.is_whitespace()).collect();
+            conditions.push(format!("Using{compact}"));
+        }
+        if !is_charm {
+            if base_name.contains("Life Flask") && !cannot_recover_life {
+                conditions.push("UsingLifeFlask".to_string());
+            }
+            if base_name.contains("Mana Flask") {
+                conditions.push("UsingManaFlask".to_string());
+            }
+        }
+
+        let group = groups.entry((is_charm, base_name)).or_default();
+        for inner in nested.iter().filter(|m| m.name != local_effect) {
+            let mut scaled = inner.clone();
+            if let Some(value) = scaled.value.as_number() {
+                scaled.value = ModValue::Number(scale_value(value, effect_mod));
+            }
+            merge_buff_max(group, scaled);
+        }
+    }
+
+    for group in groups.into_values() {
+        for modifier in group {
+            env.player.mod_db.add_mod(modifier);
+        }
+    }
+    for condition in conditions {
+        env.cfg.conditions.insert(condition, true);
+    }
+}
 
 /// 阶段 4（T3 实现）：`Env::buff_skills` 九类分发（对照 CalcPerform.lua:1831-2984；
 /// aura 乘区 :2103-2105 / curse priority :454-485 + limit :2829-2833），整段吃

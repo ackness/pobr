@@ -197,6 +197,12 @@ pub struct Build {
     /// 族等）计入玩家 modDB；PoBR 在编排层把这些物品的可解析词条按全局注入
     /// （见 `calc_orchestrator`）。非激活槽不进入本列表。
     pub flask_charm_items: Vec<Item>,
+    /// **激活态**药剂/护符的「槽名 + 物品」保留（M3-T4 D2，蓝图 §7.2-2）：
+    /// `("Flask 1"|"Charm 1..3", Item)`，XML 文档序。与 [`Self::flask_charm_items`]
+    /// 同源同过滤（仅 `active="true"`）——本字段额外保留槽名，供 flask/charm 结构化
+    /// 通道做 `SourceId(Flask, "flask.<slot>")` 归因与 flask/charm 分类；
+    /// `flask_charm_items` 是编排层「原值直注」旧路径的输入，切换（删旧路径）时一并退役。
+    pub utility_slots: Vec<(String, Item)>,
     /// 技能宝石组。
     pub socket_groups: Vec<SocketGroup>,
     /// 主技能组索引（PoB `<Build mainSocketGroup>`，**1-based**，指向 `socket_groups`）。
@@ -258,6 +264,12 @@ impl Build {
     /// 设定激活态药剂/护符列表，返回新副本。
     pub fn with_flask_charm_items(mut self, items: Vec<Item>) -> Self {
         self.flask_charm_items = items;
+        self
+    }
+
+    /// 设定激活态药剂/护符的槽名保留列表（见 [`Self::utility_slots`]），返回新副本。
+    pub fn with_utility_slots(mut self, slots: Vec<(String, Item)>) -> Self {
+        self.utility_slots = slots;
         self
     }
 
