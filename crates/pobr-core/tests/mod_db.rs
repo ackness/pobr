@@ -396,3 +396,198 @@ fn nested_mods_value_has_no_scalar_views() {
     assert_eq!(value.as_text(), None);
     assert_eq!(value.as_nested_mods().map(<[Modifier]>::len), Some(1));
 }
+
+// ===========================================================================
+// M4-T1 W-A2：写侧原语 ReplaceMod / ConvertMod / ScaleAddMod
+// ===========================================================================
+
+/// ReplaceMod 命中（vendor ModDB.lua:38-66）：同 name+type+flags+keywordFlags+source
+/// → 原位替换（桶内数量不变、顺序保持）；不同 source → append。
+#[test]
+fn replace_mod_replaces_on_full_param_match_else_appends() {
+    let cfg = CalcConfig::new();
+    let names = [ModName::from("Multiplier:BoltsReloaded")];
+    let mut db = ModDb::new();
+    db.add_mod(
+        Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 3.0).with_source("Reload"),
+    );
+    db.add_mod(
+        Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 1.0).with_source("Other"),
+    );
+
+    // 命中：同 name+type+flags+kw+source → 值被替换，桶内仍 2 条。
+    let replaced = db.replace_mod(
+        Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 5.0).with_source("Reload"),
+    );
+    assert!(replaced);
+    assert_eq!(db.sum(ModType::Base, &cfg, &names), 6.0, "5 + 1（Other）");
+
+    // 未命中（source 不同）→ append。
+    let replaced = db.replace_mod(
+        Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 2.0).with_source("Third"),
+    );
+    assert!(!replaced);
+    assert_eq!(db.sum(ModType::Base, &cfg, &names), 8.0, "5 + 1 + 2");
+
+    // flags 不同也算未命中（vendor 比对含 flags/keywordFlags）。
+    let replaced = db.replace_mod(
+        Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 4.0)
+            .with_source("Reload")
+            .with_flags(ModFlags::ATTACK),
+    );
+    assert!(!replaced);
+}
+
+/// ConvertMod 跨桶（vendor ModDB.lua:75-105）：旧名桶移除 + 新名桶落地；
+/// 未命中 → 直接 append 新 mod。
+#[test]
+fn convert_mod_moves_between_buckets() {
+    let cfg = CalcConfig::new();
+    let old_names = [ModName::from("ColdDamage")];
+    let new_names = [ModName::from("FireDamage")];
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("ColdDamage", ModType::Inc, 30.0).with_source("Tree"));
+    db.add_mod(Modifier::number("ColdDamage", ModType::Inc, 10.0).with_source("Gear"));
+
+    let converted = db.convert_mod(
+        &ModName::from("ColdDamage"),
+        Modifier::number("FireDamage", ModType::Inc, 30.0).with_source("Tree"),
+    );
+    assert!(converted);
+    assert_eq!(
+        db.sum(ModType::Inc, &cfg, &old_names),
+        10.0,
+        "Tree 条已移走"
+    );
+    assert_eq!(db.sum(ModType::Inc, &cfg, &new_names), 30.0, "落入新桶");
+
+    // 未命中（source 无匹配）→ append 新 mod（vendor :129-131）。
+    let converted = db.convert_mod(
+        &ModName::from("ColdDamage"),
+        Modifier::number("FireDamage", ModType::Inc, 5.0).with_source("Nowhere"),
+    );
+    assert!(!converted);
+    assert_eq!(db.sum(ModType::Inc, &cfg, &new_names), 35.0);
+    assert_eq!(db.sum(ModType::Inc, &cfg, &old_names), 10.0, "旧桶不动");
+}
+
+/// ScaleAddMod 取整 oracle 对拍（12 条，蓝图 W-A2 门禁 ≥10 全中）。
+///
+/// 期望值由 vendor 公式（ModStore.lua:55-80 数值分支 + Common.lua:648 round）
+/// 在 luajit 下逐条求得（脚本见 commit message；精度表 = 入库
+/// `overlay/high_precision_mods.json`，与 vendor Data.lua:413-530 逐值一致，
+/// 有独立加载测试）。LuaJIT 与 Rust 同为 IEEE754 double，浮点逐位可比。
+#[test]
+fn scale_add_mod_rounding_matches_pob2_oracle() {
+    use pobr_core::HighPrecisionRules;
+    let cfg = CalcConfig::new();
+    // 与 data/4.5.0.3.4/overlay/high_precision_mods.json 一致的最小子集
+    // （样本涉及条目；全表等价性由 gamedata 加载测试钉住）。
+    let mut mods = std::collections::BTreeMap::new();
+    for (name, mod_type, p) in [
+        ("CritChance", "BASE", 2u32),
+        ("LifeRegen", "BASE", 1),
+        ("LifeRegenPercent", "BASE", 2),
+        ("SupportManaMultiplier", "MORE", 4),
+        ("ReservationMultiplier", "MORE", 4),
+    ] {
+        mods.entry(name.to_string())
+            .or_insert_with(std::collections::BTreeMap::new)
+            .insert(mod_type.to_string(), p);
+    }
+    let rules = HighPrecisionRules::from_def(
+        pobr_data::catalog::high_precision_mods::HighPrecisionModsDef {
+            default_high_precision: 1,
+            more_default_round_decimals: 2,
+            mods,
+        },
+    );
+
+    // (name, type, value, scale, oracle 期望)——luajit 实跑输出，2026-06-12。
+    let samples: &[(&str, ModType, f64, f64, f64)] = &[
+        // 例外表命中（精度 2/1/4，floor 截位）：
+        ("CritChance", ModType::Base, 7.0, 0.5, 3.5),
+        ("CritChance", ModType::Base, 7.77, 1.2, 9.32),
+        ("LifeRegen", ModType::Base, 2.5, 0.3, 0.7),
+        ("LifeRegenPercent", ModType::Base, 0.25, 0.6667, 0.16),
+        (
+            "SupportManaMultiplier",
+            ModType::More,
+            25.0,
+            1.1111,
+            27.7775,
+        ),
+        // 负值 floor（向 −∞）：
+        (
+            "ReservationMultiplier",
+            ModType::More,
+            -30.0,
+            0.6667,
+            -20.001,
+        ),
+        // 未命中 + 小数原值 → defaultHighPrecision = 1：
+        ("Damage", ModType::Base, 2.5, 0.5, 1.2),
+        // 未命中 + 整数原值 → m_modf(round(·, 2)) 截整：
+        ("Damage", ModType::Base, 7.0, 0.5, 3.0),
+        // 负值截整向零（m_modf 语义，区别于 floor）：
+        ("Damage", ModType::Base, -7.0, 0.5, -3.0),
+        ("Damage", ModType::Inc, 33.0, 0.3, 9.0),
+        // scale == 1 → 原值直返（含小数也不取整，vendor :54）：
+        ("Damage", ModType::Base, 7.77, 1.0, 7.77),
+        ("Damage", ModType::Base, 19.0, 1.37, 26.0),
+    ];
+    for &(name, mod_type, value, scale, expected) in samples {
+        let mut db = ModDb::new();
+        db.scale_add_mod(Modifier::number(name, mod_type, value), scale, &rules);
+        let names = [ModName::from(name)];
+        let got = match mod_type {
+            ModType::More => {
+                // MORE 聚合是 Π(1+v/100)，直接读贡献值对拍缩放结果。
+                db.contributions(ModType::More, &cfg, &names)[0].value
+            }
+            t => db.sum(t, &cfg, &names),
+        };
+        assert_eq!(
+            got, expected,
+            "ScaleAddMod({name}, {mod_type:?}, {value}, ×{scale}) oracle 不中"
+        );
+    }
+}
+
+/// ScaleAddMod 非数值载荷：Bool/Text 原样入库；NestedMods 逐内层 Number 同规则缩放。
+#[test]
+fn scale_add_mod_non_number_payloads() {
+    use pobr_core::HighPrecisionRules;
+    let cfg = CalcConfig::new();
+    let rules = HighPrecisionRules::default();
+    let mut db = ModDb::new();
+
+    db.scale_add_mod(Modifier::flag("SomeFlag"), 0.5, &rules);
+    assert!(db.flag(&cfg, ModName::from("SomeFlag")), "Bool 载荷不缩放");
+
+    db.scale_add_mod(
+        Modifier::new(
+            "EnemyModifier",
+            ModType::List,
+            ModValue::NestedMods(vec![Modifier::number("Damage", ModType::Base, 7.0)]),
+        ),
+        0.5,
+        &rules,
+    );
+    let nested = db.list_nested(&cfg, ModName::from("EnemyModifier"));
+    assert_eq!(
+        nested[0].value,
+        ModValue::Number(3.0),
+        "嵌套 Number 同规则缩放（7 × 0.5 → round2 → 截整 = 3）"
+    );
+}
+
+/// HighPrecisionRules 默认 fallback（未注入数据）：无例外表，仅默认精度
+/// （default_high_precision = 1，与入库 JSON 同值——搬迁不变式）。
+#[test]
+fn high_precision_rules_default_has_no_exceptions() {
+    use pobr_core::HighPrecisionRules;
+    let rules = HighPrecisionRules::default();
+    assert_eq!(rules.precision_for("CritChance", ModType::Base), None);
+    assert_eq!(rules.default_high_precision(), 1);
+}

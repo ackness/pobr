@@ -15,6 +15,7 @@ use pobr_data::catalog::character_constants::CharacterConstantsDef;
 use pobr_data::catalog::config_def::ConfigOptionDef;
 use pobr_data::catalog::enemy_presets::EnemyPresetsTable;
 use pobr_data::catalog::game_constants::GameConstantsDef;
+use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::monster_scaling::MonsterScalingTable;
 use pobr_data::catalog::unarmed_data::UnarmedDataTable;
@@ -88,6 +89,9 @@ pub struct RuleSet {
     pub weapon_types: Option<WeaponTypeTable>,
     /// config 选项目录（声明式 effects + imply_conditions，M3）。
     pub config_catalog: Option<ConfigCatalog>,
+    /// 取整精度例外表（ScaleAddMod / MORE 聚合精度，M4-T1 W-A2 接通；
+    /// 消费侧 = pobr-core `HighPrecisionRules`）。
+    pub high_precision_mods: Option<HighPrecisionModsDef>,
 }
 
 impl GameData {
@@ -139,6 +143,11 @@ impl GameData {
             Err(LoadError::Io { .. }) => None,
             Err(e) => return Err(e),
         };
+        let high_precision_mods = match self.high_precision_mods() {
+            Ok(v) => Some(v),
+            Err(LoadError::Io { .. }) => None,
+            Err(e) => return Err(e),
+        };
         Ok(RuleSet {
             parser_rules: None,
             game_constants,
@@ -149,6 +158,7 @@ impl GameData {
             unarmed_data,
             weapon_types,
             config_catalog,
+            high_precision_mods,
         })
     }
 }
@@ -170,6 +180,20 @@ mod tests {
         assert!(ruleset.unarmed_data.is_none());
         assert!(ruleset.weapon_types.is_none());
         assert!(ruleset.config_catalog.is_none());
+        assert!(ruleset.high_precision_mods.is_none());
+    }
+
+    /// 仓库数据目录：high_precision_mods 域已接通（M4-T1 W-A2，
+    /// `overlay/high_precision_mods.json` ← vendor Data.lua:413-530）。
+    #[test]
+    fn repo_data_ruleset_loads_high_precision_mods() {
+        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let ruleset = data.load_ruleset().unwrap();
+        let loaded = ruleset
+            .high_precision_mods
+            .expect("high_precision_mods 域应已接通");
+        assert_eq!(loaded.default_high_precision, 1);
+        assert_eq!(loaded.mods.len(), 38, "vendor highPrecisionMods 38 条");
     }
 
     /// 仓库数据目录：game_constants 域已接通（Some），且与 Default fallback 逐值相等

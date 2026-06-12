@@ -25,7 +25,7 @@ pub use config::CalcConfig;
 pub use display_catalog::{display_catalog, extract_display_values};
 pub use item::{ItemIngest, ItemModSection, ingest_item};
 pub use item_text::{ItemTextError, parse_item_text, parse_pob_xml_item};
-pub use mod_db::{ModContribution, ModDb, ModList};
+pub use mod_db::{HighPrecisionRules, ModContribution, ModDb, ModList};
 pub use modifier::{ActorRef, ModTag, ModValue, Modifier};
 pub use passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes};
 pub use rules::{

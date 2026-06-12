@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModValue, Modifier, TraceGraph, TraceNodeId, TraceOperation, TracedValue};
@@ -7,6 +8,74 @@ use crate::{CalcConfig, ModValue, Modifier, TraceGraph, TraceNodeId, TraceOperat
 /// 单个 modName 的 MORE 连乘积按 PoB2 默认精度 `round(·, 2)` 归一（ModList.lua MoreInternal）。
 fn round_more(value: f64) -> f64 {
     (value * 100.0).round() / 100.0
+}
+
+/// PoB2 `round(val, dec)`（vendor `Common.lua:648-654`）：
+/// `m_floor(val × 10^dec + 0.5) / 10^dec`——半数恒向上（非银行家舍入；
+/// 负数与 Rust `f64::round` 在 `.5` 处不同，须用本函数对拍 vendor）。
+fn pob_round(value: f64, dec: i32) -> f64 {
+    let mult = 10f64.powi(dec);
+    (value * mult + 0.5).floor() / mult
+}
+
+/// 取整精度规则（M4-T1 W-A2）：vendor `data.highPrecisionMods` +
+/// `data.defaultHighPrecision`（`Data.lua:413-530`，入库为
+/// `overlay/high_precision_mods.json`，经 pobr-gamedata `RuleSet` 注入）。
+///
+/// `Default`（未注入数据）= **无例外表** fallback（蓝图 W-A2：默认
+/// `round(·,2)` 截整；小数原值仍走 `default_high_precision = 1`——该常量与
+/// 入库 JSON 逐值相等，搬迁不变式）。消费方：[`ModDb::scale_add_mod`] 与
+/// MORE 聚合精度例外分支。
+#[derive(Debug, Clone, Default)]
+pub struct HighPrecisionRules {
+    def: Option<HighPrecisionModsDef>,
+}
+
+impl HighPrecisionRules {
+    /// 从入库表构造（pobr-gamedata `RuleSet::high_precision_mods` → 此处）。
+    pub fn from_def(def: HighPrecisionModsDef) -> Self {
+        Self { def: Some(def) }
+    }
+
+    /// `data.highPrecisionMods[name][type]`（vendor `ModStore.lua:69` /
+    /// `ModDB.lua:175-180`）。mod type 键用 vendor 字面量（`BASE`/`MORE`…，
+    /// = [`ModType::as_trace_label`]）。未注入 / 未命中 → `None`。
+    pub fn precision_for(&self, name: &str, mod_type: ModType) -> Option<u32> {
+        self.def
+            .as_ref()?
+            .mods
+            .get(name)?
+            .get(mod_type.as_trace_label())
+            .copied()
+    }
+
+    /// `data.defaultHighPrecision`（`Data.lua:413` = 1；未注入时同值 fallback）。
+    pub fn default_high_precision(&self) -> u32 {
+        self.def.as_ref().map_or(1, |d| d.default_high_precision)
+    }
+}
+
+/// ScaleAddMod 的数值取整（vendor `ModStore.lua:69-77` 逐字）：
+/// - 精度 = 例外表 `[name][type]`，未命中且**原值含小数** → `defaultHighPrecision`；
+/// - 有精度 `p` → `m_floor(value × scale × 10^p) / 10^p`（floor，非四舍五入）；
+/// - 无精度 → `m_modf(round(value × scale, 2))` 取整数部（向零截断）。
+fn scale_mod_value(
+    name: &str,
+    mod_type: ModType,
+    value: f64,
+    scale: f64,
+    rules: &HighPrecisionRules,
+) -> f64 {
+    let precision = rules
+        .precision_for(name, mod_type)
+        .or_else(|| (value.floor() != value).then(|| rules.default_high_precision()));
+    match precision {
+        Some(p) => {
+            let power = 10f64.powi(p as i32);
+            (value * scale * power).floor() / power
+        }
+        None => pob_round(value * scale, 2).trunc(),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -39,6 +108,106 @@ impl ModDb {
         for modifier in modifiers {
             self.add_mod(modifier);
         }
+    }
+
+    /// 写侧原语 ReplaceMod（M4-T1 W-A2；vendor `ModStore.lua:114-118` +
+    /// `ModDB.lua:38-66` `ReplaceModInternal`）：同 `name + type + flags +
+    /// keywordFlags + source` 的既有 mod **原位替换**（保持桶内顺序），无匹配则
+    /// append（= [`add_mod`](Self::add_mod)）。
+    ///
+    /// 返回是否发生替换（`false` = 走了 append 分支）。典型消费方：弩 reload 的
+    /// `Multiplier:BoltsReloadedPastSixSeconds` 回写（`CalcOffence.lua:2890-2894`，
+    /// T4 W-D2）。注：pobr `ModDb` 无 parent 链（vendor 的 parent 递归不适用）。
+    pub fn replace_mod(&mut self, modifier: Modifier) -> bool {
+        if let Some(bucket) = self.mods.get_mut(&modifier.name)
+            && let Some(slot) = bucket.iter_mut().find(|cur| {
+                cur.mod_type == modifier.mod_type
+                    && cur.flags == modifier.flags
+                    && cur.keyword_flags == modifier.keyword_flags
+                    && cur.source == modifier.source
+            })
+        {
+            *slot = modifier;
+            return true;
+        }
+        self.add_mod(modifier);
+        false
+    }
+
+    /// 写侧原语 ConvertMod（M4-T1 W-A2；vendor `ModStore.lua:120-132` +
+    /// `ModDB.lua:75-105` `ConvertModInternal`）：在 `from` 桶内找同
+    /// `type + flags + keywordFlags + source`（与 `to` 比对）的既有 mod，
+    /// **从旧名桶移除、`to` 落新名桶**（跨桶搬迁）；无匹配则直接 append `to`。
+    ///
+    /// 返回是否发生搬迁。与 vendor 的已知出入（登记）：vendor 以 `converted`
+    /// 标记防同一 mod 被链式转换二次命中；pobr `Modifier` 无该标记——`from` 与
+    /// `to.name` 相同或转换链回环的场景未防护（当前无消费方，T4/T5 接入时若
+    /// 出现链式转换再补）。
+    pub fn convert_mod(&mut self, from: &ModName, to: Modifier) -> bool {
+        if let Some(old_bucket) = self.mods.get_mut(from)
+            && let Some(index) = old_bucket.iter().position(|cur| {
+                cur.mod_type == to.mod_type
+                    && cur.flags == to.flags
+                    && cur.keyword_flags == to.keyword_flags
+                    && cur.source == to.source
+            })
+        {
+            old_bucket.remove(index);
+            self.add_mod(to);
+            return true;
+        }
+        self.add_mod(to);
+        false
+    }
+
+    /// 写侧原语 ScaleAddMod（M4-T1 W-A2；vendor `ModStore.lua:45-81`）：按
+    /// `scale` 缩放数值后入库，取整走 [`HighPrecisionRules`]（见
+    /// [`scale_mod_value`] 的逐字分支）。`scale == 1` 直接入库（vendor :54）。
+    ///
+    /// 与 vendor 的已知出入（登记）：
+    /// - `effects.unscalable`（:46-52，不可缩放词条原值入库）——pobr `ModTag`
+    ///   暂无该位，全部视为可缩放（当前解析层无产出点）；
+    /// - `value.keyOfScaledMod` / `+level` floor 特例（:59-66）——针对 table 值
+    ///   内非 `mod` 键的缩放，pobr `ModValue` 无对应形态；
+    /// - [`ModValue::NestedMods`]（vendor `value.mod` 嵌套载荷）按同规则逐内层
+    ///   Number 缩放（vendor :57 `subMod = scaledMod.value.mod` 的多载荷推广）。
+    pub fn scale_add_mod(
+        &mut self,
+        mut modifier: Modifier,
+        scale: f64,
+        rules: &HighPrecisionRules,
+    ) {
+        if scale == 1.0 {
+            self.add_mod(modifier);
+            return;
+        }
+        match &mut modifier.value {
+            ModValue::Number(value) => {
+                *value = scale_mod_value(
+                    modifier.name.as_str(),
+                    modifier.mod_type,
+                    *value,
+                    scale,
+                    rules,
+                );
+            }
+            ModValue::NestedMods(nested) => {
+                for inner in nested.iter_mut() {
+                    if let ModValue::Number(value) = &mut inner.value {
+                        *value = scale_mod_value(
+                            inner.name.as_str(),
+                            inner.mod_type,
+                            *value,
+                            scale,
+                            rules,
+                        );
+                    }
+                }
+            }
+            // 布尔 / 文本载荷不缩放（vendor 仅对 number 分支取整，:68）。
+            ModValue::Bool(_) | ModValue::Text(_) => {}
+        }
+        self.add_mod(modifier);
     }
 
     /// Returns a new [`ModDb`] containing only the modifiers for which `keep`
