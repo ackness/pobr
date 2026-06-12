@@ -4,7 +4,7 @@ use pobr_core::calc::perform::perform;
 use pobr_core::calc::{
     AttributeInfusion, MinionData, MinionInput, MinionModifierEntry, build_minion_context,
 };
-use pobr_core::{CalcConfig, Modifier};
+use pobr_core::{CalcConfig, ModTag, Modifier};
 use pobr_data::prelude::*;
 
 fn player_with(base: ActorBaseStats, mods: Vec<Modifier>) -> Env {
@@ -1472,5 +1472,80 @@ fn perform_trigger_rate_folds_explicit_trigger_chance() {
         "50% 触发几率应使触发速率减半：got {} expect {}",
         env_half.player.output.skill_trigger_rate,
         cap * 0.5
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// M4-G：异常 magnitude 接 Stored 族 + vendor uptime 口径
+// ─────────────────────────────────────────────────────────────────
+
+/// vendor uptime 口径（CalcOffence.lua:5189-5193）：施加几率只经 ailmentStacks
+/// （uptime）进入 DPS——叠层估算饱和（stacks ≥ maxStacks）后，几率减半不再线性
+/// 折减 DPS（50% 几率 × 高攻速依然全程维持流血）。
+#[test]
+fn perform_ailment_uptime_saturates_chance() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 1000.0,
+        hit_max: 1000.0,
+        action_rate: 2.0,
+        ..ActorBaseStats::default()
+    };
+    let run = |chance: f64| {
+        let mut env = player_with(
+            base,
+            vec![Modifier::number("BleedChance", ModType::Base, chance)],
+        );
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        perform(&mut env).unwrap();
+        env.player.output.bleed_dps
+    };
+    let full = run(100.0);
+    let half = run(50.0);
+    assert!(full > 0.0, "100% 几率应有流血 DPS");
+    // stacks(50%) = 1 × 0.5 × 5s × 2/s = 5 ≥ max(1) → uptime 饱和，DPS 与 100% 相同。
+    assert!(
+        (half - full).abs() < 1e-6,
+        "uptime 饱和后几率不得线性折减 DPS：half={half} full={full}"
+    );
+}
+
+/// Stored 族暴击腿接入：on-crit 专属伤害词条（CriticalStrike 条件）经
+/// `Stored<Type>Crit{Min,Max}` 进入点燃来源——旧 `hit × CritMultiplier` 近似
+/// 看不到该词条（暴击腿真实聚合，vendor :4049-4052 → :4833-4857）。
+#[test]
+fn perform_ignite_source_uses_real_crit_leg() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 50_000.0,
+        hit_max: 50_000.0,
+        ..ActorBaseStats::default()
+    };
+    let fire_crit_mods = || {
+        vec![
+            Modifier::number("FireDamageMin", ModType::Base, 50_000.0),
+            Modifier::number("FireDamageMax", ModType::Base, 50_000.0),
+            Modifier::number("CriticalStrikeChance", ModType::Base, 100.0),
+            Modifier::number("CriticalStrikeMultiplier", ModType::Base, 100.0),
+        ]
+    };
+    let run = |extra: Vec<Modifier>| {
+        let mut mods = fire_crit_mods();
+        mods.extend(extra);
+        let mut env = player_with(base, mods);
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Fire);
+        perform(&mut env).unwrap();
+        env.player.output.ignite_dps
+    };
+    let plain = run(vec![]);
+    let with_on_crit = run(vec![
+        Modifier::number("FireDamage", ModType::Inc, 100.0)
+            .with_tag(ModTag::condition("CriticalStrike", false)),
+    ]);
+    assert!(plain > 0.0, "100% 暴击的火击中应点燃");
+    // 暴击腿 ×2（on-crit inc）→ 点燃来源（全暴击）≈ ×2；几率已 clamp 100 不再放大。
+    assert!(
+        with_on_crit > plain * 1.5,
+        "on-crit 词条应放大点燃 magnitude：plain={plain} on_crit={with_on_crit}"
     );
 }

@@ -34,6 +34,7 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation};
 
+use super::output::StoredDamageRange;
 use super::{DamageComponent, round};
 
 /// 一类伤害异常的命中来源伤害（pre-mitigation 平均击中，分非暴击/暴击两份）。
@@ -1345,6 +1346,70 @@ pub fn cross_type_source_hit_at_roll(
         }
     }
     total
+}
+
+/// 从 Stored 族（`Stored<Type>{Hit,Crit}{Min,Max}`，vendor `:4050-4056`）求某 damaging
+/// ailment 的两腿来源伤害——`calcMinMaxUnmitigatedAilmentSourceDamage`
+/// （CalcOffence.lua:4833-4857）+ RollAverage 内插（`:5125-5126`）的纯函数版。
+///
+/// 逐类型门控（`canDoAilment`，`:4791-4809`）：默认来源类型（[`is_default_source`]，
+/// = vendor `defaultDamageTypes`/ScalesFrom 表）或玩家 `<Type>Can<Ailment>` 旗标在场；
+/// 每类型乘 `More(<Type><Ailment>Buildup)`（`:4844`）。暴击腿独立累计自
+/// `Stored<Type>Crit{Min,Max}`（含暴击腿专属词条与 ×CritMultiplier）——替代旧的
+/// `hit × CritMultiplier` 近似。
+///
+/// 返回 `(hit_avg, crit_avg)`：`hit = hitMin + (hitMax−hitMin)×roll`（crit 同构）。
+/// `roll_pct = 50` 即区间中点；叠层溢出（StackPotential > 1）时 roll 向高位偏移。
+pub fn stored_source_at_roll(
+    ailment: AilmentType,
+    ranges: &[StoredDamageRange],
+    player: &ModDb,
+    cfg: &CalcConfig,
+    roll_pct: f64,
+) -> (f64, f64) {
+    let ailment_name = ailment_mod_name(ailment);
+    let roll = (roll_pct / 100.0).clamp(0.0, 1.0);
+    let (mut hit_min, mut hit_max) = (0.0, 0.0);
+    let (mut crit_min, mut crit_max) = (0.0, 0.0);
+    for range in ranges {
+        let dt = range.damage_type;
+        let prefix = type_prefix(dt);
+        if is_default_source(ailment, dt)
+            || player.flag(cfg, ModName::from(format!("{prefix}Can{ailment_name}")))
+        {
+            // vendor `:4844`：`more = More(damageType .. ailment .. "Buildup")`。
+            let more = player.more(
+                cfg,
+                &[ModName::from(format!("{prefix}{ailment_name}Buildup"))],
+            );
+            hit_min += range.hit_min * more;
+            hit_max += range.hit_max * more;
+            crit_min += range.crit_min * more;
+            crit_max += range.crit_max * more;
+        }
+    }
+    (
+        hit_min + (hit_max - hit_min) * roll,
+        crit_min + (crit_max - crit_min) * roll,
+    )
+}
+
+/// MH/OH 双 pass 的 damaging-ailment DPS 合并（vendor combineStat `CHANCE_AILMENT`，
+/// CalcOffence.lua:2498-2533 + 调用面 `:5738`）。
+///
+/// `maxInstanceStacks = min(1, stacks / maxStacks)`：叠层占满比例内用最大实例，
+/// 剩余比例用最小实例——`max×s + min×(1−s)`。`stacks` 为活跃叠层估算
+/// （[`estimate_active_stacks`]），`max_stacks` 为上限；估算缺失（stacks=0，无面板
+/// 速率信号）时保守取 s=1（全部按最大实例，vendor 无估算时 stackName 缺省为 1/1）。
+pub fn merge_hand_ailment_dps(mh_dps: f64, oh_dps: f64, stacks: f64, max_stacks: f64) -> f64 {
+    let max_instance = mh_dps.max(oh_dps);
+    let min_instance = mh_dps.min(oh_dps);
+    let s = if stacks > 0.0 && max_stacks > 0.0 {
+        (stacks / max_stacks).min(1.0)
+    } else {
+        1.0
+    };
+    round(max_instance * s + min_instance * (1.0 - s))
 }
 
 /// 是否为某 ailment 的默认来源伤害类型（无需 `Can<Ailment>` 旗标）。
