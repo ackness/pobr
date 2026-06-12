@@ -225,6 +225,13 @@ pub struct GameMechanicsConstantsDef {
     /// （CalcSetup.lua:28 注入 `BaseBlockChanceMax` BASE）。
     #[serde(default = "default_base_block_chance_max")]
     pub base_block_chance_max: f64,
+
+    // ---- M3-T4 D2：charm 合并（vendor-only）。----
+    /// 护符同时生效数上限（charm limit cap）。CalcPerform.lua:1589
+    /// `m_min(Override(CharmLimit) or Sum(BASE CharmLimit), 3)` 的字面 3
+    /// （`merge_flasks_charms` 消费）。
+    #[serde(default = "default_charm_limit_cap")]
+    pub charm_limit_cap: f64,
 }
 
 // serde default 函数（与 `Default` 落值同源，单一数值出处）。
@@ -233,6 +240,9 @@ fn default_ehp_calc_max_damage() -> f64 {
 }
 fn default_base_block_chance_max() -> f64 {
     50.0
+}
+fn default_charm_limit_cap() -> f64 {
+    3.0
 }
 fn default_ehp_calc_max_iterations() -> f64 {
     50.0
@@ -353,6 +363,8 @@ impl Default for GameMechanicsConstantsDef {
             max_hit_smoothing_passes: default_max_hit_smoothing_passes(),
             // M2-D：Block 面板族（Misc.lua:147 / CalcSetup.lua:28）。
             base_block_chance_max: default_base_block_chance_max(),
+            // M3-T4 D2：charm limit cap（CalcPerform.lua:1589）。
+            charm_limit_cap: default_charm_limit_cap(),
         }
     }
 }
