@@ -1258,10 +1258,12 @@ pub fn ailment_effect_mod(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// 异常 Rate 乘区（节奏修正）：`mod(Faster) / mod(Slower)`。
 ///
 /// `rateMod` 同时放大 DPS 并**等比缩短**持续时间，使总伤害不变但 DPS 提升。
-/// 分别读攻击方 `<Ailment>Faster`/`<Ailment>Slower`（MORE 聚合）与敌方
-/// `Self<Ailment>Faster`（INC 累加后除以 100，加入 faster 分子）。
+/// 分别读攻击方 `<Ailment>Faster`/`<Ailment>Slower`（calcLib.mod 口径 =
+/// INC+MORE 两腿，CalcTools.lua:16-18；statmap `faster_burn_%` 族产 INC，
+/// M4-m k3 接入）与敌方 `Self<Ailment>Faster`（INC 累加后除以 100，加入
+/// faster 分子）。
 ///
-/// 出处：PoB2 `CalcOffence.lua` l.5035
+/// 出处：PoB2 `CalcOffence.lua` l.5036
 /// ```lua
 /// local rateMod = (calcLib.mod(skillModList, cfg, ailment .. "Faster")
 ///     + enemyDB:Sum("INC", nil, "Self" .. ailment .. "Faster") / 100)
@@ -1279,13 +1281,16 @@ pub fn ailment_rate_mod(
     let slower_name = ModName::from(format!("{ailment_name}Slower"));
     let self_faster_name = ModName::from(format!("Self{ailment_name}Faster"));
 
-    // faster: MORE 聚合（player）+ 敌方 INC/100 加成。
-    let player_faster = player.more(cfg, &[faster_name]);
+    // faster: calcLib.mod（INC+MORE 两腿）聚合（player）+ 敌方 INC/100 加成。
+    let player_faster = (1.0
+        + player.sum(ModType::Inc, cfg, std::slice::from_ref(&faster_name)) / 100.0)
+        * player.more(cfg, &[faster_name]);
     let enemy_faster_inc = enemy.sum(ModType::Inc, cfg, &[self_faster_name]) / 100.0;
     let faster = player_faster + enemy_faster_inc;
 
-    // slower: MORE 聚合（player）。
-    let slower = player.more(cfg, &[slower_name]);
+    // slower: calcLib.mod（INC+MORE 两腿）聚合（player）。
+    let slower = (1.0 + player.sum(ModType::Inc, cfg, std::slice::from_ref(&slower_name)) / 100.0)
+        * player.more(cfg, &[slower_name]);
 
     // rateMod = faster / slower（两个 more 乘区之比）。
     if slower <= 0.0 {

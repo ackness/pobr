@@ -272,6 +272,54 @@ fn added_damage_effectiveness_only_scales_flat_added_not_weapon_base() {
     assert_eq!(phys.avg(), 150.0);
 }
 
+/// M4-m 测试：addedMult 含 INC 腿——vendor `calcLib.mod`（CalcTools.lua:16-18）=
+/// `(1 + Sum(INC, "Added<Type>Damage", "AddedDamage")/100) × More(...)`。
+///
+/// 出处：PoB2 CalcOffence.lua:3909 + CalcTools.lua:16-18。
+#[test]
+fn added_damage_effectiveness_includes_inc_leg() {
+    let mut db = ModDb::new();
+    // INC 腿：AddedDamage INC 50 + AddedFireDamage INC 30 → (1 + 80/100) = 1.8
+    db.add_mod(Modifier::number("AddedDamage", ModType::Inc, 50.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(
+        Modifier::number("AddedFireDamage", ModType::Inc, 30.0).with_flags(ModFlags::ATTACK),
+    );
+    // MORE 腿：AddedDamage MORE 100 → ×2.0；合计 addedMult = 1.8 × 2.0 = 3.6
+    db.add_mod(Modifier::number("AddedDamage", ModType::More, 100.0).with_flags(ModFlags::ATTACK));
+    // 附加火焰 10 flat
+    db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+
+    let fire = component(&output, DamageType::Fire);
+    // fire flat=10 × addedMult=3.6 = 36 avg
+    assert_eq!(fire.avg(), 36.0);
+
+    // INC 腿同样不乘武器自带 base：物理仍为 (100,200) → avg 150。
+    let phys = component(&output, DamageType::Physical);
+    assert_eq!(phys.avg(), 150.0);
+}
+
+/// M4-m 测试：`Added<Type>Damage` 分类型 INC 只作用于对应类型的 flat added。
+#[test]
+fn added_type_damage_inc_is_type_scoped() {
+    let mut db = ModDb::new();
+    // 仅 AddedFireDamage INC 100：火 ×2.0，冰不受影响。
+    db.add_mod(
+        Modifier::number("AddedFireDamage", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK),
+    );
+    db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(Modifier::number("ColdDamageMin", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(Modifier::number("ColdDamageMax", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+
+    assert_eq!(component(&output, DamageType::Fire).avg(), 20.0);
+    assert_eq!(component(&output, DamageType::Cold).avg(), 10.0);
+}
+
 // ---------------------------------------------------------------------------
 // 04-01：Min<Type>Damage / Max<Type>Damage 分 min/max 独立 MORE 乘区
 // （PoB2 CalcOffence.lua:138-139,153-154）

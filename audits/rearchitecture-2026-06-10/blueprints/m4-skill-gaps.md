@@ -193,14 +193,41 @@ dot 列命中 3/37 维持（修复消除的是**伪差/高估**，新增暴露�
 | ranger-pathfinder-ice-shot | 0.28x → 0.27x | 无 | 击中量级线（TotalDPS 0.31x 同源，h 波 Stored 已对齐结构） |
 | witch-abyssal-lich-DD | 0.68x → 0.67x | 无 | 尸爆基伤 effective 减伤线（§0 登记） |
 | witch coiling-bolts | 0.79x → 0.62x | 无（旧 0.79 含速率伪高） | 击中量级（added/gain-as 大档线 §1） |
-| sorceress-stormweaver-comet | 0.00x（不变） | **点燃链未触发**——vendor TotalDotDPS 1911 全为 ignite；PoBR FireStored 有值但 chance 派生后 DPS≈0，待单独对拍（登记 dot 线下一波） | — |
+| sorceress-stormweaver-comet | 0.00x（不变） | **点燃链未触发**——vendor TotalDotDPS 1911 全为 ignite；M4-m oracle 对拍已闭环根因（见 §7.4），修复归 statmap Buff 域 | — |
 | warrior-titan-shield-wall | 0.02x（不变） | vendor 5776 主体为 bleed（树侧 chance/magnitude 词条，parser 域） | — |
 | 其余（grenade×2/frost-bomb/flicker/twister×2/kitava/ember） | 0.19x–0.77x | 无独立异常侧缺口 | 各自击中量级/速度线（off 列同源） |
 
-**本波线内可继续项（登记）**：① vendor `rateMod`（`<Ailment>Faster/Slower`，
-:5036）PoBR 仅 finalize 段近似，statmap 名未开白；② `debuffDurationMult`
-消费点在 ailment duration（curse 通道就绪后一并接，见 §7.1）；③
-stormweaver-comet ignite 0 值对拍。
+**本波线内可继续项（登记）**：① ~~vendor `rateMod`（`<Ailment>Faster/Slower`，
+:5036）PoBR 仅 finalize 段近似，statmap 名未开白~~ **M4-m 已闭环**（commit
+`742a6c3`：三名开白 + ailment_rate_mod 补 INC 腿）；② `debuffDurationMult`
+消费点在 ailment duration（curse 通道就绪后一并接，见 §7.1）；③ ~~stormweaver-
+comet ignite 0 值对拍~~ **M4-m 对拍已闭环**（见 §7.4，修复归 statmap Buff 域）。
+
+### 7.4 stormweaver-comet ignite 0 值——oracle 对拍结论（M4-m，2026-06-13）
+
+vendor IgniteDPS 1910.98 的全链路已钉死（oracle dump + 逐 mod Tabulate）：
+
+- **来源伤害**：`IgniteColdMin/Max 8673/13006` + `IgniteLightningMin/Max 433/648`
+  ——ignite 来源**全为冷/电**（`IgniteFireMin/Max = 0`，build 无火伤）。跨类型
+  通行证 = `ColdCanIgnite` + `LightningCanIgnite` FLAG，`Tabulate` 钉源 =
+  `Skill:PinnacleOfPowerPlayer`：武器 Adonia's Ego（Siphoning Wand）`Grants
+  Skill: Pinnacle of Power`（other.lua:12503，fromItem buff 技能）。其 statmap
+  条目 `elemental_power_elemental_damage_+%_final_per_power_charge` 载荷 =
+  `Damage MORE`（`Multiplier{RemovablePowerCharge, scalar=
+  ConsumedPowerChargeEffect}`）+ 六枚 `<El>Can<Ailment>` flag，**全带
+  `GlobalEffect/Buff` tag**——vendor 经 buff 循环写全局（CalcPerform buff 分支）。
+- **几率派生**：`IgniteChanceOnHit 3.96 / OnCrit 13.85` = 阈值缩放
+  `hitAvg/enemyThreshold × IgniteChanceMultiplier(20)`（CalcOffence.lua:5405-
+  5432，无任何 flat IgniteChance 词条）——PoBR 同构机制已有
+  （`ailment::ignite_traced` + `threshold_chance_traced`）。
+- **PoBR 缺口（单点）**：`stored_source_at_roll`/`cross_type_source_hit` 的
+  `<Type>Can<Ailment>` 旗标消费已就绪，缺的只是 **Pinnacle of Power buff 载荷
+  注入**——归 statmap Buff 域（本波禁动）。注意两个子障碍：① 该条目首元素
+  `Damage MORE` 带 `scalar` Multiplier（引擎 `collect_element` 现对 scalar 整条
+  Unsupported——flag 元素会被连坐丢弃，需元素级拆分或 scalar 支持）；② 注入
+  作用域 = 全局 buff（vendor GlobalEffect/Buff 通道，对位 PoBR buff_skill_specs
+  注入面）。接通后该 build TotalDotDPS 0.00x 预期直接回 ~0.9x 带
+  （effMult 0.66/duration 4s/StackPotential 0.37 等中间值 PoBR 机制均已同构）。
 
 **剩余登记（暴击线尾差，单一根因）**：
 - **切换类节点 class 变体（isSwitchable options）未建模**——tree.lua 节点的

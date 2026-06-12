@@ -1425,6 +1425,12 @@ pub fn translate_mod_name(
         "PoisonChance" | "BleedChance" | "EnemyIgniteChance" | "EnemyShockChance"
         | "AilmentMagnitude" | "EnemyShockMagnitude" | "EnemyChillMagnitude" | "PoisonStacks"
         | "BleedStacks" | "IgniteStacks" => base_name.to_string(),
+        // M4-m（k3 登记）：异常堆叠速率 rateMod 名直通（vendor `faster_burn_%`/
+        // `faster_poison_%`/`faster_bleed_%`/`damaging_ailments_deal_damage_+%_faster`
+        // → `<Ailment>Faster` INC，SkillStatMap.lua:843-848/:1255/:1479-1483）。
+        // 消费方 = `calc::ailment::ailment_rate_mod`（CalcOffence.lua:5036 rateMod，
+        // calcLib.mod 的 INC+MORE 两腿同名集）。
+        "BleedFaster" | "PoisonFaster" | "IgniteFaster" => base_name.to_string(),
         // M4-K：异常持续时间——vendor 施加方词条名带 Enemy 前缀（作用于敌身上的
         // debuff 时长，CalcOffence.lua:5037 durationMod 取
         // `Enemy<Ailment>Duration`/`EnemyAilmentDuration`/`DamagingAilmentDuration`），
@@ -1704,6 +1710,20 @@ mod tests {
             ));
             let mods = expect_modifiers(map_entry(&entry, 60.0));
             assert_eq!(mods[0].name.as_str(), name, "{name} 应直通");
+        }
+    }
+
+    /// M4-m（k3）：异常堆叠速率 rateMod 名直通（vendor `faster_burn_%` 族 →
+    /// `<Ailment>Faster` INC，SkillStatMap.lua:843-848；消费方 ailment_rate_mod）。
+    #[test]
+    fn ailment_faster_passthrough() {
+        for name in ["BleedFaster", "PoisonFaster", "IgniteFaster"] {
+            let entry = entry_json(&format!(
+                r#"{{ "mods": [ {{ "kind": "mod", "name": "{name}", "mod_type": "INC" }} ] }}"#
+            ));
+            let mods = expect_modifiers(map_entry(&entry, 25.0));
+            assert_eq!(mods[0].name.as_str(), name, "{name} 应直通");
+            assert_eq!(mods[0].mod_type, ModType::Inc);
         }
     }
 

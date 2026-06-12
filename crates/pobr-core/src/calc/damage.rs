@@ -215,10 +215,16 @@ fn type_prefix(damage_type: DamageType) -> &'static str {
 /// - 其余类型：来自 `<Type>DamageMin/Max` Base 附加（flat added damage，受 AddedDamage MORE 效率影响）。
 ///
 /// **Bug#8 修正（added-damage-effectiveness-missing）**：
-/// 附加伤害效率（`AddedDamage` MORE modifier）只乘外部 flat added，不乘技能/武器自带 base。
+/// 附加伤害效率（`AddedDamage` 效率乘子）只乘外部 flat added，不乘技能/武器自带 base。
 /// 出处：damage-scaling.md §Added Damage Effectiveness；
-///       PoB2 CalcOffence.lua `addedMult = calcLib.mod(..., "Added<Type>Damage", "AddedDamage")`
+///       PoB2 CalcOffence.lua:3909 `addedMult = calcLib.mod(skillModList, cfg,
+///       "Added"..damageType.."Damage", "AddedDamage")`
 ///       仅乘 `addedMin * addedMult`，不乘 `source[...]`（武器/技能自带伤害）。
+///
+/// **M4-m 补全（addedMult INC 腿）**：vendor `calcLib.mod`（CalcTools.lua:16-18）=
+/// `(1 + Sum(INC, cfg, names...)/100) × More(cfg, names...)`——INC 与 MORE 两腿
+/// 同名集（`Added<Type>Damage` + `AddedDamage`）。旧实现仅有 MORE 腿；现按 vendor
+/// 名序单次多名查询补 INC 腿（多名 `more` 的逐名取整语义与 vendor 单次调用一致）。
 fn base_flat(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -232,10 +238,13 @@ fn base_flat(
     let added_min = db.sum(ModType::Base, cfg, &[min_name]);
     let added_max = db.sum(ModType::Base, cfg, &[max_name]);
 
-    // 附加伤害效率（AddedDamage MORE）：仅作用于外部 flat added，不乘技能/武器自带 base。
-    // `Added<Type>Damage` 可覆盖通用 `AddedDamage` 效率（分类型版本优先级更高；当前取乘积）。
-    let type_eff_name = ModName::from(format!("Added{prefix}Damage"));
-    let eff = db.more(cfg, &[ModName::from("AddedDamage")]) * db.more(cfg, &[type_eff_name]);
+    // 附加伤害效率（addedMult = (1 + ΣINC/100) × ΠMORE）：仅作用于外部 flat added，
+    // 不乘技能/武器自带 base。名集 = `Added<Type>Damage` + `AddedDamage`（vendor 名序）。
+    let eff_names = [
+        ModName::from(format!("Added{prefix}Damage")),
+        ModName::from("AddedDamage"),
+    ];
+    let eff = (1.0 + db.sum(ModType::Inc, cfg, &eff_names) / 100.0) * db.more(cfg, &eff_names);
 
     match damage_type {
         DamageType::Physical => {

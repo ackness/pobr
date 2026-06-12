@@ -39,6 +39,10 @@ impl SkillTypes {
     pub const TRIGGERABLE: Self = Self(1 << 30);
     /// PoB2 SkillType.Triggers = 32
     pub const TRIGGERS: Self = Self(1 << 31);
+    /// PoB2 SkillType.Trapped = 33（陷阱投掷技能）
+    pub const TRAPPED: Self = Self(1 << 32);
+    /// PoB2 SkillType.RemoteMined = 36（地雷技能）
+    pub const REMOTE_MINED: Self = Self(1 << 35);
     /// PoB2 SkillType.Triggered = 37
     pub const TRIGGERED: Self = Self(1 << 36);
     /// PoB2 SkillType.Aura = 39

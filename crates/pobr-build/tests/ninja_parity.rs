@@ -265,6 +265,23 @@ fn defensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
 
 /// 进攻列（技能管线完整度强相关，单列报告）。
 fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
+    // M4-m（k2 登记）：vendor 恒等式实为 `TotalDPS = AverageDamage × Speed ×
+    // dpsMultiplier × quantityMultiplier`（CalcOffence.lua:4407）——golden 的
+    // `AverageDamage` 不含端因子，而 PoBR `dps`（与 golden `TotalDPS` 同口径）含。
+    // 旧读数 `dps / action_rate` 对 grenade 等 build 带结构性偏置（deadeye ×1.5、
+    // gemling ×1.65、twister ×1.02 实测）。用 golden 自身恒等式反解端因子，把
+    // PoBR 读数折回 AverageDamage 同口径（harness 取数口径修正，零 calc 行为）。
+    let golden_end_factor = match (
+        golden(g, "TotalDPS"),
+        golden(g, "AverageDamage"),
+        golden(g, "Speed"),
+    ) {
+        (Some(td), Some(ad), Some(sp)) if td.is_finite() && (ad * sp).abs() > f64::EPSILON => {
+            let f = td / (ad * sp);
+            if f.is_finite() && f > 0.0 { f } else { 1.0 }
+        }
+        _ => 1.0,
+    };
     vec![
         Row {
             label: "CritChance",
@@ -284,12 +301,12 @@ fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
         Row {
             label: "AverageDamage",
             golden: golden(g, "AverageDamage"),
-            // PoB2 恒等式 `TotalDPS = AverageDamage × Speed`（18-build golden 逐一精确
-            // 成立，golden 的平均伤害已含命中率/暴击/敌方减伤）。PoBR 侧用同一恒等式取
-            // `dps / action_rate`；旧值 `total_hit_avg`（玩家侧未减伤、不含命中率）在
-            // effective 口径下与 golden 结构性错配（切换报告 §3-R4）。
+            // PoB2 恒等式 `TotalDPS = AverageDamage × Speed × 端因子`（golden 的平均
+            // 伤害已含命中率/暴击/敌方减伤，不含端因子）。PoBR 侧用同一恒等式取
+            // `dps / action_rate / 端因子`；旧值 `total_hit_avg`（玩家侧未减伤、不含
+            // 命中率）在 effective 口径下与 golden 结构性错配（切换报告 §3-R4）。
             pobr: if out.action_rate > 0.0 {
-                out.dps / out.action_rate
+                out.dps / out.action_rate / golden_end_factor
             } else {
                 0.0
             },
