@@ -113,6 +113,30 @@ CritChance/CritMultiplier 列收敛（effective 口径）：
 huntress 0.27→0.44x、monk 0.22→0.23x——余差均为 pre-crit per-hit 段
 （added/gain-as 大档线 + Speed 0.90x），非暴击线范围。
 
+## 6. M4-J IncDamage 聚合差线——结果（2026-06-13）
+
+§1-§3 登记的 pre-crit per-hit「IncDamage 聚合差」经 oracle 逐 mod 对拍
+（vendor `skillModList:Tabulate("INC", cfg, "Damage")` 全来源行 vs PoBR ModDb
+同名族聚合），按缺口类别 4 个独立 commit 修复：
+
+| 缺口类别 | 定位（vendor 行号） | 受益 build | commit |
+|---|---|---|---|
+| **PerStat 资源分母接线 bug**（W-A3 登记项坐实）：编排 6c 用 `base_sum`（BASE-only）回填 cfg.multipliers 的 Mana/Life，vendor PerStat 读 actor **output**（ModStore.lua:440-460 GetStat，floor(stat/div)） | `3% increased Spell Damage per 100 maximum Mana`（Tree:19044）：vendor 234=3×floor(7889/100)，PoBR 旧值 93=3×floor(3100/100) | ember-fusillade（234✓ 逐位）、coiling-bolts（105✓ 逐位） | `4a936fc` |
+| **parser 短语缺路**：per-ailment-type 整行（ModParser.lua:3798-3804，The Taming +42）、companion 后缀（:1803）、arcane surge 后缀（:1817）+ gain-FLAG form（:92/:4197/:1902）、One/Two-Handed Weapons 位（:1016/:1018）、ProjectileSpeed 名解锁 | 此前全部硬 ParseError 结构性丢弃 | twister、ember-fusillade | `8cd1f03` |
+| **编排条件桥**：`Condition:ArcaneSurge` flag → `AffectedByArcaneSurge`（CalcDefence.lua:1580-1582）；`CompanionInPresence` 默认条件（ConfigOptions.lua:1012-1014 defaultState=true，按 SkillType.CreatesCompanion 在场） | ember Tree:27388→16940（+30）；twister WildProtector→37769（+10） | 同上 | `0f70253` |
+| **隐式 stat→statmap flag→消费 三段**：`projectile_speed_additive_modifiers_also_apply_to_projectile_damage`（sup_dex.lua:4353 / SkillStatMap.lua:888 / CalcOffence.lua:840-845）→ INC ProjectileSpeed 复制为 Damage INC(Projectile) | twister 树投速小点 +31（vendor +23，差 8 属 options 变体线） | twister | `c894891` |
+
+**IncDamage 聚合收敛**（vendor `Sum("INC", cfg, "Damage")` 等价口径）：
+- ember-fusillade：~203 → **409 / vendor 409 逐位 ✓**（TotalDPS 69969→87040，0.17→0.21x，余差=Speed 4.875 vs 5.4 + per-hit gain-as 大档线）
+- coiling-bolts：~296 → **301 / vendor 316**（余差 = 13724 暂缓 15 + witch 变体 +4——见下）
+- huntress twister：~240 → **333 / vendor 350**（余差 = 34168 暂缓 25 + 1420 暂缓 15 − 变体线 ~23；TotalDPS 35943→46499，0.43→0.56x）
+
+**暂缓登记（vendor 证实正确、但接入触发既有过记出 parity 带；代码内同步注释）**：
+- `attack/spell area damage`（ModParser.lua:721-722，deadeye 树 41 INC、twister 1420 +15）：接入令 deadeye TotalDPS 1.02x→1.11x 出带——根因 grenade **Speed 段 1.95x 过记**（0.32 vs 0.16，冷却线 §3），冷却线修复后启用；
+- `CritInPast8Sec` 后缀族（ModParser.lua:1904-1906，twister 34168 +25 / coiling+DD 13724 +15）：接入令 detonate-dead **panel** 口径 1.09x→1.13x 出 10% 带（panel 无敌方减伤本就过记；effective 口径实为 0.81→0.84 收敛）——effective 减伤线收敛 DD 后启用。
+
+**确认非缺口**：witch 的 Bonded `20% increased Projectile Damage`（gloves enchant）vendor 同样不计（无「Gain the benefits of Bonded modifiers」激活源，oracle 钉值 flag=false），PoBR 行为一致。
+
 **剩余登记（暴击线尾差，单一根因）**：
 - **切换类节点 class 变体（isSwitchable options）未建模**——tree.lua 节点的
   `options.<Class>` 子表会按职业整体替换 stats：witch 51335『Affliction

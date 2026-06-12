@@ -353,6 +353,21 @@ impl CalculationSession {
         (base * (1.0 + inc / 100.0) * more).round().max(0.0)
     }
 
+    /// 资源池最终总量（life/mana）：与 `perform` 内 offence 的池值计算同一管线
+    /// （OVERRIDE 胜出 → `(actor_base + Σbase) × (1 + Σinc/100) × Πmore`，
+    /// `offence::scaled_pool` 同源），即 vendor `output.Life/Mana`
+    /// （CalcOffence pool 段）。供编排层在全部来源注入后回填 PerStat 资源分母
+    /// （vendor PerStat tag 读 actor **output**，ModStore.lua:440-460 GetStat）——
+    /// [`base_sum`](Self::base_sum) 只取 BASE 之和，会漏掉 inc/more 缩放后的池值。
+    pub fn pool_total(&self, name: &str) -> f64 {
+        let actor_base = match name {
+            "MaximumLife" => self.env.player.base.life,
+            "MaximumMana" => self.env.player.base.mana,
+            _ => 0.0,
+        };
+        super::offence::scaled_pool(&self.env.player.mod_db, &self.env.cfg, actor_base, name)
+    }
+
     /// 取玩家完整 [`OutputTable`]（`perform`/`perform_minimal` 后填满）。包含
     /// armour/evasion/ES、异常、EHP、技能机制等全部 fill 阶段字段——`MinimalOutput`
     /// 仅是其攻击/抗性子集，需要完整输出时用此。

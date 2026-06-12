@@ -1224,7 +1224,7 @@ fn apply_server_tick_cap(db: &ModDb, cfg: &CalcConfig, rate: f64) -> f64 {
     rate.min(server_cap)
 }
 
-fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
+pub(crate) fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
     let names = [ModName::from(name)];
     scaled_numeric_stat(db, cfg, base, &names)
 }

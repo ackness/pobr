@@ -263,10 +263,17 @@ end
 --   attack_damage_is_lucky_if_surrounded （Defy I/II，sup_str）
 --   no_critical_strike_multiplier        （statmap → NoCritMultiplier；当前 vendor
 --                                          无隐式实例，前瞻保留）
+--   projectile_speed_additive_modifiers_also_apply_to_projectile_damage
+--                                        （Projectile Acceleration III，
+--                                          sup_dex.lua:4353；statmap →
+--                                          ProjectileSpeedAppliesToProjectileDamage，
+--                                          消费点 calc::perform::
+--                                          apply_projectile_speed_to_damage）
 local IMPLICIT_STAT_KEYS = {
 	"attack_damage_is_lucky_if_surrounded",
 	"attacks_roll_crits_twice",
 	"no_critical_strike_multiplier",
+	"projectile_speed_additive_modifiers_also_apply_to_projectile_damage",
 }
 
 local function emitStatSetImplicitStats(skillId, skill)

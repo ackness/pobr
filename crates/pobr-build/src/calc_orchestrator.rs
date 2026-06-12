@@ -316,6 +316,15 @@ pub fn calculate_with_data(
     if main_hand_offhand_is_shield(build, data) {
         cfg = cfg.with_condition("UsingShield", true);
     }
+    // 伙伴在场条件（vendor ConfigOptions.lua:1012-1014 `companionInPresence`
+    // defaultState=true，ifSkillType=CreatesCompanion 门控）：已启用技能含
+    // `CreatesCompanion` 时默认置真，使「while your Companion is in your
+    // Presence」族词条生效（twister Tree:37769 +10 INC）。显式 config 输入
+    // （XML `companionInPresence`）优先，缺省才落 default。
+    if !cfg.conditions.contains_key("CompanionInPresence") && build_has_companion_skill(build, data)
+    {
+        cfg = cfg.with_condition("CompanionInPresence", true);
+    }
     // 「Body Armour grants <mod>」前缀族的装备条件（PoB2 ModParser.lua:1418 / :3255-3268
     // `ItemCondition{itemSlot="Body Armour", rarityCond="NORMAL"}`）：体甲槽有装备且
     // 稀有度为 Normal 时置真。build-state 默认，全 build 一致，非特化。
@@ -946,13 +955,18 @@ pub fn calculate_with_data(
     //     Spirit BASE 总量与角色等级写入 cfg.multipliers，使 `+N to <stat> per M <resource>`
     //     这类词条（解析为 ModTag::Multiplier{var, div}）在 perform 查询时按 count/div 展开。
     //     须在全部来源注入后、perform 之前；属性/Spirit 不参与 per-X 自缩放，base_sum 取值稳定。
+    //     Life/Mana 分母 = **全管线池值**（OVERRIDE → base×(1+inc)×more，
+    //     `CalculationSession::pool_total`，与 perform 内 offence 池计算同源）——vendor
+    //     PerStat 读 actor **output**（ModStore.lua:440-460 GetStat → output.Mana/Life），
+    //     BASE-only 会把「3% increased Spell Damage per 100 maximum Mana」（druid
+    //     ember-fusillade Tree:19044，vendor 档位 234 = 3×floor(7889/100)）严重欠算。
     {
         let str_total = session.base_sum("Strength");
         let dex_total = session.base_sum("Dexterity");
         let int_total = session.base_sum("Intelligence");
         let spirit_total = session.base_sum("Spirit");
-        let mana_total = session.base_sum("MaximumMana");
-        let life_total = session.base_sum("MaximumLife");
+        let mana_total = session.pool_total("MaximumMana");
+        let life_total = session.pool_total("MaximumLife");
         session.set_multiplier("Strength", str_total);
         session.set_multiplier("Dexterity", dex_total);
         session.set_multiplier("Intelligence", int_total);
@@ -976,6 +990,14 @@ pub fn calculate_with_data(
     //     词条（挂 Condition tag）才生效（PoB2 ModParser `["^bonded: "]` 语义）。
     if session.has_flag("Condition:CanUseBondedModifiers") {
         session.set_condition("CanUseBondedModifiers", true);
+    }
+    // 奥术涌动桥（vendor CalcDefence.lua:1580-1582：`Condition:ArcaneSurge` flag →
+    // `AffectedByArcaneSurge` 条件）：树/词条授予的「chance to Gain Arcane Surge …」
+    // FLAG（含 CritRecently 等触发条件 tag，按当前 cfg 求值）为真时，使
+    // 「while you have Arcane Surge」族词条（Condition:AffectedByArcaneSurge tag）
+    // 生效。druid ember-fusillade：Tree:27388 激活源 → Tree:16940 +30 INC。
+    if session.has_flag("Condition:ArcaneSurge") {
+        session.set_condition("AffectedByArcaneSurge", true);
     }
 
     // 诊断：POBR_DBG_UNSUPPORTED=1 时 dump 全部未解析词条文本（parity 排查用）。
@@ -2105,6 +2127,19 @@ fn skill_type_flags(skill_types: &[String]) -> ModFlags {
         flags |= ModFlags::HIT;
     }
     flags
+}
+
+/// 已启用技能中是否有伙伴召唤技能（`SkillType.CreatesCompanion`）——vendor
+/// `companionInPresence` 配置项的 `ifSkillType` 门控等价（ConfigOptions.lua:1012）。
+/// 通用按技能类型 token 判定，绝不针对单个技能 id。
+fn build_has_companion_skill(build: &Build, data: &BuildData) -> bool {
+    build.enabled_socket_groups().any(|group| {
+        group.gem_skills.iter().any(|gem| {
+            data.granted_effects.get(&gem.skill_id).is_some_and(|e| {
+                !e.is_support && e.skill_types.iter().any(|t| t == "CreatesCompanion")
+            })
+        })
+    })
 }
 
 /// 去重统计已启用主动技能中 `SkillType.Grenade` 的不同授予效果数（M4-H；vendor

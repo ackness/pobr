@@ -794,8 +794,10 @@ fn collect_element(
 
 /// statmap `flag()` 构造器名字白名单：PoBR ModDb 有 `flag()` 消费方的旗标
 /// （crit/lucky 族——`calc::crit::resolve_crit` 步骤 4/5/6/爆伤 +
-/// `calc::damage::lucky_hit_chance`）。白名单外的 flag 名维持未知名上报
-/// （多为技能行为开关，错注会污染 ModDb flag 查询）。
+/// `calc::damage::lucky_hit_chance`；mod 转换族——
+/// `calc::perform::apply_projectile_speed_to_damage`，CalcOffence.lua:840-845）。
+/// 白名单外的 flag 名维持未知名上报（多为技能行为开关，错注会污染 ModDb
+/// flag 查询）。
 fn is_consumable_flag(name: &str) -> bool {
     matches!(
         name,
@@ -806,6 +808,7 @@ fn is_consumable_flag(name: &str) -> bool {
             | "LuckyHits"
             | "CritLucky"
             | "ElementalLuckHits"
+            | "ProjectileSpeedAppliesToProjectileDamage"
     )
 }
 

@@ -22019,6 +22019,12 @@
       "stat_id": "attacks_roll_crits_twice"
     },
     {
+      "skill": "SupportProjectileAccelerationPlayerThree",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "projectile_speed_additive_modifiers_also_apply_to_projectile_damage"
+    },
+    {
       "skill": "TCHellscapePaleElite2Charge",
       "stat": "base_multiplier",
       "value": 0.3

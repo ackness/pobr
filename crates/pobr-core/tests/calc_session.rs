@@ -80,6 +80,30 @@ fn attribute_total_applies_increased_attribute_modifiers() {
     assert_eq!(session.attribute_total("Strength", 7.0), 7.0);
 }
 
+/// 资源池最终总量（vendor PerStat 分母 = actor output，ModStore.lua:440-460）：
+/// `pool_total` 必须吃满 base×(1+inc)×more 全管线，与 perform 内 offence 池值
+/// 同源——BASE-only（`base_sum`）会漏掉 inc/more 缩放。
+#[test]
+fn pool_total_applies_full_pool_pipeline() {
+    // Arrange
+    let input = MinimalInput {
+        base_mana: 100.0,
+        ..MinimalInput::default()
+    };
+    let mut session = CalculationSession::new(input);
+    session
+        .add_modifier_texts(["+200 to maximum Mana", "50% increased maximum Mana"])
+        .unwrap();
+
+    // Act + Assert：(100 + 200) × 1.5 = 450（base_sum 只会给 200）。
+    assert_eq!(session.pool_total("MaximumMana"), 450.0);
+    assert_eq!(session.base_sum("MaximumMana"), 200.0);
+
+    // 池值与 perform 输出同源（同一 scaled_pool 管线）。
+    let output = session.perform_minimal();
+    assert_eq!(output.mana, 450.0);
+}
+
 #[test]
 fn session_preserves_unsupported_modifier_texts() {
     let mut session = CalculationSession::new(MinimalInput::default());
@@ -97,4 +121,55 @@ fn session_returns_parse_error_for_unknown_modifier_text() {
         .unwrap_err();
 
     assert_eq!(error.input, "not a real modifier");
+}
+
+/// 投射物速度 → 投射物伤害转换（vendor CalcOffence.lua:840-845）：
+/// `ProjectileSpeedAppliesToProjectileDamage` flag 激活时，INC ProjectileSpeed
+/// 逐条复制为 Damage INC（flags 替换为 Projectile）；flag 缺位零行为。
+#[test]
+fn projectile_speed_applies_to_projectile_damage_conversion() {
+    use pobr_core::{CalcConfig, Modifier};
+    use pobr_data::modifier::ModFlags;
+
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let cfg =
+        CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT);
+
+    // 无 flag：ProjectileSpeed 无消费方，零行为。
+    let mut without = CalculationSession::new(input).with_config(cfg.clone());
+    without
+        .add_modifier_texts(["8% increased Projectile Speed"])
+        .unwrap();
+    let base = without.perform_minimal();
+    assert_eq!(base.total_hit_avg, 100.0);
+
+    // flag 激活：8% Projectile Speed → 8% increased Damage (Projectile)。
+    let mut with = CalculationSession::new(input).with_config(cfg);
+    with.add_modifier_texts(["8% increased Projectile Speed"])
+        .unwrap();
+    with.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToProjectileDamage")]);
+    let converted = with.perform_minimal();
+    assert_eq!(converted.total_hit_avg, 108.0);
+
+    // 带 flags 限定的源 mod（如 for Spell Skills）不参与转换（vendor Tabulate 空 cfg 口径）。
+    let mut scoped = CalculationSession::new(MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    })
+    .with_config(
+        CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT),
+    );
+    scoped
+        .add_modifier_texts(["8% increased Projectile Speed for Spell Skills"])
+        .unwrap();
+    scoped.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToProjectileDamage")]);
+    let scoped_out = scoped.perform_minimal();
+    assert_eq!(scoped_out.total_hit_avg, 100.0);
 }
