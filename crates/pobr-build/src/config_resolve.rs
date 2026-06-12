@@ -43,9 +43,13 @@ use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_
 
 /// 旧路径 `conditionEnemy<X>Exposure` → cfg 条件桥（vendor
 /// ConfigOptions.lua:1864-1872：enemy 桶 `<X>Exposure` BASE 20 + ActorCondition
-/// tag）。条目效果带 ActorCondition tag，解释器在 T5-E1 翻译接通（报告 §3-⑦）
-/// 前保守跳过；编排层 5b `apply_enemy_exposure` 仍按 cfg 条件驱动，故从原始
-/// 输入直读补桥，维持现网行为（旧路径删除后本桥为唯一来源）。
+/// tag）。§3-⑦ 回补后解释器已产出该 enemy 数值 mod（actor tag 已翻译为
+/// `ModTag::Condition{actor: Player, var: CanApply<X>Exposure}`），但玩家侧
+/// actor 快照（`cfg.actor_multipliers["player.CanApply<X>Exposure"]`）尚无
+/// 置位来源——该 mod 惰性，编排层 5b `apply_enemy_exposure` 仍按 cfg 条件
+/// 驱动，故从原始输入直读补桥，维持现网行为。**退役条件**：actor 快照通道
+/// 接通（CanApply*Exposure 由技能侧置位）后本桥必须删除，否则与解释器
+/// mod 双计。
 const EXPOSURE_CONDITION_BRIDGE: &[(&str, &str)] = &[
     ("conditionEnemyFireExposure", "EnemyFireExposure"),
     ("conditionEnemyColdExposure", "EnemyColdExposure"),

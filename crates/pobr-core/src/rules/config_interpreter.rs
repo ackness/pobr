@@ -27,7 +27,7 @@ use pobr_data::catalog::value_expr::{EffectTag, EffectTarget};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
-use crate::modifier::{ModTag, ModValue, Modifier};
+use crate::modifier::{ActorRef, ModTag, ModValue, Modifier};
 use crate::rules::registry::HandlerRegistry;
 use crate::rules::value_expr;
 
@@ -390,6 +390,21 @@ fn apply_nested_mod(
         return;
     };
 
+    // 嵌套通道按外层 LIST 名分流：MinionModifier → minion、EnemyModifier → enemy。
+    // 先解析目标桶——actor tag 翻译（`enemy` 字面量的指向）依赖 mod 所在桶。
+    let bucket = match effect.name.as_str() {
+        "MinionModifier" => EffectTarget::Minion,
+        "EnemyModifier" => EffectTarget::Enemy,
+        "PlayerModifier" => EffectTarget::Player,
+        other => {
+            outcome.diagnostics.push(format!(
+                "config.{}: 未知嵌套转发通道 `{other}`，跳过",
+                def.var
+            ));
+            return;
+        }
+    };
+
     let mut modifier = Modifier::new(nested.name.as_str(), mod_type, value);
     modifier = modifier.with_source(
         nested
@@ -397,22 +412,22 @@ fn apply_nested_mod(
             .clone()
             .unwrap_or_else(|| "Config".to_string()),
     );
-    let Some(modifier) =
-        apply_flags_and_tags(modifier, &nested.flags, &nested.tags, &def.var, outcome)
-    else {
+    let Some(modifier) = apply_flags_and_tags(
+        modifier,
+        &nested.flags,
+        &nested.tags,
+        &def.var,
+        bucket,
+        outcome,
+    ) else {
         return;
     };
     let modifier = attach_origin(modifier, def, effect.target);
 
-    // 嵌套通道按外层 LIST 名分流：MinionModifier → minion、EnemyModifier → enemy。
-    match effect.name.as_str() {
-        "MinionModifier" => outcome.minion_mods.push(modifier),
-        "EnemyModifier" => outcome.enemy_mods.push(modifier),
-        "PlayerModifier" => outcome.player_mods.push(modifier),
-        other => outcome.diagnostics.push(format!(
-            "config.{}: 未知嵌套转发通道 `{other}`，跳过",
-            def.var
-        )),
+    match bucket {
+        EffectTarget::Minion => outcome.minion_mods.push(modifier),
+        EffectTarget::Enemy => outcome.enemy_mods.push(modifier),
+        EffectTarget::Player => outcome.player_mods.push(modifier),
     }
 }
 
@@ -431,17 +446,30 @@ fn build_modifier(
             .clone()
             .unwrap_or_else(|| "Config".to_string()),
     );
-    let modifier = apply_flags_and_tags(modifier, &effect.flags, &effect.tags, &def.var, outcome)?;
+    let modifier = apply_flags_and_tags(
+        modifier,
+        &effect.flags,
+        &effect.tags,
+        &def.var,
+        effect.target,
+        outcome,
+    )?;
     Some(attach_origin(modifier, def, effect.target))
 }
 
 /// flags / tags 名称映射；未知项记 diagnostics 并放弃整条 mod
 /// （保守：宁缺勿错值——缺位的 ModFlags 在 M4-W-A1 扩位后回补）。
+///
+/// actor tag 翻译（M3-T5-E1 后回补，dualrun 报告 §3-⑦）：vendor
+/// `ActorCondition`/`Multiplier(actor=…)` 的 actor 字面量经
+/// [`map_vendor_actor`]（按 mod 所在桶 `bucket` 解析指向）落
+/// [`ModTag::Condition`]/[`ModTag::Multiplier`] 的 `actor` 字段。
 fn apply_flags_and_tags(
     mut modifier: Modifier,
     flags: &[String],
     tags: &[EffectTag],
     var: &str,
+    bucket: EffectTarget,
     outcome: &mut ConfigOutcome,
 ) -> Option<Modifier> {
     let mut mod_flags = ModFlags::NONE;
@@ -470,25 +498,64 @@ fn apply_flags_and_tags(
                 limit,
                 actor,
             } => {
-                if actor.is_some() {
+                // 构造函数 + 字段更新：actor 维度（PoB2 ModStore.lua:347-353
+                // `tag.actor`）按桶翻译后写入 `ModTag::Multiplier::actor`。
+                let mut mod_tag = ModTag::multiplier(mult.clone(), *div, *limit);
+                if let Some(literal) = actor {
+                    let Some(actor_ref) = map_vendor_actor(literal, bucket) else {
+                        outcome.diagnostics.push(format!(
+                            "config.{var}: Multiplier tag actor `{literal}`（桶 {bucket:?}）无 ActorRef 映射，mod {} 跳过",
+                            modifier.name
+                        ));
+                        return None;
+                    };
+                    if let ModTag::Multiplier { actor, .. } = &mut mod_tag {
+                        *actor = Some(actor_ref);
+                    }
+                }
+                modifier = modifier.with_tag(mod_tag);
+            }
+            EffectTag::ActorCondition {
+                actor,
+                var: cond,
+                neg,
+            } => {
+                // 跨 actor 条件（PoB2 ModStore.lua:607-624 `ActorCondition`：
+                // `getActor(self, tag.actor)` 取目标 actor 的 modDB 查条件）。
+                let Some(actor_ref) = map_vendor_actor(actor, bucket) else {
                     outcome.diagnostics.push(format!(
-                        "config.{var}: Multiplier tag 带 actor 维度（M3-T5-E1 接通），mod {} 跳过",
+                        "config.{var}: ActorCondition actor `{actor}`（桶 {bucket:?}）无 ActorRef 映射，mod {} 跳过",
                         modifier.name
                     ));
                     return None;
+                };
+                let mut mod_tag = ModTag::condition(cond.clone(), *neg);
+                if let ModTag::Condition { actor, .. } = &mut mod_tag {
+                    *actor = Some(actor_ref);
                 }
-                modifier = modifier.with_tag(ModTag::multiplier(mult.clone(), *div, *limit));
-            }
-            EffectTag::ActorCondition { .. } => {
-                outcome.diagnostics.push(format!(
-                    "config.{var}: ActorCondition tag 未接通（M3-T5-E1），mod {} 跳过",
-                    modifier.name
-                ));
-                return None;
+                modifier = modifier.with_tag(mod_tag);
             }
         }
     }
     Some(modifier)
+}
+
+/// vendor actor 字面量 → [`ActorRef`]（按 mod 所在桶解析指向）。
+///
+/// PoB2 的 actor 链（CalcSetup.lua:536-545）：`env.player.enemy = env.enemy`、
+/// `env.enemy.enemy = env.player`——故 **enemy 桶** mod 的 `actor = "enemy"`
+/// 指向玩家（如曝光条目的 `CanApply<X>Exposure` 玩家侧 flag，
+/// ConfigOptions.lua:1864-1872）。player/minion 桶的 `"enemy"` 指向敌人
+/// actor——pobr `ActorRef` 暂无 Enemy 变体（敌侧快照通道未建），返回
+/// `None` 保守跳过（当前 catalog 无此形态条目）。
+fn map_vendor_actor(literal: &str, bucket: EffectTarget) -> Option<ActorRef> {
+    match literal {
+        "player" => Some(ActorRef::Player),
+        "parent" => Some(ActorRef::Parent),
+        "minion" => Some(ActorRef::Minion),
+        "enemy" if bucket == EffectTarget::Enemy => Some(ActorRef::Player),
+        _ => None,
+    }
 }
 
 /// vendor ModFlag 渲染名 → pobr ModFlags 位（当前闭集；M4-W-A1 扩位后扩表）。
@@ -919,6 +986,91 @@ mod tests {
         let outcome = interpret(&[def], &inputs, &HandlerRegistry::new());
         assert_eq!(outcome.minion_mods.len(), 1);
         assert_eq!(outcome.minion_mods[0].name.as_str(), "Condition:FullLife");
+    }
+
+    /// actor tag 翻译（M3-T5-E1 回补，dualrun 报告 §3-⑦）：enemy 桶的
+    /// `ActorCondition{actor:"enemy"}` 指向玩家（PoB2 CalcSetup.lua:542
+    /// `env.enemy.enemy = env.player`）→ `ModTag::Condition{actor:Player}`。
+    /// 曝光条目形态（ConfigOptions.lua:1864-1866）。
+    #[test]
+    fn actor_condition_translated_for_enemy_bucket() {
+        let mut def = entry("conditionEnemyFireExposure", ConfigInputType::Check);
+        def.effects = vec![ConfigEffect {
+            target: EffectTarget::Enemy,
+            mod_type: "BASE".to_string(),
+            value: Some(ValueExpr::literal(20.0)),
+            value_bool: None,
+            tags: vec![
+                EffectTag::Condition {
+                    var: "Effective".to_string(),
+                    neg: false,
+                },
+                EffectTag::ActorCondition {
+                    actor: "enemy".to_string(),
+                    var: "CanApplyFireExposure".to_string(),
+                    neg: false,
+                },
+            ],
+            ..flag_effect("FireExposure")
+        }];
+        let inputs =
+            RawConfigInputs::new().with("conditionEnemyFireExposure", ConfigInputValue::Bool(true));
+        let outcome = interpret(&[def], &inputs, &HandlerRegistry::new());
+        assert!(outcome.diagnostics.is_empty(), "{:?}", outcome.diagnostics);
+        assert_eq!(outcome.enemy_mods.len(), 1);
+        let modifier = &outcome.enemy_mods[0];
+        assert_eq!(modifier.name.as_str(), "FireExposure");
+        assert!(modifier.tags.contains(&ModTag::Condition {
+            var: "CanApplyFireExposure".to_string(),
+            negated: false,
+            actor: Some(ActorRef::Player),
+        }));
+    }
+
+    /// player 桶的 `actor = "enemy"`：ActorRef 无 Enemy 变体 → 保守跳过 +
+    /// diagnostics（当前 catalog 无此形态，防御性口径）。
+    #[test]
+    fn actor_condition_unmappable_skips_with_diagnostic() {
+        let mut def = entry("x", ConfigInputType::Check);
+        def.effects = vec![ConfigEffect {
+            tags: vec![EffectTag::ActorCondition {
+                actor: "enemy".to_string(),
+                var: "Y".to_string(),
+                neg: false,
+            }],
+            ..flag_effect("Condition:Z")
+        }];
+        let inputs = RawConfigInputs::new().with("x", ConfigInputValue::Bool(true));
+        let outcome = interpret(&[def], &inputs, &HandlerRegistry::new());
+        assert!(outcome.player_mods.is_empty());
+        assert_eq!(outcome.diagnostics.len(), 1);
+        assert!(outcome.diagnostics[0].contains("无 ActorRef 映射"));
+    }
+
+    /// Multiplier tag 的 actor 维度（PoB2 ModStore.lua:347-353）翻译为
+    /// `ModTag::Multiplier::actor`（构造函数 + 字段更新）。
+    #[test]
+    fn multiplier_actor_translated() {
+        let mut def = entry("m", ConfigInputType::Check);
+        def.effects = vec![ConfigEffect {
+            tags: vec![EffectTag::Multiplier {
+                var: "Virulence".to_string(),
+                div: 1.0,
+                limit: None,
+                actor: Some("parent".to_string()),
+            }],
+            ..base_effect("X", ValueExpr::literal(1.0))
+        }];
+        let inputs = RawConfigInputs::new().with("m", ConfigInputValue::Bool(true));
+        let outcome = interpret(&[def], &inputs, &HandlerRegistry::new());
+        assert_eq!(outcome.player_mods.len(), 1);
+        assert!(outcome.player_mods[0].tags.iter().any(|t| matches!(
+            t,
+            ModTag::Multiplier {
+                actor: Some(ActorRef::Parent),
+                ..
+            }
+        )));
     }
 
     /// 未映射 ModFlag → 保守跳过 + diagnostics。

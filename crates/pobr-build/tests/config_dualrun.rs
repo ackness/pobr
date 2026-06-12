@@ -244,8 +244,18 @@ fn classify_condition(
         );
         return;
     }
-    // 条目效果带 ActorCondition / actor Multiplier tag：解释器在 T5-E1 接通前
-    // 保守跳过整条 mod 并记 diagnostics——原始输入已捕获，待 T5-E1 后回补。
+    // 条件 → 数值 mod 化（§3-⑦ 回补后形态）：vendor 把 checkbox 落成 enemy
+    // 数值 mod（如曝光三条 `<X>Exposure` BASE 20 + ActorCondition 门控，
+    // ConfigOptions.lua:1864-1872）——开关语义由数值 mod 承载，FLAG 不再产出。
+    if !mods.is_empty() {
+        summary.record(
+            "条件→数值 mod 化（checkbox 落 enemy 数值 mod + actor 门控 tag）",
+            format!("{var} ← {} as {}", entry.var, mods[0].name.as_str()),
+        );
+        return;
+    }
+    // 条目效果带未映射 actor / 未接通 tag 维度：解释器保守跳过整条 mod 并记
+    // diagnostics——原始输入已捕获。
     let diag_prefix = format!("config.{}:", entry.var);
     if outcome
         .diagnostics
@@ -253,7 +263,7 @@ fn classify_condition(
         .any(|d| d.starts_with(&diag_prefix))
     {
         summary.record(
-            "tag 维度未接通（T5-E1 ActorCondition/actor Multiplier），保守跳过待回补",
+            "tag 维度未接通（未映射 actor 等），保守跳过待回补",
             format!("{var} ← {}", entry.var),
         );
         return;
