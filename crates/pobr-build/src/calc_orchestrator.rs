@@ -4378,10 +4378,54 @@ fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<AllocatedNode> 
             AllocatedNode {
                 node_id: node.node_id,
                 ascendancy,
-                modifier_texts: filter_parseable(node.modifier_texts),
+                modifier_texts: combine_wrapped_then_filter(node.modifier_texts),
             }
         })
         .collect()
+}
+
+/// 树节点词条的「折行合并」解析（M4-H；vendor `PassiveTree.lua:445-462`：单行
+/// parse 失败时与后续行逐次拼接重试，成功则消耗被并入的行，全部失败则按原样
+/// 丢弃该行、后续行继续独立解析）。
+///
+/// 树数据的多词长 stat 会被折成多行（vendor tree.lua sd 数组 / 入库 JSON 的
+/// `\n`，经 `pobr_tree::split_lines` 摊平）——如 Demolitionist
+/// 「Gain 4% of Damage as Extra Fire Damage for / every different Grenade
+/// fired in the past 8 seconds」是**一条** mod 的两行。仅树路径需要此合并
+/// （装备词条本就按行入库）。
+fn combine_wrapped_then_filter(texts: Vec<String>) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < texts.len() {
+        if parse_mod(&texts[i]).is_ok() {
+            out.push(texts[i].clone());
+            i += 1;
+            continue;
+        }
+        // 与后续行逐次拼接重试（vendor :448-462 comb 循环）。
+        let mut combined: Option<(String, usize)> = None;
+        for end in (i + 1)..texts.len() {
+            let comb = texts[i..=end].join(" ");
+            if parse_mod(&comb).is_ok() {
+                combined = Some((comb, end));
+                break;
+            }
+        }
+        match combined {
+            Some((comb, end)) => {
+                out.push(comb);
+                i = end + 1;
+            }
+            None => {
+                // 诊断口径与 filter_parseable 一致（结构性丢弃可见性）。
+                if std::env::var("POBR_DBG_DROPPED").is_ok() {
+                    eprintln!("[POBR_DROP] {}", texts[i]);
+                }
+                i += 1;
+            }
+        }
+    }
+    out
 }
 
 /// （M3 T5-E2）keystone 名 → 该 keystone 的 modifier 列表（树 keystone 节点 stats
@@ -4921,6 +4965,38 @@ mod tests {
     use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
     use pobr_gamedata::{GameData, repo_data_root};
     use std::collections::HashMap;
+
+    /// 树折行词条合并（M4-H；vendor PassiveTree.lua:445-462）：单行 parse 失败
+    /// → 与后续行拼接重试；全部失败 → 丢弃该行、后续行独立继续。
+    #[test]
+    fn combine_wrapped_then_filter_joins_wrapped_tree_lines() {
+        // Demolitionist 实例：两行 = 一条 mod（入库 stat 的 `\n` 折行）。
+        let joined = combine_wrapped_then_filter(vec![
+            "Gain 4% of Damage as Extra Fire Damage for".into(),
+            "every different Grenade fired in the past 8 seconds".into(),
+        ]);
+        assert_eq!(
+            joined,
+            vec![
+                "Gain 4% of Damage as Extra Fire Damage for every different Grenade fired in the past 8 seconds"
+                    .to_string()
+            ]
+        );
+
+        // 可独立解析的行不受影响；无法合并成功的失败行按原口径丢弃。
+        let mixed = combine_wrapped_then_filter(vec![
+            "10% increased Damage".into(),
+            "this line is not a known modifier".into(),
+            "+50 to maximum Life".into(),
+        ]);
+        assert_eq!(
+            mixed,
+            vec![
+                "10% increased Damage".to_string(),
+                "+50 to maximum Life".to_string()
+            ]
+        );
+    }
 
     fn life_item(amount: &str) -> Item {
         Item {
