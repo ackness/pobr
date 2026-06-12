@@ -900,15 +900,24 @@ pub fn calculate_with_data(
     }
 
     // 6b. 属性派生（PoE2）：life/mana/accuracy 须用**最终**属性（职业基础 + 装备/树/珠宝
-    //     的 +Strength/Dex/Int）。character_base 已注入职业基础派生部分；此处补注入来自
-    //     +属性词条的增量（2 life/力量、2 mana/智力、6 accuracy/敏捷），须在全部来源注入后。
+    //     的 +Strength/Dex/Int，并经 `N% increased <Attr>` 缩放——PoB2
+    //     `calculateAttributes`，CalcPerform.lua:381-388
+    //     `output[stat] = m_max(round(calcLib.val(modDB, stat)), 0)`）。
+    //     character_base 已注入「未经 INC 缩放的职业起始」派生部分；此处补注入
+    //     `最终总量 − 职业起始` 的增量（2 life/力量、2 mana/智力、6 accuracy/敏捷，
+    //     vendor :424-441 Life/Accuracy/Mana from Str/Dex/Int），须在全部来源注入后。
     if options.inject_character_base {
         // PoE2 属性派生系数（每点力量 +2 生命、每点智力 +2 魔力、每点敏捷 +6 精准）：
         // M0-W3 起自注入的 character_constants 域读取，与 CharacterBase 派生同一来源。
         let cc = &data.constants.character_constants;
-        let str_total = session.base_sum("Strength");
-        let dex_total = session.base_sum("Dexterity");
-        let int_total = session.base_sum("Intelligence");
+        // 职业起始属性（CharacterBase 烘焙部分；未知职业 = 未注入 CharacterBase → 0）。
+        let cls = character_base(build, data);
+        let (cls_str, cls_dex, cls_int) = cls
+            .map(|c| (c.strength, c.dexterity, c.intelligence))
+            .unwrap_or((0.0, 0.0, 0.0));
+        let str_total = session.attribute_total("Strength", cls_str);
+        let dex_total = session.attribute_total("Dexterity", cls_dex);
+        let int_total = session.attribute_total("Intelligence", cls_int);
         let mk = |stat: &str, value: f64| {
             let origin = ModifierSource::new(SourceId::new(
                 SourceKind::CharacterBase,
@@ -918,9 +927,15 @@ pub fn calculate_with_data(
             Modifier::number(stat, ModType::Base, value).with_origin(origin)
         };
         session.add_modifiers([
-            mk("MaximumLife", cc.life_per_strength * str_total),
-            mk("MaximumMana", cc.mana_per_intelligence * int_total),
-            mk("Accuracy", cc.accuracy_per_dexterity * dex_total),
+            mk("MaximumLife", cc.life_per_strength * (str_total - cls_str)),
+            mk(
+                "MaximumMana",
+                cc.mana_per_intelligence * (int_total - cls_int),
+            ),
+            mk(
+                "Accuracy",
+                cc.accuracy_per_dexterity * (dex_total - cls_dex),
+            ),
         ]);
     }
 
@@ -4869,6 +4884,46 @@ mod tests {
             run("ArmourBreakerPlayer").hit_chance < 1.0,
             "攻击应做精准/闪避检定"
         );
+    }
+
+    /// 属性派生消费**最终**属性（PoB2 CalcPerform.lua:381-388
+    /// `round(calcLib.val(modDB, stat))` + :424-431 Life from Str×2）：
+    /// `N% increased Strength` 须缩放含职业起始在内的全部 BASE，再进派生。
+    #[test]
+    fn attribute_increased_modifiers_scale_derived_life() {
+        let data = repo_data();
+        let character = CharacterIdentity {
+            level: 1,
+            class_name: "Warrior".into(),
+            ascendancy_name: String::new(),
+        };
+        let run = |texts: Vec<String>| {
+            let build = Build::new().with_character(character.clone());
+            calculate_with_data(
+                &build,
+                &data,
+                &DataOrchestratorOptions {
+                    extra_modifier_texts: texts,
+                    ..Default::default()
+                },
+            )
+            .expect("calc")
+        };
+
+        let base = run(vec!["+100 to Strength".into()]);
+        let inc = run(vec![
+            "+100 to Strength".into(),
+            "50% increased Strength".into(),
+        ]);
+
+        let cls_str = f64::from(
+            data.class_attributes("Warrior")
+                .expect("warrior attrs")
+                .strength,
+        );
+        // Δlife = life_per_strength × (round((cls+100)×1.5) − (cls+100))。
+        let expected = 2.0 * (((cls_str + 100.0) * 1.5).round() - (cls_str + 100.0));
+        assert_eq!(inc.life - base.life, expected);
     }
 
     #[test]

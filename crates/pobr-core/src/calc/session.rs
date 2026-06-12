@@ -334,6 +334,21 @@ impl CalculationSession {
             .sum(ModType::Base, &self.env.cfg, &[ModName::from(name)])
     }
 
+    /// 属性最终总量（PoB2 `calculateAttributes`，CalcPerform.lua:381-388：
+    /// `output[stat] = m_max(round(calcLib.val(modDB, stat)), 0)`，calcLib.val =
+    /// `Σbase × (1 + Σinc/100) × Πmore`）。`class_base` = 职业起始属性（PoBR 把它
+    /// 烘焙在 CharacterBase 派生值里、不作为 `Strength`/`Dexterity` modifier 入库，
+    /// 故在此作为 BASE 加项参与 INC/MORE 缩放，与 vendor「职业属性也是 modDB BASE
+    /// mod、同受 `N% increased <Attr>` 缩放」的口径对齐）。
+    pub fn attribute_total(&self, name: &str, class_base: f64) -> f64 {
+        let names = [ModName::from(name)];
+        let db = &self.env.player.mod_db;
+        let base = class_base + db.sum(ModType::Base, &self.env.cfg, &names);
+        let inc = db.sum(ModType::Inc, &self.env.cfg, &names);
+        let more = db.more(&self.env.cfg, &names);
+        (base * (1.0 + inc / 100.0) * more).round().max(0.0)
+    }
+
     /// 取玩家完整 [`OutputTable`]（`perform`/`perform_minimal` 后填满）。包含
     /// armour/evasion/ES、异常、EHP、技能机制等全部 fill 阶段字段——`MinimalOutput`
     /// 仅是其攻击/抗性子集，需要完整输出时用此。
