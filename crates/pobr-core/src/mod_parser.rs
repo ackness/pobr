@@ -2389,6 +2389,15 @@ fn parse_name(text: &str) -> Option<ModName> {
         "stun threshold" => "StunThreshold",
         // 异常阈值（PoB2 ModParser.lua:451；与 stun threshold 组合形见 resolve_names）。
         "ailment threshold" => "AilmentThreshold",
+        // 伤害异常持续时间（M4-l §7.2 族 3）：vendor 名表 → `Enemy<X>Duration`
+        // （施加方对敌 debuff 时长；poison :837/:840、bleed :846-:847、ignite
+        // :813-:814）。PoBR 消费名为去 Enemy 前缀的 `<X>Duration`（与 statmap
+        // 归一一致，见 stat_map_engine `EnemyPoisonDuration → PoisonDuration`；
+        // 消费链 ailment::scale_duration）。`... on you` 自侧形不在此表，照常
+        // 归 Unsupported。
+        "poison duration" | "duration of poisons you inflict" => "PoisonDuration",
+        "bleed duration" | "bleeding duration" => "BleedDuration",
+        "ignite duration" | "duration of ignites you inflict" => "IgniteDuration",
         // --- M2 防御词条批（W0.1）：block / evade / deflection / 预留效率 / ward ---
         // 格挡族（PoB2 ModParser.lua:365-383 nameList）。
         "to block"
@@ -2904,6 +2913,52 @@ mod per_slot_defence_tests {
         // Assert
         assert_eq!(out.mods[0].mod_type, ModType::Inc);
         assert_eq!(out.mods[0].value.as_number(), Some(-50.0));
+    }
+
+    /// 「N% increased/reduced <异常> Duration」（vendor ModParser.lua:813-814/:837/
+    /// :840/:846-847 名表 → Enemy<X>Duration；PoBR 消费名 <X>Duration）——
+    /// M4-l §7.2 族 3。
+    #[test]
+    fn parses_damaging_ailment_duration_names() {
+        // Arrange：树原文 + 弓符文 reduced 形 + 名表别名。
+        let cases = [
+            ("10% increased [Poison] Duration", "PoisonDuration", 10.0),
+            ("25% reduced Poison Duration", "PoisonDuration", -25.0),
+            (
+                "30% increased Duration of Poisons you inflict",
+                "PoisonDuration",
+                30.0,
+            ),
+            ("10% increased Bleeding Duration", "BleedDuration", 10.0),
+            ("15% increased Bleed Duration", "BleedDuration", 15.0),
+            ("20% increased Ignite Duration", "IgniteDuration", 20.0),
+            (
+                "25% increased Duration of Ignites you inflict",
+                "IgniteDuration",
+                25.0,
+            ),
+        ];
+        for (text, name, value) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), name, "{text}");
+            assert_eq!(m.mod_type, ModType::Inc, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
+        }
+    }
+
+    /// 自侧形「Poison Duration on You」不入施加方名表（vendor :838 →
+    /// SelfPoisonDuration，未接入）→ 维持 Err（skip-and-collect）。
+    #[test]
+    fn poison_duration_on_you_stays_unparsed() {
+        // Arrange / Act
+        let out = parse_mod("20% increased Poison Duration on You");
+        // Assert
+        assert!(out.is_err());
     }
 
     /// `with poison` / `with bleeding`（ANY，无 MatchAll）→ 对应 KeywordFlag，不带 MATCH_ALL。
