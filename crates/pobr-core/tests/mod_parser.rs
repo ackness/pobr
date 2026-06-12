@@ -892,3 +892,36 @@ fn parses_projectile_speed_name() {
     assert_eq!(o.mods[0].name, ModName::from("ProjectileSpeed"));
     assert_eq!(o.mods[0].mod_type, ModType::Inc);
 }
+
+/// 「N% increased [Exposure] Effect」（树 Exposure Effect 小点 10 / Overexposure
+/// 30）→ 三元素 `<El>ExposureEffect` INC 展开（vendor ModParser.lua:693
+/// `["exposure effect"] = { "FireExposureEffect", "ColdExposureEffect",
+/// "LightningExposureEffect" }`）。消费方 = `calc::reduce_enemy_exposure`
+/// （CalcPerform.lua:3223 曝光 magnitude 的玩家效果 INC）。
+#[test]
+fn parses_exposure_effect_to_three_elements() {
+    let o = parse_mod("30% increased [Exposure] Effect").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 3);
+    for (m, name) in o.mods.iter().zip([
+        "FireExposureEffect",
+        "ColdExposureEffect",
+        "LightningExposureEffect",
+    ]) {
+        assert_eq!(m.name, ModName::from(name));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value, ModValue::Number(30.0));
+    }
+}
+
+/// 单元素曝光效果（vendor ModParser.lua:690-692 `fire/cold/lightning exposure
+/// effect`）→ 单条 `<El>ExposureEffect`。
+#[test]
+fn parses_single_element_exposure_effect() {
+    let o = parse_mod("25% increased Cold Exposure Effect").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("ColdExposureEffect"));
+    assert_eq!(o.mods[0].mod_type, ModType::Inc);
+    assert_eq!(o.mods[0].value, ModValue::Number(25.0));
+}
