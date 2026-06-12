@@ -485,10 +485,10 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 131; // 实测 131/144 = 91.0%（M4-H 全局线：油涂节点连带）
-const BASELINE_DEF_HIT5: usize = 377; // 实测 377/450 = 83.8%（M4-H 全局线合并重记）
+const BASELINE_DEF_CORE_HIT5: usize = 132; // 实测 132/144 = 91.7%（M4-k2 油涂池连带）
+const BASELINE_DEF_HIT5: usize = 379; // 实测 379/450 = 84.2%（M4-k 波合并重记）
 const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
-const BASELINE_OFF_HIT5: usize = 41; // 实测 41/80 = 51.2%（M4-j3 冷却整链 deadeye Speed 入列）
+const BASELINE_OFF_HIT5: usize = 42; // 实测 42/80 = 52.5%（M4-k1 短语解锁 + k2 grenade 等级/品质）
 const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
@@ -511,8 +511,8 @@ const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 ///    CombinedDPS 0.52x → 0.82x 收敛但未回带。剩余 per-hit ~0.82x 缺口
 ///    登记 m4-skill-gaps §7（含「attack/spell area damage」暂缓短语——其
 ///    启用前提『冷却线修复后』已满足，归 parser 线）。
-const BASELINE_DOT_HIT5: usize = 3; // 实测 3/37 = 8.1%（例外 2 下修）
-const BASELINE_DOT_HIT10: usize = 3; // 实测 3/37 = 8.1%（例外 1+2 叠加下修）
+const BASELINE_DOT_HIT5: usize = 4; // 实测 4/37 = 10.8%（M4-k1 twister TotalDotDPS 入列）
+const BASELINE_DOT_HIT10: usize = 4; // 实测 4/37 = 10.8%
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
