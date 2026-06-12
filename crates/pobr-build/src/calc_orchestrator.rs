@@ -196,6 +196,18 @@ pub fn calculate_with_data(
         build
     };
 
+    // 宝石品质加成（M4-H）：「+N% to Quality of all <X> Skills」（树小点/装备）
+    // 预先折进每个宝石的 quality（vendor applyGemMods 对每个 gem effect 叠加
+    // effect.quality，CalcSetup.lua:410-435），使下游全部品质消费点一致生效。
+    let quality_adjusted;
+    let build = match apply_gem_quality_bonuses(build, data) {
+        Some(adjusted) => {
+            quality_adjusted = adjusted;
+            &quality_adjusted
+        }
+        None => build,
+    };
+
     // 主技能分等级参数（cast/attack 时间 → 行动速率；cost / cooldown 经 BASE 词条注入）。
     // 在建 session 前先解析，以便把行动速率写入 base_input + 据其类型设 cfg 伤害 flag。
     let main_skill = resolve_main_skill(build, data);
@@ -1225,39 +1237,142 @@ fn resolve_skill_level_with_gem_bonus(
     let bonus = if is_grenade {
         0
     } else {
-        additional_gem_levels(build, skill_types, skill_id)
+        additional_gem_levels(build, data, skill_id)
     };
     data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)
 }
 
-/// 扫描全部已装备物品（implicit/explicit/enchant）的「`+N to Level of all <X> Skills`」，
-/// 返回对主技能 `skill_types` 生效的等级加成之和。珠宝亦计入（多为全局 mod 载体）。
-fn additional_gem_levels(build: &Build, skill_types: &[String], skill_id: &str) -> u32 {
-    let mut total = 0u32;
-    let scan = |item: &Item, total: &mut u32| {
-        for text in item
-            .implicit_texts
-            .iter()
-            .chain(&item.modifier_texts)
-            .chain(&item.enchant_texts)
-        {
-            if let Some((n, category)) = parse_gem_level_bonus(text)
-                && gem_level_category_matches(&category, skill_types, skill_id)
-            {
-                *total += n;
-            }
+/// 扫描全部 GemProperty 词条来源（装备 implicit/explicit/enchant + 珠宝 +
+/// **已分配树节点 stats**——vendor 的 GemProperty LIST 进全局 modDB，树是主要
+/// 载体之一：「Skill Gem Quality」小点 `+2% to Quality of all Skills`、
+/// 「Motoric Implants」`+2 to Level of all Skills with a Dexterity
+/// requirement` 等），返回解析产物列表。
+fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPropertyBonus> {
+    let mut out = Vec::new();
+    let mut scan_text = |text: &str| {
+        if let Some(bonus) = parse_gem_property_bonus(text) {
+            out.push(bonus);
         }
     };
     for (slot, item) in build.equipped_items() {
         // Kalandra's Touch 镜射对侧戒指词条（含 `+N to Level of all <X> Skills`），
         // 与主注入路径同语义（vendor CalcSetup.lua:1221-1243 复制完整 modList）。
         let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
-        scan(item, &mut total);
+        for text in item
+            .implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+        {
+            scan_text(text);
+        }
     }
     for jewel in &build.jewels {
-        scan(jewel, &mut total);
+        for text in jewel
+            .implicit_texts
+            .iter()
+            .chain(&jewel.modifier_texts)
+            .chain(&jewel.enchant_texts)
+        {
+            scan_text(text);
+        }
     }
-    total
+    for node_id in &build.tree.allocated_nodes {
+        if let Some(node) = data.passive_nodes.get(&node_id.0) {
+            for stat in &node.stats {
+                scan_text(stat);
+            }
+        }
+    }
+    out
+}
+
+/// 某 GemProperty 词条是否适用于指定授予效果的宝石（vendor `applyGemMods`
+/// keyword/keywordList 逐项 `gemIsType` + `gemRequirements` 检查，
+/// CalcSetup.lua:410-435）。
+fn gem_property_applies(
+    bonus: &GemPropertyBonus,
+    data: &BuildData,
+    skill_types: &[String],
+    skill_id: &str,
+) -> bool {
+    if !gem_level_category_matches(&bonus.category, skill_types, skill_id) {
+        return false;
+    }
+    match bonus.attr_req {
+        None => true,
+        Some(attr) => {
+            // 授予效果 → 宝石基底 → 属性需求权重（vendor `effect.gemData[reqX] > 0`）。
+            let Some(gem_def) = data
+                .gem_effects
+                .get(skill_id)
+                .and_then(|ge| data.skill_gems.get(&ge.gem_id))
+            else {
+                return false;
+            };
+            match attr {
+                "str" => gem_def.str_pct > 0,
+                "dex" => gem_def.dex_pct > 0,
+                "int" => gem_def.int_pct > 0,
+                _ => false,
+            }
+        }
+    }
+}
+
+/// 「`+N to Level of all <X> Skills`」对主技能生效的等级加成之和
+/// （[`gem_property_bonuses`] 的 Level 维度按主技能过滤求和）。
+fn additional_gem_levels(build: &Build, data: &BuildData, skill_id: &str) -> u32 {
+    let skill_types = data
+        .granted_effects
+        .get(skill_id)
+        .map(|e| e.skill_types.as_slice())
+        .unwrap_or(&[]);
+    gem_property_bonuses(build, data)
+        .iter()
+        .filter(|b| b.kind == GemPropertyKind::Level)
+        .filter(|b| gem_property_applies(b, data, skill_types, skill_id))
+        .map(|b| b.value)
+        .sum()
+}
+
+/// 宝石品质加成应用（M4-H；vendor `applyGemMods` 对**每个** gem effect 叠加
+/// `effect.quality`，CalcSetup.lua:410-435 + :1697/:1788——active 与 support
+/// 一致享受）。PoBR 等价：入口处克隆 build，把每个启用宝石组里每个宝石的
+/// `quality` 预先加上适用的 GemProperty Quality 加成，下游全部 quality 消费点
+/// （主技能品质段 / 未选 set merge / statmap / aura 路径）一致生效。
+///
+/// 无任何 Quality 加成词条时返回 `None`（零克隆开销，行为逐字不变）。
+fn apply_gem_quality_bonuses(build: &Build, data: &BuildData) -> Option<Build> {
+    let bonuses: Vec<GemPropertyBonus> = gem_property_bonuses(build, data)
+        .into_iter()
+        .filter(|b| b.kind == GemPropertyKind::Quality)
+        .collect();
+    if bonuses.is_empty() {
+        return None;
+    }
+    let mut adjusted = build.clone();
+    for group in &mut adjusted.socket_groups {
+        for gem in &mut group.gem_skills {
+            let skill_types = data
+                .granted_effects
+                .get(&gem.skill_id)
+                .map(|e| e.skill_types.as_slice())
+                .unwrap_or(&[]);
+            let add: u32 = bonuses
+                .iter()
+                .filter(|b| gem_property_applies(b, data, skill_types, &gem.skill_id))
+                .map(|b| b.value)
+                .sum();
+            if add > 0 {
+                gem.quality += add;
+                if group.active_skill_id.as_deref() == Some(gem.skill_id.as_str()) {
+                    group.active_gem_quality = Some(gem.quality);
+                }
+            }
+        }
+    }
+    Some(adjusted)
 }
 
 /// 树上是否分配了『+1 Ring Slot』词条节点（vendor flag `AdditionalRingSlot`，
@@ -1419,19 +1534,80 @@ fn kalandra_reflected_ring<'a>(
     Some(other)
 }
 
-/// 解析「`+N to Level of all <category> Skills`」→ `(N, category 小写)`。非此形式返回 `None`。
-/// 先经 [`clean_item_text`] 剥 `{fractured}` 等花括号标记并小写。裸「all Skills」（无类别）
-/// 返回空 `category`（无条件全匹配）。
+/// GemProperty 词条的属性维度（vendor `ModParser.lua:3468` 的 `(%a+)` property
+/// 捕获：`level` / `quality`）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GemPropertyKind {
+    Level,
+    Quality,
+}
+
+/// GemProperty 词条解析产物（vendor `mod("GemProperty", "LIST", { keyword,
+/// key, value, gemRequirements })`，ModParser.lua:3468-3497）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GemPropertyBonus {
+    value: u32,
+    kind: GemPropertyKind,
+    /// 类别（小写；空 = 裸「all Skills」全匹配）。
+    category: String,
+    /// 属性需求过滤（vendor `gemRequirements[reqStr|reqDex|reqInt] ≥ 1`，
+    /// `with a <Attr> requirement` 尾缀）：Some("str"|"dex"|"int")。
+    attr_req: Option<&'static str>,
+}
+
+/// 解析 GemProperty 词条（M4-H 扩展；vendor ModParser.lua:3468
+/// `([%+%-]%d+)%%? to (%a+) of all ?([%a%-' ]*) skills? ?w?i?t?h? ?a?n?
+/// ?(%a+) ?r?e?q?u?i?r?e?m?e?n?t?`）：
+/// - `+N to Level of all [<category> ]Skills` → Level
+/// - `+N% to Quality of all [<category> ]Skills` → Quality（树「Skill Gem
+///   Quality」小点 / Gemling 升华等）
+/// - 尾缀 `with a <Strength|Dexterity|Intelligence> requirement` →
+///   `attr_req`（vendor gemRequirements）
+///
+/// 先经 [`clean_grant_text`] 剥 `{fractured}` 花括号与 `[内部名|显示名]`
+/// 方括号标记并小写（树 stat 的 `[Quality]` 形）。非此形式返回 `None`。
+fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
+    let clean = clean_grant_text(text);
+    let body = clean.strip_prefix('+')?;
+    let (num, rest) = body.split_once(" to ")?;
+    let num = num.strip_suffix('%').unwrap_or(num);
+    let value: u32 = num.trim().parse().ok()?;
+    let (kind, rest) = if let Some(r) = rest.strip_prefix("level of all") {
+        (GemPropertyKind::Level, r)
+    } else if let Some(r) = rest.strip_prefix("quality of all") {
+        (GemPropertyKind::Quality, r)
+    } else {
+        return None;
+    };
+    let mut rest = rest.trim();
+    // 属性需求尾缀（vendor gemRequirements 构造分支）。
+    let mut attr_req = None;
+    if let Some((head, req)) = rest.split_once(" with a ") {
+        attr_req = Some(match req.trim() {
+            "strength requirement" => "str",
+            "dexterity requirement" => "dex",
+            "intelligence requirement" => "int",
+            _ => return None,
+        });
+        rest = head.trim_end();
+    }
+    // `... skills` 尾词（裸「all skills」时类别为空）。
+    let category = rest.strip_suffix("skills").unwrap_or(rest).trim();
+    Some(GemPropertyBonus {
+        value,
+        kind,
+        category: category.to_string(),
+        attr_req,
+    })
+}
+
+/// 兼容旧调用面：`+N to Level of all <category> Skills`（无属性需求尾缀）→
+/// `(N, category)`。委托 [`parse_gem_property_bonus`]。
+#[cfg(test)]
 fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
-    let clean = clean_item_text(text);
-    let body = clean
-        .strip_prefix('+')
-        .and_then(|s| s.strip_suffix(" skills"))?;
-    // body = `<N> to level of all[ <category>]`（裸 all skills 时无 category 段）。
-    let (num, rest) = body.split_once(" to level of all")?;
-    let n: u32 = num.trim().parse().ok()?;
-    let category = rest.trim().to_string();
-    Some((n, category))
+    let bonus = parse_gem_property_bonus(text)?;
+    (bonus.kind == GemPropertyKind::Level && bonus.attr_req.is_none())
+        .then_some((bonus.value, bonus.category))
 }
 
 /// 宝石等级加成的 `<category>` 是否对主技能生效。对齐 PoB2 语义
@@ -4812,10 +4988,43 @@ mod ring3_tests {
 
 #[cfg(test)]
 mod gem_level_tests {
-    use super::{gem_level_category_matches, parse_gem_level_bonus, skill_name_from_id};
+    use super::{
+        GemPropertyBonus, GemPropertyKind, gem_level_category_matches, parse_gem_level_bonus,
+        parse_gem_property_bonus, skill_name_from_id,
+    };
 
     fn types(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// 品质维度 + 属性需求尾缀（M4-H；vendor ModParser.lua:3468 GemProperty 形：
+    /// 树「Skill Gem Quality」小点 / Motoric Implants；mercenary-gemling 实例
+    /// vendor 实测 q20+2+2+2(+5 升华) = 31、lv20+2+2 = 24）。
+    #[test]
+    fn parses_quality_and_attr_requirement_forms() {
+        assert_eq!(
+            parse_gem_property_bonus("+2% to [Quality] of all Skills"),
+            Some(GemPropertyBonus {
+                value: 2,
+                kind: GemPropertyKind::Quality,
+                category: String::new(),
+                attr_req: None,
+            })
+        );
+        assert_eq!(
+            parse_gem_property_bonus("+2 to Level of all Skills with a [Dexterity] requirement"),
+            Some(GemPropertyBonus {
+                value: 2,
+                kind: GemPropertyKind::Level,
+                category: String::new(),
+                attr_req: Some("dex"),
+            })
+        );
+        // 旧 level 包装面：带属性需求的 level 形不落旧调用面（消费方需 attr 过滤）。
+        assert_eq!(
+            parse_gem_level_bonus("+2 to Level of all Skills with a [Dexterity] requirement"),
+            None
+        );
     }
 
     #[test]
