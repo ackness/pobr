@@ -505,8 +505,8 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 const BASELINE_DEF_CORE_HIT5: usize = 132; // 实测 132/144 = 91.7%（M4-k2 油涂池连带）
 const BASELINE_DEF_HIT5: usize = 379; // 实测 379/450 = 84.2%（M4-k 波合并重记）
 const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
-const BASELINE_OFF_HIT5: usize = 46; // 实测 46/80 = 57.5%（M4-l 波：毒八族 + curse 残项 + Debuff 注入面叠加）
-const BASELINE_OFF_HIT10: usize = 51; // 实测 51/80 = 63.8%
+const BASELINE_OFF_HIT5: usize = 52; // 实测 52/80 = 65.0%（M4-m：击中量级线 + 曝光/Buff 收尾 + 杂项五项）
+const BASELINE_OFF_HIT10: usize = 62; // 实测 62/80 = 77.5%
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -530,8 +530,8 @@ const BASELINE_OFF_HIT10: usize = 51; // 实测 51/80 = 63.8%
 ///    CombinedDPS 0.52x → 0.82x 收敛但未回带。剩余 per-hit ~0.82x 缺口
 ///    登记 m4-skill-gaps §7（含「attack/spell area damage」暂缓短语——其
 ///    启用前提『冷却线修复后』已满足，归 parser 线）。
-const BASELINE_DOT_HIT5: usize = 5; // 实测 5/37 = 13.5%（M4-l：bow-shot/titan/druid dot 收敛入列）
-const BASELINE_DOT_HIT10: usize = 8; // 实测 8/37 = 21.6%
+const BASELINE_DOT_HIT5: usize = 9; // 实测 9/37 = 24.3%（m1 击中量级连带 DoT 收敛）
+const BASELINE_DOT_HIT10: usize = 12; // 实测 12/37 = 32.4%
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
