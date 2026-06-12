@@ -82,9 +82,21 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     } else {
         env.enemy.base.evasion
     };
-    let output =
-        calculate_minimal_vs_enemy(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &input);
+    // M4-T2 W-B2：hand pass 入口。`hand_sources` 空（非攻击技能 / 旧入口）时
+    // `run_hand_passes` 内部直通 `calculate_minimal_vs_enemy`，行为逐值不变；
+    // 编排层装配 HandSource 后走 per-hand 管线 + combineStat 合并。
+    let hand_pass = super::hand_pass::run_hand_passes(
+        &env.player.mod_db,
+        &env.enemy.mod_db,
+        &env.cfg,
+        &env.hand_sources,
+        &input,
+        env.double_hits_when_dual_wielding,
+    );
+    let output = hand_pass.combined;
     env.player.output = OutputTable::from(&output);
+    env.player.output.main_hand = hand_pass.main_hand;
+    env.player.output.off_hand = hand_pass.off_hand;
     // M3 T3：curse 面板回填（buff_pass 在 env_finalize 阶段 4 产出，先于上行整表
     // 覆盖，经 Env::curse_pass_output 中转；None = buff_pass 未运行，维持 Default 0）。
     if let Some(curse) = &env.curse_pass_output {
@@ -192,8 +204,17 @@ fn fill_mechanics(env: &mut Env) {
     let keystones = crate::rules::DefenceKeystones::from_db(db, cfg);
 
     // --- 技能使用时间 / 有效行动速率 ---
-    let base_use_time = if env.player.base.action_rate > 0.0 {
-        1.0 / env.player.base.action_rate
+    // M4-T2 W-B2：武器速率迁到 HandSource 后，面板基础速率从首个 hand source 读
+    // （单 MainHand source = 旧 base_input 折算值，逐值不变；双持的合并口径
+    // 等 W-A1 后随 combineStat Speed 对齐）。无 hand source 沿用 base.action_rate。
+    let panel_base_rate = env
+        .hand_sources
+        .first()
+        .and_then(|hand| hand.weapon.attack_rate)
+        .filter(|rate| *rate > 0.0)
+        .unwrap_or(env.player.base.action_rate);
+    let base_use_time = if panel_base_rate > 0.0 {
+        1.0 / panel_base_rate
     } else {
         0.0
     };

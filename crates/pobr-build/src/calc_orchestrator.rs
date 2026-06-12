@@ -332,21 +332,27 @@ pub fn calculate_with_data(
 
     // 武器基底贡献（仅攻击技能）：击中物理伤害（× 技能倍率）+ 攻击速率覆盖。
     // 用解析出的真实主技能 id（跳过 meta 壳），确保攻击/法术判定与权重正确。
+    //
+    // M4-T2 W-B2：武器基底不再直接折进 `base_input`，改装配为 `HandSource`
+    // （pobr-core::calc::hand_pass，蓝图 §3.3 契约 1）经 `set_hand_sources` 注入，
+    // `perform` 内 `run_hand_passes` 把同一组值注入 per-hand `MinimalInput` 副本——
+    // 单 HandSource 与旧折算逐值等价（OR 直通，等价性测试钉死）。折算口径不变：
+    // phys × dmg_mult、attack_rate × attackSpeedMultiplier（CalcOffence L2721-2723）。
     let weapon = main_skill
         .as_ref()
         .and_then(|(skill, _, skill_id)| weapon_contribution(build, data, skill_id, skill));
+    let mut hand_weapon: Option<pobr_core::calc::WeaponBase> = None;
     if let Some(w) = &weapon {
-        base_input.base_hit_min += w.phys_min * dmg_mult;
-        base_input.base_hit_max += w.phys_max * dmg_mult;
-        if w.attack_rate > 0.0 {
-            // 技能 attackSpeedMultiplier（PoB GrantedEffectsPerLevel，可负）作用于武器攻击速率
-            // （CalcOffence L2721-2723：`source.AttackRate × (1 + mult/100)`，如 Flicker -50）。
-            let asm = main_skill
-                .as_ref()
-                .and_then(|(s, _, _)| s.attack_speed_multiplier)
-                .map_or(1.0, |m| 1.0 + m / 100.0);
-            base_input.base_action_rate = w.attack_rate * asm;
-        }
+        let asm = main_skill
+            .as_ref()
+            .and_then(|(s, _, _)| s.attack_speed_multiplier)
+            .map_or(1.0, |m| 1.0 + m / 100.0);
+        hand_weapon = Some(pobr_core::calc::WeaponBase {
+            hit_min: w.phys_min * dmg_mult,
+            hit_max: w.phys_max * dmg_mult,
+            attack_rate: (w.attack_rate > 0.0).then_some(w.attack_rate * asm),
+            crit_chance: w.crit_chance,
+        });
     }
 
     // 冷却限速：PoB 顺序——先把速度全部 inc/more 算完，再 `min(rate, 1/effective_cooldown)`
@@ -374,8 +380,19 @@ pub fn calculate_with_data(
         && cd > 0.0
     {
         let cd_rate = 1.0 / cd;
-        if base_input.base_action_rate > cd_rate {
-            base_input.base_action_rate = cd_rate;
+        // W-B2 起武器速率在 HandSource 上——预截作用于实际生效的那个速率
+        // （有武器速率截 HandSource，否则截 base_input，与旧折算顺序等价）。
+        match hand_weapon.as_mut().and_then(|wb| wb.attack_rate.as_mut()) {
+            Some(rate) => {
+                if *rate > cd_rate {
+                    *rate = cd_rate;
+                }
+            }
+            None => {
+                if base_input.base_action_rate > cd_rate {
+                    base_input.base_action_rate = cd_rate;
+                }
+            }
         }
     }
 
@@ -394,6 +411,21 @@ pub fn calculate_with_data(
     // （旧数据包）= None 不注入（消费侧权重全 0 回退）。
     if let Some(curse_priority) = &data.curse_priority {
         session.set_curse_priority(curse_priority.clone());
+    }
+    // M4-T2 W-B2：武器基底经 HandSource 注入（单 pass 直通——OR 模式逐值等价于
+    // 旧 base_input 折算）。第二个 HandSource（Weapon2 双持 pass）等 W-A1 commit-2
+    // per-hand 武器位落地后装配；doubleHitsWhenDualWielding 等 W-D1 数据通道（恒 false）。
+    // 非武器攻击（Shield Wall 类）的 source 是 off-hand（PoB2 CalcOffence L2418-2431）。
+    if let Some(wb) = hand_weapon {
+        let is_off_hand_source = main_effect
+            .map(|e| e.is_attack() && e.is_non_weapon_attack())
+            .unwrap_or(false);
+        let hand_source = if is_off_hand_source {
+            pobr_core::calc::HandSource::off_hand(wb)
+        } else {
+            pobr_core::calc::HandSource::main_hand(wb)
+        };
+        session.set_hand_sources(vec![hand_source], false);
     }
 
     if bypasses_cooldown || cooldown_attack_unmodeled {

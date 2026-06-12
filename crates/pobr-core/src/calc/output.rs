@@ -1,3 +1,5 @@
+use pobr_data::prelude::DamageType;
+
 use super::{DamageComponent, MinimalOutput, SkillUseTime};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -232,6 +234,48 @@ pub struct OutputTable {
     /// curse 槽占用列表（顺序 = vendor `curseSlots` 合并序：hex 槽 → mark 槽 →
     /// `ignoreCurseLimit` 槽外追加，CalcPerform.lua:2878-2896）。
     pub curse_slots: Vec<String>,
+
+    // === M4-T2 ===
+    // per-hand 子表（W-B2，RFC m4-rfc-attribution-passes §4 裁决 D4：强类型子表，
+    // 扁平 PoB 键 `MainHand.X` 收口在 display_catalog 的 pob_key）。
+    // 顶层既有字段语义 = combineStat 之后（单手 build 走 OR 直通数值不变）。
+    /// 主手 pass 子结果。非攻击技能 = None；攻击 = Some（单手攻击 off_hand=None）。
+    pub main_hand: Option<HandOutput>,
+    /// 副手 pass 子结果（双持/盾击时 Some）。
+    pub off_hand: Option<HandOutput>,
+}
+
+/// 单只手的 pass 输出（M4-T2 W-B2；字段集 = combineStat 入参面，**冻结**——
+/// 评审 C6c：弩（FiringRate/ReloadTime 族）与 ailment 扩展字段用独立后续 commit
+/// append，避免 display_catalog 反复改 pob_key。`accuracy` 不在当前 MinimalOutput
+/// 面上，待 display 需要时随独立 commit 一并 append）。
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct HandOutput {
+    /// 该手命中率（fraction；vendor `HitChance`，AVERAGE 入参）。
+    pub hit_chance: f64,
+    /// 该手暴击率（fraction；vendor `CritChance`，CRIT 入参）。
+    pub crit_chance: f64,
+    /// 命中降级前、cap 后暴击率（fraction；vendor `PreEffectiveCritChance`）。
+    pub pre_effective_crit_chance: f64,
+    /// 该手爆伤乘区（vendor `CritMultiplier`，AVERAGE 入参）。
+    pub crit_multiplier: f64,
+    /// 该手攻速（vendor `Speed`，HARMONICMEAN 入参）。
+    pub speed: f64,
+    /// 该手 per-type 击中分量（合并前）。
+    pub damage_components: Vec<DamageComponent>,
+    /// CritBlend 后平均击中（vendor `AverageHit`）。
+    pub average_hit: f64,
+    /// × hit_chance 后（vendor `AverageDamage`，DPS 入参）。
+    pub average_damage: f64,
+    /// 该手单独 DPS（合并前；vendor `TotalDPS`，DPS 入参）。
+    pub total_dps: f64,
+    /// `Stored<Type>CritAvg` 族（W-B3 落值；vendor `:4047-4057`，ailment magnitude
+    /// 输入——pre-resist、含 allMult 与暴击腿 ×CritMultiplier）。
+    pub stored_crit_avg: Vec<(DamageType, f64)>,
+    /// `Stored<Type>HitAvg` 族（非暴击腿）。
+    pub stored_hit_avg: Vec<(DamageType, f64)>,
+    /// `Stored<Type>CombinedAvg` 族（两腿按暴击率加权累计；外层按 DPS 模式合并，:4588）。
+    pub stored_combined_avg: Vec<(DamageType, f64)>,
 }
 
 /// 单个召唤物的输出快照（结构同玩家 offence/defence 关键输出的子集）。
@@ -389,6 +433,9 @@ impl Default for OutputTable {
             // M3 T3：curse 面板默认中性（buff_pass 未运行时不影响任何既有输出）。
             enemy_curse_limit: 0.0,
             curse_slots: Vec::new(),
+            // M4-T2：per-hand 子表默认 None（回退态恒 None，消费方按 None 跳过）。
+            main_hand: None,
+            off_hand: None,
         }
     }
 }

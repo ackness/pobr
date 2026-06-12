@@ -242,6 +242,19 @@ impl CalculationSession {
         self.env.buff_handler_registry = registry;
     }
 
+    /// 注入 MH/OH hand pass 输入（M4-T2 W-B2，蓝图 §3.3 契约 1；编排层武器段构造
+    /// [`HandSource`](super::hand_pass::HandSource)）。未调用 = 空，`perform` 走与
+    /// 历史完全一致的单管线路径（回退态）。`double_hits` = 技能数据
+    /// `doubleHitsWhenDualWielding`（W-D1 数据通道落地前恒 false）。
+    pub fn set_hand_sources(
+        &mut self,
+        sources: Vec<super::hand_pass::HandSource>,
+        double_hits: bool,
+    ) {
+        self.env.hand_sources = sources;
+        self.env.double_hits_when_dual_wielding = double_hits;
+    }
+
     /// 按 `(config_level, tier)` 初始化敌人（怪物缩放 + 档位加成），写入 `Env.enemy`
     /// 的标量基础与 modDB（归因 [`SourceKind::EnemyConfig`]）。
     ///

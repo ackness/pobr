@@ -11,6 +11,7 @@ pub mod ehp;
 pub mod env;
 pub mod env_finalize;
 pub mod error;
+pub mod hand_pass;
 pub mod keystone_merge;
 pub mod minion;
 pub mod offence;
@@ -64,6 +65,10 @@ pub use ehp::{
 };
 pub use env::Env;
 pub use error::CalcError;
+pub use hand_pass::{
+    COMBINE_TABLE, HandCfg, HandPassOutput, HandSource, WeaponBase, combine_mode_for,
+    run_hand_passes,
+};
 pub use minion::{
     AttributeInfusion, MinionBaseStats, MinionCategory, MinionContext, MinionData, MinionDef,
     MinionInput, MinionLimitId, MinionModifierEntry, MinionWeaponData, build_minion_context,
@@ -74,7 +79,7 @@ pub use offence::{
     MinimalInput, MinimalOutput, TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
     calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy,
 };
-pub use output::{MinionOutput, OutputTable};
+pub use output::{HandOutput, MinionOutput, OutputTable};
 pub use perform::perform;
 pub use pool_damage::{
     AllyLayer, POB2_DAMAGE_ORDER, PoolCtx, PoolState, PoolsAfter, TypedDamage,
