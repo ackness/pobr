@@ -485,23 +485,23 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 130; // 实测 130/144 = 90.3%
-const BASELINE_DEF_HIT5: usize = 374; // 实测 374/450 = 83.1%（M1+M2 合并重记）
-const BASELINE_DEF_HIT10: usize = 390; // 实测 390/450 = 86.7%
-const BASELINE_OFF_HIT5: usize = 28; // 实测 28/80 = 35.0%（M4-G 缺口波合并重记：g1 精准 smith CritChance + g3 grenade/DD）
-const BASELINE_OFF_HIT10: usize = 36; // 实测 36/80 = 45.0%（M4-G：deadeye TotalDPS 同步入 @10%）
+const BASELINE_DEF_CORE_HIT5: usize = 131; // 实测 131/144 = 91.0%（M4-H 全局线：油涂节点连带）
+const BASELINE_DEF_HIT5: usize = 377; // 实测 377/450 = 83.8%（M4-H 全局线合并重记）
+const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
+const BASELINE_OFF_HIT5: usize = 40; // 实测 40/80 = 50.0%（M4-H：h1 暴击四段 + h2 gain-as/品质 + h3 减伤口径叠加）
+const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
 /// （TotalDotDPS/CombinedDPS golden=0）+ essence-drain TotalDotDPS 1.0000；
 /// 分母 37 = 18 build × (TotalDotDPS + CombinedDPS) + essence-drain WithDotDPS。
 const BASELINE_DOT_HIT5: usize = 4; // 实测 4/37 = 10.8%（M4-G 缺口波合并重记：g1/g3 击中量级连带 DoT 收敛 +1）
-const BASELINE_DOT_HIT10: usize = 4; // 实测 4/37 = 10.8%
+const BASELINE_DOT_HIT10: usize = 5; // 实测 5/37 = 13.5%（M4-H 连带）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
-const PANEL_OFF_HIT5: usize = 28; // 实测 28/80 = 35.0%（M4-G grenade 二次起爆：deadeye TotalDPS 入 @5%）
-const PANEL_OFF_HIT10: usize = 37; // 实测 37/80 = 46.2%（M4-G 尸体爆炸基伤：abyssal-lich TotalDPS 0.09x→1.09x 入 @10% + deadeye）
+const PANEL_OFF_HIT5: usize = 34; // 实测 34/80 = 42.5%（M4-H 合并重记）
+const PANEL_OFF_HIT10: usize = 41; // 实测 41/80 = 51.2%
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
