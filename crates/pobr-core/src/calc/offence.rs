@@ -861,8 +861,10 @@ fn enemy_damage_multiplier(
     // - 投射物技能 += ProjectileDamageTaken（:4152-4153）、攻击投射物再加
     //   ProjectileAttackDamageTaken（:4155-4156）——PoBR 以 cfg 的
     //   ModFlags::PROJECTILE / 攻击判定近似 vendor skillFlags.projectile/attack；
-    // - trap/mine 的 TrapMineDamageTaken（:4158-4159）暂无 skillFlags 表达 +
-    //   样本无 producer，登记 TODO(parity)。
+    // - trap/mine += TrapMineDamageTaken（:4158-4159）——M4-m（h3 登记）接线：
+    //   以 `cfg.skill_types` 含 Trapped(33)/RemoteMined(36) 近似 vendor
+    //   skillFlags.trap/mine（statSet.baseFlags 主通道；support addFlags
+    //   授予通道（如 Remote Mine support 加 'mine'）PoBR 未建模，保持登记）。
     if damage_type.is_elemental() {
         taken_inc += enemy_db.sum(
             ModType::Inc,
@@ -883,6 +885,16 @@ fn enemy_damage_multiplier(
                 &[ModName::from("ProjectileAttackDamageTaken")],
             );
         }
+    }
+    if type_cfg
+        .skill_types
+        .intersects(SkillTypes::TRAPPED | SkillTypes::REMOTE_MINED)
+    {
+        taken_inc += enemy_db.sum(
+            ModType::Inc,
+            &type_cfg,
+            &[ModName::from("TrapMineDamageTaken")],
+        );
     }
     let taken_more = enemy_db.more(&type_cfg, &taken_names);
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;

@@ -360,6 +360,42 @@ fn projectile_damage_taken_gated_by_projectile_flag() {
     );
 }
 
+#[test]
+fn trap_mine_damage_taken_gated_by_skill_types() {
+    // M4-m（h3）：TrapMineDamageTaken 只在 trap/mine 技能下进 takenInc
+    // （vendor CalcOffence.lua:4158-4159 `if skillFlags.trap or skillFlags.mine`；
+    // PoBR 以 cfg.skill_types 含 Trapped(33)/RemoteMined(36) 表达）。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("TrapMineDamageTaken", ModType::Inc, 30.0));
+
+    // 普通攻击：不吃。
+    let plain = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (plain.dps - 150.0).abs() < 1e-6,
+        "非 trap/mine 不吃 TrapMineDamageTaken, got {}",
+        plain.dps
+    );
+
+    // trap 技能：吃（mine 同位或逻辑）。
+    let trap_cfg = effective_attack().with_skill_types(SkillTypes::ATTACK | SkillTypes::TRAPPED);
+    let trap = calculate_minimal_vs_enemy(&player, &enemy, &trap_cfg, &attack_input());
+    assert!(
+        (trap.dps - 195.0).abs() < 1e-6,
+        "trap +30% taken → 150*1.3 = 195, got {}",
+        trap.dps
+    );
+
+    let mine_cfg =
+        effective_attack().with_skill_types(SkillTypes::ATTACK | SkillTypes::REMOTE_MINED);
+    let mine = calculate_minimal_vs_enemy(&player, &enemy, &mine_cfg, &attack_input());
+    assert!(
+        (mine.dps - 195.0).abs() < 1e-6,
+        "mine +30% taken → 150*1.3 = 195, got {}",
+        mine.dps
+    );
+}
+
 // M4-H S4：物理减伤 additive 公式（vendor CalcOffence.lua:4074-4096）。
 
 #[test]

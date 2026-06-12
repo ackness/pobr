@@ -2098,15 +2098,19 @@ fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'static str> 
 /// output.AccuracyHitChance = 100`，法术/非攻击必中），有效口径下还连带错误降级
 /// 暴击（`:3700` 暴击二次命中检定只乘 `AccuracyHitChance`）。
 ///
-/// 仅映射 Attack/Spell 两个判别位（命中检定语义所需的最小集），其余类型位
-/// （Projectile/Area/...）的激活面留待独立 commit 评估（`ModTag::SkillTypes`
-/// 匹配会随位扩展而扩大）。
+/// 仅映射 Attack/Spell 两个判别位（命中检定语义所需的最小集）+ M4-m（h3）
+/// Trapped/RemoteMined 判别位（TrapMineDamageTaken 受伤链取数口径，
+/// CalcOffence.lua:4158-4159；语料无 trap/mine 主技能，对既有 build 零行为）。
+/// 其余类型位（Projectile/Area/...）的激活面留待独立 commit 评估
+/// （`ModTag::SkillTypes` 匹配会随位扩展而扩大）。
 fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
     let mut bits = SkillTypes::NONE;
     for t in skill_types {
         match t.as_str() {
             "Attack" => bits |= SkillTypes::ATTACK,
             "Spell" => bits |= SkillTypes::SPELL,
+            "Trapped" => bits |= SkillTypes::TRAPPED,
+            "RemoteMined" => bits |= SkillTypes::REMOTE_MINED,
             _ => {}
         }
     }
