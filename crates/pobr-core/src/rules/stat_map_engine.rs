@@ -365,7 +365,7 @@ fn is_curse_effect(element: &StatMapMod) -> bool {
 ///   vendor enemyDB 名直通；`ElementalResist` 展开三元素——pobr 敌侧抗性聚合
 ///   只读 `<Type>Resist`，vendor `enemyDB:Sum(.. type.."Resist", "ElementalResist")`
 ///   两名同收，展开等值）。未知名（pobr 暂无敌侧消费方，如
-///   `TemporalChainsActionSpeed` / `BuffExpireFaster` / `FreezeBuildup`）整条归
+///   `TemporalChainsActionSpeed` / `FreezeBuildup`）整条归
 ///   [`UnsupportedReason::UnknownModName`] 上报（宁可跳过不可错算，可见性报表
 ///   由调用方落 Compare 记录）。
 /// - `GlobalEffect` tag 本身剥除（路由元数据，不参与匹配）；带约定外键
@@ -440,8 +440,14 @@ pub fn has_curse_payload(
 ///   （CalcDefence.lua:2133 enemyDamageMult）消费。
 /// - `SelfCritMultiplier` BASE：敌方受暴击加成（Sniper's Mark），
 ///   `crit.rs` 敌侧段消费（CalcOffence.lua:3814-3825）。
+/// - `BuffExpireFaster` MORE：敌方身上效果到期速率（Temporal Chains
+///   `base_temporal_chains_other_buff_time_passed_+%_to_apply` → MORE 负值 =
+///   expire slower），`ailment::debuff_duration_mult` 消费
+///   （CalcOffence.lua:1833-1835 `debuffDurationMult = 1 / max(
+///   BuffExpirationSlowCap, calcLib.mod(enemyDB, cfg, "BuffExpireFaster"))`，
+///   :5040 折入异常持续）。
 ///
-/// 其余（`TemporalChainsActionSpeed` / `BuffExpireFaster` / `FreezeBuildup` /
+/// 其余（`TemporalChainsActionSpeed` / `FreezeBuildup` /
 /// `ElectrocuteBuildup` / `IgnoreArmour` / `Dummy`…）pobr 暂无敌侧消费方 →
 /// `UnknownModName` 上报，消费方落地后补名单。
 fn translate_curse_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
@@ -453,6 +459,7 @@ fn translate_curse_mod_name(name: &str) -> Result<Vec<&'static str>, Unsupported
         "ElementalResist" => Ok(vec!["FireResist", "ColdResist", "LightningResist"]),
         "Damage" => Ok(vec!["Damage"]),
         "SelfCritMultiplier" => Ok(vec!["SelfCritMultiplier"]),
+        "BuffExpireFaster" => Ok(vec!["BuffExpireFaster"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -2336,6 +2343,36 @@ mod tests {
                 "TemporalChainsActionSpeed".into()
             ))
         );
+    }
+
+    /// Temporal Chains 第二载荷（M4-l 允收）：`BuffExpireFaster MORE` 负值
+    /// （expire slower）直通敌侧同名（消费方 = `ailment::debuff_duration_mult`，
+    /// CalcOffence.lua:1833-1835 / :5040）。
+    #[test]
+    fn curse_buff_expire_faster_maps_to_enemy_name() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "TemporalChainsPlayer": { "1": {
+                 "base_temporal_chains_other_buff_time_passed_+%_to_apply": {
+                   "mods": [ { "kind": "mod", "name": "BuffExpireFaster", "mod_type": "MORE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Curse" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_curse_stat(
+            &catalog,
+            "TemporalChainsPlayer",
+            None,
+            "base_temporal_chains_other_buff_time_passed_+%_to_apply",
+            -25.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        assert_eq!(items.len(), 1);
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "BuffExpireFaster");
+        assert_eq!(m.mod_type, ModType::More);
+        assert_eq!(m.value.as_number(), Some(-25.0));
+        assert!(m.tags.is_empty(), "GlobalEffect 路由 tag 已剥除");
     }
 
     /// 非 curse 载荷（global 条目无 Curse tag，如技能自带 duration/AoE）→

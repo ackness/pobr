@@ -53,10 +53,10 @@
 //!   stat 映射为敌侧 modifier 填入 `spec.mods`，本路径施 CurseEffect 乘区
 //!   （:2295-2305）+ `Condition:Effective` 后随入槽 curse 写 enemy db
 //!   （:2969-2984）。**残余口径**：敌侧 ModName 允收名单 = pobr 现有消费方
-//!   （`<Type>Resist` / `Damage` / `SelfCritMultiplier`；`ElementalResist` 展开
-//!   火/冰/电三条等值），无消费方的名（`TemporalChainsActionSpeed` /
-//!   `BuffExpireFaster` / `FreezeBuildup` / `ElectrocuteBuildup` / `IgnoreArmour`
-//!   / `Dummy`）整条 Unsupported 落 Compare 可见性报表不注入；`GlobalEffect` 带
+//!   （`<Type>Resist` / `Damage` / `SelfCritMultiplier` / `BuffExpireFaster`；
+//!   `ElementalResist` 展开火/冰/电三条等值），无消费方的名
+//!   （`TemporalChainsActionSpeed` / `FreezeBuildup` / `ElectrocuteBuildup` /
+//!   `IgnoreArmour` / `Dummy`）整条 Unsupported 落 Compare 可见性报表不注入；`GlobalEffect` 带
 //!   `effectCond`/`modCond` 等额外门控键的条目同样跳过上报。
 //!
 //! 归因：aura/curse/debuff 缩放产物保留原 `origin`（trace 不丢弃）；无 origin 的

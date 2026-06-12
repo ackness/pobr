@@ -6450,9 +6450,24 @@ mod tests {
             .find(|s| s.skill_id == "TemporalChainsPlayer")
             .expect("Temporal Chains spec");
         assert!(
-            chains.mods.is_empty(),
-            "载荷名无 pobr 消费方（TemporalChainsActionSpeed/BuffExpireFaster）→ \
-             不注入（落 Compare 报表）"
+            !chains
+                .mods
+                .iter()
+                .any(|m| m.name.as_str() == "TemporalChainsActionSpeed"),
+            "载荷名无 pobr 消费方（TemporalChainsActionSpeed）→ 不注入（落 Compare 报表）"
+        );
+        // M4-l：BuffExpireFaster 允收（消费方 = ailment::debuff_duration_mult，
+        // CalcOffence.lua:1833-1835 / :5040）→ 敌侧 MORE 负值入 spec.mods。
+        let expire = chains
+            .mods
+            .iter()
+            .find(|m| m.name.as_str() == "BuffExpireFaster")
+            .expect("Temporal Chains → 敌侧 BuffExpireFaster MORE");
+        assert_eq!(expire.mod_type, ModType::More);
+        assert!(
+            expire.value.as_number().is_some_and(|v| v < 0.0),
+            "expire slower = MORE 负值，实得 {:?}",
+            expire.value
         );
     }
 

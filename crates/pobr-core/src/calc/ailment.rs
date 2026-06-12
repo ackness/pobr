@@ -216,6 +216,29 @@ pub fn ailment_duration(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> f
     round(scale_duration(base, db, &cfg, &names))
 }
 
+/// debuff/异常持续乘区 `debuffDurationMult`（vendor CalcOffence.lua:1833-1835）：
+///
+/// ```text
+/// debuffDurationMult = 1 / max(BuffExpirationSlowCap, calcLib.mod(enemyDB, cfg, "BuffExpireFaster"))
+/// ```
+///
+/// 敌方身上效果到期速率聚合（`(1 + ΣINC/100) × ΠMORE`）——Temporal Chains 把
+/// 敌侧 `BuffExpireFaster MORE` 写成负值（expire **slower**，curse 域数据通道
+/// `map_curse_stat` 经 buff_pass 入 enemy db）→ 聚合 < 1 → 乘区 > 1（debuff/
+/// 异常持续变长）；下限 `BuffExpirationSlowCap = 0.25`（Data.lua:177，至多 4 倍）。
+/// 仅有效口径参与（vendor :1834 `if env.mode_effective`，与 curse 注入门控一致；
+/// 面板口径恒 1）。消费点 = 异常持续（:5040 `durationBase * durationMod /
+/// rateMod * debuffDurationMult`，经活跃叠层估算进 DPS）。
+pub fn debuff_duration_mult(enemy_db: &ModDb, cfg: &CalcConfig) -> f64 {
+    if !cfg.mode_effective {
+        return 1.0;
+    }
+    let names = [ModName::from("BuffExpireFaster")];
+    let aggregated =
+        (1.0 + enemy_db.sum(ModType::Inc, cfg, &names) / 100.0) * enemy_db.more(cfg, &names);
+    1.0 / aggregated.max(cfg.constants.game().buff_expiration_slow_cap)
+}
+
 /// 流血实例：magnitude = 15% pre-mitigation 物理命中/秒，持续 5s。
 pub fn bleed_instance(
     pre_mitigation_phys_hit: f64,

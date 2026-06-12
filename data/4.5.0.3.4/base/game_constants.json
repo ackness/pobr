@@ -68,6 +68,7 @@
     "normal_enemy_dps_mult": 0.227272727272727265,
     "max_hit_smoothing_passes": 8.0,
     "base_block_chance_max": 50.0,
-    "charm_limit_cap": 3.0
+    "charm_limit_cap": 3.0,
+    "buff_expiration_slow_cap": 0.25
   }
 }

@@ -4,12 +4,12 @@ use pobr_core::calc::ailment::{
     apply_effect_and_rate_mod_traced, apply_effect_mod_to_instance, apply_rate_mod_to_instance,
     bleed_instance, bleed_traced, chill_effect, chill_effect_with_mods, chill_traced,
     corrupted_blood_instance, cross_type_source_hit, cross_type_source_hit_at_roll,
-    dps_with_effect_rate_cap, dps_with_effect_rate_cap_traced, effmult_for_ailment,
-    electrocute_poise_buildup, electrocute_poise_buildup_traced, estimate_active_stacks,
-    flat_chance, freeze_poise_buildup, freeze_poise_buildup_traced, ignite_instance, ignite_traced,
-    player_ailment_threshold, poison_instance, roll_average, shock_effect, stack_potential,
-    stacking_ailment_dps, stacking_ailment_dps_traced, threshold_derived_chance,
-    weighted_source_damage,
+    debuff_duration_mult, dps_with_effect_rate_cap, dps_with_effect_rate_cap_traced,
+    effmult_for_ailment, electrocute_poise_buildup, electrocute_poise_buildup_traced,
+    estimate_active_stacks, flat_chance, freeze_poise_buildup, freeze_poise_buildup_traced,
+    ignite_instance, ignite_traced, player_ailment_threshold, poison_instance, roll_average,
+    shock_effect, stack_potential, stacking_ailment_dps, stacking_ailment_dps_traced,
+    threshold_derived_chance, weighted_source_damage,
 };
 use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph, TraceOperation};
 use pobr_data::prelude::*;
@@ -1328,4 +1328,42 @@ fn duration_applies_more_leg() {
         with_more.duration_secs,
         bare.duration_secs
     );
+}
+
+/// debuffDurationMult（vendor CalcOffence.lua:1833-1835）：敌侧 BuffExpireFaster
+/// MORE 负值（Temporal Chains expire-slower）→ 乘区 > 1；下限
+/// BuffExpirationSlowCap=0.25（Data.lua:177，至多 4 倍）；面板口径恒 1。
+#[test]
+fn debuff_duration_mult_from_enemy_buff_expire_faster() {
+    let cfg = CalcConfig::attack().with_mode_effective(true);
+    // 无词条 → 中性 1.0。
+    assert_eq!(debuff_duration_mult(&ModDb::new(), &cfg), 1.0);
+
+    // druid-oracle-comet oracle 中间值：Temporal Chains 经 Pinnacle boss
+    // CurseEffectOnSelf 缩放后敌侧 BuffExpireFaster MORE -8 →
+    // 聚合 0.92 → mult = 1/0.92 ≈ 1.0870（vendor 同式）。
+    let mut enemy = ModDb::new();
+    enemy.add_list(vec![Modifier::number(
+        "BuffExpireFaster",
+        ModType::More,
+        -8.0,
+    )]);
+    let mult = debuff_duration_mult(&enemy, &cfg);
+    assert!(
+        (mult - 1.0 / 0.92).abs() < 1e-9,
+        "MORE -8 → 1/0.92，实得 {mult}"
+    );
+
+    // 下限：MORE -90 → 聚合 0.10 < 0.25 → cap 到 0.25 → mult = 4。
+    let mut capped = ModDb::new();
+    capped.add_list(vec![Modifier::number(
+        "BuffExpireFaster",
+        ModType::More,
+        -90.0,
+    )]);
+    assert_eq!(debuff_duration_mult(&capped, &cfg), 4.0);
+
+    // 面板口径（mode_effective=false）恒 1（vendor :1834 门控）。
+    let panel = CalcConfig::attack();
+    assert_eq!(debuff_duration_mult(&enemy, &panel), 1.0);
 }
