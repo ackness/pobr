@@ -21,7 +21,7 @@ pub use attribution::{
 };
 pub use campaign::{CampaignProgress, CampaignReward, CampaignState};
 pub use character::CharacterBase;
-pub use config::CalcConfig;
+pub use config::{CalcConfig, EvalContext, StatLookup};
 pub use display_catalog::{display_catalog, extract_display_values};
 pub use item::{ItemIngest, ItemModSection, ingest_item};
 pub use item_text::{ItemTextError, parse_item_text, parse_pob_xml_item};

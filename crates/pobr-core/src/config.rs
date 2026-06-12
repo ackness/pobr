@@ -2,6 +2,69 @@ use std::collections::HashMap;
 
 use pobr_data::prelude::*;
 
+/// PerStat 的 actor output 读数函数（`stat 名 → output 值`；缺键 `None`）。
+pub type StatLookup<'a> = &'a dyn Fn(&str) -> Option<f64>;
+
+/// EvalMod 求值上下文（M4-T1 W-A3，蓝图 m4-offence-deep.md §3.3 契约 5）。
+///
+/// [`crate::Modifier::effective_number`] 的入参从 `&CalcConfig` 升级为本类型；
+/// `From<&CalcConfig>` + `impl Into` 签名使全部既有调用点（传 `&cfg`）**零改动**
+/// 编译（契约 5 预告的机械迁移面收敛为 0）。`matches` 仍取 `&CalcConfig`
+/// （PerStat/GlobalLimit 不参与匹配过滤）。
+///
+/// `stat_lookup` = PerStat tag 的 actor **output** 读数通道（vendor
+/// `ModStore.lua:280-325 GetStat`：`self.actor.output[stat] or cfg.skillStats
+/// or 0`）——由消费方（T2/T4 的 pass 编排）在只读快照阶段提供；`None` =
+/// 无快照，PerStat 取 0（保守等价 vendor output 缺位）。
+#[derive(Clone, Copy)]
+pub struct EvalContext<'a> {
+    /// 匹配/条件/乘数上下文（既有通道）。
+    pub cfg: &'a CalcConfig,
+    /// `stat 名 → actor output 值`。`None` = 整体无快照。
+    pub stat_lookup: Option<StatLookup<'a>>,
+}
+
+impl<'a> EvalContext<'a> {
+    /// 仅 cfg、无 output 快照（等价 `From<&CalcConfig>`）。
+    pub fn new(cfg: &'a CalcConfig) -> Self {
+        Self {
+            cfg,
+            stat_lookup: None,
+        }
+    }
+
+    /// 带 actor output 读数通道（PerStat 消费方用）。
+    pub fn with_stat_lookup(cfg: &'a CalcConfig, lookup: StatLookup<'a>) -> Self {
+        Self {
+            cfg,
+            stat_lookup: Some(lookup),
+        }
+    }
+
+    /// vendor `GetStat` 默认路径：output 快照值，缺位 → 0（ModStore.lua:323
+    /// `(self.actor.output and self.actor.output[stat]) or ... or 0`）。
+    pub fn stat(&self, name: &str) -> f64 {
+        self.stat_lookup
+            .and_then(|lookup| lookup(name))
+            .unwrap_or(0.0)
+    }
+}
+
+impl<'a> From<&'a CalcConfig> for EvalContext<'a> {
+    fn from(cfg: &'a CalcConfig) -> Self {
+        Self::new(cfg)
+    }
+}
+
+impl std::fmt::Debug for EvalContext<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EvalContext")
+            .field("cfg", &self.cfg)
+            .field("stat_lookup", &self.stat_lookup.map(|_| "<fn>"))
+            .finish()
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct CalcConfig {
     pub flags: ModFlags,

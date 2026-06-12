@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
 use pobr_data::prelude::*;
 
-use crate::{CalcConfig, ModValue, Modifier, TraceGraph, TraceNodeId, TraceOperation, TracedValue};
+use crate::{
+    CalcConfig, EvalContext, ModTag, ModValue, Modifier, TraceGraph, TraceNodeId, TraceOperation,
+    TracedValue,
+};
 
 /// 单个 modName 的 MORE 连乘积按 PoB2 默认精度 `round(·, 2)` 归一（ModList.lua MoreInternal）。
 fn round_more(value: f64) -> f64 {
@@ -78,6 +81,42 @@ fn scale_mod_value(
     }
 }
 
+/// 单次聚合查询内的 GlobalLimit 记账表（M4-T1 W-A3；vendor 每次
+/// Sum/More/Tabulate 调用新建 `local globalLimits = { }`，ModDB.lua:133/159/269）。
+/// 懒分配：无 [`ModTag::GlobalLimit`] mod 时零开销（热路径不建表）。
+type GlobalLimits = Option<HashMap<String, f64>>;
+
+/// EvalMod 尾段 globalLimit 记账（vendor ModStore.lua:895-905 逐字）：
+/// 同 `key` 的生效值累计封顶——`used + value > limit` 时截到余额，随后记账。
+/// 返回（截断后值，`Some(原值)` 若发生截断——traced 路径据此挂 Clamp 节点）。
+///
+/// `#[inline]` + 调用侧 `tags.is_empty()` 快路径：mod_db 聚合是热路径
+/// （mod_db_bench 门禁），无 tag mod 必须零开销。
+#[inline]
+fn apply_global_limits(
+    modifier: &Modifier,
+    mut value: f64,
+    limits: &mut GlobalLimits,
+) -> (f64, Option<f64>) {
+    let mut clamped_from = None;
+    for tag in &modifier.tags {
+        if let ModTag::GlobalLimit { value: limit, key } = tag {
+            let used = limits
+                .get_or_insert_with(HashMap::new)
+                .entry(key.clone())
+                .or_insert(0.0);
+            if *used + value > *limit {
+                if clamped_from.is_none() {
+                    clamped_from = Some(value);
+                }
+                value = *limit - *used;
+            }
+            *used += value;
+        }
+    }
+    (value, clamped_from)
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModContribution {
     pub name: ModName,
@@ -85,6 +124,9 @@ pub struct ModContribution {
     pub value: f64,
     pub origin: Option<ModifierSource>,
     pub raw_text: Option<String>,
+    /// （M4-T1 W-A3）[`ModTag::GlobalLimit`] 截断前的原生效值
+    /// （`Some` = 本条被累计限幅截断；traced 路径据此挂 Clamp 节点）。
+    pub clamped_from: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -95,11 +137,36 @@ pub struct ModDb {
     /// [`Self::set_high_precision_rules`] 注入）。`Default` = 无例外表 →
     /// MORE 聚合走默认 `round(·,2)` 分支，行为与字段引入前逐字一致。
     high_precision: HighPrecisionRules,
+    /// 含 [`ModTag::GlobalLimit`] mod 的名字桶（W-A3 性能分流：[`Self::sum`]
+    /// 仅在查询名命中此集合时走记账慢路径——记账闭包会破坏纯求和链的优化，
+    /// 实测 bench +50%）。写入时维护（`add_mod`/`replace_mod`）；移除侧不回收
+    /// （stale 正例只影响性能不影响语义）。
+    global_limit_names: std::collections::HashSet<ModName>,
 }
 
 impl ModDb {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// 维护 [`Self::global_limit_names`]（写入时一次 tags 扫描，查询期零成本）。
+    fn note_global_limit(&mut self, modifier: &Modifier) {
+        if modifier
+            .tags
+            .iter()
+            .any(|tag| matches!(tag, ModTag::GlobalLimit { .. }))
+        {
+            self.global_limit_names.insert(modifier.name.clone());
+        }
+    }
+
+    /// 查询名集是否可能含 GlobalLimit mod（快/慢路径分流）。
+    #[inline]
+    fn names_have_global_limit(&self, names: &[ModName]) -> bool {
+        !self.global_limit_names.is_empty()
+            && names
+                .iter()
+                .any(|name| self.global_limit_names.contains(name))
     }
 
     /// 注入取整精度规则（来源 = pobr-gamedata `RuleSet::high_precision_mods`）。
@@ -110,6 +177,7 @@ impl ModDb {
     }
 
     pub fn add_mod(&mut self, modifier: Modifier) {
+        self.note_global_limit(&modifier);
         self.mods
             .entry(modifier.name.clone())
             .or_default()
@@ -131,6 +199,7 @@ impl ModDb {
     /// `Multiplier:BoltsReloadedPastSixSeconds` 回写（`CalcOffence.lua:2890-2894`，
     /// T4 W-D2）。注：pobr `ModDb` 无 parent 链（vendor 的 parent 递归不适用）。
     pub fn replace_mod(&mut self, modifier: Modifier) -> bool {
+        self.note_global_limit(&modifier);
         if let Some(bucket) = self.mods.get_mut(&modifier.name)
             && let Some(slot) = bucket.iter_mut().find(|cur| {
                 cur.mod_type == modifier.mod_type
@@ -245,17 +314,59 @@ impl ModDb {
         Self {
             mods,
             high_precision: self.high_precision.clone(),
+            // 整集拷贝（stale 正例可接受：被过滤掉的名字仅多走一次慢路径判断）。
+            global_limit_names: self.global_limit_names.clone(),
         }
     }
 
-    pub fn sum(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+    /// （M4-T1 W-A3）入参升级 `impl Into<EvalContext>`：既有调用点传 `&cfg`
+    /// 零改动；PerStat 消费方传带 `stat_lookup` 的 [`EvalContext`]。聚合循环内
+    /// 消费 [`ModTag::GlobalLimit`]（vendor SumInternal 传 `globalLimits` 表，
+    /// ModDB.lua:131-154）。
+    pub fn sum<'a>(
+        &self,
+        mod_type: ModType,
+        ctx: impl Into<EvalContext<'a>>,
+        names: &[ModName],
+    ) -> f64 {
+        let ctx = ctx.into();
+        // 快路径（绝大多数查询）：名集无 GlobalLimit mod → 纯求和链（记账状态
+        // 会破坏链优化，实测 bench +50%，故分流而非内联判断）。
+        if self.names_have_global_limit(names) {
+            return self.sum_with_global_limits(mod_type, ctx, names);
+        }
         names
             .iter()
             .filter_map(|name| self.mods.get(name))
             .flat_map(|mods| mods.iter())
-            .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(cfg))
-            .filter_map(|modifier| modifier.effective_number(cfg))
+            .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(ctx.cfg))
+            .filter_map(|modifier| modifier.effective_number_ref(&ctx))
             .sum()
+    }
+
+    /// [`sum`](Self::sum) 的 GlobalLimit 记账慢路径（vendor SumInternal 传
+    /// `globalLimits` 表，ModDB.lua:131-154）。与快路径对无 GlobalLimit tag 的
+    /// mod 逐值等价（记账仅截断带 tag 条目）。
+    fn sum_with_global_limits(
+        &self,
+        mod_type: ModType,
+        ctx: EvalContext<'_>,
+        names: &[ModName],
+    ) -> f64 {
+        let mut total = 0.0;
+        let mut limits: GlobalLimits = None;
+        for name in names {
+            for modifier in self.mods.get(name).into_iter().flatten() {
+                if modifier.mod_type != mod_type || !modifier.matches(ctx.cfg) {
+                    continue;
+                }
+                let Some(value) = modifier.effective_number_ref(&ctx) else {
+                    continue;
+                };
+                total += apply_global_limits(modifier, value, &mut limits).0;
+            }
+        }
+        total
     }
 
     /// 取某组 modifier 中**生效值最大的一份**（曝光 `ExposureMin`/取最强语义）。
@@ -276,38 +387,48 @@ impl ModDb {
             .fold(0.0_f64, f64::max)
     }
 
-    pub fn contributions(
+    /// （M4-T1 W-A3）与 [`sum`](Self::sum) 同口径：GlobalLimit 记账后逐条产出
+    /// （`clamped_from` 携带截断前原值）；`Σ value == sum()` 恒等。
+    pub fn contributions<'a>(
         &self,
         mod_type: ModType,
-        cfg: &CalcConfig,
+        ctx: impl Into<EvalContext<'a>>,
         names: &[ModName],
     ) -> Vec<ModContribution> {
-        names
-            .iter()
-            .filter_map(|name| self.mods.get(name))
-            .flat_map(|mods| mods.iter())
-            .filter(|modifier| modifier.mod_type == mod_type && modifier.matches(cfg))
-            .filter_map(|modifier| {
-                modifier.effective_number(cfg).map(|value| ModContribution {
+        let ctx = ctx.into();
+        let mut out = Vec::new();
+        let mut limits: GlobalLimits = None;
+        for name in names {
+            for modifier in self.mods.get(name).into_iter().flatten() {
+                if modifier.mod_type != mod_type || !modifier.matches(ctx.cfg) {
+                    continue;
+                }
+                let Some(raw) = modifier.effective_number_ref(&ctx) else {
+                    continue;
+                };
+                let (value, clamped_from) = apply_global_limits(modifier, raw, &mut limits);
+                out.push(ModContribution {
                     name: modifier.name.clone(),
                     mod_type: modifier.mod_type,
                     value,
                     origin: modifier.origin.clone(),
                     raw_text: modifier.source.clone(),
-                })
-            })
-            .collect()
+                    clamped_from,
+                });
+            }
+        }
+        out
     }
 
-    pub fn sum_traced(
+    pub fn sum_traced<'a>(
         &self,
         mod_type: ModType,
-        cfg: &CalcConfig,
+        ctx: impl Into<EvalContext<'a>>,
         names: &[ModName],
         trace: &mut TraceGraph,
         label: impl Into<String>,
     ) -> TracedValue {
-        let contributions = self.contributions(mod_type, cfg, names);
+        let contributions = self.contributions(mod_type, ctx.into(), names);
         let value = contributions
             .iter()
             .map(|contribution| contribution.value)
@@ -337,8 +458,22 @@ impl ModDb {
                     contribution.value
                 )
             });
-            let input_node = trace.add_source_node(label, contribution.value, source);
-            trace.add_edge(input_node, query_node);
+            // 源节点带截断前原值；被 GlobalLimit 截断的贡献经 Clamp 节点入图
+            // （W-A3：限幅在归因图上显式可见，clamp 值 = 实际计入聚合的值）。
+            let raw_value = contribution.clamped_from.unwrap_or(contribution.value);
+            let input_node = trace.add_source_node(label, raw_value, source);
+            let feed_node = if contribution.clamped_from.is_some() {
+                let clamp_node = trace.add_node(
+                    format!("{} globalLimit", contribution.name),
+                    contribution.value,
+                    TraceOperation::Clamp,
+                );
+                trace.add_edge(input_node, clamp_node);
+                clamp_node
+            } else {
+                input_node
+            };
+            trace.add_edge(feed_node, query_node);
         }
 
         TracedValue {
@@ -347,8 +482,9 @@ impl ModDb {
         }
     }
 
-    pub fn more(&self, cfg: &CalcConfig, names: &[ModName]) -> f64 {
-        self.more_rounded(cfg, names, |_| true)
+    /// （M4-T1 W-A3）入参升级 `impl Into<EvalContext>`（同 [`sum`](Self::sum)）。
+    pub fn more<'a>(&self, ctx: impl Into<EvalContext<'a>>, names: &[ModName]) -> f64 {
+        self.more_rounded(ctx.into(), names, |_| true)
     }
 
     /// PoB2 `MoreInternal` 语义（`ModDB.lua:156-190`，桶式变体）：**逐 modName**
@@ -366,21 +502,26 @@ impl ModDb {
     ///   缺桶名（`modResult = 1`）也走 floor 分支重截累计积。
     fn more_rounded(
         &self,
-        cfg: &CalcConfig,
+        ctx: EvalContext<'_>,
         names: &[ModName],
         extra: impl Fn(&Modifier) -> bool,
     ) -> f64 {
+        let cfg = ctx.cfg;
         let mut result = 1.0;
         let mut mod_precision: Option<u32> = None;
+        // （W-A3）GlobalLimit 记账（vendor MoreInternal 同样传 globalLimits 表，
+        // ModDB.lua:159-169——限幅作用于百分比值，先于乘区折算）。
+        let mut limits: GlobalLimits = None;
         for name in names {
             let mut mod_result = 1.0;
             for m in self.mods.get(name).into_iter().flatten() {
                 if m.mod_type != ModType::More || !m.matches(cfg) || !extra(m) {
                     continue;
                 }
-                let Some(value) = m.effective_number(cfg) else {
+                let Some(value) = m.effective_number_ref(&ctx) else {
                     continue;
                 };
+                let value = apply_global_limits(m, value, &mut limits).0;
                 mod_result *= 1.0 + value / 100.0;
                 // vendor ModDB.lua:175-180：modPrecision = max(prev, 表值 or prev)。
                 let hit = self
@@ -404,17 +545,18 @@ impl ModDb {
 
     /// Traced [`more`](Self::more)：把 `Π(1 + v/100)` 记录为单个 MoreProduct 节点，
     /// 每个贡献 modifier 各连一个 source 输入节点。
-    pub fn more_traced(
+    pub fn more_traced<'a>(
         &self,
-        cfg: &CalcConfig,
+        ctx: impl Into<EvalContext<'a>>,
         names: &[ModName],
         trace: &mut TraceGraph,
         label: impl Into<String>,
     ) -> TracedValue {
-        let contributions = self.contributions(ModType::More, cfg, names);
+        let ctx = ctx.into();
+        let contributions = self.contributions(ModType::More, ctx, names);
         // 取整口径与 [`more`](Self::more) 共用同一实现（含 W-A2 精度例外分支），
         // traced / 非 traced 值恒等（此前为重复实现，易漂移）。
-        let factor = self.more(cfg, names);
+        let factor = self.more(ctx, names);
         let factor_node = trace.add_node(label, factor, TraceOperation::MoreProduct);
 
         for contribution in contributions {
@@ -488,12 +630,14 @@ impl ModDb {
 
     /// 仅连乘**无槽位限定**的 `More` modifier（per-slot 防御聚合的全局 more 桶）。
     pub fn more_global_only(&self, cfg: &CalcConfig, names: &[ModName]) -> f64 {
-        self.more_rounded(cfg, names, |m| m.slot_name().is_none())
+        self.more_rounded(EvalContext::new(cfg), names, |m| m.slot_name().is_none())
     }
 
     /// 仅连乘限定到 `slot` 的 `More` modifier（per-slot 防御聚合的槽位 more 桶）。
     pub fn more_for_slot(&self, cfg: &CalcConfig, names: &[ModName], slot: &str) -> f64 {
-        self.more_rounded(cfg, names, |m| m.slot_name() == Some(slot))
+        self.more_rounded(EvalContext::new(cfg), names, |m| {
+            m.slot_name() == Some(slot)
+        })
     }
 
     /// per-slot 防御聚合所需的槽位 BASE 词条：返回各 `(slot, value)`（带 [`ModTag::SlotName`]

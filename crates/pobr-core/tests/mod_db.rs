@@ -673,3 +673,160 @@ fn more_precision_exception_matches_more_internal_oracle() {
     let traced = db.more_traced(&cfg, &names, &mut trace, "more");
     assert_eq!(traced.value, 0.6666, "traced 同值");
 }
+
+// ===========================================================================
+// M4-T1 W-A3：EvalMod tag 第二批——PerStat 读 output + GlobalLimit 累计限幅
+// ===========================================================================
+
+/// PerStat 读 actor output 快照（vendor ModStore.lua:440-489 PerStat 分支 +
+/// :280-325 GetStat）：经 EvalContext::stat_lookup 取数；无快照 → 0（保守）。
+/// `per 100 maximum Life` 形态端到端（mod 构造 → 聚合查询）。
+#[test]
+fn per_stat_reads_output_snapshot_via_eval_context() {
+    use pobr_core::EvalContext;
+    let mut db = ModDb::new();
+    // 「1% increased Damage per 100 maximum Life」形态。
+    db.add_mod(
+        Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
+            stat: "Life".into(),
+            div: 100.0,
+            limit: None,
+            limit_var: None,
+            actor: None,
+        }),
+    );
+    let cfg = CalcConfig::new();
+    let names = [ModName::from("Damage")];
+
+    // 无 output 快照（既有调用形态，&cfg 直传）→ stat = 0 → 乘数 0。
+    assert_eq!(db.sum(ModType::Inc, &cfg, &names), 0.0);
+
+    // 带 output 快照：Life = 5430 → floor(5430/100 + ε) = 54 → 1 × 54。
+    let lookup = |stat: &str| (stat == "Life").then_some(5430.0);
+    let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
+    assert_eq!(db.sum(ModType::Inc, ctx, &names), 54.0);
+}
+
+/// PerStat 的 limit / limit_var / actor 维度（与 M3 Multiplier 形态统一）。
+#[test]
+fn per_stat_applies_limits_and_actor_dimension() {
+    use pobr_core::{ActorRef, EvalContext};
+    let cfg = CalcConfig::new()
+        .with_multiplier("MaxBonus", 30.0)
+        .with_actor_multiplier(ActorRef::Minion, "EnergyShield", 800.0);
+    let lookup = |stat: &str| (stat == "EnergyShield").then_some(1250.0);
+    let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
+
+    // 静态 limit 优先（vendor :461-468 tag.limit）。
+    let limited = Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
+        stat: "EnergyShield".into(),
+        div: 25.0,
+        limit: Some(40.0),
+        limit_var: None,
+        actor: None,
+    });
+    assert_eq!(limited.effective_number(ctx), Some(40.0), "50 → min(·,40)");
+
+    // 动态 limit_var → cfg.multiplier（vendor :462 GetMultiplier(self, limitVar)）。
+    let dyn_limited = Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
+        stat: "EnergyShield".into(),
+        div: 25.0,
+        limit: None,
+        limit_var: Some("MaxBonus".into()),
+        actor: None,
+    });
+    assert_eq!(dyn_limited.effective_number(ctx), Some(30.0));
+
+    // actor 维度：读 actor_multipliers 快照（与 Multiplier actor 通道统一），
+    // 不读本 actor 的 output lookup。
+    let cross = Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
+        stat: "EnergyShield".into(),
+        div: 100.0,
+        limit: None,
+        limit_var: None,
+        actor: Some(ActorRef::Minion),
+    });
+    assert_eq!(cross.effective_number(ctx), Some(8.0), "800/100 = 8");
+}
+
+/// GlobalLimit 累计限幅（vendor ModStore.lua:895-905）：同 key 两 mod 在单次
+/// 聚合内累计封顶；不同查询各自记账（vendor 每次 Sum 新建 globalLimits 表）。
+#[test]
+fn global_limit_accumulates_and_truncates_within_one_query() {
+    let cfg = CalcConfig::new();
+    let names = [ModName::from("DoubleDamageChance")];
+    let tag = || ModTag::GlobalLimit {
+        value: 50.0,
+        key: "DoubleDamage".into(),
+    };
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 30.0).with_tag(tag()));
+    db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 35.0).with_tag(tag()));
+
+    // 30 + min(35, 50-30) = 30 + 20 = 50。
+    assert_eq!(db.sum(ModType::Base, &cfg, &names), 50.0);
+    // 第二次查询独立记账（不跨查询累计）。
+    assert_eq!(db.sum(ModType::Base, &cfg, &names), 50.0);
+
+    // 贡献口径：第二条 clamped_from = Some(35)，截断后 20；Σ == sum()。
+    let contributions = db.contributions(ModType::Base, &cfg, &names);
+    assert_eq!(contributions[0].value, 30.0);
+    assert_eq!(contributions[0].clamped_from, None);
+    assert_eq!(contributions[1].value, 20.0);
+    assert_eq!(contributions[1].clamped_from, Some(35.0));
+
+    // 不同 key 不互相记账。
+    let mut db2 = ModDb::new();
+    db2.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 30.0).with_tag(tag()));
+    db2.add_mod(
+        Modifier::number("DoubleDamageChance", ModType::Base, 35.0).with_tag(ModTag::GlobalLimit {
+            value: 50.0,
+            key: "Other".into(),
+        }),
+    );
+    assert_eq!(db2.sum(ModType::Base, &cfg, &names), 65.0);
+}
+
+/// GlobalLimit 在 MORE 聚合同样记账（vendor ModDB.lua:159-169 MoreInternal
+/// 传 globalLimits；限幅作用于百分比值，先于乘区折算）。
+#[test]
+fn global_limit_applies_to_more_aggregation() {
+    let cfg = CalcConfig::new();
+    let names = [ModName::from("SomeMore")];
+    let tag = || ModTag::GlobalLimit {
+        value: 30.0,
+        key: "MoreCap".into(),
+    };
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("SomeMore", ModType::More, 20.0).with_tag(tag()));
+    db.add_mod(Modifier::number("SomeMore", ModType::More, 25.0).with_tag(tag()));
+    // 20 全额 + min(25, 30-20)=10 → 1.20 × 1.10 = 1.32（round2 不变）。
+    assert_eq!(db.more(&cfg, &names), 1.32);
+}
+
+/// GlobalLimit 的 traced 路径：被截断贡献经 Clamp 节点入图（源节点带原值，
+/// Clamp 节点带实际计入值），未截断贡献直连（蓝图 W-A3：限幅显式入归因图）。
+#[test]
+fn global_limit_traced_inserts_clamp_node() {
+    let cfg = CalcConfig::new();
+    let names = [ModName::from("DoubleDamageChance")];
+    let tag = || ModTag::GlobalLimit {
+        value: 50.0,
+        key: "DoubleDamage".into(),
+    };
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 30.0).with_tag(tag()));
+    db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 35.0).with_tag(tag()));
+
+    let mut trace = TraceGraph::new();
+    let traced = db.sum_traced(ModType::Base, &cfg, &names, &mut trace, "ddc");
+    assert_eq!(traced.value, 50.0, "traced 与非 traced 同值");
+
+    let clamp_nodes: Vec<_> = trace
+        .nodes()
+        .iter()
+        .filter(|n| n.operation == TraceOperation::Clamp)
+        .collect();
+    assert_eq!(clamp_nodes.len(), 1, "仅被截断的贡献挂 Clamp 节点");
+    assert_eq!(clamp_nodes[0].value, 20.0, "Clamp 节点值 = 实际计入值");
+}
