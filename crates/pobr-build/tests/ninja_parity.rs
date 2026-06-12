@@ -451,13 +451,13 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
 const BASELINE_DEF_CORE_HIT5: usize = 130; // 实测 130/144 = 90.3%
 const BASELINE_DEF_HIT5: usize = 374; // 实测 374/450 = 83.1%（M1+M2 合并重记）
 const BASELINE_DEF_HIT10: usize = 390; // 实测 390/450 = 86.7%
-const BASELINE_OFF_HIT5: usize = 26; // 实测 26/80 = 32.5%（M3-W5 effective 重记，−1 已审查）
-const BASELINE_OFF_HIT10: usize = 35; // 实测 35/80 = 43.8%（M3-W5 effective 重记）
+const BASELINE_OFF_HIT5: usize = 27; // 实测 27/80 = 33.8%（M4-G grenade 二次起爆：deadeye TotalDPS 0.68x→1.02x）
+const BASELINE_OFF_HIT10: usize = 36; // 实测 36/80 = 45.0%（M4-G：deadeye TotalDPS 同步入 @10%）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
-const PANEL_OFF_HIT5: usize = 27; // 实测 27/80 = 33.8%
-const PANEL_OFF_HIT10: usize = 36; // 实测 36/80 = 45.0%（M4-G 尸体爆炸基伤：abyssal-lich TotalDPS 0.09x→1.09x 入 @10%）
+const PANEL_OFF_HIT5: usize = 28; // 实测 28/80 = 35.0%（M4-G grenade 二次起爆：deadeye TotalDPS 入 @5%）
+const PANEL_OFF_HIT10: usize = 37; // 实测 37/80 = 46.2%（M4-G 尸体爆炸基伤：abyssal-lich TotalDPS 0.09x→1.09x 入 @10% + deadeye）
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

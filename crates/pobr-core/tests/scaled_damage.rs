@@ -196,6 +196,38 @@ fn dps_multiplier_folds_skill_data_and_dps_modname() {
     assert!((out.dps_multiplier - 1.8).abs() < EPS);
 }
 
+/// 手算：grenade 二次起爆折算（M4-G，vendor CalcOffence.lua:1124-1127
+/// `DPS MORE min(Sum(BASE,"GrenadeActivateTwice"),100)`）：
+/// Payload 50 → ×1.5；叠加超 100 时 cap（50+80=130 → ×2.0）。
+#[test]
+fn grenade_activate_twice_folds_into_dps_multiplier_with_cap() {
+    let cfg = CalcConfig::attack();
+    let mut db = ModDb::new();
+    db.add_mod(base("GrenadeActivateTwice", 50.0));
+    let out = dps_end_factors(&db, &cfg, None);
+    assert!((out.dps_multiplier - 1.5).abs() < EPS);
+
+    db.add_mod(base("GrenadeActivateTwice", 80.0));
+    let out = dps_end_factors(&db, &cfg, None);
+    assert!(
+        (out.dps_multiplier - 2.0).abs() < EPS,
+        "vendor m_min(…,100)"
+    );
+}
+
+/// Oracle 末端恒等式对拍：deadeye explosive-grenade build——Payload 50% 二次
+/// 起爆 → dpsMultiplier 1.5，vendor `TotalDPS = AverageDamage × Speed ×
+/// dpsMultiplier`（:4407）数值闭合（oracle `AverageDamage=108426.0294`、
+/// `Speed=0.164`、`TotalDPS=26672.80323`，meta.json golden 逐位一致）。
+#[test]
+fn oracle_identity_grenade_dps_multiplier_closes_total_dps() {
+    let mut db = ModDb::new();
+    db.add_mod(base("GrenadeActivateTwice", 50.0));
+    let out = dps_end_factors(&db, &CalcConfig::attack(), None);
+    let total = 108426.0294_f64 * 0.164 * out.dps_multiplier * out.quantity_multiplier;
+    assert!((total - 26672.80323).abs() < 0.01);
+}
+
 /// Oracle 末端恒等式对拍：flicker-strike build（无 DPS/Quantity 词条、skillData
 /// dpsMultiplier = 1）应得两因子恒 1，且 vendor `TotalDPS = AverageDamage × Speed ×
 /// dps × quantity`（:4407）数值闭合。

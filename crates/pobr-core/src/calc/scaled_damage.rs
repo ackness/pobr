@@ -184,9 +184,19 @@ pub fn dps_end_factors(
     skill_dps_multiplier: Option<f64>,
 ) -> DpsEndFactors {
     let dps_names = [ModName::from("DPS")];
+    // M4-G：grenade 二次起爆（vendor CalcOffence.lua:1124-1127）：
+    // `DPS MORE min(Sum(BASE,"GrenadeActivateTwice"),100)`。vendor 以
+    // skillTypes[Grenade] 门控该折算；PoBR 此处不再加门——该 ModName 仅由
+    // SupportPayload 的 statmap stat 产出（SkillStatMap.lua:2795-2797），而
+    // Payload 的 require_skill_types = Grenade（sup_dex.lua:3561）已在 support
+    // 适配裁决处把来源限定在 grenade 技能，非 grenade 技能 db 中恒无此名（=0）。
+    let activate_twice = db
+        .sum(ModType::Base, cfg, &[ModName::from("GrenadeActivateTwice")])
+        .min(100.0);
     let dps_multiplier = skill_dps_multiplier.unwrap_or(1.0)
         * (1.0 + db.sum(ModType::Inc, cfg, &dps_names) / 100.0)
-        * db.more(cfg, &dps_names);
+        * db.more(cfg, &dps_names)
+        * (1.0 + activate_twice / 100.0);
     let quantity_multiplier = db
         .sum(ModType::Base, cfg, &[ModName::from("QuantityMultiplier")])
         .max(1.0);

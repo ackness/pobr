@@ -966,6 +966,11 @@ pub fn translate_mod_name(
         // 见 m1-statmap-switch-log.md）。
         | "WarcrySpeed"
         | "TotemPlacementSpeed" => base_name.to_string(),
+        // M4-G：grenade 二次起爆几率（vendor SkillStatMap.lua:2795-2797
+        // `grenade_skill_%_chance_to_explode_twice` → GrenadeActivateTwice BASE，
+        // 仅 SupportPayload 产出该 stat）。消费方 = `calc::scaled_damage::
+        // dps_end_factors`（vendor CalcOffence.lua:1124-1127 折 DPS MORE）。
+        "GrenadeActivateTwice" => base_name.to_string(),
         other => {
             // 转换 / gain-as 族（`Skill<From>DamageConvertTo<To>` /
             // `[Skill]<From>DamageGainAs<To>`）：PoB2 与 PoBR 命名一致，按形态直通。
