@@ -2623,6 +2623,9 @@ fn parse_name(text: &str) -> Option<ModName> {
         "fire exposure effect" => "FireExposureEffect",
         "cold exposure effect" => "ColdExposureEffect",
         "lightning exposure effect" => "LightningExposureEffect",
+        // 奥术涌动效果（PoB2 ModParser.lua:472；消费方 = buff_definitions
+        // `ArcaneSurge` 条目的 effect.inc_stats，CalcDefence.lua:1582）。
+        "effect of arcane surge on you" => "ArcaneSurgeEffect",
         // 预留效率族（PoB2 ModParser.lua:220-231；CalcDefence.lua:172-350 除法语义）。
         "reservation efficiency" | "reservation efficiency of skills" => "ReservationEfficiency",
         "mana reservation efficiency" | "mana reservation efficiency of skills" => {

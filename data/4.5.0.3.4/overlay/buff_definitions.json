@@ -85,6 +85,53 @@
       "notes": "vendor 逐 mod m_floor(coeff × effectMod)，effect 级不取整"
     },
     {
+      "id": "ArcaneSurge",
+      "trigger_flag": "Condition:ArcaneSurge",
+      "mode_gate": "combat",
+      "effect": {
+        "base": 1.0,
+        "inc_stats": [
+          "ArcaneSurgeEffect",
+          "BuffEffectOnSelf"
+        ],
+        "rounding": "none"
+      },
+      "mods": [
+        {
+          "name": "Speed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 15.0,
+            "rounding": "none"
+          },
+          "flags": [
+            "Cast"
+          ]
+        },
+        {
+          "name": "ManaRegen",
+          "mod_type": "MORE",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 20.0,
+            "rounding": "none"
+          }
+        }
+      ],
+      "conditions_set": [
+        "AffectedByArcaneSurge"
+      ],
+      "verified": true,
+      "vendor_ref": {
+        "file": "Modules/CalcDefence.lua",
+        "line_start": 1580,
+        "line_end": 1591,
+        "segment_hash": "fnv1a64:144064cc425efef2"
+      },
+      "notes": "基本形（默认 15% Cast Speed / 20% more ManaRegen × effect，effect=1+Σinc/100 不取整，vendor 无 floor）。未覆盖分支：Max(ArcaneSurgeCastSpeed/ManaRegen) 覆写、ArcaneSurgeLifeRegen flag（LifeRegen 改道）、ArcaneSurgeDamage（Spell Damage MORE）——均无树/装备样本，出现时升级 handler。"
+    },
+    {
       "id": "ChaoticMight",
       "trigger_flag": "ChaoticMight",
       "mode_gate": "combat",
