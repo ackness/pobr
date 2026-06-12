@@ -697,6 +697,14 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
                     .with_source(source),
             ]
         }
+        // 必然暴击（Oracle 升华 notable『Forced Outcome』，tree 55135）：vendor
+        // `["inevitable critical hits"] = { flag("InevitableCriticalHits") }`
+        // （ModParser.lua:3393）。消费点 = `calc::crit::resolve_crit` 步骤 6
+        // （CalcOffence.lua:3712-3739：crit 置 100% + 几何级数 less 爆伤，仅
+        // mode_effective）。
+        "inevitable critical hits" => {
+            vec![Modifier::flag("InevitableCriticalHits").with_source(source)]
+        }
         // 纯免疫/条件短语：计算侧暂不消费，归 Unsupported（不报错、不产数值）。
         "immune to chaos damage and bleeding"
         | "immune to chaos damage"
@@ -2296,6 +2304,18 @@ mod per_slot_defence_tests {
                 .iter()
                 .any(|t| matches!(t, ModTag::SkillTypes(st) if st.contains(SkillTypes::SPELL)))
         );
+    }
+
+    /// 「Inevitable Critical Hits」（Oracle 升华『Forced Outcome』）：vendor
+    /// ModParser.lua:3393 → InevitableCriticalHits flag。树文本带内部名标记。
+    #[test]
+    fn parses_inevitable_critical_hits_flag() {
+        let out = parse_mod("[InevitableCriticalHits|Inevitable Critical Hits]").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "InevitableCriticalHits");
+        assert_eq!(m.mod_type, ModType::Flag);
     }
 
     /// 「Melee Damage」映射到 `MeleeDamage`（此前缺失，导致近战增伤词条被丢弃）。
