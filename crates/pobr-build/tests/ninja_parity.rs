@@ -488,7 +488,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 const BASELINE_DEF_CORE_HIT5: usize = 131; // 实测 131/144 = 91.0%（M4-H 全局线：油涂节点连带）
 const BASELINE_DEF_HIT5: usize = 377; // 实测 377/450 = 83.8%（M4-H 全局线合并重记）
 const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
-const BASELINE_OFF_HIT5: usize = 40; // 实测 40/80 = 50.0%（M4-H：h1 暴击四段 + h2 gain-as/品质 + h3 减伤口径叠加）
+const BASELINE_OFF_HIT5: usize = 41; // 实测 41/80 = 51.2%（M4-j3 冷却整链 deadeye Speed 入列）
 const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
@@ -513,7 +513,7 @@ const BASELINE_DOT_HIT10: usize = 3; // 实测 3/37 = 8.1%（例外 1+2 叠加�
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
-const PANEL_OFF_HIT5: usize = 34; // 实测 34/80 = 42.5%（M4-H 合并重记）
+const PANEL_OFF_HIT5: usize = 35; // 实测 35/80 = 43.8%（M4-j3 同步）
 const PANEL_OFF_HIT10: usize = 41; // 实测 41/80 = 51.2%
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
