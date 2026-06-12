@@ -24,21 +24,20 @@ use pobr_data::stat::StatId;
 use crate::config::CalcConfig;
 use crate::mod_db::ModDb;
 use crate::modifier::{ModTag, ModValue, Modifier};
-use crate::rules::registry::{DuplicateHandlerError, HandlerRegistry};
+use crate::rules::registry::{DuplicateHandlerError, HandlerCtx, HandlerRegistry, MainSkillCtx};
 
 /// buff 域 handler 注册（蓝图 §2.4 契约 3；聚合点 = pobr-build
 /// `handlers::build_registry()` 逐行 append 调用本函数）。
 ///
 /// **当前注册集合为空**：`buff_definitions.json` 的四个 handler 条目
 /// （`buff:fortify` / `buff:elusive` / `buff:fanaticism` / `buff:onslaught_flask`）
-/// 都需要现行 [`Handler`](crate::rules::registry::Handler) 签名（`Fn(&[f64])`）
-/// 之外的上下文——fortify 要读 db 的 `FortificationStacks` override/Max 链
-/// （CalcPerform.lua:523-539）、elusive 要读 `ElusiveEffect` Max/Override
-/// （:612-632）、fanaticism 要读主技能 selfCast 状态（:574-580）、
-/// onslaught_flask 要读 flaskData（:543-560，依赖 T4 flask merge）。
-/// 待 T1 按蓝图 §2.4 预留把 handler 签名扩为携带 `&CalcConfig`/db 上下文后，
-/// 在本函数内补注册（预算 ≤8）；在此之前这四条经
-/// [`BuffExpansion::unhandled`] 进覆盖率报表（保守零输出，宁缺勿错值）。
+/// 待 M3-W4 commit C 按 [`HandlerCtx`] 新签名回补——fortify 要读 db 的
+/// `FortificationStacks` override/Max 链（CalcPerform.lua:523-539）、elusive
+/// 要读 `ElusiveEffect` Max/Override（:612-632）、fanaticism 要读主技能
+/// selfCast 状态（:574-580）、onslaught_flask 要读 flaskData（:543-560，
+/// 依赖 T4 flask merge）。签名扩展（本 commit）已把 db/cfg/主技能上下文
+/// 送达 handler；注册前这四条经 [`BuffExpansion::unhandled`] 进覆盖率报表
+/// （保守零输出，宁缺勿错值）。
 pub fn register_handlers(_registry: &mut HandlerRegistry) -> Result<(), DuplicateHandlerError> {
     Ok(())
 }
@@ -48,11 +47,17 @@ pub fn register_handlers(_registry: &mut HandlerRegistry) -> Result<(), Duplicat
 pub struct BuffExpandState<'a> {
     /// 玩家 modDB（trigger flag 与 effect INC/MORE 聚合来源）。
     pub db: &'a ModDb,
+    /// 敌人 modDB 只读（M3-W4 handler 上下文按需透传；doActorMisc 的
+    /// Wither/Incision 形态写 enemyDB——`None` 时依赖它的 handler 保守零输出）。
+    pub enemy_db: Option<&'a ModDb>,
     /// 计算上下文（flag/sum 查询用）。
     pub cfg: &'a CalcConfig,
     /// 战斗模式门控（PoB2 `env.mode_combat`；CalcConfig 的 `mode_combat`
     /// 字段属 M3-T0，落地前由调用方显式传入）。
     pub mode_combat: bool,
+    /// 主技能上下文（M3-W4；vendor `mainSkill.…selfCast` 门控用——env/session
+    /// 接线前为 `None`，依赖它的 handler（fanaticism）保守零输出）。
+    pub main_skill: Option<&'a MainSkillCtx>,
 }
 
 /// 展开结果。
@@ -60,9 +65,16 @@ pub struct BuffExpandState<'a> {
 pub struct BuffExpansion {
     /// 展开产出的 modifier（写回 player.mod_db 由主波接线）。
     pub mods: Vec<Modifier>,
+    /// handler 产出的敌侧 modifier（写回 enemy.mod_db 由主波接线；M3-W4
+    /// 管道扩展，当前注册集合零产出）。
+    pub enemy_mods: Vec<Modifier>,
     /// 附带置位的条件名（vendor `condList[...] = true`；写 cfg.conditions
     /// 由主波接线）。
     pub conditions_set: Vec<String>,
+    /// handler 产出的 multiplier 标量（`(var, value)` 加法合并进
+    /// cfg.multipliers，对应 vendor `modDB.multipliers[var] += v` 形态；
+    /// M3-W4 管道扩展）。
+    pub multipliers: Vec<(String, f64)>,
     /// handler_id 未注册的 buff（覆盖率报表）。
     pub unhandled: Vec<String>,
     /// 非致命告警（未映射 flag 等）。
@@ -100,12 +112,37 @@ fn expand_one(
     registry: &HandlerRegistry,
     out: &mut BuffExpansion,
 ) {
-    // 真逻辑条目：查 handler；未注册记报表（不 panic）。
+    // 真逻辑条目：查 handler；未注册记报表（不 panic）。buff 消费点 ctx 携带
+    // db/cfg 只读快照（registry::HandlerCtx 文档）；四路产出按通道落位，
+    // 归因统一附加 `(Buff, "buff.<id>")`。
     if let Some(handler_id) = &def.handler_id {
         match registry.get(handler_id) {
-            Some(handler) => out
-                .mods
-                .extend(handler(&[]).into_iter().map(|m| attach_origin(m, def))),
+            Some(handler) => {
+                let ctx = HandlerCtx {
+                    inputs: &[],
+                    player_db: Some(state.db),
+                    enemy_db: state.enemy_db,
+                    cfg: Some(state.cfg),
+                    main_skill: state.main_skill,
+                };
+                let result = handler(&ctx);
+                out.mods.extend(
+                    result
+                        .player_mods
+                        .into_iter()
+                        .map(|m| attach_origin(m, def)),
+                );
+                out.enemy_mods
+                    .extend(result.enemy_mods.into_iter().map(|m| attach_origin(m, def)));
+                out.conditions_set.extend(
+                    result
+                        .conditions
+                        .into_iter()
+                        .filter(|(_, enabled)| *enabled)
+                        .map(|(var, _)| var),
+                );
+                out.multipliers.extend(result.scalars);
+            }
             None => out.unhandled.push(handler_id.clone()),
         }
         return;
@@ -351,8 +388,10 @@ mod tests {
     fn state<'a>(db: &'a ModDb, cfg: &'a CalcConfig, mode_combat: bool) -> BuffExpandState<'a> {
         BuffExpandState {
             db,
+            enemy_db: None,
             cfg,
             mode_combat,
+            main_skill: None,
         }
     }
 
@@ -650,17 +689,19 @@ mod tests {
         registry
             .register(
                 "buff:fortify",
-                Box::new(|_| vec![Modifier::number("DamageTakenWhenHit", ModType::More, -20.0)]),
+                Box::new(|_| {
+                    crate::rules::registry::HandlerOutcome::player_mods(vec![Modifier::number(
+                        "DamageTakenWhenHit",
+                        ModType::More,
+                        -20.0,
+                    )])
+                }),
             )
             .unwrap();
         let out = expand_misc_buffs(&state(&db, &cfg, true), &[def], &HandlerRegistry::new());
         assert_eq!(out.unhandled.len(), 1);
         let out2 = expand_misc_buffs(
-            &BuffExpandState {
-                db: &db,
-                cfg: &cfg,
-                mode_combat: true,
-            },
+            &state(&db, &cfg, true),
             &[BuffDef {
                 handler_id: Some("buff:fortify".to_string()),
                 ..onslaught_def()

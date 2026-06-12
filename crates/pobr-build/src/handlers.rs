@@ -14,8 +14,8 @@
 //! 回看裁决 P4/P6）。
 
 use pobr_core::CampaignProgress;
-use pobr_core::rules::HandlerRegistry;
 use pobr_core::rules::config_interpreter::{ConfigInputValue, ConfigOutcome};
+use pobr_core::rules::{HandlerOutcome, HandlerRegistry};
 use pobr_data::monster::EnemyTier;
 
 /// config 域 handler 预算上限（蓝图 §1 D2：542 条目 × 10% ≈ 54）。
@@ -61,10 +61,16 @@ pub fn build_registry() -> HandlerRegistry {
 /// 既有七档表），不占 handler 预算。
 fn register_config_handlers(registry: &mut HandlerRegistry) {
     registry
-        .register("config:enemyIsBoss", Box::new(|_| Vec::new()))
+        .register(
+            "config:enemyIsBoss",
+            Box::new(|_| HandlerOutcome::default()),
+        )
         .expect("启动期注册不重复");
     registry
-        .register("config:presetBossSkills", Box::new(|_| Vec::new()))
+        .register(
+            "config:presetBossSkills",
+            Box::new(|_| HandlerOutcome::default()),
+        )
         .expect("启动期注册不重复");
 }
 
@@ -116,6 +122,12 @@ mod tests {
         let registry = build_registry();
         let config_count = count_with_prefix(&registry, "config:");
         let buff_count = count_with_prefix(&registry, "buff:");
+        println!(
+            "[A6] handler 计数：config = {config_count}/{CONFIG_HANDLER_BUDGET}，\
+             buff = {buff_count}/{BUFF_HANDLER_BUDGET}，总数 = {}/{TOTAL_HANDLER_CAP}（stub = {}）",
+            registry.len(),
+            STUB_HANDLER_IDS.len()
+        );
 
         assert!(
             config_count <= CONFIG_HANDLER_BUDGET,
@@ -141,9 +153,13 @@ mod tests {
         for stub in STUB_HANDLER_IDS {
             assert!(registry.get(stub).is_some(), "stub `{stub}` 应已注册");
         }
-        // 第一批 handler 均为零 Modifier 产出（真实消费走标量通道/后续阶段）。
+        // 第一批 handler 均为零产出（真实消费走标量通道/后续阶段）。
         let handler = registry.get("config:enemyIsBoss").unwrap();
-        assert!(handler(&[0.0]).is_empty());
+        let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[0.0]));
+        assert!(out.player_mods.is_empty());
+        assert!(out.enemy_mods.is_empty());
+        assert!(out.conditions.is_empty());
+        assert!(out.scalars.is_empty());
     }
 
     fn outcome_with_scalar(var: &str, value: ConfigInputValue) -> ConfigOutcome {

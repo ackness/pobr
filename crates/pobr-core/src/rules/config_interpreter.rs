@@ -28,7 +28,7 @@ use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::modifier::{ActorRef, ModTag, ModValue, Modifier};
-use crate::rules::registry::HandlerRegistry;
+use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::value_expr;
 
 /// 原始 config 输入值（xml_build 读出的 `<Input name bool|number|string>` 三型）。
@@ -235,14 +235,32 @@ fn interpret_entry(
         return;
     }
 
-    // handler_id 条目：查 registry，未注册记报表。
+    // handler_id 条目：查 registry，未注册记报表。四路产出按通道落位
+    // （registry::HandlerOutcome 文档；config 消费点 ctx 仅携带数值占位参数）。
     if let Some(handler_id) = &def.handler_id {
         match registry.get(handler_id) {
-            Some(handler) => outcome.player_mods.extend(
-                handler(&[input_number])
-                    .into_iter()
-                    .map(|m| attach_origin(m, def, EffectTarget::Player)),
-            ),
+            Some(handler) => {
+                let inputs = [input_number];
+                let result = handler(&HandlerCtx::with_inputs(&inputs));
+                outcome.player_mods.extend(
+                    result
+                        .player_mods
+                        .into_iter()
+                        .map(|m| attach_origin(m, def, EffectTarget::Player)),
+                );
+                outcome.enemy_mods.extend(
+                    result
+                        .enemy_mods
+                        .into_iter()
+                        .map(|m| attach_origin(m, def, EffectTarget::Enemy)),
+                );
+                for (var, enabled) in result.conditions {
+                    outcome.conditions.insert(var, enabled);
+                }
+                for (var, value) in result.scalars {
+                    *outcome.multipliers.entry(var).or_insert(0.0) += value;
+                }
+            }
             None => outcome.unhandled.push(UnhandledEntry {
                 var: def.var.clone(),
                 handler_id: handler_id.clone(),
@@ -907,12 +925,39 @@ mod tests {
         registry
             .register(
                 "config:enemy_is_boss",
-                Box::new(|_| vec![Modifier::flag("Condition:Boss")]),
+                Box::new(|_| crate::rules::registry::HandlerOutcome {
+                    player_mods: vec![Modifier::flag("Condition:Boss")],
+                    enemy_mods: vec![Modifier::flag("Condition:RareOrUnique")],
+                    conditions: vec![("Boss".to_string(), true)],
+                    scalars: vec![("BossPresence".to_string(), 1.0)],
+                }),
             )
             .unwrap();
         let outcome = interpret(&[def], &inputs, &registry);
         assert!(outcome.unhandled.is_empty());
+        // 四路产出按通道落位；归因由消费点统一附加（player=Config / enemy=EnemyConfig）。
         assert_eq!(outcome.player_mods.len(), 1);
+        assert_eq!(
+            outcome.player_mods[0]
+                .origin
+                .as_ref()
+                .unwrap()
+                .source_id
+                .kind,
+            SourceKind::Config
+        );
+        assert_eq!(outcome.enemy_mods.len(), 1);
+        assert_eq!(
+            outcome.enemy_mods[0]
+                .origin
+                .as_ref()
+                .unwrap()
+                .source_id
+                .kind,
+            SourceKind::EnemyConfig
+        );
+        assert_eq!(outcome.conditions.get("Boss"), Some(&true));
+        assert_eq!(outcome.multipliers.get("BossPresence"), Some(&1.0));
     }
 
     /// customMods：按行 StripEscapes 入行通道。

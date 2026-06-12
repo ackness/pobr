@@ -354,15 +354,25 @@ pub fn expand_misc_buffs(env: &mut Env) {
     let expansion = buff_expander::expand_misc_buffs(
         &BuffExpandState {
             db: &env.player.mod_db,
+            enemy_db: Some(&env.enemy.mod_db),
             cfg: &env.cfg,
             mode_combat: env.cfg.mode_combat,
+            // 主技能上下文（M3-W4 HandlerCtx 维度）：Env 暂无主技能快照字段，
+            // 接线前 None——依赖它的 handler（buff:fanaticism）保守零输出。
+            main_skill: None,
         },
         &pending,
         &env.buff_handler_registry,
     );
     env.player.mod_db.add_list(expansion.mods);
+    env.enemy.mod_db.add_list(expansion.enemy_mods);
     for condition in expansion.conditions_set {
         env.cfg.conditions.insert(condition, true);
+    }
+    // handler 标量 → cfg.multipliers 加法合并（vendor `modDB.multipliers[var] += v`
+    // 形态，如 Fortify 的 BuffOnSelf；registry::HandlerOutcome 文档）。
+    for (var, value) in expansion.multipliers {
+        *env.cfg.multipliers.entry(var).or_insert(0.0) += value;
     }
 }
 
