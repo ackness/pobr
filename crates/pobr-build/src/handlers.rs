@@ -40,6 +40,8 @@ pub fn build_registry() -> HandlerRegistry {
     // ── T1 append 点：config handlers ──
     register_config_handlers(&mut registry);
     // ── T2 append 点：buff handlers ──
+    pobr_core::rules::buff_expander::register_handlers(&mut registry)
+        .expect("启动期 buff handler 注册不冲突");
     registry
 }
 
