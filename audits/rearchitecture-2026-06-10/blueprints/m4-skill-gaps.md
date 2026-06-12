@@ -94,3 +94,31 @@ WhirlwindStages per-stage MORE）在 PoBR statmap 引擎的 tag 翻译白名单�
 - oracle 用法：`/Users/…/pobr/tools/pob2-oracle/run.sh <decoded.xml> out.json`
   （worktree 无 vendor 检出时用主仓的 run.sh，路径自解析）；`summedBase` 直接
   暴露 base 段缺口（如 DD 的 Physical 4548 = 32956×0.138 一眼钉死）。
+
+## 5. M4-H 暴击条件/幸运抬升线——结果（2026-06-13）
+
+§1-§3 登记的暴击项全部经 oracle 逐段定位并修复（4 个独立行为 commit），
+CritChance/CritMultiplier 列收敛（effective 口径）：
+
+| build | 段位定位 | before → after | commit |
+|---|---|---|---|
+| witch coiling-bolts | 非「INC 聚合」主体——**底材覆盖缺路**：Blood Mage『Sunder the Flesh』`CritChanceBase` OVERRIDE 15（ModParser.lua:5801 / CalcOffence.lua:3667-3676）替换 gem 底材 7 | CritChance 0.45x → **0.96x ✓** | `2a40269` |
+| monk twister | 纯聚合：树 notable『Struck Through』"Attacks have +1%..."（`^attacks have ` 前缀类 ModParser.lua:1266）此前 Unsupported | CritChance 0.94x → **1.00x ✓✓** | `2a40269` |
+| druid ember-fusillade | 必暴链：Oracle『Forced Outcome』(tree 55135) "Inevitable Critical Hits" → flag（ModParser.lua:3393，消费 CalcOffence.lua:3712-3739 已有） | CritChance 0.15x → **1.00x ✓**、CritMult 2.06x → 1.03x ✓ | `326b4e4` |
+| huntress twister | effective 抬升 = **BifurcateCrit**（非 lucky；CalcOffence.lua:3707-3710 + 爆伤 :3796-3811），源 = Garukhan's Resolve support 隐式 stat `attacks_roll_crits_twice`（sup_dex.lua:2421 → SkillStatMap.lua:1011-1013）——statmap flag 白名单 + SkillType tag + 隐式 stat overlay 通道三段接通 | CritChance 0.56x → 0.92x、CritMult 0.89x → 0.98x ✓ | `8012014` |
+| huntress twister | 聚合②：油涂 `{enchant}Allocates Vulgar Methods`（ModParser.lua:5809 → CalcSetup.lua:1322-1331 notableMap）授予 30 INC | CritChance 0.92x → **1.00x ✓✓**、CritMult → 1.00x ✓✓ | `a1db2df` |
+
+聚合面：offensive parity @5% 28/80 → **40/80**、defensive 374/450 → 377/450
+（油涂节点的非 crit 词条连带）；TotalDPS：witch 0.09→0.15x、druid 0.12→0.15x、
+huntress 0.27→0.44x、monk 0.22→0.23x——余差均为 pre-crit per-hit 段
+（added/gain-as 大档线 + Speed 0.90x），非暴击线范围。
+
+**剩余登记（暴击线尾差，单一根因）**：
+- **切换类节点 class 变体（isSwitchable options）未建模**——tree.lua 节点的
+  `options.<Class>` 子表会按职业整体替换 stats：witch 51335『Affliction
+  Enforcer』→ Witch 变体 64801『Jagged Shards』（+20 INC crit for spells，
+  vendor 有、PoBR 缺 → witch 0.96x 的余差）；druid 6898『Relentless
+  Vindicator』→ Druid 变体 7197『Guardian of the Wilds』（无 crit，PoBR 误用
+  基础版 +10 INC → druid pre-effective 15.19 vs 14.49 过聚合，喂进必暴
+  roll-down 使 CritMult 1.74 vs 1.69）。属树数据 schema（PassiveNodeDef 无
+  options 字段）+ 适配器改造，归数据线独立做。
