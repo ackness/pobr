@@ -2680,8 +2680,12 @@ fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
 ///   归因口径——双跑已证两条通道对同一来源等值）；
 /// - `skill_types` 含 Mark/Curse 系 token（`Mark` / `AppliesCurse`，M1 token
 ///   表达式列实查）→ [`BuffKind::Curse`]（`is_mark` = 含 `Mark`）。curse 携带
-///   词条的 stat→mod 映射 M3 不做（mods 空——curse priority/limit/槽位占用与
-///   `EnemyCurseLimit` 面板先行，效果词条随 statmap curse 域接入）。
+///   词条（M3-W4）：granted_effect statset 的 curse 载荷 stat 经 statmap 数据
+///   通道（[`stat_map_engine::map_curse_stat`]，vendor 各 curse statSet 的
+///   `GlobalEffect effectType=Curse` 条目）映射为**敌侧** modifier，由 buff_pass
+///   curse 路径施 CurseEffect 乘区后写 enemy db（CalcPerform.lua:2286-2316 /
+///   :2969-2984）。映射不到的 curse 载荷 stat 经 Compare 模式落可见性报表
+///   （[`curse_stat_modifiers`]）。
 ///
 /// `slot` = socket group 槽名原文（PoB XML `slot` attr，如 `Weapon 1`，与
 /// curse_priority.json 槽位权重键同源）；`socket_index` = 组内宝石序（1-based，
@@ -2744,13 +2748,22 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                     ignore_curse_limit: false,
                 });
             } else {
+                // curse 效果词条（M3-W4）：statset stat 经 statmap curse 域映射
+                // 为敌侧 modifier（Despair→ChaosResist 减抗、Enfeeble→Damage MORE…），
+                // buff_pass 施 CurseEffect 乘区 + Condition:Effective 后入 enemy db。
+                let es = data.effect_stats(
+                    &gem.skill_id,
+                    gem.gem_level,
+                    gem.quality,
+                    gem.stat_set_index,
+                );
+                let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+                let mods = curse_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
                 specs.push(BuffSpec {
                     name: buff_skill_name(data, &gem.skill_id),
                     kind: BuffKind::Curse,
                     skill_id: gem.skill_id.clone(),
-                    // M3：curse 效果词条的 stat→mod 映射不做（priority/limit/
-                    // 槽位面板先行），mods 空。
-                    mods: Vec::new(),
+                    mods,
                     magnitude: 1.0,
                     slot: group.slot.clone(),
                     socket_index,
@@ -3050,6 +3063,90 @@ fn data_mapped_stat_modifiers(
                 format!("{label_prefix}.{}", ds.stat),
             ))
             .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
+            mods.push(modifier.with_origin(origin));
+        }
+    }
+    mods
+}
+
+/// curse 效果词条取数点（M3-W4）：把一个 curse 技能 statset 的全部 stat 经
+/// [`stat_map_engine::map_curse_stat`]（curse 域数据通道）映射为**敌侧**
+/// modifier 列表（BuffSpec.mods 载荷，buff_pass curse 路径消费）。
+///
+/// - catalog 取数：优先线程局部上下文（`calculate_with_data` 安装的编排选项
+///   注入），上下文外（直接调用 [`buff_skill_specs`] 的测试/工具路径）回退
+///   `data.stat_map_catalog`——两处在编排主流程指向同一 Arc。
+/// - 归因：`(SkillGem, "curse.<skill_id>.<stat>")`（aura 路径同构口径），
+///   buff_pass 缩放保留 origin（trace 不丢弃）。
+/// - 可见性（不静默）：Compare 模式逐 stat 把 curse 载荷的
+///   `mapped` / `unsupported:<类别>` 落 [`StatMapCompareRecord`]（label =
+///   `curse.<skill_id>`）；`Mapped(空)`（非 curse 载荷，走主技能通道）与
+///   `Unknown`（catalog 无条目）不记——非 curse 语义，记录即噪声。
+///   Data 模式与 statmap 主通道同口径静默跳过（分类观测走 Compare）。
+fn curse_stat_modifiers(
+    data: &BuildData,
+    stats: &crate::build_data::EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> Vec<Modifier> {
+    let (mode, ctx_catalog) =
+        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
+    let catalog = ctx_catalog.or_else(|| data.stat_map_catalog.clone());
+    let Some(catalog) = catalog else {
+        return Vec::new(); // 无 catalog（旧数据包）：curse 词条全 miss（与主通道同口径）。
+    };
+    let mut mods = Vec::new();
+    for ds in stats.all() {
+        if ds.value == 0.0 {
+            continue; // 跳零值 stat（与主通道同口径）。
+        }
+        let outcome =
+            stat_map_engine::map_curse_stat(&catalog, skill_id, set_key, &ds.stat, ds.value);
+        // Compare 模式可见性记录（curse 载荷专属行）。
+        if mode == StatMapMode::Compare {
+            let record = match &outcome {
+                MappedOutcome::Mapped(items) if !items.is_empty() => {
+                    let injected: Vec<(String, &'static str, f64)> = items
+                        .iter()
+                        .filter_map(|item| match item {
+                            MappedItem::Modifier(m) => Some((
+                                m.name.to_string(),
+                                m.mod_type.as_trace_label(),
+                                m.value.as_number().unwrap_or(0.0),
+                            )),
+                            MappedItem::SkillData { .. } => None,
+                        })
+                        .collect();
+                    Some(("mapped", format!("curse={injected:?}")))
+                }
+                MappedOutcome::Unsupported(reason) => {
+                    Some(("unsupported", format!("unsupported:{}", reason.category())))
+                }
+                _ => None, // Mapped(空)/Unknown = 非 curse 载荷，不记。
+            };
+            if let Some((classification, detail)) = record {
+                STAT_MAP_CTX.with(|ctx| {
+                    ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
+                        stat: ds.stat.clone(),
+                        label: format!("curse.{skill_id}"),
+                        classification,
+                        detail,
+                    });
+                });
+            }
+        }
+        let MappedOutcome::Mapped(items) = outcome else {
+            continue;
+        };
+        for item in items {
+            let MappedItem::Modifier(modifier) = item else {
+                continue;
+            };
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("curse.{skill_id}.{}", ds.stat),
+            ))
+            .with_raw_text(format!("curse {skill_id} {} ({})", ds.stat, ds.value));
             mods.push(modifier.with_origin(origin));
         }
     }
@@ -4476,6 +4573,256 @@ mod tests {
         assert!(
             boosted > base,
             "20% inc AuraEffect 放大 aura buff：base={base} boosted={boosted}"
+        );
+    }
+
+    // ── M3-W4：curse 效果词条 stat→mod 映射（statmap curse 域）─────────────
+
+    /// curse spec 的 mods 经 statmap curse 域填充：Despair → 敌侧 `ChaosResist`
+    /// BASE（负值减抗，SkillGem 归因）；Sniper's Mark → `SelfCritMultiplier`
+    /// BASE；Temporal Chains（载荷名无 pobr 消费方）→ mods 空（Unsupported
+    /// 落报表，不静默注入）。
+    #[test]
+    fn buff_skill_specs_fill_curse_mods_from_statmap() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_slot("Body Armour")
+                    .with_gem_skill("DespairPlayer", 20)
+                    .with_gem_skill("SnipersMarkPlayer", 20)
+                    .with_gem_skill("TemporalChainsPlayer", 20),
+            );
+        let specs = buff_skill_specs(&build, &data);
+
+        let despair = specs
+            .iter()
+            .find(|s| s.skill_id == "DespairPlayer")
+            .expect("Despair spec");
+        // 数据侧独立期望：分等级 buff stat 原值（不经映射函数绕回实现自证）。
+        let expected_res: f64 = data
+            .effect_stats("DespairPlayer", 20, 0, None)
+            .all()
+            .filter(|ds| ds.stat == "base_skill_buff_chaos_damage_resistance_%_to_apply")
+            .map(|ds| ds.value)
+            .sum();
+        assert!(expected_res < 0.0, "Despair 减抗 stat 应为负值");
+        let chaos_res: Vec<&Modifier> = despair
+            .mods
+            .iter()
+            .filter(|m| m.name.as_str() == "ChaosResist")
+            .collect();
+        assert_eq!(chaos_res.len(), 1, "Despair → 敌侧 ChaosResist 单条");
+        assert_eq!(chaos_res[0].mod_type, ModType::Base);
+        assert_eq!(chaos_res[0].value.as_number(), Some(expected_res));
+        let origin = chaos_res[0].origin.as_ref().expect("SkillGem 归因");
+        assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
+        assert!(origin.source_id.id.starts_with("curse.DespairPlayer."));
+
+        let mark = specs
+            .iter()
+            .find(|s| s.skill_id == "SnipersMarkPlayer")
+            .expect("Sniper's Mark spec");
+        assert!(
+            mark.mods
+                .iter()
+                .any(|m| m.name.as_str() == "SelfCritMultiplier" && m.mod_type == ModType::Base),
+            "Sniper's Mark → 敌侧 SelfCritMultiplier BASE"
+        );
+
+        let chains = specs
+            .iter()
+            .find(|s| s.skill_id == "TemporalChainsPlayer")
+            .expect("Temporal Chains spec");
+        assert!(
+            chains.mods.is_empty(),
+            "载荷名无 pobr 消费方（TemporalChainsActionSpeed/BuffExpireFaster）→ \
+             不注入（落 Compare 报表）"
+        );
+    }
+
+    /// 可见性（不静默）：Compare 模式下 curse 载荷的 mapped / unsupported 逐 stat
+    /// 落 [`StatMapCompareRecord`]（label = `curse.<skill_id>`）。
+    #[test]
+    fn curse_unmapped_stats_land_in_compare_report() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("DespairPlayer", 20)
+                    .with_gem_skill("TemporalChainsPlayer", 20),
+            );
+        let _ = take_stat_map_compare_records(); // 清残留
+        {
+            let _guard =
+                install_stat_map_context(StatMapMode::Compare, data.stat_map_catalog.clone());
+            let _ = buff_skill_specs(&build, &data);
+        }
+        let records = take_stat_map_compare_records();
+        assert!(
+            records.iter().any(|r| r.label == "curse.DespairPlayer"
+                && r.classification == "mapped"
+                && r.detail.contains("ChaosResist")),
+            "Despair 映射成功行入报表：{records:?}"
+        );
+        assert!(
+            records
+                .iter()
+                .any(|r| r.label == "curse.TemporalChainsPlayer"
+                    && r.classification == "unsupported"
+                    && r.detail.contains("unknown_mod_name")),
+            "Temporal Chains 未映射载荷上报 unknown_mod_name：{records:?}"
+        );
+    }
+
+    /// 端到端（有效口径）：挂 Elemental Weakness 的 build 敌元素抗下降 → 火系主
+    /// 技能 DPS 上升；面板口径（mode_effective=false，vendor :2289 hex gate 不过）
+    /// 逐值不变锚点。
+    #[test]
+    fn curse_mods_raise_effective_dps_panel_unchanged() {
+        let data = repo_data();
+        let base_build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20));
+        let cursed_build = base_build
+            .clone()
+            .add_socket_group(SocketGroup::new().with_gem_skill("ElementalWeaknessPlayer", 20));
+        let calc = |build: &Build, effective: bool| {
+            calculate_with_data(
+                build,
+                &data,
+                &DataOrchestratorOptions {
+                    inject_character_base: true,
+                    mode_effective: effective,
+                    enemy_tier: EnemyTier::Pinnacle,
+                    ..Default::default()
+                },
+            )
+            .expect("calc")
+        };
+
+        // 有效口径：敌火抗 -59（EW lv20）经 CurseEffect 乘区入 enemy db → DPS 上升。
+        let eff_base = calc(&base_build, true);
+        let eff_cursed = calc(&cursed_build, true);
+        assert!(eff_base.dps > 0.0, "火系主技能基线 DPS 非零");
+        assert!(
+            eff_cursed.dps > eff_base.dps,
+            "Elemental Weakness 减敌火抗应抬升有效 DPS：base={} cursed={}",
+            eff_base.dps,
+            eff_cursed.dps,
+        );
+        assert_eq!(
+            eff_cursed.curse_slots,
+            vec!["Elemental Weakness".to_string()]
+        );
+
+        // 面板口径锚点：hex 在 :2289 gate 即跳过（mode_effective=false）→ 加挂
+        // curse 宝石对输出逐值不变。
+        let panel_base = calc(&base_build, false);
+        let panel_cursed = calc(&cursed_build, false);
+        assert_eq!(panel_cursed.dps, panel_base.dps, "面板 DPS 逐值不变");
+        assert_eq!(panel_cursed.life, panel_base.life);
+        assert_eq!(panel_cursed.fire_resistance, panel_base.fire_resistance);
+        assert!(panel_cursed.curse_slots.is_empty(), "面板口径 hex 不入槽");
+    }
+
+    /// 端到端（有效口径）：CurseEffect inc 放大映射产物；limit=1 截断时败者
+    /// （Despair，socket 序 priority 低）词条不产生 DPS 影响。
+    #[test]
+    fn curse_effect_amplifies_and_limit_truncates_end_to_end() {
+        let data = repo_data();
+        // 主伤害：手工注入混沌 hit（吃敌 ChaosResist）；Despair spec 经
+        // buff_skill_specs 真实映射取得。
+        let despair_only = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("DespairPlayer", 20));
+        // Despair(socket 1, priority 8+100) vs Enfeeble(socket 2, priority 2+200)
+        // → Enfeeble 入槽，Despair 截断。
+        let both_hexes = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("DespairPlayer", 20)
+                    .with_gem_skill("EnfeeblePlayer", 20),
+            );
+        let dps = |build: Option<&Build>, curse_effect_inc: f64| {
+            let mut session = CalculationSession::new(MinimalInput {
+                base_accuracy: 1_000_000.0,
+                base_action_rate: 1.0,
+                ..Default::default()
+            })
+            .with_config(
+                CalcConfig::attack()
+                    .with_mode_buffs(true)
+                    .with_mode_effective(true),
+            );
+            if let Some(priority) = data.curse_priority.clone() {
+                session.set_curse_priority(priority);
+            }
+            session.add_modifiers([
+                Modifier::number("ChaosDamageMin", ModType::Base, 100.0),
+                Modifier::number("ChaosDamageMax", ModType::Base, 100.0),
+            ]);
+            if curse_effect_inc != 0.0 {
+                session.add_modifiers([Modifier::number(
+                    "CurseEffect",
+                    ModType::Inc,
+                    curse_effect_inc,
+                )]);
+            }
+            if let Some(build) = build {
+                for spec in buff_skill_specs(build, &data) {
+                    session.add_buff_skill(spec);
+                }
+            }
+            session.setup_enemy(80, EnemyTier::Pinnacle);
+            session.perform_minimal();
+            (session.output().dps, session.output().curse_slots.clone())
+        };
+
+        let (dps_bare, slots_bare) = dps(None, 0.0);
+        let (dps_despair, slots_despair) = dps(Some(&despair_only), 0.0);
+        let (dps_amplified, _) = dps(Some(&despair_only), 20.0);
+        let (dps_truncated, slots_truncated) = dps(Some(&both_hexes), 0.0);
+
+        assert!(slots_bare.is_empty());
+        assert_eq!(slots_despair, vec!["Despair".to_string()]);
+        assert!(
+            dps_despair > dps_bare,
+            "Despair 减敌混沌抗 → DPS 上升：bare={dps_bare} despair={dps_despair}"
+        );
+        assert!(
+            dps_amplified > dps_despair,
+            "20% inc CurseEffect 放大减抗：despair={dps_despair} amplified={dps_amplified}"
+        );
+        // limit=1 截断：Enfeeble（priority 高）独占槽，Despair 词条不入敌 db —
+        // Enfeeble 载荷（敌方 Damage MORE）不影响玩家 DPS → 与裸基线逐值相等。
+        assert_eq!(slots_truncated, vec!["Enfeeble".to_string()]);
+        assert_eq!(
+            dps_truncated, dps_bare,
+            "败者 Despair 词条不产生 DPS 影响（Enfeeble 载荷 DPS 中性）"
         );
     }
 

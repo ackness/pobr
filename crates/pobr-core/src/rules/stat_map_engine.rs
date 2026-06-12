@@ -335,6 +335,202 @@ pub fn map_stat_global_only(
     MappedOutcome::Mapped(items)
 }
 
+// ---- M3-W4：curse 域（GlobalEffect effectType=Curse）敌侧映射 ----
+
+/// 元素是否为 **curse buff 载荷**（vendor `GlobalEffect` tag 且
+/// `effectType == "Curse"`——`CalcActiveSkill.lua:976-1041` 把命中元素从
+/// skillModList 搬入 `buff.modList`（buff.type = "Curse"），`CalcPerform.lua:2286-2316`
+/// 经 CurseEffect 乘区 `ScaleAddList` 后由 :2969-2984 写 enemyDB）。
+/// group 任一成员命中即整组（与 [`is_global_effect`] 同口径的保守泛化）。
+fn is_curse_effect(element: &StatMapMod) -> bool {
+    if element.kind == "group" {
+        return element.mods.iter().any(is_curse_effect);
+    }
+    element.tags.iter().any(|tag| {
+        matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect")
+            && matches!(tag.get("effectType"), Some(StatMapValue::Text(t)) if t == "Curse")
+    })
+}
+
+/// 把一条 curse 技能 stat 经 statmap 数据翻译为**敌侧** PoBR 注入项
+/// （BuffSpec.mods 取数通道，buff_pass curse 路径消费）。
+///
+/// 与 [`map_stat`] 的差异（curse 域语义，蓝图 m3-orchestration.md §6.3）：
+/// - 只保留 [`is_curse_effect`] 命中的元素（非 curse 元素 = 技能局部 mod，走主
+///   技能注入通道，此处**静默跳过**——vendor 同口径：未带 GlobalEffect 的 mod 留在
+///   skillModList）。过滤后无 curse 元素 → `Mapped(空)`（该 stat 非 curse 载荷）。
+/// - ModName 走敌侧翻译表 [`translate_curse_mod_name`]（enemy db 聚合名 =
+///   vendor enemyDB 名直通；`ElementalResist` 展开三元素——pobr 敌侧抗性聚合
+///   只读 `<Type>Resist`，vendor `enemyDB:Sum(.. type.."Resist", "ElementalResist")`
+///   两名同收，展开等值）。未知名（pobr 暂无敌侧消费方，如
+///   `TemporalChainsActionSpeed` / `BuffExpireFaster` / `FreezeBuildup`）整条归
+///   [`UnsupportedReason::UnknownModName`] 上报（宁可跳过不可错算，可见性报表
+///   由调用方落 Compare 记录）。
+/// - `GlobalEffect` tag 本身剥除（路由元数据，不参与匹配）；带约定外键
+///   （`effectCond` / `modCond` / `effectStackVar`…携带额外门控语义）→ 整条
+///   Unsupported。其余 tag 经 [`translate_tag`] 直译——curse mod 落 enemy db，
+///   `Condition` 的 var 即敌方自身状态（如 Enfeeble 的 `Unique`，与编排层
+///   boss 档位置位的 cfg 条件 `Unique` 同名同义，**不加** Enemy 前缀）。
+/// - flags / keyword_flags 第一批要求为空（curse 载荷数据全部无 flag；非空 =
+///   作用域语义未建模 → Unsupported）。
+pub fn map_curse_stat(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> MappedOutcome {
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return MappedOutcome::Unknown;
+    };
+    if entry.unextractable {
+        return MappedOutcome::Unsupported(UnsupportedReason::Unextractable);
+    }
+    let entry_params = MergeParams {
+        div: entry.div,
+        mult: entry.mult,
+        base: entry.base,
+        value: entry.value,
+    };
+    let mut items = Vec::new();
+    for element in entry.mods.iter().filter(|e| is_curse_effect(e)) {
+        if let Err(reason) = collect_curse_element(element, &entry_params, stat_value, &mut items) {
+            // 与 map_entry 同口径：任一 curse 元素不可翻译 → 整条跳过（成组语义）。
+            return MappedOutcome::Unsupported(reason);
+        }
+    }
+    MappedOutcome::Mapped(items)
+}
+
+/// 敌侧 ModName 翻译表（curse 域，PoB2 enemyDB 名 → PoBR enemy db 聚合名）。
+///
+/// 允收名单 = 当前 pobr 敌侧消费方逐一对照（宁可跳过不可错算）：
+/// - `<Type>Resist` BASE：`offence::enemy_damage_multiplier` 抗性减伤段
+///   （Despair `ChaosResist`）；`ElementalResist`（Elemental Weakness）展开
+///   火/冰/电三条（消费侧只读 `<Type>Resist`，与 vendor 双名同收等值）。
+/// - `Damage` INC/MORE：敌方出伤乘区（Enfeeble），`ehp::assemble_enemy_damage`
+///   （CalcDefence.lua:2133 enemyDamageMult）消费。
+/// - `SelfCritMultiplier` BASE：敌方受暴击加成（Sniper's Mark），
+///   `crit.rs` 敌侧段消费（CalcOffence.lua:3814-3825）。
+///
+/// 其余（`TemporalChainsActionSpeed` / `BuffExpireFaster` / `FreezeBuildup` /
+/// `ElectrocuteBuildup` / `IgnoreArmour` / `Dummy`…）pobr 暂无敌侧消费方 →
+/// `UnknownModName` 上报，消费方落地后补名单。
+fn translate_curse_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
+    match name {
+        "FireResist" => Ok(vec!["FireResist"]),
+        "ColdResist" => Ok(vec!["ColdResist"]),
+        "LightningResist" => Ok(vec!["LightningResist"]),
+        "ChaosResist" => Ok(vec!["ChaosResist"]),
+        "ElementalResist" => Ok(vec!["FireResist", "ColdResist", "LightningResist"]),
+        "Damage" => Ok(vec!["Damage"]),
+        "SelfCritMultiplier" => Ok(vec!["SelfCritMultiplier"]),
+        other => Err(UnsupportedReason::UnknownModName(other.to_string())),
+    }
+}
+
+/// curse 元素翻译（group 递归 + mod 构造器；flag/skill_data 带 curse tag 在
+/// 数据中不存在，出现即 Unsupported——非 mod 载荷的 curse 语义未建模）。
+fn collect_curse_element(
+    element: &StatMapMod,
+    params: &MergeParams,
+    stat_value: f64,
+    items: &mut Vec<MappedItem>,
+) -> Result<(), UnsupportedReason> {
+    if element.scalar.is_some() {
+        return Err(UnsupportedReason::ScalarMultiplier);
+    }
+    match element.kind.as_str() {
+        "group" => {
+            let group_params = MergeParams {
+                div: element.div,
+                mult: element.mult,
+                base: element.base,
+                value: match &element.value {
+                    Some(StatMapValue::Number(v)) => Some(*v),
+                    Some(_) => {
+                        return Err(UnsupportedReason::UnsupportedKind(
+                            "group 非数值 value".to_string(),
+                        ));
+                    }
+                    None => None,
+                },
+            };
+            for nested in element.mods.iter().filter(|e| is_curse_effect(e)) {
+                collect_curse_element(nested, &group_params, stat_value, items)?;
+            }
+            Ok(())
+        }
+        "mod" => collect_curse_mod(element, params.merge(stat_value), items),
+        other => Err(UnsupportedReason::UnsupportedKind(format!(
+            "curse 非 mod 载荷：{other}"
+        ))),
+    }
+}
+
+/// curse `mod()` 构造器翻译：敌侧名单名 + GlobalEffect 剥除 + 其余 tag 直译。
+fn collect_curse_mod(
+    element: &StatMapMod,
+    merged_value: f64,
+    items: &mut Vec<MappedItem>,
+) -> Result<(), UnsupportedReason> {
+    let Some(name) = element.name.as_deref() else {
+        return Err(UnsupportedReason::UnknownModName("<missing name>".into()));
+    };
+    let Some(mod_type) = element.mod_type.as_deref() else {
+        return Err(UnsupportedReason::MissingModType);
+    };
+    let mod_type = match mod_type {
+        "BASE" => ModType::Base,
+        "INC" => ModType::Inc,
+        "MORE" => ModType::More,
+        "FLAG" => ModType::Flag,
+        "OVERRIDE" => ModType::Override,
+        other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
+    };
+    // 第一批：curse 载荷无 flag / keyword_flag（敌侧 cfg 不派生作用域位，附上
+    // 即静默欠算）；非空整条上报。
+    if !element.flags.is_empty() {
+        return Err(UnsupportedReason::UnsupportedFlags(element.flags.join("|")));
+    }
+    if !element.keyword_flags.is_empty() {
+        return Err(UnsupportedReason::UnsupportedKeywordFlags(
+            element.keyword_flags.join("|"),
+        ));
+    }
+    // tag：GlobalEffect 剥除（约定外键 = 额外门控语义，整条上报）；其余直译。
+    let mut tags = Vec::new();
+    for tag in &element.tags {
+        let is_global =
+            matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
+        if is_global {
+            if !tag
+                .keys()
+                .all(|k| matches!(k.as_str(), "type" | "effectType"))
+            {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "GlobalEffect 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            continue;
+        }
+        tags.push(translate_tag(tag)?);
+    }
+    for translated in translate_curse_mod_name(name)? {
+        let mut modifier = if mod_type == ModType::Flag {
+            Modifier::flag(translated)
+        } else {
+            Modifier::number(translated, mod_type, merged_value)
+        };
+        for tag in &tags {
+            modifier = modifier.with_tag(tag.clone());
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+    }
+    Ok(())
+}
+
 /// entry / group 级 merge 参数（vendor `map.div/mult/base/value`）。
 struct MergeParams {
     div: Option<f64>,
@@ -1542,6 +1738,165 @@ mod tests {
         assert!(matches!(
             map_stat_global_only(&catalog, "Any", None, "broken", 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::Unextractable)
+        ));
+    }
+
+    // ---- M3-W4：curse 域敌侧映射 ----
+
+    /// Despair 形态（per-set `ChaosResist` BASE + GlobalEffect Curse tag）：
+    /// 直通敌侧名、GlobalEffect 剥除、merge 值 = stat 原值（负数减抗）。
+    #[test]
+    fn curse_chaos_resist_maps_to_enemy_name() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "DespairPlayer": { "1": {
+                 "base_skill_buff_chaos_damage_resistance_%_to_apply": {
+                   "mods": [ { "kind": "mod", "name": "ChaosResist", "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Curse" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_curse_stat(
+            &catalog,
+            "DespairPlayer",
+            None,
+            "base_skill_buff_chaos_damage_resistance_%_to_apply",
+            -35.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        assert_eq!(items.len(), 1);
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "ChaosResist");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(-35.0));
+        assert!(m.tags.is_empty(), "GlobalEffect 路由 tag 已剥除");
+    }
+
+    /// Elemental Weakness 形态：`ElementalResist` 展开火/冰/电三条（pobr 敌侧
+    /// 聚合只读 `<Type>Resist`，与 vendor 双名同收等值）。
+    #[test]
+    fn curse_elemental_resist_expands_to_three_types() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "ElementalWeaknessPlayer": { "1": {
+                 "base_skill_buff_all_elements_resistance_%_to_apply": {
+                   "mods": [ { "kind": "mod", "name": "ElementalResist", "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Curse" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_curse_stat(
+            &catalog,
+            "ElementalWeaknessPlayer",
+            None,
+            "base_skill_buff_all_elements_resistance_%_to_apply",
+            -59.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let names: Vec<&str> = items
+            .iter()
+            .map(|i| match i {
+                MappedItem::Modifier(m) => m.name.as_str(),
+                other => panic!("期望 Modifier，得到 {other:?}"),
+            })
+            .collect();
+        assert_eq!(names, vec!["FireResist", "ColdResist", "LightningResist"]);
+    }
+
+    /// Enfeeble 形态：`Damage` MORE + Condition(Unique[, neg]) 直译保留
+    /// （curse mod 落 enemy db，var 即敌方自身状态，不加 Enemy 前缀）。
+    #[test]
+    fn curse_damage_more_keeps_condition_tags() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "EnfeeblePlayer": { "1": {
+                 "base_skill_buff_damage_+%_final_to_apply": {
+                   "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "MORE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Curse" },
+                                         { "type": "Condition", "var": "Unique", "neg": true } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_curse_stat(
+            &catalog,
+            "EnfeeblePlayer",
+            None,
+            "base_skill_buff_damage_+%_final_to_apply",
+            -21.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "Damage");
+        assert_eq!(m.mod_type, ModType::More);
+        assert_eq!(m.value.as_number(), Some(-21.0));
+        assert_eq!(
+            m.tags,
+            vec![crate::ModTag::condition("Unique", true)],
+            "Condition Unique(neg) 直译保留，GlobalEffect 剥除"
+        );
+    }
+
+    /// 未知敌侧名（pobr 暂无消费方，如 TemporalChainsActionSpeed）→
+    /// Unsupported(UnknownModName) 上报（可见性，不静默注入）。
+    #[test]
+    fn curse_unknown_enemy_name_is_reported() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "TemporalChainsPlayer": { "1": {
+                 "base_skill_debuff_action_speed_+%_final_to_inflict": {
+                   "mods": [ { "kind": "mod", "name": "TemporalChainsActionSpeed", "mod_type": "INC",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Curse" } ] } ] } } } } }"#,
+        );
+        assert_eq!(
+            map_curse_stat(
+                &catalog,
+                "TemporalChainsPlayer",
+                None,
+                "base_skill_debuff_action_speed_+%_final_to_inflict",
+                -25.0,
+            ),
+            MappedOutcome::Unsupported(UnsupportedReason::UnknownModName(
+                "TemporalChainsActionSpeed".into()
+            ))
+        );
+    }
+
+    /// 非 curse 载荷（global 条目无 Curse tag，如技能自带 duration/AoE）→
+    /// Mapped(空)：静默跳过（走主技能注入通道，非 Unsupported）。
+    #[test]
+    fn non_curse_payload_yields_empty_mapped() {
+        let catalog = catalog_json(
+            r#"{ "global": { "base_skill_effect_duration": {
+                   "div": 1000.0,
+                   "mods": [ { "kind": "skill_data", "value": { "key": "duration" } } ] } } }"#,
+        );
+        assert_eq!(
+            map_curse_stat(
+                &catalog,
+                "DespairPlayer",
+                None,
+                "base_skill_effect_duration",
+                6000.0,
+            ),
+            MappedOutcome::Mapped(Vec::new())
+        );
+        // catalog miss → Unknown（与 map_stat 同口径）。
+        assert_eq!(
+            map_curse_stat(&catalog, "DespairPlayer", None, "no_such_stat", 1.0),
+            MappedOutcome::Unknown
+        );
+    }
+
+    /// GlobalEffect 带约定外键（effectCond 等额外门控语义）→ 整条 Unsupported。
+    #[test]
+    fn curse_global_effect_extra_keys_unsupported() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "X": { "1": {
+                 "some_stat": {
+                   "mods": [ { "kind": "mod", "name": "ChaosResist", "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Curse",
+                                           "effectCond": "Stationary" } ] } ] } } } } }"#,
+        );
+        assert!(matches!(
+            map_curse_stat(&catalog, "X", Some("1"), "some_stat", -10.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
         ));
     }
 
