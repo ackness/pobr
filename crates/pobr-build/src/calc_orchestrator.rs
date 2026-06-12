@@ -1004,13 +1004,18 @@ pub fn calculate_with_data(
     //     Spirit BASE 总量与角色等级写入 cfg.multipliers，使 `+N to <stat> per M <resource>`
     //     这类词条（解析为 ModTag::Multiplier{var, div}）在 perform 查询时按 count/div 展开。
     //     须在全部来源注入后、perform 之前；属性/Spirit 不参与 per-X 自缩放，base_sum 取值稳定。
+    //     Life/Mana 分母 = **全管线池值**（OVERRIDE → base×(1+inc)×more，
+    //     `CalculationSession::pool_total`，与 perform 内 offence 池计算同源）——vendor
+    //     PerStat 读 actor **output**（ModStore.lua:440-460 GetStat → output.Mana/Life），
+    //     BASE-only 会把「3% increased Spell Damage per 100 maximum Mana」（druid
+    //     ember-fusillade Tree:19044，vendor 档位 234 = 3×floor(7889/100)）严重欠算。
     {
         let str_total = session.base_sum("Strength");
         let dex_total = session.base_sum("Dexterity");
         let int_total = session.base_sum("Intelligence");
         let spirit_total = session.base_sum("Spirit");
-        let mana_total = session.base_sum("MaximumMana");
-        let life_total = session.base_sum("MaximumLife");
+        let mana_total = session.pool_total("MaximumMana");
+        let life_total = session.pool_total("MaximumLife");
         session.set_multiplier("Strength", str_total);
         session.set_multiplier("Dexterity", dex_total);
         session.set_multiplier("Intelligence", int_total);

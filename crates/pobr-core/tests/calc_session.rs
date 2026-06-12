@@ -80,6 +80,30 @@ fn attribute_total_applies_increased_attribute_modifiers() {
     assert_eq!(session.attribute_total("Strength", 7.0), 7.0);
 }
 
+/// 资源池最终总量（vendor PerStat 分母 = actor output，ModStore.lua:440-460）：
+/// `pool_total` 必须吃满 base×(1+inc)×more 全管线，与 perform 内 offence 池值
+/// 同源——BASE-only（`base_sum`）会漏掉 inc/more 缩放。
+#[test]
+fn pool_total_applies_full_pool_pipeline() {
+    // Arrange
+    let input = MinimalInput {
+        base_mana: 100.0,
+        ..MinimalInput::default()
+    };
+    let mut session = CalculationSession::new(input);
+    session
+        .add_modifier_texts(["+200 to maximum Mana", "50% increased maximum Mana"])
+        .unwrap();
+
+    // Act + Assert：(100 + 200) × 1.5 = 450（base_sum 只会给 200）。
+    assert_eq!(session.pool_total("MaximumMana"), 450.0);
+    assert_eq!(session.base_sum("MaximumMana"), 200.0);
+
+    // 池值与 perform 输出同源（同一 scaled_pool 管线）。
+    let output = session.perform_minimal();
+    assert_eq!(output.mana, 450.0);
+}
+
 #[test]
 fn session_preserves_unsupported_modifier_texts() {
     let mut session = CalculationSession::new(MinimalInput::default());
