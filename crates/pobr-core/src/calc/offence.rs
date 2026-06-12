@@ -855,7 +855,35 @@ fn enemy_damage_multiplier(
         ModName::from("DamageTaken"),
         ModName::from(format!("{type_prefix}DamageTaken")),
     ];
-    let taken_inc = enemy_db.sum(ModType::Inc, &type_cfg, &taken_names);
+    let mut taken_inc = enemy_db.sum(ModType::Inc, &type_cfg, &taken_names);
+    // INC-only 追加名（vendor 只加进 takenInc，不进 takenMore）：
+    // - 元素类型 += ElementalDamageTaken（CalcOffence.lua:4141）；
+    // - 投射物技能 += ProjectileDamageTaken（:4152-4153）、攻击投射物再加
+    //   ProjectileAttackDamageTaken（:4155-4156）——PoBR 以 cfg 的
+    //   ModFlags::PROJECTILE / 攻击判定近似 vendor skillFlags.projectile/attack；
+    // - trap/mine 的 TrapMineDamageTaken（:4158-4159）暂无 skillFlags 表达 +
+    //   样本无 producer，登记 TODO(parity)。
+    if damage_type.is_elemental() {
+        taken_inc += enemy_db.sum(
+            ModType::Inc,
+            &type_cfg,
+            &[ModName::from("ElementalDamageTaken")],
+        );
+    }
+    if type_cfg.flags.intersects(ModFlags::PROJECTILE) {
+        taken_inc += enemy_db.sum(
+            ModType::Inc,
+            &type_cfg,
+            &[ModName::from("ProjectileDamageTaken")],
+        );
+        if type_cfg.is_attack() {
+            taken_inc += enemy_db.sum(
+                ModType::Inc,
+                &type_cfg,
+                &[ModName::from("ProjectileAttackDamageTaken")],
+            );
+        }
+    }
     let taken_more = enemy_db.more(&type_cfg, &taken_names);
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 

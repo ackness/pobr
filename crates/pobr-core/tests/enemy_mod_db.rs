@@ -244,6 +244,61 @@ fn enemy_resist_clamps_to_enemy_max_resist() {
     );
 }
 
+// M4-H S5：受伤链 INC-only 追加名（vendor CalcOffence.lua:4141/:4152-4156）。
+
+#[test]
+fn elemental_damage_taken_applies_to_elements_only() {
+    // ElementalDamageTaken INC 只进元素类型的 takenInc（vendor :4141）；物理不吃。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ElementalDamageTaken", ModType::Inc, 25.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 125.0).abs() < 1e-6,
+        "火伤吃 ElementalDamageTaken 25% → 125, got {}",
+        out.dps
+    );
+
+    // 纯物理不吃。
+    let phys_out =
+        calculate_minimal_vs_enemy(&ModDb::new(), &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (phys_out.dps - 150.0).abs() < 1e-6,
+        "物理不吃 ElementalDamageTaken, got {}",
+        phys_out.dps
+    );
+}
+
+#[test]
+fn projectile_damage_taken_gated_by_projectile_flag() {
+    // ProjectileDamageTaken 只在投射物 cfg 下进 takenInc（vendor :4152-4153）。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number(
+        "ProjectileDamageTaken",
+        ModType::Inc,
+        40.0,
+    ));
+
+    // 非投射物攻击：不吃。
+    let melee = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (melee.dps - 150.0).abs() < 1e-6,
+        "非投射物不吃 ProjectileDamageTaken, got {}",
+        melee.dps
+    );
+
+    // 投射物攻击：吃。
+    let proj_cfg = effective_attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
+    let proj = calculate_minimal_vs_enemy(&player, &enemy, &proj_cfg, &attack_input());
+    assert!(
+        (proj.dps - 210.0).abs() < 1e-6,
+        "投射物 +40% taken → 150*1.4 = 210, got {}",
+        proj.dps
+    );
+}
+
 // M4-H S4：物理减伤 additive 公式（vendor CalcOffence.lua:4074-4096）。
 
 #[test]
