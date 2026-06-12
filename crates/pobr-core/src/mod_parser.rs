@@ -1611,6 +1611,15 @@ fn parse_ailment_special(rest: &str, original: &str) -> Option<ParseOutcome> {
 /// 只作用于对应异常，vendor dotCfg 同语义）。
 fn parse_ailment_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>> {
     let (form, after) = parse_form(rest)?;
+    // 「... on targets that are not poisoned」（vendor modTagList:2122
+    // `MultiplierThreshold{actor=enemy, var=PoisonStacks, threshold=1,
+    // upper=true}`＝敌方毒层 <1）→ PoBR 以既有 `EnemyPoisoned` 条件取反表达
+    // （cfg 默认假 → 生效，与 vendor 面板默认敌未中毒同口径；config 置真时
+    // 同步失效）。树 notable『Low Tolerance』即此形。
+    let (after, not_poisoned) = match after.strip_suffix(" on targets that are not poisoned") {
+        Some(stripped) => (stripped.to_string(), true),
+        None => (after, false),
+    };
     let kw = match after.as_str() {
         "magnitude of bleeding you inflict" | "bleed magnitude" => KeywordFlags::BLEED,
         "magnitude of ignite you inflict" | "ignite magnitude" => KeywordFlags::IGNITE,
@@ -1630,6 +1639,9 @@ fn parse_ailment_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>> {
     let mut m = Modifier::number("AilmentMagnitude", mod_type, form.value).with_source(source);
     if !kw.is_empty() {
         m = m.with_keyword_flags(kw);
+    }
+    if not_poisoned {
+        m = m.with_tag(ModTag::condition("EnemyPoisoned", true));
     }
     Some(vec![m])
 }
@@ -2933,6 +2945,29 @@ mod per_slot_defence_tests {
             assert_eq!(m.keyword_flags, kw, "{text}");
             assert!(!m.keyword_flags.requires_match_all(), "{text}");
         }
+    }
+
+    /// 「... on targets that are not Poisoned」（vendor modTagList:2122
+    /// MultiplierThreshold 敌方毒层 <1）→ EnemyPoisoned 条件取反（族 2 补遗，
+    /// 树 notable『Low Tolerance』）。
+    #[test]
+    fn parses_ailment_magnitude_not_poisoned_condition() {
+        // Arrange：树原文（bracket 标记）。
+        let text = "60% increased [BuffMagnitude|Magnitude] of [Poison] you inflict on targets that are not Poisoned";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "AilmentMagnitude");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(60.0));
+        assert!(m.keyword_flags.intersects(KeywordFlags::POISON));
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Condition { var, negated: true, actor: None } if var == "EnemyPoisoned"
+        )));
     }
 
     /// reduced 形 → INC 负值（vendor 同 form 段语义）。
