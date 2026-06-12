@@ -776,7 +776,13 @@ pub fn calculate_with_data(
     }
 
     // 3. 天赋树：NodeId → 节点 mod 文本（节点级归因）。
-    let passive_nodes = resolve_passive_nodes(build, data);
+    let mut passive_nodes = resolve_passive_nodes(build, data);
+    // 3a'. 油涂授予 notable（M4-H，vendor `Allocates <name>` enchant →
+    //      `GrantedPassive` LIST，ModParser.lua:5809 → CalcSetup.lua:1322-1331
+    //      notableMap 并入 allocNodes）：按名匹配 Notable 节点追加为
+    //      AllocatedNode（同节点级归因）。
+    append_granted_passives(build, data, &mut passive_nodes);
+    let passive_nodes = passive_nodes;
     if !passive_nodes.is_empty() {
         session
             .add_passive_nodes(&passive_nodes)
@@ -4323,6 +4329,80 @@ fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<AllocatedNode> 
             }
         })
         .collect()
+}
+
+/// （M4-H）油涂授予的 notable：扫描全部装备/珠宝词条行，解析出 `GrantedPassive`
+/// LIST（vendor `Allocates <name>` enchant，ModParser.lua:5809），按名称
+/// （ASCII 不区分大小写——解析侧已小写归一）匹配 **Notable** 节点（vendor
+/// `spec.tree.notableMap`，CalcSetup.lua:1322-1331 只查 notable），追加为
+/// [`AllocatedNode`]。已分配节点跳过（vendor `allocNodes[id]` 幂等同语义）。
+/// 同名 notable（切换类变体等）按最小 skill id 取（确定性）。
+fn append_granted_passives(build: &Build, data: &BuildData, nodes: &mut Vec<AllocatedNode>) {
+    use pobr_core::ModValue;
+
+    // 收集授予名（装备三段 + 珠宝词条；解析失败行静默跳过——与 skip-and-collect 同口径）。
+    let item_texts = build.items.values().flat_map(|item| {
+        item.implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+    });
+    let jewel_texts = build.jewels.iter().flat_map(|jewel| {
+        jewel
+            .implicit_texts
+            .iter()
+            .chain(&jewel.modifier_texts)
+            .chain(&jewel.enchant_texts)
+    });
+    let mut granted: Vec<String> = Vec::new();
+    for text in item_texts.chain(jewel_texts) {
+        let Ok(outcome) = parse_mod(text) else {
+            continue;
+        };
+        for m in outcome.mods {
+            if m.name.as_str() == "GrantedPassive"
+                && let ModValue::Text(name) = &m.value
+            {
+                granted.push(name.clone());
+            }
+        }
+    }
+    if granted.is_empty() {
+        return;
+    }
+
+    // notable 名（小写）→ 节点（同名取最小 skill id，确定性）。
+    let mut by_name: std::collections::BTreeMap<String, &pobr_data::catalog::PassiveNodeDef> =
+        std::collections::BTreeMap::new();
+    for def in data.passive_nodes.values() {
+        if def.kind != pobr_data::catalog::PassiveNodeKind::Notable {
+            continue;
+        }
+        let Some(name) = &def.name else { continue };
+        by_name
+            .entry(name.to_ascii_lowercase())
+            .and_modify(|existing| {
+                if def.skill < existing.skill {
+                    *existing = def;
+                }
+            })
+            .or_insert(def);
+    }
+
+    let mut allocated: std::collections::HashSet<u32> = nodes.iter().map(|n| n.node_id.0).collect();
+    for name in granted {
+        let Some(def) = by_name.get(name.to_ascii_lowercase().as_str()) else {
+            continue; // 未知名（树外/变体），欠算安全跳过。
+        };
+        if !allocated.insert(def.skill) {
+            continue; // 已分配/已授予，幂等。
+        }
+        nodes.push(AllocatedNode {
+            node_id: pobr_data::passive_tree::NodeId(def.skill),
+            ascendancy: def.ascendancy_id.is_some(),
+            modifier_texts: filter_parseable(def.stats.clone()),
+        });
+    }
 }
 
 /// （M3 T5-E2）keystone 名 → 该 keystone 的 modifier 列表（树 keystone 节点 stats

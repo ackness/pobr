@@ -648,6 +648,29 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
             }
         }
     }
+    // 「Allocates <Notable>」（油涂/anoint 附魔）：vendor `["allocates (.+)"]` →
+    // `mod("GrantedPassive", "LIST", passive)`（ModParser.lua:5809），消费 =
+    // CalcSetup.lua:1322-1331（notableMap 查名并入 allocNodes）。PoBR 同语义：
+    // `GrantedPassive` LIST Text(名)，编排层 `append_granted_passives` 按名匹配
+    // Notable 节点追加为 AllocatedNode。Forbidden Flame/Flesh 条件形（:5808
+    // `allocates X if you have the matching modifier on forbidden Y`）未建模 →
+    // Unsupported（不误当无条件授予）。
+    if let Some(name) = rest.strip_prefix("allocates ") {
+        if name.contains("if you have the matching modifier") {
+            return Some(ParseOutcome {
+                mods: Vec::new(),
+                status: ParseStatus::Unsupported,
+                unparsed: Some(source.into()),
+            });
+        }
+        return Some(ParseOutcome {
+            mods: vec![
+                Modifier::text("GrantedPassive", ModType::List, name.trim()).with_source(source),
+            ],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
     // 「Base Critical Hit Chance for Spells is N%」（Blood Mage 升华『Sunder the
     // Flesh』）：vendor `["base critical hit chance for spells is (%d+)%%"]` →
     // `mod("CritChanceBase", "OVERRIDE", num, { type = "SkillType", skillType =
@@ -2304,6 +2327,25 @@ mod per_slot_defence_tests {
                 .iter()
                 .any(|t| matches!(t, ModTag::SkillTypes(st) if st.contains(SkillTypes::SPELL)))
         );
+    }
+
+    /// 「Allocates <Notable>」（油涂附魔）：vendor ModParser.lua:5809 →
+    /// GrantedPassive LIST Text(名)；Forbidden Flame/Flesh 条件形归 Unsupported。
+    #[test]
+    fn parses_allocates_to_granted_passive_list() {
+        let out = parse_mod("Allocates Vulgar Methods").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "GrantedPassive");
+        assert_eq!(m.mod_type, ModType::List);
+        assert_eq!(m.value, crate::ModValue::Text("vulgar methods".into()));
+
+        let out =
+            parse_mod("Allocates Tenacity if you have the matching modifier on Forbidden Flesh")
+                .expect("soft unsupported");
+        assert_eq!(out.status, ParseStatus::Unsupported);
+        assert!(out.mods.is_empty());
     }
 
     /// 「Inevitable Critical Hits」（Oracle 升华『Forced Outcome』）：vendor
