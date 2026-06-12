@@ -531,6 +531,182 @@ fn collect_curse_mod(
     Ok(())
 }
 
+// ---- M4-G：player buff 域（GlobalEffect effectType=Buff/Aura）玩家侧映射 ----
+
+/// 元素是否为**玩家侧 buff 载荷**（vendor `GlobalEffect` tag 且
+/// `effectType ∈ {Buff, Aura}`——`CalcActiveSkill.lua:976-1041` 把命中元素搬入
+/// `buff.modList`，`CalcPerform.lua:1949-1962`（Buff）/ :2086-2120（Aura）经
+/// BuffEffect/AuraEffect 乘区 `ScaleAddList` 后写玩家 modDB）。
+/// group 任一成员命中即整组（与 [`is_curse_effect`] 同口径的保守泛化）。
+fn is_player_buff_effect(element: &StatMapMod) -> bool {
+    if element.kind == "group" {
+        return element.mods.iter().any(is_player_buff_effect);
+    }
+    element.tags.iter().any(|tag| {
+        matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect")
+            && matches!(tag.get("effectType"), Some(StatMapValue::Text(t)) if t == "Buff" || t == "Aura")
+    })
+}
+
+/// 把一条 buff 授予技能（或其 support）的 stat 经 statmap 数据翻译为**玩家侧**
+/// PoBR 注入项（BuffSpec.mods 取数通道，buff_pass Buff/Aura 路径消费）。
+///
+/// 与 [`map_curse_stat`] 同构（curse 域先例，蓝图 m3-orchestration.md §6.3）：
+/// - 只保留 [`is_player_buff_effect`] 命中的元素（非 buff 元素 = 技能局部 mod，
+///   走主技能注入通道，此处**静默跳过**）。过滤后无 buff 元素 → `Mapped(空)`。
+/// - ModName 走玩家侧允收名单 [`translate_player_buff_mod_name`]——第一批仅
+///   `Accuracy`（Precision I/II support `sup_dex.lua:4181-4250` / War Banner
+///   `base_skill_buff_banner_accuracy_+%_to_apply`，进 offence 精准聚合
+///   CalcOffence.lua:2555-2572）。与既有 `map_aura_buff_stat` 静态映射的
+///   防御名单（ES/抗性族）**不重叠**，避免 aura 路径双注入。
+/// - `GlobalEffect` tag 剥除；除 curse 域约定键外额外允许 `effectName`
+///   （buff 显示名，vendor 仅用于 AffectedBy 条件命名，无门控语义）。
+/// - flags / keyword_flags 第一批要求为空（允收名单内载荷数据全部无 flag）。
+pub fn map_player_buff_stat(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> MappedOutcome {
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return MappedOutcome::Unknown;
+    };
+    if entry.unextractable {
+        return MappedOutcome::Unsupported(UnsupportedReason::Unextractable);
+    }
+    let entry_params = MergeParams {
+        div: entry.div,
+        mult: entry.mult,
+        base: entry.base,
+        value: entry.value,
+    };
+    let mut items = Vec::new();
+    for element in entry.mods.iter().filter(|e| is_player_buff_effect(e)) {
+        if let Err(reason) =
+            collect_player_buff_element(element, &entry_params, stat_value, &mut items)
+        {
+            // 与 map_curse_stat 同口径：任一元素不可翻译 → 整条跳过（成组语义）。
+            return MappedOutcome::Unsupported(reason);
+        }
+    }
+    MappedOutcome::Mapped(items)
+}
+
+/// 玩家侧 ModName 允收名单（buff 域）。第一批仅精准聚合消费方：
+/// - `Accuracy` INC：`offence.rs` 精准段（CalcOffence.lua:2555-2572
+///   `skillModList:Sum("INC", cfg, "Accuracy")`）。
+///
+/// 其余玩家侧 buff 名（`AttackSpeed`/`FlaskChargesGenerated`/`AilmentThreshold`…）
+/// 待消费方逐一对照后补名单 → 当前 `UnknownModName` 上报（宁可跳过不可错算）。
+fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
+    match name {
+        "Accuracy" => Ok(vec!["Accuracy"]),
+        other => Err(UnsupportedReason::UnknownModName(other.to_string())),
+    }
+}
+
+/// player buff 元素翻译（group 递归 + mod 构造器；与 curse 域同构）。
+fn collect_player_buff_element(
+    element: &StatMapMod,
+    params: &MergeParams,
+    stat_value: f64,
+    items: &mut Vec<MappedItem>,
+) -> Result<(), UnsupportedReason> {
+    if element.scalar.is_some() {
+        return Err(UnsupportedReason::ScalarMultiplier);
+    }
+    match element.kind.as_str() {
+        "group" => {
+            let group_params = MergeParams {
+                div: element.div,
+                mult: element.mult,
+                base: element.base,
+                value: match &element.value {
+                    Some(StatMapValue::Number(v)) => Some(*v),
+                    Some(_) => {
+                        return Err(UnsupportedReason::UnsupportedKind(
+                            "group 非数值 value".to_string(),
+                        ));
+                    }
+                    None => None,
+                },
+            };
+            for nested in element.mods.iter().filter(|e| is_player_buff_effect(e)) {
+                collect_player_buff_element(nested, &group_params, stat_value, items)?;
+            }
+            Ok(())
+        }
+        "mod" => collect_player_buff_mod(element, params.merge(stat_value), items),
+        other => Err(UnsupportedReason::UnsupportedKind(format!(
+            "player buff 非 mod 载荷：{other}"
+        ))),
+    }
+}
+
+/// player buff `mod()` 构造器翻译：玩家侧名单名 + GlobalEffect 剥除
+/// （额外允许 `effectName` 键）+ 其余 tag 直译。
+fn collect_player_buff_mod(
+    element: &StatMapMod,
+    merged_value: f64,
+    items: &mut Vec<MappedItem>,
+) -> Result<(), UnsupportedReason> {
+    let Some(name) = element.name.as_deref() else {
+        return Err(UnsupportedReason::UnknownModName("<missing name>".into()));
+    };
+    let Some(mod_type) = element.mod_type.as_deref() else {
+        return Err(UnsupportedReason::MissingModType);
+    };
+    let mod_type = match mod_type {
+        "BASE" => ModType::Base,
+        "INC" => ModType::Inc,
+        "MORE" => ModType::More,
+        "FLAG" => ModType::Flag,
+        "OVERRIDE" => ModType::Override,
+        other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
+    };
+    if !element.flags.is_empty() {
+        return Err(UnsupportedReason::UnsupportedFlags(element.flags.join("|")));
+    }
+    if !element.keyword_flags.is_empty() {
+        return Err(UnsupportedReason::UnsupportedKeywordFlags(
+            element.keyword_flags.join("|"),
+        ));
+    }
+    // tag：GlobalEffect 剥除（额外门控键整条上报；`effectName` = buff 显示名，
+    // 无门控语义、允许）；其余直译。
+    let mut tags = Vec::new();
+    for tag in &element.tags {
+        let is_global =
+            matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
+        if is_global {
+            if !tag
+                .keys()
+                .all(|k| matches!(k.as_str(), "type" | "effectType" | "effectName"))
+            {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "GlobalEffect 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            continue;
+        }
+        tags.push(translate_tag(tag)?);
+    }
+    for translated in translate_player_buff_mod_name(name)? {
+        let mut modifier = if mod_type == ModType::Flag {
+            Modifier::flag(translated)
+        } else {
+            Modifier::number(translated, mod_type, merged_value)
+        };
+        for tag in &tags {
+            modifier = modifier.with_tag(tag.clone());
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+    }
+    Ok(())
+}
+
 /// entry / group 级 merge 参数（vendor `map.div/mult/base/value`）。
 struct MergeParams {
     div: Option<f64>,
@@ -1951,6 +2127,90 @@ mod tests {
             map_curse_stat(&catalog, "X", Some("1"), "some_stat", -10.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
         ));
+    }
+
+    /// Precision II 形态（sup_dex.lua:4216-4250）：`Accuracy INC` + GlobalEffect
+    /// Buff（含 effectName 键，无门控语义）→ 玩家侧 Accuracy INC，tag 剥净。
+    #[test]
+    fn player_buff_precision_accuracy_inc_maps() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportPrecisionPlayerTwo": { "1": {
+                 "support_precision_accuracy_rating_+%": {
+                   "mods": [ { "kind": "mod", "name": "Accuracy", "mod_type": "INC",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Precision II" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SupportPrecisionPlayerTwo",
+            None,
+            "support_precision_accuracy_rating_+%",
+            50.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        assert_eq!(items.len(), 1);
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "Accuracy");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(50.0));
+        assert!(m.tags.is_empty(), "GlobalEffect（含 effectName）剥除");
+    }
+
+    /// War Banner 形态（GlobalEffect effectType=Aura + Condition BannerPlanted）：
+    /// Aura 类玩家侧 buff 同收，Condition tag 直译保留。
+    #[test]
+    fn player_buff_banner_accuracy_keeps_condition() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "WarBannerPlayer": { "1": {
+                 "base_skill_buff_banner_accuracy_+%_to_apply": {
+                   "mods": [ { "kind": "mod", "name": "Accuracy", "mod_type": "INC",
+                               "tags": [ { "type": "Condition", "var": "BannerPlanted" },
+                                         { "type": "GlobalEffect", "effectType": "Aura" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "WarBannerPlayer",
+            None,
+            "base_skill_buff_banner_accuracy_+%_to_apply",
+            130.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "Accuracy");
+        assert_eq!(m.value.as_number(), Some(130.0));
+        assert_eq!(
+            m.tags,
+            vec![crate::ModTag::condition("BannerPlanted", false)],
+            "Condition 直译保留，GlobalEffect 剥除"
+        );
+    }
+
+    /// 玩家侧允收名单外的名（如 AttackSpeed）→ Unsupported(UnknownModName) 上报；
+    /// 非 buff 载荷（无 GlobalEffect Buff/Aura tag）→ Mapped(空) 静默跳过。
+    #[test]
+    fn player_buff_unknown_name_reported_and_non_buff_empty() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "X": { "1": {
+                 "buff_attack_speed": {
+                   "mods": [ { "kind": "mod", "name": "AttackSpeed", "mod_type": "INC",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] },
+                 "local_damage": {
+                   "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC" } ] } } } } }"#,
+        );
+        assert_eq!(
+            map_player_buff_stat(&catalog, "X", Some("1"), "buff_attack_speed", 10.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnknownModName("AttackSpeed".into()))
+        );
+        assert_eq!(
+            map_player_buff_stat(&catalog, "X", Some("1"), "local_damage", 10.0),
+            MappedOutcome::Mapped(Vec::new())
+        );
     }
 
     /// Unsupported 分类标签稳定（双跑报告聚合键）。

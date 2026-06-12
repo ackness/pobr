@@ -325,6 +325,35 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
+            BuffKind::Buff => {
+                // vendor :1949-1962（Buff 分支，M4-G）：玩家自身 buff（Precision 系
+                // support 等）经 BuffEffect 乘区入 player db + AffectedBy 条件。
+                // 简化（与 Aura (a) 同口径）：modStore = player.mod_db 全局聚合；
+                // `skillModList:Sum(INC, <名>Effect)`（:1957 按 buff 名的专属乘区，
+                // 如 `PrecisionIIEffect`）pobr 解析层无该 ModName 产出，不实现；
+                // `applyNotPlayer` / totem 门（:1950-1953）未建模，恒按作用于玩家。
+                let inc_names = [
+                    ModName::from("BuffEffect"),
+                    ModName::from("BuffEffectOnSelf"),
+                    ModName::from("BuffEffectOnPlayer"),
+                ];
+                let more_names = [
+                    ModName::from("BuffEffect"),
+                    ModName::from("BuffEffectOnSelf"),
+                ];
+                let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &inc_names);
+                let more = env.player.mod_db.more(&env.cfg, &more_names) * spec.magnitude;
+                let mult = (1.0 + inc / 100.0) * more;
+                // vendor :1955：`modDB.conditions["AffectedBy"..buff.name] = true`。
+                conditions.push(affected_by_condition(&spec.name));
+                let source_id = format!("buff.{}", spec.skill_id);
+                let scaled = spec
+                    .mods
+                    .iter()
+                    .map(|m| scale_buff_mod(&rules, m, mult, &source_id))
+                    .collect();
+                merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
+            }
             BuffKind::Curse => {
                 // vendor :2289 gate：`(mode_effective and (not Hexproof or 豁免)) or mark`。
                 let hexproof = env.enemy.mod_db.flag(&env.cfg, ModName::from("Hexproof"));
@@ -405,7 +434,7 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 merge_buff(enemy_debuffs.entry(spec.name.clone()).or_default(), scaled);
             }
-            // 其余 kind（Buff/Guard/Warcry/AuraDebuff/CurseBuff/Link）：M3 框架内
+            // 其余 kind（Guard/Warcry/AuraDebuff/CurseBuff/Link）：M3 框架内
             // 「原值直注」兼容路径（不缩放、不置条件；当前编排层不构造这些 kind，
             // 行为与现状一致）。
             _ => {
@@ -1007,9 +1036,10 @@ mod tests {
 
     // ===== BuffSpec 兼容路径 / 双计防护（§6.1） =====
 
-    /// 未消费 kind（如 Buff）走原值直注：词条不缩放、无条件置位（行为与现状一致）。
+    /// Buff 分支（M4-G，vendor :1949-1962）：BuffEffect 乘区缩放 + AffectedBy 条件。
+    /// 50% inc BuffEffect + buff 给 20% INC → 30% INC。
     #[test]
-    fn unconsumed_kinds_pass_through_unscaled() {
+    fn buff_kind_scales_with_buff_effect_and_sets_condition() {
         let mut env = buffed_env();
         env.player
             .mod_db
@@ -1032,10 +1062,41 @@ mod tests {
             env.player
                 .mod_db
                 .sum(ModType::Inc, &env.cfg, &[ModName::from("ActionSpeed")]),
+            30.0,
+            "vendor :1957-1959：mult = 1 + ΣINC(BuffEffect…)/100"
+        );
+        assert!(env.cfg.condition("AffectedByOnslaught"), "vendor :1955");
+    }
+
+    /// 未消费 kind（如 Guard）走原值直注：词条不缩放、无条件置位（行为与现状一致）。
+    #[test]
+    fn unconsumed_kinds_pass_through_unscaled() {
+        let mut env = buffed_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("BuffEffect", ModType::Inc, 50.0));
+        env.buff_skills.push(BuffSpec {
+            name: "Steelskin".to_string(),
+            kind: BuffKind::Guard,
+            skill_id: "SteelskinPlayer".to_string(),
+            mods: vec![Modifier::number("ActionSpeed", ModType::Inc, 20.0)],
+            magnitude: 1.0,
+            slot: None,
+            socket_index: 1,
+            is_mark: false,
+            ignore_curse_limit: false,
+        });
+
+        buff_pass(&mut env);
+
+        assert_eq!(
+            env.player
+                .mod_db
+                .sum(ModType::Inc, &env.cfg, &[ModName::from("ActionSpeed")]),
             20.0,
             "原值直注：BuffEffect 乘区不施加"
         );
-        assert!(!env.cfg.condition("AffectedByOnslaught"));
+        assert!(!env.cfg.condition("AffectedBySteelskin"));
     }
 
     // ===== aura 乘区（vendor :2102-2110） =====
