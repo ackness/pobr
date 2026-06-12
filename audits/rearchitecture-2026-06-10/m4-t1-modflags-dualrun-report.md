@@ -1,9 +1,9 @@
 # M4-T1 W-A1 commit-3：ModFlags 位表双跑 diff 报告
 
 > 蓝图节点：`blueprints/m4-offence-deep.md` §2-T1 W-A1 步骤 3。
-> 结论先行：**diff=0**——切换前置条件满足；切换本身（翻默认 feature + 删旧
-> 5 位常量 + 退役 `UsingMace` 类 condition 近似路径）属集成期独立 commit
-> （蓝图步骤 4，依赖 T2 hand_pass 落地后的第二次双跑）。
+> 结论先行：**两次双跑均 diff=0**——第一次（T1，消费前）见 §2，第二次
+> （M4-I，T2 hand_pass 接线 per-hand 武器位后的完整面）见 §6；切换前置条件
+> 满足，切换 commit（翻默认 feature + 删旧 5 位常量）随本集成波落地。
 
 ## 1. 双跑配置
 
@@ -52,3 +52,37 @@ parity_baseline_report --nocapture` 逐 build 逐值输出，滤构建噪声后 
 - T2 hand_pass 落地（per-hand cfg 开始消费武器位）后再跑本脚本：parity
   只升不降 → 翻默认 feature → 删旧 5 位常量与 `UsingMace` 类 condition
   近似路径（退役放 M4 末单独 commit）。
+
+## 6. 第二次双跑（M4-I，hand_pass 接线后的完整面，2026-06-12）
+
+W-B2 武器位消费已接线（commit「feat(m4-i): W-B2 武器位消费」）：
+`WeaponBase::flags` → `run_single_pass` 的 per-hand cfg 武器位段替换
+（`ModFlags::replace_weapon_flags`）+ Weapon2 双持第二 HandSource 装配。
+
+| 项 | legacy | pob2 | diff |
+|---|---|---|---|
+| workspace 测试 | 1775 passed / 2 skipped | 1780 passed / 2 skipped（+5 = feature-gated 测试） | 全绿 |
+| ninja_parity 防御 25 列 | 374/450 = 83.1% @5%、390/450 = 86.7% @10% | 同左 | **0** |
+| 防御 core-8 | 130/144 = 90.3% @5%、133/144 = 92.4% @10% | 同左 | **0** |
+| 进攻 | 26/80 = 32.5% @5%、35/80 = 43.8% @10% | 同左 | **0** |
+| 逐 build 逐值输出（18 builds 全列） | — | — | **0 行 diff** |
+
+### diff=0 的结构性依据（消费已接线，为什么仍然为零）
+
+1. **单手 build 替换 ≡ 恒等**：per-hand 武器位与全局 cfg 武器位**同源同值**
+   （同一 `weapon_types.json` 经同款 getWeaponFlags 派生），
+   `replace_weapon_flags` 清段再并入同一组位 = 不变；
+2. **空供给恒等**：非武器攻击 source（Shield Wall 类，flags=NONE）与空手
+   （UNARMED 位同源同值）不清上游位；
+3. **18-build 语料无双持装备**（实查：Weapon2 槽全部为 sceptre/focus/
+   quiver/shield，无武器基底）→ 第二 HandSource 路径零触发；
+4. legacy 态 `weapon_flags` 恒 NONE → 替换为 OR 恒等（零行为）。
+
+### 已知差异面（双持 build 上 feature 间行为不同，语料外）
+
+- 双持 + `with <武器类>` 词条：legacy 走 `UsingMace` 全局条件（两腿同吃），
+  pob2 按 per-hand 位只进对应手（vendor 口径）。两态行为各有锚点测试
+  （`pobr-build/tests/dual_wield.rs` 的 feature 对偶用例）；切换后 vendor
+  口径成为唯一行为。
+
+**结论：diff=0，允许切换（蓝图 §2-T1 步骤 4 / §4.2 验收 6 双跑纪律满足）。**
