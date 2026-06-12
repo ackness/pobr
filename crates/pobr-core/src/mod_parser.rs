@@ -2197,6 +2197,16 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
             " while you have a flask active",
             ModTag::condition("UsingFlask", false),
         ),
+        // flask 生效期条件变体（vendor ModParser.lua:1840/:1841 →
+        // `Condition:UsingFlask`；激活态由 merge_flasks_charms 置真）。
+        (
+            " during any flask effect",
+            ModTag::condition("UsingFlask", false),
+        ),
+        (
+            " during flask effect",
+            ModTag::condition("UsingFlask", false),
+        ),
         // 近期暴击（8 秒窗）条件族（vendor ModParser.lua:1904-1906
         // `["if you[' ]h?a?ve (dealt a )?crit(ical hit)? in the past 8
         // seconds"]` → Condition `CritInPast8Sec`；cfg 真值由 config
