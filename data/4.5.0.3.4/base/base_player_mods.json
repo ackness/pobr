@@ -24,6 +24,18 @@
     "value": 3.0
   },
   {
+    "id": "enemy_curse_limit",
+    "mod_name": "EnemyCurseLimit",
+    "mod_type": "Base",
+    "value": 1.0
+  },
+  {
+    "id": "enemy_mark_limit",
+    "mod_name": "EnemyMarkLimit",
+    "mod_type": "Base",
+    "value": 1.0
+  },
+  {
     "id": "base_life_per_level",
     "mod_name": "MaximumLife",
     "mod_type": "Base",

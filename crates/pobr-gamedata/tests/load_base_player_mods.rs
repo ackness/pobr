@@ -1,8 +1,10 @@
 //! base_player_mods.json 加载 + 与 pobr 现有 Rust 准源逐值对照（搬迁不变式 P8）。
 //!
-//! 准源分布（本表收录的 12 条均有 Rust 准源，JSON 值必须与之逐值相等）：
+//! 准源分布（本表收录的 14 条均有 Rust 准源，JSON 值必须与之逐值相等）：
 //! - 充能：`pobr-core/src/calc/survivability.rs`（`DEFAULT_MAX_CHARGES` /
 //!   `DEFAULT_CHARGE_DURATION_SECONDS`）；
+//! - 诅咒/标记上限：`pobr-core/src/calc/buff_pass.rs`
+//!   （`DEFAULT_ENEMY_CURSE_LIMIT` / `DEFAULT_ENEMY_MARK_LIMIT`，M3-T3）；
 //! - 等级派生基线：`pobr-core/src/character.rs`（`CharacterBase` 公式常量）；
 //! - 暴击伤害基线：`pobr-data/src/constants.rs`（`PLAYER_BASE_CRIT_DAMAGE_BONUS`）；
 //! - 终局抗性惩罚：`pobr-core/src/campaign.rs`（`CampaignProgress::Endgame`，与
@@ -46,14 +48,14 @@ fn bare_character(level: u32) -> CharacterBase {
 }
 
 #[test]
-fn loads_twelve_entries_with_unique_ids_and_base_type() {
+fn loads_fourteen_entries_with_unique_ids_and_base_type() {
     let mods = load();
-    assert_eq!(mods.len(), 12, "当前收录 12 条有 Rust 准源的基线 mod");
+    assert_eq!(mods.len(), 14, "当前收录 14 条有 Rust 准源的基线 mod");
 
     let mut ids: Vec<&str> = mods.iter().map(|m| m.id.as_str()).collect();
     ids.sort_unstable();
     ids.dedup();
-    assert_eq!(ids.len(), 12, "条目 id 应唯一");
+    assert_eq!(ids.len(), 14, "条目 id 应唯一");
 
     for m in &mods {
         assert_eq!(m.mod_type, ModType::Base, "{}: 基线条目均为 BASE", m.id);
@@ -86,6 +88,27 @@ fn charge_baselines_match_survivability_constants() {
         assert_eq!(e.value, f64::from(DEFAULT_MAX_CHARGES)); // = 3.0
         assert!(e.tags.is_empty(), "{id}: 充能上限无 tag");
     }
+}
+
+/// 诅咒/标记上限基线 == buff_pass.rs 现有常量（M3-T3 curse limit 的基线项：
+/// `EnemyCurseLimit = 基线 1 + Σ BASE 词条`，buff_pass 以常量形式加在 Sum 之上，
+/// 本表迁成同值 mod 条目）。
+/// vendor：CalcSetup.lua:648（`NewMod("EnemyCurseLimit","BASE",1,"Base")`）/
+/// :649（`EnemyMarkLimit` 同）。
+#[test]
+fn curse_and_mark_limit_baselines_match_buff_pass_constants() {
+    use pobr_core::calc::buff_pass::{DEFAULT_ENEMY_CURSE_LIMIT, DEFAULT_ENEMY_MARK_LIMIT};
+
+    let mods = load();
+    let curse = entry(&mods, "enemy_curse_limit");
+    assert_eq!(curse.mod_name, "EnemyCurseLimit");
+    assert_eq!(curse.value, DEFAULT_ENEMY_CURSE_LIMIT); // = 1.0
+    assert!(curse.tags.is_empty());
+
+    let mark = entry(&mods, "enemy_mark_limit");
+    assert_eq!(mark.mod_name, "EnemyMarkLimit");
+    assert_eq!(mark.value, DEFAULT_ENEMY_MARK_LIMIT); // = 1.0
+    assert!(mark.tags.is_empty());
 }
 
 /// 等级派生基线（生命/魔力/精准 per Level + base、固有闪避）== character.rs 公式常量。
