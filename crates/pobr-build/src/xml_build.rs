@@ -39,10 +39,20 @@ use crate::error::{BuildError, XmlError};
 use crate::xml_serde::parse_build_header;
 
 /// 槽位装备 + 珠宝（无固定槽位）+ 激活 ItemSet 的 `useSecondWeaponSet` 标志。
-type EquippedAndJewels = (Vec<(EquipmentSlot, Item)>, Vec<Item>, Vec<Item>, bool);
-/// 装备槽分配（槽位 → item_id）+ 珠宝 item_id 列表 + 激活 Flask/Charm item_id 列表
-/// + `useSecondWeaponSet` 标志。
-type SlotAssignments = (Vec<(EquipmentSlot, u32)>, Vec<u32>, Vec<u32>, bool);
+type EquippedAndJewels = (
+    Vec<(EquipmentSlot, Item)>,
+    Vec<Item>,
+    Vec<(String, Item)>,
+    bool,
+);
+/// 装备槽分配（槽位 → item_id）+ 珠宝 item_id 列表 + 激活 Flask/Charm
+/// `(槽名, item_id)` 列表 + `useSecondWeaponSet` 标志。
+type SlotAssignments = (
+    Vec<(EquipmentSlot, u32)>,
+    Vec<u32>,
+    Vec<(String, u32)>,
+    bool,
+);
 
 /// 把一份 PoB Build Code 直接解析为完整 [`Build`]（decode → XML → 解析）。
 ///
@@ -96,7 +106,11 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
         build = build.with_radius_jewels(radius_jewels);
     }
     if !flask_charms.is_empty() {
-        build = build.with_flask_charm_items(flask_charms);
+        // 旧路径（编排层原值直注）与新结构化通道（槽名保留，M3-T4 D2）双轨并存，
+        // 切换删旧路径时退役 `flask_charm_items`。
+        build = build
+            .with_flask_charm_items(flask_charms.iter().map(|(_, item)| item.clone()).collect())
+            .with_utility_slots(flask_charms);
     }
     for group in socket_groups {
         build = build.add_socket_group(group);
@@ -566,9 +580,9 @@ fn parse_items_and_slots(
         .iter()
         .filter_map(|id| items.get(id).cloned())
         .collect();
-    let flask_charms: Vec<Item> = flask_charm_ids
+    let flask_charms: Vec<(String, Item)> = flask_charm_ids
         .iter()
-        .filter_map(|id| items.get(id).cloned())
+        .filter_map(|(slot, id)| Some((slot.clone(), items.get(id).cloned()?)))
         .collect();
     Ok((out, jewels, flask_charms, use_second_weapon_set))
 }
@@ -828,8 +842,9 @@ fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
             jewel_ids.push(*item_id);
         } else if *active && is_flask_charm_slot(slot_name) {
             // 仅**激活态**（`active="true"`）的药剂/护符进入计算——对应 PoB2 flask/charm
-            // 启用 toggle（CalcSetup 仅把激活 flask 的 buff modList 计入玩家 modDB）。
-            flask_charm_ids.push(*item_id);
+            // 启用 toggle（CalcSetup.lua:1014-1028 `slot.active` 门控 env.flasks/charms）。
+            // 槽名一并保留（`SourceId(Flask, "flask.<slot>")` 归因 + flask/charm 分类）。
+            flask_charm_ids.push((slot_name.clone(), *item_id));
         }
     }
     Ok((
@@ -1278,6 +1293,59 @@ Adds 47 to 86 Physical Damage
         assert!(slots.contains(&EquipmentSlot::Weapon1));
         assert!(!slots.contains(&EquipmentSlot::Ring2), "空槽不应分配");
         assert_eq!(slots.len(), 2, "Charm 等枚举外槽位被忽略");
+    }
+
+    /// M3-T4 D2：Flask/Charm 槽位往返——仅 `active="true"` 的槽进入
+    /// `utility_slots`（槽名 + 物品），与旧 `flask_charm_items` 同源同序。
+    #[test]
+    fn utility_slots_keep_slot_names_for_active_flask_charm() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<PathOfBuilding2>
+    <Build level="90" className="Ranger" ascendClassName="Pathfinder"/>
+    <Items activeItemSet="1">
+        <Item id="1">
+Rarity: MAGIC
+Sapphire Charm of Lightning
+Implicits: 1
+Used when you take Cold damage from a Hit
++15% to Lightning Resistance
+        </Item>
+        <Item id="2">
+Rarity: MAGIC
+Undiluted Ultimate Life Flask
+Implicits: 0
+69% increased Recovery rate
+        </Item>
+        <ItemSet id="1">
+            <Slot name="Charm 1" itemId="1" active="true"/>
+            <Slot name="Flask 1" itemId="2" active="true"/>
+            <Slot name="Flask 2" itemId="2"/>
+            <Slot name="Charm 2" itemId="0" active="true"/>
+        </ItemSet>
+    </Items>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let names: Vec<(String, String)> = build
+            .utility_slots
+            .iter()
+            .map(|(slot, item)| (slot.clone(), item.base.to_string()))
+            .collect();
+        assert_eq!(
+            names,
+            vec![
+                (
+                    "Charm 1".to_string(),
+                    "Sapphire Charm of Lightning".to_string()
+                ),
+                (
+                    "Flask 1".to_string(),
+                    "Undiluted Ultimate Life Flask".to_string()
+                ),
+            ],
+            "仅激活且非空槽进入；非激活 Flask 2 与空槽 Charm 2 被忽略"
+        );
+        // 与旧直注列表同源同序（双轨期一致性）。
+        assert_eq!(build.flask_charm_items.len(), build.utility_slots.len());
     }
 
     #[test]
