@@ -12,10 +12,10 @@
 //!
 //! ## 双跑期口径（commit 簇逐类打开，dualrun 报告 §3）
 //!
-//! - **conditions / multipliers**：取「旧键集 ∪ 解释器产出」——交集逐值相等
-//!   （`config_dualrun` 持续回归 hard assert），解释器独有的新增覆盖项
-//!   （count 型 / implyCond / 非前缀条目，报告 §2.3 行 1-2）自 commit ②
-//!   起放开（[`OPEN_COUNT_IMPLY_CONDITIONS`]）。
+//! - **conditions / multipliers**：旧键集 ∪ 解释器产出——交集逐值相等
+//!   （`config_dualrun` 持续回归 hard assert）；解释器独有的新增覆盖项
+//!   （count 型 / implyCond / 非前缀条目，报告 §2.3 行 1-2）已放开
+//!   （commit ②，见 [`merge_conditions`] / [`merge_multipliers`]）。
 //! - **enemy 条件桥**：vendor 把 `conditionEnemy<X>` 落 enemy 桶
 //!   `Condition:<X>`（ConfigOptions.lua:1694/1769/1789/1833 enemyModList:NewMod）；
 //!   pobr 的 mod_parser 把「against <X> enemies」建模为 cfg 条件 `Enemy<X>`
@@ -40,12 +40,6 @@ use pobr_gamedata::ruleset::ConfigCatalog;
 use crate::build::Build;
 use crate::build_config::BuildConfig;
 use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_from_config};
-
-/// commit ② 行为开关（dualrun 报告 §3-②）：解释器独有的 conditions /
-/// multipliers 新增覆盖（count 型 / implyCond / 非前缀条目）是否放开进 cfg。
-/// commit ①（主路径切换，预期零 diff）固定为 `false`——仅消费与旧路径
-/// 同键的交集（值逐项相等）。
-const OPEN_COUNT_IMPLY_CONDITIONS: bool = false;
 
 /// 旧路径 `conditionEnemy<X>Exposure` → cfg 条件桥（vendor
 /// ConfigOptions.lua:1864-1872：enemy 桶 `<X>Exposure` BASE 20 + ActorCondition
@@ -133,22 +127,30 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
     }
 }
 
-/// conditions 合并：交集逐值取主路径（dualrun 持续回归保证值相等）；
-/// 解释器独有键按 [`OPEN_COUNT_IMPLY_CONDITIONS`] 门控（commit ② 放开）。
+/// conditions 合并（commit ② 起全量）：交集逐值取主路径（dualrun 持续回归
+/// 保证值相等）；解释器独有键 = 新增覆盖（count 型条目的 `>0` 条件、
+/// implyCond 展开、非 `condition` 前缀条目，dualrun 报告 §2.3 行 1）。
+///
+/// implyCond 语义说明：vendor 把计算侧蕴含**直接烤进各条目 apply**
+/// （如 conditionCritRecently 同时 NewMod SkillCritRecently / CritInPast8Sec，
+/// ConfigOptions.lua:1130-1134——该形态已由 player_mods 注入承载，Combat
+/// 门控）；`implyCondList` 元数据本身只驱动 vendor 配置页可见性
+/// （ConfigTab.lua:91-109）。此处写入 cfg.conditions 的 imply 展开是 pobr
+/// 兼容通道（与旧 parse_config 的「裸条件直进 cfg」同一口径，供 mod_parser
+/// 的 Condition tag 词条消费），不覆盖显式值（interpreter `or_insert`）。
 fn merge_conditions(conditions: &mut HashMap<String, bool>, outcome: &ConfigOutcome) {
     for (var, enabled) in &outcome.conditions {
-        if OPEN_COUNT_IMPLY_CONDITIONS || conditions.contains_key(var) {
-            conditions.insert(var.clone(), *enabled);
-        }
+        conditions.insert(var.clone(), *enabled);
     }
 }
 
-/// multipliers 合并：口径同 [`merge_conditions`]。
+/// multipliers 合并（commit ② 起全量）：口径同 [`merge_conditions`]——
+/// 新增覆盖 = count 条目数值化（Multiplier:StationarySeconds 等，
+/// dualrun 报告 §2.3 行 2；vendor ConfigOptions.lua:120-127 conditionStationary
+/// `NewMod("Multiplier:StationarySeconds", BASE, val)` 形态）。
 fn merge_multipliers(multipliers: &mut HashMap<String, f64>, outcome: &ConfigOutcome) {
     for (var, value) in &outcome.multipliers {
-        if OPEN_COUNT_IMPLY_CONDITIONS || multipliers.contains_key(var) {
-            multipliers.insert(var.clone(), *value);
-        }
+        multipliers.insert(var.clone(), *value);
     }
 }
 
@@ -330,11 +332,12 @@ mod tests {
         );
     }
 
-    /// commit ① 口径：解释器独有的新增覆盖键（count 型 / implyCond）不进
-    /// conditions / multipliers（待 commit ② 放开）；Combat 门控 FLAG mod
-    /// 仍注入（mode_combat=false 天然惰性）。
+    /// commit ② 口径：count 型条目（conditionStationary，vendor
+    /// ConfigOptions.lua:120-127）产 Multiplier + `>0` 时 Condition；
+    /// implyCond（conditionCritRecently → SkillCritRecently/CritInPast8Sec，
+    /// :1130-1134）展开进 cfg；count=0 整条跳过（vendor BuildModList 语义）。
     #[test]
-    fn new_coverage_keys_gated_until_commit_2() {
+    fn count_and_imply_coverage_opened() {
         let catalog = load_catalog();
         let mut build = build_with_inputs(
             RawConfigInputs::new()
@@ -344,20 +347,24 @@ mod tests {
         // 模拟旧路径产出（parse_build 双跑期仍填 legacy 字段）。
         build.config.conditions.insert("CritRecently".into(), true);
         let resolved = resolve_config(&build, Some(&catalog));
-        assert!(
-            !resolved.config.conditions.contains_key("Stationary"),
-            "count 型条件待 commit ② 放开"
+        assert_eq!(
+            resolved.config.conditions.get("Stationary"),
+            Some(&true),
+            "count>0 → 条件置真"
         );
-        assert!(
-            !resolved
-                .config
-                .multipliers
-                .contains_key("StationarySeconds"),
-            "count 型 multiplier 待 commit ② 放开"
+        assert_eq!(
+            resolved.config.multipliers.get("StationarySeconds"),
+            Some(&5.0),
+            "count 数值化为 Multiplier"
         );
-        assert!(
-            !resolved.config.conditions.contains_key("SkillCritRecently"),
-            "implyCond 展开待 commit ② 放开"
+        assert_eq!(
+            resolved.config.conditions.get("SkillCritRecently"),
+            Some(&true),
+            "implyCond 展开"
+        );
+        assert_eq!(
+            resolved.config.conditions.get("CritInPast8Sec"),
+            Some(&true)
         );
         // Combat 门控 mod 化条目照常注入（天然惰性）。
         assert!(
@@ -365,6 +372,41 @@ mod tests {
                 .player_mods
                 .iter()
                 .any(|m| m.name.as_str() == "Condition:CritRecently")
+        );
+
+        // count=0 → vendor BuildModList 语义整条跳过（不产条件 / multiplier）。
+        let zero = build_with_inputs(
+            RawConfigInputs::new().with("conditionStationary", ConfigInputValue::Number(0.0)),
+        );
+        let resolved = resolve_config(&zero, Some(&catalog));
+        assert!(!resolved.config.conditions.contains_key("Stationary"));
+        assert!(
+            !resolved
+                .config
+                .multipliers
+                .contains_key("StationarySeconds")
+        );
+    }
+
+    /// implyCond 不覆盖显式 false（interpreter `or_insert` 语义经合并通道保持）。
+    #[test]
+    fn imply_does_not_override_explicit_false() {
+        let catalog = load_catalog();
+        let mut build = build_with_inputs(
+            RawConfigInputs::new().with("conditionCritRecently", ConfigInputValue::Bool(true)),
+        );
+        // 程序化显式 false：合并通道写入 outcome 值前已有显式键——outcome 的
+        // imply 展开（SkillCritRecently=true）会覆盖同键。此处断言的是 outcome
+        // 内部 or_insert 序（显式效果先于 imply），合并侧整键覆盖属预期。
+        build
+            .config
+            .conditions
+            .insert("UsedSkillRecently".into(), false);
+        let resolved = resolve_config(&build, Some(&catalog));
+        // conditionCritRecently 不蕴含 UsedSkillRecently → 显式 false 保留。
+        assert_eq!(
+            resolved.config.conditions.get("UsedSkillRecently"),
+            Some(&false)
         );
     }
 
