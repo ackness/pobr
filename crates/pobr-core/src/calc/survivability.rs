@@ -126,20 +126,27 @@ pub fn regen_with_rate(
 /// 出处：agent-docs/recovery-charges-buffs.md §2.1；
 ///       PoB2 `src/Modules/CalcDefence.lua` 再生段注释。
 pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
-    let flat = db.sum(ModType::Base, cfg, &[ModName::from(stat)]);
+    let bare_name = ModName::from(stat);
+    let flat = db.sum(ModType::Base, cfg, std::slice::from_ref(&bare_name));
     let percent = db.sum(
         ModType::Base,
         cfg,
         &[ModName::from(format!("{stat}Percent"))],
     );
-    // inc/more：同时吃专属 `<stat>Rate` 和通用 `XRecoveryRate`
+    // inc/more：裸 `<stat>` 名（vendor CalcDefence.lua:1642-1643
+    // `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")`——
+    // mod_parser「increased Mana Regeneration Rate」与 statmap buff 域
+    // （Clarity `ManaRegen INC`）产裸名；Arcane Surge `ManaRegen MORE`
+    // CalcPerform.lua:1586 同名）+ 专属 `<stat>Rate`（PoBR 既有测试名，
+    // vendor 无此名、保留兼容）+ 通用 `XRecoveryRate`。
     let rate_name = ModName::from(format!("{stat}Rate"));
     let recovery_rate_name = recovery_rate_mod_name(stat);
-    let inc = db.sum(ModType::Inc, cfg, std::slice::from_ref(&rate_name))
+    let inc = db.sum(ModType::Inc, cfg, std::slice::from_ref(&bare_name))
+        + db.sum(ModType::Inc, cfg, std::slice::from_ref(&rate_name))
         + db.sum(ModType::Inc, cfg, std::slice::from_ref(&recovery_rate_name));
-    let more_stat = db.more(cfg, &[rate_name]);
-    let more_recovery = db.more(cfg, &[recovery_rate_name]);
-    let more = more_stat * more_recovery;
+    let more = db.more(cfg, &[bare_name])
+        * db.more(cfg, &[rate_name])
+        * db.more(cfg, &[recovery_rate_name]);
     regen(pool, flat, percent, inc, more)
 }
 
