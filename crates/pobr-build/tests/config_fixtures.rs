@@ -1,8 +1,9 @@
 //! M3-T1 A5：config fixture 集成测试。
 //!
-//! 口径（蓝图 §4.5）：本波只断言「输入解析正确产出 RawConfigInputs +
-//! interpreter 产出 ConfigOutcome 正确」，**不要求接入 perform 行为**——
-//! 现网 parse_build 仍走旧 parse_config 路径（双跑对照见 `config_dualrun.rs`）。
+//! 口径（蓝图 §4.5）：断言「输入解析正确产出 RawConfigInputs + interpreter
+//! 产出 ConfigOutcome 正确」。现网 `calculate_with_data` 已切 interpreter 主
+//! 路径（`config_resolve`，commit ①）；旧 parse_config 保留为回退/对照
+//! （双跑持续回归见 `config_dualrun.rs`）。
 //!
 //! fixture 覆盖（`tests/fixtures/config_*.xml`）：count 型 stationary、
 //! implyCond 链、enemy 抗性覆盖 + enemyIsBoss=None、customMods 多行

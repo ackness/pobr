@@ -21,6 +21,7 @@ use pobr_data::catalog::{
     QualityStat, RuntimeConstants, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
     StatSetDef, WeaponBaseStats,
 };
+use pobr_gamedata::ruleset::ConfigCatalog;
 use pobr_gamedata::{GameData, LoadError};
 
 /// 职业基础属性（PoE2 起始 str/dex/int），用于 [`pobr_core::CharacterBase`] 派生。
@@ -167,6 +168,11 @@ pub struct BuildData {
     /// 门控（默认 false），注入本身零行为变化。缺 overlay 文件（旧数据包）
     /// = 空表（无内建 buff 展开，向后兼容）。
     pub buff_definitions: Vec<BuffDef>,
+    /// config 选项目录（`overlay/config_options.json`，M3-T1 A5 主路径切换）。
+    /// `calculate_with_data` 经 `crate::config_resolve::resolve_config` 消费——
+    /// `Some` 走 `config_interpreter::interpret` 主路径；`None`（旧数据包 /
+    /// [`BuildData::empty`]）回退旧 parse_config 产出（R7 缺表容忍）。
+    pub config_catalog: Option<Arc<ConfigCatalog>>,
 }
 
 impl BuildData {
@@ -298,6 +304,10 @@ impl BuildData {
             .map(|def| def.buffs)
             .unwrap_or_default();
 
+        // config 选项目录（overlay 域，M3-T1 A5）：缺文件 = `None`（消费方回退
+        // 旧 parse_config 产出，R7 容忍），其余加载/解析错误照常上抛。
+        let config_catalog = ruleset.config_catalog.map(Arc::new);
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -314,6 +324,7 @@ impl BuildData {
             local_mods,
             stat_map_catalog,
             buff_definitions,
+            config_catalog,
         })
     }
 
@@ -337,6 +348,7 @@ impl BuildData {
             local_mods: LocalModsDef::default(),
             stat_map_catalog: None,
             buff_definitions: Vec::new(),
+            config_catalog: None,
         }
     }
 

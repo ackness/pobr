@@ -1,6 +1,10 @@
 //! M3-T1 A5 双跑对照（蓝图 D3 点 1）：旧 `parse_config` vs
 //! `parse_config_inputs` + `config_interpreter` 新路径。
 //!
+//! **持续回归**（commit ① 起）：主路径已切 interpreter（`config_resolve`），
+//! 本测试保持运行直至旧路径删除（dualrun 报告 §3-⑧）——任何让「旧 ⊆ 新且
+//! 交集逐值相等」失效的改动都会在此被拦下。
+//!
 //! 口径：**旧路径能产出的 conditions / multipliers / global_texts / 标量项，
 //! 新路径必须逐值覆盖（旧 ⊆ 新）且交集逐值相等**。「覆盖」分两层：
 //! 1. **同名同值**：新路径 `conditions`/`multipliers` 回填表直接命中；

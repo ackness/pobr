@@ -226,6 +226,17 @@ impl CalculationSession {
         super::setup_env::setup_enemy(&mut self.env, config_level, tier);
     }
 
+    /// 直接向**敌人** modDB 注入已构造好的 modifier（保留 `SourceId` 归因）。
+    ///
+    /// M3-T1 A5 config 主路径入口：config 解释器把 `conditionEnemy<X>` 等条目
+    /// 落成 enemy 桶产物（vendor `enemyModList:NewMod` 语义，ConfigOptions.lua
+    /// 各 enemy 条目；`SourceKind::EnemyConfig` 归因），编排层经此注入。
+    /// 须在 [`setup_enemy`](Self::setup_enemy) 之后调用（与 vendor enemy modDB
+    /// 装配序一致；BASE 求和本身次序无关）。
+    pub fn add_enemy_modifiers(&mut self, modifiers: impl IntoIterator<Item = Modifier>) {
+        self.env.enemy.mod_db.add_list(modifiers);
+    }
+
     /// 注入玩家施加的元素**曝光**（`[fire, cold, lightning]`，PoB2 config 默认每点 -20%
     /// 抗），写入 enemy modDB 并按 [`reduce_enemy_exposure`] 折算为 `<Element>Resist` 减项。
     /// 仅在有效口径（`mode_effective`）下对伤害生效。须在 [`setup_enemy`](Self::setup_enemy)

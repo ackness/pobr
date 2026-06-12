@@ -116,8 +116,13 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
         build = build.add_socket_group(group);
     }
 
-    // 战斗配置（敌人状态 / 条件 / 倍率）→ BuildConfig，经 to_calc_config 进入 cfg，
-    // 供条件型词条（`... against Chilled Enemies` 等）按 PoB 保存的开关生效。
+    // 战斗配置：原始 `<Input>` 三型键值无损捕获进 `raw_inputs`（M3-T1 A5 主
+    // 路径数据源——编排层在 ConfigCatalog 可用时经 `config_resolve::resolve_config`
+    // 走 `config_interpreter::interpret` 消费）；同时保留旧 parse_config 产出
+    // 填充既有字段，作（a）缺 catalog 的 R7 回退、（b）quest text 通道
+    // （§3-⑤ 命名口径统一前不切换）、（c）config_dualrun 持续回归参照。
+    // 新增覆盖逐类打开、报告复核后删除旧路径（独立 commit，报告 §3-⑧）。
+    build.config.raw_inputs = parse_config_inputs(xml);
     let parsed = parse_config(xml);
     build.config.conditions.extend(parsed.conditions);
     build.config.multipliers.extend(parsed.multipliers);
@@ -158,10 +163,11 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
 
 /// `<Config>` 解析产物：条件 / 倍率 / 全局词条 + 顶层标量配置项。
 ///
-/// **双跑期临时导出**（M3-T1 A5，蓝图 D3 点 1）：旧 parse_config 路径仍是现网
-/// 唯一消费路径；结构体以 `doc(hidden)` pub 暴露字段，仅供双跑集成测试对照新
-/// 解释器产出。双跑报告审查、新增覆盖逐类打开后，本结构与旧路径一并删除
-/// （独立 commit）。
+/// **双跑期临时导出**（M3-T1 A5，蓝图 D3 点 1）：主路径已切换至
+/// `parse_config_inputs` + `config_interpreter`（经编排层 `config_resolve`，
+/// commit ①）；旧路径产出保留为（a）缺 catalog 的 R7 回退、（b）quest text
+/// 通道（报告 §3-⑤）、（c）`config_dualrun` 持续回归参照。新增覆盖逐类打开、
+/// 报告复核后，本结构与旧路径一并删除（独立 commit，报告 §3-⑧）。
 #[doc(hidden)]
 #[derive(Debug, Default)]
 pub struct ParsedConfig {
