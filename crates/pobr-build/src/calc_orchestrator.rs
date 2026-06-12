@@ -84,13 +84,6 @@ pub struct DataOrchestratorOptions {
     /// `None`（默认）= 回退 [`BuildData::stat_map_catalog`]（`BuildData::load`
     /// 已随数据包加载）；两处均无时数据通道按全 miss 处理。
     pub stat_map_catalog: Option<std::sync::Arc<StatMapCatalog>>,
-    /// （M3-T3 C5-1 双跑脚手架，**仅供 feature `buff-pass-aura` 下的双跑报告测试**）
-    /// `true` = 新路径：置 `cfg.mode_buffs(true)` 且**跳过** `aura_buff_modifiers`
-    /// 静态直注（aura 改经 BuffSpec → buff_pass 乘区通道）；`false`（默认）= 旧路径
-    /// （现网行为，零变化）。注意：feature 关时置 `true` 会让 aura 防御 buff 整体
-    /// 丢失（buff_pass 的 Aura kind 空转），故只允许双跑测试使用。C5-2 切换 commit
-    /// 删除本字段并把新路径定为唯一行为。
-    pub buff_pass_aura: bool,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -104,7 +97,6 @@ impl Default for DataOrchestratorOptions {
             mode_effective: false,
             stat_map_mode: StatMapMode::default(),
             stat_map_catalog: None,
-            buff_pass_aura: false,
         }
     }
 }
@@ -228,8 +220,13 @@ pub fn calculate_with_data(
         .with_flags(base_cfg.flags | skill_flags)
         .with_damage_keywords(dmg_keywords)
         .with_mode_effective(options.mode_effective)
-        // （C5-1 双跑脚手架）新路径置 mode_buffs（D5）；默认 false = 现网行为。
-        .with_mode_buffs(options.buff_pass_aura);
+        // （M3-T3 C5-2 切换，D5 MAIN 口径）：vendor 非 CALCS 模式 buffMode 恒
+        // "EFFECTIVE"（CalcSetup.lua:583-597 → env.mode_buffs = true），编排入口
+        // 对应恒置 mode_buffs——buff_pass（aura 乘区 / curse priority+limit）启用。
+        // mode_effective 维持调用方选项（D5：敌侧 debuff/curse 既有口径不动）；
+        // mode_combat 置位属 B4 独立行为 commit。双跑依据 m3-c5-dualrun-report.md
+        // （18-build display 全列逐值持平 + curse 面板加法型）。
+        .with_mode_buffs(true);
     // 敌人档位（19-G3 接线）：build XML Config 显式保存的 `enemyIsBoss` 优先；
     // 省略时回退调用方编排选项（PoB2 defaultIndex=3 = Pinnacle，与既有调用方一致）。
     let enemy_tier = build.config.enemy_tier.unwrap_or(options.enemy_tier);
@@ -716,24 +713,12 @@ pub fn calculate_with_data(
         }
     }
 
-    // 4b. 光环宝石的**防御 buff**（全局自身 buff）→ SkillGem 归因 modifier。数据驱动：
-    //     `skill_types` 含 `Aura` 的已启用宝石，按分等级 stat 注入对应防御 ModName
-    //     （Discipline→EnergyShield、Purity of Fire→FireResistance…）。ES buff 享全局
-    //     `increased ES%`，与 PoB 在 buff 上叠 inc 同口径。
-    //
-    //     M3-T3 C1 双计防护（蓝图 §6.1）：本波静态直注**不切换、不删码**；与下方
-    //     BuffSpec 双注入不双计——消费侧守门在 pobr-core buff_pass（Aura kind 吃
-    //     feature `buff-pass-aura`，默认关 = 空转；整段另吃 mode_buffs，编排层
-    //     默认不置位）。C5-1 双跑：`options.buff_pass_aura == true`（新路径）时
-    //     关闭本行直注（aura 改走 BuffSpec → buff_pass）；C5-2 切换 commit 定稿。
-    if !options.buff_pass_aura {
-        session.add_modifiers(aura_buff_modifiers(build, data));
-    }
-
-    // 4b'.（M3-T3 C1）aura/curse 技能 → BuffSpec 经 `session.add_buff_skill` 注入
-    //     （§2.4 契约）。消费在 pobr-core buff_pass（整段 `cfg.mode_buffs` 门控，
-    //     默认 false 且编排层不置位；Aura kind 另受 feature 守门）——本注入自身
-    //     零行为变化。
+    // 4b. 光环/诅咒技能 → BuffSpec 经 `session.add_buff_skill` 注入（§2.4 契约），
+    //     消费在 pobr-core buff_pass（env_finalize 阶段 4；上方已置 cfg.mode_buffs）：
+    //     aura 防御 buff（Discipline→EnergyShield、Purity of Fire→FireResistance…）
+    //     吃 AuraEffect 系乘区（CalcPerform.lua:2102-2105）后并入 player db；curse
+    //     走 priority/limit/分槽（:2829-2896）。C5-2 切换前的 `aura_buff_modifiers`
+    //     静态直注已关（双跑依据 m3-c5-dualrun-report.md，删函数属 C5-3）。
     for spec in buff_skill_specs(build, data) {
         session.add_buff_skill(spec);
     }
@@ -2606,9 +2591,10 @@ fn support_modifiers(
 /// stat id 决定。光环为**全局**自身 buff，故遍历**所有**启用 socket group 的 gem_skills，
 /// 而非仅主技能组；同一光环效果在多组重复出现时按 id 去重（避免重复注入）。
 ///
-/// M3-T3 C1：本波保持注入（双计防护在消费侧——buff_pass 的 Aura kind 吃
-/// feature `buff-pass-aura` 守门）；C5 切换（开 flag + 置 mode_buffs 的行为
-/// commit）时关闭本注入、双跑 diff 干净后删函数。
+/// M3-T3 C5-2 切换后**已退出产线**（编排注入改走 [`buff_skill_specs`] →
+/// buff_pass；双跑依据 `m3-c5-dualrun-report.md` 18-build 全列逐值持平）——
+/// 仅测试侧作为旧静态直注对照保留（`cfg(test)`），C5-3 删码 commit 一并移除。
+#[cfg(test)]
 fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     use std::collections::HashSet;
     let mut mods = Vec::new();
@@ -2682,8 +2668,8 @@ fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
 ///
 /// 分类规则（§2.4 契约 1）：
 /// - `skill_types` 含 `Aura` → [`BuffKind::Aura`]，mods = [`map_aura_buff_stat`]
-///   映射的防御 buff（与 [`aura_buff_modifiers`] 同一取数/归因口径——feature
-///   `buff-pass-aura` 切换的两条通道对同一来源等值）；
+///   映射的防御 buff（与 C5 切换前的 `aura_buff_modifiers` 静态直注同一取数/
+///   归因口径——双跑已证两条通道对同一来源等值）；
 /// - `skill_types` 含 Mark/Curse 系 token（`Mark` / `AppliesCurse`，M1 token
 ///   表达式列实查）→ [`BuffKind::Curse`]（`is_mark` = 含 `Mark`）。curse 携带
 ///   词条的 stat→mod 映射 M3 不做（mods 空——curse priority/limit/槽位占用与
@@ -4401,10 +4387,9 @@ mod tests {
         assert!(buff_skill_specs(&bare, &data).is_empty());
     }
 
-    /// 双计防护不变式（蓝图 §6.1）：BuffSpec 注入与静态直注并存时输出与「仅静态
-    /// 直注」逐值一致——feature 关（默认）时 buff_pass 对 Aura kind 空转；feature
-    /// 开但编排层不置 mode_buffs 时 buff_pass 整段空转。两种状态下 aura 词条都
-    /// 只经静态通道计入一次（C5 切换 commit 才反转通道）。
+    /// 通道等值不变式（C5-2 切换后）：编排产线（BuffSpec → buff_pass 乘区，无
+    /// AuraEffect 词条时 mult = 1.0）与旧静态直注（`aura_buff_modifiers` 手工
+    /// session 对照）逐值一致，且 aura 词条只计入一次（不双计）。
     #[test]
     fn buff_spec_injection_does_not_double_count_auras() {
         let data = repo_data();
@@ -4423,7 +4408,7 @@ mod tests {
             inject_character_base: true,
             ..Default::default()
         };
-        // 经 orchestrator（静态直注 + BuffSpec 双注入）的 ES == 静态直注单独贡献：
+        // 经 orchestrator（BuffSpec → buff_pass 产线）的 ES == 旧静态直注单独贡献：
         // 手工 session 仅注入 aura_buff_modifiers（无 BuffSpec）作对照。
         let through_orchestrator =
             calculate_with_data(&build, &data, &opts).expect("orchestrator calc");
@@ -4436,13 +4421,12 @@ mod tests {
         assert!(manual_es > 0.0, "Discipline 静态直注有非零 ES 贡献");
         assert_eq!(
             through_orchestrator.energy_shield, manual_es,
-            "BuffSpec 并存不双计（aura 词条只入静态通道一次）"
+            "新产线与旧静态直注等值（mult=1.0 时 ScaleAddMod 原值返回，不双计）"
         );
     }
 
-    /// feature 开的新路径端到端（C5 双跑前置验证）：buff_skill_specs → add_buff_skill →
-    /// buff_pass aura 乘区（mode_buffs 显式置位——编排层置位属 C5/B4 行为 commit）。
-    #[cfg(feature = "buff-pass-aura")]
+    /// 新路径端到端：buff_skill_specs → add_buff_skill → buff_pass aura 乘区
+    /// （mode_buffs 置位——C5-2 起编排入口恒置，此处手工 session 显式置位）。
     #[test]
     fn buff_spec_aura_path_end_to_end_with_mode_buffs() {
         let data = repo_data();

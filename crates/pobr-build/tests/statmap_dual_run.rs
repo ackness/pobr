@@ -78,7 +78,6 @@ fn opts(mode: StatMapMode, catalog: Option<Arc<StatMapCatalog>>) -> DataOrchestr
         extra_modifier_texts: vec![],
         stat_map_mode: mode,
         stat_map_catalog: catalog,
-        buff_pass_aura: false,
     }
 }
 
