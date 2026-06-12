@@ -973,6 +973,24 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             cur.gem_ids.push(gem_id);
                         }
                     }
+                    "StatSetIndex" if in_target_set => {
+                        // PoB2 新版 statSet 序列化（M4-T4 实查 ninja 真码；vendor
+                        // SkillsTab.lua:375 读 / :508 写）：per-grantedEffect 子元素
+                        // `<StatSetIndex grantedEffect="X" index="2"/>`，此时 Gem 的
+                        // `statSetIndex` 属性为字面量 `"nil"`。子元素先于 Gem End 到达，
+                        // 归属最近入列的 gem；仅 grantedEffect 与该 gem skillId 一致且
+                        // 属性通道未给值时回填（旧版属性优先，向后兼容）。
+                        if let Some(cur) = current.as_mut()
+                            && let Some(effect) = attr_value(&e, b"grantedEffect")
+                            && let Some(idx) =
+                                attr_value(&e, b"index").and_then(|v| v.parse::<u32>().ok())
+                            && let Some(gem) = cur.gem_skills.last_mut()
+                            && gem.skill_id == effect
+                            && gem.stat_set_index.is_none()
+                        {
+                            gem.stat_set_index = Some(idx);
+                        }
+                    }
                     _ => {}
                 }
             }

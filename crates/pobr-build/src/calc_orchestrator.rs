@@ -516,6 +516,13 @@ pub fn calculate_with_data(
         session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
         // 1b-i-g. 主技能未选 statSet 的 global-only merge（W-J，CalcActiveSkill.lua:124-140）。
         session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
+        // 1b-i-d. 选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG（M4-T4 W-D1；
+        //         statSet baseMods 直挂布尔，calc::skill_dot 据此保留 dotCfg 位）。
+        session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
+        // 1b-i-x. 弩 reload 数据通道（M4-T4 W-D2）：CrossbowReloadTimeBase（武器
+        //         reload_time_ms）+ CrossbowBoltCount（ammo 兄弟技能 stat），
+        //         perform `fill_crossbow_reload` 消费。非弩/grenade 返回空。
+        session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
         session.add_modifiers(support_modifiers(group, data, skill_id));
 
         // 1b-iii. 触发链路（findings 03-01/03-02/03-06；M4-T5 W-E1/W-E2 扩展）：
@@ -2417,6 +2424,131 @@ fn skill_base_modifiers(
         skill_id,
         set_key,
     ));
+    mods
+}
+
+/// 主技能选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG modifier（M4-T4 W-D1）。
+///
+/// vendor 语义：statSet `baseMods` 的 `skill("dotIsArea", true)` 类条目直挂在
+/// skillData 上（4.5.0.3.4 全量仅 TornadoShot "Tornado" set 一处）；PoBR 经
+/// catalog [`pobr_data::catalog::DotFlags`]（skill_overrides overlay merge）
+/// 取出，注入与 stat 驱动通道（`stat_map_engine::collect_skill_data` 的
+/// dotIs* skill_data 键）同名的 FLAG——`calc::skill_dot::DotIsFlags::from_db`
+/// 是两路的合一消费点。全 false（未核验/无旗标）时返回空，零注入。
+fn dot_flag_modifiers(group: &SocketGroup, data: &BuildData, skill_id: &str) -> Vec<Modifier> {
+    let set_index = group
+        .gem_skills
+        .iter()
+        .find(|g| g.skill_id == skill_id)
+        .and_then(|g| g.stat_set_index);
+    let flags = data.selected_set_dot_flags(skill_id, set_index);
+    let pairs = [
+        ("DotIsArea", flags.area),
+        ("DotIsProjectile", flags.projectile),
+        ("DotIsSpell", flags.spell),
+        ("DotIsAttack", flags.attack),
+        ("DotIsHit", flags.hit),
+    ];
+    pairs
+        .iter()
+        .filter(|(_, on)| *on)
+        .map(|(name, _)| {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("skill.{skill_id}.{name}"),
+            ))
+            .with_raw_text(format!("statSet dot flag {name}"));
+            Modifier::flag(*name).with_origin(origin)
+        })
+        .collect()
+}
+
+/// 弩 reload 数据通道（M4-T4 W-D2；vendor `CalcOffence.lua:1118-1122` skillData
+/// 装配 + `:283-320` calcCrossbowAmmoStats/calcCrossbowReloadTime 取数对照）：
+///
+/// - 门控 = 主技能 `skill_types` 含 `CrossbowSkill` 且不含 `Grenade` /
+///   `CrossbowAmmoSkill`（vendor `:1118` 同三谓词；grenade 不消耗弹药）；
+/// - `CrossbowReloadTimeBase` BASE（秒）← 主手武器 `weapon.reload_time_ms`
+///   （WeaponTypes ReloadTime；overlay base_item_overrides 兜底，33 条弩已入库）。
+///   武器无 reload 数据（非弩持械）→ 整体返回空（vendor baseReloadTime nil 同口径）；
+/// - `CrossbowBoltCount` BASE ← 同组 ammo 技能（直接在组内 / 经 gem_effects
+///   附加效果连边）的 stat `base_number_of_crossbow_bolts`（vendor ammo skill
+///   modList 转移 `:303-307`）。无 ammo 数据时不注入（calc 侧弹匣下限 1 兜底）。
+///
+/// `ReloadSpeed`/`ChanceToNotConsumeAmmo`/`InstantReloadChance` 词条走通用
+/// modifier 总线，calc 侧聚合（`fill_crossbow_reload`）。
+fn crossbow_reload_modifiers(
+    build: &Build,
+    data: &BuildData,
+    group: &SocketGroup,
+    skill_id: &str,
+) -> Vec<Modifier> {
+    let Some(effect) = data.granted_effects.get(skill_id) else {
+        return Vec::new();
+    };
+    let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
+    if !has_type("CrossbowSkill") || has_type("Grenade") || has_type("CrossbowAmmoSkill") {
+        return Vec::new();
+    }
+    // 武器 reload 基值（仅主手；vendor `actor.weaponData1.ReloadTime`）。
+    let Some(reload_ms) = build
+        .items
+        .get(&EquipmentSlot::Weapon1)
+        .and_then(|item| data.weapon_base(&item.base.to_string()))
+        .and_then(|w| w.reload_time_ms)
+        .filter(|&ms| ms > 0)
+    else {
+        return Vec::new();
+    };
+    let mk = |name: &str, value: f64, label: String| {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{skill_id}.{name}"),
+        ))
+        .with_raw_text(label);
+        Modifier::number(name, ModType::Base, value).with_origin(origin)
+    };
+    let mut mods = vec![mk(
+        "CrossbowReloadTimeBase",
+        f64::from(reload_ms) / 1000.0,
+        format!("crossbow weapon reload {reload_ms}ms"),
+    )];
+    // ammo 兄弟技能的弹匣容量：组内宝石自身或其附加授予效果中第一个
+    // `CrossbowAmmoSkill`，取其选中等级 stat `base_number_of_crossbow_bolts`。
+    let ammo = group.gem_skills.iter().find_map(|g| {
+        let mut candidates: Vec<&str> = vec![g.skill_id.as_str()];
+        if let Some(link) = data.gem_effects.get(&g.skill_id) {
+            candidates.extend(
+                link.additional_granted_effect_ids
+                    .iter()
+                    .map(String::as_str),
+            );
+        }
+        candidates
+            .into_iter()
+            .find(|eid| {
+                data.granted_effects
+                    .get(*eid)
+                    .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
+            })
+            .map(|eid| (eid.to_string(), g.gem_level))
+    });
+    if let Some((ammo_id, gem_level)) = ammo {
+        let bolts: f64 = data
+            .effect_stats(&ammo_id, gem_level, 0, None)
+            .base
+            .iter()
+            .filter(|ds| ds.stat == "base_number_of_crossbow_bolts")
+            .map(|ds| ds.value)
+            .sum();
+        if bolts > 0.0 {
+            mods.push(mk(
+                "CrossbowBoltCount",
+                bolts,
+                format!("ammo skill {ammo_id} bolt count"),
+            ));
+        }
+    }
     mods
 }
 

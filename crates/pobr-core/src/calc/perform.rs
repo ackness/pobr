@@ -107,9 +107,16 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     calc_defence(&mut env.player, &env.cfg, env.enemy.base.accuracy);
 
     fill_mechanics(env);
+    // 弩 reload 折算（M4-T4 W-D2）：紧跟 fill_mechanics——vendor 顺序先服务器帧
+    // cap（calc_skill_use_time 内）后 reload（CalcOffence.lua:2864-2867）；下游
+    // fill_ailments 的叠层速率估算 / fill_skill_dot_stage 的 DPS 基底消费折算后值。
+    fill_crossbow_reload(env);
     // 异常状态：几率 + 暴击加权 + magnitude + effMult（几率 × DoT 期望值口径）。
     // 单独成段，避免与 fill_mechanics 内 player.mod_db 的不可变借用冲突。
     fill_ailments(env);
+    // 技能 DoT + 合并 DPS 族（M4-T4 W-D1）：在 fill_ailments 之后——TotalDotDPS
+    // 只读消费异常侧 bleed/poison/ignite 现值（ailment.rs 不改，T4 一波约定）。
+    fill_skill_dot_stage(env);
 
     // 召唤物（Lane4）：每个召唤物是独立 Actor，复用玩家同款 offence/defence 管线。
     // 无召唤物时该段空转，行为与无此字段时完全一致（向后兼容）。
@@ -521,6 +528,89 @@ fn fill_mechanics(env: &mut Env) {
 /// 出处：agent-docs/triggers.md §三 / §4.2；Lane B integration_spec；PoB2 CalcTriggers.lua
 /// L74-86 findTriggerSkill / L702-707 EffectiveSourceRate / L715-777 triggerChance；
 /// CWCHandler L262-263（finding 03-06：CWC 经 calcMultiSpellRotationImpact）。
+/// 技能 DoT fill（M4-T4 W-D1，函数级新增）：从既有输出读面板信号（有效速率 /
+/// 击中 DPS / 异常 DoT 三值），跑 [`super::skill_dot::calc_skill_dot`]，把
+/// `// === M4-T4 ===` 契约五字段落表。
+///
+/// 异常 DoT 取值口径 = vendor `TotalXDPS or XDPS`（`CalcOffence.lua:6226-6231`）：
+/// 叠层值（`*_stacked_dps`，fill_ailments 仅叠层配置在场时写入）优先，否则单层
+/// 期望 DPS。无技能 DoT 且无异常 DoT 时输出全零，契约字段维持 Default 中性。
+/// 弩 reload fill（M4-T4 W-D2，函数级新增）：把弹匣循环平均（bolt_count 发 ×
+/// 攻速 + reload 间隔）折进有效速率与 DPS。
+///
+/// 数据通道：`CrossbowReloadTimeBase` BASE（秒，编排层按 weapon
+/// `reload_time_ms` 注入，仅 CrossbowSkill 非 Grenade/AmmoSkill 主技能）+
+/// `CrossbowBoltCount` BASE（ammo 技能 stat `base_number_of_crossbow_bolts`
+/// 经 statmap，下限 1）+ `ChanceToNotConsumeAmmo` / `InstantReloadChance` BASE。
+/// 无 reload 词条（非弩/数据缺失）时整段空转，输出逐值不变。
+///
+/// 折算落点：vendor 直接改写 `output.Speed`（DPS = avg × Speed 随之缩放，
+/// `CalcOffence.lua:2867-2887`）；pobr 的 `dps`/`action_rate` 已在 offence 段
+/// 产出，按速率因子等比缩放（与 vendor 乘法位置等价），`effective_action_rate`/
+/// `skill_use_time.effective_rate` 同步为循环平均速率。
+fn fill_crossbow_reload(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let base_reload = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("CrossbowReloadTimeBase")],
+    );
+    if base_reload <= 0.0 {
+        return; // 非弩技能 / 无 reload 数据：零行为。
+    }
+    let firing_rate = env.player.output.effective_action_rate;
+    if firing_rate <= 0.0 {
+        return;
+    }
+    let reload_time = super::skill_use_time::crossbow_reload_time(db, cfg, base_reload);
+    let bolt_count = db.sum(ModType::Base, cfg, &[ModName::from("CrossbowBoltCount")]);
+    let chance_not_consume = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("ChanceToNotConsumeAmmo")],
+    );
+    let instant_reload = db.sum(ModType::Base, cfg, &[ModName::from("InstantReloadChance")]);
+    let reload = super::skill_use_time::apply_crossbow_reload(
+        firing_rate,
+        bolt_count,
+        reload_time,
+        chance_not_consume,
+        instant_reload,
+    );
+    let factor = reload.effective_rate / firing_rate;
+    if !(factor.is_finite() && factor > 0.0) || (factor - 1.0).abs() < f64::EPSILON {
+        return; // 退化（不消耗弹药等）：速率不变，零行为。
+    }
+    let out = &mut env.player.output;
+    out.effective_action_rate = round(reload.effective_rate);
+    if let Some(sut) = &mut out.skill_use_time {
+        sut.effective_rate = round(reload.effective_rate);
+    }
+    // DPS / 面板速率等比折算（vendor `TotalDPS = AverageDamage × Speed` 的 Speed
+    // 改写等价；AverageDamage = dps/action_rate 恒等式不受影响）。
+    out.dps = round(out.dps * factor);
+    out.action_rate = round(out.action_rate * factor);
+}
+
+fn fill_skill_dot_stage(env: &mut Env) {
+    let out = &env.player.output;
+    let pick = |stacked: f64, single: f64| if stacked > 0.0 { stacked } else { single };
+    let inputs = super::skill_dot::SkillDotInputs {
+        speed: out.effective_action_rate.max(0.0),
+        // skill duration 数据通道未接（statmap skill_data `duration` 无消费方），
+        // DotCanStack 分支在 calc 内保守退化为单实例——接入后传真值即可。
+        duration: 0.0,
+        base_dps: out.dps,
+        bleed_dps: pick(out.bleed_stacked_dps, out.bleed_dps),
+        poison_dps: pick(out.poison_stacked_dps, out.poison_dps),
+        ignite_dps: pick(out.ignite_stacked_dps, out.ignite_dps),
+    };
+    let dot =
+        super::skill_dot::calc_skill_dot(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &inputs);
+    super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
+}
+
 fn fill_trigger(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;

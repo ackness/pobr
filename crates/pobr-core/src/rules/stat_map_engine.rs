@@ -681,6 +681,34 @@ fn collect_skill_data(
         items.push(MappedItem::Modifier(Box::new(modifier)));
         return Ok(());
     }
+    // M4-T4 W-D1：技能 DoT 基值键（vendor `skill("<Type>Dot", …)`，源 stat
+    // `base_<type>_damage_to_deal_per_minute`、entry 级 div=60 已换算每分 → 每秒）
+    // → 同名 `<Type>Dot` BASE modifier（PoBR 无 skillData 表，经 modifier 管线
+    // 消费，对齐伤害基值族 `<Type>DamageMin/Max` 的既有口径；消费方 =
+    // `calc::skill_dot`，按 dotTypeCfg 聚合）。
+    if let Some(mod_name) = dot_base_mod_name(key) {
+        let mut modifier = Modifier::number(mod_name, ModType::Base, merged_value);
+        for tag in tags {
+            modifier = modifier.with_tag(tag);
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+        return Ok(());
+    }
+    // M4-T4 W-D1：dotIs* 布尔键（vendor `skill("dotIsSpell", true)` 类，源 stat
+    // 如 `spell_damage_modifiers_apply_to_skill_dot`）→ `DotIs<X>` FLAG modifier
+    // （`calc::skill_dot` 据此保留 dotCfg 对应位，否则剥除——CalcOffence.lua:5839-5856）。
+    // 注：当前 `.dat` 入库不含 value-less 布尔 stat，本通道在现有数据下不触发；
+    // statSet baseMods 直挂的 dotIs*（TornadoShot）走 catalog `DotFlags` →
+    // 编排层注入同名 FLAG（同一消费口径）。
+    if let Some(flag_name) = dot_is_flag_mod_name(key) {
+        if !tags.is_empty() {
+            return Err(UnsupportedReason::UnsupportedTag(
+                "skill_data 带 tag".into(),
+            ));
+        }
+        items.push(MappedItem::Modifier(Box::new(Modifier::flag(flag_name))));
+        return Ok(());
+    }
     // 第一批 skill_data 白名单：duration（vendor `skill("duration", …)`，entry 级
     // div=1000 已在 merge 公式换算 ms → s）。其余键统计上报。
     if key == "duration" {
@@ -696,6 +724,27 @@ fn collect_skill_data(
         return Ok(());
     }
     Err(UnsupportedReason::UnsupportedSkillDataKey(key.to_string()))
+}
+
+/// `<Type>Dot` skill_data 键 → 同名 BASE ModName（M4-T4 W-D1；vendor SkillStatMap
+/// `base_<type>_damage_to_deal_per_minute` 条目，五伤害类型全集）。
+fn dot_base_mod_name(key: &str) -> Option<String> {
+    DAMAGE_TYPES.iter().find_map(|ty| {
+        (key == format!("{ty}Dot")).then(|| key.to_string()) // ModName 与键同名
+    })
+}
+
+/// `dotIs*` skill_data 键 → `DotIs*` FLAG ModName（M4-T4 W-D1；与 catalog
+/// `DotFlags`（statSet baseMods 直挂布尔）的编排层注入共用同一组 FLAG 名）。
+fn dot_is_flag_mod_name(key: &str) -> Option<&'static str> {
+    Some(match key {
+        "dotIsArea" => "DotIsArea",
+        "dotIsProjectile" => "DotIsProjectile",
+        "dotIsSpell" => "DotIsSpell",
+        "dotIsAttack" => "DotIsAttack",
+        "dotIsHit" => "DotIsHit",
+        _ => return None,
+    })
 }
 
 /// 五伤害类型（PoB2 命名 → PoBR PascalCase 相同）。
@@ -753,6 +802,13 @@ fn translate_mod_flags(tokens: &[String]) -> Result<ModFlags, UnsupportedReason>
             "Melee" => ModFlags::MELEE,
             "Projectile" => ModFlags::PROJECTILE,
             "Area" => ModFlags::AREA,
+            // M4-T4 W-D1：Dot 位仅在 PoB2 全位表（feature `modflags-pob2`）下可译
+            // ——dotCfg（`calc::skill_dot`）置 DOT 位后该类 mod（如
+            // `support_rapid_decay_damage_over_time_+%_final` → Damage MORE Dot）
+            // 只命中 DoT 聚合。legacy 5 位表无 Dot 位，维持整条 Unsupported
+            // （宁可欠算不可错算到 hit 管线）。
+            #[cfg(feature = "modflags-pob2")]
+            "Dot" => ModFlags::DOT,
             _ => return Err(UnsupportedReason::UnsupportedFlags(tokens.join("|"))),
         };
     }

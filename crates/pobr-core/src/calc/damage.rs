@@ -343,7 +343,11 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Damag
 /// 每个路径类型贡献 `<Type>Damage`（type-scoped cfg 命中其 `DamageType` tag）；
 /// 元素类型额外贡献共享 `ElementalDamage`（去重，多个元素只算一次）。通用
 /// `AttackDamage`/`Damage` 只算一次（与 type-scoped 无关）。
-fn aggregate_inc_more(db: &ModDb, cfg: &CalcConfig, final_type: DamageType) -> (f64, f64) {
+pub(crate) fn aggregate_inc_more(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    final_type: DamageType,
+) -> (f64, f64) {
     // 通用桶（不限伤害类型）：`Damage` 始终；攻击/法术/技能类别（投射物/范围/近战）按
     // cfg flag——使 `increased <Attack|Spell|Projectile|Area|Melee> Damage` 对该技能生效。
     let mut generic_names = vec![ModName::from("Damage")];
