@@ -918,9 +918,12 @@ pub(crate) fn enemy_resist_final(
 /// 玩家穿透对**已 clamp 的**敌人抗性的下调（仅元素/混沌、仅击中）。
 ///
 /// 读玩家 db：元素 `<Type>Penetration` + 共享 `ElementalPenetration`；混沌 `ChaosPenetration`。
-/// 公式（PoB2 CalcOffence.lua，minPen=0）：
-/// `effective = if resist > 0 { max(resist - pen, 0) } else { resist }`
-/// —— 穿透只在抗性为正时生效、不能把抗性压到 0 以下；抗性已 ≤0（负抗）时穿透全浪费。
+/// 公式（PoB2 CalcOffence.lua:4163）：
+/// `effective = if resist > minPen { max(resist - pen, minPen) } else { resist }`
+/// —— `minPen = Σ BASE(<El>PenetrationMinimum, ElementalPenetrationMinimum)`
+/// （vendor :4140/:4144，「穿透至多压到 N」类词条；混沌无 minimum 名、恒 0）。
+/// 无 minimum 词条时退化为旧式：穿透只在抗性为正时生效、不能把抗性压到 0 以下；
+/// 抗性已 ≤ minPen（含负抗）时穿透全浪费。
 ///
 /// 出处：agent-docs/damage-scaling.md §Penetration（穿透不破 0、与负抗互斥、仅击中）；
 ///       damage-defence-order.md §步骤 4；PoB2 `<Type>Penetration`/`ElementalPenetration`。
@@ -931,11 +934,34 @@ fn apply_penetration(
     resist: f64,
 ) -> f64 {
     let pen = penetration_value(player_db, type_cfg, damage_type);
-    if resist > 0.0 {
-        (resist - pen).max(0.0)
+    let min_pen = penetration_minimum(player_db, type_cfg, damage_type);
+    if resist > min_pen {
+        (resist - pen).max(min_pen)
     } else {
         resist
     }
+}
+
+/// 穿透下界 `minPen`（vendor CalcOffence.lua:4140/:4144：
+/// `Sum("BASE", cfg, <El>PenetrationMinimum, ElementalPenetrationMinimum)`）。
+/// 仅三元素有 minimum 名空间；混沌/物理恒 0。
+fn penetration_minimum(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
+    let names: &[ModName] = &match damage_type {
+        DamageType::Physical | DamageType::Chaos => return 0.0,
+        DamageType::Fire => vec![
+            ModName::from("FirePenetrationMinimum"),
+            ModName::from("ElementalPenetrationMinimum"),
+        ],
+        DamageType::Cold => vec![
+            ModName::from("ColdPenetrationMinimum"),
+            ModName::from("ElementalPenetrationMinimum"),
+        ],
+        DamageType::Lightning => vec![
+            ModName::from("LightningPenetrationMinimum"),
+            ModName::from("ElementalPenetrationMinimum"),
+        ],
+    };
+    player_db.sum(ModType::Base, type_cfg, names)
 }
 
 /// 玩家对某伤害类型的穿透值（%）。物理无穿透（物理走 Overwhelm/护甲破坏路径）。

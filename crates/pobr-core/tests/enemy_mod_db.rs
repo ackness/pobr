@@ -244,6 +244,50 @@ fn enemy_resist_clamps_to_enemy_max_resist() {
     );
 }
 
+// M4-H S3：穿透下界 minPen（vendor CalcOffence.lua:4140/:4163）。
+
+#[test]
+fn penetration_minimum_caps_penetration_floor() {
+    // 抗 50、穿透 30、minPen 35 → max(50-30, 35) = 35 → 火伤 100*0.65 = 65。
+    let mut player = fire_only_player();
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 30.0));
+    player.add_mod(Modifier::number(
+        "FirePenetrationMinimum",
+        ModType::Base,
+        35.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 65.0).abs() < 1e-6,
+        "minPen 35 抬底 → 100*0.65 = 65, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn penetration_skipped_when_resist_at_or_below_min_pen() {
+    // 抗 30 ≤ minPen 30 → 穿透整段跳过（vendor `resist > minPen` 判定），抗性原样 30。
+    let mut player = fire_only_player();
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 50.0));
+    player.add_mod(Modifier::number(
+        "FirePenetrationMinimum",
+        ModType::Base,
+        30.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 30.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 70.0).abs() < 1e-6,
+        "resist ≤ minPen → 穿透不生效 → 100*0.7 = 70, got {}",
+        out.dps
+    );
+}
+
 // ---------------------------------------------------------------------------
 // 3. 曝光取最强（exposure-min-of via ModDb::max_of + reduce_enemy_exposure）
 // ---------------------------------------------------------------------------
