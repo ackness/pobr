@@ -203,6 +203,111 @@ for _, dt2 in ipairs(damageTypes) do
 	if gn and gn ~= 0 then intermediates["NonChaosDamageGainAs_" .. dt2] = gn end
 end
 
+----------------------------------------------------------------------
+-- Enemy mitigation intermediates (M4-H effective enemy-multiplier line).
+-- Mirrors the CalcOffence.lua:4060-4170 enemy resist/armour/penetration
+-- segment so PoBR's offence::enemy_damage_multiplier can be diffed per
+-- sub-segment (resist base / cap / pen / taken chain / armour+PDR).
+----------------------------------------------------------------------
+local mainEnv = build.calcsTab.mainEnv
+local enemyDB = mainEnv.player.enemy and mainEnv.player.enemy.modDB
+local enemyMitigation = nil
+if enemyDB then
+	local function edbSum(modType, cfg, ...)
+		local ok, res = pcall(function(...) return enemyDB:Sum(modType, cfg, ...) end, ...)
+		if ok then return res end
+		return nil
+	end
+	local function edbMore(cfg, ...)
+		local ok, res = pcall(function(...) return enemyDB:More(cfg, ...) end, ...)
+		if ok then return res end
+		return nil
+	end
+	local function edbOverride(cfg, name)
+		local ok, res = pcall(function() return enemyDB:Override(cfg, name) end)
+		if ok then return res end
+		return nil
+	end
+	enemyMitigation = {}
+	for _, dt in ipairs({ "Fire", "Cold", "Lightning", "Chaos" }) do
+		local isEle = dt ~= "Chaos"
+		enemyMitigation[dt] = {
+			resistBase = edbSum("BASE", skillCfg, dt .. "Resist", isEle and "ElementalResist" or nil),
+			resistInc = edbSum("INC", skillCfg, dt .. "Resist", isEle and "ElementalResist" or nil),
+			resistMore = edbMore(skillCfg, dt .. "Resist", isEle and "ElementalResist" or nil),
+			resistOverride = edbOverride(skillCfg, dt .. "Resist"),
+			configMaxResist = mainEnv.configInput and mainEnv.configInput["enemy" .. dt .. "Resist"] or nil,
+			pen = smlSum("BASE", skillCfg, isEle and (dt .. "Penetration") or "ChaosPenetration",
+				isEle and "ElementalPenetration" or nil),
+			minPen = smlSum("BASE", skillCfg, isEle and (dt .. "PenetrationMinimum") or nil,
+				isEle and "ElementalPenetrationMinimum" or nil),
+			takenInc = edbSum("INC", skillCfg, "DamageTaken", dt .. "DamageTaken"),
+			takenMore = edbMore(skillCfg, "DamageTaken", dt .. "DamageTaken"),
+			eleTakenInc = isEle and edbSum("INC", skillCfg, "ElementalDamageTaken") or nil,
+		}
+	end
+	enemyMitigation.Physical = {
+		armour = edbSum("BASE", nil, "Armour"),
+		armourOverride = edbOverride(nil, "Armour"),
+		flatPDR = edbSum("BASE", nil, "PhysicalDamageReduction"),
+		overwhelm = smlSum("BASE", skillCfg, "EnemyPhysicalDamageReduction"),
+		takenInc = edbSum("INC", skillCfg, "DamageTaken", "PhysicalDamageTaken"),
+		takenMore = edbMore(skillCfg, "DamageTaken", "PhysicalDamageTaken"),
+	}
+	enemyMitigation.projTakenInc = edbSum("INC", nil, "ProjectileDamageTaken")
+	enemyMitigation.projAttackTakenInc = edbSum("INC", nil, "ProjectileAttackDamageTaken")
+	-- Per-mod source dump of the enemy DamageTaken chain (which build sources feed
+	-- takenInc, e.g. curses / "enemies take increased damage" passives).
+	local takenMods = {}
+	local okTab, takenTable = pcall(function()
+		return enemyDB:Tabulate("INC", skillCfg, "DamageTaken", "PhysicalDamageTaken",
+			"FireDamageTaken", "ColdDamageTaken", "LightningDamageTaken", "ChaosDamageTaken",
+			"ElementalDamageTaken")
+	end)
+	if okTab and takenTable then
+		for _, entry in ipairs(takenTable) do
+			takenMods[#takenMods + 1] = {
+				name = entry.mod.name,
+				value = entry.value,
+				source = entry.mod.source,
+			}
+		end
+	end
+	enemyMitigation.takenMods = takenMods
+	-- Per-mod source dump of enemy resist contributions (curse / exposure / boss
+	-- preset), so the resist-final composition can be diffed segment by segment.
+	local resistMods = {}
+	local okRes, resTable = pcall(function()
+		return enemyDB:Tabulate("BASE", skillCfg, "FireResist", "ColdResist", "LightningResist",
+			"ChaosResist", "ElementalResist")
+	end)
+	if okRes and resTable then
+		for _, entry in ipairs(resTable) do
+			resistMods[#resistMods + 1] = {
+				name = entry.mod.name,
+				value = entry.value,
+				source = entry.mod.source,
+			}
+		end
+	end
+	enemyMitigation.resistMods = resistMods
+	-- Exposure effect composition (vendor CalcPerform.lua:3222-3227): global modDB
+	-- INC + per-active-skill skill-scoped INC, plus extra exposure BASE.
+	local pdb = mainEnv.player.modDB
+	local expo = {}
+	for _, el in ipairs({ "Fire", "Cold", "Lightning" }) do
+		local okG, g = pcall(function() return pdb:Sum("INC", nil, el .. "ExposureEffect") end)
+		local okE, extra = pcall(function() return pdb:Sum("BASE", nil, "ExtraExposure", "Extra" .. el .. "Exposure") end)
+		local skillEff = 0
+		for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
+			local okS, sv = pcall(function() return as.skillModList:Sum("INC", { source = "Skill" }, el .. "ExposureEffect") end)
+			if okS and sv and sv > skillEff then skillEff = sv end
+		end
+		expo[el] = { globalInc = okG and g or nil, skillInc = skillEff, extra = okE and extra or nil }
+	end
+	enemyMitigation.exposureEffect = expo
+end
+
 -- Crit, speed, hit chance aggregates
 intermediates.IncCritChance = smlSum("INC", skillCfg, "CritChance")
 intermediates.BaseCritChance = smlSum("BASE", skillCfg, "CritChance")
@@ -434,6 +539,10 @@ local report = {
 	-- CritChance live here for attacks (M4-T3 W-C1 oracle parity).
 	mainHandOutput = type(mainOutput.MainHand) == "table" and scalarsOf(mainOutput.MainHand) or nil,
 	offHandOutput = type(mainOutput.OffHand) == "table" and scalarsOf(mainOutput.OffHand) or nil,
+	-- CALCS-mode per-hand outputs: attack-path <Type>EffMult is written into the
+	-- per-pass output table (output.MainHand) under env.mode == "CALCS" only.
+	calcsMainHandOutput = type(calcsOutput.MainHand) == "table" and scalarsOf(calcsOutput.MainHand) or nil,
+	calcsOffHandOutput = type(calcsOutput.OffHand) == "table" and scalarsOf(calcsOutput.OffHand) or nil,
 	intermediates = intermediates,
 	damageModList = damageModList,
 	damageAgg = damageAgg,
@@ -442,6 +551,7 @@ local report = {
 	damageTypeBreakdown = damageTypeBreakdown,
 	conversionTable = conversionTable,
 	skillInfo = skillInfo,
+	enemyMitigation = enemyMitigation,
 }
 
 local json = encode(report)
