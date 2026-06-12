@@ -38,16 +38,6 @@ impl ModFlags {
     pub const ATTACK: Self = Self(1 << 0);
     pub const SPELL: Self = Self(1 << 1);
 
-    // ---- 旧 5 位表（feature `modflags-pob2` 关，默认）----------------------
-    // MELEE/PROJECTILE/AREA 的位值与 PoB2 不同（PoB2 在 0x100/0x400/0x200）——
-    // 这是 W-A1 必须 feature-gated 双跑的原因（位值"搬家"）。
-    #[cfg(not(feature = "modflags-pob2"))]
-    pub const MELEE: Self = Self(1 << 2);
-    #[cfg(not(feature = "modflags-pob2"))]
-    pub const PROJECTILE: Self = Self(1 << 3);
-    #[cfg(not(feature = "modflags-pob2"))]
-    pub const AREA: Self = Self(1 << 4);
-
     pub fn bits(self) -> u64 {
         self.0
     }
@@ -67,11 +57,12 @@ impl ModFlags {
     }
 }
 
-/// PoB2 全位表（M4-T1 W-A1，feature `modflags-pob2` 开）。
+/// PoB2 全位表（M4-T1 W-A1 引入，M4-I 切换 commit 起常驻——旧 5 位表与
+/// `modflags-pob2` feature 双写通道已删，两次双跑 diff=0 报告见
+/// `audits/rearchitecture-2026-06-10/m4-t1-modflags-dualrun-report.md`）。
 ///
 /// 位值**逐位等于** vendor `Data/Global.lua:222-259` `ModFlag.*`（u64 字面量
 /// 直接照搬，便于对拍调试）。逐常量断言见本文件 `modflags_pob2_tests`。
-#[cfg(feature = "modflags-pob2")]
 impl ModFlags {
     // -- Damage modes（ATTACK/SPELL 与旧表同值，定义在公共块）--
     /// `ModFlag.Hit = 0x0000000000000004`
@@ -139,15 +130,18 @@ impl ModFlags {
     pub const WEAPON_2H: Self = Self(0x8_0000_0000);
     /// `ModFlag.WeaponMask = 0x0000000F5FFF0000`
     pub const WEAPON_MASK: Self = Self(0xF_5FFF_0000);
+    /// [`weapon_flags`](Self::weapon_flags)（vendor getWeaponFlags）可产出的全部
+    /// 位段并集 = `WEAPON_MASK ∪ WARSTAFF ∪ WEAPON`（vendor `WeaponMask` 字面量
+    /// 不含 Warstaff 与 Weapon 位，见 `masks_are_unions_of_member_bits`）。供
+    /// per-hand cfg 武器位替换（T2 W-B2）整段清位用——非 vendor 字面量，PoBR 派生。
+    pub const WEAPON_SEGMENT: Self = Self(Self::WEAPON_MASK.0 | Self::WARSTAFF.0 | Self::WEAPON.0);
 }
 
-/// 武器位派生（W-A1 commit-2，feature 双态都编译——feature 关时恒空，
-/// 调用方无须自带 `#[cfg]`，双写通道零行为）。
+/// 武器位派生（W-A1 commit-2 引入，切换 commit 起常驻）。
 impl ModFlags {
     /// `weapon_types.json` 的 `flag` 名 → 武器类型位（vendor `ModFlag[info.flag]`，
     /// `CalcActiveSkill.lua:291`）。名称→位映射表留代码侧（P1 L4 刹车：位枚举是
-    /// 框架语义）；未知 flag 名 / feature 关 → `None`。
-    #[cfg(feature = "modflags-pob2")]
+    /// 框架语义）；未知 flag 名 → `None`。
     pub fn weapon_type_bit(flag: &str) -> Option<Self> {
         Some(match flag {
             "Axe" => Self::AXE,
@@ -168,11 +162,6 @@ impl ModFlags {
             _ => return None,
         })
     }
-    /// feature 关：旧 5 位表无武器位，恒 `None`（双写零行为）。
-    #[cfg(not(feature = "modflags-pob2"))]
-    pub fn weapon_type_bit(_flag: &str) -> Option<Self> {
-        None
-    }
 
     /// 武器条目 → 完整武器位集（vendor `CalcActiveSkill.lua:274-309 getWeaponFlags`
     /// 主干逐字对照）：
@@ -184,7 +173,6 @@ impl ModFlags {
     /// id/flag/one_hand/melee）。`countsAsAll1H`/`asThoughUsing` 分支本阶段不做
     /// （无消费 build，登记 M5+，蓝图 W-A1）；`MeleeHit` 不在 getWeaponFlags 内
     /// （vendor 由技能侧 `:537` 另并，归 T2 per-hand cfg）。
-    #[cfg(feature = "modflags-pob2")]
     pub fn weapon_flags(type_id: &str, flag: &str, one_hand: bool, melee: bool) -> Self {
         let Some(mut flags) = Self::weapon_type_bit(flag) else {
             return Self::NONE;
@@ -204,10 +192,22 @@ impl ModFlags {
         }
         flags
     }
-    /// feature 关：恒 `NONE`（双写零行为）。
-    #[cfg(not(feature = "modflags-pob2"))]
-    pub fn weapon_flags(_type_id: &str, _flag: &str, _one_hand: bool, _melee: bool) -> Self {
-        Self::NONE
+
+    /// per-hand cfg 武器位替换（T2 W-B2；vendor `CalcOffence.lua:2369-2449`
+    /// weapon1Cfg/weapon2Cfg 语义：per-hand flags 由「技能位 + **该手**武器位」
+    /// 构造，不继承另一手 / 全局的武器位）。
+    ///
+    /// - `weapon` 为空（该 hand source 无武器位供给——非武器攻击 source 如
+    ///   Shield Wall）→ 原样返回，cfg 沿用上游供给（单手 build 的全局武器位与
+    ///   per-hand 位同源同值，替换 ≡ 恒等）。
+    /// - 非空 → 清掉 [`WEAPON_SEGMENT`](Self::WEAPON_SEGMENT) 段后并入该手
+    ///   武器位（双持下另一手的武器类型位不得泄漏进本手 pass）。
+    pub fn replace_weapon_flags(self, weapon: Self) -> Self {
+        if weapon.is_empty() {
+            self
+        } else {
+            Self(self.0 & !Self::WEAPON_SEGMENT.0 | weapon.0)
+        }
     }
 }
 
@@ -324,7 +324,7 @@ impl fmt::Debug for KeywordFlags {
 
 /// 位值断言（W-A1 commit-1 门禁）：逐常量 == vendor `Data/Global.lua:222-259`
 /// 的 `ModFlag.*` 字面量（vendor commit 见 `vendor/.pob2-version.txt`）。
-#[cfg(all(test, feature = "modflags-pob2"))]
+#[cfg(test)]
 mod modflags_pob2_tests {
     use super::ModFlags;
 
@@ -435,6 +435,34 @@ mod modflags_pob2_tests {
         );
     }
 
+    /// per-hand 武器位替换（W-B2）：非空 → 清 WEAPON_SEGMENT 段再并入；
+    /// 空 → 恒等（非武器攻击 source 沿用上游供给）。
+    #[test]
+    fn replace_weapon_flags_swaps_weapon_segment_only() {
+        let mace = ModFlags::weapon_flags("One Hand Mace", "Mace", true, true);
+        let sword = ModFlags::weapon_flags("One Hand Sword", "Sword", true, true);
+        let cfg = ModFlags::ATTACK | ModFlags::HIT | mace;
+        // 同位替换 ≡ 恒等（单手 build 等价性依据）。
+        assert_eq!(cfg.replace_weapon_flags(mace), cfg);
+        // 异位替换：MH 锤位整段换成 OH 剑位，非武器段（ATTACK|HIT）保留。
+        assert_eq!(
+            cfg.replace_weapon_flags(sword),
+            ModFlags::ATTACK | ModFlags::HIT | sword
+        );
+        // 空供给 → 恒等（Shield Wall 类非武器攻击 source）。
+        assert_eq!(cfg.replace_weapon_flags(ModFlags::NONE), cfg);
+        // WEAPON_SEGMENT = getWeaponFlags 值域并集。
+        assert_eq!(
+            ModFlags::WEAPON_SEGMENT.bits(),
+            ModFlags::WEAPON_MASK.bits() | ModFlags::WARSTAFF.bits() | ModFlags::WEAPON.bits()
+        );
+        assert!(mace.is_subset_of(ModFlags::WEAPON_SEGMENT));
+        assert!(
+            ModFlags::weapon_flags("None", "Unarmed", true, true)
+                .is_subset_of(ModFlags::WEAPON_SEGMENT)
+        );
+    }
+
     /// 新位宽下 `is_subset_of` 语义不变（既有语义测试在新表的搬迁锚点）。
     #[test]
     fn is_subset_of_semantics_hold_on_new_bits() {
@@ -444,31 +472,6 @@ mod modflags_pob2_tests {
         assert!(mod_flags.is_subset_of(cfg_match));
         assert!(!mod_flags.is_subset_of(cfg_miss));
         assert!(ModFlags::NONE.is_subset_of(cfg_miss));
-    }
-}
-
-/// 旧 5 位表锚点（feature 关）：位值与引入 feature 前逐字一致（搬迁不变式）。
-#[cfg(all(test, not(feature = "modflags-pob2")))]
-mod modflags_legacy_tests {
-    use super::ModFlags;
-
-    #[test]
-    fn legacy_bit_values_unchanged() {
-        assert_eq!(ModFlags::ATTACK.bits(), 1 << 0);
-        assert_eq!(ModFlags::SPELL.bits(), 1 << 1);
-        assert_eq!(ModFlags::MELEE.bits(), 1 << 2);
-        assert_eq!(ModFlags::PROJECTILE.bits(), 1 << 3);
-        assert_eq!(ModFlags::AREA.bits(), 1 << 4);
-    }
-
-    /// feature 关：武器位派生恒空（双写通道零行为，搬迁不变式）。
-    #[test]
-    fn weapon_derivation_is_inert() {
-        assert_eq!(ModFlags::weapon_type_bit("Mace"), None);
-        assert_eq!(
-            ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
-            ModFlags::NONE
-        );
     }
 }
 

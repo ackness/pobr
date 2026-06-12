@@ -314,10 +314,11 @@ pub fn calculate_with_data(
         for var in weapon_type_conditions(build, data) {
             cfg = cfg.with_condition(var, true);
         }
-        // （W-A1 commit-2 双写通道）主手武器位 → cfg.flags：feature `modflags-pob2`
-        // 关时恒 NONE（零行为）；开时与上面的 Using* 条件**同源**（weapon_type_info
-        // 表）**同 gating**（同一 cooldown-bound 守卫）派生，保证 mod 侧双写的武器位
-        // 通道不在 condition 通道之外另开生效口径（双跑 diff=0 的等价性依据）。
+        // 主手武器位 → cfg.flags（W-A1 commit-2 引入，切换 commit 起常驻）：
+        // 与上面的 Using* 条件**同源**（weapon_type_info 表）**同 gating**
+        // （同一 cooldown-bound 守卫）派生——mod 侧双写的武器位通道不在
+        // condition 通道之外另开生效口径（两次双跑 diff=0 的等价性依据；
+        // Using* condition 近似路径的退役登记 M4 末独立 commit）。
         let weapon_bits = weapon_cfg_flags(build, data);
         if !weapon_bits.is_empty() {
             cfg.flags |= weapon_bits;
@@ -349,19 +350,25 @@ pub fn calculate_with_data(
     let weapon = main_skill
         .as_ref()
         .and_then(|(skill, _, skill_id)| weapon_contribution(build, data, skill_id, skill));
-    let mut hand_weapon: Option<pobr_core::calc::WeaponBase> = None;
-    if let Some(w) = &weapon {
-        let asm = main_skill
-            .as_ref()
-            .and_then(|(s, _, _)| s.attack_speed_multiplier)
-            .map_or(1.0, |m| 1.0 + m / 100.0);
-        hand_weapon = Some(pobr_core::calc::WeaponBase {
-            hit_min: w.phys_min * dmg_mult,
-            hit_max: w.phys_max * dmg_mult,
-            attack_rate: (w.attack_rate > 0.0).then_some(w.attack_rate * asm),
-            crit_chance: w.crit_chance,
-        });
-    }
+    // 双持副手（W-B2）：主手是单手真武器且 Weapon2 也是武器基底时，装配第二个
+    // off-hand 武器源（vendor weapon2Attack pass，CalcOffence.lua:2369-2449）。
+    let off_weapon = weapon
+        .as_ref()
+        .and_then(|_| dual_wield_off_hand_contribution(build, data, main_effect));
+    let asm = main_skill
+        .as_ref()
+        .and_then(|(s, _, _)| s.attack_speed_multiplier)
+        .map_or(1.0, |m| 1.0 + m / 100.0);
+    let to_hand_base = |w: &WeaponContribution| pobr_core::calc::WeaponBase {
+        hit_min: w.phys_min * dmg_mult,
+        hit_max: w.phys_max * dmg_mult,
+        attack_rate: (w.attack_rate > 0.0).then_some(w.attack_rate * asm),
+        crit_chance: w.crit_chance,
+        flags: w.flags,
+    };
+    let mut hand_weapon: Option<pobr_core::calc::WeaponBase> = weapon.as_ref().map(to_hand_base);
+    let mut off_hand_weapon: Option<pobr_core::calc::WeaponBase> =
+        off_weapon.as_ref().map(to_hand_base);
 
     // 冷却限速：PoB 顺序——先把速度全部 inc/more 算完，再 `min(rate, 1/effective_cooldown)`
     // （effective_cooldown 经 `CooldownRecovery` 缩短）。该 min 下沉到 offence.rs
@@ -389,7 +396,8 @@ pub fn calculate_with_data(
     {
         let cd_rate = 1.0 / cd;
         // W-B2 起武器速率在 HandSource 上——预截作用于实际生效的那个速率
-        // （有武器速率截 HandSource，否则截 base_input，与旧折算顺序等价）。
+        // （有武器速率截 HandSource——双持两手各截，否则截 base_input，
+        // 与旧折算顺序等价）。
         match hand_weapon.as_mut().and_then(|wb| wb.attack_rate.as_mut()) {
             Some(rate) => {
                 if *rate > cd_rate {
@@ -401,6 +409,13 @@ pub fn calculate_with_data(
                     base_input.base_action_rate = cd_rate;
                 }
             }
+        }
+        if let Some(rate) = off_hand_weapon
+            .as_mut()
+            .and_then(|wb| wb.attack_rate.as_mut())
+            && *rate > cd_rate
+        {
+            *rate = cd_rate;
         }
     }
 
@@ -421,19 +436,25 @@ pub fn calculate_with_data(
         session.set_curse_priority(curse_priority.clone());
     }
     // M4-T2 W-B2：武器基底经 HandSource 注入（单 pass 直通——OR 模式逐值等价于
-    // 旧 base_input 折算）。第二个 HandSource（Weapon2 双持 pass）等 W-A1 commit-2
-    // per-hand 武器位落地后装配；doubleHitsWhenDualWielding 等 W-D1 数据通道（恒 false）。
+    // 旧 base_input 折算）。双持（Weapon2 为武器基底）装配第二个 off-hand
+    // HandSource，per-hand 武器位随 WeaponBase::flags 进 hand pass；
+    // doubleHitsWhenDualWielding 等 W-D1 数据通道（恒 false）。
     // 非武器攻击（Shield Wall 类）的 source 是 off-hand（PoB2 CalcOffence L2418-2431）。
     if let Some(wb) = hand_weapon {
         let is_off_hand_source = main_effect
             .map(|e| e.is_attack() && e.is_non_weapon_attack())
             .unwrap_or(false);
-        let hand_source = if is_off_hand_source {
-            pobr_core::calc::HandSource::off_hand(wb)
+        let sources = if is_off_hand_source {
+            vec![pobr_core::calc::HandSource::off_hand(wb)]
+        } else if let Some(ohb) = off_hand_weapon {
+            vec![
+                pobr_core::calc::HandSource::main_hand(wb),
+                pobr_core::calc::HandSource::off_hand(ohb),
+            ]
         } else {
-            pobr_core::calc::HandSource::main_hand(wb)
+            vec![pobr_core::calc::HandSource::main_hand(wb)]
         };
-        session.set_hand_sources(vec![hand_source], false);
+        session.set_hand_sources(sources, false);
     }
 
     if bypasses_cooldown || cooldown_attack_unmodeled {
@@ -567,7 +588,11 @@ pub fn calculate_with_data(
         let mut filtered = filter_item_parseable(item);
         // 主手武器：剔除局部物理增伤/附加（已作为武器 source 独立乘区 × baseMultiplier 计入
         // weapon_contribution）；留在全局会重复且错误地并入加法桶（PoB 是独立乘区）。
-        if slot == EquipmentSlot::Weapon1 {
+        // 双持副手（W-B2）：Weapon2 作为 off-hand 武器源消费时同样剔除——其局部词条
+        // 已折入 off-hand WeaponContribution（未消费时维持现状，不动全局注入）。
+        if slot == EquipmentSlot::Weapon1
+            || (slot == EquipmentSlot::Weapon2 && off_weapon.is_some())
+        {
             let drop_local = |texts: Vec<String>| -> Vec<String> {
                 texts
                     .into_iter()
@@ -1711,10 +1736,9 @@ fn weapon_type_info<'a>(
     data.constants.weapon_types.get(key)
 }
 
-/// （W-A1 commit-2）主手武器 → cfg 武器位（vendor `getWeaponFlags`，
-/// `CalcActiveSkill.lua:274-309`）。feature `modflags-pob2` 关时
-/// [`ModFlags::weapon_flags`] 恒 `NONE`（零行为）；开时供 mod 侧双写的武器位
-/// 通道命中（mod.flags ⊆ cfg.flags 子集匹配）。
+/// 主手武器 → cfg 武器位（vendor `getWeaponFlags`，`CalcActiveSkill.lua:274-309`；
+/// W-A1 commit-2 引入，切换 commit 起常驻）：供 mod 侧武器位通道命中
+/// （mod.flags ⊆ cfg.flags 子集匹配）。
 ///
 /// 派生源 = [`weapon_type_info`]（与 [`weapon_type_conditions`] 同一张
 /// `weapon_types.json` 表）：bit 通道对每条双写 mod 的判定结果蕴含于 condition
@@ -1909,11 +1933,10 @@ struct WeaponContribution {
     phys_max: f64,
     attack_rate: f64,
     crit_chance: f64,
-    /// （W-A1 commit-2）该武器源的 ModFlags 武器位（vendor `getWeaponFlags`，
-    /// 由 `weapon_types.json` 经 [`ModFlags::weapon_flags`] 派生；feature
-    /// `modflags-pob2` 关时恒 `NONE`）。消费方 = T2 W-B2 hand_pass 的 per-hand
-    /// cfg 构造（蓝图 §3.3 契约 1 `HandSource`），本阶段仅装配不消费。
-    #[allow(dead_code)]
+    /// 该武器源的 ModFlags 武器位（vendor `getWeaponFlags`，由
+    /// `weapon_types.json` 经 [`ModFlags::weapon_flags`] 派生）。消费方 =
+    /// T2 W-B2 hand_pass 的 per-hand cfg 武器位替换
+    /// （`WeaponBase::flags` → `replace_weapon_flags`）。
     flags: ModFlags,
 }
 
@@ -1948,30 +1971,80 @@ fn weapon_contribution(
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return Some(unarmed_contribution(build, data));
     };
+    weapon_item_contribution(item, data)
+}
+
+/// 单件武器条目 → 武器源贡献（MH/OH 共用口径，对照 PoB2 `CalcSetup.lua` weaponData）。
+///
+/// - 物理伤害 = (基底 + 局部附加) × (1 + 局部增伤%) × (1 + quality/100)；
+/// - 攻击速率 = `1000 / speed_ms × (1 + 局部攻速%)`；暴击率 = `crit_chance / 100`；
+/// - 武器位按**本件**基底类别派生（vendor getWeaponFlags；与 cfg 侧
+///   [`weapon_cfg_flags`] 同一张 `weapon_types.json`，Weapon1 件与全局 cfg 位同值）。
+///
+/// 局部物理/攻速词条是独立乘区（与全局相乘、不并入全局加法桶），消费本贡献的
+/// hand source 槽位须在 add_item 时剔除同名局部词条（见 calculate_with_data），
+/// 避免重复计入。非武器基底（盾/箭袋/法器等）→ `None`。
+fn weapon_item_contribution(item: &Item, data: &BuildData) -> Option<WeaponContribution> {
     let w = data.weapon_base(&item.base.to_string())?;
     let quality = 1.0 + f64::from(item.quality) / 100.0;
-    // PoB CalcOffence：武器伤害 source = (基底 + **局部**附加) × (1 + **局部**增伤%) × 品质，
-    // 再 × baseMultiplier；局部增伤是独立乘区、与全局增伤相乘（非相加）。这些局部物理词条
-    // 在 add_item 时被剔除（见 calculate_with_data），避免重复 / 错误地并入全局加法桶。
     let (local_add_min, local_add_max) = weapon_local_phys_adds(item);
     let local_inc = 1.0 + weapon_local_phys_inc(item) / 100.0;
-    // 武器**局部**「N% increased Attack Speed」作用于武器攻击速率（PoB weaponData.AttackRate =
-    // 基底速率 ×(1+局部攻速%)），是独立乘区——与全局树攻速相乘、不并入全局加法桶。
-    // 这些局部攻速词条在 add_item 时从全局剔除（见 is_weapon_local_mod）。
     let local_as = 1.0 + weapon_local_attack_speed(item) / 100.0;
     let base_rate = if w.speed_ms > 0 {
         1000.0 / f64::from(w.speed_ms)
     } else {
         0.0
     };
+    let flags = data
+        .base_items
+        .get(&item.base.to_string())
+        .and_then(|def| weapon_type_info(data, &def.item_class))
+        .map(|wt| ModFlags::weapon_flags(&wt.id, &wt.flag, wt.one_hand, wt.melee))
+        .unwrap_or(ModFlags::NONE);
     Some(WeaponContribution {
         phys_min: (f64::from(w.physical_min) + local_add_min) * local_inc * quality,
         phys_max: (f64::from(w.physical_max) + local_add_max) * local_inc * quality,
         attack_rate: base_rate * local_as,
         crit_chance: f64::from(w.crit_chance) / 100.0,
-        // 武器位与 cfg 侧 weapon_cfg_flags 同源派生（feature 关恒 NONE）。
-        flags: weapon_cfg_flags(build, data),
+        flags,
     })
+}
+
+/// 双持副手（Weapon2）武器源（W-B2；vendor `CalcOffence.lua:2369-2449`
+/// weapon2Attack pass 的 source 装配）。产出条件（全部满足）：
+///
+/// - 主技能是**持武攻击**（非法术、非 Shield Wall 类非武器攻击——后者的
+///   off-hand source 由 [`non_weapon_attack_contribution`] 专路装配）；
+/// - 主手装备了**单手**武器基底（vendor 双持前提；空手/双手武器不产）；
+/// - Weapon2 是武器基底（盾/箭袋/法器 → `None`，与 `weapon_type_conditions`
+///   的 `DualWielding` 判定同源）。
+///
+/// 切片登记（TODO(parity)，vendor 行为差）：
+/// - vendor 还按技能武器限制（`weaponTypes` 白名单）裁剪 pass；PoBR 未建模
+///   武器限制，按「双持即产」近似；
+/// - per-hand 暴击基底：`WeaponBase::crit_chance` 暂未在 hand pass 内消费
+///   （全局 `CriticalStrikeChance BASE` 仍取主手值，见编排 1c 段），OH 腿
+///   暴击基底沿用 MH——per-hand 暴击消费随 W-B3 crit pass 口径收口。
+fn dual_wield_off_hand_contribution(
+    build: &Build,
+    data: &BuildData,
+    main_effect: Option<&pobr_data::catalog::GrantedEffectDef>,
+) -> Option<WeaponContribution> {
+    let is_weapon_attack = main_effect
+        .map(|e| e.is_attack() && !e.is_non_weapon_attack())
+        .unwrap_or(false);
+    if !is_weapon_attack {
+        return None;
+    }
+    // 主手必须是已装备的单手武器（weapon_types 表口径）。
+    let mh = build.items.get(&EquipmentSlot::Weapon1)?;
+    let mh_def = data.base_items.get(&mh.base.to_string())?;
+    let mh_one_hand = weapon_type_info(data, &mh_def.item_class).is_some_and(|w| w.one_hand);
+    if !mh_one_hand || data.weapon_base(&mh.base.to_string()).is_none() {
+        return None;
+    }
+    let off = build.items.get(&EquipmentSlot::Weapon2)?;
+    weapon_item_contribution(off, data)
 }
 
 /// 非武器攻击（如 Shield Wall）的武器源贡献：基础物理伤害来自技能自身 off-hand stat-set
@@ -6100,8 +6173,8 @@ mod tests {
         }
     }
 
-    /// （W-A1 commit-2）cfg 武器位双写通道：feature `modflags-pob2` 关恒 NONE
-    /// （零行为）；开时按 vendor getWeaponFlags 派生（与 Using* 条件同源）。
+    /// cfg 武器位供给（W-A1 commit-2 引入，切换 commit 起常驻）：按 vendor
+    /// getWeaponFlags 派生（与 Using* 条件同源同 gating）。
     #[test]
     fn weapon_cfg_flags_dual_write_channel() {
         let mut data = BuildData::empty();
@@ -6125,20 +6198,12 @@ mod tests {
         );
         let bits = weapon_cfg_flags(&build, &data);
         let unarmed = weapon_cfg_flags(&Build::new(), &data);
-        #[cfg(feature = "modflags-pob2")]
-        {
-            assert_eq!(
-                bits,
-                ModFlags::MACE | ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
-                "单手锤 → vendor getWeaponFlags 位集"
-            );
-            assert_eq!(unarmed, ModFlags::UNARMED, "空主手 → 仅 Unarmed 位");
-        }
-        #[cfg(not(feature = "modflags-pob2"))]
-        {
-            assert!(bits.is_empty(), "feature 关：双写通道零行为");
-            assert!(unarmed.is_empty(), "feature 关：空手分支同样零行为");
-        }
+        assert_eq!(
+            bits,
+            ModFlags::MACE | ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
+            "单手锤 → vendor getWeaponFlags 位集"
+        );
+        assert_eq!(unarmed, ModFlags::UNARMED, "空主手 → 仅 Unarmed 位");
     }
 }
 

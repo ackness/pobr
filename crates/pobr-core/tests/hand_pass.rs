@@ -68,6 +68,7 @@ fn single_hand_source_equals_legacy_input_fold_per_value() {
         hit_max: 30.0,
         attack_rate: Some(1.4),
         crit_chance: 5.0,
+        flags: ModFlags::NONE,
     };
 
     // 旧折算口径：直接把武器基底写进 MinimalInput 再单跑。
@@ -128,6 +129,7 @@ fn main_hand_condition_mod_applies_inside_main_hand_pass() {
         hit_max: 20.0,
         attack_rate: Some(1.0),
         crit_chance: 5.0,
+        flags: ModFlags::NONE,
     };
 
     let without_condition = run_hand_passes(
@@ -171,12 +173,14 @@ fn dual_wield_combines_per_vendor_modes_hand_calculated() {
         hit_max: 20.0,
         attack_rate: Some(1.0),
         crit_chance: 5.0,
+        flags: ModFlags::NONE,
     };
     let sword = WeaponBase {
         hit_min: 30.0,
         hit_max: 40.0,
         attack_rate: Some(2.0),
         crit_chance: 5.0,
+        flags: ModFlags::NONE,
     };
 
     let out = run_hand_passes(
@@ -233,12 +237,14 @@ fn double_hits_dps_is_sum_not_halved() {
         hit_max: 20.0,
         attack_rate: Some(1.0),
         crit_chance: 5.0,
+        flags: ModFlags::NONE,
     };
     let sword = WeaponBase {
         hit_min: 30.0,
         hit_max: 40.0,
         attack_rate: Some(2.0),
         crit_chance: 5.0,
+        flags: ModFlags::NONE,
     };
     let passes = [HandSource::main_hand(mace), HandSource::off_hand(sword)];
 
@@ -258,6 +264,105 @@ fn double_hits_dps_is_sum_not_halved() {
     let oh_pct = oh.crit_chance * 100.0;
     let expected = (mh_pct + oh_pct - mh_pct * oh_pct / 100.0) / 100.0;
     assert!((double.combined.crit_chance - expected).abs() < 1e-9);
+}
+
+/// per-hand 武器位路由（W-B2）：带武器位的词条（`with Maces` 双写产出的
+/// MACE 位）只进武器位匹配的那只手——MH 锤腿吃增伤、OH 剑腿不吃
+/// （vendor weapon1Cfg/weapon2Cfg flags 按手隔离）。
+#[test]
+fn weapon_flag_mod_routes_to_matching_hand_only() {
+    let mace_flags = ModFlags::weapon_flags("One Hand Mace", "Mace", true, true);
+    let sword_flags = ModFlags::weapon_flags("One Hand Sword", "Sword", true, true);
+
+    let mut db = attack_db();
+    // 武器位词条（`100% increased Physical Damage with Maces` 的 flag 通道）。
+    db.add_mod(Modifier::number("PhysicalDamage", ModType::Inc, 100.0).with_flags(ModFlags::MACE));
+    let enemy = ModDb::new();
+    // 全局 cfg 带 MH（锤）武器位——双写通道的全局供给；per-hand 替换须把
+    // OH 腿的锤位换成剑位（全局位不得泄漏进 OH pass）。
+    let mut cfg = CalcConfig::attack();
+    cfg.flags |= mace_flags;
+    let input = base_input();
+
+    let mace = WeaponBase {
+        hit_min: 10.0,
+        hit_max: 20.0,
+        attack_rate: Some(1.0),
+        crit_chance: 5.0,
+        flags: mace_flags,
+    };
+    let sword = WeaponBase {
+        hit_min: 10.0,
+        hit_max: 20.0,
+        attack_rate: Some(1.0),
+        crit_chance: 5.0,
+        flags: sword_flags,
+    };
+
+    let out = run_hand_passes(
+        &db,
+        &enemy,
+        &cfg,
+        &[HandSource::main_hand(mace), HandSource::off_hand(sword)],
+        &input,
+        false,
+    );
+    let mh = out.main_hand.as_ref().expect("MH 子表");
+    let oh = out.off_hand.as_ref().expect("OH 子表");
+
+    // 两手基底相同（10–20 平均 15）：MH 腿 inc = 50%（无位基础）+100%（MACE 位），
+    // OH 腿仅 50% → 击中比 = 2.5/1.5。
+    let ratio = mh.average_hit / oh.average_hit;
+    let expected = 2.5 / 1.5;
+    assert!(
+        (ratio - expected).abs() < 1e-9,
+        "MACE 位词条只得进 MH 腿：MH/OH = {ratio}（应 {expected}）"
+    );
+}
+
+/// 武器位为空的 HandSource（Shield Wall 类非武器攻击 source）：
+/// per-hand 替换恒等——带上游位的 cfg 原样进腿（「空供给不清上游位」的
+/// 等价性分支）。
+#[test]
+fn empty_weapon_flags_keep_upstream_cfg_flags() {
+    let mut db = attack_db();
+    // 仅吃 ATTACK 位的词条：cfg 上游位不被空武器位供给清掉。
+    db.add_mod(
+        Modifier::number("PhysicalDamage", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK),
+    );
+    let enemy = ModDb::new();
+    let cfg = CalcConfig::attack();
+    let input = base_input();
+    let weapon = WeaponBase {
+        hit_min: 10.0,
+        hit_max: 20.0,
+        attack_rate: Some(1.0),
+        crit_chance: 5.0,
+        flags: ModFlags::NONE,
+    };
+
+    let baseline = run_hand_passes(
+        &attack_db(),
+        &enemy,
+        &cfg,
+        &[HandSource::main_hand(weapon)],
+        &input,
+        false,
+    )
+    .combined
+    .total_hit_avg;
+    let boosted = run_hand_passes(
+        &db,
+        &enemy,
+        &cfg,
+        &[HandSource::main_hand(weapon)],
+        &input,
+        false,
+    );
+    assert!(
+        boosted.combined.total_hit_avg > baseline,
+        "ATTACK 位词条须在空武器位供给下照常生效"
+    );
 }
 
 /// COMBINE_TABLE 锁定（vendor 调用面照抄；行号见 hand_pass.rs 表注释）。
