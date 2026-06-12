@@ -214,7 +214,12 @@ pub fn calculate_with_data(
         data,
         main_effect.map(|e| e.skill_types.as_slice()).unwrap_or(&[]),
     );
-    let base_cfg = build.config.to_calc_config();
+    // config 消费收口（M3-T1 A5 主路径切换）：ConfigCatalog 可用时走
+    // `config_interpreter::interpret`（raw_inputs → conditions/multipliers/标量
+    // 包装/Config 归因 modifier）；缺 catalog 回退旧 parse_config 产出（R7）。
+    let resolved_config =
+        crate::config_resolve::resolve_config(build, data.config_catalog.as_deref());
+    let base_cfg = resolved_config.config.to_calc_config();
     let mut cfg = base_cfg
         .clone()
         .with_flags(base_cfg.flags | skill_flags)
@@ -243,7 +248,10 @@ pub fn calculate_with_data(
     }
     // 敌人档位（19-G3 接线）：build XML Config 显式保存的 `enemyIsBoss` 优先；
     // 省略时回退调用方编排选项（PoB2 defaultIndex=3 = Pinnacle，与既有调用方一致）。
-    let enemy_tier = build.config.enemy_tier.unwrap_or(options.enemy_tier);
+    let enemy_tier = resolved_config
+        .config
+        .enemy_tier
+        .unwrap_or(options.enemy_tier);
     // 敌人稀有度条件：DPS 默认 vs Boss/Pinnacle/Uber（= Unique）→ 置真，使
     // `... against Rare or Unique Enemies` 这类条件型增伤生效（PoB 的 boss DPS 口径）。
     if matches!(
@@ -409,7 +417,7 @@ pub fn calculate_with_data(
         // 优先；省略时按 PoB2 CalcSetup.lua `configInput.resistancePenalty or -60`（即
         // Endgame）。档位 → 惩罚 modifier 走 [`CampaignProgress`] 既有表（带
         // `campaign.resistance_penalty` 归因；Act1 惩罚为 0、不产生 modifier）。
-        let progress = build
+        let progress = resolved_config
             .config
             .campaign_progress
             .unwrap_or(CampaignProgress::Endgame);
@@ -648,10 +656,34 @@ pub fn calculate_with_data(
 
     // 2c. 任务奖励 / 全局配置词条（PoB2 `questRewards`）：按**全局** modifier text 注入
     //     （属性 / 抗性 / 防御 inc 等永久全局加成）。沿用 add_modifier_texts 的容错。
-    if !build.config.global_modifier_texts.is_empty() {
+    //     quest 仍走旧 text 通道（dualrun 报告 §3-⑤：vendor/parser 命名口径统一前
+    //     不切声明式 mod，`config_resolve` 已从注入列表排除 quest 归因项防双计）。
+    if !resolved_config.config.global_modifier_texts.is_empty() {
         // 与装备/珠宝路径一致：先过滤掉硬失败词条（skip-and-collect），避免单条不可解析
         // 文本中止整批注入。
-        let texts = filter_parseable(build.config.global_modifier_texts.clone());
+        let texts = filter_parseable(resolved_config.config.global_modifier_texts.clone());
+        if !texts.is_empty() {
+            session
+                .add_modifier_texts(&texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
+    }
+
+    // 2d. config 解释器产物（M3-T1 A5 主路径）：`SourceKind::Config` 归因的玩家
+    //     modifier。Combat 门控条目（`Condition:Combat` tag）在 mode_combat=false
+    //     下天然惰性（D5）；缺 catalog 时列表为空（R7 回退，conditions 仍经
+    //     `resolved_config.config` 走旧通道）。
+    if !resolved_config.player_mods.is_empty() {
+        session.add_modifiers(resolved_config.player_mods.clone());
+    }
+
+    // 2e. customMods 行通道（M3 commit ④，vendor ConfigOptions.lua:2278-2296：
+    //     逐行 StripEscapes + parseMod，source=Custom）：解释器剥色码后按行
+    //     喂 add_modifier_texts——不可解析行自然落 `ParseStatus::Unsupported`
+    //     可见性通道（session.unsupported_modifier_texts）；结构性硬失败行
+    //     经 filter_parseable 跳过（与 2c quest / 装备文本通道同口径）。
+    if !resolved_config.custom_mod_lines.is_empty() {
+        let texts = filter_parseable(resolved_config.custom_mod_lines.clone());
         if !texts.is_empty() {
             session
                 .add_modifier_texts(&texts)
@@ -749,13 +781,29 @@ pub fn calculate_with_data(
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
     session.setup_enemy(options.enemy_level, enemy_tier);
 
+    // 5a'. config 解释器的 enemy 桶产物（M3-T1 A5 主路径）：enemy 条件 actor 化
+    //      条目（vendor `enemyModList:NewMod("Condition:<X>", FLAG, ...)`，带
+    //      `Condition:Effective` tag + EnemyConfig 归因）。`mode_effective=false`
+    //      下天然惰性；cfg 侧 `Enemy<X>` 条件由 `config_resolve` 反桥维持既有语义。
+    if !resolved_config.enemy_mods.is_empty() {
+        session.add_enemy_modifiers(resolved_config.enemy_mods.clone());
+    }
+
     // 5b. 玩家施加的元素曝光（build config `conditionEnemy*Exposure`）→ enemy 抗性减项
     //     （PoB2 config 默认每点 -20%）。仅有效口径生效，须在 setup_enemy 后。
     if options.mode_effective {
         let exposure = [
-            build.config.conditions.get("EnemyFireExposure").copied(),
-            build.config.conditions.get("EnemyColdExposure").copied(),
-            build
+            resolved_config
+                .config
+                .conditions
+                .get("EnemyFireExposure")
+                .copied(),
+            resolved_config
+                .config
+                .conditions
+                .get("EnemyColdExposure")
+                .copied(),
+            resolved_config
                 .config
                 .conditions
                 .get("EnemyLightningExposure")

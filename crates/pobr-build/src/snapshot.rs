@@ -125,6 +125,15 @@ fn collect_config_keys(build: &Build) -> Vec<String> {
         .collect();
     mults.sort();
     keys.extend(mults);
+    // 原始 config 输入（M3-T1 A5 主路径数据源）：解释器消费 raw_inputs 产出
+    // conditions/multipliers 之外的行为（enemy 覆盖 / customMods 等逐类打开），
+    // 须进内容哈希避免缓存别名。BTreeMap 遍历本身确定序。
+    keys.extend(
+        cfg.raw_inputs
+            .values
+            .iter()
+            .map(|(k, v)| format!("r:{k}={v:?}")),
+    );
     keys
 }
 

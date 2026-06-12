@@ -6,6 +6,7 @@
 
 use std::collections::HashMap;
 
+use pobr_core::rules::config_interpreter::RawConfigInputs;
 use pobr_core::{CalcConfig, CampaignProgress};
 use pobr_data::build_config::BanditChoice;
 use pobr_data::monster::EnemyTier;
@@ -41,6 +42,12 @@ pub struct BuildConfig {
     /// `None` = XML 未显式给出，计算侧回退编排选项的档位（PoB2 `defaultIndex = 3`
     /// 即默认 Pinnacle，与 [`EnemyTier::default`] 一致）。
     pub enemy_tier: Option<EnemyTier>,
+    /// `<Config>` 原始 `<Input name bool|number|string>` 键值（M3-T1 A5 主路径
+    /// 切换）：`parse_build` 经 `parse_config_inputs` 无损捕获，编排层在
+    /// `ConfigCatalog` 可用时走 `config_interpreter::interpret` 主路径消费
+    /// （见 `crate::config_resolve`）；缺 catalog（旧数据包 / `BuildData::empty`）
+    /// 回退本结构其余字段承载的旧 parse_config 产出（R7 容忍）。
+    pub raw_inputs: RawConfigInputs,
 }
 
 impl BuildConfig {

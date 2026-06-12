@@ -1,6 +1,10 @@
 //! M3-T1 A5 双跑对照（蓝图 D3 点 1）：旧 `parse_config` vs
 //! `parse_config_inputs` + `config_interpreter` 新路径。
 //!
+//! **持续回归**（commit ① 起）：主路径已切 interpreter（`config_resolve`），
+//! 本测试保持运行直至旧路径删除（dualrun 报告 §3-⑧）——任何让「旧 ⊆ 新且
+//! 交集逐值相等」失效的改动都会在此被拦下。
+//!
 //! 口径：**旧路径能产出的 conditions / multipliers / global_texts / 标量项，
 //! 新路径必须逐值覆盖（旧 ⊆ 新）且交集逐值相等**。「覆盖」分两层：
 //! 1. **同名同值**：新路径 `conditions`/`multipliers` 回填表直接命中；
@@ -240,8 +244,18 @@ fn classify_condition(
         );
         return;
     }
-    // 条目效果带 ActorCondition / actor Multiplier tag：解释器在 T5-E1 接通前
-    // 保守跳过整条 mod 并记 diagnostics——原始输入已捕获，待 T5-E1 后回补。
+    // 条件 → 数值 mod 化（§3-⑦ 回补后形态）：vendor 把 checkbox 落成 enemy
+    // 数值 mod（如曝光三条 `<X>Exposure` BASE 20 + ActorCondition 门控，
+    // ConfigOptions.lua:1864-1872）——开关语义由数值 mod 承载，FLAG 不再产出。
+    if !mods.is_empty() {
+        summary.record(
+            "条件→数值 mod 化（checkbox 落 enemy 数值 mod + actor 门控 tag）",
+            format!("{var} ← {} as {}", entry.var, mods[0].name.as_str()),
+        );
+        return;
+    }
+    // 条目效果带未映射 actor / 未接通 tag 维度：解释器保守跳过整条 mod 并记
+    // diagnostics——原始输入已捕获。
     let diag_prefix = format!("config.{}:", entry.var);
     if outcome
         .diagnostics
@@ -249,7 +263,7 @@ fn classify_condition(
         .any(|d| d.starts_with(&diag_prefix))
     {
         summary.record(
-            "tag 维度未接通（T5-E1 ActorCondition/actor Multiplier），保守跳过待回补",
+            "tag 维度未接通（未映射 actor 等），保守跳过待回补",
             format!("{var} ← {}", entry.var),
         );
         return;

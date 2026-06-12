@@ -9,17 +9,27 @@
 
 ## 0. 结论与现网状态
 
+> **2026-06-12 更新（M3-W3 行为 commit 簇）**：§3 的 ①②③④⑦ 已逐类打开
+> （commit 882983c / 5bb4c36 / eb64921 / 0fcbf9b / 1ad3aa9，前缀
+> `feat(m3-w3)`）。现网 `calculate_with_data` 经
+> `pobr-build/src/config_resolve.rs` 走 interpreter 主路径（缺 catalog 回退
+> 旧路径，R7）；ninja_parity 18-build **per-value 报告逐 commit diff = 0**
+> （644 行全量对照），BASELINE_* 五项不变。剩余 §3-⑤⑥⑧ 见各项标注。
+
 - **旧 ⊆ 新成立**：旧路径全部产出项（conditions / multipliers / global_texts /
   enemyIsBoss / resistancePenalty 标量）均被新路径覆盖，**不可解释项 = 0**
   （测试 hard assert）。
 - **交集逐值相等**：同名 conditions / multipliers、quest 奖励数值、两个标量
   包装（`enemy_tier_from_config` / `campaign_progress_from_config`）逐值断言通过。
-- **现网行为逐值不变**：`parse_build` 仍消费旧 `parse_config`（冻结为
-  `parse_config_legacy` doc(hidden) 双跑参照）；新路径
-  （`parse_config_inputs` + `interpret` + `ConfigCatalog`）已可用但无业务消费方。
-  ninja_parity / golden 全绿（= 逐值不变）。
-- **本波不开新增覆盖**：下述 §2 各类按蓝图 D3 属行为 commit，待主线显式审查
-  后逐类打开（每类独立 commit + baseline 显式审查 + ConfigOptions.lua 行号）。
+- **主路径已切换**（原「现网行为逐值不变」段的后续）：`parse_build` 把原始
+  `<Input>` 捕获进 `BuildConfig::raw_inputs`，编排层经 `config_resolve` 消费
+  interpreter 产出；旧 `parse_config`（`parse_config_legacy`）保留为
+  （a）缺 catalog 的 R7 回退、（b）quest text 通道（§3-⑤ 前不切换）、
+  （c）`config_dualrun` 持续回归参照。
+- enemy 条件 actor 化条目（§2.2 行 1）经 **cfg 反桥**（enemy 桶
+  `Condition:<X>` FLAG → cfg `Enemy<X>`）维持 mod_parser 既有
+  `against <X> enemies` 语义；曝光三条另有原始输入直读桥（actor 快照
+  `player.CanApply<X>Exposure` 接通后必须退役，见 config_resolve 注释）。
 
 ## 1. 覆盖判定口径（旧产出项的三层覆盖）
 
@@ -72,22 +82,36 @@
 
 ## 3. 遗留项（待行为 commit / 后续波次清单）
 
-按蓝图 D3「每项独立 commit + PoB2 行号 + baseline 显式审查」执行：
+按蓝图 D3「每项独立 commit + PoB2 行号 + baseline 显式审查」执行
+（状态更新 2026-06-12，M3-W3 簇）：
 
-1. **xml_build 切换主路径**：`parse_build` 改消费
-   `parse_config_inputs` + interpreter（含 §2.2/§2.3 全部语义打开）；前置依赖
-   D5 `mode_combat` 行为 commit（Combat 门控条件）与 T5-E1（Exposure 三条）。
-2. **count condition / implyCond 打开**（§2.3 行 1-2；ConfigOptions.lua
-   conditionStationary/UsedSkillRecently 族）。
-3. **enemy 数值覆盖打开**（§2.3 行 3；敌方抗性/暴击覆盖直注 enemy db）。
-4. **customMods 生效**（§2.3 行 4；build 层喂 `session.add_modifier_texts`，
-   source=Custom，vendor ConfigOptions.lua:2278-2296）。
+1. ✅ **xml_build 切换主路径**（commit 882983c）：`parse_build` 捕获
+   `raw_inputs`，编排层 `config_resolve` 消费 interpreter；标量走既有包装
+   （仅显式输入覆盖）；Combat 门控 / enemy actor 化条目惰性注入 + cfg 反桥；
+   曝光条件桥维持 5b 行为。per-value parity diff = 0。
+   注：D5 `mode_combat` 行为 commit（T2-B4 自动置位）仍未开——Combat 门控
+   条目继续惰性，属 T2 范畴非本清单项。
+2. ✅ **count condition / implyCond 打开**（commit 5bb4c36；
+   ConfigOptions.lua:120-127 conditionStationary、:1130-1134
+   conditionCritRecently implyCondList 等）。新增键在当前 corpus 无消费方，
+   parity diff = 0；行为由 config_resolve/config_fixtures 测试锁定。
+3. ✅ **enemy 数值覆盖打开**（commit eb64921；ConfigOptions.lua:2143-2157
+   抗性族、:1892-1894 SelfCritChance、:1782/1800/1840 异常层数）。18-build
+   无此类输入，parity diff = 0。
+4. ✅ **customMods 生效**（commit 0fcbf9b；vendor ConfigOptions.lua:2278-2296；
+   build 层 2e 步喂 `session.add_modifier_texts`，不可解析行落 Unsupported
+   通道；端到端 fixture 测试锁定）。
 5. **quest / 条件命名口径统一**（§2.2；与 M6 parser 规则、M1 statmap 名空间
-   一并裁决，避免双名共存）。
-6. **第二批 config handlers**（§2.4；优先命中 18-build 的 8 个缺口）。
-7. **T5-E1 后回补 ActorCondition/actor Multiplier 条目**（§2.4 行 3）。
-8. **删旧码**：上述全部打开、报告复核干净后删除 `parse_config_legacy` /
-   `ParsedConfig` 导出与旧 `parse_config`（独立 commit）。
+   一并裁决，避免双名共存）。**未动**——quest 奖励仍走旧 text 通道，
+   interpreter 的声明式 quest mod 在注入侧排除防双计。
+6. **第二批 config handlers**（§2.4；优先命中 18-build 的 8 个缺口）。**未动**。
+7. ✅ **T5-E1 后回补 ActorCondition/actor Multiplier 条目**（commit 1ad3aa9；
+   actor 字面量按桶翻译进 `ModTag` actor 字段；曝光三条 + ResZero 三条 +
+   Corrosion 两效果回补；mod 因玩家侧 actor 快照无置位来源暂惰性，
+   parity diff = 0）。
+8. **删旧码**：⑤⑥ 完成、报告复核干净后删除 `parse_config_legacy` /
+   `ParsedConfig` 导出与旧 `parse_config`、cfg 反桥转正为唯一来源
+   （独立 commit）。**未动**（旧路径当前还承担 R7 回退 + quest 通道）。
 
 ## 4. 监控基线（A6）
 
