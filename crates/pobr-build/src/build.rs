@@ -192,16 +192,11 @@ pub struct Build {
     /// `jewels` 注入珠宝**自身**的全局词条，本列表额外按半径几何把 `also grant` 展开为
     /// 「半径内已分配对应种类节点数 × 授予」的全局 mod（见 `calc_orchestrator`）。
     pub radius_jewels: Vec<RadiusJewel>,
-    /// **激活态**的药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`）。
-    /// PoB2 在 EFFECTIVE buff 模式下把激活 flask/charm 的 buff 词条（`during effect`
-    /// 族等）计入玩家 modDB；PoBR 在编排层把这些物品的可解析词条按全局注入
-    /// （见 `calc_orchestrator`）。非激活槽不进入本列表。
-    pub flask_charm_items: Vec<Item>,
-    /// **激活态**药剂/护符的「槽名 + 物品」保留（M3-T4 D2，蓝图 §7.2-2）：
-    /// `("Flask 1"|"Charm 1..3", Item)`，XML 文档序。与 [`Self::flask_charm_items`]
-    /// 同源同过滤（仅 `active="true"`）——本字段额外保留槽名，供 flask/charm 结构化
-    /// 通道做 `SourceId(Flask, "flask.<slot>")` 归因与 flask/charm 分类；
-    /// `flask_charm_items` 是编排层「原值直注」旧路径的输入，切换（删旧路径）时一并退役。
+    /// **激活态**药剂/护符的「槽名 + 物品」（M3-T4，蓝图 §7.2-2）：
+    /// `("Flask 1"|"Charm 1..3", Item)`，XML 文档序，仅 `active="true"` 的槽进入
+    /// （vendor CalcSetup.lua:1014-1028 `slot.active` 门控）。槽名供 flask/charm
+    /// 结构化通道做 `SourceId(Flask, "flask.<slot>")` 归因与 flask/charm 分类，
+    /// 经 `ingest_flask_charm` → env_finalize 阶段 3 `merge_flasks_charms` 进计算。
     pub utility_slots: Vec<(String, Item)>,
     /// 技能宝石组。
     pub socket_groups: Vec<SocketGroup>,
@@ -258,12 +253,6 @@ impl Build {
     /// 设定范围珠宝（radius jewel）几何展开列表，返回新副本。
     pub fn with_radius_jewels(mut self, radius_jewels: Vec<RadiusJewel>) -> Self {
         self.radius_jewels = radius_jewels;
-        self
-    }
-
-    /// 设定激活态药剂/护符列表，返回新副本。
-    pub fn with_flask_charm_items(mut self, items: Vec<Item>) -> Self {
-        self.flask_charm_items = items;
         self
     }
 
