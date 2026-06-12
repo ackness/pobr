@@ -2,6 +2,7 @@ pub mod actor;
 pub mod ailment;
 pub mod ailment_apply;
 pub mod breakdown;
+pub mod buff_pass;
 pub mod crit;
 pub mod damage;
 pub mod defence;
@@ -32,6 +33,10 @@ pub use ailment::{
     bleed_instance, corrupted_blood_instance, ignite_instance, poison_instance, shock_effect,
 };
 pub use breakdown::{BreakdownStep, BreakdownTable};
+pub use buff_pass::{
+    CursePassOutput, CurseSourceWeight, DEFAULT_ENEMY_CURSE_LIMIT, DEFAULT_ENEMY_MARK_LIMIT,
+    determine_curse_priority, scale_value,
+};
 pub use crit::{CritOutcome, resolve_crit, resolve_crit_traced};
 pub use damage::{
     ConversionRules, DAMAGE_TYPES, DamageComponent, convert_damage, gain_as_extra,

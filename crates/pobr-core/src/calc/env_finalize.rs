@@ -308,9 +308,12 @@ pub fn merge_flasks_charms(env: &mut Env) {
 }
 
 /// 阶段 4（T3 实现）：`Env::buff_skills` 九类分发（对照 CalcPerform.lua:1831-2984；
-/// aura 乘区 :2103-2105 / curse priority :454-485 + limit :2829-2833），整段吃
-/// `cfg.mode_buffs` 门控（D5）。T0 占位：no-op。
-pub fn buff_pass(_env: &mut Env) {}
+/// aura 乘区 :2102-2105 / curse priority :454-485 + limit :2829-2833），整段吃
+/// `cfg.mode_buffs` 门控（D5）。实现体见 [`super::buff_pass`]（M3 T3-C2/C3）；
+/// `mode_buffs == false`（默认）或无 buff spec 时空转（逐值不变）。
+pub fn buff_pass(env: &mut Env) {
+    super::buff_pass::buff_pass(env);
+}
 
 /// 阶段 6（T2 实现，蓝图 §5.3 B3）：doActorMisc 等价——内建 buff flag 经
 /// `Env::buff_definitions`（`overlay/buff_definitions.json` 注入）展开为 mods

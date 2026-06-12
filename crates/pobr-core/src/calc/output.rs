@@ -223,6 +223,15 @@ pub struct OutputTable {
     pub cold_max_hit_pob2: f64,
     pub lightning_max_hit_pob2: f64,
     pub chaos_max_hit_pob2: f64,
+
+    // --- M3 T3：curse 面板字段（buff_pass 产出经 Env::curse_pass_output 回填；
+    //     蓝图 §6.3「display_catalog 不扩，仅 OutputTable 字段」；默认 0/空 中性） ---
+    /// 敌方诅咒上限（PoB2 `output.EnemyCurseLimit`，CalcPerform.lua:2830）。
+    /// buff_pass 未运行（mode_buffs 关 / 无 buff spec）时维持 0。
+    pub enemy_curse_limit: f64,
+    /// curse 槽占用列表（顺序 = vendor `curseSlots` 合并序：hex 槽 → mark 槽 →
+    /// `ignoreCurseLimit` 槽外追加，CalcPerform.lua:2878-2896）。
+    pub curse_slots: Vec<String>,
 }
 
 /// 单个召唤物的输出快照（结构同玩家 offence/defence 关键输出的子集）。
@@ -377,6 +386,9 @@ impl Default for OutputTable {
             cold_max_hit_pob2: 0.0,
             lightning_max_hit_pob2: 0.0,
             chaos_max_hit_pob2: 0.0,
+            // M3 T3：curse 面板默认中性（buff_pass 未运行时不影响任何既有输出）。
+            enemy_curse_limit: 0.0,
+            curse_slots: Vec::new(),
         }
     }
 }

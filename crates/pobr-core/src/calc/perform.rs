@@ -85,6 +85,12 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     let output =
         calculate_minimal_vs_enemy(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &input);
     env.player.output = OutputTable::from(&output);
+    // M3 T3：curse 面板回填（buff_pass 在 env_finalize 阶段 4 产出，先于上行整表
+    // 覆盖，经 Env::curse_pass_output 中转；None = buff_pass 未运行，维持 Default 0）。
+    if let Some(curse) = &env.curse_pass_output {
+        env.player.output.enemy_curse_limit = curse.enemy_curse_limit;
+        env.player.output.curse_slots = curse.curse_slots.clone();
+    }
     env.player.breakdown = BreakdownTable::from_steps(output.breakdown);
     calc_defence(&mut env.player, &env.cfg, env.enemy.base.accuracy);
 

@@ -14,5 +14,11 @@ flate2 = "1"
 quick-xml = "0.36"
 thiserror = "2"
 
+[features]
+# M3 T3（蓝图 §6.1）feature 转发：开 = pobr-core buff_pass 可消费 Aura BuffSpec
+# （仍需 cfg.mode_buffs，编排层本波不置位——不双计）。默认关；仅 C5 双跑/测试启用，
+# C5 行为 commit 同步关闭 aura_buff_modifiers 静态直注。
+buff-pass-aura = ["pobr-core/buff-pass-aura"]
+
 [dev-dependencies]
 serde_json = { workspace = true }
