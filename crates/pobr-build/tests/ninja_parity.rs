@@ -496,7 +496,13 @@ const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 /// （TotalDotDPS/CombinedDPS golden=0）+ essence-drain TotalDotDPS 1.0000；
 /// 分母 37 = 18 build × (TotalDotDPS + CombinedDPS) + essence-drain WithDotDPS。
 const BASELINE_DOT_HIT5: usize = 4; // 实测 4/37 = 10.8%（M4-G 缺口波合并重记：g1/g3 击中量级连带 DoT 收敛 +1）
-const BASELINE_DOT_HIT10: usize = 5; // 实测 5/37 = 13.5%（M4-H 连带）
+/// **M4-J 已审查例外（−1 @10%）**：druid-oracle-comet TotalDotDPS 1.08x→1.17x——
+/// 旧 1.08x 是**伪命中**：isSwitchable 树变体缺失（druid 6898 误用基础版、缺
+/// `Gain 5% of Damage as Extra Damage of a random Element`）恰好部分抵消既有
+/// ignite 高估。变体修复后（PoBR 解析/展开与 vendor CalcOffence.lua:1175-1200
+/// 完全同口径：DamageGainAsRandom 三元素均分 n/3），真实偏差 ~1.17x 暴露——
+/// 属 ignite 量级线既有缺口（与本波树数据无关），登记待 DoT 线收敛。
+const BASELINE_DOT_HIT10: usize = 4; // 实测 4/37 = 10.8%（M4-J 变体修复揭示伪命中，见上）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

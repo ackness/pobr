@@ -150,13 +150,13 @@ fn parse_layout(lua: &str) -> Result<TreeLayout, String> {
 }
 
 /// 返回 `sub`（来自 `whole` 的切片）末尾在 `whole` 中的字节偏移。
-fn block_offset(whole: &str, sub: &str) -> usize {
+pub(crate) fn block_offset(whole: &str, sub: &str) -> usize {
     let start = sub.as_ptr() as usize - whole.as_ptr() as usize;
     start + sub.len()
 }
 
 /// 找到 `marker` 后第一个 `{` 起、配平到对应 `}` 的子串（含两端花括号）。
-fn balanced_block<'a>(lua: &'a str, marker: &str) -> Option<&'a str> {
+pub(crate) fn balanced_block<'a>(lua: &'a str, marker: &str) -> Option<&'a str> {
     let start = lua.find(marker)?;
     let brace_start = start + marker.len() - 1;
     let bytes = lua.as_bytes();
@@ -349,7 +349,7 @@ fn parse_node_orbits(block: &str) -> BTreeMap<u32, NodeOrbit> {
 ///
 /// 输入须为含两端 `{`/`}` 的配平块。节点块的 `group`/`orbit`/`orbitIndex` 在顶层，而
 /// `connections`/`recipe`/`stats` 等子表内部也含同名 `orbit=` 字段——剥离后避免误读。
-fn strip_nested_blocks(block: &str) -> String {
+pub(crate) fn strip_nested_blocks(block: &str) -> String {
     let mut out = String::with_capacity(block.len());
     let mut depth = 0i32;
     for c in block.chars() {
@@ -380,7 +380,7 @@ fn strip_nested_blocks(block: &str) -> String {
 /// 在配平块内抽取顶层标量字段 `field`（如 `"x="` / `"group="`）的浮点值。
 ///
 /// 用 `\n\t+field`（换行 + 任意制表符缩进 + 字段名）锚定，避免误命中嵌套子表同名 key。
-fn scalar_field(block: &str, field: &str) -> Option<f64> {
+pub(crate) fn scalar_field(block: &str, field: &str) -> Option<f64> {
     let mut search_from = 0;
     while let Some(rel) = block[search_from..].find(field) {
         let pos = search_from + rel;
@@ -404,7 +404,7 @@ fn scalar_field(block: &str, field: &str) -> Option<f64> {
 }
 
 /// 顶层标量字段的整数解析版。
-fn scalar_u32(block: &str, field: &str) -> Option<u32> {
+pub(crate) fn scalar_u32(block: &str, field: &str) -> Option<u32> {
     scalar_field(block, field).map(|v| v as u32)
 }
 

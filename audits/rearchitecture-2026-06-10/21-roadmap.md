@@ -203,7 +203,7 @@
 | 16-G4 | 物品 | BaseItemDef 缺关键字段 | **M1**（落库）→ **M2/M4**（消费） | block/spirit→M2，reload→M4 |
 | 17-G1 | 天赋树 | 武器组节点未解析 | **M5c** | |
 | 17-G2 | 天赋树 | 节点效果缩放管线缺失 | **M5c** | node_effect.rs |
-| 17-G3 | 天赋树 | isSwitchable ReplaceNode 缺失 | **M5c** | 需 pipeline 补 .dat 表 |
+| 17-G3 | 天赋树 | isSwitchable ReplaceNode 缺失 | **已落地（M4-J 提前）** | 无需 .dat：vendor tree.lua `options` 经 `--tree-variants` 回填 + `collect_allocated_mods_for_class` 消费（72 变体全量） |
 | 18-G1 | 技能/宝石 | gem quality 四层皆空 | **M1** | |
 | 18-G2 | 技能/宝石 | support 适用性裁决断裂 | **M1** | |
 | 18-G3 | 技能/宝石 | SkillStatMap（同 15-G2） | **M1** | |

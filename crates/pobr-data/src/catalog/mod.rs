@@ -84,7 +84,10 @@ pub use skills::{
     GrantedEffectDef, QualityStat, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
     SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef,
 };
-pub use tree::{PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
+pub use tree::{
+    PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveNodeVariant,
+    PassiveTreeMeta,
+};
 pub use triggers::{
     MirageConfigDef, MirageConfigsDef, MirageSourceFilterDef, MirageTriggerDef, TriggerConfigDef,
     TriggerConfigsDef, TriggerKeyDef, TriggerSkillCondDef,

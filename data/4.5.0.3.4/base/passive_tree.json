@@ -1461,6 +1461,16 @@
     "connections": [
       50084,
       58170
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 57726,
+        "name": "Life Regeneration",
+        "stats": [
+          "Regenerate 0.2% of maximum Life per second"
+        ]
+      }
     ]
   },
   {
@@ -2133,6 +2143,17 @@
     "y": -2532.201315,
     "connections": [
       18845
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 31707,
+        "name": "Spell and Minion Damage",
+        "stats": [
+          "8% increased Spell Damage",
+          "Minions deal 8% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -3022,7 +3043,17 @@
     "orbit_index": 0,
     "x": -2412.635109,
     "y": -15898.889542,
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 11705,
+        "name": "Steward of Kulemak",
+        "stats": [
+          "Damaging Spells consume a Power Charge if able to trigger Abyssal Apparition"
+        ]
+      }
+    ]
   },
   {
     "skill": 2559,
@@ -3385,7 +3416,19 @@
     "orbit_index": 104,
     "x": -4532.190959,
     "y": -14977.686651,
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 36863,
+        "name": "Unwilling Offering",
+        "stats": [
+          "Your Offerings can target Enemies in Culling range",
+          "Your Offerings affect you instead of your Minions",
+          "Offerings created by Culling Enemies have 1% increased Effect per Power of Culled Enemy"
+        ]
+      }
+    ]
   },
   {
     "skill": 2888,
@@ -3494,7 +3537,17 @@
     "connections": [
       2516
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 12474,
+        "name": "Energy Shield if Consumed Power Charge",
+        "stats": [
+          "30% increased maximum Energy Shield if you've consumed a Power Charge Recently"
+        ]
+      }
+    ]
   },
   {
     "skill": 2999,
@@ -4738,6 +4791,17 @@
     "y": -3834.19,
     "connections": [
       5726
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 17324,
+        "name": "Power of the Dead",
+        "stats": [
+          "Minions deal 20% increased Damage",
+          "Minions have 4% increased Attack and Cast Speed"
+        ]
+      }
     ]
   },
   {
@@ -5367,6 +5431,16 @@
     "y": 865.02,
     "connections": [
       28992
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 55896,
+        "name": "Attack Damage",
+        "stats": [
+          "8% increased Attack Damage"
+        ]
+      }
     ]
   },
   {
@@ -6002,6 +6076,17 @@
     "y": -1694.81851,
     "connections": [
       18845
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 17306,
+        "name": "Spell and Minion Damage",
+        "stats": [
+          "10% increased Spell Damage",
+          "Minions deal 10% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -6019,6 +6104,16 @@
     "y": -3752.19,
     "connections": [
       2254
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 48235,
+        "name": "Minion Life",
+        "stats": [
+          "Minions have 10% increased maximum Life"
+        ]
+      }
     ]
   },
   {
@@ -7199,6 +7294,18 @@
     "y": -2357.908462,
     "connections": [
       58651
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 54594,
+        "name": "Natural Essence",
+        "stats": [
+          "16% increased Armour",
+          "16% increased maximum Energy Shield",
+          "20% increased Elemental Ailment Threshold"
+        ]
+      }
     ]
   },
   {
@@ -8112,6 +8219,16 @@
     "y": -2730.609984,
     "connections": [
       51184
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 29472,
+        "name": "Minion Life",
+        "stats": [
+          "Minions have 10% increased maximum Life"
+        ]
+      }
     ]
   },
   {
@@ -8273,6 +8390,16 @@
     "y": 708.540016,
     "connections": [
       4313
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 22193,
+        "name": "Attack Damage",
+        "stats": [
+          "8% increased Attack Damage"
+        ]
+      }
     ]
   },
   {
@@ -8418,6 +8545,18 @@
       30704,
       48305,
       61067
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 7197,
+        "name": "Guardian of the Wilds",
+        "stats": [
+          "10% increased Damage",
+          "Gain 5% of Damage as Extra Damage of a random Element",
+          "+5 to Strength and Intelligence"
+        ]
+      }
     ]
   },
   {
@@ -10479,7 +10618,17 @@
     "connections": [
       59
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 28740,
+        "name": "Curse Area",
+        "stats": [
+          "15% increased Area of Effect of Curses"
+        ]
+      }
+    ]
   },
   {
     "skill": 8616,
@@ -12726,6 +12875,16 @@
     "y": -4087.19,
     "connections": [
       3823
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 61436,
+        "name": "Minion Damage",
+        "stats": [
+          "Minions deal 10% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -15721,6 +15880,17 @@
     "y": -812.180016,
     "connections": [
       17584
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 36764,
+        "name": "Spell and Attack Damage",
+        "stats": [
+          "8% increased Spell Damage",
+          "8% increased Attack Damage"
+        ]
+      }
     ]
   },
   {
@@ -15755,6 +15925,16 @@
     "y": -2062.14,
     "connections": [
       64299
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 25740,
+        "name": "Damage",
+        "stats": [
+          "8% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -17366,6 +17546,16 @@
     "y": 1271.98642,
     "connections": [
       28992
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 53191,
+        "name": "Accuracy",
+        "stats": [
+          "8% increased Accuracy Rating"
+        ]
+      }
     ]
   },
   {
@@ -21867,7 +22057,18 @@
     "orbit": 2,
     "orbit_index": 17,
     "x": -2345.329984,
-    "y": -926.731315
+    "y": -926.731315,
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 53526,
+        "name": "Spell and Attack Damage",
+        "stats": [
+          "8% increased Spell Damage",
+          "8% increased Attack Damage"
+        ]
+      }
+    ]
   },
   {
     "skill": 17587,
@@ -21980,7 +22181,17 @@
     "orbit": 2,
     "orbit_index": 8,
     "x": -3141.163885,
-    "y": -1813.64
+    "y": -1813.64,
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 14942,
+        "name": "Damage",
+        "stats": [
+          "8% increased Damage"
+        ]
+      }
+    ]
   },
   {
     "skill": 17664,
@@ -22548,6 +22759,17 @@
     "connections": [
       4748,
       22691
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 48926,
+        "name": "Living Death",
+        "stats": [
+          "Minions have 15% increased maximum Life",
+          "Minions Revive 15% faster"
+        ]
+      }
     ]
   },
   {
@@ -23104,6 +23326,17 @@
     "y": -1516.98009,
     "connections": [
       39540
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 50882,
+        "name": "Primal Spirit",
+        "stats": [
+          "10% increased Critical Hit Chance while Shapeshifted",
+          "8% increased Skill Speed while Shapeshifted"
+        ]
+      }
     ]
   },
   {
@@ -23607,6 +23840,17 @@
     "y": -2331.682618,
     "connections": [
       55807
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 27384,
+        "name": "Spell and Minion Damage",
+        "stats": [
+          "10% increased Spell Damage",
+          "Minions deal 10% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -23998,6 +24242,17 @@
     "y": 1599.66,
     "connections": [
       29582
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 39628,
+        "name": "Reflex Action",
+        "stats": [
+          "30% increased Parry Damage",
+          "30% increased Evasion Rating while Parrying"
+        ]
+      }
     ]
   },
   {
@@ -24784,7 +25039,17 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": 3433.98,
-    "y": 1627.23
+    "y": 1627.23,
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 28615,
+        "name": "Accuracy",
+        "stats": [
+          "8% increased Accuracy Rating"
+        ]
+      }
+    ]
   },
   {
     "skill": 19820,
@@ -25657,7 +25922,17 @@
     "connections": [
       2877
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 15028,
+        "name": "Minion Duration",
+        "stats": [
+          "15% increased Minion Duration"
+        ]
+      }
+    ]
   },
   {
     "skill": 20779,
@@ -27237,6 +27512,17 @@
     "y": 1581.38,
     "connections": [
       60505
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 28255,
+        "name": "Melee and Projectile Damage",
+        "stats": [
+          "10% increased Melee Damage",
+          "10% increased Projectile Damage"
+        ]
+      }
     ]
   },
   {
@@ -27522,6 +27808,17 @@
     "connections": [
       51184,
       51968
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 53140,
+        "name": "Spell and Minion Damage",
+        "stats": [
+          "8% increased Spell Damage",
+          "Minions deal 8% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -27891,6 +28188,16 @@
     "connections": [
       39037,
       61027
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 19990,
+        "name": "Minion Life",
+        "stats": [
+          "Minions have 10% increased maximum Life"
+        ]
+      }
     ]
   },
   {
@@ -27998,6 +28305,17 @@
     "connections": [
       28992,
       42781
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 29915,
+        "name": "Melee and Projectile Damage",
+        "stats": [
+          "10% increased Melee Damage",
+          "10% increased Projectile Damage"
+        ]
+      }
     ]
   },
   {
@@ -28053,6 +28371,16 @@
     "connections": [
       3823,
       22314
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 183,
+        "name": "Minion Damage",
+        "stats": [
+          "Minions deal 10% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -28681,7 +29009,17 @@
     "connections": [
       8611
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 390,
+        "name": "Rupture the Flesh",
+        "stats": [
+          "Cursed Enemies Killed by you, or by Allies in your Presence, have a 33% chance to Explode, dealing a quarter of their maximum Life as Physical Damage"
+        ]
+      }
+    ]
   },
   {
     "skill": 23360,
@@ -32080,7 +32418,17 @@
     "connections": [
       20772
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 41162,
+        "name": "Umbral Well",
+        "stats": [
+          "Skeletal Minions you would create instead grant you Umbral Souls for each Minion you would have created"
+        ]
+      }
+    ]
   },
   {
     "skill": 26092,
@@ -34921,6 +35269,17 @@
     "connections": [
       12430,
       50084
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 50612,
+        "name": "Spell and Attack Damage",
+        "stats": [
+          "10% increased Spell Damage",
+          "10% increased Attack Damage"
+        ]
+      }
     ]
   },
   {
@@ -35497,6 +35856,19 @@
       41838,
       44948,
       63469
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 7130,
+        "name": "Bastion of the Forest",
+        "stats": [
+          "15% increased Armour",
+          "+15% of Armour also applies to Elemental Damage",
+          "10% faster start of Energy Shield Recharge",
+          "+5 to Strength and Intelligence"
+        ]
+      }
     ]
   },
   {
@@ -35607,6 +35979,18 @@
     "connections": [
       43923,
       62628
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 32062,
+        "name": "Primal Instinct",
+        "stats": [
+          "8% increased Attack Speed",
+          "6% increased Area of Effect",
+          "+10 to Dexterity"
+        ]
+      }
     ]
   },
   {
@@ -36270,6 +36654,16 @@
     "y": 1625.756115,
     "connections": [
       35987
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 5083,
+        "name": "Stun Threshold during Parry",
+        "stats": [
+          "20% increased Stun Threshold while Parrying"
+        ]
+      }
     ]
   },
   {
@@ -36333,7 +36727,17 @@
     "orbit": 2,
     "orbit_index": 7,
     "x": 528.379984,
-    "y": -2532.201315
+    "y": -2532.201315,
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 31204,
+        "name": "Mana Regeneration",
+        "stats": [
+          "10% increased Mana Regeneration Rate"
+        ]
+      }
+    ]
   },
   {
     "skill": 29762,
@@ -37440,6 +37844,17 @@
       13783,
       19808,
       56472
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 53849,
+        "name": "Eagle Eye",
+        "stats": [
+          "+30 to Accuracy Rating",
+          "10% increased Accuracy Rating"
+        ]
+      }
     ]
   },
   {
@@ -40792,7 +41207,17 @@
     "connections": [
       33570
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 30732,
+        "name": "Life",
+        "stats": [
+          "3% increased maximum Life"
+        ]
+      }
+    ]
   },
   {
     "skill": 33180,
@@ -43624,6 +44049,16 @@
       6789,
       35660,
       56651
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 14623,
+        "name": "Attack Damage",
+        "stats": [
+          "10% increased Attack Damage"
+        ]
+      }
     ]
   },
   {
@@ -45484,6 +45919,16 @@
     "y": -1418.438568,
     "connections": [
       18465
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 16160,
+        "name": "Skill Speed while Shapeshifted",
+        "stats": [
+          "3% increased Skill Speed while Shapeshifted"
+        ]
+      }
     ]
   },
   {
@@ -45644,7 +46089,17 @@
     "connections": [
       28431
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 31398,
+        "name": "Life",
+        "stats": [
+          "3% increased maximum Life"
+        ]
+      }
+    ]
   },
   {
     "skill": 36709,
@@ -48984,7 +49439,17 @@
     "connections": [
       58932
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 59609,
+        "name": "Energy Shield",
+        "stats": [
+          "20% increased maximum Energy Shield"
+        ]
+      }
+    ]
   },
   {
     "skill": 39274,
@@ -49303,6 +49768,16 @@
     "connections": [
       50558,
       55933
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 22652,
+        "name": "Skill Speed while Shapeshifted",
+        "stats": [
+          "3% increased Skill Speed while Shapeshifted"
+        ]
+      }
     ]
   },
   {
@@ -50477,6 +50952,16 @@
     "y": 2128.06,
     "connections": [
       44527
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 18391,
+        "name": "Ailment Threshold",
+        "stats": [
+          "15% increased Elemental Ailment Threshold"
+        ]
+      }
     ]
   },
   {
@@ -52023,6 +52508,17 @@
     "y": -2688.681299,
     "connections": [
       1755
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 37463,
+        "name": "Spell and Minion Damage",
+        "stats": [
+          "8% increased Spell Damage",
+          "Minions deal 8% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -53031,6 +53527,17 @@
     "connections": [
       55429,
       56472
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 42895,
+        "name": "Stalk and Leap",
+        "stats": [
+          "30% increased Melee Damage if you've dealt a Projectile Attack Hit in the past eight seconds",
+          "30% increased Projectile Damage if you've dealt a Melee Hit in the past eight seconds"
+        ]
+      }
     ]
   },
   {
@@ -54331,6 +54838,16 @@
     "y": -2688.681299,
     "connections": [
       29695
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 38659,
+        "name": "Mana Regeneration",
+        "stats": [
+          "10% increased Mana Regeneration Rate"
+        ]
+      }
     ]
   },
   {
@@ -54550,6 +55067,16 @@
     "y": 1345.163885,
     "connections": [
       19104
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 34062,
+        "name": "Stun Threshold during Parry",
+        "stats": [
+          "20% increased Stun Threshold while Parrying"
+        ]
+      }
     ]
   },
   {
@@ -55486,6 +56013,17 @@
     "y": 1884.363885,
     "connections": [
       44875
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 55535,
+        "name": "Attuned with Nature",
+        "stats": [
+          "25% increased Elemental Ailment Threshold",
+          "25% increased Stun Threshold while on Full Life"
+        ]
+      }
     ]
   },
   {
@@ -56082,6 +56620,17 @@
     "y": -2243.243643,
     "connections": [
       5777
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 48248,
+        "name": "Armour and Energy Shield",
+        "stats": [
+          "12% increased Armour",
+          "12% increased maximum Energy Shield"
+        ]
+      }
     ]
   },
   {
@@ -56928,6 +57477,16 @@
     "y": -3752.19,
     "connections": [
       22314
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 40885,
+        "name": "Chaos Damage",
+        "stats": [
+          "10% increased Chaos Damage"
+        ]
+      }
     ]
   },
   {
@@ -63093,6 +63652,16 @@
     "connections": [
       12462,
       32194
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 36908,
+        "name": "Damage",
+        "stats": [
+          "8% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -63717,7 +64286,17 @@
     "connections": [
       26085
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 15373,
+        "name": "Minion Reservation Efficiency",
+        "stats": [
+          "6% increased Reservation Efficiency of Minion Skills"
+        ]
+      }
+    ]
   },
   {
     "skill": 51169,
@@ -63770,6 +64349,18 @@
       3242,
       29502,
       41965
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 5788,
+        "name": "Raw Destruction",
+        "stats": [
+          "16% increased Spell Damage",
+          "Minions deal 16% increased Damage",
+          "+10 to Intelligence"
+        ]
+      }
     ]
   },
   {
@@ -63961,6 +64552,17 @@
     "connections": [
       5726,
       51968
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 64801,
+        "name": "Jagged Shards",
+        "stats": [
+          "20% increased Critical Hit Chance for Spells",
+          "20% increased Physical Damage"
+        ]
+      }
     ]
   },
   {
@@ -64878,7 +65480,17 @@
     "orbit": 3,
     "orbit_index": 18,
     "x": -813.24,
-    "y": -3752.19
+    "y": -3752.19,
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 18040,
+        "name": "Physical Damage",
+        "stats": [
+          "10% increased Physical Damage"
+        ]
+      }
+    ]
   },
   {
     "skill": 51974,
@@ -69263,6 +69875,16 @@
     "y": 1847.176198,
     "connections": [
       44527
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 1247,
+        "name": "Ailment Threshold",
+        "stats": [
+          "15% increased Elemental Ailment Threshold"
+        ]
+      }
     ]
   },
   {
@@ -69366,6 +69988,17 @@
     "y": 1369.34,
     "connections": [
       22049
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 24854,
+        "name": "Melee and Projectile Damage",
+        "stats": [
+          "10% increased Melee Damage",
+          "10% increased Projectile Damage"
+        ]
+      }
     ]
   },
   {
@@ -69888,6 +70521,16 @@
     "y": -2616.058685,
     "connections": [
       6686
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 21429,
+        "name": "Minion Life",
+        "stats": [
+          "Minions have 10% increased maximum Life"
+        ]
+      }
     ]
   },
   {
@@ -70055,6 +70698,16 @@
     "y": -4228.391432,
     "connections": [
       64046
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 10903,
+        "name": "Chaos Damage",
+        "stats": [
+          "10% increased Chaos Damage"
+        ]
+      }
     ]
   },
   {
@@ -70960,6 +71613,16 @@
     "y": 727.98,
     "connections": [
       38143
+    ],
+    "variants": [
+      {
+        "class": "Huntress",
+        "variant_skill": 39263,
+        "name": "Attack Damage",
+        "stats": [
+          "10% increased Attack Damage"
+        ]
+      }
     ]
   },
   {
@@ -72961,6 +73624,16 @@
     "y": -1125.139984,
     "connections": [
       61067
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 41568,
+        "name": "Life Regeneration",
+        "stats": [
+          "Regenerate 0.2% of maximum Life per second"
+        ]
+      }
     ]
   },
   {
@@ -73117,6 +73790,16 @@
     "y": -4228.391432,
     "connections": [
       51335
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 15545,
+        "name": "Physical Damage",
+        "stats": [
+          "10% increased Physical Damage"
+        ]
+      }
     ]
   },
   {
@@ -73444,6 +74127,17 @@
     "connections": [
       49357,
       50558
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 63913,
+        "name": "Armour and Energy Shield",
+        "stats": [
+          "12% increased Armour",
+          "12% increased maximum Energy Shield"
+        ]
+      }
     ]
   },
   {
@@ -73555,7 +74249,17 @@
     "connections": [
       17788
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 35941,
+        "name": "Energy Shield",
+        "stats": [
+          "20% increased maximum Energy Shield"
+        ]
+      }
+    ]
   },
   {
     "skill": 58779,
@@ -75386,6 +76090,17 @@
       55909,
       56935,
       58362
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 19602,
+        "name": "Spell and Minion Damage",
+        "stats": [
+          "8% increased Spell Damage",
+          "Minions deal 8% increased Damage"
+        ]
+      }
     ]
   },
   {
@@ -76233,7 +76948,17 @@
     "orbit": 2,
     "orbit_index": 21,
     "x": -2303.401299,
-    "y": -1083.211299
+    "y": -1083.211299,
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 50065,
+        "name": "Life Regeneration",
+        "stats": [
+          "Regenerate 0.2% of maximum Life per second"
+        ]
+      }
+    ]
   },
   {
     "skill": 61104,
@@ -78717,7 +79442,17 @@
     "connections": [
       23352
     ],
-    "ascendancy_id": "Witch3"
+    "ascendancy_id": "Witch3",
+    "variants": [
+      {
+        "class": "Abyssal Lich",
+        "variant_skill": 11965,
+        "name": "Curse Area",
+        "stats": [
+          "15% increased Area of Effect of Curses"
+        ]
+      }
+    ]
   },
   {
     "skill": 62803,
@@ -80155,6 +80890,17 @@
     "connections": [
       5726,
       45522
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "variant_skill": 10941,
+        "name": "Entropy",
+        "stats": [
+          "20% increased Chaos Damage",
+          "18% increased Skill Effect Duration"
+        ]
+      }
     ]
   },
   {
@@ -80408,6 +81154,18 @@
     "y": -1975.64,
     "connections": [
       17655
+    ],
+    "variants": [
+      {
+        "class": "Druid",
+        "variant_skill": 56845,
+        "name": "Harbinger of Disaster",
+        "stats": [
+          "10% increased Critical Damage Bonus",
+          "10% increased Damage",
+          "10% increased Area Damage"
+        ]
+      }
     ]
   },
   {

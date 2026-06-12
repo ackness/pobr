@@ -23,6 +23,43 @@ pub struct AllocatedNodeMods {
     pub source_id: SourceId,
 }
 
+/// isSwitchable 变体选择的职业上下文（PoB `curClassName` / `curAscendClassName`）。
+///
+/// 对齐 PoB2 `PassiveSpec.lua:1251-1256`：节点带变体时，先按职业名匹配
+/// `options[curClassName]`，其次按飞升名匹配 `options[curAscendClassName]`；
+/// 命中则用变体词条**整体替换**基础 `stats`（`ReplaceNode` 语义，不合并）。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ClassContext<'a> {
+    /// 职业名（英文 canonical，如 `Witch`）；空串视为无。
+    pub class_name: &'a str,
+    /// 飞升名（英文 canonical，如 `Abyssal Lich`）；空串视为无。
+    pub ascendancy_name: &'a str,
+}
+
+impl ClassContext<'_> {
+    /// 按 PoB 优先级（职业名 > 飞升名）从节点变体中选出适用词条；无命中返回 None。
+    fn select<'n>(&self, node: &'n PassiveNodeDef) -> Option<&'n [String]> {
+        let by_key = |key: &str| {
+            (!key.is_empty())
+                .then(|| node.variants.iter().find(|v| v.class == key))
+                .flatten()
+        };
+        by_key(self.class_name)
+            .or_else(|| by_key(self.ascendancy_name))
+            .map(|v| v.stats.as_slice())
+    }
+}
+
+/// 从已分配节点集合收集 modifier 文本（无职业上下文：isSwitchable 节点恒用基础词条）。
+///
+/// 规则见 [`collect_allocated_mods_for_class`]。
+pub fn collect_allocated_mods(
+    spec: &PassiveTreeSpec,
+    nodes: &HashMap<u32, PassiveNodeDef>,
+) -> Vec<AllocatedNodeMods> {
+    collect_allocated_mods_for_class(spec, nodes, ClassContext::default())
+}
+
 /// 从已分配节点集合收集 modifier 文本。
 ///
 /// 规则：
@@ -30,14 +67,17 @@ pub struct AllocatedNodeMods {
 /// - **JewelSocket 节点本身的 `stats` 不计入**（gating；珠宝镶嵌后另行处理）。
 /// - **Mastery 节点**：若 `spec.mastery_effects` 中存在该节点的选择，则只注入
 ///   玩家选定的那一条词条文本；若无选择记录则跳过（整体 gating，与历史行为兼容）。
+/// - **isSwitchable 变体**（`node.variants`）：按 `class`（职业名优先、飞升名其次）
+///   命中时用变体词条整体替换基础 `stats`（PoB `ReplaceNode` 语义）。
 /// - 跳过 `stats` 为空的节点（无可贡献的 modifier）。
 ///
 /// 输出顺序遵循 `spec.allocated_nodes` 的顺序（确定性）。
 ///
 /// `nodes` 以节点 `skill` id（`u32`）为键，对应 [`NodeId`] 的内部数值。
-pub fn collect_allocated_mods(
+pub fn collect_allocated_mods_for_class(
     spec: &PassiveTreeSpec,
     nodes: &HashMap<u32, PassiveNodeDef>,
+    class: ClassContext<'_>,
 ) -> Vec<AllocatedNodeMods> {
     spec.allocated_nodes
         .iter()
@@ -59,10 +99,12 @@ pub fn collect_allocated_mods(
                 });
             }
 
-            if node.stats.is_empty() {
+            // isSwitchable 变体：职业/飞升命中时整体替换基础词条。
+            let stats = class.select(node).unwrap_or(&node.stats);
+            if stats.is_empty() {
                 return None;
             }
-            let mut modifier_texts = split_lines(&node.stats);
+            let mut modifier_texts = split_lines(stats);
             // 属性小点（`+5 to any Attribute`）按玩家三选一改写为具体属性
             // （PoB2 `SwitchAttributeNode` 语义）；无选择时保留原文——下游
             // mod_parser 不识别 `any attribute`（PoB2 ModParser 同样映射为空），
