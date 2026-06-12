@@ -488,8 +488,8 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 const BASELINE_DEF_CORE_HIT5: usize = 132; // 实测 132/144 = 91.7%（M4-k2 油涂池连带）
 const BASELINE_DEF_HIT5: usize = 379; // 实测 379/450 = 84.2%（M4-k 波合并重记）
 const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
-const BASELINE_OFF_HIT5: usize = 42; // 实测 42/80 = 52.5%（M4-k1 短语解锁 + k2 grenade 等级/品质）
-const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
+const BASELINE_OFF_HIT5: usize = 46; // 实测 46/80 = 57.5%（M4-l 波：毒八族 + curse 残项 + Debuff 注入面叠加）
+const BASELINE_OFF_HIT10: usize = 51; // 实测 51/80 = 63.8%
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -513,10 +513,8 @@ const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 ///    CombinedDPS 0.52x → 0.82x 收敛但未回带。剩余 per-hit ~0.82x 缺口
 ///    登记 m4-skill-gaps §7（含「attack/spell area damage」暂缓短语——其
 ///    启用前提『冷却线修复后』已满足，归 parser 线）。
-const BASELINE_DOT_HIT5: usize = 3; // 实测 3/37 = 8.1%（M4-k3 已审查例外 3：法术/攻击堆叠速率
-// 过记修复（vendor 逐位钉值 bow-shot 1.342）后 twister 系 dot 0.96x→0.91/0.93x 滑出
-// @5% 带——旧命中部分来自速率过记，真实残差归异常量级线，收敛后回升再上记）
-const BASELINE_DOT_HIT10: usize = 5; // 实测 5/37 = 13.5%（k3 后 twister 系落入 @10 带）
+const BASELINE_DOT_HIT5: usize = 5; // 实测 5/37 = 13.5%（M4-l：bow-shot/titan/druid dot 收敛入列）
+const BASELINE_DOT_HIT10: usize = 8; // 实测 8/37 = 21.6%
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
