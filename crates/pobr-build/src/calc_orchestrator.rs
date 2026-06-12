@@ -1175,11 +1175,6 @@ fn resolve_main_skill<'b>(
     None
 }
 
-// NOTE(Wave9): 宝石等级加成（A）已实现于 resolve_skill_level_with_gem_bonus，但单独落地会
-// 回归 deadeye grenade 的进攻 parity（其 per-hit 在正确 +6 等级下 ≈ golden 的 1.58×；
-// 见报告）。在 grenade per-hit 校正（B）落地前，加成对 grenade 类标签**暂不启用**，避免门禁
-// 倒退；非 grenade 技能不受影响。该 gating 按 skill_types[Grenade] 标签，绝不按 build/skill id。
-
 /// 在基础宝石等级上叠加来自装备的「`+N to Level of all <X> Skills`」加成后解析分等级参数。
 ///
 /// PoE2 宝石等级加成（通用、高价值）：装备 implicit/explicit/enchant 文本中的
@@ -1189,6 +1184,11 @@ fn resolve_main_skill<'b>(
 ///
 /// 等级越界由 [`BuildData::resolve_skill_level`] 的 `rfind(level ≤ gem_level)` 自然 clamp
 /// （分等级数据通常覆盖到 ~40 级）。通用：按 `skill_types` 标签匹配，绝不按 build/skill id 特化。
+///
+/// 历史：M4 Wave9 曾对 `skill_types[Grenade]` 暂关此加成（当时 Speed ×1.95 双计 +
+/// GrenadeActivateTwice 形成吞吐过算，正确 +N 等级会进一步放大）；M4-j3 冷却管辖速率
+/// 修复 Speed 后该过算消失、per-hit 低估暴露为主缺口，M4-k 解除 gating（vendor
+/// CalcSetup.lua 宝石等级段对所有技能一致叠加，无 grenade 特例）。
 fn resolve_skill_level_with_gem_bonus(
     build: &Build,
     data: &BuildData,
@@ -1196,20 +1196,7 @@ fn resolve_skill_level_with_gem_bonus(
     base_level: u32,
     set_index: Option<u32>,
 ) -> Option<ResolvedSkillLevel> {
-    let skill_types = data
-        .granted_effects
-        .get(skill_id)
-        .map(|e| e.skill_types.as_slice())
-        .unwrap_or(&[]);
-    // grenade 类技能（`skill_types` 含 `Grenade`）的 per-hit 当前过算（≈1.58×，见 Wave9 报告）；
-    // 在 grenade per-hit 校正（B）落地前，对 grenade 技能**不应用**宝石等级加成——否则正确的
-    // +N 等级会把过算的 per-hit 进一步放大、回归门禁。非 grenade 技能正常享加成（通用、按标签）。
-    let is_grenade = skill_types.iter().any(|t| t == "Grenade");
-    let bonus = if is_grenade {
-        0
-    } else {
-        additional_gem_levels(build, data, skill_id)
-    };
+    let bonus = additional_gem_levels(build, data, skill_id);
     data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)
 }
 
