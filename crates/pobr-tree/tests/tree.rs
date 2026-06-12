@@ -4,7 +4,10 @@
 //! 不代表真实 PoE2 天赋树拓扑（见 blocked_by_missing_data）。
 
 use pobr_data::prelude::*;
-use pobr_tree::{AllocatedNodeMods, PassiveTree, collect_allocated_mods};
+use pobr_tree::{
+    AllocatedNodeMods, ClassContext, PassiveTree, collect_allocated_mods,
+    collect_allocated_mods_for_class,
+};
 use std::collections::HashMap;
 
 /// 自构造 7 节点 fixture 的 JSON（`PassiveNodeDef` 数组）。
@@ -282,6 +285,7 @@ fn from_nodes_round_trips_with_positions() {
             y: None,
             connections: vec![],
             ascendancy_id: None,
+            variants: vec![],
         },
         PassiveNodeDef {
             skill: 2,
@@ -296,6 +300,7 @@ fn from_nodes_round_trips_with_positions() {
             y: None,
             connections: vec![],
             ascendancy_id: None,
+            variants: vec![],
         },
     ];
     let mut positions = HashMap::new();
@@ -485,4 +490,116 @@ fn attribute_choice_node_without_override_keeps_original_text() {
         mods[0].modifier_texts,
         vec!["+5 to any [Attributes|Attribute]".to_string()]
     );
+}
+
+// ---- isSwitchable 按职业/飞升变体（M4-J，对齐 PoB2 PassiveSpec.lua:1251-1256）----
+
+/// 自构造 isSwitchable 节点 fixture：基础版 + Witch 职业变体 + Abyssal Lich 飞升变体。
+fn switchable_fixture() -> HashMap<u32, PassiveNodeDef> {
+    let json = r#"[
+      {
+        "skill": 51335,
+        "id": "fire32",
+        "name": "Affliction Enforcer",
+        "kind": "notable",
+        "stats": ["40% increased Flammability Magnitude", "20% increased chance to Shock"],
+        "connections": [],
+        "variants": [
+          {
+            "class": "Witch",
+            "variant_skill": 64801,
+            "name": "Jagged Shards",
+            "stats": [
+              "20% increased Critical Hit Chance for Spells",
+              "20% increased Physical Damage"
+            ]
+          },
+          {
+            "class": "Abyssal Lich",
+            "variant_skill": 99999,
+            "name": "Ascend Variant",
+            "stats": ["+10 to Intelligence"]
+          }
+        ]
+      }
+    ]"#;
+    PassiveTree::from_json(json).unwrap().nodes
+}
+
+/// 职业名命中变体时整体替换基础词条（PoB `ReplaceNode` 语义，不合并）。
+#[test]
+fn switchable_node_uses_class_variant_stats() {
+    let nodes = switchable_fixture();
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(51335)],
+        ..Default::default()
+    };
+    let class = ClassContext {
+        class_name: "Witch",
+        ascendancy_name: "Blood Mage",
+    };
+
+    let mods = collect_allocated_mods_for_class(&spec, &nodes, class);
+
+    assert_eq!(mods.len(), 1);
+    assert_eq!(
+        mods[0].modifier_texts,
+        vec![
+            "20% increased Critical Hit Chance for Spells".to_string(),
+            "20% increased Physical Damage".to_string(),
+        ],
+        "Witch 变体词条须整体替换基础词条"
+    );
+    // 归因仍指向基础节点 skill id（树连线 / Build Code 的稳定键）。
+    assert_eq!(mods[0].source_id.id, "51335");
+}
+
+/// 职业名未命中时回退飞升名匹配（PoB options[curAscendClassName] 兜底）。
+#[test]
+fn switchable_node_falls_back_to_ascendancy_variant() {
+    let nodes = switchable_fixture();
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(51335)],
+        ..Default::default()
+    };
+    let class = ClassContext {
+        class_name: "Sorceress",
+        ascendancy_name: "Abyssal Lich",
+    };
+
+    let mods = collect_allocated_mods_for_class(&spec, &nodes, class);
+
+    assert_eq!(mods.len(), 1);
+    assert_eq!(
+        mods[0].modifier_texts,
+        vec!["+10 to Intelligence".to_string()]
+    );
+}
+
+/// 职业/飞升均未命中（或无上下文）时保持基础词条——旧入口零行为变化。
+#[test]
+fn switchable_node_without_matching_class_keeps_base_stats() {
+    let nodes = switchable_fixture();
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(51335)],
+        ..Default::default()
+    };
+    let base = vec![
+        "40% increased Flammability Magnitude".to_string(),
+        "20% increased chance to Shock".to_string(),
+    ];
+
+    let unmatched = collect_allocated_mods_for_class(
+        &spec,
+        &nodes,
+        ClassContext {
+            class_name: "Druid",
+            ascendancy_name: "Oracle",
+        },
+    );
+    assert_eq!(unmatched[0].modifier_texts, base);
+
+    // 无上下文入口（collect_allocated_mods）等价于空 ClassContext。
+    let legacy = collect_allocated_mods(&spec, &nodes);
+    assert_eq!(legacy[0].modifier_texts, base);
 }

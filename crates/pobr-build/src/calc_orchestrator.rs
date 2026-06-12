@@ -42,7 +42,10 @@ use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
 use pobr_data::skill::SkillTypes;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
-use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect_with_radii};
+use pobr_tree::{
+    ClassContext, JewelRadius, collect_allocated_mods_for_class,
+    compute_radius_jewel_effect_with_radii,
+};
 
 use crate::buff_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat};
 use crate::build::{Build, SocketGroup};
@@ -4544,10 +4547,17 @@ fn character_base(build: &Build, data: &BuildData) -> Option<CharacterBase> {
     })
 }
 
-/// 把已分配天赋节点解析为带节点归因的 [`AllocatedNode`]（经 [`collect_allocated_mods`]
-/// 完成 JewelSocket / Mastery gating，未知节点跳过）。
+/// 把已分配天赋节点解析为带节点归因的 [`AllocatedNode`]（经
+/// [`collect_allocated_mods_for_class`] 完成 JewelSocket / Mastery gating +
+/// isSwitchable 按职业/飞升变体选择，未知节点跳过）。
 fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<AllocatedNode> {
-    collect_allocated_mods(&build.tree, &data.passive_nodes)
+    // isSwitchable 变体上下文（PoB curClassName / curAscendClassName，
+    // PassiveSpec.lua:1251-1256）：来源 = Build XML 头部职业/飞升名。
+    let class = ClassContext {
+        class_name: &build.character.class_name,
+        ascendancy_name: &build.character.ascendancy_name,
+    };
+    collect_allocated_mods_for_class(&build.tree, &data.passive_nodes, class)
         .into_iter()
         .map(|node| {
             // 飞升节点由其 PassiveNodeDef::ascendancy_id 判定。
@@ -5023,6 +5033,7 @@ mod ring3_tests {
             y: None,
             connections: vec![],
             ascendancy_id: Some("Huntress3".into()),
+            variants: vec![],
         };
         let mut passive_nodes = HashMap::new();
         passive_nodes.insert(34785u32, node);
@@ -5418,6 +5429,7 @@ mod tests {
             y: None,
             connections: vec![],
             ascendancy_id: None,
+            variants: vec![],
         };
         let mut passive_nodes = HashMap::new();
         passive_nodes.insert(12345u32, node);

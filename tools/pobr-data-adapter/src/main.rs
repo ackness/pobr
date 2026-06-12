@@ -11,10 +11,14 @@
 //! cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.0.3.4
 //! # 被动天赋树域（GGG 官方树导出 data.json）
 //! cargo run -p pobr-data-adapter -- --tree pipeline/tree/data.json --out data --patch 4.5.0.3.4
+//! # isSwitchable 按职业/飞升变体回填（vendor tree.lua → 既有 passive_tree.json）
+//! cargo run -p pobr-data-adapter -- --tree-variants vendor/PathOfBuilding-PoE2/src/TreeData/0_5/tree.lua \
+//!     --out data --patch 4.5.0.3.4
 //! ```
 
 mod tree;
 mod tree_coords;
+mod tree_variants;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -38,6 +42,7 @@ fn main() -> ExitCode {
         Ok(Mode::BaseItems(args)) => run(args),
         Ok(Mode::Tree(args)) => tree::run(args),
         Ok(Mode::TreeCoords(args)) => tree_coords::run(args),
+        Ok(Mode::TreeVariants(args)) => tree_variants::run(args),
         Err(err) => Err(err),
     };
     match result {
@@ -64,12 +69,15 @@ enum Mode {
     Tree(tree::TreeArgs),
     /// 从 vendor `tree.lua` 回填既有 `passive_tree.json` 的节点 x/y 坐标。
     TreeCoords(tree_coords::TreeCoordsArgs),
+    /// 从 vendor `tree.lua` 回填 isSwitchable 节点的按职业/飞升变体。
+    TreeVariants(tree_variants::TreeVariantsArgs),
 }
 
 fn parse_args() -> Result<Mode, String> {
     let mut raw = None;
     let mut tree = None;
     let mut tree_coords = None;
+    let mut tree_variants = None;
     let mut out = None;
     let mut patch = None;
     let mut it = std::env::args().skip(1);
@@ -79,6 +87,7 @@ fn parse_args() -> Result<Mode, String> {
             "--raw" => raw = Some(PathBuf::from(take("--raw")?)),
             "--tree" => tree = Some(PathBuf::from(take("--tree")?)),
             "--tree-coords" => tree_coords = Some(PathBuf::from(take("--tree-coords")?)),
+            "--tree-variants" => tree_variants = Some(PathBuf::from(take("--tree-variants")?)),
             "--out" => out = Some(PathBuf::from(take("--out")?)),
             "--patch" => patch = Some(take("--patch")?),
             other => return Err(format!("未知参数：{other}")),
@@ -86,24 +95,42 @@ fn parse_args() -> Result<Mode, String> {
     }
     let out = out.ok_or("缺少 --out <data>")?;
     let patch = patch.ok_or("缺少 --patch <version>")?;
-    match (raw, tree, tree_coords) {
-        (Some(_), Some(_), _) | (Some(_), _, Some(_)) | (_, Some(_), Some(_)) => {
-            Err("--raw / --tree / --tree-coords 互斥，请分别运行".into())
-        }
-        (Some(raw), None, None) => Ok(Mode::BaseItems(Args { raw, out, patch })),
-        (None, Some(data_json), None) => Ok(Mode::Tree(tree::TreeArgs {
+    let mode_count = [
+        raw.is_some(),
+        tree.is_some(),
+        tree_coords.is_some(),
+        tree_variants.is_some(),
+    ]
+    .into_iter()
+    .filter(|&b| b)
+    .count();
+    if mode_count > 1 {
+        return Err("--raw / --tree / --tree-coords / --tree-variants 互斥，请分别运行".into());
+    }
+    if let Some(raw) = raw {
+        Ok(Mode::BaseItems(Args { raw, out, patch }))
+    } else if let Some(data_json) = tree {
+        Ok(Mode::Tree(tree::TreeArgs {
             data_json,
             out,
             patch,
-        })),
-        (None, None, Some(tree_lua)) => Ok(Mode::TreeCoords(tree_coords::TreeCoordsArgs {
+        }))
+    } else if let Some(tree_lua) = tree_coords {
+        Ok(Mode::TreeCoords(tree_coords::TreeCoordsArgs {
             tree_lua,
             out,
             patch,
-        })),
-        (None, None, None) => Err(
-            "缺少 --raw <pipeline/tables> / --tree <data.json> / --tree-coords <tree.lua>".into(),
-        ),
+        }))
+    } else if let Some(tree_lua) = tree_variants {
+        Ok(Mode::TreeVariants(tree_variants::TreeVariantsArgs {
+            tree_lua,
+            out,
+            patch,
+        }))
+    } else {
+        Err("缺少 --raw <pipeline/tables> / --tree <data.json> / \
+             --tree-coords <tree.lua> / --tree-variants <tree.lua>"
+            .into())
     }
 }
 

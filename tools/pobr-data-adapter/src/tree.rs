@@ -149,6 +149,9 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
             y: None,
             connections: resolve_connections(&n.out, &skill_by_key),
             ascendancy_id: n.ascendancy_id.clone(),
+            // isSwitchable 变体由独立的 `--tree-variants <tree.lua>` 步骤回填
+            // （GGG data.json 不携带 options 变体）。
+            variants: Vec::new(),
         });
     }
     nodes.sort_by_key(|n| n.skill);

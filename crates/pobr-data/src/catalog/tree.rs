@@ -25,6 +25,31 @@ pub enum PassiveNodeKind {
     AscendancyStart,
 }
 
+/// isSwitchable 节点的按职业/飞升变体（vendor `tree.lua` 节点 `options.<Class>`）。
+///
+/// PoB2 `PassiveSpec.lua:1251-1256`：节点带 `isSwitchable` 时，若
+/// `options[curClassName]`（其次 `options[curAscendClassName]`）存在，则用该
+/// option **整体替换**节点词条（`ReplaceNode` 语义，stats 不做合并）。变体自身
+/// 携带独立别名 id（如 Witch 变体『Jagged Shards』= 64801），但树连线 / Build
+/// Code 仍引用基础节点 `skill` id——别名仅供展示/对照。
+///
+/// 仅收录**携带自有 `stats` 的 option**（纯外观 option 经 Lua `__index` 元表
+/// 继承基础 stats，行为等同基础版，不入库）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PassiveNodeVariant {
+    /// option 键：职业名（如 `Witch`/`Druid`/`Huntress`）或飞升名（如 `Abyssal Lich`）。
+    pub class: String,
+    /// 变体自身的节点别名 id（vendor `option.id`，如 64801）；展示/对照用。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variant_skill: Option<u32>,
+    /// 变体名称（英文 canonical，如 `Jagged Shards`）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// 变体词条（整体替换基础 `stats`，PoB `ReplaceNode` 语义）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stats: Vec<String>,
+}
+
 /// 被动天赋树节点定义（来自 GGG 官方树导出 `data.json` 的 `nodes`）。
 ///
 /// 计算内部只用稳定 ID：`id` 为 GGG 的字符串 slug（如
@@ -71,6 +96,11 @@ pub struct PassiveNodeDef {
     /// 所属飞升（GGG `ascendancyId`，如 `Warrior3`）；主树节点为 None。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ascendancy_id: Option<String>,
+    /// isSwitchable 节点的按职业/飞升变体（vendor `tree.lua` `options`，由
+    /// `pobr-data-adapter --tree-variants` 回填）。旧 catalog 无此字段，
+    /// `#[serde(default)]` 兼容；非 switchable 节点恒为空。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub variants: Vec<PassiveNodeVariant>,
 }
 
 /// 某个职业的飞升摘要。

@@ -52,6 +52,7 @@ fn node(skill: u32, kind: PassiveNodeKind) -> PassiveNodeDef {
         y: None,
         connections: vec![],
         ascendancy_id: None,
+        variants: vec![],
     }
 }
 
