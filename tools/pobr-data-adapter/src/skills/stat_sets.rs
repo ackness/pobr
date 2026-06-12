@@ -301,6 +301,8 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             // overlay 加载期 merge，适配阶段保持保守默认（全 false）。
             dot_flags: Default::default(),
             explode_corpse: false,
+            // 隐式 stat 来自 overlay（extract-lua 策展白名单），适配阶段留空。
+            implicit_stats: Vec::new(),
             levels: main_levels,
         }];
 
@@ -356,6 +358,8 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
                 explode_corpse: false,
+                // 隐式 stat 来自 overlay（extract-lua 策展白名单），适配阶段留空。
+                implicit_stats: Vec::new(),
                 levels,
             });
         }

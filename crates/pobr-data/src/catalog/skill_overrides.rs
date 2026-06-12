@@ -42,6 +42,13 @@ pub const OVERRIDE_STAT_DOT_IS_HIT: &str = "dot_is_hit";
 /// `monsterLife × corpseExplosionLifeMultiplier` 注入物理基伤；value 1.0 = true，
 /// 对应 `StatSetDef::explode_corpse`）。statSet 级条目（恒带 `stat_set`）。
 pub const OVERRIDE_STAT_EXPLODE_CORPSE: &str = "explode_corpse";
+/// [`SkillOverrideEntry::stat`] 取值：statSet 隐式 stat（M4-H，vendor statSet
+/// `stats` 列表中任何等级行都没有数值的条目 = `.dat` `ImplicitStats` 列，适配器
+/// 未下载；vendor 消费值恒 1，`CalcTools.lua:152` `statSetLevel[index] or 1`）。
+/// statSet 级条目（恒带 `stat_set`），stat id 落 [`SkillOverrideEntry::stat_id`]，
+/// 对应 `StatSetDef::implicit_stats`。生成侧为**策展白名单**抽取
+/// （见 `extract_skill_overrides.lua` 头注）。
+pub const OVERRIDE_STAT_IMPLICIT_STAT: &str = "implicit_stat";
 
 /// 全部 statSet 级 dotIs* stat 名（消费侧 merge / 生成侧抽取共用清单）。
 pub const OVERRIDE_DOT_FLAG_STATS: &[&str] = &[
@@ -71,6 +78,10 @@ pub struct SkillOverrideEntry {
     /// 按等级明细：`[[level, value], ...]`，level 升序。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub per_level: Option<Vec<(u32, f64)>>,
+    /// 隐式 stat 的 stat id（仅 [`OVERRIDE_STAT_IMPLICIT_STAT`] 条目携带，如
+    /// `attacks_roll_crits_twice`）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stat_id: Option<String>,
 }
 
 /// `overlay/skill_overrides.json` 顶层（消费侧视角：`_meta` 头部为生成溯源

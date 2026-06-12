@@ -241,6 +241,14 @@ impl GameData {
                     message,
                 },
             )?;
+            // 隐式 stat（M4-H）：与 dotIs* 同 set 定位语义（vendor 序号依赖
+            // labels merge 回填），同样在 labels 之后。
+            domains::skill_overrides::apply_implicit_stat_overrides(&mut sets, overrides).map_err(
+                |message| LoadError::Overlay {
+                    path: self.overlay_path("skill_overrides.json"),
+                    message,
+                },
+            )?;
         }
         Ok(sets)
     }

@@ -5502,6 +5502,7 @@ mod tests {
             skill_attack_speed_more: None,
             dot_flags: Default::default(),
             explode_corpse: false,
+            implicit_stats: Vec::new(),
             levels: vec![pobr_data::catalog::SkillStatSetLevel {
                 gem_level: 1,
                 damage_multiplier: 1.0,
