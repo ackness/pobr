@@ -191,10 +191,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
     // ---- 写阶段（读借用结束后统一落 enemy db / cfg.conditions）----
     let origin_id = format!("ailment.{}", spec.name.to_lowercase());
     let origin = || ModifierSource::new(SourceId::new(SourceKind::Derived, origin_id.clone()));
-    let cond_tag = || ModTag::Condition {
-        var: spec.condition.to_string(),
-        negated: false,
-    };
+    let cond_tag = || ModTag::condition(spec.condition, false);
 
     let mut new_mods: Vec<Modifier> = Vec::new();
     // Override 来源 → 置 enemy `Condition:<cond>`（:3136-3138；合并为单条 flag）。

@@ -222,10 +222,7 @@ mod forward_enemy_modifiers_tests {
     use crate::{CalcConfig, ModTag, ModValue};
 
     fn condition_tag(var: &str) -> ModTag {
-        ModTag::Condition {
-            var: var.into(),
-            negated: false,
-        }
+        ModTag::condition(var, false)
     }
 
     /// 外层 EnemyModifier（带 Item 来源归因）+ inner（无 origin，模拟解析层产物）。

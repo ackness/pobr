@@ -155,10 +155,8 @@ fn conditions_set_activates_condition_tagged_mods() {
         CalculationSession::new(input()).with_config(CalcConfig::attack().with_mode_combat(true));
     session.add_modifiers([
         Modifier::flag("HerEmbrace").with_source("test grant"),
-        Modifier::number("AttackSpeed", ModType::Inc, 10.0).with_tag(ModTag::Condition {
-            var: "HerEmbrace".to_string(),
-            negated: false,
-        }),
+        Modifier::number("AttackSpeed", ModType::Inc, 10.0)
+            .with_tag(ModTag::condition("HerEmbrace", false)),
     ]);
     session.set_buff_definitions(vec![def]);
     let out = session.perform_minimal();

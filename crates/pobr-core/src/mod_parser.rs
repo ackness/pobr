@@ -665,15 +665,9 @@ fn parse_enemy_direction(rest: &str, original: &str) -> Option<Result<ParseOutco
         .into_iter()
         .map(|mut m| {
             if let Some(var) = condition {
-                m.tags.push(ModTag::Condition {
-                    var: var.into(),
-                    negated: false,
-                });
+                m.tags.push(ModTag::condition(var, false));
             }
-            m.tags.push(ModTag::Condition {
-                var: "Effective".into(),
-                negated: false,
-            });
+            m.tags.push(ModTag::condition("Effective", false));
             m
         })
         .collect();
@@ -2297,7 +2291,7 @@ mod enemy_direction_tests {
     fn has_condition(m: &Modifier, var: &str) -> bool {
         m.tags
             .iter()
-            .any(|t| matches!(t, ModTag::Condition { var: v, negated: false } if v == var))
+            .any(|t| matches!(t, ModTag::Condition { var: v, negated: false, .. } if v == var))
     }
 
     /// `Enemies you Curse take ...`（ModParser.lua:1367：Condition Cursed + modSuffix Taken）。
