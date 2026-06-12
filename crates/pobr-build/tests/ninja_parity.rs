@@ -505,9 +505,12 @@ const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 /// 2. deadeye grenade CombinedDPS 1.02x——偶然命中：旧「攻速补偿吞吐」近似把
 ///    Speed 高估 ×1.95，与 GrenadeActivateTwice ×1.5 形成吞吐双重计入，恰好
 ///    抵消 per-hit 低估（0.52x）。M4-J 按 vendor CalcOffence.lua:2852-2856 切
-///    冷却管辖速率（Speed 1.00x ✓ 入 off 列）后双计消失。per-hit 缺口 = grenade
-///    宝石等级 gating（h2/i2 登记：解除会过算 ≈1.58×），归 grenade per-hit
-///    校正波，修复后此处回升再上记。
+///    冷却管辖速率（Speed 1.00x ✓ 入 off 列）后双计消失。
+///    **M4-K 进展**：grenade 宝石等级 gating 已解除（等级链 oracle 双证
+///    deadeye 27=vendor、gemling 24=vendor）+ 油涂 Paragon 品质接通，
+///    CombinedDPS 0.52x → 0.82x 收敛但未回带。剩余 per-hit ~0.82x 缺口
+///    登记 m4-skill-gaps §7（含「attack/spell area damage」暂缓短语——其
+///    启用前提『冷却线修复后』已满足，归 parser 线）。
 const BASELINE_DOT_HIT5: usize = 3; // 实测 3/37 = 8.1%（例外 2 下修）
 const BASELINE_DOT_HIT10: usize = 3; // 实测 3/37 = 8.1%（例外 1+2 叠加下修）
 
