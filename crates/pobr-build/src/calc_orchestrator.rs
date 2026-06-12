@@ -553,7 +553,8 @@ pub fn calculate_with_data(
         ]);
     }
 
-    // 1c. 武器基底暴击率 → Weapon1 归因的 BASE CritChance（**仅攻击技能**）。法术技能用自身
+    // 1c. 武器基底暴击率 → Weapon1 归因的 BASE SkillBaseCritChance（**仅攻击技能**；
+    //     底材桶，区别于词条桶——见 skill_base_modifiers 同名注释）。法术技能用自身
     //     基础暴击（skill_base_modifiers 注入），不吃武器暴击——故主技能自带 crit_chance 时跳过。
     let main_skill_has_own_crit = main_skill
         .as_ref()
@@ -566,7 +567,7 @@ pub fn calculate_with_data(
         let origin = ModifierSource::new(SourceId::new(SourceKind::Item, "weapon1.base"))
             .with_raw_text(format!("weapon base crit {}%", w.crit_chance));
         session.add_modifiers(vec![
-            Modifier::number("CriticalStrikeChance", ModType::Base, w.crit_chance)
+            Modifier::number("SkillBaseCritChance", ModType::Base, w.crit_chance)
                 .with_origin(origin),
         ]);
     }
@@ -2437,17 +2438,15 @@ fn skill_base_modifiers(
     {
         mods.push(mk("SkillManaCostBase", mc, "main skill base mana cost"));
     }
-    // 技能固有基础暴击率（百分点，如 Comet 13.0）→ CriticalStrikeChance BASE。法术的基础暴击
-    // 来自技能本身（非武器）；攻击技能此字段为 None，改由武器底材暴击注入（见 calc 主流程
-    // 1c）。对齐 PoB2：base crit = 法术取 skillData.critChance、攻击取 weapon crit。
+    // 技能固有基础暴击率（百分点，如 Comet 13.0）→ SkillBaseCritChance BASE（**底材桶**，
+    // 区别于词条桶 CriticalStrikeChance——vendor `baseCrit = source.CritChance` 与
+    // `Sum BASE CritChance` 两桶分立，CalcOffence.lua:3665-3689；CritChanceBase
+    // OVERRIDE 只替换底材桶）。法术的基础暴击来自技能本身（非武器）；攻击技能此字段
+    // 为 None，改由武器底材暴击注入（见 calc 主流程 1c）。
     if let Some(cc) = skill.crit_chance
         && cc > 0.0
     {
-        mods.push(mk(
-            "CriticalStrikeChance",
-            cc,
-            "main skill base crit chance",
-        ));
+        mods.push(mk("SkillBaseCritChance", cc, "main skill base crit chance"));
     }
     // statSet baseMods 固有攻击速度 MORE（PoB2 `mod("Speed","MORE",N,ModFlag.Attack)`；如 Flicker 285）。
     // 注入 `AttackSpeed` MORE——攻击速度乘区按 ModName 取 AttackSpeed（仅攻击链路），与 PoB2

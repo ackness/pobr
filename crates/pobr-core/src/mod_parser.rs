@@ -177,6 +177,12 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     } else if let Some(stripped) = rest.strip_prefix("attack skills deal ") {
         flags |= ModFlags::ATTACK;
         rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("attacks have ") {
+        // 「Attacks have +N% to Critical Hit Chance」族（树 notable『Struck Through』
+        // 等）：vendor `["^attacks [ghd][ae][iva][eln] "] = { flags = ModFlag.Attack }`
+        // （ModParser.lua:1266，have/gain/deal 同一前缀类）。
+        flags |= ModFlags::ATTACK;
+        rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("attacks ") {
         flags |= ModFlags::ATTACK;
         rest = stripped.into();
@@ -184,6 +190,11 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         flags |= ModFlags::SPELL;
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spell skills deal ") {
+        flags |= ModFlags::SPELL;
+        rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("spells have ") {
+        // vendor `["^spells [hgdf][aei][ivar][nel] a? ?"] = { flags = ModFlag.Spell }`
+        // （ModParser.lua:1270，have/gain/deal/fire 同一前缀类）。
         flags |= ModFlags::SPELL;
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spells ") {
@@ -636,6 +647,24 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
                 });
             }
         }
+    }
+    // 「Base Critical Hit Chance for Spells is N%」（Blood Mage 升华『Sunder the
+    // Flesh』）：vendor `["base critical hit chance for spells is (%d+)%%"]` →
+    // `mod("CritChanceBase", "OVERRIDE", num, { type = "SkillType", skillType =
+    // SkillType.Spell })`（ModParser.lua:5801）。消费点 = `calc::crit::resolve_crit`
+    // （CalcOffence.lua:3667-3676 baseCritOverride 直接替换底材基础暴击）。
+    if let Some(num_str) = rest.strip_prefix("base critical hit chance for spells is ")
+        && let Ok(value) = num_str.trim_end_matches('%').trim().parse::<f64>()
+    {
+        return Some(ParseOutcome {
+            mods: vec![
+                Modifier::number("CritChanceBase", ModType::Override, value)
+                    .with_source(source)
+                    .with_tag(ModTag::SkillTypes(SkillTypes::SPELL)),
+            ],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
     }
     // ES→Mana 资源转换（PoB2 ModParser 2395-2396）：固定全转 / 数值百分比两形。
     if let Some(num_str) = rest
@@ -2234,6 +2263,39 @@ mod per_slot_defence_tests {
                 "非整行 keystone 句式不得误产 Keystone LIST"
             );
         }
+    }
+
+    /// 「Attacks have +N% to Critical Hit Chance」（树 notable『Struck Through』）：
+    /// vendor `^attacks [ghd][ae][iva][eln] ` 前缀类（ModParser.lua:1266）→
+    /// ATTACK flag + CriticalStrikeChance BASE。
+    #[test]
+    fn parses_attacks_have_crit_chance_base() {
+        let out = parse_mod("Attacks have +1% to Critical Hit Chance").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "CriticalStrikeChance");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(1.0));
+        assert!(m.flags.intersects(ModFlags::ATTACK));
+    }
+
+    /// 「Base Critical Hit Chance for Spells is N%」（Blood Mage『Sunder the Flesh』）：
+    /// vendor ModParser.lua:5801 → `CritChanceBase` OVERRIDE + SkillType.Spell tag。
+    #[test]
+    fn parses_base_crit_chance_for_spells_override() {
+        let out = parse_mod("Base Critical Hit Chance for [Spell|Spells] is 15%").expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "CritChanceBase");
+        assert_eq!(m.mod_type, ModType::Override);
+        assert_eq!(m.value.as_number(), Some(15.0));
+        assert!(
+            m.tags
+                .iter()
+                .any(|t| matches!(t, ModTag::SkillTypes(st) if st.contains(SkillTypes::SPELL)))
+        );
     }
 
     /// 「Melee Damage」映射到 `MeleeDamage`（此前缺失，导致近战增伤词条被丢弃）。

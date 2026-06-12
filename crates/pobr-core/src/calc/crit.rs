@@ -120,6 +120,22 @@ fn resolve_crit_impl(
     let crit_chance_names = [ModName::from("CriticalStrikeChance")];
     let self_crit_chance = [ModName::from("SelfCritChance")];
 
+    // --- 0) 底材基础暴击（vendor CalcOffence.lua:3665-3676 baseCrit 段）---
+    // vendor `baseCrit = critOverride or source.CritChance`：**底材**基础暴击（武器
+    // 底材 / 法术 skillData.critChance）与词条 `Sum BASE CritChance` 是两个桶。
+    // PoBR 对应：底材经编排层注入 `SkillBaseCritChance` BASE（区别于词条桶
+    // `CriticalStrikeChance`），加上 `base_crit` 形参（fraction，向后兼容入口）。
+    //
+    // `baseCritOverride = Override(cfg, "CritChanceBase")`（:3667-3676）命中时直接
+    // **替换底材**（词条桶不受影响）。来源如 Blood Mage 升华『Sunder the Flesh』
+    // （"Base Critical Hit Chance for Spells is 15%"，ModParser.lua:5801 →
+    // `mod("CritChanceBase","OVERRIDE",num,SkillType.Spell)`）。
+    let source_base_pct =
+        base_crit * 100.0 + player.sum(ModType::Base, cfg, &[ModName::from("SkillBaseCritChance")]);
+    let source_base_pct = player
+        .override_(cfg, ModName::from("CritChanceBase"))
+        .unwrap_or(source_base_pct);
+
     // --- 1) 基础求和（含敌方暴击弱点 SelfCritChance，仅 mode_effective） ---
     let player_base = player.sum(ModType::Base, cfg, &crit_chance_names);
     let enemy_base = if mode_effective {
@@ -135,8 +151,8 @@ fn resolve_crit_impl(
     };
     let chance_more = player.more(cfg, &crit_chance_names);
 
-    // base_crit 与 player_base 均为百分点；统一在百分点空间运算（对齐 PoB2），末端转 fraction。
-    let base_pct = (base_crit * 100.0) + player_base + enemy_base;
+    // 底材与词条均为百分点；统一在百分点空间运算（对齐 PoB2），末端转 fraction。
+    let base_pct = source_base_pct + player_base + enemy_base;
     let inc = player_inc + enemy_inc;
     let mut crit_pct = base_pct * (1.0 + inc / 100.0) * chance_more;
 
@@ -333,11 +349,15 @@ fn record_trace(
     let crit_chance_names = [ModName::from("CriticalStrikeChance")];
     let crit_multiplier_names = [ModName::from("CriticalStrikeMultiplier")];
 
-    // CritChance BASE / INC / MORE。
+    // CritChance BASE / INC / MORE（BASE 含底材桶 SkillBaseCritChance，归因不丢
+    // 武器/宝石底材来源）。
     let chance_base = player.sum_traced(
         ModType::Base,
         cfg,
-        &crit_chance_names,
+        &[
+            ModName::from("CriticalStrikeChance"),
+            ModName::from("SkillBaseCritChance"),
+        ],
         trace,
         "CriticalStrikeChance BASE sum",
     );
