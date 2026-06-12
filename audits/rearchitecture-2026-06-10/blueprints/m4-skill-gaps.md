@@ -242,3 +242,28 @@ j3 例外注释预告的「per-hit 缺口 = 宝石等级 gating」路径，两�
   列口径是否拆端因子归 dashboard 线裁决。
 
 baseline 按惯例本波不动（所有列 ≥ 基线），回升入带后随主线合并 bump。
+
+## 8. M4-L 副技能 debuff/buff 注入面——结果（2026-06-13）
+
+§7.1 归属表中「Frost Bomb debuff」与「CritMult（原误记 Malice 爆伤载荷）」两
+因子经 oracle 逐 mod 对拍闭合（3 个独立行为 commit）：
+
+| 因子 | 根因（oracle 钉值） | 修复 | commit |
+|---|---|---|---|
+| effMult 0.833（Frost Bomb −10/−12 全元素抗） | vendor buff 循环遍历**全部** activeSkillList（CalcPerform.lua:1847），Debuff 分支 :2219-2285 把 GlobalEffect Debuff 载荷（`active_skill_all_elemental_exposure_magnitude` → `<El>Exposure BASE 20`，SkillStatMap.lua:1721-1725）写 enemyDB，再经 "Apply exposures"（:3214-3247）折 `<El>Resist BASE -magnitude`（boss ExposureEffectOnSelf ×0.5）。PoBR 无非主技能对敌 debuff 通道 | statmap Debuff 域（`map_debuff_stat`，曝光族允收）+ buff_skill_specs Debuff 分支（全组扫描）+ 曝光归约收口 env_finalize 阶段 8 单点 | `e13ff0f` |
+| CritMultiplier 4.07 vs 5.24 | **非 Malice 爆伤载荷**——vendor CritMult INC 聚合 PoBR 已逐位对齐（387）；缺口 = 必然暴击 less 腿输入的 pre-inevitable 暴击率 39.52 vs 69.92=(13+10)×3.04，+10 为 Critical Weakness 敌侧 SelfCritChance（ConfigOptions.lua:1892-1894）。enemy mod 已注入但其 `{Condition:ApplyCriticalWeakness}` tag 查 cfg 单条件空间恒 false（enemy FLAG 未落未前缀名）。Malice 仅是 vendor UI ifFlag（ConfigTab.lua:444 只控可见性，BuildModList :881-907 不查）| config_resolve 敌侧条件**未前缀桥**（仅对被敌侧数值 mod tag 引用的 var，防 Chilled 类玩家名污染） | `f941876` |
+| h3 Potent Exposure（同根） | `exposure_effect_+%` → `<El>ExposureEffect INC`（SkillStatMap.lua:1731-1735）双段丢弃：主通道名单缺名（monk 主组）+ 非主组 support 无注入面（chronomancer Frost Bomb 副组，vendor 按来源技能作用域 :3193-3211/:3226-3231） | 主通道直通名单 += 三元素 ExposureEffect；编排 `exposure_support_modifiers` 扫含曝光载荷的非主组（主组跳过防双注入、名族过滤防局部词条全局泄漏） | `19ad9c2` |
+
+**收敛**（effective 口径）：druid-oracle-comet CritMultiplier 5.24 逐位 ✓、
+TotalDPS 0.66x→**0.97x（入带）**、TotalDotDPS 0.45x→0.89x（剩余 ≈0.92 curse
+duration 因子 × 速度残差，归 curse 线）；monk-invoker-frost-bomb CritChance
+100 ✓、TotalDPS 0.33x→0.45x；sorceress-chronomancer CritChance 18.19 逐位 ✓。
+聚合：offensive 40→46/80 @5%、dot 3→4/37 @5%、defensive 377→379/450 @5%。
+
+**登记（本波勘察暴露、未实现）**：
+- 非主组主动技能的**玩家侧 Buff 数值载荷**（oracle buffList 实测 druid：
+  Mysticism I `Damage INC 30`、Nature's Exchange `ColdMin/Max BASE`、Spell
+  Totem aura `CritChance INC 50`）——`player_buff_stat_modifiers` 允收名单仅
+  Accuracy，扩名单须逐消费方对照（Buff kind 消费段 buff_pass:328-355 已就绪）；
+- 多曝光源且效果系数不同的 per-source 缩放（vendor :3226-3231 逐源独立、
+  PoBR 扁平求和）——reduce_enemy_exposure doc 既有 TODO(parity) 维持。

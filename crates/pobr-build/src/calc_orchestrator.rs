@@ -854,6 +854,17 @@ pub fn calculate_with_data(
     //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
     session.add_modifiers(self_buff_offensive_modifiers(build, data));
 
+    // 4c'.（M4-L）非主组曝光效果 support（h3 登记 Potent Exposure 同根）：
+    //     曝光源所在副组的兼容 support 的 `<El>ExposureEffect` INC 全局注入
+    //     （vendor 按来源技能作用域，CalcPerform.lua:3193-3211/:3226-3231；
+    //     PoBR 曝光归约扁平求和近似）。主组 support 已由 support_modifiers
+    //     全量注入，函数内跳过防双注入。
+    session.add_modifiers(exposure_support_modifiers(
+        build,
+        data,
+        main_skill.as_ref().map(|(_, g, _)| *g),
+    ));
+
     // 4d.（M1-T4.5）持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
     //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
     session.add_modifiers(spirit_reservation_modifiers(build, data));
@@ -3839,6 +3850,10 @@ fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
 ///   curse 路径施 CurseEffect 乘区后写 enemy db（CalcPerform.lua:2286-2316 /
 ///   :2969-2984）。映射不到的 curse 载荷 stat 经 Compare 模式落可见性报表
 ///   （[`curse_stat_modifiers`]）。
+/// - （M4-L）其余主动技能：statset stat 经 [`debuff_stat_modifiers`]（debuff 域
+///   `GlobalEffect effectType=Debuff`）映射出敌侧载荷非空 →
+///   [`BuffKind::Debuff`]（vendor buff 循环遍历**全部** activeSkillList，
+///   CalcPerform.lua:1847 / Debuff 分支 :2219-2285——非主技能同样对敌注入）。
 ///
 /// `slot` = socket group 槽名原文（PoB XML `slot` attr，如 `Weapon 1`，与
 /// curse_priority.json 槽位权重键同源）；`socket_index` = 组内宝石序（1-based，
@@ -3859,10 +3874,44 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
             let is_aura = has_type("Aura");
             let is_mark = has_type("Mark");
             let is_curse = is_mark || has_type("AppliesCurse");
-            if (!is_aura && !is_curse) || !seen.insert(gem.skill_id.as_str()) {
+            let socket_index = (idx + 1) as u32;
+            if !is_aura && !is_curse {
+                // （M4-L）Debuff 分支：非 aura/curse 主动技能的敌侧 debuff 载荷
+                // （GlobalEffect effectType=Debuff，vendor CalcActiveSkill.lua:976-1046
+                // 搬入 buff.modList → CalcPerform.lua:2219-2285 Debuff 分支写 enemyDB）。
+                // 如 Frost Bomb `active_skill_all_elemental_exposure_magnitude` →
+                // `<El>Exposure BASE 20`（SkillStatMap.lua:1721-1725），经 buff_pass
+                // Debuff 路径入 enemy db 后由曝光归约折成 `<El>Resist BASE -magnitude`
+                // （CalcPerform.lua:3214-3247）。vendor 对**全部** activeSkillList 生效
+                // （非仅 mainSkill）——此处同口径扫所有启用 socket group。
+                // 无 debuff 载荷（绝大多数技能）→ 空 mods 跳过，零行为。
+                let es = data.effect_stats(
+                    &gem.skill_id,
+                    gem.gem_level,
+                    gem.quality,
+                    gem.stat_set_index,
+                );
+                let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+                let mods = debuff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+                if mods.is_empty() || !seen.insert(gem.skill_id.as_str()) {
+                    continue;
+                }
+                specs.push(BuffSpec {
+                    name: buff_skill_name(data, &gem.skill_id),
+                    kind: BuffKind::Debuff,
+                    skill_id: gem.skill_id.clone(),
+                    mods,
+                    magnitude: 1.0,
+                    slot: group.slot.clone(),
+                    socket_index,
+                    is_mark: false,
+                    ignore_curse_limit: false,
+                });
                 continue;
             }
-            let socket_index = (idx + 1) as u32;
+            if !seen.insert(gem.skill_id.as_str()) {
+                continue;
+            }
             if is_aura {
                 // aura 防御 buff：与 aura_buff_modifiers 同一 stat→mod 映射与
                 // SkillGem 归因（buff_pass 缩放时保留 origin，trace 不丢弃）。
@@ -4416,6 +4465,177 @@ fn curse_stat_modifiers(
             ))
             .with_raw_text(format!("curse {skill_id} {} ({})", ds.stat, ds.value));
             mods.push(modifier.with_origin(origin));
+        }
+    }
+    mods
+}
+
+/// （M4-L）debuff 效果词条取数点：把一个 debuff 技能 statset 的全部 stat 经
+/// [`stat_map_engine::map_debuff_stat`]（debuff 域数据通道，敌侧允收名单 =
+/// 元素曝光族第一批）映射为**敌侧** modifier 列表（BuffSpec.mods 载荷，
+/// buff_pass Debuff 路径消费）。与 [`curse_stat_modifiers`] 同构：
+/// - catalog 取数：线程局部上下文优先，回退 `data.stat_map_catalog`；
+/// - 归因：`(SkillGem, "debuff.<skill_id>.<stat>")`，buff_pass 缩放保留 origin；
+/// - 可见性：Compare 模式逐 stat 落 [`StatMapCompareRecord`]
+///   （label = `debuff.<skill_id>`）；`Mapped(空)` / `Unknown` 不记（非 debuff 载荷）。
+fn debuff_stat_modifiers(
+    data: &BuildData,
+    stats: &crate::build_data::EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> Vec<Modifier> {
+    let (mode, ctx_catalog) =
+        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
+    let catalog = ctx_catalog.or_else(|| data.stat_map_catalog.clone());
+    let Some(catalog) = catalog else {
+        return Vec::new(); // 无 catalog（旧数据包）：debuff 词条全 miss（与主通道同口径）。
+    };
+    let mut mods = Vec::new();
+    for ds in stats.all() {
+        if ds.value == 0.0 {
+            continue; // 跳零值 stat（与主通道同口径）。
+        }
+        let outcome =
+            stat_map_engine::map_debuff_stat(&catalog, skill_id, set_key, &ds.stat, ds.value);
+        if mode == StatMapMode::Compare {
+            let record = match &outcome {
+                MappedOutcome::Mapped(items) if !items.is_empty() => {
+                    let injected: Vec<(String, &'static str, f64)> = items
+                        .iter()
+                        .filter_map(|item| match item {
+                            MappedItem::Modifier(m) => Some((
+                                m.name.to_string(),
+                                m.mod_type.as_trace_label(),
+                                m.value.as_number().unwrap_or(0.0),
+                            )),
+                            MappedItem::SkillData { .. } => None,
+                        })
+                        .collect();
+                    Some(("mapped", format!("debuff={injected:?}")))
+                }
+                MappedOutcome::Unsupported(reason) => {
+                    Some(("unsupported", format!("unsupported:{}", reason.category())))
+                }
+                _ => None, // Mapped(空)/Unknown = 非 debuff 载荷，不记。
+            };
+            if let Some((classification, detail)) = record {
+                STAT_MAP_CTX.with(|ctx| {
+                    ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
+                        stat: ds.stat.clone(),
+                        label: format!("debuff.{skill_id}"),
+                        classification,
+                        detail,
+                    });
+                });
+            }
+        }
+        let MappedOutcome::Mapped(items) = outcome else {
+            continue;
+        };
+        for item in items {
+            let MappedItem::Modifier(modifier) = item else {
+                continue;
+            };
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("debuff.{skill_id}.{}", ds.stat),
+            ))
+            .with_raw_text(format!("debuff {skill_id} {} ({})", ds.stat, ds.value));
+            mods.push(modifier.with_origin(origin));
+        }
+    }
+    mods
+}
+
+/// （M4-L）组内是否存在 debuff 曝光载荷（[`exposure_support_modifiers`] 的
+/// 宿主探测）：与 [`debuff_stat_modifiers`] 同一取数链但**纯只读**（不落
+/// Compare 记录——同一 stat 已由 buff_skill_specs 的 Debuff 分支记录，
+/// 探测重复记录即噪声）。
+fn has_debuff_payload(
+    data: &BuildData,
+    stats: &crate::build_data::EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> bool {
+    let ctx_catalog = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone());
+    let Some(catalog) = ctx_catalog.or_else(|| data.stat_map_catalog.clone()) else {
+        return false;
+    };
+    stats.all().any(|ds| {
+        ds.value != 0.0
+            && matches!(
+                stat_map_engine::map_debuff_stat(&catalog, skill_id, set_key, &ds.stat, ds.value),
+                MappedOutcome::Mapped(items) if !items.is_empty()
+            )
+    })
+}
+
+/// （M4-L）非主组的曝光效果 support 注入面（h3 登记 Potent Exposure 同根）。
+///
+/// vendor：support mod 并入宿主技能 skillModList（CalcActiveSkill.lua:210-214
+/// effectList），曝光应用时按**来源技能**取 `<El>ExposureEffect` INC
+/// （CalcPerform.lua:3193-3211 getSkillExposureEffect，:3226-3231 对每个曝光源
+/// 独立缩放）——非主组的 Potent Exposure（`exposure_effect_+%`，
+/// SkillStatMap.lua:1731-1735）同样作用于其宿主（如 chronomancer 的 Frost Bomb
+/// 副组）。PoBR 曝光归约（`reduce_enemy_exposure`）读 player db 扁平求和（已
+/// 登记近似），等价注入面 = 把**曝光源所在组**的兼容 support 的
+/// `<El>ExposureEffect` 词条全局注入 player db：
+/// - 仅扫产出 debuff 曝光载荷的组（[`has_debuff_payload`]——无曝光源的组其
+///   曝光效果词条不全局生效，保持 vendor 作用域语义的最小外延）；
+/// - **主组跳过**（其 support 已由 [`support_modifiers`] 全量注入、含本名族，
+///   避免双注入）；
+/// - 只保留 `<El>ExposureEffect` 名（其余 support 词条仍是技能局部语义，
+///   不得从非主组泄漏到全局）。
+fn exposure_support_modifiers(
+    build: &Build,
+    data: &BuildData,
+    main_group: Option<&SocketGroup>,
+) -> Vec<Modifier> {
+    use std::collections::BTreeSet;
+    let mut mods = Vec::new();
+    for group in build.enabled_socket_groups() {
+        if main_group.is_some_and(|mg| std::ptr::eq(mg, group)) {
+            continue;
+        }
+        // 曝光源宿主：组内产出 debuff 曝光载荷的主动技能 → 其兼容 support 名单。
+        let mut support_indices: BTreeSet<usize> = BTreeSet::new();
+        for gem in &group.gem_skills {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            if effect.is_support {
+                continue;
+            }
+            let es = data.effect_stats(
+                &gem.skill_id,
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            );
+            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+            if !has_debuff_payload(data, &es, &gem.skill_id, set_key.as_deref()) {
+                continue;
+            }
+            for idx in judge_group_supports(group, data, &gem.skill_id).compatible {
+                support_indices.insert(idx);
+            }
+        }
+        for idx in support_indices {
+            let gem = &group.gem_skills[idx];
+            // quality 传 0 与 support_modifiers 同口径（support 品质表条目不存在）。
+            let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0, gem.stat_set_index);
+            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+            mods.extend(
+                mapped_stat_modifiers(
+                    &stats.base,
+                    SourceKind::SupportGem,
+                    &gem.skill_id,
+                    &gem.skill_id,
+                    set_key.as_deref(),
+                )
+                .into_iter()
+                .filter(|m| m.name.as_str().ends_with("ExposureEffect")),
+            );
         }
     }
     mods
@@ -6304,6 +6524,31 @@ mod tests {
             .find(|s| s.skill_id == "TemporalChainsPlayer")
             .expect("Temporal Chains 载荷存在（允收名单外亦计）→ 注册");
         assert_eq!(hex.kind, BuffKind::Curse);
+    }
+
+    /// （M4-L）Debuff 分类：Frost Bomb（非 aura/curse 主动技能）的
+    /// `active_skill_all_elemental_exposure_magnitude`（GlobalEffect Debuff，
+    /// SkillStatMap.lua:1721-1725）→ BuffSpec(kind=Debuff)，mods = 三元素
+    /// `<El>Exposure BASE 20`（statset 常量原值）。vendor 对全部 activeSkillList
+    /// 生效（CalcPerform.lua:2219-2285）——非主技能组同样产出。
+    #[test]
+    fn buff_skill_specs_classifies_frost_bomb_debuff() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Druid".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FrostBombPlayer", 18));
+
+        let specs = buff_skill_specs(&build, &data);
+        let bomb = specs
+            .iter()
+            .find(|s| s.skill_id == "FrostBombPlayer")
+            .expect("Frost Bomb debuff spec");
+        assert_eq!(bomb.kind, BuffKind::Debuff);
+        assert!(!bomb.is_mark);
     }
 
     /// 单通道不变式（C5-3 删旧码后）：编排产线（BuffSpec → buff_pass 乘区）的
