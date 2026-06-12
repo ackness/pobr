@@ -379,6 +379,7 @@ name = "pobr-build"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "criterion",
  "flate2",
  "pobr-core",
  "pobr-data",
