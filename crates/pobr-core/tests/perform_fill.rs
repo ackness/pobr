@@ -632,7 +632,10 @@ fn perform_fills_electrocute_buildup_from_lightning_hit() {
     );
 }
 
-/// 叠层接入：BleedStacks BASE → bleed_stacked_dps = 单层 × 活跃层数；默认单层时相等。
+/// 叠层接入：`BleedCanStack` flag + BleedStacks BASE → bleed_stacked_dps =
+/// 单层 × 活跃层数；默认单层时相等。（M4-K 对齐 vendor CalcOffence.lua:5021-5025：
+/// maxStacks 仅在 `<Ailment>CanStack` flag 在场时展开，词条与 flag 成对注入——
+/// statmap 来源如 Escalating Poison 即 `PoisonStacks BASE + PoisonCanStack`。）
 #[test]
 fn perform_bleed_stacking_multiplies_dps() {
     let base = ActorBaseStats {
@@ -660,6 +663,7 @@ fn perform_bleed_stacking_multiplies_dps() {
         vec![
             Modifier::number("BleedChance", ModType::Base, 100.0),
             Modifier::number("BleedStacks", ModType::Base, 2.0),
+            Modifier::flag("BleedCanStack"),
         ],
     );
     stacked.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
@@ -766,8 +770,12 @@ fn perform_ignite_stacking_multiplies_dps() {
     assert!((single.player.output.ignite_stacked_dps - one_layer).abs() < 1e-6);
     assert_eq!(single.player.output.ignite_active_stacks, 1.0);
 
-    // +2 IgniteStacks → max_stacks=3 → stacked ≈ 单层 × 3。
-    let mut stacked = fire_skill(vec![Modifier::number("IgniteStacks", ModType::Base, 2.0)]);
+    // IgniteCanStack + 2 IgniteStacks → max_stacks=3 → stacked ≈ 单层 × 3
+    // （M4-K：flag 门对齐 vendor CalcOffence.lua:5021-5025，词条与 flag 成对）。
+    let mut stacked = fire_skill(vec![
+        Modifier::number("IgniteStacks", ModType::Base, 2.0),
+        Modifier::flag("IgniteCanStack"),
+    ]);
     perform(&mut stacked).unwrap();
     assert_eq!(stacked.player.output.ignite_active_stacks, 3.0);
     assert!((stacked.player.output.ignite_stacked_dps - one_layer * 3.0).abs() < 1e-3);

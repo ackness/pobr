@@ -976,9 +976,11 @@ fn damaging_ailment_for_pass(
     };
     let probe = make_source(hit50, crit50, ctx.crit_chance);
     let (probe_out, _) = run(&probe, trace);
+    // 叠层词条用 ailment 作用域 cfg（vendor :5024 的 cfg = 该异常 dotCfg）。
+    let scoped_cfg = super::ailment::ailment_scoped_cfg(cfg, kind);
     let stack = resolve_stack_config(
         player,
-        cfg,
+        &scoped_cfg,
         name,
         ctx.hit_chance,
         probe_out.chance,
@@ -1275,12 +1277,25 @@ fn resolve_stack_config(
     duration_secs: f64,
     hit_speed: f64,
 ) -> StackConfig {
-    let base_stacks = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from(format!("{ailment}Stacks"))],
-    );
-    let max_stacks = (1.0 + base_stacks).max(1.0) as u32;
+    // vendor 公式（CalcOffence.lua:5021-5025）：`maxStacks = 1`；仅
+    // `<Ailment>CanStack` flag 在场时 `maxStacks = Override(<Ailment>Stacks) or
+    // ((1 + ΣBASE) × More)`。M4-K 把旧「<Ailment>Stacks 词条存在即叠层」近似
+    // 换成 flag 门 + Override/MORE 腿（Escalating Poison 等 statmap 来源
+    // `PoisonStacks BASE + PoisonCanStack flag` 成对注入）。
+    let stacks_name = ModName::from(format!("{ailment}Stacks"));
+    let can_stack = db.flag(cfg, ModName::from(format!("{ailment}CanStack")));
+    let max_stacks = if can_stack {
+        match db.override_(cfg, stacks_name.clone()) {
+            Some(v) => v.max(1.0) as u32,
+            None => {
+                let base = db.sum(ModType::Base, cfg, std::slice::from_ref(&stacks_name));
+                let more = db.more(cfg, std::slice::from_ref(&stacks_name));
+                ((1.0 + base) * more).max(1.0) as u32
+            }
+        }
+    } else {
+        1
+    };
     let active_stacks =
         estimate_active_stacks(hit_chance_frac, apply_chance_frac, duration_secs, hit_speed);
     StackConfig::new(max_stacks, active_stacks)

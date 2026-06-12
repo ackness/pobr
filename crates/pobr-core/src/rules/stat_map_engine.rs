@@ -809,6 +809,13 @@ fn is_consumable_flag(name: &str) -> bool {
             | "CritLucky"
             | "ElementalLuckHits"
             | "ProjectileSpeedAppliesToProjectileDamage"
+            // M4-K：异常叠层开关（Escalating Poison `number_of_additional_poison_
+            // stacks` 与 `PoisonStacks BASE` 成对注入，sup_dex.lua:2188-2191）。
+            // 消费方 = `calc::perform::resolve_stack_config` 的 maxStacks flag 门
+            // （vendor CalcOffence.lua:5022-5025）。
+            | "PoisonCanStack"
+            | "BleedCanStack"
+            | "IgniteCanStack"
     )
 }
 
@@ -1188,6 +1195,28 @@ pub fn translate_mod_name(
         // 仅 SupportPayload 产出该 stat）。消费方 = `calc::scaled_damage::
         // dps_end_factors`（vendor CalcOffence.lua:1124-1127 折 DPS MORE）。
         "GrenadeActivateTwice" => base_name.to_string(),
+        // M4-K：伤害异常族直通（消费方 = `calc::ailment` + `calc::perform::
+        // fill_ailments`）。施加几率：流血/中毒内禀 `<Ailment>Chance`（vendor
+        // `base_chance_to_inflict_bleeding_%`/`base_chance_to_poison_on_hit_%`，
+        // SkillStatMap.lua:1267/:1311 族），点燃/感电几率派生 `Enemy<Ailment>Chance`
+        // （`base_chance_to_ignite_%` 等）；量级：`AilmentMagnitude`（Deadly
+        // Poison/Ignites 的 `*_effect_+%_final`，kw 限定经 keyword 直译）+
+        // 感电/冰缓幅度（`EnemyShockMagnitude`/`EnemyChillMagnitude`，
+        // `shock_traced`/`chill_traced` 消费）；叠层：`<Ailment>Stacks`
+        // （Escalating Poison `number_of_additional_poison_stacks`，
+        // `resolve_stack_config` 消费，与 `<Ailment>CanStack` flag 成对）。
+        "PoisonChance" | "BleedChance" | "EnemyIgniteChance" | "EnemyShockChance"
+        | "AilmentMagnitude" | "EnemyShockMagnitude" | "EnemyChillMagnitude" | "PoisonStacks"
+        | "BleedStacks" | "IgniteStacks" => base_name.to_string(),
+        // M4-K：异常持续时间——vendor 施加方词条名带 Enemy 前缀（作用于敌身上的
+        // debuff 时长，CalcOffence.lua:5037 durationMod 取
+        // `Enemy<Ailment>Duration`/`EnemyAilmentDuration`/`DamagingAilmentDuration`），
+        // PoBR `ailment_duration`/`scale_duration` 的聚合名为 `<Ailment>Duration`/
+        // `AilmentDuration`（mod_parser 同名族）→ 翻译归一。
+        "EnemyPoisonDuration" => "PoisonDuration".to_string(),
+        "EnemyBleedDuration" => "BleedDuration".to_string(),
+        "EnemyIgniteDuration" => "IgniteDuration".to_string(),
+        "EnemyAilmentDuration" | "DamagingAilmentDuration" => "AilmentDuration".to_string(),
         other => {
             // 转换 / gain-as 族（`Skill<From>DamageConvertTo<To>` /
             // `[Skill]<From>DamageGainAs<To>`）：PoB2 与 PoBR 命名一致，按形态直通。
@@ -1396,6 +1425,69 @@ mod tests {
                 .iter()
                 .any(|t| matches!(t, ModTag::SkillTypes(st) if st.contains(SkillTypes::ATTACK)))
         );
+    }
+
+    // ---- 伤害异常族白名单（M4-K）----
+
+    /// Escalating Poison 实形（sup_dex.lua:2188-2191 `number_of_additional_
+    /// poison_stacks` → `PoisonStacks BASE + PoisonCanStack flag` 成对）：
+    /// 两元素都翻译成功（flag 走白名单、mod 走直通族）。
+    #[test]
+    fn poison_stacks_pair_translates() {
+        let entry = entry_json(
+            r#"{ "mods": [
+                 { "kind": "mod", "name": "PoisonStacks", "mod_type": "BASE" },
+                 { "kind": "flag", "name": "PoisonCanStack", "mod_type": "FLAG", "value": true } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 1.0));
+        assert_eq!(mods.len(), 2);
+        assert_eq!(mods[0].name.as_str(), "PoisonStacks");
+        assert_eq!(mods[0].mod_type, ModType::Base);
+        assert_eq!(mods[1].name.as_str(), "PoisonCanStack");
+        assert_eq!(mods[1].mod_type, ModType::Flag);
+    }
+
+    /// 异常持续时间归一：vendor `EnemyPoisonDuration`（施加方对敌 debuff 时长，
+    /// CalcOffence.lua:5037）→ PoBR 聚合名 `PoisonDuration`（Escalating Poison
+    /// `support_multi_poison_poison_duration_+%_final` MORE -20 实形）。
+    #[test]
+    fn enemy_poison_duration_renames_to_pobr_bucket() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "EnemyPoisonDuration", "mod_type": "MORE" } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, -20.0));
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name.as_str(), "PoisonDuration");
+        assert_eq!(mods[0].mod_type, ModType::More);
+        assert_eq!(mods[0].value.as_number(), Some(-20.0));
+    }
+
+    /// 量级词条 keyword 限定直译：Deadly Poison `support_deadly_poison_poison_
+    /// effect_+%_final` → `AilmentMagnitude MORE kw=Poison`（sup_dex.lua:1748-1750）。
+    /// 消费侧 ailment_scoped_cfg 置位后 ANY-overlap 命中。
+    #[test]
+    fn ailment_magnitude_with_poison_keyword_translates() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "AilmentMagnitude", "mod_type": "MORE",
+                 "keyword_flags": ["Poison"] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 75.0));
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name.as_str(), "AilmentMagnitude");
+        assert!(mods[0].keyword_flags.intersects(KeywordFlags::POISON));
+    }
+
+    /// 施加几率直通：Envenom/Bleed III 的 `<Ailment>Chance BASE`
+    /// （SkillStatMap.lua:1267 / sup_str.lua:932）。
+    #[test]
+    fn ailment_chance_passthrough() {
+        for name in ["PoisonChance", "BleedChance", "EnemyIgniteChance"] {
+            let entry = entry_json(&format!(
+                r#"{{ "mods": [ {{ "kind": "mod", "name": "{name}", "mod_type": "BASE" }} ] }}"#
+            ));
+            let mods = expect_modifiers(map_entry(&entry, 60.0));
+            assert_eq!(mods[0].name.as_str(), name, "{name} 应直通");
+        }
     }
 
     /// 白名单外 flag 维持未知名上报；SkillType 未支持类型整条跳过。

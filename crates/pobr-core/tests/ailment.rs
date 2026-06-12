@@ -1277,3 +1277,55 @@ fn merge_hand_ailment_dps_weights_by_stack_fill() {
     // 估算缺失（stacks=0）：保守 s=1（全按最大实例）。
     assert_eq!(merge_hand_ailment_dps(100.0, 60.0, 0.0, 2.0), 100.0);
 }
+
+// ─────────────────────────────────────────────────────────────────
+// M4-K：keyword 作用域（vendor dotCfg）+ duration MORE 腿
+// ─────────────────────────────────────────────────────────────────
+
+/// `AilmentMagnitude MORE kw=Poison`（Deadly Poison 实形）只放大中毒，
+/// 不进点燃（vendor dotCfg keywordFlags 含 KeywordFlag[ailment]，
+/// CalcOffence.lua:5005——PoBR `ailment_scoped_cfg` 同口径置位）。
+#[test]
+fn keyword_scoped_magnitude_applies_only_to_matching_ailment() {
+    let mut db = ModDb::new();
+    db.add_list(vec![
+        Modifier::number("AilmentMagnitude", ModType::More, 75.0)
+            .with_keyword_flags(KeywordFlags::POISON),
+    ]);
+    let cfg = CalcConfig::attack();
+    let poison = poison_instance(1000.0, &db, &cfg);
+    let ignite = ignite_instance(1000.0, &db, &cfg);
+    let bare_poison = poison_instance(1000.0, &ModDb::new(), &cfg);
+    let bare_ignite = ignite_instance(1000.0, &ModDb::new(), &cfg);
+    assert!(
+        (poison.magnitude_dps - bare_poison.magnitude_dps * 1.75).abs() < 1e-6,
+        "kw=Poison 量级词条应作用于中毒：{} vs {}",
+        poison.magnitude_dps,
+        bare_poison.magnitude_dps
+    );
+    assert_eq!(
+        ignite.magnitude_dps, bare_ignite.magnitude_dps,
+        "kw=Poison 量级词条不得作用于点燃"
+    );
+}
+
+/// duration 聚合带 MORE 腿（vendor durationMod = calcLib.mod = (1+inc)×more，
+/// CalcOffence.lua:5037-5039）：Escalating Poison `PoisonDuration MORE -20`。
+#[test]
+fn duration_applies_more_leg() {
+    let mut db = ModDb::new();
+    db.add_list(vec![Modifier::number(
+        "PoisonDuration",
+        ModType::More,
+        -20.0,
+    )]);
+    let cfg = CalcConfig::attack();
+    let with_more = poison_instance(1000.0, &db, &cfg);
+    let bare = poison_instance(1000.0, &ModDb::new(), &cfg);
+    assert!(
+        (with_more.duration_secs - bare.duration_secs * 0.8).abs() < 1e-6,
+        "MORE -20% 应缩短持续：{} vs {}",
+        with_more.duration_secs,
+        bare.duration_secs
+    );
+}
