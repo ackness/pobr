@@ -1775,17 +1775,19 @@ fn strip_scope_suffix(text: &str) -> (String, ModFlags) {
         }
     }
     // 前缀作用域（`attack critical hit chance` / `spell critical damage bonus`...）。
-    // 仅对暴击族名启用，避免误伤 `attack damage`/`spell damage`（已是独立 ModName）。
-    // 登记（M4-J 暂缓）：`attack/spell area damage`（vendor ModParser.lua:721-722
-    // `{ "Damage", flags = bor(Area, Attack|Spell) }`）经 oracle 证实 vendor 计入
-    // （deadeye 树 35739/42410/59480 共 41 INC），但接入会令 deadeye TotalDPS
-    // 1.02x → 1.11x 出 5% 带——根因是 grenade Speed 段 1.95x 过记（冷却线，
-    // m4-skill-gaps §3），等冷却线修复后再启用。
+    // 仅对暴击族名与 `area damage` 启用，避免误伤 `attack damage`/`spell damage`
+    // （已是独立 ModName）。
+    // `attack/spell area damage`（vendor ModParser.lua:721-722 `{ "Damage",
+    // flags = bor(Area, Attack|Spell) }`）→ `AreaDamage` + ATTACK/SPELL flag：
+    // AreaDamage 桶本身按 cfg AREA 位选入（calc::damage::aggregate_inc_more），
+    // 叠加本 flag 的子集匹配 = vendor bor(Area, Attack|Spell) 同语义。
+    // （M4-J 曾暂缓：当时接入令 deadeye 出带，根因 grenade Speed 1.95x 过记；
+    // j3 冷却整链已修复，M4-K 解锁。）
     let prefixes: &[(&str, ModFlags)] =
         &[("attack ", ModFlags::ATTACK), ("spell ", ModFlags::SPELL)];
     for (prefix, flag) in prefixes {
         if let Some(stripped) = text.strip_prefix(prefix)
-            && stripped.starts_with("critical")
+            && (stripped.starts_with("critical") || stripped == "area damage")
         {
             return (stripped.trim().to_string(), *flag);
         }
@@ -2649,6 +2651,28 @@ mod per_slot_defence_tests {
     fn parses_damage_with_hits_as_generic() {
         let out = parse_mod("20% increased Damage with [HitDamage|Hits]").expect("parses");
         assert_eq!(out.mods[0].name.as_str(), "Damage");
+    }
+
+    /// `attack/spell area damage` 前缀作用域（vendor ModParser.lua:721-722
+    /// `{ "Damage", flags = bor(Area, Attack|Spell) }`）→ `AreaDamage` +
+    /// ATTACK/SPELL flag（AREA 位由 AreaDamage 桶按 cfg AREA 选入承载，
+    /// 叠加子集匹配 = vendor bor 同语义）。
+    #[test]
+    fn parses_attack_spell_area_damage_scope_prefix() {
+        // Arrange：树小点原文（deadeye area_attacks* / witch area_spells* 族）。
+        let cases = [
+            ("6% increased [Attack] Area Damage", ModFlags::ATTACK),
+            ("10% increased [Spell] Area Damage", ModFlags::SPELL),
+        ];
+        for (text, flag) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods[0].name.as_str(), "AreaDamage", "{text}");
+            assert_eq!(out.mods[0].mod_type, ModType::Inc, "{text}");
+            assert!(out.mods[0].flags.intersects(flag), "{text}");
+        }
     }
 
     /// `with poison` / `with bleeding`（ANY，无 MatchAll）→ 对应 KeywordFlag，不带 MATCH_ALL。

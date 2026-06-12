@@ -132,7 +132,7 @@ huntress 0.27→0.44x、monk 0.22→0.23x——余差均为 pre-crit per-hit 段
 - huntress twister：~240 → **333 / vendor 350**（余差 = 34168 暂缓 25 + 1420 暂缓 15 − 变体线 ~23；TotalDPS 35943→46499，0.43→0.56x）
 
 **暂缓登记（vendor 证实正确、但接入触发既有过记出 parity 带；代码内同步注释）**：
-- `attack/spell area damage`（ModParser.lua:721-722，deadeye 树 41 INC、twister 1420 +15）：接入令 deadeye TotalDPS 1.02x→1.11x 出带——根因 grenade **Speed 段 1.95x 过记**（0.32 vs 0.16，冷却线 §3），冷却线修复后启用；
+- ~~`attack/spell area damage`（ModParser.lua:721-722，deadeye 树 41 INC、twister 1420 +15）：接入令 deadeye TotalDPS 1.02x→1.11x 出带——根因 grenade **Speed 段 1.95x 过记**（0.32 vs 0.16，冷却线 §3），冷却线修复后启用~~ → **M4-K 已解锁**（j3 冷却整链修复后接入，5 build 纯收敛：deadeye TotalDPS 0.52x→0.57x、twister 0.53x→0.55x、gemling 0.27x→0.28x、smith-of-kitava 0.57x→0.69x、titan 0.61x→0.72x，零倒退）；
 - `CritInPast8Sec` 后缀族（ModParser.lua:1904-1906，twister 34168 +25 / coiling+DD 13724 +15）：接入令 detonate-dead **panel** 口径 1.09x→1.13x 出 10% 带（panel 无敌方减伤本就过记；effective 口径实为 0.81→0.84 收敛）——effective 减伤线收敛 DD 后启用。
 
 **确认非缺口**：witch 的 Bonded `20% increased Projectile Damage`（gloves enchant）vendor 同样不计（无「Gain the benefits of Bonded modifiers」激活源，oracle 钉值 flag=false），PoBR 行为一致。
