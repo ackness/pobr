@@ -12,6 +12,25 @@
 //! **生命周期**：buff 域（isGlobalEffect / buffMode）statmap 数据通道接通后本模块
 //! 退役（M3 范围声明：BuffSpec 框架先行，buff stat→mod 数据化映射 defer——C5-3
 //! 删旧码时本映射因仍被 `buff_skill_specs` 消费而**保留**，蓝图 §6.1 范围内）。
+//!
+//! **退役评估（M4-I，2026-06 实查 `skill_stat_map.json` + vendor 数据）——本波不切**：
+//!
+//! 1. **数据覆盖**：[`map_aura_buff_stat`] 的 7 条 stat 中 5 条（Discipline ES、
+//!    Purity 火/冰/电、Impurity 混沌抗）在 statmap `per_stat_set` 域**有**
+//!    `GlobalEffect effectType=Aura` 条目（`DisciplinePlayer[1]` 等），数据通道
+//!    可覆盖；但 `..._additional_maximum_all_elemental_resistances_%_to_apply`
+//!    （Dread Banner，Aura 类型）**不在** statmap——vendor `SkillStatMap.lua`
+//!    本就无该条目（PoB2 丢弃该 stat 不计算）。切数据通道会静默丢这条注入，
+//!    属行为变化：需先裁决「PoBR 多算 vs vendor 不算」（parity 偏差源候选），
+//!    裁决归独立行为 commit。
+//! 2. **翻译层缺位**：statmap buff 域条目用 vendor ModName（`EnergyShieldTotal` /
+//!    `FireResist`…），player db 聚合名不同（`EnergyShield` / `FireResistance`…）。
+//!    切换需在 `stat_map_engine` 新建 aura 域 mapper（照 `map_curse_stat` 先例：
+//!    effectType=Aura 过滤 + player 侧允收名单翻译 + tag 直译）——属 M3 范围声明
+//!    defer 的 buff 域数据通道 track，超出机会项体量。
+//! 3. **顺带登记**：`..._all_elements_resistance_%_to_apply` 三抗臂对当前数据是
+//!    死代码——产出该 stat 的效果（ElementalWeakness 等）全是 curse/怪物效果，
+//!    无 Aura 类型效果，调用方（`buff_skill_specs`）只对 Aura 效果调用本映射。
 
 use pobr_data::modifier::ModType;
 
