@@ -353,19 +353,16 @@ pub fn effmult_for_ailment(
     round((1.0 - resist / 100.0) * (1.0 + taken_inc / 100.0) * taken_more)
 }
 
-/// 异常对应类型的敌方抗性（物理无抗性减伤 → 0；元素/混沌读 `<Type>Resist`，clamp 抗性区间）。
+/// 异常对应类型的敌方抗性（物理无抗性减伤 → 0；元素/混沌走与击中共用的
+/// [`enemy_resist_final`]——vendor 异常 EffMult 同样经 `calcResistForType`
+/// 取 final 抗性，CalcOffence.lua:5156/:5166/:5176）。
+///
+/// [`enemy_resist_final`]: super::offence::enemy_resist_final
 fn ailment_resist(enemy: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
     if damage_type == DamageType::Physical {
         return 0.0;
     }
-    let prefix = type_prefix(damage_type);
-    enemy
-        .sum(
-            ModType::Base,
-            type_cfg,
-            &[ModName::from(format!("{prefix}Resist"))],
-        )
-        .clamp(type_cfg.constants.game().resist_floor, ENEMY_MAX_RESIST)
+    super::offence::enemy_resist_final(enemy, type_cfg, damage_type)
 }
 
 /// 受伤链 ModName 集合（DamageTaken / DamageTakenOverTime / 分类型 + 元素）。

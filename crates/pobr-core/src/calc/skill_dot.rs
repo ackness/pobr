@@ -204,16 +204,9 @@ fn skill_dot_eff_mult(enemy: &ModDb, taken_cfg: &CalcConfig, damage_type: Damage
                     .maximum_physical_damage_reduction_pct,
             )
     } else {
-        enemy
-            .sum(
-                ModType::Base,
-                &type_cfg,
-                &[ModName::from(format!("{prefix}Resist"))],
-            )
-            .clamp(
-                type_cfg.constants.game().resist_floor,
-                pobr_data::monster::ENEMY_MAX_RESIST,
-            )
+        // 与击中/异常共用 final 抗性口径（vendor `calcResistForType`，
+        // CalcOffence.lua:530-543 / DoT 消费 :5893）。
+        super::offence::enemy_resist_final(enemy, &type_cfg, damage_type)
     };
     (1.0 - resist / 100.0) * (1.0 + taken_inc / 100.0) * taken_more
 }

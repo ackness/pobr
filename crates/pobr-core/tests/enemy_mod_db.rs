@@ -131,6 +131,119 @@ fn enemy_armour_reduces_physical_dps_in_effective() {
     );
 }
 
+/// 纯火伤输入（base_hit 0，100 火伤平 roll）。
+fn fire_only_input() -> MinimalInput {
+    MinimalInput {
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        ..attack_input()
+    }
+}
+
+fn fire_only_player() -> ModDb {
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("FireDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("FireDamageMax", ModType::Base, 100.0));
+    player
+}
+
+// M4-H S2：final 抗性口径 = vendor calcResistForType（CalcOffence.lua:530-543）。
+
+#[test]
+fn enemy_shared_elemental_resist_applies_to_elements_not_chaos() {
+    // `ElementalResist BASE` 共享名对火/冰/电生效（vendor :539 isElemental 并名），
+    // 混沌不含（isElemental[Chaos]=false）。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ElementalResist", ModType::Base, 40.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 60.0).abs() < 1e-6,
+        "ElementalResist 40 → 火伤 100*0.6 = 60, got {}",
+        out.dps
+    );
+
+    // 混沌伤害不吃 ElementalResist。
+    let mut chaos_player = ModDb::new();
+    chaos_player.add_mod(Modifier::number("ChaosDamageMin", ModType::Base, 100.0));
+    chaos_player.add_mod(Modifier::number("ChaosDamageMax", ModType::Base, 100.0));
+    let chaos_out = calculate_minimal_vs_enemy(
+        &chaos_player,
+        &enemy,
+        &effective_attack(),
+        &fire_only_input(),
+    );
+    assert!(
+        (chaos_out.dps - 100.0).abs() < 1e-6,
+        "混沌不吃 ElementalResist, got {}",
+        chaos_out.dps
+    );
+}
+
+#[test]
+fn enemy_resist_inc_scaling_applies_before_clamp() {
+    // 抗性自身的 INC 缩放（vendor :539 `× calcLib.mod(...)`）：30 BASE × (1+50%) = 45。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 30.0));
+    enemy.add_mod(Modifier::number("FireResist", ModType::Inc, 50.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 55.0).abs() < 1e-6,
+        "30×1.5=45 抗 → 100*0.55 = 55, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_resist_negative_scale_floors_at_zero() {
+    // 缩放因子 `max(..., 0)`（vendor :539 m_max(calcLib.mod, 0)）：-150% INC → 因子 0 → 抗性 0。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+    enemy.add_mod(Modifier::number("FireResist", ModType::Inc, -150.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 100.0).abs() < 1e-6,
+        "缩放 floor 0 → 抗性 0 → 100, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_resist_override_wins_over_base_sum() {
+    // Override 优先（vendor :531 `enemyDB:Override(cfg, ..)`，config「视为 0 抗」类）。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+    enemy.add_mod(Modifier::number("FireResist", ModType::Override, 0.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 100.0).abs() < 1e-6,
+        "Override 0 抗 → 100, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_resist_clamps_to_enemy_max_resist() {
+    // BASE 90 → clamp 到 EnemyMaxResist 75（Data.lua:200 = 75）。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 90.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 25.0).abs() < 1e-6,
+        "clamp 75 → 100*0.25 = 25, got {}",
+        out.dps
+    );
+}
+
 // ---------------------------------------------------------------------------
 // 3. 曝光取最强（exposure-min-of via ModDb::max_of + reduce_enemy_exposure）
 // ---------------------------------------------------------------------------

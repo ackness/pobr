@@ -863,18 +863,56 @@ fn enemy_damage_multiplier(
     let mitigation = if damage_type == DamageType::Physical {
         enemy_physical_multiplier(player_db, enemy_db, &type_cfg, raw_hit)
     } else {
-        let resist = enemy_db
-            .sum(
-                ModType::Base,
-                &type_cfg,
-                &[ModName::from(format!("{type_prefix}Resist"))],
-            )
-            .clamp(cfg.constants.game().resist_floor, ENEMY_MAX_RESIST);
+        let resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
         let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
         1.0 - effective_resist / 100.0
     };
 
     taken_mult * mitigation
+}
+
+/// 敌人对某伤害类型的 **final 抗性**（vendor `calcResistForType`，CalcOffence.lua:530-543）：
+///
+/// 1. `enemyDB:Override(cfg, "<Type>Resist")` 优先（config「视为 0 抗」类覆盖）；
+/// 2. 否则 `Σ BASE(<Type>Resist[, ElementalResist])`（元素类型含共享名
+///    `ElementalResist`，vendor :539）× `max((1 + ΣINC/100) × ΠMORE, 0)`
+///    （抗性自身的 INC/MORE 缩放，`calcLib.mod` 同式、负缩放 floor 0）；
+/// 3. clamp 到 `[ResistFloor(−200), EnemyMaxResist(75)]`（Data.lua:180/:200）。
+///
+/// 注：vendor 的 maxResist 可被 configInput `enemy<Type>Resist` **显式输入**抬高到
+/// `MaxResistCap(90)`（:532）——PoBR config 通道当前把显式值直接入 BASE
+/// （`config_resolve`），未接 cap 抬升；显式配 >75 抗的场景登记 TODO(parity)。
+/// 物理不走本函数（护甲/PDR 路径见 [`enemy_physical_multiplier`]）。
+pub(crate) fn enemy_resist_final(
+    enemy_db: &ModDb,
+    type_cfg: &CalcConfig,
+    damage_type: DamageType,
+) -> f64 {
+    debug_assert!(damage_type != DamageType::Physical, "物理无抗性路径");
+    let type_prefix = match damage_type {
+        DamageType::Physical => "Physical",
+        DamageType::Fire => "Fire",
+        DamageType::Cold => "Cold",
+        DamageType::Lightning => "Lightning",
+        DamageType::Chaos => "Chaos",
+    };
+    let resist_name = ModName::from(format!("{type_prefix}Resist"));
+    let resist = match enemy_db.override_(type_cfg, resist_name.clone()) {
+        Some(value) => value,
+        None => {
+            // 元素类型共享 `ElementalResist` 名（vendor isElemental 三元素；混沌不含）。
+            let names: &[ModName] = &if damage_type.is_elemental() {
+                vec![resist_name, ModName::from("ElementalResist")]
+            } else {
+                vec![resist_name]
+            };
+            let base = enemy_db.sum(ModType::Base, type_cfg, names);
+            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, names) / 100.0)
+                * enemy_db.more(type_cfg, names);
+            base * scale.max(0.0)
+        }
+    };
+    resist.clamp(type_cfg.constants.game().resist_floor, ENEMY_MAX_RESIST)
 }
 
 /// 玩家穿透对**已 clamp 的**敌人抗性的下调（仅元素/混沌、仅击中）。
