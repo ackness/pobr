@@ -2567,6 +2567,17 @@ fn parse_name(text: &str) -> Option<ModName> {
         // `chance to inflict ailments` → `AilmentChance`。消费链
         // ailment::flat_chance（`[<X>Chance, AilmentChance]` 的 inc 腿）。
         "chance to inflict ailments" => "AilmentChance",
+        // 点燃施加几率族（M4-n；vendor 名表 ModParser.lua:773-777：`to ignite` /
+        // `ignite chance` / `chance to ignite` / `flammability magnitude` →
+        // `EnemyIgniteChance`——Flammability（易燃）量级 PoB2 折算为点燃几率）。
+        // 消费链 = ailment::threshold_chance_traced 的 `[EnemyIgniteChance,
+        // AilmentChance]` base/inc/more 腿（CalcOffence.lua:5411-5417 阈值几率）。
+        // 钉源：stormweaver 树点 38068『Elemental Ailment Chance』
+        // `24% increased Flammability Magnitude`（oracle Tabulate = Tree:38068
+        // EnemyIgniteChance INC 24，IgniteChanceOnHit 3.19→3.96 的 ×1.24 腿）。
+        "to ignite" | "ignite chance" | "chance to ignite" | "flammability magnitude" => {
+            "EnemyIgniteChance"
+        }
         // 伤害异常持续时间（M4-l §7.2 族 3）：vendor 名表 → `Enemy<X>Duration`
         // （施加方对敌 debuff 时长；poison :837/:840、bleed :846-:847、ignite
         // :813-:814）。PoBR 消费名为去 Enemy 前缀的 `<X>Duration`（与 statmap
@@ -3187,6 +3198,33 @@ mod per_slot_defence_tests {
             assert_eq!(m.value.as_number(), Some(value), "{text}");
             assert_eq!(m.keyword_flags, kw, "{text}");
             assert!(!m.keyword_flags.requires_match_all(), "{text}");
+        }
+    }
+
+    /// 点燃施加几率族（M4-n；vendor 名表 ModParser.lua:773-777）→
+    /// `EnemyIgniteChance`。钉源 = stormweaver 树点 38068『Elemental Ailment
+    /// Chance』`24% increased Flammability Magnitude`（oracle Tabulate:
+    /// Tree:38068 EnemyIgniteChance INC 24）。
+    #[test]
+    fn parses_ignite_chance_family() {
+        // 注：裸 `N% chance to Ignite` BASE 形走 chance 短语 lane（未接，维持
+        // Unsupported 上报）；本族第一批只接 INC 形（消费方阈值几率的 inc 腿）。
+        let cases = [
+            (
+                "24% increased [Flammability] [BuffMagnitude|Magnitude]",
+                ModType::Inc,
+                24.0,
+            ),
+            ("15% increased chance to Ignite", ModType::Inc, 15.0),
+        ];
+        for (text, mod_type, value) in cases {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "EnemyIgniteChance", "{text}");
+            assert_eq!(m.mod_type, mod_type, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
         }
     }
 

@@ -631,6 +631,16 @@ fn is_player_buff_effect(element: &StatMapMod) -> bool {
 /// - `GlobalEffect` tag 剥除；除 curse 域约定键外额外允许 `effectName`
 ///   （buff 显示名，vendor 仅用于 AffectedBy 条件命名，无门控语义）。
 /// - flags / keyword_flags 第一批要求为空（允收名单内载荷数据全部无 flag）。
+///
+/// **逐元素独立处置**（M4-n，与 map_curse_stat 的「整条跳过」口径不同）：
+/// vendor merge 循环对条目的每个 modOrGroup **独立**翻译入 modList
+/// （CalcActiveSkill.lua:96-117 逐元素 `mergeStat`，元素间无成组耦合语义），
+/// 故单一元素不可翻译只跳过该元素、不连坐兄弟元素——典型场景 = Pinnacle of
+/// Power（other.lua:12503）`elemental_power_elemental_damage_+%_final_per_
+/// power_charge` 条目：首元素 `Damage MORE` 带 scalar Multiplier
+/// （ScalarMultiplier 边界外）不应丢弃同条目六枚 `<El>Can<Ailment>` flag 载荷。
+/// 可见性：全部命中元素失败（零注入）时仍按首个失败原因 Unsupported 上报；
+/// 部分成功 → `Mapped(成功子集)`（失败元素维持零注入，宁可跳过不可错算）。
 pub fn map_player_buff_stat(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -651,13 +661,23 @@ pub fn map_player_buff_stat(
         value: entry.value,
     };
     let mut items = Vec::new();
+    let mut first_failure: Option<UnsupportedReason> = None;
     for element in entry.mods.iter().filter(|e| is_player_buff_effect(e)) {
-        if let Err(reason) =
-            collect_player_buff_element(element, &entry_params, stat_value, &mut items)
-        {
-            // 与 map_curse_stat 同口径：任一元素不可翻译 → 整条跳过（成组语义）。
-            return MappedOutcome::Unsupported(reason);
+        // 逐元素独立处置（见函数文档）：失败元素零注入、不连坐兄弟元素。
+        // 元素级 scratch vec 防半元素注入（group 内部分成员已 push 后失败）。
+        let mut element_items = Vec::new();
+        match collect_player_buff_element(element, &entry_params, stat_value, &mut element_items) {
+            Ok(()) => items.append(&mut element_items),
+            Err(reason) => {
+                first_failure.get_or_insert(reason);
+            }
         }
+    }
+    if items.is_empty()
+        && let Some(reason) = first_failure
+    {
+        // 全部命中元素失败 → 维持 Unsupported 上报（双跑/Compare 可见性不退化）。
+        return MappedOutcome::Unsupported(reason);
     }
     MappedOutcome::Mapped(items)
 }
@@ -724,10 +744,81 @@ fn collect_player_buff_element(
             Ok(())
         }
         "mod" => collect_player_buff_mod(element, params.merge(stat_value), items),
+        "flag" => collect_player_buff_flag(element, items),
         other => Err(UnsupportedReason::UnsupportedKind(format!(
             "player buff 非 mod 载荷：{other}"
         ))),
     }
+}
+
+/// player buff `flag()` 构造器翻译（M4-n）：buff 域 flag 允收 = 跨类型施加
+/// `<Type>Can<Ailment>` 族（[`is_cross_type_ailment_flag`]）。
+///
+/// 消费方：`calc::ailment::{cross_type_source_hit_at_roll, stored_source_at_roll}`
+/// 的 `{type_prefix}Can{ailment}` 旗标门控（vendor CalcOffence.lua:4791-4825
+/// `canDoAilment` + :5453-5456 `type.."Can"..ailment`）。典型来源 = Pinnacle of
+/// Power（武器 Adonia's Ego 授予，other.lua:12503）六枚 `<El>Can<Ailment>`
+/// FLAG（全带 GlobalEffect/Buff tag，vendor 经 buff 循环写全局）。
+///
+/// 名单外 flag 名维持未知名上报（与主通道 [`is_consumable_flag`] 同口径：
+/// 错注会污染 ModDb flag 查询）；tag 处理与 [`collect_player_buff_mod`] 同款
+/// （GlobalEffect 剥除 + 约定键校验 + 其余直译）。
+fn collect_player_buff_flag(
+    element: &StatMapMod,
+    items: &mut Vec<MappedItem>,
+) -> Result<(), UnsupportedReason> {
+    let name = element.name.as_deref().unwrap_or("?");
+    if !is_cross_type_ailment_flag(name) {
+        return Err(UnsupportedReason::UnknownModName(format!("flag:{name}")));
+    }
+    if !element.flags.is_empty() {
+        return Err(UnsupportedReason::UnsupportedFlags(element.flags.join("|")));
+    }
+    if !element.keyword_flags.is_empty() {
+        return Err(UnsupportedReason::UnsupportedKeywordFlags(
+            element.keyword_flags.join("|"),
+        ));
+    }
+    let mut modifier = Modifier::flag(name);
+    for tag in &element.tags {
+        let is_global =
+            matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
+        if is_global {
+            if !tag
+                .keys()
+                .all(|k| matches!(k.as_str(), "type" | "effectType" | "effectName"))
+            {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "GlobalEffect 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            continue;
+        }
+        modifier = modifier.with_tag(translate_tag(tag)?);
+    }
+    items.push(MappedItem::Modifier(Box::new(modifier)));
+    Ok(())
+}
+
+/// `<Type>Can<Ailment>` 跨类型施加旗标族判定：type ∈ 五伤害类型前缀
+/// （`calc::ailment::type_prefix` 同表），ailment ∈ ModDb 消费方识别的七异常名
+/// （`calc::ailment::ailment_mod_name` 同表）。消费点拼名格式 =
+/// `format!("{prefix}Can{ailment}")`，本判定与之逐字对齐。
+fn is_cross_type_ailment_flag(name: &str) -> bool {
+    let Some(rest) = ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
+        .iter()
+        .find_map(|p| name.strip_prefix(p))
+    else {
+        return false;
+    };
+    let Some(ailment) = rest.strip_prefix("Can") else {
+        return false;
+    };
+    matches!(
+        ailment,
+        "Bleed" | "Ignite" | "Poison" | "Shock" | "Chill" | "Freeze" | "Electrocute"
+    )
 }
 
 /// player buff `mod()` 构造器翻译：玩家侧名单名 + GlobalEffect 剥除
@@ -3009,6 +3100,86 @@ mod tests {
         assert_eq!(
             map_player_buff_stat(&catalog, "X", Some("1"), "local_damage", 10.0),
             MappedOutcome::Mapped(Vec::new())
+        );
+    }
+
+    /// Pinnacle of Power 形态（M4-n，other.lua:12503 `elemental_power_elemental_
+    /// damage_+%_final_per_power_charge`）：首元素 `Damage MORE` 带 scalar
+    /// Multiplier（边界外，零注入）**不连坐**同条目六枚 `<El>Can<Ailment>` flag
+    /// ——逐元素独立处置后 flag 载荷全部产出、GlobalEffect tag 剥净。
+    /// stormweaver-comet IgniteDPS 1911 的跨类型通行证（oracle 钉源
+    /// `Skill:PinnacleOfPowerPlayer`，m4-skill-gaps.md §7.4）。
+    #[test]
+    fn player_buff_pinnacle_flags_survive_scalar_sibling() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "PinnacleOfPowerPlayer": { "1": {
+                 "elemental_power_elemental_damage_+%_final_per_power_charge": {
+                   "mods": [
+                     { "kind": "mod", "name": "Damage", "mod_type": "MORE",
+                       "tags": [ { "type": "SkillType", "skillTypeList": ["Cold","Fire","Lightning"] },
+                                 { "type": "Multiplier", "var": "RemovablePowerCharge",
+                                   "scalar": "ConsumedPowerChargeEffect" },
+                                 { "type": "GlobalEffect", "effectType": "Buff" } ] },
+                     { "kind": "flag", "name": "ColdCanIgnite", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] },
+                     { "kind": "flag", "name": "ColdCanShock", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] },
+                     { "kind": "flag", "name": "FireCanFreeze", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] },
+                     { "kind": "flag", "name": "FireCanShock", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] },
+                     { "kind": "flag", "name": "LightningCanFreeze", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] },
+                     { "kind": "flag", "name": "LightningCanIgnite", "mod_type": "FLAG", "value": true,
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "PinnacleOfPowerPlayer",
+            None,
+            "elemental_power_elemental_damage_+%_final_per_power_charge",
+            15.0,
+        ) else {
+            panic!("期望 Mapped（scalar 元素不连坐 flag）");
+        };
+        let flags: Vec<(&str, ModType)> = items
+            .iter()
+            .map(|item| {
+                let MappedItem::Modifier(m) = item else {
+                    panic!("期望 Modifier");
+                };
+                assert!(m.tags.is_empty(), "GlobalEffect Buff tag 剥除");
+                (m.name.as_str(), m.mod_type)
+            })
+            .collect();
+        assert_eq!(
+            flags,
+            vec![
+                ("ColdCanIgnite", ModType::Flag),
+                ("ColdCanShock", ModType::Flag),
+                ("FireCanFreeze", ModType::Flag),
+                ("FireCanShock", ModType::Flag),
+                ("LightningCanFreeze", ModType::Flag),
+                ("LightningCanIgnite", ModType::Flag),
+            ],
+            "六枚 <El>Can<Ailment> flag 全部产出；scalar Damage MORE 零注入"
+        );
+    }
+
+    /// `<Type>Can<Ailment>` 族名单外的 flag（如行为开关 projectile）维持未知名
+    /// 上报；全部命中元素失败（零注入）时 Unsupported 可见性不退化。
+    #[test]
+    fn player_buff_flag_outside_family_reported() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "X": { "1": {
+                 "some_behaviour_stat": {
+                   "mods": [ { "kind": "flag", "name": "projectile", "mod_type": "FLAG",
+                               "value": true,
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] } } } } }"#,
+        );
+        assert_eq!(
+            map_player_buff_stat(&catalog, "X", Some("1"), "some_behaviour_stat", 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnknownModName("flag:projectile".into()))
         );
     }
 
