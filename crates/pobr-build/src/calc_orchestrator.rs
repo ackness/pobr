@@ -3529,6 +3529,18 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                         );
                     }
                 }
+                // （M4-G）statmap buff 域补充通道：玩家侧允收名单（Accuracy）
+                // 的 GlobalEffect Buff/Aura 载荷（如 War Banner
+                // `base_skill_buff_banner_accuracy_+%_to_apply` → Accuracy INC +
+                // Condition:BannerPlanted 直译保留），与 map_aura_buff_stat 的
+                // 防御静态名单（ES/抗性族）不重叠，无双注入。
+                let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+                mods.extend(player_buff_stat_modifiers(
+                    data,
+                    &es,
+                    &gem.skill_id,
+                    set_key.as_deref(),
+                ));
                 specs.push(BuffSpec {
                     name: buff_skill_name(data, &gem.skill_id),
                     kind: BuffKind::Aura,
@@ -5479,6 +5491,45 @@ mod tests {
         assert!(
             support_buff_specs(&host("FireballPlayer"), &data).is_empty(),
             "非 Persistent Buff 宿主：require 裁决拒收，不注入"
+        );
+    }
+
+    /// （M4-G）Aura 类 buff 技能的 statmap buff 域补充通道：War Banner 的
+    /// `base_skill_buff_banner_accuracy_+%_to_apply`（GlobalEffect Aura +
+    /// Condition BannerPlanted）→ spec.mods 含 Accuracy INC（条件 tag 直译保留），
+    /// 数值 = 该宝石等级的 statset 原值（数据侧独立期望）。
+    #[test]
+    fn buff_skill_specs_maps_banner_accuracy_from_statmap() {
+        let data = repo_data();
+        let build =
+            Build::new().add_socket_group(SocketGroup::new().with_gem_skill("WarBannerPlayer", 10));
+
+        let specs = buff_skill_specs(&build, &data);
+        let banner = specs
+            .iter()
+            .find(|s| s.skill_id == "WarBannerPlayer")
+            .expect("War Banner spec（Aura 类）");
+        assert_eq!(banner.kind, BuffKind::Aura);
+
+        let expected: f64 = data
+            .effect_stats("WarBannerPlayer", 10, 0, None)
+            .all()
+            .into_iter()
+            .find(|ds| ds.stat == "base_skill_buff_banner_accuracy_+%_to_apply")
+            .map(|ds| ds.value)
+            .expect("banner accuracy stat 应在 statset 数据中");
+        let acc = banner
+            .mods
+            .iter()
+            .find(|m| m.name.as_str() == "Accuracy")
+            .expect("Accuracy INC 应经 statmap buff 域入 spec.mods");
+        assert_eq!(acc.mod_type, ModType::Inc);
+        assert_eq!(acc.value.as_number(), Some(expected));
+        assert!(
+            acc.tags
+                .contains(&pobr_core::ModTag::condition("BannerPlanted", false)),
+            "Condition:BannerPlanted 直译保留，实得 {:?}",
+            acc.tags
         );
     }
 
