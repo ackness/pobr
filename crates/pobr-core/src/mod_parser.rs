@@ -296,6 +296,13 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         return Ok(outcome);
     }
 
+    // M4-l 异常词条族（蓝图 §7.2 五族，vendor ModParser.lua 名表/specialModList）：
+    // 伤害异常施加几率 / magnitude / 叠层上限等固定句式。须在 parse_form 之前
+    // （无符号数字开头或非数字开头句式，parse_form 路径必然失败）。
+    if let Some(outcome) = parse_ailment_special(&rest, original) {
+        return Ok(outcome);
+    }
+
     // 关键石/无 form 特例：非数字开头、parse_form 必然失败的固定语义短语。
     // 在 parse_form 之前查表，命中即直接产出对应 Modifier（OVERRIDE / flag）。
     if let Some(outcome) = parse_keystone_special(&rest, original) {
@@ -493,6 +500,12 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
         | "to block attack and spell damage" => &["chance to block", "spell block chance"],
         // 异常+眩晕双阈值（PoB2 ModParser.lua:450）。
         "ailment and stun threshold" => &["stun threshold", "ailment threshold"],
+        // 伤害异常三类持续时间聚合（PoB2 ModParser.lua:828 `duration of damaging
+        // ailments` = {EnemyIgniteDuration, EnemyBleedDuration,
+        // EnemyPoisonDuration}；M4-l §7.2 族 3）。
+        "duration of damaging ailments" => {
+            &["ignite duration", "bleed duration", "poison duration"]
+        }
         _ => &[],
     };
     if !aggregate.is_empty() {
@@ -1572,6 +1585,162 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
     )
 }
 
+// ---------------------------------------------------------------------------
+// M4-l 异常词条 parser 五族（蓝图 §7.2）——bow-shot poison 余差的树/装备侧短语。
+// 各族独立接入，消费链（ailment.rs / perform.rs resolve_stack_config）已就绪。
+// ---------------------------------------------------------------------------
+
+/// 异常词条族总分发：依次尝试各异常句式族，命中即产出 Parsed。
+fn parse_ailment_special(rest: &str, original: &str) -> Option<ParseOutcome> {
+    let mods = parse_ailment_chance_sentence(rest, original)
+        .or_else(|| parse_ailment_magnitude(rest, original))
+        .or_else(|| parse_poison_stack_limit(rest, original))
+        .or_else(|| parse_poison_duration_per_recent(rest, original))?;
+    Some(ParseOutcome {
+        mods,
+        status: ParseStatus::Parsed,
+        unparsed: None,
+    })
+}
+
+/// 「N% increased/reduced Magnitude of <伤害异常> you inflict」族 →
+/// `AilmentMagnitude` INC/MORE（+ 异常 KeywordFlag 限定）。
+///
+/// vendor 名表（ModParser.lua:781-789）：
+/// - `magnitude of bleeding you inflict`（:781）/ `bleed magnitude`（:784）→ kw=Bleed
+/// - `magnitude of ignite you inflict`（:782）/ `ignite magnitude`（:783）→ kw=Ignite
+/// - `magnitude of poison you inflict`（:785）→ kw=Poison
+/// - `magnitude of ailments [you inflict]`（:787-788）→ 无 kw（全异常）
+/// - `magnitude of damaging ailments you inflict`（:789）→ kw=bor(Poison,Bleed,Ignite)
+///
+/// 消费链：`ailment::scale_magnitude`（`AilmentMagnitude` inc+more，经
+/// `ailment_scoped_cfg` 置位对应 KeywordFlag——ANY-overlap 使 kw 限定词条
+/// 只作用于对应异常，vendor dotCfg 同语义）。
+fn parse_ailment_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let (form, after) = parse_form(rest)?;
+    // 「... on targets that are not poisoned」（vendor modTagList:2122
+    // `MultiplierThreshold{actor=enemy, var=PoisonStacks, threshold=1,
+    // upper=true}`＝敌方毒层 <1）→ PoBR 以既有 `EnemyPoisoned` 条件取反表达
+    // （cfg 默认假 → 生效，与 vendor 面板默认敌未中毒同口径；config 置真时
+    // 同步失效）。树 notable『Low Tolerance』即此形。
+    let (after, not_poisoned) = match after.strip_suffix(" on targets that are not poisoned") {
+        Some(stripped) => (stripped.to_string(), true),
+        None => (after, false),
+    };
+    let kw = match after.as_str() {
+        "magnitude of bleeding you inflict" | "bleed magnitude" => KeywordFlags::BLEED,
+        "magnitude of ignite you inflict" | "ignite magnitude" => KeywordFlags::IGNITE,
+        "magnitude of poison you inflict" => KeywordFlags::POISON,
+        "magnitude of ailments" | "magnitude of ailments you inflict" => KeywordFlags::NONE,
+        "magnitude of damaging ailments you inflict" => {
+            KeywordFlags::POISON | KeywordFlags::BLEED | KeywordFlags::IGNITE
+        }
+        _ => return None,
+    };
+    let mod_type = match form.kind {
+        FormKind::Inc => ModType::Inc,
+        FormKind::More => ModType::More,
+        // 名表族无 BASE 形（`+N% to Magnitude` 不存在），保守不收。
+        FormKind::Base => return None,
+    };
+    let mut m = Modifier::number("AilmentMagnitude", mod_type, form.value).with_source(source);
+    if !kw.is_empty() {
+        m = m.with_keyword_flags(kw);
+    }
+    if not_poisoned {
+        m = m.with_tag(ModTag::condition("EnemyPoisoned", true));
+    }
+    Some(vec![m])
+}
+
+/// 无符号「{N}% chance to <伤害异常施加>」族 → `<Ailment>Chance` BASE。
+///
+/// vendor：form `(%d+)%% chance` 段吃掉数值，名表含前导 `to`——
+/// `to poison`/`to cause poison`/`to poison on hit` → `PoisonChance`
+/// （ModParser.lua:834-836）；`to cause bleeding [on hit]`/`to inflict
+/// bleeding [on hit]`/`to bleed` → `BleedChance`（:841-845）。可带尾缀
+/// 「 with attacks」（modTagList:1032 `keywordFlags = KeywordFlag.Attack`；
+/// PoBR 无 Attack keyword 位，按既有约定折为 `ModFlags::ATTACK`，子集匹配
+/// 同语义）。
+///
+/// 消费链：`ailment::flat_chance_traced`（`<Ailment>Chance`/`AilmentChance`
+/// base+inc+more，几率为 0 不施加）。
+fn parse_ailment_chance_sentence(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let (value, tail) = take_unsigned_number(rest)?;
+    let clause = tail.strip_prefix("% chance to ")?;
+    let (clause, flags) = match clause.strip_suffix(" with attacks") {
+        Some(stripped) => (stripped, ModFlags::ATTACK),
+        None => (clause, ModFlags::NONE),
+    };
+    let name = match clause {
+        // ModParser.lua:834-836。
+        "poison" | "cause poison" | "poison on hit" => "PoisonChance",
+        // ModParser.lua:841-845（cause/inflict × [on hit] + 裸 bleed）。
+        "cause bleeding"
+        | "cause bleeding on hit"
+        | "inflict bleeding"
+        | "inflict bleeding on hit"
+        | "bleed" => "BleedChance",
+        _ => return None,
+    };
+    let mut m = Modifier::number(name, ModType::Base, value).with_source(source);
+    if !flags.is_empty() {
+        m = m.with_flags(flags);
+    }
+    Some(vec![m])
+}
+
+/// 「N% increased Poison Duration for each Poison you have inflicted
+/// Recently, up to a maximum of M%」→ `PoisonDuration` INC N ×
+/// `Multiplier:PoisonAppliedRecently` + `GlobalLimit{M, NoxiousStrike}`。
+///
+/// vendor modTagList:1518（`for each poison you have inflicted recently,
+/// up to a maximum of (%d+)%%` → `Multiplier{var=PoisonAppliedRecently,
+/// globalLimit=M, globalLimitKey="NoxiousStrike"}`）。乘数变量无 config
+/// 供给时为 0（vendor 同默认）——本词条当前对面板零增量，接入消 Err 并
+/// 锁定契约（树 notable『Escalating Toxins』）。
+fn parse_poison_duration_per_recent(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let (form, after) = parse_form(rest)?;
+    if !matches!(form.kind, FormKind::Inc) {
+        return None;
+    }
+    let tail = after.strip_prefix(
+        "poison duration for each poison you have inflicted recently, up to a maximum of ",
+    )?;
+    let (limit, pct) = take_unsigned_number(tail)?;
+    if pct != "%" {
+        return None;
+    }
+    Some(vec![
+        Modifier::number("PoisonDuration", ModType::Inc, form.value)
+            .with_tag(ModTag::multiplier("PoisonAppliedRecently", 1.0, None))
+            .with_tag(ModTag::GlobalLimit {
+                value: limit,
+                key: "NoxiousStrike".into(),
+            })
+            .with_source(source),
+    ])
+}
+
+/// 「Targets can be affected by +N of your Poisons at the same time」→
+/// `PoisonCanStack` flag + `PoisonStacks` BASE N（成对注入）。
+///
+/// vendor specialModList（ModParser.lua:3895）：`flag("PoisonCanStack") +
+/// mod("PoisonStacks", "BASE", num)`。消费链：perform::resolve_stack_config
+/// （flag 门控；maxStacks = (1 + ΣBASE) × More）——与 statmap 侧
+/// `number_of_additional_poison_stacks` 通道（sup_dex.lua:2188-2191）同形。
+fn parse_poison_stack_limit(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let body = rest.strip_prefix("targets can be affected by +")?;
+    let (num, tail) = take_unsigned_number(body)?;
+    if tail != " of your poisons at the same time" {
+        return None;
+    }
+    Some(vec![
+        Modifier::flag("PoisonCanStack").with_source(source),
+        Modifier::number("PoisonStacks", ModType::Base, num).with_source(source),
+    ])
+}
+
 /// 解析 PoB 词条标记 `[A|B]` → `B`（显示名）、`[A]` → `A`。无标记原样返回。
 fn strip_pob_brackets(text: &str) -> String {
     if !text.contains('[') {
@@ -1768,6 +1937,10 @@ fn strip_scope_suffix(text: &str) -> (String, ModFlags) {
         // 「Damage with Hits」= 命中伤害（PoB2 KeywordFlag Hit）。面板进攻聚合本就按命中，
         // 故此限定对 hit 伤害是恒真——剥离为纯名、不加额外 flag（命中是默认伤害路径）。
         (" with hits", ModFlags::NONE),
+        // 「... on Enemies」（vendor modTagList:1425 `["on enemies"] = { }`，
+        // 空 tag＝无语义限定）：剥离为纯名（如『Duration of Damaging Ailments
+        // on Enemies』，M4-l §7.2 族 3）。
+        (" on enemies", ModFlags::NONE),
     ];
     for (suffix, flag) in suffixes {
         if let Some(stripped) = text.strip_suffix(suffix) {
@@ -2299,6 +2472,19 @@ fn parse_name(text: &str) -> Option<ModName> {
         "stun threshold" => "StunThreshold",
         // 异常阈值（PoB2 ModParser.lua:451；与 stun threshold 组合形见 resolve_names）。
         "ailment threshold" => "AilmentThreshold",
+        // 异常施加几率 INC 形（M4-l §7.2 族 1 补遗）：vendor 名表 :832
+        // `chance to inflict ailments` → `AilmentChance`。消费链
+        // ailment::flat_chance（`[<X>Chance, AilmentChance]` 的 inc 腿）。
+        "chance to inflict ailments" => "AilmentChance",
+        // 伤害异常持续时间（M4-l §7.2 族 3）：vendor 名表 → `Enemy<X>Duration`
+        // （施加方对敌 debuff 时长；poison :837/:840、bleed :846-:847、ignite
+        // :813-:814）。PoBR 消费名为去 Enemy 前缀的 `<X>Duration`（与 statmap
+        // 归一一致，见 stat_map_engine `EnemyPoisonDuration → PoisonDuration`；
+        // 消费链 ailment::scale_duration）。`... on you` 自侧形不在此表，照常
+        // 归 Unsupported。
+        "poison duration" | "duration of poisons you inflict" => "PoisonDuration",
+        "bleed duration" | "bleeding duration" => "BleedDuration",
+        "ignite duration" | "duration of ignites you inflict" => "IgniteDuration",
         // --- M2 防御词条批（W0.1）：block / evade / deflection / 预留效率 / ward ---
         // 格挡族（PoB2 ModParser.lua:365-383 nameList）。
         "to block"
@@ -2723,6 +2909,296 @@ mod per_slot_defence_tests {
             assert_eq!(out.mods[0].mod_type, ModType::Inc, "{text}");
             assert!(out.mods[0].flags.intersects(flag), "{text}");
         }
+    }
+
+    /// 「N% chance to Poison on Hit [with Attacks]」（vendor ModParser.lua:834-836
+    /// 名表 + :1032 `with attacks` tag）→ `PoisonChance` BASE（M4-l §7.2 族 1）。
+    #[test]
+    fn parses_poison_chance_on_hit_base() {
+        // Arrange：装备原文（with attacks 尾缀）+ 树小点原文（bracket 标记）。
+        let cases = [
+            (
+                "26% chance to Poison on Hit with Attacks",
+                26.0,
+                ModFlags::ATTACK,
+            ),
+            (
+                "8% chance to [Poison|Poison] on [HitDamage|Hit]",
+                8.0,
+                ModFlags::NONE,
+            ),
+            ("10% chance to Cause Poison", 10.0, ModFlags::NONE),
+        ];
+        for (text, value, flags) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "PoisonChance", "{text}");
+            assert_eq!(m.mod_type, ModType::Base, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
+            assert_eq!(m.flags, flags, "{text}");
+        }
+    }
+
+    /// 「N% increased Magnitude of <异常> you inflict」（vendor ModParser.lua:781-789
+    /// 名表）→ `AilmentMagnitude` INC + 异常 KeywordFlag（M4-l §7.2 族 2）。
+    #[test]
+    fn parses_ailment_magnitude_with_keyword() {
+        // Arrange：树小点原文（bracket 标记）+ 名表各别名。
+        let cases = [
+            (
+                "10% increased [BuffMagnitude|Magnitude] of [Poison] you inflict",
+                10.0,
+                KeywordFlags::POISON,
+            ),
+            (
+                "10% increased [BuffMagnitude|Magnitude] of [Bleeding|Bleeding] you inflict",
+                10.0,
+                KeywordFlags::BLEED,
+            ),
+            (
+                "10% increased [Ignite|Ignite] [BuffMagnitude|Magnitude]",
+                10.0,
+                KeywordFlags::IGNITE,
+            ),
+            (
+                "15% increased Magnitude of Ailments you inflict",
+                15.0,
+                KeywordFlags::NONE,
+            ),
+            (
+                "20% increased Magnitude of Damaging Ailments you inflict",
+                20.0,
+                KeywordFlags::POISON | KeywordFlags::BLEED | KeywordFlags::IGNITE,
+            ),
+        ];
+        for (text, value, kw) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "AilmentMagnitude", "{text}");
+            assert_eq!(m.mod_type, ModType::Inc, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
+            assert_eq!(m.keyword_flags, kw, "{text}");
+            assert!(!m.keyword_flags.requires_match_all(), "{text}");
+        }
+    }
+
+    /// 「... on targets that are not Poisoned」（vendor modTagList:2122
+    /// MultiplierThreshold 敌方毒层 <1）→ EnemyPoisoned 条件取反（族 2 补遗，
+    /// 树 notable『Low Tolerance』）。
+    #[test]
+    fn parses_ailment_magnitude_not_poisoned_condition() {
+        // Arrange：树原文（bracket 标记）。
+        let text = "60% increased [BuffMagnitude|Magnitude] of [Poison] you inflict on targets that are not Poisoned";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "AilmentMagnitude");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(60.0));
+        assert!(m.keyword_flags.intersects(KeywordFlags::POISON));
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Condition { var, negated: true, actor: None } if var == "EnemyPoisoned"
+        )));
+    }
+
+    /// reduced 形 → INC 负值（vendor 同 form 段语义）。
+    #[test]
+    fn parses_ailment_magnitude_reduced_negative() {
+        // Arrange
+        let text = "50% reduced [BuffMagnitude|Magnitude] of [Bleeding|Bleeding] you inflict";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.mods[0].mod_type, ModType::Inc);
+        assert_eq!(out.mods[0].value.as_number(), Some(-50.0));
+    }
+
+    /// 「N% increased/reduced <异常> Duration」（vendor ModParser.lua:813-814/:837/
+    /// :840/:846-847 名表 → Enemy<X>Duration；PoBR 消费名 <X>Duration）——
+    /// M4-l §7.2 族 3。
+    #[test]
+    fn parses_damaging_ailment_duration_names() {
+        // Arrange：树原文 + 弓符文 reduced 形 + 名表别名。
+        let cases = [
+            ("10% increased [Poison] Duration", "PoisonDuration", 10.0),
+            ("25% reduced Poison Duration", "PoisonDuration", -25.0),
+            (
+                "30% increased Duration of Poisons you inflict",
+                "PoisonDuration",
+                30.0,
+            ),
+            ("10% increased Bleeding Duration", "BleedDuration", 10.0),
+            ("15% increased Bleed Duration", "BleedDuration", 15.0),
+            ("20% increased Ignite Duration", "IgniteDuration", 20.0),
+            (
+                "25% increased Duration of Ignites you inflict",
+                "IgniteDuration",
+                25.0,
+            ),
+        ];
+        for (text, name, value) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), name, "{text}");
+            assert_eq!(m.mod_type, ModType::Inc, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
+        }
+    }
+
+    /// 「Duration of Damaging Ailments on Enemies」（vendor :828 三类聚合 +
+    /// :1425 `on enemies` 空 tag）→ Ignite/Bleed/PoisonDuration 三条 INC
+    /// （族 3 补遗，树 notable『Intense Dose』）。
+    #[test]
+    fn parses_damaging_ailments_duration_aggregate() {
+        // Arrange：树原文（bracket 标记）。
+        let text = "15% increased Duration of [DamagingAilments|Damaging Ailments] on Enemies";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.status, ParseStatus::Parsed);
+        let names: Vec<_> = out.mods.iter().map(|m| m.name.as_str()).collect();
+        assert_eq!(names, ["IgniteDuration", "BleedDuration", "PoisonDuration"]);
+        for m in &out.mods {
+            assert_eq!(m.mod_type, ModType::Inc);
+            assert_eq!(m.value.as_number(), Some(15.0));
+        }
+    }
+
+    /// 「N% increased Poison Duration for each Poison you have inflicted
+    /// Recently, up to a maximum of M%」（vendor modTagList:1518）→
+    /// Multiplier:PoisonAppliedRecently + GlobalLimit{M, NoxiousStrike}
+    /// （族 3 补遗，树 notable『Escalating Toxins』；乘数无 config 供给时 0）。
+    #[test]
+    fn parses_poison_duration_per_recent_multiplier() {
+        // Arrange：树原文（bracket 标记）。
+        let text = "10% increased [Poison] Duration for each [Poison] you have inflicted Recently, up to a maximum of 100%";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "PoisonDuration");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(10.0));
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Multiplier { var, .. } if var == "PoisonAppliedRecently"
+        )));
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::GlobalLimit { value, key } if *value == 100.0 && key == "NoxiousStrike"
+        )));
+    }
+
+    /// 自侧形「Poison Duration on You」不入施加方名表（vendor :838 →
+    /// SelfPoisonDuration，未接入）→ 维持 Err（skip-and-collect）。
+    #[test]
+    fn poison_duration_on_you_stays_unparsed() {
+        // Arrange / Act
+        let out = parse_mod("20% increased Poison Duration on You");
+        // Assert
+        assert!(out.is_err());
+    }
+
+    /// 「Targets can be affected by +N of your Poisons at the same time」
+    /// （vendor ModParser.lua:3895）→ PoisonCanStack flag + PoisonStacks BASE
+    /// 成对（M4-l §7.2 族 4）。
+    #[test]
+    fn parses_poison_stack_limit_pair() {
+        // Arrange：弓符文原文 + 树小点原文（bracket 标记）。
+        let cases = [
+            "Targets can be affected by +1 of your Poisons at the same time",
+            "Targets can be affected by +1 of your [Poison|Poisons] at the same time",
+        ];
+        for text in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 2, "{text}");
+            assert_eq!(out.mods[0].name.as_str(), "PoisonCanStack", "{text}");
+            assert_eq!(out.mods[0].mod_type, ModType::Flag, "{text}");
+            assert_eq!(out.mods[1].name.as_str(), "PoisonStacks", "{text}");
+            assert_eq!(out.mods[1].mod_type, ModType::Base, "{text}");
+            assert_eq!(out.mods[1].value.as_number(), Some(1.0), "{text}");
+        }
+    }
+
+    /// 「N% chance to inflict Bleeding on Hit [with Attacks]」（vendor
+    /// ModParser.lua:841-845 名表）→ `BleedChance` BASE（M4-l §7.2 族 5）。
+    #[test]
+    fn parses_bleed_chance_on_hit_base() {
+        // Arrange：树小点原文（bracket 标记）+ 名表各别名。
+        let cases = [
+            (
+                "5% chance to inflict [Bleeding|Bleeding] on [HitDamage|Hit]",
+                5.0,
+                ModFlags::NONE,
+            ),
+            (
+                "25% chance to inflict Bleeding on Hit with Attacks",
+                25.0,
+                ModFlags::ATTACK,
+            ),
+            ("10% chance to Cause Bleeding", 10.0, ModFlags::NONE),
+            ("15% chance to Bleed", 15.0, ModFlags::NONE),
+        ];
+        for (text, value, flags) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "BleedChance", "{text}");
+            assert_eq!(m.mod_type, ModType::Base, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
+            assert_eq!(m.flags, flags, "{text}");
+        }
+    }
+
+    /// 「N% increased chance to inflict Ailments」（vendor ModParser.lua:832 名表
+    /// `chance to inflict ailments` → AilmentChance）→ INC（族 1 补遗：
+    /// flat_chance 的 `[<X>Chance, AilmentChance]` inc 腿消费）。
+    #[test]
+    fn parses_ailment_chance_inc() {
+        // Arrange：树小点原文（bracket 标记）。
+        let text = "10% increased chance to inflict [Ailments]";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        assert_eq!(out.mods[0].name.as_str(), "AilmentChance");
+        assert_eq!(out.mods[0].mod_type, ModType::Inc);
+        assert_eq!(out.mods[0].value.as_number(), Some(10.0));
+    }
+
+    /// 条件形「on Critical Hit」不在名表（vendor 走独立 modTag 链，未接入）→
+    /// 维持 Err（skip-and-collect），不被裸 bleed 分支误吞。
+    #[test]
+    fn bleed_chance_on_critical_stays_unparsed() {
+        // Arrange / Act
+        let out = parse_mod("10% chance to inflict Bleeding on Critical Hit with Attacks");
+        // Assert
+        assert!(out.is_err());
     }
 
     /// `with poison` / `with bleeding`（ANY，无 MatchAll）→ 对应 KeywordFlag，不带 MATCH_ALL。
