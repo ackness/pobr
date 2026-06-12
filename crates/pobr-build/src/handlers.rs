@@ -30,7 +30,10 @@ pub const TOTAL_HANDLER_CAP: usize = 100;
 /// 已注册但当前为占位 stub 的 handler（消费方应把命中条目以告警口径上报，
 /// 不静默视为已覆盖）：
 /// - `config:presetBossSkills`：boss 技能预设表 `boss_skills.json` 属 M5+。
-pub const STUB_HANDLER_IDS: &[&str] = &["config:presetBossSkills"];
+/// - `buff:onslaught_flask`：Silver Flask 来源 effect 需 flask 基底数据列
+///   `effectInc`（F8 缺口）+ rarity 通道；且 PoE2 基底表无 Silver Flask
+///   （vendor CalcPerform.lua:541-573 残留 PoE1 分支）。
+pub const STUB_HANDLER_IDS: &[&str] = &["buff:onslaught_flask", "config:presetBossSkills"];
 
 /// 已注册、逻辑完整但**上下文门控**的 handler——依赖 [`HandlerCtx`]
 /// （[`pobr_core::rules::HandlerCtx`]）的 `main_skill` 维度，config 消费点
@@ -42,12 +45,13 @@ pub const CTX_GATED_HANDLER_IDS: &[&str] = &[
     "config:VigilantStrikeBypassCD",
 ];
 
-/// 构造全量 handler 注册表（T1 起逐批 append；T2 buff handlers 待接入）。
-///
-/// 后续 append 顺序约定（占位注释即插入点，每行一个 register 调用）：
-/// - T1：config handlers（第一批已入，见 [`register_config_handlers`]）。
-/// - T2：`pobr_core::rules::buff_expander::register_handlers(&mut registry)`
-///   （`buff:fortify` / `buff:onslaught_flask`，蓝图 §5.2 B2）。
+/// 构造全量 handler 注册表（append-only，占位注释即插入点，每行一个
+/// register 调用）：
+/// - config 域：第一批见 [`register_config_handlers`]，第二批（M3-W4
+///   commit B）见 [`register_config_handlers_batch2`]。
+/// - buff 域：`pobr_core::rules::buff_expander::register_handlers`
+///   （M3-W4 commit C：fortify/elusive/fanaticism 实现 + onslaught_flask
+///   stub，蓝图 §5.2 B2）。
 pub fn build_registry() -> HandlerRegistry {
     let mut registry = HandlerRegistry::new();
     // ── T1 append 点：config handlers ──

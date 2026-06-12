@@ -24,22 +24,158 @@ use pobr_data::stat::StatId;
 use crate::config::CalcConfig;
 use crate::mod_db::ModDb;
 use crate::modifier::{ModTag, ModValue, Modifier};
-use crate::rules::registry::{DuplicateHandlerError, HandlerCtx, HandlerRegistry, MainSkillCtx};
+use crate::rules::registry::{
+    DuplicateHandlerError, Handler, HandlerCtx, HandlerOutcome, HandlerRegistry, MainSkillCtx,
+};
 
 /// buff 域 handler 注册（蓝图 §2.4 契约 3；聚合点 = pobr-build
 /// `handlers::build_registry()` 逐行 append 调用本函数）。
 ///
-/// **当前注册集合为空**：`buff_definitions.json` 的四个 handler 条目
-/// （`buff:fortify` / `buff:elusive` / `buff:fanaticism` / `buff:onslaught_flask`）
-/// 待 M3-W4 commit C 按 [`HandlerCtx`] 新签名回补——fortify 要读 db 的
-/// `FortificationStacks` override/Max 链（CalcPerform.lua:523-539）、elusive
-/// 要读 `ElusiveEffect` Max/Override（:612-632）、fanaticism 要读主技能
-/// selfCast 状态（:574-580）、onslaught_flask 要读 flaskData（:543-560，
-/// 依赖 T4 flask merge）。签名扩展（本 commit）已把 db/cfg/主技能上下文
-/// 送达 handler；注册前这四条经 [`BuffExpansion::unhandled`] 进覆盖率报表
-/// （保守零输出，宁缺勿错值）。
-pub fn register_handlers(_registry: &mut HandlerRegistry) -> Result<(), DuplicateHandlerError> {
+/// M3-W4 commit C 回补 `buff_definitions.json` 的四个 handler 条目
+/// （vendor 行号 = 各 def 的 `vendor_ref`，撰写时实读核对）：
+///
+/// - **`buff:fortify`**（CalcPerform.lua:523-539，实现）：stacks 模型——
+///   `maxStacks = Override(MaximumFortification) or Σ BASE`、
+///   `minStacks = min(Σ BASE MinimumFortification, maxStacks)`、
+///   `stacks = Override(FortificationStacks) or (minStacks>0 → minStacks) or
+///   maxStacks` → `DamageTakenWhenHit MORE -floor((1+ΣINC BuffEffectOnSelf/100)
+///   × stacks)`（`Condition:NoFortificationMitigation` 豁免）+ 满层
+///   `Condition:HaveMaximumFortification` FLAG + `BuffOnSelf` 标量 +1。
+///   已知差异：vendor 的 `alliedFortify`（party/parent 取数 :518）与替代触发
+///   `Multiplier:Fortification > 0`（:524，expander 只认 trigger_flag
+///   `Fortified`）不建——pobr 无 party 通道，登记此文档。
+/// - **`buff:elusive`**（:612-632，实现）：`effectMod = (1+ΣINC(ElusiveEffect,
+///   BuffEffectOnSelf)/100) × ΠMORE(同集合) × 100`，输出口径取
+///   `(effectMod + Override(ElusiveEffectMinThreshold) or 0)/2`（衰减均值），
+///   `Override(ElusiveEffect)` 存在时改取 `min(override, effectMod)` →
+///   `AvoidAllDamageFromHitsChance BASE floor(15×e)` + `MovementSpeed INC
+///   floor(30×e)` + `Elusive` 条件。已知差异：`Max({source=Skill})` 增量
+///   （pobr ModDb 无按来源 Max 查询）与 Nightblade 交互（PoE1 辅助，
+///   PoE2 corpus 无）不建。
+/// - **`buff:fanaticism`**（:574-580，实现·上下文门控）：selfCast 门控经
+///   `ctx.main_skill.self_cast`（vendor `mainSkill.activeEffect.srcInstance.
+///   selfCast`）→ `effect = floor(75×(1+ΣINC BuffEffectOnSelf/100))` →
+///   `CastSpeed MORE e`（vendor `Speed`+ModFlag.Cast 按速度 bucket 折叠
+///   命名）与 `Cost INC -e`、`AreaOfEffect INC e`（ModFlag.Cast → pobr
+///   SPELL 位）。消费点未接线主技能上下文时保守零输出（接线即生效）。
+/// - **`buff:onslaught_flask`**（:541-573，**stub**）：Silver Flask 来源的
+///   effect 需 `item.flaskData.effectInc`（flask 基底数据列，F8 缺口）+
+///   rarity 通道（MagicUtilityFlaskEffect）；且 PoE2 基底表无 Silver Flask
+///   （vendor 残留 PoE1 分支）。零输出登记
+///   `handlers::STUB_HANDLER_IDS`，真实现时须与基本形 `Onslaught` def 互斥
+///   （vendor 同一 if 块 either-or，防双计）。
+pub fn register_handlers(registry: &mut HandlerRegistry) -> Result<(), DuplicateHandlerError> {
+    registry.register("buff:fortify", fortify_handler())?;
+    registry.register("buff:elusive", elusive_handler())?;
+    registry.register("buff:fanaticism", fanaticism_handler())?;
+    registry.register(
+        "buff:onslaught_flask",
+        Box::new(|_| HandlerOutcome::default()),
+    )?;
     Ok(())
+}
+
+/// `buff:fortify`（CalcPerform.lua:523-539；细节见 [`register_handlers`]）。
+fn fortify_handler() -> Handler {
+    Box::new(|ctx| {
+        let (Some(db), Some(cfg)) = (ctx.player_db, ctx.cfg) else {
+            return HandlerOutcome::default();
+        };
+        let max_name = StatId::new("MaximumFortification");
+        let max_stacks = db
+            .override_(cfg, max_name.clone())
+            .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[max_name]));
+        let min_stacks = db
+            .sum(ModType::Base, cfg, &[StatId::new("MinimumFortification")])
+            .min(max_stacks);
+        // vendor :526 取数链（Lua `or` 链；0 在 Lua 为真值，Override(0) 即 0 层）。
+        let stacks = db
+            .override_(cfg, StatId::new("FortificationStacks"))
+            .unwrap_or(if min_stacks > 0.0 {
+                min_stacks
+            } else {
+                max_stacks
+            });
+
+        let mut out = HandlerOutcome::default();
+        if !db.flag(cfg, StatId::new("Condition:NoFortificationMitigation")) {
+            let effect_scale =
+                1.0 + db.sum(ModType::Inc, cfg, &[StatId::new("BuffEffectOnSelf")]) / 100.0;
+            let effect = (effect_scale * stacks).floor();
+            out.player_mods.push(Modifier::number(
+                "DamageTakenWhenHit",
+                ModType::More,
+                -effect,
+            ));
+        }
+        if stacks >= max_stacks {
+            out.player_mods
+                .push(Modifier::flag("Condition:HaveMaximumFortification"));
+        }
+        // vendor :538 `modDB.multipliers["BuffOnSelf"] += 1`（标量加法通道）。
+        out.scalars.push(("BuffOnSelf".to_string(), 1.0));
+        out
+    })
+}
+
+/// `buff:elusive`（CalcPerform.lua:612-632；细节见 [`register_handlers`]）。
+fn elusive_handler() -> Handler {
+    Box::new(|ctx| {
+        let (Some(db), Some(cfg)) = (ctx.player_db, ctx.cfg) else {
+            return HandlerOutcome::default();
+        };
+        let names = [
+            StatId::new("ElusiveEffect"),
+            StatId::new("BuffEffectOnSelf"),
+        ];
+        let inc = db.sum(ModType::Inc, cfg, &names);
+        let elusive_effect_mod = (1.0 + inc / 100.0) * db.more(cfg, &names) * 100.0;
+        // vendor :620 衰减均值口径：(effectMod + MinThreshold)/2。
+        let min_threshold = db
+            .override_(cfg, StatId::new("ElusiveEffectMinThreshold"))
+            .unwrap_or(0.0);
+        let mut effect_mod = (elusive_effect_mod + min_threshold) / 2.0;
+        // vendor :624-626 Override(ElusiveEffect) → min(override, effectMod)。
+        if let Some(over) = db.override_(cfg, StatId::new("ElusiveEffect")) {
+            effect_mod = over.min(elusive_effect_mod);
+        }
+        let effect = effect_mod / 100.0;
+        HandlerOutcome {
+            player_mods: vec![
+                Modifier::number(
+                    "AvoidAllDamageFromHitsChance",
+                    ModType::Base,
+                    (15.0 * effect).floor(),
+                ),
+                Modifier::number("MovementSpeed", ModType::Inc, (30.0 * effect).floor()),
+            ],
+            conditions: vec![("Elusive".to_string(), true)],
+            ..HandlerOutcome::default()
+        }
+    })
+}
+
+/// `buff:fanaticism`（CalcPerform.lua:574-580；细节见 [`register_handlers`]）。
+fn fanaticism_handler() -> Handler {
+    Box::new(|ctx| {
+        let (Some(db), Some(cfg)) = (ctx.player_db, ctx.cfg) else {
+            return HandlerOutcome::default();
+        };
+        // vendor :574 selfCast 门控；主技能上下文缺席 → 保守零输出。
+        if !ctx.main_skill.is_some_and(|main| main.self_cast) {
+            return HandlerOutcome::default();
+        }
+        let effect = (75.0
+            * (1.0 + db.sum(ModType::Inc, cfg, &[StatId::new("BuffEffectOnSelf")]) / 100.0))
+            .floor();
+        HandlerOutcome::player_mods(vec![
+            // vendor `Speed` + ModFlag.Cast → 速度 bucket 折叠命名（与
+            // `fold_vendor_speed` 同一约定）。
+            Modifier::number("CastSpeed", ModType::More, effect),
+            Modifier::number("Cost", ModType::Inc, -effect).with_flags(ModFlags::SPELL),
+            Modifier::number("AreaOfEffect", ModType::Inc, effect).with_flags(ModFlags::SPELL),
+        ])
+    })
 }
 
 /// 展开输入状态（只读快照）。
@@ -444,15 +580,259 @@ mod tests {
         );
     }
 
-    /// 契约 3 注册函数：当前为空注册（四个 handler 条目均需扩签名后的上下文，
-    /// 见 `register_handlers` 文档）；可重复调用、不与既有注册冲突。
+    /// 契约 3 注册函数（M3-W4 commit C）：四个 handler 全部注册（预算 ≤8）；
+    /// 重复注册按注册表语义报 Duplicate（不静默覆盖）。
     #[test]
-    fn register_handlers_is_empty_and_reentrant() {
+    fn register_handlers_registers_four() {
         let mut registry = HandlerRegistry::new();
         register_handlers(&mut registry).unwrap();
-        assert!(registry.is_empty(), "buff handler 当前应为零注册");
+        assert_eq!(
+            registry.ids().collect::<Vec<_>>(),
+            vec![
+                "buff:elusive",
+                "buff:fanaticism",
+                "buff:fortify",
+                "buff:onslaught_flask"
+            ]
+        );
+        assert!(register_handlers(&mut registry).is_err(), "重复注册应报错");
+    }
+
+    fn registry_with_buff_handlers() -> HandlerRegistry {
+        let mut registry = HandlerRegistry::new();
         register_handlers(&mut registry).unwrap();
-        assert!(registry.ids().all(|id| id.starts_with("buff:")));
+        registry
+    }
+
+    fn handler_def(id: &str, trigger: &str, handler_id: &str) -> BuffDef {
+        BuffDef {
+            id: id.to_string(),
+            trigger_flag: trigger.to_string(),
+            mode_gate: BuffModeGate::Combat,
+            effect: None,
+            mods: Vec::new(),
+            conditions_set: Vec::new(),
+            handler_id: Some(handler_id.to_string()),
+            verified: false,
+            vendor_ref: vendor_ref(),
+            notes: None,
+        }
+    }
+
+    /// buff:fortify 满层基线（vendor CalcPerform.lua:524-538）：
+    /// MaximumFortification 20 + BuffEffectOnSelf 10% → stacks=20 →
+    /// DamageTakenWhenHit MORE -floor(1.1×20)=-22 + 满层 FLAG + BuffOnSelf +1。
+    #[test]
+    fn fortify_max_stacks_baseline() {
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Fortified"));
+        db.add_mod(Modifier::number(
+            "MaximumFortification",
+            ModType::Base,
+            20.0,
+        ));
+        db.add_mod(Modifier::number("BuffEffectOnSelf", ModType::Inc, 10.0));
+        let cfg = CalcConfig::new();
+        let out = expand_misc_buffs(
+            &state(&db, &cfg, true),
+            &[handler_def("Fortify", "Fortified", "buff:fortify")],
+            &registry_with_buff_handlers(),
+        );
+        assert!(out.unhandled.is_empty());
+        assert_eq!(out.mods.len(), 2);
+        assert_eq!(out.mods[0].name.as_str(), "DamageTakenWhenHit");
+        assert_eq!(out.mods[0].mod_type, ModType::More);
+        assert_eq!(out.mods[0].value.as_number(), Some(-22.0));
+        assert_eq!(
+            out.mods[1].name.as_str(),
+            "Condition:HaveMaximumFortification"
+        );
+        // 归因穿透：handler 产出同样带 (Buff, buff.<id>)。
+        assert_eq!(
+            out.mods[0].origin.as_ref().unwrap().source_id.id,
+            "buff.Fortify"
+        );
+        assert_eq!(out.multipliers, vec![("BuffOnSelf".to_string(), 1.0)]);
+    }
+
+    /// buff:fortify 层数链（vendor :526）：FortificationStacks Override 优先；
+    /// 非满层不发满层 FLAG；NoFortificationMitigation 豁免减伤 mod。
+    #[test]
+    fn fortify_stacks_chain_and_mitigation_gate() {
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Fortified"));
+        db.add_mod(Modifier::number(
+            "MaximumFortification",
+            ModType::Base,
+            20.0,
+        ));
+        db.add_mod(Modifier::new(
+            "FortificationStacks",
+            ModType::Override,
+            ModValue::Number(5.0),
+        ));
+        let cfg = CalcConfig::new();
+        let registry = registry_with_buff_handlers();
+        let def = handler_def("Fortify", "Fortified", "buff:fortify");
+        let out = expand_misc_buffs(
+            &state(&db, &cfg, true),
+            std::slice::from_ref(&def),
+            &registry,
+        );
+        assert_eq!(out.mods.len(), 1, "5 < 20 不发满层 FLAG");
+        assert_eq!(out.mods[0].value.as_number(), Some(-5.0));
+
+        // MinimumFortification > 0 且无 Override → 取 min 层（vendor or 链）。
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Fortified"));
+        db.add_mod(Modifier::number(
+            "MaximumFortification",
+            ModType::Base,
+            20.0,
+        ));
+        db.add_mod(Modifier::number("MinimumFortification", ModType::Base, 8.0));
+        let out = expand_misc_buffs(
+            &state(&db, &cfg, true),
+            std::slice::from_ref(&def),
+            &registry,
+        );
+        assert_eq!(out.mods[0].value.as_number(), Some(-8.0));
+
+        // NoFortificationMitigation → 无减伤 mod，但满层 FLAG / 标量照发。
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Fortified"));
+        db.add_mod(Modifier::number(
+            "MaximumFortification",
+            ModType::Base,
+            20.0,
+        ));
+        db.add_mod(Modifier::flag("Condition:NoFortificationMitigation"));
+        let out = expand_misc_buffs(&state(&db, &cfg, true), &[def], &registry);
+        assert_eq!(out.mods.len(), 1);
+        assert_eq!(
+            out.mods[0].name.as_str(),
+            "Condition:HaveMaximumFortification"
+        );
+        assert_eq!(out.multipliers, vec![("BuffOnSelf".to_string(), 1.0)]);
+    }
+
+    /// buff:elusive 基线（vendor :612-632）：无效果词条 → effectMod=100 →
+    /// 输出口径 (100+0)/2=50 → Avoid floor(15×0.5)=7 + MS floor(30×0.5)=15 +
+    /// Elusive 条件；ElusiveEffect INC 100 → effectMod=200 → e=1.0 → 15/30。
+    #[test]
+    fn elusive_average_decay_baseline() {
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Elusive"));
+        let cfg = CalcConfig::new();
+        let registry = registry_with_buff_handlers();
+        let def = handler_def("Elusive", "Elusive", "buff:elusive");
+        let out = expand_misc_buffs(
+            &state(&db, &cfg, true),
+            std::slice::from_ref(&def),
+            &registry,
+        );
+        assert_eq!(out.mods.len(), 2);
+        assert_eq!(out.mods[0].name.as_str(), "AvoidAllDamageFromHitsChance");
+        assert_eq!(out.mods[0].value.as_number(), Some(7.0));
+        assert_eq!(out.mods[1].name.as_str(), "MovementSpeed");
+        assert_eq!(out.mods[1].value.as_number(), Some(15.0));
+        assert_eq!(out.conditions_set, vec!["Elusive".to_string()]);
+
+        db.add_mod(Modifier::number("ElusiveEffect", ModType::Inc, 100.0));
+        let out = expand_misc_buffs(
+            &state(&db, &cfg, true),
+            std::slice::from_ref(&def),
+            &registry,
+        );
+        assert_eq!(out.mods[0].value.as_number(), Some(15.0));
+        assert_eq!(out.mods[1].value.as_number(), Some(30.0));
+
+        // Override(ElusiveEffect)=40 → min(40, 200)=40 → e=0.4 → 6/12（vendor :624-626）。
+        db.add_mod(Modifier::new(
+            "ElusiveEffect",
+            ModType::Override,
+            ModValue::Number(40.0),
+        ));
+        let out = expand_misc_buffs(&state(&db, &cfg, true), &[def], &registry);
+        assert_eq!(out.mods[0].value.as_number(), Some(6.0));
+        assert_eq!(out.mods[1].value.as_number(), Some(12.0));
+    }
+
+    /// buff:fanaticism selfCast 门控（vendor :574-580）：主技能上下文缺席 /
+    /// 非自施放 → 零输出；selfCast → floor(75×1.1)=82 三连 mod（Cast 折叠）。
+    #[test]
+    fn fanaticism_self_cast_gate() {
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Fanaticism"));
+        db.add_mod(Modifier::number("BuffEffectOnSelf", ModType::Inc, 10.0));
+        let cfg = CalcConfig::new();
+        let registry = registry_with_buff_handlers();
+        let def = handler_def("Fanaticism", "Fanaticism", "buff:fanaticism");
+
+        // 未接线（main_skill=None）→ 保守零输出（unhandled 不再出现）。
+        let out = expand_misc_buffs(
+            &state(&db, &cfg, true),
+            std::slice::from_ref(&def),
+            &registry,
+        );
+        assert!(out.mods.is_empty());
+        assert!(out.unhandled.is_empty());
+
+        // 非自施放 → 零输出。
+        let triggered = MainSkillCtx {
+            skill_name: "Comet".to_string(),
+            self_cast: false,
+        };
+        let st = BuffExpandState {
+            main_skill: Some(&triggered),
+            ..state(&db, &cfg, true)
+        };
+        assert!(
+            expand_misc_buffs(&st, std::slice::from_ref(&def), &registry)
+                .mods
+                .is_empty()
+        );
+
+        // selfCast → effect = floor(75×1.1) = 82。
+        let self_cast = MainSkillCtx {
+            skill_name: "Comet".to_string(),
+            self_cast: true,
+        };
+        let st = BuffExpandState {
+            main_skill: Some(&self_cast),
+            ..state(&db, &cfg, true)
+        };
+        let out = expand_misc_buffs(&st, &[def], &registry);
+        assert_eq!(out.mods.len(), 3);
+        assert_eq!(out.mods[0].name.as_str(), "CastSpeed");
+        assert_eq!(out.mods[0].mod_type, ModType::More);
+        assert_eq!(out.mods[0].value.as_number(), Some(82.0));
+        assert_eq!(out.mods[1].name.as_str(), "Cost");
+        assert_eq!(out.mods[1].value.as_number(), Some(-82.0));
+        assert_eq!(out.mods[1].flags, ModFlags::SPELL);
+        assert_eq!(out.mods[2].name.as_str(), "AreaOfEffect");
+        assert_eq!(out.mods[2].value.as_number(), Some(82.0));
+    }
+
+    /// buff:onslaught_flask stub：注册后零输出（unhandled 清零但不假装覆盖，
+    /// 告警口径见 pobr-build `handlers::STUB_HANDLER_IDS`）。
+    #[test]
+    fn onslaught_flask_stub_zero_output() {
+        let mut db = ModDb::new();
+        db.add_mod(Modifier::flag("Onslaught"));
+        let cfg = CalcConfig::new();
+        let out = expand_misc_buffs(
+            &state(&db, &cfg, true),
+            &[handler_def(
+                "OnslaughtFlask",
+                "Onslaught",
+                "buff:onslaught_flask",
+            )],
+            &registry_with_buff_handlers(),
+        );
+        assert!(out.mods.is_empty());
+        assert!(out.unhandled.is_empty(), "stub 已注册，不入 unhandled");
+        assert!(out.multipliers.is_empty());
     }
 
     /// 蓝图 B3 数值锚点：OnslaughtEffect 23% + BuffEffectOnSelf 10% →
