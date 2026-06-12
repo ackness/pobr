@@ -302,6 +302,30 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         return Ok(outcome);
     }
 
+    // 「N% increased Damage for each type of Elemental Ailment on Enemy」（The Taming，
+    // vendor ModParser.lua:3798-3804）→ 5 条按敌方异常各自条件化的 Damage INC（每命中
+    // 一种异常类型叠加一档）。单 mod 多条件不可表达，须整行展开。
+    if let Some(mods) = parse_per_elemental_ailment_damage(&rest, original) {
+        return Ok(ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
+    // 「N% chance to Gain Arcane Surge <trigger>」（vendor FLAG form：前缀
+    // ModParser.lua:92 `^(%d+)%% chance to gain ` → 忽略几率、按拥有该 buff 处理；
+    // buff 关键词 :4197 `["arcane surge"] = flag("Condition:ArcaneSurge")`；触发
+    // 后缀 :1902 `["when you deal a critical hit"]` → Condition CritRecently）。
+    // 编排层据该 flag 桥接 `AffectedByArcaneSurge` 条件（CalcDefence.lua:1580-1582）。
+    if let Some(mods) = parse_gain_arcane_surge(&rest, original) {
+        return Ok(ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     let (form, after_form) = parse_form(&rest).ok_or_else(|| ParseError {
         input: original.into(),
         reason: "unsupported modifier form".into(),
@@ -718,6 +742,47 @@ fn parse_penetration(rest: &str, original: &str) -> Option<Vec<Modifier>> {
         m = m.with_flags(flags);
     }
     Some(vec![m])
+}
+
+/// 「N% increased Damage for each type of Elemental Ailment on Enemy」（vendor
+/// ModParser.lua:3798-3804）→ 5 条 Damage INC，各挂一种敌方异常条件
+/// （Electrocuted/Frozen/Chilled/Ignited/Shocked，PoBR 条件命名 `Enemy<X>`，
+/// 与既有 `against <X> enemies` 后缀同一 cfg 键空间）。每命中一种异常 +1 档。
+fn parse_per_elemental_ailment_damage(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let head =
+        rest.strip_suffix("% increased damage for each type of elemental ailment on enemy")?;
+    let value: f64 = head.trim().parse().ok()?;
+    Some(
+        [
+            "EnemyElectrocuted",
+            "EnemyFrozen",
+            "EnemyChilled",
+            "EnemyIgnited",
+            "EnemyShocked",
+        ]
+        .into_iter()
+        .map(|cond| {
+            Modifier::number("Damage", ModType::Inc, value)
+                .with_source(source)
+                .with_tag(ModTag::condition(cond, false))
+        })
+        .collect(),
+    )
+}
+
+/// 「N% chance to Gain Arcane Surge [when you deal a Critical Hit]」→
+/// `Condition:ArcaneSurge` FLAG（vendor FLAG form 忽略几率值，按拥有 buff 处理；
+/// ModParser.lua:92/:4197/:1902）。触发后缀存在时挂 `CritRecently` 条件。
+fn parse_gain_arcane_surge(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let trimmed = rest.strip_suffix(" when you deal a critical hit");
+    let body = trimmed.unwrap_or(rest);
+    let head = body.strip_suffix("% chance to gain arcane surge")?;
+    head.trim().parse::<f64>().ok()?;
+    let mut modifier = Modifier::flag("Condition:ArcaneSurge").with_source(source);
+    if trimmed.is_some() {
+        modifier = modifier.with_tag(ModTag::condition("CritRecently", false));
+    }
+    Some(vec![modifier])
 }
 
 /// 关键石/无 form 特例短语表（`rest` 已小写规范）。这些行非数字开头，parse_form 必然
@@ -1711,6 +1776,11 @@ fn strip_scope_suffix(text: &str) -> (String, ModFlags) {
     }
     // 前缀作用域（`attack critical hit chance` / `spell critical damage bonus`...）。
     // 仅对暴击族名启用，避免误伤 `attack damage`/`spell damage`（已是独立 ModName）。
+    // 登记（M4-J 暂缓）：`attack/spell area damage`（vendor ModParser.lua:721-722
+    // `{ "Damage", flags = bor(Area, Attack|Spell) }`）经 oracle 证实 vendor 计入
+    // （deadeye 树 35739/42410/59480 共 41 INC），但接入会令 deadeye TotalDPS
+    // 1.02x → 1.11x 出 5% 带——根因是 grenade Speed 段 1.95x 过记（冷却线，
+    // m4-skill-gaps §3），等冷却线修复后再启用。
     let prefixes: &[(&str, ModFlags)] =
         &[("attack ", ModFlags::ATTACK), ("spell ", ModFlags::SPELL)];
     for (prefix, flag) in prefixes {
@@ -1919,6 +1989,27 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
             " while you have a flask active",
             ModTag::condition("UsingFlask", false),
         ),
+        // 登记（M4-J 暂缓）：近期暴击（8 秒窗）条件族（vendor ModParser.lua:1904-1906
+        // → Condition `CritInPast8Sec`，cfg 由 config `conditionCritRecently` 的
+        // implyCond 展开供真）。oracle 证实 vendor 计入（twister 34168 +25 /
+        // coiling+DD 13724 +15），但接入会令 detonate-dead **panel** TotalDPS
+        // 1.09x → 1.13x 出 10% 带（panel 口径无敌方减伤、本就过记 9%，effective
+        // 口径反而收敛 0.81→0.84）——等 effective 减伤线把 DD 收敛后再启用。
+        // 伙伴在场条件（vendor ModParser.lua:1803 → Condition
+        // `CompanionInPresence`；cfg 侧 = config `companionInPresence`
+        // defaultState=true，ConfigOptions.lua:1012-1014，编排层按
+        // CreatesCompanion 技能在场置真）。
+        (
+            " while your companion is in your presence",
+            ModTag::condition("CompanionInPresence", false),
+        ),
+        // 奥术涌动 buff 条件（vendor ModParser.lua:1817 → Condition
+        // `AffectedByArcaneSurge`；cfg 侧由编排层据 `Condition:ArcaneSurge`
+        // flag 桥接，对照 CalcDefence.lua:1580-1582）。
+        (
+            " while you have arcane surge",
+            ModTag::condition("AffectedByArcaneSurge", false),
+        ),
     ];
 
     for (suffix, tag) in known_tags {
@@ -1959,6 +2050,21 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
     // 分支供给。
     if let Some(stripped) = text.strip_suffix(" with unarmed attacks") {
         *weapon_flags |= ModFlags::UNARMED;
+        return stripped.trim().into();
+    }
+
+    // 单手/双手武器后缀（vendor ModParser.lua:1016/:1018 `["with one handed
+    // weapons"] = bor(Weapon1H, Hit)` / `["with two handed weapons"] =
+    // bor(Weapon2H, Hit)`）——纯位通道；cfg 侧 Weapon1H/2H 位由
+    // weapon_cfg_flags（武器基底 one_hand 派生）供给、Hit 位由 hit 技能判定
+    // 供给。注意不在 weapon_type_tags（其 guard 排除 `damage` 结尾文本，而
+    // 「Damage with One Handed Weapons」正是 vendor name=Damage+flags 形态）。
+    if let Some(stripped) = text.strip_suffix(" with one handed weapons") {
+        *weapon_flags |= ModFlags::WEAPON_1H | ModFlags::HIT;
+        return stripped.trim().into();
+    }
+    if let Some(stripped) = text.strip_suffix(" with two handed weapons") {
+        *weapon_flags |= ModFlags::WEAPON_2H | ModFlags::HIT;
         return stripped.trim().into();
     }
 
@@ -2135,6 +2241,11 @@ fn parse_name(text: &str) -> Option<ModName> {
         "attack speed" => "AttackSpeed",
         "cast speed" => "CastSpeed",
         "movement speed" => "MovementSpeed",
+        // 投射物速度（vendor ModName `ProjectileSpeed`）。常规无直接面板消费方；
+        // `ProjectileSpeedAppliesToProjectileDamage` flag（Projectile
+        // Acceleration III 隐式 stat，SkillStatMap.lua:888）激活时由 perform
+        // 复制为 Damage INC（CalcOffence.lua:840-845）。
+        "projectile speed" => "ProjectileSpeed",
         // 通用技能速度（speed bucket，见 calc::skill_use_time::SPEED_BUCKET）。
         "skill speed" => "SkillSpeed",
         // 暴击（PoE2「Critical Hit」= 旧「Critical Strike」；计算读 CriticalStrike* ModName）。

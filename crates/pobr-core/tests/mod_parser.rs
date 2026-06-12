@@ -778,3 +778,117 @@ fn parses_curses_ignore_curse_limit() {
     assert_eq!(o.mods[0].mod_type, ModType::Base);
     assert_eq!(o.mods[0].value, ModValue::Number(99.0));
 }
+
+/// 「N% increased Damage for each type of Elemental Ailment on Enemy」（The Taming，
+/// vendor ModParser.lua:3798-3804）→ 5 条 Damage INC，各挂一种敌方异常条件
+/// （`Enemy<X>` cfg 键空间，与 `against <X> enemies` 后缀一致）。
+#[test]
+fn parses_damage_per_elemental_ailment_type_on_enemy() {
+    let o = parse_mod("21% increased Damage for each type of Elemental Ailment on Enemy").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 5);
+    for m in &o.mods {
+        assert_eq!(m.name, ModName::from("Damage"));
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value, ModValue::Number(21.0));
+    }
+    let conds: Vec<_> = o.mods.iter().map(|m| m.tags[0].clone()).collect();
+    for var in [
+        "EnemyElectrocuted",
+        "EnemyFrozen",
+        "EnemyChilled",
+        "EnemyIgnited",
+        "EnemyShocked",
+    ] {
+        assert!(conds.contains(&ModTag::condition(var, false)), "{var}");
+    }
+    // 条件求值：Chilled + Ignited 真（twister 配置形态）→ 2 档生效。
+    let cfg = CalcConfig::attack()
+        .with_condition("EnemyChilled", true)
+        .with_condition("EnemyIgnited", true);
+    let active = o.mods.iter().filter(|m| m.matches(&cfg)).count();
+    assert_eq!(active, 2);
+}
+
+/// 伙伴在场条件后缀（vendor ModParser.lua:1803 → CompanionInPresence）。
+#[test]
+fn parses_damage_while_companion_in_presence() {
+    let o = parse_mod("10% increased Damage while your [Companion] is in your [Presence]").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    let m = &o.mods[0];
+    assert_eq!(m.name, ModName::from("Damage"));
+    assert!(
+        m.tags
+            .contains(&ModTag::condition("CompanionInPresence", false))
+    );
+}
+
+/// 奥术涌动条件后缀（vendor ModParser.lua:1817 → AffectedByArcaneSurge）。
+#[test]
+fn parses_spell_damage_while_you_have_arcane_surge() {
+    let o =
+        parse_mod("30% increased Spell Damage while you have [ArcaneSurge|Arcane Surge]").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    let m = &o.mods[0];
+    assert_eq!(m.name, ModName::from("SpellDamage"));
+    assert!(
+        m.tags
+            .contains(&ModTag::condition("AffectedByArcaneSurge", false))
+    );
+}
+
+/// 「N% chance to Gain Arcane Surge when you deal a Critical Hit」→
+/// `Condition:ArcaneSurge` FLAG（vendor FLAG form 忽略几率，ModParser.lua:92/:4197；
+/// 触发后缀 :1902 → CritRecently 条件）。
+#[test]
+fn parses_chance_to_gain_arcane_surge_on_crit() {
+    let o = parse_mod(
+        "10% chance to Gain [ArcaneSurgeDuration|Arcane Surge] when you deal a [Critical|Critical Hit]",
+    )
+    .unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 1);
+    let m = &o.mods[0];
+    assert_eq!(m.name, ModName::from("Condition:ArcaneSurge"));
+    assert_eq!(m.mod_type, ModType::Flag);
+    assert!(m.tags.contains(&ModTag::condition("CritRecently", false)));
+}
+
+/// 「Damage with One Handed Weapons」（vendor ModParser.lua:1016 `bor(Weapon1H,
+/// Hit)`）→ name=Damage + Weapon1H|Hit 位；cfg 武器位（单手矛）+ HIT 命中、双手缺位拒绝。
+#[test]
+fn parses_damage_with_one_handed_weapons_bits() {
+    let o = parse_mod("10% increased Damage with One Handed Weapons").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    let m = &o.mods[0];
+    assert_eq!(m.name, ModName::from("Damage"));
+    assert_eq!(m.flags.bits(), (ModFlags::WEAPON_1H | ModFlags::HIT).bits());
+
+    let spear_cfg = CalcConfig::attack().with_flags(
+        ModFlags::ATTACK | ModFlags::HIT | ModFlags::weapon_flags("Spear", "Spear", true, true),
+    );
+    assert!(m.matches(&spear_cfg));
+    let th_cfg = CalcConfig::attack().with_flags(
+        ModFlags::ATTACK
+            | ModFlags::HIT
+            | ModFlags::weapon_flags("Two Hand Mace", "Mace", false, true),
+    );
+    assert!(!m.matches(&th_cfg));
+
+    // 双手变体（vendor :1018）。
+    let o2 = parse_mod("10% increased Damage with Two Handed Weapons").unwrap();
+    assert_eq!(
+        o2.mods[0].flags.bits(),
+        (ModFlags::WEAPON_2H | ModFlags::HIT).bits()
+    );
+}
+
+/// 「Projectile Speed」名解锁（vendor ModName `ProjectileSpeed`）——常规无消费方，
+/// `ProjectileSpeedAppliesToProjectileDamage` 转换（CalcOffence.lua:840-845）的输入。
+#[test]
+fn parses_projectile_speed_name() {
+    let o = parse_mod("8% increased [Projectile] Speed").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods[0].name, ModName::from("ProjectileSpeed"));
+    assert_eq!(o.mods[0].mod_type, ModType::Inc);
+}
