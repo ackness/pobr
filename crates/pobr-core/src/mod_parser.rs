@@ -76,10 +76,10 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     if let Some(stripped) = rest.strip_prefix("bonded: ") {
         let mut outcome = parse_mod(stripped)?;
         for m in &mut outcome.mods {
-            *m = m.clone().with_source(original).with_tag(ModTag::Condition {
-                var: "CanUseBondedModifiers".into(),
-                negated: false,
-            });
+            *m = m
+                .clone()
+                .with_source(original)
+                .with_tag(ModTag::condition("CanUseBondedModifiers", false));
         }
         return Ok(outcome);
     }
@@ -90,6 +90,19 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     if rest == "gain the benefits of bonded modifiers on runes and idols" {
         return Ok(ParseOutcome {
             mods: vec![Modifier::flag("Condition:CanUseBondedModifiers").with_source(original)],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
+    // 词条授予 keystone（M3 T5-E2，蓝图 §8.2）：PoB2 `ModParser.lua:6151-6153` 把
+    // `data.keystones`（Data.lua:304-340）每个名字注册为 specialModList **整行**匹配 →
+    // `mod("Keystone", "LIST", name)`。pobr 同语义：裸 keystone 名整行 /「you have
+    // <keystone>」句式 → `Modifier{name:"Keystone", List, Text(canonical 名)}`；实际
+    // mods 由 env_finalize 阶段 1/5 的 merge_keystones 查 `Env::keystone_mods` 注入。
+    if let Some(name) = parse_keystone_grant(&rest) {
+        return Ok(ParseOutcome {
+            mods: vec![Modifier::text("Keystone", ModType::List, name).with_source(original)],
             status: ParseStatus::Parsed,
             unparsed: None,
         });
@@ -125,10 +138,8 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     if let Some(stripped) = rest.strip_prefix("body armour grants ") {
         let mut outcome = parse_mod(stripped)?;
         for m in &mut outcome.mods {
-            m.tags.push(ModTag::Condition {
-                var: "NormalBodyArmourEquipped".into(),
-                negated: false,
-            });
+            m.tags
+                .push(ModTag::condition("NormalBodyArmourEquipped", false));
             m.source = Some(original.into());
         }
         return Ok(outcome);
@@ -140,17 +151,11 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     // （PoB2 ConfigOptions 无 defaultState），仅入条件标签，按 cfg 决定是否生效。
     if let Some(stripped) = rest.strip_prefix("empowered attacks deal ") {
         flags |= ModFlags::ATTACK;
-        prefix_tags.push(ModTag::Condition {
-            var: "Empowered".into(),
-            negated: false,
-        });
+        prefix_tags.push(ModTag::condition("Empowered", false));
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("empowered attacks ") {
         flags |= ModFlags::ATTACK;
-        prefix_tags.push(ModTag::Condition {
-            var: "Empowered".into(),
-            negated: false,
-        });
+        prefix_tags.push(ModTag::condition("Empowered", false));
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("attacks deal ") {
         flags |= ModFlags::ATTACK;
@@ -1203,11 +1208,11 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
         if t == "energy shield on equipped body armour" && pct > 0.0 {
             return Some(vec![
                 Modifier::number("MaximumLife", ModType::Base, 1.0)
-                    .with_tag(ModTag::Multiplier {
-                        var: "EnergyShieldOnbodyarmour".into(),
-                        div: 100.0 / pct,
-                        limit: None,
-                    })
+                    .with_tag(ModTag::multiplier(
+                        "EnergyShieldOnbodyarmour",
+                        100.0 / pct,
+                        None,
+                    ))
                     .with_source(source),
             ]);
         }
@@ -1217,11 +1222,7 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
     if rest == "gain energy shield from equipped body armour as extra maximum life" {
         return Some(vec![
             Modifier::number("MaximumLife", ModType::Base, 1.0)
-                .with_tag(ModTag::Multiplier {
-                    var: "EnergyShieldOnbodyarmour".into(),
-                    div: 1.0,
-                    limit: None,
-                })
+                .with_tag(ModTag::multiplier("EnergyShieldOnbodyarmour", 1.0, None))
                 .with_source(source),
         ]);
     }
@@ -1296,6 +1297,56 @@ fn strip_pob_brackets(text: &str) -> String {
         }
     }
     out
+}
+
+/// 全部非 timeless-jewel 专属 keystone 名（vendor `Data.lua:304-340 data.keystones`，
+/// canonical 大小写）。版本更新随 vendor 同步（version-bump-drill 校验项）。
+const KEYSTONE_NAMES: [&str; 35] = [
+    "Acrobatics",
+    "Ancestral Bond",
+    "Avatar of Fire",
+    "Blackflame Covenant",
+    "Blood Magic",
+    "Bulwark",
+    "Chaos Inoculation",
+    "Conduit",
+    "Crimson Assault",
+    "Dance with Death",
+    "Eldritch Battery",
+    "Elemental Equilibrium",
+    "Eternal Youth",
+    "Giant's Blood",
+    "Glancing Blows",
+    "Heartstopper",
+    "Hollow Palm Technique",
+    "Iron Reflexes",
+    "Lord of the Wilds",
+    "Mind Over Matter",
+    "Necromantic Talisman",
+    "Oasis",
+    "Pain Attunement",
+    "Primal Hunger",
+    "Resolute Technique",
+    "Resonance",
+    "Ritual Cadence",
+    "Scarred Faith",
+    "Trusted Kinship",
+    "Unwavering Stance",
+    "Vaal Pact",
+    "Walker of the Wilds",
+    "Whispers of Doom",
+    "Wildsurge Incantation",
+    "Zealot's Oath",
+];
+
+/// keystone 授予词条识别：裸 keystone 名整行（PoB2 specialModList 注册形态）或
+/// 「you have <keystone>」句式。命中返回 canonical 名（保持 vendor 大小写）。
+fn parse_keystone_grant(rest: &str) -> Option<&'static str> {
+    let candidate = rest.strip_prefix("you have ").unwrap_or(rest);
+    KEYSTONE_NAMES
+        .iter()
+        .find(|name| name.eq_ignore_ascii_case(candidate))
+        .copied()
 }
 
 fn normalize_spaces(text: &str) -> String {
@@ -1532,79 +1583,37 @@ fn strip_tags(text: String) -> (String, Vec<ModTag>) {
 
 fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
     let known_tags = [
-        (
-            " while on full life",
-            ModTag::Condition {
-                var: "FullLife".into(),
-                negated: false,
-            },
-        ),
-        (
-            " on full life",
-            ModTag::Condition {
-                var: "FullLife".into(),
-                negated: false,
-            },
-        ),
+        (" while on full life", ModTag::condition("FullLife", false)),
+        (" on full life", ModTag::condition("FullLife", false)),
         (
             " while not on full life",
-            ModTag::Condition {
-                var: "FullLife".into(),
-                negated: true,
-            },
+            ModTag::condition("FullLife", true),
         ),
         (
             " per power charge",
-            ModTag::Multiplier {
-                var: "PowerCharge".into(),
-                div: 1.0,
-                limit: None,
-            },
+            ModTag::multiplier("PowerCharge", 1.0, None),
         ),
         (
             " per frenzy charge",
-            ModTag::Multiplier {
-                var: "FrenzyCharge".into(),
-                div: 1.0,
-                limit: None,
-            },
+            ModTag::multiplier("FrenzyCharge", 1.0, None),
         ),
         (
             " per endurance charge",
-            ModTag::Multiplier {
-                var: "EnduranceCharge".into(),
-                div: 1.0,
-                limit: None,
-            },
+            ModTag::multiplier("EnduranceCharge", 1.0, None),
         ),
         // 敌人稀有度条件（DPS 默认 vs Boss/Unique → 由 orchestrator 据敌人档位置真）。
         (
             " against rare or unique enemies",
-            ModTag::Condition {
-                var: "RareOrUnique".into(),
-                negated: false,
-            },
+            ModTag::condition("RareOrUnique", false),
         ),
         (
             " against unique enemies",
-            ModTag::Condition {
-                var: "Unique".into(),
-                negated: false,
-            },
+            ModTag::condition("Unique", false),
         ),
-        (
-            " against rare enemies",
-            ModTag::Condition {
-                var: "Rare".into(),
-                negated: false,
-            },
-        ),
+        (" against rare enemies", ModTag::condition("Rare", false)),
         (
             " while dual wielding",
-            ModTag::Condition {
-                var: "DualWielding".into(),
-                negated: false,
-            },
+            ModTag::condition("DualWielding", false),
         ),
         // 敌人异常状态条件（PoB2 ActorCondition actor=enemy）。对应 build config
         // `conditionEnemy<X>`（PoBR 解析为 cfg 条件 `Enemy<X>`，编排层据 config 置真）。
@@ -1612,75 +1621,45 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
         // EnemyBurning 或 EnemyIgnited 任一满足，编排层在 EnemyIgnited 真时同置 EnemyBurning。
         (
             " against ignited enemies",
-            ModTag::Condition {
-                var: "EnemyIgnited".into(),
-                negated: false,
-            },
+            ModTag::condition("EnemyIgnited", false),
         ),
         (
             " against burning enemies",
-            ModTag::Condition {
-                var: "EnemyBurning".into(),
-                negated: false,
-            },
+            ModTag::condition("EnemyBurning", false),
         ),
         (
             " against chilled enemies",
-            ModTag::Condition {
-                var: "EnemyChilled".into(),
-                negated: false,
-            },
+            ModTag::condition("EnemyChilled", false),
         ),
         (
             " against frozen enemies",
-            ModTag::Condition {
-                var: "EnemyFrozen".into(),
-                negated: false,
-            },
+            ModTag::condition("EnemyFrozen", false),
         ),
         (
             " against shocked enemies",
-            ModTag::Condition {
-                var: "EnemyShocked".into(),
-                negated: false,
-            },
+            ModTag::condition("EnemyShocked", false),
         ),
         (
             " against bleeding enemies",
-            ModTag::Condition {
-                var: "EnemyBleeding".into(),
-                negated: false,
-            },
+            ModTag::condition("EnemyBleeding", false),
         ),
         (
             " against poisoned enemies",
-            ModTag::Condition {
-                var: "EnemyPoisoned".into(),
-                negated: false,
-            },
+            ModTag::condition("EnemyPoisoned", false),
         ),
         // 持盾条件（PoB2 `Condition:UsingShield`）——编排层据副手槽位为盾置真。
         (
             " while holding a shield",
-            ModTag::Condition {
-                var: "UsingShield".into(),
-                negated: false,
-            },
+            ModTag::condition("UsingShield", false),
         ),
         (
             " while wielding a shield",
-            ModTag::Condition {
-                var: "UsingShield".into(),
-                negated: false,
-            },
+            ModTag::condition("UsingShield", false),
         ),
         // 持法器条件（PoB2 `Condition:UsingFlask`）——build config `conditionUsingFlask`。
         (
             " while you have a flask active",
-            ModTag::Condition {
-                var: "UsingFlask".into(),
-                negated: false,
-            },
+            ModTag::condition("UsingFlask", false),
         ),
     ];
 
@@ -1709,10 +1688,7 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
         if let Some(stripped) = text.strip_suffix(suffix)
             && !stripped.ends_with("damage")
         {
-            tags.push(ModTag::Condition {
-                var: (*var).into(),
-                negated: false,
-            });
+            tags.push(ModTag::condition(*var, false));
             return stripped.trim().into();
         }
     }
@@ -1776,11 +1752,7 @@ fn strip_per_slot_stat_suffix(text: &str) -> Option<(String, ModTag)> {
     let slot_id = slot_words_to_id(slot_words.trim())?;
     let stat_var = per_slot_defence_var(rest.trim(), slot_id)?;
 
-    let tag = ModTag::Multiplier {
-        var: format!("{stat_var}On{slot_id}"),
-        div,
-        limit: None,
-    };
+    let tag = ModTag::multiplier(format!("{stat_var}On{slot_id}"), div, None);
     Some((head.to_string(), tag))
 }
 
@@ -1847,11 +1819,7 @@ fn strip_per_stat_suffix(text: &str) -> Option<(String, ModTag)> {
     };
 
     let var = per_stat_var(resource_words)?;
-    let tag = ModTag::Multiplier {
-        var: var.into(),
-        div,
-        limit: None,
-    };
+    let tag = ModTag::multiplier(var, div, None);
     Some((head.to_string(), tag))
 }
 
@@ -2124,7 +2092,35 @@ mod per_slot_defence_tests {
     fn has_condition(m: &Modifier, var: &str) -> bool {
         m.tags
             .iter()
-            .any(|t| matches!(t, ModTag::Condition { var: v, negated: false } if v == var))
+            .any(|t| matches!(t, ModTag::Condition { var: v, negated: false, .. } if v == var))
+    }
+
+    /// keystone 授予词条（M3 T5-E2）：裸名整行 /「You have <X>」→ `Keystone` LIST
+    /// Text(canonical 名)；非整行匹配不误伤。
+    #[test]
+    fn parses_keystone_grant_to_keystone_list() {
+        for text in ["Iron Reflexes", "You have Iron Reflexes"] {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "Keystone", "{text}");
+            assert_eq!(m.mod_type, ModType::List, "{text}");
+            assert_eq!(
+                m.value,
+                crate::ModValue::Text("Iron Reflexes".into()),
+                "{text}"
+            );
+        }
+        // 整行才算授予；带尾缀的条件句式不在本段（保持 Unsupported/其它路径）。
+        if let Ok(out) = parse_mod("You have Iron Reflexes while at maximum Frenzy Charges") {
+            assert!(
+                out.mods
+                    .iter()
+                    .all(|m| m.name.as_str() != "Keystone" || m.mod_type != ModType::List),
+                "非整行 keystone 句式不得误产 Keystone LIST"
+            );
+        }
     }
 
     /// 「Melee Damage」映射到 `MeleeDamage`（此前缺失，导致近战增伤词条被丢弃）。

@@ -18,10 +18,8 @@ fn sum_filters_by_condition_flags_and_damage_type() {
             .with_tag(ModTag::DamageType(DamageType::Physical)),
     );
     db.add_mod(
-        Modifier::number("PhysicalDamage", ModType::Inc, 15.0).with_tag(ModTag::Condition {
-            var: "OnFullLife".into(),
-            negated: false,
-        }),
+        Modifier::number("PhysicalDamage", ModType::Inc, 15.0)
+            .with_tag(ModTag::condition("OnFullLife", false)),
     );
     db.add_mod(
         Modifier::number("PhysicalDamage", ModType::Inc, 90.0)
@@ -54,11 +52,11 @@ fn more_uses_path_of_building_percent_factor_semantics() {
 fn multiplier_tags_scale_values_and_apply_limits() {
     let mut db = ModDb::new();
     db.add_mod(
-        Modifier::number("MaximumLife", ModType::Base, 8.0).with_tag(ModTag::Multiplier {
-            var: "AllocatedSmallPassives".into(),
-            div: 1.0,
-            limit: Some(5.0),
-        }),
+        Modifier::number("MaximumLife", ModType::Base, 8.0).with_tag(ModTag::multiplier(
+            "AllocatedSmallPassives",
+            1.0,
+            Some(5.0),
+        )),
     );
 
     let cfg = CalcConfig::new().with_multiplier("AllocatedSmallPassives", 9.0);
@@ -73,10 +71,8 @@ fn multiplier_tags_scale_values_and_apply_limits() {
 fn negated_conditions_match_when_condition_is_disabled() {
     let mut db = ModDb::new();
     db.add_mod(
-        Modifier::number("AttackDamage", ModType::Inc, 30.0).with_tag(ModTag::Condition {
-            var: "OnFullLife".into(),
-            negated: true,
-        }),
+        Modifier::number("AttackDamage", ModType::Inc, 30.0)
+            .with_tag(ModTag::condition("OnFullLife", true)),
     );
 
     assert_eq!(
@@ -162,18 +158,12 @@ fn contributions_keep_structured_sources_after_filtering() {
     db.add_mod(
         Modifier::number("MaximumLife", ModType::Base, 25.0)
             .with_origin(passive_node.clone())
-            .with_tag(ModTag::Condition {
-                var: "FullLife".into(),
-                negated: false,
-            }),
+            .with_tag(ModTag::condition("FullLife", false)),
     );
     db.add_mod(
         Modifier::number("MaximumLife", ModType::Base, 99.0)
             .with_origin(inactive_config)
-            .with_tag(ModTag::Condition {
-                var: "LowLife".into(),
-                negated: false,
-            }),
+            .with_tag(ModTag::condition("LowLife", false)),
     );
 
     let cfg = CalcConfig::new().with_condition("FullLife", true);
@@ -214,10 +204,7 @@ fn sum_traced_links_matching_contributions_to_query_node() {
     db.add_mod(
         Modifier::number("MaximumLife", ModType::Base, 25.0)
             .with_origin(passive_node.clone())
-            .with_tag(ModTag::Condition {
-                var: "FullLife".into(),
-                negated: false,
-            }),
+            .with_tag(ModTag::condition("FullLife", false)),
     );
     db.add_mod(
         Modifier::number("MaximumLife", ModType::Base, 99.0)
@@ -225,10 +212,7 @@ fn sum_traced_links_matching_contributions_to_query_node() {
                 SourceKind::Config,
                 "condition.low_life",
             )))
-            .with_tag(ModTag::Condition {
-                var: "LowLife".into(),
-                negated: false,
-            }),
+            .with_tag(ModTag::condition("LowLife", false)),
     );
 
     let cfg = CalcConfig::new().with_condition("FullLife", true);
@@ -377,10 +361,8 @@ fn list_nested_passes_through_nested_mods_without_evaluating() {
     // M3 C4-1：`EnemyModifier` 类嵌套 LIST 载荷——`list_nested` 只透传内层 mods，
     // 不参与数值聚合；文本 List 通道（`list`）对嵌套载荷保持不可见。
     let mut db = ModDb::new();
-    let inner = Modifier::number("DamageTaken", ModType::Inc, 10.0).with_tag(ModTag::Condition {
-        var: "Effective".to_string(),
-        negated: false,
-    });
+    let inner = Modifier::number("DamageTaken", ModType::Inc, 10.0)
+        .with_tag(ModTag::condition("Effective", false));
     db.add_mod(Modifier::new(
         "EnemyModifier",
         ModType::List,

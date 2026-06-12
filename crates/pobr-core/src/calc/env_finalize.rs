@@ -45,8 +45,10 @@ pub fn env_finalize(env: &mut Env) {
 
 /// 阶段 1/5（T5 实现）：`Env::keystone_mods` 中被词条授予的 keystone 注入玩家
 /// modDB（对照 CalcPerform.lua:66-76 mergeKeystones，`env.keystonesAdded` 去重语义）。
-/// T0 占位：no-op。
-pub fn merge_keystones(_env: &mut Env) {}
+/// 实现体见 [`super::keystone_merge`]（M3 T5-E2）；空 map / 无授予词条时零写入。
+pub fn merge_keystones(env: &mut Env) {
+    super::keystone_merge::merge_keystones(env);
+}
 
 /// 阶段 2（T3-C4-3）：player(+minions) db 的 `EnemyModifier` LIST → enemy db。
 ///

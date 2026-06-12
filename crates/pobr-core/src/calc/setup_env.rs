@@ -59,10 +59,7 @@ fn push_enemy_effective_number(
         Modifier::number(ModName::from(name), mod_type, value)
             .with_source(format!("enemy {id}"))
             .with_origin(enemy_source(id))
-            .with_tag(ModTag::Condition {
-                var: "Effective".into(),
-                negated: false,
-            }),
+            .with_tag(ModTag::condition("Effective", false)),
     );
 }
 

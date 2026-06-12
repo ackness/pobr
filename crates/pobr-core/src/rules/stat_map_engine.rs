@@ -777,7 +777,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 return Err(UnsupportedReason::UnsupportedTag("Condition 缺 var".into()));
             };
             let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
-            Ok(ModTag::Condition { var, negated })
+            Ok(ModTag::condition(var, negated))
         }
         // 敌方状态条件（vendor 如 `SkillStatMap.lua:1119` `{ type = "ActorCondition",
         // actor = "enemy", var = "Burning" }`）：PoBR 既有约定把敌方条件折算为
@@ -802,10 +802,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 ));
             };
             let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
-            Ok(ModTag::Condition {
-                var: format!("Enemy{var}"),
-                negated,
-            })
+            Ok(ModTag::condition(format!("Enemy{var}"), negated))
         }
         "Multiplier" => {
             if !keys_subset_of(&["type", "var", "div", "limit"]) {
@@ -819,11 +816,11 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                     "Multiplier 缺 var".into(),
                 ));
             };
-            Ok(ModTag::Multiplier {
+            Ok(ModTag::multiplier(
                 var,
-                div: number("div").unwrap_or(1.0),
-                limit: number("limit"),
-            })
+                number("div").unwrap_or(1.0),
+                number("limit"),
+            ))
         }
         "PerStat" => {
             if !keys_subset_of(&["type", "stat", "div"]) {
@@ -843,11 +840,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 "Int" => "Intelligence".to_string(),
                 other => other.to_string(),
             };
-            Ok(ModTag::Multiplier {
-                var,
-                div: number("div").unwrap_or(1.0),
-                limit: None,
-            })
+            Ok(ModTag::multiplier(var, number("div").unwrap_or(1.0), None))
         }
         other => Err(UnsupportedReason::UnsupportedTag(other.to_string())),
     }
@@ -1188,13 +1181,7 @@ mod tests {
                  "tags": [ { "type": "ActorCondition", "actor": "enemy", "var": "Burning" } ] } ] }"#,
         );
         let mods = expect_modifiers(map_entry(&entry, 40.0));
-        assert_eq!(
-            mods[0].tags,
-            vec![ModTag::Condition {
-                var: "EnemyBurning".into(),
-                negated: false
-            }]
-        );
+        assert_eq!(mods[0].tags, vec![ModTag::condition("EnemyBurning", false)]);
         // 非 enemy actor → Unsupported。
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC",
@@ -1270,13 +1257,7 @@ mod tests {
                  "tags": [ { "type": "Condition", "var": "Leeching", "neg": true } ] } ] }"#,
         );
         let mods = expect_modifiers(map_entry(&entry, 1.0));
-        assert_eq!(
-            mods[0].tags,
-            vec![ModTag::Condition {
-                var: "Leeching".into(),
-                negated: true
-            }]
-        );
+        assert_eq!(mods[0].tags, vec![ModTag::condition("Leeching", true)]);
     }
 
     /// Multiplier / PerStat tag → ModTag::Multiplier（PerStat 缩写归一化）。
@@ -1289,11 +1270,7 @@ mod tests {
         let mods = expect_modifiers(map_entry(&entry, 1.0));
         assert_eq!(
             mods[0].tags,
-            vec![ModTag::Multiplier {
-                var: "PowerCharge".into(),
-                div: 1.0,
-                limit: Some(5.0)
-            }]
+            vec![ModTag::multiplier("PowerCharge", 1.0, Some(5.0))]
         );
         let entry =
             entry_json(r#"{ "mods": [ { "kind": "skill_data", "value": { "key": "Damage" } } ] }"#);
@@ -1309,11 +1286,7 @@ mod tests {
         let mods = expect_modifiers(map_entry(&entry, 1.0));
         assert_eq!(
             mods[0].tags,
-            vec![ModTag::Multiplier {
-                var: "Intelligence".into(),
-                div: 10.0,
-                limit: None
-            }]
+            vec![ModTag::multiplier("Intelligence", 10.0, None)]
         );
     }
 
