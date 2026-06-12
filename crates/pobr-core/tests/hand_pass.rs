@@ -266,10 +266,9 @@ fn double_hits_dps_is_sum_not_halved() {
     assert!((double.combined.crit_chance - expected).abs() < 1e-9);
 }
 
-/// per-hand 武器位路由（W-B2，feature `modflags-pob2`）：带武器位的词条
-/// （`with Maces` 双写产出的 MACE 位）只进武器位匹配的那只手——MH 锤腿吃增伤、
-/// OH 剑腿不吃（vendor weapon1Cfg/weapon2Cfg flags 按手隔离）。
-#[cfg(feature = "modflags-pob2")]
+/// per-hand 武器位路由（W-B2）：带武器位的词条（`with Maces` 双写产出的
+/// MACE 位）只进武器位匹配的那只手——MH 锤腿吃增伤、OH 剑腿不吃
+/// （vendor weapon1Cfg/weapon2Cfg flags 按手隔离）。
 #[test]
 fn weapon_flag_mod_routes_to_matching_hand_only() {
     let mace_flags = ModFlags::weapon_flags("One Hand Mace", "Mace", true, true);
@@ -321,9 +320,9 @@ fn weapon_flag_mod_routes_to_matching_hand_only() {
     );
 }
 
-/// 武器位为空的 HandSource（legacy 位表 / Shield Wall 类非武器攻击 source）：
-/// per-hand 替换恒等——带上游位的 cfg 原样进腿（feature 双态同语义；
-/// pob2 态额外覆盖「空供给不清上游位」的等价性分支）。
+/// 武器位为空的 HandSource（Shield Wall 类非武器攻击 source）：
+/// per-hand 替换恒等——带上游位的 cfg 原样进腿（「空供给不清上游位」的
+/// 等价性分支）。
 #[test]
 fn empty_weapon_flags_keep_upstream_cfg_flags() {
     let mut db = attack_db();

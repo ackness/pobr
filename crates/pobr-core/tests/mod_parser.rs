@@ -601,30 +601,11 @@ fn charm_slots_implicit_parses_to_charm_limit_base() {
 }
 
 // ===========================================================================
-// M4-T1 W-A1 commit-2：武器后缀双写通道（condition 字符串 + feature 下武器位）
+// M4-T1 W-A1 commit-2 / M4-I 切换：武器后缀位通道（condition + 武器位双写）
 // ===========================================================================
 
-/// feature `modflags-pob2` 关（默认）：武器后缀只产 condition，flags 为空
-/// （双写通道零行为，搬迁不变式锚点）。
-#[cfg(not(feature = "modflags-pob2"))]
-#[test]
-fn weapon_suffix_produces_no_flags_under_legacy_table() {
-    let o = parse_mod("10% increased Attack Speed with Maces").unwrap();
-    assert_eq!(o.status, ParseStatus::Parsed);
-    let m = &o.mods[0];
-    assert!(m.tags.contains(&ModTag::condition("UsingMace", false)));
-    assert!(m.flags.is_empty(), "feature 关不得产出武器位");
-
-    // 空手后缀整条仅在 feature 下解析（旧表无 Unarmed 位/条件通道）。
-    assert!(
-        parse_mod("10% increased Attack Speed with Unarmed Attacks").is_err(),
-        "feature 关维持 Unsupported"
-    );
-}
-
-/// feature 开：`with Maces` / `with One Handed Melee Weapons` / `with Unarmed
-/// Attacks` 三条词条的解析→匹配端到端（蓝图 W-A1 测试计划）。
-#[cfg(feature = "modflags-pob2")]
+/// `with Maces` / `with One Handed Melee Weapons` / `with Unarmed Attacks`
+/// 三条词条的解析→匹配端到端（蓝图 W-A1 测试计划；切换 commit 起常驻）。
 mod weapon_bits_e2e {
     use super::*;
     use pobr_core::CalcConfig;
@@ -680,7 +661,7 @@ mod weapon_bits_e2e {
         assert!(!m.matches(&th_cfg));
     }
 
-    /// `with Unarmed Attacks`：UNARMED 位（vendor :1006，feature 下新解锁短语）。
+    /// `with Unarmed Attacks`：UNARMED 位（vendor :1006，切换后常驻解锁短语）。
     #[test]
     fn with_unarmed_attacks_matches_unarmed_bit() {
         let o = parse_mod("10% increased Attack Speed with Unarmed Attacks").unwrap();

@@ -314,10 +314,11 @@ pub fn calculate_with_data(
         for var in weapon_type_conditions(build, data) {
             cfg = cfg.with_condition(var, true);
         }
-        // （W-A1 commit-2 双写通道）主手武器位 → cfg.flags：feature `modflags-pob2`
-        // 关时恒 NONE（零行为）；开时与上面的 Using* 条件**同源**（weapon_type_info
-        // 表）**同 gating**（同一 cooldown-bound 守卫）派生，保证 mod 侧双写的武器位
-        // 通道不在 condition 通道之外另开生效口径（双跑 diff=0 的等价性依据）。
+        // 主手武器位 → cfg.flags（W-A1 commit-2 引入，切换 commit 起常驻）：
+        // 与上面的 Using* 条件**同源**（weapon_type_info 表）**同 gating**
+        // （同一 cooldown-bound 守卫）派生——mod 侧双写的武器位通道不在
+        // condition 通道之外另开生效口径（两次双跑 diff=0 的等价性依据；
+        // Using* condition 近似路径的退役登记 M4 末独立 commit）。
         let weapon_bits = weapon_cfg_flags(build, data);
         if !weapon_bits.is_empty() {
             cfg.flags |= weapon_bits;
@@ -1735,10 +1736,9 @@ fn weapon_type_info<'a>(
     data.constants.weapon_types.get(key)
 }
 
-/// （W-A1 commit-2）主手武器 → cfg 武器位（vendor `getWeaponFlags`，
-/// `CalcActiveSkill.lua:274-309`）。feature `modflags-pob2` 关时
-/// [`ModFlags::weapon_flags`] 恒 `NONE`（零行为）；开时供 mod 侧双写的武器位
-/// 通道命中（mod.flags ⊆ cfg.flags 子集匹配）。
+/// 主手武器 → cfg 武器位（vendor `getWeaponFlags`，`CalcActiveSkill.lua:274-309`；
+/// W-A1 commit-2 引入，切换 commit 起常驻）：供 mod 侧武器位通道命中
+/// （mod.flags ⊆ cfg.flags 子集匹配）。
 ///
 /// 派生源 = [`weapon_type_info`]（与 [`weapon_type_conditions`] 同一张
 /// `weapon_types.json` 表）：bit 通道对每条双写 mod 的判定结果蕴含于 condition
@@ -1934,9 +1934,9 @@ struct WeaponContribution {
     attack_rate: f64,
     crit_chance: f64,
     /// 该武器源的 ModFlags 武器位（vendor `getWeaponFlags`，由
-    /// `weapon_types.json` 经 [`ModFlags::weapon_flags`] 派生；feature
-    /// `modflags-pob2` 关时恒 `NONE`）。消费方 = T2 W-B2 hand_pass 的 per-hand
-    /// cfg 武器位替换（`WeaponBase::flags` → `replace_weapon_flags`）。
+    /// `weapon_types.json` 经 [`ModFlags::weapon_flags`] 派生）。消费方 =
+    /// T2 W-B2 hand_pass 的 per-hand cfg 武器位替换
+    /// （`WeaponBase::flags` → `replace_weapon_flags`）。
     flags: ModFlags,
 }
 
@@ -6173,8 +6173,8 @@ mod tests {
         }
     }
 
-    /// （W-A1 commit-2）cfg 武器位双写通道：feature `modflags-pob2` 关恒 NONE
-    /// （零行为）；开时按 vendor getWeaponFlags 派生（与 Using* 条件同源）。
+    /// cfg 武器位供给（W-A1 commit-2 引入，切换 commit 起常驻）：按 vendor
+    /// getWeaponFlags 派生（与 Using* 条件同源同 gating）。
     #[test]
     fn weapon_cfg_flags_dual_write_channel() {
         let mut data = BuildData::empty();
@@ -6198,20 +6198,12 @@ mod tests {
         );
         let bits = weapon_cfg_flags(&build, &data);
         let unarmed = weapon_cfg_flags(&Build::new(), &data);
-        #[cfg(feature = "modflags-pob2")]
-        {
-            assert_eq!(
-                bits,
-                ModFlags::MACE | ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
-                "单手锤 → vendor getWeaponFlags 位集"
-            );
-            assert_eq!(unarmed, ModFlags::UNARMED, "空主手 → 仅 Unarmed 位");
-        }
-        #[cfg(not(feature = "modflags-pob2"))]
-        {
-            assert!(bits.is_empty(), "feature 关：双写通道零行为");
-            assert!(unarmed.is_empty(), "feature 关：空手分支同样零行为");
-        }
+        assert_eq!(
+            bits,
+            ModFlags::MACE | ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
+            "单手锤 → vendor getWeaponFlags 位集"
+        );
+        assert_eq!(unarmed, ModFlags::UNARMED, "空主手 → 仅 Unarmed 位");
     }
 }
 

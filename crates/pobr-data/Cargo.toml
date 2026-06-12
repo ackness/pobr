@@ -6,13 +6,6 @@ edition.workspace = true
 [dependencies]
 serde.workspace = true
 
-[features]
-# M4-T1 W-A1（蓝图 m4-offence-deep.md §2-T1）：ModFlags 位表切到 PoB2 全位表
-# （u64 位值逐位等于 vendor `Data/Global.lua:222-259`）。默认关 = 旧 5 位表
-# （搬迁不变式，零行为变化）；开 = PoB2 位表 + 武器类型位派生可用。
-# 双跑 diff=0（devs/scripts/modflags-dualrun.sh）确认后由集成期单独 commit 翻默认。
-modflags-pob2 = []
-
 [dev-dependencies]
 # 仅供 manifest v1/v2 反序列化单测使用；crate 本体保持零 I/O、不依赖 serde_json。
 serde_json.workspace = true

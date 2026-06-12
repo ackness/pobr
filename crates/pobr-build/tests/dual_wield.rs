@@ -5,8 +5,9 @@
 //! - 双持产出 MH/OH 两张子表，合并值按 vendor 模式（DPS=均值、Speed=调和平均，
 //!   `CalcOffence.lua:2451-2545`）；
 //! - Weapon2 局部词条折入 OH 武器源（不再泄漏进全局加法桶）；
-//! - `with maces` 词条按通道路由：legacy 位表走 `UsingMace` 全局条件（两腿同吃，
-//!   现行为），`modflags-pob2` 位表按 per-hand 武器位只进 MH 腿（vendor 口径）。
+//! - `with maces` 词条按 per-hand 武器位只进 MH 腿（vendor 口径；M4-I 切换
+//!   commit 起唯一行为，legacy `UsingMace` 全局条件近似的两腿同吃锚点已随
+//!   feature 退役）。
 //!
 //! 基底数值（`data/4.5.0.3.4/base/base_items.json`）：
 //! Wooden Club（One Hand Mace）物理 6–10、690ms、暴击 5%；
@@ -162,9 +163,8 @@ fn offhand_local_phys_mod_scales_only_offhand_leg() {
     );
 }
 
-/// per-hand 武器位路由（feature `modflags-pob2`）：`with maces` 词条只进 MH
-/// （锤）腿，OH（剑）腿攻速不动（vendor weapon1Cfg/weapon2Cfg flags 按手隔离）。
-#[cfg(feature = "modflags-pob2")]
+/// per-hand 武器位路由：`with maces` 词条只进 MH（锤）腿，OH（剑）腿攻速不动
+/// （vendor weapon1Cfg/weapon2Cfg flags 按手隔离）。
 #[test]
 fn with_maces_mod_routes_to_main_hand_only_under_pob2_bits() {
     let data = load_build_data();
@@ -189,31 +189,5 @@ fn with_maces_mod_routes_to_main_hand_only_under_pob2_bits() {
     assert!(
         (speed_ratio_oh - 1.0).abs() < 1e-9,
         "OH（剑）腿不得吃 with-maces 攻速：×{speed_ratio_oh}"
-    );
-}
-
-/// legacy 位表锚点：`with maces` 走 `UsingMace` 全局条件近似（两腿同吃）——
-/// 钉住切换前现行为；切换 commit（per-hand 位路由成为唯一通道）时本测试退役。
-#[cfg(not(feature = "modflags-pob2"))]
-#[test]
-fn with_maces_mod_applies_to_both_legs_under_legacy_condition_channel() {
-    let data = load_build_data();
-    let build = || dual_build(Some(weapon("Shortsword", &[])));
-
-    let plain = calculate_with_data(&build(), &data, &opts(&[])).expect("plain calc");
-    let routed = calculate_with_data(
-        &build(),
-        &data,
-        &opts(&["20% increased attack speed with maces"]),
-    )
-    .expect("routed calc");
-
-    let speed_ratio_mh =
-        routed.main_hand.as_ref().unwrap().speed / plain.main_hand.as_ref().unwrap().speed;
-    let speed_ratio_oh =
-        routed.off_hand.as_ref().unwrap().speed / plain.off_hand.as_ref().unwrap().speed;
-    assert!(
-        (speed_ratio_mh - 1.2).abs() < 1e-6 && (speed_ratio_oh - 1.2).abs() < 1e-6,
-        "legacy 条件通道：两腿同吃（MH ×{speed_ratio_mh} OH ×{speed_ratio_oh}）"
     );
 }

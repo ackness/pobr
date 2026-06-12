@@ -24,9 +24,8 @@
 //! 1. 条件（`MainHandAttack`/`OffHandAttack`）；
 //! 2. 武器位：`cfg.flags = cfg.flags.replace_weapon_flags(weapon.flags)`——
 //!    [`WeaponBase::flags`] 非空时把 cfg 的 `WEAPON_SEGMENT` 段整体替换为
-//!    **该手**武器位（`with Maces` 词条按位路由只进对应手），空（legacy 位表 /
-//!    非武器攻击 source）时恒等沿用上游供给。feature 双态等价性见
-//!    `ModFlags::replace_weapon_flags` doc。
+//!    **该手**武器位（`with Maces` 词条按位路由只进对应手），空（非武器攻击
+//!    source）时恒等沿用上游供给。等价性见 `ModFlags::replace_weapon_flags` doc。
 
 use pobr_data::prelude::ModFlags;
 
@@ -52,8 +51,8 @@ pub struct WeaponBase {
     pub crit_chance: f64,
     /// 该手武器的 ModFlags 武器位（vendor `getWeaponFlags`，编排层由
     /// `weapon_types.json` 经 `ModFlags::weapon_flags` 派生）。非空时 per-hand
-    /// cfg 的武器位段被替换为本值（见模块 doc）；feature `modflags-pob2` 关 /
-    /// 非武器攻击 source 恒 `NONE`（零行为）。
+    /// cfg 的武器位段被替换为本值（见模块 doc）；非武器攻击 source 恒
+    /// `NONE`（恒等沿用上游 cfg）。
     pub flags: ModFlags,
 }
 
