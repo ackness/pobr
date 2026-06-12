@@ -1098,6 +1098,11 @@ fn collect_mod(
         "MORE" => ModType::More,
         "FLAG" => ModType::Flag,
         "OVERRIDE" => ModType::Override,
+        // M4-m：vendor "CHANCE" 桶的消费形态 = `Sum("CHANCE", cfg, name)` 后在
+        // 消费点 clamp（CalcOffence.lua:4145 HitsInvertEleResChance）——求和语义
+        // 与 BASE 一致，translate_mod_name 名单仍逐名把关（当前数据全集仅
+        // `treat_enemy_resistances_as_negated_…` 一条，无 BASE/CHANCE 同名混桶）。
+        "CHANCE" => ModType::Base,
         other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
     };
     let translated = translate_mod_name(name, &element.flags, &element.keyword_flags)?;
@@ -1458,6 +1463,12 @@ pub fn translate_mod_name(
         | "FireExposureEffect"
         | "ColdExposureEffect"
         | "LightningExposureEffect" => base_name.to_string(),
+        // M4-m：击中视敌元素抗性为反转（Rakiata's Flow
+        // `treat_enemy_resistances_as_negated_on_elemental_damage_hit_%_chance`
+        // → CHANCE，SkillStatMap.lua:941-944，entry div=100 → 分数）。消费方 =
+        // `offence::enemy_damage_multiplier` 抗性段（CalcOffence.lua:4145-4148
+        // `resist = resist - 2 * invertChance * resist`）。
+        "HitsInvertEleResChance" => base_name.to_string(),
         // M4-G：grenade 二次起爆几率（vendor SkillStatMap.lua:2795-2797
         // `grenade_skill_%_chance_to_explode_twice` → GrenadeActivateTwice BASE，
         // 仅 SupportPayload 产出该 stat）。消费方 = `calc::scaled_damage::
@@ -1776,6 +1787,23 @@ mod tests {
             assert_eq!(mods[0].name.as_str(), name, "{name} 应直通");
             assert_eq!(mods[0].mod_type, ModType::Inc);
         }
+    }
+
+    /// M4-m：CHANCE 桶 → Base 求和语义（Rakiata's Flow
+    /// `treat_enemy_resistances_as_negated_…` → HitsInvertEleResChance，
+    /// SkillStatMap.lua:941-944，entry div=100；消费点 clamp 见
+    /// `offence::enemy_damage_multiplier`）。
+    #[test]
+    fn chance_mod_type_maps_to_base_for_invert_ele_res() {
+        let entry = entry_json(
+            r#"{ "div": 100.0, "mods": [ { "kind": "mod",
+                 "name": "HitsInvertEleResChance", "mod_type": "CHANCE" } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 100.0));
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name.as_str(), "HitsInvertEleResChance");
+        assert_eq!(mods[0].mod_type, ModType::Base);
+        assert_eq!(mods[0].value.as_number(), Some(1.0), "div=100 → 分数");
     }
 
     /// 白名单外 flag 维持未知名上报；SkillType 未支持类型整条跳过。

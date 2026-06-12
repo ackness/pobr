@@ -222,18 +222,46 @@ pub fn calculate_with_data(
     let main_effect = main_skill
         .as_ref()
         .and_then(|(_, _, skill_id)| data.granted_effects.get(*skill_id));
+    // （M4-m）主技能**终态**类型集合 = 自身 skill_types + 兼容 support 的
+    // addSkillTypes 不动点（vendor CalcActiveSkill.lua:179-214 把 addSkillTypes
+    // 并进 activeSkill.skillTypes，后续 flag/条件派生均以终态为准——如 Cast on
+    // Critical 给被触发法术加 `Triggered`，使「Triggered Spells deal …」族词条
+    // 命中 + 战斗条件触发豁免按 vendor :248 生效）。排序保证确定性。
+    let main_skill_types: Vec<String> = main_skill
+        .as_ref()
+        .map(|(_, group, skill_id)| {
+            let mut types: Vec<String> = judge_group_supports(group, data, skill_id)
+                .final_skill_types
+                .into_iter()
+                .collect();
+            // meta 触发壳的 `Triggered`：vendor 由宝石的 **support 半身**
+            // （如 Cast on Critical → SupportMetaCastOnCritPlayer 的
+            // addSkillTypes=[Triggered]）注入；PoBR 入库数据未建宝石二段授予
+            // （skill_gems 仅 grantedEffect 主半身），以既有触发识别
+            // （trigger_configs 四级 key，与 trigger_modifiers 同判定）等价补位。
+            if !types.iter().any(|t| t == "Triggered")
+                && recognize_trigger_config(data, group, skill_id).is_some()
+            {
+                types.push("Triggered".to_string());
+            }
+            types.sort();
+            types
+        })
+        .unwrap_or_default();
     let skill_flags = main_effect
-        .map(|e| skill_type_flags(&e.skill_types))
+        .map(|_| skill_type_flags(&main_skill_types))
         .unwrap_or(ModFlags::NONE);
     // （M3-W5 修复）主技能类型 → `cfg.skill_types` 判别位：`is_attack()` 驱动命中
     // 检定（攻击才做精准/闪避检定，vendor CalcOffence.lua:2611）；见 skill_type_bits doc。
     let skill_type_bits = main_effect
-        .map(|e| skill_type_bits(&e.skill_types))
+        .map(|_| skill_type_bits(&main_skill_types))
         .unwrap_or(SkillTypes::NONE);
     let dmg_keywords = damage_keywords(
         build,
         data,
-        main_effect.map(|e| e.skill_types.as_slice()).unwrap_or(&[]),
+        main_effect
+            .map(|_| main_skill_types.as_slice())
+            .unwrap_or(&[]),
     );
     // config 消费收口（M3-T1 A5 主路径切换）：ConfigCatalog 可用时走
     // `config_interpreter::interpret`（raw_inputs → conditions/multipliers/标量
@@ -283,9 +311,11 @@ pub fn calculate_with_data(
         .with_mode_combat(true);
     // （M3-T2 B4）主技能派生战斗条件（vendor CalcPerform.lua:242-266 实读，
     // `if env.mode_combat` 段）：attack/spell/Movement/Minion/Vaal/Channel →
-    // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免。
-    if let Some(effect) = main_effect {
-        for cond in combat_conditions(&effect.skill_types, skill_flags) {
+    // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免（M4-m：
+    // 用**终态**类型集合——meta support 的 addSkillTypes `Triggered` 使豁免
+    // 按 vendor :248 生效）。
+    if main_effect.is_some() {
+        for cond in combat_conditions(&main_skill_types, skill_flags) {
             cfg = cfg.with_condition(cond, true);
         }
     }
@@ -849,6 +879,22 @@ pub fn calculate_with_data(
         session.add_buff_skill(spec);
     }
 
+    // 4b''.（M4-m）herald 在场计数/条件（vendor CalcPerform.lua:1792-1805，
+    //     mode_buffs 段——本编排路径恒置 mode_buffs=true）：已启用组中
+    //     skill_types 含 Herald 的主动技能按显示名去重 → `Multiplier:Herald`
+    //     = 数量 + `Condition:AffectedByHerald`；并逐 herald 置
+    //     `AffectedBy<名去空格>`（vendor buff 分支命名 `buff.name:gsub(" ","")`，
+    //     "Herald of Plague" → AffectedByHeraldofPlague——of 保持小写）。
+    //     消费方 = mod_parser 的 herald 条件后缀族（ModParser.lua:1826/:6326-6328）。
+    let heralds = herald_skill_names(build, data);
+    if !heralds.is_empty() {
+        session.set_multiplier("Herald", heralds.len() as f64);
+        session.set_condition("AffectedByHerald", true);
+        for name in &heralds {
+            session.set_condition(format!("AffectedBy{}", name.replace(' ', "")), true);
+        }
+    }
+
     // 4c. Mark 激活授予玩家的**进攻自身 buff**（gain-as-extra）→ SkillGem 归因 modifier。
     //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
     //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
@@ -1378,7 +1424,7 @@ fn additional_ring_slot_allocated(build: &Build, data: &BuildData) -> bool {
 /// 来源扫描：树上已分配节点词条 + 全部装备词条（vendor 为 modDB 全局 `Sum("INC")`，
 /// CalcPerform.lua:1326）。文本先剥 `{tag}`/`[A|B]` 标记再小写比对。
 fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSlot, f64)> {
-    use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3};
+    use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3, Weapon2};
     let mut scales: Vec<(EquipmentSlot, f64)> = Vec::new();
     let mut add = |slots: &[EquipmentSlot], inc: f64| {
         for s in slots {
@@ -1388,12 +1434,39 @@ fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSl
             }
         }
     };
+    // （M4-m）quiver 变体（vendor CalcSetup.lua:1366-1373：`itemList["Weapon 2"]
+    // .type == "Quiver"` 时把箭袋 modList 逐条 ScaleAddMod；oracle 来源记
+    // "Many Sources:N% Quiver Bonus Effect"）——仅副手槽实为箭袋时收集。
+    let weapon2_is_quiver = build
+        .items
+        .get(&Weapon2)
+        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .is_some_and(|def| def.item_class == "Quiver");
     let mut texts: Vec<String> = Vec::new();
     for id in &build.tree.allocated_nodes {
         if let Some(node) = data.passive_nodes.get(&id.0) {
             texts.extend(node.stats.iter().map(|s| clean_grant_text(s)));
         }
     }
+    // 授予 notable（`Allocates <name>` enchant，与 gem_property_bonuses 同口径：
+    // vendor 授予节点 modList 与已分配节点一样进全局 modDB，CalcSetup.lua:1322-1331）。
+    {
+        let allocated: std::collections::HashSet<u32> =
+            build.tree.allocated_nodes.iter().map(|id| id.0).collect();
+        for def in granted_passive_defs(build, data) {
+            if allocated.contains(&def.skill) {
+                continue;
+            }
+            texts.extend(def.stats.iter().map(|s| clean_grant_text(s)));
+        }
+    }
+    // 范围珠宝 `Notable/Small Passive Skills in Radius also grant …` 展开文本
+    // （per-节点份数已乘开）——vendor 同样落全局 modDB 后被 Sum("INC") 收齐。
+    texts.extend(
+        radius_jewel_grant_texts(build, data)
+            .iter()
+            .map(|s| clean_grant_text(s)),
+    );
     for (_, item) in build.equipped_items() {
         for t in item
             .implicit_texts
@@ -1412,13 +1485,15 @@ fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSl
             continue;
         };
         let target = t[idx + "% increased bonuses gained from ".len()..].trim();
-        // vendor ModParser.lua:4866-4880 的四个戒指/项链变体（quiver/focus 走独立
-        // 机制，暂不消费——与 vendor 的 CalcSetup 特例路径对应）。
+        // vendor ModParser.lua:4866-4880 的戒指/项链变体 + :4866 quiver 变体
+        // （`EffectOfBonusesFromQuiver`，消费点 = CalcSetup.lua:1366-1373 的
+        // Weapon 2 箭袋特例；focus 仍走独立机制，暂不消费）。
         match target {
             "equipped rings and amulets" => add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0),
             "equipped rings" => add(&[Ring1, Ring2, Ring3], num / 100.0),
             "left equipped ring" => add(&[Ring1], num / 100.0),
             "right equipped ring" => add(&[Ring2], num / 100.0),
+            "equipped quiver" if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
             _ => {}
         }
     }
@@ -2111,6 +2186,10 @@ fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
             "Spell" => bits |= SkillTypes::SPELL,
             "Trapped" => bits |= SkillTypes::TRAPPED,
             "RemoteMined" => bits |= SkillTypes::REMOTE_MINED,
+            // （M4-m）触发态（meta support addSkillTypes / 技能自带）：
+            // 「Triggered Spells deal …」族词条的 `ModTag::SkillTypes(TRIGGERED)`
+            // 命中位（vendor activeSkill.skillTypes[SkillType.Triggered]）。
+            "Triggered" => bits |= SkillTypes::TRIGGERED,
             _ => {}
         }
     }
@@ -3807,6 +3886,41 @@ fn support_modifiers(
         }
     }
     mods
+}
+
+/// （M4-m）已启用组中全部 **herald 主动技能**的 buff 显示名（按名去重、排序确定）。
+///
+/// vendor 等价（CalcPerform.lua:1792-1805）：遍历 activeSkillList，
+/// `skillTypes[SkillType.Herald]` 且 skillName 未计数 → heraldList 记名。
+/// 显示名 = [`buff_skill_name`] 的蛇形派生，连接词（of/the）保持小写以对齐
+/// vendor `buff.name:gsub(" ","")` 的条件命名（"Herald of Plague" →
+/// `AffectedByHeraldofPlague`，oracle condVars 同形）。
+fn herald_skill_names(build: &Build, data: &BuildData) -> Vec<String> {
+    use std::collections::BTreeSet;
+    let mut names: BTreeSet<String> = BTreeSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            if effect.is_support || !effect.skill_types.iter().any(|t| t == "Herald") {
+                continue;
+            }
+            let name = buff_skill_name(data, &gem.skill_id)
+                .split(' ')
+                .map(|w| {
+                    if w.eq_ignore_ascii_case("of") || w.eq_ignore_ascii_case("the") {
+                        w.to_ascii_lowercase()
+                    } else {
+                        w.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            names.insert(name);
+        }
+    }
+    names.into_iter().collect()
 }
 
 /// 把 `active_skill` 蛇形稳定名派生为 buff 显示名（`temporal_chains` →
@@ -6503,6 +6617,92 @@ mod tests {
             "Condition:BannerPlanted 直译保留，实得 {:?}",
             acc.tags
         );
+    }
+
+    /// （M4-m）quiver 加成效果（vendor `EffectOfBonusesFromQuiver`，
+    /// ModParser.lua:4866；消费 = CalcSetup.lua:1366-1373 Weapon 2 箭袋特例）：
+    /// 树点『N% increased bonuses gained from Equipped Quiver』→ Weapon2 槽
+    /// scale；副手非箭袋时不收集。
+    #[test]
+    fn slot_bonus_effect_scales_covers_equipped_quiver() {
+        use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+        let quiver_node = pobr_data::catalog::PassiveNodeDef {
+            skill: 30341,
+            id: "bow_quiver_effect".into(),
+            name: Some("Master Fletching".into()),
+            kind: pobr_data::catalog::PassiveNodeKind::Notable,
+            stats: vec!["20% increased bonuses gained from Equipped [Quiver]".into()],
+            group: None,
+            orbit: None,
+            orbit_index: None,
+            x: None,
+            y: None,
+            connections: vec![],
+            ascendancy_id: None,
+            variants: vec![],
+        };
+        let mut passive_nodes = HashMap::new();
+        passive_nodes.insert(30341u32, quiver_node);
+        let mut base_items = HashMap::new();
+        base_items.insert(
+            "Visceral Quiver".to_string(),
+            weapon_base_item("Visceral Quiver", "Quiver"),
+        );
+        let data = BuildData {
+            passive_nodes,
+            base_items,
+            ..BuildData::empty()
+        };
+        let quiver = Item {
+            base: ItemBaseId::from("Visceral Quiver"),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            implicit_texts: vec![],
+            modifier_texts: vec!["53% increased Damage with Bow Skills".into()],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            parsed_stats: vec![],
+        };
+        let tree = PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(30341)],
+            ..Default::default()
+        };
+        let with_quiver = Build::new()
+            .with_tree(tree.clone())
+            .set_item(EquipmentSlot::Weapon2, quiver);
+        let scales = slot_bonus_effect_scales(&with_quiver, &data);
+        assert_eq!(
+            scales,
+            vec![(EquipmentSlot::Weapon2, 0.2)],
+            "箭袋在副手 → Weapon2 槽 0.20 缩放"
+        );
+
+        let without_quiver = Build::new().with_tree(tree);
+        assert!(
+            slot_bonus_effect_scales(&without_quiver, &data).is_empty(),
+            "副手非箭袋时不收集（vendor type == \"Quiver\" 门控）"
+        );
+    }
+
+    /// （M4-m）herald 在场名收集（vendor CalcPerform.lua:1792-1805 heraldList +
+    /// buff 分支命名 `gsub(" ","")`——连接词 of 保持小写，oracle condVars
+    /// `AffectedByHeraldofPlague` 同形）。按名去重；support/非 herald 不计。
+    #[test]
+    fn herald_skill_names_collects_and_normalizes_of() {
+        let data = repo_data();
+        let build = Build::new().add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("HeraldOfPlaguePlayer", 10)
+                .with_gem_skill("HeraldOfIcePlayer", 10)
+                .with_gem_skill("FireballPlayer", 10),
+        );
+        let names = herald_skill_names(&build, &data);
+        assert_eq!(
+            names,
+            vec!["Herald of Ice".to_string(), "Herald of Plague".to_string()],
+            "去重 + of 小写（AffectedBy 拼接后 = AffectedByHeraldofIce/Plague）"
+        );
+        assert!(herald_skill_names(&Build::new(), &data).is_empty());
     }
 
     #[test]

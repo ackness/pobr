@@ -103,6 +103,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
     merge_conditions(&mut config.conditions, &outcome);
     merge_multipliers(&mut config.multipliers, &outcome);
     bridge_enemy_conditions(&mut config.conditions, &outcome);
+    bridge_combat_player_conditions(&mut config.conditions, &outcome);
     bridge_exposure_conditions(&mut config.conditions, build);
 
     // 标量包装（仅显式输入时覆盖；省略 = 维持既有回退链，见模块注释）。
@@ -207,6 +208,48 @@ fn bridge_enemy_conditions(conditions: &mut HashMap<String, bool>, outcome: &Con
         if referenced.contains(var) {
             conditions.entry(var.to_string()).or_insert(enabled);
         }
+    }
+}
+
+/// （M4-m）玩家桶 **Combat 门控** `Condition:<X>` FLAG → cfg 条件桥。
+///
+/// 解释器的裸效果回填（config_interpreter `apply_effect`）只收**无 tag** 条目；
+/// `Condition:CritRecently`/`Condition:UsingCharm` 等 config 主效果带
+/// `{type=condition, var=Combat}` tag（vendor ConfigOptions 的 Combat 门控形态，
+/// `Condition:Combat` ≡ buffMode "EFFECTIVE" → mode_combat，CalcSetup.lua:583-597
+/// ——本编排路径恒置 mode_combat=true，M3-T2 B4），落进 player_mods 后无 cfg
+/// 消费方（`Modifier::matches` 的 Condition tag 只查 cfg.conditions），使同名
+/// imply 条件（CritInPast8Sec）生效而**主条件自身**（CritRecently）失活。
+/// 此桥把「tag 全部 = Condition:Combat（未否定、无 actor）」的玩家 FLAG
+/// `Condition:<X>` 同步落 cfg（`or_insert` 不覆盖显式值）。
+fn bridge_combat_player_conditions(
+    conditions: &mut HashMap<String, bool>,
+    outcome: &ConfigOutcome,
+) {
+    use pobr_core::ModTag;
+    for modifier in &outcome.player_mods {
+        if modifier.mod_type != ModType::Flag {
+            continue;
+        }
+        let Some(var) = modifier.name.as_str().strip_prefix("Condition:") else {
+            continue;
+        };
+        let combat_gated_only = !modifier.tags.is_empty()
+            && modifier.tags.iter().all(|tag| {
+                matches!(
+                    tag,
+                    ModTag::Condition {
+                        var,
+                        negated: false,
+                        actor: None,
+                    } if var == "Combat"
+                )
+            });
+        if !combat_gated_only {
+            continue;
+        }
+        let enabled = matches!(modifier.value, pobr_core::ModValue::Bool(true));
+        conditions.entry(var.to_string()).or_insert(enabled);
     }
 }
 
@@ -413,6 +456,17 @@ mod tests {
                 .player_mods
                 .iter()
                 .any(|m| m.name.as_str() == "Condition:CritRecently")
+        );
+        // （M4-m）Combat 门控桥：主条件自身（CritRecently）同步落 cfg
+        // （本编排路径恒置 mode_combat=true，vendor Condition:Combat ≡ true）。
+        let no_legacy = build_with_inputs(
+            RawConfigInputs::new().with("conditionCritRecently", ConfigInputValue::Bool(true)),
+        );
+        let resolved = resolve_config(&no_legacy, Some(&catalog));
+        assert_eq!(
+            resolved.config.conditions.get("CritRecently"),
+            Some(&true),
+            "Combat 门控主条件经桥落 cfg（不依赖 legacy 字段）"
         );
 
         // count=0 → vendor BuildModList 语义整条跳过（不产条件 / multiplier）。

@@ -95,6 +95,19 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // （M4-m）弓系投速转伤（树 notable『Feathered Fletching』，vendor
+    // ModParser.lua:3648 → `flag("ProjectileSpeedAppliesToBowDamage")`）。
+    // 消费 = `calc::perform::apply_projectile_speed_to_damage` 弓分支
+    // （CalcOffence.lua:796-802：INC ProjectileSpeed 复制为 Damage INC，
+    // flags = Bow|Hit）。
+    if rest == "increases and reductions to projectile speed also apply to damage with bows" {
+        return Ok(ParseOutcome {
+            mods: vec![Modifier::flag("ProjectileSpeedAppliesToBowDamage").with_source(original)],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     // 词条授予 keystone（M3 T5-E2，蓝图 §8.2）：PoB2 `ModParser.lua:6151-6153` 把
     // `data.keystones`（Data.lua:304-340）每个名字注册为 specialModList **整行**匹配 →
     // `mod("Keystone", "LIST", name)`。pobr 同语义：裸 keystone 名整行 /「you have
@@ -185,6 +198,18 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("attacks ") {
         flags |= ModFlags::ATTACK;
+        rest = stripped.into();
+    } else if let Some(stripped) = rest
+        .strip_prefix("triggered spells deal ")
+        .or_else(|| rest.strip_prefix("triggered spells have "))
+    {
+        // 「Triggered Spells deal/have …」（M4-m；vendor ModParser.lua:1320
+        // `["^triggered spells [hd][ae][va][el] "] = { keywordFlags =
+        // KeywordFlag.Spell, tag = SkillType(Triggered) }`）：KeywordFlag.Spell
+        // 按既有约定折 ModFlags::SPELL；SkillType tag 按 cfg.skill_types 命中
+        // ——主技能被 Cast on X 等 meta 触发（addSkillTypes Triggered）时生效。
+        flags |= ModFlags::SPELL;
+        prefix_tags.push(ModTag::SkillTypes(SkillTypes::TRIGGERED));
         rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spells deal ") {
         flags |= ModFlags::SPELL;
@@ -2217,6 +2242,64 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
             " while you have arcane surge",
             ModTag::condition("AffectedByArcaneSurge", false),
         ),
+        // herald buff 条件族（M4-m）：通称（vendor ModParser.lua:1826
+        // `["while affected by a herald"]` → Condition `AffectedByHerald`）+
+        // 具名五 herald（vendor :6326-6328 对 aura/herald 宝石名自动注册
+        // `while affected by <skill>` → `AffectedBy<名去空格>`，"Herald of X"
+        // gsub 后保留小写 of → `AffectedByHeraldofX`）。cfg 真值由编排层按
+        // 在场 herald 技能置位（CalcPerform.lua:1792-1805 + buff 分支命名）。
+        (
+            " while affected by a herald",
+            ModTag::condition("AffectedByHerald", false),
+        ),
+        (
+            " while affected by herald of plague",
+            ModTag::condition("AffectedByHeraldofPlague", false),
+        ),
+        (
+            " while affected by herald of ice",
+            ModTag::condition("AffectedByHeraldofIce", false),
+        ),
+        (
+            " while affected by herald of ash",
+            ModTag::condition("AffectedByHeraldofAsh", false),
+        ),
+        (
+            " while affected by herald of thunder",
+            ModTag::condition("AffectedByHeraldofThunder", false),
+        ),
+        (
+            " while affected by herald of blood",
+            ModTag::condition("AffectedByHeraldofBlood", false),
+        ),
+        // 激活 charm 条件（M4-m）：vendor `Condition:UsingCharm`（charm 激活时
+        // CalcPerform flask/charm 段置位；PoBR 对应 env_finalize 阶段 3
+        // merge_flasks_charms 推 `UsingCharm`）。树点『Lucky Rabbit Foot』等
+        // 「while you have an active Charm」族。
+        (
+            " while you have an active charm",
+            ModTag::condition("UsingCharm", false),
+        ),
+        // 近期暴击（4 秒窗）条件（vendor ModParser.lua:1900 族
+        // `["if you[' ]h?a?ve dealt a crit(ical hit)? recently"]` → Condition
+        // `CritRecently`；cfg 真值由 config `conditionCritRecently` 直接效果
+        // 供给，config_resolve 已接线）。
+        (
+            " if you've dealt a critical hit recently",
+            ModTag::condition("CritRecently", false),
+        ),
+        (
+            " if you have dealt a critical hit recently",
+            ModTag::condition("CritRecently", false),
+        ),
+        (
+            " if you've dealt a crit recently",
+            ModTag::condition("CritRecently", false),
+        ),
+        (
+            " if you have dealt a crit recently",
+            ModTag::condition("CritRecently", false),
+        ),
     ];
 
     for (suffix, tag) in known_tags {
@@ -2900,6 +2983,109 @@ mod per_slot_defence_tests {
             assert_eq!(out.mods[0].name.as_str(), "Damage", "{text}");
             assert_eq!(out.mods[0].mod_type, ModType::Inc, "{text}");
             assert!(has_condition(&out.mods[0], "CritInPast8Sec"), "{text}");
+        }
+    }
+
+    /// M4-m「Triggered Spells deal/have …」前缀（vendor ModParser.lua:1320
+    /// `["^triggered spells [hd][ae][va][el] "]` → KeywordFlag.Spell +
+    /// SkillType(Triggered) tag）：SPELL flag + `ModTag::SkillTypes(TRIGGERED)`，
+    /// 仅当 cfg.skill_types 含 TRIGGERED（meta 触发的主技能）才命中。
+    #[test]
+    fn parses_triggered_spells_deal_prefix() {
+        use pobr_data::skill::SkillTypes;
+        for text in [
+            // 树小点 47359 原文（bracket 标记）。
+            "[Trigger|Triggered] [Spell|Spells] deal 16% increased [Spell] Damage",
+            "Triggered Spells deal 40% increased Spell Damage",
+            "Triggered Spells have 14% increased Spell Damage",
+        ] {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "SpellDamage", "{text}");
+            assert_eq!(m.mod_type, ModType::Inc, "{text}");
+            assert!(
+                m.tags.iter().any(
+                    |t| matches!(t, ModTag::SkillTypes(st) if st.contains(SkillTypes::TRIGGERED))
+                ),
+                "{text} 应带 SkillTypes(TRIGGERED) tag"
+            );
+            // 非触发 cfg 不命中；TRIGGERED cfg 命中。
+            let plain = crate::CalcConfig::new().with_flags(ModFlags::SPELL);
+            assert!(!m.matches(&plain), "{text} 非触发技能不生效");
+            let triggered = plain.clone().with_skill_types(SkillTypes::TRIGGERED);
+            assert!(m.matches(&triggered), "{text} 触发技能生效");
+        }
+    }
+
+    /// M4-m herald 条件后缀族（vendor ModParser.lua:1826 通称 + :6326-6328
+    /// 具名自动注册，"Herald of X" gsub 后 of 保持小写）。
+    #[test]
+    fn parses_herald_condition_suffixes() {
+        let cases = [
+            (
+                "12% increased Damage while affected by a Herald",
+                "Damage",
+                "AffectedByHerald",
+            ),
+            // 树 notable 43088 原文（bracket 标记）。
+            (
+                "40% increased [Chaos] Damage while affected by [Herald] of Plague",
+                "ChaosDamage",
+                "AffectedByHeraldofPlague",
+            ),
+            // 树 notable 28044 原文。
+            (
+                "40% increased [Cold] Damage while affected by [Herald] of Ice",
+                "ColdDamage",
+                "AffectedByHeraldofIce",
+            ),
+            (
+                "40% increased Fire Damage while affected by Herald of Ash",
+                "FireDamage",
+                "AffectedByHeraldofAsh",
+            ),
+            (
+                "40% increased Lightning Damage while affected by Herald of Thunder",
+                "LightningDamage",
+                "AffectedByHeraldofThunder",
+            ),
+            (
+                "40% increased Physical Damage while affected by Herald of Blood",
+                "PhysicalDamage",
+                "AffectedByHeraldofBlood",
+            ),
+        ];
+        for (text, name, cond) in cases {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods[0].name.as_str(), name, "{text}");
+            assert!(has_condition(&out.mods[0], cond), "{text}");
+        }
+    }
+
+    /// M4-m：激活 charm 条件（vendor ModParser.lua:1837 → `UsingCharm`，cfg
+    /// 真值 = env_finalize 阶段 3 按激活 charm 槽置位）+ 近期暴击 4 秒窗
+    /// （vendor :1900-1901 → `CritRecently`，cfg 真值 = config
+    /// `conditionCritRecently` 直接效果经 Combat 桥）。
+    #[test]
+    fn parses_using_charm_and_crit_recently_suffixes() {
+        // 树 notable 59303 原文。
+        let out = parse_mod("30% increased Damage while you have an active [Charm|Charm]")
+            .expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods[0].name.as_str(), "Damage");
+        assert!(has_condition(&out.mods[0], "UsingCharm"));
+
+        // 树小点 4519 原文（[Recently] 标记）。
+        for text in [
+            "10% increased Damage if you've dealt a [Critical|Critical Hit] [Recently]",
+            "10% increased Damage if you have dealt a critical hit recently",
+            "10% increased Damage if you've dealt a crit recently",
+        ] {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert!(has_condition(&out.mods[0], "CritRecently"), "{text}");
         }
     }
 

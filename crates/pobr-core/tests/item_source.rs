@@ -395,6 +395,27 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     );
 }
 
+/// M4-m：全部行不可解析的激活 charm **仍产出空载荷**（vendor 对进预算的激活
+/// charm 无条件置 UsingCharm/Using<Base> 条件，CalcPerform.lua:1634-1643——
+/// 条件置位与 modList 无关；空 NestedMods 在 merge 缩放循环空转）。
+#[test]
+fn ingest_charm_with_no_parseable_mods_still_emits_empty_carrier() {
+    let charm = utility_item(
+        "Golden Charm",
+        &["Used when you become Stunned"],
+        &["40% increased Quantity of Gold Dropped by Slain Enemies"],
+    );
+    let ingest = ingest_flask_charm("Charm 3", &charm);
+    assert_eq!(ingest.modifiers.len(), 1, "空载荷仍产出");
+    let carrier = &ingest.modifiers[0];
+    assert_eq!(carrier.name, ModName::from(CHARM_BUFF_LIST_NAME));
+    assert_eq!(carrier.source.as_deref(), Some("Golden Charm"));
+    assert!(
+        carrier.value.as_nested_mods().is_some_and(<[_]>::is_empty),
+        "载荷为空 NestedMods"
+    );
+}
+
 /// flask 特殊行：`Grants Onslaught during effect` → Onslaught Flag；
 /// `N% increased effect` → LocalUtilityEffect；`... during effect` 后缀剥除复用 parser。
 #[test]
@@ -425,15 +446,22 @@ fn ingest_flask_parses_onslaught_local_effect_and_during_effect_suffix() {
     assert_eq!(nested[2].value.as_number(), Some(10.0));
 }
 
-/// 全部行不可解析 → 不产出空载荷（零噪声）。
+/// 全部行不可解析 → **仍产出空载荷**（M4-m 行为切换：vendor 条件置位与
+/// modList 无关，CalcPerform.lua:1634-1643）；unsupported 照常逐行收集。
 #[test]
-fn ingest_flask_charm_emits_no_payload_when_nothing_parses() {
+fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
         &["Energy Shield Recharge starts on use"],
     );
     let ingest = ingest_flask_charm("Charm 2", &charm);
-    assert!(ingest.modifiers.is_empty());
+    assert_eq!(ingest.modifiers.len(), 1);
+    assert!(
+        ingest.modifiers[0]
+            .value
+            .as_nested_mods()
+            .is_some_and(<[_]>::is_empty)
+    );
     assert_eq!(ingest.unsupported.len(), 2);
 }
