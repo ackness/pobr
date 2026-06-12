@@ -36,6 +36,28 @@ fn base_items_load_with_resolved_foreign_keys() {
     );
 }
 
+/// M4-T4 W-D2：弩装填时间经 overlay merge 进 weapon 段（vendor
+/// `Data/Bases/crossbow.lua` Makeshift Crossbow `ReloadTimeBase = 0.8`），
+/// 非弩武器保持 `None`。
+#[test]
+fn crossbow_reload_time_merged_from_overlay() {
+    let bases = game_data().base_items().expect("base_items 可加载");
+    let crossbow = bases
+        .iter()
+        .find(|b| b.name == "Makeshift Crossbow")
+        .expect("存在 Makeshift Crossbow 基底");
+    let weapon = crossbow.weapon.as_ref().expect("弩必有 weapon 段");
+    assert_eq!(weapon.reload_time_ms, Some(800));
+    assert!(weapon.physical_min > 0, "merge 不得扰动既有 weapon 数值");
+
+    let hatchet = bases.iter().find(|b| b.name == "Dull Hatchet").unwrap();
+    assert_eq!(
+        hatchet.weapon.as_ref().and_then(|w| w.reload_time_ms),
+        None,
+        "非弩武器无 reload"
+    );
+}
+
 #[test]
 fn base_items_sorted_by_id_for_stable_diffs() {
     let bases = game_data().base_items().unwrap();

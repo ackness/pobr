@@ -253,8 +253,53 @@ pub struct StatSetDef {
     /// 由 vendor Lua 抽取合并。作为 `AttackSpeed` MORE 注入（仅攻击技能链路消费）。`None`=无。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skill_attack_speed_more: Option<f64>,
+    /// 技能 DoT 配置布尔族（M4-T4 W-D1）：vendor skillData `dotIs*`（statSet
+    /// `baseMods` 的 `skill("dotIsArea", true)` 类条目，PoB2 据此从 dotCfg 剥除
+    /// 对应 ModFlag 位，`CalcOffence.lua:5831-5860`）。GGG `.dat` 无对应列——
+    /// 经 extract-lua skill_overrides 通道在加载期 merge。缺省全 false =
+    /// 保守不剥 flag（蓝图 m4-offence-deep §5 风险行）。
+    #[serde(default, skip_serializing_if = "DotFlags::is_default")]
+    pub dot_flags: DotFlags,
     /// 分等级 stat（按宝石等级升序；含基础伤害值 + `damage_+%[_final]` 缩放）。
     pub levels: Vec<SkillStatSetLevel>,
+}
+
+/// 技能 DoT 配置布尔族（vendor skillData `dotIs*`）+ 抽取核验标记。
+///
+/// 注意 vendor 中 `dotIsSpell`/`dotIsProjectile`/`doubleHitsWhenDualWielding`
+/// 是 **stat 驱动**（`SkillStatMap.lua` 的 `skill(...)` 条目，已入库
+/// `overlay/skill_stat_map.json` 的 `skill_data` kind），不经本结构；本结构只
+/// 承载 statSet `baseMods` 直挂的布尔（4.5.0.3.4 vendor 全量仅 `dotIsArea`
+/// 一处：TornadoShotPlayer statSet "Tornado"）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct DotFlags {
+    /// dotIsArea：DoT 保留 Area 位（false = dotCfg 剥除 Area 位）。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub area: bool,
+    /// dotIsProjectile。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub projectile: bool,
+    /// dotIsSpell。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spell: bool,
+    /// dotIsAttack。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub attack: bool,
+    /// dotIsHit。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hit: bool,
+    /// 是否经 vendor 抽取核验（true = overlay 有该 statSet 的 dotIs* 条目；
+    /// false = 未核验的保守默认——蓝图 §5 `verified:false` 元数据，
+    /// parity 报告单列）。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub verified: bool,
+}
+
+impl DotFlags {
+    /// 是否为全默认值（serde skip 谓词：全 false 时整段不落盘，diff 友好）。
+    pub fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
 }
 
 /// 某授予效果在某宝石等级上的伤害 stat 列表。
@@ -400,6 +445,52 @@ pub struct StatSetLabelDef {
 pub struct StatSetLabelsDef {
     /// statSet label 表。
     pub labels: Vec<StatSetLabelDef>,
+}
+
+#[cfg(test)]
+mod m4_t4_dot_flags_tests {
+    use super::{DotFlags, StatSetDef};
+
+    fn bare_set() -> StatSetDef {
+        StatSetDef {
+            set_id: "S".into(),
+            label: None,
+            vendor_set_index: None,
+            base_effectiveness: 0.0,
+            constant_stats: Vec::new(),
+            skill_attack_speed_more: None,
+            dot_flags: DotFlags::default(),
+            levels: Vec::new(),
+        }
+    }
+
+    /// 全默认 dot_flags 不落盘（既有 base JSON 零 diff），且旧 JSON
+    /// （无 `dot_flags` 键）可反序列化为保守默认。
+    #[test]
+    fn default_dot_flags_are_skipped_and_backward_compatible() {
+        let json = serde_json::to_string(&bare_set()).unwrap();
+        assert!(!json.contains("dot_flags"), "全 false 不得落盘：{json}");
+        let parsed: StatSetDef = serde_json::from_str(&json).unwrap();
+        assert!(parsed.dot_flags.is_default(), "缺键 = 保守默认（全 false）");
+        assert!(!parsed.dot_flags.verified, "缺键 = 未核验");
+    }
+
+    /// 非默认 dot_flags serde 往返无损，且只序列化为 true 的位。
+    #[test]
+    fn dot_flags_round_trip() {
+        let mut set = bare_set();
+        set.dot_flags = DotFlags {
+            area: true,
+            verified: true,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&set).unwrap();
+        assert!(json.contains(r#""area":true"#));
+        assert!(json.contains(r#""verified":true"#));
+        assert!(!json.contains(r#""spell""#), "false 位不落盘：{json}");
+        let parsed: StatSetDef = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, set, "serde 往返必须无损");
+    }
 }
 
 /// 技能消耗资源类型定义（来自 `CostTypes.dat`）。

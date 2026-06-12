@@ -4,8 +4,10 @@
 -- （这些文件以 `local itemBases = ...` 接收注入，顶层为纯表字面量赋值，无其它
 -- 全局依赖），抽取两个 GGG `.dat` 路线不可得的基底列并以 JSONL 写到 stdout：
 --
---   block_chance ← itemBases[name].armour.BlockChance（`ShieldTypes.Block`）
---   spirit       ← itemBases[name].spirit            （`ItemSpirit.SpiritGranted`）
+--   block_chance   ← itemBases[name].armour.BlockChance     （`ShieldTypes.Block`）
+--   spirit         ← itemBases[name].spirit                  （`ItemSpirit.SpiritGranted`）
+--   reload_time_ms ← itemBases[name].weapon.ReloadTimeBase×1000（`WeaponTypes.ReloadTime`，
+--                    M4-T4 W-D2 弩装填；vendor 值为秒，毫秒整数入库）
 --
 -- 确定性约定：本脚本只负责「忠实抽取 + 合法 JSON」；最终按 name 排序与整体
 -- 文档（_meta + overrides）的 byte-stable 序列化由 Rust 侧统一完成。
@@ -69,13 +71,21 @@ for name, base in pairs(itemBases) do
 		if type(base.spirit) == "number" then
 			spirit = base.spirit
 		end
-		if blockChance or spirit then
+		local reloadMs = nil
+		if type(base.weapon) == "table" and type(base.weapon.ReloadTimeBase) == "number" then
+			-- vendor 秒值（bases.lua 导出时已 /1000 round 两位）→ 毫秒整数。
+			reloadMs = math.floor(base.weapon.ReloadTimeBase * 1000 + 0.5)
+		end
+		if blockChance or spirit or reloadMs then
 			local parts = { '"name":"' .. jsonEscape(name) .. '"' }
 			if blockChance then
 				parts[#parts + 1] = '"block_chance":' .. jsonNum(blockChance)
 			end
 			if spirit then
 				parts[#parts + 1] = '"spirit":' .. string.format("%d", spirit)
+			end
+			if reloadMs then
+				parts[#parts + 1] = '"reload_time_ms":' .. string.format("%d", reloadMs)
 			end
 			print("{" .. table.concat(parts, ",") .. "}")
 		end

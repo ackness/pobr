@@ -162,6 +162,12 @@ struct RawWeaponType {
     crit_chance: Option<i64>,
     #[serde(rename = "RangeMax")]
     range_max: Option<i64>,
+    /// 弩装填时间（毫秒，M4-T4 W-D2；vendor `Export/spec.lua:62483`、
+    /// `bases.lua:268-269` 仅 >0 导出）。旧导出（无此列的 tables 快照）回退
+    /// `None`，产物字段保持缺省（schema 兼容；当前由 overlay
+    /// `base_item_overrides.json` 兜底填充）。
+    #[serde(rename = "ReloadTime", default)]
+    reload_time: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -206,6 +212,9 @@ fn weapon_armour_lookups(en: &Path) -> Result<BaseStatsLookups, String> {
                     speed_ms: nn(w.speed),
                     crit_chance: nn(w.crit_chance),
                     range: nn(w.range_max),
+                    // 仅 >0 入库（对齐 vendor bases.lua:268 `if ReloadTime > 0`；
+                    // 非弩武器该列恒 0）。
+                    reload_time_ms: w.reload_time.filter(|&v| v > 0).map(|v| v as u32),
                 },
             );
         }

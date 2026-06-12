@@ -25,6 +25,27 @@ pub const OVERRIDE_STAT_BASE_MULTIPLIER: &str = "base_multiplier";
 /// [`SkillOverrideEntry::stat`] 取值：statSet 固有攻击速度 MORE（百分点，对应
 /// `SkillStatSetDef::skill_attack_speed_more`）。
 pub const OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE: &str = "skill_attack_speed_more";
+/// [`SkillOverrideEntry::stat`] 取值：技能 DoT 配置布尔（M4-T4 W-D1，vendor
+/// statSet `baseMods` 的 `skill("dotIs*", true)`；value 1.0 = true，对应
+/// `StatSetDef::dot_flags` 的同名位）。statSet 级条目（恒带 `stat_set`）。
+pub const OVERRIDE_STAT_DOT_IS_AREA: &str = "dot_is_area";
+/// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsProjectile）。
+pub const OVERRIDE_STAT_DOT_IS_PROJECTILE: &str = "dot_is_projectile";
+/// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsSpell）。
+pub const OVERRIDE_STAT_DOT_IS_SPELL: &str = "dot_is_spell";
+/// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsAttack）。
+pub const OVERRIDE_STAT_DOT_IS_ATTACK: &str = "dot_is_attack";
+/// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsHit）。
+pub const OVERRIDE_STAT_DOT_IS_HIT: &str = "dot_is_hit";
+
+/// 全部 statSet 级 dotIs* stat 名（消费侧 merge / 生成侧抽取共用清单）。
+pub const OVERRIDE_DOT_FLAG_STATS: &[&str] = &[
+    OVERRIDE_STAT_DOT_IS_AREA,
+    OVERRIDE_STAT_DOT_IS_PROJECTILE,
+    OVERRIDE_STAT_DOT_IS_SPELL,
+    OVERRIDE_STAT_DOT_IS_ATTACK,
+    OVERRIDE_STAT_DOT_IS_HIT,
+];
 
 /// 单条 per-skill 覆盖值。`value` 与 `per_level` 二选一：
 /// 该 stat 在 vendor **所有等级**均出现且同值时压缩为 `value`

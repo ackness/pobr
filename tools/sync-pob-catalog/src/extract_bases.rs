@@ -20,9 +20,11 @@ use crate::extract_lua::{ExtractLuaArgs, OverlayMeta, build_overlay_meta};
 /// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）
 const BOOTSTRAP_LUA: &str = include_str!("extract_base_overrides.lua");
 
-/// 默认抽取的 vendor 基底数据文件：盾（`armour.BlockChance`）+ 权杖（`spirit`）。
-/// vendor 全量 Data/Bases 中仅这两类携带目标字段（`grep -l` 核实，2026-06-11）。
-pub const DEFAULT_BASE_FILES: &[&str] = &["sceptre", "shield"];
+/// 默认抽取的 vendor 基底数据文件：盾（`armour.BlockChance`）、权杖（`spirit`）
+/// 与弩（`weapon.ReloadTimeBase`，M4-T4 W-D2）。vendor 全量 Data/Bases 中仅
+/// 这三类携带目标字段（`grep -l` 核实：block/spirit 2026-06-11、
+/// ReloadTimeBase 2026-06-12 仅 crossbow.lua）。
+pub const DEFAULT_BASE_FILES: &[&str] = &["crossbow", "sceptre", "shield"];
 
 /// 当前 overlay 文档 schema 标识（字段演化时递增）
 pub const BASE_ITEM_OVERRIDES_SCHEMA: &str = "base_item_overrides/v1";
@@ -161,25 +163,35 @@ mod tests {
                 name: "Omen Sceptre".to_string(),
                 block_chance: None,
                 spirit: Some(100),
+                reload_time_ms: None,
             },
             BaseItemOverrideEntry {
                 name: "Crude Tower Shield".to_string(),
                 block_chance: Some(26.0),
                 spirit: None,
+                reload_time_ms: None,
+            },
+            BaseItemOverrideEntry {
+                name: "Makeshift Crossbow".to_string(),
+                block_chance: None,
+                spirit: None,
+                reload_time_ms: Some(800),
             },
         ];
         let a = assemble_base_overrides_document(meta.clone(), entries.clone());
         let b = assemble_base_overrides_document(meta, entries);
         assert_eq!(a, b);
-        // 排序：Crude... 在 Omen... 之前。
+        // 排序：Crude... < Makeshift... < Omen...。
         let crude = a.find("Crude Tower Shield").unwrap();
+        let makeshift = a.find("Makeshift Crossbow").unwrap();
         let omen = a.find("Omen Sceptre").unwrap();
-        assert!(crude < omen);
+        assert!(crude < makeshift && makeshift < omen);
         // 消费侧 schema 能解析生成侧产物（防字段漂移）。
         let parsed: pobr_data::catalog::base_item_overrides::BaseItemOverridesDef =
             serde_json::from_str(&a).unwrap();
-        assert_eq!(parsed.overrides.len(), 2);
+        assert_eq!(parsed.overrides.len(), 3);
         assert_eq!(parsed.overrides[0].block_chance, Some(26.0));
-        assert_eq!(parsed.overrides[1].spirit, Some(100));
+        assert_eq!(parsed.overrides[1].reload_time_ms, Some(800));
+        assert_eq!(parsed.overrides[2].spirit, Some(100));
     }
 }

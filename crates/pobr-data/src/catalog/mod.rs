@@ -80,7 +80,7 @@ pub use parser_rules::{
 };
 pub use runtime::RuntimeConstants;
 pub use skills::{
-    CostTypeDef, GemEffectDef, GemEffectsDef, GemQualityStatDef, GemQualityStatsDef,
+    CostTypeDef, DotFlags, GemEffectDef, GemEffectsDef, GemQualityStatDef, GemQualityStatsDef,
     GrantedEffectDef, QualityStat, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
     SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef,
 };

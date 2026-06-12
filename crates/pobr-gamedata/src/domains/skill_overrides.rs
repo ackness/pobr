@@ -26,10 +26,18 @@
 use std::collections::BTreeMap;
 
 use pobr_data::catalog::skill_overrides::{
-    OVERRIDE_STAT_ATTACK_SPEED_MULTIPLIER, OVERRIDE_STAT_BASE_MULTIPLIER,
-    OVERRIDE_STAT_CRIT_CHANCE, OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE, SkillOverridesDef,
+    OVERRIDE_DOT_FLAG_STATS, OVERRIDE_STAT_ATTACK_SPEED_MULTIPLIER, OVERRIDE_STAT_BASE_MULTIPLIER,
+    OVERRIDE_STAT_CRIT_CHANCE, OVERRIDE_STAT_DOT_IS_AREA, OVERRIDE_STAT_DOT_IS_ATTACK,
+    OVERRIDE_STAT_DOT_IS_HIT, OVERRIDE_STAT_DOT_IS_PROJECTILE, OVERRIDE_STAT_DOT_IS_SPELL,
+    OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE, SkillOverridesDef,
 };
 use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef, StatSetDef};
+
+/// 是否为 statSet 级 stat（由 [`apply_stat_set_overrides`] /
+/// [`apply_dot_flag_overrides`] 消费，等级域 merge 跳过）。
+fn is_stat_set_stat(stat: &str) -> bool {
+    stat == OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE || OVERRIDE_DOT_FLAG_STATS.contains(&stat)
+}
 
 use crate::{GameData, LoadError};
 
@@ -83,8 +91,9 @@ pub fn apply_level_overrides(
     overrides: &SkillOverridesDef,
 ) -> Result<(), String> {
     for entry in &overrides.overrides {
-        // statSet 级覆盖值由 [`apply_stat_set_overrides`] 消费，此处跳过。
-        if entry.stat == OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE {
+        // statSet 级覆盖值由 apply_stat_set_overrides / apply_dot_flag_overrides
+        // 消费，此处跳过。
+        if is_stat_set_stat(&entry.stat) {
             continue;
         }
         // 规则 3：vendor-only 技能（.dat 无对应效果）跳过。
@@ -164,6 +173,7 @@ pub fn apply_stat_set_overrides(
                         base_effectiveness: 0.0,
                         constant_stats: Vec::new(),
                         skill_attack_speed_more: Some(value),
+                        dot_flags: Default::default(),
                         levels: Vec::new(),
                     }],
                 });
@@ -174,6 +184,65 @@ pub fn apply_stat_set_overrides(
     // 追加后恢复按 effect id 排序（与 base 域排序契约一致，消费确定性）。
     if appended {
         sets.sort_by(|a, b| a.effect_id.cmp(&b.effect_id));
+    }
+    Ok(())
+}
+
+/// 把 overlay 的 statSet 级 **dotIs\* 布尔**（M4-T4 W-D1，`dot_is_area` 等）
+/// merge 进 `granted_effect_stat_sets` 域，并打 `verified` 核验标记。
+///
+/// 必须在 stat_set_labels merge **之后**调用（set 定位依赖
+/// [`StatSetDef::vendor_set_index`]——overlay 条目的 `stat_set` 是 vendor
+/// `statSets` 的 1-based 序号，与 label 边车的 `set_index` 同源；如
+/// TornadoShotPlayer 的 `dotIsArea` 挂在 vendor statSets\[2\]
+/// "Tornado" = `.dat` 侧 `TornadoShotNovaPlayer` set）。
+///
+/// merge 语义：
+/// 1. 定位：`stat_set = Some(i)` → 匹配 `vendor_set_index == i` 的 set；
+///    `None` → 主 set（`sets[0]`）。
+/// 2. 未命中（base 无该 effect / 无对应 vendor 序号的 set）→ **跳过**——
+///    保守默认（全 false 不剥 flag）正是蓝图 §5 的回退语义，不合成空 set。
+/// 3. 命中 set 写入对应布尔（value ≠ 0 = true）并置 `verified = true`
+///    （parity 报告据此单列未核验技能）。
+/// 4. 未知 dot stat 名不会到达此处（清单驱动：仅消费
+///    [`OVERRIDE_DOT_FLAG_STATS`] 内的条目；其余由等级域 merge 的规则 4 拦截）。
+pub fn apply_dot_flag_overrides(
+    sets: &mut [SkillStatSetDef],
+    overrides: &SkillOverridesDef,
+) -> Result<(), String> {
+    for entry in &overrides.overrides {
+        if !OVERRIDE_DOT_FLAG_STATS.contains(&entry.stat.as_str()) {
+            continue;
+        }
+        let Some(value) = entry.value else {
+            return Err(format!(
+                "skill_overrides 条目（skill `{}`，stat `{}`）缺 value（dotIs* 布尔恒为单值）",
+                entry.skill, entry.stat
+            ));
+        };
+        let Some(def) = sets.iter_mut().find(|s| s.effect_id == entry.skill) else {
+            continue; // 规则 2：vendor-only 技能，保守默认。
+        };
+        let target = match entry.stat_set {
+            Some(idx) => def
+                .sets
+                .iter_mut()
+                .find(|s| s.vendor_set_index == Some(idx)),
+            None => def.sets.first_mut(),
+        };
+        let Some(set) = target else {
+            continue; // 规则 2：vendor 序号未命中（模板策展跳过的 set），保守默认。
+        };
+        let flag = value != 0.0;
+        match entry.stat.as_str() {
+            OVERRIDE_STAT_DOT_IS_AREA => set.dot_flags.area = flag,
+            OVERRIDE_STAT_DOT_IS_PROJECTILE => set.dot_flags.projectile = flag,
+            OVERRIDE_STAT_DOT_IS_SPELL => set.dot_flags.spell = flag,
+            OVERRIDE_STAT_DOT_IS_ATTACK => set.dot_flags.attack = flag,
+            OVERRIDE_STAT_DOT_IS_HIT => set.dot_flags.hit = flag,
+            _ => unreachable!("OVERRIDE_DOT_FLAG_STATS 已过滤"),
+        }
+        set.dot_flags.verified = true;
     }
     Ok(())
 }
@@ -226,6 +295,20 @@ mod tests {
 
     fn doc(overrides: Vec<SkillOverrideEntry>) -> SkillOverridesDef {
         SkillOverridesDef { overrides }
+    }
+
+    /// 裸 statSet（全空字段，按需指定 vendor 导出序号）。
+    fn bare_set(set_id: &str, vendor_set_index: Option<u32>) -> StatSetDef {
+        StatSetDef {
+            set_id: set_id.into(),
+            label: None,
+            vendor_set_index,
+            base_effectiveness: 0.0,
+            constant_stats: Vec::new(),
+            skill_attack_speed_more: None,
+            dot_flags: Default::default(),
+            levels: Vec::new(),
+        }
     }
 
     /// 规则 1a：单值应用到全部等级行；规则 3：base 无此技能的条目跳过。
@@ -288,15 +371,7 @@ mod tests {
     fn stat_set_speed_more_merges_or_appends() {
         let mut sets = vec![SkillStatSetDef {
             effect_id: "Flicker".into(),
-            sets: vec![StatSetDef {
-                set_id: "Flicker".into(),
-                label: None,
-                vendor_set_index: None,
-                base_effectiveness: 0.0,
-                constant_stats: Vec::new(),
-                skill_attack_speed_more: None,
-                levels: Vec::new(),
-            }],
+            sets: vec![bare_set("Flicker", None)],
         }];
         let mut first = entry("Flicker", "skill_attack_speed_more", Some(285.0), None);
         first.stat_set = Some(1);
@@ -315,5 +390,55 @@ mod tests {
             Some(285.0),
             "同 skill 多条时首条生效（写入主 set）"
         );
+    }
+
+    /// dotIs* merge 规则 1/3：按 vendor 序号定位 set（非主 set 可命中），写入
+    /// 布尔并打 verified 标记；等级域 merge 对 dot stat 跳过不报错。
+    #[test]
+    fn dot_flags_merge_targets_set_by_vendor_index() {
+        use super::apply_dot_flag_overrides;
+        let mut sets = vec![SkillStatSetDef {
+            effect_id: "TornadoShotPlayer".into(),
+            sets: vec![
+                bare_set("TornadoShotPlayer", Some(1)),
+                bare_set("TornadoShotNovaPlayer", Some(2)),
+            ],
+        }];
+        let mut e = entry("TornadoShotPlayer", "dot_is_area", Some(1.0), None);
+        e.stat_set = Some(2);
+        let ov = doc(vec![e]);
+
+        // 等级域：dot stat 是 statSet 级，不得被规则 4 误报。
+        let mut levels = BTreeMap::from([("TornadoShotPlayer".to_string(), bare_rows())]);
+        apply_level_overrides(&mut levels, &ov).unwrap();
+
+        apply_dot_flag_overrides(&mut sets, &ov).unwrap();
+        let main = &sets[0].sets[0];
+        assert!(!main.dot_flags.area, "主 set 不得被误写");
+        assert!(!main.dot_flags.verified);
+        let nova = &sets[0].sets[1];
+        assert!(nova.dot_flags.area, "vendor 序号 2 的 set 应命中");
+        assert!(nova.dot_flags.verified, "命中即核验");
+        assert!(!nova.dot_flags.spell, "未列出的位保持保守 false");
+    }
+
+    /// dotIs* merge 规则 2：vendor-only 技能 / 序号未命中 → 跳过（保守默认）；
+    /// 缺 value 报错不静默。
+    #[test]
+    fn dot_flags_merge_skips_unmatched_and_rejects_missing_value() {
+        use super::apply_dot_flag_overrides;
+        let mut sets = vec![SkillStatSetDef {
+            effect_id: "Known".into(),
+            sets: vec![bare_set("Known", Some(1))],
+        }];
+        let mut miss_skill = entry("VendorOnly", "dot_is_spell", Some(1.0), None);
+        miss_skill.stat_set = Some(1);
+        let mut miss_index = entry("Known", "dot_is_hit", Some(1.0), None);
+        miss_index.stat_set = Some(9);
+        apply_dot_flag_overrides(&mut sets, &doc(vec![miss_skill, miss_index])).unwrap();
+        assert!(sets[0].sets[0].dot_flags.is_default(), "未命中不得写入");
+
+        let bad = entry("Known", "dot_is_hit", None, None);
+        assert!(apply_dot_flag_overrides(&mut sets, &doc(vec![bad])).is_err());
     }
 }

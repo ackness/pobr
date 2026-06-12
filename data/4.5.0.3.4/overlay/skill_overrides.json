@@ -22631,6 +22631,12 @@
       ]
     },
     {
+      "skill": "TornadoShotPlayer",
+      "stat": "dot_is_area",
+      "stat_set": 2,
+      "value": 1.0
+    },
+    {
       "skill": "ToxicDomainPlayer",
       "stat": "base_multiplier",
       "per_level": [

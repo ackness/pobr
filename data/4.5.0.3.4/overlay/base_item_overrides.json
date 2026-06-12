@@ -6,10 +6,11 @@
     "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
     "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)",
     "extracted_files": [
+      "Data/Bases/crossbow.lua",
       "Data/Bases/sceptre.lua",
       "Data/Bases/shield.lua"
     ],
-    "regen_command": "cargo run -p sync-pob-catalog -- extract-bases --vendor-root vendor/PathOfBuilding-PoE2/src --files sceptre,shield --out data/4.5.0.3.4/overlay/base_item_overrides.json"
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-bases --vendor-root vendor/PathOfBuilding-PoE2/src --files crossbow,sceptre,shield --out data/4.5.0.3.4/overlay/base_item_overrides.json"
   },
   "overrides": [
     {
@@ -19,6 +20,10 @@
     {
       "name": "Aged Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Alloy Crossbow",
+      "reload_time_ms": 700
     },
     {
       "name": "Ancestor Tower Shield",
@@ -53,6 +58,10 @@
       "block_chance": 26.0
     },
     {
+      "name": "Blackfire Crossbow",
+      "reload_time_ms": 850
+    },
+    {
       "name": "Blacksteel Crest Shield",
       "block_chance": 25.0
     },
@@ -69,12 +78,24 @@
       "block_chance": 25.0
     },
     {
+      "name": "Bleak Crossbow",
+      "reload_time_ms": 800
+    },
+    {
+      "name": "Bombard Crossbow",
+      "reload_time_ms": 750
+    },
+    {
       "name": "Braced Tower Shield",
       "block_chance": 26.0
     },
     {
       "name": "Bulwark Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Cannonade Crossbow",
+      "reload_time_ms": 750
     },
     {
       "name": "Carved Targe",
@@ -93,6 +114,10 @@
       "block_chance": 20.0
     },
     {
+      "name": "Construct Crossbow",
+      "reload_time_ms": 800
+    },
+    {
       "name": "Crescent Targe",
       "block_chance": 25.0
     },
@@ -103,6 +128,14 @@
     {
       "name": "Cultist Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Cumbrous Crossbow",
+      "reload_time_ms": 900
+    },
+    {
+      "name": "Dedalian Crossbow",
+      "reload_time_ms": 850
     },
     {
       "name": "Defiant Tower Shield",
@@ -125,6 +158,10 @@
       "block_chance": 20.0
     },
     {
+      "name": "Desolate Crossbow",
+      "reload_time_ms": 800
+    },
+    {
       "name": "Devotional Sceptre",
       "spirit": 100
     },
@@ -133,12 +170,20 @@
       "spirit": 100
     },
     {
+      "name": "Dyad Crossbow",
+      "reload_time_ms": 1100
+    },
+    {
       "name": "Edged Buckler",
       "block_chance": 20.0
     },
     {
       "name": "Effigial Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Elegant Crossbow",
+      "reload_time_ms": 850
     },
     {
       "name": "Emblem Crest Shield",
@@ -153,8 +198,20 @@
       "block_chance": 25.0
     },
     {
+      "name": "Engraved Crossbow",
+      "reload_time_ms": 800
+    },
+    {
+      "name": "Esoteric Crossbow",
+      "reload_time_ms": 800
+    },
+    {
       "name": "Feathered Targe",
       "block_chance": 25.0
+    },
+    {
+      "name": "Flexed Crossbow",
+      "reload_time_ms": 850
     },
     {
       "name": "Fortress Tower Shield",
@@ -163,6 +220,10 @@
     {
       "name": "Fur-lined Targe",
       "block_chance": 25.0
+    },
+    {
+      "name": "Gemini Crossbow",
+      "reload_time_ms": 1100
     },
     {
       "name": "Glowering Crest Shield",
@@ -233,6 +294,10 @@
       "spirit": 100
     },
     {
+      "name": "Makeshift Crossbow",
+      "reload_time_ms": 800
+    },
+    {
       "name": "Mammoth Targe",
       "block_chance": 25.0
     },
@@ -281,6 +346,10 @@
       "block_chance": 25.0
     },
     {
+      "name": "Painted Crossbow",
+      "reload_time_ms": 800
+    },
+    {
       "name": "Painted Tower Shield",
       "block_chance": 26.0
     },
@@ -295,6 +364,10 @@
     {
       "name": "Phalanx Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Piercing Crossbow",
+      "reload_time_ms": 850
     },
     {
       "name": "Pious Sceptre",
@@ -327,6 +400,10 @@
     {
       "name": "Ringed Buckler",
       "block_chance": 20.0
+    },
+    {
+      "name": "Robust Crossbow",
+      "reload_time_ms": 750
     },
     {
       "name": "Royal Tower Shield",
@@ -381,6 +458,10 @@
       "block_chance": 25.0
     },
     {
+      "name": "Runeforged Bombard Crossbow",
+      "reload_time_ms": 750
+    },
+    {
       "name": "Runeforged Braced Tower Shield",
       "block_chance": 26.0
     },
@@ -419,6 +500,10 @@
     {
       "name": "Runeforged Desert Buckler",
       "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Dyad Crossbow",
+      "reload_time_ms": 1100
     },
     {
       "name": "Runeforged Edged Buckler",
@@ -495,6 +580,10 @@
     {
       "name": "Runeforged Leather Buckler",
       "block_chance": 20.0
+    },
+    {
+      "name": "Runeforged Makeshift Crossbow",
+      "reload_time_ms": 800
     },
     {
       "name": "Runeforged Mammoth Targe",
@@ -613,8 +702,16 @@
       "block_chance": 25.0
     },
     {
+      "name": "Runeforged Sturdy Crossbow",
+      "reload_time_ms": 850
+    },
+    {
       "name": "Runeforged Tawhoan Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Runeforged Tense Crossbow",
+      "reload_time_ms": 850
     },
     {
       "name": "Runeforged Vaal Crest Shield",
@@ -659,6 +756,10 @@
     {
       "name": "Runemastered Crucible Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Runemastered Dyad Crossbow",
+      "reload_time_ms": 750
     },
     {
       "name": "Runemastered Effigial Tower Shield",
@@ -729,6 +830,10 @@
       "block_chance": 26.0
     },
     {
+      "name": "Runemastered Tense Crossbow",
+      "reload_time_ms": 600
+    },
+    {
       "name": "Runemastered Vaal Tower Shield",
       "block_chance": 26.0
     },
@@ -763,6 +868,10 @@
     {
       "name": "Shrine Sceptre (Purity of Lighting)",
       "spirit": 100
+    },
+    {
+      "name": "Siege Crossbow",
+      "reload_time_ms": 750
     },
     {
       "name": "Sigil Crest Shield",
@@ -801,6 +910,10 @@
       "block_chance": 26.0
     },
     {
+      "name": "Stout Crossbow",
+      "reload_time_ms": 750
+    },
+    {
       "name": "Stratified Targe",
       "block_chance": 25.0
     },
@@ -809,8 +922,24 @@
       "block_chance": 25.0
     },
     {
+      "name": "Sturdy Crossbow",
+      "reload_time_ms": 750
+    },
+    {
+      "name": "Taut Crossbow",
+      "reload_time_ms": 850
+    },
+    {
       "name": "Tawhoan Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Tense Crossbow",
+      "reload_time_ms": 850
+    },
+    {
+      "name": "Twin Crossbow",
+      "reload_time_ms": 1100
     },
     {
       "name": "Vaal Crest Shield",
@@ -819,6 +948,10 @@
     {
       "name": "Vaal Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Varnished Crossbow",
+      "reload_time_ms": 800
     },
     {
       "name": "Wayward Crest Shield",

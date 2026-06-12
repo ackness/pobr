@@ -17,9 +17,12 @@
 //! 3. `spirit` 写入 `BaseItemDef::spirit`。
 //! 4. overlay 名称在 base 中不存在 → 跳过（vendor-only / 已移除基底），与
 //!    `skill_overrides` 的规则 3 一致。
+//! 5. `reload_time_ms`（M4-T4 W-D2，弩装填）写入 `BaseItemDef::weapon
+//!    .reload_time_ms`；base 侧无 `weapon` 段（理论上弩必有 `WeaponTypes` 行）
+//!    时补零值 [`WeaponBaseStats`] 再写，不丢值（与规则 2 同构）。
 
 use pobr_data::catalog::base_item_overrides::BaseItemOverridesDef;
-use pobr_data::catalog::{ArmourBaseStats, BaseItemDef};
+use pobr_data::catalog::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 
 use crate::{GameData, LoadError};
 
@@ -72,6 +75,18 @@ pub fn apply_base_item_overrides(bases: &mut [BaseItemDef], overrides: &BaseItem
                 })
                 .block_chance = Some(block);
         }
+        if let Some(reload) = entry.reload_time_ms {
+            base.weapon
+                .get_or_insert(WeaponBaseStats {
+                    physical_min: 0,
+                    physical_max: 0,
+                    speed_ms: 0,
+                    crit_chance: 0,
+                    range: 0,
+                    reload_time_ms: None,
+                })
+                .reload_time_ms = Some(reload);
+        }
     }
 }
 
@@ -121,11 +136,13 @@ mod tests {
                     name: "Crude Tower Shield".to_string(),
                     block_chance: Some(26.0),
                     spirit: None,
+                    reload_time_ms: None,
                 },
                 BaseItemOverrideEntry {
                     name: "Omen Sceptre".to_string(),
                     block_chance: None,
                     spirit: Some(100),
+                    reload_time_ms: None,
                 },
             ],
         };
@@ -149,6 +166,7 @@ mod tests {
                 name: "Phantom Buckler".to_string(),
                 block_chance: Some(20.0),
                 spirit: None,
+                reload_time_ms: None,
             }],
         };
         apply_base_item_overrides(&mut bases, &overrides);
@@ -166,9 +184,54 @@ mod tests {
                 name: "Removed Legacy Shield".to_string(),
                 block_chance: Some(30.0),
                 spirit: None,
+                reload_time_ms: None,
             }],
         };
         apply_base_item_overrides(&mut bases, &overrides);
         assert_eq!(bases[0].armour.as_ref().unwrap().block_chance, None);
+    }
+
+    /// 规则 5（M4-T4 W-D2）：reload_time_ms 写入 weapon 段，原值不受扰动；
+    /// base 侧无 weapon 段时补零值结构再写，不丢值。
+    #[test]
+    fn merges_reload_time_into_weapon_section() {
+        use pobr_data::catalog::WeaponBaseStats;
+        let mut crossbow = base("Makeshift Crossbow", None);
+        crossbow.weapon = Some(WeaponBaseStats {
+            physical_min: 7,
+            physical_max: 12,
+            speed_ms: 625,
+            crit_chance: 500,
+            range: 120,
+            reload_time_ms: None,
+        });
+        let mut bases = vec![crossbow, base("Weaponless Oddity", None)];
+        let overrides = BaseItemOverridesDef {
+            overrides: vec![
+                BaseItemOverrideEntry {
+                    name: "Makeshift Crossbow".to_string(),
+                    block_chance: None,
+                    spirit: None,
+                    reload_time_ms: Some(800),
+                },
+                BaseItemOverrideEntry {
+                    name: "Weaponless Oddity".to_string(),
+                    block_chance: None,
+                    spirit: None,
+                    reload_time_ms: Some(750),
+                },
+            ],
+        };
+        apply_base_item_overrides(&mut bases, &overrides);
+        let weapon = bases[0].weapon.as_ref().unwrap();
+        assert_eq!(weapon.reload_time_ms, Some(800));
+        assert_eq!(weapon.physical_min, 7, "原值不受扰动");
+        let synthesized = bases[1].weapon.as_ref().unwrap();
+        assert_eq!(
+            synthesized.reload_time_ms,
+            Some(750),
+            "无 weapon 段时补结构"
+        );
+        assert_eq!(synthesized.physical_min, 0);
     }
 }

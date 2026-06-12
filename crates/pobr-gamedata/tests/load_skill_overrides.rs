@@ -29,6 +29,7 @@ fn loads_skill_overrides_overlay() {
     let has = |stat: &str| overrides.overrides.iter().any(|o| o.stat == stat);
     assert!(has("base_multiplier"));
     assert!(has("skill_attack_speed_more"));
+    assert!(has("dot_is_area"), "M4-T4 W-D1 dotIs* 抽取段不得回退");
     assert!(!has("crit_chance"), "crit 已表列直读，不得回流 overlay");
     assert!(
         !has("attack_speed_multiplier"),
@@ -109,6 +110,25 @@ fn merged_levels_spot_values() {
         .and_then(|def| def.sets.first())
         .expect("FlickerStrikePlayer 主 stat-set 存在");
     assert_eq!(flicker_set.skill_attack_speed_more, Some(285.0));
+
+    // M4-T4 W-D1：dotIs* 布尔——vendor 全量唯一条目 TornadoShotPlayer
+    // statSets[2]（"Tornado"）的 dotIsArea，按 vendor 序号命中
+    // TornadoShotNovaPlayer set；主 set 保持保守默认（未核验全 false）。
+    let tornado = sets
+        .iter()
+        .find(|s| s.effect_id == "TornadoShotPlayer")
+        .expect("TornadoShotPlayer stat-set 存在");
+    let nova = tornado
+        .sets
+        .iter()
+        .find(|s| s.set_id == "TornadoShotNovaPlayer")
+        .expect("Tornado 形态 set 存在");
+    assert!(nova.dot_flags.area, "dotIsArea 应命中 vendor statSets[2]");
+    assert!(nova.dot_flags.verified);
+    assert!(
+        tornado.sets[0].dot_flags.is_default(),
+        "主 set（Impact）未核验，保守默认"
+    );
 }
 
 /// 纯 base 不含 overlay 专属字段——确保这些值只来自 merge，不再有手补漂移

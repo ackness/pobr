@@ -65,6 +65,9 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "Speed",
             "CritChance",
             "RangeMax",
+            // M4-T4 W-D2：弩装填时间（vendor Export/spec.lua:62483 确认列存在；
+            // 本地 tables 快照缺失期间由 overlay 兜底，列断言面向下次重跑）。
+            "ReloadTime",
         ],
     ),
     (
