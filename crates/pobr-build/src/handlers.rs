@@ -14,8 +14,10 @@
 //! 回看裁决 P4/P6）。
 
 use pobr_core::CampaignProgress;
+use pobr_core::modifier::{ModTag, ModValue, Modifier};
 use pobr_core::rules::config_interpreter::{ConfigInputValue, ConfigOutcome};
-use pobr_core::rules::{HandlerOutcome, HandlerRegistry};
+use pobr_core::rules::{Handler, HandlerOutcome, HandlerRegistry};
+use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 
 /// config 域 handler 预算上限（蓝图 §1 D2：542 条目 × 10% ≈ 54）。
@@ -26,8 +28,19 @@ pub const BUFF_HANDLER_BUDGET: usize = 8;
 pub const TOTAL_HANDLER_CAP: usize = 100;
 
 /// 已注册但当前为占位 stub 的 handler（消费方应把命中条目以告警口径上报，
-/// 不静默视为已覆盖）。
+/// 不静默视为已覆盖）：
+/// - `config:presetBossSkills`：boss 技能预设表 `boss_skills.json` 属 M5+。
 pub const STUB_HANDLER_IDS: &[&str] = &["config:presetBossSkills"];
+
+/// 已注册、逻辑完整但**上下文门控**的 handler——依赖 [`HandlerCtx`]
+/// （[`pobr_core::rules::HandlerCtx`]）的 `main_skill` 维度，config 消费点
+/// （`config_resolve` → `interpret`）尚未接线主技能上下文，接通前保守零输出
+/// （与 stub 的区别：单测已锁定门控成立时的产出，接线即生效，无需改 handler）。
+pub const CTX_GATED_HANDLER_IDS: &[&str] = &[
+    "config:ConcPathBypassCD",
+    "config:FlickerStrikeBypassCD",
+    "config:VigilantStrikeBypassCD",
+];
 
 /// 构造全量 handler 注册表（T1 起逐批 append；T2 buff handlers 待接入）。
 ///
@@ -39,6 +52,7 @@ pub fn build_registry() -> HandlerRegistry {
     let mut registry = HandlerRegistry::new();
     // ── T1 append 点：config handlers ──
     register_config_handlers(&mut registry);
+    register_config_handlers_batch2(&mut registry);
     // ── T2 append 点：buff handlers ──
     pobr_core::rules::buff_expander::register_handlers(&mut registry)
         .expect("启动期 buff handler 注册不冲突");
@@ -72,6 +86,174 @@ fn register_config_handlers(registry: &mut HandlerRegistry) {
             Box::new(|_| HandlerOutcome::default()),
         )
         .expect("启动期注册不重复");
+}
+
+/// 第二批 config handlers（M3-W4 commit B，dualrun 报告 §2.4 命中 18-build
+/// 的 8 个缺口；vendor 行号均实读 `vendor/PathOfBuilding-PoE2/src/Modules/
+/// ConfigOptions.lua`）。分级口径：
+///
+/// **实现（即时生效）**：
+/// - `config:multiplierNearbyEnemies`（:1102-1105）：`Multiplier:NearbyEnemies`
+///   BASE val + `Condition:OnlyOneNearbyEnemy` FLAG `val==1`（均 Combat tag）；
+///   标量加法回填 cfg.multipliers（保持旧路径 `multiplier*` 前缀通道的消费，
+///   旧路径删除后成唯一来源）。
+/// - `config:multiplierNearbyRareOrUniqueEnemies`（:1106-1111）：本 var +
+///   **聚合进 `Multiplier:NearbyEnemies`**（vendor :1108 双写）+
+///   `Condition:AtMostOneNearbyRareOrUniqueEnemy` FLAG `val<=1` + enemy 桶
+///   `Condition:NearbyRareOrUniqueEnemy` FLAG `val>=1`（均 Combat tag）。
+///   NearbyEnemies 聚合是旧路径没有的行为提升（vendor 双 NewMod 同名 BASE
+///   相加 ≡ 标量通道加法合并）。
+/// - `config:inDemonForm`（:345-347）：`Condition:DemonForm`。vendor 带
+///   `StatThreshold{stat=Life, threshold=2}` tag（CI 不可入魔形态的门控）——
+///   pobr `ModTag` 无 StatThreshold 维度，按旧路径 DEFAULT_TRUE_CONDITIONS
+///   同口径无门槛置位（差异仅 CI+DemonForm 组合，登记于 handler 文档）。
+///
+/// **实现（上下文门控，见 [`CTX_GATED_HANDLER_IDS`]）**：
+/// - `config:{ConcPath,FlickerStrike,VigilantStrike}BypassCD`（:309-311 /
+///   :387-389 / :700-702）：`CooldownRecovery` OVERRIDE 0，vendor 用
+///   `SkillName` tag 限定到具名技能——pobr 以 `ctx.main_skill.skill_name`
+///   匹配等价（OVERRIDE 仅在主技能即该技能时发出，作用面一致；
+///   `main_skill` 未接线时保守零输出）。
+///
+/// **包装既有逻辑（零产出，同 `config:enemyIsBoss` 先例）**：
+/// - `config:questAct 4Eye of HinekoraTribal Medicine` /
+///   `config:questInterlude 2QimahSeven Pillars`（动态 quest 条目，
+///   :56-108 `addQuestModsRewardsConfigOptions`：选项文本逐行 parseMod）——
+///   真实消费走既有 quest text 通道（xml_build `push_quest_lines` 把
+///   `<Input string>` 选项文本喂 `global_modifier_texts` → mod_parser，
+///   语义与 vendor `applyModsFromString` 一致）；handler 注册仅把条目从
+///   unhandled 报表移除并锁定覆盖责任归属（§3-⑤ quest 命名口径统一前
+///   不切换注入通道，防双计）。
+fn register_config_handlers_batch2(registry: &mut HandlerRegistry) {
+    registry
+        .register(
+            "config:ConcPathBypassCD",
+            bypass_cd_handler("Consecrated Path of Endurance"),
+        )
+        .expect("启动期注册不重复");
+    registry
+        .register(
+            "config:FlickerStrikeBypassCD",
+            bypass_cd_handler("Flicker Strike"),
+        )
+        .expect("启动期注册不重复");
+    registry
+        .register(
+            "config:VigilantStrikeBypassCD",
+            bypass_cd_handler("Vigilant Strike"),
+        )
+        .expect("启动期注册不重复");
+    registry
+        .register(
+            "config:inDemonForm",
+            Box::new(|_| HandlerOutcome {
+                player_mods: vec![Modifier::flag("Condition:DemonForm")],
+                conditions: vec![("DemonForm".to_string(), true)],
+                ..HandlerOutcome::default()
+            }),
+        )
+        .expect("启动期注册不重复");
+    registry
+        .register(
+            "config:multiplierNearbyEnemies",
+            Box::new(|ctx| {
+                let val = ctx.input();
+                HandlerOutcome {
+                    player_mods: vec![
+                        combat_gated(Modifier::number(
+                            "Multiplier:NearbyEnemies",
+                            ModType::Base,
+                            val,
+                        )),
+                        combat_gated(Modifier::new(
+                            "Condition:OnlyOneNearbyEnemy",
+                            ModType::Flag,
+                            ModValue::Bool(val == 1.0),
+                        )),
+                    ],
+                    scalars: vec![("NearbyEnemies".to_string(), val)],
+                    ..HandlerOutcome::default()
+                }
+            }),
+        )
+        .expect("启动期注册不重复");
+    registry
+        .register(
+            "config:multiplierNearbyRareOrUniqueEnemies",
+            Box::new(|ctx| {
+                let val = ctx.input();
+                HandlerOutcome {
+                    player_mods: vec![
+                        combat_gated(Modifier::number(
+                            "Multiplier:NearbyRareOrUniqueEnemies",
+                            ModType::Base,
+                            val,
+                        )),
+                        combat_gated(Modifier::number(
+                            "Multiplier:NearbyEnemies",
+                            ModType::Base,
+                            val,
+                        )),
+                        combat_gated(Modifier::new(
+                            "Condition:AtMostOneNearbyRareOrUniqueEnemy",
+                            ModType::Flag,
+                            ModValue::Bool(val <= 1.0),
+                        )),
+                    ],
+                    enemy_mods: vec![combat_gated(Modifier::new(
+                        "Condition:NearbyRareOrUniqueEnemy",
+                        ModType::Flag,
+                        ModValue::Bool(val >= 1.0),
+                    ))],
+                    scalars: vec![
+                        ("NearbyRareOrUniqueEnemies".to_string(), val),
+                        ("NearbyEnemies".to_string(), val),
+                    ],
+                    ..HandlerOutcome::default()
+                }
+            }),
+        )
+        .expect("启动期注册不重复");
+    registry
+        .register(
+            "config:questAct 4Eye of HinekoraTribal Medicine",
+            Box::new(|_| HandlerOutcome::default()),
+        )
+        .expect("启动期注册不重复");
+    registry
+        .register(
+            "config:questInterlude 2QimahSeven Pillars",
+            Box::new(|_| HandlerOutcome::default()),
+        )
+        .expect("启动期注册不重复");
+}
+
+/// `*BypassCD` 族 handler 工厂（vendor 形态 `modList:NewMod("CooldownRecovery",
+/// "OVERRIDE", 0, "Config", { type = "SkillName", skillName = … })`）：
+/// 主技能名匹配时发出 `CooldownRecovery` OVERRIDE 0（pobr 冷却链
+/// `skill_mechanics::calc_cooldown` 读 `db.override_("CooldownRecovery")`，
+/// PoB2 CalcOffence L326 同语义）；`main_skill` 缺席/不匹配保守零输出。
+/// `includeTransfigured`（Flicker/ColdSnap 形态）在 PoE2 无变体宝石语义，
+/// 按名等值匹配。
+fn bypass_cd_handler(skill_name: &'static str) -> Handler {
+    Box::new(move |ctx| {
+        let matches_main = ctx
+            .main_skill
+            .is_some_and(|main| main.skill_name == skill_name);
+        if !matches_main {
+            return HandlerOutcome::default();
+        }
+        HandlerOutcome::player_mods(vec![Modifier::new(
+            "CooldownRecovery",
+            ModType::Override,
+            ModValue::Number(0.0),
+        )])
+    })
+}
+
+/// vendor `{ type = "Condition", var = "Combat" }` tag 的便捷封装。
+fn combat_gated(modifier: Modifier) -> Modifier {
+    modifier.with_tag(ModTag::condition("Combat", false))
 }
 
 /// 包装既有 EnemyTier 接线（蓝图「config:enemy_is_boss 包装既有逻辑」）：从
@@ -160,6 +342,163 @@ mod tests {
         assert!(out.enemy_mods.is_empty());
         assert!(out.conditions.is_empty());
         assert!(out.scalars.is_empty());
+    }
+
+    /// 第二批 handlers（commit B）全部已注册；ctx 门控清单是注册集合子集。
+    #[test]
+    fn second_batch_config_handlers_registered() {
+        let registry = build_registry();
+        for id in [
+            "config:ConcPathBypassCD",
+            "config:FlickerStrikeBypassCD",
+            "config:VigilantStrikeBypassCD",
+            "config:inDemonForm",
+            "config:multiplierNearbyEnemies",
+            "config:multiplierNearbyRareOrUniqueEnemies",
+            "config:questAct 4Eye of HinekoraTribal Medicine",
+            "config:questInterlude 2QimahSeven Pillars",
+        ] {
+            assert!(registry.get(id).is_some(), "`{id}` 应已注册");
+        }
+        for id in CTX_GATED_HANDLER_IDS {
+            assert!(registry.get(id).is_some(), "ctx 门控 `{id}` 应已注册");
+        }
+    }
+
+    /// BypassCD 族（vendor ConfigOptions.lua:387-389 等）：主技能名匹配 →
+    /// CooldownRecovery OVERRIDE 0；缺主技能上下文 / 名不匹配 → 保守零输出。
+    #[test]
+    fn bypass_cd_gated_on_main_skill() {
+        use pobr_core::rules::{HandlerCtx, MainSkillCtx};
+
+        let registry = build_registry();
+        let handler = registry.get("config:FlickerStrikeBypassCD").unwrap();
+
+        // 未接线（main_skill = None）→ 零输出（当前 config 消费点形态）。
+        let out = handler(&HandlerCtx::with_inputs(&[1.0]));
+        assert!(out.player_mods.is_empty());
+
+        // 主技能匹配 → OVERRIDE 0。
+        let main = MainSkillCtx {
+            skill_name: "Flicker Strike".to_string(),
+            self_cast: false,
+        };
+        let ctx = HandlerCtx {
+            inputs: &[1.0],
+            main_skill: Some(&main),
+            ..HandlerCtx::default()
+        };
+        let out = handler(&ctx);
+        assert_eq!(out.player_mods.len(), 1);
+        assert_eq!(out.player_mods[0].name.as_str(), "CooldownRecovery");
+        assert_eq!(out.player_mods[0].mod_type, ModType::Override);
+        assert_eq!(out.player_mods[0].value.as_number(), Some(0.0));
+
+        // 名不匹配 → 零输出（SkillName tag 限定语义）。
+        let other = MainSkillCtx {
+            skill_name: "Vigilant Strike".to_string(),
+            self_cast: false,
+        };
+        let ctx = HandlerCtx {
+            inputs: &[1.0],
+            main_skill: Some(&other),
+            ..HandlerCtx::default()
+        };
+        assert!(handler(&ctx).player_mods.is_empty());
+    }
+
+    /// inDemonForm（vendor :345-347）：DemonForm 条件 + FLAG mod
+    /// （StatThreshold(Life≥2) 维度缺位，按旧 DEFAULT_TRUE_CONDITIONS 口径）。
+    #[test]
+    fn in_demon_form_sets_condition() {
+        let registry = build_registry();
+        let handler = registry.get("config:inDemonForm").unwrap();
+        let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[1.0]));
+        assert_eq!(out.conditions, vec![("DemonForm".to_string(), true)]);
+        assert_eq!(out.player_mods.len(), 1);
+        assert_eq!(out.player_mods[0].name.as_str(), "Condition:DemonForm");
+    }
+
+    /// multiplierNearbyEnemies（vendor :1102-1105）：Multiplier BASE +
+    /// OnlyOneNearbyEnemy FLAG val==1（Combat tag）+ 标量回填。
+    #[test]
+    fn nearby_enemies_handler_outputs() {
+        let registry = build_registry();
+        let handler = registry.get("config:multiplierNearbyEnemies").unwrap();
+
+        let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[3.0]));
+        assert_eq!(out.player_mods.len(), 2);
+        let mult = &out.player_mods[0];
+        assert_eq!(mult.name.as_str(), "Multiplier:NearbyEnemies");
+        assert_eq!(mult.value.as_number(), Some(3.0));
+        assert_eq!(mult.tags, vec![ModTag::condition("Combat", false)]);
+        assert_eq!(out.player_mods[1].value, ModValue::Bool(false), "3 > 1");
+        assert_eq!(out.scalars, vec![("NearbyEnemies".to_string(), 3.0)]);
+
+        let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[1.0]));
+        assert_eq!(out.player_mods[1].value, ModValue::Bool(true), "恰一个");
+    }
+
+    /// multiplierNearbyRareOrUniqueEnemies（vendor :1106-1111）：本 var +
+    /// NearbyEnemies 聚合双写 + AtMostOne FLAG + enemy 桶 FLAG + 双标量。
+    #[test]
+    fn nearby_rare_or_unique_handler_outputs() {
+        let registry = build_registry();
+        let handler = registry
+            .get("config:multiplierNearbyRareOrUniqueEnemies")
+            .unwrap();
+
+        let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[2.0]));
+        let names: Vec<_> = out
+            .player_mods
+            .iter()
+            .map(|m| m.name.as_str().to_string())
+            .collect();
+        assert_eq!(
+            names,
+            vec![
+                "Multiplier:NearbyRareOrUniqueEnemies",
+                "Multiplier:NearbyEnemies",
+                "Condition:AtMostOneNearbyRareOrUniqueEnemy"
+            ]
+        );
+        assert_eq!(out.player_mods[2].value, ModValue::Bool(false), "2 > 1");
+        assert_eq!(out.enemy_mods.len(), 1);
+        assert_eq!(
+            out.enemy_mods[0].name.as_str(),
+            "Condition:NearbyRareOrUniqueEnemy"
+        );
+        assert_eq!(out.enemy_mods[0].value, ModValue::Bool(true), "2 ≥ 1");
+        assert_eq!(
+            out.scalars,
+            vec![
+                ("NearbyRareOrUniqueEnemies".to_string(), 2.0),
+                ("NearbyEnemies".to_string(), 2.0)
+            ]
+        );
+
+        // countAllowZero 形态：0 → AtMostOne 真、enemy 桶 FLAG 假。
+        let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[0.0]));
+        assert_eq!(out.player_mods[2].value, ModValue::Bool(true));
+        assert_eq!(out.enemy_mods[0].value, ModValue::Bool(false));
+    }
+
+    /// quest 包装 handler：零产出（真实消费走既有 quest text 通道，文档见
+    /// [`register_config_handlers_batch2`]）。
+    #[test]
+    fn quest_wrapper_handlers_are_zero_output() {
+        let registry = build_registry();
+        for id in [
+            "config:questAct 4Eye of HinekoraTribal Medicine",
+            "config:questInterlude 2QimahSeven Pillars",
+        ] {
+            let handler = registry.get(id).unwrap();
+            let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[0.0]));
+            assert!(out.player_mods.is_empty());
+            assert!(out.enemy_mods.is_empty());
+            assert!(out.conditions.is_empty());
+            assert!(out.scalars.is_empty());
+        }
     }
 
     fn outcome_with_scalar(var: &str, value: ConfigInputValue) -> ConfigOutcome {

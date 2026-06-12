@@ -456,6 +456,65 @@ mod tests {
         assert!(!crit.tags.is_empty(), "保留 ApplyCriticalWeakness 门控 tag");
     }
 
+    /// M3-W4 commit B 端到端：multiplierNearby* handler 经主路径生效——
+    /// 标量加法回填（rare 计数聚合进 NearbyEnemies，vendor
+    /// ConfigOptions.lua:1108 双写口径）+ Combat 门控 mod 注入 + enemy 桶 FLAG。
+    #[test]
+    fn nearby_handlers_resolve_end_to_end() {
+        let catalog = load_catalog();
+        let build = build_with_inputs(
+            RawConfigInputs::new()
+                .with("multiplierNearbyEnemies", ConfigInputValue::Number(3.0))
+                .with(
+                    "multiplierNearbyRareOrUniqueEnemies",
+                    ConfigInputValue::Number(1.0),
+                ),
+        );
+        let resolved = resolve_config(&build, Some(&catalog));
+        assert_eq!(
+            resolved.config.multipliers.get("NearbyEnemies"),
+            Some(&4.0),
+            "3（普通）+ 1（rare 聚合，vendor :1108）"
+        );
+        assert_eq!(
+            resolved.config.multipliers.get("NearbyRareOrUniqueEnemies"),
+            Some(&1.0)
+        );
+        // Combat 门控 player mod 注入（mode_combat 接通前天然惰性）。
+        assert!(
+            resolved
+                .player_mods
+                .iter()
+                .any(|m| m.name.as_str() == "Multiplier:NearbyEnemies")
+        );
+        // enemy 桶 FLAG（val>=1 → true）+ EnemyConfig 归因。
+        let enemy_flag = resolved
+            .enemy_mods
+            .iter()
+            .find(|m| m.name.as_str() == "Condition:NearbyRareOrUniqueEnemy")
+            .expect("enemy 桶 FLAG 应注入");
+        assert_eq!(
+            enemy_flag.origin.as_ref().unwrap().source_id.kind,
+            SourceKind::EnemyConfig
+        );
+    }
+
+    /// M3-W4 commit B：inDemonForm handler 经主路径置 DemonForm 条件
+    /// （defaultState=true 缺省激活，与旧 DEFAULT_TRUE_CONDITIONS 口径一致）。
+    #[test]
+    fn in_demon_form_resolves_condition() {
+        let catalog = load_catalog();
+        let resolved = resolve_config(&Build::new(), Some(&catalog));
+        assert_eq!(resolved.config.conditions.get("DemonForm"), Some(&true));
+
+        // 显式 false → 条目未激活，handler 不产出（合并不强行置 true）。
+        let build = build_with_inputs(
+            RawConfigInputs::new().with("inDemonForm", ConfigInputValue::Bool(false)),
+        );
+        let resolved = resolve_config(&build, Some(&catalog));
+        assert_ne!(resolved.config.conditions.get("DemonForm"), Some(&true));
+    }
+
     /// commit ④：customMods 行通道经 resolve 透传（StripEscapes 已在解释器
     /// 完成；vendor ConfigOptions.lua:2278-2296）。
     #[test]
