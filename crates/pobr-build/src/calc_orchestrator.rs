@@ -3923,6 +3923,27 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                     gem.stat_set_index,
                 );
                 let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+                // vendor 注册前置（M4-l）：buffList 仅由 GlobalEffect 载荷构成
+                // （CalcActiveSkill.lua:976-1041），curse 表项只从 buffList 构造
+                // （CalcPerform.lua:2286-2316）——statMap 数据上**无任何** curse
+                // 载荷的技能（Repulsion `CurseOfRepulsionPlayer`，per-set statMap
+                // 全空）不注册 curse：不入槽、不计 `Multiplier:CurseOnEnemy`
+                // （:2969 `#curseSlots`）。存在性判定不要求允收名单可翻译
+                // （Temporal Chains `TemporalChainsActionSpeed`、Freezing Mark
+                // `Dummy` 占位载荷仍算，vendor 同样入槽）。无 catalog（旧数据包）
+                // 维持既有行为（恒注册）。
+                if let Some(catalog) = resolve_stat_map_catalog(data)
+                    && !es.all().any(|ds| {
+                        stat_map_engine::has_curse_payload(
+                            &catalog,
+                            &gem.skill_id,
+                            set_key.as_deref(),
+                            &ds.stat,
+                        )
+                    })
+                {
+                    continue;
+                }
                 let mods = curse_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
                 specs.push(BuffSpec {
                     name: buff_skill_name(data, &gem.skill_id),
@@ -4309,6 +4330,15 @@ fn data_mapped_stat_modifiers(
     mods
 }
 
+/// statmap catalog 取数（线程局部上下文优先——`calculate_with_data` 安装的编排
+/// 选项注入；上下文外（直接调用 [`buff_skill_specs`] 等的测试/工具路径）回退
+/// `data.stat_map_catalog`——编排主流程两处指向同一 Arc）。
+fn resolve_stat_map_catalog(data: &BuildData) -> Option<std::sync::Arc<StatMapCatalog>> {
+    STAT_MAP_CTX
+        .with(|ctx| ctx.borrow().catalog.clone())
+        .or_else(|| data.stat_map_catalog.clone())
+}
+
 /// curse 效果词条取数点（M3-W4）：把一个 curse 技能 statset 的全部 stat 经
 /// [`stat_map_engine::map_curse_stat`]（curse 域数据通道）映射为**敌侧**
 /// modifier 列表（BuffSpec.mods 载荷，buff_pass curse 路径消费）。
@@ -4329,10 +4359,8 @@ fn curse_stat_modifiers(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let (mode, ctx_catalog) =
-        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
-    let catalog = ctx_catalog.or_else(|| data.stat_map_catalog.clone());
-    let Some(catalog) = catalog else {
+    let mode = STAT_MAP_CTX.with(|ctx| ctx.borrow().mode);
+    let Some(catalog) = resolve_stat_map_catalog(data) else {
         return Vec::new(); // 无 catalog（旧数据包）：curse 词条全 miss（与主通道同口径）。
     };
     let mut mods = Vec::new();
@@ -6240,6 +6268,42 @@ mod tests {
             })
             .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20));
         assert!(buff_skill_specs(&bare, &data).is_empty());
+    }
+
+    /// （M4-l）vendor curse 注册前置：statMap 无任何 GlobalEffect Curse 载荷的
+    /// curse 技能（Repulsion，per-set statMap 全空 → buffList 恒空，
+    /// CalcActiveSkill.lua:976-1041）不产出 BuffSpec——不入 curse 槽、不计
+    /// `Multiplier:CurseOnEnemy`（CalcPerform.lua:2969 `#curseSlots`）；
+    /// 载荷存在但允收名单外（Temporal Chains）仍注册（vendor 同样入槽）。
+    #[test]
+    fn buff_skill_specs_skips_curse_without_payload() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("CurseOfRepulsionPlayer", 20)
+                    .with_gem_skill("TemporalChainsPlayer", 20),
+            );
+
+        let specs = buff_skill_specs(&build, &data);
+        assert!(
+            data.granted_effects.contains_key("CurseOfRepulsionPlayer"),
+            "前置：Repulsion 效果应在数据包中（否则本测试退化）"
+        );
+        assert!(
+            !specs.iter().any(|s| s.skill_id == "CurseOfRepulsionPlayer"),
+            "Repulsion 无 curse 载荷 → 不注册（vendor buffList 空）"
+        );
+        let hex = specs
+            .iter()
+            .find(|s| s.skill_id == "TemporalChainsPlayer")
+            .expect("Temporal Chains 载荷存在（允收名单外亦计）→ 注册");
+        assert_eq!(hex.kind, BuffKind::Curse);
     }
 
     /// 单通道不变式（C5-3 删旧码后）：编排产线（BuffSpec → buff_pass 乘区）的
