@@ -591,3 +591,85 @@ fn high_precision_rules_default_has_no_exceptions() {
     assert_eq!(rules.precision_for("CritChance", ModType::Base), None);
     assert_eq!(rules.default_high_precision(), 1);
 }
+
+/// MORE 聚合精度例外（M4-T1 W-A2 行为修复，10-G6；vendor ModDB.lua:156-190）。
+///
+/// 期望值 = vendor MoreInternal 在 luajit 下逐字复刻实跑（脚本见 commit
+/// message；样本 S1-S6）。未注入规则（Default）时走默认 round(·,2)——
+/// 与例外分支引入前逐字一致（S2 同时是该锚点）。
+#[test]
+fn more_precision_exception_matches_more_internal_oracle() {
+    use pobr_core::HighPrecisionRules;
+    let cfg = CalcConfig::new();
+    let rules = || {
+        let mut mods = std::collections::BTreeMap::new();
+        for name in ["SupportManaMultiplier", "ReservationMultiplier"] {
+            mods.insert(
+                name.to_string(),
+                std::collections::BTreeMap::from([("MORE".to_string(), 4u32)]),
+            );
+        }
+        HighPrecisionRules::from_def(
+            pobr_data::catalog::high_precision_mods::HighPrecisionModsDef {
+                default_high_precision: 1,
+                more_default_round_decimals: 2,
+                mods,
+            },
+        )
+    };
+    let more_mods = |db: &mut ModDb, name: &str, values: &[f64]| {
+        for &v in values {
+            db.add_mod(Modifier::number(name, ModType::More, v));
+        }
+    };
+
+    // S1：例外条目多 mod 连乘 → floor(累计积, 4) = 2.1839（默认 round2 会给 2.18）。
+    let mut db = ModDb::new();
+    db.set_high_precision_rules(rules());
+    more_mods(&mut db, "SupportManaMultiplier", &[40.0, 30.0, 20.0]);
+    let names = [ModName::from("SupportManaMultiplier")];
+    assert_eq!(db.more(&cfg, &names), 2.1839, "S1");
+
+    // S2：普通条目同输入 → 默认 round2（= 未注入规则的旧口径锚点）。
+    let mut db = ModDb::new();
+    db.set_high_precision_rules(rules());
+    more_mods(&mut db, "Damage", &[40.0, 30.0, 20.0]);
+    let names = [ModName::from("Damage")];
+    assert_eq!(db.more(&cfg, &names), 2.18, "S2");
+    let mut plain = ModDb::new(); // Default 规则（未注入）同值。
+    more_mods(&mut plain, "Damage", &[40.0, 30.0, 20.0]);
+    assert_eq!(plain.more(&cfg, &names), 2.18, "S2 未注入锚点");
+
+    // S3/S4：vendor quirk——modPrecision 跨名持留：例外名在前则后续普通名也
+    // floor4（1.4444）；普通名在前则先 round2 再 floor4（1.443）。
+    let mut db = ModDb::new();
+    db.set_high_precision_rules(rules());
+    more_mods(&mut db, "SupportManaMultiplier", &[30.0]);
+    more_mods(&mut db, "Damage", &[11.111]);
+    let smm = ModName::from("SupportManaMultiplier");
+    let dmg = ModName::from("Damage");
+    assert_eq!(db.more(&cfg, &[smm.clone(), dmg.clone()]), 1.4444, "S3");
+    assert_eq!(db.more(&cfg, &[dmg, smm]), 1.443, "S4");
+
+    // S5：精度置位后缺桶名（modResult = 1）也被 re-floor。
+    let mut db = ModDb::new();
+    db.set_high_precision_rules(rules());
+    more_mods(&mut db, "ReservationMultiplier", &[-29.97]);
+    let names = [
+        ModName::from("ReservationMultiplier"),
+        ModName::from("Missing"),
+    ];
+    assert_eq!(db.more(&cfg, &names), 0.7003, "S5");
+
+    // S6：负 more 例外条目（floor 向 −∞ 截位）。
+    let mut db = ModDb::new();
+    db.set_high_precision_rules(rules());
+    more_mods(&mut db, "ReservationMultiplier", &[-50.0, 33.333]);
+    let names = [ModName::from("ReservationMultiplier")];
+    assert_eq!(db.more(&cfg, &names), 0.6666, "S6");
+
+    // traced 与非 traced 同口径（共用实现）。
+    let mut trace = TraceGraph::new();
+    let traced = db.more_traced(&cfg, &names, &mut trace, "more");
+    assert_eq!(traced.value, 0.6666, "traced 同值");
+}

@@ -90,11 +90,23 @@ pub struct ModContribution {
 #[derive(Debug, Clone, Default)]
 pub struct ModDb {
     mods: HashMap<ModName, Vec<Modifier>>,
+    /// 取整精度规则（M4-T1 W-A2）：vendor 把 `data.highPrecisionMods` 当全局
+    /// 环境数据消费，pobr 收口在 db 实例上（计算核心零 I/O，由编排层经
+    /// [`Self::set_high_precision_rules`] 注入）。`Default` = 无例外表 →
+    /// MORE 聚合走默认 `round(·,2)` 分支，行为与字段引入前逐字一致。
+    high_precision: HighPrecisionRules,
 }
 
 impl ModDb {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// 注入取整精度规则（来源 = pobr-gamedata `RuleSet::high_precision_mods`）。
+    /// 消费点：MORE 聚合精度例外分支（[`Self::more`]）与调用方传给
+    /// [`Self::scale_add_mod`] 的同一份规则。
+    pub fn set_high_precision_rules(&mut self, rules: HighPrecisionRules) {
+        self.high_precision = rules;
     }
 
     pub fn add_mod(&mut self, modifier: Modifier) {
@@ -230,7 +242,10 @@ impl ModDb {
                 )
             })
             .collect();
-        Self { mods }
+        Self {
+            mods,
+            high_precision: self.high_precision.clone(),
+        }
     }
 
     pub fn sum(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
@@ -336,27 +351,55 @@ impl ModDb {
         self.more_rounded(cfg, names, |_| true)
     }
 
-    /// PoB2 `ModList.lua` `MoreInternal` 语义：**逐 modName** 先连乘该名下所有 MORE mod 得
-    /// `modResult`，再 `round(modResult, 2)`（默认精度），最后跨 modName 连乘。逐名取整避免多
-    /// more 乘区的浮点末位漂移（影响 golden 逐值对账）。`extra` 施加额外筛选（如槽位）。
+    /// PoB2 `MoreInternal` 语义（`ModDB.lua:156-190`，桶式变体）：**逐 modName**
+    /// 先连乘该名下所有 MORE mod 得 `modResult`，按精度取整后跨 modName 连乘。
+    /// 逐名取整避免多 more 乘区的浮点末位漂移。`extra` 施加额外筛选（如槽位）。
+    ///
+    /// 取整分支（M4-T1 W-A2 例外修复，10-G6；vendor :175-186 逐字）：
+    /// - 默认（无精度例外命中）：`result *= round(modResult, 2)`——与例外分支
+    ///   引入前逐字一致（[`round_more`] 不动，搬迁不变式）；
+    /// - 命中 [`HighPrecisionRules`] 的 MORE 例外（`SupportManaMultiplier` /
+    ///   `ReservationMultiplier` → 4）：`result = floor(result × modResult ×
+    ///   10^p) / 10^p`（floor 作用于**累计积**）。
+    /// - vendor quirk 逐字保留：`modPrecision` 在**整个查询内跨名持留**
+    ///   （一旦置位不复位、只 max 抬升，:175-180）——例外名之后的普通名乃至
+    ///   缺桶名（`modResult = 1`）也走 floor 分支重截累计积。
     fn more_rounded(
         &self,
         cfg: &CalcConfig,
         names: &[ModName],
         extra: impl Fn(&Modifier) -> bool,
     ) -> f64 {
-        names
-            .iter()
-            .filter_map(|name| self.mods.get(name))
-            .map(|mods| {
-                let mod_result = mods
-                    .iter()
-                    .filter(|m| m.mod_type == ModType::More && m.matches(cfg) && extra(m))
-                    .filter_map(|m| m.effective_number(cfg))
-                    .fold(1.0, |product, value| product * (1.0 + value / 100.0));
-                round_more(mod_result)
-            })
-            .fold(1.0, |product, mod_result| product * mod_result)
+        let mut result = 1.0;
+        let mut mod_precision: Option<u32> = None;
+        for name in names {
+            let mut mod_result = 1.0;
+            for m in self.mods.get(name).into_iter().flatten() {
+                if m.mod_type != ModType::More || !m.matches(cfg) || !extra(m) {
+                    continue;
+                }
+                let Some(value) = m.effective_number(cfg) else {
+                    continue;
+                };
+                mod_result *= 1.0 + value / 100.0;
+                // vendor ModDB.lua:175-180：modPrecision = max(prev, 表值 or prev)。
+                let hit = self
+                    .high_precision
+                    .precision_for(m.name.as_str(), ModType::More);
+                mod_precision = match (mod_precision, hit) {
+                    (Some(prev), hit) => Some(prev.max(hit.unwrap_or(prev))),
+                    (None, hit) => hit,
+                };
+            }
+            match mod_precision {
+                Some(p) => {
+                    let power = 10f64.powi(p as i32);
+                    result = (result * mod_result * power).floor() / power;
+                }
+                None => result *= round_more(mod_result),
+            }
+        }
+        result
     }
 
     /// Traced [`more`](Self::more)：把 `Π(1 + v/100)` 记录为单个 MoreProduct 节点，
@@ -369,18 +412,9 @@ impl ModDb {
         label: impl Into<String>,
     ) -> TracedValue {
         let contributions = self.contributions(ModType::More, cfg, names);
-        // PoB2 逐 modName：先连乘同名 MORE 得 modResult，round(·,2) 后跨名连乘（与 `more` 一致）。
-        let mut per_name: Vec<(ModName, f64)> = Vec::new();
-        for contribution in &contributions {
-            let factor = 1.0 + contribution.value / 100.0;
-            match per_name.iter_mut().find(|(n, _)| *n == contribution.name) {
-                Some((_, product)) => *product *= factor,
-                None => per_name.push((contribution.name.clone(), factor)),
-            }
-        }
-        let factor = per_name.iter().fold(1.0, |product, (_, mod_result)| {
-            product * round_more(*mod_result)
-        });
+        // 取整口径与 [`more`](Self::more) 共用同一实现（含 W-A2 精度例外分支），
+        // traced / 非 traced 值恒等（此前为重复实现，易漂移）。
+        let factor = self.more(cfg, names);
         let factor_node = trace.add_node(label, factor, TraceOperation::MoreProduct);
 
         for contribution in contributions {
