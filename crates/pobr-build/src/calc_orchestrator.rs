@@ -849,6 +849,22 @@ pub fn calculate_with_data(
         session.add_buff_skill(spec);
     }
 
+    // 4b''.（M4-m）herald 在场计数/条件（vendor CalcPerform.lua:1792-1805，
+    //     mode_buffs 段——本编排路径恒置 mode_buffs=true）：已启用组中
+    //     skill_types 含 Herald 的主动技能按显示名去重 → `Multiplier:Herald`
+    //     = 数量 + `Condition:AffectedByHerald`；并逐 herald 置
+    //     `AffectedBy<名去空格>`（vendor buff 分支命名 `buff.name:gsub(" ","")`，
+    //     "Herald of Plague" → AffectedByHeraldofPlague——of 保持小写）。
+    //     消费方 = mod_parser 的 herald 条件后缀族（ModParser.lua:1826/:6326-6328）。
+    let heralds = herald_skill_names(build, data);
+    if !heralds.is_empty() {
+        session.set_multiplier("Herald", heralds.len() as f64);
+        session.set_condition("AffectedByHerald", true);
+        for name in &heralds {
+            session.set_condition(format!("AffectedBy{}", name.replace(' ', "")), true);
+        }
+    }
+
     // 4c. Mark 激活授予玩家的**进攻自身 buff**（gain-as-extra）→ SkillGem 归因 modifier。
     //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
     //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
@@ -3805,6 +3821,41 @@ fn support_modifiers(
     mods
 }
 
+/// （M4-m）已启用组中全部 **herald 主动技能**的 buff 显示名（按名去重、排序确定）。
+///
+/// vendor 等价（CalcPerform.lua:1792-1805）：遍历 activeSkillList，
+/// `skillTypes[SkillType.Herald]` 且 skillName 未计数 → heraldList 记名。
+/// 显示名 = [`buff_skill_name`] 的蛇形派生，连接词（of/the）保持小写以对齐
+/// vendor `buff.name:gsub(" ","")` 的条件命名（"Herald of Plague" →
+/// `AffectedByHeraldofPlague`，oracle condVars 同形）。
+fn herald_skill_names(build: &Build, data: &BuildData) -> Vec<String> {
+    use std::collections::BTreeSet;
+    let mut names: BTreeSet<String> = BTreeSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            if effect.is_support || !effect.skill_types.iter().any(|t| t == "Herald") {
+                continue;
+            }
+            let name = buff_skill_name(data, &gem.skill_id)
+                .split(' ')
+                .map(|w| {
+                    if w.eq_ignore_ascii_case("of") || w.eq_ignore_ascii_case("the") {
+                        w.to_ascii_lowercase()
+                    } else {
+                        w.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            names.insert(name);
+        }
+    }
+    names.into_iter().collect()
+}
+
 /// 把 `active_skill` 蛇形稳定名派生为 buff 显示名（`temporal_chains` →
 /// `Temporal Chains`，`AffectedBy<去空格名>` 条件与 curse priority `curse_base`
 /// 查表键用）。缺 `active_skill` 时回退授予效果 id。
@@ -6408,6 +6459,27 @@ mod tests {
             "Condition:BannerPlanted 直译保留，实得 {:?}",
             acc.tags
         );
+    }
+
+    /// （M4-m）herald 在场名收集（vendor CalcPerform.lua:1792-1805 heraldList +
+    /// buff 分支命名 `gsub(" ","")`——连接词 of 保持小写，oracle condVars
+    /// `AffectedByHeraldofPlague` 同形）。按名去重；support/非 herald 不计。
+    #[test]
+    fn herald_skill_names_collects_and_normalizes_of() {
+        let data = repo_data();
+        let build = Build::new().add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("HeraldOfPlaguePlayer", 10)
+                .with_gem_skill("HeraldOfIcePlayer", 10)
+                .with_gem_skill("FireballPlayer", 10),
+        );
+        let names = herald_skill_names(&build, &data);
+        assert_eq!(
+            names,
+            vec!["Herald of Ice".to_string(), "Herald of Plague".to_string()],
+            "去重 + of 小写（AffectedBy 拼接后 = AffectedByHeraldofIce/Plague）"
+        );
+        assert!(herald_skill_names(&Build::new(), &data).is_empty());
     }
 
     #[test]

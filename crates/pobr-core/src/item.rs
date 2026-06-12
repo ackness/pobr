@@ -199,7 +199,8 @@ pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
 /// - 其余行剥 `... during effect` 后缀复用 [`parse_mod`]（激活态语义已由槽位
 ///   `active` 门控承担）；不可解析行（含解析硬错误——flask 文本多为触发/恢复行，
 ///   按编排层 skip-and-collect 容错口径）收集进 [`ItemIngest::unsupported`]。
-/// - 全部行不可解析时不产出载荷（空载荷零噪声）。
+/// - 全部行不可解析时**仍产出空载荷**（M4-m：vendor 条件置位与 modList 无关，
+///   CalcPerform.lua:1634-1643——`UsingCharm`/`UsingFlask` 按激活槽位置真）。
 pub fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
     let slot_key: String = slot_name
         .to_lowercase()
@@ -247,9 +248,11 @@ pub fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
         }
     }
 
-    if nested.is_empty() {
-        return ingest;
-    }
+    // （M4-m）空载荷**仍产出**载荷 mod：vendor 对每个进预算的激活 flask/charm
+    // 无条件置 `UsingFlask`/`UsingCharm` + `Using<Base名>` 条件（CalcPerform.lua
+    // :1634-1643 charmConditions / flask 同构），与 modList 是否有可解析词条无关
+    // ——「while you have an active Charm」族词条依赖该条件。空 NestedMods 在
+    // merge 阶段缩放循环天然空转，条件置位照常。
     let list_name = match classify_utility_item(item) {
         UtilityItemKind::Flask => FLASK_BUFF_LIST_NAME,
         UtilityItemKind::Charm => CHARM_BUFF_LIST_NAME,
