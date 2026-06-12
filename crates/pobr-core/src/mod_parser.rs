@@ -500,6 +500,12 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
         | "to block attack and spell damage" => &["chance to block", "spell block chance"],
         // 异常+眩晕双阈值（PoB2 ModParser.lua:450）。
         "ailment and stun threshold" => &["stun threshold", "ailment threshold"],
+        // 伤害异常三类持续时间聚合（PoB2 ModParser.lua:828 `duration of damaging
+        // ailments` = {EnemyIgniteDuration, EnemyBleedDuration,
+        // EnemyPoisonDuration}；M4-l §7.2 族 3）。
+        "duration of damaging ailments" => {
+            &["ignite duration", "bleed duration", "poison duration"]
+        }
         _ => &[],
     };
     if !aggregate.is_empty() {
@@ -1588,7 +1594,8 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
 fn parse_ailment_special(rest: &str, original: &str) -> Option<ParseOutcome> {
     let mods = parse_ailment_chance_sentence(rest, original)
         .or_else(|| parse_ailment_magnitude(rest, original))
-        .or_else(|| parse_poison_stack_limit(rest, original))?;
+        .or_else(|| parse_poison_stack_limit(rest, original))
+        .or_else(|| parse_poison_duration_per_recent(rest, original))?;
     Some(ParseOutcome {
         mods,
         status: ParseStatus::Parsed,
@@ -1681,6 +1688,38 @@ fn parse_ailment_chance_sentence(rest: &str, source: &str) -> Option<Vec<Modifie
         m = m.with_flags(flags);
     }
     Some(vec![m])
+}
+
+/// 「N% increased Poison Duration for each Poison you have inflicted
+/// Recently, up to a maximum of M%」→ `PoisonDuration` INC N ×
+/// `Multiplier:PoisonAppliedRecently` + `GlobalLimit{M, NoxiousStrike}`。
+///
+/// vendor modTagList:1518（`for each poison you have inflicted recently,
+/// up to a maximum of (%d+)%%` → `Multiplier{var=PoisonAppliedRecently,
+/// globalLimit=M, globalLimitKey="NoxiousStrike"}`）。乘数变量无 config
+/// 供给时为 0（vendor 同默认）——本词条当前对面板零增量，接入消 Err 并
+/// 锁定契约（树 notable『Escalating Toxins』）。
+fn parse_poison_duration_per_recent(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let (form, after) = parse_form(rest)?;
+    if !matches!(form.kind, FormKind::Inc) {
+        return None;
+    }
+    let tail = after.strip_prefix(
+        "poison duration for each poison you have inflicted recently, up to a maximum of ",
+    )?;
+    let (limit, pct) = take_unsigned_number(tail)?;
+    if pct != "%" {
+        return None;
+    }
+    Some(vec![
+        Modifier::number("PoisonDuration", ModType::Inc, form.value)
+            .with_tag(ModTag::multiplier("PoisonAppliedRecently", 1.0, None))
+            .with_tag(ModTag::GlobalLimit {
+                value: limit,
+                key: "NoxiousStrike".into(),
+            })
+            .with_source(source),
+    ])
 }
 
 /// 「Targets can be affected by +N of your Poisons at the same time」→
@@ -1898,6 +1937,10 @@ fn strip_scope_suffix(text: &str) -> (String, ModFlags) {
         // 「Damage with Hits」= 命中伤害（PoB2 KeywordFlag Hit）。面板进攻聚合本就按命中，
         // 故此限定对 hit 伤害是恒真——剥离为纯名、不加额外 flag（命中是默认伤害路径）。
         (" with hits", ModFlags::NONE),
+        // 「... on Enemies」（vendor modTagList:1425 `["on enemies"] = { }`，
+        // 空 tag＝无语义限定）：剥离为纯名（如『Duration of Damaging Ailments
+        // on Enemies』，M4-l §7.2 族 3）。
+        (" on enemies", ModFlags::NONE),
     ];
     for (suffix, flag) in suffixes {
         if let Some(stripped) = text.strip_suffix(suffix) {
@@ -3016,6 +3059,52 @@ mod per_slot_defence_tests {
             assert_eq!(m.mod_type, ModType::Inc, "{text}");
             assert_eq!(m.value.as_number(), Some(value), "{text}");
         }
+    }
+
+    /// 「Duration of Damaging Ailments on Enemies」（vendor :828 三类聚合 +
+    /// :1425 `on enemies` 空 tag）→ Ignite/Bleed/PoisonDuration 三条 INC
+    /// （族 3 补遗，树 notable『Intense Dose』）。
+    #[test]
+    fn parses_damaging_ailments_duration_aggregate() {
+        // Arrange：树原文（bracket 标记）。
+        let text = "15% increased Duration of [DamagingAilments|Damaging Ailments] on Enemies";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.status, ParseStatus::Parsed);
+        let names: Vec<_> = out.mods.iter().map(|m| m.name.as_str()).collect();
+        assert_eq!(names, ["IgniteDuration", "BleedDuration", "PoisonDuration"]);
+        for m in &out.mods {
+            assert_eq!(m.mod_type, ModType::Inc);
+            assert_eq!(m.value.as_number(), Some(15.0));
+        }
+    }
+
+    /// 「N% increased Poison Duration for each Poison you have inflicted
+    /// Recently, up to a maximum of M%」（vendor modTagList:1518）→
+    /// Multiplier:PoisonAppliedRecently + GlobalLimit{M, NoxiousStrike}
+    /// （族 3 补遗，树 notable『Escalating Toxins』；乘数无 config 供给时 0）。
+    #[test]
+    fn parses_poison_duration_per_recent_multiplier() {
+        // Arrange：树原文（bracket 标记）。
+        let text = "10% increased [Poison] Duration for each [Poison] you have inflicted Recently, up to a maximum of 100%";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "PoisonDuration");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(10.0));
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Multiplier { var, .. } if var == "PoisonAppliedRecently"
+        )));
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::GlobalLimit { value, key } if *value == 100.0 && key == "NoxiousStrike"
+        )));
     }
 
     /// 自侧形「Poison Duration on You」不入施加方名表（vendor :838 →
