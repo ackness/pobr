@@ -84,6 +84,13 @@ pub struct DataOrchestratorOptions {
     /// `None`（默认）= 回退 [`BuildData::stat_map_catalog`]（`BuildData::load`
     /// 已随数据包加载）；两处均无时数据通道按全 miss 处理。
     pub stat_map_catalog: Option<std::sync::Arc<StatMapCatalog>>,
+    /// （M3-T3 C5-1 双跑脚手架，**仅供 feature `buff-pass-aura` 下的双跑报告测试**）
+    /// `true` = 新路径：置 `cfg.mode_buffs(true)` 且**跳过** `aura_buff_modifiers`
+    /// 静态直注（aura 改经 BuffSpec → buff_pass 乘区通道）；`false`（默认）= 旧路径
+    /// （现网行为，零变化）。注意：feature 关时置 `true` 会让 aura 防御 buff 整体
+    /// 丢失（buff_pass 的 Aura kind 空转），故只允许双跑测试使用。C5-2 切换 commit
+    /// 删除本字段并把新路径定为唯一行为。
+    pub buff_pass_aura: bool,
 }
 
 impl Default for DataOrchestratorOptions {
@@ -97,6 +104,7 @@ impl Default for DataOrchestratorOptions {
             mode_effective: false,
             stat_map_mode: StatMapMode::default(),
             stat_map_catalog: None,
+            buff_pass_aura: false,
         }
     }
 }
@@ -219,7 +227,9 @@ pub fn calculate_with_data(
         .clone()
         .with_flags(base_cfg.flags | skill_flags)
         .with_damage_keywords(dmg_keywords)
-        .with_mode_effective(options.mode_effective);
+        .with_mode_effective(options.mode_effective)
+        // （C5-1 双跑脚手架）新路径置 mode_buffs（D5）；默认 false = 现网行为。
+        .with_mode_buffs(options.buff_pass_aura);
     // 敌人档位（19-G3 接线）：build XML Config 显式保存的 `enemyIsBoss` 优先；
     // 省略时回退调用方编排选项（PoB2 defaultIndex=3 = Pinnacle，与既有调用方一致）。
     let enemy_tier = build.config.enemy_tier.unwrap_or(options.enemy_tier);
@@ -714,8 +724,11 @@ pub fn calculate_with_data(
     //     M3-T3 C1 双计防护（蓝图 §6.1）：本波静态直注**不切换、不删码**；与下方
     //     BuffSpec 双注入不双计——消费侧守门在 pobr-core buff_pass（Aura kind 吃
     //     feature `buff-pass-aura`，默认关 = 空转；整段另吃 mode_buffs，编排层
-    //     未置位）。C5（行为 commit）开 flag + 置 mode_buffs 时同步关闭本行直注。
-    session.add_modifiers(aura_buff_modifiers(build, data));
+    //     默认不置位）。C5-1 双跑：`options.buff_pass_aura == true`（新路径）时
+    //     关闭本行直注（aura 改走 BuffSpec → buff_pass）；C5-2 切换 commit 定稿。
+    if !options.buff_pass_aura {
+        session.add_modifiers(aura_buff_modifiers(build, data));
+    }
 
     // 4b'.（M3-T3 C1）aura/curse 技能 → BuffSpec 经 `session.add_buff_skill` 注入
     //     （§2.4 契约）。消费在 pobr-core buff_pass（整段 `cfg.mode_buffs` 门控，
