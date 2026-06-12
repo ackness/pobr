@@ -30,7 +30,7 @@
 //! 已知切片：武器伤害（attack 技能依赖未接的武器基底）、DoT per-minute、area/speed/crit
 //! 等非伤害族的 SkillStatMap 映射（[`map_skill_stat`] 待逐步补全）。
 
-use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
+use pobr_core::calc::{BuffKind, BuffSpec, CalculationSession, MinimalInput, OutputTable};
 use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome, StatMapCatalog};
@@ -352,6 +352,13 @@ pub fn calculate_with_data(
     // 默认 false（B4 自动置位是独立行为 commit），故本注入零行为变化。
     session.set_buff_definitions(data.buff_definitions.clone());
     session.set_buff_handler_registry(std::sync::Arc::new(crate::handlers::build_registry()));
+    // M3-T3 C3：curse 优先级数据注入（env_finalize 阶段 4 buff_pass 的 curse
+    // priority/limit 数据来源，照 buff_definitions 通道先例）。整段吃
+    // `cfg.mode_buffs` 门控——默认 false，故本注入零行为变化；缺 overlay 文件
+    // （旧数据包）= None 不注入（消费侧权重全 0 回退）。
+    if let Some(curse_priority) = &data.curse_priority {
+        session.set_curse_priority(curse_priority.clone());
+    }
 
     if bypasses_cooldown || cooldown_attack_unmodeled {
         let label = if bypasses_cooldown {
@@ -703,7 +710,20 @@ pub fn calculate_with_data(
     //     `skill_types` 含 `Aura` 的已启用宝石，按分等级 stat 注入对应防御 ModName
     //     （Discipline→EnergyShield、Purity of Fire→FireResistance…）。ES buff 享全局
     //     `increased ES%`，与 PoB 在 buff 上叠 inc 同口径。
+    //
+    //     M3-T3 C1 双计防护（蓝图 §6.1）：本波静态直注**不切换、不删码**；与下方
+    //     BuffSpec 双注入不双计——消费侧守门在 pobr-core buff_pass（Aura kind 吃
+    //     feature `buff-pass-aura`，默认关 = 空转；整段另吃 mode_buffs，编排层
+    //     未置位）。C5（行为 commit）开 flag + 置 mode_buffs 时同步关闭本行直注。
     session.add_modifiers(aura_buff_modifiers(build, data));
+
+    // 4b'.（M3-T3 C1）aura/curse 技能 → BuffSpec 经 `session.add_buff_skill` 注入
+    //     （§2.4 契约）。消费在 pobr-core buff_pass（整段 `cfg.mode_buffs` 门控，
+    //     默认 false 且编排层不置位；Aura kind 另受 feature 守门）——本注入自身
+    //     零行为变化。
+    for spec in buff_skill_specs(build, data) {
+        session.add_buff_skill(spec);
+    }
 
     // 4c. Mark 激活授予玩家的**进攻自身 buff**（gain-as-extra）→ SkillGem 归因 modifier。
     //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
@@ -2572,6 +2592,10 @@ fn support_modifiers(
 /// 数据驱动、零按宝石名硬编码：光环身份由 `skill_types` 判定，buff→ModName 映射由
 /// stat id 决定。光环为**全局**自身 buff，故遍历**所有**启用 socket group 的 gem_skills，
 /// 而非仅主技能组；同一光环效果在多组重复出现时按 id 去重（避免重复注入）。
+///
+/// M3-T3 C1：本波保持注入（双计防护在消费侧——buff_pass 的 Aura kind 吃
+/// feature `buff-pass-aura` 守门）；C5 切换（开 flag + 置 mode_buffs 的行为
+/// commit）时关闭本注入、双跑 diff 干净后删函数。
 fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     use std::collections::HashSet;
     let mut mods = Vec::new();
@@ -2608,6 +2632,128 @@ fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
         }
     }
     mods
+}
+
+/// 把 `active_skill` 蛇形稳定名派生为 buff 显示名（`temporal_chains` →
+/// `Temporal Chains`，`AffectedBy<去空格名>` 条件与 curse priority `curse_base`
+/// 查表键用）。缺 `active_skill` 时回退授予效果 id。
+///
+/// 已知差异（buff_pass 模块文档简化 (i)）：撇号名派生不出（`snipers_mark` →
+/// `Snipers Mark` ≠ vendor `Sniper's Mark`）→ `curse_base` 查不到时基值 0
+/// （vendor `or 0` 同口径回退），不影响 socket/槽位/来源权重段。
+fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
+    let snake = data
+        .granted_effects
+        .get(skill_id)
+        .and_then(|e| e.active_skill.as_deref());
+    let Some(snake) = snake else {
+        return skill_id.to_string();
+    };
+    snake
+        .split('_')
+        .filter(|w| !w.is_empty())
+        .map(|w| {
+            let mut chars = w.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// （M3-T3 C1）把所有**已启用 aura / curse 技能**构造为 [`BuffSpec`]（蓝图 §2.4
+/// 契约），经 `session.add_buff_skill` 注入、由 pobr-core buff_pass（env_finalize
+/// 阶段 4）消费。
+///
+/// 分类规则（§2.4 契约 1）：
+/// - `skill_types` 含 `Aura` → [`BuffKind::Aura`]，mods = [`map_aura_buff_stat`]
+///   映射的防御 buff（与 [`aura_buff_modifiers`] 同一取数/归因口径——feature
+///   `buff-pass-aura` 切换的两条通道对同一来源等值）；
+/// - `skill_types` 含 Mark/Curse 系 token（`Mark` / `AppliesCurse`，M1 token
+///   表达式列实查）→ [`BuffKind::Curse`]（`is_mark` = 含 `Mark`）。curse 携带
+///   词条的 stat→mod 映射 M3 不做（mods 空——curse priority/limit/槽位占用与
+///   `EnemyCurseLimit` 面板先行，效果词条随 statmap curse 域接入）。
+///
+/// `slot` = socket group 槽名原文（PoB XML `slot` attr，如 `Weapon 1`，与
+/// curse_priority.json 槽位权重键同源）；`socket_index` = 组内宝石序（1-based，
+/// vendor `ipairs(gemList)` 序）。同一效果多组重复按 id 去重（与既有注入口径一致）。
+fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
+    use std::collections::HashSet;
+    let mut specs = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
+    for group in build.enabled_socket_groups() {
+        for (idx, gem) in group.gem_skills.iter().enumerate() {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            if effect.is_support {
+                continue;
+            }
+            let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
+            let is_aura = has_type("Aura");
+            let is_mark = has_type("Mark");
+            let is_curse = is_mark || has_type("AppliesCurse");
+            if (!is_aura && !is_curse) || !seen.insert(gem.skill_id.as_str()) {
+                continue;
+            }
+            let socket_index = (idx + 1) as u32;
+            if is_aura {
+                // aura 防御 buff：与 aura_buff_modifiers 同一 stat→mod 映射与
+                // SkillGem 归因（buff_pass 缩放时保留 origin，trace 不丢弃）。
+                let es = data.effect_stats(
+                    &gem.skill_id,
+                    gem.gem_level,
+                    gem.quality,
+                    gem.stat_set_index,
+                );
+                let mut mods = Vec::new();
+                for ds in es.all() {
+                    for mapped in map_aura_buff_stat(&ds.stat) {
+                        if ds.value == 0.0 {
+                            continue;
+                        }
+                        let origin = ModifierSource::new(SourceId::new(
+                            SourceKind::SkillGem,
+                            format!("aura.{}.{}", gem.skill_id, ds.stat),
+                        ))
+                        .with_raw_text(format!("aura {} {} ({})", gem.skill_id, ds.stat, ds.value));
+                        mods.push(
+                            Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
+                                .with_origin(origin),
+                        );
+                    }
+                }
+                specs.push(BuffSpec {
+                    name: buff_skill_name(data, &gem.skill_id),
+                    kind: BuffKind::Aura,
+                    skill_id: gem.skill_id.clone(),
+                    mods,
+                    magnitude: 1.0,
+                    slot: group.slot.clone(),
+                    socket_index,
+                    is_mark: false,
+                    ignore_curse_limit: false,
+                });
+            } else {
+                specs.push(BuffSpec {
+                    name: buff_skill_name(data, &gem.skill_id),
+                    kind: BuffKind::Curse,
+                    skill_id: gem.skill_id.clone(),
+                    // M3：curse 效果词条的 stat→mod 映射不做（priority/limit/
+                    // 槽位面板先行），mods 空。
+                    mods: Vec::new(),
+                    magnitude: 1.0,
+                    slot: group.slot.clone(),
+                    socket_index,
+                    is_mark,
+                    ignore_curse_limit: false,
+                });
+            }
+        }
+    }
+    specs
 }
 
 /// 把所有**已启用宝石**授予玩家的**进攻自身 buff**（Mark 激活时的 gain-as-extra）经
@@ -4159,6 +4305,166 @@ mod tests {
         // 非火抗光环不应污染冰/电抗（Purity of Fire 仅给火抗）。
         assert_eq!(aura.cold_resistance, base.cold_resistance);
         assert_eq!(aura.lightning_resistance, base.lightning_resistance);
+    }
+
+    // ── M3-T3 C1：BuffSpec 提取（aura/curse 分类 + 双计防护）────────────────
+
+    /// aura/curse 技能 → BuffSpec 分类（蓝图 §2.4 契约 1）：`Aura` token → Aura kind
+    /// （mods = 与 aura_buff_modifiers 同口径的防御 buff）；`Mark`/`AppliesCurse`
+    /// token → Curse kind（is_mark 按 Mark token）；slot/socket_index 透传。
+    #[test]
+    fn buff_skill_specs_classifies_aura_and_curse() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_slot("Body Armour")
+                    .with_gem_skill("DisciplinePlayer", 20)
+                    .with_gem_skill("TemporalChainsPlayer", 20)
+                    .with_gem_skill("FreezingMarkPlayer", 20),
+            );
+
+        let specs = buff_skill_specs(&build, &data);
+        assert_eq!(specs.len(), 3, "aura + hex + mark 各一条 spec");
+
+        let aura = specs
+            .iter()
+            .find(|s| s.skill_id == "DisciplinePlayer")
+            .expect("Discipline spec");
+        assert_eq!(aura.kind, BuffKind::Aura);
+        assert_eq!(aura.name, "Discipline");
+        assert_eq!(aura.slot.as_deref(), Some("Body Armour"));
+        assert_eq!(aura.socket_index, 1, "组内宝石序 1-based");
+        assert!(!aura.is_mark);
+        // mods 与静态直注路径（aura_buff_modifiers）同口径：同名同值。
+        let direct = aura_buff_modifiers(&build, &data);
+        let direct_es: f64 = direct
+            .iter()
+            .filter(|m| m.name.as_str() == "EnergyShield")
+            .filter_map(|m| m.value.as_number())
+            .sum();
+        let spec_es: f64 = aura
+            .mods
+            .iter()
+            .filter(|m| m.name.as_str() == "EnergyShield")
+            .filter_map(|m| m.value.as_number())
+            .sum();
+        assert!(spec_es > 0.0, "Discipline 应携带 ES buff 词条");
+        assert_eq!(spec_es, direct_es, "BuffSpec 与静态直注对同一来源等值");
+
+        let hex = specs
+            .iter()
+            .find(|s| s.skill_id == "TemporalChainsPlayer")
+            .expect("Temporal Chains spec");
+        assert_eq!(hex.kind, BuffKind::Curse);
+        assert!(!hex.is_mark, "AppliesCurse（非 Mark）→ hex");
+        assert_eq!(
+            hex.name, "Temporal Chains",
+            "active_skill 蛇形名派生（curse_base 查表键）"
+        );
+        assert_eq!(hex.socket_index, 2);
+
+        let mark = specs
+            .iter()
+            .find(|s| s.skill_id == "FreezingMarkPlayer")
+            .expect("Freezing Mark spec");
+        assert_eq!(mark.kind, BuffKind::Curse);
+        assert!(mark.is_mark, "Mark token → is_mark");
+        assert_eq!(mark.socket_index, 3);
+
+        // 非 aura/curse 主动技能与 support 不产出 spec。
+        let bare = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20));
+        assert!(buff_skill_specs(&bare, &data).is_empty());
+    }
+
+    /// 双计防护不变式（蓝图 §6.1）：BuffSpec 注入与静态直注并存时输出与「仅静态
+    /// 直注」逐值一致——feature 关（默认）时 buff_pass 对 Aura kind 空转；feature
+    /// 开但编排层不置 mode_buffs 时 buff_pass 整段空转。两种状态下 aura 词条都
+    /// 只经静态通道计入一次（C5 切换 commit 才反转通道）。
+    #[test]
+    fn buff_spec_injection_does_not_double_count_auras() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("DisciplinePlayer", 20)
+                    .with_gem_skill("TemporalChainsPlayer", 20),
+            );
+        let opts = DataOrchestratorOptions {
+            inject_character_base: true,
+            ..Default::default()
+        };
+        // 经 orchestrator（静态直注 + BuffSpec 双注入）的 ES == 静态直注单独贡献：
+        // 手工 session 仅注入 aura_buff_modifiers（无 BuffSpec）作对照。
+        let through_orchestrator =
+            calculate_with_data(&build, &data, &opts).expect("orchestrator calc");
+        let mut manual = CalculationSession::new(MinimalInput::default());
+        manual.add_modifiers(aura_buff_modifiers(&build, &data));
+        let manual_es = {
+            manual.perform_minimal();
+            manual.output().energy_shield
+        };
+        assert!(manual_es > 0.0, "Discipline 静态直注有非零 ES 贡献");
+        assert_eq!(
+            through_orchestrator.energy_shield, manual_es,
+            "BuffSpec 并存不双计（aura 词条只入静态通道一次）"
+        );
+    }
+
+    /// feature 开的新路径端到端（C5 双跑前置验证）：buff_skill_specs → add_buff_skill →
+    /// buff_pass aura 乘区（mode_buffs 显式置位——编排层置位属 C5/B4 行为 commit）。
+    #[cfg(feature = "buff-pass-aura")]
+    #[test]
+    fn buff_spec_aura_path_end_to_end_with_mode_buffs() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("DisciplinePlayer", 20));
+
+        let es_with_aura_effect = |aura_effect_inc: f64| {
+            let mut session = CalculationSession::new(MinimalInput::default())
+                .with_config(CalcConfig::attack().with_mode_buffs(true));
+            if aura_effect_inc != 0.0 {
+                session.add_modifiers([Modifier::number(
+                    "AuraEffect",
+                    ModType::Inc,
+                    aura_effect_inc,
+                )]);
+            }
+            for spec in buff_skill_specs(&build, &data) {
+                session.add_buff_skill(spec);
+            }
+            session.perform_minimal();
+            session.output().energy_shield
+        };
+
+        let base = es_with_aura_effect(0.0);
+        assert!(base > 0.0, "新路径下 Discipline 经 buff_pass 抬升 ES");
+        let boosted = es_with_aura_effect(20.0);
+        assert!(
+            boosted > base,
+            "20% inc AuraEffect 放大 aura buff：base={base} boosted={boosted}"
+        );
     }
 
     // ── 触发链路 build 层接线（findings 03-01/03-02/03-06）──────────────────

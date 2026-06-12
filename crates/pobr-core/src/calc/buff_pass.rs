@@ -18,7 +18,7 @@
 //!
 //! 双计防护（§6.1）：Aura kind 由 feature `buff-pass-aura` 守门——flag 关（默认）时
 //! 空转（编排层 `aura_buff_modifiers` 旧静态直注照旧），flag 开（仅测试/C5 双跑用）
-//! 时走本路径、编排层关闭静态直注。
+//! 时走本路径；编排层关闭静态直注 + 置 mode_buffs 属 C5 行为 commit，本波不切换。
 //!
 //! ## M3 口径简化清单（与 PoB2 差异显式记录，蓝图 §6.2 要求）
 //!

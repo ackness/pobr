@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
 use pobr_data::catalog::buffs::BuffDef;
+use pobr_data::catalog::curse_priority::CursePriorityDef;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
@@ -167,6 +168,12 @@ pub struct BuildData {
     /// 门控（默认 false），注入本身零行为变化。缺 overlay 文件（旧数据包）
     /// = 空表（无内建 buff 展开，向后兼容）。
     pub buff_definitions: Vec<BuffDef>,
+    /// curse 优先级数据表（`overlay/curse_priority.json`，M3-T3 C3）。
+    /// `calculate_with_data` 经 `CalculationSession::set_curse_priority` 注入，
+    /// env_finalize 阶段 4（buff_pass）的 curse priority/limit 消费——整段
+    /// `cfg.mode_buffs` 门控（默认 false），注入本身零行为变化。缺 overlay
+    /// 文件（旧数据包）= `None`（消费侧权重全 0 回退，R7 缺表容忍）。
+    pub curse_priority: Option<CursePriorityDef>,
 }
 
 impl BuildData {
@@ -298,6 +305,10 @@ impl BuildData {
             .map(|def| def.buffs)
             .unwrap_or_default();
 
+        // curse 优先级表（overlay 域，M3-T3）：缺文件 = None（消费侧权重全 0 回退），
+        // 其余加载/解析错误照常上抛。
+        let curse_priority = data.curse_priority()?;
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -314,6 +325,7 @@ impl BuildData {
             local_mods,
             stat_map_catalog,
             buff_definitions,
+            curse_priority,
         })
     }
 
@@ -337,6 +349,7 @@ impl BuildData {
             local_mods: LocalModsDef::default(),
             stat_map_catalog: None,
             buff_definitions: Vec::new(),
+            curse_priority: None,
         }
     }
 
