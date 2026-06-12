@@ -1073,8 +1073,38 @@ fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64)
 ///   `for Spell Skills` 限定）不参与转换，这里按 `flags == NONE` 同口径过滤；
 /// - 幂等：同 source 的 Damage+Projectile 同值副本已存在则跳过（重复 perform 防御）。
 fn apply_projectile_speed_to_damage(env: &mut Env) {
-    let flag_name = ModName::from("ProjectileSpeedAppliesToProjectileDamage");
-    if !env.player.mod_db.flag(&env.cfg, flag_name) {
+    // 投射物变体（vendor :840-845）：Tabulate 空 cfg → 源 mod flags == NONE；
+    // 副本 flags = Projectile。
+    copy_projectile_speed_as_damage(
+        env,
+        "ProjectileSpeedAppliesToProjectileDamage",
+        ModFlags::NONE,
+        ModFlags::PROJECTILE,
+    );
+    // （M4-m）弓变体（vendor CalcOffence.lua:796-802，树 notable『Feathered
+    // Fletching』）：Tabulate `{ flags = ModFlag.Bow }` → 源 mod flags ⊆ Bow
+    // （无旗 + Bow 限定均参与）；副本 flags **整体替换**为 Bow|Hit
+    // （vendor `NewMod(..., bor(ModFlag.Bow, ModFlag.Hit), ...)`）。
+    copy_projectile_speed_as_damage(
+        env,
+        "ProjectileSpeedAppliesToBowDamage",
+        ModFlags::BOW,
+        ModFlags::BOW | ModFlags::HIT,
+    );
+}
+
+/// 单个「投速 → 伤害」flag 变体的复制内核（vendor Tabulate + NewMod 形态）：
+/// `source_subset` = Tabulate cfg 的 flags（源 mod flags 须为其子集，vendor
+/// ModList 匹配语义）；`target_flags` = 副本整体替换的 flags。keyword_flags /
+/// tags / source / origin 透传（`unpack(mod)`）；幂等：同 source 的等值副本
+/// 已存在则跳过（重复 perform 防御）。
+fn copy_projectile_speed_as_damage(
+    env: &mut Env,
+    flag: &str,
+    source_subset: ModFlags,
+    target_flags: ModFlags,
+) {
+    if !env.player.mod_db.flag(&env.cfg, ModName::from(flag)) {
         return;
     }
     let proj_speed = ModName::from("ProjectileSpeed");
@@ -1083,11 +1113,15 @@ fn apply_projectile_speed_to_damage(env: &mut Env) {
         .player
         .mod_db
         .iter_mods()
-        .filter(|m| m.name == proj_speed && m.mod_type == ModType::Inc && m.flags == ModFlags::NONE)
+        .filter(|m| {
+            m.name == proj_speed
+                && m.mod_type == ModType::Inc
+                && m.flags.is_subset_of(source_subset)
+        })
         .map(|m| {
             let mut copy = m.clone();
             copy.name = damage.clone();
-            copy.flags = ModFlags::PROJECTILE;
+            copy.flags = target_flags;
             copy
         })
         .collect();
@@ -1096,7 +1130,7 @@ fn apply_projectile_speed_to_damage(env: &mut Env) {
         .player
         .mod_db
         .iter_mods()
-        .filter(|m| m.name == damage && m.flags == ModFlags::PROJECTILE)
+        .filter(|m| m.name == damage && m.flags == target_flags)
         .cloned()
         .collect();
     let fresh: Vec<crate::Modifier> = copies

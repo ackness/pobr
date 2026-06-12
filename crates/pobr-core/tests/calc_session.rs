@@ -173,3 +173,43 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     let scoped_out = scoped.perform_minimal();
     assert_eq!(scoped_out.total_hit_avg, 100.0);
 }
+
+/// （M4-m）弓变体（树 notable『Feathered Fletching』，ModParser.lua:3648 →
+/// `ProjectileSpeedAppliesToBowDamage`；消费 CalcOffence.lua:796-802）：INC
+/// ProjectileSpeed 复制为 Damage INC（flags 替换为 Bow|Hit，vendor Tabulate
+/// `{ flags = ModFlag.Bow }`）；非弓 cfg（无 BOW 位）副本不命中。
+#[test]
+fn projectile_speed_applies_to_bow_damage_conversion() {
+    use pobr_core::{CalcConfig, Modifier};
+    use pobr_data::modifier::ModFlags;
+
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let bow_cfg = CalcConfig::attack()
+        .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT | ModFlags::BOW);
+
+    // 解析链端到端：notable 原文 → flag → 转换生效（46% 投速 → +46% Damage）。
+    let mut with = CalculationSession::new(input).with_config(bow_cfg.clone());
+    with.add_modifier_texts([
+        "46% increased Projectile Speed",
+        "Increases and Reductions to [Projectile|Projectile] Speed also apply to Damage with [Bow|Bows]",
+    ])
+    .unwrap();
+    let converted = with.perform_minimal();
+    assert_eq!(converted.total_hit_avg, 146.0);
+
+    // 非弓技能 cfg（无 BOW 位）：副本 flags=Bow|Hit 不是 cfg 子集 → 不命中。
+    let mut non_bow = CalculationSession::new(input).with_config(
+        CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT),
+    );
+    non_bow
+        .add_modifier_texts(["46% increased Projectile Speed"])
+        .unwrap();
+    non_bow.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToBowDamage")]);
+    let non_bow_out = non_bow.perform_minimal();
+    assert_eq!(non_bow_out.total_hit_avg, 100.0);
+}

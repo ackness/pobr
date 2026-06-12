@@ -1394,7 +1394,7 @@ fn additional_ring_slot_allocated(build: &Build, data: &BuildData) -> bool {
 /// 来源扫描：树上已分配节点词条 + 全部装备词条（vendor 为 modDB 全局 `Sum("INC")`，
 /// CalcPerform.lua:1326）。文本先剥 `{tag}`/`[A|B]` 标记再小写比对。
 fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSlot, f64)> {
-    use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3};
+    use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3, Weapon2};
     let mut scales: Vec<(EquipmentSlot, f64)> = Vec::new();
     let mut add = |slots: &[EquipmentSlot], inc: f64| {
         for s in slots {
@@ -1404,12 +1404,39 @@ fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSl
             }
         }
     };
+    // （M4-m）quiver 变体（vendor CalcSetup.lua:1366-1373：`itemList["Weapon 2"]
+    // .type == "Quiver"` 时把箭袋 modList 逐条 ScaleAddMod；oracle 来源记
+    // "Many Sources:N% Quiver Bonus Effect"）——仅副手槽实为箭袋时收集。
+    let weapon2_is_quiver = build
+        .items
+        .get(&Weapon2)
+        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .is_some_and(|def| def.item_class == "Quiver");
     let mut texts: Vec<String> = Vec::new();
     for id in &build.tree.allocated_nodes {
         if let Some(node) = data.passive_nodes.get(&id.0) {
             texts.extend(node.stats.iter().map(|s| clean_grant_text(s)));
         }
     }
+    // 授予 notable（`Allocates <name>` enchant，与 gem_property_bonuses 同口径：
+    // vendor 授予节点 modList 与已分配节点一样进全局 modDB，CalcSetup.lua:1322-1331）。
+    {
+        let allocated: std::collections::HashSet<u32> =
+            build.tree.allocated_nodes.iter().map(|id| id.0).collect();
+        for def in granted_passive_defs(build, data) {
+            if allocated.contains(&def.skill) {
+                continue;
+            }
+            texts.extend(def.stats.iter().map(|s| clean_grant_text(s)));
+        }
+    }
+    // 范围珠宝 `Notable/Small Passive Skills in Radius also grant …` 展开文本
+    // （per-节点份数已乘开）——vendor 同样落全局 modDB 后被 Sum("INC") 收齐。
+    texts.extend(
+        radius_jewel_grant_texts(build, data)
+            .iter()
+            .map(|s| clean_grant_text(s)),
+    );
     for (_, item) in build.equipped_items() {
         for t in item
             .implicit_texts
@@ -1428,13 +1455,15 @@ fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSl
             continue;
         };
         let target = t[idx + "% increased bonuses gained from ".len()..].trim();
-        // vendor ModParser.lua:4866-4880 的四个戒指/项链变体（quiver/focus 走独立
-        // 机制，暂不消费——与 vendor 的 CalcSetup 特例路径对应）。
+        // vendor ModParser.lua:4866-4880 的戒指/项链变体 + :4866 quiver 变体
+        // （`EffectOfBonusesFromQuiver`，消费点 = CalcSetup.lua:1366-1373 的
+        // Weapon 2 箭袋特例；focus 仍走独立机制，暂不消费）。
         match target {
             "equipped rings and amulets" => add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0),
             "equipped rings" => add(&[Ring1, Ring2, Ring3], num / 100.0),
             "left equipped ring" => add(&[Ring1], num / 100.0),
             "right equipped ring" => add(&[Ring2], num / 100.0),
+            "equipped quiver" if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
             _ => {}
         }
     }
@@ -6458,6 +6487,71 @@ mod tests {
                 .contains(&pobr_core::ModTag::condition("BannerPlanted", false)),
             "Condition:BannerPlanted 直译保留，实得 {:?}",
             acc.tags
+        );
+    }
+
+    /// （M4-m）quiver 加成效果（vendor `EffectOfBonusesFromQuiver`，
+    /// ModParser.lua:4866；消费 = CalcSetup.lua:1366-1373 Weapon 2 箭袋特例）：
+    /// 树点『N% increased bonuses gained from Equipped Quiver』→ Weapon2 槽
+    /// scale；副手非箭袋时不收集。
+    #[test]
+    fn slot_bonus_effect_scales_covers_equipped_quiver() {
+        use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+        let quiver_node = pobr_data::catalog::PassiveNodeDef {
+            skill: 30341,
+            id: "bow_quiver_effect".into(),
+            name: Some("Master Fletching".into()),
+            kind: pobr_data::catalog::PassiveNodeKind::Notable,
+            stats: vec!["20% increased bonuses gained from Equipped [Quiver]".into()],
+            group: None,
+            orbit: None,
+            orbit_index: None,
+            x: None,
+            y: None,
+            connections: vec![],
+            ascendancy_id: None,
+            variants: vec![],
+        };
+        let mut passive_nodes = HashMap::new();
+        passive_nodes.insert(30341u32, quiver_node);
+        let mut base_items = HashMap::new();
+        base_items.insert(
+            "Visceral Quiver".to_string(),
+            weapon_base_item("Visceral Quiver", "Quiver"),
+        );
+        let data = BuildData {
+            passive_nodes,
+            base_items,
+            ..BuildData::empty()
+        };
+        let quiver = Item {
+            base: ItemBaseId::from("Visceral Quiver"),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            implicit_texts: vec![],
+            modifier_texts: vec!["53% increased Damage with Bow Skills".into()],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            parsed_stats: vec![],
+        };
+        let tree = PassiveTreeSpec {
+            allocated_nodes: vec![NodeId(30341)],
+            ..Default::default()
+        };
+        let with_quiver = Build::new()
+            .with_tree(tree.clone())
+            .set_item(EquipmentSlot::Weapon2, quiver);
+        let scales = slot_bonus_effect_scales(&with_quiver, &data);
+        assert_eq!(
+            scales,
+            vec![(EquipmentSlot::Weapon2, 0.2)],
+            "箭袋在副手 → Weapon2 槽 0.20 缩放"
+        );
+
+        let without_quiver = Build::new().with_tree(tree);
+        assert!(
+            slot_bonus_effect_scales(&without_quiver, &data).is_empty(),
+            "副手非箭袋时不收集（vendor type == \"Quiver\" 门控）"
         );
     }
 

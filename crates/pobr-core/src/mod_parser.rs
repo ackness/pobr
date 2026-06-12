@@ -95,6 +95,19 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // （M4-m）弓系投速转伤（树 notable『Feathered Fletching』，vendor
+    // ModParser.lua:3648 → `flag("ProjectileSpeedAppliesToBowDamage")`）。
+    // 消费 = `calc::perform::apply_projectile_speed_to_damage` 弓分支
+    // （CalcOffence.lua:796-802：INC ProjectileSpeed 复制为 Damage INC，
+    // flags = Bow|Hit）。
+    if rest == "increases and reductions to projectile speed also apply to damage with bows" {
+        return Ok(ParseOutcome {
+            mods: vec![Modifier::flag("ProjectileSpeedAppliesToBowDamage").with_source(original)],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     // 词条授予 keystone（M3 T5-E2，蓝图 §8.2）：PoB2 `ModParser.lua:6151-6153` 把
     // `data.keystones`（Data.lua:304-340）每个名字注册为 specialModList **整行**匹配 →
     // `mod("Keystone", "LIST", name)`。pobr 同语义：裸 keystone 名整行 /「you have
