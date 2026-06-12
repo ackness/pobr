@@ -199,6 +199,18 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     } else if let Some(stripped) = rest.strip_prefix("attacks ") {
         flags |= ModFlags::ATTACK;
         rest = stripped.into();
+    } else if let Some(stripped) = rest
+        .strip_prefix("triggered spells deal ")
+        .or_else(|| rest.strip_prefix("triggered spells have "))
+    {
+        // 「Triggered Spells deal/have …」（M4-m；vendor ModParser.lua:1320
+        // `["^triggered spells [hd][ae][va][el] "] = { keywordFlags =
+        // KeywordFlag.Spell, tag = SkillType(Triggered) }`）：KeywordFlag.Spell
+        // 按既有约定折 ModFlags::SPELL；SkillType tag 按 cfg.skill_types 命中
+        // ——主技能被 Cast on X 等 meta 触发（addSkillTypes Triggered）时生效。
+        flags |= ModFlags::SPELL;
+        prefix_tags.push(ModTag::SkillTypes(SkillTypes::TRIGGERED));
+        rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spells deal ") {
         flags |= ModFlags::SPELL;
         rest = stripped.into();
@@ -2957,6 +2969,38 @@ mod per_slot_defence_tests {
             assert_eq!(out.mods[0].name.as_str(), "Damage", "{text}");
             assert_eq!(out.mods[0].mod_type, ModType::Inc, "{text}");
             assert!(has_condition(&out.mods[0], "CritInPast8Sec"), "{text}");
+        }
+    }
+
+    /// M4-m「Triggered Spells deal/have …」前缀（vendor ModParser.lua:1320
+    /// `["^triggered spells [hd][ae][va][el] "]` → KeywordFlag.Spell +
+    /// SkillType(Triggered) tag）：SPELL flag + `ModTag::SkillTypes(TRIGGERED)`，
+    /// 仅当 cfg.skill_types 含 TRIGGERED（meta 触发的主技能）才命中。
+    #[test]
+    fn parses_triggered_spells_deal_prefix() {
+        use pobr_data::skill::SkillTypes;
+        for text in [
+            // 树小点 47359 原文（bracket 标记）。
+            "[Trigger|Triggered] [Spell|Spells] deal 16% increased [Spell] Damage",
+            "Triggered Spells deal 40% increased Spell Damage",
+            "Triggered Spells have 14% increased Spell Damage",
+        ] {
+            let out = parse_mod(text).expect("parses");
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "SpellDamage", "{text}");
+            assert_eq!(m.mod_type, ModType::Inc, "{text}");
+            assert!(
+                m.tags.iter().any(
+                    |t| matches!(t, ModTag::SkillTypes(st) if st.contains(SkillTypes::TRIGGERED))
+                ),
+                "{text} 应带 SkillTypes(TRIGGERED) tag"
+            );
+            // 非触发 cfg 不命中；TRIGGERED cfg 命中。
+            let plain = crate::CalcConfig::new().with_flags(ModFlags::SPELL);
+            assert!(!m.matches(&plain), "{text} 非触发技能不生效");
+            let triggered = plain.clone().with_skill_types(SkillTypes::TRIGGERED);
+            assert!(m.matches(&triggered), "{text} 触发技能生效");
         }
     }
 

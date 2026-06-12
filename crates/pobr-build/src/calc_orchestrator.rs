@@ -222,18 +222,46 @@ pub fn calculate_with_data(
     let main_effect = main_skill
         .as_ref()
         .and_then(|(_, _, skill_id)| data.granted_effects.get(*skill_id));
+    // （M4-m）主技能**终态**类型集合 = 自身 skill_types + 兼容 support 的
+    // addSkillTypes 不动点（vendor CalcActiveSkill.lua:179-214 把 addSkillTypes
+    // 并进 activeSkill.skillTypes，后续 flag/条件派生均以终态为准——如 Cast on
+    // Critical 给被触发法术加 `Triggered`，使「Triggered Spells deal …」族词条
+    // 命中 + 战斗条件触发豁免按 vendor :248 生效）。排序保证确定性。
+    let main_skill_types: Vec<String> = main_skill
+        .as_ref()
+        .map(|(_, group, skill_id)| {
+            let mut types: Vec<String> = judge_group_supports(group, data, skill_id)
+                .final_skill_types
+                .into_iter()
+                .collect();
+            // meta 触发壳的 `Triggered`：vendor 由宝石的 **support 半身**
+            // （如 Cast on Critical → SupportMetaCastOnCritPlayer 的
+            // addSkillTypes=[Triggered]）注入；PoBR 入库数据未建宝石二段授予
+            // （skill_gems 仅 grantedEffect 主半身），以既有触发识别
+            // （trigger_configs 四级 key，与 trigger_modifiers 同判定）等价补位。
+            if !types.iter().any(|t| t == "Triggered")
+                && recognize_trigger_config(data, group, skill_id).is_some()
+            {
+                types.push("Triggered".to_string());
+            }
+            types.sort();
+            types
+        })
+        .unwrap_or_default();
     let skill_flags = main_effect
-        .map(|e| skill_type_flags(&e.skill_types))
+        .map(|_| skill_type_flags(&main_skill_types))
         .unwrap_or(ModFlags::NONE);
     // （M3-W5 修复）主技能类型 → `cfg.skill_types` 判别位：`is_attack()` 驱动命中
     // 检定（攻击才做精准/闪避检定，vendor CalcOffence.lua:2611）；见 skill_type_bits doc。
     let skill_type_bits = main_effect
-        .map(|e| skill_type_bits(&e.skill_types))
+        .map(|_| skill_type_bits(&main_skill_types))
         .unwrap_or(SkillTypes::NONE);
     let dmg_keywords = damage_keywords(
         build,
         data,
-        main_effect.map(|e| e.skill_types.as_slice()).unwrap_or(&[]),
+        main_effect
+            .map(|_| main_skill_types.as_slice())
+            .unwrap_or(&[]),
     );
     // config 消费收口（M3-T1 A5 主路径切换）：ConfigCatalog 可用时走
     // `config_interpreter::interpret`（raw_inputs → conditions/multipliers/标量
@@ -283,9 +311,11 @@ pub fn calculate_with_data(
         .with_mode_combat(true);
     // （M3-T2 B4）主技能派生战斗条件（vendor CalcPerform.lua:242-266 实读，
     // `if env.mode_combat` 段）：attack/spell/Movement/Minion/Vaal/Channel →
-    // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免。
-    if let Some(effect) = main_effect {
-        for cond in combat_conditions(&effect.skill_types, skill_flags) {
+    // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免（M4-m：
+    // 用**终态**类型集合——meta support 的 addSkillTypes `Triggered` 使豁免
+    // 按 vendor :248 生效）。
+    if main_effect.is_some() {
+        for cond in combat_conditions(&main_skill_types, skill_flags) {
             cfg = cfg.with_condition(cond, true);
         }
     }
@@ -2152,6 +2182,10 @@ fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
         match t.as_str() {
             "Attack" => bits |= SkillTypes::ATTACK,
             "Spell" => bits |= SkillTypes::SPELL,
+            // （M4-m）触发态（meta support addSkillTypes / 技能自带）：
+            // 「Triggered Spells deal …」族词条的 `ModTag::SkillTypes(TRIGGERED)`
+            // 命中位（vendor activeSkill.skillTypes[SkillType.Triggered]）。
+            "Triggered" => bits |= SkillTypes::TRIGGERED,
             _ => {}
         }
     }
