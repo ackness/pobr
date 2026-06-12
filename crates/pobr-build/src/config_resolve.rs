@@ -62,9 +62,11 @@ pub(crate) struct ResolvedConfig {
     /// 见模块注释 §3-⑤）。Combat 门控条目（`Condition:Combat` tag）在
     /// `mode_combat=false` 下天然惰性（D5）。缺 catalog 时为空。
     pub player_mods: Vec<Modifier>,
-    /// 解释器产出的敌人 modifier（`SourceKind::EnemyConfig` 归因），本批仅
-    /// FLAG（enemy 条件 actor 化条目，带 `Condition:Effective` tag）；数值
-    /// 覆盖（抗性/SelfCritChance/异常层数 BASE）自 commit ③ 起放开。
+    /// 解释器产出的敌人 modifier（`SourceKind::EnemyConfig` 归因）：
+    /// - FLAG：enemy 条件 actor 化条目（带 `Condition:Effective` tag）；
+    /// - 数值（commit ③ 起）：敌方抗性 / SelfCritChance / 异常层数 BASE 直注
+    ///   （vendor `enemyModList:NewMod(..., "BASE", val, "EnemyConfig")` 形态，
+    ///   ConfigOptions.lua:2143-2157 / 1892-1894 / 1782-1842）。
     pub enemy_mods: Vec<Modifier>,
 }
 
@@ -112,13 +114,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         .filter(|m| !is_quest_mod(m))
         .cloned()
         .collect();
-    // commit ③ 前仅注入 FLAG（enemy 条件 actor 化条目）；数值覆盖待放开。
-    let enemy_mods = outcome
-        .enemy_mods
-        .iter()
-        .filter(|m| m.mod_type == ModType::Flag)
-        .cloned()
-        .collect();
+    let enemy_mods = outcome.enemy_mods.clone();
 
     ResolvedConfig {
         config,
@@ -410,20 +406,40 @@ mod tests {
         );
     }
 
-    /// commit ③ 前 enemy 数值覆盖（BASE）不注入。
+    /// commit ③：enemy 数值覆盖（BASE 直注 enemy 桶 + EnemyConfig 归因）。
+    /// vendor enemyFireResist：ConfigOptions.lua:2152-2154
+    /// `enemyModList:NewMod("FireResist", "BASE", val, "EnemyConfig")`。
     #[test]
-    fn enemy_numeric_overrides_gated_until_commit_3() {
+    fn enemy_numeric_overrides_opened() {
         let catalog = load_catalog();
         let build = build_with_inputs(
-            RawConfigInputs::new().with("enemyFireResist", ConfigInputValue::Number(75.0)),
+            RawConfigInputs::new()
+                .with("enemyFireResist", ConfigInputValue::Number(75.0))
+                .with(
+                    "enemyCriticalWeaknessStacks",
+                    ConfigInputValue::Number(10.0),
+                ),
         );
         let resolved = resolve_config(&build, Some(&catalog));
-        assert!(
-            resolved
-                .enemy_mods
-                .iter()
-                .all(|m| m.mod_type == ModType::Flag),
-            "enemy 数值覆盖待 commit ③ 放开"
+        let fire = resolved
+            .enemy_mods
+            .iter()
+            .find(|m| m.name.as_str() == "FireResist")
+            .expect("FireResist BASE 应进 enemy 注入列表");
+        assert_eq!(fire.mod_type, ModType::Base);
+        assert_eq!(fire.value.as_number(), Some(75.0));
+        assert_eq!(
+            fire.origin.as_ref().unwrap().source_id.kind,
+            SourceKind::EnemyConfig
         );
+        // SelfCritChance（暴击弱化层数 → +0.5%/层，ConfigOptions.lua:1892-1894
+        // `m_max(m_min(val, 20), 0) / 2`，带 Condition:ApplyCriticalWeakness tag）。
+        let crit = resolved
+            .enemy_mods
+            .iter()
+            .find(|m| m.name.as_str() == "SelfCritChance")
+            .expect("SelfCritChance 应进 enemy 注入列表");
+        assert_eq!(crit.value.as_number(), Some(5.0), "10 层 × 0.5%");
+        assert!(!crit.tags.is_empty(), "保留 ApplyCriticalWeakness 门控 tag");
     }
 }
