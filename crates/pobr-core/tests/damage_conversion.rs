@@ -370,3 +370,53 @@ fn skill_conversion_chains_into_global_conversion() {
     assert!(fire.type_path.contains(&DamageType::Cold));
     assert!(fire.type_path.contains(&DamageType::Fire));
 }
+
+/// random element 档折叠（M4-H；vendor CalcOffence.lua:1175-1200：
+/// `DamageGainAsRandom BASE n` 在 physMode=AVERAGE（configInput 缺省）下展开为
+/// `DamageGainAs{Fire,Cold,Lightning} BASE n/3`——PoBR 在 build_gain_matrix 折叠
+/// 同口径；druid-oracle ember-fusillade 的 Relentless Vindicator 树点实例）。
+#[test]
+fn random_element_gain_as_splits_average_across_elements() {
+    let mut db = ModDb::new();
+    db.add_mod(
+        Modifier::number("DamageGainAsRandom", ModType::Base, 30.0).with_flags(ModFlags::ATTACK),
+    );
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+
+    // 物理源 100-200 不扣减；三元素各 gain 10%（30/3）。
+    let phys = component(&output, DamageType::Physical);
+    assert_eq!(phys.min, 100.0);
+    assert_eq!(phys.max, 200.0);
+    for ty in [DamageType::Fire, DamageType::Cold, DamageType::Lightning] {
+        let c = component(&output, ty);
+        assert_eq!(c.min, 10.0, "{ty:?} min = 100 × 10%");
+        assert_eq!(c.max, 20.0, "{ty:?} max = 200 × 10%");
+    }
+    assert!(find(&output, DamageType::Chaos).is_none_or(|c| c.avg() == 0.0));
+}
+
+/// PhysicalDamageGainAsRandom 仅作用于物理源行（vendor 展开为
+/// `PhysicalDamageGainAs<Elem>`；CalcOffence.lua:1193-1200）。
+#[test]
+fn physical_random_gain_as_only_from_physical_source() {
+    let mut db = ModDb::new();
+    db.add_mod(
+        Modifier::number("PhysicalDamageGainAsRandom", ModType::Base, 30.0)
+            .with_flags(ModFlags::ATTACK),
+    );
+    // 非物理源：flat 火焰附加 60-60（不应再被 phys-random 二次放大）。
+    db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 60.0).with_flags(ModFlags::ATTACK));
+    db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 60.0).with_flags(ModFlags::ATTACK));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
+
+    // fire = flat 60 + phys 100×10% = 70 / 60 + 200×10% = 80。
+    let fire = component(&output, DamageType::Fire);
+    assert_eq!(fire.min, 70.0);
+    assert_eq!(fire.max, 80.0);
+    // cold/lightning 仅来自 phys 源 10%。
+    let cold = component(&output, DamageType::Cold);
+    assert_eq!(cold.min, 10.0);
+    assert_eq!(cold.max, 20.0);
+}

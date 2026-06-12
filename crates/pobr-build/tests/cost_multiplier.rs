@@ -73,11 +73,13 @@ fn oracle_druid_comet_mana_cost_with_support_multipliers() {
         out.mana_cost
     );
     // 当前等级解析口径下的具体值锚定（等级/链路改动时显式更新此行并复核 oracle）：
-    // Comet L28 base 369 × 1.3 → floor = 479（PoB2 golden 577 = 404 × 1.43，
-    // 余差 = +1 gem level + ER 倍率，均登记在 doc）。
+    // M4-H 起宝石等级加成扫描计入**树节点**词条（vendor GemProperty 全局
+    // modDB 同源），druid 树 +1 spell skill level → Comet L29 base 404 ×
+    // 1.3 → floor = 525（与 PoB2 golden 577 = 404 × 1.43 同一 base 行，
+    // 余差 = ER 倍率，登记在 doc）。
     assert_eq!(
-        out.mana_cost, 479.0,
-        "Comet L28 base 369 × 1.3 → floor = 479"
+        out.mana_cost, 525.0,
+        "Comet L29 base 404 × 1.3 → floor = 525"
     );
 }
 
