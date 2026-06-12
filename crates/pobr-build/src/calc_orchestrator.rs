@@ -2583,56 +2583,6 @@ fn support_modifiers(
     mods
 }
 
-/// 把所有**已启用光环宝石**（`skill_types` 含 `Aura`）授予的分等级**防御 buff**
-/// 经 [`map_aura_buff_stat`] 映射为 SkillGem 归因的 modifier（如 Discipline → `EnergyShield`
-/// BASE、Purity of Fire → `FireResistance` BASE）。
-///
-/// 数据驱动、零按宝石名硬编码：光环身份由 `skill_types` 判定，buff→ModName 映射由
-/// stat id 决定。光环为**全局**自身 buff，故遍历**所有**启用 socket group 的 gem_skills，
-/// 而非仅主技能组；同一光环效果在多组重复出现时按 id 去重（避免重复注入）。
-///
-/// M3-T3 C5-2 切换后**已退出产线**（编排注入改走 [`buff_skill_specs`] →
-/// buff_pass；双跑依据 `m3-c5-dualrun-report.md` 18-build 全列逐值持平）——
-/// 仅测试侧作为旧静态直注对照保留（`cfg(test)`），C5-3 删码 commit 一并移除。
-#[cfg(test)]
-fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
-    use std::collections::HashSet;
-    let mut mods = Vec::new();
-    let mut seen: HashSet<&str> = HashSet::new();
-    for group in build.enabled_socket_groups() {
-        for gem in &group.gem_skills {
-            if !data.is_aura(&gem.skill_id) || !seen.insert(gem.skill_id.as_str()) {
-                continue;
-            }
-            // quality 段并入数值（PoB2 把品质先加进同一 stats 表）；本路径的细分
-            // GemQuality 归因 defer（aura 归因仍记 SkillGem `aura.*`）。
-            let es = data.effect_stats(
-                &gem.skill_id,
-                gem.gem_level,
-                gem.quality,
-                gem.stat_set_index,
-            );
-            for ds in es.all() {
-                for mapped in map_aura_buff_stat(&ds.stat) {
-                    if ds.value == 0.0 {
-                        continue;
-                    }
-                    let origin = ModifierSource::new(SourceId::new(
-                        SourceKind::SkillGem,
-                        format!("aura.{}.{}", gem.skill_id, ds.stat),
-                    ))
-                    .with_raw_text(format!("aura {} {} ({})", gem.skill_id, ds.stat, ds.value));
-                    mods.push(
-                        Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
-                            .with_origin(origin),
-                    );
-                }
-            }
-        }
-    }
-    mods
-}
-
 /// 把 `active_skill` 蛇形稳定名派生为 buff 显示名（`temporal_chains` →
 /// `Temporal Chains`，`AffectedBy<去空格名>` 条件与 curse priority `curse_base`
 /// 查表键用）。缺 `active_skill` 时回退授予效果 id。
@@ -4340,12 +4290,13 @@ mod tests {
         assert_eq!(aura.slot.as_deref(), Some("Body Armour"));
         assert_eq!(aura.socket_index, 1, "组内宝石序 1-based");
         assert!(!aura.is_mark);
-        // mods 与静态直注路径（aura_buff_modifiers）同口径：同名同值。
-        let direct = aura_buff_modifiers(&build, &data);
-        let direct_es: f64 = direct
-            .iter()
-            .filter(|m| m.name.as_str() == "EnergyShield")
-            .filter_map(|m| m.value.as_number())
+        // mods 取数口径：分等级 buff stat（数据侧独立期望——effect_stats 的
+        // ES apply stat 原值，不经 map 函数绕回实现自证）。
+        let expected_es: f64 = data
+            .effect_stats("DisciplinePlayer", 20, 0, None)
+            .all()
+            .filter(|ds| ds.stat == "base_skill_buff_total_maximum_energy_shield_+_to_apply")
+            .map(|ds| ds.value)
             .sum();
         let spec_es: f64 = aura
             .mods
@@ -4354,7 +4305,10 @@ mod tests {
             .filter_map(|m| m.value.as_number())
             .sum();
         assert!(spec_es > 0.0, "Discipline 应携带 ES buff 词条");
-        assert_eq!(spec_es, direct_es, "BuffSpec 与静态直注对同一来源等值");
+        assert_eq!(
+            spec_es, expected_es,
+            "BuffSpec mods = 分等级 buff stat 原值"
+        );
 
         let hex = specs
             .iter()
@@ -4387,9 +4341,10 @@ mod tests {
         assert!(buff_skill_specs(&bare, &data).is_empty());
     }
 
-    /// 通道等值不变式（C5-2 切换后）：编排产线（BuffSpec → buff_pass 乘区，无
-    /// AuraEffect 词条时 mult = 1.0）与旧静态直注（`aura_buff_modifiers` 手工
-    /// session 对照）逐值一致，且 aura 词条只计入一次（不双计）。
+    /// 单通道不变式（C5-3 删旧码后）：编排产线（BuffSpec → buff_pass 乘区）的
+    /// aura ES 贡献 == 手工 session 仅走 buff_pass 通道的贡献——证明编排层无
+    /// 第二条 aura 注入残留（旧静态直注已删；mult = 1.0 时 ScaleAddMod 原值
+    /// 返回，数值即 buff stat 原值）。
     #[test]
     fn buff_spec_injection_does_not_double_count_auras() {
         let data = repo_data();
@@ -4408,20 +4363,22 @@ mod tests {
             inject_character_base: true,
             ..Default::default()
         };
-        // 经 orchestrator（BuffSpec → buff_pass 产线）的 ES == 旧静态直注单独贡献：
-        // 手工 session 仅注入 aura_buff_modifiers（无 BuffSpec）作对照。
         let through_orchestrator =
             calculate_with_data(&build, &data, &opts).expect("orchestrator calc");
-        let mut manual = CalculationSession::new(MinimalInput::default());
-        manual.add_modifiers(aura_buff_modifiers(&build, &data));
+        // 手工 session：仅 BuffSpec → buff_pass 单通道（与编排同一 mode_buffs 口径）。
+        let mut manual = CalculationSession::new(MinimalInput::default())
+            .with_config(CalcConfig::attack().with_mode_buffs(true));
+        for spec in buff_skill_specs(&build, &data) {
+            manual.add_buff_skill(spec);
+        }
         let manual_es = {
             manual.perform_minimal();
             manual.output().energy_shield
         };
-        assert!(manual_es > 0.0, "Discipline 静态直注有非零 ES 贡献");
+        assert!(manual_es > 0.0, "Discipline 经 buff_pass 有非零 ES 贡献");
         assert_eq!(
             through_orchestrator.energy_shield, manual_es,
-            "新产线与旧静态直注等值（mult=1.0 时 ScaleAddMod 原值返回，不双计）"
+            "aura 词条只经 buff_pass 单通道计入一次（无静态直注残留）"
         );
     }
 
