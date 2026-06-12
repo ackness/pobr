@@ -65,6 +65,12 @@ impl ModFlags {
     pub fn is_subset_of(self, other: Self) -> bool {
         self.0 & other.0 == self.0
     }
+
+    /// 位差集：去掉 `other` 中的全部置位（PoB2 `band(self, bnot(other))`）。
+    /// M4-T4 W-D1 dotCfg 的 flag 剥除原语（`CalcOffence.lua:5839-5856`）。
+    pub fn without(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
 }
 
 /// PoB2 全位表（M4-T1 W-A1，feature `modflags-pob2` 开）。
@@ -287,6 +293,12 @@ impl KeywordFlags {
     /// 去掉 `MATCH_ALL` 位后的实际 keyword 集合（PoB2 `band(x, MatchAllMask)`）。
     pub fn without_match_all(self) -> Self {
         Self(self.0 & !Self::MATCH_ALL.0)
+    }
+
+    /// 位差集：去掉 `other` 中的全部置位（PoB2 `band(self, bnot(other))`）。
+    /// M4-T4 W-D1 dotCfg 的 `keywordFlags &= ~KeywordFlag.Hit`（`CalcOffence.lua:5838`）。
+    pub fn without(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
     }
 
     /// PoB2 `MatchKeywordFlags(cfg, self)`（Global.lua:316-341）：`self` 为 mod 的

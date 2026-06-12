@@ -110,6 +110,9 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // 异常状态：几率 + 暴击加权 + magnitude + effMult（几率 × DoT 期望值口径）。
     // 单独成段，避免与 fill_mechanics 内 player.mod_db 的不可变借用冲突。
     fill_ailments(env);
+    // 技能 DoT + 合并 DPS 族（M4-T4 W-D1）：在 fill_ailments 之后——TotalDotDPS
+    // 只读消费异常侧 bleed/poison/ignite 现值（ailment.rs 不改，T4 一波约定）。
+    fill_skill_dot_stage(env);
 
     // 召唤物（Lane4）：每个召唤物是独立 Actor，复用玩家同款 offence/defence 管线。
     // 无召唤物时该段空转，行为与无此字段时完全一致（向后兼容）。
@@ -521,6 +524,31 @@ fn fill_mechanics(env: &mut Env) {
 /// 出处：agent-docs/triggers.md §三 / §4.2；Lane B integration_spec；PoB2 CalcTriggers.lua
 /// L74-86 findTriggerSkill / L702-707 EffectiveSourceRate / L715-777 triggerChance；
 /// CWCHandler L262-263（finding 03-06：CWC 经 calcMultiSpellRotationImpact）。
+/// 技能 DoT fill（M4-T4 W-D1，函数级新增）：从既有输出读面板信号（有效速率 /
+/// 击中 DPS / 异常 DoT 三值），跑 [`super::skill_dot::calc_skill_dot`]，把
+/// `// === M4-T4 ===` 契约五字段落表。
+///
+/// 异常 DoT 取值口径 = vendor `TotalXDPS or XDPS`（`CalcOffence.lua:6226-6231`）：
+/// 叠层值（`*_stacked_dps`，fill_ailments 仅叠层配置在场时写入）优先，否则单层
+/// 期望 DPS。无技能 DoT 且无异常 DoT 时输出全零，契约字段维持 Default 中性。
+fn fill_skill_dot_stage(env: &mut Env) {
+    let out = &env.player.output;
+    let pick = |stacked: f64, single: f64| if stacked > 0.0 { stacked } else { single };
+    let inputs = super::skill_dot::SkillDotInputs {
+        speed: out.effective_action_rate.max(0.0),
+        // skill duration 数据通道未接（statmap skill_data `duration` 无消费方），
+        // DotCanStack 分支在 calc 内保守退化为单实例——接入后传真值即可。
+        duration: 0.0,
+        base_dps: out.dps,
+        bleed_dps: pick(out.bleed_stacked_dps, out.bleed_dps),
+        poison_dps: pick(out.poison_stacked_dps, out.poison_dps),
+        ignite_dps: pick(out.ignite_stacked_dps, out.ignite_dps),
+    };
+    let dot =
+        super::skill_dot::calc_skill_dot(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &inputs);
+    super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
+}
+
 fn fill_trigger(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;

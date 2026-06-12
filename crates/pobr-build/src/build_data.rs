@@ -433,6 +433,20 @@ impl BuildData {
             .map(|i| i.to_string())
     }
 
+    /// 选中 statSet 的 dotIs* 旗标（M4-T4 W-D1；statSet `baseMods` 直挂布尔，
+    /// catalog [`pobr_data::catalog::DotFlags`]，经 skill_overrides overlay merge）。
+    /// 选中规则与 [`Self::select_stat_set`] 一致；无数据时返回默认全 false
+    /// （保守剥全部 dotCfg 位）。
+    pub fn selected_set_dot_flags(
+        &self,
+        skill_id: &str,
+        set_index: Option<u32>,
+    ) -> pobr_data::catalog::DotFlags {
+        self.select_stat_set(skill_id, set_index)
+            .map(|s| s.dot_flags)
+            .unwrap_or_default()
+    }
+
     /// 解析某主动技能在某等级上的参数：cast/attack 时间（秒）、各资源消耗、冷却（秒）。
     /// statSet 形态取缺省主 set；带形态选择用 [`Self::resolve_skill_level_with_set`]。
     ///

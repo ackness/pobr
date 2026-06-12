@@ -97,7 +97,9 @@ pub use scaled_damage::{
 };
 pub use session::{BuffKind, BuffSpec, CalculationSession};
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
-pub use skill_dot::{SkillDotOutput, fill_skill_dot};
+pub use skill_dot::{
+    DotIsFlags, SkillDotInputs, SkillDotOutput, calc_skill_dot, dot_config, fill_skill_dot,
+};
 pub use skill_use_time::{SkillUseTime, calc_skill_use_time};
 pub use stat_boundary::{StatBoundary, stat_boundary};
 pub use stun::{StunInputs, StunResult, calc_stun, calc_stun_threshold};

@@ -491,6 +491,9 @@ pub fn calculate_with_data(
         session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
         // 1b-i-g. 主技能未选 statSet 的 global-only merge（W-J，CalcActiveSkill.lua:124-140）。
         session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
+        // 1b-i-d. 选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG（M4-T4 W-D1；
+        //         statSet baseMods 直挂布尔，calc::skill_dot 据此保留 dotCfg 位）。
+        session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
         session.add_modifiers(support_modifiers(group, data, skill_id));
 
         // 1b-iii. 触发链路（findings 03-01/03-02/03-06；M4-T5 W-E1/W-E2 扩展）：
@@ -2341,6 +2344,42 @@ fn skill_base_modifiers(
         set_key,
     ));
     mods
+}
+
+/// 主技能选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG modifier（M4-T4 W-D1）。
+///
+/// vendor 语义：statSet `baseMods` 的 `skill("dotIsArea", true)` 类条目直挂在
+/// skillData 上（4.5.0.3.4 全量仅 TornadoShot "Tornado" set 一处）；PoBR 经
+/// catalog [`pobr_data::catalog::DotFlags`]（skill_overrides overlay merge）
+/// 取出，注入与 stat 驱动通道（`stat_map_engine::collect_skill_data` 的
+/// dotIs* skill_data 键）同名的 FLAG——`calc::skill_dot::DotIsFlags::from_db`
+/// 是两路的合一消费点。全 false（未核验/无旗标）时返回空，零注入。
+fn dot_flag_modifiers(group: &SocketGroup, data: &BuildData, skill_id: &str) -> Vec<Modifier> {
+    let set_index = group
+        .gem_skills
+        .iter()
+        .find(|g| g.skill_id == skill_id)
+        .and_then(|g| g.stat_set_index);
+    let flags = data.selected_set_dot_flags(skill_id, set_index);
+    let pairs = [
+        ("DotIsArea", flags.area),
+        ("DotIsProjectile", flags.projectile),
+        ("DotIsSpell", flags.spell),
+        ("DotIsAttack", flags.attack),
+        ("DotIsHit", flags.hit),
+    ];
+    pairs
+        .iter()
+        .filter(|(_, on)| *on)
+        .map(|(name, _)| {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("skill.{skill_id}.{name}"),
+            ))
+            .with_raw_text(format!("statSet dot flag {name}"));
+            Modifier::flag(*name).with_origin(origin)
+        })
+        .collect()
 }
 
 /// 把主技能宝石的**品质 stat 段**经 [`mapped_stat_modifiers`] 映射为 `SourceKind::GemQuality`
