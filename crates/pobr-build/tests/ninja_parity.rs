@@ -513,8 +513,10 @@ const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 ///    CombinedDPS 0.52x → 0.82x 收敛但未回带。剩余 per-hit ~0.82x 缺口
 ///    登记 m4-skill-gaps §7（含「attack/spell area damage」暂缓短语——其
 ///    启用前提『冷却线修复后』已满足，归 parser 线）。
-const BASELINE_DOT_HIT5: usize = 4; // 实测 4/37 = 10.8%（M4-k1 twister TotalDotDPS 入列）
-const BASELINE_DOT_HIT10: usize = 4; // 实测 4/37 = 10.8%
+const BASELINE_DOT_HIT5: usize = 3; // 实测 3/37 = 8.1%（M4-k3 已审查例外 3：法术/攻击堆叠速率
+// 过记修复（vendor 逐位钉值 bow-shot 1.342）后 twister 系 dot 0.96x→0.91/0.93x 滑出
+// @5% 带——旧命中部分来自速率过记，真实残差归异常量级线，收敛后回升再上记）
+const BASELINE_DOT_HIT10: usize = 5; // 实测 5/37 = 13.5%（k3 后 twister 系落入 @10 带）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
