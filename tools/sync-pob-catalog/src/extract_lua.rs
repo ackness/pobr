@@ -86,7 +86,9 @@ pub struct ExtractLuaArgs {
     pub files: Vec<String>,
     /// vendor 版本记录文件；缺省取 `<vendor_root>/../../.pob2-version.txt`
     pub version_file: Option<PathBuf>,
-    /// 写入 `_meta.regen_command` 的 `--out` 参数（仅记录，不在此层执行写盘）
+    /// 写入 `_meta.regen_command` 的 `--out` 参数（仅记录，不在此层执行写盘）。
+    /// 约定已是 canonical 仓库相对路径——调用方在赋值处经
+    /// [`canonical_out_for_meta`] 归一化（F1），与实际写盘路径解耦。
     pub out_for_meta: Option<String>,
 }
 
@@ -222,6 +224,80 @@ pub fn invoke_luajit_jsonl<T: serde::de::DeserializeOwned>(
     Ok(entries)
 }
 
+/// 各抽取目标的 canonical overlay 产物文件名（`--what` 目标 / 子命令别名 →
+/// `data/<version>/overlay/` 下的约定文件）。F1 归一化的回退查表。
+fn canonical_overlay_file(target: &str) -> Option<&'static str> {
+    Some(match target {
+        "skill-overrides" => "skill_overrides.json",
+        "gem-quality" => "gem_quality_stats.json",
+        "stat-map" => "skill_stat_map.json",
+        "gem-effects" => "gem_effects.json",
+        "stat-set-labels" => "stat_set_labels.json",
+        "config-options" => "config_options.json",
+        "curse-priority" => "curse_priority.json",
+        "minions" => "minions.json",
+        "spectres" => "spectres.json",
+        "minion-list" => "granted_effect_minions.json",
+        "mod-scalability" => "mod_scalability.json",
+        "runes" => "runes.json",
+        "uniques" => "uniques.json",
+        "catalysts" => "catalysts.json",
+        "parser-rules" => "mod_parser_rules.json",
+        // 子命令别名（非 `--what` 值）：extract-bases / gen-mirage-configs
+        "bases" => "base_item_overrides.json",
+        "mirage-configs" => "mirage_configs.json",
+        _ => return None,
+    })
+}
+
+/// 路径组件是否形如 PoE patch 版本号（`4.5.0.3.4`：纯数字点分、至少两段）。
+fn looks_like_version(component: &str) -> bool {
+    let parts: Vec<&str> = component.split('.').collect();
+    parts.len() >= 2
+        && parts
+            .iter()
+            .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// F1（drill 发现项）：把实际传入的 `--out` 路径归一化为 **canonical 仓库相对
+/// 路径**，供 `_meta.regen_command` 记录——与调用方入参（绝对 / 临时路径）解耦，
+/// 重放到任意位置不再产生 `_meta` 自指差异。
+///
+/// 归一化规则（依序）：
+/// 1. out 路径含 `data` 组件（且其后还有内容）→ 截取最后一个 `data/...` 相对段
+///    （统一 `/` 分隔；临时重放只要保留 `data/<ver>/overlay/<file>` 结构即可
+///    还原 canonical）；
+/// 2. 否则按抽取目标的 canonical 默认路径表 `data/<version>/overlay/<file>`，
+///    `<version>` 从 out 路径或 `--version-file` 路径组件推导；
+/// 3. 推不出 → `None`（`regen_command` 省略 `--out`）。
+pub fn canonical_out_for_meta(
+    out: Option<&Path>,
+    target: &str,
+    version_file: Option<&Path>,
+) -> Option<String> {
+    let out = out?;
+    let comps: Vec<&str> = out.iter().filter_map(|c| c.to_str()).collect();
+    if let Some(pos) = comps.iter().rposition(|c| *c == "data")
+        && pos + 1 < comps.len()
+    {
+        return Some(comps[pos..].join("/"));
+    }
+    let file = canonical_overlay_file(target)?;
+    let version = comps
+        .iter()
+        .copied()
+        .find(|c| looks_like_version(c))
+        .map(str::to_string)
+        .or_else(|| {
+            version_file?
+                .iter()
+                .filter_map(|c| c.to_str())
+                .find(|c| looks_like_version(c))
+                .map(str::to_string)
+        })?;
+    Some(format!("data/{version}/overlay/{file}"))
+}
+
 /// 解析 vendor 版本文件路径：显式 `--version-file` 优先，否则按约定布局
 /// `vendor/PathOfBuilding-PoE2/src` → `vendor/.pob2-version.txt`。
 pub fn resolve_version_file(args: &ExtractLuaArgs) -> PathBuf {
@@ -288,7 +364,8 @@ pub fn build_overlay_meta(
         .collect();
 
     // regen_command 按约定写 canonical 相对路径（从仓库根执行），与实际传入的
-    // 绝对路径解耦，保证不同机器上重跑产物 byte 一致。
+    // 绝对路径解耦，保证不同机器 / 任意 out 位置重跑产物 byte 一致——vendor-root
+    // 在此固定；out 已由调用方经 canonical_out_for_meta 归一化（F1）。
     let mut regen = format!(
         "cargo run -p sync-pob-catalog -- {subcommand} --vendor-root vendor/PathOfBuilding-PoE2/src --files {}",
         args.files.join(",")
@@ -306,4 +383,79 @@ pub fn build_overlay_meta(
         extracted_files,
         regen_command: regen,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::canonical_out_for_meta;
+    use std::path::Path;
+
+    /// 规则 1：out 路径含 `data/` 组件 → 截取相对段（绝对路径 / 临时重放均还原
+    /// canonical，与机器及临时目录无关）。
+    #[test]
+    fn truncates_at_last_data_component() {
+        for raw in [
+            "data/4.5.0.3.4/overlay/curse_priority.json",
+            "/Users/x/codes/pobr/data/4.5.0.3.4/overlay/curse_priority.json",
+            "/tmp/pobr-drill.AbC/replay/data/4.5.0.3.4/overlay/curse_priority.json",
+        ] {
+            assert_eq!(
+                canonical_out_for_meta(Some(Path::new(raw)), "curse-priority", None).as_deref(),
+                Some("data/4.5.0.3.4/overlay/curse_priority.json"),
+                "out = {raw}"
+            );
+        }
+    }
+
+    /// 规则 2：临时路径无 `data/` 组件 → 按 what-target 默认表 + 路径内版本号回退。
+    #[test]
+    fn falls_back_to_what_target_table_with_version_from_path() {
+        assert_eq!(
+            canonical_out_for_meta(
+                Some(Path::new("/tmp/4.5.0.3.4/regen.json")),
+                "minion-list",
+                None,
+            )
+            .as_deref(),
+            Some("data/4.5.0.3.4/overlay/granted_effect_minions.json"),
+        );
+        // 版本号也可从 --version-file 路径组件推导
+        assert_eq!(
+            canonical_out_for_meta(
+                Some(Path::new("/tmp/regen.json")),
+                "bases",
+                Some(Path::new("/snapshots/4.5.0.3.4/.pob2-version.txt")),
+            )
+            .as_deref(),
+            Some("data/4.5.0.3.4/overlay/base_item_overrides.json"),
+        );
+    }
+
+    /// 规则 3：版本推不出 / 未知抽取目标 → None（regen_command 省略 --out）。
+    #[test]
+    fn omits_out_when_underivable() {
+        assert_eq!(
+            canonical_out_for_meta(Some(Path::new("/tmp/regen.json")), "curse-priority", None),
+            None,
+        );
+        assert_eq!(
+            canonical_out_for_meta(
+                Some(Path::new("/tmp/4.5.0.3.4/x.json")),
+                "no-such-target",
+                None,
+            ),
+            None,
+        );
+        assert_eq!(canonical_out_for_meta(None, "curse-priority", None), None);
+    }
+
+    /// 末尾孤立 `data` 组件不触发规则 1（无相对段可截）。
+    #[test]
+    fn trailing_bare_data_component_is_ignored() {
+        assert_eq!(
+            canonical_out_for_meta(Some(Path::new("/tmp/4.5.0.3.4/data")), "runes", None)
+                .as_deref(),
+            Some("data/4.5.0.3.4/overlay/runes.json"),
+        );
+    }
 }
