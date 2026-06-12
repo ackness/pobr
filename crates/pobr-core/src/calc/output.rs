@@ -232,6 +232,22 @@ pub struct OutputTable {
     /// curse 槽占用列表（顺序 = vendor `curseSlots` 合并序：hex 槽 → mark 槽 →
     /// `ignoreCurseLimit` 槽外追加，CalcPerform.lua:2878-2896）。
     pub curse_slots: Vec<String>,
+
+    // === M4-T4 ===
+    // 技能 DoT / 合并 DPS 族契约字段（蓝图 m4-offence-deep §3.3 条目 6，命名
+    // 冻结）。骨架阶段默认 0 中性；W-D1 calc 接线后由 perform fill 段经
+    // `skill_dot::fill_skill_dot` 写入。
+    /// 单实例技能 DoT DPS（PoB2 `TotalDotInstance`，CalcOffence.lua:5831-5929）。
+    pub skill_dot_instance: f64,
+    /// 可叠加实例累计后的技能 DoT DPS（PoB2 `TotalDot`，`:5931`，clamp DotDpsCap）。
+    pub skill_total_dot: f64,
+    /// 全部 DoT 来源合计 DPS（PoB2 `TotalDotDPS`，`:6093-6234`：技能 dot +
+    /// poison/caustic/ignite/burning/bleed/corrupting/decay，clamp DotDpsCap）。
+    pub total_dot_dps: f64,
+    /// 击中 DPS + DoT（PoB2 `WithDotDPS`）。
+    pub with_dot_dps: f64,
+    /// 综合 DPS（PoB2 `CombinedDPS`）。
+    pub combined_dps: f64,
 }
 
 /// 单个召唤物的输出快照（结构同玩家 offence/defence 关键输出的子集）。
@@ -389,6 +405,12 @@ impl Default for OutputTable {
             // M3 T3：curse 面板默认中性（buff_pass 未运行时不影响任何既有输出）。
             enemy_curse_limit: 0.0,
             curse_slots: Vec::new(),
+            // M4-T4：技能 DoT / 合并 DPS 族骨架字段，接线前恒 0 中性。
+            skill_dot_instance: 0.0,
+            skill_total_dot: 0.0,
+            total_dot_dps: 0.0,
+            with_dot_dps: 0.0,
+            combined_dps: 0.0,
         }
     }
 }
@@ -467,6 +489,27 @@ mod m2_default_neutral_tests {
             ("cold_max_hit_pob2", out.cold_max_hit_pob2),
             ("lightning_max_hit_pob2", out.lightning_max_hit_pob2),
             ("chaos_max_hit_pob2", out.chaos_max_hit_pob2),
+        ] {
+            assert_eq!(v, 0.0, "{name} 默认应为 0（中性）");
+        }
+    }
+}
+
+#[cfg(test)]
+mod m4_t4_default_neutral_tests {
+    use super::OutputTable;
+
+    /// M4-T4 中性不变式：技能 DoT / 合并 DPS 族契约字段在 `Default` 下全 0
+    /// （W-D1 calc 接线前不影响任何既有输出/比较）。
+    #[test]
+    fn m4_t4_skill_dot_fields_default_to_zero() {
+        let out = OutputTable::default();
+        for (name, v) in [
+            ("skill_dot_instance", out.skill_dot_instance),
+            ("skill_total_dot", out.skill_total_dot),
+            ("total_dot_dps", out.total_dot_dps),
+            ("with_dot_dps", out.with_dot_dps),
+            ("combined_dps", out.combined_dps),
         ] {
             assert_eq!(v, 0.0, "{name} 默认应为 0（中性）");
         }

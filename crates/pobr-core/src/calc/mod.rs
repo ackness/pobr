@@ -20,6 +20,7 @@ pub mod pool_damage;
 pub mod pool_setup;
 pub mod session;
 pub mod setup_env;
+pub mod skill_dot;
 pub mod skill_mechanics;
 pub mod skill_use_time;
 pub mod stat_boundary;
@@ -85,6 +86,7 @@ pub use pool_setup::{
 };
 pub use session::{BuffKind, BuffSpec, CalculationSession};
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
+pub use skill_dot::{SkillDotOutput, fill_skill_dot};
 pub use skill_use_time::{SkillUseTime, calc_skill_use_time};
 pub use stat_boundary::{StatBoundary, stat_boundary};
 pub use stun::{StunInputs, StunResult, calc_stun, calc_stun_threshold};
