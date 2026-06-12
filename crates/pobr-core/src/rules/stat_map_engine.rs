@@ -802,12 +802,9 @@ fn translate_mod_flags(tokens: &[String]) -> Result<ModFlags, UnsupportedReason>
             "Melee" => ModFlags::MELEE,
             "Projectile" => ModFlags::PROJECTILE,
             "Area" => ModFlags::AREA,
-            // M4-T4 W-D1：Dot 位仅在 PoB2 全位表（feature `modflags-pob2`）下可译
-            // ——dotCfg（`calc::skill_dot`）置 DOT 位后该类 mod（如
-            // `support_rapid_decay_damage_over_time_+%_final` → Damage MORE Dot）
-            // 只命中 DoT 聚合。legacy 5 位表无 Dot 位，维持整条 Unsupported
-            // （宁可欠算不可错算到 hit 管线）。
-            #[cfg(feature = "modflags-pob2")]
+            // M4-T4 W-D1：Dot 位——dotCfg（`calc::skill_dot`）置 DOT 位后该类
+            // mod（如 `support_rapid_decay_damage_over_time_+%_final` →
+            // Damage MORE Dot）只命中 DoT 聚合（M4-i1 切换 PoB2 全位表后常驻）。
             "Dot" => ModFlags::DOT,
             _ => return Err(UnsupportedReason::UnsupportedFlags(tokens.join("|"))),
         };

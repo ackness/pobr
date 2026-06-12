@@ -5,15 +5,11 @@
 //! 当前覆盖与已知缺口（验收报告登记，详见 commit message / skill_dot.rs 模块文档）：
 //! - `<Type>Dot` 基值链路（statmap `base_<type>_damage_to_deal_per_minute / 60`）
 //!   ✅ 已通——`skill_total_dot` 首次非零。
-//! - `modflags-pob2` 开（PoB2 全位表）：本 build TotalDot 对 golden **逐值命中
+//! - PoB2 全位表（M4-i1 切换后常驻）：本 build TotalDot 对 golden **逐值命中
 //!   （ratio = 1.0000）**——Swift Affliction `Damage MORE (Dot)` 经 DOT 位入桶。
-//! - legacy 位表（默认 feature）：`Damage MORE (Dot)` 族整条 Unsupported（无 Dot
-//!   位可译，宁可欠算），结构性欠算 ×1.30 → ratio = 0.7670。
 //! - dotIsSpell 数据缺口：`.dat` 入库不含 value-less 布尔 stat
 //!   （`spell_damage_modifiers_apply_to_skill_dot`），保守剥 Spell 位；本 build
-//!   feature-on 逐值命中说明该缺口在此语料未表现，留待 dotIsSpell 消费 build 验证。
-//!
-//! 默认 feature 的销钉区间防倒退，位表切换 commit 落地后收紧为 5% 命中门。
+//!   逐值命中说明该缺口在此语料未表现，留待 dotIsSpell 消费 build 验证。
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::MinimalInput;
@@ -77,15 +73,9 @@ fn essence_drain_skill_dot_vs_pob2_golden() {
         out.skill_total_dot, golden_total_dot, ratio
     );
 
-    // 回归销钉（feature 双态分别钉）：
-    // - `modflags-pob2` 开（PoB2 全位表，DOT 位入桶）：实测 ratio = 1.0000
-    //   （Swift Affliction `Damage MORE (Dot)` 经 DOT 位命中 dotCfg）→ 5% 命中门；
-    // - legacy（默认）：`Damage MORE (Dot)` 族整条 Unsupported（结构性欠算
-    //   ×1.30，文件头登记），实测 ratio = 0.7670 → 钉防倒退区间，位表切换后删除。
-    #[cfg(feature = "modflags-pob2")]
+    // 回归销钉：PoB2 全位表常驻（M4-i1 切换）下 DOT 位入桶，Swift Affliction
+    // `Damage MORE (Dot)` 经 DOT 位命中 dotCfg——实测 ratio = 1.0000，钉 5% 命中门。
     let pin = 0.95..=1.05;
-    #[cfg(not(feature = "modflags-pob2"))]
-    let pin = 0.70..=0.85;
     assert!(
         pin.contains(&ratio),
         "TotalDot 对 golden 比值超出销钉区间 {pin:?}：ratio={ratio:.4}（pobr={} golden={}）",

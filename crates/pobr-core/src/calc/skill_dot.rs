@@ -113,17 +113,11 @@ impl DotIsFlags {
 /// 构造 dotCfg（PoB2 `CalcOffence.lua:5832-5856`）：置 Dot 位 + 按 dotIs* 剥
 /// Area/Projectile/Spell/Attack/Hit 位 + keyword 去 Hit。
 ///
-/// feature 双态：
-/// - `modflags-pob2` 开：置 [`ModFlags::DOT`]、剥含 [`ModFlags::HIT`] 的全部
-///   五位（与 vendor 位表逐位一致）；
-/// - legacy 5 位表（默认）：无 Dot/Hit 位——用现有近似位（剥
-///   Area/Projectile/Spell/Attack 四位，Dot/Hit 位差异由 feature 切换收口）。
+/// （历史：实施期按 `modflags-pob2` feature 双态编写；M4-i1 已切换 PoB2 全位表
+/// 常驻并删除该 feature，合并适配时去门控——Dot/Hit 位逻辑常驻，与 vendor
+/// 位表逐位一致。）
 pub fn dot_config(cfg: &CalcConfig, dot_is: DotIsFlags) -> CalcConfig {
-    let mut flags = cfg.flags;
-    #[cfg(feature = "modflags-pob2")]
-    {
-        flags |= ModFlags::DOT;
-    }
+    let mut flags = cfg.flags | ModFlags::DOT;
     if !dot_is.area {
         flags = flags.without(ModFlags::AREA);
     }
@@ -136,7 +130,6 @@ pub fn dot_config(cfg: &CalcConfig, dot_is: DotIsFlags) -> CalcConfig {
     if !dot_is.attack {
         flags = flags.without(ModFlags::ATTACK);
     }
-    #[cfg(feature = "modflags-pob2")]
     if !dot_is.hit {
         flags = flags.without(ModFlags::HIT);
     }
