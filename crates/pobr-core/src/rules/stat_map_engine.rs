@@ -709,9 +709,15 @@ fn collect_skill_data(
         items.push(MappedItem::Modifier(Box::new(Modifier::flag(flag_name))));
         return Ok(());
     }
-    // 第一批 skill_data 白名单：duration（vendor `skill("duration", …)`，entry 级
-    // div=1000 已在 merge 公式换算 ms → s）。其余键统计上报。
-    if key == "duration" {
+    // skill_data 白名单（出 [`MappedItem::SkillData`]，编排层按键消费）：
+    // - duration（vendor `skill("duration", …)`，entry 级 div=1000 已在 merge
+    //   公式换算 ms → s）；
+    // - corpseExplosionLifeMultiplier（M4-G，vendor SkillStatMap.lua:309-316：
+    //   `corpse_explosion_monster_life_%` div=100 / `_permillage_physical`
+    //   div=1000 → 尸体生命倍率；消费方 = 编排层尸体爆炸基伤注入，
+    //   CalcOffence.lua:2211-2217）。
+    // 其余键统计上报。
+    if matches!(key, "duration" | "corpseExplosionLifeMultiplier") {
         if !tags.is_empty() {
             return Err(UnsupportedReason::UnsupportedTag(
                 "skill_data 带 tag".into(),

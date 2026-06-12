@@ -457,7 +457,7 @@ const BASELINE_OFF_HIT10: usize = 35; // 实测 35/80 = 43.8%（M3-W5 effective 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
 const PANEL_OFF_HIT5: usize = 27; // 实测 27/80 = 33.8%
-const PANEL_OFF_HIT10: usize = 35; // 实测 35/80 = 43.8%
+const PANEL_OFF_HIT10: usize = 36; // 实测 36/80 = 45.0%（M4-G 尸体爆炸基伤：abyssal-lich TotalDPS 0.09x→1.09x 入 @10%）
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
