@@ -1586,12 +1586,51 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
 
 /// 异常词条族总分发：依次尝试各异常句式族，命中即产出 Parsed。
 fn parse_ailment_special(rest: &str, original: &str) -> Option<ParseOutcome> {
-    let mods = parse_ailment_chance_sentence(rest, original)?;
+    let mods = parse_ailment_chance_sentence(rest, original)
+        .or_else(|| parse_ailment_magnitude(rest, original))?;
     Some(ParseOutcome {
         mods,
         status: ParseStatus::Parsed,
         unparsed: None,
     })
+}
+
+/// 「N% increased/reduced Magnitude of <伤害异常> you inflict」族 →
+/// `AilmentMagnitude` INC/MORE（+ 异常 KeywordFlag 限定）。
+///
+/// vendor 名表（ModParser.lua:781-789）：
+/// - `magnitude of bleeding you inflict`（:781）/ `bleed magnitude`（:784）→ kw=Bleed
+/// - `magnitude of ignite you inflict`（:782）/ `ignite magnitude`（:783）→ kw=Ignite
+/// - `magnitude of poison you inflict`（:785）→ kw=Poison
+/// - `magnitude of ailments [you inflict]`（:787-788）→ 无 kw（全异常）
+/// - `magnitude of damaging ailments you inflict`（:789）→ kw=bor(Poison,Bleed,Ignite)
+///
+/// 消费链：`ailment::scale_magnitude`（`AilmentMagnitude` inc+more，经
+/// `ailment_scoped_cfg` 置位对应 KeywordFlag——ANY-overlap 使 kw 限定词条
+/// 只作用于对应异常，vendor dotCfg 同语义）。
+fn parse_ailment_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let (form, after) = parse_form(rest)?;
+    let kw = match after.as_str() {
+        "magnitude of bleeding you inflict" | "bleed magnitude" => KeywordFlags::BLEED,
+        "magnitude of ignite you inflict" | "ignite magnitude" => KeywordFlags::IGNITE,
+        "magnitude of poison you inflict" => KeywordFlags::POISON,
+        "magnitude of ailments" | "magnitude of ailments you inflict" => KeywordFlags::NONE,
+        "magnitude of damaging ailments you inflict" => {
+            KeywordFlags::POISON | KeywordFlags::BLEED | KeywordFlags::IGNITE
+        }
+        _ => return None,
+    };
+    let mod_type = match form.kind {
+        FormKind::Inc => ModType::Inc,
+        FormKind::More => ModType::More,
+        // 名表族无 BASE 形（`+N% to Magnitude` 不存在），保守不收。
+        FormKind::Base => return None,
+    };
+    let mut m = Modifier::number("AilmentMagnitude", mod_type, form.value).with_source(source);
+    if !kw.is_empty() {
+        m = m.with_keyword_flags(kw);
+    }
+    Some(vec![m])
 }
 
 /// 无符号「{N}% chance to <伤害异常施加>」族 → `<Ailment>Chance` BASE。
@@ -2806,6 +2845,65 @@ mod per_slot_defence_tests {
             assert_eq!(m.value.as_number(), Some(value), "{text}");
             assert_eq!(m.flags, flags, "{text}");
         }
+    }
+
+    /// 「N% increased Magnitude of <异常> you inflict」（vendor ModParser.lua:781-789
+    /// 名表）→ `AilmentMagnitude` INC + 异常 KeywordFlag（M4-l §7.2 族 2）。
+    #[test]
+    fn parses_ailment_magnitude_with_keyword() {
+        // Arrange：树小点原文（bracket 标记）+ 名表各别名。
+        let cases = [
+            (
+                "10% increased [BuffMagnitude|Magnitude] of [Poison] you inflict",
+                10.0,
+                KeywordFlags::POISON,
+            ),
+            (
+                "10% increased [BuffMagnitude|Magnitude] of [Bleeding|Bleeding] you inflict",
+                10.0,
+                KeywordFlags::BLEED,
+            ),
+            (
+                "10% increased [Ignite|Ignite] [BuffMagnitude|Magnitude]",
+                10.0,
+                KeywordFlags::IGNITE,
+            ),
+            (
+                "15% increased Magnitude of Ailments you inflict",
+                15.0,
+                KeywordFlags::NONE,
+            ),
+            (
+                "20% increased Magnitude of Damaging Ailments you inflict",
+                20.0,
+                KeywordFlags::POISON | KeywordFlags::BLEED | KeywordFlags::IGNITE,
+            ),
+        ];
+        for (text, value, kw) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "AilmentMagnitude", "{text}");
+            assert_eq!(m.mod_type, ModType::Inc, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
+            assert_eq!(m.keyword_flags, kw, "{text}");
+            assert!(!m.keyword_flags.requires_match_all(), "{text}");
+        }
+    }
+
+    /// reduced 形 → INC 负值（vendor 同 form 段语义）。
+    #[test]
+    fn parses_ailment_magnitude_reduced_negative() {
+        // Arrange
+        let text = "50% reduced [BuffMagnitude|Magnitude] of [Bleeding|Bleeding] you inflict";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.mods[0].mod_type, ModType::Inc);
+        assert_eq!(out.mods[0].value.as_number(), Some(-50.0));
     }
 
     /// `with poison` / `with bleeding`（ANY，无 MatchAll）→ 对应 KeywordFlag，不带 MATCH_ALL。
