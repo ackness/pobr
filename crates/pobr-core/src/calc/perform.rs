@@ -14,7 +14,7 @@ use super::skill_mechanics::{
     calc_spirit_reservation,
 };
 use super::trigger::{
-    RotationSkill, calc_cwc_trigger_rate_traced, calc_multi_spell_rotation,
+    RotationSkill, TriggerSourceStats, calc_cwc_trigger_rate_traced, calc_multi_spell_rotation,
     resolve_trigger_rate_traced,
 };
 use super::{
@@ -516,33 +516,91 @@ fn fill_trigger(env: &mut Env) {
     let icdr = cooldown_recovery_multiplier(db, cfg);
     // 触发源速率：PoB2 EffectiveSourceRate 取自触发源技能（findTriggerSkill 命中的源技能
     // HitSpeed/Speed，CalcTriggers.lua L74-86/L702-707），而非被触发的主技能自身速率。build 层
-    // 把源技能有效 cast/attack rate 写入 `TriggerSourceRate` BASE 注入；未注入(=0)时回退到主技能
-    // `effective_action_rate`（向后兼容；回退值仅为占位语义）。
+    // 对源技能跑完整子计算（W-E2，GlobalCache 等价物最小版），把**计算后**有效 cast/attack
+    // rate 写入 `TriggerSourceRate` BASE 注入（修 14-G2：源速率随攻速乘区增长）；未注入(=0)
+    // 时回退到主技能 `effective_action_rate`（向后兼容；回退值仅为占位语义）。
     let injected_source_rate = db.sum(ModType::Base, cfg, &[ModName::from("TriggerSourceRate")]);
     let source_rate = if injected_source_rate > 0.0 {
         injected_source_rate
     } else {
         env.player.output.effective_action_rate
     };
+    // 触发源命中/暴击（W-E2 契约 4 `TriggerSourceStats`）：build 层子计算结果经百分数
+    // BASE 词条注入（0 = 未注入，折算跳过；triggerOnUse 链路注入侧不注入命中）。
+    let source_stats = TriggerSourceStats {
+        action_rate: source_rate,
+        hit_chance: db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("TriggerSourceHitChance")],
+        ) / 100.0,
+        crit_chance: db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("TriggerSourceCritChance")],
+        ) / 100.0,
+    };
+    let has_source_stats = source_stats.hit_chance > 0.0 || source_stats.crit_chance > 0.0;
+    // triggerOnCrit（CoC 链路）：cfg 条件（历史通道）或 build 层数据驱动识别注入的
+    // `TriggerOnCrit` FLAG（W-E1 trigger_configs 接线）。
+    let trigger_on_crit =
+        cfg.condition("TriggerOnCrit") || db.flag(cfg, ModName::from("TriggerOnCrit"));
     // 触发几率折算（PoB2 CalcTriggers.lua defaultTriggerHandler L715-777）：默认 1.0（=100%），
-    // 仅攻击源未必中 / triggerOnCrit / 显式触发几率<100% 时降速。触发上下文由 build 层经 cfg 注入。
-    let trigger_chance = trigger_chance_multiplier(cfg, &env.player.output);
+    // 仅攻击源未必中 / triggerOnCrit / 显式触发几率<100% 时降速。源统计注入时优先用**源**的
+    // 命中/暴击（vendor :721/:748 取 GlobalCache 源数据）；未注入退回主技能 output 口径。
+    let trigger_chance = trigger_chance_multiplier(
+        cfg,
+        &env.player.output,
+        has_source_stats.then_some(&source_stats),
+        trigger_on_crit,
+    );
+    // 数据驱动识别注入的触发上下文（W-E1）：
+    // - `TriggerSourceGlobal` FLAG：vendor skillFlags.globalTrigger——不依赖源速率，
+    //   EffectiveSourceRate = TriggerRateCap（CalcTriggers.lua:705-707）。
+    // - `TriggerRateCapOverride` BASE：vendor skillData.triggerRateCapOverride
+    //   （如 The Hidden Blade = 2/s）。
+    // - `SkillIsTriggered` FLAG：无冷却数据的触发关系门控（vendor triggerCD=nil →
+    //   模拟退化为纯源速率）。
+    let is_global = db.flag(cfg, ModName::from("TriggerSourceGlobal"));
+    let rate_cap_override = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("TriggerRateCapOverride")],
+    );
+    let is_triggered_flagged = db.flag(cfg, ModName::from("SkillIsTriggered"));
 
     let mut trace = TraceGraph::new();
 
-    if trigger_cd > 0.0 {
+    if rate_cap_override > 0.0 {
+        // 速率上限覆盖：cap = override（vendor 直接替换帧取整 cap）；global 时源速率
+        // 即 cap，否则 min(cap, sourceRate)；末端乘 triggerChance。
+        let gated = if is_global {
+            rate_cap_override
+        } else {
+            source_rate.min(rate_cap_override)
+        };
+        env.player.output.trigger_rate_cap = round(rate_cap_override);
+        env.player.output.skill_trigger_rate = round(gated * trigger_chance);
+    } else if trigger_cd > 0.0 {
         // 冷却驱动：双门控 min(cap, sourceRate) 后乘 triggerChance（对齐 PoB2
         // calcMultiSpellRotationImpact 单技能稳态：rate ≈ min(cap, sourceRate) × geometric(chance)）。
+        // global 触发不受源速率门控（源速率传 0 → resolve 取 cap）。
         let (tr, _) = resolve_trigger_rate_traced(
             trigger_cd,
             triggered_cd,
             icdr,
-            source_rate,
+            if is_global { 0.0 } else { source_rate },
             cfg.constants.game().server_tick_seconds,
             &mut trace,
         );
         env.player.output.trigger_rate_cap = tr.trigger_rate_cap;
         env.player.output.skill_trigger_rate = round(tr.skill_trigger_rate * trigger_chance);
+    } else if is_triggered_flagged && cwc_trigger_time <= 0.0 {
+        // 识别出触发关系但无冷却数据：vendor triggerCD/triggeredCD 均空 → 触发速率
+        // 纯源速率驱动（global 时无稳态速率语义，保持 0）。cap 面板保持 0（无冷却）。
+        if !is_global && source_rate > 0.0 {
+            env.player.output.skill_trigger_rate = round(source_rate * trigger_chance);
+        }
     } else if cwc_trigger_time > 0.0 {
         // CWC：引导触发，被触发技能冷却 clamp。adds_cast_time 由 build 层经
         // `CWCAddsCastTime` BASE 注入（被触发法术 base_cast_time/cast_speed；无则 0）。
@@ -584,23 +642,41 @@ fn cooldown_recovery_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// 触发几率乘子（fraction，0.0–1.0）：移植 PoB2 `CalcTriggers.lua` `defaultTriggerHandler`
 /// 的 triggerChance（L715-777）。
 ///
-/// - **攻击源命中率**：仅当触发源是攻击技能（`cfg.is_attack()`，对齐 L720
-///   `source.skillTypes[Melee] or [Attack]`）且命中率≠100% 时乘 `output.hit_chance`。
-/// - **triggerOnCrit 暴击率**：仅当 `cfg` 条件 `TriggerOnCrit` 为真（build 层注入）且暴击率≠100%
-///   时乘 `output.crit_chance`（对齐 L743-767）。
+/// - **源命中率**（W-E2 契约 4）：build 层注入触发源子计算统计时，乘**源**命中率
+///   （vendor :721 `GlobalCache.cachedData[uuid].HitChance`——折的是源技能的命中，
+///   非被触发主技能）；未注入时退回历史口径——触发源是攻击技能（`cfg.is_attack()`，
+///   对齐 L720 `source.skillTypes[Melee] or [Attack]`）且命中率≠100% 时乘
+///   `output.hit_chance`（主技能近似）。
+/// - **triggerOnCrit 暴击率**：`cfg` 条件 `TriggerOnCrit`（历史通道）或 build 层
+///   数据驱动识别注入 FLAG 时，乘源暴击率（注入源统计时取**源**暴击，vendor :748；
+///   未注入退回 `output.crit_chance`，对齐 L743-767）。
 /// - **显式触发几率**：`cfg.multipliers["TriggerChance"]`（百分数，build 层注入）<100% 时乘其
 ///   `/100`（对齐 L772-776）。**用 `.get()` 区分「未注入」与「注入 0」——`cfg.multiplier()` 缺省
 ///   返回 0.0 会把未注入误判为 0% 几率。**
 ///
-/// 无任何触发上下文注入时返回 1.0（与历史输出一致）。`hit_chance`/`crit_chance` 在 `output` 中
-/// 已是 fraction，可直接相乘。
-fn trigger_chance_multiplier(cfg: &CalcConfig, output: &OutputTable) -> f64 {
+/// 无任何触发上下文注入时返回 1.0（与历史输出一致）。`hit_chance`/`crit_chance` 在 `output` /
+/// `TriggerSourceStats` 中已是 fraction，可直接相乘。
+fn trigger_chance_multiplier(
+    cfg: &CalcConfig,
+    output: &OutputTable,
+    source_stats: Option<&TriggerSourceStats>,
+    trigger_on_crit: bool,
+) -> f64 {
     let mut chance = 1.0_f64;
-    if cfg.is_attack() && output.hit_chance < 1.0 {
-        chance *= output.hit_chance.clamp(0.0, 1.0);
-    }
-    if cfg.condition("TriggerOnCrit") && output.crit_chance < 1.0 {
-        chance *= output.crit_chance.clamp(0.0, 1.0);
+    match source_stats {
+        // W-E2：源子计算统计在场 → 命中/暴击折算全取源口径（contract 4）。
+        Some(stats) => {
+            chance *= stats.chance_multiplier(trigger_on_crit);
+        }
+        // 历史回退：主技能 output 近似（仅攻击 cfg 折命中）。
+        None => {
+            if cfg.is_attack() && output.hit_chance < 1.0 {
+                chance *= output.hit_chance.clamp(0.0, 1.0);
+            }
+            if trigger_on_crit && output.crit_chance < 1.0 {
+                chance *= output.crit_chance.clamp(0.0, 1.0);
+            }
+        }
     }
     if let Some(&pct) = cfg.multipliers.get("TriggerChance")
         && pct < 100.0

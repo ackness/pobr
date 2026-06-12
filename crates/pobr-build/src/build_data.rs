@@ -20,7 +20,7 @@ use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_data::catalog::{
     ArmourBaseStats, BaseItemDef, CostTypeDef, GemEffectDef, GrantedEffectDef, PassiveNodeDef,
     QualityStat, RuntimeConstants, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
-    StatSetDef, WeaponBaseStats,
+    StatSetDef, TriggerConfigDef, WeaponBaseStats,
 };
 use pobr_gamedata::ruleset::ConfigCatalog;
 use pobr_gamedata::{GameData, LoadError};
@@ -180,6 +180,12 @@ pub struct BuildData {
     /// `Some` 走 `config_interpreter::interpret` 主路径；`None`（旧数据包 /
     /// [`BuildData::empty`]）回退旧 parse_config 产出（R7 缺表容忍）。
     pub config_catalog: Option<Arc<ConfigCatalog>>,
+    /// 触发配置识别索引（M4-T5 W-E1）：`match_effect_ids` 的授予效果 id →
+    /// `overlay/trigger_configs.json` 条目（vendor CalcTriggers.lua configTable
+    /// 转写）。orchestrator 触发段按 socket group 内宝石 / 主技能 id 查此表识别
+    /// gem-link/triggeredBy 关系。缺 overlay 文件（旧数据包）= 空表（识别面为空，
+    /// 行为不变）；未映射 PoE2 id 的条目（多为 PoE1 unique）不入索引。
+    pub trigger_configs: HashMap<String, TriggerConfigDef>,
 }
 
 impl BuildData {
@@ -319,6 +325,25 @@ impl BuildData {
         // 旧 parse_config 产出，R7 容忍），其余加载/解析错误照常上抛。
         let config_catalog = ruleset.config_catalog.map(Arc::new);
 
+        // 触发配置识别索引（W-E1）：按 match_effect_ids 展开为 effect id → 条目。
+        // 缺 overlay 文件（旧数据包）= 空表（识别面为空，行为不变）。
+        let trigger_configs = data
+            .trigger_configs()?
+            .map(|def| {
+                def.configs
+                    .into_iter()
+                    .flat_map(|config| {
+                        config
+                            .match_effect_ids
+                            .clone()
+                            .into_iter()
+                            .map(move |id| (id, config.clone()))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -337,6 +362,7 @@ impl BuildData {
             buff_definitions,
             curse_priority,
             config_catalog,
+            trigger_configs,
         })
     }
 
@@ -362,6 +388,7 @@ impl BuildData {
             buff_definitions: Vec::new(),
             curse_priority: None,
             config_catalog: None,
+            trigger_configs: HashMap::new(),
         }
     }
 

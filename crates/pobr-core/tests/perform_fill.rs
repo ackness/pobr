@@ -1027,6 +1027,135 @@ fn perform_cwc_trigger_rate_limited_by_triggered_cooldown() {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// 集成阶段：触发源统计折算（M4-T5 W-E2，契约 4）
+// ─────────────────────────────────────────────────────────────────
+
+/// 手算对拍（蓝图 §2 W-E2 测试行）：triggerChance = 源命中 × 源暴击。
+/// 源速率 2/s（< cap），hit 80%，crit 35%，TriggerOnCrit →
+/// skill_trigger_rate = 2 × 0.8 × 0.35 = 0.56。
+#[test]
+fn perform_trigger_chance_folds_source_hit_and_crit() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("TriggerCooldownBase", ModType::Base, 0.05), // cap ≈ 15/s
+            Modifier::number("TriggerSourceRate", ModType::Base, 2.0),
+            Modifier::number("TriggerSourceHitChance", ModType::Base, 80.0),
+            Modifier::number("TriggerSourceCritChance", ModType::Base, 35.0),
+            Modifier::flag("TriggerOnCrit"),
+        ],
+    );
+    perform(&mut env).unwrap();
+    assert!(
+        (env.player.output.skill_trigger_rate - 0.56).abs() < 1e-6,
+        "2/s × 0.8 hit × 0.35 crit = 0.56，实得 {}",
+        env.player.output.skill_trigger_rate
+    );
+}
+
+/// CoC 方向性断言（蓝图 §4.1 T5 门禁）：源暴击率↑ → 触发几率↑ → 触发速率↑。
+#[test]
+fn perform_trigger_rate_rises_with_source_crit() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let run = |crit_pct: f64| {
+        let mut env = player_with(
+            base,
+            vec![
+                Modifier::number("TriggerCooldownBase", ModType::Base, 0.05),
+                Modifier::number("TriggerSourceRate", ModType::Base, 2.0),
+                Modifier::number("TriggerSourceHitChance", ModType::Base, 90.0),
+                Modifier::number("TriggerSourceCritChance", ModType::Base, crit_pct),
+                Modifier::flag("TriggerOnCrit"),
+            ],
+        );
+        perform(&mut env).unwrap();
+        env.player.output.skill_trigger_rate
+    };
+    assert!(
+        run(50.0) > run(20.0),
+        "源暴击率↑应使触发速率↑（CoC 方向性）"
+    );
+}
+
+/// 速率上限覆盖（W-E1 trigger_rate_cap_override，如 The Hidden Blade = 2/s）：
+/// cap 取覆盖值，源速率 10/s 被截到 2/s。
+#[test]
+fn perform_trigger_rate_cap_override() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("TriggerRateCapOverride", ModType::Base, 2.0),
+            Modifier::number("TriggerSourceRate", ModType::Base, 10.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    assert!((env.player.output.trigger_rate_cap - 2.0).abs() < 1e-9);
+    assert!((env.player.output.skill_trigger_rate - 2.0).abs() < 1e-9);
+}
+
+/// 无冷却数据的触发关系（`SkillIsTriggered` FLAG 门控）：vendor triggerCD 空 →
+/// 触发速率纯源速率驱动；cap 面板保持 0。
+#[test]
+fn perform_trigger_no_cooldown_uses_source_rate() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::flag("SkillIsTriggered"),
+            Modifier::number("TriggerSourceRate", ModType::Base, 3.0),
+            Modifier::number("TriggerSourceHitChance", ModType::Base, 50.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.trigger_rate_cap, 0.0);
+    assert!(
+        (env.player.output.skill_trigger_rate - 1.5).abs() < 1e-6,
+        "3/s × 0.5 hit = 1.5，实得 {}",
+        env.player.output.skill_trigger_rate
+    );
+}
+
+/// global 触发（`TriggerSourceGlobal` FLAG）：不依赖源速率，
+/// EffectiveSourceRate = TriggerRateCap（vendor CalcTriggers.lua:705-707）。
+#[test]
+fn perform_global_trigger_rate_equals_cap() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        // 主技能速率极低——global 触发不得被其门控。
+        action_rate: 0.1,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("TriggerCooldownBase", ModType::Base, 0.3),
+            Modifier::flag("TriggerSourceGlobal"),
+        ],
+    );
+    perform(&mut env).unwrap();
+    assert!(
+        (env.player.output.skill_trigger_rate - env.player.output.trigger_rate_cap).abs() < 1e-9,
+        "global 触发速率应 = cap：rate={} cap={}",
+        env.player.output.skill_trigger_rate,
+        env.player.output.trigger_rate_cap
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────
 // 集成阶段：异常维度（AilmentEffect / Faster / DotDpsCap / 跨类型施加）
 // ─────────────────────────────────────────────────────────────────
 

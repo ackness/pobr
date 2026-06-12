@@ -453,11 +453,15 @@ pub fn calculate_with_data(
         session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
         session.add_modifiers(support_modifiers(group, data, skill_id));
 
-        // 1b-iii. 触发链路（findings 03-01/03-02/03-06）：主技能若为**内建触发**
-        // （`skill_types` 含 `Triggered`/`InbuiltTrigger`，对应 PoB2 `isTriggered`）则注入
-        // 触发冷却 + 组内触发源速率 BASE，驱动 perform `fill_trigger` 写出非占位的
-        // trigger_rate_cap / skill_trigger_rate。无触发标签时返回空、面板保持 0（向后兼容）。
-        session.add_modifiers(trigger_modifiers(build, data, skill, group, skill_id));
+        // 1b-iii. 触发链路（findings 03-01/03-02/03-06；M4-T5 W-E1/W-E2 扩展）：
+        // ① 数据驱动识别（trigger_configs.json 四级 key → 组内宝石/主技能 id 匹配）；
+        // ② 内建触发（`skill_types` 含 `Triggered`/`InbuiltTrigger`，PoB2 `isTriggered`）。
+        // 注入触发冷却 + 触发源**子计算**统计（计算后攻速/命中/暴击）BASE，驱动 perform
+        // `fill_trigger` 写出非占位 trigger_rate_cap / skill_trigger_rate。无触发关系时
+        // 返回空、面板保持 0（向后兼容）。
+        session.add_modifiers(trigger_modifiers(
+            build, data, options, skill, group, skill_id,
+        ));
     }
 
     // 1b-ii. 技能伤害倍率 → `AddedDamage` MORE，使**附加 flat 伤害**（武器+装备 added）
@@ -2398,38 +2402,90 @@ fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
     )
 }
 
-/// 主技能触发链路 modifier（findings 03-01/03-02/03-06 的 build 层接线）。
+// ═════════════════════════ M4-T5 触发段（W-E1/W-E2）═════════════════════════
+
+thread_local! {
+    /// 触发子计算递归深度（W-E2 递归防护，蓝图 §5「触发子计算递归/循环」行）：
+    /// 源技能子计算进行中（>0）时 [`trigger_modifiers`] 整体早退——子计算 env
+    /// 强制剥离 trigger 关系（一层深度），杜绝触发链互指的无限递归。
+    static TRIGGER_SUBCALC_DEPTH: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
+}
+
+/// 深度护栏 RAII（panic 安全：Drop 恢复计数）。
+struct TriggerDepthGuard;
+
+impl TriggerDepthGuard {
+    fn enter() -> Self {
+        TRIGGER_SUBCALC_DEPTH.with(|d| d.set(d.get().saturating_add(1)));
+        TriggerDepthGuard
+    }
+}
+
+impl Drop for TriggerDepthGuard {
+    fn drop(&mut self) {
+        TRIGGER_SUBCALC_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
+    }
+}
+
+/// 数据驱动识别结果（W-E1）：命中的触发配置 + 触发器宝石（组内 meta/support；
+/// 主技能自身命中 skill-kind key 时为 `None`）。
+struct RecognizedTrigger<'a> {
+    config: &'a pobr_data::catalog::TriggerConfigDef,
+    trigger_gem: Option<&'a crate::build::GemSkillRef>,
+}
+
+/// 主技能触发链路 modifier（findings 03-01/03-02/03-06 的 build 层接线；
+/// M4-T5 W-E1/W-E2 扩展）。
 ///
-/// PoB2 触发面板（`CalcTriggers.lua`）由「触发源技能速率」「触发冷却」「被触发技能冷却」
-/// 三要素决定。PoBR 当前数据模型**无 gem-link / triggeredBy 关系**（无法从数据知道哪个
-/// support 把哪个源技能连到被触发技能），故只对**内建触发**（`skill_types` 含 `Triggered` /
-/// `InbuiltTrigger`，对应 PoB2 `isTriggered`：物品/升华自带的自动触发技能）做可达接线：
+/// 两条识别路径（先数据驱动，后内建触发；命中前者即返回）：
 ///
-/// - 被触发的主技能有冷却（`cooldown_s`）→ 注入 `TriggeredSkillCooldown` + `TriggerCooldownBase`
-///   BASE（秒）。无独立触发宝石冷却数据时，二者同取被触发技能冷却（PoB2
-///   `actionCooldown = max(triggerCD, triggeredCD)` 在此退化为该单一冷却）。驱动 `fill_trigger`
-///   冷却分支算出 `trigger_rate_cap = 1/ceil_tick(cd/icdr)`。
-/// - 触发源速率（PoB2 `EffectiveSourceRate`，`findTriggerSkill` 取组内最高 cast/attack rate）：
-///   扫描**同插槽组**内非辅助、非触发的伤害技能（≠ 主技能），取其有效行动速率
-///   `1/use_time` 注入 `TriggerSourceRate` BASE。组内无独立源技能时**不注入**——`fill_trigger`
-///   回退到主技能 `effective_action_rate`（占位语义；多数内建触发的源是物品/升华事件，
-///   其真实频率未入库，留作 defer）。
+/// 1. **数据驱动识别（W-E1，`overlay/trigger_configs.json`）**：vendor
+///    `CalcTriggers.lua:1452-1455` 四级 key 查找的 PoBR 投影——条目的
+///    `match_effect_ids`（PoE2 授予效果 id）命中**组内宝石**（= triggeredBy
+///    关系，如 `MetaCastOnCritPlayer`）或**主技能自身**（= skill key）。命中后
+///    按条目声明性事实注入：触发冷却（覆盖值 > 触发宝石冷却 > 被触发冷却）、
+///    `TriggerRateCapOverride`、global 标记、源技能谓词匹配 + 子计算统计。
+/// 2. **内建触发**（`skill_types` 含 `Triggered`/`InbuiltTrigger`，对应 PoB2
+///    `isTriggered`：物品/升华自带的自动触发技能）：注入被触发冷却 + 组内源速率。
 ///
-/// **defer（受限于数据模型）**：① 触发 support 宝石（Cast on Crit / Trigger 支援）的链路——
-/// 无 gem→trigger 映射，无法判定 `triggerOnCrit` / 触发宝石独立冷却；② CWC（`triggerTime` /
-/// `CWCAddsCastTime` 未入库，无 CastWhileChannelling skill_type）；③ 多被触发技能 per-skill
-/// 冷却轮转（需 gem-link 列表）。这些待数据管线补 `triggeredBy` / `triggerTime` 后接入。
+/// **源速率（W-E2，修 14-G2）**：源技能跑一次完整 [`calculate_with_data`] 子计算
+/// （PoB2 GlobalCache 等价物最小版，`CalcTriggers.lua:74-86`
+/// `cachedData[uuid].HitSpeed or Speed`），取其**计算后**有效行动速率注入
+/// `TriggerSourceRate` BASE——堆攻速的 CoC build 源速率随攻速乘区增长。命中/暴击
+/// 经 `TriggerSourceHitChance`/`TriggerSourceCritChance` BASE（百分数）注入，
+/// perform `fill_trigger` 构造 [`pobr_core::calc::TriggerSourceStats`]（契约 4）
+/// 折入触发几率（`:716-770`）。子计算护栏：深度 >0 即剥离（本函数顶部早退）、
+/// 源 = 被触发自身（循环）退回基础 `1/use_time`。
+///
+/// **defer**：① `trigger_chance_stat`/`source_rate_stat` 的 stat 取值（值在
+/// build mod 域，注入来源未接）；② handler 条目真逻辑（registry 待接，计数监控
+/// <100）；③ 多被触发技能 per-skill 冷却轮转（需完整 gem-link 列表）；④ 跨调用
+/// 子计算缓存——既有 `CalcCache` 只包装 text-only `calculate`，(build hash,
+/// skill id) 键位扩展待缓存层改造（单次计算内子计算只跑一次，热路径可控）。
 fn trigger_modifiers(
     build: &Build,
     data: &BuildData,
+    options: &DataOrchestratorOptions,
     main_skill: &ResolvedSkillLevel,
     group: &SocketGroup,
     main_skill_id: &str,
 ) -> Vec<Modifier> {
+    // W-E2 递归防护：源技能子计算 env 中不再识别/注入任何触发关系（一层深度剥离）。
+    if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) > 0 {
+        return Vec::new();
+    }
+
+    // —— 路径 1：W-E1 数据驱动识别（命中即返回，含「识别但门控不满足 → 空」）。
+    if let Some(mods) =
+        config_trigger_modifiers(build, data, options, main_skill, group, main_skill_id)
+    {
+        return mods;
+    }
+
+    // —— 路径 2：内建触发（PoB2 isTriggered：skillTypes 含 Triggered 或 InbuiltTrigger）。
     let Some(effect) = data.granted_effects.get(main_skill_id) else {
         return Vec::new();
     };
-    // 内建触发判定（PoB2 isTriggered：skillTypes 含 Triggered 或 InbuiltTrigger）。
     let is_triggered = effect
         .skill_types
         .iter()
@@ -2439,51 +2495,419 @@ fn trigger_modifiers(
     }
 
     let mut mods = Vec::new();
-    let mk = |stat: &str, value: f64, label: &str| {
-        let origin = ModifierSource::new(SourceId::new(
-            SourceKind::SkillGem,
-            format!("trigger.{stat}"),
-        ))
-        .with_raw_text(label);
-        Modifier::number(stat, ModType::Base, value).with_origin(origin)
-    };
 
-    // 被触发技能冷却 → 触发冷却 + 被触发冷却 BASE（同值，见上文 actionCooldown 退化）。
+    // 被触发技能冷却 → 触发冷却 + 被触发冷却 BASE（同值；无独立触发宝石冷却数据时
+    // PoB2 `actionCooldown = max(triggerCD, triggeredCD)` 退化为该单一冷却）。
     if let Some(cd) = main_skill.cooldown_s
         && cd > 0.0
     {
-        mods.push(mk(
+        mods.push(mk_trigger_mod(
             "TriggeredSkillCooldown",
             cd,
             "triggered skill base cooldown",
         ));
-        mods.push(mk("TriggerCooldownBase", cd, "trigger base cooldown"));
+        mods.push(mk_trigger_mod(
+            "TriggerCooldownBase",
+            cd,
+            "trigger base cooldown",
+        ));
     }
 
-    // 组内触发源技能有效速率 → TriggerSourceRate BASE（PoB2 EffectiveSourceRate）。
-    if let Some(rate) = in_group_trigger_source_rate(build, data, group, main_skill_id) {
-        mods.push(mk(
-            "TriggerSourceRate",
-            rate,
-            "in-group trigger source effective rate",
-        ));
+    // 组内触发源技能 → 子计算统计（W-E2）→ TriggerSourceRate（计算后攻速）+
+    // 源命中折入。组内无候选时不注入——fill_trigger 回退主技能速率（占位语义）。
+    if let Some(stats) = in_group_trigger_source_stats(build, data, options, group, main_skill_id) {
+        push_source_stat_mods(
+            &mut mods, &stats, /* fold_hit */ true, /* fold_crit */ false,
+        );
     }
 
     mods
 }
 
-/// 扫描主技能**同插槽组**内的触发源技能有效速率（PoB2 `findTriggerSkill`：取组内最高
-/// cast/attack rate 的非触发伤害技能）。返回 `1/use_time`（次/秒）；无候选返回 `None`。
-///
-/// 候选条件：非辅助、非触发（不含 `Triggered`/`InbuiltTrigger`）、是伤害技能、≠ 主技能，
-/// 且有正的 `use_time_s`。多候选取速率最大者（对齐 PoB2 highest-APS 选取）。
-fn in_group_trigger_source_rate(
+/// 触发 BASE 词条构造（SkillGem 归因，id 前缀 `trigger.`）。
+fn mk_trigger_mod(stat: &str, value: f64, label: &str) -> Modifier {
+    let origin = ModifierSource::new(SourceId::new(
+        SourceKind::SkillGem,
+        format!("trigger.{stat}"),
+    ))
+    .with_raw_text(label);
+    Modifier::number(stat, ModType::Base, value).with_origin(origin)
+}
+
+/// 触发 FLAG 词条构造（SkillGem 归因）。
+fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
+    let origin = ModifierSource::new(SourceId::new(
+        SourceKind::SkillGem,
+        format!("trigger.{name}"),
+    ))
+    .with_raw_text(label);
+    Modifier::flag(name).with_origin(origin)
+}
+
+/// 源统计注入（契约 4 传输面）：速率恒注入；命中/暴击按链路口径注入百分数
+/// （`fold_hit` = 非 triggerOnUse 的默认 handler 折命中；`fold_crit` = CoC 链路）。
+fn push_source_stat_mods(
+    mods: &mut Vec<Modifier>,
+    stats: &pobr_core::calc::TriggerSourceStats,
+    fold_hit: bool,
+    fold_crit: bool,
+) {
+    mods.push(mk_trigger_mod(
+        "TriggerSourceRate",
+        stats.action_rate,
+        "trigger source effective rate (sub-calculated)",
+    ));
+    if fold_hit && stats.hit_chance > 0.0 {
+        mods.push(mk_trigger_mod(
+            "TriggerSourceHitChance",
+            stats.hit_chance * 100.0,
+            "trigger source hit chance",
+        ));
+    }
+    if fold_crit && stats.crit_chance > 0.0 {
+        mods.push(mk_trigger_mod(
+            "TriggerSourceCritChance",
+            stats.crit_chance * 100.0,
+            "trigger source crit chance",
+        ));
+    }
+}
+
+/// W-E1 数据驱动触发接线：识别命中返回注入词条（`Some(vec![])` = 识别命中但
+/// `requires_condition` 门控不满足，对齐 vendor disable——触发面板保持 0 且
+/// **不再落入**内建触发路径）；未命中返回 `None`（走路径 2）。
+fn config_trigger_modifiers(
     build: &Build,
     data: &BuildData,
+    options: &DataOrchestratorOptions,
+    main_skill: &ResolvedSkillLevel,
     group: &SocketGroup,
     main_skill_id: &str,
-) -> Option<f64> {
-    let mut best: Option<f64> = None;
+) -> Option<Vec<Modifier>> {
+    let recognized = recognize_trigger_config(data, group, main_skill_id)?;
+    let config = recognized.config;
+
+    // requires_condition 门控（vendor `modDB:Flag(nil, "Condition:X")`，如
+    // The Hidden Blade 需 Phasing、Cast on Melee Kill 需 KilledRecently；
+    // 不满足时 vendor 置 disable / 退化自施法）。
+    if let Some(cond_name) = &config.requires_condition {
+        let build_cfg = build.config.to_calc_config();
+        if !build_cfg.condition(cond_name) {
+            return Some(Vec::new());
+        }
+    }
+
+    let mut mods = vec![mk_trigger_flag(
+        "SkillIsTriggered",
+        "trigger relation recognized (trigger_configs)",
+    )];
+
+    // 被触发技能冷却。
+    if let Some(cd) = main_skill.cooldown_s
+        && cd > 0.0
+    {
+        mods.push(mk_trigger_mod(
+            "TriggeredSkillCooldown",
+            cd,
+            "triggered skill base cooldown",
+        ));
+    }
+    // 触发冷却：条目覆盖值（vendor `skillData.cooldown = N`）> 触发宝石自身冷却
+    // （`triggeredBy.grantedEffect.levels[lvl].cooldown`）> 被触发技能冷却。
+    let trigger_gem_cd = recognized.trigger_gem.and_then(|gem| {
+        resolve_skill_level_with_gem_bonus(
+            build,
+            data,
+            &gem.skill_id,
+            gem.gem_level,
+            gem.stat_set_index,
+        )
+        .and_then(|resolved| resolved.cooldown_s)
+    });
+    if let Some(cd) = config
+        .cooldown_override_s
+        .or(trigger_gem_cd)
+        .or(main_skill.cooldown_s)
+        && cd > 0.0
+    {
+        mods.push(mk_trigger_mod(
+            "TriggerCooldownBase",
+            cd,
+            "trigger base cooldown",
+        ));
+    }
+    // 速率上限覆盖（vendor `skillData.triggerRateCapOverride`，如 Hidden Blade 2/s）。
+    if let Some(cap) = config.trigger_rate_cap_override
+        && cap > 0.0
+    {
+        mods.push(mk_trigger_mod(
+            "TriggerRateCapOverride",
+            cap,
+            "trigger rate cap override",
+        ));
+    }
+
+    // global / 源 = 自身：不依赖源技能速率（vendor `EffectiveSourceRate = TriggerRateCap`）。
+    if config.global_trigger || config.source_is_self {
+        mods.push(mk_trigger_flag(
+            "TriggerSourceGlobal",
+            "global trigger (source rate = rate cap)",
+        ));
+        return Some(mods);
+    }
+
+    if config.trigger_on_crit {
+        mods.push(mk_trigger_flag(
+            "TriggerOnCrit",
+            "trigger chance folds source crit chance",
+        ));
+    }
+
+    // 源技能：组内匹配受限谓词的非触发伤害技能（最高基础速率者，对齐 PoB2
+    // findTriggerSkill highest-APS）→ W-E2 子计算取计算后统计；子计算不可用
+    // （递归护栏/循环/失败）退回基础 `1/use_time`。
+    if let Some(source_gem) =
+        find_trigger_source_gem(build, data, group, main_skill_id, &recognized)
+    {
+        let stats = trigger_source_stats(build, data, options, group, source_gem, main_skill_id)
+            .or_else(|| {
+                base_rate_of(build, data, source_gem).map(|rate| {
+                    pobr_core::calc::TriggerSourceStats {
+                        action_rate: rate,
+                        ..Default::default()
+                    }
+                })
+            });
+        if let Some(stats) = stats {
+            // triggerOnUse 链路不折命中/暴击（vendor :721 `not config.triggerOnUse`）。
+            let fold_hit = !config.trigger_on_use;
+            let fold_crit = config.trigger_on_crit;
+            push_source_stat_mods(&mut mods, &stats, fold_hit, fold_crit);
+        }
+    }
+
+    Some(mods)
+}
+
+/// 识别触发关系（W-E1 四级 key 的 PoBR 投影，键 = `match_effect_ids`）：
+/// 先查主技能自身（skill-kind key，如 Tempest Shield），再扫组内其他宝石
+/// （triggeredBy / unique 触发器，如 `MetaCastOnCritPlayer`）。
+fn recognize_trigger_config<'a>(
+    data: &'a BuildData,
+    group: &'a SocketGroup,
+    main_skill_id: &str,
+) -> Option<RecognizedTrigger<'a>> {
+    if data.trigger_configs.is_empty() {
+        return None;
+    }
+    if let Some(config) = data.trigger_configs.get(main_skill_id) {
+        return Some(RecognizedTrigger {
+            config,
+            trigger_gem: None,
+        });
+    }
+    for gem in &group.gem_skills {
+        if gem.skill_id == main_skill_id {
+            continue;
+        }
+        if let Some(config) = data.trigger_configs.get(&gem.skill_id) {
+            return Some(RecognizedTrigger {
+                config,
+                trigger_gem: Some(gem),
+            });
+        }
+    }
+    None
+}
+
+/// 组内触发源宝石选择（vendor `findTriggerSkill` 同槽语义 + 受限谓词过滤）：
+/// 非辅助、非触发、伤害技能、≠ 主技能、≠ 触发器宝石、过 `source_skill_cond`；
+/// 多候选取基础速率（`1/use_time`）最大者。
+fn find_trigger_source_gem<'b>(
+    build: &Build,
+    data: &BuildData,
+    group: &'b SocketGroup,
+    main_skill_id: &str,
+    recognized: &RecognizedTrigger<'_>,
+) -> Option<&'b crate::build::GemSkillRef> {
+    let mut best: Option<(&crate::build::GemSkillRef, f64)> = None;
+    for gem in &group.gem_skills {
+        if gem.skill_id == main_skill_id {
+            continue;
+        }
+        if let Some(trigger_gem) = recognized.trigger_gem
+            && gem.skill_id == trigger_gem.skill_id
+        {
+            continue;
+        }
+        let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+            continue;
+        };
+        if effect.is_support
+            || effect
+                .skill_types
+                .iter()
+                .any(|t| t == "Triggered" || t == "InbuiltTrigger")
+            || !is_damage_skill(data, &gem.skill_id)
+        {
+            continue;
+        }
+        if let Some(cond) = &recognized.config.source_skill_cond
+            && !source_cond_matches(build, data, &effect.skill_types, cond)
+        {
+            continue;
+        }
+        let Some(rate) = base_rate_of(build, data, gem) else {
+            continue;
+        };
+        if best.is_none_or(|(_, b)| rate > b) {
+            best = Some((gem, rate));
+        }
+    }
+    best.map(|(gem, _)| gem)
+}
+
+/// 受限谓词求值（R1 三字段：any_skill_types / all_mod_flags / not_skill_types）。
+/// mod flags 按主手武器类型位（`weapon_types` 表 flag + one_hand）近似——技能
+/// cfg flags 的武器位即由主手武器派生（vendor skillCfg.flags 同源）。
+fn source_cond_matches(
+    build: &Build,
+    data: &BuildData,
+    skill_types: &[String],
+    cond: &pobr_data::catalog::TriggerSkillCondDef,
+) -> bool {
+    if !cond.any_skill_types.is_empty()
+        && !cond.any_skill_types.iter().any(|t| skill_types.contains(t))
+    {
+        return false;
+    }
+    if cond.not_skill_types.iter().any(|t| skill_types.contains(t)) {
+        return false;
+    }
+    if !cond.all_mod_flags.is_empty() {
+        let Some(weapon) = build
+            .items
+            .get(&EquipmentSlot::Weapon1)
+            .and_then(|item| data.base_items.get(&item.base.to_string()))
+            .and_then(|def| weapon_type_info(data, &def.item_class))
+        else {
+            return false;
+        };
+        for flag in &cond.all_mod_flags {
+            let matched = match flag.as_str() {
+                "Weapon1H" => weapon.one_hand,
+                "Weapon2H" => !weapon.one_hand,
+                other => weapon.flag == other,
+            };
+            if !matched {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+/// 源宝石基础速率（子计算回退口径 + 候选排序键）：`1/use_time`；攻击技能无
+/// 自带 use_time 时取武器基底攻速（含 attackSpeedMultiplier，与主装配路径
+/// `weapon_contribution` 同源——vendor 攻击源速率本就由武器决定）。
+fn base_rate_of(build: &Build, data: &BuildData, gem: &crate::build::GemSkillRef) -> Option<f64> {
+    let resolved = resolve_skill_level_with_gem_bonus(
+        build,
+        data,
+        &gem.skill_id,
+        gem.gem_level,
+        gem.stat_set_index,
+    )?;
+    if let Some(use_time) = resolved.use_time_s
+        && use_time > 0.0
+    {
+        return Some(1.0 / use_time);
+    }
+    let weapon = weapon_contribution(build, data, &gem.skill_id, &resolved)?;
+    if weapon.attack_rate <= 0.0 {
+        return None;
+    }
+    let asm = resolved
+        .attack_speed_multiplier
+        .map_or(1.0, |m| 1.0 + m / 100.0);
+    Some(weapon.attack_rate * asm)
+}
+
+/// W-E2 源技能完整子计算（PoB2 GlobalCache 等价物最小版）：同一 build / 同组，
+/// 主动技能换成源宝石（`main_active_skill` 指到其组内非 support 序号），跑完整
+/// [`calculate_with_data`] 取 `{effective_action_rate, hit_chance, crit_chance}`。
+///
+/// 护栏（蓝图 §5）：
+/// - **循环检测**：源 = 被触发技能自身 → `None`（调用方退回基础 `1/use_time`）；
+/// - **一层深度**：深度 ≥1 直接 `None`（深层触发关系已在 [`trigger_modifiers`]
+///   顶部剥离，此处为直接调用的冗余护栏）；
+/// - 子计算失败（数据缺口等）→ `None`，不放大错误。
+fn trigger_source_stats(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    group: &SocketGroup,
+    source_gem: &crate::build::GemSkillRef,
+    main_skill_id: &str,
+) -> Option<pobr_core::calc::TriggerSourceStats> {
+    if source_gem.skill_id == main_skill_id {
+        // 触发循环（源技能又是被触发技能）：退回基础 use_time 口径（蓝图 §5）。
+        return None;
+    }
+    if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) >= 1 {
+        return None;
+    }
+
+    let group_idx = build
+        .socket_groups
+        .iter()
+        .position(|g| std::ptr::eq(g, group))?;
+    // 源宝石在组内**非 support** 序列的 1-based 序号（pick_group_main_skill 的选择键）。
+    let active_pos = group
+        .gem_skills
+        .iter()
+        .filter(|g| {
+            !data
+                .granted_effects
+                .get(&g.skill_id)
+                .map(|e| e.is_support)
+                .unwrap_or(false)
+        })
+        .position(|g| std::ptr::eq(g, source_gem))?
+        + 1;
+
+    let mut sub_build = build.clone();
+    sub_build.main_socket_group = Some(group_idx + 1);
+    sub_build.socket_groups[group_idx].main_active_skill = Some(active_pos);
+
+    let _guard = TriggerDepthGuard::enter();
+    let out = calculate_with_data(&sub_build, data, options).ok()?;
+    let action_rate = if out.effective_action_rate > 0.0 {
+        out.effective_action_rate
+    } else {
+        out.action_rate
+    };
+    if action_rate <= 0.0 {
+        return None;
+    }
+    Some(pobr_core::calc::TriggerSourceStats {
+        action_rate,
+        hit_chance: out.hit_chance,
+        crit_chance: out.crit_chance,
+    })
+}
+
+/// 内建触发的组内源技能统计（路径 2 的 W-E2 升级版）：按既有候选规则（非辅助、
+/// 非触发、伤害技能、≠ 主技能）选基础速率最高者，再子计算取**计算后**统计；
+/// 子计算不可用退回基础 `1/use_time`（修 14-G2 前的旧口径，作回退面）。
+fn in_group_trigger_source_stats(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    group: &SocketGroup,
+    main_skill_id: &str,
+) -> Option<pobr_core::calc::TriggerSourceStats> {
+    let mut best: Option<(&crate::build::GemSkillRef, f64)> = None;
     for gem in &group.gem_skills {
         if gem.skill_id == main_skill_id {
             continue;
@@ -2491,38 +2915,34 @@ fn in_group_trigger_source_rate(
         let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
             continue;
         };
-        if effect.is_support {
-            continue;
-        }
-        // 源技能自身不应是触发技能（PoB2 findTriggerSkill 跳过 isTriggered）。
-        if effect
-            .skill_types
-            .iter()
-            .any(|t| t == "Triggered" || t == "InbuiltTrigger")
+        if effect.is_support
+            || effect
+                .skill_types
+                .iter()
+                .any(|t| t == "Triggered" || t == "InbuiltTrigger")
+            || !is_damage_skill(data, &gem.skill_id)
         {
             continue;
         }
-        if !is_damage_skill(data, &gem.skill_id) {
-            continue;
-        }
-        let Some(resolved) = resolve_skill_level_with_gem_bonus(
-            build,
-            data,
-            &gem.skill_id,
-            gem.gem_level,
-            gem.stat_set_index,
-        ) else {
+        let Some(rate) = base_rate_of(build, data, gem) else {
             continue;
         };
-        if let Some(use_time) = resolved.use_time_s
-            && use_time > 0.0
-        {
-            let rate = 1.0 / use_time;
-            best = Some(best.map_or(rate, |b: f64| b.max(rate)));
+        if best.is_none_or(|(_, b)| rate > b) {
+            best = Some((gem, rate));
         }
     }
-    best
+    let (source_gem, base_rate) = best?;
+    Some(
+        trigger_source_stats(build, data, options, group, source_gem, main_skill_id).unwrap_or(
+            pobr_core::calc::TriggerSourceStats {
+                action_rate: base_rate,
+                ..Default::default()
+            },
+        ),
+    )
 }
+
+// ═══════════════════════ M4-T5 触发段结束 ═══════════════════════
 
 /// 组级 support 适用性裁决结果（M1 蓝图契约 C2）。
 ///
@@ -5223,7 +5643,8 @@ mod tests {
             cooldown_s: Some(0.5),
             ..ResolvedSkillLevel::default()
         };
-        let mods = trigger_modifiers(&build, &data, &triggered, &group, "TrigSkill");
+        let opts = DataOrchestratorOptions::default();
+        let mods = trigger_modifiers(&build, &data, &opts, &triggered, &group, "TrigSkill");
         let names: Vec<&str> = mods.iter().map(|m| m.name.as_str()).collect();
         assert!(names.contains(&"TriggeredSkillCooldown"));
         assert!(names.contains(&"TriggerCooldownBase"));
@@ -5233,8 +5654,272 @@ mod tests {
             cooldown_s: Some(0.5),
             ..ResolvedSkillLevel::default()
         };
-        let mods_none = trigger_modifiers(&build, &data, &normal, &group, "NormalSkill");
+        let mods_none = trigger_modifiers(&build, &data, &opts, &normal, &group, "NormalSkill");
         assert!(mods_none.is_empty(), "非触发技能不应注入触发词条");
+    }
+
+    // ── M4-T5 W-E1/W-E2：trigger_configs 识别 + 源速率子计算 ─────────────────
+
+    /// CoC fixture（蓝图 §4.1 T5 门禁点名）：组 = [攻击, MetaCastOnCritPlayer, 法术]，
+    /// 主技能 = 法术。W-E1 经 trigger_configs 的 `match_effect_ids` 识别出 CoC 触发
+    /// 关系（trigger 面板不再退化为自施法 0），W-E2 折入源命中/暴击。
+    #[test]
+    fn coc_group_recognized_and_trigger_rate_filled() {
+        let data = repo_data();
+        assert!(
+            data.trigger_configs.contains_key("MetaCastOnCritPlayer"),
+            "trigger_configs overlay 应含 CoC join 键"
+        );
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 80,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("ArmourBreakerPlayer", 10)
+                    .with_gem_skill("MetaCastOnCritPlayer", 10)
+                    .with_gem_skill("FireballPlayer", 10)
+                    .with_main_active_skill(3),
+            )
+            .with_main_socket_group(1);
+        let out = calculate_with_data(&build, &data, &DataOrchestratorOptions::default())
+            .expect("coc calc");
+
+        assert!(
+            out.skill_trigger_rate > 0.0,
+            "CoC 识别后触发速率应非占位 0，实得 {}",
+            out.skill_trigger_rate
+        );
+        // 暴击折入（trigger_on_crit）：触发速率应明显低于源攻速（源暴击率 ≪ 100%）。
+        let source_stats = trigger_source_stats(
+            &build,
+            &data,
+            &DataOrchestratorOptions::default(),
+            &build.socket_groups[0],
+            &build.socket_groups[0].gem_skills[0],
+            "FireballPlayer",
+        )
+        .expect("source sub-calc");
+        assert!(
+            out.skill_trigger_rate < source_stats.action_rate,
+            "CoC 触发速率 {} 应被源暴击率折减到低于源速率 {}",
+            out.skill_trigger_rate,
+            source_stats.action_rate
+        );
+    }
+
+    /// CoC 方向性断言（蓝图 §4.1 T5 门禁）：源技能 +100% 攻速 → 触发速率（与 DPS
+    /// 的速率因子）同步上升——14-G2「源速率不随攻速增长」的回归防线。
+    #[test]
+    fn coc_directional_attack_speed_raises_trigger_rate() {
+        let data = repo_data();
+        let mk_build = || {
+            Build::new()
+                .with_character(CharacterIdentity {
+                    level: 80,
+                    class_name: "Sorceress".into(),
+                    ascendancy_name: String::new(),
+                })
+                .add_socket_group(
+                    SocketGroup::new()
+                        .with_gem_skill("ArmourBreakerPlayer", 10)
+                        .with_gem_skill("MetaCastOnCritPlayer", 10)
+                        .with_gem_skill("FireballPlayer", 10)
+                        .with_main_active_skill(3),
+                )
+                .with_main_socket_group(1)
+        };
+        let base_out = calculate_with_data(&mk_build(), &data, &DataOrchestratorOptions::default())
+            .expect("coc base");
+        let fast_opts = DataOrchestratorOptions {
+            extra_modifier_texts: vec!["100% increased Attack Speed".to_string()],
+            ..Default::default()
+        };
+        let fast_out = calculate_with_data(&mk_build(), &data, &fast_opts).expect("coc fast");
+        assert!(
+            fast_out.skill_trigger_rate > base_out.skill_trigger_rate * 1.5,
+            "+100% 攻速应近乎翻倍触发速率（14-G2 修复）：{} → {}",
+            base_out.skill_trigger_rate,
+            fast_out.skill_trigger_rate
+        );
+    }
+
+    /// W-E2 递归防护（蓝图 §5）：① 循环（源 = 被触发自身）→ None（退基础口径）；
+    /// ② 深度护栏内（子计算进行中）→ None；③ 护栏内 trigger_modifiers 整体剥离。
+    #[test]
+    fn trigger_subcalc_recursion_guards() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 80,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("ArmourBreakerPlayer", 10)
+                    .with_gem_skill("FireballPlayer", 10),
+            )
+            .with_main_socket_group(1);
+        let opts = DataOrchestratorOptions::default();
+        let group = &build.socket_groups[0];
+
+        // ① 循环检测：源宝石 id == 被触发主技能 id。
+        assert!(
+            trigger_source_stats(
+                &build,
+                &data,
+                &opts,
+                group,
+                &group.gem_skills[0],
+                "ArmourBreakerPlayer"
+            )
+            .is_none(),
+            "源 = 被触发自身应退回 None（基础 use_time 口径）"
+        );
+
+        // ② 深度护栏：子计算进行中不再展开子计算。
+        {
+            let _guard = TriggerDepthGuard::enter();
+            assert!(
+                trigger_source_stats(
+                    &build,
+                    &data,
+                    &opts,
+                    group,
+                    &group.gem_skills[0],
+                    "FireballPlayer"
+                )
+                .is_none(),
+                "深度 ≥1 应拒绝再展开子计算"
+            );
+            // ③ 护栏内触发关系整体剥离。
+            let resolved = ResolvedSkillLevel {
+                cooldown_s: Some(0.5),
+                ..ResolvedSkillLevel::default()
+            };
+            assert!(
+                trigger_modifiers(
+                    &build,
+                    &data,
+                    &opts,
+                    &resolved,
+                    group,
+                    "ElementalStormPlayer"
+                )
+                .is_empty(),
+                "子计算 env 中 trigger 关系应被剥离"
+            );
+        }
+        // 护栏退出后恢复正常展开。
+        assert!(
+            trigger_source_stats(
+                &build,
+                &data,
+                &opts,
+                group,
+                &group.gem_skills[0],
+                "FireballPlayer"
+            )
+            .is_some(),
+            "护栏退出后子计算应恢复可用"
+        );
+    }
+
+    /// requires_condition 门控：The Hidden Blade 类条目需 Phasing——识别命中但
+    /// 条件不满足时不注入（vendor disable 语义，面板保持 0），且不落入内建路径。
+    #[test]
+    fn trigger_config_requires_condition_gates_injection() {
+        let mut data = BuildData::empty();
+        data.granted_effects.insert(
+            "UnseenStrikePlayer".to_string(),
+            pobr_data::catalog::GrantedEffectDef {
+                id: "UnseenStrikePlayer".into(),
+                is_support: false,
+                active_skill: Some("UnseenStrikePlayer".into()),
+                cast_time: Some(1000),
+                require_skill_types: vec![],
+                add_skill_types: vec![],
+                exclude_skill_types: vec![],
+                cannot_be_supported: false,
+                support_gems_only: false,
+                stat_set: None,
+                additional_stat_set_ids: vec![],
+                cost_types: vec![],
+                skill_types: vec!["Attack".into()],
+            },
+        );
+        data.trigger_configs.insert(
+            "UnseenStrikePlayer".to_string(),
+            pobr_data::catalog::TriggerConfigDef {
+                key: pobr_data::catalog::TriggerKeyDef {
+                    kind: "unique_item".into(),
+                    name: "the hidden blade".into(),
+                },
+                trigger_name: None,
+                trigger_on_use: false,
+                use_cast_rate: false,
+                source_skill_cond: None,
+                triggered_skill_cond: None,
+                source_skill_name: None,
+                requires_main_skill_name: None,
+                trigger_chance_stat: None,
+                source_rate_stat: None,
+                cooldown_override_s: None,
+                trigger_rate_cap_override: Some(2.0),
+                global_trigger: true,
+                source_is_self: true,
+                source_rate_is_final: false,
+                ignores_tick_rate: false,
+                assuming_every_hit_kills: false,
+                ignore_source_rate: false,
+                trigger_on_crit: false,
+                requires_condition: Some("Phasing".into()),
+                match_effect_ids: vec!["UnseenStrikePlayer".into()],
+                handler_id: None,
+                note: None,
+                vendor_ref: "Modules/CalcTriggers.lua:907-921".into(),
+                verified: false,
+            },
+        );
+        let group = SocketGroup::new().with_gem_skill("UnseenStrikePlayer", 10);
+        let resolved = ResolvedSkillLevel::default();
+        let opts = DataOrchestratorOptions::default();
+
+        // 条件不满足（build config 无 Phasing）→ 识别命中但注入为空。
+        let build = Build::new();
+        let mods = trigger_modifiers(
+            &build,
+            &data,
+            &opts,
+            &resolved,
+            &group,
+            "UnseenStrikePlayer",
+        );
+        assert!(
+            mods.is_empty(),
+            "Phasing 未置真时应不注入（vendor disable）"
+        );
+
+        // 条件满足 → 注入 cap override + global 标记。
+        let mut build_phasing = Build::new();
+        build_phasing
+            .config
+            .conditions
+            .insert("Phasing".to_string(), true);
+        let mods = trigger_modifiers(
+            &build_phasing,
+            &data,
+            &opts,
+            &resolved,
+            &group,
+            "UnseenStrikePlayer",
+        );
+        let names: Vec<&str> = mods.iter().map(|m| m.name.as_str()).collect();
+        assert!(names.contains(&"TriggerRateCapOverride"));
+        assert!(names.contains(&"TriggerSourceGlobal"));
     }
 
     // ── M0-W3：空手基底 / 武器类型查表切换（搬迁不变式回归）──────────────────

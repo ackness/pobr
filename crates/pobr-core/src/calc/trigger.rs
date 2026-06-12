@@ -869,6 +869,53 @@ pub fn calc_cwc_trigger_rate_traced(
 }
 
 // ---------------------------------------------------------------------------
+// §六  触发源统计（M4-T5 W-E2，契约 4）
+// ---------------------------------------------------------------------------
+
+/// 触发**源技能**的完整子计算统计（M4 蓝图 §3.3 契约 4；缺口 14-G2/14-G8）。
+///
+/// 由 build 层（orchestrator）对源技能跑一次完整子计算后构造（PoB2 GlobalCache
+/// 等价物最小版，`CalcTriggers.lua:74-86` `cachedData[uuid].HitSpeed or Speed`），
+/// 经 BASE 词条通道（`TriggerSourceRate` / `TriggerSourceHitChance` /
+/// `TriggerSourceCritChance`）注入 perform `fill_trigger` 消费：
+/// - `action_rate`：源技能**计算后**有效行动速率（含攻速 inc/more 乘区，修
+///   「堆攻速的 CoC build 源速率不随攻速增长」的 14-G2 定性级错误）；
+/// - `hit_chance` / `crit_chance`：源技能命中率 / 暴击率（fraction 0–1），折入
+///   触发几率（`CalcTriggers.lua:716-770` `triggerChance ×= sourceHitChance ×
+///   sourceCritChance`，crit 仅 triggerOnCrit 链路）。
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct TriggerSourceStats {
+    /// 源技能有效行动速率（次/秒；计算后口径，= OutputTable.effective_action_rate）。
+    pub action_rate: f64,
+    /// 源技能命中率（fraction 0–1；0 = 未注入/不适用，消费侧跳过折算）。
+    pub hit_chance: f64,
+    /// 源技能暴击率（fraction 0–1；0 = 未注入/不适用，消费侧跳过折算）。
+    pub crit_chance: f64,
+}
+
+impl TriggerSourceStats {
+    /// 触发几率折算乘子（fraction 0–1）：`hit ×（triggerOnCrit ? crit : 1）`。
+    ///
+    /// 对齐 PoB2 `defaultTriggerHandler`（CalcTriggers.lua:716-770）：
+    /// - 源命中率 ≠ 100% 时乘 `sourceHitChance`（:721-742；triggerOnUse 链路由
+    ///   注入侧不注入 hit_chance 表达，此处 0 = 跳过）；
+    /// - `triggerOnCrit` 时再乘 `sourceCritChance`（:744-769）。
+    ///
+    /// 双武器独立 roll 的 effective hit/crit（:725-731 doubleHitsWhenDualWielding）
+    /// 待 per-hand 输出（M4-T2 W-B2）接入后折算，当前取整体值。
+    pub fn chance_multiplier(&self, trigger_on_crit: bool) -> f64 {
+        let mut chance = 1.0_f64;
+        if self.hit_chance > 0.0 && self.hit_chance < 1.0 {
+            chance *= self.hit_chance.clamp(0.0, 1.0);
+        }
+        if trigger_on_crit && self.crit_chance > 0.0 && self.crit_chance < 1.0 {
+            chance *= self.crit_chance.clamp(0.0, 1.0);
+        }
+        chance.clamp(0.0, 1.0)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // §一  内部单元测试（冷却驱动基础）
 // ---------------------------------------------------------------------------
 
@@ -1251,5 +1298,55 @@ mod tests {
         let n = trace.node(node).unwrap();
         assert!((n.value - result.trigger_rate_cap).abs() < 1e-9);
         assert!(trace.nodes().len() >= 4);
+    }
+
+    // ---------------------------------------------------------------------------
+    // §六  触发源统计测试（W-E2 契约 4）
+    // ---------------------------------------------------------------------------
+
+    /// 手算对拍（蓝图 §2 W-E2 测试行）：triggerChance = 源命中 × 源暴击
+    /// （CoC：hit 80% × crit 35% = 28%）。
+    #[test]
+    fn source_stats_chance_folds_hit_and_crit() {
+        let stats = TriggerSourceStats {
+            action_rate: 3.0,
+            hit_chance: 0.80,
+            crit_chance: 0.35,
+        };
+        assert!((stats.chance_multiplier(true) - 0.28).abs() < 1e-9);
+        // 非 triggerOnCrit 链路只折命中。
+        assert!((stats.chance_multiplier(false) - 0.80).abs() < 1e-9);
+    }
+
+    /// 未注入（0 值）字段跳过折算；100% 命中/暴击不降速。
+    #[test]
+    fn source_stats_chance_skips_unset_and_full() {
+        let unset = TriggerSourceStats::default();
+        assert_eq!(unset.chance_multiplier(true), 1.0);
+        let full = TriggerSourceStats {
+            action_rate: 2.0,
+            hit_chance: 1.0,
+            crit_chance: 1.0,
+        };
+        assert_eq!(full.chance_multiplier(true), 1.0);
+    }
+
+    /// CoC 方向性（蓝图 §4.1 T5 门禁）：触发几率↑ → 触发速率↑（源速率门控段）。
+    #[test]
+    fn coc_directional_higher_crit_higher_rate() {
+        let low_crit = TriggerSourceStats {
+            action_rate: 2.0,
+            hit_chance: 0.9,
+            crit_chance: 0.2,
+        };
+        let high_crit = TriggerSourceStats {
+            crit_chance: 0.5,
+            ..low_crit
+        };
+        // 双门控后乘 chance（perform 同公式）：cap 远高于源速率时 rate ∝ chance。
+        let r = resolve_trigger_rate(0.05, 0.0, 1.0, 2.0, SERVER_TICK_SECONDS);
+        let low = r.skill_trigger_rate * low_crit.chance_multiplier(true);
+        let high = r.skill_trigger_rate * high_crit.chance_multiplier(true);
+        assert!(high > low, "crit↑ 应使触发速率↑（{high} vs {low}）");
     }
 }

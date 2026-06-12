@@ -109,7 +109,7 @@ pub use taken::{
 };
 pub use trigger::{
     CwcTriggerRate, EnergyTriggerRate, RotationResult, RotationSkill, SocketedSpellInfo,
-    TriggerCondition, TriggerRate, action_cooldown, calc_cwc_trigger_rate,
+    TriggerCondition, TriggerRate, TriggerSourceStats, action_cooldown, calc_cwc_trigger_rate,
     calc_cwc_trigger_rate_traced, calc_energy_per_event, calc_energy_trigger_rate,
     calc_energy_trigger_rate_traced, calc_max_energy, calc_multi_spell_rotation,
     resolve_trigger_rate, resolve_trigger_rate_traced, round_cooldown_to_tick, server_tick_rate,
