@@ -462,6 +462,16 @@ impl BuildData {
             .unwrap_or_default()
     }
 
+    /// 选中 statSet 的尸体爆炸门控（M4-G；statSet `baseMods` 的
+    /// `skill("explodeCorpse", true)`，经 skill_overrides overlay merge——见
+    /// [`pobr_data::catalog::StatSetDef::explode_corpse`]）。选中规则与
+    /// [`Self::select_stat_set`] 一致；无数据时 false（不注入尸体基伤）。
+    pub fn selected_set_explode_corpse(&self, skill_id: &str, set_index: Option<u32>) -> bool {
+        self.select_stat_set(skill_id, set_index)
+            .map(|s| s.explode_corpse)
+            .unwrap_or(false)
+    }
+
     /// 解析某主动技能在某等级上的参数：cast/attack 时间（秒）、各资源消耗、冷却（秒）。
     /// statSet 形态取缺省主 set；带形态选择用 [`Self::resolve_skill_level_with_set`]。
     ///
@@ -787,6 +797,7 @@ mod tests {
                 constant_stats: Vec::new(),
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
+                explode_corpse: false,
                 levels: vec![SkillStatSetLevel {
                     gem_level: 1,
                     damage_multiplier: 1.0,
@@ -857,6 +868,7 @@ mod tests {
                 constant_stats: ds(constant_stats),
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
+                explode_corpse: false,
                 levels: vec![SkillStatSetLevel {
                     gem_level: 1,
                     damage_multiplier: 1.0,

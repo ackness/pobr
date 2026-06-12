@@ -9,6 +9,8 @@
 --   skill_attack_speed_more ← statSets[*].baseMods 中 mod("Speed", "MORE", <number>, ...)
 --   dot_is_*                ← statSets[*].baseMods 中 skill("dotIs*", true)（M4-T4 W-D1：
 --                             技能 DoT 的 dotCfg flag 剥除布尔；`.dat` 无对应列）
+--   explode_corpse          ← statSets[*].baseMods 中 skill("explodeCorpse", true)（M4-G：
+--                             尸体爆炸基伤门控布尔，CalcOffence.lua:2213；`.dat` 无对应列）
 --
 -- 通道收窄（M1-T4.3）：critChance / attackSpeedMultiplier **不再抽取**——二者已是
 -- `.dat` 表列（GrantedEffectStatSetsPerLevel 暴击两列 / GrantedEffectsPerLevel
@@ -202,6 +204,11 @@ local DOT_FLAG_KEYS = {
 	{ vendorKey = "dotIsSpell", stat = "dot_is_spell" },
 	{ vendorKey = "dotIsAttack", stat = "dot_is_attack" },
 	{ vendorKey = "dotIsHit", stat = "dot_is_hit" },
+	-- M4-G：尸体爆炸门控（vendor `skill("explodeCorpse", true)`，0.18.0 全量
+	-- Data/Skills 共 6 技能：DetonateDeadPlayer / CorpseCloudPlayer /
+	-- DetonateLivingPlayer / AncientGiftsPlayer / TriggeredLightningDetonateDeadPlayer /
+	-- TriggeredFieryDeathPlayer）。复用 baseMods 布尔抽取通道。
+	{ vendorKey = "explodeCorpse", stat = "explode_corpse" },
 }
 
 local function emitStatSetDotFlags(skillId, skill)

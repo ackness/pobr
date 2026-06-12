@@ -260,6 +260,13 @@ pub struct StatSetDef {
     /// 保守不剥 flag（蓝图 m4-offence-deep §5 风险行）。
     #[serde(default, skip_serializing_if = "DotFlags::is_default")]
     pub dot_flags: DotFlags,
+    /// 尸体爆炸门控（M4-G）：vendor statSet `baseMods` 的
+    /// `skill("explodeCorpse", true)`（如 DetonateDeadPlayer，act_int.lua:5287）。
+    /// PoB2 据此把 `monsterLife × skillData.corpseExplosionLifeMultiplier` 注入
+    /// 物理基伤（`CalcOffence.lua:2211-2217`）。GGG `.dat` 无对应列——经
+    /// extract-lua skill_overrides 通道在加载期 merge。缺省 false = 不注入。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub explode_corpse: bool,
     /// 分等级 stat（按宝石等级升序；含基础伤害值 + `damage_+%[_final]` 缩放）。
     pub levels: Vec<SkillStatSetLevel>,
 }
@@ -460,6 +467,7 @@ mod m4_t4_dot_flags_tests {
             constant_stats: Vec::new(),
             skill_attack_speed_more: None,
             dot_flags: DotFlags::default(),
+            explode_corpse: false,
             levels: Vec::new(),
         }
     }

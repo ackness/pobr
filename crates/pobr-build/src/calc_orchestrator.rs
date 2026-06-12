@@ -519,6 +519,12 @@ pub fn calculate_with_data(
         // 1b-i-d. 选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG（M4-T4 W-D1；
         //         statSet baseMods 直挂布尔，calc::skill_dot 据此保留 dotCfg 位）。
         session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
+        // 1b-i-c. 尸体爆炸基伤（M4-G）：explodeCorpse 门控 statSet 的
+        //         `monsterLife × corpseExplosionLifeMultiplier` → Physical
+        //         BASE（vendor CalcOffence.lua:2211-2217；如 Detonate Dead）。
+        session.add_modifiers(corpse_explosion_modifiers(
+            build, data, options, group, skill, skill_id,
+        ));
         // 1b-i-x. 弩 reload 数据通道（M4-T4 W-D2）：CrossbowReloadTimeBase（武器
         //         reload_time_ms）+ CrossbowBoltCount（ammo 兄弟技能 stat），
         //         perform `fill_crossbow_reload` 消费。非弩/grenade 返回空。
@@ -862,7 +868,16 @@ pub fn calculate_with_data(
     session.add_modifiers(spirit_reservation_modifiers(build, data));
 
     // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
-    session.setup_enemy(options.enemy_level, enemy_tier);
+    //    敌人等级解析对齐 vendor（CalcSetup.lua:529 `env.enemyLevel =
+    //    build.configTab.enemyLevel or m_min(data.misc.MaxEnemyLevel, charLevel)`）：
+    //    调用方显式等级（编排选项 ≠0）优先；否则 build XML Config 的 `enemyLevel`
+    //    标量；两者皆缺回落 0 → setup_enemy 内部按 min(MaxEnemyLevel, 角色等级) 推导。
+    let enemy_level = if options.enemy_level != 0 {
+        options.enemy_level
+    } else {
+        config_enemy_level(build).unwrap_or(0)
+    };
+    session.setup_enemy(enemy_level, enemy_tier);
 
     // 5a'. config 解释器的 enemy 桶产物（M3-T1 A5 主路径）：enemy 条件 actor 化
     //      条目（vendor `enemyModList:NewMod("Condition:<X>", FLAG, ...)`，带
@@ -1009,6 +1024,23 @@ pub fn calculate_with_data(
 /// PoB `socketGroupSkillList` 把全部非辅助宝石（含 meta 壳）当作主动技能项，`mainActiveSkill`
 /// 按序号在其中选；但 meta 壳本身无独立伤害/施放时间，需穿透到组内真正的伤害技能。本判定
 /// 通用按标签（is_attack/is_spell + 非 Meta）筛，绝不针对单个技能 id。
+/// build XML Config 的 `enemyLevel` 标量（vendor `build.configTab.enemyLevel`，
+/// CalcSetup.lua:529 中**优先于**角色等级推导）。解析序对齐
+/// ConfigTab.lua:872-877：`<Input>` 显式值 → `<Placeholder>` 占位值（ninja 导出
+/// 常见形态）→ 皆缺/非正数视为缺省（返回 None，调用方回落角色等级推导）。
+/// vendor 两路均 clamp 到 `MaxEnemyLevel`；setup_enemy 的百级表查表自带 clamp，
+/// 此处不重复。
+fn config_enemy_level(build: &Build) -> Option<u32> {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+    let raw = &build.config.raw_inputs;
+    let read = |m: &std::collections::BTreeMap<String, ConfigInputValue>| match m.get("enemyLevel")
+    {
+        Some(ConfigInputValue::Number(n)) if *n >= 1.0 => Some(*n as u32),
+        _ => None,
+    };
+    read(&raw.values).or_else(|| read(&raw.placeholders))
+}
+
 fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
     data.granted_effects
         .get(skill_id)
@@ -2482,6 +2514,105 @@ fn dot_flag_modifiers(group: &SocketGroup, data: &BuildData, skill_id: &str) -> 
             Modifier::flag(*name).with_origin(origin)
         })
         .collect()
+}
+
+/// 尸体爆炸基伤（M4-G；vendor `CalcOffence.lua:2211-2217`）：
+///
+/// ```lua
+/// local monsterLife = skillData.corpseLife or data.monsterLifeTable[env.enemyLevel]
+/// if skillData.explodeCorpse then
+///     skillData[type.."BonusMin"] = monsterLife * skillData.corpseExplosionLifeMultiplier
+/// ```
+///
+/// - 门控 = 选中 statSet 的 `explodeCorpse` baseMod（catalog
+///   `StatSetDef::explode_corpse`，skill_overrides overlay merge；如
+///   DetonateDeadPlayer，act_int.lua:5287）；
+/// - 倍率 = 选中 set 分等级 stat 经 statmap skill_data 通道
+///   （`corpse_explosion_monster_life_%` div=100 /
+///   `corpse_explosion_monster_life_permillage_physical` div=1000 →
+///   `corpseExplosionLifeMultiplier`，SkillStatMap.lua:309-316）；
+/// - 怪物生命 = `monster_scaling.life_at(敌人等级)`（敌人等级解析与
+///   setup_enemy 同序：编排选项 → config enemyLevel → min(MaxEnemyLevel,
+///   角色等级)，CalcSetup.lua:529）；
+/// - 注入 = `PhysicalDamageMin/Max` BASE（vendor `corpseExplosionDamageType`
+///   缺省 Physical，4.5.0.3.4 statmap 无 damage type 覆盖条目），与 vendor
+///   `source[type.."BonusMin"]` 直加 base 的口径一致（CalcOffence.lua:3910-3911；
+///   DD 族 baseMultiplier=1，无 added-mult 交互）。
+///
+/// 非尸体技能 / 无倍率 stat / 无 catalog → 返回空，零注入。
+fn corpse_explosion_modifiers(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    group: &SocketGroup,
+    skill: &ResolvedSkillLevel,
+    skill_id: &str,
+) -> Vec<Modifier> {
+    let set_index = group
+        .gem_skills
+        .iter()
+        .find(|g| g.skill_id == skill_id)
+        .and_then(|g| g.stat_set_index);
+    if !data.selected_set_explode_corpse(skill_id, set_index) {
+        return Vec::new();
+    }
+    let catalog = STAT_MAP_CTX
+        .with(|ctx| ctx.borrow().catalog.clone())
+        .or_else(|| data.stat_map_catalog.clone());
+    let Some(catalog) = catalog else {
+        return Vec::new(); // 无 catalog（旧数据包）：倍率不可得，保守零注入。
+    };
+    // 倍率取数：选中 set 的分等级 stat 走与 skill_base_modifiers 同一映射引擎，
+    // 仅收割 skill_data 产物（Modifier 产物已由主通道注入，此处不重复）。
+    let set_key = data.selected_set_key(skill_id, set_index);
+    let mut multiplier = 0.0;
+    for ds in &skill.base_damage {
+        if ds.value == 0.0 {
+            continue;
+        }
+        if let MappedOutcome::Mapped(items) =
+            stat_map_engine::map_stat(&catalog, skill_id, set_key.as_deref(), &ds.stat, ds.value)
+        {
+            for item in items {
+                if let MappedItem::SkillData { key, value } = item
+                    && key == "corpseExplosionLifeMultiplier"
+                {
+                    multiplier += value;
+                }
+            }
+        }
+    }
+    if multiplier == 0.0 {
+        return Vec::new();
+    }
+    let enemy_level = resolved_enemy_level(build, data, options);
+    let monster_life = f64::from(data.constants.monster_scaling.life_at(enemy_level));
+    let bonus = monster_life * multiplier;
+    let mk = |name: &str| {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{skill_id}.corpseExplosion"),
+        ))
+        .with_raw_text(format!(
+            "corpse explosion {bonus:.1} (monster life {monster_life} x {multiplier})"
+        ));
+        Modifier::number(name, ModType::Base, bonus).with_origin(origin)
+    };
+    vec![mk("PhysicalDamageMin"), mk("PhysicalDamageMax")]
+}
+
+/// 敌人等级解析（与 `calculate_with_data` 步骤 5 setup_enemy 同序，vendor
+/// CalcSetup.lua:529）：编排选项显式等级 → build config `enemyLevel`
+/// （Input/Placeholder）→ `min(MaxEnemyLevel, 角色等级)`。
+fn resolved_enemy_level(build: &Build, data: &BuildData, options: &DataOrchestratorOptions) -> u32 {
+    if options.enemy_level != 0 {
+        options.enemy_level
+    } else {
+        let cap = data.constants.enemy_presets.max_enemy_level;
+        config_enemy_level(build)
+            .unwrap_or_else(|| build.character.level.min(cap))
+            .min(cap)
+    }
 }
 
 /// 弩 reload 数据通道（M4-T4 W-D2；vendor `CalcOffence.lua:1118-1122` skillData
@@ -5371,6 +5502,7 @@ mod tests {
             constant_stats: Vec::new(),
             skill_attack_speed_more: None,
             dot_flags: Default::default(),
+            explode_corpse: false,
             levels: vec![pobr_data::catalog::SkillStatSetLevel {
                 gem_level: 1,
                 damage_multiplier: 1.0,

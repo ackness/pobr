@@ -300,6 +300,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             // dotIs* 同为 vendor baseMods 布尔（M4-T4 W-D1），`.dat` 无列，
             // overlay 加载期 merge，适配阶段保持保守默认（全 false）。
             dot_flags: Default::default(),
+            explode_corpse: false,
             levels: main_levels,
         }];
 
@@ -354,6 +355,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 constant_stats,
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
+                explode_corpse: false,
                 levels,
             });
         }

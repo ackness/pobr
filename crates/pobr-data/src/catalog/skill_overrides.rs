@@ -37,6 +37,11 @@ pub const OVERRIDE_STAT_DOT_IS_SPELL: &str = "dot_is_spell";
 pub const OVERRIDE_STAT_DOT_IS_ATTACK: &str = "dot_is_attack";
 /// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsHit）。
 pub const OVERRIDE_STAT_DOT_IS_HIT: &str = "dot_is_hit";
+/// [`SkillOverrideEntry::stat`] 取值：尸体爆炸门控布尔（M4-G，vendor statSet
+/// `baseMods` 的 `skill("explodeCorpse", true)`，CalcOffence.lua:2213 据此把
+/// `monsterLife × corpseExplosionLifeMultiplier` 注入物理基伤；value 1.0 = true，
+/// 对应 `StatSetDef::explode_corpse`）。statSet 级条目（恒带 `stat_set`）。
+pub const OVERRIDE_STAT_EXPLODE_CORPSE: &str = "explode_corpse";
 
 /// 全部 statSet 级 dotIs* stat 名（消费侧 merge / 生成侧抽取共用清单）。
 pub const OVERRIDE_DOT_FLAG_STATS: &[&str] = &[
