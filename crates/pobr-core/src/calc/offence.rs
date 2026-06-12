@@ -253,7 +253,7 @@ pub fn calculate_minimal_vs_enemy(
     // ActionSpeed 独立乘区单独相乘（对齐 PoB CalcOffence：
     // finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod）。攻击吃武器攻速 + AttackSpeed，
     // 法术吃技能施法速率 + CastSpeed——不混淆（攻击不吃 CastSpeed、法术不吃 AttackSpeed）。
-    let speed_names = super::skill_use_time::speed_names_for_db(db, cfg);
+    let speed_names = super::skill_use_time::speed_names_for(cfg);
     let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
     let more_speed = db.more(cfg, &speed_names);
@@ -752,7 +752,7 @@ fn total_dps_traced(
     // 速度族（攻击取 AttackSpeed / 法术取 CastSpeed，SkillSpeed 始终）一个 inc/more 乘区；
     // ActionSpeed 独立乘区单独相乘；末端按固有冷却限速（min(rate, 1/effective_cooldown)）——
     // 对齐非 traced 路径。
-    let speed_names = super::skill_use_time::speed_names_for_db(db, cfg);
+    let speed_names = super::skill_use_time::speed_names_for(cfg);
     let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let base_rate_node = trace.add_source_node(
         "base action rate",
@@ -1181,7 +1181,10 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
 ///
 /// 例外：「绕过冷却」技能（如 Flicker Strike，消耗充能重置冷却）注入 `CooldownBypass` flag，
 /// 此时不限速、按攻速出手。无 `SkillCooldownBase` 词条（base_cd≤0）时也不限速。
-fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f64) -> f64 {
+///
+/// `pub(crate)`：perform 的 fill 阶段（`effective_action_rate`，ailment/reload 消费）
+/// 与 offence 主链共用同一冷却 cap（M4-J 整链单一来源）。
+pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f64) -> f64 {
     if db.flag(cfg, ModName::from("CooldownBypass")) {
         return uncapped_rate;
     }
@@ -1189,7 +1192,12 @@ fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f64) -> f64 {
     if base_cd <= 0.0 {
         return uncapped_rate;
     }
-    let cd = super::skill_mechanics::calc_cooldown(db, cfg, base_cd, 0).cooldown;
+    // 储存次数（grenade=3 等）：>1 时冷却不向上取整到服务器帧（PoB2 CalcOffence
+    // L338-345），与 perform::fill_skill_mechanics 同源读 SkillStoredUsesBase。
+    let stored = db
+        .sum(ModType::Base, cfg, &[ModName::from("SkillStoredUsesBase")])
+        .max(0.0) as u32;
+    let cd = super::skill_mechanics::calc_cooldown(db, cfg, base_cd, stored).cooldown;
     if cd <= 0.0 {
         return uncapped_rate;
     }

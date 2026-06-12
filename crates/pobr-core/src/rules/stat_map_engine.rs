@@ -1174,7 +1174,12 @@ pub fn translate_mod_name(
         // 以免 legacy 把 TotemPlacementSpeed 误并入 CastSpeed（legacy 误映射，
         // 见 m1-statmap-switch-log.md）。
         | "WarcrySpeed"
-        | "TotemPlacementSpeed" => base_name.to_string(),
+        | "TotemPlacementSpeed"
+        // M4-J：冷却恢复速率直通（vendor `base_cooldown_speed_+%`/quality 段/
+        // `support_cooldown_reduction_cooldown_recovery_+%` → CooldownRecovery）。
+        // 消费方 = `calc::skill_mechanics::calc_cooldown` /
+        // `offence::apply_cooldown_cap`（冷却管辖速率整链）。
+        | "CooldownRecovery" => base_name.to_string(),
         // M4-G：grenade 二次起爆几率（vendor SkillStatMap.lua:2795-2797
         // `grenade_skill_%_chance_to_explode_twice` → GrenadeActivateTwice BASE，
         // 仅 SupportPayload 产出该 stat）。消费方 = `calc::scaled_damage::

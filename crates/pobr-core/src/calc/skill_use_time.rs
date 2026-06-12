@@ -65,17 +65,6 @@ pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
     names
 }
 
-/// db 感知版本：当 db 设有 `LegacyCooldownAttackSpeed` flag（冷却攻击·吞吐未建模的近似路径）时，
-/// 回退到旧速度桶 `[AttackSpeed, ActionSpeed-不在此]`——实际仅 `[AttackSpeed]`（ActionSpeed 走独立乘区），
-/// 避免 SkillSpeed/CastSpeed 入桶放大冷却攻击速率（grenade 吞吐倍率缺数据时的桥接）。否则同
-/// [`speed_names_for`]。补齐 grenade 吞吐数据后应删此分支。
-pub fn speed_names_for_db(db: &crate::ModDb, cfg: &CalcConfig) -> Vec<ModName> {
-    if db.flag(cfg, ModName::from("LegacyCooldownAttackSpeed")) {
-        return vec![ModName::from(SPEED_BUCKET[0])];
-    }
-    speed_names_for(cfg)
-}
-
 /// 计算技能使用时间与有效动作速率。
 pub fn calc_skill_use_time(
     db: &ModDb,
@@ -196,10 +185,10 @@ pub fn apply_crossbow_reload(
 /// 弩装填时间折算（vendor `calcCrossbowReloadTime`，`CalcOffence.lua:283-291`）：
 /// `reload = base / calcLib.mod(skillModList, cfg, "ReloadSpeed", "Speed")`——
 /// `Speed` 与 `ReloadSpeed` 的 INC 同桶相加、MORE 连乘后作除数（攻速增益同时
-/// 加快装填）。`Speed` 按 pobr 速度桶命名展开（[`speed_names_for_db`]）。
+/// 加快装填）。`Speed` 按 pobr 速度桶命名展开（[`speed_names_for`]）。
 pub fn crossbow_reload_time(db: &crate::ModDb, cfg: &CalcConfig, base_reload_s: f64) -> f64 {
     let mut names = vec![ModName::from("ReloadSpeed")];
-    names.extend(speed_names_for_db(db, cfg));
+    names.extend(speed_names_for(cfg));
     let multi = (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names);
     if multi <= 0.0 {
         return base_reload_s;
