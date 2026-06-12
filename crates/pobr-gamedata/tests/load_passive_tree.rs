@@ -104,3 +104,29 @@ fn tree_meta_lists_classes_and_ascendancies() {
         "飞升摘要不应含空占位"
     );
 }
+
+/// 油涂 notable 池（`--tree-anoints` 回填，vendor tree.lua 顶层 nodes 块）：
+/// GGG data.json 不含不在主图上的油涂专属 notable，回填后应可按名授予消费
+/// （`Allocates <name>` enchant → GrantedPassive，CalcSetup.lua:1322-1331）。
+#[test]
+fn anoint_pool_notables_backfilled_off_graph() {
+    let nodes = game_data().passive_nodes().unwrap();
+    // 代表节点：Paragon（20686，gemling『Allocates Paragon』项链 enchant 目标）。
+    let paragon = nodes
+        .iter()
+        .find(|n| n.skill == 20686)
+        .expect("油涂池节点 Paragon(20686) 应在库");
+    assert_eq!(paragon.kind, PassiveNodeKind::Notable);
+    assert_eq!(paragon.name.as_deref(), Some("Paragon"));
+    assert!(
+        paragon
+            .stats
+            .iter()
+            .any(|s| s.contains("Quality of all Skills")),
+        "Paragon 应携带品质词条，实得 {:?}",
+        paragon.stats
+    );
+    // 油涂池节点不在主图：无连线、无坐标（不参与树拓扑/寻路）。
+    assert!(paragon.connections.is_empty());
+    assert!(paragon.x.is_none() && paragon.y.is_none());
+}

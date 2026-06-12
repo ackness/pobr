@@ -4549,6 +4549,18 @@
     ]
   },
   {
+    "skill": 3663,
+    "id": "3663",
+    "name": "Kaom's Blessing",
+    "kind": "notable",
+    "stats": [
+      "The next Fire Spell you cast yourself after using a Warcry is Ancestrally Boosted"
+    ],
+    "group": 330,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 3665,
     "id": "companions64",
     "name": "Attack Damage and Companion Damage as Cold",
@@ -12861,6 +12873,19 @@
     "y": -5015.5
   },
   {
+    "skill": 10169,
+    "id": "10169",
+    "name": "Unfettered",
+    "kind": "notable",
+    "stats": [
+      "50% increased Armour while Bleeding",
+      "10% increased Movement Speed while Sprinting"
+    ],
+    "group": 434,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 10192,
     "id": "sorcerer_start2",
     "name": "Elemental Damage",
@@ -17360,6 +17385,19 @@
     "y": -6386.37
   },
   {
+    "skill": 13693,
+    "id": "13693",
+    "name": "Rhythm of Ice",
+    "kind": "notable",
+    "stats": [
+      "20% increased Cold Damage",
+      "6% increased Cast Speed per Spell Echoed Recently, up to 30%"
+    ],
+    "group": 298,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 13701,
     "id": "freeze_and_chill_mitigation4",
     "name": "Freeze and Chill Resistance",
@@ -17628,6 +17666,18 @@
     "connections": [
       65287
     ]
+  },
+  {
+    "skill": 13844,
+    "id": "13844",
+    "name": "Growing Peril",
+    "kind": "notable",
+    "stats": [
+      "1% increased Chaos Damage over Time per Volatility"
+    ],
+    "group": 1024,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 13845,
@@ -18181,6 +18231,20 @@
       21945,
       32763
     ]
+  },
+  {
+    "skill": 14265,
+    "id": "14265",
+    "name": "Arsonist",
+    "kind": "notable",
+    "stats": [
+      "20% increased Fire Damage",
+      "10% increased Cast Speed while Ignited",
+      "5% reduced Movement Speed Penalty from using Fire Skills while moving"
+    ],
+    "group": 428,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 14267,
@@ -22283,6 +22347,18 @@
     ]
   },
   {
+    "skill": 17696,
+    "id": "17696",
+    "name": "Augmented Flesh",
+    "kind": "notable",
+    "stats": [
+      "Grants 2 additional Skill Slots"
+    ],
+    "group": 741,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 17702,
     "id": "dexterity75",
     "name": "Attribute",
@@ -25642,6 +25718,18 @@
     ]
   },
   {
+    "skill": 20495,
+    "id": "20495",
+    "name": "Dark Entropy",
+    "kind": "notable",
+    "stats": [
+      "Withered also causes enemies to deal 1% reduced Damage"
+    ],
+    "group": 750,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 20496,
     "id": "oracle_rust_king4",
     "name": "Physical Damage",
@@ -25841,6 +25929,19 @@
       535,
       9586
     ]
+  },
+  {
+    "skill": 20686,
+    "id": "20686",
+    "name": "Paragon",
+    "kind": "notable",
+    "stats": [
+      "+5% to Quality of all Skills",
+      "+5 to all Attributes"
+    ],
+    "group": 914,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 20691,
@@ -26608,6 +26709,19 @@
     "orbit_index": 0,
     "x": -3804.23,
     "y": -9338.75
+  },
+  {
+    "skill": 21251,
+    "id": "21251",
+    "name": "Replenishing Horde",
+    "kind": "notable",
+    "stats": [
+      "25% Chance to revive a random Permanent Minion whenever you use a Command Skill",
+      "25% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill"
+    ],
+    "group": 506,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 21274,
@@ -28254,6 +28368,18 @@
     ]
   },
   {
+    "skill": 22726,
+    "id": "22726",
+    "name": "Storm's Rebuke",
+    "kind": "notable",
+    "stats": [
+      "Fully Broken Armour you inflict also increases Cold and Lightning Damage Taken from Hits"
+    ],
+    "group": 1462,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 22783,
     "id": "minion_reservation1",
     "name": "Minion Damage",
@@ -29696,6 +29822,19 @@
     ]
   },
   {
+    "skill": 23907,
+    "id": "23907",
+    "name": "Ice Storm",
+    "kind": "notable",
+    "stats": [
+      "Gain 6% of Cold damage as Extra Lightning damage",
+      "Unaffected by Chilled Ground"
+    ],
+    "group": 792,
+    "orbit": 2147483647,
+    "orbit_index": 0
+  },
+  {
     "skill": 23915,
     "id": "criticals23",
     "name": "Critical Damage",
@@ -30628,6 +30767,19 @@
       4086
     ],
     "ascendancy_id": "Mercenary1"
+  },
+  {
+    "skill": 24721,
+    "id": "24721",
+    "name": "Brain Freeze",
+    "kind": "notable",
+    "stats": [
+      "20% increased Cold Damage",
+      "Enemies Frozen by you have -8% to Cold Resistance"
+    ],
+    "group": 1241,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 24736,
@@ -32597,6 +32749,19 @@
     ]
   },
   {
+    "skill": 26214,
+    "id": "26214",
+    "name": "Dominion",
+    "kind": "notable",
+    "stats": [
+      "50% reduced effect of Archon Buffs on you",
+      "Archon Buffs have no recovery period after you lose one"
+    ],
+    "group": 1060,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 26228,
     "id": "oracle_frenzy_charge4",
     "name": "Prize of the Hunt",
@@ -34347,6 +34512,19 @@
     "y": 1786.51
   },
   {
+    "skill": 27704,
+    "id": "27704",
+    "name": "Grace of the Ancestors",
+    "kind": "notable",
+    "stats": [
+      "10% increased Attack Speed",
+      "Every Rage also grants 1% increased Evasion Rating"
+    ],
+    "group": 1446,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 27705,
     "id": "attributes10",
     "name": "Attribute",
@@ -34451,6 +34629,18 @@
     "x": 11366.85928,
     "y": 10949.451577,
     "ascendancy_id": "Huntress2"
+  },
+  {
+    "skill": 27779,
+    "id": "27779",
+    "name": "Lord of the Squall",
+    "kind": "notable",
+    "stats": [
+      "Grant Elemental Archon to your Minions for 5 seconds when they Revive"
+    ],
+    "group": 841,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 27785,
@@ -42171,6 +42361,20 @@
     ]
   },
   {
+    "skill": 33852,
+    "id": "33852",
+    "name": "Flurry",
+    "kind": "notable",
+    "stats": [
+      "20% increased Cold Damage",
+      "10% increased Cast Speed while Chilled",
+      "5% reduced Movement Speed Penalty from using Cold Skills while moving"
+    ],
+    "group": 450,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 33866,
     "id": "attack_damage3",
     "name": "Attack Damage",
@@ -43271,6 +43475,18 @@
     ]
   },
   {
+    "skill": 34567,
+    "id": "34567",
+    "name": "Archon of Chayula",
+    "kind": "notable",
+    "stats": [
+      "Grants Skill: Archon of Chayula"
+    ],
+    "group": 1582,
+    "orbit": 6,
+    "orbit_index": 66
+  },
+  {
     "skill": 34612,
     "id": "bow11",
     "name": "Bow Damage",
@@ -43872,6 +44088,18 @@
     "orbit_index": 36,
     "x": 10080.5,
     "y": 5909.44
+  },
+  {
+    "skill": 35046,
+    "id": "35046",
+    "name": "Mystic Avalanche",
+    "kind": "notable",
+    "stats": [
+      "Final Echo of Cascadable Spells also Cascades to either side of the targeted Area along a random axis"
+    ],
+    "group": 900,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 35048,
@@ -47208,6 +47436,19 @@
     "y": -6712.175311
   },
   {
+    "skill": 37619,
+    "id": "37619",
+    "name": "Rhythm of Fire",
+    "kind": "notable",
+    "stats": [
+      "20% increased Fire Damage",
+      "5% chance for Slam Skills to cause an additional Aftershock"
+    ],
+    "group": 318,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 37629,
     "id": "strength7",
     "name": "Attribute",
@@ -47509,6 +47750,19 @@
     ]
   },
   {
+    "skill": 37846,
+    "id": "37846",
+    "name": "Bastion of Light",
+    "kind": "notable",
+    "stats": [
+      "Blind Enemies 3 metres in front of you every 0.25 seconds while your Shield is raised",
+      "Raise Shield inflicts Parried for 2 seconds on Hit"
+    ],
+    "group": 181,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 37869,
     "id": "rage24",
     "name": "Later Rage Loss Start",
@@ -47656,6 +47910,19 @@
     "orbit_index": 13,
     "x": -3401.37438,
     "y": 12258.145152
+  },
+  {
+    "skill": 37967,
+    "id": "37967",
+    "name": "Desert's Scorn",
+    "kind": "notable",
+    "stats": [
+      "Enemies standing on Chilled Ground take 25% increased Fire Damage",
+      "Enemies standing on Ignited Ground take 25% increased Cold Damage"
+    ],
+    "group": 647,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 37971,
@@ -49830,6 +50097,18 @@
     "connections": [
       53188
     ]
+  },
+  {
+    "skill": 39568,
+    "id": "39568",
+    "name": "Magnum Opus",
+    "kind": "notable",
+    "stats": [
+      "Charms applied to you have 100% increased Effect per empty Charm slot"
+    ],
+    "group": 1284,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 39569,
@@ -59900,6 +60179,20 @@
     ]
   },
   {
+    "skill": 47387,
+    "id": "47387",
+    "name": "Stormkeeper",
+    "kind": "notable",
+    "stats": [
+      "20% increased Lightning Damage",
+      "30% reduced effect of Shock on you",
+      "15% increased Magnitude of Shock you inflict"
+    ],
+    "group": 100,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 47418,
     "id": "mana_flasks13",
     "name": "Warding Potions",
@@ -63571,6 +63864,19 @@
     ]
   },
   {
+    "skill": 50498,
+    "id": "50498",
+    "name": "Brain Storm",
+    "kind": "notable",
+    "stats": [
+      "20% increased Lightning Damage",
+      "15% increased Mana Cost Efficiency"
+    ],
+    "group": 1217,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 50510,
     "id": "shield8",
     "name": "Shield Block",
@@ -66383,6 +66689,20 @@
     "connections": [
       10362
     ]
+  },
+  {
+    "skill": 52669,
+    "id": "52669",
+    "name": "Flamekeeper",
+    "kind": "notable",
+    "stats": [
+      "20% increased Fire Damage",
+      "15% increased Ignite Magnitude",
+      "30% reduced Magnitude of Ignite on you"
+    ],
+    "group": 98,
+    "orbit": 0,
+    "orbit_index": 0
   },
   {
     "skill": 52676,
@@ -71626,6 +71946,18 @@
     ]
   },
   {
+    "skill": 56666,
+    "id": "56666",
+    "name": "Thaumaturgic Generator",
+    "kind": "notable",
+    "stats": [
+      "Grants Thaumaturgical Dynamism"
+    ],
+    "group": 734,
+    "orbit": 0,
+    "orbit_index": 0
+  },
+  {
     "skill": 56701,
     "id": "mastery_companion295",
     "name": "Companion Mastery",
@@ -76727,6 +77059,19 @@
       4891
     ],
     "ascendancy_id": "Huntress3"
+  },
+  {
+    "skill": 60878,
+    "id": "60878",
+    "name": "Lightning Storm",
+    "kind": "notable",
+    "stats": [
+      "Gain 6% of Lightning damage as Extra Cold damage",
+      "Unaffected by Shocked Ground"
+    ],
+    "group": 799,
+    "orbit": 2147483647,
+    "orbit_index": 0
   },
   {
     "skill": 60886,
