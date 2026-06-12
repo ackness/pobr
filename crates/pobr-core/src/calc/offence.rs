@@ -985,38 +985,86 @@ fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Dama
     player_db.sum(ModType::Base, type_cfg, names)
 }
 
-/// 物理护甲减伤分量（对某 raw_hit），含玩家 **Overwhelm**：
+/// 物理减伤分量（对某 raw_hit），vendor CalcOffence.lua:4074-4096 physical 段：
 ///
-/// 敌人 `Armour`（→ 护甲减伤）与敌人固定 `PhysicalDamageReduction BASE` 取并集
-/// （PoB2: `1-(1-a)(1-b)`），再**加上**玩家 `EnemyPhysicalDamageReduction BASE`
-/// （Overwhelm = 负值，下调敌人 PDR），最后 clamp 到 `[0, ENEMY_PHYS_DMGRED_CAP]`。
-/// 返回 `(1 - reduction_frac)` 乘子。
+/// ```text
+/// resist = clamp(  enemyDB:Sum(BASE, PhysicalDamageReduction)        -- 敌固定 PDR
+///                + skillModList:Sum(BASE, EnemyPhysicalDamageReduction) -- 玩家 Overwhelm（负）
+///                + armourReduction(enemyArmour, raw_hit × More(CalcArmourAsThoughDealing)),
+///                  −NegArmourDmgBonusCap, EnemyPhysicalDamageReductionCap )  -- [−100, 75]
+/// ```
 ///
-/// 出处：agent-docs/damage-scaling.md §Overwhelm（玩家 "Overwhelm N%" → `EnemyPhysicalDamageReduction
-///       BASE -N`，加进敌人 PDR 后 clamp，不破 0%）；PoB2 CalcOffence.lua physical resist 段。
+/// 三项**相加**（vendor :4095，非乘法并集）；下界 −100（Data.lua:194
+/// NegArmourDmgBonusCap——破甲到负后的增伤上限 +100%），上界 75
+/// （monsterConstants `maximum_physical_damage_reduction_%`）。
+///
+/// - 敌甲取值（:4080-4081）：`Override(Armour)` 优先，否则
+///   `calcLib.val = Σ BASE × (1 + ΣINC/100) × ΠMORE`；
+/// - 玩家 `IgnoreEnemyArmour` flag（:4084-4085）→ 敌甲按 0 计
+///   （正甲全免；vendor 对负甲不剔除，此处同样仅在 armour > 0 时生效）；
+/// - `CalcArmourAsThoughDealing` MORE（:4087）：以放大后的击中量算护甲减免；
+/// - 负甲（破甲过零）走 [`armour_reduction_pct_signed`] 的负分支（增伤）。
+///
+/// 未接（vendor 有、PoBR 当前无 producer，TODO(parity)）：`IgnoreArmour` 数值削减
+/// （:4084）、`ChanceToIgnoreEnemyArmour`（:4082/:4087）、
+/// `ChanceToIgnoreEnemyPhysicalDamageReduction` + MIN/MAX config 模式（:4088-4094）、
+/// `PartialIgnoreEnemyPhysicalDamageReduction`（:4096）。
+///
+/// 出处：agent-docs/damage-scaling.md §Overwhelm；PoB2 CalcOffence.lua:4074-4096。
 fn enemy_physical_multiplier(
     player_db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
     raw_hit: f64,
 ) -> f64 {
-    let armour = enemy_db.sum(ModType::Base, cfg, &[ModName::from("Armour")]);
-    let from_armour = super::armour_reduction(armour, raw_hit) * 100.0;
+    let armour_names = [ModName::from("Armour")];
+    let mut armour = match enemy_db.override_(cfg, ModName::from("Armour")) {
+        Some(value) => value,
+        None => {
+            enemy_db.sum(ModType::Base, cfg, &armour_names)
+                * (1.0 + enemy_db.sum(ModType::Inc, cfg, &armour_names) / 100.0)
+                * enemy_db.more(cfg, &armour_names)
+        }
+    };
+    if armour > 0.0 && player_db.flag(cfg, ModName::from("IgnoreEnemyArmour")) {
+        armour = 0.0;
+    }
+    let as_though_dealing = player_db.more(cfg, &[ModName::from("CalcArmourAsThoughDealing")]);
+    let from_armour = armour_reduction_pct_signed(
+        armour,
+        raw_hit * as_though_dealing,
+        cfg.constants.game().armour_ratio,
+    );
     let flat_pdr = enemy_db.sum(
         ModType::Base,
         cfg,
         &[ModName::from("PhysicalDamageReduction")],
     );
-    // 护甲减伤与敌人固定 PDR 取并集（PoB2: 1-(1-a)(1-b)）。
-    let combined = (1.0 - (1.0 - from_armour / 100.0) * (1.0 - flat_pdr / 100.0)) * 100.0;
     // Overwhelm：玩家 EnemyPhysicalDamageReduction BASE（通常为负）直接加到敌人 PDR 上。
     let overwhelm = player_db.sum(
         ModType::Base,
         cfg,
         &[ModName::from("EnemyPhysicalDamageReduction")],
     );
-    let reduction = (combined + overwhelm).clamp(0.0, ENEMY_PHYS_DMGRED_CAP);
+    let reduction = (flat_pdr + overwhelm + from_armour).clamp(
+        -cfg.constants.game().neg_armour_dmg_bonus_cap,
+        ENEMY_PHYS_DMGRED_CAP,
+    );
     1.0 - reduction / 100.0
+}
+
+/// 护甲减伤（%，带符号）——vendor `calcs.armourReductionF`（CalcDefence.lua:55-64）：
+/// `armour/(armour + raw × ArmourRatio) × 100`；armour < 0（破甲过零）取
+/// `−(|armour|/(|armour| + raw × ratio) × 100)`（负减伤 = 增伤）；armour 与 raw
+/// 均为 0 → 0。与玩家侧 [`armour_reduction`](super::armour_reduction)（fraction、
+/// 负甲归 0）口径不同——敌甲路径需要负分支。
+fn armour_reduction_pct_signed(armour: f64, raw_hit: f64, armour_ratio: f64) -> f64 {
+    if armour == 0.0 || raw_hit <= 0.0 {
+        return 0.0;
+    }
+    let magnitude = armour.abs();
+    let pct = magnitude / (magnitude + raw_hit * armour_ratio) * 100.0;
+    if armour < 0.0 { -pct } else { pct }
 }
 
 /// Records a MORE aggregation (`Π(1 + v/100)`) as a single trace node fed by one

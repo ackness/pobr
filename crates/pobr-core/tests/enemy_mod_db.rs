@@ -244,6 +244,100 @@ fn enemy_resist_clamps_to_enemy_max_resist() {
     );
 }
 
+// M4-H S4：物理减伤 additive 公式（vendor CalcOffence.lua:4074-4096）。
+
+#[test]
+fn enemy_physical_reduction_is_additive_not_multiplicative_union() {
+    // armour=1500/raw=150 → 护甲减免 50%；敌固定 PDR 20 → additive 70%
+    // （乘法并集会给 1-(1-0.5)(1-0.8)=60%，vendor :4095 是相加）。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        20.0,
+    ));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (out.dps - 45.0).abs() < 1e-6,
+        "additive 50+20=70% → 150*0.3 = 45, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_physical_reduction_caps_at_75() {
+    // PDR 60 + 护甲 50% = 110 → clamp EnemyPhysicalDamageReductionCap 75。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        60.0,
+    ));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (out.dps - 37.5).abs() < 1e-6,
+        "cap 75% → 150*0.25 = 37.5, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_negative_physical_reduction_amplifies_up_to_neg_cap() {
+    // 破甲过零（Armour Override −1500，raw 150）→ 护甲减免 −50%（增伤），
+    // 下界 −NegArmourDmgBonusCap(−100)（vendor :4095 m_max(-100, ..)）。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Override, -1500.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (out.dps - 225.0).abs() < 1e-6,
+        "负甲 −50% 减伤 → 150*1.5 = 225, got {}",
+        out.dps
+    );
+
+    // 极端负减伤 clamp 在 −100（伤害至多 ×2）。
+    let mut enemy2 = ModDb::new();
+    enemy2.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        -400.0,
+    ));
+    let out2 = calculate_minimal_vs_enemy(&player, &enemy2, &effective_attack(), &attack_input());
+    assert!(
+        (out2.dps - 300.0).abs() < 1e-6,
+        "负减伤 clamp −100 → 150*2 = 300, got {}",
+        out2.dps
+    );
+}
+
+#[test]
+fn ignore_enemy_armour_flag_zeroes_armour_component() {
+    // 玩家 IgnoreEnemyArmour flag（vendor :4084-4085）→ 敌甲按 0 计，仅剩固定 PDR。
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::flag("IgnoreEnemyArmour"));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        20.0,
+    ));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (out.dps - 120.0).abs() < 1e-6,
+        "无视敌甲 → 仅 PDR 20% → 150*0.8 = 120, got {}",
+        out.dps
+    );
+}
+
 // M4-H S3：穿透下界 minPen（vendor CalcOffence.lua:4140/:4163）。
 
 #[test]
@@ -943,8 +1037,11 @@ fn overwhelm_against_armour_reduction() {
 }
 
 #[test]
-fn overwhelm_cannot_push_pdr_below_zero() {
-    // Overwhelm 不破 0：敌人 PDR 10%，Overwhelm 50 → clamp 到 0%（非 -40%）→ 150 满。
+fn overwhelm_can_push_pdr_negative_down_to_neg_cap() {
+    // vendor CalcOffence.lua:4095：additive 总和的下界是 −NegArmourDmgBonusCap(−100)，
+    // **没有**per-source 的 0 下界——敌人 PDR 10%，Overwhelm 50 → 净 −40% → 增伤 ×1.4。
+    // （wiki 口径"Overwhelm 不破 0"与 PoB2 实现不一致；parity 基准取 vendor，
+    // 见 agent-docs/damage-scaling.md §Overwhelm 备注。M4-H S4。）
     let mut player = ModDb::new();
     player.add_mod(Modifier::number(
         "EnemyPhysicalDamageReduction",
@@ -960,8 +1057,8 @@ fn overwhelm_cannot_push_pdr_below_zero() {
 
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input()).dps;
     assert!(
-        (dps - 150.0).abs() < 1e-6,
-        "Overwhelm 不破 0 → 净 0% → 150, got {dps}"
+        (dps - 210.0).abs() < 1e-6,
+        "净 −40% 减伤 → 150*1.4 = 210, got {dps}"
     );
 }
 
