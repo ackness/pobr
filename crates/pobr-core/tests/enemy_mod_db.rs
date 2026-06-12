@@ -131,6 +131,312 @@ fn enemy_armour_reduces_physical_dps_in_effective() {
     );
 }
 
+/// 纯火伤输入（base_hit 0，100 火伤平 roll）。
+fn fire_only_input() -> MinimalInput {
+    MinimalInput {
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        ..attack_input()
+    }
+}
+
+fn fire_only_player() -> ModDb {
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("FireDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("FireDamageMax", ModType::Base, 100.0));
+    player
+}
+
+// M4-H S2：final 抗性口径 = vendor calcResistForType（CalcOffence.lua:530-543）。
+
+#[test]
+fn enemy_shared_elemental_resist_applies_to_elements_not_chaos() {
+    // `ElementalResist BASE` 共享名对火/冰/电生效（vendor :539 isElemental 并名），
+    // 混沌不含（isElemental[Chaos]=false）。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ElementalResist", ModType::Base, 40.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 60.0).abs() < 1e-6,
+        "ElementalResist 40 → 火伤 100*0.6 = 60, got {}",
+        out.dps
+    );
+
+    // 混沌伤害不吃 ElementalResist。
+    let mut chaos_player = ModDb::new();
+    chaos_player.add_mod(Modifier::number("ChaosDamageMin", ModType::Base, 100.0));
+    chaos_player.add_mod(Modifier::number("ChaosDamageMax", ModType::Base, 100.0));
+    let chaos_out = calculate_minimal_vs_enemy(
+        &chaos_player,
+        &enemy,
+        &effective_attack(),
+        &fire_only_input(),
+    );
+    assert!(
+        (chaos_out.dps - 100.0).abs() < 1e-6,
+        "混沌不吃 ElementalResist, got {}",
+        chaos_out.dps
+    );
+}
+
+#[test]
+fn enemy_resist_inc_scaling_applies_before_clamp() {
+    // 抗性自身的 INC 缩放（vendor :539 `× calcLib.mod(...)`）：30 BASE × (1+50%) = 45。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 30.0));
+    enemy.add_mod(Modifier::number("FireResist", ModType::Inc, 50.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 55.0).abs() < 1e-6,
+        "30×1.5=45 抗 → 100*0.55 = 55, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_resist_negative_scale_floors_at_zero() {
+    // 缩放因子 `max(..., 0)`（vendor :539 m_max(calcLib.mod, 0)）：-150% INC → 因子 0 → 抗性 0。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+    enemy.add_mod(Modifier::number("FireResist", ModType::Inc, -150.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 100.0).abs() < 1e-6,
+        "缩放 floor 0 → 抗性 0 → 100, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_resist_override_wins_over_base_sum() {
+    // Override 优先（vendor :531 `enemyDB:Override(cfg, ..)`，config「视为 0 抗」类）。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+    enemy.add_mod(Modifier::number("FireResist", ModType::Override, 0.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 100.0).abs() < 1e-6,
+        "Override 0 抗 → 100, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_resist_clamps_to_enemy_max_resist() {
+    // BASE 90 → clamp 到 EnemyMaxResist 75（Data.lua:200 = 75）。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 90.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 25.0).abs() < 1e-6,
+        "clamp 75 → 100*0.25 = 25, got {}",
+        out.dps
+    );
+}
+
+// M4-H S5：受伤链 INC-only 追加名（vendor CalcOffence.lua:4141/:4152-4156）。
+
+#[test]
+fn elemental_damage_taken_applies_to_elements_only() {
+    // ElementalDamageTaken INC 只进元素类型的 takenInc（vendor :4141）；物理不吃。
+    let player = fire_only_player();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ElementalDamageTaken", ModType::Inc, 25.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 125.0).abs() < 1e-6,
+        "火伤吃 ElementalDamageTaken 25% → 125, got {}",
+        out.dps
+    );
+
+    // 纯物理不吃。
+    let phys_out =
+        calculate_minimal_vs_enemy(&ModDb::new(), &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (phys_out.dps - 150.0).abs() < 1e-6,
+        "物理不吃 ElementalDamageTaken, got {}",
+        phys_out.dps
+    );
+}
+
+#[test]
+fn projectile_damage_taken_gated_by_projectile_flag() {
+    // ProjectileDamageTaken 只在投射物 cfg 下进 takenInc（vendor :4152-4153）。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number(
+        "ProjectileDamageTaken",
+        ModType::Inc,
+        40.0,
+    ));
+
+    // 非投射物攻击：不吃。
+    let melee = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (melee.dps - 150.0).abs() < 1e-6,
+        "非投射物不吃 ProjectileDamageTaken, got {}",
+        melee.dps
+    );
+
+    // 投射物攻击：吃。
+    let proj_cfg = effective_attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
+    let proj = calculate_minimal_vs_enemy(&player, &enemy, &proj_cfg, &attack_input());
+    assert!(
+        (proj.dps - 210.0).abs() < 1e-6,
+        "投射物 +40% taken → 150*1.4 = 210, got {}",
+        proj.dps
+    );
+}
+
+// M4-H S4：物理减伤 additive 公式（vendor CalcOffence.lua:4074-4096）。
+
+#[test]
+fn enemy_physical_reduction_is_additive_not_multiplicative_union() {
+    // armour=1500/raw=150 → 护甲减免 50%；敌固定 PDR 20 → additive 70%
+    // （乘法并集会给 1-(1-0.5)(1-0.8)=60%，vendor :4095 是相加）。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        20.0,
+    ));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (out.dps - 45.0).abs() < 1e-6,
+        "additive 50+20=70% → 150*0.3 = 45, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_physical_reduction_caps_at_75() {
+    // PDR 60 + 护甲 50% = 110 → clamp EnemyPhysicalDamageReductionCap 75。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        60.0,
+    ));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (out.dps - 37.5).abs() < 1e-6,
+        "cap 75% → 150*0.25 = 37.5, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn enemy_negative_physical_reduction_amplifies_up_to_neg_cap() {
+    // 破甲过零（Armour Override −1500，raw 150）→ 护甲减免 −50%（增伤），
+    // 下界 −NegArmourDmgBonusCap(−100)（vendor :4095 m_max(-100, ..)）。
+    let player = ModDb::new();
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Override, -1500.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (out.dps - 225.0).abs() < 1e-6,
+        "负甲 −50% 减伤 → 150*1.5 = 225, got {}",
+        out.dps
+    );
+
+    // 极端负减伤 clamp 在 −100（伤害至多 ×2）。
+    let mut enemy2 = ModDb::new();
+    enemy2.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        -400.0,
+    ));
+    let out2 = calculate_minimal_vs_enemy(&player, &enemy2, &effective_attack(), &attack_input());
+    assert!(
+        (out2.dps - 300.0).abs() < 1e-6,
+        "负减伤 clamp −100 → 150*2 = 300, got {}",
+        out2.dps
+    );
+}
+
+#[test]
+fn ignore_enemy_armour_flag_zeroes_armour_component() {
+    // 玩家 IgnoreEnemyArmour flag（vendor :4084-4085）→ 敌甲按 0 计，仅剩固定 PDR。
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::flag("IgnoreEnemyArmour"));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
+    enemy.add_mod(Modifier::number(
+        "PhysicalDamageReduction",
+        ModType::Base,
+        20.0,
+    ));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
+    assert!(
+        (out.dps - 120.0).abs() < 1e-6,
+        "无视敌甲 → 仅 PDR 20% → 150*0.8 = 120, got {}",
+        out.dps
+    );
+}
+
+// M4-H S3：穿透下界 minPen（vendor CalcOffence.lua:4140/:4163）。
+
+#[test]
+fn penetration_minimum_caps_penetration_floor() {
+    // 抗 50、穿透 30、minPen 35 → max(50-30, 35) = 35 → 火伤 100*0.65 = 65。
+    let mut player = fire_only_player();
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 30.0));
+    player.add_mod(Modifier::number(
+        "FirePenetrationMinimum",
+        ModType::Base,
+        35.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 65.0).abs() < 1e-6,
+        "minPen 35 抬底 → 100*0.65 = 65, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn penetration_skipped_when_resist_at_or_below_min_pen() {
+    // 抗 30 ≤ minPen 30 → 穿透整段跳过（vendor `resist > minPen` 判定），抗性原样 30。
+    let mut player = fire_only_player();
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 50.0));
+    player.add_mod(Modifier::number(
+        "FirePenetrationMinimum",
+        ModType::Base,
+        30.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 30.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 70.0).abs() < 1e-6,
+        "resist ≤ minPen → 穿透不生效 → 100*0.7 = 70, got {}",
+        out.dps
+    );
+}
+
 // ---------------------------------------------------------------------------
 // 3. 曝光取最强（exposure-min-of via ModDb::max_of + reduce_enemy_exposure）
 // ---------------------------------------------------------------------------
@@ -142,7 +448,7 @@ fn exposure_takes_strongest_single_source() {
     enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
     enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 30.0));
 
-    reduce_enemy_exposure(&mut enemy, &CalcConfig::attack());
+    reduce_enemy_exposure(&mut enemy, &ModDb::new(), &CalcConfig::attack());
 
     let fire_resist = enemy.sum(
         ModType::Base,
@@ -153,6 +459,57 @@ fn exposure_takes_strongest_single_source() {
         (fire_resist + 30.0).abs() < 1e-6,
         "曝光取最强 30 → FireResist BASE -30, got {}",
         fire_resist
+    );
+}
+
+// M4-H S6：曝光效果缩放（vendor CalcPerform.lua:3222-3227）。
+
+#[test]
+fn exposure_effect_inc_scales_magnitude_before_effect_on_self() {
+    // 玩家 FireExposureEffect INC 60（Potent Exposure 类）+ boss effect-on-self −50%：
+    // floor(20 × 1.6 × 0.5) = 16（vendor :3227；stormweaver-comet oracle 实测 −16）。
+    let actor = Actor::new(85, ActorBaseStats::default());
+    let mut env = Env::new(actor);
+    setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
+    env.enemy
+        .mod_db
+        .add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
+    env.player
+        .mod_db
+        .add_mod(Modifier::number("FireExposureEffect", ModType::Inc, 60.0));
+    let cfg = effective_attack();
+    reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &cfg);
+
+    let fire = env
+        .enemy
+        .mod_db
+        .sum(ModType::Base, &cfg, &[ModName::from("FireResist")]);
+    // Pinnacle base 50 − 16 = 34。
+    assert!(
+        (fire - 34.0).abs() < 1e-6,
+        "曝光 20×1.6×0.5=16 → FireResist 50-16=34, got {fire}"
+    );
+}
+
+#[test]
+fn extra_exposure_adds_before_scaling() {
+    // 玩家 ExtraExposure BASE 10：先加量再缩放（vendor :3222/:3227）：
+    // floor((20+10) × 1.0 × 1.0) = 30。
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("ExtraExposure", ModType::Base, 10.0));
+
+    reduce_enemy_exposure(&mut enemy, &player, &CalcConfig::attack());
+
+    let fire = enemy.sum(
+        ModType::Base,
+        &CalcConfig::attack(),
+        &[ModName::from("FireResist")],
+    );
+    assert!(
+        (fire + 30.0).abs() < 1e-6,
+        "(20+10)×1 = 30 → FireResist -30, got {fire}"
     );
 }
 
@@ -169,7 +526,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
         .mod_db
         .add_mod(Modifier::number("FireExposure", ModType::Base, 25.0));
     let cfg_eff = effective_attack();
-    reduce_enemy_exposure(&mut env.enemy.mod_db, &cfg_eff);
+    reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &cfg_eff);
     let fire_eff = env
         .enemy
         .mod_db
@@ -189,7 +546,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
         .mod_db
         .add_mod(Modifier::number("FireExposure", ModType::Base, 25.0));
     let cfg_panel = CalcConfig::attack();
-    reduce_enemy_exposure(&mut env2.enemy.mod_db, &cfg_panel);
+    reduce_enemy_exposure(&mut env2.enemy.mod_db, &env2.player.mod_db, &cfg_panel);
     let fire_panel =
         env2.enemy
             .mod_db
@@ -395,14 +752,20 @@ fn setup_enemy_injects_pinnacle_defaults() {
     // 等级被 Pinnacle 抬到 >=82（这里 85）。
     assert_eq!(env.enemy.level, 85);
 
-    // Boss 自带元素穿透注入 **player** modDB（offence 从玩家 db 读 ElementalPenetration）。
-    // Pinnacle = pinnacleBossPen 15/5 = 3。
+    // Boss 自带元素穿透只走防御侧 `Enemy<El>Pen`（enemy modDB，EHP/受击消费）；
+    // **不得**注入玩家进攻穿透（vendor `enemy<El>Pen` config var 无 apply 函数，
+    // ConfigOptions.lua:2269-2273，仅 CalcDefence.lua:2363 消费——M4-H S1）。
     let pen = env.player.mod_db.sum(
         ModType::Base,
         &cfg,
         &[ModName::from("ElementalPenetration")],
     );
-    assert_eq!(pen, 3.0, "Pinnacle 元素穿透 +3 注入玩家 db");
+    assert_eq!(pen, 0.0, "boss 穿透不得进玩家进攻穿透");
+    let def_pen = db.sum(ModType::Base, &cfg, &[ModName::from("EnemyFirePen")]);
+    assert_eq!(
+        def_pen, 3.0,
+        "Pinnacle 防御侧 EnemyFirePen +3 注入 enemy db"
+    );
 }
 
 #[test]
@@ -419,13 +782,19 @@ fn setup_enemy_uber_injects_damage_taken_penalty() {
     );
     // Uber 最低等级 82（角色 80 被抬到 82）。
     assert_eq!(env.enemy.level, 82);
-    // Uber 元素穿透 = uberBossPen 40/5 = 8（注入玩家 db）。
+    // Uber 元素穿透 = uberBossPen 40/5 = 8——仅防御侧 `Enemy<El>Pen`（enemy db），
+    // 玩家进攻穿透不受影响（M4-H S1）。
     let pen = env.player.mod_db.sum(
         ModType::Base,
         &cfg,
         &[ModName::from("ElementalPenetration")],
     );
-    assert_eq!(pen, 8.0, "Uber 元素穿透 +8 注入玩家 db");
+    assert_eq!(pen, 0.0, "boss 穿透不得进玩家进攻穿透");
+    let def_pen = env
+        .enemy
+        .mod_db
+        .sum(ModType::Base, &cfg, &[ModName::from("EnemyColdPen")]);
+    assert_eq!(def_pen, 8.0, "Uber 防御侧 EnemyColdPen +8 注入 enemy db");
 }
 
 #[test]
@@ -774,8 +1143,11 @@ fn overwhelm_against_armour_reduction() {
 }
 
 #[test]
-fn overwhelm_cannot_push_pdr_below_zero() {
-    // Overwhelm 不破 0：敌人 PDR 10%，Overwhelm 50 → clamp 到 0%（非 -40%）→ 150 满。
+fn overwhelm_can_push_pdr_negative_down_to_neg_cap() {
+    // vendor CalcOffence.lua:4095：additive 总和的下界是 −NegArmourDmgBonusCap(−100)，
+    // **没有**per-source 的 0 下界——敌人 PDR 10%，Overwhelm 50 → 净 −40% → 增伤 ×1.4。
+    // （wiki 口径"Overwhelm 不破 0"与 PoB2 实现不一致；parity 基准取 vendor，
+    // 见 agent-docs/damage-scaling.md §Overwhelm 备注。M4-H S4。）
     let mut player = ModDb::new();
     player.add_mod(Modifier::number(
         "EnemyPhysicalDamageReduction",
@@ -791,8 +1163,8 @@ fn overwhelm_cannot_push_pdr_below_zero() {
 
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input()).dps;
     assert!(
-        (dps - 150.0).abs() < 1e-6,
-        "Overwhelm 不破 0 → 净 0% → 150, got {dps}"
+        (dps - 210.0).abs() < 1e-6,
+        "净 −40% 减伤 → 150*1.4 = 210, got {dps}"
     );
 }
 

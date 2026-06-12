@@ -309,7 +309,11 @@ impl CalculationSession {
                 .with_source("config exposure")]);
             }
         }
-        super::setup_env::reduce_enemy_exposure(&mut self.env.enemy.mod_db, &self.env.cfg);
+        super::setup_env::reduce_enemy_exposure(
+            &mut self.env.enemy.mod_db,
+            &self.env.player.mod_db,
+            &self.env.cfg,
+        );
     }
 
     pub fn perform_minimal(&mut self) -> MinimalOutput {

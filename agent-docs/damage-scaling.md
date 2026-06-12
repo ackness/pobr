@@ -128,7 +128,7 @@ output.ScaledDamageEffect = ScaledDamageEffect * (1 + DoubleDamageEffect + Tripl
 
 **Overwhelm = 使物理击中无视目标一定百分比的物理伤害减免 (Physical Damage Reduction, PDR)**。它是物理伤害的"穿透等价物"，但作用对象是 PDR（护甲贡献 + 额外 PDR）而非抗性。
 
-- **不能把 PDR 压到 0% 以下**（与穿透同理）。能把 PDR 打成负的只有 **Armour Break**（护甲破坏），Overwhelm 不行[^poe2wiki-physical][^mobalytics-armour]。
+- **wiki 口径**：不能把 PDR 压到 0% 以下（与穿透同理），能把 PDR 打成负的只有 **Armour Break**（护甲破坏）[^poe2wiki-physical][^mobalytics-armour]。**但 PoB2 实现没有 per-source 的 0 下界**——下方公式对（敌 PDR + Overwhelm + 护甲减免）的**相加总和**只 clamp 在 `[−NegArmourDmgBonusCap, cap]`（CalcOffence.lua:4095），即 Overwhelm 在 PoB2 中可把净减伤推到负（增伤）。PoBR 以 PoB2 golden 为 parity 基准，跟随 vendor 实现（`offence.rs::enemy_physical_multiplier`，M4-H S4）。
 - PoB2 把玩家侧 "Overwhelm N% physical damage reduction" 直接映射成 **`EnemyPhysicalDamageReduction` BASE = −N**（`ModParser.lua`），即在结算 PDR 时把敌人 PDR 直接减 N，再 clamp：
 
 ```lua

@@ -17,8 +17,8 @@
 //! - **Boss 通用 debuff 抗性**：`CurseEffectOnSelf/ExposureEffectOnSelf/SlowEffectOnSelf
 //!   MORE -50` 等，削弱我方诅咒/曝光/减速对 Boss 的有效度。
 //! - **条件态**：Boss → `Condition:Unique`/`RareOrUnique`；Pinnacle/Uber → `Condition:PinnacleBoss`。
-//! - **穿透**：`tier.pen()` 注入 **player** modDB 的 `<Element>Penetration BASE`（boss 自带穿透
-//!   是作用在玩家伤害上的减抗，归因仍记 `EnemyConfig`）。
+//! - **穿透**：`tier.pen()` 仅注入 enemy modDB 的 `Enemy<Element>Pen BASE`（防御侧
+//!   EHP/受击消费，vendor CalcDefence.lua:2363）；**不**进玩家进攻穿透（M4-H S1）。
 //! - **玩家施加的 debuff（曝光/诅咒/破甲/凋萎）通道**：本步只提供归约 hook
 //!   [`reduce_enemy_exposure`]（曝光取最强 → 写入 `*Resist BASE` 减项），具体 debuff
 //!   注入由下游 wave 在调用 [`setup_enemy`] 后追加再调 [`reduce_enemy_exposure`]。
@@ -150,31 +150,16 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier);
     inject_ehp_damage_placeholder(&mut env.enemy.mod_db, constants, defaults.level, tier);
 
-    // Boss 自带元素穿透作用在**玩家**伤害的减抗上 → 注入 player modDB
-    // （`offence.rs::penetration_value` 从玩家 db 读 `ElementalPenetration`）。
-    inject_boss_penetration(&mut env.player.mod_db, &defaults);
-}
-
-/// Boss 自带元素穿透（Pinnacle +3% / Uber +8%）：注入 **player** modDB 的
-/// `ElementalPenetration BASE`。fire/cold/lightning 三种元素在
-/// [`penetration_value`](super::offence) 中共享读取该项（不影响混沌/物理），等价 PoB2 的
-/// per-element `enemyFire/Cold/LightningPen`。归因仍记 [`SourceKind::EnemyConfig`]——
-/// 这是敌人天生属性作用在我方伤害上的减抗，而非玩家自身词条。
-///
-/// 对照 PoB2 `ConfigOptions.lua` `enemyIsBoss` 段：`pinnacleBossPen = 15/5 = 3`、
-/// `uberBossPen = 40/5 = 8`，注入 `enemy{Fire,Cold,Lightning}Pen`。
-fn inject_boss_penetration(player_db: &mut ModDb, defaults: &EnemyTierDefaults) {
-    if defaults.pen != 0.0 {
-        player_db.add_mod(
-            Modifier::number(
-                ModName::from("ElementalPenetration"),
-                ModType::Base,
-                defaults.pen,
-            )
-            .with_source("enemy pinnacle_boss_pen")
-            .with_origin(enemy_source("pinnacle_boss_pen")),
-        );
-    }
+    // 注意：Boss 自带元素穿透（Pinnacle 3 / Uber 8，vendor `pinnacleBossPen = 15/5` /
+    // `uberBossPen = 40/5`，Modules/Data.lua:231/:233）**只作用在防御侧**——
+    // `enemy{Fire,Cold,Lightning}Pen` config var 没有 apply 函数（ConfigOptions.lua:2269-2273，
+    // 不生成任何 mod），仅被 CalcDefence.lua:2363 读取折算玩家受击抗性
+    // （`resMult = 1 − max(resist − enemyPen, 0)/100`）。对应 PoBR 通道 =
+    // `inject_ehp_damage_placeholder` 注入的 `Enemy{Fire,Cold,Lightning}Pen`
+    // （`ehp::fill_ehp_pob2` 消费）。历史版本曾把它同时注入玩家 modDB 的
+    // `ElementalPenetration BASE`（提高我方进攻穿透）——vendor 进攻侧
+    // CalcOffence.lua:4143 的 pen 只读玩家 skillModList，无任何 boss 来源；
+    // 该注入是反向假补偿，已删除（M4-H S1）。
 }
 
 /// 把 [`EnemyTierDefaults`] + 档位加成写入 enemy modDB（不触碰 base 标量）。
@@ -325,30 +310,64 @@ fn inject_ehp_damage_placeholder(
     }
 }
 
-/// 曝光取最强（PoB2 `ExposureMin` 逻辑）：把 enemy modDB 内各元素的 `<Element>Exposure BASE`
-/// 多来源归约为**最强一份**，并写入对应 `<Element>Resist BASE -magnitude`。
+/// 曝光取最强 + 效果缩放（PoB2 CalcPerform.lua:3215-3247 "Apply exposures"）：
+/// 把 enemy modDB 内各元素的 `<Element>Exposure BASE` 多来源归约为**最强一份**，
+/// 经玩家侧效果缩放后写入对应 `<Element>Resist BASE -magnitude`：
+///
+/// ```text
+/// magnitude = floor( (value + extraExposure)                  -- :3222 玩家 ExtraExposure/Extra<El>Exposure BASE
+///                    × (1 + <El>ExposureEffect_inc / 100)     -- :3223 玩家曝光效果 INC（global+skill 合并近似）
+///                    × ExposureEffectOnSelf_more )            -- :3224 敌侧 effect-on-self（Boss MORE −50）
+/// magnitude = max(magnitude, Override(ExposureMin))           -- :3238-3241
+/// ```
+///
+/// vendor 对每个曝光来源独立缩放后取 max（skill-scoped effect 只放大该技能的
+/// 曝光，:3226-3231）；PoBR 扁平 db 无 per-source skill 域，先 `max_of` 原始值
+/// 再统一缩放——多来源且效果系数不同的场景登记 TODO(parity)（样本单来源）。
 ///
 /// 调用时机：下游 wave 把玩家施加的曝光 debuff（`FireExposure BASE 20` 等）注入
 /// enemy modDB **之后**调用本函数完成归约。曝光约定为正数 magnitude（如 `20`），
-/// 写入 `*Resist BASE` 时取负。归因记到产生最强曝光那条 modifier 的 `SourceId`
-/// （若可得），否则记 `EnemyConfig`。
+/// 写入 `*Resist BASE` 时取负。归因记到 `EnemyConfig` 下的 exposure 子来源。
 ///
-/// 出处：agent-docs/debuffs.md §曝光（`magnitude = max(magnitude, value)`）；
+/// 出处：agent-docs/debuffs.md §曝光；PoB2 CalcPerform.lua:3215-3247；
 ///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2。
-pub fn reduce_enemy_exposure(db: &mut ModDb, cfg: &crate::CalcConfig) {
-    // PoB2 `CalcPerform.lua:3225` `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")`：
-    // 曝光 magnitude 先乘该 effect-on-self（Boss `MORE -50` → 0.5）再折入抗性。该 mod 带
-    // `Condition:Effective` 门控，面板口径（`mode_effective == false`）不匹配 → 因子 1.0，
-    // 与历史输出一致。
-    let exposure_effect = db.more(cfg, &[ModName::from("ExposureEffectOnSelf")]);
-    for (exposure_name, resist_name) in [
-        ("FireExposure", "FireResist"),
-        ("ColdExposure", "ColdResist"),
-        ("LightningExposure", "LightningResist"),
+pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::CalcConfig) {
+    // `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")`（:3224）：
+    // Boss `MORE -50` → 0.5。该 mod 带 `Condition:Effective` 门控，面板口径
+    // （`mode_effective == false`）不匹配 → 因子 1.0，与历史输出一致。
+    let exposure_effect_on_self = db.more(cfg, &[ModName::from("ExposureEffectOnSelf")]);
+    for (element, exposure_name, resist_name) in [
+        ("Fire", "FireExposure", "FireResist"),
+        ("Cold", "ColdExposure", "ColdResist"),
+        ("Lightning", "LightningExposure", "LightningResist"),
     ] {
         let raw = db.max_of(ModType::Base, cfg, &[ModName::from(exposure_name)]);
-        // 先乘 effect-on-self 再向下取整（PoB2 `m_floor((value + extraExposure) * ... * effectOnSelf)`）。
-        let magnitude = (raw * exposure_effect).floor();
+        if raw <= 0.0 {
+            continue;
+        }
+        // :3222 玩家额外曝光量（BASE，加在缩放前）。
+        let extra = player_db.sum(
+            ModType::Base,
+            cfg,
+            &[
+                ModName::from("ExtraExposure"),
+                ModName::from(format!("Extra{element}Exposure")),
+            ],
+        );
+        // :3223 玩家曝光效果 INC（vendor 分 global + skill 两路求和后相加；
+        // PoBR 扁平 db 单路求和近似）。
+        let effect_inc = player_db.sum(
+            ModType::Inc,
+            cfg,
+            &[ModName::from(format!("{element}ExposureEffect"))],
+        );
+        // :3227 m_floor((value + extra) × (1 + effect/100) × effectOnSelf)。
+        let mut magnitude =
+            ((raw + extra) * (1.0 + effect_inc / 100.0) * exposure_effect_on_self).floor();
+        // :3238-3241 玩家 ExposureMin Override 抬底。
+        if let Some(min) = player_db.override_(cfg, ModName::from("ExposureMin")) {
+            magnitude = magnitude.max(min);
+        }
         if magnitude > 0.0 {
             db.add_mod(
                 Modifier::number(ModName::from(resist_name), ModType::Base, -magnitude)

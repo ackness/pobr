@@ -855,7 +855,35 @@ fn enemy_damage_multiplier(
         ModName::from("DamageTaken"),
         ModName::from(format!("{type_prefix}DamageTaken")),
     ];
-    let taken_inc = enemy_db.sum(ModType::Inc, &type_cfg, &taken_names);
+    let mut taken_inc = enemy_db.sum(ModType::Inc, &type_cfg, &taken_names);
+    // INC-only 追加名（vendor 只加进 takenInc，不进 takenMore）：
+    // - 元素类型 += ElementalDamageTaken（CalcOffence.lua:4141）；
+    // - 投射物技能 += ProjectileDamageTaken（:4152-4153）、攻击投射物再加
+    //   ProjectileAttackDamageTaken（:4155-4156）——PoBR 以 cfg 的
+    //   ModFlags::PROJECTILE / 攻击判定近似 vendor skillFlags.projectile/attack；
+    // - trap/mine 的 TrapMineDamageTaken（:4158-4159）暂无 skillFlags 表达 +
+    //   样本无 producer，登记 TODO(parity)。
+    if damage_type.is_elemental() {
+        taken_inc += enemy_db.sum(
+            ModType::Inc,
+            &type_cfg,
+            &[ModName::from("ElementalDamageTaken")],
+        );
+    }
+    if type_cfg.flags.intersects(ModFlags::PROJECTILE) {
+        taken_inc += enemy_db.sum(
+            ModType::Inc,
+            &type_cfg,
+            &[ModName::from("ProjectileDamageTaken")],
+        );
+        if type_cfg.is_attack() {
+            taken_inc += enemy_db.sum(
+                ModType::Inc,
+                &type_cfg,
+                &[ModName::from("ProjectileAttackDamageTaken")],
+            );
+        }
+    }
     let taken_more = enemy_db.more(&type_cfg, &taken_names);
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 
@@ -863,13 +891,7 @@ fn enemy_damage_multiplier(
     let mitigation = if damage_type == DamageType::Physical {
         enemy_physical_multiplier(player_db, enemy_db, &type_cfg, raw_hit)
     } else {
-        let resist = enemy_db
-            .sum(
-                ModType::Base,
-                &type_cfg,
-                &[ModName::from(format!("{type_prefix}Resist"))],
-            )
-            .clamp(cfg.constants.game().resist_floor, ENEMY_MAX_RESIST);
+        let resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
         let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
         1.0 - effective_resist / 100.0
     };
@@ -877,12 +899,59 @@ fn enemy_damage_multiplier(
     taken_mult * mitigation
 }
 
+/// 敌人对某伤害类型的 **final 抗性**（vendor `calcResistForType`，CalcOffence.lua:530-543）：
+///
+/// 1. `enemyDB:Override(cfg, "<Type>Resist")` 优先（config「视为 0 抗」类覆盖）；
+/// 2. 否则 `Σ BASE(<Type>Resist[, ElementalResist])`（元素类型含共享名
+///    `ElementalResist`，vendor :539）× `max((1 + ΣINC/100) × ΠMORE, 0)`
+///    （抗性自身的 INC/MORE 缩放，`calcLib.mod` 同式、负缩放 floor 0）；
+/// 3. clamp 到 `[ResistFloor(−200), EnemyMaxResist(75)]`（Data.lua:180/:200）。
+///
+/// 注：vendor 的 maxResist 可被 configInput `enemy<Type>Resist` **显式输入**抬高到
+/// `MaxResistCap(90)`（:532）——PoBR config 通道当前把显式值直接入 BASE
+/// （`config_resolve`），未接 cap 抬升；显式配 >75 抗的场景登记 TODO(parity)。
+/// 物理不走本函数（护甲/PDR 路径见 [`enemy_physical_multiplier`]）。
+pub(crate) fn enemy_resist_final(
+    enemy_db: &ModDb,
+    type_cfg: &CalcConfig,
+    damage_type: DamageType,
+) -> f64 {
+    debug_assert!(damage_type != DamageType::Physical, "物理无抗性路径");
+    let type_prefix = match damage_type {
+        DamageType::Physical => "Physical",
+        DamageType::Fire => "Fire",
+        DamageType::Cold => "Cold",
+        DamageType::Lightning => "Lightning",
+        DamageType::Chaos => "Chaos",
+    };
+    let resist_name = ModName::from(format!("{type_prefix}Resist"));
+    let resist = match enemy_db.override_(type_cfg, resist_name.clone()) {
+        Some(value) => value,
+        None => {
+            // 元素类型共享 `ElementalResist` 名（vendor isElemental 三元素；混沌不含）。
+            let names: &[ModName] = &if damage_type.is_elemental() {
+                vec![resist_name, ModName::from("ElementalResist")]
+            } else {
+                vec![resist_name]
+            };
+            let base = enemy_db.sum(ModType::Base, type_cfg, names);
+            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, names) / 100.0)
+                * enemy_db.more(type_cfg, names);
+            base * scale.max(0.0)
+        }
+    };
+    resist.clamp(type_cfg.constants.game().resist_floor, ENEMY_MAX_RESIST)
+}
+
 /// 玩家穿透对**已 clamp 的**敌人抗性的下调（仅元素/混沌、仅击中）。
 ///
 /// 读玩家 db：元素 `<Type>Penetration` + 共享 `ElementalPenetration`；混沌 `ChaosPenetration`。
-/// 公式（PoB2 CalcOffence.lua，minPen=0）：
-/// `effective = if resist > 0 { max(resist - pen, 0) } else { resist }`
-/// —— 穿透只在抗性为正时生效、不能把抗性压到 0 以下；抗性已 ≤0（负抗）时穿透全浪费。
+/// 公式（PoB2 CalcOffence.lua:4163）：
+/// `effective = if resist > minPen { max(resist - pen, minPen) } else { resist }`
+/// —— `minPen = Σ BASE(<El>PenetrationMinimum, ElementalPenetrationMinimum)`
+/// （vendor :4140/:4144，「穿透至多压到 N」类词条；混沌无 minimum 名、恒 0）。
+/// 无 minimum 词条时退化为旧式：穿透只在抗性为正时生效、不能把抗性压到 0 以下；
+/// 抗性已 ≤ minPen（含负抗）时穿透全浪费。
 ///
 /// 出处：agent-docs/damage-scaling.md §Penetration（穿透不破 0、与负抗互斥、仅击中）；
 ///       damage-defence-order.md §步骤 4；PoB2 `<Type>Penetration`/`ElementalPenetration`。
@@ -893,11 +962,34 @@ fn apply_penetration(
     resist: f64,
 ) -> f64 {
     let pen = penetration_value(player_db, type_cfg, damage_type);
-    if resist > 0.0 {
-        (resist - pen).max(0.0)
+    let min_pen = penetration_minimum(player_db, type_cfg, damage_type);
+    if resist > min_pen {
+        (resist - pen).max(min_pen)
     } else {
         resist
     }
+}
+
+/// 穿透下界 `minPen`（vendor CalcOffence.lua:4140/:4144：
+/// `Sum("BASE", cfg, <El>PenetrationMinimum, ElementalPenetrationMinimum)`）。
+/// 仅三元素有 minimum 名空间；混沌/物理恒 0。
+fn penetration_minimum(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
+    let names: &[ModName] = &match damage_type {
+        DamageType::Physical | DamageType::Chaos => return 0.0,
+        DamageType::Fire => vec![
+            ModName::from("FirePenetrationMinimum"),
+            ModName::from("ElementalPenetrationMinimum"),
+        ],
+        DamageType::Cold => vec![
+            ModName::from("ColdPenetrationMinimum"),
+            ModName::from("ElementalPenetrationMinimum"),
+        ],
+        DamageType::Lightning => vec![
+            ModName::from("LightningPenetrationMinimum"),
+            ModName::from("ElementalPenetrationMinimum"),
+        ],
+    };
+    player_db.sum(ModType::Base, type_cfg, names)
 }
 
 /// 玩家对某伤害类型的穿透值（%）。物理无穿透（物理走 Overwhelm/护甲破坏路径）。
@@ -921,38 +1013,86 @@ fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Dama
     player_db.sum(ModType::Base, type_cfg, names)
 }
 
-/// 物理护甲减伤分量（对某 raw_hit），含玩家 **Overwhelm**：
+/// 物理减伤分量（对某 raw_hit），vendor CalcOffence.lua:4074-4096 physical 段：
 ///
-/// 敌人 `Armour`（→ 护甲减伤）与敌人固定 `PhysicalDamageReduction BASE` 取并集
-/// （PoB2: `1-(1-a)(1-b)`），再**加上**玩家 `EnemyPhysicalDamageReduction BASE`
-/// （Overwhelm = 负值，下调敌人 PDR），最后 clamp 到 `[0, ENEMY_PHYS_DMGRED_CAP]`。
-/// 返回 `(1 - reduction_frac)` 乘子。
+/// ```text
+/// resist = clamp(  enemyDB:Sum(BASE, PhysicalDamageReduction)        -- 敌固定 PDR
+///                + skillModList:Sum(BASE, EnemyPhysicalDamageReduction) -- 玩家 Overwhelm（负）
+///                + armourReduction(enemyArmour, raw_hit × More(CalcArmourAsThoughDealing)),
+///                  −NegArmourDmgBonusCap, EnemyPhysicalDamageReductionCap )  -- [−100, 75]
+/// ```
 ///
-/// 出处：agent-docs/damage-scaling.md §Overwhelm（玩家 "Overwhelm N%" → `EnemyPhysicalDamageReduction
-///       BASE -N`，加进敌人 PDR 后 clamp，不破 0%）；PoB2 CalcOffence.lua physical resist 段。
+/// 三项**相加**（vendor :4095，非乘法并集）；下界 −100（Data.lua:194
+/// NegArmourDmgBonusCap——破甲到负后的增伤上限 +100%），上界 75
+/// （monsterConstants `maximum_physical_damage_reduction_%`）。
+///
+/// - 敌甲取值（:4080-4081）：`Override(Armour)` 优先，否则
+///   `calcLib.val = Σ BASE × (1 + ΣINC/100) × ΠMORE`；
+/// - 玩家 `IgnoreEnemyArmour` flag（:4084-4085）→ 敌甲按 0 计
+///   （正甲全免；vendor 对负甲不剔除，此处同样仅在 armour > 0 时生效）；
+/// - `CalcArmourAsThoughDealing` MORE（:4087）：以放大后的击中量算护甲减免；
+/// - 负甲（破甲过零）走 [`armour_reduction_pct_signed`] 的负分支（增伤）。
+///
+/// 未接（vendor 有、PoBR 当前无 producer，TODO(parity)）：`IgnoreArmour` 数值削减
+/// （:4084）、`ChanceToIgnoreEnemyArmour`（:4082/:4087）、
+/// `ChanceToIgnoreEnemyPhysicalDamageReduction` + MIN/MAX config 模式（:4088-4094）、
+/// `PartialIgnoreEnemyPhysicalDamageReduction`（:4096）。
+///
+/// 出处：agent-docs/damage-scaling.md §Overwhelm；PoB2 CalcOffence.lua:4074-4096。
 fn enemy_physical_multiplier(
     player_db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
     raw_hit: f64,
 ) -> f64 {
-    let armour = enemy_db.sum(ModType::Base, cfg, &[ModName::from("Armour")]);
-    let from_armour = super::armour_reduction(armour, raw_hit) * 100.0;
+    let armour_names = [ModName::from("Armour")];
+    let mut armour = match enemy_db.override_(cfg, ModName::from("Armour")) {
+        Some(value) => value,
+        None => {
+            enemy_db.sum(ModType::Base, cfg, &armour_names)
+                * (1.0 + enemy_db.sum(ModType::Inc, cfg, &armour_names) / 100.0)
+                * enemy_db.more(cfg, &armour_names)
+        }
+    };
+    if armour > 0.0 && player_db.flag(cfg, ModName::from("IgnoreEnemyArmour")) {
+        armour = 0.0;
+    }
+    let as_though_dealing = player_db.more(cfg, &[ModName::from("CalcArmourAsThoughDealing")]);
+    let from_armour = armour_reduction_pct_signed(
+        armour,
+        raw_hit * as_though_dealing,
+        cfg.constants.game().armour_ratio,
+    );
     let flat_pdr = enemy_db.sum(
         ModType::Base,
         cfg,
         &[ModName::from("PhysicalDamageReduction")],
     );
-    // 护甲减伤与敌人固定 PDR 取并集（PoB2: 1-(1-a)(1-b)）。
-    let combined = (1.0 - (1.0 - from_armour / 100.0) * (1.0 - flat_pdr / 100.0)) * 100.0;
     // Overwhelm：玩家 EnemyPhysicalDamageReduction BASE（通常为负）直接加到敌人 PDR 上。
     let overwhelm = player_db.sum(
         ModType::Base,
         cfg,
         &[ModName::from("EnemyPhysicalDamageReduction")],
     );
-    let reduction = (combined + overwhelm).clamp(0.0, ENEMY_PHYS_DMGRED_CAP);
+    let reduction = (flat_pdr + overwhelm + from_armour).clamp(
+        -cfg.constants.game().neg_armour_dmg_bonus_cap,
+        ENEMY_PHYS_DMGRED_CAP,
+    );
     1.0 - reduction / 100.0
+}
+
+/// 护甲减伤（%，带符号）——vendor `calcs.armourReductionF`（CalcDefence.lua:55-64）：
+/// `armour/(armour + raw × ArmourRatio) × 100`；armour < 0（破甲过零）取
+/// `−(|armour|/(|armour| + raw × ratio) × 100)`（负减伤 = 增伤）；armour 与 raw
+/// 均为 0 → 0。与玩家侧 [`armour_reduction`](super::armour_reduction)（fraction、
+/// 负甲归 0）口径不同——敌甲路径需要负分支。
+fn armour_reduction_pct_signed(armour: f64, raw_hit: f64, armour_ratio: f64) -> f64 {
+    if armour == 0.0 || raw_hit <= 0.0 {
+        return 0.0;
+    }
+    let magnitude = armour.abs();
+    let pct = magnitude / (magnitude + raw_hit * armour_ratio) * 100.0;
+    if armour < 0.0 { -pct } else { pct }
 }
 
 /// Records a MORE aggregation (`Π(1 + v/100)`) as a single trace node fed by one
