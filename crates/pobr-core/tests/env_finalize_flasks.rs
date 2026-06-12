@@ -295,3 +295,36 @@ fn end_to_end_charm_resistance_reaches_output_under_mode_combat() {
         "mode_combat=true：charm 雷抗进入输出"
     );
 }
+
+/// 端到端（M3-W4）：charm 预算来源不再手搓 `CharmLimit` modifier，而是经 mod_parser
+/// 解析腰带 implicit「Has 1 Charm Slot」（vendor ModParser.lua:5453）注入——预算
+/// 解锁后 charm 抗性进入输出；无该词条（预算 0，:1589）时 charm 全不生效。
+#[test]
+fn end_to_end_belt_charm_slots_text_unlocks_charm_budget() {
+    let input = MinimalInput {
+        base_life: 1_000.0,
+        ..Default::default()
+    };
+    let run = |with_belt_line: bool| {
+        let cfg = CalcConfig::attack()
+            .with_damage_type(DamageType::Physical)
+            .with_mode_combat(true);
+        let mut session = CalculationSession::new(input).with_config(cfg);
+        if with_belt_line {
+            session
+                .add_modifier_texts(["Has 1 Charm Slot"])
+                .expect("parse belt implicit");
+        }
+        session.add_modifiers(carrier_for(
+            "Charm 1",
+            "Sapphire Charm of Lightning",
+            &["+15% to Lightning Resistance"],
+        ));
+        session.perform_minimal().lightning_resistance
+    };
+    assert_eq!(
+        run(true) - run(false),
+        15.0,
+        "「Has 1 Charm Slot」解析为 CharmLimit BASE → charm 预算解锁"
+    );
+}
