@@ -3839,6 +3839,10 @@ fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
 ///   curse 路径施 CurseEffect 乘区后写 enemy db（CalcPerform.lua:2286-2316 /
 ///   :2969-2984）。映射不到的 curse 载荷 stat 经 Compare 模式落可见性报表
 ///   （[`curse_stat_modifiers`]）。
+/// - （M4-L）其余主动技能：statset stat 经 [`debuff_stat_modifiers`]（debuff 域
+///   `GlobalEffect effectType=Debuff`）映射出敌侧载荷非空 →
+///   [`BuffKind::Debuff`]（vendor buff 循环遍历**全部** activeSkillList，
+///   CalcPerform.lua:1847 / Debuff 分支 :2219-2285——非主技能同样对敌注入）。
 ///
 /// `slot` = socket group 槽名原文（PoB XML `slot` attr，如 `Weapon 1`，与
 /// curse_priority.json 槽位权重键同源）；`socket_index` = 组内宝石序（1-based，
@@ -3859,10 +3863,44 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
             let is_aura = has_type("Aura");
             let is_mark = has_type("Mark");
             let is_curse = is_mark || has_type("AppliesCurse");
-            if (!is_aura && !is_curse) || !seen.insert(gem.skill_id.as_str()) {
+            let socket_index = (idx + 1) as u32;
+            if !is_aura && !is_curse {
+                // （M4-L）Debuff 分支：非 aura/curse 主动技能的敌侧 debuff 载荷
+                // （GlobalEffect effectType=Debuff，vendor CalcActiveSkill.lua:976-1046
+                // 搬入 buff.modList → CalcPerform.lua:2219-2285 Debuff 分支写 enemyDB）。
+                // 如 Frost Bomb `active_skill_all_elemental_exposure_magnitude` →
+                // `<El>Exposure BASE 20`（SkillStatMap.lua:1721-1725），经 buff_pass
+                // Debuff 路径入 enemy db 后由曝光归约折成 `<El>Resist BASE -magnitude`
+                // （CalcPerform.lua:3214-3247）。vendor 对**全部** activeSkillList 生效
+                // （非仅 mainSkill）——此处同口径扫所有启用 socket group。
+                // 无 debuff 载荷（绝大多数技能）→ 空 mods 跳过，零行为。
+                let es = data.effect_stats(
+                    &gem.skill_id,
+                    gem.gem_level,
+                    gem.quality,
+                    gem.stat_set_index,
+                );
+                let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+                let mods = debuff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+                if mods.is_empty() || !seen.insert(gem.skill_id.as_str()) {
+                    continue;
+                }
+                specs.push(BuffSpec {
+                    name: buff_skill_name(data, &gem.skill_id),
+                    kind: BuffKind::Debuff,
+                    skill_id: gem.skill_id.clone(),
+                    mods,
+                    magnitude: 1.0,
+                    slot: group.slot.clone(),
+                    socket_index,
+                    is_mark: false,
+                    ignore_curse_limit: false,
+                });
                 continue;
             }
-            let socket_index = (idx + 1) as u32;
+            if !seen.insert(gem.skill_id.as_str()) {
+                continue;
+            }
             if is_aura {
                 // aura 防御 buff：与 aura_buff_modifiers 同一 stat→mod 映射与
                 // SkillGem 归因（buff_pass 缩放时保留 origin，trace 不丢弃）。
@@ -4387,6 +4425,83 @@ fn curse_stat_modifiers(
                 format!("curse.{skill_id}.{}", ds.stat),
             ))
             .with_raw_text(format!("curse {skill_id} {} ({})", ds.stat, ds.value));
+            mods.push(modifier.with_origin(origin));
+        }
+    }
+    mods
+}
+
+/// （M4-L）debuff 效果词条取数点：把一个 debuff 技能 statset 的全部 stat 经
+/// [`stat_map_engine::map_debuff_stat`]（debuff 域数据通道，敌侧允收名单 =
+/// 元素曝光族第一批）映射为**敌侧** modifier 列表（BuffSpec.mods 载荷，
+/// buff_pass Debuff 路径消费）。与 [`curse_stat_modifiers`] 同构：
+/// - catalog 取数：线程局部上下文优先，回退 `data.stat_map_catalog`；
+/// - 归因：`(SkillGem, "debuff.<skill_id>.<stat>")`，buff_pass 缩放保留 origin；
+/// - 可见性：Compare 模式逐 stat 落 [`StatMapCompareRecord`]
+///   （label = `debuff.<skill_id>`）；`Mapped(空)` / `Unknown` 不记（非 debuff 载荷）。
+fn debuff_stat_modifiers(
+    data: &BuildData,
+    stats: &crate::build_data::EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> Vec<Modifier> {
+    let (mode, ctx_catalog) =
+        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
+    let catalog = ctx_catalog.or_else(|| data.stat_map_catalog.clone());
+    let Some(catalog) = catalog else {
+        return Vec::new(); // 无 catalog（旧数据包）：debuff 词条全 miss（与主通道同口径）。
+    };
+    let mut mods = Vec::new();
+    for ds in stats.all() {
+        if ds.value == 0.0 {
+            continue; // 跳零值 stat（与主通道同口径）。
+        }
+        let outcome =
+            stat_map_engine::map_debuff_stat(&catalog, skill_id, set_key, &ds.stat, ds.value);
+        if mode == StatMapMode::Compare {
+            let record = match &outcome {
+                MappedOutcome::Mapped(items) if !items.is_empty() => {
+                    let injected: Vec<(String, &'static str, f64)> = items
+                        .iter()
+                        .filter_map(|item| match item {
+                            MappedItem::Modifier(m) => Some((
+                                m.name.to_string(),
+                                m.mod_type.as_trace_label(),
+                                m.value.as_number().unwrap_or(0.0),
+                            )),
+                            MappedItem::SkillData { .. } => None,
+                        })
+                        .collect();
+                    Some(("mapped", format!("debuff={injected:?}")))
+                }
+                MappedOutcome::Unsupported(reason) => {
+                    Some(("unsupported", format!("unsupported:{}", reason.category())))
+                }
+                _ => None, // Mapped(空)/Unknown = 非 debuff 载荷，不记。
+            };
+            if let Some((classification, detail)) = record {
+                STAT_MAP_CTX.with(|ctx| {
+                    ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
+                        stat: ds.stat.clone(),
+                        label: format!("debuff.{skill_id}"),
+                        classification,
+                        detail,
+                    });
+                });
+            }
+        }
+        let MappedOutcome::Mapped(items) = outcome else {
+            continue;
+        };
+        for item in items {
+            let MappedItem::Modifier(modifier) = item else {
+                continue;
+            };
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("debuff.{skill_id}.{}", ds.stat),
+            ))
+            .with_raw_text(format!("debuff {skill_id} {} ({})", ds.stat, ds.value));
             mods.push(modifier.with_origin(origin));
         }
     }
@@ -6240,6 +6355,48 @@ mod tests {
             })
             .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20));
         assert!(buff_skill_specs(&bare, &data).is_empty());
+    }
+
+    /// （M4-L）Debuff 分类：Frost Bomb（非 aura/curse 主动技能）的
+    /// `active_skill_all_elemental_exposure_magnitude`（GlobalEffect Debuff，
+    /// SkillStatMap.lua:1721-1725）→ BuffSpec(kind=Debuff)，mods = 三元素
+    /// `<El>Exposure BASE 20`（statset 常量原值）。vendor 对全部 activeSkillList
+    /// 生效（CalcPerform.lua:2219-2285）——非主技能组同样产出。
+    #[test]
+    fn buff_skill_specs_classifies_frost_bomb_debuff() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Druid".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FrostBombPlayer", 18));
+
+        let specs = buff_skill_specs(&build, &data);
+        let bomb = specs
+            .iter()
+            .find(|s| s.skill_id == "FrostBombPlayer")
+            .expect("Frost Bomb debuff spec");
+        assert_eq!(bomb.kind, BuffKind::Debuff);
+        assert!(!bomb.is_mark);
+
+        // 数据侧独立期望：statset 常量 `active_skill_all_elemental_exposure_magnitude`。
+        let expected: f64 = data
+            .effect_stats("FrostBombPlayer", 18, 0, None)
+            .all()
+            .find(|ds| ds.stat == "active_skill_all_elemental_exposure_magnitude")
+            .map(|ds| ds.value)
+            .expect("exposure magnitude 常量应在 statset 数据中");
+        for name in ["FireExposure", "ColdExposure", "LightningExposure"] {
+            let m = bomb
+                .mods
+                .iter()
+                .find(|m| m.name.as_str() == name)
+                .unwrap_or_else(|| panic!("{name} 应在 Debuff spec.mods 中"));
+            assert_eq!(m.mod_type, ModType::Base);
+            assert_eq!(m.value.as_number(), Some(expected));
+        }
     }
 
     /// 单通道不变式（C5-3 删旧码后）：编排产线（BuffSpec → buff_pass 乘区）的

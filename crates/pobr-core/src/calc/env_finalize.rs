@@ -41,6 +41,13 @@ pub fn env_finalize(env: &mut Env) {
     expand_misc_buffs(env);
     // 阶段 7（T4）：非伤害异常施加（Chill/Shock → enemy db）。
     apply_nondamaging_ailments(env);
+    // 阶段 8（M4-L）：曝光归约（vendor CalcPerform.lua:3214-3247 "Apply
+    // exposures"，buff 循环之后 / offence 之前）——enemy db 内全部
+    // `<El>Exposure BASE`（config 注入 + buff_pass Debuff 路径，如 Frost Bomb）
+    // 取最强一份折成 `<El>Resist BASE -magnitude`。**唯一归约点**：
+    // `CalculationSession::apply_enemy_exposure` 只注入不归约（双归约 = 抗性
+    // 双扣）。无曝光 mod 时空转（逐值不变）。
+    super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
 }
 
 /// 阶段 1/5（T5 实现）：`Env::keystone_mods` 中被词条授予的 keystone 注入玩家

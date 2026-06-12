@@ -292,8 +292,11 @@ impl CalculationSession {
     }
 
     /// 注入玩家施加的元素**曝光**（`[fire, cold, lightning]`，PoB2 config 默认每点 -20%
-    /// 抗），写入 enemy modDB 并按 [`reduce_enemy_exposure`] 折算为 `<Element>Resist` 减项。
-    /// 仅在有效口径（`mode_effective`）下对伤害生效。须在 [`setup_enemy`](Self::setup_enemy)
+    /// 抗）：只写 enemy modDB 的 `<Element>Exposure BASE`；折算为 `<Element>Resist`
+    /// 减项的归约统一发生在 `env_finalize` 阶段 8（[`reduce_enemy_exposure`]，
+    /// vendor CalcPerform.lua:3214-3247——M4-L 起 buff_pass Debuff 路径（如
+    /// Frost Bomb）也产曝光，归约收口单点防双扣）。仅在有效口径
+    /// （`mode_effective`）下对伤害生效。须在 [`setup_enemy`](Self::setup_enemy)
     /// 之后调用。
     ///
     /// [`reduce_enemy_exposure`]: super::setup_env::reduce_enemy_exposure
@@ -309,11 +312,6 @@ impl CalculationSession {
                 .with_source("config exposure")]);
             }
         }
-        super::setup_env::reduce_enemy_exposure(
-            &mut self.env.enemy.mod_db,
-            &self.env.player.mod_db,
-            &self.env.cfg,
-        );
     }
 
     pub fn perform_minimal(&mut self) -> MinimalOutput {

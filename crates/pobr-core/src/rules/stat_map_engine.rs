@@ -709,6 +709,182 @@ fn collect_player_buff_mod(
     Ok(())
 }
 
+// ---- M4-L：debuff 域（GlobalEffect effectType=Debuff）敌侧映射 ----
+
+/// 元素是否为**敌侧 debuff 载荷**（vendor `GlobalEffect` tag 且
+/// `effectType == "Debuff"`——`CalcActiveSkill.lua:976-1041` 把命中元素搬入
+/// `buff.modList`（buff.type = "Debuff"），`CalcPerform.lua:2219-2285` 经
+/// DebuffEffect 乘区 `ScaleAddList` 后 mergeBuff 进 `debuffs` 表写 enemyDB）。
+/// group 任一成员命中即整组（与 [`is_curse_effect`] 同口径的保守泛化）。
+fn is_debuff_effect(element: &StatMapMod) -> bool {
+    if element.kind == "group" {
+        return element.mods.iter().any(is_debuff_effect);
+    }
+    element.tags.iter().any(|tag| {
+        matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect")
+            && matches!(tag.get("effectType"), Some(StatMapValue::Text(t)) if t == "Debuff")
+    })
+}
+
+/// 把一条 debuff 技能 stat 经 statmap 数据翻译为**敌侧** PoBR 注入项
+/// （BuffSpec.mods 取数通道，buff_pass Debuff 路径消费）。
+///
+/// 与 [`map_curse_stat`] 同构（curse 域先例）：
+/// - 只保留 [`is_debuff_effect`] 命中的元素（非 debuff 元素 = 技能局部 mod，
+///   走主技能注入通道，此处**静默跳过**）。过滤后无 debuff 元素 → `Mapped(空)`。
+/// - ModName 走敌侧允收名单 [`translate_debuff_mod_name`]——第一批 = 元素曝光族
+///   （Frost Bomb `active_skill_all_elemental_exposure_magnitude` →
+///   `<El>Exposure BASE`，vendor SkillStatMap.lua:1721-1725；消费方 =
+///   `calc::reduce_enemy_exposure` 曝光归约，CalcPerform.lua:3214-3247
+///   "Apply exposures" 把 enemyDB `<El>Exposure` 最强一份折成
+///   `<El>Resist BASE -magnitude`）。未知名整条 `UnknownModName` 上报
+///   （宁可跳过不可错算）。
+/// - `GlobalEffect` tag 剥除（curse 域同款约定键校验）；其余 tag 直译。
+/// - flags / keyword_flags 第一批要求为空。
+pub fn map_debuff_stat(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> MappedOutcome {
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return MappedOutcome::Unknown;
+    };
+    if entry.unextractable {
+        return MappedOutcome::Unsupported(UnsupportedReason::Unextractable);
+    }
+    let entry_params = MergeParams {
+        div: entry.div,
+        mult: entry.mult,
+        base: entry.base,
+        value: entry.value,
+    };
+    let mut items = Vec::new();
+    for element in entry.mods.iter().filter(|e| is_debuff_effect(e)) {
+        if let Err(reason) = collect_debuff_element(element, &entry_params, stat_value, &mut items)
+        {
+            // 与 map_curse_stat 同口径：任一 debuff 元素不可翻译 → 整条跳过（成组语义）。
+            return MappedOutcome::Unsupported(reason);
+        }
+    }
+    MappedOutcome::Mapped(items)
+}
+
+/// 敌侧 ModName 允收名单（debuff 域）。第一批 = 元素曝光（消费方
+/// `calc::reduce_enemy_exposure` 读 enemy db `<El>Exposure` BASE）。
+///
+/// 其余 debuff 载荷名（`ColdDamageTaken`/`MovementSpeed`…）pobr 暂无敌侧
+/// 消费方逐一对照 → `UnknownModName` 上报，消费方落地后补名单。
+fn translate_debuff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
+    match name {
+        "FireExposure" => Ok(vec!["FireExposure"]),
+        "ColdExposure" => Ok(vec!["ColdExposure"]),
+        "LightningExposure" => Ok(vec!["LightningExposure"]),
+        other => Err(UnsupportedReason::UnknownModName(other.to_string())),
+    }
+}
+
+/// debuff 元素翻译（group 递归 + mod 构造器；与 curse 域同构）。
+fn collect_debuff_element(
+    element: &StatMapMod,
+    params: &MergeParams,
+    stat_value: f64,
+    items: &mut Vec<MappedItem>,
+) -> Result<(), UnsupportedReason> {
+    if element.scalar.is_some() {
+        return Err(UnsupportedReason::ScalarMultiplier);
+    }
+    match element.kind.as_str() {
+        "group" => {
+            let group_params = MergeParams {
+                div: element.div,
+                mult: element.mult,
+                base: element.base,
+                value: match &element.value {
+                    Some(StatMapValue::Number(v)) => Some(*v),
+                    Some(_) => {
+                        return Err(UnsupportedReason::UnsupportedKind(
+                            "group 非数值 value".to_string(),
+                        ));
+                    }
+                    None => None,
+                },
+            };
+            for nested in element.mods.iter().filter(|e| is_debuff_effect(e)) {
+                collect_debuff_element(nested, &group_params, stat_value, items)?;
+            }
+            Ok(())
+        }
+        "mod" => collect_debuff_mod(element, params.merge(stat_value), items),
+        other => Err(UnsupportedReason::UnsupportedKind(format!(
+            "debuff 非 mod 载荷：{other}"
+        ))),
+    }
+}
+
+/// debuff `mod()` 构造器翻译：敌侧名单名 + GlobalEffect 剥除 + 其余 tag 直译。
+fn collect_debuff_mod(
+    element: &StatMapMod,
+    merged_value: f64,
+    items: &mut Vec<MappedItem>,
+) -> Result<(), UnsupportedReason> {
+    let Some(name) = element.name.as_deref() else {
+        return Err(UnsupportedReason::UnknownModName("<missing name>".into()));
+    };
+    let Some(mod_type) = element.mod_type.as_deref() else {
+        return Err(UnsupportedReason::MissingModType);
+    };
+    let mod_type = match mod_type {
+        "BASE" => ModType::Base,
+        "INC" => ModType::Inc,
+        "MORE" => ModType::More,
+        "FLAG" => ModType::Flag,
+        "OVERRIDE" => ModType::Override,
+        other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
+    };
+    // 第一批：debuff 允收载荷无 flag / keyword_flag；非空整条上报。
+    if !element.flags.is_empty() {
+        return Err(UnsupportedReason::UnsupportedFlags(element.flags.join("|")));
+    }
+    if !element.keyword_flags.is_empty() {
+        return Err(UnsupportedReason::UnsupportedKeywordFlags(
+            element.keyword_flags.join("|"),
+        ));
+    }
+    // tag：GlobalEffect 剥除（约定外键 = 额外门控语义，整条上报）；其余直译。
+    let mut tags = Vec::new();
+    for tag in &element.tags {
+        let is_global =
+            matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
+        if is_global {
+            if !tag
+                .keys()
+                .all(|k| matches!(k.as_str(), "type" | "effectType"))
+            {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "GlobalEffect 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            continue;
+        }
+        tags.push(translate_tag(tag)?);
+    }
+    for translated in translate_debuff_mod_name(name)? {
+        let mut modifier = if mod_type == ModType::Flag {
+            Modifier::flag(translated)
+        } else {
+            Modifier::number(translated, mod_type, merged_value)
+        };
+        for tag in &tags {
+            modifier = modifier.with_tag(tag.clone());
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+    }
+    Ok(())
+}
+
 /// entry / group 级 merge 参数（vendor `map.div/mult/base/value`）。
 struct MergeParams {
     div: Option<f64>,
@@ -2352,6 +2528,85 @@ mod tests {
             map_curse_stat(&catalog, "X", Some("1"), "some_stat", -10.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
         ));
+    }
+
+    /// Frost Bomb 形态（SkillStatMap.lua:1721-1725）：
+    /// `active_skill_all_elemental_exposure_magnitude` → 三元素
+    /// `<El>Exposure BASE`（GlobalEffect Debuff 剥除，敌侧曝光归约消费）。
+    #[test]
+    fn debuff_exposure_magnitude_maps_three_elements() {
+        let catalog = catalog_json(
+            r#"{ "global": { "active_skill_all_elemental_exposure_magnitude": {
+                 "mods": [
+                   { "kind": "mod", "name": "FireExposure", "mod_type": "BASE",
+                     "tags": [ { "type": "GlobalEffect", "effectType": "Debuff" } ] },
+                   { "kind": "mod", "name": "ColdExposure", "mod_type": "BASE",
+                     "tags": [ { "type": "GlobalEffect", "effectType": "Debuff" } ] },
+                   { "kind": "mod", "name": "LightningExposure", "mod_type": "BASE",
+                     "tags": [ { "type": "GlobalEffect", "effectType": "Debuff" } ] } ] } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_debuff_stat(
+            &catalog,
+            "FrostBombPlayer",
+            None,
+            "active_skill_all_elemental_exposure_magnitude",
+            20.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let mods: Vec<(&str, ModType, Option<f64>)> = items
+            .iter()
+            .map(|i| match i {
+                MappedItem::Modifier(m) => (m.name.as_str(), m.mod_type, m.value.as_number()),
+                other => panic!("期望 Modifier，得到 {other:?}"),
+            })
+            .collect();
+        assert_eq!(
+            mods,
+            vec![
+                ("FireExposure", ModType::Base, Some(20.0)),
+                ("ColdExposure", ModType::Base, Some(20.0)),
+                ("LightningExposure", ModType::Base, Some(20.0)),
+            ]
+        );
+        for item in &items {
+            let MappedItem::Modifier(m) = item else {
+                unreachable!()
+            };
+            assert!(m.tags.is_empty(), "GlobalEffect Debuff tag 剥除");
+        }
+    }
+
+    /// 未知敌侧 debuff 名（允收名单外）→ Unsupported(UnknownModName) 上报；
+    /// 非 debuff 载荷（无 Debuff tag）→ Mapped(空) 静默跳过（走主技能通道）。
+    #[test]
+    fn debuff_unknown_name_reported_and_non_debuff_empty() {
+        let catalog = catalog_json(
+            r#"{ "global": {
+                 "hinder_debuff_movement_speed_+%": {
+                   "mods": [ { "kind": "mod", "name": "MovementSpeed", "mod_type": "INC",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Debuff" } ] } ] },
+                 "spell_minimum_base_cold_damage": {
+                   "mods": [ { "kind": "mod", "name": "ColdMin", "mod_type": "BASE" } ] } } }"#,
+        );
+        assert_eq!(
+            map_debuff_stat(
+                &catalog,
+                "X",
+                None,
+                "hinder_debuff_movement_speed_+%",
+                -30.0
+            ),
+            MappedOutcome::Unsupported(UnsupportedReason::UnknownModName("MovementSpeed".into()))
+        );
+        assert_eq!(
+            map_debuff_stat(&catalog, "X", None, "spell_minimum_base_cold_damage", 7.0),
+            MappedOutcome::Mapped(Vec::new())
+        );
+        assert_eq!(
+            map_debuff_stat(&catalog, "X", None, "no_such_stat", 1.0),
+            MappedOutcome::Unknown
+        );
     }
 
     /// Precision II 形态（sup_dex.lua:4216-4250）：`Accuracy INC` + GlobalEffect
