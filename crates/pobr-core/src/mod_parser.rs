@@ -1587,7 +1587,8 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
 /// 异常词条族总分发：依次尝试各异常句式族，命中即产出 Parsed。
 fn parse_ailment_special(rest: &str, original: &str) -> Option<ParseOutcome> {
     let mods = parse_ailment_chance_sentence(rest, original)
-        .or_else(|| parse_ailment_magnitude(rest, original))?;
+        .or_else(|| parse_ailment_magnitude(rest, original))
+        .or_else(|| parse_poison_stack_limit(rest, original))?;
     Some(ParseOutcome {
         mods,
         status: ParseStatus::Parsed,
@@ -1660,6 +1661,25 @@ fn parse_ailment_chance_sentence(rest: &str, source: &str) -> Option<Vec<Modifie
         m = m.with_flags(flags);
     }
     Some(vec![m])
+}
+
+/// 「Targets can be affected by +N of your Poisons at the same time」→
+/// `PoisonCanStack` flag + `PoisonStacks` BASE N（成对注入）。
+///
+/// vendor specialModList（ModParser.lua:3895）：`flag("PoisonCanStack") +
+/// mod("PoisonStacks", "BASE", num)`。消费链：perform::resolve_stack_config
+/// （flag 门控；maxStacks = (1 + ΣBASE) × More）——与 statmap 侧
+/// `number_of_additional_poison_stacks` 通道（sup_dex.lua:2188-2191）同形。
+fn parse_poison_stack_limit(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let body = rest.strip_prefix("targets can be affected by +")?;
+    let (num, tail) = take_unsigned_number(body)?;
+    if tail != " of your poisons at the same time" {
+        return None;
+    }
+    Some(vec![
+        Modifier::flag("PoisonCanStack").with_source(source),
+        Modifier::number("PoisonStacks", ModType::Base, num).with_source(source),
+    ])
 }
 
 /// 解析 PoB 词条标记 `[A|B]` → `B`（显示名）、`[A]` → `A`。无标记原样返回。
@@ -2959,6 +2979,30 @@ mod per_slot_defence_tests {
         let out = parse_mod("20% increased Poison Duration on You");
         // Assert
         assert!(out.is_err());
+    }
+
+    /// 「Targets can be affected by +N of your Poisons at the same time」
+    /// （vendor ModParser.lua:3895）→ PoisonCanStack flag + PoisonStacks BASE
+    /// 成对（M4-l §7.2 族 4）。
+    #[test]
+    fn parses_poison_stack_limit_pair() {
+        // Arrange：弓符文原文 + 树小点原文（bracket 标记）。
+        let cases = [
+            "Targets can be affected by +1 of your Poisons at the same time",
+            "Targets can be affected by +1 of your [Poison|Poisons] at the same time",
+        ];
+        for text in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 2, "{text}");
+            assert_eq!(out.mods[0].name.as_str(), "PoisonCanStack", "{text}");
+            assert_eq!(out.mods[0].mod_type, ModType::Flag, "{text}");
+            assert_eq!(out.mods[1].name.as_str(), "PoisonStacks", "{text}");
+            assert_eq!(out.mods[1].mod_type, ModType::Base, "{text}");
+            assert_eq!(out.mods[1].value.as_number(), Some(1.0), "{text}");
+        }
     }
 
     /// `with poison` / `with bleeding`（ANY，无 MatchAll）→ 对应 KeywordFlag，不带 MATCH_ALL。
