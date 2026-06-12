@@ -761,6 +761,13 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
         "you have no mana" => {
             vec![Modifier::number("MaximumMana", ModType::Override, 0.0).with_source(source)]
         }
+        // 诅咒无视上限（M4-H；vendor ModParser.lua:4275 `curses you inflict ignore
+        // curse limit` → `EnemyCurseLimit BASE 99`——vendor 不走 flag，直接抬限；
+        // 消费 = buff_pass 槽位预算（DEFAULT 1 + Σ EnemyCurseLimit，vendor
+        // CalcPerform.lua:2832 同式）。witch-blood-mage 的 Doedre's Undoing 词条。
+        "curses you inflict ignore curse limit" => {
+            vec![Modifier::number("EnemyCurseLimit", ModType::Base, 99.0).with_source(source)]
+        }
         // Eldritch Battery 型关键石（PoB2 `converts all energy shield to mana` → BASE 100）。
         "converts all energy shield to mana" => {
             vec![

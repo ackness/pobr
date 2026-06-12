@@ -765,3 +765,16 @@ mod weapon_bits_e2e {
         assert!(!m.matches(&mace_cfg));
     }
 }
+
+/// 诅咒无视上限（M4-H；vendor ModParser.lua:4275 → `EnemyCurseLimit BASE 99`，
+/// 消费 = buff_pass 槽位预算 DEFAULT 1 + Σ，vendor CalcPerform.lua:2832 同式；
+/// witch-blood-mage 的 Doedre's Undoing 词条，vendor EnemyCurseLimit 实测 100）。
+#[test]
+fn parses_curses_ignore_curse_limit() {
+    let o = parse_mod("Curses you inflict ignore Curse limit").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("EnemyCurseLimit"));
+    assert_eq!(o.mods[0].mod_type, ModType::Base);
+    assert_eq!(o.mods[0].value, ModValue::Number(99.0));
+}
