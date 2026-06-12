@@ -2417,6 +2417,10 @@ fn parse_name(text: &str) -> Option<ModName> {
         "stun threshold" => "StunThreshold",
         // 异常阈值（PoB2 ModParser.lua:451；与 stun threshold 组合形见 resolve_names）。
         "ailment threshold" => "AilmentThreshold",
+        // 异常施加几率 INC 形（M4-l §7.2 族 1 补遗）：vendor 名表 :832
+        // `chance to inflict ailments` → `AilmentChance`。消费链
+        // ailment::flat_chance（`[<X>Chance, AilmentChance]` 的 inc 腿）。
+        "chance to inflict ailments" => "AilmentChance",
         // 伤害异常持续时间（M4-l §7.2 族 3）：vendor 名表 → `Enemy<X>Duration`
         // （施加方对敌 debuff 时长；poison :837/:840、bleed :846-:847、ignite
         // :813-:814）。PoBR 消费名为去 Enemy 前缀的 `<X>Duration`（与 statmap
@@ -3044,6 +3048,23 @@ mod per_slot_defence_tests {
             assert_eq!(m.value.as_number(), Some(value), "{text}");
             assert_eq!(m.flags, flags, "{text}");
         }
+    }
+
+    /// 「N% increased chance to inflict Ailments」（vendor ModParser.lua:832 名表
+    /// `chance to inflict ailments` → AilmentChance）→ INC（族 1 补遗：
+    /// flat_chance 的 `[<X>Chance, AilmentChance]` inc 腿消费）。
+    #[test]
+    fn parses_ailment_chance_inc() {
+        // Arrange：树小点原文（bracket 标记）。
+        let text = "10% increased chance to inflict [Ailments]";
+        // Act
+        let out = parse_mod(text).expect("parses");
+        // Assert
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        assert_eq!(out.mods[0].name.as_str(), "AilmentChance");
+        assert_eq!(out.mods[0].mod_type, ModType::Inc);
+        assert_eq!(out.mods[0].value.as_number(), Some(10.0));
     }
 
     /// 条件形「on Critical Hit」不在名表（vendor 走独立 modTag 链，未接入）→
