@@ -430,6 +430,40 @@ pub fn has_curse_payload(
         .is_some_and(|entry| entry.mods.iter().any(is_curse_effect))
 }
 
+/// 元素是否为**曝光施加能力**载荷（M4-m，宿主探测用、非取数）：vendor
+/// `flag("InflictExposure", …)`（SkillStatMap.lua:1692-1715 各 on_shock /
+/// on_cold_crit / on_ignite / on_hit 形）或 `<El>ExposureChance BASE`
+/// （:1689-1690 / :1704-1707）。对应 CalcPerform.lua:3196-3200
+/// `getSkillExposureEffect` 的 Config 曝光源宿主判据 `HasMod("BASE", cfg,
+/// el.."ExposureChance") or HasMod("FLAG", "InflictExposure")`。PoBR 近似
+/// 忽略 flag 上的门控 tag（on-Ignited 等条件——vendor `HasMod` 带 cfg 同样
+/// 宽松存在性判定，条件不参与）。
+fn is_exposure_inflict(element: &StatMapMod) -> bool {
+    if element.kind == "group" {
+        return element.mods.iter().any(is_exposure_inflict);
+    }
+    element
+        .name
+        .as_deref()
+        .is_some_and(|n| n == "InflictExposure" || n.ends_with("ExposureChance"))
+}
+
+/// 一条 stat 是否含曝光施加能力载荷（[`is_exposure_inflict`]；与
+/// [`has_curse_payload`] 同口径的**存在性**判定，不要求允收可翻译）。供编排层
+/// 曝光宿主探测：宿主曝光能力来自 support（Fire Exposure
+/// `inflict_exposure_for_x_ms_on_ignite`）时，组内曝光效果 support
+/// （Potent Exposure）的 `<El>ExposureEffect` 才全局注入。
+pub fn has_exposure_inflict_payload(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+) -> bool {
+    catalog
+        .lookup(effect_id, set_key, stat)
+        .is_some_and(|entry| entry.mods.iter().any(is_exposure_inflict))
+}
+
 /// 敌侧 ModName 翻译表（curse 域，PoB2 enemyDB 名 → PoBR enemy db 聚合名）。
 ///
 /// 允收名单 = 当前 pobr 敌侧消费方逐一对照（宁可跳过不可错算）：
@@ -2600,6 +2634,51 @@ mod tests {
             map_curse_stat(&catalog, "DespairPlayer", None, "no_such_stat", 1.0),
             MappedOutcome::Unknown
         );
+    }
+
+    /// 曝光施加能力载荷存在性（M4-m）：`flag("InflictExposure", …)`（Fire
+    /// Exposure `inflict_exposure_for_x_ms_on_ignite`，SkillStatMap.lua:1701-1703，
+    /// 门控 tag 不参与判定）与 `<El>ExposureChance BASE`（:1689-1690）均命中；
+    /// 普通载荷 / catalog miss → 不存在。
+    #[test]
+    fn has_exposure_inflict_payload_matches_flag_and_chance() {
+        let catalog = catalog_json(
+            r#"{ "global": {
+                 "inflict_exposure_for_x_ms_on_ignite": {
+                   "mods": [ { "kind": "mod", "name": "ExposureDuration", "mod_type": "BASE",
+                               "tags": [ { "type": "ActorCondition", "actor": "enemy", "var": "Ignited" } ] },
+                             { "kind": "flag", "name": "InflictExposure", "mod_type": "FLAG", "value": true,
+                               "tags": [ { "type": "ActorCondition", "actor": "enemy", "var": "Ignited" } ] } ] },
+                 "base_inflict_fire_exposure_on_hit_%_chance": {
+                   "mods": [ { "kind": "mod", "name": "FireExposureChance", "mod_type": "BASE" } ] },
+                 "plain_damage": {
+                   "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC" } ] } },
+                 "per_stat_set": {} }"#,
+        );
+        assert!(has_exposure_inflict_payload(
+            &catalog,
+            "X",
+            None,
+            "inflict_exposure_for_x_ms_on_ignite"
+        ));
+        assert!(has_exposure_inflict_payload(
+            &catalog,
+            "X",
+            None,
+            "base_inflict_fire_exposure_on_hit_%_chance"
+        ));
+        assert!(!has_exposure_inflict_payload(
+            &catalog,
+            "X",
+            None,
+            "plain_damage"
+        ));
+        assert!(!has_exposure_inflict_payload(
+            &catalog,
+            "X",
+            None,
+            "no_such_stat"
+        ));
     }
 
     /// curse 载荷**存在性**判定（vendor buffList 注册前置，CalcActiveSkill.lua:976-1041）：
