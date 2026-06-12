@@ -358,6 +358,11 @@ if mainSkill then
 			if vv then skillInfo.skillFlags[k] = true end
 		end
 	end
+	-- skillData.dpsMultiplier (post calcLib.mod "DPS" fold, CalcOffence.lua:3863) for
+	-- the W-C4 dps end-factor parity checks.
+	if mainSkill.skillData then
+		skillInfo.dpsMultiplier = mainSkill.skillData.dpsMultiplier
+	end
 	-- support gems and their levels
 	skillInfo.supports = {}
 	if mainSkill.supportList then
@@ -424,6 +429,11 @@ end
 local report = {
 	mainOutput = scalarsOf(mainOutput),
 	calcsOutput = scalarsOf(calcsOutput),
+	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
+	-- DoubleDamageChance / TripleDamageChance / ScaledDamageEffect / per-pass
+	-- CritChance live here for attacks (M4-T3 W-C1 oracle parity).
+	mainHandOutput = type(mainOutput.MainHand) == "table" and scalarsOf(mainOutput.MainHand) or nil,
+	offHandOutput = type(mainOutput.OffHand) == "table" and scalarsOf(mainOutput.OffHand) or nil,
 	intermediates = intermediates,
 	damageModList = damageModList,
 	damageAgg = damageAgg,
