@@ -85,6 +85,9 @@ pub use skills::{
     SkillStatSetLevel, StatSetDef, StatSetLabelDef, StatSetLabelsDef,
 };
 pub use tree::{PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta};
-pub use triggers::{MirageConfigDef, MirageConfigsDef, MirageSourceFilterDef, MirageTriggerDef};
+pub use triggers::{
+    MirageConfigDef, MirageConfigsDef, MirageSourceFilterDef, MirageTriggerDef, TriggerConfigDef,
+    TriggerConfigsDef, TriggerKeyDef, TriggerSkillCondDef,
+};
 pub use unarmed_data::{UnarmedDataTable, UnarmedWeaponDef};
 pub use weapon_types::{WeaponTypeDef, WeaponTypeTable};

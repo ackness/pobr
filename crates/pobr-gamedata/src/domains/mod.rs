@@ -56,3 +56,6 @@ pub mod uniques; // M5c：传奇 raw+索引双层
 
 // ---- M6 前置：ModParser 解析规则六表（overlay 层，消费侧 = M6-B scan 引擎）----
 pub mod parser_rules;
+
+// ---- M4-T5 W-E1：触发配置 61 项（overlay 层，消费侧 = orchestrator 触发段）----
+pub mod trigger_configs;

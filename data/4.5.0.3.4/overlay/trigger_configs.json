@@ -1,0 +1,835 @@
+{
+  "_meta": {
+    "schema": "trigger_configs/v1",
+    "generator": "sync-pob-catalog gen-trigger-configs（数据内嵌于工具源码 + vendor key 对账）",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)",
+    "extracted_files": [
+      "Modules/CalcTriggers.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- gen-trigger-configs --vendor-root vendor/PathOfBuilding-PoE2/src --out data/4.5.0.3.4/overlay/trigger_configs.json",
+    "vendor_fingerprint": "1465L:80591B",
+    "vendor_config_table_keys": 61
+  },
+  "configs": [
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "arakaali's fang"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "assuming_every_hit_kills": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:977-979"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "arcanist brand"
+      },
+      "source_skill_name": "Arcanist Brand",
+      "source_rate_is_final": true,
+      "ignores_tick_rate": true,
+      "handler_id": "trigger:arcanist_brand_activation_freq",
+      "vendor_ref": "Modules/CalcTriggers.lua:1241-1260"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "asenath's chant"
+      },
+      "trigger_on_use": true,
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ],
+        "all_mod_flags": [
+          "Bow"
+        ]
+      },
+      "triggered_skill_cond": {
+        "any_skill_types": [
+          "Spell"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:1011-1019"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "ashcaller"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "source_rate_is_final": true,
+      "assuming_every_hit_kills": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:973-976"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "autoexertion"
+      },
+      "trigger_on_use": true,
+      "use_cast_rate": true,
+      "source_skill_name": "Autoexertion",
+      "source_rate_is_final": true,
+      "ignores_tick_rate": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:1182-1194"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "automation"
+      },
+      "trigger_on_use": true,
+      "use_cast_rate": true,
+      "source_skill_name": "Automation",
+      "source_rate_is_final": true,
+      "ignores_tick_rate": true,
+      "note": "主技能 = Automation 自身时 vendor 走 global+self 分支（自速率）",
+      "vendor_ref": "Modules/CalcTriggers.lua:1133-1152"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "avenging flame"
+      },
+      "ignore_source_rate": true,
+      "handler_id": "trigger:avenging_flame_totem_comparer",
+      "note": "源谓词 skillFlags.totem（pobr 无图腾域）+ 图腾血量比较器",
+      "vendor_ref": "Modules/CalcTriggers.lua:1377-1384"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "battlemage's cry"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee"
+        ]
+      },
+      "handler_id": "trigger:battlemage_uptime_comparer",
+      "vendor_ref": "Modules/CalcTriggers.lua:1230-1240"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "call to arms"
+      },
+      "trigger_on_use": true,
+      "use_cast_rate": true,
+      "source_skill_name": "Call to Arms",
+      "source_rate_is_final": true,
+      "ignores_tick_rate": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:1169-1181"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "cameria's avarice"
+      },
+      "trigger_name": "Icicle Burst",
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:959-961"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "cast on critical strike"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ]
+      },
+      "trigger_on_crit": true,
+      "match_effect_ids": [
+        "MetaCastOnCritPlayer"
+      ],
+      "note": "trigger_on_crit 来自 SkillStatMap 对 triggeredByCoc 的固定旗标",
+      "vendor_ref": "Modules/CalcTriggers.lua:1089-1092"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "cast on death"
+      },
+      "global_trigger": true,
+      "source_is_self": true,
+      "note": "vendor 仅置 triggered + infoMessage（on-death 无稳态 DPS 语义）",
+      "vendor_ref": "Modules/CalcTriggers.lua:1261-1265"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "cast on melee kill"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee"
+        ]
+      },
+      "assuming_every_hit_kills": true,
+      "requires_condition": "KilledRecently",
+      "match_effect_ids": [
+        "MetaCastOnMeleeKillPlayer"
+      ],
+      "note": "vendor 源谓词 Attack and Melee；Melee 蕴含 Attack，转写 any[Melee]",
+      "vendor_ref": "Modules/CalcTriggers.lua:1093-1104"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "cast when damage taken"
+      },
+      "global_trigger": true,
+      "source_is_self": true,
+      "match_effect_ids": [
+        "MetaCastWhenDamageTakenPlayer"
+      ],
+      "note": "CWDTThreshold 面板输出（threshold × CWDTThreshold mod）未建模",
+      "vendor_ref": "Modules/CalcTriggers.lua:1113-1127"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "cast when stunned"
+      },
+      "trigger_chance_stat": "chanceToTriggerOnStun",
+      "global_trigger": true,
+      "source_is_self": true,
+      "match_effect_ids": [
+        "MetaCastWhenStunnedPlayer"
+      ],
+      "vendor_ref": "Modules/CalcTriggers.lua:1128-1132"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "cast while channelling"
+      },
+      "match_effect_ids": [
+        "MetaCastWhileChannellingPlayer"
+      ],
+      "handler_id": "trigger:cwc_handler",
+      "note": "vendor customHandler = CWCHandler；pobr 经 perform CWC 分支建模",
+      "vendor_ref": "Modules/CalcTriggers.lua:1295-1297"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "combust"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee"
+        ]
+      },
+      "handler_id": "trigger:infernal_uptime_comparer",
+      "vendor_ref": "Modules/CalcTriggers.lua:1266-1273"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "cospri's malice"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee"
+        ],
+        "all_mod_flags": [
+          "Sword",
+          "Weapon1H"
+        ]
+      },
+      "note": "vendor band(bor(Sword,1H)) 字面任一位命中，按条目意图转写 all-of",
+      "vendor_ref": "Modules/CalcTriggers.lua:1083-1088"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "doom blast"
+      },
+      "use_cast_rate": true,
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Hex"
+        ]
+      },
+      "ignores_tick_rate": true,
+      "handler_id": "trigger:doom_blast_overlaps",
+      "vendor_ref": "Modules/CalcTriggers.lua:1285-1294"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "duskblight"
+      },
+      "trigger_name": "Stalking Pustule",
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:936-938"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "flames of judgement"
+      },
+      "source_skill_name": "Queen's Demand",
+      "source_rate_is_final": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:1026-1031"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "focus"
+      },
+      "handler_id": "trigger:helmet_focus_handler",
+      "vendor_ref": "Modules/CalcTriggers.lua:1298-1300"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "hextouch"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ]
+      },
+      "source_rate_is_final": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:1198-1203"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "intuitive link"
+      },
+      "use_cast_rate": true,
+      "triggered_skill_cond": {
+        "any_skill_types": [
+          "Spell"
+        ]
+      },
+      "source_skill_name": "Intuitive Link",
+      "source_rate_stat": "IntuitiveLinkSourceRate",
+      "vendor_ref": "Modules/CalcTriggers.lua:1385-1399"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "jorrhast's blacksteel"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "source_rate_is_final": true,
+      "assuming_every_hit_kills": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:969-972"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "kitava's thirst"
+      },
+      "trigger_name": "Kitava's Thirst",
+      "trigger_chance_stat": "KitavaTriggerChance",
+      "handler_id": "trigger:kitavas_thirst_mana_gate",
+      "note": "源比较器要求 ManaCost > KitavaRequiredManaCost，落 handler",
+      "vendor_ref": "Modules/CalcTriggers.lua:1061-1074"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "law of the wilds"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee",
+          "Attack"
+        ],
+        "all_mod_flags": [
+          "Claw"
+        ],
+        "not_skill_types": [
+          "SummonsTotem"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:882-888"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "limbsplit"
+      },
+      "trigger_name": "Gore Shockwave",
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee",
+          "Attack"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:930-932"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "lioneye's paws"
+      },
+      "trigger_on_use": true,
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ],
+        "all_mod_flags": [
+          "Bow"
+        ]
+      },
+      "cooldown_override_s": 1.0,
+      "vendor_ref": "Modules/CalcTriggers.lua:939-944"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "maloney's mechanism"
+      },
+      "trigger_on_use": true,
+      "triggered_skill_cond": {
+        "any_skill_types": [
+          "RangedAttack"
+        ]
+      },
+      "handler_id": "trigger:maloneys_mechanism_unique_name",
+      "note": "源谓词依赖 Replica 判定（弓攻击 vs 法术二选一），落 handler",
+      "vendor_ref": "Modules/CalcTriggers.lua:998-1011"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "manaforged arrows"
+      },
+      "trigger_name": "Manaforged Arrows",
+      "trigger_on_use": true,
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ],
+        "all_mod_flags": [
+          "Bow"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:1280-1284"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "mark of the elder"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "assuming_every_hit_kills": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:983-985"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "mark of the shaper"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "assuming_every_hit_kills": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:986-988"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "mark on hit"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:1195-1197"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "mjolner"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ],
+        "all_mod_flags": [
+          "Mace",
+          "Weapon1H"
+        ]
+      },
+      "handler_id": "trigger:mjolner_dual_source",
+      "note": "vendor band(bor(Mace,1H)) 任一位命中 + 非同槽源约束，落 handler",
+      "vendor_ref": "Modules/CalcTriggers.lua:1075-1082"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "moonbender's wing"
+      },
+      "trigger_name": "Lightning Warp",
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee",
+          "Attack"
+        ]
+      },
+      "cooldown_override_s": 1.0,
+      "vendor_ref": "Modules/CalcTriggers.lua:951-955"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "ngamahu's flame"
+      },
+      "trigger_name": "Molten Burst",
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee",
+          "Attack"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:956-958"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "nova"
+      },
+      "trigger_name": "Summon Holy Relic",
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ]
+      },
+      "handler_id": "trigger:holy_relic_minion_actor",
+      "note": "actor = env.minion（召唤物触发域），M5a minion 框架后接",
+      "vendor_ref": "Modules/CalcTriggers.lua:1105-1112"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "oskarm"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ]
+      },
+      "source_rate_is_final": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:1204-1209"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "poet's pen"
+      },
+      "trigger_on_use": true,
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ],
+        "all_mod_flags": [
+          "Wand"
+        ]
+      },
+      "triggered_skill_cond": {
+        "any_skill_types": [
+          "Spell"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:989-997"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "prismatic burst"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:1274-1276"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "replica eternity shroud"
+      },
+      "global_trigger": true,
+      "source_is_self": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:922-925"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "replica lioneye's paws"
+      },
+      "trigger_on_use": true,
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Attack"
+        ],
+        "all_mod_flags": [
+          "Bow"
+        ]
+      },
+      "cooldown_override_s": 1.0,
+      "vendor_ref": "Modules/CalcTriggers.lua:945-950"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "rigwald's crest"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "source_rate_is_final": true,
+      "assuming_every_hit_kills": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:965-968"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "shattershard"
+      },
+      "global_trigger": true,
+      "source_is_self": true,
+      "handler_id": "trigger:shattershard_duration_cd",
+      "note": "triggerRateCapOverride = 1/Duration（取自自身子计算输出）",
+      "vendor_ref": "Modules/CalcTriggers.lua:1214-1229"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "shockwave"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:1277-1279"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "shroud of the lightless"
+      },
+      "global_trigger": true,
+      "source_is_self": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:926-929"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "snipe"
+      },
+      "handler_id": "trigger:snipe_stages",
+      "vendor_ref": "Modules/CalcTriggers.lua:1301-1376"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "spellslinger"
+      },
+      "trigger_on_use": true,
+      "use_cast_rate": true,
+      "source_skill_name": "Spellslinger",
+      "source_rate_is_final": true,
+      "note": "主技能 = Spellslinger 自身时源谓词为 Wand 攻击（weaponTypes 判定）",
+      "vendor_ref": "Modules/CalcTriggers.lua:1153-1168"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "sporeguard"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "assuming_every_hit_kills": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:980-982"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "storm of judgement"
+      },
+      "source_skill_name": "Queen's Demand",
+      "source_rate_is_final": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:1032-1037"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "supporttriggerelementalspellonblock"
+      },
+      "global_trigger": true,
+      "source_is_self": true,
+      "handler_id": "trigger:svalinn_support_filter",
+      "note": "triggeredSkillCond 调 canGrantedEffectSupportActiveSkill，落 handler",
+      "vendor_ref": "Modules/CalcTriggers.lua:1400-1406"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "supporttriggerfirespellonhit"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:1407-1416"
+    },
+    {
+      "key": {
+        "kind": "skill",
+        "name": "tempest shield"
+      },
+      "global_trigger": true,
+      "source_is_self": true,
+      "vendor_ref": "Modules/CalcTriggers.lua:1210-1213"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "the cauteriser"
+      },
+      "trigger_name": "Gore Shockwave",
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee",
+          "Attack"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:933-935"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "the hidden blade"
+      },
+      "trigger_rate_cap_override": 2.0,
+      "global_trigger": true,
+      "source_is_self": true,
+      "requires_condition": "Phasing",
+      "vendor_ref": "Modules/CalcTriggers.lua:907-921"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "the rippling thoughts"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee",
+          "Attack"
+        ]
+      },
+      "requires_main_skill_name": "Storm Cascade",
+      "vendor_ref": "Modules/CalcTriggers.lua:889-897"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "the surging thoughts"
+      },
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Melee",
+          "Attack"
+        ]
+      },
+      "requires_main_skill_name": "Storm Cascade",
+      "vendor_ref": "Modules/CalcTriggers.lua:898-906"
+    },
+    {
+      "key": {
+        "kind": "triggered_by",
+        "name": "trigger craft"
+      },
+      "handler_id": "trigger:trigger_craft_scan",
+      "note": "triggeredByCraft 全局源扫描 + totem/golem/banner 源速率特判",
+      "vendor_ref": "Modules/CalcTriggers.lua:1038-1060"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "uul-netol's embrace"
+      },
+      "trigger_name": "Bone Nova",
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Damage",
+          "Attack"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:962-964"
+    },
+    {
+      "key": {
+        "kind": "unique_item",
+        "name": "vixen's entrapment"
+      },
+      "use_cast_rate": true,
+      "source_skill_cond": {
+        "any_skill_types": [
+          "Hex"
+        ]
+      },
+      "vendor_ref": "Modules/CalcTriggers.lua:1020-1025"
+    }
+  ]
+}

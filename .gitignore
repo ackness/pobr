@@ -11,5 +11,6 @@
 # Python bytecode cache
 __pycache__/
 *.pyc
+# 门禁/主线专用隔离 target（CARGO_TARGET_DIR=$PWD/target-gate 等）
 /target-gate/
 /target-master/

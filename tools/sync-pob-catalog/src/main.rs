@@ -25,11 +25,12 @@ use sync_pob_catalog::extract_quality::run_extract_gem_quality;
 use sync_pob_catalog::extract_stat_map::run_extract_stat_map;
 use sync_pob_catalog::extract_stat_set_labels::run_extract_stat_set_labels;
 use sync_pob_catalog::mirage_configs::run_gen_mirage_configs;
+use sync_pob_catalog::trigger_configs::run_gen_trigger_configs;
 use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|config-options|curse-priority|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|config-options|curse-priority|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-trigger-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -48,6 +49,7 @@ fn run() -> io::Result<()> {
         Some(cmd @ ("extract-lua" | "extract-bases")) => run_extract_command(cmd, raw_args),
         Some("check-buff-refs") => run_check_buff_refs_command(raw_args),
         Some("gen-mirage-configs") => run_gen_mirage_configs_command(raw_args),
+        Some("gen-trigger-configs") => run_gen_trigger_configs_command(raw_args),
         Some("parser-rules-drift") => run_parser_rules_drift_command(raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
@@ -195,6 +197,38 @@ fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Res
             }
             fs::write(&out, json)?;
             eprintln!("gen-mirage-configs: wrote {}", out.display());
+            Ok(())
+        }
+        None => {
+            print!("{json}");
+            Ok(())
+        }
+    }
+}
+
+// ---- gen-trigger-configs（M4-T5 W-E1）：工具内嵌 61 条触发配置 → overlay JSON ----
+
+fn run_gen_trigger_configs_command(args: impl Iterator<Item = String>) -> io::Result<()> {
+    let parsed = ExtractCliArgs::parse(args)?;
+    let extract_args = ExtractLuaArgs {
+        vendor_root: parsed.vendor_root,
+        luajit: resolve_luajit(parsed.luajit.as_deref()),
+        // 仅为复用 ExtractLuaArgs 形状；本命令不执行 luajit（直接扫源对账）。
+        files: vec!["CalcTriggers".to_string()],
+        version_file: parsed.version_file,
+        out_for_meta: parsed
+            .out
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned()),
+    };
+    let json = run_gen_trigger_configs(&extract_args)?;
+    match parsed.out {
+        Some(out) => {
+            if let Some(parent) = out.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&out, json)?;
+            eprintln!("gen-trigger-configs: wrote {}", out.display());
             Ok(())
         }
         None => {

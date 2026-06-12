@@ -19,6 +19,7 @@ pub mod extract_quality;
 pub mod extract_stat_map;
 pub mod extract_stat_set_labels;
 pub mod mirage_configs;
+pub mod trigger_configs;
 
 pub fn collect_catalog(pob_root: &Path) -> io::Result<PobCatalog> {
     let modules = pob_root.join("src").join("Modules");
