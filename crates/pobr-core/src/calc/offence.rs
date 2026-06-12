@@ -87,6 +87,9 @@ pub struct MinimalOutput {
     pub stored_crit_avg: Vec<(DamageType, f64)>,
     pub stored_hit_avg: Vec<(DamageType, f64)>,
     pub stored_combined_avg: Vec<(DamageType, f64)>,
+    /// `Stored<Type>{Hit,Crit}{Min,Max}` 族（M4-G append，vendor `:4050-4056`）：
+    /// damaging ailment 来源伤害的 min/max 输入面（RollAverage 内插在区间上进行）。
+    pub stored_ranges: Vec<super::output::StoredDamageRange>,
     pub breakdown: Vec<BreakdownStep>,
 }
 
@@ -147,6 +150,11 @@ impl MinimalOutput {
                 .main_hand
                 .as_ref()
                 .map(|hand| hand.stored_combined_avg.clone())
+                .unwrap_or_default(),
+            stored_ranges: output
+                .main_hand
+                .as_ref()
+                .map(|hand| hand.stored_ranges.clone())
                 .unwrap_or_default(),
             breakdown: breakdown.steps().to_vec(),
         }
@@ -360,6 +368,7 @@ pub fn calculate_minimal_vs_enemy(
         stored_crit_avg: crit_pass.stored_crit_avg,
         stored_hit_avg: crit_pass.stored_hit_avg,
         stored_combined_avg: crit_pass.stored_combined_avg,
+        stored_ranges: crit_pass.stored_ranges,
         breakdown: vec![
             BreakdownStep {
                 name: "life",

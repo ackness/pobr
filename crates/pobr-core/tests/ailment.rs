@@ -1171,3 +1171,109 @@ fn ailment_crit_chance_applies_over_stacking_correction() {
     );
     assert!(base_over > base_sp1, "over-stacking 应抬高异常 base 伤害");
 }
+
+// ---------------------------------------------------------------------------
+// M4-G：Stored 族来源（stored_source_at_roll）+ CHANCE_AILMENT 合并
+// ---------------------------------------------------------------------------
+
+fn range(
+    damage_type: DamageType,
+    hit_min: f64,
+    hit_max: f64,
+    crit_min: f64,
+    crit_max: f64,
+) -> pobr_core::calc::StoredDamageRange {
+    pobr_core::calc::StoredDamageRange {
+        damage_type,
+        hit_min,
+        hit_max,
+        crit_min,
+        crit_max,
+    }
+}
+
+/// 默认类型门控 + 区间中点：点燃只吃火分量；roll=50 → 两腿各取 (min+max)/2。
+/// 暴击腿独立取 Stored crit 区间（非 hit × CritMultiplier 近似）。
+#[test]
+fn stored_source_ignite_takes_fire_with_independent_crit_leg() {
+    let ranges = vec![
+        range(DamageType::Fire, 100.0, 200.0, 500.0, 700.0),
+        range(DamageType::Cold, 1000.0, 2000.0, 3000.0, 4000.0),
+    ];
+    let (hit, crit) = pobr_core::calc::ailment::stored_source_at_roll(
+        AilmentType::Ignite,
+        &ranges,
+        &ModDb::new(),
+        &CalcConfig::attack(),
+        50.0,
+    );
+    assert_eq!(hit, 150.0, "hit 腿 = 火分量中点");
+    assert_eq!(crit, 600.0, "crit 腿独立取 Stored crit 区间中点");
+}
+
+/// 跨类型施加：`ColdCanIgnite` 旗标使冰分量计入点燃来源（vendor canDoAilment 覆写）。
+#[test]
+fn stored_source_cross_type_flag_adds_component() {
+    let ranges = vec![
+        range(DamageType::Fire, 100.0, 200.0, 100.0, 200.0),
+        range(DamageType::Cold, 1000.0, 2000.0, 1000.0, 2000.0),
+    ];
+    let mut db = ModDb::new();
+    db.add_list(vec![Modifier::flag("ColdCanIgnite")]);
+    let (hit, _) = pobr_core::calc::ailment::stored_source_at_roll(
+        AilmentType::Ignite,
+        &ranges,
+        &db,
+        &CalcConfig::attack(),
+        50.0,
+    );
+    assert_eq!(hit, 150.0 + 1500.0, "ColdCanIgnite → 冰分量并入来源");
+}
+
+/// 逐类型 Buildup MORE（vendor `:4844`）：`PhysicalBleedBuildup` 只放大物理分量。
+#[test]
+fn stored_source_applies_per_type_buildup_more() {
+    let ranges = vec![range(DamageType::Physical, 100.0, 100.0, 100.0, 100.0)];
+    let mut db = ModDb::new();
+    db.add_list(vec![Modifier::number(
+        "PhysicalBleedBuildup",
+        ModType::More,
+        50.0,
+    )]);
+    let (hit, crit) = pobr_core::calc::ailment::stored_source_at_roll(
+        AilmentType::Bleed,
+        &ranges,
+        &db,
+        &CalcConfig::attack(),
+        50.0,
+    );
+    assert_eq!(hit, 150.0);
+    assert_eq!(crit, 150.0);
+}
+
+/// RollAverage 内插（vendor `:5125`）：roll=75 → min + (max−min)×0.75。
+#[test]
+fn stored_source_interpolates_at_roll() {
+    let ranges = vec![range(DamageType::Fire, 100.0, 300.0, 400.0, 800.0)];
+    let (hit, crit) = pobr_core::calc::ailment::stored_source_at_roll(
+        AilmentType::Ignite,
+        &ranges,
+        &ModDb::new(),
+        &CalcConfig::attack(),
+        75.0,
+    );
+    assert_eq!(hit, 250.0);
+    assert_eq!(crit, 700.0);
+}
+
+/// CHANCE_AILMENT 合并（vendor `:2498-2533`）：`max×s + min×(1−s)`，`s=min(1, stacks/max)`。
+#[test]
+fn merge_hand_ailment_dps_weights_by_stack_fill() {
+    use pobr_core::calc::ailment::merge_hand_ailment_dps;
+    // 叠层占满（stacks >= max）：全部按最大实例。
+    assert_eq!(merge_hand_ailment_dps(100.0, 60.0, 5.0, 1.0), 100.0);
+    // 半满（s=0.5）：100×0.5 + 60×0.5 = 80。
+    assert_eq!(merge_hand_ailment_dps(100.0, 60.0, 1.0, 2.0), 80.0);
+    // 估算缺失（stacks=0）：保守 s=1（全按最大实例）。
+    assert_eq!(merge_hand_ailment_dps(100.0, 60.0, 0.0, 2.0), 100.0);
+}

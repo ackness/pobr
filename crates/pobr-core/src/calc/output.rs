@@ -260,10 +260,32 @@ pub struct OutputTable {
     pub off_hand: Option<HandOutput>,
 }
 
+/// vendor `Stored<Type>{Hit,Crit}{Min,Max}`（CalcOffence.lua:4050-4056，pre-resist、
+/// 含 allMult；crit 腿额外 ×CritMultiplier）——damaging ailment 来源伤害的 min/max
+/// 输入面（`calcMinMaxUnmitigatedAilmentSourceDamage` `:4833-4857` 消费，
+/// RollAverage 内插 `:5125-5126` 在 min/max 上进行）。
+///
+/// 一条 = 一个伤害类型的两腿区间（非暴击腿 hit_min/max、暴击腿 crit_min/max）。
+/// min/max 不做 lucky 折算（vendor 的 lucky 只折 `*Avg` 族，`:4035-4046`）。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StoredDamageRange {
+    /// 伤害类型（canDeal 门控后仍在场的类型）。
+    pub damage_type: DamageType,
+    /// 非暴击腿击中下界（vendor `Stored<Type>HitMin`，`:4056`）。
+    pub hit_min: f64,
+    /// 非暴击腿击中上界（vendor `Stored<Type>HitMax`，`:4057`）。
+    pub hit_max: f64,
+    /// 暴击腿击中下界（vendor `Stored<Type>CritMin`，`:4051`）。
+    pub crit_min: f64,
+    /// 暴击腿击中上界（vendor `Stored<Type>CritMax`，`:4052`）。
+    pub crit_max: f64,
+}
+
 /// 单只手的 pass 输出（M4-T2 W-B2；字段集 = combineStat 入参面，**冻结**——
 /// 评审 C6c：弩（FiringRate/ReloadTime 族）与 ailment 扩展字段用独立后续 commit
 /// append，避免 display_catalog 反复改 pob_key。`accuracy` 不在当前 MinimalOutput
-/// 面上，待 display 需要时随独立 commit 一并 append）。
+/// 面上，待 display 需要时随独立 commit 一并 append。
+/// M4-G：按 C6c 约定 append `stored_ranges`——ailment magnitude 的 min/max 输入面）。
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct HandOutput {
     /// 该手命中率（fraction；vendor `HitChance`，AVERAGE 入参）。
@@ -291,6 +313,9 @@ pub struct HandOutput {
     pub stored_hit_avg: Vec<(DamageType, f64)>,
     /// `Stored<Type>CombinedAvg` 族（两腿按暴击率加权累计；外层按 DPS 模式合并，:4588）。
     pub stored_combined_avg: Vec<(DamageType, f64)>,
+    /// `Stored<Type>{Hit,Crit}{Min,Max}` 族（M4-G append；damaging ailment 来源
+    /// 伤害输入，vendor `:4050-4056` 落值 / `:4833-4857` 消费）。
+    pub stored_ranges: Vec<StoredDamageRange>,
 }
 
 /// 单个召唤物的输出快照（结构同玩家 offence/defence 关键输出的子集）。

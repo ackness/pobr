@@ -37,6 +37,7 @@ use crate::{CalcConfig, ModDb};
 
 use super::crit::CritOutcome;
 use super::damage::{DamageComponent, apply_can_deal, calculate_components, lucky_hit_chance};
+use super::output::StoredDamageRange;
 use super::round;
 use super::scaled_damage::{AllMultExtras, ScaledDamage, all_mult};
 
@@ -54,6 +55,10 @@ pub struct CritPassOutput {
     pub stored_hit_avg: Vec<(DamageType, f64)>,
     /// `Stored<Type>CombinedAvg`（两腿按暴击率加权累计，`:4048/:4053`）。
     pub stored_combined_avg: Vec<(DamageType, f64)>,
+    /// `Stored<Type>{Hit,Crit}{Min,Max}`（`:4050-4056`；min/max **不做** lucky 折算
+    /// （vendor lucky 只折 `*Avg` 族），damaging ailment 来源伤害与 RollAverage
+    /// 内插的输入面，M4-G append）。
+    pub stored_ranges: Vec<StoredDamageRange>,
     /// CritBlend 后玩家侧总均值（不含敌减伤；`total_hit_avg` 字段口径）。
     pub total_hit_avg: f64,
     /// CritBlend 后有效口径总均值（敌减伤后；DPS 用）。
@@ -127,6 +132,25 @@ where
         .zip(crit_leg.avgs.iter())
         .map(|((ty, hit_avg), (_, crit_avg))| (*ty, crit_avg * c + hit_avg * (1.0 - c)))
         .collect();
+    // Stored min/max 族（`:4050-4056`）：非暴击腿区间 + 同类型暴击腿区间（暴击腿
+    // 缺该类型按 0 折入，vendor `or 0` 语义；min/max 不做 lucky 折算）。
+    let stored_ranges: Vec<StoredDamageRange> = non_crit
+        .components
+        .iter()
+        .map(|component| {
+            let crit_component = crit_leg
+                .components
+                .iter()
+                .find(|cc| cc.damage_type == component.damage_type);
+            StoredDamageRange {
+                damage_type: component.damage_type,
+                hit_min: component.min,
+                hit_max: component.max,
+                crit_min: crit_component.map_or(0.0, |cc| cc.min),
+                crit_max: crit_component.map_or(0.0, |cc| cc.max),
+            }
+        })
+        .collect();
 
     let (total_hit_avg, total_hit_avg_mitigated) = if short_circuit {
         // 旧单因子公式（取整顺序逐字节复刻替换前 offence.rs 实现）：
@@ -162,6 +186,7 @@ where
         stored_crit_avg,
         stored_hit_avg,
         stored_combined_avg,
+        stored_ranges,
         total_hit_avg,
         total_hit_avg_mitigated,
         short_circuited: short_circuit,

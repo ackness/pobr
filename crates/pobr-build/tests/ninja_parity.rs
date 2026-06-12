@@ -302,6 +302,31 @@ fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
     ]
 }
 
+/// DoT 合并族列（M4-G 扩列：技能 DoT + 异常 DoT 的末端合并面板，PoB2
+/// `TotalDotDPS`/`WithDotDPS`/`CombinedDPS`，CalcOffence.lua:6093-6234）。
+/// 与技能管线完整度强相关，独立于既有进攻 5 列单独计数（新列单独基线常量，
+/// 不稀释/不挪动 BASELINE_OFF_*）。golden 键已在 meta.json（WithDotDPS 仅
+/// 纯 DoT build 导出，如 essence-drain）。
+fn dot_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
+    vec![
+        Row {
+            label: "TotalDotDPS",
+            golden: golden(g, "TotalDotDPS"),
+            pobr: out.total_dot_dps,
+        },
+        Row {
+            label: "WithDotDPS",
+            golden: golden(g, "WithDotDPS"),
+            pobr: out.with_dot_dps,
+        },
+        Row {
+            label: "CombinedDPS",
+            golden: golden(g, "CombinedDPS"),
+            pobr: out.combined_dps,
+        },
+    ]
+}
+
 const TOL: f64 = 0.05; // 命中 = 相对误差 < 5%
 
 /// 一组比较列的命中统计：5% 命中数、10% 接近数、总比较数。
@@ -374,10 +399,14 @@ fn print_rows(rows: &[Row]) -> Tally {
     tally_rows(rows)
 }
 
-/// 遍历全部 build 计算防御/进攻命中聚合。`verbose` 控制是否逐 build 打印对照表，
-/// `mode_effective` 控制计算口径（默认门禁走 effective，面板守卫走 false）。
-/// 返回 `(防御核心 8 列 Tally, 防御全量 25 列 Tally, 进攻 Tally, 解析/计算失败的 build 名)`。
-fn compute_tallies_mode(verbose: bool, mode_effective: bool) -> (Tally, Tally, Tally, Vec<String>) {
+/// 遍历全部 build 计算防御/进攻/DoT 命中聚合。`verbose` 控制是否逐 build 打印
+/// 对照表，`mode_effective` 控制计算口径（默认门禁走 effective，面板守卫走 false）。
+/// 返回 `(防御核心 8 列 Tally, 防御全量 25 列 Tally, 进攻 Tally, DoT 三列 Tally,
+/// 解析/计算失败的 build 名)`。
+fn compute_tallies_mode(
+    verbose: bool,
+    mode_effective: bool,
+) -> (Tally, Tally, Tally, Tally, Vec<String>) {
     let data = load_data();
     let builds = discover_builds();
     assert!(!builds.is_empty(), "no builds discovered");
@@ -385,6 +414,7 @@ fn compute_tallies_mode(verbose: bool, mode_effective: bool) -> (Tally, Tally, T
     let mut def_core = Tally::default();
     let mut def = Tally::default();
     let mut off = Tally::default();
+    let mut dot = Tally::default();
     let mut failed_parse = Vec::new();
 
     for dir in &builds {
@@ -397,7 +427,11 @@ fn compute_tallies_mode(verbose: bool, mode_effective: bool) -> (Tally, Tally, T
             }
             continue;
         };
-        let (def_rows, off_rows) = (defensive_rows(&out, &g), offensive_rows(&out, &g));
+        let (def_rows, off_rows, dot_rows) = (
+            defensive_rows(&out, &g),
+            offensive_rows(&out, &g),
+            dot_rows(&out, &g),
+        );
         def_core.add(tally_rows(&defensive_core_rows(&out, &g)));
         if verbose {
             eprintln!("\n##### {name} #####");
@@ -409,16 +443,19 @@ fn compute_tallies_mode(verbose: bool, mode_effective: bool) -> (Tally, Tally, T
             def.add(print_rows(&def_rows));
             eprintln!("  -- offensive --");
             off.add(print_rows(&off_rows));
+            eprintln!("  -- dot --");
+            dot.add(print_rows(&dot_rows));
         } else {
             def.add(tally_rows(&def_rows));
             off.add(tally_rows(&off_rows));
+            dot.add(tally_rows(&dot_rows));
         }
     }
-    (def_core, def, off, failed_parse)
+    (def_core, def, off, dot, failed_parse)
 }
 
 /// 默认口径（effective）聚合，主门禁/报告入口。
-fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
+fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
     compute_tallies_mode(verbose, true)
 }
 
@@ -454,6 +491,13 @@ const BASELINE_DEF_HIT10: usize = 390; // 实测 390/450 = 86.7%
 const BASELINE_OFF_HIT5: usize = 26; // 实测 26/80 = 32.5%（M3-W5 effective 重记，−1 已审查）
 const BASELINE_OFF_HIT10: usize = 35; // 实测 35/80 = 43.8%（M3-W5 effective 重记）
 
+/// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
+/// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
+/// （TotalDotDPS/CombinedDPS golden=0）+ essence-drain TotalDotDPS 1.0000；
+/// 分母 37 = 18 build × (TotalDotDPS + CombinedDPS) + essence-drain WithDotDPS。
+const BASELINE_DOT_HIT5: usize = 3; // 实测 3/37 = 8.1%（M4-G 扩列重记）
+const BASELINE_DOT_HIT10: usize = 3; // 实测 3/37 = 8.1%
+
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
 const PANEL_OFF_HIT5: usize = 27; // 实测 27/80 = 33.8%
@@ -462,7 +506,7 @@ const PANEL_OFF_HIT10: usize = 35; // 实测 35/80 = 43.8%
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
 fn parity_no_regression() {
-    let (def_core, def, off, failed) = compute_tallies(false);
+    let (def_core, def, off, dot, failed) = compute_tallies(false);
     assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
     // owner 双指标裁决之一：旧 8 列子集 ≥ 111（防「扩列稀释」掩盖回退）。
     assert!(
@@ -490,6 +534,16 @@ fn parity_no_regression() {
         "offensive @10% regressed: {} < baseline {BASELINE_OFF_HIT10}",
         off.hit10
     );
+    assert!(
+        dot.hit5 >= BASELINE_DOT_HIT5,
+        "dot @5% regressed: {} < baseline {BASELINE_DOT_HIT5}",
+        dot.hit5
+    );
+    assert!(
+        dot.hit10 >= BASELINE_DOT_HIT10,
+        "dot @10% regressed: {} < baseline {BASELINE_DOT_HIT10}",
+        dot.hit10
+    );
 }
 
 /// 面板口径守卫：`mode_effective=false` 的进攻聚合不得低于切换时实测水平
@@ -497,7 +551,8 @@ fn parity_no_regression() {
 /// 由主门禁覆盖。防止口径开关上游接线被改动而无感知回归。
 #[test]
 fn panel_mode_no_regression() {
-    let (_, _, off, failed) = compute_tallies_mode(false, false);
+    // DoT 三列只在 effective 主门禁守（面板口径无独立 golden 口径，不另设守卫）。
+    let (_, _, off, _dot, failed) = compute_tallies_mode(false, false);
     assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
     assert!(
         off.hit5 >= PANEL_OFF_HIT5,
@@ -514,7 +569,7 @@ fn panel_mode_no_regression() {
 /// 主基线报告：逐 build 打印防御 + 进攻对照，并汇总聚合命中率。
 #[test]
 fn parity_baseline_report() {
-    let (def_core, def, off, failed_parse) = compute_tallies(true);
+    let (def_core, def, off, dot, failed_parse) = compute_tallies(true);
     let builds = discover_builds();
 
     eprintln!(
@@ -556,6 +611,15 @@ fn parity_baseline_report() {
         off.hit10,
         off.total,
         pct(off.hit10, off.total),
+    );
+    eprintln!(
+        "dot parity (3 cols): {}/{} = {:.1}% @5%  |  {}/{} = {:.1}% @10%",
+        dot.hit5,
+        dot.total,
+        pct(dot.hit5, dot.total),
+        dot.hit10,
+        dot.total,
+        pct(dot.hit10, dot.total),
     );
 }
 

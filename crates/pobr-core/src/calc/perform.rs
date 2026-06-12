@@ -5,10 +5,11 @@ use crate::{CalcConfig, ModDb};
 use super::ailment::{
     AilmentSource, StackConfig, ailment_crit_chance, ailment_duration, ailment_effect_mod,
     ailment_rate_mod, apply_dot_dps_cap, bleed_traced, chill_traced, cross_type_source_hit,
-    cross_type_source_hit_at_roll, electrocute_poise_buildup_traced, estimate_active_stacks,
-    freeze_poise_buildup_traced, ignite_traced, poison_traced, roll_average, shock_traced,
-    stack_potential, stacking_ailment_dps_traced,
+    electrocute_poise_buildup_traced, estimate_active_stacks, freeze_poise_buildup_traced,
+    ignite_traced, merge_hand_ailment_dps, poison_traced, roll_average, shock_traced,
+    stack_potential, stacking_ailment_dps_traced, stored_source_at_roll,
 };
+use super::output::StoredDamageRange;
 use super::skill_mechanics::{
     calc_aoe, calc_cooldown, calc_life_cost, calc_mana_cost, calc_projectile_count,
     calc_spirit_reservation,
@@ -94,6 +95,10 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         env.double_hits_when_dual_wielding,
     );
     let output = hand_pass.combined;
+    // M4-G：无 hand pass（法术/旧入口单 "Skill" pass）时 ailment 的 Stored 族回退源
+    // ——crit_pass 对法术同样产出 Stored（vendor 法术也走 `:4047-4057` 落值），但
+    // `OutputTable::from` 不平铺该族且 main_hand=None，故在此截留传给 fill_ailments。
+    let ailment_fallback_ranges = output.stored_ranges.clone();
     env.player.output = OutputTable::from(&output);
     env.player.output.main_hand = hand_pass.main_hand;
     env.player.output.off_hand = hand_pass.off_hand;
@@ -111,9 +116,11 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // cap（calc_skill_use_time 内）后 reload（CalcOffence.lua:2864-2867）；下游
     // fill_ailments 的叠层速率估算 / fill_skill_dot_stage 的 DPS 基底消费折算后值。
     fill_crossbow_reload(env);
-    // 异常状态：几率 + 暴击加权 + magnitude + effMult（几率 × DoT 期望值口径）。
-    // 单独成段，避免与 fill_mechanics 内 player.mod_db 的不可变借用冲突。
-    fill_ailments(env);
+    // 异常状态：几率 + 暴击加权 + magnitude + effMult。伤害异常（流血/点燃/中毒）
+    // 走 Stored 族 per-pass 管线（M4-G，vendor :4833-4857/:5096-5193）；非伤害异常
+    // （冰缓/感电/姿态）沿用分量近似。单独成段，避免与 fill_mechanics 内
+    // player.mod_db 的不可变借用冲突。
+    fill_ailments(env, &ailment_fallback_ranges);
     // 技能 DoT + 合并 DPS 族（M4-T4 W-D1）：在 fill_ailments 之后——TotalDotDPS
     // 只读消费异常侧 bleed/poison/ignite 现值（ailment.rs 不改，T4 一波约定）。
     fill_skill_dot_stage(env);
@@ -856,27 +863,174 @@ fn fill_skill_mechanics(env: &mut Env) {
     }
 }
 
-/// 异常 fill：对每类伤害异常算 几率 × 暴击加权 magnitude × effMult，写入 [`OutputTable`]。
+/// 单 pass 的 ailment 计算上下文（vendor per-pass `output` 面的子集：Stored 族 +
+/// 该 pass 的暴击/命中/速率；M4-G）。
 ///
-/// 来源命中取**非暴击**分类型平均（`component_avg`，pre-mitigation），按暴击乘区/几率派生
-/// 暴击来源（[`AilmentSource`]）。敌方异常阈值用怪物等级查表 × `EnemyAilmentThreshold` mod。
-/// 几率派生型（点燃/感电）吃阈值；内禀型（流血/中毒）吃 `BleedChance`/`PoisonChance`。
-///
-/// 面板 DPS 口径 = `chance × magnitude_dps`（pobr 叠层延后，magnitude 仍可由 trace 回溯）。
-fn fill_ailments(env: &mut Env) {
-    let player = &env.player.mod_db;
-    let enemy = &env.enemy.mod_db;
-    let cfg = &env.cfg;
+/// - 攻击技能：每个 hand 子表一个 ctx（vendor passList per-hand）；
+/// - 法术/旧入口：单 "Skill" pass，Stored 族来自 offence 合并输出（perform 截留）。
+struct AilmentPassCtx {
+    ranges: Vec<StoredDamageRange>,
+    /// 该 pass 暴击率（fraction）。
+    crit_chance: f64,
+    /// 该 pass 命中率（fraction）。
+    hit_chance: f64,
+    /// 该 pass 命中速率（actions/s；单 pass 用顶层有效速率——含服务器帧 cap 与
+    /// 弩 reload 折算；双持 per-hand 用各手 Speed）。
+    speed: f64,
+}
 
-    // Lane C 跨类型施加：来源命中按 `<Type>Can<Ailment>` 旗标聚合非默认类型分量。
-    // 无跨类型旗标时退化为各异常的默认伤害类型（流血/中毒=物理(+混沌)、点燃=火、感电=闪电、冰缓=冰），
-    // 与旧的硬编码分量口径一致（向后兼容）。
-    let components = &env.player.output.damage_components;
-    let phys_hit = cross_type_source_hit(AilmentType::Bleed, components, player, cfg);
-    let fire_hit = cross_type_source_hit(AilmentType::Ignite, components, player, cfg);
-    let cold_hit = cross_type_source_hit(AilmentType::Chill, components, player, cfg);
-    let lightning_hit = cross_type_source_hit(AilmentType::Shock, components, player, cfg);
-    let chaos_phys_hit = cross_type_source_hit(AilmentType::Poison, components, player, cfg);
+/// 一类 damaging ailment 在单 pass 上的结果（CHANCE_AILMENT 跨手合并的入参面）。
+struct AilmentPassResult {
+    dps: f64,
+    stacked_dps: f64,
+    /// 面板 `*_active_stacks`：估算可用时为原始估算值（可 > max，SP 信号），
+    /// 否则 max_stacks 上界回退（旧口径）。
+    active_stacks_panel: f64,
+    /// 原始叠层估算（0 = 信号缺失）；CHANCE_AILMENT 的 `stacks` 入参。
+    stacks_estimate: f64,
+    max_stacks: f64,
+}
+
+/// 单 pass 单 ailment 的完整 vendor 管线（M4-G，CalcOffence.lua 实读对照）：
+///
+/// 1. Stored 族 50% roll 探针（`:4833-4857` + `:5125`）→ 施加几率（几率派生/内禀）；
+/// 2. 活跃叠层估算（`ailmentStacks`，`:5046-5053`）→ StackPotential（`:5096`）；
+/// 3. over-stacking 暴击放大（`:5144`）+ RollAverage 高位偏移（`:5101-5108`）；
+/// 4. 高 roll 来源重算 → `calcAilmentDamage` 暴击加权 baseVal（`:4904-4918`）×
+///    percentBase × AilmentMagnitude（`:5145-5146`）× effMult（`:5149-5186`）；
+/// 5. **uptime 口径**（`:5189-5193`）：`DPS = baseVal × effectMod × rateMod ×
+///    min(ailmentStacks, maxStacks) × effMult`——施加几率只经 ailmentStacks
+///    （uptime）进入，不对 DPS 直乘。估算信号缺失（无速率，纯单元 build）时回退旧
+///    `chance × magnitude` 保守口径 + 满层上界（向后兼容）。
+#[allow(clippy::too_many_arguments)]
+fn damaging_ailment_for_pass(
+    kind: AilmentType,
+    ctx: &AilmentPassCtx,
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    threshold: f64,
+    never_from_crit: bool,
+    trace: &mut TraceGraph,
+) -> Option<AilmentPassResult> {
+    let name = match kind {
+        AilmentType::Bleed => "Bleed",
+        AilmentType::Ignite => "Ignite",
+        AilmentType::Poison => "Poison",
+        _ => return None,
+    };
+    // `AilmentsAreNeverFromCrit`：暴击来源置为非暴击伤害且暴击几率清零（与
+    // `AilmentSource::new` 同语义；Stored 路径直接构造，crit 腿来自真实暴击腿聚合）。
+    let make_source = |hit: f64, crit: f64, crit_chance: f64| {
+        if never_from_crit {
+            AilmentSource {
+                hit_avg: hit,
+                crit_avg: hit,
+                crit_chance: 0.0,
+            }
+        } else {
+            AilmentSource {
+                hit_avg: hit,
+                crit_avg: crit,
+                crit_chance,
+            }
+        }
+    };
+    // Pass 1（50% roll，裸暴击）：施加几率 + 持续时间 → 活跃叠层估算。
+    let (hit50, crit50) = stored_source_at_roll(kind, &ctx.ranges, player, cfg, 50.0);
+    if hit50 <= 0.0 && crit50 <= 0.0 {
+        return None;
+    }
+    let run = |source: &AilmentSource, trace: &mut TraceGraph| match kind {
+        AilmentType::Bleed => bleed_traced(source, player, enemy, cfg, trace),
+        AilmentType::Ignite => ignite_traced(source, player, enemy, cfg, threshold, trace),
+        AilmentType::Poison => poison_traced(source, player, enemy, cfg, trace),
+        _ => unreachable!("damaging ailment only"),
+    };
+    let probe = make_source(hit50, crit50, ctx.crit_chance);
+    let (probe_out, _) = run(&probe, trace);
+    let stack = resolve_stack_config(
+        player,
+        cfg,
+        name,
+        ctx.hit_chance,
+        probe_out.chance,
+        ailment_duration(kind, player, cfg),
+        ctx.speed,
+    );
+    let sp = stack_potential(&stack);
+    let ailment_crit = ailment_crit_chance(ctx.crit_chance, sp);
+    let roll = roll_average(&stack);
+    // Pass 2：高 roll 来源 + over-stacking 暴击 → 最终 magnitude。
+    let (hit_rolled, crit_rolled) = stored_source_at_roll(kind, &ctx.ranges, player, cfg, roll);
+    let source = make_source(hit_rolled, crit_rolled, ailment_crit);
+    let (out, _) = run(&source, trace);
+
+    if stack.active_stacks > 0.0 {
+        // vendor uptime 口径（`:5189-5193`）：activeAilments = min(stacks, max)。
+        // magnitude_dps 已含 percentBase × AilmentMagnitude × effMult；
+        // finalize 补 effectMod × rateMod + DotDpsCap。
+        let active_ailments = stack.active_stacks.min(stack.max_stacks as f64);
+        let dps = finalize_ailment_dps(
+            out.magnitude_dps * active_ailments,
+            name,
+            player,
+            enemy,
+            cfg,
+        );
+        Some(AilmentPassResult {
+            dps,
+            // vendor `Total<Ailment>DPS = <Ailment>DPS`（`:5238-5242`，叠层已折入
+            // activeAilments）——叠层值与单值同一。
+            stacked_dps: dps,
+            active_stacks_panel: stack.active_stacks,
+            stacks_estimate: stack.active_stacks,
+            max_stacks: stack.max_stacks as f64,
+        })
+    } else {
+        // 信号缺失回退（旧口径）：`chance × magnitude`，叠层按满层上界。
+        let dps = finalize_ailment_dps(out.expected_dps, name, player, enemy, cfg);
+        let (stacked, _) = stacking_ailment_dps_traced(dps, &stack, kind, trace);
+        Some(AilmentPassResult {
+            dps,
+            stacked_dps: apply_dot_dps_cap(stacked, cfg.constants.game().dot_dps_cap),
+            active_stacks_panel: active_stacks_of(&stack),
+            stacks_estimate: 0.0,
+            max_stacks: stack.max_stacks as f64,
+        })
+    }
+}
+
+/// MH/OH 双 pass 的 ailment 结果合并（vendor combineStat `CHANCE_AILMENT`，`:2498-2533`
+/// + `:5738`）。单 pass 直通；双 pass `max×s + min×(1−s)`，`s = min(1, stacks/max)`。
+fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64)> {
+    match results {
+        [] => None,
+        [only] => Some((only.dps, only.stacked_dps, only.active_stacks_panel)),
+        [a, b, ..] => {
+            let stacks = a.stacks_estimate.max(b.stacks_estimate);
+            let max_stacks = a.max_stacks.max(b.max_stacks);
+            Some((
+                merge_hand_ailment_dps(a.dps, b.dps, stacks, max_stacks),
+                merge_hand_ailment_dps(a.stacked_dps, b.stacked_dps, stacks, max_stacks),
+                a.active_stacks_panel.max(b.active_stacks_panel),
+            ))
+        }
+    }
+}
+
+/// 异常 fill：伤害异常（流血/点燃/中毒）走 Stored 族 per-pass 管线（M4-G）——
+/// 来源命中取 vendor `Stored<Type>{Hit,Crit}{Min,Max}`（pre-resist、含 allMult、
+/// 暴击腿真实聚合 ×CritMultiplier），按 hand pass 各算一遍后 CHANCE_AILMENT 合并；
+/// 无 hand 输出（法术单 "Skill" pass）回退到 offence 合并输出的同款 Stored 族。
+///
+/// 非伤害异常（冰缓/感电/姿态积累）沿用非暴击分量近似（vendor 另一族
+/// `HitAverage/CritAverage` 输入，独立缺口）。
+///
+/// 敌方异常阈值用怪物等级查表 × `EnemyAilmentThreshold` mod。几率派生型（点燃/感电）
+/// 吃阈值；内禀型（流血/中毒）吃 `BleedChance`/`PoisonChance`。
+fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
+    let cfg = &env.cfg;
 
     let crit_mult = if env.player.output.crit_multiplier > 0.0 {
         env.player.output.crit_multiplier
@@ -884,13 +1038,49 @@ fn fill_ailments(env: &mut Env) {
         1.0
     };
     let crit_chance = env.player.output.crit_chance;
-    let never_from_crit = player.flag(cfg, ModName::from("AilmentsAreNeverFromCrit"));
+    let never_from_crit = env
+        .player
+        .mod_db
+        .flag(cfg, ModName::from("AilmentsAreNeverFromCrit"));
 
-    // 活跃叠层估算所需的面板信号（PoB2 `ailmentStacks = hitChance × applyChance × duration × speed`）。
-    // `output.hit_chance` 已是 fraction（命中公式直接产出 0..1，见 defence::hit_chance）；
-    // 命中速率取 fill_mechanics 已写入的有效行动速率（无速率 → 0）。
+    // 活跃叠层估算所需的面板信号（PoB2 `ailmentStacks = hitChance × applyChance ×
+    // duration × speed`）。`output.hit_chance` 已是 fraction；命中速率取
+    // fill_mechanics 已写入的有效行动速率（无速率 → 0）。
     let hit_chance_frac = env.player.output.hit_chance.clamp(0.0, 1.0);
     let hit_speed = env.player.output.effective_action_rate.max(0.0);
+
+    // pass 上下文（先克隆，避免与下方 output 写入的借用冲突）。
+    let passes: Vec<AilmentPassCtx> = {
+        let out = &env.player.output;
+        let hands: Vec<_> = out.main_hand.iter().chain(out.off_hand.iter()).collect();
+        match hands.len() {
+            0 => vec![AilmentPassCtx {
+                ranges: fallback_ranges.to_vec(),
+                crit_chance,
+                hit_chance: hit_chance_frac,
+                speed: hit_speed,
+            }],
+            // 单 hand（OR 直通）：速率/命中用顶层有效值（含帧 cap / reload 折算）。
+            1 => vec![AilmentPassCtx {
+                ranges: hands[0].stored_ranges.clone(),
+                crit_chance: hands[0].crit_chance,
+                hit_chance: hit_chance_frac,
+                speed: hit_speed,
+            }],
+            _ => hands
+                .iter()
+                .map(|hand| AilmentPassCtx {
+                    ranges: hand.stored_ranges.clone(),
+                    crit_chance: hand.crit_chance,
+                    hit_chance: hand.hit_chance.clamp(0.0, 1.0),
+                    speed: hand.speed.max(0.0),
+                })
+                .collect(),
+        }
+    };
+
+    let player = &env.player.mod_db;
+    let enemy = &env.enemy.mod_db;
 
     // 敌方异常阈值（怪物等级查表 × EnemyAilmentThreshold mod）；无敌人配置时回退裸表。
     let threshold = enemy_ailment_threshold_effective(enemy, cfg, env.enemy.level);
@@ -901,73 +1091,54 @@ fn fill_ailments(env: &mut Env) {
     // 完整 trace 由 traced offence/归因路径统一收口（本函数构建并保留贡献节点拓扑）。
     let mut trace = TraceGraph::new();
 
-    if phys_hit > 0.0 {
-        // Pass 1（50% roll, 裸暴击）：取施加几率 + 持续时间，用于估算活跃叠层（PoB2 L5043-5046）。
-        let probe = AilmentSource::new(phys_hit, crit_mult, crit_chance, never_from_crit);
-        let (probe_out, _) = bleed_traced(&probe, player, enemy, cfg, &mut trace);
-        // 活跃叠层估算 → StackConfig（active_stacks 真正生效，05-01）。SP = active/max，可 > 1。
-        let bleed_stack = resolve_stack_config(
-            player,
-            cfg,
-            "Bleed",
-            hit_chance_frac,
-            probe_out.chance,
-            ailment_duration(AilmentType::Bleed, player, cfg),
-            hit_speed,
-        );
-        let sp = stack_potential(&bleed_stack);
-        // over-stacking 暴击放大（PoB2 L5144 `ailmentCritChance`）：SP>1 时"至少一层暴击"概率升高。
-        let bleed_crit = ailment_crit_chance(crit_chance, sp);
-        // RollAverage 高位偏移（05-04，PoB2 L5098-5125）：SP>1 时来源命中向高端内插。
-        let roll = roll_average(&bleed_stack);
-        let phys_hit_rolled =
-            cross_type_source_hit_at_roll(AilmentType::Bleed, components, player, cfg, roll);
-        // Pass 2：高 roll 来源 + over-stacking 暴击 → 最终伤害。
-        let source = AilmentSource::new(phys_hit_rolled, crit_mult, bleed_crit, never_from_crit);
-        let (bleed, _) = bleed_traced(&source, player, enemy, cfg, &mut trace);
-        // Lane C：AilmentEffect（MORE）× rateMod（Faster/Slower）应用到期望 DPS，再 clamp DotDpsCap。
-        let bleed_dps = finalize_ailment_dps(bleed.expected_dps, "Bleed", player, enemy, cfg);
-        env.player.output.bleed_dps = bleed_dps;
-
-        // Lane B：流血叠层（BleedStacks BASE × 活跃叠层）。复用上方已解析的 bleed_stack。
-        let (bleed_stacked, _) =
-            stacking_ailment_dps_traced(bleed_dps, &bleed_stack, AilmentType::Bleed, &mut trace);
-        // 叠层 DPS 也吃全局 DotDpsCap（PoB2：DotDpsCap 是叠层后的绝对上限）。
-        env.player.output.bleed_stacked_dps =
-            apply_dot_dps_cap(bleed_stacked, cfg.constants.game().dot_dps_cap);
-        env.player.output.bleed_active_stacks = active_stacks_of(&bleed_stack);
+    // --- 伤害异常：流血 / 点燃 / 中毒（Stored 族 per-pass + CHANCE_AILMENT 合并） ---
+    for kind in [AilmentType::Bleed, AilmentType::Ignite, AilmentType::Poison] {
+        let results: Vec<AilmentPassResult> = passes
+            .iter()
+            .filter_map(|ctx| {
+                damaging_ailment_for_pass(
+                    kind,
+                    ctx,
+                    player,
+                    enemy,
+                    cfg,
+                    threshold,
+                    never_from_crit,
+                    &mut trace,
+                )
+            })
+            .collect();
+        let Some((dps, stacked, active)) = merge_ailment_passes(&results) else {
+            continue;
+        };
+        let out = &mut env.player.output;
+        match kind {
+            AilmentType::Bleed => {
+                out.bleed_dps = dps;
+                out.bleed_stacked_dps = stacked;
+                out.bleed_active_stacks = active;
+            }
+            AilmentType::Ignite => {
+                out.ignite_dps = dps;
+                out.ignite_stacked_dps = stacked;
+                out.ignite_active_stacks = active;
+            }
+            AilmentType::Poison => {
+                out.poison_dps = dps;
+                out.poison_stacked_dps = stacked;
+                out.poison_active_stacks = active;
+            }
+            _ => unreachable!(),
+        }
     }
-    if fire_hit > 0.0 {
-        // Pass 1（50% roll, 裸暴击）：施加几率 + 持续 → 活跃叠层估算。
-        let probe = AilmentSource::new(fire_hit, crit_mult, crit_chance, never_from_crit);
-        let (probe_out, _) = ignite_traced(&probe, player, enemy, cfg, threshold, &mut trace);
-        let ignite_stack = resolve_stack_config(
-            player,
-            cfg,
-            "Ignite",
-            hit_chance_frac,
-            probe_out.chance,
-            ailment_duration(AilmentType::Ignite, player, cfg),
-            hit_speed,
-        );
-        let sp = stack_potential(&ignite_stack);
-        let ignite_crit = ailment_crit_chance(crit_chance, sp);
-        let roll = roll_average(&ignite_stack);
-        let fire_hit_rolled =
-            cross_type_source_hit_at_roll(AilmentType::Ignite, components, player, cfg, roll);
-        let source = AilmentSource::new(fire_hit_rolled, crit_mult, ignite_crit, never_from_crit);
-        let (ignite, _) = ignite_traced(&source, player, enemy, cfg, threshold, &mut trace);
-        let ignite_dps = finalize_ailment_dps(ignite.expected_dps, "Ignite", player, enemy, cfg);
-        env.player.output.ignite_dps = ignite_dps;
 
-        // Lane B：点燃叠层（IgniteStacks BASE）。PoE2 点燃默认不叠层（只取最强一层），
-        // 仅在携带 `IgniteStacks` 词条时 max_stacks>1；复用上方已解析的 ignite_stack。
-        let (ignite_stacked, _) =
-            stacking_ailment_dps_traced(ignite_dps, &ignite_stack, AilmentType::Ignite, &mut trace);
-        env.player.output.ignite_stacked_dps =
-            apply_dot_dps_cap(ignite_stacked, cfg.constants.game().dot_dps_cap);
-        env.player.output.ignite_active_stacks = active_stacks_of(&ignite_stack);
-    }
+    // --- 非伤害异常：冰缓 / 感电 / 姿态积累（沿用非暴击分量近似来源） ---
+    // Lane C 跨类型施加：来源命中按 `<Type>Can<Ailment>` 旗标聚合非默认类型分量；
+    // 无旗标时退化为默认类型（感电=闪电、冰缓=冰），与旧硬编码分量口径一致。
+    let components = &env.player.output.damage_components;
+    let cold_hit = cross_type_source_hit(AilmentType::Chill, components, player, cfg);
+    let lightning_hit = cross_type_source_hit(AilmentType::Shock, components, player, cfg);
+
     if cold_hit > 0.0 {
         // Lane B：冰缓行动速度降低（%）。强度不足最低阈值时为 0（不施加）。
         let (chill, _) = chill_traced(cold_hit, threshold, player, cfg, &mut trace);
@@ -975,36 +1146,6 @@ fn fill_ailments(env: &mut Env) {
         // Lane B：冰冻姿态积累（% per hit）。
         let (freeze_buildup, _) = freeze_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.freeze_buildup_pct = freeze_buildup;
-    }
-    if chaos_phys_hit > 0.0 {
-        // Pass 1（50% roll, 裸暴击）：施加几率 + 持续 → 活跃叠层估算。
-        let probe = AilmentSource::new(chaos_phys_hit, crit_mult, crit_chance, never_from_crit);
-        let (probe_out, _) = poison_traced(&probe, player, enemy, cfg, &mut trace);
-        let poison_stack = resolve_stack_config(
-            player,
-            cfg,
-            "Poison",
-            hit_chance_frac,
-            probe_out.chance,
-            ailment_duration(AilmentType::Poison, player, cfg),
-            hit_speed,
-        );
-        let sp = stack_potential(&poison_stack);
-        let poison_crit = ailment_crit_chance(crit_chance, sp);
-        let roll = roll_average(&poison_stack);
-        let chaos_phys_rolled =
-            cross_type_source_hit_at_roll(AilmentType::Poison, components, player, cfg, roll);
-        let source = AilmentSource::new(chaos_phys_rolled, crit_mult, poison_crit, never_from_crit);
-        let (poison, _) = poison_traced(&source, player, enemy, cfg, &mut trace);
-        let poison_dps = finalize_ailment_dps(poison.expected_dps, "Poison", player, enemy, cfg);
-        env.player.output.poison_dps = poison_dps;
-
-        // Lane B：中毒叠层（PoisonStacks BASE × 活跃叠层）。复用上方已解析的 poison_stack。
-        let (poison_stacked, _) =
-            stacking_ailment_dps_traced(poison_dps, &poison_stack, AilmentType::Poison, &mut trace);
-        env.player.output.poison_stacked_dps =
-            apply_dot_dps_cap(poison_stacked, cfg.constants.game().dot_dps_cap);
-        env.player.output.poison_active_stacks = active_stacks_of(&poison_stack);
     }
     if lightning_hit > 0.0 {
         let source = AilmentSource::new(lightning_hit, crit_mult, crit_chance, never_from_crit);

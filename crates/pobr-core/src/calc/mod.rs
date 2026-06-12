@@ -82,7 +82,7 @@ pub use offence::{
     MinimalInput, MinimalOutput, TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
     calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy,
 };
-pub use output::{HandOutput, MinionOutput, OutputTable};
+pub use output::{HandOutput, MinionOutput, OutputTable, StoredDamageRange};
 pub use perform::perform;
 pub use pool_damage::{
     AllyLayer, POB2_DAMAGE_ORDER, PoolCtx, PoolState, PoolsAfter, TypedDamage,

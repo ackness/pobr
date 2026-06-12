@@ -276,6 +276,9 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
         // Crit/HitAvg 是 per-leg 诊断值（vendor 不跨手合并），顶层取 MH 腿。
         stored_crit_avg: mh.stored_crit_avg.clone(),
         stored_hit_avg: mh.stored_hit_avg.clone(),
+        // min/max 族同 Crit/HitAvg：per-leg 诊断值（vendor 不跨手合并 Stored
+        // min/max，ailment 在 per-hand 算完后按 CHANCE_AILMENT 合并 DPS），顶层取 MH 腿。
+        stored_ranges: mh.stored_ranges.clone(),
         stored_combined_avg: combine_stored_by_type(
             &mh.stored_combined_avg,
             &oh.stored_combined_avg,
@@ -365,6 +368,7 @@ impl HandOutput {
             stored_crit_avg: leg.stored_crit_avg.clone(),
             stored_hit_avg: leg.stored_hit_avg.clone(),
             stored_combined_avg: leg.stored_combined_avg.clone(),
+            stored_ranges: leg.stored_ranges.clone(),
         }
     }
 }
