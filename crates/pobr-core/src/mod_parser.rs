@@ -296,6 +296,13 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         return Ok(outcome);
     }
 
+    // M4-l 异常词条族（蓝图 §7.2 五族，vendor ModParser.lua 名表/specialModList）：
+    // 伤害异常施加几率 / magnitude / 叠层上限等固定句式。须在 parse_form 之前
+    // （无符号数字开头或非数字开头句式，parse_form 路径必然失败）。
+    if let Some(outcome) = parse_ailment_special(&rest, original) {
+        return Ok(outcome);
+    }
+
     // 关键石/无 form 特例：非数字开头、parse_form 必然失败的固定语义短语。
     // 在 parse_form 之前查表，命中即直接产出对应 Modifier（OVERRIDE / flag）。
     if let Some(outcome) = parse_keystone_special(&rest, original) {
@@ -1572,6 +1579,50 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
     )
 }
 
+// ---------------------------------------------------------------------------
+// M4-l 异常词条 parser 五族（蓝图 §7.2）——bow-shot poison 余差的树/装备侧短语。
+// 各族独立接入，消费链（ailment.rs / perform.rs resolve_stack_config）已就绪。
+// ---------------------------------------------------------------------------
+
+/// 异常词条族总分发：依次尝试各异常句式族，命中即产出 Parsed。
+fn parse_ailment_special(rest: &str, original: &str) -> Option<ParseOutcome> {
+    let mods = parse_ailment_chance_sentence(rest, original)?;
+    Some(ParseOutcome {
+        mods,
+        status: ParseStatus::Parsed,
+        unparsed: None,
+    })
+}
+
+/// 无符号「{N}% chance to <伤害异常施加>」族 → `<Ailment>Chance` BASE。
+///
+/// vendor：form `(%d+)%% chance` 段吃掉数值，名表含前导 `to`——
+/// `to poison`/`to cause poison`/`to poison on hit` → `PoisonChance`
+/// （ModParser.lua:834-836）。可带尾缀「 with attacks」（modTagList:1032
+/// `keywordFlags = KeywordFlag.Attack`；PoBR 无 Attack keyword 位，按既有
+/// 约定折为 `ModFlags::ATTACK`，子集匹配同语义）。
+///
+/// 消费链：`ailment::flat_chance_traced`（`<Ailment>Chance`/`AilmentChance`
+/// base+inc+more，几率为 0 不施加）。
+fn parse_ailment_chance_sentence(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let (value, tail) = take_unsigned_number(rest)?;
+    let clause = tail.strip_prefix("% chance to ")?;
+    let (clause, flags) = match clause.strip_suffix(" with attacks") {
+        Some(stripped) => (stripped, ModFlags::ATTACK),
+        None => (clause, ModFlags::NONE),
+    };
+    let name = match clause {
+        // ModParser.lua:834-836。
+        "poison" | "cause poison" | "poison on hit" => "PoisonChance",
+        _ => return None,
+    };
+    let mut m = Modifier::number(name, ModType::Base, value).with_source(source);
+    if !flags.is_empty() {
+        m = m.with_flags(flags);
+    }
+    Some(vec![m])
+}
+
 /// 解析 PoB 词条标记 `[A|B]` → `B`（显示名）、`[A]` → `A`。无标记原样返回。
 fn strip_pob_brackets(text: &str) -> String {
     if !text.contains('[') {
@@ -2722,6 +2773,38 @@ mod per_slot_defence_tests {
             assert_eq!(out.mods[0].name.as_str(), "AreaDamage", "{text}");
             assert_eq!(out.mods[0].mod_type, ModType::Inc, "{text}");
             assert!(out.mods[0].flags.intersects(flag), "{text}");
+        }
+    }
+
+    /// 「N% chance to Poison on Hit [with Attacks]」（vendor ModParser.lua:834-836
+    /// 名表 + :1032 `with attacks` tag）→ `PoisonChance` BASE（M4-l §7.2 族 1）。
+    #[test]
+    fn parses_poison_chance_on_hit_base() {
+        // Arrange：装备原文（with attacks 尾缀）+ 树小点原文（bracket 标记）。
+        let cases = [
+            (
+                "26% chance to Poison on Hit with Attacks",
+                26.0,
+                ModFlags::ATTACK,
+            ),
+            (
+                "8% chance to [Poison|Poison] on [HitDamage|Hit]",
+                8.0,
+                ModFlags::NONE,
+            ),
+            ("10% chance to Cause Poison", 10.0, ModFlags::NONE),
+        ];
+        for (text, value, flags) in cases {
+            // Act
+            let out = parse_mod(text).expect("parses");
+            // Assert
+            assert_eq!(out.status, ParseStatus::Parsed, "{text}");
+            assert_eq!(out.mods.len(), 1, "{text}");
+            let m = &out.mods[0];
+            assert_eq!(m.name.as_str(), "PoisonChance", "{text}");
+            assert_eq!(m.mod_type, ModType::Base, "{text}");
+            assert_eq!(m.value.as_number(), Some(value), "{text}");
+            assert_eq!(m.flags, flags, "{text}");
         }
     }
 
