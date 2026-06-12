@@ -249,6 +249,18 @@ fn fill_mechanics(env: &mut Env) {
         cfg,
         skill_use_time.effective_rate,
     ));
+    // M4-K：有效出手速率改读 offence 合并产物 `output.action_rate`（= vendor
+    // `globalOutput.Speed`，CalcOffence.lua:5051-5053 ailmentStacks 的速率源）。
+    // 本地 `calc_skill_use_time` 链缺 TotalCastTime/TotalAttackTime 段（apply_total_time）
+    // 与速度 MORE/typed bucket——法术 build（comet 等）会把宝石施法时间整段丢掉
+    // （实测 1.62 vs 面板 0.618，ailment 堆叠/技能 DoT 的速率信号 ×2.6 过记）。
+    // `action_rate` 已含 typed 速度桶 inc/more、TotalCastTime、ActionSpeed、冷却
+    // 限速与服务器帧 cap（offence.rs:264-274），与 vendor Speed 同口径（bow-shot
+    // 1.342 = vendor Speed 1.342 逐位）。action_rate=0（无速率 build）时保留本地
+    // 回退链（向后兼容纯单元入口）。
+    if env.player.output.action_rate > 0.0 {
+        skill_use_time.effective_rate = env.player.output.action_rate;
+    }
     env.player.output.effective_action_rate = skill_use_time.effective_rate;
     env.player.output.skill_use_time = Some(skill_use_time);
 
