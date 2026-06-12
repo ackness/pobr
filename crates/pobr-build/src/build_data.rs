@@ -60,6 +60,10 @@ pub struct ResolvedSkillLevel {
     /// statSet `baseMods` 固有**攻击速度 MORE**（PoB2 `mod("Speed","MORE",N,ModFlag.Attack)`，百分点；
     /// 如 Flicker Strike=285）。作为 `AttackSpeed` MORE 注入速度乘区（仅攻击技能消费）。`None`=无。
     pub skill_attack_speed_more: Option<f64>,
+    /// 可储存使用次数（PoB `storedUses`，如 grenade=3）。`None`=0（无储存）。
+    /// 消费侧经 `SkillStoredUsesBase` BASE 注入——`calc_cooldown` 据此决定冷却
+    /// 是否向上取整到服务器帧（PoB2 CalcOffence.lua:340：储存 >1 不取整）。
+    pub stored_uses: Option<u32>,
 }
 
 /// 某授予效果在某 (宝石等级, 品质) 上的可映射 stat——按来源分两段（契约 C1）：
@@ -587,6 +591,7 @@ impl BuildData {
             attack_speed_multiplier: row.attack_speed_multiplier,
             crit_chance: row.crit_chance,
             skill_attack_speed_more,
+            stored_uses: row.stored_uses,
         })
     }
 

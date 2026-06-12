@@ -324,13 +324,10 @@ pub fn calculate_with_data(
         cfg = cfg.with_condition("NormalBodyArmourEquipped", true);
     }
     // 主手武器类别 → 持握条件（使「... with Quarterstaves」「while Dual Wielding」等树/词条生效）。
-    // 注：冷却限速技能（如榴弹）当前 rate 模型把攻速 inc/more 乘到 cd-capped base 上（近似），
-    // 一旦补全武器类攻速会错误放大 grenade rate（真值应 cooldown-governed：Speed=1/cooldown ×
-    // dpsMultiplier，与攻速无关）。grenade 正解依赖**数据补全**（SupportPayload 的 -70%
-    // CooldownRecovery + GrenadeActivateTwice，二者当前缺在入库数据中）。故暂只对**非冷却限速**
-    // 主技能启用武器类条件，避免回归 deadeye；冷却模型 + 数据补齐后全量启用。
-    // 主技能是否绕过冷却（消耗充能即用，如 Flicker）——同时供下方武器类条件门控与
-    // `CooldownBypass` 注入复用（单一来源，避免两处独立计算漂移）。
+    // M4-J：冷却限速主技能（grenade）不再例外——旧「攻速补偿吞吐」近似已删除，
+    // 速度链末端统一 `min(rate, repeats/effective_cooldown)`（vendor 同序），武器类
+    // 攻速词条不会再错误放大 grenade rate，按 vendor 全量启用武器类条件 / 武器位 flags。
+    // 主技能是否绕过冷却（消耗充能即用，如 Flicker）→ `CooldownBypass` 注入（单一来源）。
     let bypasses_cooldown = main_effect
         .map(|e| {
             e.skill_types
@@ -338,24 +335,15 @@ pub fn calculate_with_data(
                 .any(|t| t == "SkillConsumesPowerChargesOnUse")
         })
         .unwrap_or(false);
-    let main_is_cooldown_bound = main_skill
-        .as_ref()
-        .and_then(|(s, _, _)| s.cooldown_s)
-        .is_some_and(|cd| cd > 0.0)
-        && !bypasses_cooldown;
-    if !main_is_cooldown_bound {
-        for var in weapon_type_conditions(build, data) {
-            cfg = cfg.with_condition(var, true);
-        }
-        // 主手武器位 → cfg.flags（W-A1 commit-2 引入，切换 commit 起常驻）：
-        // 与上面的 Using* 条件**同源**（weapon_type_info 表）**同 gating**
-        // （同一 cooldown-bound 守卫）派生——mod 侧双写的武器位通道不在
-        // condition 通道之外另开生效口径（两次双跑 diff=0 的等价性依据；
-        // Using* condition 近似路径的退役登记 M4 末独立 commit）。
-        let weapon_bits = weapon_cfg_flags(build, data);
-        if !weapon_bits.is_empty() {
-            cfg.flags |= weapon_bits;
-        }
+    for var in weapon_type_conditions(build, data) {
+        cfg = cfg.with_condition(var, true);
+    }
+    // 主手武器位 → cfg.flags（W-A1 commit-2 引入，切换 commit 起常驻）：
+    // 与上面的 Using* 条件**同源**（weapon_type_info 表）**同 gating** 派生——
+    // mod 侧双写的武器位通道不在 condition 通道之外另开生效口径。
+    let weapon_bits = weapon_cfg_flags(build, data);
+    if !weapon_bits.is_empty() {
+        cfg.flags |= weapon_bits;
     }
     let mut base_input = options.base_input;
     if let Some((skill, _, _)) = &main_skill
@@ -399,58 +387,20 @@ pub fn calculate_with_data(
         crit_chance: w.crit_chance,
         flags: w.flags,
     };
-    let mut hand_weapon: Option<pobr_core::calc::WeaponBase> = weapon.as_ref().map(to_hand_base);
-    let mut off_hand_weapon: Option<pobr_core::calc::WeaponBase> =
+    let hand_weapon: Option<pobr_core::calc::WeaponBase> = weapon.as_ref().map(to_hand_base);
+    let off_hand_weapon: Option<pobr_core::calc::WeaponBase> =
         off_weapon.as_ref().map(to_hand_base);
 
     // 冷却限速：PoB 顺序——先把速度全部 inc/more 算完，再 `min(rate, 1/effective_cooldown)`
     // （effective_cooldown 经 `CooldownRecovery` 缩短）。该 min 下沉到 offence.rs
     // `apply_cooldown_cap`，读 `SkillCooldownBase` BASE（由 `skill_base_modifiers` 注入）+
-    // `CooldownRecovery`。法术（如 comet）直接走此正确口径。
+    // `CooldownRecovery`（statmap/quality/树/任务全链聚合）+ `SkillStoredUsesBase`
+    // （储存 >1 不取整到帧）。法术与冷却攻击（grenade）统一走此口径（M4-J：
+    // 旧「攻速补偿吞吐」预截近似已删除——吞吐倍率由 GrenadeActivateTwice →
+    // dps_end_factors 承担，vendor CalcOffence.lua:2852-2856 同序）。
     //
-    // 例外 1（绕过冷却）：消耗充能重置冷却的技能（如 Flicker Strike，
+    // 例外（绕过冷却）：消耗充能重置冷却的技能（如 Flicker Strike，
     // `SkillConsumesPowerChargesOnUse`）→ PoB2 Cooldown=nil，按攻速出手不限速 → `CooldownBypass`。
-    //
-    // 例外 2（攻击冷却·吞吐未建模）：grenade 这类冷却攻击，PoB2 的 Speed = 1/cooldown，
-    // 但 DPS 含未入库的吞吐倍率（GrenadeActivateTwice / 储存次数 ≈ ×1.5）。当前数据缺该倍率，
-    // 沿用历史近似——装配阶段把 base_rate 预截到 1/cooldown，再让攻速 inc/more 乘上去补偿吞吐，
-    // 并注入 `CooldownBypass` 让末端不再二次截断（否则会抹掉补偿因子）。数据补齐吞吐倍率后，
-    // 应删此分支、统一走正确末端 min。`bypasses_cooldown` 在上方已计算（单一来源）。
-    let cooldown_attack_unmodeled = !bypasses_cooldown
-        && main_effect.map(|e| e.is_attack()).unwrap_or(false)
-        && main_skill
-            .as_ref()
-            .and_then(|(s, _, _)| s.cooldown_s)
-            .is_some_and(|cd| cd > 0.0);
-    if cooldown_attack_unmodeled
-        && let Some((skill, _, _)) = &main_skill
-        && let Some(cd) = skill.cooldown_s
-        && cd > 0.0
-    {
-        let cd_rate = 1.0 / cd;
-        // W-B2 起武器速率在 HandSource 上——预截作用于实际生效的那个速率
-        // （有武器速率截 HandSource——双持两手各截，否则截 base_input，
-        // 与旧折算顺序等价）。
-        match hand_weapon.as_mut().and_then(|wb| wb.attack_rate.as_mut()) {
-            Some(rate) => {
-                if *rate > cd_rate {
-                    *rate = cd_rate;
-                }
-            }
-            None => {
-                if base_input.base_action_rate > cd_rate {
-                    base_input.base_action_rate = cd_rate;
-                }
-            }
-        }
-        if let Some(rate) = off_hand_weapon
-            .as_mut()
-            .and_then(|wb| wb.attack_rate.as_mut())
-            && *rate > cd_rate
-        {
-            *rate = cd_rate;
-        }
-    }
 
     let mut session = CalculationSession::new(base_input).with_config(cfg);
     // M0-W3 注入管道：把 GameData 加载的运行时常量包注入 calc（必须在 with_config
@@ -494,22 +444,11 @@ pub fn calculate_with_data(
         session.set_hand_sources(sources, false);
     }
 
-    if bypasses_cooldown || cooldown_attack_unmodeled {
-        let label = if bypasses_cooldown {
-            "skill bypasses cooldown (consumes charges on use)"
-        } else {
-            "cooldown attack: throughput unmodeled, legacy pre-cap retained"
-        };
+    if bypasses_cooldown {
         let origin =
             ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.cooldownBypass"))
-                .with_raw_text(label);
-        let mut flags = vec![Modifier::flag("CooldownBypass").with_origin(origin.clone())];
-        if cooldown_attack_unmodeled {
-            // 旧速度模型（仅 AttackSpeed/ActionSpeed，不含 SkillSpeed/CastSpeed）作为吞吐补偿的
-            // 校准基准——隔离到此数据缺口路径，避免 SkillSpeed 入桶后过度放大 grenade 速率。
-            flags.push(Modifier::flag("LegacyCooldownAttackSpeed").with_origin(origin));
-        }
-        session.add_modifiers(flags);
+                .with_raw_text("skill bypasses cooldown (consumes charges on use)");
+        session.add_modifiers(vec![Modifier::flag("CooldownBypass").with_origin(origin)]);
     }
 
     // 1. 角色基础（等级 + 职业派生属性）→ CharacterBase 归因的 BASE modifier。
@@ -2672,6 +2611,18 @@ fn skill_base_modifiers(
         && cd > 0.0
     {
         mods.push(mk("SkillCooldownBase", cd, "main skill base cooldown"));
+    }
+    // 可储存使用次数（PoB `skillData.storedUses`，如 grenade=3）→ SkillStoredUsesBase
+    // BASE。消费方 = `calc_cooldown` / `apply_cooldown_cap`：储存 >1 时冷却**不**向上
+    // 取整到服务器帧（vendor CalcOffence.lua:338-345）。
+    if let Some(stored) = skill.stored_uses
+        && stored > 1
+    {
+        mods.push(mk(
+            "SkillStoredUsesBase",
+            f64::from(stored),
+            "main skill stored uses",
+        ));
     }
     if let Some(mc) = skill.mana_cost
         && mc > 0.0

@@ -495,8 +495,17 @@ const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
 /// （TotalDotDPS/CombinedDPS golden=0）+ essence-drain TotalDotDPS 1.0000；
 /// 分母 37 = 18 build × (TotalDotDPS + CombinedDPS) + essence-drain WithDotDPS。
-const BASELINE_DOT_HIT5: usize = 4; // 实测 4/37 = 10.8%（M4-G 缺口波合并重记：g1/g3 击中量级连带 DoT 收敛 +1）
-const BASELINE_DOT_HIT10: usize = 5; // 实测 5/37 = 13.5%（M4-H 连带）
+///
+/// **已审查例外（M4-J 冷却整链切换，−1 @5% / −1 @10%）**：deadeye grenade
+/// `CombinedDPS 1.02x` 是**偶然命中**——旧「攻速补偿吞吐」近似把 Speed 高估
+/// ×1.95（0.32 vs golden 0.164），与 M4-G 落地的 GrenadeActivateTwice ×1.5
+/// 形成吞吐**双重计入**，恰好抵消 per-hit 低估（avg 0.52x）。M4-J 按 vendor
+/// `CalcOffence.lua:2852-2856` 切到冷却管辖速率（Speed 1.95x→1.00x ✓ 入 off
+/// 列）后双计消失，CombinedDPS 回落到真实 per-hit 缺口 0.52x。per-hit 缺口
+/// = grenade 宝石等级 gating（h2/i2 登记：解除会过算 ≈1.58×），归 grenade
+/// per-hit 校正波，修复后此处回升再上记。
+const BASELINE_DOT_HIT5: usize = 3; // 实测 3/37 = 8.1%（M4-J 例外下修，见上）
+const BASELINE_DOT_HIT10: usize = 4; // 实测 4/37 = 10.8%（M4-J 例外下修，见上）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

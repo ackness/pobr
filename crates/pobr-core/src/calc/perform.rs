@@ -233,7 +233,16 @@ fn fill_mechanics(env: &mut Env) {
         0.0
     };
     let is_channelling = cfg.condition("Channelling");
-    let skill_use_time = calc_skill_use_time(db, cfg, base_use_time, 0.0, is_channelling);
+    let mut skill_use_time = calc_skill_use_time(db, cfg, base_use_time, 0.0, is_channelling);
+    // 冷却限速（M4-J 整链）：有固有冷却的技能（grenade 等）有效速率被
+    // `min(rate, repeats/effective_cooldown)` 截断（vendor CalcOffence.lua:2852-2856，
+    // 与 offence 主链同一 `apply_cooldown_cap`）。ailment 堆叠/弩 reload 等下游
+    // 消费 `effective_action_rate` 的机制由此拿到冷却管辖后的真实出手速率。
+    skill_use_time.effective_rate = super::round(super::offence::apply_cooldown_cap(
+        db,
+        cfg,
+        skill_use_time.effective_rate,
+    ));
     env.player.output.effective_action_rate = skill_use_time.effective_rate;
     env.player.output.skill_use_time = Some(skill_use_time);
 
