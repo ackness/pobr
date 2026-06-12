@@ -37,6 +37,12 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
 
     super::env_finalize::env_finalize(env); // M3 环境终结阶段（T0 全 no-op；蓝图 §1 D1）
 
+    // 投射物速度 → 投射物伤害转换（vendor CalcOffence.lua:840-845：
+    // `ProjectileSpeedAppliesToProjectileDamage` flag 激活时，逐条复制 INC
+    // ProjectileSpeed mod 为 Damage INC，flags 整体替换为 ModFlag.Projectile）。
+    // 须在 env_finalize 之后（buff/flask 来源已合并）、聚合之前。
+    apply_projectile_speed_to_damage(env);
+
     // 充能 multiplier：按 PoB2 口径，仅 `Condition:UseXCharges` 为真（或常驻满层）时把
     // PowerCharge/FrenzyCharge/EnduranceCharge 置为最大层，供 `per X charge` 词条展开。
     // 未启用该充能时保持 0（PoB2 面板 current=0），避免错误施加 per-charge 增益/罚减。
@@ -1029,6 +1035,50 @@ fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64)
 ///
 /// 敌方异常阈值用怪物等级查表 × `EnemyAilmentThreshold` mod。几率派生型（点燃/感电）
 /// 吃阈值；内禀型（流血/中毒）吃 `BleedChance`/`PoisonChance`。
+/// 投射物速度 → 投射物伤害转换（vendor CalcOffence.lua:840-845）：
+/// `ProjectileSpeedAppliesToProjectileDamage` flag（Projectile Acceleration III
+/// 隐式 stat `projectile_speed_additive_modifiers_also_apply_to_projectile_damage`，
+/// SkillStatMap.lua:888）激活时，把每条 INC `ProjectileSpeed` mod 复制为
+/// `Damage` INC：
+/// - flags **整体替换**为 Projectile（vendor `NewMod(..., ModFlag.Projectile, ...)`），
+///   keyword_flags / tags / source / origin 透传（`unpack(mod)`）；
+/// - vendor Tabulate 用**空 cfg**（`{ }`）→ 带 flags 的源 mod（如
+///   `for Spell Skills` 限定）不参与转换，这里按 `flags == NONE` 同口径过滤；
+/// - 幂等：同 source 的 Damage+Projectile 同值副本已存在则跳过（重复 perform 防御）。
+fn apply_projectile_speed_to_damage(env: &mut Env) {
+    let flag_name = ModName::from("ProjectileSpeedAppliesToProjectileDamage");
+    if !env.player.mod_db.flag(&env.cfg, flag_name) {
+        return;
+    }
+    let proj_speed = ModName::from("ProjectileSpeed");
+    let damage = ModName::from("Damage");
+    let copies: Vec<crate::Modifier> = env
+        .player
+        .mod_db
+        .iter_mods()
+        .filter(|m| m.name == proj_speed && m.mod_type == ModType::Inc && m.flags == ModFlags::NONE)
+        .map(|m| {
+            let mut copy = m.clone();
+            copy.name = damage.clone();
+            copy.flags = ModFlags::PROJECTILE;
+            copy
+        })
+        .collect();
+    // 幂等抵扣：已有等值副本（重复调用）不再注入。
+    let existing: Vec<crate::Modifier> = env
+        .player
+        .mod_db
+        .iter_mods()
+        .filter(|m| m.name == damage && m.flags == ModFlags::PROJECTILE)
+        .cloned()
+        .collect();
+    let fresh: Vec<crate::Modifier> = copies
+        .into_iter()
+        .filter(|c| !existing.iter().any(|e| e == c))
+        .collect();
+    env.player.mod_db.add_list(fresh);
+}
+
 fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     let cfg = &env.cfg;
 

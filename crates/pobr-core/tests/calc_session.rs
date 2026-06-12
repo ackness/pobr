@@ -122,3 +122,54 @@ fn session_returns_parse_error_for_unknown_modifier_text() {
 
     assert_eq!(error.input, "not a real modifier");
 }
+
+/// 投射物速度 → 投射物伤害转换（vendor CalcOffence.lua:840-845）：
+/// `ProjectileSpeedAppliesToProjectileDamage` flag 激活时，INC ProjectileSpeed
+/// 逐条复制为 Damage INC（flags 替换为 Projectile）；flag 缺位零行为。
+#[test]
+fn projectile_speed_applies_to_projectile_damage_conversion() {
+    use pobr_core::{CalcConfig, Modifier};
+    use pobr_data::modifier::ModFlags;
+
+    let input = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let cfg =
+        CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT);
+
+    // 无 flag：ProjectileSpeed 无消费方，零行为。
+    let mut without = CalculationSession::new(input).with_config(cfg.clone());
+    without
+        .add_modifier_texts(["8% increased Projectile Speed"])
+        .unwrap();
+    let base = without.perform_minimal();
+    assert_eq!(base.total_hit_avg, 100.0);
+
+    // flag 激活：8% Projectile Speed → 8% increased Damage (Projectile)。
+    let mut with = CalculationSession::new(input).with_config(cfg);
+    with.add_modifier_texts(["8% increased Projectile Speed"])
+        .unwrap();
+    with.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToProjectileDamage")]);
+    let converted = with.perform_minimal();
+    assert_eq!(converted.total_hit_avg, 108.0);
+
+    // 带 flags 限定的源 mod（如 for Spell Skills）不参与转换（vendor Tabulate 空 cfg 口径）。
+    let mut scoped = CalculationSession::new(MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    })
+    .with_config(
+        CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT),
+    );
+    scoped
+        .add_modifier_texts(["8% increased Projectile Speed for Spell Skills"])
+        .unwrap();
+    scoped.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToProjectileDamage")]);
+    let scoped_out = scoped.perform_minimal();
+    assert_eq!(scoped_out.total_hit_avg, 100.0);
+}
