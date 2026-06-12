@@ -6,8 +6,14 @@
 #   [1] pipeline 下载校验（占位：校验输入目录表清单完整性）
 #   [2] pobr-data-adapter 重跑 → 临时目录，与已提交 data/<ver>/base byte-diff
 #   [3] extract 已注册抽取全跑：扫 data/<ver>/overlay/*.json 的 _meta.regen_command，
-#       凡 `cargo run -p sync-pob-catalog -- …` 可执行命令均重跑到临时文件后 byte-diff
-#       （人工策展域 regen_command 为对账说明而非命令 → SKIP）
+#       凡 `cargo run -p sync-pob-catalog -- …` 可执行命令均重跑到临时路径后 byte-diff
+#       （人工策展域 regen_command 为对账说明而非命令 → SKIP）。
+#       F1 已吸收：_meta.regen_command 的 --out 由工具归一化为 canonical 仓库相对
+#       路径，临时重放只需保留 `data/<ver>/overlay/<file>` 尾段结构即可逐字节还原
+#       同一 _meta——无须就地覆写已提交产物再还原。
+#   [3b] 策展域对账（F4）：buff_definitions.json 跑 check-buff-refs（vendor_ref
+#       行段 hash 对账，机跑）；high_precision_mods / local_mods / special_mods
+#       的对账口径见各自 _meta.audit / regen_command 说明（人工域）。
 #   [4] precompile：占位 SKIP（M6 落地后接入）
 #   [5] 校验：A) 上述 byte-diff=0  B) cargo build --workspace 零改动编译
 #       C) ninja_parity 可运行（要求不 crash，不要求达标）
@@ -19,9 +25,16 @@
 #
 # 用法：
 #   devs/scripts/version-bump-drill.sh \
-#     [--data-export <pipeline/tables 目录>] [--vendor <vendor src 目录>] [--version <ver>]
+#     [--data-export <pipeline/tables 目录>] [--vendor <vendor src 目录>] \
+#     [--version <ver>] [--version-file <.pob2-version.txt 路径>]
 #
 # 无新版本时的演练形态＝对当前版本输入重放（全部 byte-diff 应为零）。
+#
+# vendor 副本场景（F6）：extract 默认按约定布局读
+# `<vendor_root>/../../.pob2-version.txt`；当 `--vendor` 指向 vendor **副本**
+# （如模拟数值变更的临时拷贝），该约定路径通常不存在 → 必须显式传
+# `--version-file`（一般仍指向真 vendor 检出的 `.pob2-version.txt`），
+# 否则全部抽取因读不到 vendor commit 而失败。
 
 set -uo pipefail
 
@@ -29,12 +42,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DATA_EXPORT="$ROOT/pipeline/tables"
 VENDOR="$ROOT/vendor/PathOfBuilding-PoE2/src"
 VERSION=""
+VERSION_FILE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --data-export) DATA_EXPORT="$2"; shift 2 ;;
-        --vendor)      VENDOR="$2";      shift 2 ;;
-        --version)     VERSION="$2";     shift 2 ;;
+        --data-export)  DATA_EXPORT="$2";  shift 2 ;;
+        --vendor)       VENDOR="$2";       shift 2 ;;
+        --version)      VERSION="$2";      shift 2 ;;
+        --version-file) VERSION_FILE="$2"; shift 2 ;;
         *) echo "version-bump-drill: 未知参数 $1" >&2; exit 2 ;;
     esac
 done
@@ -121,21 +136,32 @@ print((d.get("_meta",{}) or {}).get("regen_command","") if isinstance(d,dict) el
             SKIPPED+=("overlay/$name 非抽取域（人工策展）")
             continue
         fi
-        # `_meta.regen_command` 把 `--out` 原路径写进产物 → 重放必须**原路径就地写**
-        # 再 byte-diff（临时 out 会让 _meta 自指差异假阳性）。快照后就地跑、对比、还原。
-        # `--vendor-root` 可重写（_meta 内按约定固定写 canonical 相对路径，不影响字节）。
-        rewritten="$(python3 - "$cmd" "$VENDOR" <<'PY'
+        # F1 已吸收：工具把 _meta.regen_command 的 --out 归一化为 canonical 仓库
+        # 相对路径（截取路径中最后一个 `data/...` 相对段）→ 重放到保留
+        # `data/<ver>/overlay/<file>` 尾段的临时路径即可逐字节还原同一 _meta，
+        # 直接 byte-diff 临时产物 vs 已提交文件（不再就地覆写+还原）。
+        # `--vendor-root` / `--version-file` 同步重写为本次演练输入。
+        tmp_out="$TMP/replay/data/$VERSION/overlay/$name"
+        mkdir -p "$(dirname "$tmp_out")"
+        rewritten="$(python3 - "$cmd" "$VENDOR" "$tmp_out" "$VERSION_FILE" <<'PY'
 import shlex, sys
-argv = shlex.split(sys.argv[1]); vendor = sys.argv[2]
-for i, a in enumerate(argv):
-    if a == "--vendor-root": argv[i + 1] = vendor
+argv = shlex.split(sys.argv[1])
+vendor, out, version_file = sys.argv[2:5]
+def set_opt(flag, value):
+    if not value:
+        return
+    if flag in argv:
+        argv[argv.index(flag) + 1] = value
+    else:
+        argv.extend([flag, value])
+set_opt("--vendor-root", vendor)
+set_opt("--out", out)
+set_opt("--version-file", version_file)
 print(shlex.join(argv))
 PY
 )"
-        snap="$TMP/snap-$name"
-        cp "$overlay" "$snap"
         if (cd "$ROOT" && eval "$rewritten" >/dev/null 2>"$TMP/err-$name"); then
-            if cmp -s "$overlay" "$snap"; then
+            if cmp -s "$tmp_out" "$overlay"; then
                 echo "OK   $name byte-diff=0"
             else
                 echo "DIFF ${name}（重放产物与已提交不一致）"
@@ -146,9 +172,30 @@ PY
             tail -3 "$TMP/err-$name" | sed 's/^/       /'
             FAIL=1
         fi
-        cp "$snap" "$overlay"   # 无论结果如何还原已提交产物（drill 不留工作区改动）
     done
 fi
+
+# ---- [3b] 策展域对账：buff_definitions（F4，机跑通道）----
+step 3b "策展域对账：check-buff-refs（buff_definitions.json）"
+DEFS="$OVERLAY_DIR/buff_definitions.json"
+if [[ ! -d "$VENDOR" ]]; then
+    echo "SKIP: vendor 检出不存在（$VENDOR）"
+    SKIPPED+=("vendor 缺失 → buff_definitions 对账跳过")
+elif [[ ! -f "$DEFS" ]]; then
+    echo "SKIP: 无 $DEFS"
+    SKIPPED+=("buff_definitions.json 缺失 → 对账跳过")
+else
+    if (cd "$ROOT" && cargo run --quiet -p sync-pob-catalog -- check-buff-refs \
+        --vendor-root "$VENDOR" --defs "$DEFS" >/dev/null 2>"$TMP/err-buff-refs"); then
+        echo "OK: vendor_ref 行段 hash 全部一致"
+    else
+        echo "FAIL: buff_definitions vendor_ref 行段漂移（vendor 升级后须人工复核 + --write 刷新）"
+        tail -5 "$TMP/err-buff-refs" | sed 's/^/       /'
+        FAIL=1
+    fi
+fi
+# 其余策展域（high_precision_mods / local_mods / special_mods）无机跑对账命令，
+# 版本 bump 时按各自 _meta.audit / regen_command 说明人工对账（F4 登记口径）。
 
 # ---- [4] precompile（占位）----
 step 4 "precompile（M6）"

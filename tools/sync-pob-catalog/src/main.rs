@@ -14,8 +14,8 @@ use sync_pob_catalog::extract_item_overlay::{
     run_extract_uniques,
 };
 use sync_pob_catalog::extract_lua::{
-    DEFAULT_SKILL_FILES, DEFAULT_STAT_MAP_SKILL_FILES, ExtractLuaArgs, resolve_luajit,
-    run_extract_lua,
+    DEFAULT_SKILL_FILES, DEFAULT_STAT_MAP_SKILL_FILES, ExtractLuaArgs, canonical_out_for_meta,
+    resolve_luajit, run_extract_lua,
 };
 use sync_pob_catalog::extract_minions::{
     MinionsKind, run_extract_minion_list, run_extract_minions,
@@ -94,6 +94,18 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             _ => DEFAULT_SKILL_FILES,
         }
     };
+    // F1：`_meta.regen_command` 的 `--out` 与实际入参解耦——按 what-target /
+    // 子命令归一化为 canonical 仓库相对路径（重放到临时路径不再产生自指差异）。
+    let meta_target = if command == "extract-bases" {
+        "bases"
+    } else {
+        parsed.what.as_deref().unwrap_or("skill-overrides")
+    };
+    let out_for_meta = canonical_out_for_meta(
+        parsed.out.as_deref(),
+        meta_target,
+        parsed.version_file.as_deref(),
+    );
     let extract_args = ExtractLuaArgs {
         vendor_root: parsed.vendor_root,
         luajit: resolve_luajit(parsed.luajit.as_deref()),
@@ -101,10 +113,7 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             .files
             .unwrap_or_else(|| default_files.iter().map(|s| s.to_string()).collect()),
         version_file: parsed.version_file,
-        out_for_meta: parsed
-            .out
-            .as_ref()
-            .map(|p| p.to_string_lossy().into_owned()),
+        out_for_meta,
     };
     // 抽取目标分发：extract-bases（基底物品覆盖值，M2-D1）；extract-lua 按 `--what`
     // ——skill-overrides（缺省，per-skill 覆盖值）/ gem-quality（宝石品质 stat 斜率，
@@ -164,16 +173,19 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
 
 fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
+    // F1：同 run_extract_command——`--out` 归一化为 canonical 相对路径再入 _meta。
+    let out_for_meta = canonical_out_for_meta(
+        parsed.out.as_deref(),
+        "mirage-configs",
+        parsed.version_file.as_deref(),
+    );
     let extract_args = ExtractLuaArgs {
         vendor_root: parsed.vendor_root,
         luajit: resolve_luajit(parsed.luajit.as_deref()),
         // 仅为复用 ExtractLuaArgs 形状；本命令不执行 luajit。
         files: vec!["CalcMirages".to_string()],
         version_file: parsed.version_file,
-        out_for_meta: parsed
-            .out
-            .as_ref()
-            .map(|p| p.to_string_lossy().into_owned()),
+        out_for_meta,
     };
     let json = run_gen_mirage_configs(&extract_args)?;
     match parsed.out {
@@ -359,12 +371,16 @@ fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io:
             let (_, out) = regen.split_once(" --out ")?;
             Some(out.trim().to_string())
         });
+    // 回退（已提交文件缺 --out 自记值时）：从 --committed 路径归一化（F1）。
+    let out_for_meta = committed_out.or_else(|| {
+        canonical_out_for_meta(Some(&committed), "parser-rules", version_file.as_deref())
+    });
     let extract_args = ExtractLuaArgs {
         vendor_root,
         luajit: resolve_luajit(luajit.as_deref()),
         files: vec!["ModParser".to_string()],
         version_file,
-        out_for_meta: committed_out.or_else(|| Some(committed.to_string_lossy().into_owned())),
+        out_for_meta,
     };
     let regenerated = run_extract_parser_rules(&extract_args)?;
     let drift = diff_parser_rules(&committed_text, &regenerated)?;
