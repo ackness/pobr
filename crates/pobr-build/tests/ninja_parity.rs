@@ -513,8 +513,16 @@ const BASELINE_DOT_HIT10: usize = 3; // 实测 3/37 = 8.1%（例外 1+2 叠加�
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
-const PANEL_OFF_HIT5: usize = 35; // 实测 35/80 = 43.8%（M4-j3 同步）
-const PANEL_OFF_HIT10: usize = 41; // 实测 41/80 = 51.2%
+///
+/// **M4-K 已审查例外（−1 @10%）**：witch-abyssal-lich-detonate-dead panel
+/// TotalDPS 1.09x→1.12x——`CritInPast8Sec` 短语族接入（vendor
+/// ModParser.lua:1904-1906，oracle 证实 vendor 计入）使 panel 口径既有
+/// 9% 过记（panel 无敌方减伤）越过 10% 带沿。effective 主口径同一改动为
+/// 纯收敛（TotalDPS 0.81x→0.83x，主基线 41/47 不倒退；dot 列 twister
+/// 0.96x 新入列 3→4）。panel 侧待 effective 减伤线把 DD 过记根因收敛后
+/// 回升再上记。同 commit panel @5% 35→36（titan 入列），下限保守不上调。
+const PANEL_OFF_HIT5: usize = 35; // 实测 36/80 = 45.0%（M4-K，基线保守持平）
+const PANEL_OFF_HIT10: usize = 40; // 实测 40/80 = 50.0%（M4-K 例外下修）
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
