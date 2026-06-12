@@ -430,6 +430,40 @@ pub fn has_curse_payload(
         .is_some_and(|entry| entry.mods.iter().any(is_curse_effect))
 }
 
+/// 元素是否为**曝光施加能力**载荷（M4-m，宿主探测用、非取数）：vendor
+/// `flag("InflictExposure", …)`（SkillStatMap.lua:1692-1715 各 on_shock /
+/// on_cold_crit / on_ignite / on_hit 形）或 `<El>ExposureChance BASE`
+/// （:1689-1690 / :1704-1707）。对应 CalcPerform.lua:3196-3200
+/// `getSkillExposureEffect` 的 Config 曝光源宿主判据 `HasMod("BASE", cfg,
+/// el.."ExposureChance") or HasMod("FLAG", "InflictExposure")`。PoBR 近似
+/// 忽略 flag 上的门控 tag（on-Ignited 等条件——vendor `HasMod` 带 cfg 同样
+/// 宽松存在性判定，条件不参与）。
+fn is_exposure_inflict(element: &StatMapMod) -> bool {
+    if element.kind == "group" {
+        return element.mods.iter().any(is_exposure_inflict);
+    }
+    element
+        .name
+        .as_deref()
+        .is_some_and(|n| n == "InflictExposure" || n.ends_with("ExposureChance"))
+}
+
+/// 一条 stat 是否含曝光施加能力载荷（[`is_exposure_inflict`]；与
+/// [`has_curse_payload`] 同口径的**存在性**判定，不要求允收可翻译）。供编排层
+/// 曝光宿主探测：宿主曝光能力来自 support（Fire Exposure
+/// `inflict_exposure_for_x_ms_on_ignite`）时，组内曝光效果 support
+/// （Potent Exposure）的 `<El>ExposureEffect` 才全局注入。
+pub fn has_exposure_inflict_payload(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+) -> bool {
+    catalog
+        .lookup(effect_id, set_key, stat)
+        .is_some_and(|entry| entry.mods.iter().any(is_exposure_inflict))
+}
+
 /// 敌侧 ModName 翻译表（curse 域，PoB2 enemyDB 名 → PoBR enemy db 聚合名）。
 ///
 /// 允收名单 = 当前 pobr 敌侧消费方逐一对照（宁可跳过不可错算）：
@@ -628,15 +662,32 @@ pub fn map_player_buff_stat(
     MappedOutcome::Mapped(items)
 }
 
-/// 玩家侧 ModName 允收名单（buff 域）。第一批仅精准聚合消费方：
+/// 玩家侧 ModName 允收名单（buff 域）。逐族对照消费方后准入：
 /// - `Accuracy` INC：`offence.rs` 精准段（CalcOffence.lua:2555-2572
-///   `skillModList:Sum("INC", cfg, "Accuracy")`）。
+///   `skillModList:Sum("INC", cfg, "Accuracy")`）——第一批（M4-G）。
+/// - `ManaRegen` INC（M4-m，Clarity I/II，vendor sup_int.txt:305-315）：
+///   消费方 = `calc::survivability::calc_regen`（vendor CalcDefence.lua:1642
+///   `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")`）。
+/// - `LifeRegenPercent` BASE（M4-m，Vitality I/II，vendor sup_str.txt:1791-1802
+///   per-minute div 60）：消费方同上（CalcDefence.lua:1658 `pool ×
+///   Sum("BASE", resource.."RegenPercent")/100`）。
 ///
-/// 其余玩家侧 buff 名（`AttackSpeed`/`FlaskChargesGenerated`/`AilmentThreshold`…）
-/// 待消费方逐一对照后补名单 → 当前 `UnknownModName` 上报（宁可跳过不可错算）。
+/// **不准入**（M4-m 已盘点 18-build 语料、登记）：
+/// - `base_skill_buff_*_to_apply` 防御族（Purity/Impurity/Discipline 的
+///   FireResistance/ChaosResistance/EnergyShield…）——已由
+///   `map_aura_buff_stat` 静态名单注入（aura 通道），此处准入即双注入。
+/// - Mysticism `Damage INC + ModFlag.Spell + Condition:FullEnergyShield`
+///   （sup_int.txt:1250-1251）——伤害向量段归 M4 伤害线，且 flags 非空在
+///   本域约定内整条上报。
+/// - 自护体异常时长族（Coolheaded/Warmblooded/StrongHearted
+///   `*_duration_on_self_+%_final`）、flask 域（Herbalism/Alchemist's Boon）、
+///   rage/incision 非 mod 载荷（kind=flag/scalar）——无消费方，维持
+///   `UnknownModName`/`UnsupportedKind` 上报（宁可跳过不可错算）。
 fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
     match name {
         "Accuracy" => Ok(vec!["Accuracy"]),
+        "ManaRegen" => Ok(vec!["ManaRegen"]),
+        "LifeRegenPercent" => Ok(vec!["LifeRegenPercent"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -2605,6 +2656,51 @@ mod tests {
         );
     }
 
+    /// 曝光施加能力载荷存在性（M4-m）：`flag("InflictExposure", …)`（Fire
+    /// Exposure `inflict_exposure_for_x_ms_on_ignite`，SkillStatMap.lua:1701-1703，
+    /// 门控 tag 不参与判定）与 `<El>ExposureChance BASE`（:1689-1690）均命中；
+    /// 普通载荷 / catalog miss → 不存在。
+    #[test]
+    fn has_exposure_inflict_payload_matches_flag_and_chance() {
+        let catalog = catalog_json(
+            r#"{ "global": {
+                 "inflict_exposure_for_x_ms_on_ignite": {
+                   "mods": [ { "kind": "mod", "name": "ExposureDuration", "mod_type": "BASE",
+                               "tags": [ { "type": "ActorCondition", "actor": "enemy", "var": "Ignited" } ] },
+                             { "kind": "flag", "name": "InflictExposure", "mod_type": "FLAG", "value": true,
+                               "tags": [ { "type": "ActorCondition", "actor": "enemy", "var": "Ignited" } ] } ] },
+                 "base_inflict_fire_exposure_on_hit_%_chance": {
+                   "mods": [ { "kind": "mod", "name": "FireExposureChance", "mod_type": "BASE" } ] },
+                 "plain_damage": {
+                   "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC" } ] } },
+                 "per_stat_set": {} }"#,
+        );
+        assert!(has_exposure_inflict_payload(
+            &catalog,
+            "X",
+            None,
+            "inflict_exposure_for_x_ms_on_ignite"
+        ));
+        assert!(has_exposure_inflict_payload(
+            &catalog,
+            "X",
+            None,
+            "base_inflict_fire_exposure_on_hit_%_chance"
+        ));
+        assert!(!has_exposure_inflict_payload(
+            &catalog,
+            "X",
+            None,
+            "plain_damage"
+        ));
+        assert!(!has_exposure_inflict_payload(
+            &catalog,
+            "X",
+            None,
+            "no_such_stat"
+        ));
+    }
+
     /// curse 载荷**存在性**判定（vendor buffList 注册前置，CalcActiveSkill.lua:976-1041）：
     /// 允收名单外的载荷（TemporalChainsActionSpeed / Dummy 占位）仍算存在
     /// （vendor 同样入槽计数）；非 curse 条目 / catalog miss → 不存在。
@@ -2797,6 +2893,73 @@ mod tests {
             vec![crate::ModTag::condition("BannerPlanted", false)],
             "Condition 直译保留，GlobalEffect 剥除"
         );
+    }
+
+    /// Clarity II 形态（vendor sup_int.txt:305-315：`support_clarity_mana_
+    /// regeneration_rate_+%` → `ManaRegen INC` + GlobalEffect Buff effectName
+    /// "Clarity II"）→ 玩家侧 ManaRegen INC，tag 剥净。oracle 钉值
+    /// （pob2-oracle sorceress-stormweaver-comet）：Clarity II lv1 载荷 50 +
+    /// 其余裸名 INC 25 → calcsOutput.ManaRegenInc = 75。
+    #[test]
+    fn player_buff_clarity_mana_regen_inc_maps() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportClarityPlayerTwo": { "1": {
+                 "support_clarity_mana_regeneration_rate_+%": {
+                   "mods": [ { "kind": "mod", "name": "ManaRegen", "mod_type": "INC",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Clarity II" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SupportClarityPlayerTwo",
+            None,
+            "support_clarity_mana_regeneration_rate_+%",
+            50.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        assert_eq!(items.len(), 1);
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "ManaRegen");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(50.0));
+        assert!(m.tags.is_empty(), "GlobalEffect（含 effectName）剥除");
+    }
+
+    /// Vitality II 形态（vendor sup_str.txt:1791-1802：`support_vitality_life_
+    /// regeneration_rate_per_minute_%` div=60 → `LifeRegenPercent BASE`）→
+    /// 每分钟 % 折每秒（120/60 = 2.0）。oracle 钉值（pob2-oracle
+    /// warrior-smith-of-kitava-shield-wall）：Vitality II 2.0 + 其余 6.1 →
+    /// calcsOutput.LifeRegenPercent = 8.1。
+    #[test]
+    fn player_buff_vitality_life_regen_percent_div60() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportVitalityPlayerTwo": { "1": {
+                 "support_vitality_life_regeneration_rate_per_minute_%": {
+                   "div": 60.0,
+                   "mods": [ { "kind": "mod", "name": "LifeRegenPercent", "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Vitality II" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SupportVitalityPlayerTwo",
+            None,
+            "support_vitality_life_regeneration_rate_per_minute_%",
+            120.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        assert_eq!(items.len(), 1);
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "LifeRegenPercent");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(2.0), "120/min ÷ 60 = 2.0/s");
+        assert!(m.tags.is_empty());
     }
 
     /// 玩家侧允收名单外的名（如 AttackSpeed）→ Unsupported(UnknownModName) 上报；

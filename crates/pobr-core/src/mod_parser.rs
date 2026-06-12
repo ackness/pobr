@@ -506,6 +506,14 @@ fn resolve_names(text: &str) -> Option<Vec<ModName>> {
         "duration of damaging ailments" => {
             &["ignite duration", "bleed duration", "poison duration"]
         }
+        // 曝光效果三元素展开（PoB2 ModParser.lua:693 `["exposure effect"]` =
+        // {Fire,Cold,Lightning}ExposureEffect；树「N% increased [Exposure] Effect」）。
+        // 消费方 = `calc::reduce_enemy_exposure`（CalcPerform.lua:3223）。
+        "exposure effect" => &[
+            "fire exposure effect",
+            "cold exposure effect",
+            "lightning exposure effect",
+        ],
         _ => &[],
     };
     if !aggregate.is_empty() {
@@ -2516,6 +2524,12 @@ fn parse_name(text: &str) -> Option<ModName> {
         // 偏斜（PoB2 ModParser.lua:360-361）。
         "deflection rating" => "DeflectionRating",
         "amount of damage prevented by deflection" => "DeflectEffect",
+        // 曝光效果单元素（PoB2 ModParser.lua:690-692）；三元素聚合名
+        // `exposure effect` 在 resolve_names 展开。消费方 =
+        // `calc::reduce_enemy_exposure`（CalcPerform.lua:3223 magnitude 缩放）。
+        "fire exposure effect" => "FireExposureEffect",
+        "cold exposure effect" => "ColdExposureEffect",
+        "lightning exposure effect" => "LightningExposureEffect",
         // 预留效率族（PoB2 ModParser.lua:220-231；CalcDefence.lua:172-350 除法语义）。
         "reservation efficiency" | "reservation efficiency of skills" => "ReservationEfficiency",
         "mana reservation efficiency" | "mana reservation efficiency of skills" => {

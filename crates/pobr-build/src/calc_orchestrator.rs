@@ -4574,6 +4574,30 @@ fn has_debuff_payload(
     })
 }
 
+/// （M4-m）效果 statset 是否含**曝光施加能力**载荷（`InflictExposure` flag /
+/// `<El>ExposureChance` BASE，[`stat_map_engine::has_exposure_inflict_payload`]
+/// 存在性判定）——[`exposure_support_modifiers`] 宿主探测的第二判据：宿主曝光
+/// 能力来自 support（Fire Exposure `inflict_exposure_for_x_ms_on_ignite` →
+/// `flag("InflictExposure", on-Ignited)`，vendor SkillStatMap.lua:1701-1703）
+/// 而非自身 debuff 载荷时同样成立（vendor CalcPerform.lua:3196-3200 Config
+/// 曝光源判据 `HasMod("FLAG", "InflictExposure")` 查的是合并 support 后的
+/// skillModList）。零值 stat 不计（与 [`has_debuff_payload`] 同口径）。
+fn has_exposure_inflict_stats(
+    data: &BuildData,
+    stats: &crate::build_data::EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> bool {
+    let ctx_catalog = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone());
+    let Some(catalog) = ctx_catalog.or_else(|| data.stat_map_catalog.clone()) else {
+        return false;
+    };
+    stats.all().any(|ds| {
+        ds.value != 0.0
+            && stat_map_engine::has_exposure_inflict_payload(&catalog, skill_id, set_key, &ds.stat)
+    })
+}
+
 /// （M4-L）非主组的曝光效果 support 注入面（h3 登记 Potent Exposure 同根）。
 ///
 /// vendor：support mod 并入宿主技能 skillModList（CalcActiveSkill.lua:210-214
@@ -4584,12 +4608,26 @@ fn has_debuff_payload(
 /// 副组）。PoBR 曝光归约（`reduce_enemy_exposure`）读 player db 扁平求和（已
 /// 登记近似），等价注入面 = 把**曝光源所在组**的兼容 support 的
 /// `<El>ExposureEffect` 词条全局注入 player db：
-/// - 仅扫产出 debuff 曝光载荷的组（[`has_debuff_payload`]——无曝光源的组其
-///   曝光效果词条不全局生效，保持 vendor 作用域语义的最小外延）；
+/// - 仅扫曝光宿主组——两判据任一成立（无曝光源的组其曝光效果词条不全局
+///   生效，保持 vendor 作用域语义的最小外延）：
+///   1. 主动技能自身产出 debuff 曝光载荷（[`has_debuff_payload`]，Frost Bomb
+///      `active_skill_all_elemental_exposure_magnitude` 形）；
+///   2. （M4-m）主动技能或其兼容 support 含曝光施加能力载荷
+///      （[`has_exposure_inflict_stats`]：`InflictExposure` flag /
+///      `<El>ExposureChance`，Fire Exposure support
+///      `inflict_exposure_for_x_ms_on_ignite` 形——vendor Config 曝光源判据
+///      CalcPerform.lua:3196-3200 查合并 support 后的 skillModList）。
 /// - **主组跳过**（其 support 已由 [`support_modifiers`] 全量注入、含本名族，
 ///   避免双注入）；
 /// - 只保留 `<El>ExposureEffect` 名（其余 support 词条仍是技能局部语义，
 ///   不得从非主组泄漏到全局）。
+///
+/// 已登记近似（多源场景，语料均单源）：vendor 对每个曝光源以
+/// `global + 该源技能 skill INC` 独立缩放后取 max（:3226-3231）；PoBR 全局
+/// 扁平求和——若多个曝光宿主组各带曝光效果 support，PoBR 求和会高估
+/// （vendor 各源取各自的）。EE（Elemental Equilibrium）对已命中元素跳过
+/// 曝光（:3216-3219）与 `Condition:Has<El>Exposure` 落 flag（:3242-3244）
+/// 未实现（语料无 EE + 曝光组合、无该条件消费方）。
 fn exposure_support_modifiers(
     build: &Build,
     data: &BuildData,
@@ -4601,7 +4639,8 @@ fn exposure_support_modifiers(
         if main_group.is_some_and(|mg| std::ptr::eq(mg, group)) {
             continue;
         }
-        // 曝光源宿主：组内产出 debuff 曝光载荷的主动技能 → 其兼容 support 名单。
+        // 曝光源宿主：组内主动技能自身产 debuff 曝光载荷，或（M4-m）自身/兼容
+        // support 含曝光施加能力载荷 → 其兼容 support 名单。
         let mut support_indices: BTreeSet<usize> = BTreeSet::new();
         for gem in &group.gem_skills {
             let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
@@ -4617,10 +4656,21 @@ fn exposure_support_modifiers(
                 gem.stat_set_index,
             );
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-            if !has_debuff_payload(data, &es, &gem.skill_id, set_key.as_deref()) {
+            let judgement = judge_group_supports(group, data, &gem.skill_id);
+            let is_host = has_debuff_payload(data, &es, &gem.skill_id, set_key.as_deref())
+                || has_exposure_inflict_stats(data, &es, &gem.skill_id, set_key.as_deref())
+                || judgement.compatible.iter().any(|&idx| {
+                    let sup = &group.gem_skills[idx];
+                    // quality 传 0 与 support_modifiers 同口径。
+                    let sup_stats =
+                        data.effect_stats(&sup.skill_id, sup.gem_level, 0, sup.stat_set_index);
+                    let sup_key = data.selected_set_key(&sup.skill_id, sup.stat_set_index);
+                    has_exposure_inflict_stats(data, &sup_stats, &sup.skill_id, sup_key.as_deref())
+                });
+            if !is_host {
                 continue;
             }
-            for idx in judge_group_supports(group, data, &gem.skill_id).compatible {
+            for idx in judgement.compatible {
                 support_indices.insert(idx);
             }
         }
@@ -6372,6 +6422,47 @@ mod tests {
         assert!(
             support_buff_specs(&host("FireballPlayer"), &data).is_empty(),
             "非 Persistent Buff 宿主：require 裁决拒收，不注入"
+        );
+    }
+
+    /// （M4-m）非主组曝光宿主探测扩展：宿主自身无曝光 debuff 载荷、曝光能力
+    /// 来自 support（Fire Exposure `inflict_exposure_for_x_ms_on_ignite` →
+    /// `flag("InflictExposure", on-Ignited)`，vendor SkillStatMap.lua:1701-1703）
+    /// 时，组内 Potent Exposure 的 `<El>ExposureEffect` 同样全局注入（vendor
+    /// CalcPerform.lua:3196-3200 Config 曝光源判据 `HasMod(FLAG,
+    /// "InflictExposure")`；oracle sorceress-stormweaver-comet：skillInc=20）。
+    #[test]
+    fn exposure_support_modifiers_detects_support_granted_inflict() {
+        let data = repo_data();
+        // mapped_stat_modifiers 只读线程局部 ctx catalog（生产路径由
+        // calculate_with_data 安装）——测试同样安装。
+        let _guard =
+            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
+        let aux = SocketGroup::new()
+            .with_gem_skill("ElementalStormPlayer", 20)
+            .with_gem_skill("SupportFireExposurePlayer", 1)
+            .with_gem_skill("SupportPotentExposurePlayer", 1);
+        let build = Build::new().add_socket_group(aux);
+        let mods = exposure_support_modifiers(&build, &data, None);
+        let names: Vec<&str> = mods.iter().map(|m| m.name.as_str()).collect();
+        for el in ["Fire", "Cold", "Lightning"] {
+            let name = format!("{el}ExposureEffect");
+            let m = mods
+                .iter()
+                .find(|m| m.name.as_str() == name)
+                .unwrap_or_else(|| panic!("{name} 应全局注入（实得 {names:?}）"));
+            assert_eq!(m.mod_type, ModType::Inc);
+            assert_eq!(m.value.as_number(), Some(20.0), "Potent Exposure lv1 = 20");
+        }
+        // 无曝光能力的组（纯施法）不注入。
+        let plain = Build::new().add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("SparkPlayer", 20)
+                .with_gem_skill("SupportPotentExposurePlayer", 1),
+        );
+        assert!(
+            exposure_support_modifiers(&plain, &data, None).is_empty(),
+            "无曝光源宿主：Potent 效果词条不全局泄漏"
         );
     }
 

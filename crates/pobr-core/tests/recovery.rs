@@ -266,6 +266,24 @@ fn calc_regen_applies_recovery_rate_inc() {
     assert_eq!(calc_regen(&db, &cfg, 0.0, "LifeRegen"), 15.0);
 }
 
+/// 裸 `<stat>` 名 INC/MORE 同入聚合（vendor CalcDefence.lua:1642-1643
+/// `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")` /
+/// `More(nil, resource.."Regen", …)`——mod_parser「increased Mana/Life
+/// Regeneration Rate」与 statmap buff 域（Clarity `ManaRegen INC`，
+/// sup_int.txt:305-315）产的就是裸名）。
+#[test]
+fn calc_regen_applies_bare_stat_inc_and_more() {
+    let mut db = ModDb::new();
+    let cfg = CalcConfig::new();
+    db.add_mod(make_modifier("ManaRegen", ModType::Base, 10.0));
+    // 裸名 INC +50%（Clarity II 形态）→ ×1.5 → 15
+    db.add_mod(make_modifier("ManaRegen", ModType::Inc, 50.0));
+    assert_eq!(calc_regen(&db, &cfg, 0.0, "ManaRegen"), 15.0);
+    // 裸名 MORE +20%（Arcane Surge 形态，CalcPerform.lua:1586）→ ×1.5×1.2 = 18
+    db.add_mod(make_modifier("ManaRegen", ModType::More, 20.0));
+    assert_eq!(calc_regen(&db, &cfg, 0.0, "ManaRegen"), 18.0);
+}
+
 #[test]
 fn calc_regen_stacks_rate_and_recovery_rate_inc() {
     let mut db = ModDb::new();
