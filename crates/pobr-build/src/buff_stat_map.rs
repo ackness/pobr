@@ -1,14 +1,17 @@
 //! 光环 / 自身 buff 授予 stat → PoBR ModName 映射（**非 statmap 主通道**）。
 //!
 //! 自 `skill_stat_map.rs`（M1-T2.4 已删除的 Legacy 后缀启发式）**原样平移**的两个
-//! 存留映射：它们服务于 orchestrator 的光环防御 buff（`aura_buff_modifiers`）与
-//! Mark 自身进攻 buff（`self_buff_offensive_modifiers`）注入路径——这两条路径
-//! **不在** statmap 双跑（mapped_stat_modifiers 三取数点）范围内，statmap 数据
-//! 引擎对对应 vendor 条目（`GlobalEffect` Buff tag，如 `other.lua:4384-4386`）按
-//! 「宁可跳过」整条归 Unsupported（buff 域 defer，切换审查记录 §2.2d）。
+//! 存留映射：它们服务于 orchestrator 的光环防御 buff（`buff_skill_specs` 构造
+//! BuffSpec.mods——M3-T3 C5 切换后旧 `aura_buff_modifiers` 静态直注已删，本映射
+//! 改由 BuffSpec → buff_pass 通道消费）与 Mark 自身进攻 buff
+//! （`self_buff_offensive_modifiers`）注入路径——这两条路径**不在** statmap 双跑
+//! （mapped_stat_modifiers 三取数点）范围内，statmap 数据引擎对对应 vendor 条目
+//! （`GlobalEffect` Buff tag，如 `other.lua:4384-4386`）按「宁可跳过」整条归
+//! Unsupported（buff 域 defer，切换审查记录 §2.2d）。
 //!
-//! **生命周期**：buff 域（isGlobalEffect / buffMode）随 W-J global-only merge 与
-//! M3 BuffSpec 框架数据化接入后，本模块退役、改走 statmap 数据通道。
+//! **生命周期**：buff 域（isGlobalEffect / buffMode）statmap 数据通道接通后本模块
+//! 退役（M3 范围声明：BuffSpec 框架先行，buff stat→mod 数据化映射 defer——C5-3
+//! 删旧码时本映射因仍被 `buff_skill_specs` 消费而**保留**，蓝图 §6.1 范围内）。
 
 use pobr_data::modifier::ModType;
 

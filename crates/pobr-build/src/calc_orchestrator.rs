@@ -219,7 +219,28 @@ pub fn calculate_with_data(
         .clone()
         .with_flags(base_cfg.flags | skill_flags)
         .with_damage_keywords(dmg_keywords)
-        .with_mode_effective(options.mode_effective);
+        .with_mode_effective(options.mode_effective)
+        // （M3-T3 C5-2 切换，D5 MAIN 口径）：vendor 非 CALCS 模式 buffMode 恒
+        // "EFFECTIVE"（CalcSetup.lua:583-597 → env.mode_buffs = true），编排入口
+        // 对应恒置 mode_buffs——buff_pass（aura 乘区 / curse priority+limit）启用。
+        // mode_effective 维持调用方选项（D5：敌侧 debuff/curse 既有口径不动）。
+        // 双跑依据 m3-c5-dualrun-report.md（18-build display 全列逐值持平 +
+        // curse 面板加法型）。
+        .with_mode_buffs(true)
+        // （M3-T2 B4，D5 MAIN 口径）：同上 vendor 裁决（CalcSetup.lua:583-597
+        // buffMode "EFFECTIVE" → env.mode_combat = true）。激活面：战斗条件自动
+        // 置位（下方 combat_conditions）+ env_finalize 阶段 3 flask/charm 合并
+        // （编排路径暂无 FlaskBuff/CharmBuff 载荷，T4 槽位接线后生效）+ 阶段 6
+        // buff_expander（trigger flag 未置仍零输出）。
+        .with_mode_combat(true);
+    // （M3-T2 B4）主技能派生战斗条件（vendor CalcPerform.lua:242-266 实读，
+    // `if env.mode_combat` 段）：attack/spell/Movement/Minion/Vaal/Channel →
+    // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免。
+    if let Some(effect) = main_effect {
+        for cond in combat_conditions(&effect.skill_types, skill_flags) {
+            cfg = cfg.with_condition(cond, true);
+        }
+    }
     // 敌人档位（19-G3 接线）：build XML Config 显式保存的 `enemyIsBoss` 优先；
     // 省略时回退调用方编排选项（PoB2 defaultIndex=3 = Pinnacle，与既有调用方一致）。
     let enemy_tier = build.config.enemy_tier.unwrap_or(options.enemy_tier);
@@ -706,21 +727,12 @@ pub fn calculate_with_data(
         }
     }
 
-    // 4b. 光环宝石的**防御 buff**（全局自身 buff）→ SkillGem 归因 modifier。数据驱动：
-    //     `skill_types` 含 `Aura` 的已启用宝石，按分等级 stat 注入对应防御 ModName
-    //     （Discipline→EnergyShield、Purity of Fire→FireResistance…）。ES buff 享全局
-    //     `increased ES%`，与 PoB 在 buff 上叠 inc 同口径。
-    //
-    //     M3-T3 C1 双计防护（蓝图 §6.1）：本波静态直注**不切换、不删码**；与下方
-    //     BuffSpec 双注入不双计——消费侧守门在 pobr-core buff_pass（Aura kind 吃
-    //     feature `buff-pass-aura`，默认关 = 空转；整段另吃 mode_buffs，编排层
-    //     未置位）。C5（行为 commit）开 flag + 置 mode_buffs 时同步关闭本行直注。
-    session.add_modifiers(aura_buff_modifiers(build, data));
-
-    // 4b'.（M3-T3 C1）aura/curse 技能 → BuffSpec 经 `session.add_buff_skill` 注入
-    //     （§2.4 契约）。消费在 pobr-core buff_pass（整段 `cfg.mode_buffs` 门控，
-    //     默认 false 且编排层不置位；Aura kind 另受 feature 守门）——本注入自身
-    //     零行为变化。
+    // 4b. 光环/诅咒技能 → BuffSpec 经 `session.add_buff_skill` 注入（§2.4 契约），
+    //     消费在 pobr-core buff_pass（env_finalize 阶段 4；上方已置 cfg.mode_buffs）：
+    //     aura 防御 buff（Discipline→EnergyShield、Purity of Fire→FireResistance…）
+    //     吃 AuraEffect 系乘区（CalcPerform.lua:2102-2105）后并入 player db；curse
+    //     走 priority/limit/分槽（:2829-2896）。C5-2 切换前的 `aura_buff_modifiers`
+    //     静态直注已关（双跑依据 m3-c5-dualrun-report.md，删函数属 C5-3）。
     for spec in buff_skill_specs(build, data) {
         session.add_buff_skill(spec);
     }
@@ -1713,6 +1725,50 @@ fn skill_type_flags(skill_types: &[String]) -> ModFlags {
     flags
 }
 
+/// （M3-T2 B4）主技能派生的战斗条件（vendor `CalcPerform.lua:242-266` 实读，
+/// `if env.mode_combat` 段）。
+///
+/// vendor 逐行对照：
+/// - **豁免**（:248 `not skillData.triggered and not trap/mine/totem`）：PoE2
+///   数据 token 等价 = `Triggered`/`InbuiltTrigger`（triggered，与
+///   `trigger_modifiers` 同判定）、`RemoteMined`（mine）、`SummonsTotem`
+///   （totem）；trap 在 PoE2 入库数据无 token（0 命中），无对应豁免项。
+/// - attack → `AttackedRecently` **elseif** spell → `CastSpellRecently`
+///   （:249-253，互斥分支照搬）；
+/// - `SkillType.Movement` → `UsedMovementSkillRecently`（:254-256）；
+/// - minion 且非 duration → `UsedMinionSkillRecently`（:257-259，vendor
+///   `skillFlags.minion and not skillFlags.duration`→ token `Minion` 且无
+///   `Duration`）；
+/// - `SkillType.Vaal` → `UsedVaalSkillRecently`（:260-262；PoE2 入库数据无
+///   `Vaal` token，保留对齐 vendor，恒不触发）；
+/// - `SkillType.Channel` → `Channelling`（:264-266，offence 的引导分支
+///   `offence.rs` 既有消费方）。
+fn combat_conditions(skill_types: &[String], skill_flags: ModFlags) -> Vec<&'static str> {
+    let has = |t: &str| skill_types.iter().any(|x| x == t);
+    if has("Triggered") || has("InbuiltTrigger") || has("RemoteMined") || has("SummonsTotem") {
+        return Vec::new();
+    }
+    let mut conds = Vec::new();
+    if skill_flags.intersects(ModFlags::ATTACK) {
+        conds.push("AttackedRecently");
+    } else if skill_flags.intersects(ModFlags::SPELL) {
+        conds.push("CastSpellRecently");
+    }
+    if has("Movement") {
+        conds.push("UsedMovementSkillRecently");
+    }
+    if has("Minion") && !has("Duration") {
+        conds.push("UsedMinionSkillRecently");
+    }
+    if has("Vaal") {
+        conds.push("UsedVaalSkillRecently");
+    }
+    if has("Channel") {
+        conds.push("Channelling");
+    }
+    conds
+}
+
 /// 攻击技能的武器基底贡献：物理击中伤害（已乘品质）+ 攻击速率 + 暴击率。
 #[derive(Debug, Clone, Copy)]
 struct WeaponContribution {
@@ -2585,55 +2641,6 @@ fn support_modifiers(
     mods
 }
 
-/// 把所有**已启用光环宝石**（`skill_types` 含 `Aura`）授予的分等级**防御 buff**
-/// 经 [`map_aura_buff_stat`] 映射为 SkillGem 归因的 modifier（如 Discipline → `EnergyShield`
-/// BASE、Purity of Fire → `FireResistance` BASE）。
-///
-/// 数据驱动、零按宝石名硬编码：光环身份由 `skill_types` 判定，buff→ModName 映射由
-/// stat id 决定。光环为**全局**自身 buff，故遍历**所有**启用 socket group 的 gem_skills，
-/// 而非仅主技能组；同一光环效果在多组重复出现时按 id 去重（避免重复注入）。
-///
-/// M3-T3 C1：本波保持注入（双计防护在消费侧——buff_pass 的 Aura kind 吃
-/// feature `buff-pass-aura` 守门）；C5 切换（开 flag + 置 mode_buffs 的行为
-/// commit）时关闭本注入、双跑 diff 干净后删函数。
-fn aura_buff_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
-    use std::collections::HashSet;
-    let mut mods = Vec::new();
-    let mut seen: HashSet<&str> = HashSet::new();
-    for group in build.enabled_socket_groups() {
-        for gem in &group.gem_skills {
-            if !data.is_aura(&gem.skill_id) || !seen.insert(gem.skill_id.as_str()) {
-                continue;
-            }
-            // quality 段并入数值（PoB2 把品质先加进同一 stats 表）；本路径的细分
-            // GemQuality 归因 defer（aura 归因仍记 SkillGem `aura.*`）。
-            let es = data.effect_stats(
-                &gem.skill_id,
-                gem.gem_level,
-                gem.quality,
-                gem.stat_set_index,
-            );
-            for ds in es.all() {
-                for mapped in map_aura_buff_stat(&ds.stat) {
-                    if ds.value == 0.0 {
-                        continue;
-                    }
-                    let origin = ModifierSource::new(SourceId::new(
-                        SourceKind::SkillGem,
-                        format!("aura.{}.{}", gem.skill_id, ds.stat),
-                    ))
-                    .with_raw_text(format!("aura {} {} ({})", gem.skill_id, ds.stat, ds.value));
-                    mods.push(
-                        Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
-                            .with_origin(origin),
-                    );
-                }
-            }
-        }
-    }
-    mods
-}
-
 /// 把 `active_skill` 蛇形稳定名派生为 buff 显示名（`temporal_chains` →
 /// `Temporal Chains`，`AffectedBy<去空格名>` 条件与 curse priority `curse_base`
 /// 查表键用）。缺 `active_skill` 时回退授予效果 id。
@@ -2669,8 +2676,8 @@ fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
 ///
 /// 分类规则（§2.4 契约 1）：
 /// - `skill_types` 含 `Aura` → [`BuffKind::Aura`]，mods = [`map_aura_buff_stat`]
-///   映射的防御 buff（与 [`aura_buff_modifiers`] 同一取数/归因口径——feature
-///   `buff-pass-aura` 切换的两条通道对同一来源等值）；
+///   映射的防御 buff（与 C5 切换前的 `aura_buff_modifiers` 静态直注同一取数/
+///   归因口径——双跑已证两条通道对同一来源等值）；
 /// - `skill_types` 含 Mark/Curse 系 token（`Mark` / `AppliesCurse`，M1 token
 ///   表达式列实查）→ [`BuffKind::Curse`]（`is_mark` = 含 `Mark`）。curse 携带
 ///   词条的 stat→mod 映射 M3 不做（mods 空——curse priority/limit/槽位占用与
@@ -4341,12 +4348,13 @@ mod tests {
         assert_eq!(aura.slot.as_deref(), Some("Body Armour"));
         assert_eq!(aura.socket_index, 1, "组内宝石序 1-based");
         assert!(!aura.is_mark);
-        // mods 与静态直注路径（aura_buff_modifiers）同口径：同名同值。
-        let direct = aura_buff_modifiers(&build, &data);
-        let direct_es: f64 = direct
-            .iter()
-            .filter(|m| m.name.as_str() == "EnergyShield")
-            .filter_map(|m| m.value.as_number())
+        // mods 取数口径：分等级 buff stat（数据侧独立期望——effect_stats 的
+        // ES apply stat 原值，不经 map 函数绕回实现自证）。
+        let expected_es: f64 = data
+            .effect_stats("DisciplinePlayer", 20, 0, None)
+            .all()
+            .filter(|ds| ds.stat == "base_skill_buff_total_maximum_energy_shield_+_to_apply")
+            .map(|ds| ds.value)
             .sum();
         let spec_es: f64 = aura
             .mods
@@ -4355,7 +4363,10 @@ mod tests {
             .filter_map(|m| m.value.as_number())
             .sum();
         assert!(spec_es > 0.0, "Discipline 应携带 ES buff 词条");
-        assert_eq!(spec_es, direct_es, "BuffSpec 与静态直注对同一来源等值");
+        assert_eq!(
+            spec_es, expected_es,
+            "BuffSpec mods = 分等级 buff stat 原值"
+        );
 
         let hex = specs
             .iter()
@@ -4388,10 +4399,10 @@ mod tests {
         assert!(buff_skill_specs(&bare, &data).is_empty());
     }
 
-    /// 双计防护不变式（蓝图 §6.1）：BuffSpec 注入与静态直注并存时输出与「仅静态
-    /// 直注」逐值一致——feature 关（默认）时 buff_pass 对 Aura kind 空转；feature
-    /// 开但编排层不置 mode_buffs 时 buff_pass 整段空转。两种状态下 aura 词条都
-    /// 只经静态通道计入一次（C5 切换 commit 才反转通道）。
+    /// 单通道不变式（C5-3 删旧码后）：编排产线（BuffSpec → buff_pass 乘区）的
+    /// aura ES 贡献 == 手工 session 仅走 buff_pass 通道的贡献——证明编排层无
+    /// 第二条 aura 注入残留（旧静态直注已删；mult = 1.0 时 ScaleAddMod 原值
+    /// 返回，数值即 buff stat 原值）。
     #[test]
     fn buff_spec_injection_does_not_double_count_auras() {
         let data = repo_data();
@@ -4410,26 +4421,27 @@ mod tests {
             inject_character_base: true,
             ..Default::default()
         };
-        // 经 orchestrator（静态直注 + BuffSpec 双注入）的 ES == 静态直注单独贡献：
-        // 手工 session 仅注入 aura_buff_modifiers（无 BuffSpec）作对照。
         let through_orchestrator =
             calculate_with_data(&build, &data, &opts).expect("orchestrator calc");
-        let mut manual = CalculationSession::new(MinimalInput::default());
-        manual.add_modifiers(aura_buff_modifiers(&build, &data));
+        // 手工 session：仅 BuffSpec → buff_pass 单通道（与编排同一 mode_buffs 口径）。
+        let mut manual = CalculationSession::new(MinimalInput::default())
+            .with_config(CalcConfig::attack().with_mode_buffs(true));
+        for spec in buff_skill_specs(&build, &data) {
+            manual.add_buff_skill(spec);
+        }
         let manual_es = {
             manual.perform_minimal();
             manual.output().energy_shield
         };
-        assert!(manual_es > 0.0, "Discipline 静态直注有非零 ES 贡献");
+        assert!(manual_es > 0.0, "Discipline 经 buff_pass 有非零 ES 贡献");
         assert_eq!(
             through_orchestrator.energy_shield, manual_es,
-            "BuffSpec 并存不双计（aura 词条只入静态通道一次）"
+            "aura 词条只经 buff_pass 单通道计入一次（无静态直注残留）"
         );
     }
 
-    /// feature 开的新路径端到端（C5 双跑前置验证）：buff_skill_specs → add_buff_skill →
-    /// buff_pass aura 乘区（mode_buffs 显式置位——编排层置位属 C5/B4 行为 commit）。
-    #[cfg(feature = "buff-pass-aura")]
+    /// 新路径端到端：buff_skill_specs → add_buff_skill → buff_pass aura 乘区
+    /// （mode_buffs 置位——C5-2 起编排入口恒置，此处手工 session 显式置位）。
     #[test]
     fn buff_spec_aura_path_end_to_end_with_mode_buffs() {
         let data = repo_data();
@@ -4464,6 +4476,102 @@ mod tests {
         assert!(
             boosted > base,
             "20% inc AuraEffect 放大 aura buff：base={base} boosted={boosted}"
+        );
+    }
+
+    // ── M3-T2 B4：mode_combat 战斗条件自动置位 ──────────────────────────────
+
+    /// combat_conditions 逐分支对照 vendor CalcPerform.lua:242-266：attack/spell
+    /// 互斥、Movement/Minion/Channel 叠加、Duration 抑制 minion、豁免清空。
+    #[test]
+    fn combat_conditions_follow_vendor_branches() {
+        let types = |ts: &[&str]| ts.iter().map(|t| t.to_string()).collect::<Vec<_>>();
+        // attack 优先于 spell（vendor elseif）。
+        assert_eq!(
+            combat_conditions(&types(&["Attack"]), ModFlags::ATTACK),
+            vec!["AttackedRecently"]
+        );
+        assert_eq!(
+            combat_conditions(&types(&["Spell"]), ModFlags::SPELL),
+            vec!["CastSpellRecently"]
+        );
+        assert_eq!(
+            combat_conditions(
+                &types(&["Attack", "Spell"]),
+                ModFlags::ATTACK | ModFlags::SPELL
+            ),
+            vec!["AttackedRecently"],
+            "attack elseif spell（:249-253 互斥）"
+        );
+        // Movement / Channel 与 attack/spell 叠加。
+        assert_eq!(
+            combat_conditions(&types(&["Attack", "Movement"]), ModFlags::ATTACK),
+            vec!["AttackedRecently", "UsedMovementSkillRecently"]
+        );
+        assert_eq!(
+            combat_conditions(&types(&["Spell", "Channel"]), ModFlags::SPELL),
+            vec!["CastSpellRecently", "Channelling"]
+        );
+        // minion 且非 duration（:257-259）。
+        assert_eq!(
+            combat_conditions(&types(&["Spell", "Minion"]), ModFlags::SPELL),
+            vec!["CastSpellRecently", "UsedMinionSkillRecently"]
+        );
+        assert_eq!(
+            combat_conditions(&types(&["Spell", "Minion", "Duration"]), ModFlags::SPELL),
+            vec!["CastSpellRecently"],
+            "Duration 抑制 UsedMinionSkillRecently"
+        );
+        // 豁免（:248）：triggered / mine / totem 整段清空。
+        for exempt in ["Triggered", "InbuiltTrigger", "RemoteMined", "SummonsTotem"] {
+            assert!(
+                combat_conditions(&types(&["Attack", exempt]), ModFlags::ATTACK).is_empty(),
+                "{exempt} 应豁免战斗条件"
+            );
+        }
+    }
+
+    /// B4 端到端（既有消费方 = Channelling）：Channel 主技能（Bonestorm，
+    /// cast 0.125s）+ 5000% cast speed → 速率远超服务器帧 cap（~30.3/s），但
+    /// B4 据 SkillType.Channel 自动置 Channelling（vendor :264-266）→ 引导技能
+    /// 不受帧 cap（offence::apply_server_tick_cap / skill_use_time 同口径）。
+    /// 对照非 Channel 法术（Fireball，cast 1.2s）同 cast speed 被 cap 截断。
+    #[test]
+    fn channel_main_skill_sets_channelling_condition() {
+        let data = repo_data();
+        let mk = |skill: &str| {
+            Build::new()
+                .with_character(CharacterIdentity {
+                    level: 90,
+                    class_name: "Witch".into(),
+                    ascendancy_name: String::new(),
+                })
+                .add_socket_group(SocketGroup::new().with_gem_skill(skill, 20))
+                .with_main_socket_group(1)
+        };
+        let opts = DataOrchestratorOptions {
+            inject_character_base: true,
+            extra_modifier_texts: vec!["5000% increased Cast Speed".into()],
+            ..Default::default()
+        };
+        let server_cap = 1.0 / 0.033; // ≈ 30.3/s（game_constants server_tick_seconds）
+
+        let channel = calculate_with_data(&mk("BonestormPlayer"), &data, &opts).expect("calc");
+        let channel_sut = channel.skill_use_time.expect("skill_use_time filled");
+        assert!(
+            !channel_sut.capped_by_server_tick && channel.effective_action_rate > server_cap,
+            "Channel 主技能应自动置 Channelling（不受帧 cap）：rate={} capped={}",
+            channel.effective_action_rate,
+            channel_sut.capped_by_server_tick
+        );
+
+        let spell = calculate_with_data(&mk("FireballPlayer"), &data, &opts).expect("calc");
+        let spell_sut = spell.skill_use_time.expect("skill_use_time filled");
+        assert!(
+            spell_sut.capped_by_server_tick && spell.effective_action_rate <= server_cap + 1e-9,
+            "非 Channel 法术不置 Channelling（帧 cap 生效）：rate={} capped={}",
+            spell.effective_action_rate,
+            spell_sut.capped_by_server_tick
         );
     }
 

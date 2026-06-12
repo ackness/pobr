@@ -13,12 +13,14 @@
 //!   `highPrecisionMods`）；
 //! - **mergeBuff 同名取强** `Modules/CalcPerform.lua:41-63`。
 //!
-//! 门控（D5）：整段吃 `cfg.mode_buffs`（默认 **false** → 逐值不变，本波不变式锚点）；
-//! curse/debuff 段内再按 vendor 吃 `cfg.mode_effective`。
+//! 门控（D5）：整段吃 `cfg.mode_buffs`（pobr-build 编排入口对 MAIN 口径恒置 true，
+//! 对应 vendor 非 CALCS 模式 buffMode 恒 `"EFFECTIVE"`，CalcSetup.lua:583-597；
+//! 默认仍 false——未显式置位的既有调用方逐值不变）；curse/debuff 段内再按 vendor 吃
+//! `cfg.mode_effective`。
 //!
-//! 双计防护（§6.1）：Aura kind 由 feature `buff-pass-aura` 守门——flag 关（默认）时
-//! 空转（编排层 `aura_buff_modifiers` 旧静态直注照旧），flag 开（仅测试/C5 双跑用）
-//! 时走本路径；编排层关闭静态直注 + 置 mode_buffs 属 C5 行为 commit，本波不切换。
+//! C5 切换（M3-T3，双跑报告 `m3-c5-dualrun-report.md`：18-build display 全列逐值
+//! 持平）后本路径是 aura 的唯一通道——编排层 `aura_buff_modifiers` 静态直注与
+//! feature `buff-pass-aura` 守门均已删除；回退通道 = revert 切换/删码 commit。
 //!
 //! ## M3 口径简化清单（与 PoB2 差异显式记录，蓝图 §6.2 要求）
 //!
@@ -300,9 +302,9 @@ fn affected_by_condition(name: &str) -> String {
 
 /// env_finalize 阶段 4 实现体：`Env::buff_skills` 九类分发。
 ///
-/// M3 消费 Aura（feature `buff-pass-aura` 守门）/ Curse / Debuff 三类；其余 kind 走
-/// 「原值直注」兼容路径（词条不缩放、不置条件，行为与编排层静态直注一致）。
-/// `cfg.mode_buffs == false`（默认）或无 spec 时整段空转（逐值不变）。
+/// M3 消费 Aura / Curse / Debuff 三类；其余 kind 走「原值直注」兼容路径（词条不
+/// 缩放、不置条件）。`cfg.mode_buffs == false`（默认）或无 spec 时整段空转
+/// （逐值不变）。
 pub fn buff_pass(env: &mut Env) {
     if !env.cfg.mode_buffs || env.buff_skills.is_empty() {
         return;
@@ -323,10 +325,6 @@ pub fn buff_pass(env: &mut Env) {
     for spec in &specs {
         match spec.kind {
             BuffKind::Aura => {
-                // 双计防护（§6.1）：flag 关时 Aura 空转——编排层旧静态直注照旧。
-                if !cfg!(feature = "buff-pass-aura") {
-                    continue;
-                }
                 // vendor :2102-2105：自身乘区（简化 (a)：skill_db = player.mod_db 全局聚合；
                 // (b) ally 取强恒空；(c) auraCannotAffectSelf 恒 false）。
                 let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
@@ -1002,33 +1000,9 @@ mod tests {
         assert!(!env.cfg.condition("AffectedByOnslaught"));
     }
 
-    /// 双计防护锚点（feature 关 = 默认）：Aura kind 空转——编排层静态直注照旧时不双计。
-    #[cfg(not(feature = "buff-pass-aura"))]
-    #[test]
-    fn aura_kind_is_inert_without_feature() {
-        let mut env = buffed_env();
-        // 模拟编排层旧静态直注（aura_buff_modifiers 产物）+ BuffSpec 双注入。
-        env.player
-            .mod_db
-            .add_mod(Modifier::number("EnergyShield", ModType::Base, 100.0));
-        env.buff_skills.push(aura_spec("Discipline", 100.0));
-
-        buff_pass(&mut env);
-
-        assert_eq!(
-            env.player
-                .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
-            100.0,
-            "flag 关：BuffSpec 的 aura 词条不消费（不双计）"
-        );
-        assert!(!env.cfg.condition("AffectedByAura"));
-    }
-
-    // ===== aura 乘区（feature 开；vendor :2102-2110） =====
+    // ===== aura 乘区（vendor :2102-2110） =====
 
     /// 20% inc AuraEffect + aura 给 100 ES → 120（蓝图 §6.5 fixture，单元级）。
-    #[cfg(feature = "buff-pass-aura")]
     #[test]
     fn aura_effect_scales_buff_mods() {
         let mut env = buffed_env();
@@ -1051,7 +1025,6 @@ mod tests {
     }
 
     /// 同上 fixture 的端到端口径：CalculationSession → perform → 防御输出 ES = 120。
-    #[cfg(feature = "buff-pass-aura")]
     #[test]
     fn aura_fixture_end_to_end_session() {
         use crate::calc::{CalculationSession, MinimalInput};
@@ -1070,7 +1043,6 @@ mod tests {
     }
 
     /// MORE 乘区与 magnitude 一并进 mult（vendor :2104 `More(...) × calcLib.mod Magnitude`）。
-    #[cfg(feature = "buff-pass-aura")]
     #[test]
     fn aura_more_and_magnitude_multiply() {
         let mut env = buffed_env();
@@ -1093,7 +1065,6 @@ mod tests {
     }
 
     /// mergeBuff 同名取强（vendor :41-63）：同名 aura 两份 spec 不叠加，取数值大者。
-    #[cfg(feature = "buff-pass-aura")]
     #[test]
     fn same_name_auras_merge_take_strongest() {
         let mut env = buffed_env();
