@@ -365,7 +365,7 @@ fn is_curse_effect(element: &StatMapMod) -> bool {
 ///   vendor enemyDB 名直通；`ElementalResist` 展开三元素——pobr 敌侧抗性聚合
 ///   只读 `<Type>Resist`，vendor `enemyDB:Sum(.. type.."Resist", "ElementalResist")`
 ///   两名同收，展开等值）。未知名（pobr 暂无敌侧消费方，如
-///   `TemporalChainsActionSpeed` / `BuffExpireFaster` / `FreezeBuildup`）整条归
+///   `TemporalChainsActionSpeed` / `FreezeBuildup`）整条归
 ///   [`UnsupportedReason::UnknownModName`] 上报（宁可跳过不可错算，可见性报表
 ///   由调用方落 Compare 记录）。
 /// - `GlobalEffect` tag 本身剥除（路由元数据，不参与匹配）；带约定外键
@@ -404,6 +404,32 @@ pub fn map_curse_stat(
     MappedOutcome::Mapped(items)
 }
 
+/// 该 stat 是否携带 **curse buff 载荷**（任一元素 [`is_curse_effect`] 命中）。
+///
+/// 供编排层镜像 vendor 的 curse 注册前置条件：vendor 只把带 `GlobalEffect` tag 的
+/// mod 搬入 `activeSkill.buffList`（`CalcActiveSkill.lua:976-1041`），curse 表项
+/// 仅从 buffList 构造（`CalcPerform.lua:2286-2316`）——statMap 数据上**没有任何**
+/// `GlobalEffect effectType=Curse` 条目的 curse 技能（如 Repulsion
+/// `CurseOfRepulsionPlayer`，per-set statMap 全空）buffList 恒空，不注册 curse、
+/// 不占 curse 槽、不计入 `Multiplier:CurseOnEnemy`（:2969 `#curseSlots`）。
+/// 反例 Freezing Mark：vendor 数据特意给了 `Dummy INC`（GlobalEffect Curse）占位
+/// 载荷使其入槽（`act_int.lua:8645`）。
+///
+/// 与 [`map_curse_stat`] 的差异：只判**存在性**，不要求可翻译——允收名单外的
+/// 载荷（Temporal Chains `TemporalChainsActionSpeed` / `Dummy`）仍算 curse 载荷
+/// （vendor 同样入槽计数）。`unextractable` 条目 mods 为空 → 按无载荷处理
+/// （抽取器对 curse statMap 的 `mod()` 构造均可抽取，当前数据无此形态）。
+pub fn has_curse_payload(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+) -> bool {
+    catalog
+        .lookup(effect_id, set_key, stat)
+        .is_some_and(|entry| entry.mods.iter().any(is_curse_effect))
+}
+
 /// 敌侧 ModName 翻译表（curse 域，PoB2 enemyDB 名 → PoBR enemy db 聚合名）。
 ///
 /// 允收名单 = 当前 pobr 敌侧消费方逐一对照（宁可跳过不可错算）：
@@ -414,8 +440,14 @@ pub fn map_curse_stat(
 ///   （CalcDefence.lua:2133 enemyDamageMult）消费。
 /// - `SelfCritMultiplier` BASE：敌方受暴击加成（Sniper's Mark），
 ///   `crit.rs` 敌侧段消费（CalcOffence.lua:3814-3825）。
+/// - `BuffExpireFaster` MORE：敌方身上效果到期速率（Temporal Chains
+///   `base_temporal_chains_other_buff_time_passed_+%_to_apply` → MORE 负值 =
+///   expire slower），`ailment::debuff_duration_mult` 消费
+///   （CalcOffence.lua:1833-1835 `debuffDurationMult = 1 / max(
+///   BuffExpirationSlowCap, calcLib.mod(enemyDB, cfg, "BuffExpireFaster"))`，
+///   :5040 折入异常持续）。
 ///
-/// 其余（`TemporalChainsActionSpeed` / `BuffExpireFaster` / `FreezeBuildup` /
+/// 其余（`TemporalChainsActionSpeed` / `FreezeBuildup` /
 /// `ElectrocuteBuildup` / `IgnoreArmour` / `Dummy`…）pobr 暂无敌侧消费方 →
 /// `UnknownModName` 上报，消费方落地后补名单。
 fn translate_curse_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
@@ -427,6 +459,7 @@ fn translate_curse_mod_name(name: &str) -> Result<Vec<&'static str>, Unsupported
         "ElementalResist" => Ok(vec!["FireResist", "ColdResist", "LightningResist"]),
         "Damage" => Ok(vec!["Damage"]),
         "SelfCritMultiplier" => Ok(vec!["SelfCritMultiplier"]),
+        "BuffExpireFaster" => Ok(vec!["BuffExpireFaster"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -2312,6 +2345,36 @@ mod tests {
         );
     }
 
+    /// Temporal Chains 第二载荷（M4-l 允收）：`BuffExpireFaster MORE` 负值
+    /// （expire slower）直通敌侧同名（消费方 = `ailment::debuff_duration_mult`，
+    /// CalcOffence.lua:1833-1835 / :5040）。
+    #[test]
+    fn curse_buff_expire_faster_maps_to_enemy_name() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "TemporalChainsPlayer": { "1": {
+                 "base_temporal_chains_other_buff_time_passed_+%_to_apply": {
+                   "mods": [ { "kind": "mod", "name": "BuffExpireFaster", "mod_type": "MORE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Curse" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_curse_stat(
+            &catalog,
+            "TemporalChainsPlayer",
+            None,
+            "base_temporal_chains_other_buff_time_passed_+%_to_apply",
+            -25.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        assert_eq!(items.len(), 1);
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "BuffExpireFaster");
+        assert_eq!(m.mod_type, ModType::More);
+        assert_eq!(m.value.as_number(), Some(-25.0));
+        assert!(m.tags.is_empty(), "GlobalEffect 路由 tag 已剥除");
+    }
+
     /// 非 curse 载荷（global 条目无 Curse tag，如技能自带 duration/AoE）→
     /// Mapped(空)：静默跳过（走主技能注入通道，非 Unsupported）。
     #[test]
@@ -2336,6 +2399,43 @@ mod tests {
             map_curse_stat(&catalog, "DespairPlayer", None, "no_such_stat", 1.0),
             MappedOutcome::Unknown
         );
+    }
+
+    /// curse 载荷**存在性**判定（vendor buffList 注册前置，CalcActiveSkill.lua:976-1041）：
+    /// 允收名单外的载荷（TemporalChainsActionSpeed / Dummy 占位）仍算存在
+    /// （vendor 同样入槽计数）；非 curse 条目 / catalog miss → 不存在。
+    #[test]
+    fn has_curse_payload_is_presence_not_translatability() {
+        let catalog = catalog_json(
+            r#"{ "global": { "base_skill_effect_duration": {
+                   "div": 1000.0,
+                   "mods": [ { "kind": "skill_data", "value": { "key": "duration" } } ] } },
+                 "per_stat_set": { "TemporalChainsPlayer": { "1": {
+                 "base_skill_debuff_action_speed_+%_final_to_inflict": {
+                   "mods": [ { "kind": "mod", "name": "TemporalChainsActionSpeed", "mod_type": "INC",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Curse" } ] } ] } } } } }"#,
+        );
+        // 允收名单外（map_curse_stat 会 Unsupported）但载荷存在 → true。
+        assert!(has_curse_payload(
+            &catalog,
+            "TemporalChainsPlayer",
+            None,
+            "base_skill_debuff_action_speed_+%_final_to_inflict",
+        ));
+        // 非 curse 条目（global duration，Repulsion 全部 stat 的形态）→ false。
+        assert!(!has_curse_payload(
+            &catalog,
+            "CurseOfRepulsionPlayer",
+            None,
+            "base_skill_effect_duration",
+        ));
+        // catalog miss → false。
+        assert!(!has_curse_payload(
+            &catalog,
+            "CurseOfRepulsionPlayer",
+            None,
+            "no_such_stat",
+        ));
     }
 
     /// GlobalEffect 带约定外键（effectCond 等额外门控语义）→ 整条 Unsupported。

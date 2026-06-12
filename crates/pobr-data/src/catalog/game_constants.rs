@@ -232,6 +232,15 @@ pub struct GameMechanicsConstantsDef {
     /// （`merge_flasks_charms` 消费）。
     #[serde(default = "default_charm_limit_cap")]
     pub charm_limit_cap: f64,
+
+    // ---- M4-l：debuff 持续乘区（vendor-only）。----
+    /// 敌侧 `BuffExpireFaster` 聚合的下限（Data.lua:177
+    /// `BuffExpirationSlowCap = 0.25`）：`debuffDurationMult =
+    /// 1 / max(cap, calcLib.mod(enemyDB, "BuffExpireFaster"))`
+    /// （CalcOffence.lua:1833-1835 / :5040，Temporal Chains 系 expire-slower
+    /// 至多把 debuff/异常持续拉长 4 倍）。
+    #[serde(default = "default_buff_expiration_slow_cap")]
+    pub buff_expiration_slow_cap: f64,
 }
 
 // serde default 函数（与 `Default` 落值同源，单一数值出处）。
@@ -243,6 +252,9 @@ fn default_base_block_chance_max() -> f64 {
 }
 fn default_charm_limit_cap() -> f64 {
     3.0
+}
+fn default_buff_expiration_slow_cap() -> f64 {
+    0.25
 }
 fn default_ehp_calc_max_iterations() -> f64 {
     50.0
@@ -365,6 +377,7 @@ impl Default for GameMechanicsConstantsDef {
             base_block_chance_max: default_base_block_chance_max(),
             // M3-T4 D2：charm limit cap（CalcPerform.lua:1589）。
             charm_limit_cap: default_charm_limit_cap(),
+            buff_expiration_slow_cap: default_buff_expiration_slow_cap(),
         }
     }
 }

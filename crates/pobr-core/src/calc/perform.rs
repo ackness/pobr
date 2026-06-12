@@ -5,9 +5,10 @@ use crate::{CalcConfig, ModDb};
 use super::ailment::{
     AilmentSource, StackConfig, ailment_crit_chance, ailment_duration, ailment_effect_mod,
     ailment_rate_mod, apply_dot_dps_cap, bleed_traced, chill_traced, cross_type_source_hit,
-    electrocute_poise_buildup_traced, estimate_active_stacks, freeze_poise_buildup_traced,
-    ignite_traced, merge_hand_ailment_dps, poison_traced, roll_average, shock_traced,
-    stack_potential, stacking_ailment_dps_traced, stored_source_at_roll,
+    debuff_duration_mult, electrocute_poise_buildup_traced, estimate_active_stacks,
+    freeze_poise_buildup_traced, ignite_traced, merge_hand_ailment_dps, poison_traced,
+    roll_average, shock_traced, stack_potential, stacking_ailment_dps_traced,
+    stored_source_at_roll,
 };
 use super::output::StoredDamageRange;
 use super::skill_mechanics::{
@@ -978,13 +979,16 @@ fn damaging_ailment_for_pass(
     let (probe_out, _) = run(&probe, trace);
     // 叠层词条用 ailment 作用域 cfg（vendor :5024 的 cfg = 该异常 dotCfg）。
     let scoped_cfg = super::ailment::ailment_scoped_cfg(cfg, kind);
+    // M4-l：异常持续折入 debuffDurationMult（vendor :5040 `durationBase *
+    // durationMod / rateMod * debuffDurationMult`——Temporal Chains 系敌侧
+    // `BuffExpireFaster MORE` 负值把持续拉长，经活跃叠层估算进 DPS）。
     let stack = resolve_stack_config(
         player,
         &scoped_cfg,
         name,
         ctx.hit_chance,
         probe_out.chance,
-        ailment_duration(kind, player, cfg),
+        ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
         ctx.speed,
     );
     let sp = stack_potential(&stack);

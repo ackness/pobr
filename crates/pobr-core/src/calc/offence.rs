@@ -905,12 +905,15 @@ fn enemy_damage_multiplier(
 /// 2. 否则 `Σ BASE(<Type>Resist[, ElementalResist])`（元素类型含共享名
 ///    `ElementalResist`，vendor :539）× `max((1 + ΣINC/100) × ΠMORE, 0)`
 ///    （抗性自身的 INC/MORE 缩放，`calcLib.mod` 同式、负缩放 floor 0）；
-/// 3. clamp 到 `[ResistFloor(−200), EnemyMaxResist(75)]`（Data.lua:180/:200）。
+/// 3. clamp 到 `[ResistFloor(−200), maxResist]`（Data.lua:180/:200）。
 ///
-/// 注：vendor 的 maxResist 可被 configInput `enemy<Type>Resist` **显式输入**抬高到
-/// `MaxResistCap(90)`（:532）——PoBR config 通道当前把显式值直接入 BASE
-/// （`config_resolve`），未接 cap 抬升；显式配 >75 抗的场景登记 TODO(parity)。
-/// 物理不走本函数（护甲/PDR 路径见 [`enemy_physical_multiplier`]）。
+/// maxResist（M4-l，vendor :532）：基线 `EnemyMaxResist(75)`；configInput
+/// `enemy<Type>Resist` **显式输入**时抬到 `min(max(输入, 75), MaxResistCap(90))`
+/// ——pobr 等价取数 = enemy db 中归因 `(EnemyConfig, "config.enemy<Type>Resist")`
+/// 的 BASE 条目（`config_resolve` 显式数值的唯一注入形态；档位预设/曝光等其余
+/// EnemyConfig 来源 id 不同名，不参与）。`DoNotChangeMaxResFromConfig` FLAG
+/// （config「Enemy Max Resistance is always 75%」，ConfigOptions.lua:2158-2159）
+/// 置位时恒 75。物理不走本函数（护甲/PDR 路径见 [`enemy_physical_multiplier`]）。
 pub(crate) fn enemy_resist_final(
     enemy_db: &ModDb,
     type_cfg: &CalcConfig,
@@ -925,6 +928,7 @@ pub(crate) fn enemy_resist_final(
         DamageType::Chaos => "Chaos",
     };
     let resist_name = ModName::from(format!("{type_prefix}Resist"));
+    let max_resist = enemy_max_resist_for(enemy_db, type_cfg, type_prefix, &resist_name);
     let resist = match enemy_db.override_(type_cfg, resist_name.clone()) {
         Some(value) => value,
         None => {
@@ -940,7 +944,48 @@ pub(crate) fn enemy_resist_final(
             base * scale.max(0.0)
         }
     };
-    resist.clamp(type_cfg.constants.game().resist_floor, ENEMY_MAX_RESIST)
+    resist.clamp(type_cfg.constants.game().resist_floor, max_resist)
+}
+
+/// 该类型抗性的 clamp 上限（vendor CalcOffence.lua:532）：
+///
+/// ```text
+/// maxResist = Flag(DoNotChangeMaxResFromConfig) and EnemyMaxResist
+///     or min(max(configInput["enemy<Type>Resist"] or EnemyMaxResist, EnemyMaxResist), MaxResistCap)
+/// ```
+///
+/// configInput 等价取数 = enemy db 中 BASE `<Type>Resist` 且归因
+/// `(EnemyConfig, "config.enemy<Type>Resist")` 的条目（config_resolve 显式数值
+/// 注入形态；多条时与 BASE 聚合同口径求和）。`MaxResistCap(90)` = 注入常量
+/// `resist_hard_cap`（Data.lua:181）。
+fn enemy_max_resist_for(
+    enemy_db: &ModDb,
+    type_cfg: &CalcConfig,
+    type_prefix: &str,
+    resist_name: &ModName,
+) -> f64 {
+    if enemy_db.flag(type_cfg, ModName::from("DoNotChangeMaxResFromConfig")) {
+        return ENEMY_MAX_RESIST;
+    }
+    let config_source_id = format!("config.enemy{type_prefix}Resist");
+    let config_input: Option<f64> = enemy_db
+        .iter_mods()
+        .filter(|m| {
+            m.mod_type == ModType::Base
+                && m.name == *resist_name
+                && m.origin.as_ref().is_some_and(|o| {
+                    o.source_id.kind == SourceKind::EnemyConfig
+                        && o.source_id.id == config_source_id
+                })
+        })
+        .map(|m| m.value.as_number().unwrap_or(0.0))
+        .fold(None, |acc, v| Some(acc.unwrap_or(0.0) + v));
+    match config_input {
+        Some(input) => input
+            .max(ENEMY_MAX_RESIST)
+            .min(type_cfg.constants.game().resist_hard_cap),
+        None => ENEMY_MAX_RESIST,
+    }
 }
 
 /// 玩家穿透对**已 clamp 的**敌人抗性的下调（仅元素/混沌、仅击中）。
