@@ -139,6 +139,11 @@ impl ModFlags {
     pub const WEAPON_2H: Self = Self(0x8_0000_0000);
     /// `ModFlag.WeaponMask = 0x0000000F5FFF0000`
     pub const WEAPON_MASK: Self = Self(0xF_5FFF_0000);
+    /// [`weapon_flags`](Self::weapon_flags)（vendor getWeaponFlags）可产出的全部
+    /// 位段并集 = `WEAPON_MASK ∪ WARSTAFF ∪ WEAPON`（vendor `WeaponMask` 字面量
+    /// 不含 Warstaff 与 Weapon 位，见 `masks_are_unions_of_member_bits`）。供
+    /// per-hand cfg 武器位替换（T2 W-B2）整段清位用——非 vendor 字面量，PoBR 派生。
+    pub const WEAPON_SEGMENT: Self = Self(Self::WEAPON_MASK.0 | Self::WARSTAFF.0 | Self::WEAPON.0);
 }
 
 /// 武器位派生（W-A1 commit-2，feature 双态都编译——feature 关时恒空，
@@ -208,6 +213,30 @@ impl ModFlags {
     #[cfg(not(feature = "modflags-pob2"))]
     pub fn weapon_flags(_type_id: &str, _flag: &str, _one_hand: bool, _melee: bool) -> Self {
         Self::NONE
+    }
+
+    /// per-hand cfg 武器位替换（T2 W-B2；vendor `CalcOffence.lua:2369-2449`
+    /// weapon1Cfg/weapon2Cfg 语义：per-hand flags 由「技能位 + **该手**武器位」
+    /// 构造，不继承另一手 / 全局的武器位）。
+    ///
+    /// - `weapon` 为空（该 hand source 无武器位供给——legacy 位表恒空、或
+    ///   非武器攻击 source 如 Shield Wall）→ 原样返回，cfg 沿用上游供给
+    ///   （等价性依据：legacy 态零行为；pob2 态单手 build 的全局武器位与
+    ///   per-hand 位同源同值，替换 ≡ 恒等）。
+    /// - 非空 → 清掉 [`WEAPON_SEGMENT`](Self::WEAPON_SEGMENT) 段后并入该手
+    ///   武器位（双持下另一手的武器类型位不得泄漏进本手 pass）。
+    #[cfg(feature = "modflags-pob2")]
+    pub fn replace_weapon_flags(self, weapon: Self) -> Self {
+        if weapon.is_empty() {
+            self
+        } else {
+            Self(self.0 & !Self::WEAPON_SEGMENT.0 | weapon.0)
+        }
+    }
+    /// feature 关：legacy 位表无武器位（`weapon` 恒 `NONE`）——OR 即恒等（零行为）。
+    #[cfg(not(feature = "modflags-pob2"))]
+    pub fn replace_weapon_flags(self, weapon: Self) -> Self {
+        Self(self.0 | weapon.0)
     }
 }
 
@@ -435,6 +464,34 @@ mod modflags_pob2_tests {
         );
     }
 
+    /// per-hand 武器位替换（W-B2）：非空 → 清 WEAPON_SEGMENT 段再并入；
+    /// 空 → 恒等（非武器攻击 source 沿用上游供给）。
+    #[test]
+    fn replace_weapon_flags_swaps_weapon_segment_only() {
+        let mace = ModFlags::weapon_flags("One Hand Mace", "Mace", true, true);
+        let sword = ModFlags::weapon_flags("One Hand Sword", "Sword", true, true);
+        let cfg = ModFlags::ATTACK | ModFlags::HIT | mace;
+        // 同位替换 ≡ 恒等（单手 build 等价性依据）。
+        assert_eq!(cfg.replace_weapon_flags(mace), cfg);
+        // 异位替换：MH 锤位整段换成 OH 剑位，非武器段（ATTACK|HIT）保留。
+        assert_eq!(
+            cfg.replace_weapon_flags(sword),
+            ModFlags::ATTACK | ModFlags::HIT | sword
+        );
+        // 空供给 → 恒等（Shield Wall 类非武器攻击 source）。
+        assert_eq!(cfg.replace_weapon_flags(ModFlags::NONE), cfg);
+        // WEAPON_SEGMENT = getWeaponFlags 值域并集。
+        assert_eq!(
+            ModFlags::WEAPON_SEGMENT.bits(),
+            ModFlags::WEAPON_MASK.bits() | ModFlags::WARSTAFF.bits() | ModFlags::WEAPON.bits()
+        );
+        assert!(mace.is_subset_of(ModFlags::WEAPON_SEGMENT));
+        assert!(
+            ModFlags::weapon_flags("None", "Unarmed", true, true)
+                .is_subset_of(ModFlags::WEAPON_SEGMENT)
+        );
+    }
+
     /// 新位宽下 `is_subset_of` 语义不变（既有语义测试在新表的搬迁锚点）。
     #[test]
     fn is_subset_of_semantics_hold_on_new_bits() {
@@ -469,6 +526,13 @@ mod modflags_legacy_tests {
             ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
             ModFlags::NONE
         );
+    }
+
+    /// feature 关：per-hand 替换恒等（weapon 供给恒 NONE → OR 零行为，W-B2）。
+    #[test]
+    fn replace_weapon_flags_is_identity() {
+        let cfg = ModFlags::ATTACK | ModFlags::MELEE;
+        assert_eq!(cfg.replace_weapon_flags(ModFlags::NONE), cfg);
     }
 }
 
