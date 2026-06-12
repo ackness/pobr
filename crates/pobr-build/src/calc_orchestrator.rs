@@ -40,6 +40,7 @@ use pobr_data::catalog::local_mods::WeaponLocalModsDef;
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
+use pobr_data::skill::SkillTypes;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use pobr_tree::{JewelRadius, collect_allocated_mods, compute_radius_jewel_effect_with_radii};
 
@@ -209,6 +210,11 @@ pub fn calculate_with_data(
     let skill_flags = main_effect
         .map(|e| skill_type_flags(&e.skill_types))
         .unwrap_or(ModFlags::NONE);
+    // （M3-W5 修复）主技能类型 → `cfg.skill_types` 判别位：`is_attack()` 驱动命中
+    // 检定（攻击才做精准/闪避检定，vendor CalcOffence.lua:2611）；见 skill_type_bits doc。
+    let skill_type_bits = main_effect
+        .map(|e| skill_type_bits(&e.skill_types))
+        .unwrap_or(SkillTypes::NONE);
     let dmg_keywords = damage_keywords(
         build,
         data,
@@ -223,6 +229,7 @@ pub fn calculate_with_data(
     let mut cfg = base_cfg
         .clone()
         .with_flags(base_cfg.flags | skill_flags)
+        .with_skill_types(skill_type_bits)
         .with_damage_keywords(dmg_keywords)
         .with_mode_effective(options.mode_effective)
         // （M3-T3 C5-2 切换，D5 MAIN 口径）：vendor 非 CALCS 模式 buffMode 恒
@@ -1744,6 +1751,29 @@ fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'static str> 
         vars.push("DualWielding");
     }
     vars
+}
+
+/// 技能类型名（`ActiveSkillType.Id`）→ `cfg.skill_types`（攻击/法术判别位）。
+///
+/// （M3-W5 修复）编排此前只设 `ModFlags` 而从未填 `CalcConfig::skill_types`，导致
+/// `cfg.is_attack()`/`cfg.is_spell()` 对全部 build 恒 false——法术被错误地施加
+/// 精准/闪避命中检定（vendor `CalcOffence.lua:2611-2612`：`if not isAttack then
+/// output.AccuracyHitChance = 100`，法术/非攻击必中），有效口径下还连带错误降级
+/// 暴击（`:3700` 暴击二次命中检定只乘 `AccuracyHitChance`）。
+///
+/// 仅映射 Attack/Spell 两个判别位（命中检定语义所需的最小集），其余类型位
+/// （Projectile/Area/...）的激活面留待独立 commit 评估（`ModTag::SkillTypes`
+/// 匹配会随位扩展而扩大）。
+fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
+    let mut bits = SkillTypes::NONE;
+    for t in skill_types {
+        match t.as_str() {
+            "Attack" => bits |= SkillTypes::ATTACK,
+            "Spell" => bits |= SkillTypes::SPELL,
+            _ => {}
+        }
+    }
+    bits
 }
 
 /// 技能类型名（`ActiveSkillType.Id`）→ cfg 伤害 flag。供 damage 聚合按技能类别取用
@@ -4047,9 +4077,10 @@ mod tests {
 
     #[test]
     fn mode_effective_changes_hit_chance_vs_panel() {
-        // 面板口径 vs 有效口径：有效口径计入敌人闪避 → hit_chance < 1。
+        // （M3-W5 语义更新）非攻击必中：无主技能（非攻击）build 不做精准/闪避检定，
+        // 两口径 hit_chance 均为 1（vendor CalcOffence.lua:2611-2612
+        // `if not isAttack then output.AccuracyHitChance = 100`）。
         let data = BuildData::empty();
-        // 给玩家一点命中以便有意义地计算命中率。
         let build = Build::new();
         let base = MinimalInput {
             base_accuracy: 1000.0,
@@ -4059,38 +4090,80 @@ mod tests {
             ..MinimalInput::default()
         };
 
-        let panel = calculate_with_data(
-            &build,
-            &data,
-            &DataOrchestratorOptions {
-                base_input: base,
-                inject_character_base: false,
-                mode_effective: false,
-                ..Default::default()
-            },
-        )
-        .expect("panel");
+        for mode_effective in [false, true] {
+            let out = calculate_with_data(
+                &build,
+                &data,
+                &DataOrchestratorOptions {
+                    base_input: base,
+                    inject_character_base: false,
+                    mode_effective,
+                    enemy_level: 80,
+                    enemy_tier: EnemyTier::Pinnacle,
+                    ..Default::default()
+                },
+            )
+            .expect("calc");
+            assert_eq!(
+                out.hit_chance, 1.0,
+                "非攻击必中（vendor :2611）：mode_effective={mode_effective}"
+            );
+        }
 
-        let effective = calculate_with_data(
-            &build,
-            &data,
-            &DataOrchestratorOptions {
-                base_input: base,
-                inject_character_base: false,
-                mode_effective: true,
-                enemy_level: 80,
-                enemy_tier: EnemyTier::Pinnacle,
-                ..Default::default()
-            },
-        )
-        .expect("effective");
-
-        // 面板口径不计敌人交互；有效口径计入敌人闪避使命中率 < 1。
+        // 攻击口径（CalcConfig::attack() 置 SkillTypes::ATTACK）：敌人闪避参与
+        // 精准公式 → hit_chance < 1（PoE2 公式 acc*1.25/(acc+eva*0.3)，
+        // CalcDefence.lua:32-38）。
+        let mut session = CalculationSession::new(base)
+            .with_config(CalcConfig::attack().with_mode_effective(true));
+        session.setup_enemy(80, EnemyTier::Pinnacle);
+        let out = session.perform_minimal();
         assert!(
-            effective.hit_chance < panel.hit_chance || effective.hit_chance < 1.0,
-            "有效口径应计入敌人闪避降低命中率：panel={} effective={}",
-            panel.hit_chance,
-            effective.hit_chance,
+            out.hit_chance < 1.0,
+            "攻击应做精准/闪避检定：hit_chance={}",
+            out.hit_chance
+        );
+    }
+
+    /// （M3-W5 回归钉）主技能类型驱动命中检定：Spell 主技能必中（hit_chance=1，
+    /// vendor CalcOffence.lua:2611-2612），Attack 主技能做精准/闪避检定（<1）。
+    /// 钉死「编排未填 cfg.skill_types → 法术被卷入精准公式」的修复。
+    #[test]
+    fn spell_main_skill_skips_accuracy_check_attack_does_not() {
+        let data = repo_data();
+        let base = MinimalInput {
+            base_accuracy: 1000.0,
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            base_action_rate: 1.0,
+            ..MinimalInput::default()
+        };
+        let run = |skill: &str| {
+            let build = Build::new()
+                .add_socket_group(SocketGroup::new().with_gem_skill(skill, 10))
+                .with_main_socket_group(1);
+            calculate_with_data(
+                &build,
+                &data,
+                &DataOrchestratorOptions {
+                    base_input: base,
+                    inject_character_base: false,
+                    mode_effective: true,
+                    enemy_level: 80,
+                    enemy_tier: EnemyTier::Pinnacle,
+                    ..Default::default()
+                },
+            )
+            .expect("calc")
+        };
+        // FireballPlayer：投射法术；ArmourBreakerPlayer：近战攻击（皆真实数据）。
+        assert_eq!(
+            run("FireballPlayer").hit_chance,
+            1.0,
+            "法术必中（vendor :2611）"
+        );
+        assert!(
+            run("ArmourBreakerPlayer").hit_chance < 1.0,
+            "攻击应做精准/闪避检定"
         );
     }
 
@@ -4140,7 +4213,9 @@ mod tests {
     #[test]
     fn xml_enemy_tier_overrides_orchestrator_option() {
         // enemyIsBoss 接线（19-G3）：build XML Config 显式 None 档应覆盖调用方传入的
-        // Pinnacle——普通怪无 Pinnacle 闪避均值倍率，有效口径命中率应更高。
+        // Pinnacle——普通怪 dps_mult（1/4.4）远低于 Pinnacle（8/4.4）→ EHP 敌伤
+        // 装配的单击总进伤更低。（M3-W5 起无主技能 build 为非攻击、必中，
+        // hit_chance 不再区分档位；物理减伤两档同触 DR cap，故改用敌伤作观测点。）
         let data = BuildData::empty();
         let base = MinimalInput {
             base_accuracy: 1000.0,
@@ -4168,10 +4243,10 @@ mod tests {
         let none = calculate_with_data(&none_build, &data, &opts).expect("none-tier calc");
 
         assert!(
-            none.hit_chance > pinnacle.hit_chance,
-            "普通怪档位（闪避更低）命中率应高于 Pinnacle：none={} pinnacle={}",
-            none.hit_chance,
-            pinnacle.hit_chance,
+            pinnacle.total_enemy_damage_in > none.total_enemy_damage_in,
+            "Pinnacle 档敌伤（dps_mult 8/4.4）应高于普通怪档（1/4.4）：none={} pinnacle={}",
+            none.total_enemy_damage_in,
+            pinnacle.total_enemy_damage_in,
         );
     }
 

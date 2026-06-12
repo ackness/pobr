@@ -7,8 +7,14 @@
 //!   作为对齐进度的活体仪表盘（`cargo test -p pobr-build --test ninja_parity -- --nocapture`）。
 //! - **回归门禁**：`parity_no_regression` 断言聚合命中率不低于已记录基线（防止改动倒退）。
 //!
-//! 防御/属性按 PoB2 PlayerStat 面板口径比较；DPS 类（与技能管线完整度强相关）单列报告，
+//! 防御/属性按 PoB2 PlayerStat 口径比较；DPS 类（与技能管线完整度强相关）单列报告，
 //! 不计入防御命中率，避免未完成的 offence 管线掩盖防御侧 parity 信号。
+//!
+//! **默认口径 = `mode_effective=true`（M3-W5 切换）**：PoB2 主面板（即 golden 导出）
+//! 在非 CALCS 模式下恒为 EFFECTIVE（vendor `CalcSetup.lua:583-588`），与 golden 对齐。
+//! 面板口径（`mode_effective=false`）保留 [`panel_mode_no_regression`] 守卫，防口径
+//! 回归无感知。切换依据与逐 build 归因：
+//! `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`。
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
@@ -57,7 +63,9 @@ fn golden(stats: &serde_json::Map<String, serde_json::Value>, key: &str) -> Opti
     stats.get(key).and_then(|v| v.as_f64())
 }
 
-fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
+/// 以指定口径计算一个 build（`mode_effective`：false=面板口径，true=PoB2 主面板
+/// EFFECTIVE 口径，vendor `CalcSetup.lua:583-588`——非 CALCS 模式恒 EFFECTIVE）。
+fn run_build_mode(dir: &Path, data: &BuildData, mode_effective: bool) -> Option<OutputTable> {
     let code = std::fs::read_to_string(dir.join("code.txt")).ok()?;
     let build = parse_build_from_code(code.trim()).ok()?;
     let opts = DataOrchestratorOptions {
@@ -65,11 +73,16 @@ fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
         inject_character_base: true,
         enemy_level: 0,
         enemy_tier: EnemyTier::Pinnacle,
-        mode_effective: false,
+        mode_effective,
         extra_modifier_texts: vec![],
         ..Default::default()
     };
     calculate_with_data(&build, data, &opts).ok()
+}
+
+/// 默认口径：effective（与 PoB2 golden 同口径，M3-W5 切换）。
+fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
+    run_build_mode(dir, data, true)
 }
 
 /// 比较列：(显示名, PoB2 key, PoBR 取值)。
@@ -271,7 +284,15 @@ fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
         Row {
             label: "AverageDamage",
             golden: golden(g, "AverageDamage"),
-            pobr: out.total_hit_avg,
+            // PoB2 恒等式 `TotalDPS = AverageDamage × Speed`（18-build golden 逐一精确
+            // 成立，golden 的平均伤害已含命中率/暴击/敌方减伤）。PoBR 侧用同一恒等式取
+            // `dps / action_rate`；旧值 `total_hit_avg`（玩家侧未减伤、不含命中率）在
+            // effective 口径下与 golden 结构性错配（切换报告 §3-R4）。
+            pobr: if out.action_rate > 0.0 {
+                out.dps / out.action_rate
+            } else {
+                0.0
+            },
         },
         Row {
             label: "TotalDPS",
@@ -353,9 +374,10 @@ fn print_rows(rows: &[Row]) -> Tally {
     tally_rows(rows)
 }
 
-/// 遍历全部 build 计算防御/进攻命中聚合。`verbose` 控制是否逐 build 打印对照表。
+/// 遍历全部 build 计算防御/进攻命中聚合。`verbose` 控制是否逐 build 打印对照表，
+/// `mode_effective` 控制计算口径（默认门禁走 effective，面板守卫走 false）。
 /// 返回 `(防御核心 8 列 Tally, 防御全量 25 列 Tally, 进攻 Tally, 解析/计算失败的 build 名)`。
-fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
+fn compute_tallies_mode(verbose: bool, mode_effective: bool) -> (Tally, Tally, Tally, Vec<String>) {
     let data = load_data();
     let builds = discover_builds();
     assert!(!builds.is_empty(), "no builds discovered");
@@ -368,7 +390,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
     for dir in &builds {
         let name = dir.file_name().unwrap().to_string_lossy();
         let g = golden_stats(dir);
-        let Some(out) = run_build(dir, &data) else {
+        let Some(out) = run_build_mode(dir, &data, mode_effective) else {
             failed_parse.push(name.to_string());
             if verbose {
                 eprintln!("\n##### {name} :: PARSE/CALC FAILED #####");
@@ -395,6 +417,11 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
     (def_core, def, off, failed_parse)
 }
 
+/// 默认口径（effective）聚合，主门禁/报告入口。
+fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
+    compute_tallies_mode(verbose, true)
+}
+
 /// 已记录的 parity 基线（命中数）——回归门禁的下限。**仅在确认改动整体提升 parity 时上调**，
 /// 永不下调（防止改动悄悄倒退）。对应 commit 当时的 ninja_parity 输出。
 ///
@@ -412,11 +439,25 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Vec<String>) {
 /// 裁决）与 M2（扣池 + EHP 口径 + 25 列扩列 + 补刀 1-3）合并后的代码上实测重记。
 /// 防御 369→374（83.1%，两分支改进叠加）/ @10% 385→390；核心 130（=M2，90.3%）/
 /// @10% 132→133；进攻 27（=M2）/ @10% 32→33。与两分支基线对比见 merge commit message。
+///
+/// **M3-W5 effective 口径切换重记**（独立 baseline commit，显式审查；逐 build 归因
+/// 见 `m3-effective-switch-report.md` §2-§5）：默认口径 panel→effective（与 golden
+/// 对齐），防御 425 行逐值不变；进攻 @5% 27→26、@10% 33→35。
+/// **已审查例外（−1 @5%）**：smith-of-kitava CritChance 1.00x→0.93x——golden
+/// `HitChance`=100（PoB2 玩家精准足额过 cap）而 PoBR 精准聚合低估（≈1015 vs 1438，
+/// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
+/// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
+/// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
 const BASELINE_DEF_CORE_HIT5: usize = 130; // 实测 130/144 = 90.3%
 const BASELINE_DEF_HIT5: usize = 374; // 实测 374/450 = 83.1%（M1+M2 合并重记）
 const BASELINE_DEF_HIT10: usize = 390; // 实测 390/450 = 86.7%
-const BASELINE_OFF_HIT5: usize = 27; // 实测 27/80 = 33.8%
-const BASELINE_OFF_HIT10: usize = 33; // 实测 33/80 = 41.2%（M1+M2 合并重记）
+const BASELINE_OFF_HIT5: usize = 26; // 实测 26/80 = 32.5%（M3-W5 effective 重记，−1 已审查）
+const BASELINE_OFF_HIT10: usize = 35; // 实测 35/80 = 43.8%（M3-W5 effective 重记）
+
+/// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
+/// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
+const PANEL_OFF_HIT5: usize = 27; // 实测 27/80 = 33.8%
+const PANEL_OFF_HIT10: usize = 35; // 实测 35/80 = 43.8%
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
@@ -447,6 +488,25 @@ fn parity_no_regression() {
     assert!(
         off.hit10 >= BASELINE_OFF_HIT10,
         "offensive @10% regressed: {} < baseline {BASELINE_OFF_HIT10}",
+        off.hit10
+    );
+}
+
+/// 面板口径守卫：`mode_effective=false` 的进攻聚合不得低于切换时实测水平
+/// （[`PANEL_OFF_HIT5`]/[`PANEL_OFF_HIT10`]）。防御侧与 effective 逐值相同，
+/// 由主门禁覆盖。防止口径开关上游接线被改动而无感知回归。
+#[test]
+fn panel_mode_no_regression() {
+    let (_, _, off, failed) = compute_tallies_mode(false, false);
+    assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
+    assert!(
+        off.hit5 >= PANEL_OFF_HIT5,
+        "panel offensive @5% regressed: {} < baseline {PANEL_OFF_HIT5}",
+        off.hit5
+    );
+    assert!(
+        off.hit10 >= PANEL_OFF_HIT10,
+        "panel offensive @10% regressed: {} < baseline {PANEL_OFF_HIT10}",
         off.hit10
     );
 }
@@ -497,6 +557,129 @@ fn parity_baseline_report() {
         off.total,
         pct(off.hit10, off.total),
     );
+}
+
+/// M3-W5 口径切换双跑报告：同一 build 以 `mode_effective=false`（面板口径）与
+/// `mode_effective=true`（PoB2 主面板 EFFECTIVE 口径，vendor `CalcSetup.lua:583-588`）
+/// 各算一遍，逐 stat 三列输出（panel / effective / PoB2 golden）+ 收敛/恶化标记。
+///
+/// 打印型仪表盘（不设门禁）：
+/// `cargo test -p pobr-build --test ninja_parity -- effective_switch_dual_run_report --nocapture`
+///
+/// 报告归档：`audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`。
+#[test]
+fn effective_switch_dual_run_report() {
+    let data = load_data();
+    let builds = discover_builds();
+    assert!(!builds.is_empty(), "no builds discovered");
+
+    let fmt_v = |v: f64| -> String {
+        if is_inf_like(v) {
+            "inf".into()
+        } else {
+            format!("{v:.2}")
+        }
+    };
+    // 命中带宽标记：✓ = @5%，~ = @10%，空 = 脱靶。
+    let band = |rt: f64| -> &'static str {
+        if (rt - 1.0).abs() < TOL {
+            "✓"
+        } else if (rt - 1.0).abs() < TOL10 {
+            "~"
+        } else {
+            " "
+        }
+    };
+
+    let mut panel_tally = (Tally::default(), Tally::default(), Tally::default()); // (core, def, off)
+    let mut eff_tally = (Tally::default(), Tally::default(), Tally::default());
+    // 迁移统计（@5% 口径）：(收敛 panel✗→eff✓, 恶化 panel✓→eff✗, 双✓, 双✗)。
+    let mut moved: Vec<String> = Vec::new();
+
+    for dir in &builds {
+        let name = dir.file_name().unwrap().to_string_lossy();
+        let g = golden_stats(dir);
+        let (Some(panel), Some(eff)) = (
+            run_build_mode(dir, &data, false),
+            run_build_mode(dir, &data, true),
+        ) else {
+            eprintln!("\n##### {name} :: PARSE/CALC FAILED #####");
+            continue;
+        };
+
+        panel_tally
+            .0
+            .add(tally_rows(&defensive_core_rows(&panel, &g)));
+        panel_tally.1.add(tally_rows(&defensive_rows(&panel, &g)));
+        panel_tally.2.add(tally_rows(&offensive_rows(&panel, &g)));
+        eff_tally.0.add(tally_rows(&defensive_core_rows(&eff, &g)));
+        eff_tally.1.add(tally_rows(&defensive_rows(&eff, &g)));
+        eff_tally.2.add(tally_rows(&offensive_rows(&eff, &g)));
+
+        eprintln!("\n##### {name} #####");
+        eprintln!(
+            "  {:<18}{:>14}{:>14}{:>14}{:>9}{:>9}",
+            "stat", "panel", "effective", "PoB2", "p-ratio", "e-ratio"
+        );
+        let p_rows = defensive_rows(&panel, &g)
+            .into_iter()
+            .chain(offensive_rows(&panel, &g));
+        let e_rows = defensive_rows(&eff, &g)
+            .into_iter()
+            .chain(offensive_rows(&eff, &g));
+        for (p, e) in p_rows.zip(e_rows) {
+            let Some(gv) = p.golden else {
+                continue;
+            };
+            let (rp, re) = (ratio(p.pobr, gv), ratio(e.pobr, gv));
+            let (bp, be) = (band(rp), band(re));
+            let trans = match (bp == "✓", be == "✓") {
+                (false, true) => " ↑5%",
+                (true, false) => " ↓LOST",
+                _ if (rp - re).abs() > 1e-9 => " Δ",
+                _ => "",
+            };
+            if bp != be || (rp - re).abs() > 1e-9 {
+                moved.push(format!(
+                    "{name} :: {:<16} panel {:.3}x → eff {:.3}x{trans}",
+                    p.label, rp, re
+                ));
+            }
+            eprintln!(
+                "  {bp}{be} {:<16}{:>14}{:>14}{:>14}{:>8.2}x{:>8.2}x{trans}",
+                p.label,
+                fmt_v(p.pobr),
+                fmt_v(e.pobr),
+                fmt_v(gv),
+                rp,
+                re
+            );
+        }
+    }
+
+    let pct = |n: usize, d: usize| 100.0 * n as f64 / d.max(1) as f64;
+    eprintln!("\n================ EFFECTIVE-SWITCH DUAL-RUN SUMMARY ================");
+    for (label, p, e) in [
+        ("def core-8", panel_tally.0, eff_tally.0),
+        ("def 25-col", panel_tally.1, eff_tally.1),
+        ("offensive ", panel_tally.2, eff_tally.2),
+    ] {
+        eprintln!(
+            "{label}: panel {}/{} = {:.1}% @5% ({:.1}% @10%)  →  effective {}/{} = {:.1}% @5% ({:.1}% @10%)",
+            p.hit5,
+            p.total,
+            pct(p.hit5, p.total),
+            pct(p.hit10, p.total),
+            e.hit5,
+            e.total,
+            pct(e.hit5, e.total),
+            pct(e.hit10, e.total),
+        );
+    }
+    eprintln!("\n-- 口径间逐值变化（panel ≠ effective 或命中带迁移） --");
+    for m in &moved {
+        eprintln!("  {m}");
+    }
 }
 
 /// M2 F-2/F-3：EHP 新旧口径 18-build 双跑对照报告（蓝图 m2-defence §2 Track F）。

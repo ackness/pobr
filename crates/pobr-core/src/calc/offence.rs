@@ -259,12 +259,14 @@ pub fn calculate_minimal_vs_enemy(
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
     // PoE2 命中率（agent-docs/accuracy-and-enemy.md §二,§三）：
-    // - 法术必中：`if not isAttack then output.AccuracyHitChance = 100`。
+    // - 非攻击必中（M3-W5 对齐 vendor CalcOffence.lua:2611-2612 `if not isAttack
+    //   then output.AccuracyHitChance = 100`）：法术/DoT/召唤等一切非攻击不做精准检定。
+    //   旧口径 `is_spell()` 在 skill_types 缺 Spell 位时把法术也卷进精准公式。
     // - `CannotBeEvaded`（玩家旗标）/ effective 下敌方 `CannotEvade` → 置 100% 跳过精准公式。
     // - 末端再扣敌方格挡：`HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`。
     let cannot_be_evaded = db.flag(cfg, ModName::from("CannotBeEvaded"))
         || (cfg.mode_effective && enemy_db.flag(cfg, ModName::from("CannotEvade")));
-    let accuracy_hit_chance = if cfg.is_spell() || cannot_be_evaded {
+    let accuracy_hit_chance = if !cfg.is_attack() || cannot_be_evaded {
         1.0
     } else {
         hit_chance(input.enemy_evasion, accuracy)
@@ -585,10 +587,10 @@ fn total_dps_traced(
         input.enemy_evasion,
         SourceId::new(SourceKind::EnemyConfig, "enemy.evasion"),
     );
-    // PoE2 法术必中 + 有效口径 CannotEvade（同 calculate_minimal_vs_enemy）。
+    // PoE2 非攻击必中（vendor :2611）+ 有效口径 CannotEvade（同 calculate_minimal_vs_enemy）。
     let cannot_be_evaded = db.flag(cfg, ModName::from("CannotBeEvaded"))
         || (cfg.mode_effective && enemy_db.flag(cfg, ModName::from("CannotEvade")));
-    let accuracy_hit_chance = if cfg.is_spell() || cannot_be_evaded {
+    let accuracy_hit_chance = if !cfg.is_attack() || cannot_be_evaded {
         1.0
     } else {
         hit_chance(input.enemy_evasion, accuracy)
