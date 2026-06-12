@@ -787,6 +787,7 @@ mod tests {
                 constant_stats: Vec::new(),
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
+                explode_corpse: false,
                 levels: vec![SkillStatSetLevel {
                     gem_level: 1,
                     damage_multiplier: 1.0,
@@ -857,6 +858,7 @@ mod tests {
                 constant_stats: ds(constant_stats),
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
+                explode_corpse: false,
                 levels: vec![SkillStatSetLevel {
                     gem_level: 1,
                     damage_multiplier: 1.0,

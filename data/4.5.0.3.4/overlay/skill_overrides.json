@@ -3017,6 +3017,12 @@
       ]
     },
     {
+      "skill": "CorpseCloudPlayer",
+      "stat": "explode_corpse",
+      "stat_set": 1,
+      "value": 1.0
+    },
+    {
       "skill": "CrossbowRequiemPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -3709,6 +3715,18 @@
       "skill": "DestructiveLinkSkeletonBombadierMinion",
       "stat": "base_multiplier",
       "value": 3.0
+    },
+    {
+      "skill": "DetonateDeadPlayer",
+      "stat": "explode_corpse",
+      "stat_set": 1,
+      "value": 1.0
+    },
+    {
+      "skill": "DetonateLivingPlayer",
+      "stat": "explode_corpse",
+      "stat_set": 2,
+      "value": 1.0
     },
     {
       "skill": "DetonatingArrowPlayer",
@@ -4544,6 +4562,24 @@
     {
       "skill": "EnemyExplode",
       "stat": "base_multiplier",
+      "value": 1.0
+    },
+    {
+      "skill": "EnemyExplode",
+      "stat": "explode_corpse",
+      "stat_set": 1,
+      "value": 1.0
+    },
+    {
+      "skill": "EnemyExplode",
+      "stat": "explode_corpse",
+      "stat_set": 2,
+      "value": 1.0
+    },
+    {
+      "skill": "EnemyExplode",
+      "stat": "explode_corpse",
+      "stat_set": 3,
       "value": 1.0
     },
     {
@@ -23621,6 +23657,12 @@
       ]
     },
     {
+      "skill": "TriggeredFieryDeathPlayer",
+      "stat": "explode_corpse",
+      "stat_set": 1,
+      "value": 1.0
+    },
+    {
       "skill": "TriggeredFistOfKalguurPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -23785,6 +23827,12 @@
           21.72
         ]
       ]
+    },
+    {
+      "skill": "TriggeredLightningDetonateDeadPlayer",
+      "stat": "explode_corpse",
+      "stat_set": 1,
+      "value": 1.0
     },
     {
       "skill": "TriggeredMoltenShowerPlayer",

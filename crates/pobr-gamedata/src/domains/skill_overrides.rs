@@ -29,14 +29,16 @@ use pobr_data::catalog::skill_overrides::{
     OVERRIDE_DOT_FLAG_STATS, OVERRIDE_STAT_ATTACK_SPEED_MULTIPLIER, OVERRIDE_STAT_BASE_MULTIPLIER,
     OVERRIDE_STAT_CRIT_CHANCE, OVERRIDE_STAT_DOT_IS_AREA, OVERRIDE_STAT_DOT_IS_ATTACK,
     OVERRIDE_STAT_DOT_IS_HIT, OVERRIDE_STAT_DOT_IS_PROJECTILE, OVERRIDE_STAT_DOT_IS_SPELL,
-    OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE, SkillOverridesDef,
+    OVERRIDE_STAT_EXPLODE_CORPSE, OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE, SkillOverridesDef,
 };
 use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef, StatSetDef};
 
 /// 是否为 statSet 级 stat（由 [`apply_stat_set_overrides`] /
 /// [`apply_dot_flag_overrides`] 消费，等级域 merge 跳过）。
 fn is_stat_set_stat(stat: &str) -> bool {
-    stat == OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE || OVERRIDE_DOT_FLAG_STATS.contains(&stat)
+    stat == OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE
+        || stat == OVERRIDE_STAT_EXPLODE_CORPSE
+        || OVERRIDE_DOT_FLAG_STATS.contains(&stat)
 }
 
 use crate::{GameData, LoadError};
@@ -174,6 +176,7 @@ pub fn apply_stat_set_overrides(
                         constant_stats: Vec::new(),
                         skill_attack_speed_more: Some(value),
                         dot_flags: Default::default(),
+                        explode_corpse: false,
                         levels: Vec::new(),
                     }],
                 });
@@ -211,12 +214,15 @@ pub fn apply_dot_flag_overrides(
     overrides: &SkillOverridesDef,
 ) -> Result<(), String> {
     for entry in &overrides.overrides {
-        if !OVERRIDE_DOT_FLAG_STATS.contains(&entry.stat.as_str()) {
+        let is_dot_flag = OVERRIDE_DOT_FLAG_STATS.contains(&entry.stat.as_str());
+        // explode_corpse（M4-G）与 dotIs* 同通道（statSet baseMods 布尔，
+        // 同一 set 定位语义），仅落点字段不同。
+        if !is_dot_flag && entry.stat != OVERRIDE_STAT_EXPLODE_CORPSE {
             continue;
         }
         let Some(value) = entry.value else {
             return Err(format!(
-                "skill_overrides 条目（skill `{}`，stat `{}`）缺 value（dotIs* 布尔恒为单值）",
+                "skill_overrides 条目（skill `{}`，stat `{}`）缺 value（statSet 布尔恒为单值）",
                 entry.skill, entry.stat
             ));
         };
@@ -240,7 +246,11 @@ pub fn apply_dot_flag_overrides(
             OVERRIDE_STAT_DOT_IS_SPELL => set.dot_flags.spell = flag,
             OVERRIDE_STAT_DOT_IS_ATTACK => set.dot_flags.attack = flag,
             OVERRIDE_STAT_DOT_IS_HIT => set.dot_flags.hit = flag,
-            _ => unreachable!("OVERRIDE_DOT_FLAG_STATS 已过滤"),
+            OVERRIDE_STAT_EXPLODE_CORPSE => {
+                set.explode_corpse = flag;
+                continue; // 不触碰 dot_flags.verified（dot 核验标记语义独立）。
+            }
+            _ => unreachable!("statSet 布尔清单已过滤"),
         }
         set.dot_flags.verified = true;
     }
@@ -307,6 +317,7 @@ mod tests {
             constant_stats: Vec::new(),
             skill_attack_speed_more: None,
             dot_flags: Default::default(),
+            explode_corpse: false,
             levels: Vec::new(),
         }
     }

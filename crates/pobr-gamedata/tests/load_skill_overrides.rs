@@ -129,6 +129,16 @@ fn merged_levels_spot_values() {
         tornado.sets[0].dot_flags.is_default(),
         "主 set（Impact）未核验，保守默认"
     );
+
+    // M4-G：explodeCorpse 布尔（vendor statSet baseMods，act_int.lua:5287；
+    // CalcOffence.lua:2213 尸体爆炸基伤门控）——DetonateDeadPlayer 主 set
+    // 命中；无该 baseMod 的技能保持缺省 false。
+    let dd = sets
+        .iter()
+        .find(|s| s.effect_id == "DetonateDeadPlayer")
+        .expect("DetonateDeadPlayer stat-set 存在");
+    assert!(dd.sets[0].explode_corpse, "DD 主 set explodeCorpse");
+    assert!(!flicker_set.explode_corpse, "无 baseMod 的技能缺省 false");
 }
 
 /// 纯 base 不含 overlay 专属字段——确保这些值只来自 merge，不再有手补漂移
