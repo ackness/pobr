@@ -435,6 +435,10 @@ pub fn calculate_with_data(
     if let Some(curse_priority) = &data.curse_priority {
         session.set_curse_priority(curse_priority.clone());
     }
+    // M4-I 去重接线：取整精度例外表注入（buff_pass / merge_flasks_charms 的
+    // ScaleAddMod 缩放消费，T1 写原语同一份规则；overlay 数据与先期硬编码命名族
+    // 镜像在全部入库条目上逐值相等，ninja_parity 逐值验证）。
+    session.set_high_precision_rules(data.high_precision.clone());
     // M4-T2 W-B2：武器基底经 HandSource 注入（单 pass 直通——OR 模式逐值等价于
     // 旧 base_input 折算）。双持（Weapon2 为武器基底）装配第二个 off-hand
     // HandSource，per-hand 武器位随 WeaponBase::flags 进 hand pass；

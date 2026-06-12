@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PathOfBuilding2>
+	<Build level="80" className="Sorceress" ascendClassName="None" mainSocketGroup="1" viewMode="CALCS" targetVersion="0_1"/>
+	<Skills sortGemsByDPSField="CombinedDPS" activeSkillSet="1" sortGemsByDPS="false" defaultGemQuality="0" defaultGemLevel="normalMaximum" showSupportGemTypes="ALL" showLegacyGems="false">
+		<SkillSet id="1">
+			<Skill mainActiveSkillCalcs="3" includeInFullDPS="nil" enabled="true" mainActiveSkill="3">
+				<Gem quality="0" level="10" gemId="Metadata/Items/Gems/SkillGemArmourBreaker" skillId="ArmourBreakerPlayer" variantId="ArmourBreaker" nameSpec="Armour Breaker" enabled="true" count="1"/>
+				<Gem quality="0" level="10" gemId="Metadata/Items/Gems/SkillGemCastOnCriticalStrike" skillId="MetaCastOnCritPlayer" variantId="CastOnCriticalStrike" nameSpec="Cast on Critical" enabled="true" count="1"/>
+				<Gem quality="0" level="10" gemId="Metadata/Items/Gems/SkillGemFireball" skillId="FireballPlayer" variantId="Fireball" nameSpec="Fireball" enabled="true" count="1"/>
+			</Skill>
+		</SkillSet>
+	</Skills>
+	<Tree activeSpec="1">
+		<Spec treeVersion="0_3" nodes="" masteryEffects=""/>
+	</Tree>
+	<Items activeItemSet="1">
+		<Item id="1">
+			Rarity: NORMAL
+Wooden Club
+Item Level: 1
+Implicits: 0
+</Item>
+		<ItemSet useSecondWeaponSet="nil" id="1">
+			<Slot itemPbURL="" name="Weapon 1" itemId="1"/>
+		</ItemSet>
+	</Items>
+	<Config/>
+</PathOfBuilding2>

@@ -5,8 +5,8 @@ use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::catalog::curse_priority::CursePriorityDef;
 use pobr_data::prelude::*;
 
-use crate::CalcConfig;
 use crate::rules::HandlerRegistry;
+use crate::{CalcConfig, HighPrecisionRules};
 
 use super::buff_pass::CursePassOutput;
 use super::session::BuffSpec;
@@ -56,6 +56,13 @@ pub struct Env {
     /// vendor CalcOffence.lua:2459-2545）。数据通道 = W-D1 的 skill_overrides 抽取，
     /// 编排层未接线前恒 false。
     pub double_hits_when_dual_wielding: bool,
+    /// 取整精度规则（M4-I 去重；`overlay/high_precision_mods.json` 经 pobr-gamedata
+    /// `RuleSet` 加载、`session::set_high_precision_rules` 注入——照
+    /// `curse_priority` 先例）。消费点 = buff_pass / merge_flasks_charms 的
+    /// ScaleAddMod 数值缩放（T1 写原语 [`crate::ModDb::scale_add_mod`] 同一份规则）。
+    /// 未注入 = [`HighPrecisionRules::default`]（无例外表，默认 `round(·,2)` 截整 /
+    /// 小数原值 floor 1 位）。
+    pub high_precision: HighPrecisionRules,
 }
 
 impl Env {
@@ -73,6 +80,7 @@ impl Env {
             curse_pass_output: None,
             hand_sources: Vec::new(),
             double_hits_when_dual_wielding: false,
+            high_precision: HighPrecisionRules::default(),
         }
     }
 
