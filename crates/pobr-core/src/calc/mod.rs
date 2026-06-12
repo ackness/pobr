@@ -4,6 +4,7 @@ pub mod ailment_apply;
 pub mod breakdown;
 pub mod buff_pass;
 pub mod crit;
+pub mod crit_pass;
 pub mod damage;
 pub mod defence;
 pub mod defence_panels;
@@ -11,6 +12,7 @@ pub mod ehp;
 pub mod env;
 pub mod env_finalize;
 pub mod error;
+pub mod hand_pass;
 pub mod keystone_merge;
 pub mod minion;
 pub mod offence;
@@ -40,6 +42,7 @@ pub use buff_pass::{
     determine_curse_priority, scale_value,
 };
 pub use crit::{CritOutcome, resolve_crit, resolve_crit_traced};
+pub use crit_pass::{CritPassOutput, run_crit_passes};
 pub use damage::{
     ConversionRules, DAMAGE_TYPES, DamageComponent, apply_can_deal, convert_damage, gain_as_extra,
     lucky_hit_chance, normalize_conversion, sum_avg,
@@ -65,6 +68,10 @@ pub use ehp::{
 };
 pub use env::Env;
 pub use error::CalcError;
+pub use hand_pass::{
+    COMBINE_TABLE, HandCfg, HandPassOutput, HandSource, WeaponBase, combine_mode_for,
+    run_hand_passes,
+};
 pub use minion::{
     AttributeInfusion, MinionBaseStats, MinionCategory, MinionContext, MinionData, MinionDef,
     MinionInput, MinionLimitId, MinionModifierEntry, MinionWeaponData, build_minion_context,
@@ -75,7 +82,7 @@ pub use offence::{
     MinimalInput, MinimalOutput, TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
     calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy,
 };
-pub use output::{MinionOutput, OutputTable};
+pub use output::{HandOutput, MinionOutput, OutputTable};
 pub use perform::perform;
 pub use pool_damage::{
     AllyLayer, POB2_DAMAGE_ORDER, PoolCtx, PoolState, PoolsAfter, TypedDamage,

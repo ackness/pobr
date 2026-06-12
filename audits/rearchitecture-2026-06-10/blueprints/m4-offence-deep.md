@@ -114,7 +114,7 @@ pub enum TraceOperation {
 ### 1.5 评审 checklist（T2 合并前置）
 
 - [ ] 单手 + 无暴击条件词条的 build：双 pass 路径输出与现单 pass **逐值相等**（等价性测试，见 W-B2/B3 测试计划）。
-- [ ] direct 权重表与 vendor 公式逐模式对得上（每模式一个单测）。
+- [ ] direct 权重表与 vendor 公式逐模式对得上（每模式一个单测；**评审 C2 收紧**：仅线性模式与 HARMONICMEAN（齐次巧合）断言「加权和==输出」，doubleHits/CHANCE/CHANCE_AILMENT/CritBlend 只断言「权重==解析偏导」——direct 在后者不守恒，由 marginal 兜底，详见 RFC §9）。
 - [ ] marginal 在 doubleHits/CRIT 非线性样例上 ≠ direct 且符合手算。
 - [ ] `source_ancestors`/既有 attribution 测试（`tests/attribution.rs` 8.3K）零回归。
 - [ ] bench：traced 路径 ×4 重算在预算内（§6）。

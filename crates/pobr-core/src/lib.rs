@@ -38,5 +38,6 @@ pub use skill_source::{
     ingest_gem, ingest_gem_leveled, ingest_support_gem, judge_support,
 };
 pub use trace::{
-    TraceEdge, TraceGraph, TraceNode, TraceNodeId, TraceOperation, TraceOutput, TracedValue,
+    CombineMode, CritTag, HandTag, PassId, TraceEdge, TraceGraph, TraceNode, TraceNodeId,
+    TraceOperation, TraceOutput, TracedValue,
 };

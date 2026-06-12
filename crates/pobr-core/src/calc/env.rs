@@ -48,6 +48,14 @@ pub struct Env {
     /// 先于 `OutputTable::from` 整表覆盖，故经此字段中转）。`None` = buff_pass
     /// 未运行（mode_buffs 关 / 无 spec），输出字段维持 Default 0。
     pub curse_pass_output: Option<CursePassOutput>,
+    /// MH/OH hand pass 输入（M4-T2 W-B2，蓝图 §3.3 契约 1；编排层武器段经
+    /// `session::set_hand_sources` 写入）。空 = 非攻击技能 / 旧入口，`perform`
+    /// 走与历史完全一致的单管线路径（回退态，行为逐值不变）。
+    pub hand_sources: Vec<super::hand_pass::HandSource>,
+    /// 技能数据 `doubleHitsWhenDualWielding`（W-B2；combineStat DPS/CRIT 模式翻转，
+    /// vendor CalcOffence.lua:2459-2545）。数据通道 = W-D1 的 skill_overrides 抽取，
+    /// 编排层未接线前恒 false。
+    pub double_hits_when_dual_wielding: bool,
 }
 
 impl Env {
@@ -63,6 +71,8 @@ impl Env {
             buff_handler_registry: Arc::new(HandlerRegistry::new()),
             curse_priority: None,
             curse_pass_output: None,
+            hand_sources: Vec::new(),
+            double_hits_when_dual_wielding: false,
         }
     }
 
