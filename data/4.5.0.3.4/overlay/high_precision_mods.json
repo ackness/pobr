@@ -9,7 +9,8 @@
       "src/Modules/Data.lua:415-530 (highPrecisionMods, 38 entries)",
       "src/Classes/ModList.lua:144 (MoreInternal default round(modResult, 2))"
     ],
-    "notes": "pobr 现状无 ScaleAddMod/MORE 精度例外消费方（audits/rearchitecture-2026-06-10/10-mod-system.md Gap 6），本表先落库零接线、零 parity 影响；more_default_round_decimals 的 pobr 准源为 pobr-core::mod_db::round_more 固定 2 位"
+    "notes": "pobr 现状无 ScaleAddMod/MORE 精度例外消费方（audits/rearchitecture-2026-06-10/10-mod-system.md Gap 6），本表先落库零接线、零 parity 影响；more_default_round_decimals 的 pobr 准源为 pobr-core::mod_db::round_more 固定 2 位",
+    "audit": "版本 bump 对账（F4，drill 无自动重放通道）：人工转录域——对照 vendor src/Modules/Data.lua 的 defaultHighPrecision / highPrecisionMods（38 条）与 src/Classes/ModList.lua MoreInternal 默认取整逐条复核，复核后更新 vendor_commit 与 source 行号并在 commit message 注明逐条核对结论；待 ScaleAddMod / MORE 精度例外分支落地后改走自动对账命令"
   },
   "default_high_precision": 1,
   "more_default_round_decimals": 2,
