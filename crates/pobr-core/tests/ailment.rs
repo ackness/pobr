@@ -812,6 +812,33 @@ fn ailment_rate_mod_scales_with_faster() {
     );
 }
 
+/// M4-m（k3）：`ailment_rate_mod` 的 INC 腿——vendor `calcLib.mod`（CalcTools.lua:16-18）
+/// = `(1 + ΣINC/100) × ΠMORE`；statmap `faster_burn_%` 族产 INC（SkillStatMap.lua:843-848）。
+///
+/// `IgniteFaster INC 50 + MORE 20 → faster = 1.5 × 1.2 = 1.8`。
+#[test]
+fn ailment_rate_mod_includes_inc_leg() {
+    let cfg = CalcConfig::attack();
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("IgniteFaster", ModType::Inc, 50.0));
+    player.add_mod(Modifier::number("IgniteFaster", ModType::More, 20.0));
+    let enemy = ModDb::new();
+    let rm = ailment_rate_mod(&player, &enemy, &cfg, "Ignite");
+    assert!(
+        (rm - 1.8).abs() < 1e-9,
+        "IgniteFaster INC50 + MORE20 → rateMod=1.8, got {rm}"
+    );
+
+    // Slower 的 INC 腿同形：BleedSlower INC 100 → slower=2.0 → rateMod=0.5。
+    let mut slower_player = ModDb::new();
+    slower_player.add_mod(Modifier::number("BleedSlower", ModType::Inc, 100.0));
+    let rm = ailment_rate_mod(&slower_player, &enemy, &cfg, "Bleed");
+    assert!(
+        (rm - 0.5).abs() < 1e-9,
+        "BleedSlower INC100 → rateMod=0.5, got {rm}"
+    );
+}
+
 /// `ailment_rate_mod` + Slower：`BleedSlower More 25% → slower=1.25, rateMod = 1.0/1.25`。
 ///
 /// 出处：PoB2 `rateMod = faster / slower`；Slower 让 rateMod < 1。
