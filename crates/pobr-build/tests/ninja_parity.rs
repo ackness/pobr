@@ -501,7 +501,9 @@ const BASELINE_OFF_HIT10: usize = 47; // 实测 47/80 = 58.8%
 ///    isSwitchable 树变体缺失（druid 6898 误用基础版、缺 `Gain 5% of Damage as
 ///    Extra Damage of a random Element`）恰好部分抵消既有 ignite 高估。变体修复
 ///    后（解析/展开与 vendor CalcOffence.lua:1175-1200 同口径：三元素均分 n/3）
-///    真实偏差 ~1.17x 暴露——属 ignite 量级线既有缺口，登记待 DoT 线收敛。
+///    真实偏差 ~1.17x 暴露。**M4-K 后续**：1.17x 高估根因（ailment 堆叠速率源
+///    2.54x 过记）已修复 → 0.45x；剩余低估逐因子归属暴击量级/curse duration/
+///    副技能 debuff 线（m4-skill-gaps.md §7.1，逐因子乘积闭合）。
 /// 2. deadeye grenade CombinedDPS 1.02x——偶然命中：旧「攻速补偿吞吐」近似把
 ///    Speed 高估 ×1.95，与 GrenadeActivateTwice ×1.5 形成吞吐双重计入，恰好
 ///    抵消 per-hit 低估（0.52x）。M4-J 按 vendor CalcOffence.lua:2852-2856 切

@@ -146,10 +146,55 @@ fn scale_magnitude(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -
     base * (1.0 + inc / 100.0) * more
 }
 
-/// 应用 duration modifier（inc 累加）。
+/// 应用 duration modifier（inc 累加 + more 连乘——vendor durationMod =
+/// `calcLib.mod(...)` 即 `(1+Σinc/100)×Πmore`，CalcOffence.lua:5037-5039；
+/// Escalating Poison `EnemyPoisonDuration MORE -20` 等 support 载荷走 MORE 腿）。
 fn scale_duration(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
     let inc = db.sum(ModType::Inc, cfg, names);
-    base * (1.0 + inc / 100.0)
+    let more = db.more(cfg, names);
+    base * (1.0 + inc / 100.0) * more
+}
+
+/// 某 ailment 的 keyword 作用域 cfg（vendor dotCfg，CalcOffence.lua:5005：
+/// `keywordFlags = (cfg.kw \ Hit) | KeywordFlag[ailment] | Ailment |
+/// <Type>Dot`）。使 `AilmentMagnitude MORE kw=Poison`（Deadly Poison）等带
+/// keyword 限定的词条只作用于对应异常——PoBR `matches_context` 为 ANY-overlap，
+/// cfg 不置位则此类词条永不命中；同时剥 Hit 位（击中限定词条不入异常）。
+pub fn ailment_scoped_cfg(cfg: &CalcConfig, ailment: AilmentType) -> CalcConfig {
+    let kw = ailment_keyword(ailment);
+    if kw == KeywordFlags::NONE {
+        return cfg.clone();
+    }
+    let type_dot = match ailment {
+        AilmentType::Bleed => KeywordFlags::PHYSICAL_DOT,
+        AilmentType::Ignite => KeywordFlags::FIRE_DOT,
+        AilmentType::Poison => KeywordFlags::CHAOS_DOT,
+        _ => KeywordFlags::NONE,
+    };
+    let stripped = cfg.keyword_flags.without(KeywordFlags::HIT);
+    cfg.clone()
+        .with_keyword_flags(stripped | KeywordFlags::AILMENT | kw | type_dot)
+}
+
+/// 异常名（`"Bleed"`/`"Ignite"`/`"Poison"`/…）→ [`AilmentType`]（chance 路径的
+/// 字符串入参桥；未知名回退 Chill——[`ailment_keyword`] 对其返回 NONE，作用域直通）。
+fn ailment_type_of(name: &str) -> AilmentType {
+    match name {
+        "Bleed" => AilmentType::Bleed,
+        "Ignite" => AilmentType::Ignite,
+        "Poison" => AilmentType::Poison,
+        _ => AilmentType::Chill,
+    }
+}
+
+/// 某 ailment 的 KeywordFlag（伤害异常三类；其余无独立位 → NONE）。
+fn ailment_keyword(ailment: AilmentType) -> KeywordFlags {
+    match ailment {
+        AilmentType::Bleed => KeywordFlags::BLEED,
+        AilmentType::Ignite => KeywordFlags::IGNITE,
+        AilmentType::Poison => KeywordFlags::POISON,
+        _ => KeywordFlags::NONE,
+    }
 }
 
 /// 某伤害异常的有效持续时间（秒）：基础时长（注入常量包 `cfg.constants`）吃对应 duration mod。
@@ -166,8 +211,9 @@ pub fn ailment_duration(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> f
         AilmentType::Poison => (gc.poison_base_duration, "PoisonDuration"),
         _ => return 0.0,
     };
+    let cfg = ailment_scoped_cfg(cfg, ailment);
     let names = [ModName::from(specific), ModName::from("AilmentDuration")];
-    round(scale_duration(base, db, cfg, &names))
+    round(scale_duration(base, db, &cfg, &names))
 }
 
 /// 流血实例：magnitude = 15% pre-mitigation 物理命中/秒，持续 5s。
@@ -178,6 +224,8 @@ pub fn bleed_instance(
 ) -> AilmentInstance {
     let gc = cfg.constants.game();
     let base_dps = pre_mitigation_phys_hit * gc.bleed_base_fraction;
+    // keyword 作用域（vendor dotTypeCfg）：带 KeywordFlag.Bleed 的词条仅作用于流血。
+    let cfg = &ailment_scoped_cfg(cfg, AilmentType::Bleed);
     // PoE2 伤害异常 magnitude 仅由 `AilmentMagnitude` 缩放（= PoB2 ailmentPercentBase 的
     // calcLib.mod(AilmentMagnitude) 因子，inc+more 聚合）。PoE1 的 BleedDamage/
     // PhysicalDamageOverTime/DamageOverTime 在 PoE2 不存在、不参与伤害异常 magnitude；
@@ -210,6 +258,8 @@ pub fn ignite_instance(
 ) -> AilmentInstance {
     let gc = cfg.constants.game();
     let base_dps = pre_mitigation_fire_hit * gc.ignite_base_fraction;
+    // keyword 作用域（vendor dotTypeCfg）：带 KeywordFlag.Ignite 的词条仅作用于点燃。
+    let cfg = &ailment_scoped_cfg(cfg, AilmentType::Ignite);
     // PoE2 点燃 magnitude 仅由 `AilmentMagnitude` 缩放（PoB2 ailmentPercentBase 因子）。
     // 出处：PoB2 CalcOffence.lua L5145-5146。
     let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
@@ -235,6 +285,9 @@ pub fn ignite_instance(
 pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) -> AilmentInstance {
     let gc = cfg.constants.game();
     let base_dps = pre_mitigation_hit * gc.poison_base_fraction;
+    // keyword 作用域（vendor dotTypeCfg）：带 KeywordFlag.Poison 的词条（如 Deadly
+    // Poison `AilmentMagnitude MORE kw=Poison`）仅作用于中毒。
+    let cfg = &ailment_scoped_cfg(cfg, AilmentType::Poison);
     // PoE2 中毒 magnitude 仅由 `AilmentMagnitude` 缩放（PoB2 ailmentPercentBase 因子）。
     // 出处：PoB2 CalcOffence.lua L5145-5146。
     let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
@@ -554,6 +607,8 @@ fn flat_chance_traced(
     ailment: &str,
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
+    // keyword 作用域：带对应 KeywordFlag 的几率词条仅作用于该异常。
+    let cfg = &ailment_scoped_cfg(cfg, ailment_type_of(ailment));
     let chance_names = [
         ModName::from(format!("{ailment}Chance")),
         ModName::from("AilmentChance"),
@@ -599,6 +654,9 @@ fn threshold_chance_traced(
     threshold: f64,
     trace: &mut TraceGraph,
 ) -> (f64, f64, TraceNodeId) {
+    // keyword 作用域：带对应 KeywordFlag 的几率词条仅作用于该异常（感电等非伤害
+    // 异常无独立 KeywordFlag → 原 cfg 直通）。
+    let cfg = &ailment_scoped_cfg(cfg, ailment_type_of(ailment));
     let chance_names = [
         ModName::from(format!("Enemy{ailment}Chance")),
         ModName::from("AilmentChance"),
@@ -714,6 +772,8 @@ fn record_magnitude_trace(
     mag_node: TraceNodeId,
     trace: &mut TraceGraph,
 ) {
+    // 与 *_instance 的 magnitude 聚合同一 keyword 作用域（trace 边不漏带 kw 词条）。
+    let cfg = &ailment_scoped_cfg(cfg, ailment);
     let names = magnitude_mod_names(ailment);
     let inc = player.sum_traced(
         ModType::Inc,

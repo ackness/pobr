@@ -137,6 +137,71 @@ huntress 0.27→0.44x、monk 0.22→0.23x——余差均为 pre-crit per-hit 段
 
 **确认非缺口**：witch 的 Bonded `20% increased Projectile Damage`（gloves enchant）vendor 同样不计（无「Gain the benefits of Bonded modifiers」激活源，oracle 钉值 flag=false），PoBR 行为一致。
 
+## 7. M4-K 异常 DoT 量级残差线——结果与归属表（2026-06-13）
+
+j1 揭示的两个 dot 目标经 oracle 逐因子分解定位并修复（2 个行为 commit），
+剩余残差逐项归属到非 dot 自身的线：
+
+### 7.1 druid-oracle-comet TotalDotDPS 1.17x 高估（基线例外 1）——根因闭合
+
+oracle 钉值 vendor 链：`IgniteDPS 182.74 = FireStoredCritAvg(13993.42) × 0.2 ×
+ailmentStacks(0.1088) × effMult(0.6)`。PoBR/vendor 逐因子比：
+
+| 因子 | PoBR | vendor | 比 | 归属 |
+|---|---|---|---|---|
+| **stacks 速率源** | 1.62（fill 本地链） | 0.6377（Speed） | **2.54x 过记 ← 主因** | **本波修复**：`effective_action_rate` 改读 offence 合并 `action_rate`（= vendor `globalOutput.Speed`，:5046-5053 stacks 速率源；fill 本地 `calc_skill_use_time` 链缺 `apply_total_time`（TotalCastTime）与 typed bucket/MORE，法术丢宝石施法时间） |
+| Stored crit 量级（chance 同源连带） | 10860.37 | 13993.42 | 0.776²（chance+magnitude 双进） | 暴击线：CritMultiplier 4.07 vs 5.24（Malice buff 爆伤载荷未入聚合，§5 尾差族） |
+| duration | 4.0 | 4.3478（=4/0.92） | 0.92 | curse 线：Temporal Chains（Blasphemy）→ enemy `BuffExpireFaster MORE -8`（act_int.lua:21308 statmap）→ vendor `debuffDurationMult = 1/max(0.25, mod(enemyDB,"BuffExpireFaster"))`（CalcOffence.lua:1833-1835/:5040）。`translate_curse_mod_name` 已显式列为待消费名 |
+| effMult | 0.5 | 0.6 | 0.833 | 副技能 debuff 线：Frost Bomb 对敌 `−10 全元素抗`（oracle resistMods `Skill:FrostBombPlayer`）——PoBR 无「其它主动技能对敌施 debuff」通道 |
+
+修后 1.17x → **0.45x**（高估消除；0.776² × 0.92 × 0.969(速度残差) × 0.833
+= 0.45 逐因子闭合 ✓）。commit `1d9fdda`（速率信号）。
+
+### 7.2 huntress-ritualist-bow-shot poison 全缺——链路打通（0.00x → 0.09x）
+
+vendor 链 oracle 钉值：PoisonChance 100、PoisonStacksMax 4、MagnitudeEffect
+3.04、Duration 3.2、PoisonDPS 131474（+ Bleed ≈ 11622 = TotalDot 143096）。
+PoBR 三段结构性丢弃全部打通（commit `310f5b1`）：statmap 异常族白名单
+（PoisonChance/BleedChance/AilmentMagnitude/<Ailment>Stacks/Enemy*Duration
+归一/CanStack flag）+ `ailment_scoped_cfg`（vendor dotCfg keyword，:5005）+
+叠层 flag 门/Override/MORE（:5021-5025）+ duration MORE 腿（:5037-5039）。
+poison_dps 0→8779、bleed_dps 0→4430（Bleed III 连带）。
+
+**余差 = mod_parser 短语缺路（本波禁动，移交 parser 线）**，oracle Tabulate
+逐 mod 清单（全部 Tree/Item 来源）：
+
+| 短语（vendor ModParser.lua 行号） | 词条 → vendor mod | 缺额 |
+|---|---|---|
+| `to poison on hit`（:836 名表）/ 装备『26% chance to Poison on Hit with Attacks』+ 树 8×5 | `PoisonChance BASE` | chance 60 → 100 |
+| `magnitude of poison/ailments you inflict`（:785/:787-788 名表） | `AilmentMagnitude INC`（树 9 条 Σ130） | magnitude ×1 → ×3.04 |
+| `poison duration`（:837 → `EnemyPoisonDuration`） | 树 7 条 + 弓 −25 | duration 2.0 → 3.2 |
+| `targets can be affected by +N of your poisons at the same time`（:3895 → `PoisonCanStack` flag + `PoisonStacks BASE`） | 弓符文 +1、Tree:15986/63759 各 +1 | maxStacks 1 → 4 |
+| `to inflict bleeding on hit`（:844 名表，树/装备侧） | `BleedChance BASE` | bleed 树侧补全 |
+
+注：statmap 侧通道（Escalating Poison/Deadly Poison/Envenom 等 support 载荷）
+已全部可走——本 build 主技能恰好不带这些 support，载荷全在树/装备（parser 域）。
+
+### 7.3 残差归属表（dot 列全 18 build，修后实测）
+
+dot 列命中 3/37 维持（修复消除的是**伪差/高估**，新增暴露的低估归属各自线）：
+
+| build | dot 比（修前→修后） | 异常侧自身残差 | 击中侧/其它线残差 |
+|---|---|---|---|
+| druid-oracle-comet | 1.17x → 0.45x | 无（链路闭合 §7.1） | 暴击量级（Malice）、curse duration、Frost Bomb debuff |
+| huntress-ritualist-bow-shot | 0.00x → 0.09x | 无（链路闭合 §7.2） | parser 短语 ×5 族（§7.2 表） |
+| sorceress-varashta-comet | 0.62x → 0.32x | 无（速率过记伪高被修正） | 法术击中量级线（TotalDPS 0.19x 同源）+ 同 comet 的 curse/crit 族 |
+| ranger-pathfinder-ice-shot | 0.28x → 0.27x | 无 | 击中量级线（TotalDPS 0.31x 同源，h 波 Stored 已对齐结构） |
+| witch-abyssal-lich-DD | 0.68x → 0.67x | 无 | 尸爆基伤 effective 减伤线（§0 登记） |
+| witch coiling-bolts | 0.79x → 0.62x | 无（旧 0.79 含速率伪高） | 击中量级（added/gain-as 大档线 §1） |
+| sorceress-stormweaver-comet | 0.00x（不变） | **点燃链未触发**——vendor TotalDotDPS 1911 全为 ignite；PoBR FireStored 有值但 chance 派生后 DPS≈0，待单独对拍（登记 dot 线下一波） | — |
+| warrior-titan-shield-wall | 0.02x（不变） | vendor 5776 主体为 bleed（树侧 chance/magnitude 词条，parser 域） | — |
+| 其余（grenade×2/frost-bomb/flicker/twister×2/kitava/ember） | 0.19x–0.77x | 无独立异常侧缺口 | 各自击中量级/速度线（off 列同源） |
+
+**本波线内可继续项（登记）**：① vendor `rateMod`（`<Ailment>Faster/Slower`，
+:5036）PoBR 仅 finalize 段近似，statmap 名未开白；② `debuffDurationMult`
+消费点在 ailment duration（curse 通道就绪后一并接，见 §7.1）；③
+stormweaver-comet ignite 0 值对拍。
+
 **剩余登记（暴击线尾差，单一根因）**：
 - **切换类节点 class 变体（isSwitchable options）未建模**——tree.lua 节点的
   `options.<Class>` 子表会按职业整体替换 stats：witch 51335『Affliction
