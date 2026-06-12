@@ -191,3 +191,66 @@ fn with_maces_mod_routes_to_main_hand_only_under_pob2_bits() {
         "OH（剑）腿不得吃 with-maces 攻速：×{speed_ratio_oh}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Golden 基线（M4 §4.2 验收条目 2：双持异种武器 fixture 入 golden 门禁）
+//
+// 语料 18 build 无双持装备（Weapon2 全为 sceptre/focus/quiver/shield），故用
+// 本文件的合成 fixture（Warrior L50 + AxeChopPlayer L1 + MH Wooden Club +
+// OH Shortsword，真实入库数据）建基线。基线值 = 建立时（ModFlags 切换 commit
+// 后）的实际输出；行为修复改变这些值时按 baseline 纪律以独立 commit 显式更新。
+//
+// 手算锚点：MH avg_hit = (6+10)/2 × 1.4(baseMultiplier) × 1.05(crit 5%×2.0)
+// = 11.76；combined DPS = (MH+OH)/2（非 doubleHits）；Speed = 调和平均。
+// ---------------------------------------------------------------------------
+
+const GOLDEN_COMBINED_DPS: f64 = 17.068_250_757;
+const GOLDEN_COMBINED_ACTION_RATE: f64 = 1.498_127_341;
+const GOLDEN_COMBINED_HIT_AVG: f64 = 11.392_5;
+const GOLDEN_MH_DPS: f64 = 17.043_478_257;
+const GOLDEN_MH_SPEED: f64 = 1.449_275_362;
+const GOLDEN_MH_AVG_HIT: f64 = 11.76;
+const GOLDEN_OH_DPS: f64 = 17.093_023_257;
+const GOLDEN_OH_SPEED: f64 = 1.550_387_597;
+const GOLDEN_OH_AVG_HIT: f64 = 11.025;
+const GOLDEN_CRIT_CHANCE: f64 = 0.05;
+
+/// 双持 golden：合并值与 per-hand 子表逐字段锁定（相对容差 1e-6）。
+#[test]
+fn dual_wield_golden_baseline() {
+    let near = |label: &str, expected: f64, actual: f64| {
+        let rel = (actual - expected).abs() / expected.abs().max(1e-12);
+        assert!(
+            rel < 1e-6,
+            "{label}: expected {expected}, got {actual}（相对误差 {rel:.2e}）"
+        );
+    };
+    let data = load_build_data();
+    let out = calculate_with_data(
+        &dual_build(Some(weapon("Shortsword", &[]))),
+        &data,
+        &opts(&[]),
+    )
+    .expect("dual wield golden calc");
+    let mh = out.main_hand.as_ref().expect("MH 子表");
+    let oh = out.off_hand.as_ref().expect("OH 子表");
+
+    near("combined.dps", GOLDEN_COMBINED_DPS, out.dps);
+    near(
+        "combined.action_rate",
+        GOLDEN_COMBINED_ACTION_RATE,
+        out.action_rate,
+    );
+    near(
+        "combined.total_hit_avg",
+        GOLDEN_COMBINED_HIT_AVG,
+        out.total_hit_avg,
+    );
+    near("combined.crit_chance", GOLDEN_CRIT_CHANCE, out.crit_chance);
+    near("mh.total_dps", GOLDEN_MH_DPS, mh.total_dps);
+    near("mh.speed", GOLDEN_MH_SPEED, mh.speed);
+    near("mh.average_hit", GOLDEN_MH_AVG_HIT, mh.average_hit);
+    near("oh.total_dps", GOLDEN_OH_DPS, oh.total_dps);
+    near("oh.speed", GOLDEN_OH_SPEED, oh.speed);
+    near("oh.average_hit", GOLDEN_OH_AVG_HIT, oh.average_hit);
+}
