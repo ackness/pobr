@@ -25,6 +25,17 @@
 - 模拟变更实测佐证：vendor `Data.lua` cursePriority `Despair 8→88` → 重抽取产物与
   已提交 overlay 的差异 = `curse_base.Despair` 一处数值 + `_meta.regen_command`
   （后者纯因 out 路径不同）——数据变更本身被 JSON 完整吸收，Rust 零改动。
+- **状态：已吸收**（M3-W3，commit `017b24b`）。`sync-pob-catalog` 在
+  `out_for_meta` 赋值处统一归一化（`extract_lua::canonical_out_for_meta`）：
+  out 路径含 `data/` 组件时截取最后一个 `data/...` 相对段；不含时按 `--what`
+  目标的 canonical 默认路径表 `data/<version>/overlay/<file>` 回退（version 从
+  out / `--version-file` 路径组件推导，推不出时省略 `--out`）。全部 17 个可执行
+  extract 重生成核验 **byte-diff=0**（已提交 `--out` 本就是 canonical 相对路径，
+  无需搬迁 commit）；临时路径重放（保留 `data/<ver>/overlay/<file>` 尾段结构）
+  实测含 `_meta` 逐字节一致。drill 脚本步骤 3 的「就地覆写+快照还原」hack 已
+  简化为临时路径重放直接 byte-diff（commit `b80f829`）。
+  附注：`mod_parser_rules` 的 headless 引导以 vendor src 为 cwd，重放须用
+  **绝对** `--vendor-root`（drill 脚本本就重写为绝对路径，不受影响）。
 
 ### F2 adapter 对输入表缺列静默降级，无必需列断言（F3 的 Rust 侧加固项）
 
@@ -33,6 +44,13 @@
   产物结构合法但语义降级，只能靠 byte-diff 事后发现。
 - 吸收方式：adapter 入口对各表做**必需列存在性断言**（清单随版本配置），缺列即
   fail-fast 报表名+列名，而不是产出降级 JSON。属 adapter（Rust 工具层）改动。
+- **状态：已吸收**（M3-W3，commit `05d1d88`）。
+  `pobr-data-adapter::required_columns` 在 `--raw` 适配开始前对全部消费表
+  （EN 14 张 + 繁中边车 3 张）核对首行列键（清单 = 各 `Raw*` 行结构 serde
+  rename 全集，含 `ArmourTypes.IncreasedMovementSpeed`、
+  `GrantedEffects.AdditionalStatSets` 等 Option/default 列），缺列跨表汇总报
+  「表名 + 列名」；表文件缺失立即报错（覆盖 F8 快照整目录缺失场景）。断言逻辑
+  由构造缺列最小 JSON 的单测覆盖，不依赖本地 `pipeline/tables/` 快照。
 
 ## 数据 / 流程发现项（备查，不计入 Rust 清单）
 
@@ -60,6 +78,12 @@
   字段（仅 source/notes）。版本 bump 时这四个域靠人工记忆。
 - 处理：给后两者补 `_meta` 对账说明；drill 后续版把「策展域对账命令」也纳入
   可执行步骤（buff_definitions 的 check-buff-refs 已可机跑）。
+- **状态：已吸收**（M3-W3，commit `b80f829`）。
+  `high_precision_mods.json` / `local_mods.json` 的 `_meta` 已补 `audit` 字段
+  （版本 bump 人工对账口径：准源 / vendor 对照点 / 复核后须更新的字段；loader
+  对 `_meta` 不反序列化，无需 schema 扩字段）；drill 脚本新增步骤 3b——
+  `check-buff-refs` 对账 `buff_definitions.json`（漂移即 FAIL）。
+  `special_mods.json` 的对账命令待 M5b A-3 落地后接入（既有登记不变）。
 
 ### F5 树域输入不在本地快照
 
@@ -71,6 +95,9 @@
 - extract 默认读 `<vendor_root>/../../.pob2-version.txt`；对 vendor **副本**（模拟
   变更场景）需显式 `--version-file`。drill 脚本当前用真 vendor 检出无此问题；
   文档化即可。
+- **状态：已吸收**（M3-W3，commit `b80f829`）。drill 脚本头注 / 用法已
+  说明 vendor 副本场景须显式 `--version-file`，并新增 `--version-file` 透传
+  参数（重放时注入 / 覆写各 regen 命令），模拟变更演练不再需要手工逐条改命令。
 
 ### F7 precompile 步骤占位
 
