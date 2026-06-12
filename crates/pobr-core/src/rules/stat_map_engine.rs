@@ -1365,7 +1365,15 @@ pub fn translate_mod_name(
         // `support_cooldown_reduction_cooldown_recovery_+%` → CooldownRecovery）。
         // 消费方 = `calc::skill_mechanics::calc_cooldown` /
         // `offence::apply_cooldown_cap`（冷却管辖速率整链）。
-        | "CooldownRecovery" => base_name.to_string(),
+        | "CooldownRecovery"
+        // M4-L：曝光效果直通（vendor `exposure_effect_+%` → 三元素
+        // `<El>ExposureEffect` INC，SkillStatMap.lua:1731-1735，Potent Exposure
+        // support 载荷）。消费方 = `calc::reduce_enemy_exposure`（CalcPerform.lua
+        // :3223 曝光效果 INC；vendor 按技能作用域，PoBR 扁平 db 全局求和近似，
+        // 见 reduce_enemy_exposure doc 的已登记 TODO(parity)）。
+        | "FireExposureEffect"
+        | "ColdExposureEffect"
+        | "LightningExposureEffect" => base_name.to_string(),
         // M4-G：grenade 二次起爆几率（vendor SkillStatMap.lua:2795-2797
         // `grenade_skill_%_chance_to_explode_twice` → GrenadeActivateTwice BASE，
         // 仅 SupportPayload 产出该 stat）。消费方 = `calc::scaled_damage::

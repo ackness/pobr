@@ -854,6 +854,17 @@ pub fn calculate_with_data(
     //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
     session.add_modifiers(self_buff_offensive_modifiers(build, data));
 
+    // 4c'.（M4-L）非主组曝光效果 support（h3 登记 Potent Exposure 同根）：
+    //     曝光源所在副组的兼容 support 的 `<El>ExposureEffect` INC 全局注入
+    //     （vendor 按来源技能作用域，CalcPerform.lua:3193-3211/:3226-3231；
+    //     PoBR 曝光归约扁平求和近似）。主组 support 已由 support_modifiers
+    //     全量注入，函数内跳过防双注入。
+    session.add_modifiers(exposure_support_modifiers(
+        build,
+        data,
+        main_skill.as_ref().map(|(_, g, _)| *g),
+    ));
+
     // 4d.（M1-T4.5）持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
     //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
     session.add_modifiers(spirit_reservation_modifiers(build, data));
@@ -4508,6 +4519,100 @@ fn debuff_stat_modifiers(
     mods
 }
 
+/// （M4-L）组内是否存在 debuff 曝光载荷（[`exposure_support_modifiers`] 的
+/// 宿主探测）：与 [`debuff_stat_modifiers`] 同一取数链但**纯只读**（不落
+/// Compare 记录——同一 stat 已由 buff_skill_specs 的 Debuff 分支记录，
+/// 探测重复记录即噪声）。
+fn has_debuff_payload(
+    data: &BuildData,
+    stats: &crate::build_data::EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> bool {
+    let ctx_catalog = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone());
+    let Some(catalog) = ctx_catalog.or_else(|| data.stat_map_catalog.clone()) else {
+        return false;
+    };
+    stats.all().any(|ds| {
+        ds.value != 0.0
+            && matches!(
+                stat_map_engine::map_debuff_stat(&catalog, skill_id, set_key, &ds.stat, ds.value),
+                MappedOutcome::Mapped(items) if !items.is_empty()
+            )
+    })
+}
+
+/// （M4-L）非主组的曝光效果 support 注入面（h3 登记 Potent Exposure 同根）。
+///
+/// vendor：support mod 并入宿主技能 skillModList（CalcActiveSkill.lua:210-214
+/// effectList），曝光应用时按**来源技能**取 `<El>ExposureEffect` INC
+/// （CalcPerform.lua:3193-3211 getSkillExposureEffect，:3226-3231 对每个曝光源
+/// 独立缩放）——非主组的 Potent Exposure（`exposure_effect_+%`，
+/// SkillStatMap.lua:1731-1735）同样作用于其宿主（如 chronomancer 的 Frost Bomb
+/// 副组）。PoBR 曝光归约（`reduce_enemy_exposure`）读 player db 扁平求和（已
+/// 登记近似），等价注入面 = 把**曝光源所在组**的兼容 support 的
+/// `<El>ExposureEffect` 词条全局注入 player db：
+/// - 仅扫产出 debuff 曝光载荷的组（[`has_debuff_payload`]——无曝光源的组其
+///   曝光效果词条不全局生效，保持 vendor 作用域语义的最小外延）；
+/// - **主组跳过**（其 support 已由 [`support_modifiers`] 全量注入、含本名族，
+///   避免双注入）；
+/// - 只保留 `<El>ExposureEffect` 名（其余 support 词条仍是技能局部语义，
+///   不得从非主组泄漏到全局）。
+fn exposure_support_modifiers(
+    build: &Build,
+    data: &BuildData,
+    main_group: Option<&SocketGroup>,
+) -> Vec<Modifier> {
+    use std::collections::BTreeSet;
+    let mut mods = Vec::new();
+    for group in build.enabled_socket_groups() {
+        if main_group.is_some_and(|mg| std::ptr::eq(mg, group)) {
+            continue;
+        }
+        // 曝光源宿主：组内产出 debuff 曝光载荷的主动技能 → 其兼容 support 名单。
+        let mut support_indices: BTreeSet<usize> = BTreeSet::new();
+        for gem in &group.gem_skills {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            if effect.is_support {
+                continue;
+            }
+            let es = data.effect_stats(
+                &gem.skill_id,
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            );
+            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+            if !has_debuff_payload(data, &es, &gem.skill_id, set_key.as_deref()) {
+                continue;
+            }
+            for idx in judge_group_supports(group, data, &gem.skill_id).compatible {
+                support_indices.insert(idx);
+            }
+        }
+        for idx in support_indices {
+            let gem = &group.gem_skills[idx];
+            // quality 传 0 与 support_modifiers 同口径（support 品质表条目不存在）。
+            let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0, gem.stat_set_index);
+            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+            mods.extend(
+                mapped_stat_modifiers(
+                    &stats.base,
+                    SourceKind::SupportGem,
+                    &gem.skill_id,
+                    &gem.skill_id,
+                    set_key.as_deref(),
+                )
+                .into_iter()
+                .filter(|m| m.name.as_str().ends_with("ExposureEffect")),
+            );
+        }
+    }
+    mods
+}
+
 /// （M4-G）玩家侧 buff 词条取数点：把一个 buff 授予效果（support / aura 技能）
 /// statset 的全部 stat 经 [`stat_map_engine::map_player_buff_stat`]（buff 域数据
 /// 通道，玩家侧允收名单）映射为**玩家侧** modifier 列表（BuffSpec.mods 载荷，
@@ -6397,6 +6502,76 @@ mod tests {
             assert_eq!(m.mod_type, ModType::Base);
             assert_eq!(m.value.as_number(), Some(expected));
         }
+    }
+
+    /// （M4-L）非主组曝光效果 support：Frost Bomb（曝光源）副组的
+    /// Potent Exposure（`exposure_effect_+%` → 三元素 `<El>ExposureEffect` INC，
+    /// SkillStatMap.lua:1731-1735）→ 全局注入；主组（vendor 同口径已由
+    /// support_modifiers 注入）跳过防双注入；无曝光源的组不泄漏。
+    #[test]
+    fn exposure_support_modifiers_scans_non_main_groups() {
+        let data = repo_data();
+        let bomb_group = SocketGroup::new()
+            .with_gem_skill("FrostBombPlayer", 18)
+            .with_gem_skill("SupportPotentExposurePlayer", 1);
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+            .add_socket_group(bomb_group.clone());
+
+        // mapped_stat_modifiers 走线程局部 statmap 上下文（编排主流程由
+        // calculate_with_data 安装）——测试内手工安装同一 catalog。
+        let _guard =
+            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
+
+        // 主组 = Fireball 组 → Frost Bomb 副组的 Potent Exposure 应注入。
+        let main_group = &build.socket_groups[0];
+        let mods = exposure_support_modifiers(&build, &data, Some(main_group));
+        for name in [
+            "FireExposureEffect",
+            "ColdExposureEffect",
+            "LightningExposureEffect",
+        ] {
+            let m = mods
+                .iter()
+                .find(|m| m.name.as_str() == name)
+                .unwrap_or_else(|| panic!("{name} 应从非主组 Potent Exposure 注入"));
+            assert_eq!(m.mod_type, ModType::Inc);
+            assert!(
+                m.value.as_number().is_some_and(|v| v > 0.0),
+                "曝光效果 INC 应为正值"
+            );
+        }
+        // 主组 = Frost Bomb 组自身 → 跳过（support_modifiers 已注入，防双注入）。
+        let bomb_main = &build.socket_groups[1];
+        assert!(
+            exposure_support_modifiers(&build, &data, Some(bomb_main))
+                .iter()
+                .all(|m| !m.name.as_str().ends_with("ExposureEffect")),
+            "主组即曝光源组时不重复注入"
+        );
+        // 无曝光源的组：Potent Exposure 词条不全局泄漏。
+        let no_source = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("ArcPlayer", 20)
+                    .with_gem_skill("SupportPotentExposurePlayer", 1),
+            );
+        let main = &no_source.socket_groups[0];
+        assert!(
+            exposure_support_modifiers(&no_source, &data, Some(main)).is_empty(),
+            "无 debuff 曝光载荷的组其曝光效果词条不全局生效"
+        );
     }
 
     /// 单通道不变式（C5-3 删旧码后）：编排产线（BuffSpec → buff_pass 乘区）的
