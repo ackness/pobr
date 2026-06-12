@@ -265,6 +265,15 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
         hit_chance,
         action_rate,
         dps,
+        // Stored 族：CombinedAvg 按 vendor :4588 逐类型 DPS 模式合并；
+        // Crit/HitAvg 是 per-leg 诊断值（vendor 不跨手合并），顶层取 MH 腿。
+        stored_crit_avg: mh.stored_crit_avg.clone(),
+        stored_hit_avg: mh.stored_hit_avg.clone(),
+        stored_combined_avg: combine_stored_by_type(
+            &mh.stored_combined_avg,
+            &oh.stored_combined_avg,
+            double_hits,
+        ),
         breakdown: combined_breakdown(
             mh,
             crit_chance,
@@ -309,6 +318,27 @@ fn combined_breakdown(
         .collect()
 }
 
+/// `Stored<Type>CombinedAvg` 跨手合并（vendor `:4588` 逐伤害类型 DPS 模式）。
+/// 两腿类型集合按 MH 序对齐；OH 缺该类型按 0 折入（vendor `or 0` 语义）。
+fn combine_stored_by_type(
+    mh: &[(pobr_data::prelude::DamageType, f64)],
+    oh: &[(pobr_data::prelude::DamageType, f64)],
+    double_hits: bool,
+) -> Vec<(pobr_data::prelude::DamageType, f64)> {
+    let mode = combine_mode_for("StoredCombinedAvg", double_hits)
+        .expect("StoredCombinedAvg 在 COMBINE_TABLE 内");
+    mh.iter()
+        .map(|(ty, mh_v)| {
+            let oh_v = oh
+                .iter()
+                .find(|(oh_ty, _)| oh_ty == ty)
+                .map_or(0.0, |(_, v)| *v);
+            let combined = mode.combine(&[*mh_v, oh_v]).expect("DPS 是自给模式");
+            (*ty, combined)
+        })
+        .collect()
+}
+
 impl HandOutput {
     /// 从一腿的 `MinimalOutput` 提取 combineStat 入参面（蓝图 §1.4 / RFC §4.2）。
     pub fn from_minimal(leg: &MinimalOutput) -> Self {
@@ -324,9 +354,10 @@ impl HandOutput {
             // 面板口径用玩家侧 total_hit_avg（与顶层字段同源）。
             average_damage: round(leg.total_hit_avg * leg.hit_chance),
             total_dps: leg.dps,
-            stored_crit_avg: Vec::new(),
-            stored_hit_avg: Vec::new(),
-            stored_combined_avg: Vec::new(),
+            // W-B3：Stored 族（crit_pass 产出，ailment magnitude 的 vendor 口径输入）。
+            stored_crit_avg: leg.stored_crit_avg.clone(),
+            stored_hit_avg: leg.stored_hit_avg.clone(),
+            stored_combined_avg: leg.stored_combined_avg.clone(),
         }
     }
 }

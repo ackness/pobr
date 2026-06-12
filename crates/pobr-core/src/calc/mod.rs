@@ -4,6 +4,7 @@ pub mod ailment_apply;
 pub mod breakdown;
 pub mod buff_pass;
 pub mod crit;
+pub mod crit_pass;
 pub mod damage;
 pub mod defence;
 pub mod defence_panels;
@@ -40,6 +41,7 @@ pub use buff_pass::{
     determine_curse_priority, scale_value,
 };
 pub use crit::{CritOutcome, resolve_crit, resolve_crit_traced};
+pub use crit_pass::{CritPassOutput, run_crit_passes};
 pub use damage::{
     ConversionRules, DAMAGE_TYPES, DamageComponent, apply_can_deal, convert_damage, gain_as_extra,
     lucky_hit_chance, normalize_conversion, sum_avg,

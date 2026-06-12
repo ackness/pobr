@@ -95,8 +95,20 @@ fn single_hand_source_equals_legacy_input_fold_per_value() {
     assert_eq!(mh.crit_chance, legacy.crit_chance);
     assert_eq!(mh.average_hit, legacy.total_hit_avg);
     assert_eq!(mh.damage_components, legacy.damage_components);
-    // Stored 族 W-B3 落值前为空（HandOutput 冻结字段集占位）。
-    assert!(mh.stored_combined_avg.is_empty());
+    // Stored 族（W-B3 落值）：combined = crit×c + hit×(1−c)，与腿值一致。
+    assert_eq!(mh.stored_combined_avg.len(), mh.stored_hit_avg.len());
+    for (((ty, combined), (_, hit)), (_, crit)) in mh
+        .stored_combined_avg
+        .iter()
+        .zip(mh.stored_hit_avg.iter())
+        .zip(mh.stored_crit_avg.iter())
+    {
+        let c = legacy.crit_chance;
+        assert!(
+            (combined - (crit * c + hit * (1.0 - c))).abs() < 1e-9,
+            "{ty:?} StoredCombinedAvg 加权恒等"
+        );
+    }
 }
 
 /// 单手 + per-hand 条件词条：`MainHandAttack` 条件词条在 MainHand pass 内生效

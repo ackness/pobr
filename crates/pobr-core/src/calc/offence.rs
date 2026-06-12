@@ -3,7 +3,9 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TraceOutput, TracedValue};
 
 use super::crit::{resolve_crit, resolve_crit_traced};
-use super::damage::{DamageComponent, calculate_components, sum_avg};
+use super::crit_pass::run_crit_passes;
+use super::damage::DamageComponent;
+use super::scaled_damage::{dps_end_factors, scaled_damage_effect};
 use super::{ActorBaseStats, BreakdownStep, BreakdownTable, OutputTable, hit_chance, round};
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -79,6 +81,12 @@ pub struct MinimalOutput {
     pub hit_chance: f64,
     pub action_rate: f64,
     pub dps: f64,
+    // === M4-T2 W-B3：Stored 族（vendor CalcOffence.lua:4047-4057，pre-resist、
+    // 含 allMult；crit 腿额外 ×CritMultiplier）。ailment magnitude 的 vendor 口径
+    // 输入；经 HandOutput 暴露 per-hand 值。===
+    pub stored_crit_avg: Vec<(DamageType, f64)>,
+    pub stored_hit_avg: Vec<(DamageType, f64)>,
+    pub stored_combined_avg: Vec<(DamageType, f64)>,
     pub breakdown: Vec<BreakdownStep>,
 }
 
@@ -123,6 +131,23 @@ impl MinimalOutput {
             hit_chance: output.hit_chance,
             action_rate: output.action_rate,
             dps: output.dps,
+            // Stored 族经 per-hand 子表回读（OutputTable 顶层不平铺该族；
+            // 非攻击/无 hand pass 时为空——与 HandOutput 的 Option 语义一致）。
+            stored_crit_avg: output
+                .main_hand
+                .as_ref()
+                .map(|hand| hand.stored_crit_avg.clone())
+                .unwrap_or_default(),
+            stored_hit_avg: output
+                .main_hand
+                .as_ref()
+                .map(|hand| hand.stored_hit_avg.clone())
+                .unwrap_or_default(),
+            stored_combined_avg: output
+                .main_hand
+                .as_ref()
+                .map(|hand| hand.stored_combined_avg.clone())
+                .unwrap_or_default(),
             breakdown: breakdown.steps().to_vec(),
         }
     }
@@ -216,23 +241,6 @@ pub fn calculate_minimal_vs_enemy(
     let cold_resistance = cold.final_value;
     let lightning_resistance = lightning.final_value;
 
-    let damage_components = calculate_components(db, cfg, input.base_hit_min, input.base_hit_max);
-    // 玩家侧（未减伤）非暴击平均击中，供 breakdown / ailment magnitude 源（保持原口径）。
-    let non_crit_hit_avg: f64 = damage_components.iter().map(DamageComponent::avg).sum();
-    // 有效口径下，分伤害类型乘敌人受伤链 + 抗性/护甲减伤（含玩家穿透/Overwhelm）后的平均
-    // 击中（用于 DPS）。穿透/Overwhelm 读 **玩家** db（`db`），敌人抗性/护甲读 `enemy_db`。
-    let non_crit_hit_avg_mitigated = if cfg.mode_effective {
-        damage_components
-            .iter()
-            .map(|component| {
-                let avg = component.avg();
-                avg * enemy_damage_multiplier(db, enemy_db, cfg, component.damage_type, avg)
-            })
-            .sum()
-    } else {
-        non_crit_hit_avg
-    };
-
     // 速度族（按技能类型取 AttackSpeed 或 CastSpeed，SkillSpeed 始终）作为一个 inc/more 乘区；
     // ActionSpeed 独立乘区单独相乘（对齐 PoB CalcOffence：
     // finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod）。攻击吃武器攻速 + AttackSpeed，
@@ -293,13 +301,41 @@ pub fn calculate_minimal_vs_enemy(
     );
     let crit_chance = crit.chance;
     let crit_multiplier = crit.multiplier;
-    let crit_average_factor = crit.effect;
-    // 输出字段：玩家侧总击中（不含敌人减伤），保持历史口径 + 作为 ailment magnitude 源。
-    let total_hit_avg = round(non_crit_hit_avg * crit_average_factor);
-    // DPS 用：有效口径下含敌人受伤链/抗性/护甲减伤的总击中。
-    let total_hit_avg_for_dps = round(non_crit_hit_avg_mitigated * crit_average_factor);
 
-    let dps = round(total_hit_avg_for_dps * action_rate * hit_chance);
+    // --- 伤害主体：暴击/非暴击双 pass（M4-T2 W-B3，crit_pass.rs）+ T3 乘区接线 ---
+    // W-C1 ScaledDamageEffect（DD/TD 乘区；无词条时 effect == 1.0 逐位不变，
+    // m4-t3-wiring-notes §2；crit_chance 是分数入参）。
+    let scaled = scaled_damage_effect(db, enemy_db, cfg, crit.chance);
+    // 两腿聚合 + canDeal（W-C3）+ lucky（W-C2）+ CritBlend（vendor :4395）。
+    // 无 CriticalStrike 条件词条时短路走旧单因子公式（取整顺序复刻，逐字节等价）。
+    let crit_pass = run_crit_passes(
+        db,
+        cfg,
+        input.base_hit_min,
+        input.base_hit_max,
+        &crit,
+        &scaled,
+        cfg.mode_effective,
+        |pass_cfg, damage_type, raw_hit| {
+            enemy_damage_multiplier(db, enemy_db, pass_cfg, damage_type, raw_hit)
+        },
+    );
+    // 输出字段：玩家侧总击中（不含敌人减伤），保持历史口径 + 作为 ailment magnitude 源。
+    let damage_components = crit_pass.non_crit_components.clone();
+    let total_hit_avg = crit_pass.total_hit_avg;
+    // DPS 用：有效口径下含敌人受伤链/抗性/护甲减伤的总击中。
+    let total_hit_avg_for_dps = crit_pass.total_hit_avg_mitigated;
+
+    // W-C4 DPS 末端两因子（vendor :4407；无词条且技能 dpsMultiplier 未接线（None）
+    // 时两因子均 1.0，逐值不变；T4 落 catalog 字段后由编排层透传）。
+    let end = dps_end_factors(db, cfg, None);
+    let dps = round(
+        total_hit_avg_for_dps
+            * action_rate
+            * hit_chance
+            * end.dps_multiplier
+            * end.quantity_multiplier,
+    );
 
     MinimalOutput {
         life,
@@ -321,6 +357,9 @@ pub fn calculate_minimal_vs_enemy(
         hit_chance,
         action_rate,
         dps,
+        stored_crit_avg: crit_pass.stored_crit_avg,
+        stored_hit_avg: crit_pass.stored_hit_avg,
+        stored_combined_avg: crit_pass.stored_combined_avg,
         breakdown: vec![
             BreakdownStep {
                 name: "life",
@@ -496,59 +535,6 @@ fn total_dps_traced(
     input: &MinimalInput,
     trace: &mut TraceGraph,
 ) -> TracedValue {
-    // --- average hit ---
-    // 使用与 calculate_minimal 相同的 calculate_components 管线计算 non-crit 平均值，
-    // 确保 traced 与非 traced 路径数值一致（Bug#5 traced-dps-physical-only-divergence）。
-    // 出处：damage-scaling.md §核心叠加语义；calculate_components 实现在 damage.rs。
-    let components = calculate_components(db, cfg, input.base_hit_min, input.base_hit_max);
-    let non_crit_hit_avg = sum_avg(&components);
-    // 有效口径下：分伤害类型乘敌人受伤链 + 抗性/护甲减伤（含玩家穿透/Overwhelm）。
-    // 与 calculate_minimal_vs_enemy 一致——穿透/Overwhelm 读玩家 db，抗性/护甲读 enemy_db。
-    let non_crit_hit_avg_mitigated = if cfg.mode_effective {
-        components
-            .iter()
-            .map(|component| {
-                let avg = component.avg();
-                avg * enemy_damage_multiplier(db, enemy_db, cfg, component.damage_type, avg)
-            })
-            .sum()
-    } else {
-        non_crit_hit_avg
-    };
-
-    // 同时 trace 物理伤害 modifier 来源（INC + MORE），确保 weapon/support 词条归因可达。
-    // 其它伤害类型的分量 modifier 也按相同方式记录，以支持元素/混沌词条归因。
-    let damage_cfg = cfg.clone().with_damage_type(DamageType::Physical);
-    let damage_names = [
-        ModName::from("PhysicalDamage"),
-        ModName::from("AttackDamage"),
-        ModName::from("Damage"),
-    ];
-    let inc_damage = db.sum_traced(
-        ModType::Inc,
-        &damage_cfg,
-        &damage_names,
-        trace,
-        "Damage INC modifier sum",
-    );
-    let more_damage =
-        more_factor_traced(db, &damage_cfg, &damage_names, "Damage MORE factor", trace);
-
-    let base_hit_avg = (input.base_hit_min + input.base_hit_max) / 2.0;
-    let base_hit_node = trace.add_source_node(
-        "base hit average",
-        base_hit_avg,
-        SourceId::new(SourceKind::CharacterBase, "base.Hit"),
-    );
-    let non_crit_node = trace.add_node(
-        "non-crit hit average (all damage types)",
-        non_crit_hit_avg,
-        TraceOperation::Multiply,
-    );
-    trace.add_edge(base_hit_node, non_crit_node);
-    trace.add_edge(inc_damage.node_id, non_crit_node);
-    trace.add_edge(more_damage.node_id, non_crit_node);
-
     // --- accuracy & hit chance（提前到暴击之前：mode_effective 暴击降级需命中率） ---
     let accuracy_names = [ModName::from("Accuracy")];
     let base_accuracy_node = trace.add_source_node(
@@ -626,14 +612,132 @@ fn total_dps_traced(
         cfg.mode_effective,
         trace,
     );
-    let crit_average_factor = crit.effect;
+
+    // --- 伤害主体：暴击/非暴击双腿子图 + CritBlend 合并（M4-T2 W-B3，RFC §2.5）---
+    // 数值与非 traced 路径同源（run_crit_passes，含 W-C1/C2/C3 接线与等价性短路）；
+    // 图形状 = 每腿独立子图（pass 戳 Single·Crit / Single·NonCrit，per-pass 的
+    // sum_traced 各落 Input 节点——RFC §2.4 条款 3）+ CritBlend Combine 节点
+    // （pass = Single·Blended，weights = [1−c, c] 冻结系数，§3.3）。
+    // TODO(W-C1 归因面)：DD/TD 词条暂无 Input 节点（direct 缺失、marginal 兜底）。
+    let scaled = scaled_damage_effect(db, enemy_db, cfg, crit.chance);
+    let crit_pass = run_crit_passes(
+        db,
+        cfg,
+        input.base_hit_min,
+        input.base_hit_max,
+        &crit,
+        &scaled,
+        cfg.mode_effective,
+        |pass_cfg, damage_type, raw_hit| {
+            enemy_damage_multiplier(db, enemy_db, pass_cfg, damage_type, raw_hit)
+        },
+    );
+    let base_hit_avg = (input.base_hit_min + input.base_hit_max) / 2.0;
+    let damage_names = [
+        ModName::from("PhysicalDamage"),
+        ModName::from("AttackDamage"),
+        ModName::from("Damage"),
+    ];
+    // 非暴击腿子图。
+    let cfg_hit = cfg.clone().with_condition("CriticalStrike", false);
+    trace.begin_pass(crate::PassId::new(
+        crate::HandTag::Single,
+        crate::CritTag::NonCrit,
+    ));
+    let non_crit_total: f64 = crit_pass.stored_hit_avg.iter().map(|(_, avg)| avg).sum();
+    let non_crit_node = {
+        let damage_cfg = cfg_hit.clone().with_damage_type(DamageType::Physical);
+        let inc_damage = db.sum_traced(
+            ModType::Inc,
+            &damage_cfg,
+            &damage_names,
+            trace,
+            "Damage INC modifier sum (non-crit pass)",
+        );
+        let more_damage = more_factor_traced(
+            db,
+            &damage_cfg,
+            &damage_names,
+            "Damage MORE factor (non-crit pass)",
+            trace,
+        );
+        let base_hit_node = trace.add_source_node(
+            "base hit average (non-crit pass)",
+            base_hit_avg,
+            SourceId::new(SourceKind::CharacterBase, "base.Hit"),
+        );
+        let node = trace.add_node(
+            "non-crit hit average (all damage types)",
+            non_crit_total,
+            TraceOperation::Multiply,
+        );
+        trace.add_edge(base_hit_node, node);
+        trace.add_edge(inc_damage.node_id, node);
+        trace.add_edge(more_damage.node_id, node);
+        node
+    };
+    trace.end_pass();
+    // 暴击腿子图（聚合条件 CriticalStrike=true；值含 ×CritMultiplier，
+    // 暴击词条来源经 crit_node 入边可达）。
+    let cfg_crit = cfg.clone().with_condition("CriticalStrike", true);
+    trace.begin_pass(crate::PassId::new(
+        crate::HandTag::Single,
+        crate::CritTag::Crit,
+    ));
+    let crit_total: f64 = crit_pass.stored_crit_avg.iter().map(|(_, avg)| avg).sum();
+    let crit_leg_node = {
+        let damage_cfg = cfg_crit.clone().with_damage_type(DamageType::Physical);
+        let inc_damage = db.sum_traced(
+            ModType::Inc,
+            &damage_cfg,
+            &damage_names,
+            trace,
+            "Damage INC modifier sum (crit pass)",
+        );
+        let more_damage = more_factor_traced(
+            db,
+            &damage_cfg,
+            &damage_names,
+            "Damage MORE factor (crit pass)",
+            trace,
+        );
+        let base_hit_node = trace.add_source_node(
+            "base hit average (crit pass)",
+            base_hit_avg,
+            SourceId::new(SourceKind::CharacterBase, "base.Hit"),
+        );
+        let node = trace.add_node(
+            "crit hit average (all damage types, x crit multiplier)",
+            crit_total,
+            TraceOperation::Multiply,
+        );
+        trace.add_edge(base_hit_node, node);
+        trace.add_edge(inc_damage.node_id, node);
+        trace.add_edge(more_damage.node_id, node);
+        node
+    };
+    trace.end_pass();
+    // crit_node（暴击几率/爆伤来源）连入暴击腿：爆伤只放大该腿（vendor :4028-4032）。
+    trace.add_edge(crit_node, crit_leg_node);
+    // CritBlend 合并节点（属本腿子图的 Blended 层，RFC §2.3）。
+    trace.begin_pass(crate::PassId::hand_blended(crate::HandTag::Single));
+    let c = crit.chance;
+    let blend_node = trace.add_combine_node(
+        "AverageHit crit blend",
+        crit_pass.total_hit_avg,
+        crate::CombineMode::CritBlend,
+        &[(non_crit_node, 1.0 - c), (crit_leg_node, c)],
+    );
+    trace.end_pass();
 
     // total_hit_avg（DPS 用）：有效口径下含敌人受伤链/抗性/护甲减伤的总击中。
-    let total_hit_avg = round(non_crit_hit_avg_mitigated * crit_average_factor);
-    let total_hit_node =
-        trace.add_node("total hit average", total_hit_avg, TraceOperation::Multiply);
-    trace.add_edge(non_crit_node, total_hit_node);
-    trace.add_edge(crit_node, total_hit_node);
+    let total_hit_avg = crit_pass.total_hit_avg_mitigated;
+    let total_hit_node = trace.add_node(
+        "total hit average (after enemy mitigation)",
+        total_hit_avg,
+        TraceOperation::Mitigate,
+    );
+    trace.add_edge(blend_node, total_hit_node);
 
     // --- action rate ---
     // 速度族（攻击取 AttackSpeed / 法术取 CastSpeed，SkillSpeed 始终）一个 inc/more 乘区；
@@ -672,12 +776,31 @@ fn total_dps_traced(
     trace.add_edge(inc_speed.node_id, action_rate_node);
     trace.add_edge(more_speed.node_id, action_rate_node);
 
-    // --- TotalDPS final ---
-    let dps = round(total_hit_avg * action_rate * hit_chance_value);
+    // --- TotalDPS final（W-C4：末端两因子，无词条时均 1.0 逐值不变）---
+    let end = dps_end_factors(db, cfg, None);
+    let end_factor = end.dps_multiplier * end.quantity_multiplier;
+    let dps = round(total_hit_avg * action_rate * hit_chance_value * end_factor);
     let dps_node = trace.add_node("TotalDPS final", dps, TraceOperation::Multiply);
     trace.add_edge(total_hit_node, dps_node);
     trace.add_edge(action_rate_node, dps_node);
     trace.add_edge(hit_chance_node, dps_node);
+    if end_factor != 1.0 {
+        // QuantityMultiplier 词条来源进图（dpsMultiplier 技能数据侧 T4 透传后补）。
+        let quantity = db.sum_traced(
+            ModType::Base,
+            cfg,
+            &[ModName::from("QuantityMultiplier")],
+            trace,
+            "QuantityMultiplier BASE sum",
+        );
+        let end_node = trace.add_node(
+            "DPS end factors (dpsMultiplier x quantityMultiplier)",
+            end_factor,
+            TraceOperation::Multiply,
+        );
+        trace.add_edge(quantity.node_id, end_node);
+        trace.add_edge(end_node, dps_node);
+    }
 
     TracedValue {
         value: dps,
