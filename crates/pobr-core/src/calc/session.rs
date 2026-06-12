@@ -148,6 +148,19 @@ impl CalculationSession {
         Ok(())
     }
 
+    /// 接入一件**激活态**药剂/护符（M3-T4 通道切换）：词条经
+    /// [`crate::item::ingest_flask_charm`] 打包为 `FlaskBuff`/`CharmBuff` 载荷
+    /// List mod 注入（List 不参与 sum/more/flag 聚合 → 未合并前零直接影响），由
+    /// env_finalize 阶段 3 `merge_flasks_charms` 在 `mode_combat` 门控下按 effect
+    /// 乘区合并进计算（vendor CalcPerform.lua:1429-1663）。激活态语义由调用方
+    /// 槽位 `active` 门控承担（vendor CalcSetup.lua:1014-1028）；不可解析词条
+    /// 收集进 `unsupported_modifier_texts`。
+    pub fn add_flask_charm(&mut self, slot_name: &str, item: &Item) {
+        let ingest = crate::item::ingest_flask_charm(slot_name, item);
+        self.env.player.mod_db.add_list(ingest.modifiers);
+        self.unsupported_modifier_texts.extend(ingest.unsupported);
+    }
+
     /// 接入一组已分配天赋节点：解析每个节点的词条文本为带节点归因
     /// （[`SourceKind::PassiveNode`] / [`SourceKind::AscendancyNode`]）的 modifier 并注入计算，
     /// 无法解析的词条收集进 `unsupported_modifier_texts`。

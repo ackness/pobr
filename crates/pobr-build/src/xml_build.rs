@@ -106,11 +106,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
         build = build.with_radius_jewels(radius_jewels);
     }
     if !flask_charms.is_empty() {
-        // 旧路径（编排层原值直注）与新结构化通道（槽名保留，M3-T4 D2）双轨并存，
-        // 切换删旧路径时退役 `flask_charm_items`。
-        build = build
-            .with_flask_charm_items(flask_charms.iter().map(|(_, item)| item.clone()).collect())
-            .with_utility_slots(flask_charms);
+        build = build.with_utility_slots(flask_charms);
     }
     for group in socket_groups {
         build = build.add_socket_group(group);
@@ -1301,8 +1297,8 @@ Adds 47 to 86 Physical Damage
         assert_eq!(slots.len(), 2, "Charm 等枚举外槽位被忽略");
     }
 
-    /// M3-T4 D2：Flask/Charm 槽位往返——仅 `active="true"` 的槽进入
-    /// `utility_slots`（槽名 + 物品），与旧 `flask_charm_items` 同源同序。
+    /// M3-T4：Flask/Charm 槽位往返——仅 `active="true"` 的槽进入
+    /// `utility_slots`（槽名 + 物品）。
     #[test]
     fn utility_slots_keep_slot_names_for_active_flask_charm() {
         let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -1350,8 +1346,6 @@ Implicits: 0
             ],
             "仅激活且非空槽进入；非激活 Flask 2 与空槽 Charm 2 被忽略"
         );
-        // 与旧直注列表同源同序（双轨期一致性）。
-        assert_eq!(build.flask_charm_items.len(), build.utility_slots.len());
     }
 
     #[test]

@@ -621,26 +621,16 @@ pub fn calculate_with_data(
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
-    // 2b''. 激活态药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`）：
-    //       可解析词条按全局注入（skip-and-collect 容错——flask 本地词条如
-    //       『increased Amount Recovered』与触发行『Used when ...』天然不可解析，
-    //       不进入计算）。对应 PoB2 EFFECTIVE buff 模式下激活 flask/charm 的 buff
-    //       词条计入玩家 modDB（如『Defend with 200% of Armour during effect』→
-    //       ArmourDefense，ModParser.lua:2619）。
-    for fc in &build.flask_charm_items {
-        let filtered = filter_item_parseable(fc);
-        let texts: Vec<&str> = filtered
-            .implicit_texts
-            .iter()
-            .chain(&filtered.modifier_texts)
-            .chain(&filtered.enchant_texts)
-            .map(String::as_str)
-            .collect();
-        if !texts.is_empty() {
-            session
-                .add_modifier_texts(texts)
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
-        }
+    // 2b''. 激活态药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`，
+    //       xml_build 已按 `active` 门控——vendor CalcSetup.lua:1014-1028 `slot.active`
+    //       决定 env.flasks/charms）：经 `ingest_flask_charm` 打包为 FlaskBuff/
+    //       CharmBuff 载荷注入 session（M3-T4 通道切换，替代旧「原值直注」路径），
+    //       由 env_finalize 阶段 3 merge_flasks_charms 在 mode_combat 门控下按
+    //       effect 乘区合并 + UsingFlask/UsingCharm 条件置位（vendor
+    //       CalcPerform.lua:1429-1663）。charm 需 CharmLimit 来源（腰带 implicit
+    //       等）方进预算（:1589）；不可解析行（触发/恢复行）skip-and-collect。
+    for (slot_name, item) in &build.utility_slots {
+        session.add_flask_charm(slot_name, item);
     }
 
     // 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内

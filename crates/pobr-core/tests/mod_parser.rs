@@ -568,3 +568,34 @@ fn bonded_enabler_parses_to_condition_flag() {
     );
     assert_eq!(o.mods[0].mod_type, ModType::Flag);
 }
+
+/// 腰带 implicit「Has N Charm Slot(s)」/ 天赋「+N Charm Slot」→ `CharmLimit` BASE N
+/// （vendor ModParser.lua:5453 `h?a?s? ?+?(%d+) charm slots?`）。无 CharmLimit 来源
+/// 时 env_finalize 阶段 3 的 charm 预算为 0（charm 全不生效），本词条是主要解锁源。
+#[test]
+fn charm_slots_implicit_parses_to_charm_limit_base() {
+    for (text, expect) in [
+        ("Has 2 Charm Slots", 2.0),
+        ("Has 1 Charm Slot", 1.0),
+        ("Has 3 Charm Slots", 3.0),
+        ("+1 Charm Slot", 1.0),
+        ("2 Charm Slots", 2.0),
+    ] {
+        let o = parse_mod(text).unwrap_or_else(|e| panic!("{text}: {e}"));
+        assert_eq!(o.status, ParseStatus::Parsed, "{text}");
+        assert_eq!(o.mods.len(), 1, "{text}");
+        assert_eq!(o.mods[0].name, ModName::from("CharmLimit"), "{text}");
+        assert_eq!(o.mods[0].mod_type, ModType::Base, "{text}");
+        assert_eq!(o.mods[0].value, ModValue::Number(expect), "{text}");
+    }
+    // 非 charm-slot 词条不得误命中。
+    let o = parse_mod("Has 1 Abyssal Socket");
+    assert!(
+        o.is_err()
+            || o.unwrap()
+                .mods
+                .iter()
+                .all(|m| m.name != ModName::from("CharmLimit")),
+        "非 charm slot 词条不应产出 CharmLimit"
+    );
+}

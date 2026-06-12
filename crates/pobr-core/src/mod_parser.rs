@@ -121,6 +121,20 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         });
     }
 
+    // 「Has N Charm Slot(s)」（腰带 implicit）/「+N Charm Slot」（天赋）——vendor
+    // ModParser.lua:5453 `["h?a?s? ?+?(%d+) charm slots?"]` → `CharmLimit` BASE N
+    // （实读）。env_finalize 阶段 3 merge_flasks_charms 按 CalcPerform.lua:1589
+    // `min(Override(CharmLimit) or Σ BASE CharmLimit, cap)` 决定生效 charm 数；
+    // **无 CharmLimit 来源时 charm 全不生效**（预算 0）。须在通用 `Has ` 剥离之前
+    // 命中（剥离后 `2 charm slots` 会被 parse_form 当普通 BASE 词条误归名）。
+    if let Some(value) = parse_charm_slots(&rest) {
+        return Ok(ParseOutcome {
+            mods: vec![Modifier::number("CharmLimit", ModType::Base, value).with_source(original)],
+            status: ParseStatus::Parsed,
+            unparsed: None,
+        });
+    }
+
     // 「Has <mod>」语义前缀（PoB2 唯一物 implicit）——剥离后按普通词条解析
     // （PoB2 ModParser 把 `Has ` 视为无语义前缀）。
     if let Some(stripped) = rest.strip_prefix("has +") {
@@ -322,6 +336,18 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
 /// 再由 `GetArmourDataValue` 按 `PerLevel × level` 加进该件防御底值——享该**件槽位**的
 /// inc/more，而非全局缩放。编排层 [`item_rolled_defence`] 据此把 `<X>PerLevel × level`
 /// 折入件级底值。非此形式返回 `None`。
+/// 「has N charm slot(s)」/「+N charm slot(s)」/「N charm slot(s)」→ N
+/// （vendor ModParser.lua:5453 `h?a?s? ?+?(%d+) charm slots?` 的等价匹配，
+/// `has`/`+` 前缀均可省略，单复数皆收）。
+fn parse_charm_slots(rest: &str) -> Option<f64> {
+    let body = rest.strip_prefix("has ").unwrap_or(rest);
+    let body = body.strip_prefix('+').unwrap_or(body);
+    let number = body
+        .strip_suffix(" charm slots")
+        .or_else(|| body.strip_suffix(" charm slot"))?;
+    number.parse().ok()
+}
+
 fn parse_has_defence_per_level(rest: &str, original: &str) -> Option<Vec<Modifier>> {
     let body = rest
         .strip_prefix("has +")
