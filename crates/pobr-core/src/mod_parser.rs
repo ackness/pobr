@@ -275,7 +275,11 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         reason: "unsupported modifier form".into(),
     })?;
 
-    let (remainder, mut base_tags) = strip_tags(after_form);
+    let (remainder, mut base_tags, weapon_flags) = strip_tags(after_form);
+    // （W-A1 commit-2 双写通道）武器后缀位：feature `modflags-pob2` 关时恒 NONE
+    // （零行为）；开时与 Using* condition 并存（消费两通道，等价性见
+    // calc_orchestrator::weapon_cfg_flags——cfg 武器位与条件同源派生）。
+    flags |= weapon_flags;
     base_tags.extend(prefix_tags);
     // 槽位限定子句（`... from Equipped <Slot>`，如 Titan `Armour from Equipped Body Armour`）
     // → SlotName tag。剥离后名字回到纯 stat（`armour`/`energy shield`），由 per-slot 防御聚合
@@ -1629,22 +1633,55 @@ fn slot_words_to_id(words: &str) -> Option<&'static str> {
     })
 }
 
-fn strip_tags(text: String) -> (String, Vec<ModTag>) {
+fn strip_tags(text: String) -> (String, Vec<ModTag>, ModFlags) {
     let mut rest = text;
     let mut tags = Vec::new();
+    let mut weapon_flags = ModFlags::NONE;
 
     for _ in 0..2 {
         let before = rest.clone();
-        rest = strip_tag_once(&rest, &mut tags);
+        rest = strip_tag_once(&rest, &mut tags, &mut weapon_flags);
         if rest == before {
             break;
         }
     }
 
-    (rest.trim().into(), tags)
+    (rest.trim().into(), tags, weapon_flags)
 }
 
-fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
+/// 武器类别 condition var → 武器位（W-A1 commit-2 双写通道；vendor
+/// `ModParser.lua:983-1021` 同短语的 flag 通道）。feature `modflags-pob2` 关时
+/// 恒 `NONE`（旧表无武器位，零行为）。
+///
+/// 与 vendor 的已知出入（蓝图允许的最小切片，逐项登记）：
+/// - vendor 同短语还并 `ModFlag.Hit`（如 `["with maces"] = bor(Mace, Hit)`）——
+///   `Hit` 位的产出依赖 per-hand cfg 供位（T2 W-B2），与切换同期接线，本 commit
+///   仅武器位（蓝图："在 feature 下同时产出**武器位**"）。
+fn weapon_suffix_bits(var: &str) -> ModFlags {
+    #[cfg(feature = "modflags-pob2")]
+    {
+        match var {
+            // vendor 把 quarterstaff 短语映射到 ModFlag.Staff（:989-991）。
+            "UsingQuarterstaff" => ModFlags::STAFF,
+            "UsingMace" => ModFlags::MACE,
+            "UsingCrossbow" => ModFlags::CROSSBOW,
+            "UsingBow" => ModFlags::BOW,
+            "UsingSpear" => ModFlags::SPEAR,
+            "UsingDagger" => ModFlags::DAGGER,
+            // vendor :1017/:1019：Weapon1H|WeaponMelee / Weapon2H|WeaponMelee。
+            "UsingOneHandedMelee" => ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
+            "UsingTwoHandedMelee" => ModFlags::WEAPON_2H | ModFlags::WEAPON_MELEE,
+            _ => ModFlags::NONE,
+        }
+    }
+    #[cfg(not(feature = "modflags-pob2"))]
+    {
+        let _ = var;
+        ModFlags::NONE
+    }
+}
+
+fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlags) -> String {
     let known_tags = [
         (" while on full life", ModTag::condition("FullLife", false)),
         (" on full life", ModTag::condition("FullLife", false)),
@@ -1752,8 +1789,20 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>) -> String {
             && !stripped.ends_with("damage")
         {
             tags.push(ModTag::condition(*var, false));
+            // （W-A1 commit-2）双写：condition 字符串照旧，feature 下同时产出武器位。
+            *weapon_flags |= weapon_suffix_bits(var);
             return stripped.trim().into();
         }
+    }
+
+    // 空手攻击后缀（vendor ModParser.lua:1006 `["with unarmed attacks"] =
+    // bor(Unarmed, Hit)`，Hit 位见 weapon_suffix_bits doc）——旧表无 Unarmed 位
+    // 亦无对应 condition 通道，整条仅在 feature 下解析（feature 关维持
+    // Unsupported，搬迁不变式；双跑 diff 报告覆盖此差异面）。
+    #[cfg(feature = "modflags-pob2")]
+    if let Some(stripped) = text.strip_suffix(" with unarmed attacks") {
+        *weapon_flags |= ModFlags::UNARMED;
+        return stripped.trim().into();
     }
 
     // per-装备槽防御缩放（PoB2 PerStat `<Stat>On<Slot>`）：

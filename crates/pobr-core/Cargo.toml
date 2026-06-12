@@ -6,6 +6,11 @@ edition.workspace = true
 [dependencies]
 pobr-data.workspace = true
 
+[features]
+# M4-T1 W-A1 转发（见 pobr-data 同名 feature）：开 = mod_parser 武器后缀在
+# condition 字符串双写之外同时产出武器位（消费两通道并存；默认关零行为）。
+modflags-pob2 = ["pobr-data/modflags-pob2"]
+
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }
 # 仅测试侧反序列化 statmap 条目 fixture（lib 本体维持零 I/O / 零 serde_json）。

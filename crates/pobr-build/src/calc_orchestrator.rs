@@ -314,6 +314,14 @@ pub fn calculate_with_data(
         for var in weapon_type_conditions(build, data) {
             cfg = cfg.with_condition(var, true);
         }
+        // （W-A1 commit-2 双写通道）主手武器位 → cfg.flags：feature `modflags-pob2`
+        // 关时恒 NONE（零行为）；开时与上面的 Using* 条件**同源**（weapon_type_info
+        // 表）**同 gating**（同一 cooldown-bound 守卫）派生，保证 mod 侧双写的武器位
+        // 通道不在 condition 通道之外另开生效口径（双跑 diff=0 的等价性依据）。
+        let weapon_bits = weapon_cfg_flags(build, data);
+        if !weapon_bits.is_empty() {
+            cfg.flags |= weapon_bits;
+        }
     }
     let mut base_input = options.base_input;
     if let Some((skill, _, _)) = &main_skill
@@ -1703,6 +1711,27 @@ fn weapon_type_info<'a>(
     data.constants.weapon_types.get(key)
 }
 
+/// （W-A1 commit-2）主手武器 → cfg 武器位（vendor `getWeaponFlags`，
+/// `CalcActiveSkill.lua:274-309`）。feature `modflags-pob2` 关时
+/// [`ModFlags::weapon_flags`] 恒 `NONE`（零行为）；开时供 mod 侧双写的武器位
+/// 通道命中（mod.flags ⊆ cfg.flags 子集匹配）。
+///
+/// 派生源 = [`weapon_type_info`]（与 [`weapon_type_conditions`] 同一张
+/// `weapon_types.json` 表）：bit 通道对每条双写 mod 的判定结果蕴含于 condition
+/// 通道（两通道 AND 后 ≡ 旧 condition 单通道），见 weapon_type_conditions 的
+/// guard 口径对照。空主手 → vendor `weaponData.type = "None"` → 仅 `Unarmed` 位。
+fn weapon_cfg_flags(build: &Build, data: &BuildData) -> ModFlags {
+    let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
+        return ModFlags::weapon_flags("None", "Unarmed", true, true);
+    };
+    let Some(def) = data.base_items.get(&item.base.to_string()) else {
+        return ModFlags::NONE;
+    };
+    weapon_type_info(data, &def.item_class)
+        .map(|w| ModFlags::weapon_flags(&w.id, &w.flag, w.one_hand, w.melee))
+        .unwrap_or(ModFlags::NONE)
+}
+
 /// 副手槽是否装备盾牌（PoB2 `Condition:UsingShield`）。据当前激活装备组 `Weapon2` 槽
 /// 基底 `item_class` 判定（`Shield`/`Buckler`/`Focus` 中仅 Shield 类计盾）。通用、非特化。
 fn main_hand_offhand_is_shield(build: &Build, data: &BuildData) -> bool {
@@ -1880,6 +1909,12 @@ struct WeaponContribution {
     phys_max: f64,
     attack_rate: f64,
     crit_chance: f64,
+    /// （W-A1 commit-2）该武器源的 ModFlags 武器位（vendor `getWeaponFlags`，
+    /// 由 `weapon_types.json` 经 [`ModFlags::weapon_flags`] 派生；feature
+    /// `modflags-pob2` 关时恒 `NONE`）。消费方 = T2 W-B2 hand_pass 的 per-hand
+    /// cfg 构造（蓝图 §3.3 契约 1 `HandSource`），本阶段仅装配不消费。
+    #[allow(dead_code)]
+    flags: ModFlags,
 }
 
 /// 解析主武器（Weapon1）对**攻击技能**的基底贡献，对照 PoB2 `CalcSetup.lua` weaponData
@@ -1934,6 +1969,8 @@ fn weapon_contribution(
         phys_max: (f64::from(w.physical_max) + local_add_max) * local_inc * quality,
         attack_rate: base_rate * local_as,
         crit_chance: f64::from(w.crit_chance) / 100.0,
+        // 武器位与 cfg 侧 weapon_cfg_flags 同源派生（feature 关恒 NONE）。
+        flags: weapon_cfg_flags(build, data),
     })
 }
 
@@ -1978,6 +2015,9 @@ fn non_weapon_attack_contribution(
         phys_max,
         attack_rate,
         crit_chance: skill.crit_chance.unwrap_or(0.0) / 100.0,
+        // 非武器攻击（shield attack）：伤害源是技能自身 off-hand stat-set 而非
+        // 武器条目，无武器类型位（vendor weaponData 2 走 shieldAttack 专路）。
+        flags: ModFlags::NONE,
     }
 }
 
@@ -2062,6 +2102,8 @@ fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponContribution {
             phys_max: e.physical_max,
             attack_rate: e.attack_rate,
             crit_chance: e.crit_chance,
+            // 空手：vendor `weaponData.type = "None"` → 仅 Unarmed 位（feature 关恒 NONE）。
+            flags: ModFlags::weapon_flags("None", "Unarmed", true, true),
         };
     }
     // 未知职业 fallback：与旧 match 的「其余职业」分支同值（物理 2–5、攻速 1.65、
@@ -2071,6 +2113,7 @@ fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponContribution {
         phys_max: 5.0,
         attack_rate: 1.65,
         crit_chance: 0.05,
+        flags: ModFlags::weapon_flags("None", "Unarmed", true, true),
     }
 }
 
@@ -6054,6 +6097,47 @@ mod tests {
             );
             let vars = weapon_type_conditions(&build, &data);
             assert_eq!(&vars[..], expected, "item_class = {cls}");
+        }
+    }
+
+    /// （W-A1 commit-2）cfg 武器位双写通道：feature `modflags-pob2` 关恒 NONE
+    /// （零行为）；开时按 vendor getWeaponFlags 派生（与 Using* 条件同源）。
+    #[test]
+    fn weapon_cfg_flags_dual_write_channel() {
+        let mut data = BuildData::empty();
+        let base_name = "Test One Hand Mace".to_string();
+        data.base_items.insert(
+            base_name.clone(),
+            weapon_base_item(&base_name, "One Hand Mace"),
+        );
+        let build = Build::new().set_item(
+            EquipmentSlot::Weapon1,
+            Item {
+                base: ItemBaseId::from(base_name.as_str()),
+                rarity: ItemRarity::Normal,
+                quality: 0,
+                implicit_texts: vec![],
+                modifier_texts: vec![],
+                enchant_texts: vec![],
+                rolled_defence: RolledDefence::default(),
+                parsed_stats: vec![],
+            },
+        );
+        let bits = weapon_cfg_flags(&build, &data);
+        let unarmed = weapon_cfg_flags(&Build::new(), &data);
+        #[cfg(feature = "modflags-pob2")]
+        {
+            assert_eq!(
+                bits,
+                ModFlags::MACE | ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
+                "单手锤 → vendor getWeaponFlags 位集"
+            );
+            assert_eq!(unarmed, ModFlags::UNARMED, "空主手 → 仅 Unarmed 位");
+        }
+        #[cfg(not(feature = "modflags-pob2"))]
+        {
+            assert!(bits.is_empty(), "feature 关：双写通道零行为");
+            assert!(unarmed.is_empty(), "feature 关：空手分支同样零行为");
         }
     }
 }

@@ -1,6 +1,6 @@
 use pobr_data::prelude::*;
 
-use crate::CalcConfig;
+use crate::{CalcConfig, EvalContext};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ModValue {
@@ -108,6 +108,42 @@ pub enum ModTag {
         /// 动态上限的取数 actor（PoB2 ModStore.lua:338-345 `tag.limitActor`，如 Agony
         /// Crawler 以玩家 virulence 为上限）。`None` ＝ 当前 `cfg.multiplier(limit_var)`。
         limit_actor: Option<ActorRef>,
+    },
+    /// 按 actor **已算出 stat（output 表）**线性缩放（M4-T1 W-A3；PoB2 `PerStat`
+    /// tag，ModStore.lua:440-489）。与 [`ModTag::Multiplier`] 拆开：Multiplier 读
+    /// 编排层预灌的 `cfg.multipliers`，PerStat 读 [`EvalContext::stat_lookup`]
+    /// （actor output 快照；缺通道/缺键 → 0，保守等价 vendor GetStat 缺位）。
+    ///
+    /// 有效乘数 = `floor(stat / div + 0.0001)`，再受 `limit`（静态优先）或
+    /// `limit_var`（`cfg.multiplier(limit_var)`，vendor :462 GetMultiplier(self)）
+    /// 上限约束。vendor 的 `statList`/`divVar`/`limitTotal`/`base` 偏置形态
+    /// 本批不做（无消费方，登记 10-G3 余量）。
+    PerStat {
+        /// output 表 stat 名（如 `Life`/`Mana`/`Armour`）。
+        stat: String,
+        /// 每多少单位缩放一次（vendor `tag.div or 1`）。
+        div: f64,
+        /// 静态上限（vendor `tag.limit`，优先于 `limit_var`）。
+        limit: Option<f64>,
+        /// 动态上限变量（vendor `tag.limitVar` → `GetMultiplier(self, ·)`）。
+        limit_var: Option<String>,
+        /// 跨 actor 读数（与 M3 落地的 Multiplier `actor` 形态统一：`Some` →
+        /// 查 `cfg.actor_multipliers["<actor>.<stat>"]` 快照，缺键＝0）。
+        actor: Option<ActorRef>,
+    },
+    /// 跨 mod 累计限幅（M4-T1 W-A3；PoB2 EvalMod 尾段 ModStore.lua:895-905
+    /// `tag.globalLimit`/`tag.globalLimitKey`）：同 `key` 的 mod 生效值在**单次
+    /// 聚合查询内**（vendor 每次 Sum/More/Tabulate 调用新建 `globalLimits` 表）
+    /// 累计封顶——超限部分截断，余额记账。
+    ///
+    /// vendor 把这两个字段挂在任意 tag 上；pobr 形态化为独立 tag（语义不变，
+    /// 由 [`crate::ModDb`] 聚合循环消费；对 [`Modifier::matches`] 透明）。
+    /// W-C1（chance-to-deal-Double-Damage DOUBLED form）是首个消费方。
+    GlobalLimit {
+        /// 累计上限（vendor `tag.globalLimit`）。
+        value: f64,
+        /// 记账桶键（vendor `tag.globalLimitKey`，如 `"DoubleDamage"`）。
+        key: String,
     },
     DamageType(DamageType),
     SkillTypes(SkillTypes),
@@ -242,7 +278,8 @@ impl Modifier {
                 };
                 if *negated { !enabled } else { enabled }
             }
-            ModTag::Multiplier { .. } => true,
+            // 数值缩放 / 累计限幅 tag 不参与匹配过滤（求值期消费）。
+            ModTag::Multiplier { .. } | ModTag::PerStat { .. } | ModTag::GlobalLimit { .. } => true,
             ModTag::DamageType(damage_type) => cfg.damage_type == Some(*damage_type),
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
@@ -260,41 +297,80 @@ impl Modifier {
         })
     }
 
-    pub fn effective_number(&self, cfg: &CalcConfig) -> Option<f64> {
+    /// 生效数值（应用 Multiplier / PerStat 缩放 tag）。
+    ///
+    /// （M4-T1 W-A3，契约 5）入参升级为 [`EvalContext`]；`impl Into` + `From<&CalcConfig>`
+    /// 使既有调用点（传 `&cfg`）零改动——仅 PerStat 消费方需显式构造带
+    /// `stat_lookup` 的上下文。[`ModTag::GlobalLimit`] 不在此结算（跨 mod 记账，
+    /// 归 [`crate::ModDb`] 聚合循环，vendor 同样在 EvalMod 尾段由聚合层传表）。
+    #[inline]
+    pub fn effective_number<'a>(&self, ctx: impl Into<EvalContext<'a>>) -> Option<f64> {
+        self.effective_number_ref(&ctx.into())
+    }
+
+    /// [`effective_number`](Self::effective_number) 的引用入参形态——mod_db 聚合
+    /// 热路径用（单指针传参，避免逐 mod 拷贝 [`EvalContext`]；bench 门禁敏感）。
+    #[inline]
+    pub(crate) fn effective_number_ref(&self, ctx: &EvalContext<'_>) -> Option<f64> {
+        let cfg = ctx.cfg;
         let mut value = self.value.as_number()?;
 
         for tag in &self.tags {
-            if let ModTag::Multiplier {
-                var,
-                div,
-                limit,
-                actor,
-                limit_var,
-                limit_actor,
-            } = tag
-            {
-                // 取数源按 actor 维度切换（PoB2 ModStore.lua:347-353 `tag.actor` →
-                // getActor(self, ...).modDB）：None＝当前 cfg.multiplier；Some＝
-                // actor_multipliers 快照（缺键＝0，保守等价 PoB2 actor 缺位不生效）。
-                let base = match actor {
-                    None => cfg.multiplier(var),
-                    Some(actor) => cfg.actor_multiplier(*actor, var),
-                };
-                // PoB2 ModStore.lua EvalMod（Multiplier L365 / PerStat L460）：
-                // `mult = m_floor(base / (tag.div or 1) + 0.0001)` —— 资源数除以 div 后向下取整
-                // （+epsilon 抵消浮点误差）再作乘数，floor 先于 min(limit)。整倍场景（div=1、整数
-                // 资源）floor 无影响；仅修正 `per 10 Strength` 在 95 力量等非整倍情形（旧值 9.5→9）。
-                let count = (base / div.max(f64::EPSILON) + 0.0001).floor();
-                // 上限解析（PoB2 ModStore.lua:369 `local limit = tag.limit or
-                // GetMultiplier(limitTarget, tag.limitVar, cfg)`——静态 limit 优先，
-                // 动态 limit_var 按 limit_actor 维度取数）。
-                let effective_limit = limit.or_else(|| {
-                    limit_var.as_ref().map(|lv| match limit_actor {
-                        None => cfg.multiplier(lv),
-                        Some(actor) => cfg.actor_multiplier(*actor, lv),
-                    })
-                });
-                value *= effective_limit.map_or(count, |max| count.min(max));
+            match tag {
+                ModTag::Multiplier {
+                    var,
+                    div,
+                    limit,
+                    actor,
+                    limit_var,
+                    limit_actor,
+                } => {
+                    // 取数源按 actor 维度切换（PoB2 ModStore.lua:347-353 `tag.actor` →
+                    // getActor(self, ...).modDB）：None＝当前 cfg.multiplier；Some＝
+                    // actor_multipliers 快照（缺键＝0，保守等价 PoB2 actor 缺位不生效）。
+                    let base = match actor {
+                        None => cfg.multiplier(var),
+                        Some(actor) => cfg.actor_multiplier(*actor, var),
+                    };
+                    // PoB2 ModStore.lua EvalMod（Multiplier L365 / PerStat L460）：
+                    // `mult = m_floor(base / (tag.div or 1) + 0.0001)` —— 资源数除以 div 后向下取整
+                    // （+epsilon 抵消浮点误差）再作乘数，floor 先于 min(limit)。整倍场景（div=1、整数
+                    // 资源）floor 无影响；仅修正 `per 10 Strength` 在 95 力量等非整倍情形（旧值 9.5→9）。
+                    let count = (base / div.max(f64::EPSILON) + 0.0001).floor();
+                    // 上限解析（PoB2 ModStore.lua:369 `local limit = tag.limit or
+                    // GetMultiplier(limitTarget, tag.limitVar, cfg)`——静态 limit 优先，
+                    // 动态 limit_var 按 limit_actor 维度取数）。
+                    let effective_limit = limit.or_else(|| {
+                        limit_var.as_ref().map(|lv| match limit_actor {
+                            None => cfg.multiplier(lv),
+                            Some(actor) => cfg.actor_multiplier(*actor, lv),
+                        })
+                    });
+                    value *= effective_limit.map_or(count, |max| count.min(max));
+                }
+                ModTag::PerStat {
+                    stat,
+                    div,
+                    limit,
+                    limit_var,
+                    actor,
+                } => {
+                    // （W-A3）读 actor output 快照（vendor ModStore.lua:440-455
+                    // PerStat 分支 → GetStat）；跨 actor 维度与 Multiplier 统一走
+                    // actor_multipliers 快照。
+                    let base = match actor {
+                        None => ctx.stat(stat),
+                        Some(actor) => cfg.actor_multiplier(*actor, stat),
+                    };
+                    // vendor :460 `mult = m_floor(base / (tag.div or 1) + 0.0001)`。
+                    let count = (base / div.max(f64::EPSILON) + 0.0001).floor();
+                    // vendor :461-468：limit = tag.limit or GetMultiplier(self, limitVar)
+                    // → mult = min(mult, limit)（limitTotal 形态本批不做，见 tag doc）。
+                    let effective_limit =
+                        limit.or_else(|| limit_var.as_ref().map(|lv| cfg.multiplier(lv)));
+                    value *= effective_limit.map_or(count, |max| count.min(max));
+                }
+                _ => {}
             }
         }
 
