@@ -45,6 +45,17 @@
 //! - (i) buff 名表：curse 名经编排层从 `active_skill` 蛇形名派生（`snipers_mark` →
 //!   `Snipers Mark`），与 vendor 撇号名（`Sniper's Mark`）不一致时 `curse_base`
 //!   查不到 → 基值 0（vendor `data.cursePriority[curseName] or 0` 同口径回退）。
+//! - (j) curse 效果词条（M3-W4，原「mods 恒空」简化**已实现**）：编排层
+//!   `buff_skill_specs` 经 statmap curse 域（`stat_map_engine::map_curse_stat`，
+//!   vendor 各 curse statSet 的 `GlobalEffect effectType=Curse` 条目）把 statset
+//!   stat 映射为敌侧 modifier 填入 `spec.mods`，本路径施 CurseEffect 乘区
+//!   （:2295-2305）+ `Condition:Effective` 后随入槽 curse 写 enemy db
+//!   （:2969-2984）。**残余口径**：敌侧 ModName 允收名单 = pobr 现有消费方
+//!   （`<Type>Resist` / `Damage` / `SelfCritMultiplier`；`ElementalResist` 展开
+//!   火/冰/电三条等值），无消费方的名（`TemporalChainsActionSpeed` /
+//!   `BuffExpireFaster` / `FreezeBuildup` / `ElectrocuteBuildup` / `IgnoreArmour`
+//!   / `Dummy`）整条 Unsupported 落 Compare 可见性报表不注入；`GlobalEffect` 带
+//!   `effectCond`/`modCond` 等额外门控键的条目同样跳过上报。
 //!
 //! 归因：aura/curse/debuff 缩放产物保留原 `origin`（trace 不丢弃）；无 origin 的
 //! 词条回退 `(SourceKind::Buff, "aura.<skill_id>" / "curse.<skill_id>" /
