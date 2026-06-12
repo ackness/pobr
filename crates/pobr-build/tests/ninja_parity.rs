@@ -57,7 +57,9 @@ fn golden(stats: &serde_json::Map<String, serde_json::Value>, key: &str) -> Opti
     stats.get(key).and_then(|v| v.as_f64())
 }
 
-fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
+/// 以指定口径计算一个 build（`mode_effective`：false=面板口径，true=PoB2 主面板
+/// EFFECTIVE 口径，vendor `CalcSetup.lua:583-588`——非 CALCS 模式恒 EFFECTIVE）。
+fn run_build_mode(dir: &Path, data: &BuildData, mode_effective: bool) -> Option<OutputTable> {
     let code = std::fs::read_to_string(dir.join("code.txt")).ok()?;
     let build = parse_build_from_code(code.trim()).ok()?;
     let opts = DataOrchestratorOptions {
@@ -65,11 +67,15 @@ fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
         inject_character_base: true,
         enemy_level: 0,
         enemy_tier: EnemyTier::Pinnacle,
-        mode_effective: false,
+        mode_effective,
         extra_modifier_texts: vec![],
         ..Default::default()
     };
     calculate_with_data(&build, data, &opts).ok()
+}
+
+fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
+    run_build_mode(dir, data, false)
 }
 
 /// 比较列：(显示名, PoB2 key, PoBR 取值)。
@@ -497,6 +503,129 @@ fn parity_baseline_report() {
         off.total,
         pct(off.hit10, off.total),
     );
+}
+
+/// M3-W5 口径切换双跑报告：同一 build 以 `mode_effective=false`（面板口径）与
+/// `mode_effective=true`（PoB2 主面板 EFFECTIVE 口径，vendor `CalcSetup.lua:583-588`）
+/// 各算一遍，逐 stat 三列输出（panel / effective / PoB2 golden）+ 收敛/恶化标记。
+///
+/// 打印型仪表盘（不设门禁）：
+/// `cargo test -p pobr-build --test ninja_parity -- effective_switch_dual_run_report --nocapture`
+///
+/// 报告归档：`audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`。
+#[test]
+fn effective_switch_dual_run_report() {
+    let data = load_data();
+    let builds = discover_builds();
+    assert!(!builds.is_empty(), "no builds discovered");
+
+    let fmt_v = |v: f64| -> String {
+        if is_inf_like(v) {
+            "inf".into()
+        } else {
+            format!("{v:.2}")
+        }
+    };
+    // 命中带宽标记：✓ = @5%，~ = @10%，空 = 脱靶。
+    let band = |rt: f64| -> &'static str {
+        if (rt - 1.0).abs() < TOL {
+            "✓"
+        } else if (rt - 1.0).abs() < TOL10 {
+            "~"
+        } else {
+            " "
+        }
+    };
+
+    let mut panel_tally = (Tally::default(), Tally::default(), Tally::default()); // (core, def, off)
+    let mut eff_tally = (Tally::default(), Tally::default(), Tally::default());
+    // 迁移统计（@5% 口径）：(收敛 panel✗→eff✓, 恶化 panel✓→eff✗, 双✓, 双✗)。
+    let mut moved: Vec<String> = Vec::new();
+
+    for dir in &builds {
+        let name = dir.file_name().unwrap().to_string_lossy();
+        let g = golden_stats(dir);
+        let (Some(panel), Some(eff)) = (
+            run_build_mode(dir, &data, false),
+            run_build_mode(dir, &data, true),
+        ) else {
+            eprintln!("\n##### {name} :: PARSE/CALC FAILED #####");
+            continue;
+        };
+
+        panel_tally
+            .0
+            .add(tally_rows(&defensive_core_rows(&panel, &g)));
+        panel_tally.1.add(tally_rows(&defensive_rows(&panel, &g)));
+        panel_tally.2.add(tally_rows(&offensive_rows(&panel, &g)));
+        eff_tally.0.add(tally_rows(&defensive_core_rows(&eff, &g)));
+        eff_tally.1.add(tally_rows(&defensive_rows(&eff, &g)));
+        eff_tally.2.add(tally_rows(&offensive_rows(&eff, &g)));
+
+        eprintln!("\n##### {name} #####");
+        eprintln!(
+            "  {:<18}{:>14}{:>14}{:>14}{:>9}{:>9}",
+            "stat", "panel", "effective", "PoB2", "p-ratio", "e-ratio"
+        );
+        let p_rows = defensive_rows(&panel, &g)
+            .into_iter()
+            .chain(offensive_rows(&panel, &g));
+        let e_rows = defensive_rows(&eff, &g)
+            .into_iter()
+            .chain(offensive_rows(&eff, &g));
+        for (p, e) in p_rows.zip(e_rows) {
+            let Some(gv) = p.golden else {
+                continue;
+            };
+            let (rp, re) = (ratio(p.pobr, gv), ratio(e.pobr, gv));
+            let (bp, be) = (band(rp), band(re));
+            let trans = match (bp == "✓", be == "✓") {
+                (false, true) => " ↑5%",
+                (true, false) => " ↓LOST",
+                _ if (rp - re).abs() > 1e-9 => " Δ",
+                _ => "",
+            };
+            if bp != be || (rp - re).abs() > 1e-9 {
+                moved.push(format!(
+                    "{name} :: {:<16} panel {:.3}x → eff {:.3}x{trans}",
+                    p.label, rp, re
+                ));
+            }
+            eprintln!(
+                "  {bp}{be} {:<16}{:>14}{:>14}{:>14}{:>8.2}x{:>8.2}x{trans}",
+                p.label,
+                fmt_v(p.pobr),
+                fmt_v(e.pobr),
+                fmt_v(gv),
+                rp,
+                re
+            );
+        }
+    }
+
+    let pct = |n: usize, d: usize| 100.0 * n as f64 / d.max(1) as f64;
+    eprintln!("\n================ EFFECTIVE-SWITCH DUAL-RUN SUMMARY ================");
+    for (label, p, e) in [
+        ("def core-8", panel_tally.0, eff_tally.0),
+        ("def 25-col", panel_tally.1, eff_tally.1),
+        ("offensive ", panel_tally.2, eff_tally.2),
+    ] {
+        eprintln!(
+            "{label}: panel {}/{} = {:.1}% @5% ({:.1}% @10%)  →  effective {}/{} = {:.1}% @5% ({:.1}% @10%)",
+            p.hit5,
+            p.total,
+            pct(p.hit5, p.total),
+            pct(p.hit10, p.total),
+            e.hit5,
+            e.total,
+            pct(e.hit5, e.total),
+            pct(e.hit10, e.total),
+        );
+    }
+    eprintln!("\n-- 口径间逐值变化（panel ≠ effective 或命中带迁移） --");
+    for m in &moved {
+        eprintln!("  {m}");
+    }
 }
 
 /// M2 F-2/F-3：EHP 新旧口径 18-build 双跑对照报告（蓝图 m2-defence §2 Track F）。
