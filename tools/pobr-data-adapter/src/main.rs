@@ -28,6 +28,7 @@ use pobr_data::catalog::{
 use serde::Deserialize;
 
 mod mods;
+mod required_columns;
 mod skills;
 
 const ZH_TW: &str = "Traditional Chinese";
@@ -265,6 +266,9 @@ pub(crate) fn is_placeholder(name: &str) -> bool {
 fn run(args: Args) -> Result<String, String> {
     let en = args.raw.join("English");
     let tw = args.raw.join(ZH_TW);
+
+    // F2：必需列 fail-fast——缺列即报「表名 + 列名」，拒绝静默降级产出。
+    required_columns::assert_required_columns(&en, &tw)?;
 
     // 外键解析表
     let classes = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("ItemClasses.json"))?);
