@@ -242,6 +242,20 @@ impl CalculationSession {
         self.env.buff_handler_registry = registry;
     }
 
+    /// 注入取整精度规则（M4-I 去重；`overlay/high_precision_mods.json` 经
+    /// pobr-gamedata `RuleSet::high_precision_mods` 加载后由编排层喂入，照
+    /// [`set_curse_priority`](Self::set_curse_priority) 先例）。消费点 =
+    /// buff_pass / merge_flasks_charms 的 ScaleAddMod 数值缩放（与 T1 写原语
+    /// [`crate::ModDb::scale_add_mod`] 同一份规则）。未注入 =
+    /// [`crate::HighPrecisionRules::default`]（无例外表 fallback）。
+    ///
+    /// 注：本注入**不**写 `ModDb::set_high_precision_rules`（MORE 聚合精度
+    /// 例外分支的开关）——那是独立的行为切换 commit（T1 域），此处仅供
+    /// 缩放路径消费，保证注入本身对 MORE 聚合逐值不变。
+    pub fn set_high_precision_rules(&mut self, rules: crate::HighPrecisionRules) {
+        self.env.high_precision = rules;
+    }
+
     /// 注入 MH/OH hand pass 输入（M4-T2 W-B2，蓝图 §3.3 契约 1；编排层武器段构造
     /// [`HandSource`](super::hand_pass::HandSource)）。未调用 = 空，`perform` 走与
     /// 历史完全一致的单管线路径（回退态）。`double_hits` = 技能数据

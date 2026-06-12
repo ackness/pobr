@@ -12,6 +12,7 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
+use pobr_core::HighPrecisionRules;
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
 use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::catalog::curse_priority::CursePriorityDef;
@@ -186,6 +187,13 @@ pub struct BuildData {
     /// gem-link/triggeredBy 关系。缺 overlay 文件（旧数据包）= 空表（识别面为空，
     /// 行为不变）；未映射 PoE2 id 的条目（多为 PoE1 unique）不入索引。
     pub trigger_configs: HashMap<String, TriggerConfigDef>,
+    /// 取整精度规则（`overlay/high_precision_mods.json` → `RuleSet` →
+    /// pobr-core [`HighPrecisionRules`]，M4-I 去重接线）。`calculate_with_data`
+    /// 经 `CalculationSession::set_high_precision_rules` 注入，buff_pass /
+    /// merge_flasks_charms 的 ScaleAddMod 缩放消费（T1 写原语同一份规则）。
+    /// 缺 overlay 文件（旧数据包）= [`HighPrecisionRules::default`]
+    /// （无例外表 fallback）。
+    pub high_precision: HighPrecisionRules,
 }
 
 impl BuildData {
@@ -291,6 +299,11 @@ impl BuildData {
         }
         // 范围珠宝档位表：数据化域 Some 则覆盖、None 回退 Default（与 JSON 逐值相等）。
         let jewel_radii = ruleset.jewel_radii.unwrap_or_default();
+        // 取整精度例外表（M4-I 去重接线）：缺 overlay 文件 = Default（无例外表）。
+        let high_precision = ruleset
+            .high_precision_mods
+            .map(HighPrecisionRules::from_def)
+            .unwrap_or_default();
 
         // 局部词条白名单：缺 overlay 文件（旧数据包）时降级回内建 fallback
         // （与 JSON 逐值一致），其余加载/解析错误照常上抛，不静默。
@@ -363,6 +376,7 @@ impl BuildData {
             curse_priority,
             config_catalog,
             trigger_configs,
+            high_precision,
         })
     }
 
@@ -389,6 +403,7 @@ impl BuildData {
             curse_priority: None,
             config_catalog: None,
             trigger_configs: HashMap::new(),
+            high_precision: HighPrecisionRules::default(),
         }
     }
 

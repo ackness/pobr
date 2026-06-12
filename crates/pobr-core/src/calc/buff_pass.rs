@@ -30,10 +30,12 @@
 //! - (c) `auraCannotAffectSelf`（:2102）：granted_effect 数据列未落，恒按 false。
 //! - (d) `ExtraAuraEffect` 附加词条列表（:2089-2101）未迁——pobr 解析层暂无该
 //!   ModName 产出，命中时随 C5 diff 报告补。
-//! - (e) `highPrecisionMods`（Data.lua:415-530）按命名规则镜像（全表为
-//!   `<资源>{Regen,Degen}{,Percent}` / `*Damage*Leech` / `CritChance` 三族 +
-//!   两个 MORE 条目），见 [`high_precision`]；`mod.unscalable`（ModStore.lua:46-52）
-//!   pobr 词条模型无此位，不实现。
+//! - (e) `highPrecisionMods`（Data.lua:415-530）：M4-I 去重后**数据驱动**——
+//!   [`scale_value`] 直接消费 T1 写原语 [`crate::ModDb::scale_add_mod`]，精度
+//!   例外查 `Env::high_precision`（`overlay/high_precision_mods.json` 经编排层
+//!   注入；未注入 = 无例外表 fallback）。先期硬编码命名族镜像表已删除。
+//!   `mod.unscalable`（ModStore.lua:46-52）pobr 词条模型无此位，不实现
+//!   （T1 原语侧同口径登记）。
 //! - (f) Debuff 的 `stackVar`/`stackLimit`（:2221-2230）：`BuffSpec` 契约（T0 冻结）
 //!   无 stack 字段，M3 按 `stackCount = 1`（vendor `skillData.stackCount or 1` 缺省）。
 //! - (g) curse priority 的来源权重：pobr 未建模「装备隐式诅咒 / aura 施加诅咒」
@@ -67,7 +69,7 @@ use pobr_data::catalog::curse_priority::CursePriorityDef;
 use pobr_data::prelude::*;
 use pobr_data::source::SourceKind;
 
-use crate::{ModTag, ModValue, Modifier};
+use crate::{HighPrecisionRules, ModDb, ModTag, ModValue, Modifier};
 
 use super::Env;
 use super::session::BuffKind;
@@ -86,13 +88,6 @@ pub const DEFAULT_ENEMY_MARK_LIMIT: f64 = 1.0;
 /// socket 序入 priority 的上限（vendor `CalcPerform.lua:465`
 /// `m_min(k, 8)`——避免与 `CurseFromEquipment` 权重段碰撞）。
 const SOCKET_INDEX_CAP: u32 = 8;
-
-/// 非高精度数值缩放的中间舍入小数位（vendor `ModStore.lua:71`
-/// `m_modf(round(subMod.value * scale, 2))` 的 `2`）。
-const SCALE_ROUND_DECIMALS: i32 = 2;
-
-/// 高精度缺省小数位（vendor `Data.lua:413` `data.defaultHighPrecision = 1`）。
-const DEFAULT_HIGH_PRECISION: i32 = 1;
 
 /// aura 自身乘区聚合的 ModName 集（vendor `CalcPerform.lua:2103-2104`，INC/MORE 同名集）。
 const AURA_SELF_EFFECT_NAMES: [&str; 6] = [
@@ -178,75 +173,47 @@ pub fn determine_curse_priority(
     base + socket + slot_weight + source_weight
 }
 
-/// 高精度小数位查表（vendor `Data.lua:415-530` `highPrecisionMods` 的规则镜像，
-/// 简化 (e)：全表可归纳为命名族，逐族对照）：
-/// - BASE `CritChance` / `SelfCritChance` → 2（:416-421）；
-/// - BASE `*RegenPercent` / `*DegenPercent` → 2（:422-451 的 Percent 条目）；
-/// - BASE `*Regen` / `*Degen`（非 Percent）→ 1（:431-460，含 `RageRegen`）；
-/// - BASE `*Damage*{Life,Mana,EnergyShield}Leech` → 2（:460-523）；
-/// - MORE `SupportManaMultiplier` / `ReservationMultiplier` → 4（:524-529）。
-fn high_precision(name: &str, mod_type: ModType) -> Option<i32> {
-    match mod_type {
-        ModType::More => {
-            matches!(name, "SupportManaMultiplier" | "ReservationMultiplier").then_some(4)
-        }
-        ModType::Base => {
-            if matches!(name, "CritChance" | "SelfCritChance") {
-                return Some(2);
-            }
-            if name.ends_with("RegenPercent") || name.ends_with("DegenPercent") {
-                return Some(2);
-            }
-            if name.contains("Damage")
-                && (name.ends_with("LifeLeech")
-                    || name.ends_with("ManaLeech")
-                    || name.ends_with("EnergyShieldLeech"))
-            {
-                return Some(2);
-            }
-            if name.ends_with("Regen") || name.ends_with("Degen") {
-                return Some(1);
-            }
-            None
-        }
-        _ => None,
-    }
-}
-
-/// PoB2 `round(val, dec)`（Common.lua:648-654：`m_floor(val × 10^dec + 0.5) / 10^dec`）。
-fn pob_round(value: f64, dec: i32) -> f64 {
-    let mult = 10f64.powi(dec);
-    (value * mult + 0.5).floor() / mult
-}
-
-/// ScaleAddMod 的数值缩放语义（vendor `ModStore.lua:45-79`，逐字对齐）：
-/// - `scale == 1` → 原值直返（:54）；
-/// - 高精度条目（[`high_precision`]）或非整数原值（→ `defaultHighPrecision = 1`，
-///   Data.lua:413）→ `m_floor(value × scale × 10^p) / 10^p`（:67-69）；
-/// - 其余 → `m_modf(round(value × scale, 2))` 取整数部（向零截断，:71）。
-pub fn scale_value(name: &str, mod_type: ModType, value: f64, scale: f64) -> f64 {
+/// ScaleAddMod 的数值缩放语义（vendor `ModStore.lua:45-79`）——M4-I 去重：
+/// **直接消费 T1 写原语** [`ModDb::scale_add_mod`]（同段 vendor 的唯一实现，
+/// 含精度例外查表 / 非整数原值 `defaultHighPrecision` floor / 默认
+/// `m_modf(round(·,2))` 截整三分支）。`rules` = `overlay/high_precision_mods.json`
+/// 数据驱动例外表（经 [`Env::high_precision`] 注入；替代先期硬编码命名族镜像）。
+///
+/// 实现：经单 mod scratch db 走原语后读回数值——禁动约束下 mod_db 的取整内核
+/// 不公开值级入口，scratch db 是「只消费不改」的复用通道（单桶单 mod，读回
+/// 确定性；buff/flask 缩放非热路径，开销可忽略）。`scale == 1` 原值直返
+/// （:54，与原语同语义的早退，免 scratch 开销）。
+pub fn scale_value(
+    rules: &HighPrecisionRules,
+    name: &str,
+    mod_type: ModType,
+    value: f64,
+    scale: f64,
+) -> f64 {
     if scale == 1.0 {
         return value;
     }
-    let precision = high_precision(name, mod_type)
-        .or_else(|| (value.floor() != value).then_some(DEFAULT_HIGH_PRECISION));
-    match precision {
-        Some(p) => {
-            let mult = 10f64.powi(p);
-            (value * scale * mult).floor() / mult
-        }
-        None => pob_round(value * scale, SCALE_ROUND_DECIMALS).trunc(),
-    }
+    let mut db = ModDb::new();
+    db.scale_add_mod(Modifier::number(name, mod_type, value), scale, rules);
+    db.iter_mods()
+        .next()
+        .and_then(|m| m.value.as_number())
+        .unwrap_or(value)
 }
 
 /// 对一条 buff 词条施加效果乘区（ScaleAddMod 等价）并整理归因：保留原 `origin`
 /// （trace 不丢弃），无 origin 时回退 `(SourceKind::Buff, fallback_source_id)`；
 /// 缩放倍率记入 `raw_text`。非数值载荷（Flag/Text/NestedMods）原样透传
 /// （vendor 对 table 载荷只缩放 `value.mod`，pobr buff 词条均为数值/Flag）。
-fn scale_buff_mod(modifier: &Modifier, mult: f64, fallback_source_id: &str) -> Modifier {
+fn scale_buff_mod(
+    rules: &HighPrecisionRules,
+    modifier: &Modifier,
+    mult: f64,
+    fallback_source_id: &str,
+) -> Modifier {
     let mut out = modifier.clone();
     if let ModValue::Number(v) = out.value {
-        out.value = ModValue::Number(scale_value(out.name.as_str(), out.mod_type, v, mult));
+        out.value = ModValue::Number(scale_value(rules, out.name.as_str(), out.mod_type, v, mult));
     }
     let scale_note = format!("buff effect ×{mult:.4}");
     match out.origin.as_mut() {
@@ -322,6 +289,8 @@ pub fn buff_pass(env: &mut Env) {
     }
     let specs = env.buff_skills.clone();
     let priority_data = env.curse_priority.clone().unwrap_or_default();
+    // 取整精度规则（M4-I：ScaleAddMod 原语的例外表，编排层注入；未注入 = 默认）。
+    let rules = env.high_precision.clone();
 
     // —— 收集阶段（只读 env）——
     // 玩家侧 buff（aura 等）按 buff 名分桶（mergeBuff 同名取强）；BTreeMap 保证确定性序。
@@ -352,7 +321,7 @@ pub fn buff_pass(env: &mut Env) {
                 let scaled = spec
                     .mods
                     .iter()
-                    .map(|m| scale_buff_mod(m, mult, &source_id))
+                    .map(|m| scale_buff_mod(&rules, m, mult, &source_id))
                     .collect();
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
@@ -390,7 +359,7 @@ pub fn buff_pass(env: &mut Env) {
                     .mods
                     .iter()
                     .map(|m| {
-                        let mut scaled = scale_buff_mod(m, mult, &source_id);
+                        let mut scaled = scale_buff_mod(&rules, m, mult, &source_id);
                         // 敌侧写入带 Condition:Effective 门控（蓝图 §6.3，对齐现有敌侧口径）。
                         ensure_effective_tag(&mut scaled);
                         scaled
@@ -432,7 +401,7 @@ pub fn buff_pass(env: &mut Env) {
                 let scaled = spec
                     .mods
                     .iter()
-                    .map(|m| scale_buff_mod(m, mult, &source_id))
+                    .map(|m| scale_buff_mod(&rules, m, mult, &source_id))
                     .collect();
                 merge_buff(enemy_debuffs.entry(spec.name.clone()).or_default(), scaled);
             }
@@ -441,7 +410,11 @@ pub fn buff_pass(env: &mut Env) {
             // 行为与现状一致）。
             _ => {
                 let source_id = format!("buff.{}", spec.skill_id);
-                passthrough.extend(spec.mods.iter().map(|m| scale_buff_mod(m, 1.0, &source_id)));
+                passthrough.extend(
+                    spec.mods
+                        .iter()
+                        .map(|m| scale_buff_mod(&rules, m, 1.0, &source_id)),
+                );
             }
         }
     }
@@ -655,41 +628,95 @@ mod tests {
         }
     }
 
-    // ===== ScaleAddMod 取整语义（vendor ModStore.lua:45-79，逐字对齐） =====
+    // ===== ScaleAddMod 取整语义（vendor ModStore.lua:45-79，经 T1 原语复用） =====
 
-    /// 整数原值走 `m_modf(round(x, 2))`（向零截断）；高精度族走 floor 截位。
+    /// 构造与 `overlay/high_precision_mods.json` 相关条目逐值一致的规则表
+    /// （Data.lua:415-530 节选：本测试触及的名字）。
+    fn vendor_precision_rules() -> HighPrecisionRules {
+        use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
+        let entry = |ty: &str, p: u32| BTreeMap::from([(ty.to_string(), p)]);
+        HighPrecisionRules::from_def(HighPrecisionModsDef {
+            default_high_precision: 1,
+            more_default_round_decimals: 2,
+            mods: BTreeMap::from([
+                ("CritChance".to_string(), entry("BASE", 2)),
+                ("LifeRegen".to_string(), entry("BASE", 1)),
+                ("LifeRegenPercent".to_string(), entry("BASE", 2)),
+                ("PhysicalDamageLifeLeech".to_string(), entry("BASE", 2)),
+                ("SupportManaMultiplier".to_string(), entry("MORE", 4)),
+            ]),
+        })
+    }
+
+    /// 整数原值走 `m_modf(round(x, 2))`（向零截断）；高精度条目走 floor 截位。
+    /// 数值期望与去重前硬编码镜像表逐值一致（搬迁不变式锚点）。
     #[test]
     fn scale_value_matches_vendor_rounding() {
+        let rules = vendor_precision_rules();
         // scale == 1 → 原值直返（含非整数，:54）。
-        assert_eq!(scale_value("EnergyShield", ModType::Base, 1.5, 1.0), 1.5);
+        assert_eq!(
+            scale_value(&rules, "EnergyShield", ModType::Base, 1.5, 1.0),
+            1.5
+        );
         // 整数原值：100 × 1.2 = 120（恰整）；33 × 1.1 = 36.3 → round(…,2) → trunc 36。
         assert_eq!(
-            scale_value("EnergyShield", ModType::Base, 100.0, 1.2),
+            scale_value(&rules, "EnergyShield", ModType::Base, 100.0, 1.2),
             120.0
         );
-        assert_eq!(scale_value("Damage", ModType::Inc, 33.0, 1.1), 36.0);
+        assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 33.0, 1.1), 36.0);
         // 负值向零截断（m_modf 语义）：-33 × 1.1 = -36.3 → -36。
-        assert_eq!(scale_value("ActionSpeed", ModType::Inc, -33.0, 1.1), -36.0);
+        assert_eq!(
+            scale_value(&rules, "ActionSpeed", ModType::Inc, -33.0, 1.1),
+            -36.0
+        );
         // 非整数原值 → defaultHighPrecision = 1（Data.lua:413）：1.5 × 1.3 = 1.95 → 1.9。
-        assert_eq!(scale_value("Damage", ModType::Inc, 1.5, 1.3), 1.9);
+        assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 1.5, 1.3), 1.9);
         // CritChance BASE → 精度 2（Data.lua:416-418）：5 × 1.234 = 6.17。
-        assert_eq!(scale_value("CritChance", ModType::Base, 5.0, 1.234), 6.17);
+        assert_eq!(
+            scale_value(&rules, "CritChance", ModType::Base, 5.0, 1.234),
+            6.17
+        );
         // LifeRegen BASE → 精度 1：7 × 1.15 = 8.05 → 8.0（floor 截位）。
-        assert_eq!(scale_value("LifeRegen", ModType::Base, 7.0, 1.15), 8.0);
+        assert_eq!(
+            scale_value(&rules, "LifeRegen", ModType::Base, 7.0, 1.15),
+            8.0
+        );
         // LifeRegenPercent BASE → 精度 2。
         assert_eq!(
-            scale_value("LifeRegenPercent", ModType::Base, 1.0, 1.155),
+            scale_value(&rules, "LifeRegenPercent", ModType::Base, 1.0, 1.155),
             1.15
         );
         // Damage*Leech 族 BASE → 精度 2（Data.lua:460-523）。
         assert_eq!(
-            scale_value("PhysicalDamageLifeLeech", ModType::Base, 2.0, 1.333),
+            scale_value(&rules, "PhysicalDamageLifeLeech", ModType::Base, 2.0, 1.333),
             2.66
         );
         // MORE SupportManaMultiplier → 精度 4（Data.lua:524-526）。
         assert_eq!(
-            scale_value("SupportManaMultiplier", ModType::More, 130.0, 1.11111),
+            scale_value(
+                &rules,
+                "SupportManaMultiplier",
+                ModType::More,
+                130.0,
+                1.11111
+            ),
             144.4443
+        );
+    }
+
+    /// 未注入规则（`HighPrecisionRules::default`，无例外表）：默认分支与
+    /// 非整数原值 fallback 不变；例外条目退回默认 `round(·,2)` 截整。
+    #[test]
+    fn scale_value_default_rules_fallback() {
+        let rules = HighPrecisionRules::default();
+        // 默认分支：整数原值 round-trunc。
+        assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 33.0, 1.1), 36.0);
+        // 非整数原值仍走 default_high_precision = 1（与例外表无关）。
+        assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 1.5, 1.3), 1.9);
+        // 无例外表 → CritChance 整数原值落默认分支（5 × 1.234 = 6.17 → trunc 6）。
+        assert_eq!(
+            scale_value(&rules, "CritChance", ModType::Base, 5.0, 1.234),
+            6.0
         );
     }
 

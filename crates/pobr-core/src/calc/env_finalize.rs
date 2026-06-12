@@ -136,9 +136,11 @@ fn fingerprint(m: &Modifier) -> String {
 /// - :1589 `charmLimit = min(Override(CharmLimit) or Σ BASE CharmLimit, 3)`，cap 经
 ///   `cfg.constants.game().charm_limit_cap` 注入（禁新魔数）；:1640-1643 超限 charm
 ///   不并入（按载荷插入序扣减——vendor `pairs()` 序本身未定义，此处取确定性序）；
-/// - :1493-1530 `ScaleAddList(modList, effectMod)`：数值 mod 缩放（默认精度
-///   `m_modf(round(v×scale, 2))` 截断，ModStore.lua:75；原值非整数走
-///   `defaultHighPrecision=1` 位 floor，Data.lua:413），flag 不缩放；
+/// - :1493-1530 `ScaleAddList(modList, effectMod)`：数值 mod 缩放走
+///   [`super::buff_pass::scale_value`]（M4-I 去重：复用 T1 写原语
+///   `ModDb::scale_add_mod` 的同一取整内核——精度例外查
+///   `Env::high_precision`，非整数原值 `defaultHighPrecision` floor，默认
+///   `m_modf(round(v×scale, 2))` 截断，ModStore.lua:69-76），flag 不缩放；
 /// - :41-63 `mergeBuff`：同组（同 base）同参数 mod 取**最大值**不叠加；
 /// - :1535-1542/:1646-1647 条件：`UsingFlask`/`UsingCharm` + `Using<Base名去空格>` +
 ///   `UsingLifeFlask`（基底名含 "Life Flask" 且无 `CannotRecoverLifeOutsideLeech`）/
@@ -147,8 +149,10 @@ fn fingerprint(m: &Modifier) -> String {
 ///
 /// 已知差异（M3 范围声明，蓝图 §7.2）：充能/持续/恢复模型（flaskData.duration/charges、
 /// calcFlaskRecovery、Mageblood 特判 :1387-1403）不建；`MagicUtilityFlaskEffect`/
-/// `MagicCharmEffect`（:1406/:1588，需 rarity 通道）、minion 侧应用（:1568-1586）、
-/// `highPrecisionMods` 按词条覆盖精度表均不实现；charm 基底常驻 buff
+/// `MagicCharmEffect`（:1406/:1588，需 rarity 通道）、minion 侧应用（:1568-1586）
+/// 不实现（原「highPrecisionMods 按词条覆盖精度表不实现」差异已在 M4-I 去重时
+/// 消除——vendor ScaleAddMod 本就查表，先期 name-blind 缩放是偏差方）；
+/// charm 基底常驻 buff
 /// （vendor `item.base.charm.buff`，如 Ruby Charm `+25% to Fire Resistance`）依赖
 /// 基底数据列（缺口已登记 drill-findings-m3.md F8），当前仅物品文本词条进入。
 ///
@@ -161,20 +165,6 @@ pub fn merge_flasks_charms(env: &mut Env) {
 
     use crate::ModValue;
     use crate::item::{CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, LOCAL_UTILITY_EFFECT_NAME};
-
-    /// vendor ScaleAddMod 默认精度（ModStore.lua:69-76）：整数原值
-    /// `m_modf(round(v×scale,2))` 截断；非整数原值 floor 到 `defaultHighPrecision=1` 位。
-    fn scale_value(value: f64, scale: f64) -> f64 {
-        if scale == 1.0 {
-            return value;
-        }
-        let scaled = value * scale;
-        if value.fract() == 0.0 {
-            ((scaled * 100.0 + 0.5).floor() / 100.0).trunc()
-        } else {
-            (scaled * 10.0).floor() / 10.0
-        }
-    }
 
     /// vendor mergeBuff（CalcPerform.lua:41-63）：同参数（name/type/flags/keywordFlags/
     /// tags）已存在时数值取最大、不叠加；否则追加。
@@ -236,6 +226,9 @@ pub fn merge_flasks_charms(env: &mut Env) {
 
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
+    // 取整精度规则（M4-I 去重：ScaleAddMod 原语的例外表；vendor ScaleAddList →
+    // ScaleAddMod 本就按词条查 highPrecisionMods，ModStore.lua:69）。
+    let rules = &env.high_precision;
     let flask_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("FlaskEffect")]);
     let charm_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("CharmEffect")]);
     let charm_limit_name = ModName::from("CharmLimit");
@@ -291,7 +284,13 @@ pub fn merge_flasks_charms(env: &mut Env) {
         for inner in nested.iter().filter(|m| m.name != local_effect) {
             let mut scaled = inner.clone();
             if let Some(value) = scaled.value.as_number() {
-                scaled.value = ModValue::Number(scale_value(value, effect_mod));
+                scaled.value = ModValue::Number(super::buff_pass::scale_value(
+                    rules,
+                    scaled.name.as_str(),
+                    scaled.mod_type,
+                    value,
+                    effect_mod,
+                ));
             }
             merge_buff_max(group, scaled);
         }
