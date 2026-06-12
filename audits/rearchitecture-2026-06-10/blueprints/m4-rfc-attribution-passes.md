@@ -1,6 +1,8 @@
 # RFC(m4-attribution) — 双 pass × 归因模型 + ModFlags 30 位切换
 
-> 状态：**草案待评审**（评审通过 = M4-T2 合并前置条件，见 m4-offence-deep.md §1.5 / §3.1）。
+> 状态：**APPROVED-WITH-CONDITIONS**（评审报告 [m4-rfc-review.md](m4-rfc-review.md)，
+> 条件 C1–C6；2026-06-12 本文按 C1/C3/C4 + INFO 修订定稿，修订段落以「**[C# 修订]**」标注。
+> W-B1/B2/B3 实施 commit：`feat(m4-t2): W-B1/W-B2/W-B3 ...`）。
 > 撰写：2026-06-11（pre-m4 前置波，自 m4-offence-deep.md §1 草案扩写为正式 RFC）。
 > 评审人：主工作区 owner。修订直接改本文并在 commit message 标 `rfc(m4-attribution)`。
 > 上游：`m4-offence-deep.md`（W-A1 / W-B1 / W-B2 / W-B3）、`00-index.md` §2.2（"M4 RFC: PassId/Combine 归因模型 → M4-T2；P17 红线约束 M2/M5a 不得提前改 TraceGraph"）、`audits/rearchitecture-2026-06-10/12-offence.md`（G1/G2/G3）、`devs/docs/architecture/10-pob-parity-and-attribution.md` §6-7。
@@ -91,6 +93,9 @@ pub struct TraceNode {
 2. 武器本身已有天然来源身份：Weapon1/Weapon2 槽位的 `SourceKind::Item` SourceId 不同，per-hand 归因不需要 SourceId 再区分手。
 3. **同一 SourceId 的 Input 节点允许在多个 pass 内各出现一次**（每 pass 的 `sum_traced`/`more_traced` 各自落 Input 节点，盖各自 pass 戳）。这是有意设计：同一来源在不同 pass 的贡献值本就不同（条件翻转、per-hand flags 过滤），归因按 pass 分桶后再经合并节点加权汇总。
 4. 由 3 推出关键**结构不变式 I1**：**任意两个不同 pass 的子图不共享带 pass 戳的节点**；跨腿共享只发生在 `pass == None` 的祖先（如全局常量输入）。这是 §5.1 direct 算法逐腿独立遍历正确性的前提，落为 debug 断言 + 单测。
+   **[C3 修订·强化版不变式]**：带值 Input 节点（`source.is_some()`）**恒带 pass 戳且不跨腿共享**——每 pass 的 `sum_traced`/`more_traced` 在各自 pass scope 内落 Input，结构上保证此性质；`pass == None` 节点仅限结构性常量与外层 hand-combine 输出节点。落地形态：`TraceGraph::combine_partition_violations(combine)` 诊断 API（返回出现在 ≥2 条入腿子图中的带戳节点），direct 算法在 debug 构建下对每个 Combine 节点断言其为空 + 违例图结构单测。
+
+**[INFO 修订] M3 buff_pass 适配说明**（评审 §4-b）：buff_pass 注入 ModDb（缩放后 modifier），**不直接写 TraceGraph**——图由各 pass 的 `sum_traced` 从 ModDb 重建。因此 buff 注入的全局增益 modifier 在双 pass trace 中**经各 pass 的 sum_traced 落为带该 pass 戳的 Input 节点**（条款 3 的常规形态），而非 `pass==None` 共享祖先；数值与 I1 均自然成立，无需 buff_pass 侧任何改动。唯一的 `pass==None` 节点是结构性常量（无 source 的 base 输入）与外层 hand-combine 输出。
 
 ### 2.5 四象限如何叠加（2×2 → 图结构）
 
@@ -238,21 +243,23 @@ pub struct OutputTable {
 
 ## 5. 与现有 attribution.rs 三口径的兼容性论证
 
-### 5.1 direct：腿内沿用现算法，合并节点处加权摊销
+### 5.1 direct：腿内独立 visited + 合并节点处加权摊销（**[C1 修订] 这是算法重写**）
 
-现实现（attribution.rs:205-226 `direct_value_for_source`）：从输出节点反向 visited-DFS，命中 `source` 的 Input 节点直加。扩展算法：
+旧实现（重写前 attribution.rs:205-226 `direct_value_for_source`）：从输出节点反向、**单一全局 visited** 的扁平 DFS，命中 `source` 的 Input 节点直加。新算法：
 
 ```
 direct(source, output_node):
-    若 output_node 不是 Combine：维持现 visited-DFS（遍历中遇 Combine 节点按下述递归）
+    若 output_node 不是 Combine：腿内 visited-DFS（遍历中遇 Combine 节点按下述递归）
     遇 Combine { weights } 节点 C：
-        total = Σ_i weights[i] × direct(source, leg_i)    # leg_i = C 的第 i 条入边源点
-    腿内（两个 Combine 之间 / Combine 以下）：现 visited-DFS 语义原样，visited 集合按腿独立
+        total = Σ_i weights[i] × direct(source, leg_i)    # leg_i = C 的第 i 条入边源点（含腿自身）
+    腿内（两个 Combine 之间 / Combine 以下）：visited-DFS 语义同旧实现，但 **visited 集合按腿独立**
 ```
 
-正确性依赖**不变式 I1**（§2.4：不同 pass 子图不共享带 pass 戳节点）——每条腿是独立子图，腿内 dedup 不跨腿串扰；`pass == None` 的共享祖先在多条腿内**各计一次再按腿权重加权**，这是正确语义（全局来源同时增益两手，ADD/doubleHits 权重 (1,1) 下计两次 = 它对"两手之和"的真实直接贡献；AVERAGE 权重和为 1，不虚增）。
+**[C1 修订] 重写定性与回退口径**：「全局 visited → 腿内独立 visited + Combine 递归」是对 `direct_value_for_source` 的**算法替换**，不是"加字段不读即回退"的纯增量。I2 零回归靠的是**「无 Combine 节点时递归分支不触发、行为与旧算法逐字节等价」**（既有 attribution/trace 测试零改动通过 + 新旧实现并跑等价单测），而非"字段未被读取"。回退方案 = **保留旧函数副本**（实现中以 `#[cfg(test)] direct_value_for_source_legacy` 原样留档，兼作等价性证物）**或 git revert attribution.rs 改动**；§8 回退条 2 已同步修正。
 
-**零回归论证**：无 Combine 节点的图（防御、现 minimal 链路、回退态）退化为单腿、权重 1 → 算法逐字节等价于现实现。带 Combine 但单手（OR 直通，weights = [1.0] 单入边）→ 同样等价。这就是 W-B2 "单手 build 逐值不变"等价性测试在归因侧的镜像（§9 checklist 第 1/4 条）。
+正确性依赖**不变式 I1**（§2.4：不同 pass 子图不共享带 pass 戳节点）——每条腿是独立子图，腿内 dedup 不跨腿串扰；`pass == None` 的共享祖先在多条腿内**各计一次再按腿权重加权**，这是正确语义（全局来源同时增益两手，ADD/doubleHits 权重 (1,1) 下计两次 = 它对"两手之和"的真实直接贡献；AVERAGE 权重和为 1，不虚增）。**[C3 修订] 实际触发条件澄清**：因 §2.4 条款 3（每 pass 的 sum_traced 各自落 Input 节点），带值（带 source）的 Input 在双 pass 图中**总是带 pass 戳、不跨腿共享**——"`pass==None` 共享祖先按腿各计一次"一句在该实现下**基本不触发**，真正跨腿共享的只会是无 source 的结构性常量节点（其不参与 direct 累计）。该句保留为算法的一般性语义说明。
+
+**零回归论证**：无 Combine 节点的图（防御、现 minimal 链路、回退态）退化为单腿、权重 1 → 算法行为逐字节等价于旧实现（递归分支不触发）。带 Combine 但单手（OR 直通，weights = [1.0] 单入边）→ 同样等价。这就是 W-B2 "单手 build 逐值不变"等价性测试在归因侧的镜像（§9 checklist 第 1/4 条）。
 
 非线性模式（CRIT-doubleHits / HARMONICMEAN / CHANCE / CritBlend）的 weights 是当前点一阶线性化（§3.2）——direct 口径本就是近似解释（现实现对乘法链同样不做精确分解），**精确语义统一由 marginal 兜底**：
 
@@ -281,7 +288,7 @@ pub struct AttributionRequest {
 
 - 回答"这件副手武器贡献了多少 OffHand DPS"：`pass_filter = Some(PassId { hand: OffHand, crit: Blended })` + §5.1 算法在腿内遍历时按 filter 过滤 Input。
 - `pass_filter = None`（默认，`AttributionRequest::new` 不变）= 现行为，全部既有调用点零改动。
-- marginal 口径与 pass_filter 正交（剔除来源永远是全局动作）；请求带 filter 时 marginal 字段照常计算，文档注明其口径仍是全局输出。
+- **[C4 修订·定稿] pass_filter 非 None 时 marginal / interaction 一律置 `None`（拒绝混口径）**：剔除来源是全局动作，其 delta 是全局输出口径，与腿内 direct 同列一个 entry 会被消费方（CLI / M5 display）并排误读。两个备选（置 None / entry 加 `pass_scope` 标记）中选**置 None**——不引入新字段、口径错误不可能静默发生；消费方需要全局 marginal 时另发一个 `pass_filter = None` 的请求。实现上 `attribute()` 在 filter 非 None 时不调用 `recompute` 闭包（单测以 panic 闭包钉死）。
 
 ### 5.5 兼容性不变量汇总（落为测试）
 
@@ -440,20 +447,20 @@ const WEAPON_FLAG_BITS: &[(&str, ModFlags)] = &[
 分层回退，每层独立可执行：
 
 1. **ModFlags（步骤 7 之前任意时点）**：feature 不翻默认即回退态——旧 5 位表 + condition 字符串路径完整保留；翻默认后发现问题 = revert 翻转 commit（旧常量删除与翻转分两个 commit 正是为此留窗口）。
-2. **Combine / PassId（W-B1）**：两者是纯增量（新枚举变体 + `Option` 字段 + 默认 None 的请求字段）。回退 = 上层不构造 Combine 节点、不调 `begin_pass`——图退化为现平铺形态，§5.1 算法对无 Combine 图逐字节等价（I2），`pass_filter=None` 默认即现行为。trace.rs 本身无需 revert。
+2. **Combine / PassId（W-B1）**：**[C1 修订]** 对 trace.rs 是增量（新枚举变体 + `Option` 字段 + 默认 None 的请求字段；上层不构造 Combine、不调 `begin_pass` 即图退化为现平铺形态，trace.rs 无需 revert）。**但对 attribution.rs 不是**——新 direct 算法即使在无 Combine 图上也是新代码路径，I2 零回归靠"无 Combine 时递归分支不触发、行为逐字节等价"（新旧并跑等价单测 + 既有测试零改动通过）保证。attribution.rs 的回退 = 保留的旧函数副本（`#[cfg(test)] direct_value_for_source_legacy`）换回 / git revert W-B1 commit。两处注意编译面（C6 核查结论）：全仓无 `TraceOperation` 穷尽 match、无 `TraceNode`/`AttributionRequest` 字面量构造点（builder 通道），加变体/加字段零编译破坏；`Combine` 携带 `Vec<f64>` 使 `TraceOperation` 弃derive `Eq`（全仓无 Eq 依赖）。
 3. **双 pass 管线（W-B2/B3）**：单 pass 路径保留到 M4 阶段末（蓝图 §5 R8 既定）——`calculate_minimal_vs_enemy` 内部以"输入是否含多 HandSource / 暴击条件词条"分流，等价性测试（I3/I5）就是回退开关的正确性证明。回退 = 分流恒走旧路径的一行改动。
 4. **OutputTable 子表**：`Option` 字段回退态恒 None，消费方（display_catalog 新增条目）按 None 跳过，不产生脏值。
 5. **golden/baseline**：每次 bump 独立 commit，revert 范围清晰；fixture 重生脚本可重放。
 
 ## 9. 评审 checklist（合并 W-B1/B2/B3 的前置，扩写自蓝图 §1.5）
 
-- [ ] 单手 + 无暴击条件词条 build：双 pass 路径输出与现单 pass **逐值相等**（I3，W-B2/B3 测试计划）。
-- [ ] direct 权重表（§3.2）与 vendor 公式逐模式对得上（每模式一个单测，I4）；缺腿/零腿边角与 `:2453-2538` 行为一致。
-- [ ] §5.1 算法在无 Combine 图上与现实现逐字节等价（I2：既有 attribution/trace 测试零改动通过）。
-- [ ] marginal 在 doubleHits/CRIT 非线性样例上 ≠ direct 且符合手算（I6）。
-- [ ] 不变式 I1 有 debug 断言 + 双持 fixture 图结构单测。
-- [ ] `Stored<Type>*` 族落 HandOutput 且与 oracle 中间值对拍 ≥3 build（ailment 链不断，W-B3）。
-- [ ] bench：perform_bench ≤ 2.5× 基线；traced/marginal 路径 ≤ 4×（超出记录不阻塞）。
+- [x] 单手 + 无暴击条件词条 build：双 pass 路径输出与现单 pass **逐值相等**（I3，W-B2/B3 测试计划）。
+- [x] **[C2 修订] I4 单测分三组**：①线性模式（OR/ADD/AVERAGE/DPS/CRIT-非doubleHits）断言「Σweights×leg == 合并值」；②HARMONICMEAN **单独**断言加权和==值并注明是 1 次齐次的欧拉巧合（勿推广）；③CRIT-doubleHits/CHANCE/CHANCE_AILMENT/CritBlend **仅**断言「权重 == 解析偏导」+ 显式注释 direct 在这些模式下不守恒（doubleHits 交叉项被偏导计两次：Σw×leg = MH+OH−2·MH·OH/100）、守恒由 marginal 兜底。缺腿/零腿边角与 `:2453-2538` 行为一致。蓝图 §1.5 摘要「逐模式对得上」按此口径解读。
+- [x] §5.1 算法在无 Combine 图上与旧实现行为逐字节等价（I2：既有 attribution/trace 测试零改动通过 + 新旧实现并跑等价单测——**[C1]** 这是算法重写的等价性证明，非"字段未读"）。
+- [x] marginal 在 doubleHits/CRIT 非线性样例上 ≠ direct 且符合手算（I6：direct=13 vs marginal=14 手算样例，差 = 交叉项二阶效应）。
+- [x] 不变式 I1 有 debug 断言（**[C3]** 强化版：`combine_partition_violations` + direct 内逐 Combine debug_assert）+ 违例图结构单测。
+- [x] `Stored<Type>*` 族落 HandOutput 且与 oracle 中间值对拍 ≥3 build（ailment 链不断，W-B3。对拍口径：vendor 0.18.0 oracle `mainHandOutput` dump 的两条结构恒等式——CritAvg==HitAvg×CritMultiplier、CombinedAvg==blend——在 flicker/bow-shot/twister 三 build 上 PoBR 侧逐一成立；绝对值逐位对拍属整体伤害 parity 工程渐进收敛）。
+- [x] bench：perform_bench ≤ 2.5× 基线（W-B3 后 attack 1.02× / spell 1.03×，等价性短路有效）；traced/marginal 路径 ≤ 4×（超出记录不阻塞）。
 - [ ] ModFlags：位值断言单测全绿；双跑 diff=0（切换前）；fixture 序列化位检查（§6.4 步骤 5）完成。
 - [ ] per-hand display 字段命名与 `pob_key`（`MainHand.X` 形）一经合入 display_catalog 不再改（蓝图 §3.3-6）。
 - [ ] 评审人签字：主工作区 owner。
