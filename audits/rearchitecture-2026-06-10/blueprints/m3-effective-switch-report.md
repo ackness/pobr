@@ -149,18 +149,86 @@ AverageDamage 行两口径均带外）：
 - effective_switch 后 OFF_HIT5 26 vs 切换前 panel 27：净 −1，root cause 即 R2，
   按任务授权显式登记并主线审查。
 
-## 5. 切换与 baseline 重算（commit C）
+## 5. 切换与 baseline 重算（commit C 实测）
 
-（切换 commit 实测后填写）
+ninja_parity 默认口径切 `mode_effective=true`（`run_build` → effective；与 golden 同口径），
+同 commit 落地 R4（AverageDamage 行 → `dps/action_rate`）。切换前后聚合对照（含 §4 快修）：
 
-## 6. 验收对照与缺口归因
+| 指标 | 切换前（panel 口径门禁） | 切换后（effective 口径门禁） | baseline 动作 |
+|------|------------------------|----------------------------|---------------|
+| def core-8 @5% | 130/144 = 90.3% | 130/144 = 90.3% | 130 不变 |
+| def 25 列 @5% | 374/450 = 83.1% | 374/450 = 83.1% | 374 不变 |
+| def 25 列 @10% | 390/450 = 86.7% | 390/450 = 86.7% | 390 不变 |
+| off @5% | 27/80 = 33.8% | **26/80 = 32.5%** | **27→26（已审查例外，见下）** |
+| off @10% | 33/80 = 41.2%（M1+M2 记录；快修后 35） | **35/80 = 43.8%** | 33→35 上调 |
 
-（切换 commit 实测后填写）
+- **OFF_HIT5 27→26 已审查例外（唯一净损失）**：smith-of-kitava CritChance 1.00x→0.93x。
+  root cause = §3-R2（玩家精准聚合低估 ≈1015 vs golden 1438；golden HitChance=100 →
+  PoB2 不降级暴击；PoBR hit 92.8% × vendor :3700 二次检定 → 0.93x）。M4 精准聚合修复后
+  该项应自然回带并上调 baseline。
+- **面板口径保留守卫**：新增 `panel_mode_no_regression`（`PANEL_OFF_HIT5=27 /
+  PANEL_OFF_HIT10=35`），面板口径水平不因切换失去保护；防御侧两口径逐值相同，由主门禁覆盖。
+- 双口径对照仪表盘 `effective_switch_dual_run_report` 常驻（打印型，不设门禁）。
 
-## 7. aura/curse 子集分布
+切换后逐 build TotalDPS / CritChance（effective vs golden）：
 
-18 build 中含 curse/mark 的 10 个：oracle-comet、wolf-pack、frost-bomb、twister(monk)、
-ice-shot、chronomancer-ED、disciple-comet、smith、abyssal-lich-DD、blood-mage；
-含 aura/herald 的 17 个（仅 disciple-comet 无）。
+| build | TotalDPS | CritChance | 主导缺口（§6） |
+|---|---|---|---|
+| druid-oracle-comet | 0.38 | 0.41 | 法术量级 + Inevitable/lucky 暴击链 |
+| druid-oracle-ember-fusillade | 0.12 | 0.15 | 多弹/repeat + golden 暴击 14.5→100（Inevitable 链）|
+| huntress-ritualist-bow-shot | 0.60 | 0.90 | 弓攻量级（局部词条/精准） |
+| huntress-spirit-walker-twister | 0.27 | 0.52 | twister 多段命中 |
+| mercenary-gemling-explosive-grenade | 0.13 | 0.83 | grenade 速率族（已知，任务点名） |
+| mercenary-tactician-wolf-pack | 1.00（golden 0） | — | minion DPS 不在 hit 列（harness M4 扩列） |
+| monk-invoker-frost-bomb | 0.21 | 0.68 | cooldown 技能量级 |
+| monk-martial-artist-flicker-strike | 0.35 | 0.94 | flicker 速率族（已知，任务点名） |
+| monk-martial-artist-twister | 0.22 | 0.94（CritMult 0.95） | twister 多段；mark 链路已激活 |
+| ranger-deadeye-explosive-grenade | 0.68 | 1.00 | grenade per-hit（M1 已登记） |
+| ranger-pathfinder-ice-shot | 0.08 | 0.55 | 多投射/bow 量级 |
+| sorceress-chronomancer-ED | inf（golden 0，DoT） | 0.41 | DoT DPS 列缺（harness M4 扩列） |
+| sorceress-disciple-of-varashta-comet | 0.18 | 1.00 | 法术量级（varashta 机制） |
+| sorceress-stormweaver-comet | 0.59 | 0.97 | 法术量级（archmage/buff 覆盖） |
+| warrior-smith-of-kitava-shield-wall | 0.53 | 0.93 | 武器局部词条 + 精准聚合（R2） |
+| warrior-titan-shield-wall | 0.47 | 0.57 | 同上 + 暴击来源 |
+| witch-abyssal-lich-detonate-dead | 0.05 | 1.00 | DD 尸体基伤未实现 |
+| witch-blood-mage-coiling-bolts | 0.09 | 0.45 | coiling bolts 多段 |
 
-（切换后中位偏差分布见 §6 填写）
+## 6. 验收对照与缺口归因（M3 §9.2）
+
+实测（effective 口径，2026-06-12）：
+
+| 验收项 | M3 目标 | 实测 | 判定 |
+|--------|---------|------|------|
+| 进攻 @5% | ≥55% | **32.5%**（26/80；@10% 43.8%） | **未达** |
+| 防御 @5% | ≥85%（或 M2 终点+5pp 顺延） | **83.1%**（374/450；core-8 90.3%） | **未达**（M2 终点 83.1%，M3 防御侧零回归达成、增量未发生——M3 各 track 均为进攻/编排侧） |
+| aura/curse build 不再系统性偏低 | 中位差收敛 ±5% 或逐 build 解释 | 未收敛（§7），逐 build 解释见 §5 表 | 以逐 build 归因满足条件 B |
+
+**进攻未达标的结构性结论**：切换暴露的主导缺口是**上游伤害量级**（§3-R3），不是
+M3 编排链路——curse/穿透/Shock/敌覆盖链路已激活且方向正确（twister CritMult
+0.77→0.95、frost-bomb/blood-mage @10% 回带），但量级缺口（0.05-0.6x）在任何
+口径下都不可能靠编排收敛。@5% 进攻命中目前由 CritChance（10/18 带内）与
+golden-0 项贡献，TotalDPS 带内仅 wolf-pack（双 0）。
+
+缺口归因清单（M4 登记，按影响 build 数排序）：
+
+1. **伤害量级族**（全部 16 个有伤害 build）：宝石 per-level 伤害表精度、support
+   乘区完备性、buff/charge 默认覆盖（详见 m4-offence-deep.md 既有清单）。
+2. **精准聚合**（攻击 6 build；§3-R2）：装备/天赋精准词条 + 武器局部精准未入聚合
+   → hit<100% → DPS 与暴击双重低估。唯一造成切换净损失（−1）的项。
+3. **技能特化机制**：DD 尸体基伤、coiling bolts/twister/ember 多段、grenade/flicker
+   速率族（后两者任务已点名属 M4 不修）。
+4. **harness 扩列**（M4）：DoT DPS（chronomancer-ED golden TotalDPS=0 而 DoT 是真输出）、
+   minion DPS（wolf-pack）、AverageHit（法术导出键）回填。
+5. **暴击特化链**：Inevitable Criticals / lucky crit 的 build 级触发条件
+   （oracle/ember 两 druid build golden 暴击被抬到 100）。
+
+## 7. aura/curse 子集分布（切换后）
+
+- curse/mark 子集（10 build，排除 golden-0 的 wolf-pack/chronomancer 后 8 个）
+  TotalDPS 中位 ≈ **0.20x**；非 curse 子集（8 build）中位 ≈ **0.41x**。
+- curse 子集仍系统性更低，但驱动项是该子集恰好集中了量级缺口最大的技能特化 build
+  （DD 0.05 / ice-shot 0.08 / blood-mage 0.09），而非 curse 链路本身：
+  curse 链路活性证据——twister(monk) 的 CritMultiplier 0.77→0.95（Sniper's Mark
+  SelfCritMultiplier 转发）、boss `CurseEffectOnSelf -50` 与 hex gate（vendor :2289）
+  均按 vendor 语义参与。满足 §9.2「或给出逐 build 解释」分支（§5 表）。
+- aura/herald 子集（17 build）与全集基本重合，无独立信号。
