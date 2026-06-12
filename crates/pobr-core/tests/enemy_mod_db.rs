@@ -395,14 +395,20 @@ fn setup_enemy_injects_pinnacle_defaults() {
     // 等级被 Pinnacle 抬到 >=82（这里 85）。
     assert_eq!(env.enemy.level, 85);
 
-    // Boss 自带元素穿透注入 **player** modDB（offence 从玩家 db 读 ElementalPenetration）。
-    // Pinnacle = pinnacleBossPen 15/5 = 3。
+    // Boss 自带元素穿透只走防御侧 `Enemy<El>Pen`（enemy modDB，EHP/受击消费）；
+    // **不得**注入玩家进攻穿透（vendor `enemy<El>Pen` config var 无 apply 函数，
+    // ConfigOptions.lua:2269-2273，仅 CalcDefence.lua:2363 消费——M4-H S1）。
     let pen = env.player.mod_db.sum(
         ModType::Base,
         &cfg,
         &[ModName::from("ElementalPenetration")],
     );
-    assert_eq!(pen, 3.0, "Pinnacle 元素穿透 +3 注入玩家 db");
+    assert_eq!(pen, 0.0, "boss 穿透不得进玩家进攻穿透");
+    let def_pen = db.sum(ModType::Base, &cfg, &[ModName::from("EnemyFirePen")]);
+    assert_eq!(
+        def_pen, 3.0,
+        "Pinnacle 防御侧 EnemyFirePen +3 注入 enemy db"
+    );
 }
 
 #[test]
@@ -419,13 +425,19 @@ fn setup_enemy_uber_injects_damage_taken_penalty() {
     );
     // Uber 最低等级 82（角色 80 被抬到 82）。
     assert_eq!(env.enemy.level, 82);
-    // Uber 元素穿透 = uberBossPen 40/5 = 8（注入玩家 db）。
+    // Uber 元素穿透 = uberBossPen 40/5 = 8——仅防御侧 `Enemy<El>Pen`（enemy db），
+    // 玩家进攻穿透不受影响（M4-H S1）。
     let pen = env.player.mod_db.sum(
         ModType::Base,
         &cfg,
         &[ModName::from("ElementalPenetration")],
     );
-    assert_eq!(pen, 8.0, "Uber 元素穿透 +8 注入玩家 db");
+    assert_eq!(pen, 0.0, "boss 穿透不得进玩家进攻穿透");
+    let def_pen = env
+        .enemy
+        .mod_db
+        .sum(ModType::Base, &cfg, &[ModName::from("EnemyColdPen")]);
+    assert_eq!(def_pen, 8.0, "Uber 防御侧 EnemyColdPen +8 注入 enemy db");
 }
 
 #[test]

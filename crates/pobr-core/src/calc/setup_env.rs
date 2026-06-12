@@ -17,8 +17,8 @@
 //! - **Boss 通用 debuff 抗性**：`CurseEffectOnSelf/ExposureEffectOnSelf/SlowEffectOnSelf
 //!   MORE -50` 等，削弱我方诅咒/曝光/减速对 Boss 的有效度。
 //! - **条件态**：Boss → `Condition:Unique`/`RareOrUnique`；Pinnacle/Uber → `Condition:PinnacleBoss`。
-//! - **穿透**：`tier.pen()` 注入 **player** modDB 的 `<Element>Penetration BASE`（boss 自带穿透
-//!   是作用在玩家伤害上的减抗，归因仍记 `EnemyConfig`）。
+//! - **穿透**：`tier.pen()` 仅注入 enemy modDB 的 `Enemy<Element>Pen BASE`（防御侧
+//!   EHP/受击消费，vendor CalcDefence.lua:2363）；**不**进玩家进攻穿透（M4-H S1）。
 //! - **玩家施加的 debuff（曝光/诅咒/破甲/凋萎）通道**：本步只提供归约 hook
 //!   [`reduce_enemy_exposure`]（曝光取最强 → 写入 `*Resist BASE` 减项），具体 debuff
 //!   注入由下游 wave 在调用 [`setup_enemy`] 后追加再调 [`reduce_enemy_exposure`]。
@@ -150,31 +150,16 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier);
     inject_ehp_damage_placeholder(&mut env.enemy.mod_db, constants, defaults.level, tier);
 
-    // Boss 自带元素穿透作用在**玩家**伤害的减抗上 → 注入 player modDB
-    // （`offence.rs::penetration_value` 从玩家 db 读 `ElementalPenetration`）。
-    inject_boss_penetration(&mut env.player.mod_db, &defaults);
-}
-
-/// Boss 自带元素穿透（Pinnacle +3% / Uber +8%）：注入 **player** modDB 的
-/// `ElementalPenetration BASE`。fire/cold/lightning 三种元素在
-/// [`penetration_value`](super::offence) 中共享读取该项（不影响混沌/物理），等价 PoB2 的
-/// per-element `enemyFire/Cold/LightningPen`。归因仍记 [`SourceKind::EnemyConfig`]——
-/// 这是敌人天生属性作用在我方伤害上的减抗，而非玩家自身词条。
-///
-/// 对照 PoB2 `ConfigOptions.lua` `enemyIsBoss` 段：`pinnacleBossPen = 15/5 = 3`、
-/// `uberBossPen = 40/5 = 8`，注入 `enemy{Fire,Cold,Lightning}Pen`。
-fn inject_boss_penetration(player_db: &mut ModDb, defaults: &EnemyTierDefaults) {
-    if defaults.pen != 0.0 {
-        player_db.add_mod(
-            Modifier::number(
-                ModName::from("ElementalPenetration"),
-                ModType::Base,
-                defaults.pen,
-            )
-            .with_source("enemy pinnacle_boss_pen")
-            .with_origin(enemy_source("pinnacle_boss_pen")),
-        );
-    }
+    // 注意：Boss 自带元素穿透（Pinnacle 3 / Uber 8，vendor `pinnacleBossPen = 15/5` /
+    // `uberBossPen = 40/5`，Modules/Data.lua:231/:233）**只作用在防御侧**——
+    // `enemy{Fire,Cold,Lightning}Pen` config var 没有 apply 函数（ConfigOptions.lua:2269-2273，
+    // 不生成任何 mod），仅被 CalcDefence.lua:2363 读取折算玩家受击抗性
+    // （`resMult = 1 − max(resist − enemyPen, 0)/100`）。对应 PoBR 通道 =
+    // `inject_ehp_damage_placeholder` 注入的 `Enemy{Fire,Cold,Lightning}Pen`
+    // （`ehp::fill_ehp_pob2` 消费）。历史版本曾把它同时注入玩家 modDB 的
+    // `ElementalPenetration BASE`（提高我方进攻穿透）——vendor 进攻侧
+    // CalcOffence.lua:4143 的 pen 只读玩家 skillModList，无任何 boss 来源；
+    // 该注入是反向假补偿，已删除（M4-H S1）。
 }
 
 /// 把 [`EnemyTierDefaults`] + 档位加成写入 enemy modDB（不触碰 base 标量）。
