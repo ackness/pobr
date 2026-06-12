@@ -845,6 +845,12 @@ pub fn calculate_with_data(
     for spec in buff_skill_specs(build, data) {
         session.add_buff_skill(spec);
     }
+    // 4b'.（M4-G）support 授予的玩家侧 buff（Precision I/II → Accuracy INC，
+    //     sup_dex.lua:4181-4250）→ BuffSpec(kind=Buff)，buff_pass Buff 分支
+    //     （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db。
+    for spec in support_buff_specs(build, data) {
+        session.add_buff_skill(spec);
+    }
 
     // 4c. Mark 激活授予玩家的**进攻自身 buff**（gain-as-extra）→ SkillGem 归因 modifier。
     //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
@@ -900,15 +906,24 @@ pub fn calculate_with_data(
     }
 
     // 6b. 属性派生（PoE2）：life/mana/accuracy 须用**最终**属性（职业基础 + 装备/树/珠宝
-    //     的 +Strength/Dex/Int）。character_base 已注入职业基础派生部分；此处补注入来自
-    //     +属性词条的增量（2 life/力量、2 mana/智力、6 accuracy/敏捷），须在全部来源注入后。
+    //     的 +Strength/Dex/Int，并经 `N% increased <Attr>` 缩放——PoB2
+    //     `calculateAttributes`，CalcPerform.lua:381-388
+    //     `output[stat] = m_max(round(calcLib.val(modDB, stat)), 0)`）。
+    //     character_base 已注入「未经 INC 缩放的职业起始」派生部分；此处补注入
+    //     `最终总量 − 职业起始` 的增量（2 life/力量、2 mana/智力、6 accuracy/敏捷，
+    //     vendor :424-441 Life/Accuracy/Mana from Str/Dex/Int），须在全部来源注入后。
     if options.inject_character_base {
         // PoE2 属性派生系数（每点力量 +2 生命、每点智力 +2 魔力、每点敏捷 +6 精准）：
         // M0-W3 起自注入的 character_constants 域读取，与 CharacterBase 派生同一来源。
         let cc = &data.constants.character_constants;
-        let str_total = session.base_sum("Strength");
-        let dex_total = session.base_sum("Dexterity");
-        let int_total = session.base_sum("Intelligence");
+        // 职业起始属性（CharacterBase 烘焙部分；未知职业 = 未注入 CharacterBase → 0）。
+        let cls = character_base(build, data);
+        let (cls_str, cls_dex, cls_int) = cls
+            .map(|c| (c.strength, c.dexterity, c.intelligence))
+            .unwrap_or((0.0, 0.0, 0.0));
+        let str_total = session.attribute_total("Strength", cls_str);
+        let dex_total = session.attribute_total("Dexterity", cls_dex);
+        let int_total = session.attribute_total("Intelligence", cls_int);
         let mk = |stat: &str, value: f64| {
             let origin = ModifierSource::new(SourceId::new(
                 SourceKind::CharacterBase,
@@ -918,9 +933,15 @@ pub fn calculate_with_data(
             Modifier::number(stat, ModType::Base, value).with_origin(origin)
         };
         session.add_modifiers([
-            mk("MaximumLife", cc.life_per_strength * str_total),
-            mk("MaximumMana", cc.mana_per_intelligence * int_total),
-            mk("Accuracy", cc.accuracy_per_dexterity * dex_total),
+            mk("MaximumLife", cc.life_per_strength * (str_total - cls_str)),
+            mk(
+                "MaximumMana",
+                cc.mana_per_intelligence * (int_total - cls_int),
+            ),
+            mk(
+                "Accuracy",
+                cc.accuracy_per_dexterity * (dex_total - cls_dex),
+            ),
         ]);
     }
 
@@ -3508,6 +3529,18 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                         );
                     }
                 }
+                // （M4-G）statmap buff 域补充通道：玩家侧允收名单（Accuracy）
+                // 的 GlobalEffect Buff/Aura 载荷（如 War Banner
+                // `base_skill_buff_banner_accuracy_+%_to_apply` → Accuracy INC +
+                // Condition:BannerPlanted 直译保留），与 map_aura_buff_stat 的
+                // 防御静态名单（ES/抗性族）不重叠，无双注入。
+                let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+                mods.extend(player_buff_stat_modifiers(
+                    data,
+                    &es,
+                    &gem.skill_id,
+                    set_key.as_deref(),
+                ));
                 specs.push(BuffSpec {
                     name: buff_skill_name(data, &gem.skill_id),
                     kind: BuffKind::Aura,
@@ -3543,6 +3576,81 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                     ignore_curse_limit: false,
                 });
             }
+        }
+    }
+    specs
+}
+
+/// （M4-G）support 授予的**玩家侧 buff** → [`BuffSpec`]（kind = [`BuffKind::Buff`]，
+/// buff_pass Buff 分支 CalcPerform.lua:1949-1962 施 BuffEffect 乘区后并入 player db）。
+///
+/// vendor 语义：Precision I/II（`sup_dex.lua:4181-4250`）等 support 自身 statSet 的
+/// statMap 产出 `GlobalEffect effectType=Buff` mod（如
+/// `support_precision_accuracy_rating_+%` → `Accuracy INC`，进 CalcOffence.lua:2557
+/// 精准聚合），随被支援的 Persistent Buff 技能（Herald/Malice/Banner…）激活而作用于
+/// 玩家。适用性由数据驱动：[`judge_group_supports`]（require_skill_types =
+/// `Persistent+Buff+AND` 四段裁决）对组内每个已启用主动技能判定，任一兼容即注入；
+/// 同一 support 效果多组重复按 id 去重（buff_pass 端 mergeBuff 同名取强兜底）。
+///
+/// 取数走 statmap buff 域数据通道（[`player_buff_stat_modifiers`]，玩家侧允收
+/// 名单第一批 = `Accuracy`）；无 buff 载荷的 support（绝大多数）产出空 mods → 跳过。
+/// 简化：BuffSpec.name 用 [`buff_skill_name`]（support 无 active_skill → 效果 id），
+/// vendor 用 statMap effectName（仅影响 `AffectedBy<名>` 条件命名，当前无消费方）。
+fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
+    use std::collections::HashSet;
+    let mut specs = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
+    for group in build.enabled_socket_groups() {
+        // 组内已启用主动技能（效果已知且非 support）。
+        let active_ids: Vec<&str> = group
+            .gem_skills
+            .iter()
+            .filter(|g| {
+                data.granted_effects
+                    .get(&g.skill_id)
+                    .is_some_and(|e| !e.is_support)
+            })
+            .map(|g| g.skill_id.as_str())
+            .collect();
+        if active_ids.is_empty() {
+            continue;
+        }
+        // 任一主动技能裁决兼容即纳入（vendor：support 对组内逐主动技能各自判定）。
+        let mut compatible: HashSet<usize> = HashSet::new();
+        for active_id in &active_ids {
+            for idx in judge_group_supports(group, data, active_id).compatible {
+                compatible.insert(idx);
+            }
+        }
+        let mut indices: Vec<usize> = compatible.into_iter().collect();
+        indices.sort_unstable();
+        for idx in indices {
+            let gem = &group.gem_skills[idx];
+            if !seen.insert(gem.skill_id.as_str()) {
+                continue;
+            }
+            let es = data.effect_stats(
+                &gem.skill_id,
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            );
+            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+            let mods = player_buff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+            if mods.is_empty() {
+                continue;
+            }
+            specs.push(BuffSpec {
+                name: buff_skill_name(data, &gem.skill_id),
+                kind: BuffKind::Buff,
+                skill_id: gem.skill_id.clone(),
+                mods,
+                magnitude: 1.0,
+                slot: group.slot.clone(),
+                socket_index: (idx + 1) as u32,
+                is_mark: false,
+                ignore_curse_limit: false,
+            });
         }
     }
     specs
@@ -3919,6 +4027,83 @@ fn curse_stat_modifiers(
                 format!("curse.{skill_id}.{}", ds.stat),
             ))
             .with_raw_text(format!("curse {skill_id} {} ({})", ds.stat, ds.value));
+            mods.push(modifier.with_origin(origin));
+        }
+    }
+    mods
+}
+
+/// （M4-G）玩家侧 buff 词条取数点：把一个 buff 授予效果（support / aura 技能）
+/// statset 的全部 stat 经 [`stat_map_engine::map_player_buff_stat`]（buff 域数据
+/// 通道，玩家侧允收名单）映射为**玩家侧** modifier 列表（BuffSpec.mods 载荷，
+/// buff_pass Buff/Aura 路径消费）。与 [`curse_stat_modifiers`] 同构：
+/// - catalog 取数：线程局部上下文优先，回退 `data.stat_map_catalog`；
+/// - 归因：`(SkillGem, "buff.<skill_id>.<stat>")`，buff_pass 缩放保留 origin；
+/// - 可见性：Compare 模式逐 stat 落 [`StatMapCompareRecord`]
+///   （label = `buff.<skill_id>`）；`Mapped(空)` / `Unknown` 不记（非 buff 载荷）。
+fn player_buff_stat_modifiers(
+    data: &BuildData,
+    stats: &crate::build_data::EffectStats,
+    skill_id: &str,
+    set_key: Option<&str>,
+) -> Vec<Modifier> {
+    let (mode, ctx_catalog) =
+        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
+    let catalog = ctx_catalog.or_else(|| data.stat_map_catalog.clone());
+    let Some(catalog) = catalog else {
+        return Vec::new(); // 无 catalog（旧数据包）：buff 词条全 miss（与主通道同口径）。
+    };
+    let mut mods = Vec::new();
+    for ds in stats.all() {
+        if ds.value == 0.0 {
+            continue; // 跳零值 stat（与主通道同口径）。
+        }
+        let outcome =
+            stat_map_engine::map_player_buff_stat(&catalog, skill_id, set_key, &ds.stat, ds.value);
+        if mode == StatMapMode::Compare {
+            let record = match &outcome {
+                MappedOutcome::Mapped(items) if !items.is_empty() => {
+                    let injected: Vec<(String, &'static str, f64)> = items
+                        .iter()
+                        .filter_map(|item| match item {
+                            MappedItem::Modifier(m) => Some((
+                                m.name.to_string(),
+                                m.mod_type.as_trace_label(),
+                                m.value.as_number().unwrap_or(0.0),
+                            )),
+                            MappedItem::SkillData { .. } => None,
+                        })
+                        .collect();
+                    Some(("mapped", format!("buff={injected:?}")))
+                }
+                MappedOutcome::Unsupported(reason) => {
+                    Some(("unsupported", format!("unsupported:{}", reason.category())))
+                }
+                _ => None, // Mapped(空)/Unknown = 非玩家侧 buff 载荷，不记。
+            };
+            if let Some((classification, detail)) = record {
+                STAT_MAP_CTX.with(|ctx| {
+                    ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
+                        stat: ds.stat.clone(),
+                        label: format!("buff.{skill_id}"),
+                        classification,
+                        detail,
+                    });
+                });
+            }
+        }
+        let MappedOutcome::Mapped(items) = outcome else {
+            continue;
+        };
+        for item in items {
+            let MappedItem::Modifier(modifier) = item else {
+                continue;
+            };
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SkillGem,
+                format!("buff.{skill_id}.{}", ds.stat),
+            ))
+            .with_raw_text(format!("buff {skill_id} {} ({})", ds.stat, ds.value));
             mods.push(modifier.with_origin(origin));
         }
     }
@@ -4871,6 +5056,46 @@ mod tests {
         );
     }
 
+    /// 属性派生消费**最终**属性（PoB2 CalcPerform.lua:381-388
+    /// `round(calcLib.val(modDB, stat))` + :424-431 Life from Str×2）：
+    /// `N% increased Strength` 须缩放含职业起始在内的全部 BASE，再进派生。
+    #[test]
+    fn attribute_increased_modifiers_scale_derived_life() {
+        let data = repo_data();
+        let character = CharacterIdentity {
+            level: 1,
+            class_name: "Warrior".into(),
+            ascendancy_name: String::new(),
+        };
+        let run = |texts: Vec<String>| {
+            let build = Build::new().with_character(character.clone());
+            calculate_with_data(
+                &build,
+                &data,
+                &DataOrchestratorOptions {
+                    extra_modifier_texts: texts,
+                    ..Default::default()
+                },
+            )
+            .expect("calc")
+        };
+
+        let base = run(vec!["+100 to Strength".into()]);
+        let inc = run(vec![
+            "+100 to Strength".into(),
+            "50% increased Strength".into(),
+        ]);
+
+        let cls_str = f64::from(
+            data.class_attributes("Warrior")
+                .expect("warrior attrs")
+                .strength,
+        );
+        // Δlife = life_per_strength × (round((cls+100)×1.5) − (cls+100))。
+        let expected = 2.0 * (((cls_str + 100.0) * 1.5).round() - (cls_str + 100.0));
+        assert_eq!(inc.life - base.life, expected);
+    }
+
     #[test]
     fn setup_enemy_session_method_is_exposed() {
         // setup_enemy 通过 session 暴露，可独立使用（归因路径的最小冒烟）。
@@ -5234,6 +5459,80 @@ mod tests {
     /// aura/curse 技能 → BuffSpec 分类（蓝图 §2.4 契约 1）：`Aura` token → Aura kind
     /// （mods = 与 aura_buff_modifiers 同口径的防御 buff）；`Mark`/`AppliesCurse`
     /// token → Curse kind（is_mark 按 Mark token）；slot/socket_index 透传。
+    /// （M4-G）Precision II support 在 Persistent Buff 宿主组 → BuffSpec(kind=Buff,
+    /// Accuracy INC 50，sup_dex.lua:4216-4250 constantStats)；不兼容宿主
+    /// （require_skill_types=Persistent+Buff+AND 四段裁决拒收，如 Fireball）→ 不注入。
+    #[test]
+    fn support_buff_specs_maps_precision_accuracy_inc() {
+        let data = repo_data();
+        let host = |skill: &str| {
+            Build::new().add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill(skill, 20)
+                    .with_gem_skill("SupportPrecisionPlayerTwo", 1),
+            )
+        };
+
+        let specs = support_buff_specs(&host("HeraldOfAshPlayer"), &data);
+        assert_eq!(
+            specs.len(),
+            1,
+            "Persistent Buff 宿主：注入一条 support buff"
+        );
+        let spec = &specs[0];
+        assert_eq!(spec.kind, BuffKind::Buff);
+        assert_eq!(spec.skill_id, "SupportPrecisionPlayerTwo");
+        assert_eq!(spec.mods.len(), 1);
+        let m = &spec.mods[0];
+        assert_eq!(m.name.as_str(), "Accuracy");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(50.0));
+
+        assert!(
+            support_buff_specs(&host("FireballPlayer"), &data).is_empty(),
+            "非 Persistent Buff 宿主：require 裁决拒收，不注入"
+        );
+    }
+
+    /// （M4-G）Aura 类 buff 技能的 statmap buff 域补充通道：War Banner 的
+    /// `base_skill_buff_banner_accuracy_+%_to_apply`（GlobalEffect Aura +
+    /// Condition BannerPlanted）→ spec.mods 含 Accuracy INC（条件 tag 直译保留），
+    /// 数值 = 该宝石等级的 statset 原值（数据侧独立期望）。
+    #[test]
+    fn buff_skill_specs_maps_banner_accuracy_from_statmap() {
+        let data = repo_data();
+        let build =
+            Build::new().add_socket_group(SocketGroup::new().with_gem_skill("WarBannerPlayer", 10));
+
+        let specs = buff_skill_specs(&build, &data);
+        let banner = specs
+            .iter()
+            .find(|s| s.skill_id == "WarBannerPlayer")
+            .expect("War Banner spec（Aura 类）");
+        assert_eq!(banner.kind, BuffKind::Aura);
+
+        let expected: f64 = data
+            .effect_stats("WarBannerPlayer", 10, 0, None)
+            .all()
+            .into_iter()
+            .find(|ds| ds.stat == "base_skill_buff_banner_accuracy_+%_to_apply")
+            .map(|ds| ds.value)
+            .expect("banner accuracy stat 应在 statset 数据中");
+        let acc = banner
+            .mods
+            .iter()
+            .find(|m| m.name.as_str() == "Accuracy")
+            .expect("Accuracy INC 应经 statmap buff 域入 spec.mods");
+        assert_eq!(acc.mod_type, ModType::Inc);
+        assert_eq!(acc.value.as_number(), Some(expected));
+        assert!(
+            acc.tags
+                .contains(&pobr_core::ModTag::condition("BannerPlanted", false)),
+            "Condition:BannerPlanted 直译保留，实得 {:?}",
+            acc.tags
+        );
+    }
+
     #[test]
     fn buff_skill_specs_classifies_aura_and_curse() {
         let data = repo_data();

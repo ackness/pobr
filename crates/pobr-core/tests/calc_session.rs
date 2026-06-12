@@ -63,6 +63,23 @@ fn session_preserves_accuracy_inputs_for_hit_chance_and_dps() {
     assert_eq!(output.dps, 100.0 * expected_hit_chance);
 }
 
+/// 属性最终总量（PoB2 `calculateAttributes`，CalcPerform.lua:381-388）：
+/// `round((class_base + Σbase) × (1 + Σinc/100) × Πmore)`，下限 0。
+/// `N% increased Dexterity` 类词条必须缩放含职业起始在内的全部 BASE。
+#[test]
+fn attribute_total_applies_increased_attribute_modifiers() {
+    // Arrange
+    let mut session = CalculationSession::new(MinimalInput::default());
+    session
+        .add_modifier_texts(["+100 to Dexterity", "8% increased Dexterity"])
+        .unwrap();
+
+    // Act + Assert：round((20 + 100) × 1.08) = round(129.6) = 130。
+    assert_eq!(session.attribute_total("Dexterity", 20.0), 130.0);
+    // 无 INC 词条的属性 = class_base + Σbase 直通（Strength 无任何词条）。
+    assert_eq!(session.attribute_total("Strength", 7.0), 7.0);
+}
+
 #[test]
 fn session_preserves_unsupported_modifier_texts() {
     let mut session = CalculationSession::new(MinimalInput::default());
