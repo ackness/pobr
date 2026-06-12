@@ -244,6 +244,67 @@ fn enemy_resist_clamps_to_enemy_max_resist() {
     );
 }
 
+/// M4-l（vendor CalcOffence.lua:532）：configInput `enemy<Type>Resist` 显式输入
+/// 可把 maxResist 从 EnemyMaxResist(75) 抬到 MaxResistCap(90)；
+/// `DoNotChangeMaxResFromConfig` FLAG（config「always 75%」，
+/// ConfigOptions.lua:2158-2159）置位时恒 75。
+#[test]
+fn explicit_config_resist_raises_max_resist_cap() {
+    let config_origin = || {
+        ModifierSource::new(SourceId::new(
+            SourceKind::EnemyConfig,
+            "config.enemyFireResist",
+        ))
+    };
+    let player = fire_only_player();
+
+    // 显式 config 85（config_resolve 注入形态：BASE + EnemyConfig/config.<var> 归因）
+    // → maxResist = min(max(85, 75), 90) = 85 → 100×0.15 = 15。
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 85.0).with_origin(config_origin()));
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 15.0).abs() < 1e-6,
+        "config 85 抬 cap → 100*0.15 = 15, got {}",
+        out.dps
+    );
+
+    // 显式 config 95 → cap 到 MaxResistCap 90（Data.lua:181）→ 100×0.10 = 10。
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 95.0).with_origin(config_origin()));
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 10.0).abs() < 1e-6,
+        "config 95 → cap 90 → 100*0.10 = 10, got {}",
+        out.dps
+    );
+
+    // DoNotChangeMaxResFromConfig 置位 → 恒 75（vendor :532 第一分支）。
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 85.0).with_origin(config_origin()));
+    enemy.add_mod(Modifier::flag("DoNotChangeMaxResFromConfig"));
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 25.0).abs() < 1e-6,
+        "always-75 flag → clamp 75 → 25, got {}",
+        out.dps
+    );
+
+    // 非 config 来源（档位预设等 EnemyConfig 但 id 非 config.<var>）不抬 cap。
+    let mut enemy = ModDb::new();
+    enemy.add_mod(
+        Modifier::number("FireResist", ModType::Base, 85.0).with_origin(ModifierSource::new(
+            SourceId::new(SourceKind::EnemyConfig, "fire_resist"),
+        )),
+    );
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 25.0).abs() < 1e-6,
+        "预设来源不抬 cap → clamp 75 → 25, got {}",
+        out.dps
+    );
+}
+
 // M4-H S5：受伤链 INC-only 追加名（vendor CalcOffence.lua:4141/:4152-4156）。
 
 #[test]
