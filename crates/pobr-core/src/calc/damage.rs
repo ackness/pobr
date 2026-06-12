@@ -520,6 +520,39 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
             matrix[fi][ti] = pct / 100.0;
         }
     }
+    // random element 档（vendor CalcOffence.lua:1175-1200）：`DamageGainAsRandom`
+    // 按 physMode 展开为三元素——PoBR 折叠 AVERAGE 档（vendor configInput.physMode
+    // 缺省 "AVERAGE"）：每元素 n/3。`DamageGainAsRandom` 作用于全部源类型（vendor
+    // 展开成 `DamageGainAs<Elem>`，buildGainTable 对每个 from 行求和）；
+    // `PhysicalDamageGainAsRandom` 仅物理源行（展开成 `PhysicalDamageGainAs<Elem>`）。
+    let generic_random = db
+        .sum(ModType::Base, cfg, &[ModName::from("DamageGainAsRandom")])
+        .max(0.0);
+    let phys_random = db
+        .sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from("PhysicalDamageGainAsRandom")],
+        )
+        .max(0.0);
+    if generic_random > 0.0 || phys_random > 0.0 {
+        for (fi, &from) in DAMAGE_TYPES.iter().enumerate() {
+            let pct = generic_random
+                + if from == DamageType::Physical {
+                    phys_random
+                } else {
+                    0.0
+                };
+            if pct == 0.0 {
+                continue;
+            }
+            for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
+                if to.is_elemental() {
+                    matrix[fi][ti] += pct / 3.0 / 100.0;
+                }
+            }
+        }
+    }
     matrix
 }
 

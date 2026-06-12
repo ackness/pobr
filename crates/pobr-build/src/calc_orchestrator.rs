@@ -225,7 +225,28 @@ pub fn calculate_with_data(
     // 包装/Config 归因 modifier）；缺 catalog 回退旧 parse_config 产出（R7）。
     let resolved_config =
         crate::config_resolve::resolve_config(build, data.config_catalog.as_deref());
-    let base_cfg = resolved_config.config.to_calc_config();
+    let mut base_cfg = resolved_config.config.to_calc_config();
+    // Effective 门控的 config 乘数桥（M4-H）：interpreter 的 Condition 裸效果桥
+    // 只收"无 tag"条目，`Multiplier:<X>` 带 `Condition:Effective` tag 的 count 型
+    // placeholder（vendor ConfigOptions.lua:1642 `multiplierDifferentGrenadeFired`
+    // defaultPlaceholderState=1 等）落不进 cfg.multipliers。vendor 语义 =
+    // `GetMultiplier` 直查 modDB（tag 按 cfg 求值，EFFECTIVE 模式 Effective 恒真，
+    // CalcSetup.lua:583-588）；PoBR multiplier 走 cfg 快照 → 在此按 mode_effective
+    // 评估后回填（仅 Effective 单 tag 形态；其余 tag 形态维持 mod 通道）。
+    if options.mode_effective {
+        for m in &resolved_config.player_mods {
+            if m.mod_type == ModType::Base
+                && let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
+                && let pobr_core::ModValue::Number(n) = m.value
+                && m.tags.iter().all(|t| {
+                    matches!(t, pobr_core::ModTag::Condition { var, negated: false, actor: None } if var == "Effective")
+                })
+            {
+                *base_cfg.multipliers.entry(var.to_string()).or_insert(0.0) += n;
+            }
+        }
+    }
+    let base_cfg = base_cfg;
     let mut cfg = base_cfg
         .clone()
         .with_flags(base_cfg.flags | skill_flags)
@@ -983,6 +1004,10 @@ pub fn calculate_with_data(
         for (var, value) in per_slot_defence_multipliers(build, data) {
             session.set_multiplier(var, value);
         }
+        // GrenadeTypes（M4-H；vendor CalcPerform.lua:1238-1242：去重统计已启用
+        // 主动技能中 `SkillType.Grenade` 的不同授予效果数）——Demolitionist
+        // 「… for every different Grenade fired …」的 Multiplier limitVar 分母。
+        session.set_multiplier("GrenadeTypes", grenade_type_count(build, data));
     }
 
     // 6d. 来源授予的条件 flag → cfg 条件桥接：如「Gain the benefits of Bonded modifiers on
@@ -1943,7 +1968,40 @@ fn skill_type_flags(skill_types: &[String]) -> ModFlags {
             _ => {}
         }
     }
+    // hit 技能 → ModFlag.Hit（M4-H；vendor CalcActiveSkill.lua:176
+    // `skillFlags.hit = … or skillTypes[Attack] or skillTypes[Damage] or
+    // skillTypes[Projectile]` + :523-525 `skillModFlags |= ModFlag.Hit`）。
+    // 使带 HIT flag 的词条（如「Spell Hits Gain …」族）对击中技能生效；
+    // DoT cfg 已按 vendor 剥除该位（calc::skill_dot `flags.without(HIT)`）。
+    if skill_types
+        .iter()
+        .any(|t| matches!(t.as_str(), "Attack" | "Damage" | "Projectile"))
+    {
+        flags |= ModFlags::HIT;
+    }
     flags
+}
+
+/// 去重统计已启用主动技能中 `SkillType.Grenade` 的不同授予效果数（M4-H；vendor
+/// `CalcPerform.lua:1238-1242`：遍历 activeSkillList，按 grantedEffect.id 去重
+/// 计数 → `env.modDB.multipliers["GrenadeTypes"]`）。Demolitionist
+/// 「for every different Grenade fired …」的 Multiplier limitVar 分母。
+fn grenade_type_count(build: &Build, data: &BuildData) -> f64 {
+    let mut seen = std::collections::HashSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            if seen.contains(gem.skill_id.as_str()) {
+                continue;
+            }
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            if !effect.is_support && effect.skill_types.iter().any(|t| t == "Grenade") {
+                seen.insert(gem.skill_id.as_str());
+            }
+        }
+    }
+    seen.len() as f64
 }
 
 /// （M3-T2 B4）主技能派生的战斗条件（vendor `CalcPerform.lua:242-266` 实读，

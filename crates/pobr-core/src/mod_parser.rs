@@ -186,6 +186,21 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     } else if let Some(stripped) = rest.strip_prefix("spell skills deal ") {
         flags |= ModFlags::SPELL;
         rest = stripped.into();
+    } else if let Some(stripped) = rest.strip_prefix("spell hits gain ") {
+        // 「Spell Hits Gain/Deal/Have …」（vendor ModParser.lua:1273
+        // `^spell hits [ghd][ae][iva][eln] ` → flags=ModFlag.Hit,
+        // keywordFlags=KeywordFlag.Spell）。PoBR 无 Spell keyword 位，Spell 维度
+        // 折为 ModFlags::SPELL（cfg 对法术技能置 SPELL 位，子集匹配 ≡ vendor
+        // keyword ANY 匹配）；HIT 位由 cfg 按 vendor CalcActiveSkill.lua:176/:523
+        // 的 hit 技能判定供给。`gain ` 动词保留给 gain-as 解析路径。
+        flags |= ModFlags::HIT | ModFlags::SPELL;
+        rest = format!("gain {stripped}");
+    } else if let Some(stripped) = rest
+        .strip_prefix("spell hits deal ")
+        .or_else(|| rest.strip_prefix("spell hits have "))
+    {
+        flags |= ModFlags::HIT | ModFlags::SPELL;
+        rest = stripped.into();
     } else if let Some(stripped) = rest.strip_prefix("spells ") {
         flags |= ModFlags::SPELL;
         rest = stripped.into();
@@ -204,7 +219,13 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
 
     // 转换 / gain-as-extra：`N% of <from> Damage Converted to <to> Damage` /
     // `Gain N% of Damage as Extra <to> Damage`（含 of all Elements 展开）。
-    if let Some(mods) = parse_conversion_or_gain(&rest, original) {
+    // 前缀 flags（attacks/spells/spell hits …）随产物落位（vendor 前缀表语义）。
+    if let Some(mut mods) = parse_conversion_or_gain(&rest, original) {
+        if !flags.is_empty() {
+            for m in &mut mods {
+                *m = m.clone().with_flags(flags);
+            }
+        }
         return Ok(ParseOutcome {
             mods,
             status: ParseStatus::Parsed,
@@ -523,19 +544,39 @@ fn type_pascal(word: &str) -> Option<&'static str> {
 /// - `N% of <from> damage converted to <to> damage` → `<From>DamageConvertTo<To>` BASE N
 /// - `gain N% of damage as extra <to> damage` → `DamageGainAs<To>` BASE N
 /// - `gain N% of <from> damage as extra <to> damage` → `<From>DamageGainAs<To>` BASE N
+///   （`<from>` 额外支持聚合源 `elemental`/`non-chaos`——vendor modNameList
+///   `["elemental damage"] = "ElementalDamage"`（ModParser.lua:702）+ 后缀表
+///   `["as extra cold damage"] = "GainAsCold"`（:6173），ModCache 实证
+///   `Gain 10% of Elemental Damage as Extra Cold Damage` → `ElementalDamageGainAsCold`）
 /// - `... as extra damage of all elements` → 火/冰/电三条
+/// - `... as extra damage of a random element` → `<From>DamageGainAsRandom`
+///   （vendor 后缀表 `["as extra damage of a random element"] = "GainAsRandom"`，
+///   ModParser.lua:6182；消费 = CalcOffence.lua:1175-1200 按 physMode 展开，
+///   PoBR 在 `damage::build_gain_matrix` 折叠 AVERAGE 档）
+/// - 尾缀 `per curse on target/enemy` / `for each curse on (the) enemy` →
+///   `Multiplier:CurseOnEnemy` tag（vendor ModParser.lua:1507-1510；乘数 =
+///   `#curseSlots`，CalcPerform.lua:2969 ↔ PoBR buff_pass）
+/// - 尾缀 `for every different grenade fired in the past N seconds` →
+///   `Multiplier:DifferentGrenadeFired`（limitVar=GrenadeTypes，vendor :1528）
 fn parse_conversion_or_gain(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    // 已知数值缩放尾缀 → Multiplier tag（先剥后解析本体）。
+    let (rest, mult_tag) = strip_gain_multiplier_suffix(rest);
     let body = rest.strip_prefix("gain ").unwrap_or(rest);
     let (pct_str, after) = body.split_once("% of ")?;
     let pct: f64 = pct_str.trim().parse().ok()?;
     // after: `<from> damage converted to <to> damage` 或 `damage as extra <to> damage`
-    let (from, tail) = if let Some(t) = after.strip_prefix("damage ") {
-        (None, t) // `Gain N% of Damage as Extra ...`（源为通用 Damage）
+    let (from_prefix, tail) = if let Some(t) = after.strip_prefix("damage ") {
+        ("", t) // `Gain N% of Damage as Extra ...`（源为通用 Damage）
     } else {
         let (from_word, t) = after.split_once(" damage ")?;
-        (Some(type_pascal(from_word)?), t)
+        let prefix = match from_word.trim() {
+            // 聚合源（vendor ModParser.lua:702 / buildGainTable 的 Elemental/NonChaos 形）。
+            "elemental" => "Elemental",
+            "non-chaos" => "NonChaos",
+            other => type_pascal(other)?,
+        };
+        (prefix, t)
     };
-    let from_prefix = from.unwrap_or("");
 
     let (kind, to_part) = if let Some(t) = tail.strip_prefix("converted to ") {
         ("ConvertTo", t)
@@ -547,24 +588,83 @@ fn parse_conversion_or_gain(rest: &str, source: &str) -> Option<Vec<Modifier>> {
         return None;
     };
 
+    let with_tag = |m: Modifier| match &mult_tag {
+        Some(tag) => m.with_tag(tag.clone()),
+        None => m,
+    };
+
     // `damage of all elements` → 三元素；否则 `<to> damage`。
     if to_part.starts_with("damage of all elements") {
         return Some(
             ["Fire", "Cold", "Lightning"]
                 .iter()
                 .map(|to| {
-                    Modifier::number(format!("{from_prefix}Damage{kind}{to}"), ModType::Base, pct)
-                        .with_source(source)
+                    with_tag(
+                        Modifier::number(
+                            format!("{from_prefix}Damage{kind}{to}"),
+                            ModType::Base,
+                            pct,
+                        )
+                        .with_source(source),
+                    )
                 })
                 .collect(),
         );
     }
+    // `damage of a random element` → `<From>DamageGainAsRandom`（仅 GainAs 形）。
+    if to_part.starts_with("damage of a random element") && kind == "GainAs" {
+        return Some(vec![with_tag(
+            Modifier::number(
+                format!("{from_prefix}DamageGainAsRandom"),
+                ModType::Base,
+                pct,
+            )
+            .with_source(source),
+        )]);
+    }
     let to_word = to_part.strip_suffix(" damage").unwrap_or(to_part);
     let to = type_pascal(to_word)?;
-    Some(vec![
+    Some(vec![with_tag(
         Modifier::number(format!("{from_prefix}Damage{kind}{to}"), ModType::Base, pct)
             .with_source(source),
-    ])
+    )])
+}
+
+/// gain-as 词条的数值缩放尾缀 → `(剥离后文本, Multiplier tag)`。
+///
+/// vendor 对照（ModParser.lua modTagList 实读）：
+/// - `:1507-1510`：`per curse on enemy/target`、`for each curse on (the) enemy`
+///   → `Multiplier:CurseOnEnemy`；
+/// - `:1528`：`for every different grenade fired in the past N seconds`
+///   → `Multiplier:DifferentGrenadeFired`（limitVar=GrenadeTypes）。
+fn strip_gain_multiplier_suffix(rest: &str) -> (&str, Option<ModTag>) {
+    for suffix in [
+        " per curse on target",
+        " per curse on enemy",
+        " for each curse on the enemy",
+        " for each curse on enemy",
+    ] {
+        if let Some(head) = rest.strip_suffix(suffix) {
+            return (head, Some(ModTag::multiplier("CurseOnEnemy", 1.0, None)));
+        }
+    }
+    // `for every different grenade fired in the past N seconds`（N 不入语义）。
+    if let Some(idx) = rest.find(" for every different grenade fired in the past ")
+        && rest.ends_with(" seconds")
+    {
+        return (
+            &rest[..idx],
+            Some(ModTag::Multiplier {
+                var: "DifferentGrenadeFired".into(),
+                div: 1.0,
+                limit: None,
+                actor: None,
+                limit_var: Some("GrenadeTypes".into()),
+                limit_actor: None,
+            }),
+        );
+    }
+    (rest, None)
 }
 
 /// 玩家侧穿透词条（M3-W3 R3，迁移清单 §2-R3；`rest` 已小写规范）：

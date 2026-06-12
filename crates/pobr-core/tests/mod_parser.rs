@@ -1,6 +1,6 @@
 use pobr_core::mod_cache::ModCache;
 use pobr_core::mod_parser::{ParseOutcome, ParseStatus, parse_mod};
-use pobr_core::{ModTag, ModValue};
+use pobr_core::{CalcConfig, ModTag, ModValue};
 use pobr_data::prelude::*;
 
 #[test]
@@ -258,6 +258,90 @@ fn parses_conversion_and_gain_as_extra() {
 
     let o = parse_mod("Gain 5% of Damage as Extra Damage of all Elements").unwrap();
     assert_eq!(o.mods.len(), 3, "all elements → fire/cold/lightning");
+}
+
+/// 聚合源 gain-as（M4-H；vendor ModParser.lua:702 `["elemental damage"] =
+/// "ElementalDamage"` + 后缀表 `:6173` → `ElementalDamageGainAsCold`，ModCache
+/// 实证 `Gain 10% of Elemental Damage as Extra Cold Damage`；druid-oracle
+/// ember-fusillade 的 Storm Bane/Blood Barrier 词条）。
+#[test]
+fn parses_elemental_source_gain_as_extra() {
+    let o = parse_mod("Gain 16% of Elemental Damage as Extra Cold Damage").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("ElementalDamageGainAsCold"));
+    assert_eq!(o.mods[0].mod_type, ModType::Base);
+    assert_eq!(o.mods[0].value, ModValue::Number(16.0));
+}
+
+/// random element 档（M4-H；vendor ModParser.lua:6182 `["as extra damage of a
+/// random element"] = "GainAsRandom"`，ModCache.lua:5257 `Gain 5% of Damage as
+/// Extra Damage of a random Element` → `DamageGainAsRandom BASE 5`；消费 =
+/// CalcOffence.lua:1175-1200 physMode 展开）。
+#[test]
+fn parses_random_element_gain_as() {
+    let o = parse_mod("Gain 5% of Damage as Extra Damage of a random Element").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("DamageGainAsRandom"));
+    assert_eq!(o.mods[0].value, ModValue::Number(5.0));
+
+    // weapon phys 变体（ModParser.lua:3691 `gain N% of physical damage as extra
+    // damage of a random element` → PhysicalDamageGainAsRandom）。
+    let o = parse_mod("Gain 10% of Physical Damage as Extra Damage of a random Element").unwrap();
+    assert_eq!(o.mods[0].name, ModName::from("PhysicalDamageGainAsRandom"));
+}
+
+/// per-curse 数值缩放尾缀（M4-H；vendor ModParser.lua:1507-1510 →
+/// `Multiplier:CurseOnEnemy`，乘数 = `#curseSlots`（CalcPerform.lua:2969）；
+/// witch-blood-mage Liminal Coil 词条 `Spell Hits Gain 30% of Damage as Extra
+/// Physical Damage per Curse on target` → raw 30 × 5 curse = vendor 实测 150）。
+#[test]
+fn parses_gain_as_per_curse_with_spell_hits_prefix() {
+    let o = parse_mod("Spell Hits Gain 30% of Damage as Extra Physical Damage per Curse on target")
+        .unwrap();
+    assert_eq!(o.mods.len(), 1);
+    let m = &o.mods[0];
+    assert_eq!(m.name, ModName::from("DamageGainAsPhysical"));
+    assert_eq!(m.mod_type, ModType::Base);
+    assert_eq!(m.value, ModValue::Number(30.0));
+    // vendor `^spell hits [ghd][ae][iva][eln] ` → flags=Hit, keywordFlags=Spell
+    // （ModParser.lua:1273）；PoBR 无 Spell keyword 位，等价折为 HIT|SPELL ModFlags。
+    assert_eq!(m.flags, ModFlags::HIT | ModFlags::SPELL);
+    assert!(
+        m.tags
+            .iter()
+            .any(|t| matches!(t, ModTag::Multiplier { var, .. } if var == "CurseOnEnemy")),
+        "应携带 Multiplier:CurseOnEnemy tag"
+    );
+
+    // 乘数求值：5 个 curse 槽 → 30 × 5 = 150（vendor witch oracle 钉值）。
+    let cfg = CalcConfig::new()
+        .with_flags(ModFlags::HIT | ModFlags::SPELL)
+        .with_multiplier("CurseOnEnemy", 5.0);
+    assert_eq!(m.effective_number(&cfg), Some(150.0));
+}
+
+/// per-different-grenade 尾缀（M4-H；vendor ModParser.lua:1528 →
+/// `Multiplier:DifferentGrenadeFired`，limitVar=GrenadeTypes；mercenary
+/// Demolitionist 树点 `Gain 4% of Damage as Extra Fire Damage for every
+/// different Grenade fired in the past 8 seconds`）。
+#[test]
+fn parses_gain_as_per_different_grenade_fired() {
+    let o = parse_mod(
+        "Gain 4% of Damage as Extra Fire Damage for every different Grenade fired in the past 8 seconds",
+    )
+    .unwrap();
+    assert_eq!(o.mods.len(), 1);
+    let m = &o.mods[0];
+    assert_eq!(m.name, ModName::from("DamageGainAsFire"));
+    assert_eq!(m.value, ModValue::Number(4.0));
+    assert!(
+        m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Multiplier { var, limit_var: Some(lv), .. }
+                if var == "DifferentGrenadeFired" && lv == "GrenadeTypes"
+        )),
+        "应携带 Multiplier:DifferentGrenadeFired（limitVar=GrenadeTypes）tag"
+    );
 }
 
 #[test]
