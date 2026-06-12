@@ -498,6 +498,95 @@ fn penetration_skipped_when_resist_at_or_below_min_pen() {
     );
 }
 
+// M4-m：击中视敌元素抗性为反转（Rakiata's Flow
+// `treat_enemy_resistances_as_negated_…` → HitsInvertEleResChance CHANCE，
+// SkillStatMap.lua:941-944；消费 vendor CalcOffence.lua:4145-4148
+// `resist = resist - 2 * invertChance * resist`，clamp 后、穿透前）。
+
+#[test]
+fn hits_invert_ele_res_chance_inverts_enemy_resist() {
+    // 抗 50、反转几率 1.0 → resist = 50 - 2*50 = -50 → 火伤 100 × 1.5 = 150。
+    let mut player = fire_only_player();
+    player.add_mod(Modifier::number(
+        "HitsInvertEleResChance",
+        ModType::Base,
+        1.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 150.0).abs() < 1e-6,
+        "反转后抗 -50 → 100*1.5 = 150, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn hits_invert_partial_chance_blends_resist() {
+    // 抗 50、几率 0.5 → resist = 50 - 2*0.5*50 = 0 → 火伤 100（vendor 线性混合）。
+    let mut player = fire_only_player();
+    player.add_mod(Modifier::number(
+        "HitsInvertEleResChance",
+        ModType::Base,
+        0.5,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 100.0).abs() < 1e-6,
+        "几率 0.5 → 抗 0 → 100, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn hits_invert_applies_before_penetration() {
+    // 反转先行（vendor :4145 在 :4163 effMult 扣 pen 之前）：抗 50 反转为 -50，
+    // 此时 resist ≤ minPen(0) → 穿透整段跳过（浪费），仍 1.5 倍。
+    let mut player = fire_only_player();
+    player.add_mod(Modifier::number(
+        "HitsInvertEleResChance",
+        ModType::Base,
+        1.0,
+    ));
+    player.add_mod(Modifier::number("FirePenetration", ModType::Base, 30.0));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 150.0).abs() < 1e-6,
+        "负抗下穿透跳过 → 100*1.5 = 150, got {}",
+        out.dps
+    );
+}
+
+#[test]
+fn hits_invert_does_not_touch_chaos_or_panel_mode() {
+    // 仅三元素（vendor isElemental 门）：混沌抗不反转；面板口径不走敌减伤段。
+    let mut player = ModDb::new();
+    player.add_mod(Modifier::number("ChaosDamageMin", ModType::Base, 100.0));
+    player.add_mod(Modifier::number("ChaosDamageMax", ModType::Base, 100.0));
+    player.add_mod(Modifier::number(
+        "HitsInvertEleResChance",
+        ModType::Base,
+        1.0,
+    ));
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("ChaosResist", ModType::Base, 40.0));
+
+    let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
+    assert!(
+        (out.dps - 60.0).abs() < 1e-6,
+        "混沌不反转 → 100*0.6 = 60, got {}",
+        out.dps
+    );
+}
+
 // ---------------------------------------------------------------------------
 // 3. 曝光取最强（exposure-min-of via ModDb::max_of + reduce_enemy_exposure）
 // ---------------------------------------------------------------------------

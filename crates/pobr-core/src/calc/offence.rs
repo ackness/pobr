@@ -891,7 +891,25 @@ fn enemy_damage_multiplier(
     let mitigation = if damage_type == DamageType::Physical {
         enemy_physical_multiplier(player_db, enemy_db, &type_cfg, raw_hit)
     } else {
-        let resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
+        let mut resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
+        // （M4-m）击中视敌元素抗性为反转（Rakiata's Flow 等，vendor
+        // CalcOffence.lua:4145-4148）：`invertChance = clamp(Sum(CHANCE,
+        // "HitsInvertEleResChance"), 0, 1)`，仅三元素；
+        // `resist = (1-c)*resist + c*(-resist) = resist - 2*c*resist`。
+        // 在抗性 clamp 之后、穿透之前应用（vendor 同序：:4135 pen 取数、
+        // :4145 反转、:4163 effMult 内扣 pen）。
+        if damage_type.is_elemental() {
+            let invert = player_db
+                .sum(
+                    ModType::Base,
+                    &type_cfg,
+                    &[ModName::from("HitsInvertEleResChance")],
+                )
+                .clamp(0.0, 1.0);
+            if invert > 0.0 {
+                resist -= 2.0 * invert * resist;
+            }
+        }
         let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
         1.0 - effective_resist / 100.0
     };
