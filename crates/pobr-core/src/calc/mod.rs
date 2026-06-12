@@ -18,6 +18,7 @@ pub mod output;
 pub mod perform;
 pub mod pool_damage;
 pub mod pool_setup;
+pub mod scaled_damage;
 pub mod session;
 pub mod setup_env;
 pub mod skill_mechanics;
@@ -82,6 +83,9 @@ pub use pool_damage::{
 };
 pub use pool_setup::{
     MomHitPools, PoolBaseStats, build_pool_ctx, build_pool_state, minimum_es_bypass, mom_hit_pools,
+};
+pub use scaled_damage::{
+    AllMultExtras, DpsEndFactors, ScaledDamage, all_mult, dps_end_factors, scaled_damage_effect,
 };
 pub use session::{BuffKind, BuffSpec, CalculationSession};
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
