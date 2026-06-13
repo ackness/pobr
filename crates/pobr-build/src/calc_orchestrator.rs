@@ -278,9 +278,15 @@ pub fn calculate_with_data(
     // 评估后回填（仅 Effective 单 tag 形态；其余 tag 形态维持 mod 通道）。
     if options.mode_effective {
         for m in &resolved_config.player_mods {
+            // 仅收「带 tag 且全为 Effective」的形态——**空 tag 条目必须排除**：
+            // 裸 `Multiplier:` 效果已由 interpreter 裸效果回填进 cfg.multipliers
+            // （config_interpreter.rs:362-377），此处再加即双计（M4-n 实查：
+            // sigilOfPowerStages placeholder 1 在 eff 口径被加成 2，Sigil of
+            // Power per-stage MORE 17→34 伪高）。
             if m.mod_type == ModType::Base
                 && let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
                 && let pobr_core::ModValue::Number(n) = m.value
+                && !m.tags.is_empty()
                 && m.tags.iter().all(|t| {
                     matches!(t, pobr_core::ModTag::Condition { var, negated: false, actor: None } if var == "Effective")
                 })
