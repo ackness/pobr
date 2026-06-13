@@ -16,6 +16,7 @@ members = [
     "tools/sync-pob-catalog",
     "tools/pobr-data-adapter",
     "tools/lint-i18n",
+    "tools/precompile-mods",
 ]
 resolver = "2"
 

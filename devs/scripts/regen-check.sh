@@ -156,6 +156,83 @@ if [[ "${#DIFF_FILES[@]}" -gt 0 ]]; then
     echo "若来自手改 data/，撤销手改（data/ 只能由 adapter 生成）。"
 fi
 
+# ============================================================================
+# generated 段：precompile-mods 重生一致 + 覆盖率棘轮（M6-T7，架构 §4 防线 ③）
+# ----------------------------------------------------------------------------
+# precompile-mods 直接写 data/<patch>/generated/{parsed_mods.json,parse-coverage.json}。
+# 校验方式：先把这两份已提交产物用 git 暂存到临时副本 → 原地重跑 precompile →
+# byte-diff 重生产物 vs 已提交副本 → 用 git restore 还原工作区（CI 无副作用）。
+# 输入 = 已提交 base/passive_tree.json + generated/special_derived.json + examples build XML，
+# 无 pipeline 依赖；仓库有 data/<patch>/ 即可重跑。
+# ============================================================================
+GEN_DIR="$COMMITTED_FLAT/generated"
+GEN_PARSED="$GEN_DIR/parsed_mods.json"
+GEN_COVERAGE="$GEN_DIR/parse-coverage.json"
+BASELINE="$ROOT/devs/ci/parse-coverage-baseline.json"
+
+if [[ -f "$GEN_PARSED" ]]; then
+    echo ""
+    echo "regen-check: 重跑 precompile-mods（generated 段）……"
+
+    # 已提交产物暂存到临时目录（byte 对照基准）。
+    GEN_STASH="$(mktemp -d "${TMPDIR:-/tmp}/pobr-gen-stash.XXXXXX")"
+    trap 'rm -rf "$TMP_OUT" "$GEN_STASH"' EXIT
+    cp "$GEN_PARSED" "$GEN_STASH/parsed_mods.json"
+    [[ -f "$GEN_COVERAGE" ]] && cp "$GEN_COVERAGE" "$GEN_STASH/parse-coverage.json"
+
+    # 原地重跑（写回 generated/）。
+    cargo run --quiet -p precompile-mods --manifest-path "$ROOT/Cargo.toml" -- \
+        --data "$COMMITTED_FLAT" --report >/dev/null
+
+    GEN_DIFF=0
+    if ! cmp -s "$GEN_STASH/parsed_mods.json" "$GEN_PARSED"; then
+        GEN_DIFF=1
+        echo "regen-check: generated/parsed_mods.json byte-diff 不为零（precompile 漂移）。"
+    fi
+    if [[ -f "$GEN_STASH/parse-coverage.json" ]] \
+       && ! cmp -s "$GEN_STASH/parse-coverage.json" "$GEN_COVERAGE"; then
+        GEN_DIFF=1
+        echo "regen-check: generated/parse-coverage.json byte-diff 不为零（precompile 漂移）。"
+    fi
+
+    # 还原工作区（不污染 git status）。重跑产物与已提交一致时本身就是 no-op。
+    git -C "$ROOT" checkout -- "$GEN_PARSED" 2>/dev/null || true
+    [[ -f "$GEN_COVERAGE" ]] && { git -C "$ROOT" checkout -- "$GEN_COVERAGE" 2>/dev/null || true; }
+    rm -rf "$GEN_STASH"
+
+    if [[ "$GEN_DIFF" -eq 1 ]]; then
+        STATUS=1
+        echo "处理方式：重跑 cargo run -p precompile-mods -- --data $COMMITTED_FLAT --report 并提交新产物；"
+        echo "data/<patch>/generated/ 只能由工具生成，禁手改。"
+    else
+        echo "regen-check: OK — generated 段（parsed_mods/parse-coverage）byte-diff 全零。"
+    fi
+
+    # 覆盖率棘轮：已提交报表的 coverage_ratio 不得低于 baseline。
+    if [[ -f "$BASELINE" && -f "$GEN_COVERAGE" ]]; then
+        CUR_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' \
+            "$GEN_COVERAGE" | head -1)"
+        BASE_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' \
+            "$BASELINE" | head -1)"
+        if [[ -n "$CUR_RATIO" && -n "$BASE_RATIO" ]]; then
+            # 浮点比较走 awk。
+            if awk "BEGIN { exit !(${CUR_RATIO} + 0.0000005 < ${BASE_RATIO}) }"; then
+                STATUS=1
+                echo ""
+                echo "regen-check: 覆盖率棘轮失败 —— 当前 ${CUR_RATIO} < 基线 ${BASE_RATIO}"
+                echo "解析覆盖率不得降低（蓝图 §6.3）；若属预期（语料扩面）请同 PR 更新"
+                echo "devs/ci/parse-coverage-baseline.json"
+            elif awk "BEGIN { exit !(${CUR_RATIO} > ${BASE_RATIO} + 0.0000005) }"; then
+                echo "regen-check: 提示 —— 覆盖率 ${CUR_RATIO} 高于基线 ${BASE_RATIO}，可同 PR 抬高 baseline"
+            else
+                echo "regen-check: OK — 覆盖率棘轮达标（当前 ${CUR_RATIO}，基线 ${BASE_RATIO}）"
+            fi
+        fi
+    fi
+else
+    echo "regen-check: SKIP generated 段 —— 缺已提交 generated/parsed_mods.json（precompile 尚未产出）。"
+fi
+
 if [[ "$STATUS" -eq 0 ]]; then
     echo "regen-check: OK — $CHECKED 个文件 byte-diff 全零（manifest.json 暂排除）。"
 fi
