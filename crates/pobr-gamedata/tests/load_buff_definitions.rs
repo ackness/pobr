@@ -140,12 +140,23 @@ fn unholy_might_shape() {
 #[test]
 fn vendor_refs_well_formed() {
     let doc = load();
+    // 允许的 vendor 行段：doActorMisc（CalcPerform :503-765，主体）+
+    // Arcane Surge 注入段（CalcDefence :1580-1591，vendor 把该 buff 写在
+    // doActorLifeManaSpirit 之后、recovery 之前——M4-n 条目）。
+    let allowed: &[(&str, u32, u32)] = &[
+        ("Modules/CalcPerform.lua", 503, 765),
+        ("Modules/CalcDefence.lua", 1580, 1591),
+    ];
     for buff in &doc.buffs {
-        assert_eq!(buff.vendor_ref.file, "Modules/CalcPerform.lua");
         assert!(
-            buff.vendor_ref.line_start >= 503 && buff.vendor_ref.line_end <= 765,
-            "{} 行段 {}–{} 超出 doActorMisc 范围",
+            allowed
+                .iter()
+                .any(|(file, lo, hi)| buff.vendor_ref.file == *file
+                    && buff.vendor_ref.line_start >= *lo
+                    && buff.vendor_ref.line_end <= *hi),
+            "{} 行段 {}:{}–{} 超出允许范围",
             buff.id,
+            buff.vendor_ref.file,
             buff.vendor_ref.line_start,
             buff.vendor_ref.line_end
         );

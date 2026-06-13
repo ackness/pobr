@@ -48,7 +48,7 @@ use pobr_tree::{
 };
 
 use crate::buff_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat};
-use crate::build::{Build, SocketGroup};
+use crate::build::{Build, RadiusJewel, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
 
@@ -688,9 +688,10 @@ pub fn calculate_with_data(
             .map_err(|e| BuildError::Parse(e.to_string()))?;
 
         // 槽位加成效果副本：该槽位有 `EffectOfBonusesFrom<Slot>` INC 时，把本件已
-        // 注入词条的**数值副本 × scale** 追加注入（vendor CalcPerform.lua:1347-1369
-        // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`；flag 副本
-        // 为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
+        // 注入词条的**数值差额副本** 追加注入（vendor CalcPerform.lua:1347-1369
+        // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`——数值
+        // 缩放为截尾语义 [`vendor_scale_mod_value`]，差额 = trunc(round(v×(1+s),2))−v；
+        // flag 副本为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
         // :1328-1334 的对侧取词条一致。
         if let Some(&(_, scale)) = bonus_scales
             .iter()
@@ -702,10 +703,13 @@ pub fn calculate_with_data(
                 .modifiers
                 .into_iter()
                 .filter_map(|m| match m.value {
-                    pobr_core::ModValue::Number(v) => Some(Modifier {
-                        value: pobr_core::ModValue::Number(v * scale),
-                        ..m
-                    }),
+                    pobr_core::ModValue::Number(v) => {
+                        let delta = vendor_scale_mod_value(v, 1.0 + scale) - v;
+                        (delta != 0.0).then_some(Modifier {
+                            value: pobr_core::ModValue::Number(delta),
+                            ..m
+                        })
+                    }
                     _ => None,
                 })
                 .collect();
@@ -805,12 +809,14 @@ pub fn calculate_with_data(
         // 3b. 小点效果缩放（Titan『Hulking Form』等『N% increased effect of Small
         //     Passive Skills』）：vendor CalcSetup.lua:286-292 先对全部已分配节点求
         //     SmallPassiveSkillEffect INC 总和，:271-277 再对每个『Normal 且非属性
-        //     小点且非飞升』节点的 modList 整体 ScaleAddList ×(1+inc/100)。PoBR 等价
-        //     实现：基础份已按 1.0 注入（上方 add_passive_nodes），此处对受影响小点
-        //     追加 **数值副本 × inc/100**（BASE/INC 的加性副本与整体缩放逐值相等；
+        //     小点且非飞升』节点的 modList 整体 ScaleAddList ×(1+inc/100)——数值
+        //     缩放为截尾语义（[`vendor_scale_mod_value`]，如 3×1.5=4.5→4）。PoBR
+        //     等价实现：基础份已按 1.0 注入（上方 add_passive_nodes），此处对受影响
+        //     小点追加 **数值差额副本** `trunc(round(v×scale,2)) − v`（BASE/INC；
         //     小点无 MORE 数值词条，flag 副本为无操作，均跳过）。
         let small_inc = small_passive_effect_inc(build, data);
         if small_inc > 0.0 {
+            let small_scale = 1.0 + small_inc / 100.0;
             let small_nodes: Vec<AllocatedNode> = passive_nodes
                 .iter()
                 .filter(|n| {
@@ -830,15 +836,27 @@ pub fn calculate_with_data(
                     .into_iter()
                     .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
                     .filter_map(|m| match m.value {
-                        pobr_core::ModValue::Number(v) => Some(Modifier {
-                            value: pobr_core::ModValue::Number(v * small_inc / 100.0),
-                            ..m
-                        }),
+                        pobr_core::ModValue::Number(v) => {
+                            let delta = vendor_scale_mod_value(v, small_scale) - v;
+                            (delta != 0.0).then_some(Modifier {
+                                value: pobr_core::ModValue::Number(delta),
+                                ..m
+                            })
+                        }
                         _ => None,
                     })
                     .collect();
                 session.add_modifiers(scaled);
             }
+        }
+
+        // 3b'. 范围珠宝 Notable 效果缩放（M4-n，Time-Lost『N% increased Effect of
+        //      Notable Passive Skills in Radius』）：对半径内已分配 notable 的自身
+        //      词条追加缩放差额副本（vendor CalcSetup.lua:246-275 ScaleAddList；
+        //      授予词条侧的同名缩放在 radius_jewel_grant_texts 内联处理）。
+        let notable_copies = radius_jewel_notable_effect_copies(build, data, &passive_nodes)?;
+        if !notable_copies.is_empty() {
+            session.add_modifiers(notable_copies);
         }
     }
 
@@ -5236,12 +5254,24 @@ fn is_attribute_node(def: &pobr_data::catalog::PassiveNodeDef) -> bool {
     })
 }
 
-/// 把所有范围珠宝的 `also grant` 词条按半径几何展开为全局 modifier 文本。
+/// 单个范围珠宝的几何展开结果：半径内**已分配**的 notable 节点 id 列表与
+/// small（普通且非属性）节点计数。
+struct RadiusJewelExpansion<'a> {
+    jewel: &'a RadiusJewel,
+    /// 半径内已分配 Notable 节点 id（含属性 notable；效果缩放消费方自行再过滤）。
+    notable_nodes: Vec<u32>,
+    small_count: usize,
+}
+
+/// 对全部范围珠宝做半径几何展开（圆心 = 插槽节点坐标，档位 = `Radius:` 行）。
 ///
-/// 对每个珠宝：以插槽节点坐标为圆心、按 `Radius:` 档位筛出**已分配**节点，按种类计数
-/// （notable / small=普通），每个 `also grant` 行按对应计数注入 `count` 份授予 mod 文本。
-/// 这复刻 PoB2「半径内每个该种类（已分配）节点各获得一份授予」的累加效果。
-fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
+/// 候选只在**已分配**节点集合中筛；socket 坐标缺失或几何计算失败的珠宝跳过
+/// （不臆造）。供 [`radius_jewel_grant_texts`]（授予词条展开）与
+/// [`radius_jewel_notable_effect_copies`]（notable 效果缩放）共享。
+fn radius_jewel_expansions<'a>(
+    build: &'a Build,
+    data: &BuildData,
+) -> Vec<RadiusJewelExpansion<'a>> {
     if build.radius_jewels.is_empty() {
         return Vec::new();
     }
@@ -5260,7 +5290,7 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
         }
     }
 
-    let mut out: Vec<String> = Vec::new();
+    let mut out: Vec<RadiusJewelExpansion<'a>> = Vec::new();
     for jewel in &build.radius_jewels {
         // socket 坐标须可得，否则无法定圆心（跳过，不臆造）。
         let Some(socket_pos) =
@@ -5293,38 +5323,155 @@ fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
             Err(_) => continue,
         };
 
-        // 半径内已分配节点按种类计数。Small 排除属性小点（`+5 to any Attribute`
+        // 半径内已分配节点按种类归集。Small 排除属性小点（`+5 to any Attribute`
         // 三选一节点）：vendor `<Kind> Passive Skills in Radius also grant` 处理函数
         // 要求 `node.type == "Normal" and not node.isAttribute`（PoB2
         // ModParser.lua:6855-6857，tree.lua 对应节点带 `isAttribute=true`）。
-        let (mut notables, mut smalls) = (0usize, 0usize);
+        let mut notable_nodes: Vec<u32> = Vec::new();
+        let mut small_count = 0usize;
         for &skill in &effect.affected_nodes {
             let Some(def) = data.passive_nodes.get(&skill) else {
                 continue;
             };
             match def.kind {
-                pobr_data::catalog::PassiveNodeKind::Notable => notables += 1,
+                pobr_data::catalog::PassiveNodeKind::Notable => notable_nodes.push(skill),
                 pobr_data::catalog::PassiveNodeKind::Normal if !is_attribute_node(def) => {
-                    smalls += 1;
+                    small_count += 1;
                 }
                 _ => {}
             }
         }
+        notable_nodes.sort_unstable();
+        out.push(RadiusJewelExpansion {
+            jewel,
+            notable_nodes,
+            small_count,
+        });
+    }
+    out
+}
 
-        for line in &jewel.grant_lines {
+/// vendor `ModStore:ScaleAddMod` 的数值缩放语义（ModStore.lua:45-80）：
+/// `m_modf(round(value * scale, 2))` —— 先两位小数四舍五入、再**截尾取整**
+/// （朝零方向，如 `30.5 → 30`、`14.76 → 14`）。
+fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
+    let rounded = (value * scale * 100.0).round() / 100.0;
+    rounded.trunc()
+}
+
+/// 把词条文本里**第一个**数值 token 按 [`vendor_scale_mod_value`] 缩放后回写
+/// （如 `10% increased X` ×1.22 → `12% increased X`）。无数值 token 时返回 None
+/// （flag 类词条不缩放，vendor 同语义——非数值 mod 原样 AddMod）。
+fn scale_leading_number(text: &str, scale: f64) -> Option<String> {
+    let start = text.find(|c: char| c.is_ascii_digit())?;
+    let end = text[start..]
+        .find(|c: char| !c.is_ascii_digit() && c != '.')
+        .map(|i| start + i)
+        .unwrap_or(text.len());
+    let value: f64 = text[start..end].parse().ok()?;
+    let scaled = vendor_scale_mod_value(value, scale);
+    Some(format!("{}{}{}", &text[..start], scaled, &text[end..]))
+}
+
+/// 把所有范围珠宝的 `also grant` 词条按半径几何展开为全局 modifier 文本。
+///
+/// 对每个珠宝：以插槽节点坐标为圆心、按 `Radius:` 档位筛出**已分配**节点，按种类计数
+/// （notable / small=普通），每个 `also grant` 行按对应计数注入 `count` 份授予 mod 文本。
+/// 这复刻 PoB2「半径内每个该种类（已分配）节点各获得一份授予」的累加效果。
+///
+/// Notable 效果缩放（Time-Lost『N% increased Effect of Notable Passive Skills in
+/// Radius』）：vendor 把授予 mod 写进节点 modList 后对 Notable 节点整体
+/// ScaleAddList（CalcSetup.lua:246-275），等价于授予值 ×(1+inc/100)（截尾，
+/// [`vendor_scale_mod_value`]）。半径重叠时 vendor 同节点后写覆盖单一效果，
+/// PoBR 按授予珠宝自身效果近似（当前样本无重叠）。
+fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for exp in radius_jewel_expansions(build, data) {
+        let notable_scale = 1.0 + f64::from(exp.jewel.notable_effect_inc) / 100.0;
+        for line in &exp.jewel.grant_lines {
             let Some((kind, granted)) = parse_grant_line(line) else {
                 continue;
             };
-            let count = match kind {
-                GrantTargetKind::Notable => notables,
-                GrantTargetKind::Small => smalls,
+            let (count, text) = match kind {
+                GrantTargetKind::Notable => {
+                    let scaled = if exp.jewel.notable_effect_inc > 0 {
+                        scale_leading_number(&granted, notable_scale).unwrap_or(granted)
+                    } else {
+                        granted
+                    };
+                    (exp.notable_nodes.len(), scaled)
+                }
+                GrantTargetKind::Small => (exp.small_count, granted),
             };
             for _ in 0..count {
-                out.push(granted.clone());
+                out.push(text.clone());
             }
         }
     }
     out
+}
+
+/// （M4-n）范围珠宝 Notable 效果对**节点自身词条**的缩放副本。
+///
+/// vendor CalcSetup.lua:246-275：对半径内每个『Notable 且非属性且非飞升』节点的
+/// modList 整体 `ScaleAddList ×(1+inc/100)`（数值 = [`vendor_scale_mod_value`]
+/// 截尾语义）。PoBR 等价：基础份已按 1.0 注入（add_passive_nodes），此处追加
+/// **数值差额副本** `trunc(round(v×scale,2)) − v`（BASE/INC；MORE 的乘性缩放无
+/// 加性等价、树 notable 当前无 MORE 数值词条，跳过）。多珠宝半径重叠时同节点
+/// 后写覆盖单一效果（vendor `localNotableIncEffect = mod.value` 语义）。
+fn radius_jewel_notable_effect_copies(
+    build: &Build,
+    data: &BuildData,
+    passive_nodes: &[AllocatedNode],
+) -> Result<Vec<Modifier>, BuildError> {
+    let mut node_effect: std::collections::BTreeMap<u32, u32> = Default::default();
+    for exp in radius_jewel_expansions(build, data) {
+        if exp.jewel.notable_effect_inc == 0 {
+            continue;
+        }
+        for &n in &exp.notable_nodes {
+            node_effect.insert(n, exp.jewel.notable_effect_inc);
+        }
+    }
+    if node_effect.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut out: Vec<Modifier> = Vec::new();
+    for node in passive_nodes {
+        let Some(&inc) = node_effect.get(&node.node_id.0) else {
+            continue;
+        };
+        let Some(def) = data.passive_nodes.get(&node.node_id.0) else {
+            continue;
+        };
+        // vendor 缩放条件（CalcSetup.lua:269）：Notable 且非属性且非飞升。
+        if def.kind != pobr_data::catalog::PassiveNodeKind::Notable
+            || def.ascendancy_id.is_some()
+            || is_attribute_node(def)
+        {
+            continue;
+        }
+        let scale = 1.0 + f64::from(inc) / 100.0;
+        let ingest = pobr_core::passive::ingest_passive_nodes(std::slice::from_ref(node))
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+        out.extend(
+            ingest
+                .modifiers
+                .into_iter()
+                .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
+                .filter_map(|m| match m.value {
+                    pobr_core::ModValue::Number(v) => {
+                        let delta = vendor_scale_mod_value(v, scale) - v;
+                        (delta != 0.0).then_some(Modifier {
+                            value: pobr_core::ModValue::Number(delta),
+                            ..m
+                        })
+                    }
+                    _ => None,
+                }),
+        );
+    }
+    Ok(out)
 }
 
 /// 保留 [`parse_mod`] 不**硬失败**（`Ok(_)`，含 Parsed / Unsupported）的词条文本，

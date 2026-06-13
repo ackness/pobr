@@ -2125,6 +2125,20 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
             " while not on full life",
             ModTag::condition("FullLife", true),
         ),
+        // 低魔条件族（vendor ModParser.lua:1761-1763：`while/when [you are]
+        // [not] on low mana` → Condition:LowMana[/neg]；cfg 真值由 config
+        // `conditionLowMana` 供给，默认 false → neg 变体（如 Chakra of
+        // Thought『15% increased Attack Speed while not on Low Mana』）生效）。
+        (
+            " while you are not on low mana",
+            ModTag::condition("LowMana", true),
+        ),
+        (" while not on low mana", ModTag::condition("LowMana", true)),
+        (
+            " while you are on low mana",
+            ModTag::condition("LowMana", false),
+        ),
+        (" while on low mana", ModTag::condition("LowMana", false)),
         (
             " per power charge",
             ModTag::multiplier("PowerCharge", 1.0, None),
@@ -2195,6 +2209,16 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
         // 持法器条件（PoB2 `Condition:UsingFlask`）——build config `conditionUsingFlask`。
         (
             " while you have a flask active",
+            ModTag::condition("UsingFlask", false),
+        ),
+        // flask 生效期条件变体（vendor ModParser.lua:1840/:1841 →
+        // `Condition:UsingFlask`；激活态由 merge_flasks_charms 置真）。
+        (
+            " during any flask effect",
+            ModTag::condition("UsingFlask", false),
+        ),
+        (
+            " during flask effect",
             ModTag::condition("UsingFlask", false),
         ),
         // 近期暴击（8 秒窗）条件族（vendor ModParser.lua:1904-1906
@@ -2624,6 +2648,9 @@ fn parse_name(text: &str) -> Option<ModName> {
         "fire exposure effect" => "FireExposureEffect",
         "cold exposure effect" => "ColdExposureEffect",
         "lightning exposure effect" => "LightningExposureEffect",
+        // 奥术涌动效果（PoB2 ModParser.lua:472；消费方 = buff_definitions
+        // `ArcaneSurge` 条目的 effect.inc_stats，CalcDefence.lua:1582）。
+        "effect of arcane surge on you" => "ArcaneSurgeEffect",
         // 预留效率族（PoB2 ModParser.lua:220-231；CalcDefence.lua:172-350 除法语义）。
         "reservation efficiency" | "reservation efficiency of skills" => "ReservationEfficiency",
         "mana reservation efficiency" | "mana reservation efficiency of skills" => {
