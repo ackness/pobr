@@ -204,15 +204,16 @@ mod tests {
         assert!(ruleset.special_mods.is_none());
     }
 
-    /// 仓库数据目录：special_mods 域已接通（overlay 107 条 + 可选 generated 派生）。
-    /// 仅断言非空且条数 ≥ overlay 基数——具体计数随策展批次增长，不钉死。
+    /// 仓库数据目录：special_mods 域已接通（overlay 策展条目 + generated keystone
+    /// 派生拼接，M5b B-4 消费激活后过滤掉降级 shadow 条目）。仅断言非空且条数
+    /// ≥ overlay 基数——具体计数随策展批次增长，不钉死。
     #[test]
     fn repo_data_ruleset_loads_special_mods() {
         let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
         let ruleset = data.load_ruleset().unwrap();
         let entries = ruleset.special_mods.expect("special_mods 域应已接通");
         assert!(
-            entries.len() >= 100,
+            entries.len() >= 60,
             "special 条目数 {} 应 ≥ overlay 首批基数",
             entries.len()
         );
