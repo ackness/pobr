@@ -18,6 +18,7 @@ use pobr_data::catalog::game_constants::GameConstantsDef;
 use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::catalog::monster_scaling::MonsterScalingTable;
+use pobr_data::catalog::parser_rules::SpecialTemplateDef;
 use pobr_data::catalog::unarmed_data::UnarmedDataTable;
 use pobr_data::catalog::weapon_types::WeaponTypeTable;
 
@@ -92,6 +93,11 @@ pub struct RuleSet {
     /// 取整精度例外表（ScaleAddMod / MORE 聚合精度，M4-T1 W-A2 接通；
     /// 消费侧 = pobr-core `HighPrecisionRules`）。
     pub high_precision_mods: Option<HighPrecisionModsDef>,
+    /// special 词条模板（`overlay/special_mods.json` + `generated/special_derived.json`
+    /// 拼接，M5b B-4 接通数据面）。消费侧（orchestrator）`SpecialModRules::compile`
+    /// 一次后经 `parse_mod_with_rules` 整行查表；缺表 → `None`（消费方走纯通用解析，
+    /// 行为不变）。两表 entries 顺序拼接、id 冲突由 compile 期 fail-fast。
+    pub special_mods: Option<Vec<SpecialTemplateDef>>,
 }
 
 impl GameData {
@@ -148,6 +154,19 @@ impl GameData {
             Err(LoadError::Io { .. }) => None,
             Err(e) => return Err(e),
         };
+        // special 词条模板：overlay（人工策展）+ generated（keystone 派生）拼接。
+        // 两者皆缺 → None（消费方走纯通用解析）；任一存在则拼接 entries（id 冲突由
+        // 消费侧 `SpecialModRules::compile` fail-fast，不在加载期去重）。
+        let special_overlay = self.special_mods()?;
+        let special_derived = self.special_derived()?;
+        let special_mods = match (special_overlay, special_derived) {
+            (None, None) => None,
+            (overlay, derived) => {
+                let mut entries = overlay.map(|d| d.entries).unwrap_or_default();
+                entries.extend(derived.map(|d| d.entries).unwrap_or_default());
+                Some(entries)
+            }
+        };
         Ok(RuleSet {
             parser_rules: None,
             game_constants,
@@ -159,6 +178,7 @@ impl GameData {
             weapon_types,
             config_catalog,
             high_precision_mods,
+            special_mods,
         })
     }
 }
@@ -181,6 +201,21 @@ mod tests {
         assert!(ruleset.weapon_types.is_none());
         assert!(ruleset.config_catalog.is_none());
         assert!(ruleset.high_precision_mods.is_none());
+        assert!(ruleset.special_mods.is_none());
+    }
+
+    /// 仓库数据目录：special_mods 域已接通（overlay 107 条 + 可选 generated 派生）。
+    /// 仅断言非空且条数 ≥ overlay 基数——具体计数随策展批次增长，不钉死。
+    #[test]
+    fn repo_data_ruleset_loads_special_mods() {
+        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let ruleset = data.load_ruleset().unwrap();
+        let entries = ruleset.special_mods.expect("special_mods 域应已接通");
+        assert!(
+            entries.len() >= 100,
+            "special 条目数 {} 应 ≥ overlay 首批基数",
+            entries.len()
+        );
     }
 
     /// 仓库数据目录：high_precision_mods 域已接通（M4-T1 W-A2，

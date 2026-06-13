@@ -682,24 +682,23 @@ fn collect_corpus_lines(dir: &Path) -> Vec<CorpusLine> {
         .unwrap_or("?")
         .to_string();
     let mut lines = Vec::new();
-    let push_item =
-        |item: &pobr_data::item::Item, src: LineSource, lines: &mut Vec<CorpusLine>| {
-            for text in item
-                .implicit_texts
-                .iter()
-                .chain(item.modifier_texts.iter())
-                .chain(item.enchant_texts.iter())
-            {
-                let t = text.trim();
-                if !t.is_empty() {
-                    lines.push(CorpusLine {
-                        text: t.to_string(),
-                        source: src,
-                        build_id: build_id.clone(),
-                    });
-                }
+    let push_item = |item: &pobr_data::item::Item, src: LineSource, lines: &mut Vec<CorpusLine>| {
+        for text in item
+            .implicit_texts
+            .iter()
+            .chain(item.modifier_texts.iter())
+            .chain(item.enchant_texts.iter())
+        {
+            let t = text.trim();
+            if !t.is_empty() {
+                lines.push(CorpusLine {
+                    text: t.to_string(),
+                    source: src,
+                    build_id: build_id.clone(),
+                });
             }
-        };
+        }
+    };
     let mut item_slots: Vec<_> = build.items.values().collect();
     item_slots.sort_by_key(|i| i.modifier_texts.len());
     for item in item_slots {

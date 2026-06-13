@@ -26,4 +26,19 @@ impl GameData {
             Err(e) => Err(e),
         }
     }
+
+    /// 加载 keystone 派生 special 表（`generated/special_derived.json`，M5b C-1
+    /// adapter 产物；schema 同 `special_mods/v1`）。缺表返回 `Ok(None)`（C-1 落地
+    /// 前的过渡）；坏 JSON 照常上抛。
+    pub fn special_derived(&self) -> Result<Option<SpecialModsDef>, LoadError> {
+        match self.load_json_at::<SpecialModsDef>(self.generated_path("special_derived.json")) {
+            Ok(def) => Ok(Some(def)),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
+    }
 }
