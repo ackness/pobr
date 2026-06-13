@@ -708,6 +708,20 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         "Accuracy" => Ok(vec!["Accuracy"]),
         "ManaRegen" => Ok(vec!["ManaRegen"]),
         "LifeRegenPercent" => Ok(vec!["LifeRegenPercent"]),
+        // （M4-n）伤害向量族（Sigil of Power `circle_of_power_spell_damage_+%
+        // _final_per_stage` → Damage MORE Spell；Elemental Conflux
+        // `skill_elemental_conflux_active_element_damage_+%_final` →
+        // <El>Damage MORE）：消费方 = damage 分桶聚合（`calc::damage` 的
+        // `Damage`/`<El>Damage` INC/MORE 查询，vendor CalcOffence 同名）。
+        "Damage" => Ok(vec!["Damage"]),
+        "FireDamage" => Ok(vec!["FireDamage"]),
+        "ColdDamage" => Ok(vec!["ColdDamage"]),
+        "LightningDamage" => Ok(vec!["LightningDamage"]),
+        // Sigil of Power `circle_of_power_max_stages` → 玩家 `Multiplier:
+        // SigilOfPowerMaxStages` BASE（vendor 消费点 = GetMultiplier 动态上限
+        // ModStore.lua:369；PoBR 编排层把 buff 载荷中 `Multiplier:` BASE 桥进
+        // cfg.multipliers，见 calc_orchestrator buff specs 注入点）。
+        "Multiplier:SigilOfPowerMaxStages" => Ok(vec!["Multiplier:SigilOfPowerMaxStages"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -842,25 +856,30 @@ fn collect_player_buff_mod(
         "OVERRIDE" => ModType::Override,
         other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
     };
-    if !element.flags.is_empty() {
-        return Err(UnsupportedReason::UnsupportedFlags(element.flags.join("|")));
-    }
+    // flags 走 ModFlag 子集直译（M4-n 放开：Sigil of Power 的 Damage MORE 带
+    // `Spell` flag——vendor flags=ModFlag.Spell，匹配语义两边一致；子集外
+    // token 仍整条上报）。
+    let flags = translate_mod_flags(&element.flags)?;
     if !element.keyword_flags.is_empty() {
         return Err(UnsupportedReason::UnsupportedKeywordFlags(
             element.keyword_flags.join("|"),
         ));
     }
     // tag：GlobalEffect 剥除（额外门控键整条上报；`effectName` = buff 显示名，
-    // 无门控语义、允许）；其余直译。
+    // 无门控语义、允许；`unscalable` = buff effect 乘区豁免标记——PoBR
+    // buff_pass 缩放豁免维度未建模，乘区为 1 时无差异，允许通过并登记）；
+    // 其余直译。
     let mut tags = Vec::new();
     for tag in &element.tags {
         let is_global =
             matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
         if is_global {
-            if !tag
-                .keys()
-                .all(|k| matches!(k.as_str(), "type" | "effectType" | "effectName"))
-            {
+            if !tag.keys().all(|k| {
+                matches!(
+                    k.as_str(),
+                    "type" | "effectType" | "effectName" | "unscalable"
+                )
+            }) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "GlobalEffect 含约定外键：{:?}",
                     tag.keys().collect::<Vec<_>>()
@@ -876,6 +895,7 @@ fn collect_player_buff_mod(
         } else {
             Modifier::number(translated, mod_type, merged_value)
         };
+        modifier.flags = flags;
         for tag in &tags {
             modifier = modifier.with_tag(tag.clone());
         }
@@ -1687,7 +1707,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             Ok(ModTag::condition(format!("Enemy{var}"), negated))
         }
         "Multiplier" => {
-            if !keys_subset_of(&["type", "var", "div", "limit"]) {
+            if !keys_subset_of(&["type", "var", "div", "limit", "limitVar", "invert"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "Multiplier 含约定外键：{:?}",
                     tag.keys().collect::<Vec<_>>()
@@ -1698,11 +1718,19 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                     "Multiplier 缺 var".into(),
                 ));
             };
-            Ok(ModTag::multiplier(
+            // limitVar（vendor ModStore.lua:369 动态上限，如 Sigil of Power
+            // `SigilOfPowerStage` 受 `SigilOfPowerMaxStages` 封顶）与 invert
+            // （:378-380 倒数缩放，如 Elemental Conflux 三元素按
+            // `ElementalConflux<El>Effect` 取 1/N 均摊）直译为 ModTag 字段。
+            Ok(ModTag::Multiplier {
                 var,
-                number("div").unwrap_or(1.0),
-                number("limit"),
-            ))
+                div: number("div").unwrap_or(1.0),
+                limit: number("limit"),
+                actor: None,
+                limit_var: text("limitVar"),
+                limit_actor: None,
+                invert: matches!(tag.get("invert"), Some(StatMapValue::Bool(true))),
+            })
         }
         "PerStat" => {
             if !keys_subset_of(&["type", "stat", "div"]) {
@@ -3181,6 +3209,143 @@ mod tests {
             map_player_buff_stat(&catalog, "X", Some("1"), "some_behaviour_stat", 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnknownModName("flag:projectile".into()))
         );
+    }
+
+    /// Sigil of Power 形态（M4-n；vendor other.lua SigilOfPowerPlayer statMap
+    /// `circle_of_power_spell_damage_+%_final_per_stage`）：Damage MORE +
+    /// Spell flag + Multiplier{var=SigilOfPowerStage, limitVar=
+    /// SigilOfPowerMaxStages}。oracle 钉值（varashta）：eff level 32 →
+    /// per-stage 17，stage=1 → modDB `Damage MORE 17 | Skill:SigilOfPowerPlayer`。
+    #[test]
+    fn player_buff_sigil_per_stage_damage_more_with_limit_var() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SigilOfPowerPlayer": { "1": {
+                 "circle_of_power_spell_damage_+%_final_per_stage": {
+                   "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "MORE",
+                               "flags": [ "Spell" ],
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff" },
+                                         { "type": "Multiplier", "var": "SigilOfPowerStage",
+                                           "limitVar": "SigilOfPowerMaxStages" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SigilOfPowerPlayer",
+            None,
+            "circle_of_power_spell_damage_+%_final_per_stage",
+            17.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "Damage");
+        assert_eq!(m.mod_type, ModType::More);
+        assert_eq!(m.value.as_number(), Some(17.0));
+        assert_eq!(m.flags, ModFlags::SPELL, "Spell flag 直译");
+        assert_eq!(
+            m.tags,
+            vec![crate::ModTag::Multiplier {
+                var: "SigilOfPowerStage".into(),
+                div: 1.0,
+                limit: None,
+                actor: None,
+                limit_var: Some("SigilOfPowerMaxStages".into()),
+                limit_actor: None,
+                invert: false,
+            }],
+            "Multiplier limitVar 直译，GlobalEffect 剥除"
+        );
+        // 求值：stage=1、maxStages=4 → ×1；stage=9 被 maxStages 封到 4。
+        let cfg = crate::CalcConfig::new()
+            .with_multiplier("SigilOfPowerStage", 1.0)
+            .with_multiplier("SigilOfPowerMaxStages", 4.0);
+        assert_eq!(m.effective_number(&cfg), Some(17.0));
+        let cfg9 = crate::CalcConfig::new()
+            .with_multiplier("SigilOfPowerStage", 9.0)
+            .with_multiplier("SigilOfPowerMaxStages", 4.0);
+        assert_eq!(m.effective_number(&cfg9), Some(68.0));
+    }
+
+    /// Sigil of Power 最大层数载荷（`circle_of_power_max_stages` →
+    /// `Multiplier:SigilOfPowerMaxStages` BASE，GlobalEffect 带 unscalable
+    /// 标记——允收通过；编排层把该 BASE 桥进 cfg.multipliers 作 limitVar 分母）。
+    #[test]
+    fn player_buff_sigil_max_stages_multiplier_base() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SigilOfPowerPlayer": { "1": {
+                 "circle_of_power_max_stages": {
+                   "mods": [ { "kind": "mod", "name": "Multiplier:SigilOfPowerMaxStages",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "unscalable": true } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SigilOfPowerPlayer",
+            None,
+            "circle_of_power_max_stages",
+            4.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "Multiplier:SigilOfPowerMaxStages");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(4.0));
+        assert!(m.tags.is_empty(), "GlobalEffect（含 unscalable 键）剥除");
+    }
+
+    /// Elemental Conflux 形态（M4-n；vendor SkillStatMap
+    /// `skill_elemental_conflux_active_element_damage_+%_final`）：三元素
+    /// MORE，各带 invert Multiplier（`ElementalConflux<El>Effect`，config
+    /// Average 档 = 3 → ×1/3 均摊；锁单元素档 = 1/0 → ×1/×0）。oracle 钉值
+    /// （varashta）：73 → 三条 `<El>Damage MORE 24.33`。
+    #[test]
+    fn player_buff_conflux_inverted_element_more() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "ElementalConfluxPlayer": { "1": {
+                 "skill_elemental_conflux_active_element_damage_+%_final": {
+                   "mods": [
+                     { "kind": "mod", "name": "LightningDamage", "mod_type": "MORE",
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                   "effectName": "Elemental Conflux" },
+                                 { "type": "Multiplier",
+                                   "var": "ElementalConfluxLightningEffect",
+                                   "invert": true } ] },
+                     { "kind": "mod", "name": "ColdDamage", "mod_type": "MORE",
+                       "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                   "effectName": "Elemental Conflux" },
+                                 { "type": "Multiplier",
+                                   "var": "ElementalConfluxColdEffect",
+                                   "invert": true } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "ElementalConfluxPlayer",
+            None,
+            "skill_elemental_conflux_active_element_damage_+%_final",
+            73.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        assert_eq!(items.len(), 2);
+        let MappedItem::Modifier(lightning) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(lightning.name.as_str(), "LightningDamage");
+        assert_eq!(lightning.mod_type, ModType::More);
+        assert_eq!(lightning.value.as_number(), Some(73.0));
+        // Average 档：multiplier 3 → invert ×1/3 = 24.33（vendor Tabulate 同值）。
+        let avg = crate::CalcConfig::new().with_multiplier("ElementalConfluxLightningEffect", 3.0);
+        let v = lightning.effective_number(&avg).expect("数值");
+        assert!((v - 73.0 / 3.0).abs() < 1e-9, "invert 1/3 均摊，得 {v}");
+        // 锁定别的元素：multiplier 0 → invert 保持 0 → 该元素载荷为 0。
+        let locked =
+            crate::CalcConfig::new().with_multiplier("ElementalConfluxLightningEffect", 0.0);
+        assert_eq!(lightning.effective_number(&locked), Some(0.0));
     }
 
     /// Unsupported 分类标签稳定（双跑报告聚合键）。

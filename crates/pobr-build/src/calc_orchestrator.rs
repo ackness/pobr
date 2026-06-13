@@ -278,9 +278,15 @@ pub fn calculate_with_data(
     // 评估后回填（仅 Effective 单 tag 形态；其余 tag 形态维持 mod 通道）。
     if options.mode_effective {
         for m in &resolved_config.player_mods {
+            // 仅收「带 tag 且全为 Effective」的形态——**空 tag 条目必须排除**：
+            // 裸 `Multiplier:` 效果已由 interpreter 裸效果回填进 cfg.multipliers
+            // （config_interpreter.rs:362-377），此处再加即双计（M4-n 实查：
+            // sigilOfPowerStages placeholder 1 在 eff 口径被加成 2，Sigil of
+            // Power per-stage MORE 17→34 伪高）。
             if m.mod_type == ModType::Base
                 && let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
                 && let pobr_core::ModValue::Number(n) = m.value
+                && !m.tags.is_empty()
                 && m.tags.iter().all(|t| {
                     matches!(t, pobr_core::ModTag::Condition { var, negated: false, actor: None } if var == "Effective")
                 })
@@ -693,9 +699,16 @@ pub fn calculate_with_data(
         // 缩放为截尾语义 [`vendor_scale_mod_value`]，差额 = trunc(round(v×(1+s),2))−v；
         // flag 副本为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
         // :1328-1334 的对侧取词条一致。
+        // 注入词条的**数值副本 × scale** 追加注入（vendor CalcPerform.lua:1347-1369
+        // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`；flag 副本
+        // 为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
+        // :1328-1334 的对侧取词条一致。负向 scale（focus -50%，CalcSetup.lua:
+        // 1209-1220）同路径：全值 + 负副本 = 净 ×(1+scale)，与 vendor
+        // combinedList+ScaleAddList 合并等价（vendor 对缩放副本取
+        // `m_modf(round(v*scale,2))` 截断，此处保留浮点，逐件 ≤0.5 偏差）。
         if let Some(&(_, scale)) = bonus_scales
             .iter()
-            .find(|(s, scale)| *s == slot && *scale > 0.0)
+            .find(|(s, scale)| *s == slot && *scale != 0.0)
         {
             let ingest = pobr_core::ingest_item(slot, &filtered)
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
@@ -888,6 +901,20 @@ pub fn calculate_with_data(
     //     走 priority/limit/分槽（:2829-2896）。C5-2 切换前的 `aura_buff_modifiers`
     //     静态直注已关（双跑依据 m3-c5-dualrun-report.md，删函数属 C5-3）。
     for spec in buff_skill_specs(build, data) {
+        // （M4-n）buff 载荷中的 `Multiplier:<X>` BASE → cfg.multipliers 桥
+        // （vendor GetMultiplier 对 modDB `Multiplier:<X>` 全局求和取数，
+        // ModStore.lua:369；PoBR 的 ModTag::Multiplier 读 cfg.multipliers
+        // 预灌表，需在此显式回填）。首个消费方 = Sigil of Power
+        // `Multiplier:SigilOfPowerMaxStages` BASE 4（per-stage MORE 的
+        // limitVar 分母）。
+        for m in &spec.mods {
+            if let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
+                && m.mod_type == ModType::Base
+                && let Some(v) = m.value.as_number()
+            {
+                session.set_multiplier(var, v);
+            }
+        }
         session.add_buff_skill(spec);
     }
     // 4b'.（M4-G）support 授予的玩家侧 buff（Precision I/II → Accuracy INC，
@@ -1460,6 +1487,16 @@ fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSl
         .get(&Weapon2)
         .and_then(|item| data.base_items.get(&item.base.to_string()))
         .is_some_and(|def| def.item_class == "Quiver");
+    // （M4-n）focus 变体（vendor CalcSetup.lua:1209-1220：`item.type == "Focus"`
+    // 时对该件全局 modList 整体 ScaleAddList(scale-1)，scale 来自
+    // `EffectOfBonusesFromFocus`，ModParser.lua:4867『N% reduced bonuses gained
+    // from equipped focus』→ INC -N；Disciple of Varashta『Instruments of
+    // Power』节点 20701 携带）——仅副手槽实为 focus 时收集。
+    let weapon2_is_focus = build
+        .items
+        .get(&Weapon2)
+        .and_then(|item| data.base_items.get(&item.base.to_string()))
+        .is_some_and(|def| def.item_class == "Focus");
     let mut texts: Vec<String> = Vec::new();
     for id in &build.tree.allocated_nodes {
         if let Some(node) = data.passive_nodes.get(&id.0) {
@@ -1496,22 +1533,36 @@ fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSl
         }
     }
     for t in &texts {
-        let Some(idx) = t.find("% increased bonuses gained from ") else {
-            continue;
+        // increased（正向）与 reduced（负向，vendor 仅 focus 变体）两种前缀。
+        const INC_NEEDLE: &str = "% increased bonuses gained from ";
+        const RED_NEEDLE: &str = "% reduced bonuses gained from ";
+        let (idx, needle, sign) = match t.find(INC_NEEDLE) {
+            Some(i) => (i, INC_NEEDLE, 1.0),
+            None => match t.find(RED_NEEDLE) {
+                Some(i) => (i, RED_NEEDLE, -1.0),
+                None => continue,
+            },
         };
         let Ok(num) = t[..idx].trim().parse::<f64>() else {
             continue;
         };
-        let target = t[idx + "% increased bonuses gained from ".len()..].trim();
+        let num = num * sign;
+        let target = t[idx + needle.len()..].trim();
         // vendor ModParser.lua:4866-4880 的戒指/项链变体 + :4866 quiver 变体
         // （`EffectOfBonusesFromQuiver`，消费点 = CalcSetup.lua:1366-1373 的
-        // Weapon 2 箭袋特例；focus 仍走独立机制，暂不消费）。
-        match target {
-            "equipped rings and amulets" => add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0),
-            "equipped rings" => add(&[Ring1, Ring2, Ring3], num / 100.0),
-            "left equipped ring" => add(&[Ring1], num / 100.0),
-            "right equipped ring" => add(&[Ring2], num / 100.0),
-            "equipped quiver" if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
+        // Weapon 2 箭袋特例）+ :4867 focus 变体（`EffectOfBonusesFromFocus`
+        // INC -N，消费点 = CalcSetup.lua:1209-1220 的 Focus 件特例——仅数值
+        // BASE/INC/MORE 词条被缩放，LIST/FLAG 经 MergeMod(skipNonAdditive)
+        // 丢弃缩放副本保持全值，与本消费点的 Number-only 过滤一致）。
+        match (target, sign > 0.0) {
+            ("equipped rings and amulets", true) => {
+                add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0)
+            }
+            ("equipped rings", true) => add(&[Ring1, Ring2, Ring3], num / 100.0),
+            ("left equipped ring", true) => add(&[Ring1], num / 100.0),
+            ("right equipped ring", true) => add(&[Ring2], num / 100.0),
+            ("equipped quiver", true) if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
+            ("equipped focus", false) if weapon2_is_focus => add(&[Weapon2], num / 100.0),
             _ => {}
         }
     }
@@ -4047,6 +4098,24 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                 // 与 support_buff_specs 的 support 路无交集（此处仅主动技能）。
                 let buff_mods =
                     player_buff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+                // （M4-n）玩家侧 Buff 分支：非 aura/curse 主动技能的玩家侧 buff
+                // 载荷（GlobalEffect effectType=Buff，vendor 同一 buff 循环
+                // CalcPerform.lua:1949-1962 Buff 分支写 player db）。如 Sigil of
+                // Power `circle_of_power_spell_damage_+%_final_per_stage` →
+                // Damage MORE Spell ×SigilOfPowerStage、Elemental Conflux →
+                // 三元素 MORE ×(1/ElementalConflux<El>Effect)。取数等级 = 宝石
+                // 等级 + 适用的 `+N to Level of all <X> Skills`（vendor
+                // applyGemMods 对每个 gem effect 生效，CalcSetup.lua:410-435；
+                // Sigil 实测 20→32）。support 授予的等级（Uhtred's Exodus
+                // `SupportedGemProperty` +3）未建模，登记残差。
+                let buff_level = gem.gem_level + additional_gem_levels(build, data, &gem.skill_id);
+                let es_buff = if buff_level == gem.gem_level {
+                    es
+                } else {
+                    data.effect_stats(&gem.skill_id, buff_level, gem.quality, gem.stat_set_index)
+                };
+                let buff_mods =
+                    player_buff_stat_modifiers(data, &es_buff, &gem.skill_id, set_key.as_deref());
                 if (debuff_mods.is_empty() && buff_mods.is_empty())
                     || !seen.insert(gem.skill_id.as_str())
                 {
@@ -4882,13 +4951,25 @@ fn player_buff_stat_modifiers(
     let Some(catalog) = catalog else {
         return Vec::new(); // 无 catalog（旧数据包）：buff 词条全 miss（与主通道同口径）。
     };
-    let mut mods = Vec::new();
+    // 同名 stat 先加法合并（vendor CalcTools.lua:138-200 buildSkillInstanceStats
+    // `stats[stat] += value`：品质段与等级段同名时合一后才建 mod）。不合并会
+    // 产出两条同 (name/type/flags/tags) 的 mod，被 buff_pass merge_buff 的
+    // 「同名取强」（vendor mergeBuff CalcPerform.lua:41-63）丢弃较小一条——
+    // Elemental Conflux q20 的品质段 +10 即此前被静默吞掉。
+    let mut merged: Vec<(String, f64)> = Vec::new();
     for ds in stats.all() {
-        if ds.value == 0.0 {
+        match merged.iter_mut().find(|(stat, _)| *stat == ds.stat) {
+            Some((_, value)) => *value += ds.value,
+            None => merged.push((ds.stat.clone(), ds.value)),
+        }
+    }
+    let mut mods = Vec::new();
+    for (stat, value) in &merged {
+        if *value == 0.0 {
             continue; // 跳零值 stat（与主通道同口径）。
         }
         let outcome =
-            stat_map_engine::map_player_buff_stat(&catalog, skill_id, set_key, &ds.stat, ds.value);
+            stat_map_engine::map_player_buff_stat(&catalog, skill_id, set_key, stat, *value);
         if mode == StatMapMode::Compare {
             let record = match &outcome {
                 MappedOutcome::Mapped(items) if !items.is_empty() => {
@@ -4913,7 +4994,7 @@ fn player_buff_stat_modifiers(
             if let Some((classification, detail)) = record {
                 STAT_MAP_CTX.with(|ctx| {
                     ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
-                        stat: ds.stat.clone(),
+                        stat: stat.clone(),
                         label: format!("buff.{skill_id}"),
                         classification,
                         detail,
@@ -4930,9 +5011,9 @@ fn player_buff_stat_modifiers(
             };
             let origin = ModifierSource::new(SourceId::new(
                 SourceKind::SkillGem,
-                format!("buff.{skill_id}.{}", ds.stat),
+                format!("buff.{skill_id}.{stat}"),
             ))
-            .with_raw_text(format!("buff {skill_id} {} ({})", ds.stat, ds.value));
+            .with_raw_text(format!("buff {skill_id} {stat} ({value})"));
             mods.push(modifier.with_origin(origin));
         }
     }

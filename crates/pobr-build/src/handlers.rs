@@ -220,6 +220,36 @@ fn register_config_handlers_batch2(registry: &mut HandlerRegistry) {
         .expect("启动期注册不重复");
     registry
         .register(
+            "config:elementalConfluxElement",
+            Box::new(|ctx| {
+                // vendor ConfigOptions.lua:390-409：list 选项 1=Average →
+                // 三元素 multiplier 全 3（消费侧 invert 取 1/3 均摊）；
+                // 2/3/4 = 锁定单元素 → 该元素 1、其余 0（invert 后 ×1/×0）。
+                // 消费方 = Elemental Conflux buff 载荷的
+                // `Multiplier:ElementalConflux<El>Effect`（SkillStatMap
+                // `skill_elemental_conflux_active_element_damage_+%_final`，
+                // invert Multiplier tag）。标量经解释器并入 cfg.multipliers
+                // （vendor NewMod GlobalEffect tag 对位 GetMultiplier 全局取数）。
+                let val = ctx.input();
+                let (lightning, cold, fire) = match val {
+                    2.0 => (1.0, 0.0, 0.0),
+                    3.0 => (0.0, 1.0, 0.0),
+                    4.0 => (0.0, 0.0, 1.0),
+                    _ => (3.0, 3.0, 3.0), // 1 = Average（defaultIndex）。
+                };
+                HandlerOutcome {
+                    scalars: vec![
+                        ("ElementalConfluxLightningEffect".to_string(), lightning),
+                        ("ElementalConfluxColdEffect".to_string(), cold),
+                        ("ElementalConfluxFireEffect".to_string(), fire),
+                    ],
+                    ..HandlerOutcome::default()
+                }
+            }),
+        )
+        .expect("启动期注册不重复");
+    registry
+        .register(
             "config:questAct 4Eye of HinekoraTribal Medicine",
             Box::new(|_| HandlerOutcome::default()),
         )
@@ -485,6 +515,39 @@ mod tests {
         let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[0.0]));
         assert_eq!(out.player_mods[2].value, ModValue::Bool(true));
         assert_eq!(out.enemy_mods[0].value, ModValue::Bool(false));
+    }
+
+    /// elementalConfluxElement（vendor ConfigOptions.lua:390-409）：Average 档
+    /// （默认 index 1）三元素 multiplier 全 3；锁单元素档该元素 1、其余 0。
+    /// 标量经解释器并入 cfg.multipliers，消费方 = Conflux buff 载荷的 invert
+    /// Multiplier tag（73 × 1/3 = 24.33 vendor Tabulate 同值）。
+    #[test]
+    fn elemental_conflux_element_handler_outputs() {
+        let registry = build_registry();
+        let handler = registry.get("config:elementalConfluxElement").unwrap();
+
+        let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[1.0]));
+        assert_eq!(
+            out.scalars,
+            vec![
+                ("ElementalConfluxLightningEffect".to_string(), 3.0),
+                ("ElementalConfluxColdEffect".to_string(), 3.0),
+                ("ElementalConfluxFireEffect".to_string(), 3.0),
+            ],
+            "Average 档全 3"
+        );
+        assert!(out.player_mods.is_empty());
+
+        let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[3.0]));
+        assert_eq!(
+            out.scalars,
+            vec![
+                ("ElementalConfluxLightningEffect".to_string(), 0.0),
+                ("ElementalConfluxColdEffect".to_string(), 1.0),
+                ("ElementalConfluxFireEffect".to_string(), 0.0),
+            ],
+            "锁 Cold 档"
+        );
     }
 
     /// quest 包装 handler：零产出（真实消费走既有 quest text 通道，文档见

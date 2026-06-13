@@ -742,6 +742,7 @@ fn strip_gain_multiplier_suffix(rest: &str) -> (&str, Option<ModTag>) {
                 actor: None,
                 limit_var: Some("GrenadeTypes".into()),
                 limit_actor: None,
+                invert: false,
             }),
         );
     }
