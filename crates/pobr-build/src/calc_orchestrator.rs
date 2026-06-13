@@ -809,12 +809,14 @@ pub fn calculate_with_data(
         // 3b. 小点效果缩放（Titan『Hulking Form』等『N% increased effect of Small
         //     Passive Skills』）：vendor CalcSetup.lua:286-292 先对全部已分配节点求
         //     SmallPassiveSkillEffect INC 总和，:271-277 再对每个『Normal 且非属性
-        //     小点且非飞升』节点的 modList 整体 ScaleAddList ×(1+inc/100)。PoBR 等价
-        //     实现：基础份已按 1.0 注入（上方 add_passive_nodes），此处对受影响小点
-        //     追加 **数值副本 × inc/100**（BASE/INC 的加性副本与整体缩放逐值相等；
+        //     小点且非飞升』节点的 modList 整体 ScaleAddList ×(1+inc/100)——数值
+        //     缩放为截尾语义（[`vendor_scale_mod_value`]，如 3×1.5=4.5→4）。PoBR
+        //     等价实现：基础份已按 1.0 注入（上方 add_passive_nodes），此处对受影响
+        //     小点追加 **数值差额副本** `trunc(round(v×scale,2)) − v`（BASE/INC；
         //     小点无 MORE 数值词条，flag 副本为无操作，均跳过）。
         let small_inc = small_passive_effect_inc(build, data);
         if small_inc > 0.0 {
+            let small_scale = 1.0 + small_inc / 100.0;
             let small_nodes: Vec<AllocatedNode> = passive_nodes
                 .iter()
                 .filter(|n| {
@@ -834,10 +836,13 @@ pub fn calculate_with_data(
                     .into_iter()
                     .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
                     .filter_map(|m| match m.value {
-                        pobr_core::ModValue::Number(v) => Some(Modifier {
-                            value: pobr_core::ModValue::Number(v * small_inc / 100.0),
-                            ..m
-                        }),
+                        pobr_core::ModValue::Number(v) => {
+                            let delta = vendor_scale_mod_value(v, small_scale) - v;
+                            (delta != 0.0).then_some(Modifier {
+                                value: pobr_core::ModValue::Number(delta),
+                                ..m
+                            })
+                        }
                         _ => None,
                     })
                     .collect();
