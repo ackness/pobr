@@ -248,6 +248,12 @@ impl KeywordFlags {
     pub const AURA: Self = Self(0x0000_0001);
     /// `KeywordFlag.Curse = 0x00000002`
     pub const CURSE: Self = Self(0x0000_0002);
+    /// `KeywordFlag.Totem = 0x00004000`（M6-B parser 引擎 flag_phrases 需要）
+    pub const TOTEM: Self = Self(0x0000_4000);
+    /// `KeywordFlag.Attack = 0x00010000`（M6-B：DMGATTACKS 默认补位 / flag_phrases）
+    pub const ATTACK: Self = Self(0x0001_0000);
+    /// `KeywordFlag.Spell = 0x00020000`（M6-B：DMGSPELLS 默认补位 / flag_phrases）
+    pub const SPELL: Self = Self(0x0002_0000);
     /// `KeywordFlag.Hit = 0x00040000`
     pub const HIT: Self = Self(0x0004_0000);
     /// `KeywordFlag.Ailment = 0x00080000`
