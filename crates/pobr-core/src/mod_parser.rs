@@ -88,9 +88,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
 ///
 /// 出处：vendor `ModParser.lua:1204-1205`、`CalcPerform.lua:1676`
 /// （`if not value.type or env.minion.type == value.type then AddMod`）。
-pub fn parse_minion_modifier(
-    text: &str,
-) -> Option<Vec<crate::calc::minion::MinionModifierEntry>> {
+pub fn parse_minion_modifier(text: &str) -> Option<Vec<crate::calc::minion::MinionModifierEntry>> {
     use crate::calc::minion::MinionModifierEntry;
 
     let original = text.trim();

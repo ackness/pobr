@@ -951,8 +951,8 @@ fn parses_minion_increased_damage_wrapper() {
 #[test]
 fn parses_minion_increased_life_wrapper() {
     use pobr_core::mod_parser::parse_minion_modifier;
-    let entries =
-        parse_minion_modifier("Minions have 30% increased maximum Life").expect("minion 词条应识别");
+    let entries = parse_minion_modifier("Minions have 30% increased maximum Life")
+        .expect("minion 词条应识别");
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0].inner.mod_type, ModType::Inc);
     assert_eq!(entries[0].inner.value, ModValue::Number(30.0));
