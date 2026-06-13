@@ -15,6 +15,21 @@ pub struct ParseOutcome {
     pub mods: Vec<Modifier>,
     pub status: ParseStatus,
     pub unparsed: Option<String>,
+    /// special 词条规则命中元数据（M5b §2.3）。`None` = 走通用解析路径
+    /// （含既有专用函数 / parse_keystone_special）；`Some` = 由
+    /// [`crate::rules::SpecialModRules`] 整行命中产出（entry_id + verified
+    /// 透传归因与 parity 报表）。`parse_mod`（rules=None）路径恒 `None`，
+    /// 保证既有调用方逐值不变（搬迁不变式）。
+    pub special_meta: Option<SpecialMatchMeta>,
+}
+
+/// special 命中元数据（[`ParseOutcome::special_meta`]）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpecialMatchMeta {
+    /// 命中的 special 条目稳定 id。
+    pub entry_id: String,
+    /// 该条目是否经 oracle 对拍验证（`verified:false` 在 parity 报表单列）。
+    pub verified: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,7 +63,71 @@ struct Form {
     value: f64,
 }
 
+/// 既有签名：等价 [`parse_mod_with_rules`]`(text, None)`，全部既有调用方零改动、
+/// 逐值不变（搬迁不变式）。M6 重写 parser 为 `parse_mod(text, &ParserRules)` 时
+/// 收掉本双签名。
 pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
+    parse_mod_with_rules(text, None, None)
+}
+
+/// special 规则增强版解析（M5b §2.3）。
+///
+/// `rules = Some` 时：在通用解析路径**之前**对整行（已 strip-brackets +
+/// normalize-spaces 的规范形）尝试 [`SpecialModRules::try_match`]——命中即直接
+/// 产出该条目的 modifier（对照 PoB2 parseMod :6389-6755 的 specialModList 锚定
+/// 全行优先级）；未命中则原样落入既有通用路径（专用函数族 / parse_keystone_special
+/// / parse_form）。`rules = None` 时跳过 special 查表，行为与历史 `parse_mod` 逐值
+/// 相等。
+///
+/// `registry` 供 handler_id 条目路由；special 条目无 handler 时可传 `None`
+/// （内部用空注册表，handler_id 条目记 `unregistered_handler`）。
+pub fn parse_mod_with_rules(
+    text: &str,
+    rules: Option<&crate::rules::SpecialModRules>,
+    registry: Option<&crate::rules::HandlerRegistry>,
+) -> Result<ParseOutcome, ParseError> {
+    let original = text.trim();
+    if original.is_empty() {
+        return Err(ParseError {
+            input: text.into(),
+            reason: "empty modifier text".into(),
+        });
+    }
+
+    // special 查表（rules 注入时）：整行锚定优先于通用路径。
+    if let Some(rules) = rules {
+        let cleaned = strip_pob_brackets(original);
+        let normalized = normalize_spaces(&cleaned);
+        let empty_registry = crate::rules::HandlerRegistry::new();
+        let reg = registry.unwrap_or(&empty_registry);
+        if let Some(m) = rules.try_match(&normalized, reg) {
+            let status = if m.mods.is_empty() && m.unregistered_handler.is_none() {
+                // 纯识别条目 / handler 产空：归 Unsupported（回收原文，不算硬失败）。
+                ParseStatus::Unsupported
+            } else {
+                ParseStatus::Parsed
+            };
+            let unparsed = if matches!(status, ParseStatus::Unsupported) {
+                Some(original.to_string())
+            } else {
+                None
+            };
+            return Ok(ParseOutcome {
+                mods: m.mods,
+                status,
+                unparsed,
+                special_meta: Some(SpecialMatchMeta {
+                    entry_id: m.entry_id,
+                    verified: m.verified,
+                }),
+            });
+        }
+    }
+
+    parse_mod_core(original)
+}
+
+fn parse_mod_core(text: &str) -> Result<ParseOutcome, ParseError> {
     let original = text.trim();
     if original.is_empty() {
         return Err(ParseError {
@@ -66,6 +145,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods: Vec::new(),
             status: ParseStatus::Unsupported,
             unparsed: Some(original.into()),
+            special_meta: None,
         });
     }
 
@@ -92,6 +172,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods: vec![Modifier::flag("Condition:CanUseBondedModifiers").with_source(original)],
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -105,6 +186,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods: vec![Modifier::flag("ProjectileSpeedAppliesToBowDamage").with_source(original)],
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -118,6 +200,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods: vec![Modifier::text("Keystone", ModType::List, name).with_source(original)],
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -131,6 +214,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods,
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -145,6 +229,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods: vec![Modifier::number("CharmLimit", ModType::Base, value).with_source(original)],
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -250,6 +335,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods,
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -266,6 +352,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods,
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -276,6 +363,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods,
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -287,6 +375,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods,
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -301,6 +390,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods: vec![],
             status: ParseStatus::Unsupported,
             unparsed: Some(original.to_string()),
+            special_meta: None,
         });
     }
 
@@ -342,6 +432,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods,
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -355,6 +446,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
             mods,
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
 
@@ -418,6 +510,7 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
         mods,
         status: ParseStatus::Parsed,
         unparsed: None,
+        special_meta: None,
     })
 }
 
@@ -856,6 +949,7 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
                     ],
                     status: ParseStatus::Parsed,
                     unparsed: None,
+                    special_meta: None,
                 });
             }
         }
@@ -873,6 +967,7 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
                 mods: Vec::new(),
                 status: ParseStatus::Unsupported,
                 unparsed: Some(source.into()),
+                special_meta: None,
             });
         }
         return Some(ParseOutcome {
@@ -881,6 +976,7 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
             ],
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
     // 「Base Critical Hit Chance for Spells is N%」（Blood Mage 升华『Sunder the
@@ -899,6 +995,7 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
             ],
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
     // ES→Mana 资源转换（PoB2 ModParser 2395-2396）：固定全转 / 数值百分比两形。
@@ -914,6 +1011,7 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
             ],
             status: ParseStatus::Parsed,
             unparsed: None,
+            special_meta: None,
         });
     }
     // 数值型 OVERRIDE + 伴随 flag（Chaos Inoculation: Maximum Life is 1 → 免疫混沌）。
@@ -955,6 +1053,7 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
                 mods: Vec::new(),
                 status: ParseStatus::Unsupported,
                 unparsed: Some(source.into()),
+                special_meta: None,
             });
         }
         _ => return None,
@@ -963,6 +1062,7 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
         mods,
         status: ParseStatus::Parsed,
         unparsed: None,
+        special_meta: None,
     })
 }
 
@@ -1017,6 +1117,7 @@ fn parse_enemy_direction(rest: &str, original: &str) -> Option<Result<ParseOutco
                 mods: Vec::new(),
                 status: ParseStatus::Unsupported,
                 unparsed: Some(original.into()),
+                special_meta: None,
             }));
         }
         Err(err) => return Some(Err(err)),
@@ -1040,6 +1141,7 @@ fn parse_enemy_direction(rest: &str, original: &str) -> Option<Result<ParseOutco
         ],
         status: ParseStatus::Parsed,
         unparsed: None,
+        special_meta: None,
     }))
 }
 
@@ -1172,6 +1274,7 @@ fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         mods,
         status: ParseStatus::Parsed,
         unparsed: None,
+        special_meta: None,
     })
 }
 
@@ -1634,6 +1737,7 @@ fn parse_ailment_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         mods,
         status: ParseStatus::Parsed,
         unparsed: None,
+        special_meta: None,
     })
 }
 

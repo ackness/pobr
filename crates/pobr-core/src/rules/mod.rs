@@ -16,6 +16,7 @@ pub mod config_interpreter;
 pub mod keystone_registry;
 pub mod registry;
 pub mod skill_type_expr;
+pub mod special_mod;
 pub mod stat_map_engine;
 pub mod value_expr;
 
@@ -23,3 +24,4 @@ pub use keystone_registry::DefenceKeystones;
 pub use registry::{
     DuplicateHandlerError, Handler, HandlerCtx, HandlerOutcome, HandlerRegistry, MainSkillCtx,
 };
+pub use special_mod::{SpecialCompileError, SpecialMatch, SpecialModRules};
