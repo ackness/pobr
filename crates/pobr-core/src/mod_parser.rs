@@ -2125,6 +2125,20 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
             " while not on full life",
             ModTag::condition("FullLife", true),
         ),
+        // 低魔条件族（vendor ModParser.lua:1761-1763：`while/when [you are]
+        // [not] on low mana` → Condition:LowMana[/neg]；cfg 真值由 config
+        // `conditionLowMana` 供给，默认 false → neg 变体（如 Chakra of
+        // Thought『15% increased Attack Speed while not on Low Mana』）生效）。
+        (
+            " while you are not on low mana",
+            ModTag::condition("LowMana", true),
+        ),
+        (" while not on low mana", ModTag::condition("LowMana", true)),
+        (
+            " while you are on low mana",
+            ModTag::condition("LowMana", false),
+        ),
+        (" while on low mana", ModTag::condition("LowMana", false)),
         (
             " per power charge",
             ModTag::multiplier("PowerCharge", 1.0, None),
