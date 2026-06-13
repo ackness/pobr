@@ -11,7 +11,8 @@
 
 use std::collections::BTreeMap;
 
-use pobr_core::mod_parser::{ParseStatus, parse_mod};
+use pobr_core::mod_parser::{ParseStatus, parse_mod, parse_mod_with_rules};
+use pobr_core::rules::{HandlerRegistry, SpecialModRules};
 
 /// 单条词条的解析分类。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,6 +41,33 @@ pub fn classify_line(text: &str) -> LineClass {
         },
         Err(_) => LineClass::Err,
     }
+}
+
+/// special 规则增强版分类（M5b A-2 曲线）：special 整行命中优先（同
+/// `parse_mod_with_rules` 口径），用于「unsupported 词条率下降曲线」——B-4
+/// 激活后 special 条目命中的缺口语料从 Err/Unsupported 转 Parsed。
+pub fn classify_line_with_rules(
+    text: &str,
+    rules: &SpecialModRules,
+    registry: &HandlerRegistry,
+) -> LineClass {
+    match parse_mod_with_rules(text, Some(rules), Some(registry)) {
+        Ok(outcome) => match outcome.status {
+            ParseStatus::Parsed => LineClass::Parsed,
+            ParseStatus::Unsupported => LineClass::Unsupported,
+        },
+        Err(_) => LineClass::Err,
+    }
+}
+
+/// special 规则增强版报表（M5b A-2）：与 [`build_report`] 同口径但分类走
+/// [`classify_line_with_rules`]——B-4 激活后的缺口语料曲线。
+pub fn build_report_with_rules(
+    lines: &[CorpusLine],
+    rules: &SpecialModRules,
+    registry: &HandlerRegistry,
+) -> CorpusReport {
+    build_report_inner(lines, |t| classify_line_with_rules(t, rules, registry))
 }
 
 /// 模板归一化：数字 → `#`、压缩空白、小写、剥离 PoB2 方括号标记 `[A|B]`→`B`。
@@ -178,8 +206,14 @@ impl CorpusReport {
     }
 }
 
-/// 从语料行构建报表。缺口模板按 ninja 命中频率排序（C-2 选批事实来源）。
+/// 从语料行构建报表（plain `parse_mod` 分类）。缺口模板按 ninja 命中频率排序
+/// （C-2 选批事实来源）。
 pub fn build_report(lines: &[CorpusLine]) -> CorpusReport {
+    build_report_inner(lines, classify_line)
+}
+
+/// 报表构建内核（分类函数可注入：plain 或 special-aware）。
+fn build_report_inner(lines: &[CorpusLine], classify: impl Fn(&str) -> LineClass) -> CorpusReport {
     let mut report = CorpusReport::default();
     // 模板 → 聚合中间态。
     struct Agg {
@@ -195,7 +229,7 @@ pub fn build_report(lines: &[CorpusLine]) -> CorpusReport {
 
     for line in lines {
         report.total_lines += 1;
-        let class = classify_line(&line.text);
+        let class = classify(&line.text);
         match class {
             LineClass::Parsed => report.parsed += 1,
             LineClass::Unsupported => report.unsupported += 1,

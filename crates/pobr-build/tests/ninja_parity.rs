@@ -727,7 +727,7 @@ fn corpus_unsupported_report() {
 
     eprintln!("\n============ CORPUS UNSUPPORTED REPORT ============");
     eprintln!(
-        "lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%",
+        "[plain parse_mod] lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%",
         report.total_lines,
         report.parsed,
         report.parsed_rate() * 100.0,
@@ -735,6 +735,32 @@ fn corpus_unsupported_report() {
         report.err,
         report.gap_rate() * 100.0,
     );
+
+    // M5b A-2 曲线：special 规则激活后（B-4）的缺口率——special 整行命中把缺口
+    // 语料从 Err/Unsupported 转 Parsed。用仓库 special 数据编译规则集对照。
+    {
+        use pobr_build::corpus::build_report_with_rules;
+        use pobr_core::rules::{HandlerRegistry, SpecialModRules};
+        use pobr_data::catalog::parser_rules::SpecialModsDef;
+        let path = repo_data_root().join("4.5.0.3.4/overlay/special_mods.json");
+        if let Ok(raw) = std::fs::read_to_string(&path) {
+            let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json");
+            let reg = pobr_build::handlers::build_special_registry();
+            let rules = SpecialModRules::compile(&doc.entries, &reg).expect("compile special");
+            let _ = HandlerRegistry::new();
+            let sp = build_report_with_rules(&all_lines, &rules, &reg);
+            eprintln!(
+                "[special-aware]  lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%  (special entries: {})",
+                sp.total_lines,
+                sp.parsed,
+                sp.parsed_rate() * 100.0,
+                sp.unsupported,
+                sp.err,
+                sp.gap_rate() * 100.0,
+                rules.len(),
+            );
+        }
+    }
     eprintln!("--- Top-20 gap templates (builds_hit desc, count desc) ---");
     for (i, t) in report.gap_templates.iter().take(20).enumerate() {
         eprintln!(

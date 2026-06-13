@@ -63,6 +63,20 @@ pub fn build_registry() -> HandlerRegistry {
     registry
 }
 
+/// 构造 special 词条 handler 注册表（M5b C-3）——`overlay/special_mods.json` 里
+/// `handler_id: "special:<name>"` 条目的运行期裁决执行点。`BuildData` 在载入期
+/// 用它编译 [`pobr_core::rules::SpecialModRules`]，与 buff/config 域的
+/// [`build_registry`] 分立（special 是独立解析面）。
+///
+/// 闸门测试 `special_mods_gate.rs` 校验：本注册表覆盖全部 `handler_id`、总数 <100、
+/// 占 special 总条目 <10%（架构 §5 DSL 硬边界监控）。
+pub fn build_special_registry() -> HandlerRegistry {
+    let mut registry = HandlerRegistry::new();
+    pobr_core::rules::register_special_handlers(&mut registry)
+        .expect("启动期 special handler 注册不冲突");
+    registry
+}
+
 /// 第一批 config handlers（M3-T1 A5，蓝图 §4.4 末段）。
 ///
 /// 约定：handler 的真实消费若走**标量通道**（list/数值选项由 build 层从

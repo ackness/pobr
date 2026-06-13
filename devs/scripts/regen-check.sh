@@ -47,7 +47,14 @@ if [[ -f "$TREE_JSON" ]]; then
     HAVE_TREE=1
 fi
 
-if [[ "$HAVE_TABLES" -eq 0 && "$HAVE_TREE" -eq 0 ]]; then
+# keystone 派生（M5b C-1）的输入是已提交的 passive_tree.json，无 pipeline 依赖——
+# 仓库有 data/<patch>/ 即可重跑，故不计入「无 pipeline 输入」的整体 SKIP 判定。
+HAVE_SPECIAL_DERIVED=0
+if [[ -d "$ROOT/data/$PATCH" ]]; then
+    HAVE_SPECIAL_DERIVED=1
+fi
+
+if [[ "$HAVE_TABLES" -eq 0 && "$HAVE_TREE" -eq 0 && "$HAVE_SPECIAL_DERIVED" -eq 0 ]]; then
     echo "regen-check: SKIP — 本地没有 pipeline 输入（既无 pipeline/tables/ 的 .dat 导出，"
     echo "也无 pipeline/tree/data.json）。重生成需要先按 pipeline/README.md 下载输入。"
     exit 0
@@ -93,6 +100,16 @@ if [[ "$HAVE_TREE" -eq 1 ]]; then
         --tree "$TREE_JSON" --out "$TMP_OUT" --patch "$PATCH"
 else
     echo "regen-check: SKIP 被动天赋树域 —— 缺 pipeline/tree/data.json"
+fi
+
+# M5b C-1：keystone 派生 special 表（输入 = 已提交 passive_tree.json，无 pipeline 依赖）。
+COMMITTED_TREE="$(resolve_committed "passive_tree.json")"
+if [[ -n "$COMMITTED_TREE" ]]; then
+    echo "regen-check: 重跑 keystone 派生 special 表（--emit-special-derived passive_tree.json）……"
+    cargo run --quiet -p pobr-data-adapter --manifest-path "$ROOT/Cargo.toml" -- \
+        --emit-special-derived "$COMMITTED_TREE" --out "$TMP_OUT" --patch "$PATCH"
+else
+    echo "regen-check: SKIP keystone 派生 —— 缺已提交 passive_tree.json"
 fi
 
 # ---- byte-diff：只比对本次实际重生成出来的文件 ----

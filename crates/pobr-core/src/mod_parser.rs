@@ -135,6 +135,45 @@ pub fn parse_minion_modifier(text: &str) -> Option<Vec<crate::calc::minion::Mini
     Some(entries)
 }
 
+/// special 规则解析上下文——把 [`SpecialModRules`] 与 [`HandlerRegistry`] 引用
+/// 打包，沿 ingest 链（item / passive / gem）传递（M5b B-4 消费激活）。
+///
+/// 默认（[`ParseCtx::none`]）= 两者皆 `None`：等价历史 `parse_mod`，逐值不变。
+/// `Some` 时 ingest 路径改走 [`parse_mod_with_rules`]，special 条目整行命中优先。
+///
+/// [`SpecialModRules`]: crate::rules::SpecialModRules
+/// [`HandlerRegistry`]: crate::rules::HandlerRegistry
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ParseCtx<'a> {
+    /// special 规则集（`None` = 不查表）。
+    pub rules: Option<&'a crate::rules::SpecialModRules>,
+    /// handler 注册表（handler_id 条目路由用）。
+    pub registry: Option<&'a crate::rules::HandlerRegistry>,
+}
+
+impl<'a> ParseCtx<'a> {
+    /// 空上下文（两者皆 `None`）——历史 `parse_mod` 行为。
+    pub fn none() -> Self {
+        Self::default()
+    }
+
+    /// 携带 special 规则集（+ 可选 handler 注册表）。
+    pub fn with_rules(
+        rules: &'a crate::rules::SpecialModRules,
+        registry: Option<&'a crate::rules::HandlerRegistry>,
+    ) -> Self {
+        Self {
+            rules: Some(rules),
+            registry,
+        }
+    }
+
+    /// 按本上下文解析一行词条。`rules = None` 时等价 [`parse_mod`]（逐值不变）。
+    pub fn parse(&self, text: &str) -> Result<ParseOutcome, ParseError> {
+        parse_mod_with_rules(text, self.rules, self.registry)
+    }
+}
+
 /// special 规则增强版解析（M5b §2.3）。
 ///
 /// `rules = Some` 时：在通用解析路径**之前**对整行（已 strip-brackets +

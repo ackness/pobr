@@ -40,10 +40,12 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
     entries
 }
 
-/// 当前已注册的 special handler 全集（C-3 落地后随注册函数增长）。
-/// 现阶段无 special handler 条目（首批数据均为模板路径），返回空注册表。
+/// 全部已注册的 special handler（M5b C-3：`register_special_handlers`）。
+/// 闸门 `all_handler_ids_registered` 用它校验每个 `handler_id` 条目均已注册。
 fn special_registry() -> HandlerRegistry {
-    HandlerRegistry::new()
+    let mut registry = HandlerRegistry::new();
+    pobr_core::rules::register_special_handlers(&mut registry).expect("special handler 注册不冲突");
+    registry
 }
 
 #[test]

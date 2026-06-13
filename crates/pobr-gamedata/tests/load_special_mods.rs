@@ -19,12 +19,17 @@ fn load() -> SpecialModsDef {
         .expect("special_mods.json 在库")
 }
 
-/// 首批规模：S0 keystone 段 8 条 + 自动转写 S1/S2 共 99 条 = 107 条；
+/// 首批规模：B-4 回滚后 66 条 + C-2 安全批次 5 条（vendor 名表缺口的纯模板：
+/// Duration/EnergyShieldRecharge/LifeRegen/ManaOnKill/CharmLimit）= 71 条；
 /// id 唯一且升序。
+///
+/// **M5b B-4 消费激活后回滚**：原 107 条含 41 条降级 shadow（allocates_* 大小写
+/// 失配 / 不可映射 tag 语义残缺 / target:enemy 误产玩家侧），逐条 oracle/generic
+/// 对照归因后回滚（parity 零回归审查，见 B-4 commit）。
 #[test]
 fn first_batch_shape() {
     let def = load();
-    assert_eq!(def.entries.len(), 107);
+    assert_eq!(def.entries.len(), 71);
     assert!(
         def.entries.windows(2).all(|w| w[0].id < w[1].id),
         "id 严格升序（唯一）"
