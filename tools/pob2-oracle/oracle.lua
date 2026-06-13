@@ -15,6 +15,271 @@
 --
 -- Arg 1: path to decoded build XML (required)
 -- Arg 2: output JSON path (optional; default stdout)
+--
+-- M6 Track C append-only sub-commands (parse-mod differential base). When arg[1]
+-- is `--mode`, oracle.lua dispatches to a parse-mod handler and exits *before*
+-- the calc path below — the original `<decoded.xml> [out.json]` calc oracle is
+-- left byte-for-byte intact (only reached when no `--mode` flag is present):
+--
+--   oracle.lua --mode parsemod [--lines-file <path>]
+--       Live differential: read modifier-text lines from stdin (or --lines-file),
+--       run vendor `modLib.parseMod` (order=1 then order=2, matching the
+--       ModParser.lua cache-closure double pass), emit one JSONL object per line:
+--         {"line","mods":[{name,type,value,flags,keywordFlags,tags}],"unsupported",
+--          "leftover"?}
+--       (Equivalent to the M5b-D1 parsemod.lua wrapper; kept here so the roadmap's
+--        "oracle.lua --mode parsemod" reference resolves against this one tool.)
+--
+--   oracle.lua --mode modcache-dump [--out <path>] [--limit <n>]
+--       Offline golden: load vendor `Data/ModCache.lua` (PoB2's own pre-parsed
+--       cache: key = mod text, value = { parsedModListOrNil, leftoverText }) and
+--       emit the canonical golden JSON (schema = `modcache_golden.json`, §5.1 C3):
+--         {"_meta":{...}, "entries":[{ "text", "status":"parsed|unsupported",
+--          "mods":[...], "leftover" }]}
+--       Values are normalized through the same name/type/flags/tags shape as the
+--       parsemod handler so the Rust differential test compares like-for-like.
+--       Self-contained once written — the Rust test never re-runs luajit.
+--
+-- Both sub-commands do NOT modify any vendor source.
+
+----------------------------------------------------------------------
+-- Sub-command dispatch (append-only; see header). Falls through to the
+-- original calc oracle when arg[1] is not `--mode`.
+----------------------------------------------------------------------
+if arg[1] == "--mode" then
+	local mode = arg[2]
+	-- Parse the remaining flags (--lines-file / --out / --limit) positionally.
+	local linesFile, dumpOut, dumpLimit
+	do
+		local i = 3
+		while arg[i] do
+			if arg[i] == "--lines-file" then
+				linesFile = arg[i + 1]
+				i = i + 2
+			elseif arg[i] == "--out" then
+				dumpOut = arg[i + 1]
+				i = i + 2
+			elseif arg[i] == "--limit" then
+				dumpLimit = tonumber(arg[i + 1])
+				i = i + 2
+			else
+				i = i + 1
+			end
+		end
+	end
+
+	-- Bootstrap headless PoB2 silently. We need modLib (parseMod) for the live
+	-- mode and the ModFlag / KeywordFlag tables for bit-name reverse lookup in
+	-- both modes; ModCache is loaded lazily inside the dump branch.
+	local realPrint = print
+	_G.print = function() end
+	dofile("HeadlessWrapper.lua")
+	_G.print = realPrint
+
+	----------------------------------------------------------------------
+	-- Shared JSON encoder (deterministic key order; same shape as the calc
+	-- oracle's encoder below, duplicated here so the dispatch is self-contained
+	-- and exits before that code is defined).
+	----------------------------------------------------------------------
+	local function isArray(t)
+		local n = 0
+		for k in pairs(t) do
+			if type(k) ~= "number" then return false end
+			n = n + 1
+		end
+		return n == #t
+	end
+	local function escape(s)
+		return (s:gsub('[%z\1-\31\\"]', function(c)
+			local map = { ['"'] = '\\"', ['\\'] = '\\\\', ['\n'] = '\\n', ['\r'] = '\\r', ['\t'] = '\\t' }
+			return map[c] or string.format('\\u%04x', c:byte())
+		end))
+	end
+	local encode
+	encode = function(v, depth)
+		depth = depth or 0
+		local t = type(v)
+		if t == "number" then
+			if v ~= v then return '"NaN"' end
+			if v == math.huge then return '"Infinity"' end
+			if v == -math.huge then return '"-Infinity"' end
+			if v == math.floor(v) and math.abs(v) < 1e15 then
+				return string.format("%d", v)
+			end
+			return string.format("%.10g", v)
+		elseif t == "boolean" then
+			return v and "true" or "false"
+		elseif t == "string" then
+			return '"' .. escape(v) .. '"'
+		elseif t == "nil" then
+			return "null"
+		elseif t == "table" then
+			if depth > 8 then return '"<max-depth>"' end
+			if isArray(v) and #v > 0 then
+				local parts = {}
+				for i = 1, #v do parts[i] = encode(v[i], depth + 1) end
+				return "[" .. table.concat(parts, ",") .. "]"
+			end
+			if next(v) == nil then return "[]" end
+			local keys = {}
+			for k in pairs(v) do keys[#keys + 1] = k end
+			table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+			local parts = {}
+			for _, k in ipairs(keys) do
+				local val = v[k]
+				local tv = type(val)
+				if tv ~= "function" and tv ~= "userdata" and tv ~= "thread" then
+					parts[#parts + 1] = '"' .. escape(tostring(k)) .. '":' .. encode(val, depth + 1)
+				end
+			end
+			return "{" .. table.concat(parts, ",") .. "}"
+		end
+		return '"<' .. t .. '>"'
+	end
+
+	----------------------------------------------------------------------
+	-- Bit-name reverse lookup for ModFlag / KeywordFlag (Global.lua tables).
+	-- A bit name is included when the value fully covers its single-bit mask.
+	----------------------------------------------------------------------
+	local function flagNames(value, flagTable)
+		local names = {}
+		if not value or value == 0 or type(flagTable) ~= "table" then return names end
+		for name, bit in pairs(flagTable) do
+			if type(bit) == "number" and bit ~= 0 and bit % 1 == 0 and bit > 0 then
+				if (value % (bit * 2)) >= bit then
+					names[#names + 1] = name
+				end
+			end
+		end
+		table.sort(names)
+		return names
+	end
+
+	----------------------------------------------------------------------
+	-- Normalize one PoB2 mod table to the canonical differential shape:
+	--   { name, type, value, flags?[], keywordFlags?[], tags?[] }
+	-- tags are the positional m[1..n] sub-tables (each has a .type).
+	----------------------------------------------------------------------
+	local function normMod(m)
+		local out = { name = m.name, type = m.type }
+		local tv = type(m.value)
+		if tv == "number" or tv == "boolean" or tv == "string" then
+			out.value = m.value
+		elseif tv == "table" then
+			out.value = m.value -- nested LIST payload; encoder walks tables
+		end
+		if m.flags and m.flags ~= 0 then
+			out.flags = flagNames(m.flags, ModFlag)
+		end
+		if m.keywordFlags and m.keywordFlags ~= 0 then
+			out.keywordFlags = flagNames(m.keywordFlags, KeywordFlag)
+		end
+		local tags = {}
+		for i = 1, #m do
+			if type(m[i]) == "table" and m[i].type then
+				tags[#tags + 1] = m[i]
+			end
+		end
+		if #tags > 0 then out.tags = tags end
+		return out
+	end
+
+	if mode == "parsemod" then
+		assert(type(modLib) == "table" and type(modLib.parseMod) == "function",
+			"headless did not expose modLib.parseMod")
+		local input
+		if linesFile then
+			input = assert(io.open(linesFile, "r"), "cannot open lines file: " .. linesFile)
+		else
+			input = io.stdin
+		end
+		for raw in input:lines() do
+			local line = raw:gsub("^%s+", ""):gsub("%s+$", "")
+			if #line > 0 then
+				-- modLib.parseMod returns (modList, leftover) matching the
+				-- ModParser order=1/2 double-pass cache closure.
+				local modList, leftover = modLib.parseMod(line)
+				local mods = {}
+				if modList then
+					for _, m in ipairs(modList) do
+						mods[#mods + 1] = normMod(m)
+					end
+				end
+				local rec = {
+					line = line,
+					mods = mods,
+					unsupported = (modList == nil) or (#mods == 0),
+				}
+				if type(leftover) == "string" and #leftover > 0 then
+					rec.leftover = leftover
+				end
+				io.write(encode(rec), "\n")
+			end
+		end
+		if linesFile then input:close() end
+		os.exit(0)
+	elseif mode == "modcache-dump" then
+		-- Load vendor Data/ModCache.lua. It returns a function `local c=...`
+		-- pattern: the chunk takes the cache table as its single argument and
+		-- populates it. We pass a fresh table and read it back.
+		local chunk = assert(loadfile("Data/ModCache.lua"),
+			"cannot load Data/ModCache.lua (run from vendor src/)")
+		local cache = {}
+		chunk(cache)
+		-- Collect + sort keys for byte-stable output.
+		local texts = {}
+		for text in pairs(cache) do texts[#texts + 1] = text end
+		table.sort(texts)
+		local entries = {}
+		local parsedCount = 0
+		for _, text in ipairs(texts) do
+			if dumpLimit and #entries >= dumpLimit then break end
+			local entry = cache[text]
+			-- entry = { parsedModListOrNil, leftoverText }
+			local modList = entry[1]
+			local leftover = entry[2]
+			local mods = {}
+			if type(modList) == "table" then
+				for _, m in ipairs(modList) do
+					if type(m) == "table" and m.name then
+						mods[#mods + 1] = normMod(m)
+					end
+				end
+			end
+			local status = (#mods > 0) and "parsed" or "unsupported"
+			if status == "parsed" then parsedCount = parsedCount + 1 end
+			local rec = { text = text, status = status, mods = mods }
+			if type(leftover) == "string" then rec.leftover = leftover end
+			entries[#entries + 1] = rec
+		end
+		local doc = {
+			_meta = {
+				source = "vendor Data/ModCache.lua",
+				generator = "tools/pob2-oracle/oracle.lua --mode modcache-dump",
+				total = #entries,
+				parsed = parsedCount,
+				unsupported = #entries - parsedCount,
+			},
+			entries = entries,
+		}
+		local json = encode(doc) .. "\n"
+		if dumpOut and dumpOut ~= "" then
+			local out = assert(io.open(dumpOut, "w"), "cannot open out file: " .. dumpOut)
+			out:write(json)
+			out:close()
+			io.stderr:write(string.format(
+				"modcache-dump: %d entries (%d parsed / %d unsupported) -> %s\n",
+				#entries, parsedCount, #entries - parsedCount, dumpOut))
+		else
+			io.write(json)
+		end
+		os.exit(0)
+	else
+		io.stderr:write("oracle.lua: unknown --mode '" .. tostring(mode) ..
+			"' (expected parsemod | modcache-dump)\n")
+		os.exit(2)
+	end
+end
 
 local xmlPath = arg[1]
 local outPath = arg[2]
