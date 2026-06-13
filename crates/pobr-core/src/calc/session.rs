@@ -204,6 +204,34 @@ impl CalculationSession {
         self.env.buff_skills.push(spec);
     }
 
+    /// 接入一个召唤物（M5a-B2）：从 [`MinionDef`](super::MinionDef) 真实底材 + 召唤
+    /// 宝石等级 + 数量上限派生召唤物 `Actor` 接入 `Env.minions`，并把上限写为玩家
+    /// `Multiplier:SummonedMinion` / `Multiplier:MinionPresenceCount`（供「per Minion」
+    /// 族词条引用）。`Env::add_minion_from_def` 的 session 直通封装。
+    ///
+    /// 由编排层在识别召唤宝石（`effect_minion_list` 非空）后调用；不识别召唤物的
+    /// build 永不调用，故对既有非召唤 build 零行为影响。`perform_minimal` 在末尾对
+    /// 每个召唤物跑同一套 offence/defence，结果落 `OutputTable.minions`。
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_minion_from_def(
+        &mut self,
+        def: &super::MinionDef,
+        gem_level: u32,
+        limit: u32,
+        minion_modifiers: Vec<super::MinionModifierEntry>,
+        ally_buff_mods: Vec<Modifier>,
+        infusion: super::AttributeInfusion,
+    ) {
+        self.env.add_minion_from_def(
+            def,
+            gem_level,
+            limit,
+            minion_modifiers,
+            ally_buff_mods,
+            infusion,
+        );
+    }
+
     /// 注入「keystone 名 → 该 keystone 的 modifier 列表」映射（M3 T0-4 接口契约，
     /// 蓝图 §2.4，T5 mergeKeystones 消费）。
     ///
