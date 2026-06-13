@@ -7647,6 +7647,10 @@ mod tests {
             stat_set: None,
             additional_stat_set_ids: vec![],
             cost_types: vec![],
+            minion_list: vec![],
+            add_minion_list: vec![],
+            minion_uses: vec![],
+            minion_has_item_set: false,
             skill_types: skill_types.iter().map(|s| s.to_string()).collect(),
         };
         let mut granted_effects = HashMap::new();
@@ -7740,6 +7744,10 @@ mod tests {
                 stat_set: None,
                 additional_stat_set_ids: vec![],
                 cost_types: vec![],
+                minion_list: vec![],
+                add_minion_list: vec![],
+                minion_uses: vec![],
+                minion_has_item_set: false,
                 skill_types: vec!["Spell".into(), "Triggered".into(), "InbuiltTrigger".into()],
             },
         );
@@ -7759,6 +7767,10 @@ mod tests {
                 stat_set: None,
                 additional_stat_set_ids: vec![],
                 cost_types: vec![],
+                minion_list: vec![],
+                add_minion_list: vec![],
+                minion_uses: vec![],
+                minion_has_item_set: false,
                 skill_types: vec!["Spell".into()],
             },
         );
@@ -7979,6 +7991,10 @@ mod tests {
                 stat_set: None,
                 additional_stat_set_ids: vec![],
                 cost_types: vec![],
+                minion_list: vec![],
+                add_minion_list: vec![],
+                minion_uses: vec![],
+                minion_has_item_set: false,
                 skill_types: vec!["Attack".into()],
             },
         );
@@ -8223,6 +8239,10 @@ mod support_judgement_tests {
             stat_set: None,
             additional_stat_set_ids: vec![],
             cost_types: vec![],
+            minion_list: vec![],
+            add_minion_list: vec![],
+            minion_uses: vec![],
+            minion_has_item_set: false,
             skill_types: v(skill_types),
         }
     }

@@ -23,6 +23,7 @@ use pobr_data::catalog::{
     QualityStat, RuntimeConstants, SkillDamageStat, SkillGemDef, SkillLevelDef, SkillStatSetDef,
     StatSetDef, TriggerConfigDef, WeaponBaseStats,
 };
+use pobr_data::minion::MinionDef;
 use pobr_gamedata::ruleset::ConfigCatalog;
 use pobr_gamedata::{GameData, LoadError};
 
@@ -198,6 +199,11 @@ pub struct BuildData {
     /// 缺 overlay 文件（旧数据包）= [`HighPrecisionRules::default`]
     /// （无例外表 fallback）。
     pub high_precision: HighPrecisionRules,
+    /// 召唤物 / 魂灵定义表（M5a-A5），以 minion id 为键。`minions.json` 优先，
+    /// miss 落 `spectres.json`（spectre key = 完整 metadata 路径）。缺 overlay
+    /// 文件（旧数据包）= 空表（无召唤物，向后兼容）。消费侧只经
+    /// [`Self::minion_def`] 查询。
+    pub minions: HashMap<String, MinionDef>,
 }
 
 impl BuildData {
@@ -361,6 +367,22 @@ impl BuildData {
             })
             .unwrap_or_default();
 
+        // 召唤物 / 魂灵定义（overlay 域，M5a-A5）：minions 优先建索引，spectres
+        // 补充缺位（spectre key = metadata 路径，与 minion id 不冲突）。缺文件 =
+        // 空表（无召唤物，向后兼容），其余加载/解析错误照常上抛。
+        let mut minions: HashMap<String, MinionDef> = HashMap::new();
+        if let Some(spectres) = data.spectres()? {
+            for entry in &spectres.minions {
+                minions.insert(entry.id.clone(), MinionDef::from_entry(entry));
+            }
+        }
+        if let Some(minion_defs) = data.minions()? {
+            // minions 覆盖 spectres 同 id（实际不重叠，覆盖保证 minions 优先语义）。
+            for entry in &minion_defs.minions {
+                minions.insert(entry.id.clone(), MinionDef::from_entry(entry));
+            }
+        }
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -381,6 +403,7 @@ impl BuildData {
             config_catalog,
             trigger_configs,
             high_precision,
+            minions,
         })
     }
 
@@ -408,7 +431,23 @@ impl BuildData {
             config_catalog: None,
             trigger_configs: HashMap::new(),
             high_precision: HighPrecisionRules::default(),
+            minions: HashMap::new(),
         }
+    }
+
+    /// 按 minion id 查召唤物 / 魂灵定义（M5a-A5）；未知 id 返回 `None`。
+    /// `minions.json` 优先，miss 落 `spectres.json`（spectre key = metadata 路径）。
+    pub fn minion_def(&self, id: &str) -> Option<&MinionDef> {
+        self.minions.get(id)
+    }
+
+    /// 按授予效果 id 查该技能召唤的 minion 列表（merge 后的 `minion_list`，M5a-A5）；
+    /// 非召唤技能 / 未知 id 返回空切片。
+    pub fn effect_minion_list(&self, effect_id: &str) -> &[String] {
+        self.granted_effects
+            .get(effect_id)
+            .map(|e| e.minion_list.as_slice())
+            .unwrap_or(&[])
     }
 
     /// 按基底名称查武器基底数值（`Item.base` → `WeaponBaseStats`）；非武器/未知返回 `None`。

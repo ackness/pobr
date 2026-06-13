@@ -111,6 +111,22 @@ pub struct GrantedEffectDef {
     /// （攻击技能的击中伤害来自武器基底）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skill_types: Vec<String>,
+    /// 该技能召唤的 minion id 列表（PoB2 Export 模板手工指令 `#minionList`，
+    /// 不在 `.dat`——M5a-A3）。**merge 后内存形态**：base `granted_effects.json`
+    /// 不含此字段，由 `pobr-gamedata` 在加载期从 `overlay/granted_effect_minions.json`
+    /// （[`crate::catalog::actors::GrantedEffectMinionDef`]）按 `id` 拼入。
+    /// 空 = 非召唤技能（向后兼容）。出处：vendor `Export/Scripts/skills.lua:771-776`。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub minion_list: Vec<String>,
+    /// support 追加的 minion id 列表（`addMinionList`，merge 同 `minion_list`）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub add_minion_list: Vec<String>,
+    /// 召唤物借用玩家装备槽位列表（`minionUses` 中值为 true 的键，merge 同上）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub minion_uses: Vec<String>,
+    /// 召唤物使用独立 item set（`minionHasItemSet`，merge 同上）。
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub minion_has_item_set: bool,
 }
 
 impl GrantedEffectDef {

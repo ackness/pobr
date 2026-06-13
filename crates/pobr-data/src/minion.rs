@@ -489,6 +489,45 @@ impl MinionDef {
     pub fn has_limit(&self) -> bool {
         !matches!(self.limit, MinionLimitId::None)
     }
+
+    /// 从入库 overlay 形态 [`crate::catalog::actors::MinionEntryDef`] 构造计算消费形态
+    /// `MinionDef`（M5a-A5 桥接：loader 产 `MinionEntryDef`，calc 消费 `MinionDef`）。
+    ///
+    /// 字段对齐：`armour`/`evasion` 缺省按 1.0、`energy_shield` 缺省按 0.0（MinionEntryDef
+    /// 忠实转录 vendor 缺失语义，此处物化消费侧默认值，见 `MinionEntryDef` 文档）。
+    /// `limit` 字符串经 [`MinionLimitId::from_pob2`] 映射；`monster_category` 经
+    /// [`MinionCategory::from_pob2`]。`mod_list` 暂不转入（calc 侧 C3 装配从 entry
+    /// 直接读，避免重复建模）。
+    pub fn from_entry(e: &crate::catalog::actors::MinionEntryDef) -> Self {
+        Self {
+            id: e.id.clone(),
+            name: e.name.clone(),
+            category: e.monster_category.as_deref().map(MinionCategory::from_pob2),
+            life: e.life,
+            damage: e.damage,
+            damage_spread: e.damage_spread,
+            attack_time: e.attack_time,
+            crit_chance: e.crit_chance,
+            armour: e.armour.unwrap_or(1.0),
+            evasion: e.evasion.unwrap_or(1.0),
+            energy_shield: e.energy_shield.unwrap_or(0.0),
+            fire_resist: e.fire_resist,
+            cold_resist: e.cold_resist,
+            lightning_resist: e.lightning_resist,
+            chaos_resist: e.chaos_resist,
+            base_damage_ignores_attack_speed: e.base_damage_ignores_attack_speed,
+            limit: e
+                .limit
+                .as_deref()
+                .map(MinionLimitId::from_pob2)
+                .unwrap_or(MinionLimitId::None),
+            spectre_reservation: e.spectre_reservation,
+            companion_reservation: e.companion_reservation,
+            hostile: false,
+            monster_tags: e.monster_tags.clone(),
+            skill_list: e.skill_list.clone(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
