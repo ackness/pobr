@@ -499,12 +499,21 @@ pub fn can_support(support: &SupportJudgeInput<'_>, active: &ActiveSkillJudgeInp
 /// 解析失败（结构性错误）向上抛 [`ParseError`]；无法识别的词条不报错，收集进
 /// [`GemIngest::unsupported`]，与 `CalculationSession` 的语义一致。
 pub fn ingest_gem(gem: &GemModSource) -> Result<GemIngest, ParseError> {
+    ingest_gem_with_ctx(gem, crate::mod_parser::ParseCtx::none())
+}
+
+/// [`ingest_gem`] 的 special 规则增强版（M5b B-4）：词条解析走 `ctx`
+/// （`ctx.rules = None` 时逐值等价 [`ingest_gem`]）。
+pub fn ingest_gem_with_ctx(
+    gem: &GemModSource,
+    ctx: crate::mod_parser::ParseCtx<'_>,
+) -> Result<GemIngest, ParseError> {
     let source_id = gem.source_id();
     let parent_source_id = gem.parent_source_id();
 
     let mut ingest = GemIngest::default();
     for text in &gem.modifier_texts {
-        let outcome = parse_mod(text)?;
+        let outcome = ctx.parse(text)?;
         match outcome.status {
             ParseStatus::Parsed => {
                 for modifier in outcome.mods {

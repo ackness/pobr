@@ -13,6 +13,7 @@
 
 pub mod buff_expander;
 pub mod config_interpreter;
+pub mod handlers;
 pub mod keystone_registry;
 pub mod registry;
 pub mod skill_type_expr;
@@ -20,6 +21,7 @@ pub mod special_mod;
 pub mod stat_map_engine;
 pub mod value_expr;
 
+pub use handlers::register_special_handlers;
 pub use keystone_registry::DefenceKeystones;
 pub use registry::{
     DuplicateHandlerError, Handler, HandlerCtx, HandlerOutcome, HandlerRegistry, MainSkillCtx,

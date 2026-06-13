@@ -41,7 +41,7 @@
 use pobr_data::prelude::*;
 
 use crate::Modifier;
-use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
+use crate::mod_parser::{ParseCtx, ParseError, ParseStatus, parse_mod};
 
 /// 物品词条的 section，决定归因的 [`SourceKind`] 与 `SourceId` 后缀。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,6 +88,16 @@ pub struct ItemIngest {
 /// 品质（quality）**不在此处**转为 modifier——其逐属性 base 缩放由编排层处理，
 /// 见模块级文档「品质」一节。
 pub fn ingest_item(slot: EquipmentSlot, item: &Item) -> Result<ItemIngest, ParseError> {
+    ingest_item_with_ctx(slot, item, ParseCtx::none())
+}
+
+/// [`ingest_item`] 的 special 规则增强版（M5b B-4）：词条解析走 `ctx`
+/// （`ctx.rules = None` 时逐值等价 [`ingest_item`]）。
+pub fn ingest_item_with_ctx(
+    slot: EquipmentSlot,
+    item: &Item,
+    ctx: ParseCtx<'_>,
+) -> Result<ItemIngest, ParseError> {
     let mut ingest = ItemIngest::default();
 
     ingest_section(
@@ -95,18 +105,21 @@ pub fn ingest_item(slot: EquipmentSlot, item: &Item) -> Result<ItemIngest, Parse
         ItemModSection::Implicit,
         &item.implicit_texts,
         &mut ingest,
+        ctx,
     )?;
     ingest_section(
         slot,
         ItemModSection::Explicit,
         &item.modifier_texts,
         &mut ingest,
+        ctx,
     )?;
     ingest_section(
         slot,
         ItemModSection::Enchant,
         &item.enchant_texts,
         &mut ingest,
+        ctx,
     )?;
 
     Ok(ingest)
@@ -118,6 +131,7 @@ fn ingest_section(
     section: ItemModSection,
     texts: &[String],
     ingest: &mut ItemIngest,
+    ctx: ParseCtx<'_>,
 ) -> Result<(), ParseError> {
     if texts.is_empty() {
         return Ok(());
@@ -129,7 +143,7 @@ fn ingest_section(
     );
 
     for text in texts {
-        let outcome = parse_mod(text)?;
+        let outcome = ctx.parse(text)?;
         match outcome.status {
             ParseStatus::Parsed => {
                 for modifier in outcome.mods {

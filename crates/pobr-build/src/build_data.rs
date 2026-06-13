@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use pobr_core::HighPrecisionRules;
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
+use pobr_core::rules::{HandlerRegistry, SpecialModRules};
 use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::catalog::curse_priority::CursePriorityDef;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
@@ -198,6 +199,18 @@ pub struct BuildData {
     /// 缺 overlay 文件（旧数据包）= [`HighPrecisionRules::default`]
     /// （无例外表 fallback）。
     pub high_precision: HighPrecisionRules,
+    /// special 词条规则集（`overlay/special_mods.json` + `generated/special_derived.json`
+    /// 经 [`RuleSet`] 拼接，载入期 [`SpecialModRules::compile`] 一次，M5b B-4）。
+    /// `calculate_with_data` 经 [`CalculationSession::set_special_rules`] 注入，
+    /// item/passive/gem ingest 词条解析走 special 整行查表。缺表（旧数据包）=
+    /// `None`（ingest 行为与历史 `parse_mod` 逐值相等，R7 缺表容忍）。
+    ///
+    /// [`RuleSet`]: pobr_gamedata::ruleset::RuleSet
+    /// [`CalculationSession::set_special_rules`]: pobr_core::calc::CalculationSession::set_special_rules
+    pub special_rules: Option<Arc<SpecialModRules>>,
+    /// special handler 注册表（handler_id 条目路由，M5b C-3）。与 `special_rules`
+    /// 同生命周期；无 special handler 时为空注册表。
+    pub special_registry: Arc<HandlerRegistry>,
 }
 
 impl BuildData {
@@ -361,6 +374,23 @@ impl BuildData {
             })
             .unwrap_or_default();
 
+        // special 词条规则集（M5b B-4）：RuleSet 拼接后的条目载入期编译一次。
+        // handler 注册表先建（C-3 落地后填实 special handler）。缺表 = None
+        // （ingest 走历史 parse_mod，逐值不变）；编译失败（pattern 非法 / id 重复
+        // 等）照常上抛——数据面已由闸门测试 special_mods_gate.rs 守，运行期 fail-fast。
+        let special_registry = Arc::new(crate::handlers::build_special_registry());
+        let special_rules = match ruleset.special_mods {
+            Some(entries) if !entries.is_empty() => Some(Arc::new(
+                SpecialModRules::compile(&entries, &special_registry).map_err(|e| {
+                    LoadError::Overlay {
+                        path: "overlay/special_mods.json".into(),
+                        message: format!("special 规则编译失败：{e}"),
+                    }
+                })?,
+            )),
+            _ => None,
+        };
+
         Ok(Self {
             passive_nodes,
             skill_gems,
@@ -381,6 +411,8 @@ impl BuildData {
             config_catalog,
             trigger_configs,
             high_precision,
+            special_rules,
+            special_registry,
         })
     }
 
@@ -408,6 +440,8 @@ impl BuildData {
             config_catalog: None,
             trigger_configs: HashMap::new(),
             high_precision: HighPrecisionRules::default(),
+            special_rules: None,
+            special_registry: Arc::new(crate::handlers::build_special_registry()),
         }
     }
 

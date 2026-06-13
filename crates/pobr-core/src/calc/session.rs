@@ -4,11 +4,11 @@ use std::sync::Arc;
 use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::prelude::*;
 
-use crate::item::ingest_item;
-use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
-use crate::passive::{AllocatedNode, ingest_passive_nodes};
-use crate::rules::HandlerRegistry;
-use crate::skill_source::{GemModSource, ingest_gem};
+use crate::item::ingest_item_with_ctx;
+use crate::mod_parser::{ParseCtx, ParseError, ParseStatus, parse_mod};
+use crate::passive::{AllocatedNode, ingest_passive_nodes_with_ctx};
+use crate::rules::{HandlerRegistry, SpecialModRules};
+use crate::skill_source::{GemModSource, ingest_gem_with_ctx};
 use crate::{CalcConfig, Modifier};
 
 use super::{Actor, ActorBaseStats, Env, MinimalInput, MinimalOutput, OutputTable, perform};
@@ -58,6 +58,14 @@ pub struct BuffSpec {
 pub struct CalculationSession {
     env: Env,
     unsupported_modifier_texts: Vec<String>,
+    /// special 词条规则集（M5b B-4）：注入后 item/passive/gem ingest 走
+    /// [`parse_mod_with_rules`]，整行命中的 special 条目产出 mod。`None` =
+    /// 历史行为（逐值不变）。
+    ///
+    /// [`parse_mod_with_rules`]: crate::mod_parser::parse_mod_with_rules
+    special_rules: Option<Arc<SpecialModRules>>,
+    /// special handler_id 路由用注册表（M5b C-3）。
+    special_registry: Option<Arc<HandlerRegistry>>,
 }
 
 impl CalculationSession {
@@ -69,6 +77,29 @@ impl CalculationSession {
         Self {
             env,
             unsupported_modifier_texts: Vec::new(),
+            special_rules: None,
+            special_registry: None,
+        }
+    }
+
+    /// 注入 special 词条规则集（M5b B-4 消费激活）：之后的 [`add_item`](Self::add_item)
+    /// / [`add_passive_nodes`](Self::add_passive_nodes) / [`add_gem`](Self::add_gem)
+    /// 词条解析走 special 查表（整行命中优先）。须在这些 ingest 调用**之前**注入；
+    /// 不调用时 ingest 行为与历史 `parse_mod` 逐值相等。
+    pub fn set_special_rules(
+        &mut self,
+        rules: Arc<SpecialModRules>,
+        registry: Option<Arc<HandlerRegistry>>,
+    ) {
+        self.special_rules = Some(rules);
+        self.special_registry = registry;
+    }
+
+    /// 当前 ingest 用的解析上下文（special 规则注入时携带，否则空）。
+    fn parse_ctx(&self) -> ParseCtx<'_> {
+        match &self.special_rules {
+            Some(rules) => ParseCtx::with_rules(rules, self.special_registry.as_deref()),
+            None => ParseCtx::none(),
         }
     }
 
@@ -142,7 +173,7 @@ impl CalculationSession {
     /// 带槽位 + 来源类别归因的 modifier 并注入计算，无法解析的词条收集进
     /// `unsupported_modifier_texts`。
     pub fn add_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
-        let ingest = ingest_item(slot, item)?;
+        let ingest = ingest_item_with_ctx(slot, item, self.parse_ctx())?;
         self.env.player.mod_db.add_list(ingest.modifiers);
         self.unsupported_modifier_texts.extend(ingest.unsupported);
         Ok(())
@@ -168,7 +199,7 @@ impl CalculationSession {
     /// [`SourceKind::PassiveNode`]: pobr_data::source::SourceKind::PassiveNode
     /// [`SourceKind::AscendancyNode`]: pobr_data::source::SourceKind::AscendancyNode
     pub fn add_passive_nodes(&mut self, nodes: &[AllocatedNode]) -> Result<(), ParseError> {
-        let ingest = ingest_passive_nodes(nodes)?;
+        let ingest = ingest_passive_nodes_with_ctx(nodes, self.parse_ctx())?;
         self.env.player.mod_db.add_list(ingest.modifiers);
         self.unsupported_modifier_texts.extend(ingest.unsupported);
         Ok(())
@@ -180,7 +211,7 @@ impl CalculationSession {
     /// 主动宝石归因到 `SourceKind::SkillGem`，辅助宝石归因到 `SourceKind::SupportGem`
     /// （并链接到被支援主动技能的 source，若 `supported_gem_id` 可得）。
     pub fn add_gem(&mut self, gem: &GemModSource) -> Result<(), ParseError> {
-        let ingest = ingest_gem(gem)?;
+        let ingest = ingest_gem_with_ctx(gem, self.parse_ctx())?;
         self.env.player.mod_db.add_list(ingest.modifiers);
         self.unsupported_modifier_texts.extend(ingest.unsupported);
         Ok(())

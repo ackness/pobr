@@ -17,7 +17,7 @@
 use pobr_data::prelude::*;
 
 use crate::Modifier;
-use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
+use crate::mod_parser::{ParseError, ParseStatus};
 
 /// 一个已分配天赋节点：稳定 `NodeId` + 词条文本 + 是否飞升节点。
 #[derive(Debug, Clone, Default)]
@@ -48,6 +48,15 @@ pub struct PassiveIngest {
 /// `SourceId.id` = `node.<NodeId>`，`raw_text` 保留原始词条行；`stat_id` / `mod_type`
 /// 由 [`Modifier::with_origin`] 从 modifier 回填。
 pub fn ingest_passive_nodes(nodes: &[AllocatedNode]) -> Result<PassiveIngest, ParseError> {
+    ingest_passive_nodes_with_ctx(nodes, crate::mod_parser::ParseCtx::none())
+}
+
+/// [`ingest_passive_nodes`] 的 special 规则增强版（M5b B-4）：词条解析走 `ctx`
+/// （`ctx.rules = None` 时逐值等价 [`ingest_passive_nodes`]）。
+pub fn ingest_passive_nodes_with_ctx(
+    nodes: &[AllocatedNode],
+    ctx: crate::mod_parser::ParseCtx<'_>,
+) -> Result<PassiveIngest, ParseError> {
     let mut ingest = PassiveIngest::default();
     for node in nodes {
         let kind = if node.ascendancy {
@@ -58,7 +67,7 @@ pub fn ingest_passive_nodes(nodes: &[AllocatedNode]) -> Result<PassiveIngest, Pa
         let source_id = SourceId::new(kind, format!("node.{}", node.node_id.0));
 
         for text in &node.modifier_texts {
-            let outcome = parse_mod(text)?;
+            let outcome = ctx.parse(text)?;
             match outcome.status {
                 ParseStatus::Parsed => {
                     for modifier in outcome.mods {
