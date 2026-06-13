@@ -4096,8 +4096,6 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                 // （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db
                 // （vendor buff 循环写全局，对位 GlobalEffect/Buff 全局作用域）。
                 // 与 support_buff_specs 的 support 路无交集（此处仅主动技能）。
-                let buff_mods =
-                    player_buff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
                 // （M4-n）玩家侧 Buff 分支：非 aura/curse 主动技能的玩家侧 buff
                 // 载荷（GlobalEffect effectType=Buff，vendor 同一 buff 循环
                 // CalcPerform.lua:1949-1962 Buff 分支写 player db）。如 Sigil of
