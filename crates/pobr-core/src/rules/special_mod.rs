@@ -840,6 +840,47 @@ mod tests {
         assert!(matches!(err, SpecialCompileError::BadModType { .. }));
     }
 
+    /// C-2 安全批次代表性条目（vendor 名表缺口的纯 INC/BASE 模板，verified:false）：
+    /// 实例化 → 期望 Modifier（name/type/value）。
+    #[test]
+    fn c2_safe_batch_representative() {
+        let cases = [
+            (
+                r#"{"id":"increased_skill_effect_duration","pattern":"(\\d+)% increased skill effect duration","mods":[{"name":"Duration","type":"INC","value":"$1"}],"batch":"S1"}"#,
+                "12% increased skill effect duration",
+                "Duration",
+                ModType::Inc,
+                12.0,
+            ),
+            (
+                r#"{"id":"charm_slots_colon","pattern":"charm slots: (\\d+)","mods":[{"name":"CharmLimit","type":"BASE","value":"$1"}],"batch":"S1"}"#,
+                "charm slots: 3",
+                "CharmLimit",
+                ModType::Base,
+                3.0,
+            ),
+            (
+                r#"{"id":"life_regeneration_per_second","pattern":"(\\d+(?:\\.\\d+)?) life regeneration per second","mods":[{"name":"LifeRegen","type":"BASE","value":"$1"}],"batch":"S1"}"#,
+                "5.5 life regeneration per second",
+                "LifeRegen",
+                ModType::Base,
+                5.5,
+            ),
+        ];
+        let reg = HandlerRegistry::new();
+        for (json, line, name, mod_type, value) in cases {
+            let r = rules(vec![def(json)]);
+            let m = r
+                .try_match(line, &reg)
+                .unwrap_or_else(|| panic!("命中 {line}"));
+            assert_eq!(m.mods.len(), 1, "{line}");
+            assert_eq!(m.mods[0].name.as_str(), name, "{line}");
+            assert_eq!(m.mods[0].mod_type, mod_type, "{line}");
+            assert_eq!(m.mods[0].value.as_number(), Some(value), "{line}");
+            assert!(!m.verified);
+        }
+    }
+
     /// 真实仓库数据全量编译成功（闸门冒烟，正式断言在 special_mods_gate.rs）。
     #[test]
     fn repo_special_mods_compile() {

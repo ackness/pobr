@@ -226,6 +226,21 @@
       "source_note": "ModParser.lua:4255（探针求值自动转写；样本：20% chance for Damage with Hits to be Lucky）"
     },
     {
+      "id": "charm_slots_colon",
+      "pattern": "charm slots: (\\d+)",
+      "vendor_pattern": "h?a?s? ?+?(%d+) charm slots?",
+      "mods": [
+        {
+          "name": "CharmLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:5453（CharmLimit；冒号格式 'Charm Slots: N'，与 has_charm_slots 互补，命中 18 build 首位缺口）"
+    },
+    {
       "id": "ci_maximum_life_is_1",
       "pattern": "maximum life is 1",
       "mods": [
@@ -493,6 +508,21 @@
       "verified": false,
       "batch": "S1",
       "source_note": "ModParser.lua:4158（探针求值自动转写；样本：Gain Deflection Rating equal to 21% of Evasion Rating）"
+    },
+    {
+      "id": "gain_mana_per_enemy_killed",
+      "pattern": "gain (\\d+) mana per enemy killed",
+      "vendor_pattern": "(%d+) mana per enemy killed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:543（mana per enemy killed→ManaOnKill BASE）"
     },
     {
       "id": "gain_rage_on_melee_hit",
@@ -837,6 +867,36 @@
       "source_note": "ModParser.lua:3281（探针求值自动转写；样本：50% increased effect of Small Passive Skills）"
     },
     {
+      "id": "increased_energy_shield_recharge_rate",
+      "pattern": "(\\d+)% increased energy shield recharge rate",
+      "vendor_pattern": "(%d+)%% increased energy shield recharge rate",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:234（energy shield recharge rate→EnergyShieldRecharge；form parser modNameList 未含，M6 名表缺口）"
+    },
+    {
+      "id": "increased_skill_effect_duration",
+      "pattern": "(\\d+)% increased skill effect duration",
+      "vendor_pattern": "(%d+)%% increased skill effect duration",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:651（skill effect duration→Duration；form parser modNameList 未含，M6 名表缺口）"
+    },
+    {
       "id": "increased_total_power_counted_by_warcries",
       "pattern": "(\\d+)% increased total power counted by warcries",
       "vendor_pattern": "(%d+)%% increased total power counted by warcries",
@@ -968,6 +1028,21 @@
       "verified": false,
       "batch": "S1",
       "source_note": "ModParser.lua:2677（探针求值自动转写；样本：Life Leech recovers based on your Lightning damage as well as Physical damage）"
+    },
+    {
+      "id": "life_regeneration_per_second",
+      "pattern": "(\\d+(?:\\.\\d+)?) life regeneration per second",
+      "vendor_pattern": "(%d+%.?%d*) life regeneration per second",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:175（life regeneration→LifeRegen BASE 平直每秒回复）"
     },
     {
       "id": "magnitudes_of_curses_you_inflict_are_zero",
