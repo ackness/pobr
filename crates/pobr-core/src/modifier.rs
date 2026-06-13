@@ -108,6 +108,11 @@ pub enum ModTag {
         /// 动态上限的取数 actor（PoB2 ModStore.lua:338-345 `tag.limitActor`，如 Agony
         /// Crawler 以玩家 virulence 为上限）。`None` ＝ 当前 `cfg.multiplier(limit_var)`。
         limit_actor: Option<ActorRef>,
+        /// 倒数缩放（PoB2 ModStore.lua:378-380 `tag.invert`：limit 之后
+        /// `mult = 1/mult`，mult 为 0 时保持 0——如 Elemental Conflux 三元素
+        /// MORE 按 `Multiplier:ElementalConflux<El>Effect`（Average 档 = 3）
+        /// 取 1/3 均摊）。
+        invert: bool,
     },
     /// 按 actor **已算出 stat（output 表）**线性缩放（M4-T1 W-A3；PoB2 `PerStat`
     /// tag，ModStore.lua:440-489）。与 [`ModTag::Multiplier`] 拆开：Multiplier 读
@@ -177,6 +182,7 @@ impl ModTag {
             actor: None,
             limit_var: None,
             limit_actor: None,
+            invert: false,
         }
     }
 }
@@ -324,6 +330,7 @@ impl Modifier {
                     actor,
                     limit_var,
                     limit_actor,
+                    invert,
                 } => {
                     // 取数源按 actor 维度切换（PoB2 ModStore.lua:347-353 `tag.actor` →
                     // getActor(self, ...).modDB）：None＝当前 cfg.multiplier；Some＝
@@ -346,7 +353,13 @@ impl Modifier {
                             Some(actor) => cfg.actor_multiplier(*actor, lv),
                         })
                     });
-                    value *= effective_limit.map_or(count, |max| count.min(max));
+                    let mut count = effective_limit.map_or(count, |max| count.min(max));
+                    // 倒数缩放（PoB2 ModStore.lua:378-380：limit 之后
+                    // `if tag.invert and mult ~= 0 then mult = 1 / mult end`）。
+                    if *invert && count != 0.0 {
+                        count = 1.0 / count;
+                    }
+                    value *= count;
                 }
                 ModTag::PerStat {
                     stat,
@@ -417,6 +430,7 @@ mod tests {
             actor: Some(ActorRef::Parent),
             limit_var: None,
             limit_actor: None,
+            invert: false,
         });
         assert_eq!(modifier.effective_number(&cfg), Some(24.0));
 
@@ -428,6 +442,7 @@ mod tests {
             actor: Some(ActorRef::Minion),
             limit_var: None,
             limit_actor: None,
+            invert: false,
         });
         assert_eq!(missing.effective_number(&cfg), Some(0.0));
     }
@@ -449,6 +464,7 @@ mod tests {
             actor: None,
             limit_var: Some("MaxCharges".into()),
             limit_actor: None,
+            invert: false,
         });
         assert_eq!(local.effective_number(&cfg), Some(4.0));
 
@@ -460,6 +476,7 @@ mod tests {
             actor: None,
             limit_var: Some("MaxCharges".into()),
             limit_actor: Some(ActorRef::Player),
+            invert: false,
         });
         assert_eq!(cross.effective_number(&cfg), Some(6.0));
 
@@ -472,6 +489,7 @@ mod tests {
                 actor: None,
                 limit_var: Some("MaxCharges".into()),
                 limit_actor: Some(ActorRef::Player),
+                invert: false,
             });
         assert_eq!(static_wins.effective_number(&cfg), Some(2.0));
     }

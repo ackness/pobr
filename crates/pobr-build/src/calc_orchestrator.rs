@@ -873,6 +873,20 @@ pub fn calculate_with_data(
     //     走 priority/limit/分槽（:2829-2896）。C5-2 切换前的 `aura_buff_modifiers`
     //     静态直注已关（双跑依据 m3-c5-dualrun-report.md，删函数属 C5-3）。
     for spec in buff_skill_specs(build, data) {
+        // （M4-n）buff 载荷中的 `Multiplier:<X>` BASE → cfg.multipliers 桥
+        // （vendor GetMultiplier 对 modDB `Multiplier:<X>` 全局求和取数，
+        // ModStore.lua:369；PoBR 的 ModTag::Multiplier 读 cfg.multipliers
+        // 预灌表，需在此显式回填）。首个消费方 = Sigil of Power
+        // `Multiplier:SigilOfPowerMaxStages` BASE 4（per-stage MORE 的
+        // limitVar 分母）。
+        for m in &spec.mods {
+            if let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
+                && m.mod_type == ModType::Base
+                && let Some(v) = m.value.as_number()
+            {
+                session.set_multiplier(var, v);
+            }
+        }
         session.add_buff_skill(spec);
     }
     // 4b'.（M4-G）support 授予的玩家侧 buff（Precision I/II → Accuracy INC，
@@ -4037,21 +4051,57 @@ fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
                     gem.stat_set_index,
                 );
                 let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-                let mods = debuff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
-                if mods.is_empty() || !seen.insert(gem.skill_id.as_str()) {
+                let debuff_mods =
+                    debuff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+                // （M4-n）玩家侧 Buff 分支：非 aura/curse 主动技能的玩家侧 buff
+                // 载荷（GlobalEffect effectType=Buff，vendor 同一 buff 循环
+                // CalcPerform.lua:1949-1962 Buff 分支写 player db）。如 Sigil of
+                // Power `circle_of_power_spell_damage_+%_final_per_stage` →
+                // Damage MORE Spell ×SigilOfPowerStage、Elemental Conflux →
+                // 三元素 MORE ×(1/ElementalConflux<El>Effect)。取数等级 = 宝石
+                // 等级 + 适用的 `+N to Level of all <X> Skills`（vendor
+                // applyGemMods 对每个 gem effect 生效，CalcSetup.lua:410-435；
+                // Sigil 实测 20→32）。support 授予的等级（Uhtred's Exodus
+                // `SupportedGemProperty` +3）未建模，登记残差。
+                let buff_level = gem.gem_level + additional_gem_levels(build, data, &gem.skill_id);
+                let es_buff = if buff_level == gem.gem_level {
+                    es
+                } else {
+                    data.effect_stats(&gem.skill_id, buff_level, gem.quality, gem.stat_set_index)
+                };
+                let buff_mods =
+                    player_buff_stat_modifiers(data, &es_buff, &gem.skill_id, set_key.as_deref());
+                if (debuff_mods.is_empty() && buff_mods.is_empty())
+                    || !seen.insert(gem.skill_id.as_str())
+                {
                     continue;
                 }
-                specs.push(BuffSpec {
-                    name: buff_skill_name(data, &gem.skill_id),
-                    kind: BuffKind::Debuff,
-                    skill_id: gem.skill_id.clone(),
-                    mods,
-                    magnitude: 1.0,
-                    slot: group.slot.clone(),
-                    socket_index,
-                    is_mark: false,
-                    ignore_curse_limit: false,
-                });
+                if !debuff_mods.is_empty() {
+                    specs.push(BuffSpec {
+                        name: buff_skill_name(data, &gem.skill_id),
+                        kind: BuffKind::Debuff,
+                        skill_id: gem.skill_id.clone(),
+                        mods: debuff_mods,
+                        magnitude: 1.0,
+                        slot: group.slot.clone(),
+                        socket_index,
+                        is_mark: false,
+                        ignore_curse_limit: false,
+                    });
+                }
+                if !buff_mods.is_empty() {
+                    specs.push(BuffSpec {
+                        name: buff_skill_name(data, &gem.skill_id),
+                        kind: BuffKind::Buff,
+                        skill_id: gem.skill_id.clone(),
+                        mods: buff_mods,
+                        magnitude: 1.0,
+                        slot: group.slot.clone(),
+                        socket_index,
+                        is_mark: false,
+                        ignore_curse_limit: false,
+                    });
+                }
                 continue;
             }
             if !seen.insert(gem.skill_id.as_str()) {
@@ -4856,13 +4906,25 @@ fn player_buff_stat_modifiers(
     let Some(catalog) = catalog else {
         return Vec::new(); // 无 catalog（旧数据包）：buff 词条全 miss（与主通道同口径）。
     };
-    let mut mods = Vec::new();
+    // 同名 stat 先加法合并（vendor CalcTools.lua:138-200 buildSkillInstanceStats
+    // `stats[stat] += value`：品质段与等级段同名时合一后才建 mod）。不合并会
+    // 产出两条同 (name/type/flags/tags) 的 mod，被 buff_pass merge_buff 的
+    // 「同名取强」（vendor mergeBuff CalcPerform.lua:41-63）丢弃较小一条——
+    // Elemental Conflux q20 的品质段 +10 即此前被静默吞掉。
+    let mut merged: Vec<(String, f64)> = Vec::new();
     for ds in stats.all() {
-        if ds.value == 0.0 {
+        match merged.iter_mut().find(|(stat, _)| *stat == ds.stat) {
+            Some((_, value)) => *value += ds.value,
+            None => merged.push((ds.stat.clone(), ds.value)),
+        }
+    }
+    let mut mods = Vec::new();
+    for (stat, value) in &merged {
+        if *value == 0.0 {
             continue; // 跳零值 stat（与主通道同口径）。
         }
         let outcome =
-            stat_map_engine::map_player_buff_stat(&catalog, skill_id, set_key, &ds.stat, ds.value);
+            stat_map_engine::map_player_buff_stat(&catalog, skill_id, set_key, stat, *value);
         if mode == StatMapMode::Compare {
             let record = match &outcome {
                 MappedOutcome::Mapped(items) if !items.is_empty() => {
@@ -4887,7 +4949,7 @@ fn player_buff_stat_modifiers(
             if let Some((classification, detail)) = record {
                 STAT_MAP_CTX.with(|ctx| {
                     ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
-                        stat: ds.stat.clone(),
+                        stat: stat.clone(),
                         label: format!("buff.{skill_id}"),
                         classification,
                         detail,
@@ -4904,9 +4966,9 @@ fn player_buff_stat_modifiers(
             };
             let origin = ModifierSource::new(SourceId::new(
                 SourceKind::SkillGem,
-                format!("buff.{skill_id}.{}", ds.stat),
+                format!("buff.{skill_id}.{stat}"),
             ))
-            .with_raw_text(format!("buff {skill_id} {} ({})", ds.stat, ds.value));
+            .with_raw_text(format!("buff {skill_id} {stat} ({value})"));
             mods.push(modifier.with_origin(origin));
         }
     }
