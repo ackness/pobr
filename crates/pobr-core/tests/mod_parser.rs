@@ -926,3 +926,50 @@ fn parses_single_element_exposure_effect() {
     assert_eq!(o.mods[0].mod_type, ModType::Inc);
     assert_eq!(o.mods[0].value, ModValue::Number(25.0));
 }
+
+// ---------------------------------------------------------------------------
+// M5a-B3：召唤物词条包裹（parse_minion_modifier）
+// ---------------------------------------------------------------------------
+
+/// `Minions deal X% increased Damage` → 剥离 `minions ` 前缀，余文
+/// `deal 20% increased damage` 解析为 Damage INC 20，包裹为 MinionModifierEntry。
+#[test]
+fn parses_minion_increased_damage_wrapper() {
+    use pobr_core::mod_parser::parse_minion_modifier;
+    let entries =
+        parse_minion_modifier("Minions deal 20% increased Damage").expect("minion 词条应识别");
+    assert_eq!(entries.len(), 1);
+    let inner = &entries[0].inner;
+    assert_eq!(inner.name, ModName::from("Damage"));
+    assert_eq!(inner.mod_type, ModType::Inc);
+    assert_eq!(inner.value, ModValue::Number(20.0));
+    // minion_type=None → 适用所有召唤物。
+    assert!(entries[0].minion_type.is_none());
+}
+
+/// `Minions have X% increased maximum Life` → Life INC 包裹。
+#[test]
+fn parses_minion_increased_life_wrapper() {
+    use pobr_core::mod_parser::parse_minion_modifier;
+    let entries =
+        parse_minion_modifier("Minions have 30% increased maximum Life").expect("minion 词条应识别");
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].inner.mod_type, ModType::Inc);
+    assert_eq!(entries[0].inner.value, ModValue::Number(30.0));
+}
+
+/// 非 `minions ` 前缀 → None（玩家词条不误判为召唤词条）。
+#[test]
+fn non_minion_text_returns_none() {
+    use pobr_core::mod_parser::parse_minion_modifier;
+    assert!(parse_minion_modifier("20% increased Fire Damage").is_none());
+    assert!(parse_minion_modifier("Minions ").is_none()); // 空余文
+}
+
+/// `Minions …` 余文不可解析 → None（不产空 entry）。
+#[test]
+fn minion_unparsable_remainder_returns_none() {
+    use pobr_core::mod_parser::parse_minion_modifier;
+    // 余文是无意义文本 → 通用解析 Unsupported → None。
+    assert!(parse_minion_modifier("Minions wibble wobble zorp").is_none());
+}

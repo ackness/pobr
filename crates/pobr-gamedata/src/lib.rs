@@ -158,8 +158,28 @@ impl GameData {
     }
 
     /// 加载授予效果定义（含解析后的主动技能链接 + StatSet/CostTypes 索引）。
+    ///
+    /// 加载期把 `overlay/granted_effect_minions.json`（宝石→召唤物外键边车，
+    /// M5a-A3）merge 到 base 之上：按 `effect_id` 匹配，拼入 `minion_list` /
+    /// `add_minion_list` / `minion_uses` / `minion_has_item_set`（base
+    /// `granted_effects.json` 不含这些字段，缺 overlay 文件 = 全空，向后兼容）。
     pub fn granted_effects(&self) -> Result<Vec<GrantedEffectDef>, LoadError> {
-        self.load_domain("granted_effects.json")
+        let mut effects: Vec<GrantedEffectDef> = self.load_domain("granted_effects.json")?;
+        if let Some(minions) = self.granted_effect_minions()? {
+            let mut by_id: std::collections::HashMap<&str, &_> = std::collections::HashMap::new();
+            for entry in &minions.entries {
+                by_id.insert(entry.effect_id.as_str(), entry);
+            }
+            for effect in &mut effects {
+                if let Some(entry) = by_id.get(effect.id.as_str()) {
+                    effect.minion_list = entry.minion_list.clone();
+                    effect.add_minion_list = entry.add_minion_list.clone();
+                    effect.minion_uses = entry.minion_uses.clone();
+                    effect.minion_has_item_set = entry.minion_has_item_set;
+                }
+            }
+        }
+        Ok(effects)
     }
 
     /// 加载授予效果的分等级参数（`granted_effect_id -> 升序等级数组`，cost/cooldown/attack time），

@@ -246,6 +246,38 @@ fn granted_effect_minions_samples() {
     );
 }
 
+/// A3 merge：`granted_effects()` 加载期把 `granted_effect_minions.json` 边车
+/// 拼进 `GrantedEffectDef.minion_list` 等字段（M5a-A3）。
+#[test]
+fn granted_effects_merge_minion_list() {
+    let effects = game_data().granted_effects().unwrap();
+    let by_id: std::collections::HashMap<&str, &_> =
+        effects.iter().map(|e| (e.id.as_str(), e)).collect();
+    // RaiseZombiePlayer → [RaisedZombie]
+    let zombie = by_id
+        .get("RaiseZombiePlayer")
+        .expect("RaiseZombiePlayer 在库");
+    assert_eq!(zombie.minion_list, ["RaisedZombie"]);
+    // RagingSpiritsPlayer → [SummonedRagingSpirit]
+    assert_eq!(
+        by_id
+            .get("RagingSpiritsPlayer")
+            .expect("RagingSpiritsPlayer 在库")
+            .minion_list,
+        ["SummonedRagingSpirit"]
+    );
+    // Manifest Weapon：minion_uses + item set 也 merge 进
+    let manifest = by_id
+        .get("ManifestWeaponPlayer")
+        .expect("ManifestWeaponPlayer 在库");
+    assert_eq!(manifest.minion_uses, ["Weapon 1"]);
+    assert!(manifest.minion_has_item_set);
+    // 非召唤技能（如 Fireball）的 minion_list 应为空（向后兼容）
+    if let Some(fb) = by_id.get("FireballPlayer") {
+        assert!(fb.minion_list.is_empty(), "非召唤技能 minion_list 空");
+    }
+}
+
 /// mirage_configs.json：5 条配置（vendor CalcMirages.lua 五分支），
 /// mirage_archer 的 stat 名抽查（:74-76）。
 #[test]

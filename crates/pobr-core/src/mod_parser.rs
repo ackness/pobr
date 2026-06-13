@@ -70,6 +70,73 @@ pub fn parse_mod(text: &str) -> Result<ParseOutcome, ParseError> {
     parse_mod_with_rules(text, None, None)
 }
 
+/// 召唤物词条包裹解析（M5a-B3）：识别 `Minions deal/have/take/use …` 前缀
+/// （vendor `ModParser.lua:1204-1205` 的 `["^minions "]` / `["^minions [cthd]…"]`
+/// `addToMinion = true`），剥离前缀后把**剩余文本**当作普通 mod 递归解析，再把每
+/// 条产物包裹为 [`MinionModifierEntry`](crate::calc::minion::MinionModifierEntry)
+/// （内层 mod 进召唤物自己的 ModDb，按召唤物 `matches(cfg)` 生效）。
+///
+/// 设计取舍（不改聚合内核，只加包裹层）：本函数**独立于** `parse_mod` 主流程——
+/// `Minions …` 文本在主流程恒走 Unsupported（玩家 ModDb 不受影响），编排层
+/// （`spawn_minions`）单独调用本函数收集 minion 词条喂 `MinionSpawn.minion_modifiers`。
+/// 故对玩家自身聚合零影响；对既有调用方零改动。
+///
+/// 返回 `None`：非 `minions ` 前缀，或剩余文本无法解析（剩余文本的
+/// Unsupported 不产 entry，调用方据 `None` 归为未支持召唤词条）。
+/// 返回 `Some(entries)`：剩余文本解析出的全部 mod 各包一个 entry（`minion_type`
+/// 恒 `None` = 适用所有召唤物；类型限定如 `zombies have …` 属后续细化）。
+///
+/// 出处：vendor `ModParser.lua:1204-1205`、`CalcPerform.lua:1676`
+/// （`if not value.type or env.minion.type == value.type then AddMod`）。
+pub fn parse_minion_modifier(
+    text: &str,
+) -> Option<Vec<crate::calc::minion::MinionModifierEntry>> {
+    use crate::calc::minion::MinionModifierEntry;
+
+    let original = text.trim();
+    let cleaned = strip_pob_brackets(original);
+    let normalized = normalize_spaces(&cleaned);
+
+    // vendor 两条模式：`["^minions "]` 与 `["^minions [cthd][ae][ukva][sel]e? "]`
+    // （= `minions deal/have/take/use `）。后者把动词一并剥离（vendor 余文是纯效果
+    // 文本，如 `20% increased Damage`）；通用解析器无裸 `deal ` 前缀处理，故此处把
+    // `minions <verb> ` 整体剥离，与 vendor 一致。匹配大小写无关，余文保留原始大小写。
+    let prefix_len = "minions ".len();
+    if normalized.len() < prefix_len || !normalized[..prefix_len].eq_ignore_ascii_case("minions ") {
+        return None;
+    }
+    let after_minions = normalized[prefix_len..].trim_start();
+    if after_minions.is_empty() {
+        return None;
+    }
+    // 剥离可选动词 deal/have/take/use（vendor `[cthd][ae][ukva][sel]e?` 类）。
+    let rest = ["deal ", "have ", "take ", "use "]
+        .iter()
+        .find_map(|verb| {
+            (after_minions.len() >= verb.len()
+                && after_minions[..verb.len()].eq_ignore_ascii_case(verb))
+            .then(|| after_minions[verb.len()..].trim_start())
+        })
+        .unwrap_or(after_minions);
+    if rest.is_empty() {
+        return None;
+    }
+
+    let outcome = parse_mod(rest).ok()?;
+    if matches!(outcome.status, ParseStatus::Unsupported) || outcome.mods.is_empty() {
+        return None;
+    }
+    let entries = outcome
+        .mods
+        .into_iter()
+        .map(|m| MinionModifierEntry {
+            inner: m.with_source(original),
+            minion_type: None,
+        })
+        .collect();
+    Some(entries)
+}
+
 /// special 规则增强版解析（M5b §2.3）。
 ///
 /// `rules = Some` 时：在通用解析路径**之前**对整行（已 strip-brackets +

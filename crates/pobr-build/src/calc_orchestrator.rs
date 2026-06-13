@@ -30,6 +30,7 @@
 //! 已知切片：武器伤害（attack 技能依赖未接的武器基底）、DoT per-minute、area/speed/crit
 //! 等非伤害族的 SkillStatMap 映射（[`map_skill_stat`] 待逐步补全）。
 
+use pobr_core::calc::minion::AttributeInfusion;
 use pobr_core::calc::{BuffKind, BuffSpec, CalculationSession, MinimalInput, OutputTable};
 use pobr_core::mod_parser::parse_mod;
 use pobr_core::passive::AllocatedNode;
@@ -1122,10 +1123,129 @@ pub fn calculate_with_data(
         }
     }
 
+    // 召唤物接线（M5a-B2）：在全部玩家来源注入后、perform 前，识别召唤宝石
+    // （`effect_minion_list` 非空）并接入 `Env.minions`。perform 末尾 `perform_minions`
+    // 对每个召唤物跑同一套 offence/defence，结果落 `OutputTable.minions`。
+    // gate：仅当某主动技能解析出非空 minion_list 才接入——非召唤 build 永不触发，
+    // 对既有 18-build 零行为影响。
+    spawn_minions(&mut session, build, data, &options.extra_modifier_texts);
+
     // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等
     // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
     session.perform_minimal();
     Ok(session.output().clone())
+}
+
+/// 识别召唤宝石 → 接入 `Env.minions`（M5a-B2）。
+///
+/// 遍历启用的 socket group，对每个**主动技能**（非 support）的授予效果，查
+/// [`BuildData::effect_minion_list`]：非空即为召唤技能。对列表中每个 minion id
+/// 查 [`BuildData::minion_def`] 取真实底材，按召唤宝石等级派生召唤物 actor 接入。
+///
+/// **召唤物等级**：把 gem_level 原值传给 `add_minion_from_def`，由其内部经
+/// `minion_level_from_gem_level`（vendor `CalcActiveSkill.lua:896` 默认规则
+/// `minionLevelTable[gem_level]`，clamp [1,100]）映射到怪物等级。
+/// `minionLevelIsEnemyLevel` / `minionLevelIsPlayerLevel` / 显式 `skillData.minionLevel`
+/// 等特殊规则属 C/后续细化，首版按默认规则（覆盖绝大多数召唤宝石）。
+///
+/// **数量上限**：按 vendor `CalcPerform.lua:1183-1187` 取召唤物 `limit` stat 在玩家
+/// modList 的 BASE 之和（[`CalculationSession::base_sum`]），缺则兜底 1（至少一个
+/// 召唤物，使 life/DPS 可见）。`ActiveMinionLimit` MORE 乘区与 Override 口径属
+/// 后续细化（蓝图 §6 开放问题 3）。
+///
+/// **MinionModifier 通道（B3）**：`Minions deal/have …` 族词条经
+/// [`parse_minion_modifier`](pobr_core::mod_parser::parse_minion_modifier) 包裹为
+/// `MinionModifierEntry` 注入召唤物 ModDb。首版从**装备词条 + extra_modifier_texts**
+/// 收集（覆盖物品/配置来源的 minion 词条）；天赋/宝石授予的 minion 词条属残项
+/// （需在各来源注入点拦截，工作量大）。`ally_buff` / 属性灌注消费侧（infusion）属后续。
+fn spawn_minions(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+    extra_texts: &[String],
+) {
+    use pobr_core::calc::minion::MinionModifierEntry;
+    use pobr_core::mod_parser::parse_minion_modifier;
+    use std::collections::BTreeSet;
+
+    // B3：收集 `Minions deal/have …` 词条（装备 + extra），包裹为 MinionModifierEntry。
+    // 这些词条在玩家主流程恒走 Unsupported（不影响玩家自身聚合），仅在此进召唤物 ModDb。
+    let mut minion_modifiers: Vec<MinionModifierEntry> = Vec::new();
+    for text in collect_item_texts(build).iter().chain(extra_texts.iter()) {
+        if let Some(entries) = parse_minion_modifier(text) {
+            minion_modifiers.extend(entries);
+        }
+    }
+
+    // 去重：同一 minion id（不同技能/组引用同一召唤物）只接入一次，避免重复计入。
+    let mut seen: BTreeSet<String> = BTreeSet::new();
+
+    for group in build.enabled_socket_groups() {
+        // 该组每个**主动技能**宝石的 (授予效果 id, 宝石等级)。优先用 `gem_skills`
+        // （真实导入路径，含 active + support）；为空时回退 `active_skill_id`
+        // （builder/测试用 with_active_skill 构造，与 resolve_main_skill 同源兜底）。
+        let candidates: Vec<(&str, u32)> = if group.gem_skills.is_empty() {
+            group
+                .active_skill_id
+                .as_deref()
+                .map(|id| vec![(id, group.active_gem_level.unwrap_or(1))])
+                .unwrap_or_default()
+        } else {
+            group
+                .gem_skills
+                .iter()
+                .map(|g| (g.skill_id.as_str(), g.gem_level))
+                .collect()
+        };
+        for (skill_id, gem_level) in candidates {
+            // support 自身不召唤——其 addMinionList 是对主动技能 minion_list 的追加，
+            // 属后续；首版只接 active 的 minion_list。
+            let is_support = data
+                .granted_effects
+                .get(skill_id)
+                .map(|e| e.is_support)
+                .unwrap_or(false);
+            if is_support {
+                continue;
+            }
+            let minion_ids = data.effect_minion_list(skill_id);
+            if minion_ids.is_empty() {
+                continue;
+            }
+            for minion_id in minion_ids {
+                if !seen.insert(minion_id.clone()) {
+                    continue;
+                }
+                let Some(def) = data.minion_def(minion_id) else {
+                    // minion_list 引用了不在库的 minion（外键已核验为零悬空，
+                    // 防御性跳过——理论不可达）。
+                    continue;
+                };
+                // 数量上限：召唤物 limit stat（如 `ActiveZombieLimit`）的玩家 BASE 之和；
+                // 缺则兜底 1。limit 仅影响 `Multiplier:SummonedMinion`（per-minion 词条 +
+                // DPS 聚合计数），不影响单个召唤物 life/防御。
+                let limit_stat = def.limit.to_pob2_str();
+                let limit = if limit_stat.is_empty() {
+                    1
+                } else {
+                    let summed = session.base_sum(limit_stat);
+                    if summed >= 1.0 { summed as u32 } else { 1 }
+                };
+                let def = def.clone();
+                // `add_minion_from_def` 内部经 `minion_level_from_gem_level` 把 gem_level
+                // 映射到怪物等级（CalcActiveSkill.lua:896 默认规则），故此处传 gem_level
+                // 原值，不可预先 resolve（否则二次映射）。
+                session.add_minion_from_def(
+                    &def,
+                    gem_level,
+                    limit,
+                    minion_modifiers.clone(),
+                    Vec::new(),
+                    AttributeInfusion::default(),
+                );
+            }
+        }
+    }
 }
 
 /// 判定某授予效果是否为「可主动施放的伤害技能」候选：攻击或法术，且不是 meta/触发壳
@@ -7737,6 +7857,10 @@ mod tests {
             stat_set: None,
             additional_stat_set_ids: vec![],
             cost_types: vec![],
+            minion_list: vec![],
+            add_minion_list: vec![],
+            minion_uses: vec![],
+            minion_has_item_set: false,
             skill_types: skill_types.iter().map(|s| s.to_string()).collect(),
         };
         let mut granted_effects = HashMap::new();
@@ -7830,6 +7954,10 @@ mod tests {
                 stat_set: None,
                 additional_stat_set_ids: vec![],
                 cost_types: vec![],
+                minion_list: vec![],
+                add_minion_list: vec![],
+                minion_uses: vec![],
+                minion_has_item_set: false,
                 skill_types: vec!["Spell".into(), "Triggered".into(), "InbuiltTrigger".into()],
             },
         );
@@ -7849,6 +7977,10 @@ mod tests {
                 stat_set: None,
                 additional_stat_set_ids: vec![],
                 cost_types: vec![],
+                minion_list: vec![],
+                add_minion_list: vec![],
+                minion_uses: vec![],
+                minion_has_item_set: false,
                 skill_types: vec!["Spell".into()],
             },
         );
@@ -8069,6 +8201,10 @@ mod tests {
                 stat_set: None,
                 additional_stat_set_ids: vec![],
                 cost_types: vec![],
+                minion_list: vec![],
+                add_minion_list: vec![],
+                minion_uses: vec![],
+                minion_has_item_set: false,
                 skill_types: vec!["Attack".into()],
             },
         );
@@ -8313,6 +8449,10 @@ mod support_judgement_tests {
             stat_set: None,
             additional_stat_set_ids: vec![],
             cost_types: vec![],
+            minion_list: vec![],
+            add_minion_list: vec![],
+            minion_uses: vec![],
+            minion_has_item_set: false,
             skill_types: v(skill_types),
         }
     }

@@ -154,6 +154,12 @@ pub(super) fn adapt_effects(
             additional_stat_set_ids,
             skill_types,
             cost_types: raw.cost_types,
+            // minion 外键字段（M5a-A3）：base 产物恒空，由 gamedata 加载期从
+            // overlay/granted_effect_minions.json merge 拼入（adapter 不产）。
+            minion_list: Vec::new(),
+            add_minion_list: Vec::new(),
+            minion_uses: Vec::new(),
+            minion_has_item_set: false,
         });
     }
     if dangling_type_fk > 0 {
