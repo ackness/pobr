@@ -1,3 +1,4 @@
+pub mod apply_range;
 pub mod attribution;
 pub mod calc;
 pub mod campaign;

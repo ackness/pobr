@@ -6193,6 +6193,96 @@ mod tests {
         assert_eq!(out.life, 130.0, "节点 +30 生命经节点归因路径生效");
     }
 
+    /// 构造一个带坐标的普通节点（默认 +5 to maximum Life 词条；可覆盖）。
+    fn normal_node_at(
+        skill: u32,
+        x: f64,
+        y: f64,
+        stats: Vec<String>,
+    ) -> pobr_data::catalog::PassiveNodeDef {
+        pobr_data::catalog::PassiveNodeDef {
+            skill,
+            id: format!("n{skill}"),
+            name: None,
+            kind: pobr_data::catalog::PassiveNodeKind::Normal,
+            stats,
+            group: None,
+            orbit: None,
+            orbit_index: None,
+            x: Some(x),
+            y: Some(y),
+            connections: vec![],
+            ascendancy_id: None,
+            variants: vec![],
+        }
+    }
+
+    /// 属性小点判定专项单测（WI-E4 的谓词层）。
+    #[test]
+    fn is_attribute_node_matches_any_attribute_choice() {
+        let attr = normal_node_at(1, 0.0, 0.0, vec!["+5 to any Attribute".into()]);
+        let attrs = normal_node_at(2, 0.0, 0.0, vec!["+5 to any Attributes".into()]);
+        let life = normal_node_at(3, 0.0, 0.0, vec!["+5 to maximum Life".into()]);
+        assert!(super::is_attribute_node(&attr));
+        assert!(super::is_attribute_node(&attrs));
+        assert!(!super::is_attribute_node(&life));
+    }
+
+    /// **radius 珠宝 attribute 误计数专项回归**（roadmap M5 验收点名 / WI-E4）。
+    ///
+    /// `Small Passive Skills in Radius also grant <mod>` 的 Small 计数必须排除属性
+    /// 小点（vendor ModParser.lua:6855-6857 `node.type=="Normal" and not node.isAttribute`）。
+    /// 半径内放 1 个普通生命小点 + 1 个属性三选一小点：grant 份数应为 1（非 2）。
+    #[test]
+    fn radius_small_grant_excludes_attribute_nodes() {
+        let socket = 100u32;
+        // 三个节点都在 socket 附近（距离 << 任意半径档）。
+        let mut passive_nodes = HashMap::new();
+        // socket 节点自身（普通，几何计算排除自身）。
+        passive_nodes.insert(socket, normal_node_at(socket, 0.0, 0.0, vec![]));
+        // 普通生命小点（应计入 Small）。
+        passive_nodes.insert(
+            101,
+            normal_node_at(101, 50.0, 0.0, vec!["+5 to maximum Life".into()]),
+        );
+        // 属性三选一小点（必须排除）。
+        passive_nodes.insert(
+            102,
+            normal_node_at(102, 0.0, 50.0, vec!["+5 to any Attribute".into()]),
+        );
+
+        let data = BuildData {
+            passive_nodes,
+            ..BuildData::empty()
+        };
+
+        let jewel = RadiusJewel {
+            socket_node: socket,
+            radius_label: Some("Large".into()),
+            grant_lines: vec![
+                "Small Passive Skills in Radius also grant +10 to maximum Mana".into(),
+            ],
+            notable_effect_inc: 0,
+        };
+        let build = Build::new()
+            .with_tree(PassiveTreeSpec {
+                allocated_nodes: vec![NodeId(socket), NodeId(101), NodeId(102)],
+                ..Default::default()
+            })
+            .with_radius_jewels(vec![jewel]);
+
+        let texts = radius_jewel_grant_texts(&build, &data);
+        // 仅 1 个非属性 Small 节点 → grant 文本出现 1 次（属性小点被排除，否则会是 2）。
+        let count = texts
+            .iter()
+            .filter(|t| t.contains("+10 to maximum Mana"))
+            .count();
+        assert_eq!(
+            count, 1,
+            "属性三选一小点不应计入 Small grant 份数；得到 {texts:?}"
+        );
+    }
+
     #[test]
     fn unknown_passive_node_is_skipped() {
         // 分配了一个不在节点表里的节点 → 跳过，不报错，生命保持基础。
