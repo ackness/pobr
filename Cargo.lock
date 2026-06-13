@@ -409,6 +409,7 @@ dependencies = [
 name = "pobr-core"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "criterion",
  "pobr-data",
  "regex",
