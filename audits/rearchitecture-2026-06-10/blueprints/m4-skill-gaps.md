@@ -294,3 +294,51 @@ duration 因子 × 速度残差，归 curse 线）；monk-invoker-frost-bomb Cri
   Accuracy，扩名单须逐消费方对照（Buff kind 消费段 buff_pass:328-355 已就绪）；
 - 多曝光源且效果系数不同的 per-source 缩放（vendor :3226-3231 逐源独立、
   PoBR 扁平求和）——reduce_enemy_exposure doc 既有 TODO(parity) 维持。
+
+## 9. M4-n crit/speed 尾差线——结果（2026-06-13）
+
+m1 收敛表带边 build 的逐项 oracle 分解（5 个独立行为 commit）：
+
+| build | 起点 | 根因（oracle 钉值） | 修复 | commit |
+|---|---|---|---|---|
+| ice-shot | CritMult 0.93x/TotalDPS 0.87x | Time-Lost 珠宝『N% increased Effect of Notable Passive Skills in Radius』未建模（ModParser.lua:6847 → JewelNotablePassiveSkillEffect；消费 CalcSetup.lua:246-275 对半径内 Notable modList 整体 ScaleAddList）：notable 自身词条 13407 25→30、56776 60→73 + 授予词条 10→12×6、12→14×4，全 vendor 截尾（ModStore.lua:45-80 `m_modf(round(v×scale,2))`）逐位吻合 | RadiusJewel.notable_effect_inc + radius_jewel_expansions 共享几何 + 授予文本内联缩放 + notable 自身差额副本；槽位加成（quiver/ring）副本同步改截尾口径（quiver INC 23.8→23） | `7763401` |
+| varashta（腿1） | Speed 0.95x | 『13% increased Cast Speed during any Flask Effect』后缀变体缺失（vendor ModParser.lua:1840-1841 → Condition:UsingFlask），整条硬失败被丢弃 | strip_tag_once 后缀表 += `during (any) flask effect` 两变体 | `89f3c36` |
+| varashta（腿2） | 同上 | Arcane Surge buff 载荷无注入点（vendor CalcDefence.lua:1580-1591：Speed INC 15×effect [Cast] + ManaRegen MORE 20×effect，effect=1+Σ(ArcaneSurgeEffect,BuffEffectOnSelf)/100；flag 解析与 AffectedBy 桥 PoBR 已有）。树 27388『Aspiring Genius』授予 flag，rune『40% increased effect of Arcane Surge on you』→ ×1.4=21 | overlay buff_definitions += ArcaneSurge 条目（数据驱动走既有 expand_misc_buffs）+ 名表 `effect of arcane surge on you`→ArcaneSurgeEffect（ModParser.lua:472）+ vendor_ref 守卫扩 CalcDefence 行段 | `8c8a70b` |
+| titan | 1.07x 越带高估 | 3b Hulking Form 小点副本按 v×inc/100 直加，vendor ScaleAddList 截尾：『3% increased Attack/Skill Speed』×1.5=4.5 vendor 落 4——speed INC 44 vs 42、伤害 INC 同源过记 | 3b 改差额副本 trunc(round(v×scale,2))−v（与 Time-Lost 同口径 vendor_scale_mod_value） | `429bedd` |
+| huntress-twister | Speed 0.93x/TotalDPS 0.87x | Tree:29306『15% increased Attack Speed while not on Low Mana』整条丢失：低魔条件后缀族缺失（vendor ModParser.lua:1761-1763 → Condition:LowMana[/neg]，默认 false → neg 生效） | strip_tag_once += 四变体（`while [you are] [not] on low mana`） | `5e8d9d5` |
+
+**收敛（effective 口径）**：
+- ice-shot：CritChance 0.97→0.99 ✓、CritMultiplier 0.93→0.99 ✓、TotalDPS
+  0.87→0.96 ✓、TotalDotDPS 0.89→0.99 ✓、CombinedDPS 0.87→0.96 ✓（全列入带）
+- varashta：Speed INC 138 逐位 ✓、rate 0.704142 逐位 ✓（0.95→1.00x）
+- titan：Speed 1.14 逐位 ✓、TotalDPS 1.07→1.05 ✓、TotalDotDPS 1.09→1.02 ✓、
+  CombinedDPS 1.07→1.04 ✓（全列入带）
+- huntress-twister：Speed INC 106 逐位 ✓（0.93→1.00x）、TotalDotDPS
+  0.91→0.99 ✓、TotalDPS 0.87→0.94（余差=量级线，见登记）
+- 连带：gemling TotalDPS 0.88→0.96 ✓ + CombinedDPS 0.95 ✓（flask 条件 +
+  Arcane Surge）、stormweaver TotalDPS 0.91→0.94 ✓、monk-twister
+  0.73→0.80 + Speed 0.97→1.00 ✓
+- 聚合：**off@5% 52→60（75.0%）、off@10% 62→68（85.0%）、dot@5% 9→15
+  （40.5%）、dot@10% 12→17（45.9%）**；defensive 379/392 不变
+
+**登记（oracle 已分解、根因复杂或另属线）**：
+- **monk-twister CritMult 0.95x**：缺腿 = Tree:5802 `CritMultiplier INC 40
+  [MultiplierThreshold:enemyDistance, Condition:WeaponSet2]`——敌人距离阈值
+  Multiplier（vendor config `enemyDistance` 变量 + MultiplierThreshold tag
+  机制 PoBR 未建）；其余 INC 逐位对齐（327+40=367 ✓）。
+- **huntress-twister AverageDamage 0.94x**：速度线闭环后余差全在击中量级
+  （per-type 分量待逐位，与 deadeye per-hit 登记同线）。
+- **titan 带内余差 ~+4.7%**：chaos/fire 链分量过记（PoBR chaos stored
+  2027-3166 vs vendor 1504-2263，pre-scale base 464 vs 345——gain-as/转换链
+  分量口径，量级线）；INC 聚合已逐位（336.5 vs 336，0.5 为带内截尾残差）。
+- **varashta TotalDPS 0.72x / TotalDotDPS 0.56x**：速度/暴击全对齐后余差全在
+  击中量级线（Cast on Crit comet 链），另属 per-hit 分量对拍线。
+- **stormweaver CombinedDPS 0.85x**：TotalDPS 已入带（0.94 ✓）；余差 =
+  TotalDotDPS 0.00x（Pinnacle of Power buff 载荷，§7.4 已登记归 statmap
+  Buff 域，本波禁动）。
+- 范围珠宝效果的两个近似（当前样本无触发）：半径重叠时 vendor 同节点后写
+  覆盖单一效果（PoBR 按授予珠宝独立）；『Effect of **Small** Passive Skills
+  in Radius』变体（ModParser.lua:6842，JewelSmallPassiveSkillEffect）未接
+  ——18-build 样本无此词条，出现时与 notable 通道同构接入。
+
+baseline 按惯例本波不动（所有列 ≥ 基线），入带后随主线合并 bump。
