@@ -294,3 +294,26 @@ duration 因子 × 速度残差，归 curse 线）；monk-invoker-frost-bomb Cri
   Accuracy，扩名单须逐消费方对照（Buff kind 消费段 buff_pass:328-355 已就绪）；
 - 多曝光源且效果系数不同的 per-source 缩放（vendor :3226-3231 逐源独立、
   PoBR 扁平求和）——reduce_enemy_exposure doc 既有 TODO(parity) 维持。
+
+## 8. M4-n varashta/comet 系残差包——三项闭环（2026-06-13）
+
+m1 移交三项（focus implicit ModRange / Sigil+Conflux buff 载荷 / 非曝光缺口
+勘察）全部 oracle 钉值闭环；varashta TotalDPS eff 0.69x→**0.95x**、
+TotalDotDPS 0.53x→**0.97x ✓**、CombinedDPS 0.68x→0.95x、Mana 1.04x→1.00x ✓。
+聚合 off@5% 52→53=66.2%（@10% 62→64=80.0%）、dot@5% 9→11（@10% 12→16）。
+
+| 项 | 钉值结论 | 修复 | commit |
+|---|---|---|---|
+| ① focus 65 vs 33 | **ModRange 为误归因**——vendor rangeLineList=0、行文本无区间；真实机制 = Disciple of Varashta『Instruments of Power』节点 20701（tree.lua:57320-57334）『50% reduced bonuses gained from Equipped Focus』：ModParser.lua:4867 → EffectOfBonusesFromFocus INC -50，CalcSetup.lua:1209-1220 对 Focus 件全局数值词条 ×0.5（LIST/FLAG 经 MergeMod skipNonAdditive 保全值）。oracle modDB 双证：Damage 65→33、CritChance 47→24、Int 21→11、Mana 104→52 | slot_bonus_effect_scales 增 reduced 前缀 + equipped focus 目标（Weapon2 实为 Focus 基底门控）；消费点放开负 scale（全值+负副本 = ×(1+scale)） | `bc3f799` |
+| ② Sigil/Conflux buff 载荷 | vendor buffList：Sigil `Damage MORE 17`（eff level 32 per-stage 17 × stage 1，limitVar=MaxStages 4）+ Conflux `<El>Damage MORE 73×(1/3)=24.33`（invert Multiplier，config Average 档 3）。§7.4 登记的 scalar 连坐子障碍**不阻塞本项**（两条目无 element.scalar） | ModTag::Multiplier 增 invert + translate_tag 允收 limitVar/invert；允收名单扩 Damage/<El>Damage/Multiplier:SigilOfPowerMaxStages + Spell flag 直译 + GlobalEffect unscalable 容忍；buff_skill_specs 玩家 Buff 分支（等级 = 宝石 + 适用 +N Level；同名 stat 先加法合并防 merge_buff 取强吞品质段）+ `Multiplier:` BASE 桥进 cfg.multipliers；config:elementalConfluxElement handler | `c2710a4` |
+| ③ 非曝光缺口 | 分解：量级 panel 0.992 ✓（旧 0.19x 线已闭）/ 敌侧 ×1.5 同构 ✓（Rakiata 100% 反转敌抗 50→-50）/ 速度 0.95x（速度线）/ **伪高** = M4-H Effective 乘数桥对空 tag 条目空真，裸 config Multiplier（sigilOfPowerStages placeholder 1）被双计为 2 → Sigil MORE 17→34 | 桥判据加 `!tags.is_empty()`；连带 witch-lich-DD 1.11→0.98x ✓ 新命中、coiling-bolts 1.01→0.89x（旧 ✓ 为双计伪命中，真实低估暴露） | `ae844a2` |
+
+**剩余登记（本波勘察暴露、未实现）**：
+- **Uhtred's Exodus 系 support 等级授予**（`SupportedGemProperty` LIST +
+  MultiplierThreshold SupportCount，sup_str.lua:7543-7579）：Conflux 实级
+  21+3=24（63+q10=73）vs PoBR 21（60+10=71）——per-element MORE 23.33 vs
+  24.33，varashta 残差 ~1%；
+- **buff effect 缩放豁免（unscalable）**维度未建模——BuffEffect 乘区 ≠1 时
+  `Multiplier:SigilOfPowerMaxStages` 会被错误缩放（本 build 乘区 1，无差异）；
+- **coiling-bolts 量级线 0.89x**：双计移除后暴露的真实低估，归击中量级线；
+- varashta Speed 0.95x：速度线（另一 agent，禁动）。
