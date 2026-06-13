@@ -146,3 +146,43 @@ fn summon_zombie_life_matches_core_derivation() {
         core_life
     );
 }
+
+// ---------------------------------------------------------------------------
+// B3：MinionModifier 通道——`Minions deal X% increased Damage` 进召唤物 ModDb
+// ---------------------------------------------------------------------------
+
+/// 玩家装备挂 `Minions deal 50% increased Damage`（装备词条来源）→ 召唤物 DPS
+/// 增长；玩家自身不受影响（minion 词条在玩家主流程走 Unsupported，进召唤物 ModDb）。
+#[test]
+fn minion_increased_damage_raises_minion_dps() {
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
+
+    let data = load_data();
+
+    let base = calculate_with_data(&zombie_build(20), &data, &default_opts()).expect("base calc");
+    let base_dps = base.minions[0].dps;
+    assert!(base_dps > 0.0, "基线召唤物 DPS 应 > 0");
+
+    // 戒指挂 minion 词条（装备来源经 collect_item_texts → parse_minion_modifier）。
+    let ring = Item {
+        base: ItemBaseId::from("Ring"),
+        rarity: ItemRarity::Rare,
+        quality: 0,
+        implicit_texts: vec![],
+        modifier_texts: vec!["Minions deal 50% increased Damage".into()],
+        enchant_texts: vec![],
+        rolled_defence: RolledDefence::default(),
+        parsed_stats: vec![],
+    };
+    let buffed_build = zombie_build(20).set_item(EquipmentSlot::Ring1, ring);
+    let buffed = calculate_with_data(&buffed_build, &data, &default_opts()).expect("buffed calc");
+    let buffed_dps = buffed.minions[0].dps;
+
+    // 召唤物 DPS 应随 +50% increased Damage 增长（具体倍率取决于其它 inc 叠加）。
+    assert!(
+        buffed_dps > base_dps,
+        "minion DPS 应随 Minions deal 50% increased Damage 增长：base {base_dps} → buffed {buffed_dps}"
+    );
+    // 玩家自身 DPS 不受 minion 词条影响（minion 词条不进玩家聚合）。
+    assert_eq!(buffed.dps, base.dps, "玩家自身 DPS 不应被 minion 词条改变");
+}

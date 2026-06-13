@@ -418,3 +418,36 @@ A0(依赖检查, 0.5d) ──► A1(schema) ──► A2 ∥ A3 ∥ A4 ──►
 3. **`Multiplier:SummonedMinion` 的 limit 源值口径**：PoB2 limit 来自 `base_number_of_<x>_allowed` stat 聚合（含天赋/装备加成），pobr 当前 `write_summoned_minion_multipliers` 收一个标量。B2 先用「技能数据基值 + ModDb 该 stat 聚合」近似，是否需要完整 `output[limit]` 反查（PoB2 CalcPerform:1190 用 output 值）待首份 parity 报告定。
 4. **Companion/beastList**：M5a 显式不做（标 Unsupported），排期归属（M5a 尾巴 vs M7 长尾）待 E2 报告看 ninja 命中频率。
 5. **W3 合流时点**：A4 的常量落点（monster_scaling 扩段 vs game_constants monster 段）依赖 W3 最终形态，A0 检查时与 W3 agent 对齐一次即可。
+
+---
+
+## A0 检查结果（2026-06-13/14 实施实测，基线 50cbfe9 + pre-M5a 数据 0050b73）
+
+> 续作实施者核实：pre-M5a 数据前置（`0050b73`）已把 §1 路线 B 的全部产物 + actors.rs schema 落库，本阶段实际起点远超蓝图 §0.2 描述的「greenfield 半成品」。
+
+**数据/schema 现状（A1/A2/A3/D2 数据面已就绪）**：
+- `catalog/actors.rs` 已建：`MinionEntryDef`（入库 v2 全字段 + `mod_list` 结构化）、`MinionModDef`、`LuaValueDef`、`GrantedEffectMinionDef`、`MinionsDef`/`GrantedEffectMinionsDef`。
+- 四份 overlay 数据已生成且 `_meta` 齐全：`minions.json`（32 条）、`spectres.json`（**591** 条，非蓝图预估 593——vendor `Data/Spectres.lua` 593 赋值块中 2 个 key 重复，运行时去重后 591，已在 `load_minions::spectres_count` 锁定）、`granted_effect_minions.json`（31 条边车）、`mirage_configs.json`（5 条，schema `catalog/triggers.rs::MirageConfigDef`）。vendor commit `2df5a74`。
+- gamedata 域 loader 已建：`domains/{minions,spectres,granted_effect_minions,mirage_configs}.rs`（缺文件返回 `Option::None`，向后兼容）。
+
+**A0 检查清单逐项**：
+1. `GrantedEffectDef.minion_list`：**本阶段已补**（`minion_list`/`add_minion_list`/`minion_uses`/`minion_has_item_set`，merge 后内存形态，base JSON 不变）——commit `7400232`（承接 WIP `84777bc`）。
+2. `SkillLevelDef.level_requirement`：未单独核验（C1 选级依赖项，C 未做时不阻塞）；A4 兜底项预计可免（蓝图 §1.3 已注 M1 T4 落库）。
+3. `ruleset::GameConstants`：minion 侧常量仍走 `calc/minion.rs` const（`MINION_LEVEL_TABLE`/30/70），A4 搬迁未做。
+4. `xml_build.rs` 的 `skillMinion` 解析：**仍无**（B1 未做）。
+
+**minion_list 外键核验（§1.3 必做第一步，结论）**：32 minions + 591 spectres = 623 个 minion id；`granted_effect_minions.json` 31 条边车的 `minion_list`/`add_minion_list` 引用全部命中（**零悬空外键**）。`RaiseZombiePlayer→[RaisedZombie]`、`RagingSpiritsPlayer→[SummonedRagingSpirit]`、`ManifestWeaponPlayer.minion_uses=["Weapon 1"]`+`minion_has_item_set` 等抽样均正确。
+
+**本阶段实际交付（2 commit，门禁四件套全绿）**：
+- `7400232` feat(m5a): A1/A3/A5 数据接线——`MinionDef::from_entry` 桥接 + `granted_effects()` 加载期 merge 边车 + `BuildData.{minion_def, effect_minion_list, minions}` 查询 API（A5 三接口契约其二；`minion_constants` 视图未建——A4 未做）。
+- `9b5a918` feat(m5a): B2 orchestrator `spawn_minions`——识别召唤宝石（`effect_minion_list` 非空 gate）→ `Env.minions` → `OutputTable.minions` 非空。**G4 核心关闭**：Raise Zombie L20 build 产出召唤物快照、level=40（minionLevelTable[20]）、life>0 且与 core 派生口径一致；非召唤 build minions 恒空（gate 正确，18-build 零回归）。
+
+**残项（未做，按依赖序）**：
+- **A4/A6**：minion 常量搬迁（`MINION_LEVEL_TABLE`/30/70/`SpectreBeastDamageFixup`/`mapLevelLifeMult` → 数据注入面）+ 删 4 条手抄常量。依赖 W3 game_constants 形态。
+- **B1**：`xml_build.rs` 解析 `skillMinion`/`skillMinionSkill`/spectreList（依赖 E1 真实 fixture 核实元素名）。
+- **B3**：mod_parser `^minions ` 前缀包裹（vendor ModParser.lua:1204-1205 `addToMinion`）→ orchestrator 收集喂 `spawn_minions` 的 `minion_modifiers`（首版传空）+ 属性灌注消费侧（`StrengthAddedToMinions` → `AttributeInfusion`）。**热点文件 mod_parser，须单 commit 谨慎**。
+- **C1/C2/C3**：createMinionSkills（法术召唤物主技能解析 → spell 基伤 / melee multiplier）+ 喂 offence + modDB 装配补全（hiddenDamageFixup/mapLevelLifeMult/ProjectileCount/`minionData.modList` 注入）。**G5 未关闭**：当前 spell 召唤物（Storm Mage）仅算虚拟武器近似，无技能基伤来源。
+- **D1/D2**：mirage 子环境重算框架 + 5 类配置消费（数据已在库，消费接线未做）。
+- **E1/E2**：召唤/幻影 build fixture 抓取（需 poe.ninja，headless 不可达）+ parity 扩集与 baseline 建立。**B2 已使 `OutputTable.minions` 非空，但未扩入 ninja_parity 报表**（无真实召唤 fixture）。
+
+**limit 口径（§6.3）**：B2 `spawn_minions` 按 `base_sum(limit_stat)` 取玩家 BASE 之和、缺则兜底 1，是近似实现；`ActiveMinionLimit` MORE 乘区与 Override 口径、`output[limit]` 反查待首份召唤 parity 报告定。

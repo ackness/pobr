@@ -1128,7 +1128,7 @@ pub fn calculate_with_data(
     // 对每个召唤物跑同一套 offence/defence，结果落 `OutputTable.minions`。
     // gate：仅当某主动技能解析出非空 minion_list 才接入——非召唤 build 永不触发，
     // 对既有 18-build 零行为影响。
-    spawn_minions(&mut session, build, data);
+    spawn_minions(&mut session, build, data, &options.extra_modifier_texts);
 
     // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等
     // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
@@ -1153,10 +1153,29 @@ pub fn calculate_with_data(
 /// 召唤物，使 life/DPS 可见）。`ActiveMinionLimit` MORE 乘区与 Override 口径属
 /// 后续细化（蓝图 §6 开放问题 3）。
 ///
-/// **三通道注入**：首版 minion_modifiers / ally_buff / infusion 全空——`Minions deal`
-/// 族词条包裹（B3）、属性灌注（B3 消费侧）属后续。
-fn spawn_minions(session: &mut CalculationSession, build: &Build, data: &BuildData) {
+/// **MinionModifier 通道（B3）**：`Minions deal/have …` 族词条经
+/// [`parse_minion_modifier`](pobr_core::mod_parser::parse_minion_modifier) 包裹为
+/// `MinionModifierEntry` 注入召唤物 ModDb。首版从**装备词条 + extra_modifier_texts**
+/// 收集（覆盖物品/配置来源的 minion 词条）；天赋/宝石授予的 minion 词条属残项
+/// （需在各来源注入点拦截，工作量大）。`ally_buff` / 属性灌注消费侧（infusion）属后续。
+fn spawn_minions(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+    extra_texts: &[String],
+) {
+    use pobr_core::calc::minion::MinionModifierEntry;
+    use pobr_core::mod_parser::parse_minion_modifier;
     use std::collections::BTreeSet;
+
+    // B3：收集 `Minions deal/have …` 词条（装备 + extra），包裹为 MinionModifierEntry。
+    // 这些词条在玩家主流程恒走 Unsupported（不影响玩家自身聚合），仅在此进召唤物 ModDb。
+    let mut minion_modifiers: Vec<MinionModifierEntry> = Vec::new();
+    for text in collect_item_texts(build).iter().chain(extra_texts.iter()) {
+        if let Some(entries) = parse_minion_modifier(text) {
+            minion_modifiers.extend(entries);
+        }
+    }
 
     // 去重：同一 minion id（不同技能/组引用同一召唤物）只接入一次，避免重复计入。
     let mut seen: BTreeSet<String> = BTreeSet::new();
@@ -1220,7 +1239,7 @@ fn spawn_minions(session: &mut CalculationSession, build: &Build, data: &BuildDa
                     &def,
                     gem_level,
                     limit,
-                    Vec::new(),
+                    minion_modifiers.clone(),
                     Vec::new(),
                     AttributeInfusion::default(),
                 );
