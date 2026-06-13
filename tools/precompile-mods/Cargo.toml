@@ -1,0 +1,11 @@
+[package]
+name = "precompile-mods"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pobr-data.workspace = true
+pobr-core.workspace = true
+pobr-gamedata.workspace = true
+serde.workspace = true
+serde_json.workspace = true

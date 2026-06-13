@@ -503,6 +503,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "precompile-mods"
+version = "0.1.0"
+dependencies = [
+ "pobr-core",
+ "pobr-data",
+ "pobr-gamedata",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
