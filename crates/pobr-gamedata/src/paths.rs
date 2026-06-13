@@ -33,6 +33,12 @@ impl GameData {
     pub(crate) fn overlay_path(&self, rel: &str) -> PathBuf {
         self.root().join("overlay").join(rel)
     }
+
+    /// 定位某个 **generated 层**域文件：恒为 `<root>/generated/<rel>`（确定性缓存层，
+    /// 工具再生产物）。同 [`Self::overlay_path`] 不检查存在性、不回退版本根。
+    pub(crate) fn generated_path(&self, rel: &str) -> PathBuf {
+        self.root().join("generated").join(rel)
+    }
 }
 
 #[cfg(test)]

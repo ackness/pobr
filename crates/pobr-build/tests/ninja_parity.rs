@@ -16,6 +16,7 @@
 //! 回归无感知。切换依据与逐 build 归因：
 //! `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`。
 
+use pobr_build::corpus::{CorpusLine, LineSource, build_report};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
@@ -663,6 +664,99 @@ fn parity_baseline_report() {
         dot.hit10,
         dot.total,
         pct(dot.hit10, dot.total),
+    );
+}
+
+/// 收集一个 build 的全量词条语料行（装备三段 + 珠宝），供 unsupported 分类。
+/// **绕开** `filter_parseable`——直接对原始行分类，使缺口语料可见（A-1 方法 §1）。
+fn collect_corpus_lines(dir: &Path) -> Vec<CorpusLine> {
+    let Ok(code) = std::fs::read_to_string(dir.join("code.txt")) else {
+        return Vec::new();
+    };
+    let Ok(build) = parse_build_from_code(code.trim()) else {
+        return Vec::new();
+    };
+    let build_id = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("?")
+        .to_string();
+    let mut lines = Vec::new();
+    let push_item = |item: &pobr_data::item::Item, src: LineSource, lines: &mut Vec<CorpusLine>| {
+        for text in item
+            .implicit_texts
+            .iter()
+            .chain(item.modifier_texts.iter())
+            .chain(item.enchant_texts.iter())
+        {
+            let t = text.trim();
+            if !t.is_empty() {
+                lines.push(CorpusLine {
+                    text: t.to_string(),
+                    source: src,
+                    build_id: build_id.clone(),
+                });
+            }
+        }
+    };
+    let mut item_slots: Vec<_> = build.items.values().collect();
+    item_slots.sort_by_key(|i| i.modifier_texts.len());
+    for item in item_slots {
+        push_item(item, LineSource::Item, &mut lines);
+    }
+    for jewel in &build.jewels {
+        push_item(jewel, LineSource::Jewel, &mut lines);
+    }
+    lines
+}
+
+/// unsupported 词条率曲线报表（M5b A-2，roadmap「unsupported 词条率下降曲线纳入
+/// 报表」）。**report-only，不进门禁断言**——M5b 验收口径是曲线不是百分比。
+/// 逐 build + 聚合的 词条总数 / parsed / unsupported / err 计数与百分比，附 Top-20
+/// 缺口模板（C-2 选批的事实来源）。
+///
+/// `cargo test -p pobr-build --test ninja_parity -- corpus_unsupported_report --nocapture`
+#[test]
+fn corpus_unsupported_report() {
+    let builds = discover_builds();
+    let mut all_lines: Vec<CorpusLine> = Vec::new();
+    for dir in &builds {
+        all_lines.extend(collect_corpus_lines(dir));
+    }
+    let report = build_report(&all_lines);
+
+    eprintln!("\n============ CORPUS UNSUPPORTED REPORT ============");
+    eprintln!(
+        "lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%",
+        report.total_lines,
+        report.parsed,
+        report.parsed_rate() * 100.0,
+        report.unsupported,
+        report.err,
+        report.gap_rate() * 100.0,
+    );
+    eprintln!("--- Top-20 gap templates (builds_hit desc, count desc) ---");
+    for (i, t) in report.gap_templates.iter().take(20).enumerate() {
+        eprintln!(
+            "{:>2}. [{:?}] hit={} cnt={} (item={} jewel={}) | {}",
+            i + 1,
+            t.class,
+            t.builds_hit,
+            t.total_count,
+            t.item_count,
+            t.jewel_count,
+            t.template,
+        );
+    }
+    eprintln!(
+        "total distinct gap templates: {}",
+        report.gap_templates.len()
+    );
+
+    // 弱断言：语料非空（防 fixture/收集链断裂静默归零）。
+    assert!(
+        report.total_lines > 0,
+        "corpus 收集为空——检查 build 装备词条收集链"
     );
 }
 

@@ -5,6 +5,8 @@ edition.workspace = true
 
 [dependencies]
 pobr-data.workspace = true
+# special 词条模板的整行锚定匹配（M5b rules::special_mod，载入期编译 RegexSet）。
+regex.workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.5", default-features = false }

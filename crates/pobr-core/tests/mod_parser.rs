@@ -189,6 +189,7 @@ fn cache_keeps_unsupported_outcomes_for_stable_diffs() {
             mods: Vec::new(),
             status: ParseStatus::Unsupported,
             unparsed: Some("Mirrored".into()),
+            special_meta: None,
         }
     );
     assert_eq!(cache.len(), 1);
