@@ -99,10 +99,31 @@ legacy 是 M0–M5 手写解析器、产 **PoBR 自有词表**；新引擎按蓝
 | D7 产物形态 | 同 `Modifier` 结构，canonical 比较单位。 |
 | D8 LIST 包装（minion/aura/enemy） | 引擎实现 MinionModifier 包装（最高频）；ExtraAura/EnemyModifier/ExtraSkillMod 本批保守跳过（报告登记）。 |
 
-## 4. 切换就绪状态（给 D-T8）
+## 5. bench（§9，`mod_parser_bench.rs`）
 
-- `parse_mod_engine(text, &CompiledParserRules)` 签名稳定；
-- `canonical_outcome(&ParseOutcome)` 序列化（C/D 共用，禁两套）；
-- `CompiledParserRules::compile(&ModParserRulesDoc)`（编译在 core，gamedata 只 load）；
-- legacy 保留、`parse_mod(text)` 旧签名可用、调用方零改动；
-- 切换（删 legacy + 调用方注入）= D-T8 独立 commit，待 C1 diff=0 达成后做。
+`cargo bench -p pobr-core --features parser-engine --bench mod_parser_bench`
+（1000 行 18-build 混合语料，criterion 中位）：
+
+| 组 | 中位耗时 | 门禁 | 结论 |
+|----|----------|------|------|
+| `parse_corpus_legacy` | 2.202 ms | 基准 | — |
+| `parse_corpus_engine` | 2.104 ms | engine ≤ 1.10 × legacy | **0.956×（快 4.4%）✓** |
+| `compile_rules` | 6.58 ms | <80ms（载入期一次性） | ✓ |
+
+引擎比 legacy **更快**（aho-corasick literal 预过滤 + plain 表索引兜住全表扫描），
+退化门禁裕量充足。
+
+## 6. 切换就绪状态（给 D-T8）
+
+- 签名：`parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome`；
+- canonical：`canonical_outcome(outcome: &ParseOutcome) -> String`（C/D 共用，剔
+  origin 保 source；mod 按 name/type/flags/kw/tags/value 排序）；
+- 编译：`CompiledParserRules::compile(doc: &ModParserRulesDoc) -> Result<Self,
+  CompileError>`（在 pobr-core，gamedata 只 load + merge，保 P9）；
+- legacy 保留、`parse_mod(text)` / `parse_mod_with_rules` 旧签名可用、五个调用方
+  （passive/item/item_text/skill_source/session）零改动；
+- **切换前置工作（D-T8）**：因 §3 词表/语义分歧，切换需 vendor→PoBR **name 归一层**
+  （name 翻译表 + 聚合名展开 + PerStat/Multiplier 归一 + special 通道接入），否则
+  parity 会变动；建议保留 legacy 词表、对引擎产物做翻译。
+- 切换 = 删 legacy + 调用方注入 + 归一层，D-T8 独立 commit，过全量门禁 + 双跑 diff
+  报告附 PR。
