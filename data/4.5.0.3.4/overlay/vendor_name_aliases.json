@@ -1,0 +1,510 @@
+{
+  "_meta": {
+    "schema": "vendor_name_aliases/v1",
+    "purpose": "vendor PoB2 ModName -> PoBR canonical StatId 别名表（M6.3 切换前置数据资产）。",
+    "consumed_by": "NONE（纯数据资产；A 路线=引擎产物运行期翻译表 / B 路线=extract-lua 抽取期归一。owner 定夺后 D-T8 接线）。",
+    "generated_from": [
+      "crates/pobr-core/src/mod_parser/legacy.rs::parse_name (PoBR 短语->StatId)",
+      "data/4.5.0.3.4/overlay/mod_parser_rules.json::name_map (vendor 短语->vendor名)"
+    ],
+    "bootstrap_method": "对齐同一触发短语：legacy 与 engine 都把短语 P 解析出单一 ModName 时，engine 名(vendor)->legacy 名(PoBR) 即一条别名。多名(聚合)短语与 damage-flag dispatch 短语不入纯别名表，登记于 structural_deferrals。",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "dualrun_report": "audits/rearchitecture-2026-06-10/blueprints/m6-dualrun-report.md",
+    "report": "audits/rearchitecture-2026-06-10/blueprints/m6-alias-table.md",
+    "coverage_note": "覆盖全部 358 name-only DIFF 涉及的 distinct stat 名（dual-run 样例 8/8 命中）。real-rename=20, identity=56, 共 76 vendor 名。"
+  },
+  "aliases": [
+    {
+      "vendor_name": "Accuracy",
+      "pobr_stat_id": "Accuracy",
+      "identity": true,
+      "via_phrase": "accuracy"
+    },
+    {
+      "vendor_name": "AilmentChance",
+      "pobr_stat_id": "AilmentChance",
+      "identity": true,
+      "via_phrase": "chance to inflict ailments"
+    },
+    {
+      "vendor_name": "AilmentThreshold",
+      "pobr_stat_id": "AilmentThreshold",
+      "identity": true,
+      "via_phrase": "ailment threshold"
+    },
+    {
+      "vendor_name": "ArcaneSurgeEffect",
+      "pobr_stat_id": "ArcaneSurgeEffect",
+      "identity": true,
+      "via_phrase": "effect of arcane surge on you"
+    },
+    {
+      "vendor_name": "Armour",
+      "pobr_stat_id": "Armour",
+      "identity": true,
+      "via_phrase": "armour"
+    },
+    {
+      "vendor_name": "AvoidStun",
+      "pobr_stat_id": "AvoidStun",
+      "identity": true,
+      "via_phrase": "to avoid being stunned"
+    },
+    {
+      "vendor_name": "BlockChance",
+      "pobr_stat_id": "BlockChance",
+      "identity": true,
+      "via_phrase": "to block"
+    },
+    {
+      "vendor_name": "BlockChanceMax",
+      "pobr_stat_id": "BlockChanceMax",
+      "identity": true,
+      "via_phrase": "maximum block chance"
+    },
+    {
+      "vendor_name": "ChaosDamage",
+      "pobr_stat_id": "ChaosDamage",
+      "identity": true,
+      "via_phrase": "chaos damage"
+    },
+    {
+      "vendor_name": "ChaosDamageTaken",
+      "pobr_stat_id": "ChaosDamageTaken",
+      "identity": true,
+      "via_phrase": "chaos damage taken"
+    },
+    {
+      "vendor_name": "ChaosResist",
+      "pobr_stat_id": "ChaosResistance",
+      "identity": false,
+      "via_phrase": "chaos resistance"
+    },
+    {
+      "vendor_name": "ChaosResistMax",
+      "pobr_stat_id": "MaximumChaosResistance",
+      "identity": false,
+      "via_phrase": "maximum chaos resistance"
+    },
+    {
+      "vendor_name": "ColdDamage",
+      "pobr_stat_id": "ColdDamage",
+      "identity": true,
+      "via_phrase": "cold damage"
+    },
+    {
+      "vendor_name": "ColdDamageTaken",
+      "pobr_stat_id": "ColdDamageTaken",
+      "identity": true,
+      "via_phrase": "cold damage taken"
+    },
+    {
+      "vendor_name": "ColdExposureEffect",
+      "pobr_stat_id": "ColdExposureEffect",
+      "identity": true,
+      "via_phrase": "cold exposure effect"
+    },
+    {
+      "vendor_name": "ColdResist",
+      "pobr_stat_id": "ColdResistance",
+      "identity": false,
+      "via_phrase": "cold resistance"
+    },
+    {
+      "vendor_name": "ColdResistMax",
+      "pobr_stat_id": "MaximumColdResistance",
+      "identity": false,
+      "via_phrase": "maximum cold resistance"
+    },
+    {
+      "vendor_name": "CooldownRecovery",
+      "pobr_stat_id": "CooldownRecovery",
+      "identity": true,
+      "via_phrase": "cooldown recovery"
+    },
+    {
+      "vendor_name": "CostEfficiency",
+      "pobr_stat_id": "CostEfficiency",
+      "identity": true,
+      "via_phrase": "cost efficiency"
+    },
+    {
+      "vendor_name": "CritChance",
+      "pobr_stat_id": "CriticalStrikeChance",
+      "identity": false,
+      "via_phrase": "critical hit chance"
+    },
+    {
+      "vendor_name": "CritMultiplier",
+      "pobr_stat_id": "CriticalStrikeMultiplier",
+      "identity": false,
+      "via_phrase": "critical damage bonus"
+    },
+    {
+      "vendor_name": "DamageTaken",
+      "pobr_stat_id": "DamageTaken",
+      "identity": true,
+      "via_phrase": "damage taken"
+    },
+    {
+      "vendor_name": "DeflectEffect",
+      "pobr_stat_id": "DeflectEffect",
+      "identity": true,
+      "via_phrase": "amount of damage prevented by deflection"
+    },
+    {
+      "vendor_name": "DeflectionRating",
+      "pobr_stat_id": "DeflectionRating",
+      "identity": true,
+      "via_phrase": "deflection rating"
+    },
+    {
+      "vendor_name": "Dex",
+      "pobr_stat_id": "Dexterity",
+      "identity": false,
+      "via_phrase": "dexterity"
+    },
+    {
+      "vendor_name": "ElementalDamage",
+      "pobr_stat_id": "ElementalDamage",
+      "identity": true,
+      "via_phrase": "elemental damage"
+    },
+    {
+      "vendor_name": "ElementalDamageTaken",
+      "pobr_stat_id": "ElementalDamageTaken",
+      "identity": true,
+      "via_phrase": "elemental damage taken"
+    },
+    {
+      "vendor_name": "ElementalResistMax",
+      "pobr_stat_id": "MaximumAllElementalResistances",
+      "identity": false,
+      "via_phrase": "all maximum elemental resistances"
+    },
+    {
+      "vendor_name": "EnemyBleedDuration",
+      "pobr_stat_id": "BleedDuration",
+      "identity": false,
+      "via_phrase": "bleed duration"
+    },
+    {
+      "vendor_name": "EnemyFreezeBuildup",
+      "pobr_stat_id": "FreezeBuildup",
+      "identity": false,
+      "via_phrase": "freeze buildup"
+    },
+    {
+      "vendor_name": "EnemyIgniteChance",
+      "pobr_stat_id": "EnemyIgniteChance",
+      "identity": true,
+      "via_phrase": "to ignite"
+    },
+    {
+      "vendor_name": "EnemyIgniteDuration",
+      "pobr_stat_id": "IgniteDuration",
+      "identity": false,
+      "via_phrase": "ignite duration"
+    },
+    {
+      "vendor_name": "EnemyPoisonDuration",
+      "pobr_stat_id": "PoisonDuration",
+      "identity": false,
+      "via_phrase": "poison duration"
+    },
+    {
+      "vendor_name": "EnergyShield",
+      "pobr_stat_id": "EnergyShield",
+      "identity": true,
+      "via_phrase": "maximum energy shield"
+    },
+    {
+      "vendor_name": "EvadeChance",
+      "pobr_stat_id": "EvadeChance",
+      "identity": true,
+      "via_phrase": "to evade"
+    },
+    {
+      "vendor_name": "Evasion",
+      "pobr_stat_id": "Evasion",
+      "identity": true,
+      "via_phrase": "evasion"
+    },
+    {
+      "vendor_name": "FireDamage",
+      "pobr_stat_id": "FireDamage",
+      "identity": true,
+      "via_phrase": "fire damage"
+    },
+    {
+      "vendor_name": "FireDamageTaken",
+      "pobr_stat_id": "FireDamageTaken",
+      "identity": true,
+      "via_phrase": "fire damage taken"
+    },
+    {
+      "vendor_name": "FireExposureEffect",
+      "pobr_stat_id": "FireExposureEffect",
+      "identity": true,
+      "via_phrase": "fire exposure effect"
+    },
+    {
+      "vendor_name": "FireResist",
+      "pobr_stat_id": "FireResistance",
+      "identity": false,
+      "via_phrase": "fire resistance"
+    },
+    {
+      "vendor_name": "FireResistMax",
+      "pobr_stat_id": "MaximumFireResistance",
+      "identity": false,
+      "via_phrase": "maximum fire resistance"
+    },
+    {
+      "vendor_name": "Int",
+      "pobr_stat_id": "Intelligence",
+      "identity": false,
+      "via_phrase": "intelligence"
+    },
+    {
+      "vendor_name": "Life",
+      "pobr_stat_id": "MaximumLife",
+      "identity": false,
+      "via_phrase": "maximum life"
+    },
+    {
+      "vendor_name": "LifeCost",
+      "pobr_stat_id": "LifeCost",
+      "identity": true,
+      "via_phrase": "life cost"
+    },
+    {
+      "vendor_name": "LifeCostEfficiency",
+      "pobr_stat_id": "LifeCostEfficiency",
+      "identity": true,
+      "via_phrase": "life cost efficiency"
+    },
+    {
+      "vendor_name": "LifeRegen",
+      "pobr_stat_id": "LifeRegen",
+      "identity": true,
+      "via_phrase": "life regeneration rate"
+    },
+    {
+      "vendor_name": "LifeReservationEfficiency",
+      "pobr_stat_id": "LifeReservationEfficiency",
+      "identity": true,
+      "via_phrase": "life reservation efficiency"
+    },
+    {
+      "vendor_name": "LightningDamage",
+      "pobr_stat_id": "LightningDamage",
+      "identity": true,
+      "via_phrase": "lightning damage"
+    },
+    {
+      "vendor_name": "LightningDamageTaken",
+      "pobr_stat_id": "LightningDamageTaken",
+      "identity": true,
+      "via_phrase": "lightning damage taken"
+    },
+    {
+      "vendor_name": "LightningExposureEffect",
+      "pobr_stat_id": "LightningExposureEffect",
+      "identity": true,
+      "via_phrase": "lightning exposure effect"
+    },
+    {
+      "vendor_name": "LightningResist",
+      "pobr_stat_id": "LightningResistance",
+      "identity": false,
+      "via_phrase": "lightning resistance"
+    },
+    {
+      "vendor_name": "LightningResistMax",
+      "pobr_stat_id": "MaximumLightningResistance",
+      "identity": false,
+      "via_phrase": "maximum lightning resistance"
+    },
+    {
+      "vendor_name": "LootRarity",
+      "pobr_stat_id": "LootRarity",
+      "identity": true,
+      "via_phrase": "rarity of items found"
+    },
+    {
+      "vendor_name": "Mana",
+      "pobr_stat_id": "MaximumMana",
+      "identity": false,
+      "via_phrase": "maximum mana"
+    },
+    {
+      "vendor_name": "ManaCost",
+      "pobr_stat_id": "ManaCost",
+      "identity": true,
+      "via_phrase": "mana cost"
+    },
+    {
+      "vendor_name": "ManaCostEfficiency",
+      "pobr_stat_id": "ManaCostEfficiency",
+      "identity": true,
+      "via_phrase": "mana cost efficiency"
+    },
+    {
+      "vendor_name": "ManaRegen",
+      "pobr_stat_id": "ManaRegen",
+      "identity": true,
+      "via_phrase": "mana regeneration rate"
+    },
+    {
+      "vendor_name": "ManaReservationEfficiency",
+      "pobr_stat_id": "ManaReservationEfficiency",
+      "identity": true,
+      "via_phrase": "mana reservation efficiency"
+    },
+    {
+      "vendor_name": "MaxLightningDamage",
+      "pobr_stat_id": "MaxLightningDamage",
+      "identity": true,
+      "via_phrase": "maximum lightning damage"
+    },
+    {
+      "vendor_name": "MaxPhysicalDamage",
+      "pobr_stat_id": "MaxPhysicalDamage",
+      "identity": true,
+      "via_phrase": "maximum physical attack damage"
+    },
+    {
+      "vendor_name": "MeleeEvadeChance",
+      "pobr_stat_id": "MeleeEvadeChance",
+      "identity": true,
+      "via_phrase": "chance to evade melee attacks"
+    },
+    {
+      "vendor_name": "MinPhysicalDamage",
+      "pobr_stat_id": "MinPhysicalDamage",
+      "identity": true,
+      "via_phrase": "minimum physical attack damage"
+    },
+    {
+      "vendor_name": "MovementSpeed",
+      "pobr_stat_id": "MovementSpeed",
+      "identity": true,
+      "via_phrase": "movement speed"
+    },
+    {
+      "vendor_name": "PhysicalDamage",
+      "pobr_stat_id": "PhysicalDamage",
+      "identity": true,
+      "via_phrase": "physical damage"
+    },
+    {
+      "vendor_name": "PhysicalDamageTaken",
+      "pobr_stat_id": "PhysicalDamageTaken",
+      "identity": true,
+      "via_phrase": "physical damage taken"
+    },
+    {
+      "vendor_name": "ProjectileEvadeChance",
+      "pobr_stat_id": "ProjectileEvadeChance",
+      "identity": true,
+      "via_phrase": "chance to evade projectile attacks"
+    },
+    {
+      "vendor_name": "ProjectileSpeed",
+      "pobr_stat_id": "ProjectileSpeed",
+      "identity": true,
+      "via_phrase": "projectile speed"
+    },
+    {
+      "vendor_name": "ReservationEfficiency",
+      "pobr_stat_id": "ReservationEfficiency",
+      "identity": true,
+      "via_phrase": "reservation efficiency"
+    },
+    {
+      "vendor_name": "SpellBlockChance",
+      "pobr_stat_id": "SpellBlockChance",
+      "identity": true,
+      "via_phrase": "spell block chance"
+    },
+    {
+      "vendor_name": "SpellBlockChanceMax",
+      "pobr_stat_id": "SpellBlockChanceMax",
+      "identity": true,
+      "via_phrase": "maximum chance to block spell damage"
+    },
+    {
+      "vendor_name": "SpellEvadeChance",
+      "pobr_stat_id": "SpellEvadeChance",
+      "identity": true,
+      "via_phrase": "chance to evade spells"
+    },
+    {
+      "vendor_name": "Spirit",
+      "pobr_stat_id": "Spirit",
+      "identity": true,
+      "via_phrase": "spirit"
+    },
+    {
+      "vendor_name": "SpiritReservationEfficiency",
+      "pobr_stat_id": "SpiritReservationEfficiency",
+      "identity": true,
+      "via_phrase": "spirit reservation efficiency"
+    },
+    {
+      "vendor_name": "Str",
+      "pobr_stat_id": "Strength",
+      "identity": false,
+      "via_phrase": "strength"
+    },
+    {
+      "vendor_name": "StunThreshold",
+      "pobr_stat_id": "StunThreshold",
+      "identity": true,
+      "via_phrase": "stun threshold"
+    },
+    {
+      "vendor_name": "Ward",
+      "pobr_stat_id": "Ward",
+      "identity": true,
+      "via_phrase": "ward"
+    }
+  ],
+  "structural_deferrals": {
+    "note": "以下不入纯 name 别名表——需语义归一规则（见 m6-alias-table.md 结构四类），非单纯改名。",
+    "aggregate_expansion_or_flag_dispatch_phrases": [
+      {
+        "phrase": "skill speed",
+        "legacy": "SkillSpeed",
+        "engine_names": [
+          "Speed",
+          "WarcrySpeed",
+          "TotemPlacementSpeed"
+        ],
+        "class": "aggregate"
+      }
+    ],
+    "damage_flag_dispatch_phrases": [
+      "spell damage",
+      "area damage",
+      "grenade damage",
+      "damage with bow",
+      "damage with bows",
+      "damage with bow skills",
+      "damage with crossbows",
+      "damage with crossbow skills",
+      "damage with maces",
+      "damage with mace",
+      "damage with mace skills",
+      "damage with spears",
+      "damage with spear",
+      "damage with spear skills",
+      "damage with quarterstaves",
+      "damage with quarterstaff",
+      "damage with quarterstaff skills",
+      "elemental damage with attacks",
+      "elemental damage with attack skills"
+    ]
+  }
+}
