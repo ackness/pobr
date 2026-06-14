@@ -60,7 +60,10 @@ mod tests {
         assert_eq!(doc.degen_types.len(), 32, "degen_types");
         assert_eq!(doc.cost_types_map.len(), 32, "cost_types_map");
         assert_eq!(doc.base_cost_types.len(), 32, "base_cost_types");
-        assert_eq!(doc.flag_types.len(), 24, "flag_types");
+        // 25 = vendor 24 + pobr `hindered`→`Condition:Hindered`（M6-conv2：legacy
+        // `parse_enemy_inner` 对 `are hindered` 的特例搬迁，使 `Enemies in your
+        // Presence are Hindered` 走 EnemyModifier 包装收敛，见 m6-dualrun-report §2.5）。
+        assert_eq!(doc.flag_types.len(), 25, "flag_types");
         assert_eq!(doc.unsupported, vec!["mirrored"], "unsupported");
         assert_eq!(
             doc.unsupported_pobr_extra,

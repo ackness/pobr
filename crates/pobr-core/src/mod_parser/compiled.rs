@@ -21,6 +21,8 @@ use pobr_data::catalog::parser_rules::{
 };
 
 use super::scan::{LuaMatch, LuaPattern, PatternError};
+use crate::rules::{HandlerRegistry, SpecialModRules, register_special_handlers};
+use pobr_data::catalog::parser_rules::SpecialTemplateDef;
 
 /// 编译错误（pattern 语法 / AC 构建失败）。
 #[derive(Debug, Clone)]
@@ -297,6 +299,14 @@ pub struct CompiledParserRules {
     pub flag_types: PlainTable<FlagTypePayload>,
     /// unsupportedModList（vendor + pobr 自加，小写整行查）。
     pub unsupported: std::collections::HashSet<String>,
+    /// specialModList 通道（M5b `overlay/special_mods.json` +
+    /// `generated/special_derived.json`，M6-conv2 接入）。vendor `parseMod` 在
+    /// formList 之前查 specialModList 整行表（`ModParser.lua:6151-6160`）——引擎
+    /// 在 form 扫描前查本表，命中即返回，对齐 vendor specialModList 锚定优先级。
+    /// 未注入数据时 [`SpecialModRules::empty`]（query 恒 `None`，行为 = 旧引擎）。
+    pub special: SpecialModRules,
+    /// special 通道 handler 注册表（template-less 条目走 Rust 侧逻辑）。
+    pub special_handlers: HandlerRegistry,
 }
 
 /// name_map 载荷。
@@ -340,8 +350,26 @@ pub struct FlagTypePayload {
 }
 
 impl CompiledParserRules {
-    /// 编译全部规则表。pattern 子集语法越界 → `Err`（数据固定、不应触发）。
+    /// 编译全部规则表（不含 special 通道——special 表恒空，query 恒 `None`，
+    /// 行为 = M6-conv1 引擎）。pattern 子集语法越界 → `Err`（数据固定、不应触发）。
     pub fn compile(doc: &ModParserRulesDoc) -> Result<Self, CompileError> {
+        Self::compile_with_special(doc, &[])
+    }
+
+    /// 编译全部规则表 + special 通道（M6-conv2）。`special_defs` =
+    /// `overlay/special_mods.json` + `generated/special_derived.json` 的
+    /// 拼接条目（id 冲突在 [`SpecialModRules::compile`] fail-fast）。
+    ///
+    /// **编译在 core**（P9）：gamedata 只 load + merge，注入拼接后的条目数组。
+    pub fn compile_with_special(
+        doc: &ModParserRulesDoc,
+        special_defs: &[SpecialTemplateDef],
+    ) -> Result<Self, CompileError> {
+        let mut special_handlers = HandlerRegistry::new();
+        register_special_handlers(&mut special_handlers)
+            .map_err(|e| CompileError::Index(format!("special handler 注册: {e}")))?;
+        let special = SpecialModRules::compile(special_defs, &special_handlers)
+            .map_err(|e| CompileError::Index(format!("special compile: {e}")))?;
         Ok(Self {
             forms: compile_forms(&doc.forms)?,
             name_map: compile_name_map(&doc.name_map)?,
@@ -362,6 +390,8 @@ impl CompiledParserRules {
                 .chain(doc.unsupported_pobr_extra.iter())
                 .map(|s| s.to_ascii_lowercase())
                 .collect(),
+            special,
+            special_handlers,
         })
     }
 }

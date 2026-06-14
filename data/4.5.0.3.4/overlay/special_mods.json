@@ -27,6 +27,18 @@
       "source_note": "ModParser.lua:2389（探针求值自动转写；样本：All Damage is taken from Mana before Life）"
     },
     {
+      "id": "allocates_passive",
+      "pattern": "allocates (.+)",
+      "vendor_pattern": "allocates (.+)",
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5809（油涂/anoint 附魔 → GrantedPassive LIST 名；pobr 准源 legacy.rs:1067。开放捕获 (.+) 走模板直引——条件形『if you have the matching modifier on forbidden Y』未建模，本表保守不排除，corpus 无该形）",
+      "handler_id": "special:granted_passive",
+      "handler_args": [
+        "$1"
+      ]
+    },
+    {
       "id": "base_critical_hit_chance_for_spells_is",
       "pattern": "base critical hit chance for spells is (\\d+)%",
       "vendor_pattern": "base critical hit chance for spells is (%d+)%%",
@@ -358,6 +370,28 @@
       "source_note": "ModParser.lua:4275（探针求值自动转写；样本：Curses you inflict ignore Curse limit）"
     },
     {
+      "id": "defend_with_pct_of_armour",
+      "pattern": "defend with (\\d+(?:\\.\\d+)?)% of armour(?: during effect)?",
+      "vendor_pattern": "defend with (%d+)%% of armour",
+      "mods": [
+        {
+          "name": "ArmourDefense",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "base": -100.0
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2616/:2619（Defend with N% of Armour [during effect] → ArmourDefense BASE N-100；pobr 准源 legacy.rs:1715。during effect 变体同无条件，消费侧 max_of）"
+    },
+    {
       "id": "double_activation_delay_of_curses",
       "pattern": "double activation delay of curses",
       "vendor_pattern": "double activation delay of curses",
@@ -371,6 +405,30 @@
       "verified": false,
       "batch": "S2",
       "source_note": "ModParser.lua:4278（探针求值自动转写；样本：Double Activation Delay of Curses）"
+    },
+    {
+      "id": "empowered_attacks_deal_increased_damage",
+      "pattern": "empowered attacks deal (\\d+)% increased damage",
+      "vendor_pattern": "empowered attacks deal (%d+)%% increased damage",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Empowered"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2647（Empowered Attacks deal N% increased Damage；vendor 产 EmpoweredIncrease INC，pobr legacy.rs:367 产 Damage INC flags=Attack + Condition:Empowered——双跑收敛以 legacy 为基准。Empowered 默认不激活）"
     },
     {
       "id": "enemies_you_kill_with_empowered_attacks_have_a_chance_to_explode_deali",
@@ -525,6 +583,31 @@
       "source_note": "ModParser.lua:543（mana per enemy killed→ManaOnKill BASE）"
     },
     {
+      "id": "gain_pct_damage_as_extra_all_elements",
+      "pattern": "gain (\\d+(?:\\.\\d+)?)% of damage as extra damage of all elements",
+      "vendor_pattern": "gain (%d+)%% of damage as extra damage of all elements",
+      "mods": [
+        {
+          "name": "DamageGainAsFire",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "DamageGainAsCold",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "DamageGainAsLightning",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2244 等（Gain N% of Damage as Extra Damage of all Elements → DamageGainAs{Fire,Cold,Lightning} BASE N，三系展开；pobr 准源 legacy gain-as 通道）"
+    },
+    {
       "id": "gain_rage_on_melee_hit",
       "pattern": "gain \\d+ rage on melee hit",
       "vendor_pattern": "gain %d+ rage on melee hit",
@@ -628,6 +711,32 @@
       "verified": false,
       "batch": "S2",
       "source_note": "ModParser.lua:3464（探针求值自动转写；样本：Has no Attribute Requirements）"
+    },
+    {
+      "id": "has_to_defence_per_player_level",
+      "pattern": "has \\+(\\d+) to (armour|evasion|evasion rating|energy shield|maximum energy shield) per player level",
+      "vendor_pattern": "has %+(%d+) to (.+) per player level",
+      "mods": [
+        {
+          "name": {
+            "enum": 2
+          },
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "enums": {
+        "2": {
+          "armour": "ArmourPerLevel",
+          "evasion": "EvasionPerLevel",
+          "evasion rating": "EvasionPerLevel",
+          "energy shield": "EnergyShieldPerLevel",
+          "maximum energy shield": "EnergyShieldPerLevel"
+        }
+      },
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3400-3402（Has +N to <Defence> per player level → <Defence>PerLevel BASE，件级局部底值；pobr 准源 legacy.rs:640）"
     },
     {
       "id": "has_to_maximum_runic_ward_per_player_level",
@@ -1263,6 +1372,41 @@
       "verified": false,
       "batch": "S1",
       "source_note": "ModParser.lua:6017（探针求值自动转写；样本：5% reduced Movement Speed Penalty from using Skills while moving）"
+    },
+    {
+      "id": "take_no_extra_damage_from_critical_hits",
+      "pattern": "take no extra damage from critical hits",
+      "vendor_pattern": "take no extra damage from critical hits",
+      "mods": [
+        {
+          "name": "ReduceCritExtraDamage",
+          "type": "BASE",
+          "value": 100.0
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:6129（暴击不造成额外伤害 → ReduceCritExtraDamage BASE 100；pobr 准源 legacy.rs:1445）"
+    },
+    {
+      "id": "targets_can_be_affected_by_poisons",
+      "pattern": "targets can be affected by \\+(\\d+) of your poisons at the same time",
+      "vendor_pattern": "targets can be affected by %+(%d+) of your poisons at the same time",
+      "mods": [
+        {
+          "name": "PoisonCanStack",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "PoisonStacks",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3895（+N poison stacks → PoisonCanStack FLAG + PoisonStacks BASE N；pobr 准源 legacy.rs:1974）"
     },
     {
       "id": "you_have_no_mana",
