@@ -22,7 +22,7 @@ use std::process::{Command, Stdio};
 
 use pobr_data::catalog::parser_rules::{
     FlagTypeDef, FormDef, MOD_PARSER_RULES_SCHEMA, ModParserRulesDoc, NameMapDef, PhraseNamesDef,
-    PhraseValueDef, PreFlagDef, TagPhraseDef,
+    PhraseValueDef, PreFlagDef, StatMapValue, TagPhraseDef,
 };
 use serde::{Deserialize, Serialize};
 
@@ -38,6 +38,9 @@ pub const PINNED_VENDOR_COMMIT: &str = "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f
 
 /// 钉定 commit 下的各段条目数（2026-06 实测；蓝图 §1 的 776/684 为估值，
 /// 以实测为准——偏差记录见 blueprints/m6-extraction-report.md）。
+///
+/// `flag_types` = 24（vendor 主表）+ 1（路线 B 抽取期补回的 legacy `hindered`
+/// 特例，见 [`normalize_legacy_consistency`]）= 25。
 pub const PINNED_SECTION_COUNTS: &[(&str, usize)] = &[
     ("forms", 91),
     ("name_map", 775),
@@ -51,7 +54,7 @@ pub const PINNED_SECTION_COUNTS: &[(&str, usize)] = &[
     ("degen_types", 32),
     ("cost_types_map", 32),
     ("base_cost_types", 32),
-    ("flag_types", 24),
+    ("flag_types", 25),
     ("unsupported", 1),
 ];
 
@@ -345,7 +348,68 @@ fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
             entry.effects.flags = vec!["Hit".to_string(), w];
         }
     }
+
+    normalize_legacy_consistency(doc);
 }
+
+/// M6.3 路线 B（D-T8 第二波 2a）：把三处 vendor↔legacy 形态差异从抽取期归一，
+/// 使引擎产 legacy-一致值（dual-run C1 DIFF=0/OLD_ONLY=0），并保留 `data/` 由工具
+/// 再生的不变式（不再手改 `mod_parser_rules.json`）。三处均为「4 真 bug」收敛项：
+///
+/// 1. `from equipped focus`（flag_phrases）：vendor 额外挂 `Condition(UsingFocus)`，
+///    legacy 仅按 `SlotName(Weapon 2)` 作用域生效——去掉冗余 UsingFocus 条件。
+/// 2. helmet PerStat/StatThreshold 的 `stat` 字段（tag_phrases）：vendor 写
+///    `*OnHelmet`（大写 H），legacy 注册的统计名是 `*Onhelmet`（小写 h，源自
+///    slotName 小写化路径）——降为小写 h 与统计名对齐。
+/// 3. `hindered`（flag_types）：legacy `parseEnemyInner` 特例把它当 `Condition:Hindered`
+///    flag_type，vendor 主表无此条——补回（与 2a 收敛同口径，保段计数靠
+///    [`PINNED_SECTION_COUNTS`] 钉值同步）。
+fn normalize_legacy_consistency(doc: &mut ModParserRulesDoc) {
+    // 1. focus：去 Condition(UsingFocus)，仅留 SlotName 作用域。
+    for entry in &mut doc.flag_phrases {
+        if entry.phrase == FOCUS_PHRASE {
+            entry.effects.tags.retain(|t| {
+                !(t.tag_type == "Condition"
+                    && matches!(
+                        t.fields.get("var"),
+                        Some(StatMapValue::Text(v)) if v == "UsingFocus"
+                    ))
+            });
+        }
+    }
+
+    // 2. helmet stat：`*OnHelmet` → `*Onhelmet`（仅末段 `OnHelmet`，避免误改
+    //    `OnBody Armour` 等其它 slot 名）。
+    for entry in &mut doc.tag_phrases {
+        for tag in &mut entry.effects.tags {
+            if let Some(StatMapValue::Text(stat)) = tag.fields.get_mut("stat")
+                && let Some(prefix) = stat.strip_suffix("OnHelmet")
+            {
+                *stat = format!("{prefix}Onhelmet");
+            }
+        }
+    }
+
+    // 3. hindered flag_type：补回 legacy 特例（vendor 主表缺，2a 收敛同口径）。
+    if !doc
+        .flag_types
+        .iter()
+        .any(|e| e.phrase == HINDERED_FLAG_TYPE_PHRASE)
+    {
+        doc.flag_types.push(FlagTypeDef {
+            phrase: HINDERED_FLAG_TYPE_PHRASE.to_string(),
+            condition: Some("Condition:Hindered".to_string()),
+            mod_def: None,
+        });
+        doc.flag_types.sort_by(|a, b| a.phrase.cmp(&b.phrase));
+    }
+}
+
+/// focus 作用域短语（去 UsingFocus 冗余条件）。
+const FOCUS_PHRASE: &str = "from equipped focus";
+
+/// legacy `parseEnemyInner` 特例补回的 flag_type 短语。
+const HINDERED_FLAG_TYPE_PHRASE: &str = "hindered";
 
 /// 武器类型名（在 flag_phrases 的 keyword_flags 里出现时归一为 ModFlag）。
 const WEAPON_KEYWORDS: &[&str] = &[
