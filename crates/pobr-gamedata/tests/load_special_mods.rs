@@ -19,8 +19,11 @@ fn load() -> SpecialModsDef {
         .expect("special_mods.json 在库")
 }
 
-/// 首批规模：B-4 回滚后 66 条 + C-2 安全批次 5 条（vendor 名表缺口的纯模板：
-/// Duration/EnergyShieldRecharge/LifeRegen/ManaOnKill/CharmLimit）= 71 条；
+/// 首批规模：B-4 回滚后 66 条 + C-2 安全批次 5 条 = 71 条；M6-conv2（D-T8 第二波
+/// 2a）+7 条 = 78 条（special 通道接入引擎后的 C1 收敛缺口：`allocates_passive` /
+/// `defend_with_pct_of_armour` / `has_to_defence_per_player_level` /
+/// `take_no_extra_damage_from_critical_hits` / `targets_can_be_affected_by_poisons` /
+/// `empowered_attacks_deal_increased_damage` / `gain_pct_damage_as_extra_all_elements`）；
 /// id 唯一且升序。
 ///
 /// **M5b B-4 消费激活后回滚**：原 107 条含 41 条降级 shadow（allocates_* 大小写
@@ -29,7 +32,7 @@ fn load() -> SpecialModsDef {
 #[test]
 fn first_batch_shape() {
     let def = load();
-    assert_eq!(def.entries.len(), 71);
+    assert_eq!(def.entries.len(), 78);
     assert!(
         def.entries.windows(2).all(|w| w[0].id < w[1].id),
         "id 严格升序（唯一）"
@@ -48,11 +51,17 @@ fn first_batch_shape() {
             "{}: 首批必须 verified:false（oracle 对拍后才置 true）",
             e.id
         );
-        assert!(
-            e.handler_id.is_none(),
-            "{}: 首批不含 handler 条目（handler 注册表接入归 M5b C-3）",
-            e.id
-        );
+        // M6-conv2：special 通道接入引擎后，开放捕获条目走 handler_id
+        // （`allocates_passive` → `special:granted_passive`，文本名经 raw_captures
+        // 透传）。handler 条目须注册（`all_handler_ids_registered` 闸门守）+ 占比
+        // <10%（`handler_ratio_under_ten_percent`）；本处只校验 handler_id 命名规范。
+        if let Some(id) = &e.handler_id {
+            assert!(
+                id.starts_with("special:"),
+                "{}: handler_id 命名应为 `special:<name>`（实 {id}）",
+                e.id
+            );
+        }
     }
 }
 
@@ -123,16 +132,27 @@ fn auto_batch_has_vendor_anchors() {
         assert!(e.vendor_pattern.is_some(), "{}: 缺 vendor_pattern", e.id);
         let note = e.source_note.as_deref().unwrap_or("");
         assert!(note.contains("ModParser.lua:"), "{}: 缺行号锚点", e.id);
-        assert!(!e.mods.is_empty(), "{}: 自动转写条目必须产 mod", e.id);
+        // 模板条目必须产 mod；handler 条目（开放捕获走 handler_id）产物在 Rust 侧
+        // （HandlerOutcome），数据 mods 空，豁免本检查。
+        assert!(
+            !e.mods.is_empty() || e.handler_id.is_some(),
+            "{}: 自动转写条目必须产 mod 或挂 handler_id",
+            e.id
+        );
     }
 }
 
-/// 禁开放捕获（DSL 硬边界）：pattern 不得含 `(.+)` 等开放捕获——
-/// 词类捕获在转写时已内联为显式闭集。
+/// 禁开放捕获（DSL 硬边界）：**模板**条目 pattern 不得含 `(.+)` 等开放捕获——
+/// 词类捕获在转写时已内联为显式闭集。开放捕获条目按架构 §5 / DSL 边界**走
+/// `handler_id`**（如 `allocates (.+)` → `special:granted_passive`，文本名经
+/// `HandlerCtx::raw_captures` 透传），故 handler 条目豁免本检查。
 #[test]
 fn no_open_captures_in_patterns() {
     let def = load();
     for e in &def.entries {
+        if e.handler_id.is_some() {
+            continue; // 开放捕获条目走 handler（DSL 边界明示放行）。
+        }
         assert!(
             !e.pattern.contains("(.+)") && !e.pattern.contains("(.*)"),
             "{}: 开放捕获越界（应走 handler_id）",

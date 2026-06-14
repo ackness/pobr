@@ -53,26 +53,31 @@ C1（18-build）双跑：EQ=309 / DIFF=510（name-only 358 + structural 152）/ 
    全是（`Allocates X` / `Gain Deflection` / `Charm Slots` / `Unwavering Stance` …）
    + 4 条 structural（`bypasses Energy Shield` / `for each type of Elemental Ailment`
    / `as Extra Damage of all Elements` / `Your Critical Damage Bonus`）。引擎
-   `special_meta` 框架已在，需接 special 通道 dispatch。
+   `special_meta` 框架已在，需接 special 通道 dispatch。**[done — 第二波 2a]**
 2. **EnemyModifier LIST 包装**（D8）：`Enemies in your Presence` / `Enemies you
    Curse take`——`apply_to_enemy`/`actor_enemy` 需 wrap 为 `EnemyModifier LIST`
    + inner 附 `Condition(Effective)` + 敌侧条件（注意 legacy `enemies you curse`
    用 `EnemyCursed`，data 用 `Cursed` + `mod_suffix:Taken`，包装时需对齐）。
+   **[done — 第二波 2a：`prefix_enemy_condition` 加 `Enemy<X>` 前缀，`mod_suffix` 接入]**
 3. **真 bug baseline 审查**（切换可能动 parity，独立 commit）：
-   - `from Equipped Focus`：引擎产 `SlotName(weapon2)+Condition(UsingFocus)`，legacy
-     仅 `SlotName(weapon2)`（漏装备条件，legacy 弱）。切到引擎语义后 ES from focus
-     的局部值口径变化——需 parity 复核。
-   - `per N Item ES on Equipped Helmet`：引擎 Multiplier var `EnergyShieldOnHelmet`
-     （大小写正确），legacy `EnergyShieldOnhelmet`（小写 artifact）——消费侧注入键
-     须与引擎大小写对齐。
-   - `Triggered Spells deal ... Spell Damage`：SPELL flag 来源歧义（专名吸收位与
-     triggered 独立 SPELL flag 同位），切换后行为以引擎为准、复核。
-   - `LifeGainAsEnergyShield`（name-only 1）：GainAs 基名 vendor 用短名 `Life`、
-     alias 把 `maximum life`→`MaximumLife` 在 GAIN+suffix 形上过度归一——切换前
-     在 GAIN/GAINAS form 上保留 vendor 短基名（或消费侧容双名）。
-4. **回归门禁**：`c1_converged_floor_gate`（已正式断言，上界 name-only≤1/structural≤13/
-   OLD_ONLY≤41/EQ≥805）随第二波收紧；全闭环后 `c1_diff_zero_gate` 从 `#[ignore]`
-   转正式断言（DIFF=0 且 OLD_ONLY=0）。
+   **[第二波 2a 已让引擎产 legacy-一致值使 DIFF=0；本波 parity 影响 0（未接调用方）。
+   逐条 2b 审查见 m6-dualrun-report §2.6「4 真 bug 逐条处置」]**
+   - `from Equipped Focus`：2a 从 `from equipped focus` 数据移除 `Condition(UsingFocus)`
+     对齐 legacy。2b 若加回装备条件须同步消费侧 + parity 复核。
+   - `per N Item ES on Equipped Helmet`：2a 改引擎数据 `OnHelmet`→`Onhelmet` 对齐
+     legacy + 消费侧 slot_id（本就小写）——2b 无差异。
+   - `Triggered Spells deal ... Spell Damage`：2a 当 inner 带 `SkillTypes(Triggered)`
+     时保留 SPELL 位（`normalize_pobr_name(keep_spell)`）——SPELL 子集匹配语义等价。
+   - `LifeGainAsEnergyShield`：2a 在 `GainAs` 后缀名回退 `MaximumLife`→`Life`——
+     名与 legacy / 消费侧通道一致。
+4. **回归门禁**：`c1_diff_zero_gate` 已从 `#[ignore]` 转**正式断言**（DIFF=0 且
+   OLD_ONLY=0，进 CI）；`c1_converged_floor_gate` 收紧为 EQ≥860 下界。
+   **[done — 第二波 2a]**
+
+**第二波 2a 完成态**（commit `feat(m6-conv2): ...`，基线 `1652b80`）：C1 DIFF=0 /
+OLD_ONLY=0 / EQ 805→860，行为中性、parity 零回归。**2b 切换**（默认开 +
+调用方注入 `&CompiledParserRules` + 删 legacy）就绪——清单见 m6-dualrun-report §2.6
+「2b 切换就绪清单」。
 
 ## 不阻塞项（切换决策之外可并行推进）
 - special 长尾批次（F，overlay/special_mods.json 扩批，独立）。

@@ -29,6 +29,7 @@ use super::legacy::{ParseOutcome, ParseStatus};
 use super::template::{compile_flags, compile_keyword_flags, compile_tag};
 use crate::{ModTag, ModValue, Modifier};
 use pobr_data::modifier::{KeywordFlags, ModFlags};
+use pobr_data::skill::SkillTypes;
 
 /// 数据驱动解析一行词条。永不报错（与 legacy `Unsupported` 同款收口；空输入
 /// 返回 Unsupported 空表）。
@@ -49,6 +50,29 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
             mods: Vec::new(),
             status: ParseStatus::Unsupported,
             unparsed: Some(normalized),
+            special_meta: None,
+        };
+    }
+
+    // 2b. specialModList 通道（M6-conv2；vendor `parseMod` 在 formList 之前查
+    //     specialModList 整行表，ModParser.lua:6151-6160）。命中 → 直接返回已
+    //     实例化 mods（统一补 source 原文），对齐 vendor specialModList 锚定优先级。
+    //     未注入数据时 rules.special 恒空，此分支恒不命中（行为 = conv1 引擎）。
+    if let Some(matched) = rules.special.try_match(&lower, &rules.special_handlers) {
+        let mods: Vec<Modifier> = matched
+            .mods
+            .into_iter()
+            .map(|mut inner| {
+                inner.source = Some(original.to_string());
+                inner
+            })
+            .collect();
+        // vendor specialModList 命中即「已处理整行」——无剩余 unparsed。空 mods 条目
+        //（纯识别 / 未注册 handler）按 vendor 语义仍是 Parsed（识别但无产出）。
+        return ParseOutcome {
+            mods,
+            status: ParseStatus::Parsed,
+            unparsed: None,
             special_meta: None,
         };
     }
@@ -158,6 +182,15 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
 
     let tags = effects_acc.tags.clone();
 
+    // M6-conv2（bug #3 收敛）：`Triggered Spells deal …` 前缀的 SPELL flag 与
+    // `Spell Damage` 作用域 SPELL 在 legacy 是两个独立来源——legacy 专名 `SpellDamage`
+    // 仍带前缀 SPELL 位（flags=0x2）。引擎单 flag 通道下 C3 归一会把 `Damage`+SPELL
+    // 折名后清 SPELL；当存在 triggered SkillType tag（= 前缀来源）时保留 SPELL 位，
+    // 与 legacy 逐字节对齐（消费侧 SPELL 子集匹配语义不变）。
+    let has_triggered = tags
+        .iter()
+        .any(|t| matches!(t, ModTag::SkillTypes(st) if st.intersects(SkillTypes::TRIGGERED)));
+
     let mut mods = Vec::with_capacity(form_result.names.len());
     for ((name, ty), value) in form_result
         .names
@@ -165,11 +198,14 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
         .zip(form_result.types.iter())
         .zip(form_result.values.iter())
     {
-        let full_name = format!("{}{}", name, form_result.suffix);
+        // form 自带后缀 + pre_flag `mod_suffix`（vendor `modSuffix`，如 `enemies
+        // you curse take ` → `"Taken"`，inner 名 `Damage` → `DamageTaken`，
+        // ModParser.lua:6683 `name .. misc.modSuffix`）。
+        let full_name = format!("{}{}{}", name, form_result.suffix, effects_acc.mod_suffix);
         // M6.3 路线 B 引擎归一：把 vendor「泛名 + flag/kw」组合归一为 PoBR 专名
         //（C3 damage flag→专名 / Speed flag→AttackSpeed,CastSpeed），并按最终名
         // 补 DamageType tag（C5）+ 收吸被专名吸收的 flag/kw。
-        let norm = normalize_pobr_name(&full_name, flags, keyword_flags);
+        let norm = normalize_pobr_name(&full_name, flags, keyword_flags, has_triggered);
         let modv = match ty {
             ModType::Flag => ModValue::Bool(*value != 0.0),
             _ => ModValue::Number(*value),
@@ -211,13 +247,13 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
     }
 }
 
-/// 累积 pre_flag / flag_phrase / tag_phrase 的效果（flags / kw / tags + minion
-/// 包装）。
+/// 累积 pre_flag / flag_phrase / tag_phrase 的效果（flags / kw / tags + minion /
+/// enemy 包装）。
 ///
-/// 本批仅实现 `addToMinion` 包装（最高频）；其余 misc 包装指令（addToAura /
-/// newAura / addToSkill / applyToEnemy / actorEnemy）在 vendor parseMod :6680-6750
-/// 有对应 LIST 包装，本 track 暂不接（对应行产物原样返回，由双跑裁决登记，见报告
-/// §2.4 D8）——故此处不存这些字段（避免 dead_code；接入时按数据字段补回）。
+/// 已实现 LIST 包装：`addToMinion`（MinionModifier）与 `applyToEnemy`
+/// （EnemyModifier，M6-conv2）。其余 misc 包装指令（addToAura / newAura /
+/// addToSkill）在 vendor parseMod :6680-6750 有对应包装，本批暂不接（对应行
+/// 产物原样返回，由双跑裁决登记，见报告 §2.4 D8）。
 #[derive(Default)]
 struct EffectsAccumulator {
     flags: ModFlags,
@@ -225,11 +261,16 @@ struct EffectsAccumulator {
     tags: Vec<ModTag>,
     add_to_minion: bool,
     add_to_minion_tags: Vec<ModTag>,
+    /// `applyToEnemy`（vendor `applyToEnemy` / `actorEnemy`）——产物包成
+    /// `EnemyModifier LIST`，inner 附敌侧条件 + `Condition(Effective)`。
+    apply_to_enemy: bool,
+    /// `modSuffix`（vendor，如 `take ` → `"Taken"`）——附加到 inner 名末尾。
+    mod_suffix: String,
 }
 
 impl EffectsAccumulator {
-    /// 吸收一个 RuleEffectsDef（flags/kw/tags + minion 包装指令）。返回 tags 是否
-    /// 全部可映射（false = 含 pobr 无落点的 tag 类型）。
+    /// 吸收一个 RuleEffectsDef（flags/kw/tags + minion/enemy 包装指令）。返回 tags
+    /// 是否全部可映射（false = 含 pobr 无落点的 tag 类型）。
     fn absorb_effects(&mut self, eff: &RuleEffectsDef, captures: &[String]) -> bool {
         self.flags |= compile_flags(&eff.flags);
         self.keyword_flags = self.keyword_flags | compile_keyword_flags(&eff.keyword_flags);
@@ -240,12 +281,17 @@ impl EffectsAccumulator {
                 None => all_mapped = false,
             }
         }
-        // minion 包装指令（其余 misc 包装本批不接，见结构体注释）。
+        // minion 包装指令。
         self.add_to_minion |= eff.add_to_minion;
         for tag in &eff.add_to_minion_tags {
             if let Some(t) = compile_tag(tag, captures) {
                 self.add_to_minion_tags.push(t);
             }
+        }
+        // enemy 包装指令（applyToEnemy / actorEnemy 同走 EnemyModifier 包装）+ modSuffix。
+        self.apply_to_enemy |= eff.apply_to_enemy || eff.actor_enemy;
+        if let Some(suffix) = &eff.mod_suffix {
+            self.mod_suffix = suffix.clone();
         }
         all_mapped
     }
@@ -263,8 +309,8 @@ impl EffectsAccumulator {
     }
 
     /// misc 包装：把生成的 mods 转为 LIST 包裹 mod（vendor :6680-6750）。
-    /// 本批仅实现 MinionModifier（最高频）；其余包装（ExtraAura / EnemyModifier /
-    /// ExtraSkillMod）保守跳过——对应行的产物原样返回（由双跑裁决，见报告 §2.4 D8）。
+    /// 已实现 MinionModifier（最高频）与 EnemyModifier（applyToEnemy）；其余包装
+    /// （ExtraAura / ExtraSkillMod）保守跳过——对应行产物原样返回（双跑裁决，§2.4 D8）。
     fn wrap_list(&self, mods: Vec<Modifier>) -> Vec<Modifier> {
         if self.add_to_minion && !mods.is_empty() {
             return mods
@@ -285,7 +331,47 @@ impl EffectsAccumulator {
                 })
                 .collect();
         }
+        // EnemyModifier 包装（vendor `applyToEnemy`，ModParser.lua:6733-6748）：单条
+        // 外层 `EnemyModifier LIST NestedMods([inner...])`，inner 统一附
+        // `Condition(Effective)`（pobr 敌侧 debuff 口径，legacy.rs:1236）；敌侧条件
+        // 用 `Enemy<X>` 约定（vendor enemy-actor 条件 → pobr 加 `Enemy` 前缀；已带
+        // `Enemy` 前缀的如 `EnemyInPresence` 不再二次加，legacy.rs:1198/:1207）。
+        if self.apply_to_enemy && !mods.is_empty() {
+            let src = mods.first().and_then(|m| m.source.clone());
+            let inner: Vec<Modifier> = mods
+                .into_iter()
+                .map(|mut m| {
+                    m.tags = m.tags.into_iter().map(prefix_enemy_condition).collect();
+                    m = m.with_tag(ModTag::condition("Effective", false));
+                    m
+                })
+                .collect();
+            let mut wrapper =
+                Modifier::new("EnemyModifier", ModType::List, ModValue::NestedMods(inner));
+            if let Some(src) = src {
+                wrapper = wrapper.with_source(src);
+            }
+            return vec![wrapper];
+        }
         mods
+    }
+}
+
+/// 敌侧 `Condition(var)` 加 `Enemy` 前缀（vendor enemy-actor 条件 → pobr 约定；
+/// 已带 `Enemy` 前缀的不二次加，如 `EnemyInPresence`/`EnemyCursed`）。非 Condition
+/// tag 原样返回。
+fn prefix_enemy_condition(tag: ModTag) -> ModTag {
+    match tag {
+        ModTag::Condition {
+            var,
+            negated,
+            actor,
+        } if !var.starts_with("Enemy") => ModTag::Condition {
+            var: format!("Enemy{var}"),
+            negated,
+            actor,
+        },
+        other => other,
     }
 }
 
@@ -309,12 +395,29 @@ struct NormalizedName {
 ///   （武器隐含攻击的 `Condition(UsingX)` 由 flag_phrases 另挂，引擎此处保守只改名清攻击位）。
 /// - **C5 DamageType**：最终名是五类基础伤害名 → 补对应 DamageType（legacy
 ///   `damage_type_for_name` 同表）。
-fn normalize_pobr_name(name: &str, flags: ModFlags, kw: KeywordFlags) -> NormalizedName {
+fn normalize_pobr_name(
+    name: &str,
+    flags: ModFlags,
+    kw: KeywordFlags,
+    keep_spell: bool,
+) -> NormalizedName {
     use pobr_data::prelude::DamageType;
 
     let mut out_name = name.to_string();
     let mut out_flags = flags;
     let out_kw = kw;
+
+    // M6-conv2（bug #4 收敛）：GainAs 基名保留 vendor 短名——抽取期别名把
+    // `maximum life`→`MaximumLife`，但 vendor gain-as 基名是短名 `Life`
+    // （legacy `LifeGainAsEnergyShield`）。仅在 `GainAs` 后缀名上回退 `Maximum` 前缀，
+    // 与 legacy 逐字节对齐。
+    if name.contains("GainAs") {
+        if let Some(rest) = name.strip_prefix("MaximumLife") {
+            out_name = format!("Life{rest}");
+        } else if let Some(rest) = name.strip_prefix("MaximumMana") {
+            out_name = format!("Mana{rest}");
+        }
+    }
 
     // C3 Damage 族：泛名 Damage + 作用域 flag → 专名。优先级：法术 > 投射 > 范围 >
     // 武器（与 legacy 专名映射对齐；item 实测每行至多一个作用域 flag）。
@@ -329,7 +432,11 @@ fn normalize_pobr_name(name: &str, flags: ModFlags, kw: KeywordFlags) -> Normali
         ];
         if flags.intersects(ModFlags::SPELL) {
             out_name = "SpellDamage".to_string();
-            out_flags = out_flags.without(ModFlags::SPELL);
+            // 默认清作用域 SPELL 位（legacy 专名不带）；但 triggered 前缀来源的
+            // SPELL 位是独立来源，legacy 保留（bug #3 收敛）——keep_spell 时不清。
+            if !keep_spell {
+                out_flags = out_flags.without(ModFlags::SPELL);
+            }
         } else if let Some((bit, special)) =
             WEAPON_SPECIALS.iter().find(|(b, _)| flags.intersects(*b))
         {

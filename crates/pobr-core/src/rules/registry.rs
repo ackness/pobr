@@ -40,6 +40,10 @@ pub struct HandlerCtx<'a> {
     /// 主技能上下文（vendor `SkillName` tag / `mainSkill.…selfCast` 门控用；
     /// 按需——消费点未接线时 `None`，依赖它的 handler 保守零输出）。
     pub main_skill: Option<&'a MainSkillCtx>,
+    /// special 通道捕获组原文（`$1..$n` 的字符串，未求值）——供需要文本载荷的
+    /// handler 用（如 `allocates (.+)` → `GrantedPassive LIST Text(名)`，数值 inputs
+    /// 无法承载名字）。config 消费点 `&[]`（无文本捕获）。
+    pub raw_captures: &'a [String],
 }
 
 impl<'a> HandlerCtx<'a> {
@@ -47,6 +51,15 @@ impl<'a> HandlerCtx<'a> {
     pub fn with_inputs(inputs: &'a [f64]) -> Self {
         Self {
             inputs,
+            ..Self::default()
+        }
+    }
+
+    /// 数值占位参数 + special 通道捕获组原文（special 消费点形态）。
+    pub fn with_inputs_and_captures(inputs: &'a [f64], raw_captures: &'a [String]) -> Self {
+        Self {
+            inputs,
+            raw_captures,
             ..Self::default()
         }
     }
@@ -239,6 +252,7 @@ mod tests {
             enemy_db: None,
             cfg: Some(&cfg),
             main_skill: None,
+            raw_captures: &[],
         };
         let handler: Handler = Box::new(|ctx| {
             let (Some(db), Some(cfg)) = (ctx.player_db, ctx.cfg) else {

@@ -282,7 +282,7 @@ impl SpecialModRules {
                     .iter()
                     .map(|arg| resolve_capture_number(arg, &captures))
                     .collect();
-                let outcome = handler(&HandlerCtx::with_inputs(&nums));
+                let outcome = handler(&HandlerCtx::with_inputs_and_captures(&nums, &captures));
                 let mut mods = outcome.player_mods;
                 for m in &mut mods {
                     if m.source.is_none() {

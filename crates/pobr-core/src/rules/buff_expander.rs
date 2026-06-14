@@ -260,6 +260,7 @@ fn expand_one(
                     enemy_db: state.enemy_db,
                     cfg: Some(state.cfg),
                     main_skill: state.main_skill,
+                    raw_captures: &[],
                 };
                 let result = handler(&ctx);
                 out.mods.extend(

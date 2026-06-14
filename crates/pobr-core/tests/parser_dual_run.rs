@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use pobr_core::mod_parser::{
     CompiledParserRules, ParseStatus, canonical_outcome, parse_mod, parse_mod_engine,
 };
-use pobr_data::catalog::parser_rules::ModParserRulesDoc;
+use pobr_data::catalog::parser_rules::{ModParserRulesDoc, SpecialModsDef};
 
 /// 五态计数（按语料源分组）。
 #[derive(Default, Debug, Clone)]
@@ -81,7 +81,20 @@ fn load_rules() -> CompiledParserRules {
     let path = repo_root().join("data/4.5.0.3.4/overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("读取 mod_parser_rules.json");
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("反序列化规则表");
-    CompiledParserRules::compile(&doc).expect("编译规则表")
+    // special 通道数据（overlay + generated 拼接，id 冲突在 compile fail-fast）。
+    let mut special = load_special("overlay/special_mods.json");
+    special.extend(load_special("generated/special_derived.json"));
+    CompiledParserRules::compile_with_special(&doc, &special).expect("编译规则表")
+}
+
+/// 载入一份 special_mods 数据文件（缺文件 → 空，由拼接侧兜底）。
+fn load_special(rel: &str) -> Vec<pobr_data::catalog::parser_rules::SpecialTemplateDef> {
+    let path = repo_root().join("data/4.5.0.3.4").join(rel);
+    let Ok(json) = std::fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+    let def: SpecialModsDef = serde_json::from_str(&json).expect("反序列化 special_mods");
+    def.entries
 }
 
 /// C1：18-build XML 的 Item 文本块逐行（蓝图 §5.1）。
@@ -355,25 +368,20 @@ fn dual_run_report() {
     );
 }
 
-/// C1 字面 diff=0 门禁（蓝图 §5.2 / D-T8 第一波目标）。
+/// C1 字面 diff=0 门禁（蓝图 §5.2 / D-T8 第二波目标，**正式断言**，进 CI）。
 ///
-/// **M6.3 路线 B（抽取期词表归一）落地后**（报告 §2.5）：name-only 358→1、
-/// structural 152→13、EQ 309→805。字面 DIFF=0 **仍未达成**，剩余 13 structural +
-/// 41 OLD_ONLY 全部归两类第二波/F 项：
-/// - **vendor specialModList 闭包通道**（OLD_ONLY 41 全是 + `bypasses Energy
-///   Shield` / `for each type of Elemental Ailment` / `as Extra Damage of all
-///   Elements` / `Your Critical Damage Bonus`）——引擎 special 通道未接（D-T8 第二波/F）。
-/// - **EnemyModifier LIST 包装**（`Enemies in your Presence` / `Enemies you Curse
-///   take`）——报告 §2.4 D8 明列本批保守跳过。
-/// - **真 bug / legacy quirk**（引擎更对，不强行劣化）：`from Equipped Focus`
-///   引擎多挂 `Condition(UsingFocus)`、`per Item ES on Helmet` 引擎大小写更对、
-///   `Triggered Spells` SPELL flag 来源歧义——见 m6-alias-table.md 真 bug 清单。
+/// **M6 D-T8 第二波 2a（收敛剩余）落地后**（报告 §2.5）：special 通道接入引擎
+/// （vendor `specialModList` 整行表，form 扫描前查）+ EnemyModifier LIST 包装
+/// （`applyToEnemy` → inner 附 `Condition(Effective)` + 敌侧 `Enemy<X>` 条件）+ 4
+/// 真 bug 收敛（focus / helmet 大小写 / Triggered SPELL flag / GainAs 基名），
+/// 字面 **DIFF=0 且 OLD_ONLY=0** 达成（EQ 309→860；UNSUP 874 全是物品名/基底名，
+/// 不在解析范围）。
 ///
-/// 故本字面门禁仍 `#[ignore]`；可达的回归门禁由 [`c1_converged_floor_gate`] 承担
-/// （已收敛部分不得回退）。剩余项的接入是 D-T8 第二波（special 通道 + EnemyModifier
-/// 包装）的范围。
+/// 本门禁断言新引擎是旧引擎能力的**逐字节形态超集**（剔 origin、source 不参与）：
+/// C1 18-build 语料无 DIFF、无 OLD_ONLY。引擎仍未接调用方（`parser-engine` 默认关、
+/// 五个调用方零改动）——行为中性、parity 零回归；切换（默认开 + 调用方注入 + 删
+/// legacy）是 D-T8 第二波 2b 的范围。
 #[test]
-#[ignore = "字面 diff=0 余 13 structural+41 OLD_ONLY 全属 special 通道/EnemyModifier 包装（D-T8 第二波）；见报告 §2.5"]
 fn c1_diff_zero_gate() {
     let rules = load_rules();
     let lines = corpus_c1();
@@ -386,17 +394,11 @@ fn c1_diff_zero_gate() {
     assert_eq!(tally.old_only, 0, "C1 语料 OLD_ONLY 必须为 0");
 }
 
-/// C1 收敛回归门禁（M6.3 路线 B 第一波，**正式断言**，进 CI）。
+/// C1 收敛底线回归门禁（**正式断言**，进 CI；防 EQ 退化）。
 ///
-/// 钉住第一波归一达成的收敛底线，防止后续改动回退：
-/// - **name-only ≤ 1**：vendor→PoBR 别名归一全覆盖（剩 1 = `LifeGainAsEnergyShield`
-///   的 GainAs 基名歧义，登记）。
-/// - **structural ≤ 13**：六类结构归一闭环；剩余 13 全属 special 通道 / EnemyModifier
-///   包装 / 真 bug（见 [`c1_diff_zero_gate`] doc）。
-/// - **OLD_ONLY ≤ 41**：全是 vendor specialModList 条目（special 通道未接，第二波）。
-///
-/// 阈值是**上界回归门禁**（实际更低即更好——第二波接入后应降至 0 并转 [`c1_diff_zero_gate`]
-/// 正式断言）。引擎仍未接调用方，行为中性、parity 零回归。
+/// 2a 收敛后 `c1_diff_zero_gate` 已断言 DIFF=0 / OLD_ONLY=0；本门禁补一条 EQ 下界
+/// （≥860），把已达成的逐字节一致量化为回归底线（DIFF=0 时 EQ 退化只可能来自引擎
+/// 改动导致条目改判 NEW_ONLY/UNSUP，本门禁兜住）。
 #[test]
 fn c1_converged_floor_gate() {
     let rules = load_rules();
@@ -407,23 +409,8 @@ fn c1_converged_floor_gate() {
         &details,
     );
     assert!(
-        tally.diff_name_only <= 1,
-        "C1 name-only DIFF={}（应 ≤1；别名归一回退？见明细）",
-        tally.diff_name_only
-    );
-    assert!(
-        tally.diff_structural <= 13,
-        "C1 structural DIFF={}（应 ≤13；结构归一回退？见明细）",
-        tally.diff_structural
-    );
-    assert!(
-        tally.old_only <= 41,
-        "C1 OLD_ONLY={}（应 ≤41，全 special 通道；见明细）",
-        tally.old_only
-    );
-    assert!(
-        tally.eq >= 805,
-        "C1 EQ={}（应 ≥805；收敛回退？见明细）",
+        tally.eq >= 860,
+        "C1 EQ={}（应 ≥860；收敛回退？见明细）",
         tally.eq
     );
 }

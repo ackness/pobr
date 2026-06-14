@@ -6167,10 +6167,6 @@
         {
           "type": "SlotName",
           "slotName": "Weapon 2"
-        },
-        {
-          "type": "Condition",
-          "var": "UsingFocus"
         }
       ]
     },
@@ -11633,7 +11629,7 @@
       "tags": [
         {
           "type": "StatThreshold",
-          "stat": "ArmourOnHelmet",
+          "stat": "ArmourOnhelmet",
           "threshold": 1.0
         },
         {
@@ -11659,7 +11655,7 @@
       "tags": [
         {
           "type": "StatThreshold",
-          "stat": "EvasionOnHelmet",
+          "stat": "EvasionOnhelmet",
           "threshold": 1.0
         },
         {
@@ -13418,7 +13414,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "stat": "ArmourOnHelmet"
+          "stat": "ArmourOnhelmet"
         }
       ],
       "inferred": true
@@ -13446,7 +13442,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "stat": "ArmourOnHelmet"
+          "stat": "ArmourOnhelmet"
         }
       ],
       "inferred": true
@@ -13498,7 +13494,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "stat": "EnergyShieldOnHelmet"
+          "stat": "EnergyShieldOnhelmet"
         }
       ],
       "inferred": true
@@ -13789,7 +13785,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "stat": "EnergyShieldOnHelmet"
+          "stat": "EnergyShieldOnhelmet"
         }
       ],
       "inferred": true
@@ -13817,7 +13813,7 @@
         {
           "type": "PerStat",
           "div": "$1",
-          "stat": "EnergyShieldOnHelmet"
+          "stat": "EnergyShieldOnhelmet"
         }
       ],
       "inferred": true
@@ -18575,6 +18571,10 @@
         "mod_type": "MORE",
         "value": -100.0
       }
+    },
+    {
+      "phrase": "hindered",
+      "condition": "Condition:Hindered"
     },
     {
       "phrase": "hindered,? with (%d+)%% reduced movement speed",

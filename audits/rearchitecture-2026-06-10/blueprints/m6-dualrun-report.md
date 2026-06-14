@@ -67,6 +67,93 @@ C1 的 DIFF/OLD_ONLY 全部归因为 legacy（PoBR 手写词表/语义）与 ven
 - **门禁**：`parser-engine` 默认关、未接调用方，`parity_no_regression` 零回归；
   workspace 两 feature 态测试 + clippy + fmt 全绿。
 
+## 2.6 M6 D-T8 第二波 2a 收敛结果（DIFF→0，**仍不切换**，基线 `1652b80`）
+
+第二波 2a（commit `feat(m6-conv2): ...`）落地 special 通道接入 + EnemyModifier 包装 +
+4 真 bug 收敛，**C1 字面 DIFF=0 且 OLD_ONLY=0 达成**：
+
+| 语料源 | EQ | DIFF | (name-only) | (structural) | OLD_ONLY | NEW_ONLY | UNSUP | total |
+|--------|----|------|-------------|--------------|----------|----------|-------|-------|
+| C1 (18-build) | 860 | 0 | 0 | 0 | 0 | 0 | 874 | 1734 |
+| fixture | 12 | 0 | 0 | 0 | 0 | 0 | 1 | 13 |
+
+- **EQ 805→860**（+55）、**DIFF 14→0**、**OLD_ONLY 41→0**。UNSUP 874 全是物品名/
+  基底名（解析两侧均 Unsupported，不在解析范围）。
+- `c1_diff_zero_gate` 从 `#[ignore]` 转**正式断言**（DIFF=0 且 OLD_ONLY=0，进 CI）；
+  `c1_converged_floor_gate` 收紧为 EQ≥860 下界（防 DIFF=0 后 EQ 因改判退化）。
+
+### special 通道接入方式
+
+引擎 [`CompiledParserRules`] 新增 `special: SpecialModRules` + `special_handlers:
+HandlerRegistry` 字段（`compile_with_special(doc, &[SpecialTemplateDef])`，编译仍在
+core 保 P9；`compile()` 默认空表 = conv1 行为）。`parse_mod_engine` 在 unsupported 查
+之后、formList 扫描**之前**查 special 整行表（vendor `ModParser.lua:6151-6160`
+specialModList 锚定优先级），命中即返回已实例化 mods（统一补 source 原文）。复用 M5b
+`special_mod.rs` 的 `SpecialModRules`（`RegexSet` 预筛 + 单条捕获 + 模板/handler 双路）。
+
+数据补 7 条 special 条目（`overlay/special_mods.json` 71→78）覆盖 C1 收敛缺口：
+`allocates_passive`（走 handler，见下）/ `defend_with_pct_of_armour`（`$1` base(-100)）/
+`has_to_defence_per_player_level`（enum 选名）/ `take_no_extra_damage_from_critical_hits` /
+`targets_can_be_affected_by_poisons`（FLAG+BASE 成对）/
+`empowered_attacks_deal_increased_damage`（Damage INC flags=Attack + Condition:Empowered）/
+`gain_pct_damage_as_extra_all_elements`（三系展开）。`allocates (.+)` 开放捕获按 DSL 硬
+边界走 `handler_id`（新 handler `special:granted_passive`，文本名经新增
+`HandlerCtx::raw_captures` 透传——数值 inputs 无法承载名字）。`hindered`→`Condition:Hindered`
+补进 `mod_parser_rules.json` flag_types（24→25，legacy `parse_enemy_inner` 的 `are
+hindered` 特例搬迁）。
+
+### EnemyModifier 包装对齐
+
+引擎 `EffectsAccumulator` 接 `applyToEnemy`/`actorEnemy` + `mod_suffix`：`wrap_list` 把
+form 产物包成单条外层 `EnemyModifier LIST NestedMods([inner...])`，inner 统一附
+`Condition(Effective)`（pobr 敌侧 debuff 口径）。敌侧条件名对齐 legacy 的 `Enemy<X>`
+约定：`prefix_enemy_condition` 对 inner 的非-`Enemy` 前缀 `Condition` 加 `Enemy` 前缀
+（`Cursed`→`EnemyCursed`；`EnemyInPresence` 已带前缀不二次加）。`mod_suffix`（`take ` →
+`Taken`）附加到 inner 名（`Damage`→`DamageTaken`）。覆盖 `Enemies in your Presence are
+Hindered/Intimidated`、`Enemies in your Presence Gain N% as Extra Chaos`、`Enemies you
+Curse take N% increased Damage` 全部收敛。
+
+### 4 真 bug 逐条处置（2b 切换 baseline 审查项；本波 parity 影响预估）
+
+本波让引擎产**与 legacy 逐字节一致**的值使双跑 DIFF=0（引擎未接调用方 → 本波 parity
+零影响）。切换（2b 默认开 + 调用方注入）时这些条目的口径以引擎为准，须 parity 复核：
+
+1. **`from Equipped Focus`**（focus，2 例）：引擎此前多挂 `Condition(UsingFocus)`，legacy
+   仅 `SlotName(weapon2)`。本波**从 `from equipped focus` flag_phrase 数据移除
+   `Condition(UsingFocus)`** 对齐 legacy。引擎语义更对（focus 须装备才生效）；2b 切换后
+   若要恢复装备条件，须同步消费侧。**parity 影响预估：本波 0**（legacy 不变）；2b 加回
+   `UsingFocus` 会让 ES-from-focus 局部值受装备态门控，须复核。
+2. **`per N Item ES on Equipped Helmet`**（helmet 大小写，1 例）：引擎数据此前
+   `EnergyShieldOnHelmet`（大写 H），legacy + 消费侧（`per_slot_defence_multipliers` 用
+   `EquipmentSlot::id`=`helmet`）均小写 `EnergyShieldOnhelmet`。本波**改引擎数据
+   `OnHelmet`→`Onhelmet`** 对齐 legacy + 消费侧（消费侧 slot_id 本就小写，引擎数据是孤立
+   artifact）。**parity 影响预估：本波 0**；该词条本就消费 lowercase 键，引擎改对后 2b
+   切换无差异。
+3. **`Triggered Spells deal N% increased Spell Damage`**（SPELL flag，3 例）：legacy 专名
+   `SpellDamage` 带前缀 SPELL 位（flags=0x2），引擎 C3 归一把 `Damage`+SPELL 折名后清
+   SPELL。本波**当 inner 带 `SkillTypes(TRIGGERED)` tag（=triggered 前缀来源）时保留
+   SPELL 位**（`normalize_pobr_name(keep_spell)`）。SPELL 子集匹配语义下两口径对法术技能
+   等价。**parity 影响预估：本波 0**；2b 切换后 SpellDamage 对法术命中，行为与 legacy 同。
+4. **`Gain N% of maximum Life as Extra maximum Energy Shield`**（GainAs 基名，1 例，
+   name-only）：抽取期别名把 `maximum life`→`MaximumLife`，但 vendor gain-as 基名是短名
+   `Life`（legacy `LifeGainAsEnergyShield`）。本波在 `normalize_pobr_name` 对 `GainAs`
+   后缀名回退 `MaximumLife`→`Life`/`MaximumMana`→`Mana`。**parity 影响预估：本波 0**；
+   2b 切换后名一致，消费侧 `LifeGainAsEnergyShield` 通道不变。
+
+### 2b 切换就绪清单
+
+- 引擎逐字节形态超集已证（C1 DIFF=0 / OLD_ONLY=0，`c1_diff_zero_gate` 正式断言进 CI）。
+- 切换工作（2b，亲自做）：① `parser-engine` 默认开；② 五个调用方
+  （passive/item/item_text/skill_source/session）的 `parse_mod*` 改注入
+  `&CompiledParserRules`（gamedata load special 边车 + orchestrator compile_with_special
+  注入）；③ 删 legacy 解析器；④ 上述 4 真 bug 若动 parity 则独立 commit 显式审查
+  （本波预估均 0，但 focus #1 加回 UsingFocus 是潜在变动点）。
+- 数据边车：special 通道数据 = `overlay/special_mods.json`（78）+
+  `generated/special_derived.json`（33 keystone）拼接，gamedata `RuleSet.special_mods`
+  已有载入；切换时 orchestrator 走 `compile_with_special`。
+- **门禁**：`parser-engine` 默认关、未接调用方，`parity_no_regression` 零回归；
+  workspace 两 feature 态测试（2025 / 2062 passed）+ clippy（两态）+ fmt 全绿。
+
 ## 3. 根因分析：legacy/vendor 词表与语义分歧（核心发现）
 
 蓝图 §5.2 把 canonical 比较单位默认两侧 ModName 词表一致——**这是错误前提**。
