@@ -60,6 +60,7 @@ pub mod actors; // M5a：minions / spectres / granted_effect_minions（vendor �
 pub mod item_overlay; // M5c：mod_scalability / catalysts / runes / uniques（vendor 抽取）
 pub mod parser_rules; // M5b：special_mods 模板（人工策展）+ M6：ModParser 解析规则六表（mod_parser_rules/v1）
 pub mod triggers; // M5a-D2：mirage_configs（工具内嵌生成）；M4-T5 trigger_configs 同文件扩展
+pub mod vendor_name_aliases; // M6.3：vendor→PoBR ModName 别名表（切换前置数据资产，零消费）
 
 pub use actors::{
     GrantedEffectMinionDef, GrantedEffectMinionsDef, LuaValueDef, MinionEntryDef, MinionModDef,
@@ -93,4 +94,7 @@ pub use triggers::{
     TriggerConfigsDef, TriggerKeyDef, TriggerSkillCondDef,
 };
 pub use unarmed_data::{UnarmedDataTable, UnarmedWeaponDef};
+pub use vendor_name_aliases::{
+    VENDOR_NAME_ALIASES_SCHEMA, VendorNameAliasDef, VendorNameAliasesDoc,
+};
 pub use weapon_types::{WeaponTypeDef, WeaponTypeTable};
