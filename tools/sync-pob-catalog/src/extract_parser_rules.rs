@@ -278,7 +278,94 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
         .iter()
         .map(|s| s.to_string())
         .collect();
+
+    // M6.3 路线 B：抽取期 vendor→PoBR 词表归一（别名 rename + 聚合展开 +
+    // DamageType tag）。引擎直接产 PoBR StatId，下游零改动、无运行期翻译层。
+    normalize_name_map_to_pobr(doc);
 }
+
+/// M6.3 路线 B 抽取期归一：把 `name_map` 的 vendor ModName 归一为 PoBR canonical
+/// StatId（别名表 [`VENDOR_NAME_ALIASES`]）+ 按短语展开聚合名
+/// （[`AGGREGATE_EXPANSION`]）。**源真理 =
+/// `data/4.5.0.3.4/overlay/vendor_name_aliases.json`**（本表的 real-rename 子集
+/// 与之一致）；结构归一规格见 `blueprints/m6-alias-table.md` §3。
+///
+/// 设计：仅改 `names`，不增删条目（保 [`PINNED_SECTION_COUNTS`] 计数）。
+/// DamageType tag（C5，按最终名挂、避免被 suffix 形变名误挂）、DMG 族名
+/// （`PhysicalMin`→`PhysicalDamageMin`）、damage flag→专名（C3）、
+/// PerStat→Multiplier（C2）由引擎归一（组合期产物，非静态 name_map 可表达）。
+fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
+    let alias: std::collections::HashMap<&str, &str> =
+        VENDOR_NAME_ALIASES.iter().copied().collect();
+    let aggregate: std::collections::HashMap<&str, &[&str]> =
+        AGGREGATE_EXPANSION.iter().copied().collect();
+
+    for entry in &mut doc.name_map {
+        // 1. 聚合短语展开优先（整组替换 names）。
+        if let Some(children) = aggregate.get(entry.phrase.as_str()) {
+            entry.names = children.iter().map(|s| s.to_string()).collect();
+        } else {
+            // 2. 逐名别名归一（real-rename 生效、identity 恒等）。
+            for n in &mut entry.names {
+                if let Some(pobr) = alias.get(n.as_str()) {
+                    *n = (*pobr).to_string();
+                }
+            }
+        }
+        // 3. 内嵌作用域词被专名吸收的短语：清 vendor 残留 flag（legacy parse_name
+        //    把 `critical spell damage bonus` 整体映射为 `CriticalStrikeMultiplier`
+        //    不带 Spell flag；vendor 把 `spell` 拆为 flag）。仅这一确证短语。
+        if FLAGLESS_NAME_PHRASES.contains(&entry.phrase.as_str()) {
+            entry.effects.flags.clear();
+        }
+    }
+}
+
+/// vendor name_map 带作用域 flag、但 legacy 把作用域内嵌进专名（无 flag）的短语。
+/// 抽取期清其 flag 以与 legacy 对齐（C3 内嵌作用域子类）。
+const FLAGLESS_NAME_PHRASES: &[&str] = &["critical spell damage bonus"];
+
+/// vendor→PoBR 别名表（real-rename 20 + identity 56，源真理 =
+/// `vendor_name_aliases.json`）。抽取期对 `name_map` 每个 ModName 套此表。
+/// identity 项可省略（套表恒等），此处仅列 20 real-rename。
+const VENDOR_NAME_ALIASES: &[(&str, &str)] = &[
+    ("ChaosResist", "ChaosResistance"),
+    ("ChaosResistMax", "MaximumChaosResistance"),
+    ("ColdResist", "ColdResistance"),
+    ("ColdResistMax", "MaximumColdResistance"),
+    ("CritChance", "CriticalStrikeChance"),
+    ("CritMultiplier", "CriticalStrikeMultiplier"),
+    ("Dex", "Dexterity"),
+    ("ElementalResistMax", "MaximumAllElementalResistances"),
+    ("EnemyBleedDuration", "BleedDuration"),
+    ("EnemyFreezeBuildup", "FreezeBuildup"),
+    ("EnemyIgniteDuration", "IgniteDuration"),
+    ("EnemyPoisonDuration", "PoisonDuration"),
+    ("FireResist", "FireResistance"),
+    ("FireResistMax", "MaximumFireResistance"),
+    ("Int", "Intelligence"),
+    ("Life", "MaximumLife"),
+    ("LightningResist", "LightningResistance"),
+    ("LightningResistMax", "MaximumLightningResistance"),
+    ("Mana", "MaximumMana"),
+    ("Str", "Strength"),
+];
+
+/// 聚合短语 → PoBR 子名集（C1，legacy `resolve_names` 同表）。vendor name_map
+/// 把这些短语解析为单一聚合名 / 含 vendor 组合名（`All`/`StrInt`），PoBR 下游无
+/// ModStore 展开层，故抽取期展开为 PoBR 子名。
+const AGGREGATE_EXPANSION: &[(&str, &[&str])] = &[
+    (
+        "all elemental resistances",
+        &["FireResistance", "ColdResistance", "LightningResistance"],
+    ),
+    ("all attributes", &["Strength", "Dexterity", "Intelligence"]),
+    ("attributes", &["Strength", "Dexterity", "Intelligence"]),
+    ("strength and intelligence", &["Strength", "Intelligence"]),
+    ("strength and dexterity", &["Strength", "Dexterity"]),
+    ("dexterity and intelligence", &["Dexterity", "Intelligence"]),
+    ("skill speed", &["SkillSpeed"]),
+];
 
 /// 抽取自检（蓝图 §1.9）：钉定 commit 下计数 / form id 集容差 0（Err）；
 /// 其它 commit 只产出告警（演练时吸收 vendor 漂移）。各段键唯一性恒检查。

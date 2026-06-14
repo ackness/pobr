@@ -598,43 +598,44 @@
     {
       "phrase": "all attributes",
       "names": [
-        "Str",
-        "Dex",
-        "Int",
-        "All"
+        "Strength",
+        "Dexterity",
+        "Intelligence"
       ]
     },
     {
       "phrase": "all elemental resistances",
       "names": [
-        "ElementalResist"
+        "FireResistance",
+        "ColdResistance",
+        "LightningResistance"
       ]
     },
     {
       "phrase": "all elemental resistances and maximum elemental resistances",
       "names": [
         "ElementalResist",
-        "ElementalResistMax"
+        "MaximumAllElementalResistances"
       ]
     },
     {
       "phrase": "all maximum elemental resistances",
       "names": [
-        "ElementalResistMax"
+        "MaximumAllElementalResistances"
       ]
     },
     {
       "phrase": "all maximum resistances",
       "names": [
-        "ElementalResistMax",
-        "ChaosResistMax"
+        "MaximumAllElementalResistances",
+        "MaximumChaosResistance"
       ]
     },
     {
       "phrase": "all resistances",
       "names": [
         "ElementalResist",
-        "ChaosResist"
+        "ChaosResistance"
       ]
     },
     {
@@ -844,7 +845,7 @@
     {
       "phrase": "attack critical damage bonus",
       "names": [
-        "CritMultiplier"
+        "CriticalStrikeMultiplier"
       ],
       "flags": [
         "Attack"
@@ -853,7 +854,7 @@
     {
       "phrase": "attack critical hit chance",
       "names": [
-        "CritChance"
+        "CriticalStrikeChance"
       ],
       "flags": [
         "Attack"
@@ -928,10 +929,9 @@
     {
       "phrase": "attributes",
       "names": [
-        "Str",
-        "Dex",
-        "Int",
-        "All"
+        "Strength",
+        "Dexterity",
+        "Intelligence"
       ]
     },
     {
@@ -949,7 +949,7 @@
     {
       "phrase": "bleed duration",
       "names": [
-        "EnemyBleedDuration"
+        "BleedDuration"
       ]
     },
     {
@@ -970,7 +970,7 @@
     {
       "phrase": "bleeding duration",
       "names": [
-        "EnemyBleedDuration"
+        "BleedDuration"
       ]
     },
     {
@@ -1241,7 +1241,7 @@
     {
       "phrase": "chaos resistance",
       "names": [
-        "ChaosResist"
+        "ChaosResistance"
       ]
     },
     {
@@ -1357,8 +1357,8 @@
     {
       "phrase": "cold and chaos resistances",
       "names": [
-        "ColdResist",
-        "ChaosResist"
+        "ColdResistance",
+        "ChaosResistance"
       ]
     },
     {
@@ -1371,8 +1371,8 @@
     {
       "phrase": "cold and lightning resistances",
       "names": [
-        "ColdResist",
-        "LightningResist"
+        "ColdResistance",
+        "LightningResistance"
       ]
     },
     {
@@ -1453,7 +1453,7 @@
     {
       "phrase": "cold resistance",
       "names": [
-        "ColdResist"
+        "ColdResistance"
       ]
     },
     {
@@ -1567,22 +1567,19 @@
     {
       "phrase": "critical damage bonus",
       "names": [
-        "CritMultiplier"
+        "CriticalStrikeMultiplier"
       ]
     },
     {
       "phrase": "critical hit chance",
       "names": [
-        "CritChance"
+        "CriticalStrikeChance"
       ]
     },
     {
       "phrase": "critical spell damage bonus",
       "names": [
-        "CritMultiplier"
-      ],
-      "flags": [
-        "Spell"
+        "CriticalStrikeMultiplier"
       ]
     },
     {
@@ -1806,15 +1803,14 @@
     {
       "phrase": "dexterity",
       "names": [
-        "Dex"
+        "Dexterity"
       ]
     },
     {
       "phrase": "dexterity and intelligence",
       "names": [
-        "Dex",
-        "Int",
-        "DexInt"
+        "Dexterity",
+        "Intelligence"
       ]
     },
     {
@@ -1894,9 +1890,9 @@
     {
       "phrase": "duration of damaging ailments",
       "names": [
-        "EnemyIgniteDuration",
-        "EnemyBleedDuration",
-        "EnemyPoisonDuration"
+        "IgniteDuration",
+        "BleedDuration",
+        "PoisonDuration"
       ]
     },
     {
@@ -1942,13 +1938,13 @@
       "names": [
         "EnemyShockDuration",
         "EnemyChillDuration",
-        "EnemyIgniteDuration"
+        "IgniteDuration"
       ]
     },
     {
       "phrase": "duration of ignites you inflict",
       "names": [
-        "EnemyIgniteDuration"
+        "IgniteDuration"
       ]
     },
     {
@@ -1967,7 +1963,7 @@
     {
       "phrase": "duration of poisons you inflict",
       "names": [
-        "EnemyPoisonDuration"
+        "PoisonDuration"
       ]
     },
     {
@@ -2298,7 +2294,7 @@
       "names": [
         "EnemyShockMagnitude",
         "EnemyChillMagnitude",
-        "EnemyFreezeBuildup"
+        "FreezeBuildup"
       ]
     },
     {
@@ -2306,7 +2302,7 @@
       "names": [
         "EnemyShockMagnitude",
         "EnemyChillMagnitude",
-        "EnemyFreezeBuildup"
+        "FreezeBuildup"
       ]
     },
     {
@@ -2806,8 +2802,8 @@
     {
       "phrase": "fire and chaos resistances",
       "names": [
-        "FireResist",
-        "ChaosResist"
+        "FireResistance",
+        "ChaosResistance"
       ]
     },
     {
@@ -2820,8 +2816,8 @@
     {
       "phrase": "fire and cold resistances",
       "names": [
-        "FireResist",
-        "ColdResist"
+        "FireResistance",
+        "ColdResistance"
       ]
     },
     {
@@ -2834,8 +2830,8 @@
     {
       "phrase": "fire and lightning resistances",
       "names": [
-        "FireResist",
-        "LightningResist"
+        "FireResistance",
+        "LightningResistance"
       ]
     },
     {
@@ -2907,7 +2903,7 @@
     {
       "phrase": "fire resistance",
       "names": [
-        "FireResist"
+        "FireResistance"
       ]
     },
     {
@@ -3025,7 +3021,7 @@
     {
       "phrase": "freeze buildup",
       "names": [
-        "EnemyFreezeBuildup"
+        "FreezeBuildup"
       ]
     },
     {
@@ -3103,7 +3099,7 @@
     {
       "phrase": "ignite duration",
       "names": [
-        "EnemyIgniteDuration"
+        "IgniteDuration"
       ]
     },
     {
@@ -3158,7 +3154,7 @@
     {
       "phrase": "intelligence",
       "names": [
-        "Int"
+        "Intelligence"
       ]
     },
     {
@@ -3202,7 +3198,7 @@
     {
       "phrase": "life",
       "names": [
-        "Life"
+        "MaximumLife"
       ]
     },
     {
@@ -3396,8 +3392,8 @@
     {
       "phrase": "lightning and chaos resistances",
       "names": [
-        "LightningResist",
-        "ChaosResist"
+        "LightningResistance",
+        "ChaosResistance"
       ]
     },
     {
@@ -3463,7 +3459,7 @@
     {
       "phrase": "lightning resistance",
       "names": [
-        "LightningResist"
+        "LightningResistance"
       ]
     },
     {
@@ -3536,7 +3532,7 @@
       "names": [
         "EnemyShockMagnitude",
         "EnemyChillMagnitude",
-        "EnemyFreezeBuildup"
+        "FreezeBuildup"
       ]
     },
     {
@@ -3563,7 +3559,7 @@
     {
       "phrase": "mana",
       "names": [
-        "Mana"
+        "MaximumMana"
       ]
     },
     {
@@ -3818,7 +3814,7 @@
     {
       "phrase": "maximum chaos resistance",
       "names": [
-        "ChaosResistMax"
+        "MaximumChaosResistance"
       ]
     },
     {
@@ -3830,13 +3826,13 @@
     {
       "phrase": "maximum cold resistance",
       "names": [
-        "ColdResistMax"
+        "MaximumColdResistance"
       ]
     },
     {
       "phrase": "maximum cold resistances",
       "names": [
-        "ColdResistMax"
+        "MaximumColdResistance"
       ]
     },
     {
@@ -3874,13 +3870,13 @@
     {
       "phrase": "maximum fire resistance",
       "names": [
-        "FireResistMax"
+        "MaximumFireResistance"
       ]
     },
     {
       "phrase": "maximum fire resistances",
       "names": [
-        "FireResistMax"
+        "MaximumFireResistance"
       ]
     },
     {
@@ -3911,14 +3907,14 @@
     {
       "phrase": "maximum life",
       "names": [
-        "Life"
+        "MaximumLife"
       ]
     },
     {
       "phrase": "maximum life, mana and global energy shield",
       "names": [
-        "Life",
-        "Mana",
+        "MaximumLife",
+        "MaximumMana",
         "EnergyShield"
       ],
       "tags": [
@@ -3936,19 +3932,19 @@
     {
       "phrase": "maximum lightning resistance",
       "names": [
-        "LightningResistMax"
+        "MaximumLightningResistance"
       ]
     },
     {
       "phrase": "maximum lightning resistances",
       "names": [
-        "LightningResistMax"
+        "MaximumLightningResistance"
       ]
     },
     {
       "phrase": "maximum mana",
       "names": [
-        "Mana"
+        "MaximumMana"
       ]
     },
     {
@@ -4572,7 +4568,7 @@
     {
       "phrase": "poison duration",
       "names": [
-        "EnemyPoisonDuration"
+        "PoisonDuration"
       ]
     },
     {
@@ -4946,9 +4942,7 @@
     {
       "phrase": "skill speed",
       "names": [
-        "Speed",
-        "WarcrySpeed",
-        "TotemPlacementSpeed"
+        "SkillSpeed"
       ]
     },
     {
@@ -5048,23 +5042,21 @@
     {
       "phrase": "strength",
       "names": [
-        "Str"
+        "Strength"
       ]
     },
     {
       "phrase": "strength and dexterity",
       "names": [
-        "Str",
-        "Dex",
-        "StrDex"
+        "Strength",
+        "Dexterity"
       ]
     },
     {
       "phrase": "strength and intelligence",
       "names": [
-        "Str",
-        "Int",
-        "StrInt"
+        "Strength",
+        "Intelligence"
       ]
     },
     {
@@ -5141,7 +5133,7 @@
     {
       "phrase": "thorns critical damage bonus",
       "names": [
-        "CritMultiplier"
+        "CriticalStrikeMultiplier"
       ],
       "flags": [
         "Thorns"
@@ -5150,7 +5142,7 @@
     {
       "phrase": "thorns critical hit chance",
       "names": [
-        "CritChance"
+        "CriticalStrikeChance"
       ],
       "flags": [
         "Thorns"

@@ -148,6 +148,9 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             damage_type_bit(&name).map(ModTag::DamageType)
         }
         "PerStat" | "PercentStat" => {
+            // M6.3 归一（C2）：vendor `PerStat{stat,div,limit}` ↔ PoBR `Multiplier
+            // {var=stat,div,limit}` 字段一一对应（计算侧 effective_number 只识别
+            // Multiplier；legacy 也统一产 Multiplier）。归一为 Multiplier。
             let stat = f
                 .get("stat")
                 .or_else(|| f.get("var"))
@@ -157,12 +160,14 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 .and_then(|v| field_number(v, captures))
                 .unwrap_or(1.0);
             let limit = f.get("limit").and_then(|v| field_number(v, captures));
-            Some(ModTag::PerStat {
-                stat,
+            Some(ModTag::Multiplier {
+                var: stat,
                 div,
                 limit,
-                limit_var: None,
                 actor: None,
+                limit_var: None,
+                limit_actor: None,
+                invert: false,
             })
         }
         // 未映射 tag 形态：保守跳过（返回 None；engine 据此处置整行）。

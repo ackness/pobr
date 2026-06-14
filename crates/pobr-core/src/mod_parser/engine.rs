@@ -119,6 +119,13 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
     };
     work = form_result.remaining.clone();
 
+    // 6b. name_map 命中条目自带效果（keyword_flags / flags / tags）注入累加器
+    //     （M6.3 归一：vendor modNameList 条目的 keywordFlags/tag——如各伤害专名
+    //     的 DamageType tag、`magnitude of poison you inflict` 的 Poison kw）。
+    if let Some(name_eff) = &form_result.name_effects {
+        effects_acc.absorb_effects(name_eff, &[]);
+    }
+
     // 7. modFlagList 扫描（plain）。
     {
         let lw = work.to_ascii_lowercase();
@@ -148,19 +155,26 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
         .zip(form_result.values.iter())
     {
         let full_name = format!("{}{}", name, form_result.suffix);
+        // M6.3 路线 B 引擎归一：把 vendor「泛名 + flag/kw」组合归一为 PoBR 专名
+        //（C3 damage flag→专名 / Speed flag→AttackSpeed,CastSpeed），并按最终名
+        // 补 DamageType tag（C5）+ 收吸被专名吸收的 flag/kw。
+        let norm = normalize_pobr_name(&full_name, flags, keyword_flags);
         let modv = match ty {
             ModType::Flag => ModValue::Bool(*value != 0.0),
             _ => ModValue::Number(*value),
         };
-        let mut m = Modifier::new(full_name, *ty, modv).with_source(original);
-        if !flags.is_empty() {
-            m = m.with_flags(flags);
+        let mut m = Modifier::new(norm.name, *ty, modv).with_source(original);
+        if !norm.flags.is_empty() {
+            m = m.with_flags(norm.flags);
         }
-        if !keyword_flags.is_empty() {
-            m = m.with_keyword_flags(keyword_flags);
+        if !norm.keyword_flags.is_empty() {
+            m = m.with_keyword_flags(norm.keyword_flags);
         }
         for t in &tags {
             m = m.with_tag(t.clone());
+        }
+        if let Some(dt) = norm.damage_type {
+            m = m.with_tag(ModTag::DamageType(dt));
         }
         if form_result.hand_attack_condition {
             // GRANTS/REMOVES local：`{Hand}Attack` 条件——pobr 无 hand 占位实例化
@@ -258,6 +272,88 @@ impl EffectsAccumulator {
                 .collect();
         }
         mods
+    }
+}
+
+/// 引擎归一产物：PoBR 专名 + 收吸后的 flag/kw + 应补的 DamageType。
+struct NormalizedName {
+    name: String,
+    flags: ModFlags,
+    keyword_flags: KeywordFlags,
+    damage_type: Option<pobr_data::prelude::DamageType>,
+}
+
+/// M6.3 路线 B 引擎归一（C3 + C5）：把 vendor「泛名 + flag」组合归一为 PoBR 专名，
+/// 收吸被专名吸收的 flag 位；并按最终名补 DamageType tag。
+///
+/// - **C3 Damage 族**：`Damage` + 武器/作用域 flag → 专名（`SpellDamage` /
+///   `ProjectileDamage` / `AreaDamage` / `{Weapon}Damage`），清吸收位（legacy
+///   专名不带这些 flag）。
+/// - **C3 Speed 族**：`Speed` + ATTACK → `AttackSpeed`、+ CAST → `CastSpeed`
+///   （武器隐含攻击的 `Condition(UsingX)` 由 flag_phrases 另挂，引擎此处保守只改名清攻击位）。
+/// - **C5 DamageType**：最终名是五类基础伤害名 → 补对应 DamageType（legacy
+///   `damage_type_for_name` 同表）。
+fn normalize_pobr_name(name: &str, flags: ModFlags, kw: KeywordFlags) -> NormalizedName {
+    use pobr_data::prelude::DamageType;
+
+    let mut out_name = name.to_string();
+    let mut out_flags = flags;
+    let out_kw = kw;
+
+    // C3 Damage 族：泛名 Damage + 作用域 flag → 专名。优先级：法术 > 投射 > 范围 >
+    // 武器（与 legacy 专名映射对齐；item 实测每行至多一个作用域 flag）。
+    if name == "Damage" {
+        // 武器 flag（含 HIT 伴随位）→ 专名，清武器位与 HIT 位。
+        const WEAPON_SPECIALS: &[(ModFlags, &str)] = &[
+            (ModFlags::SPEAR, "SpearDamage"),
+            (ModFlags::CROSSBOW, "CrossbowDamage"),
+            (ModFlags::BOW, "BowDamage"),
+            (ModFlags::MACE, "MaceDamage"),
+            (ModFlags::WARSTAFF, "QuarterstaffDamage"),
+        ];
+        if flags.intersects(ModFlags::SPELL) {
+            out_name = "SpellDamage".to_string();
+            out_flags = out_flags.without(ModFlags::SPELL);
+        } else if let Some((bit, special)) =
+            WEAPON_SPECIALS.iter().find(|(b, _)| flags.intersects(*b))
+        {
+            out_name = (*special).to_string();
+            out_flags = out_flags.without(*bit | ModFlags::HIT);
+        } else if flags.intersects(ModFlags::PROJECTILE) {
+            out_name = "ProjectileDamage".to_string();
+            out_flags = out_flags.without(ModFlags::PROJECTILE);
+        } else if flags.intersects(ModFlags::AREA) {
+            out_name = "AreaDamage".to_string();
+            out_flags = out_flags.without(ModFlags::AREA);
+        }
+    }
+
+    // C3 Speed 族：泛名 Speed + ATTACK/CAST → AttackSpeed/CastSpeed，清对应位。
+    if name == "Speed" {
+        if flags.intersects(ModFlags::ATTACK) {
+            out_name = "AttackSpeed".to_string();
+            out_flags = out_flags.without(ModFlags::ATTACK);
+        } else if flags.intersects(ModFlags::CAST) {
+            out_name = "CastSpeed".to_string();
+            out_flags = out_flags.without(ModFlags::CAST);
+        }
+    }
+
+    // C5 DamageType：最终名是五类基础伤害名 → 补对应 DamageType。
+    let damage_type = match out_name.as_str() {
+        "PhysicalDamage" => Some(DamageType::Physical),
+        "FireDamage" => Some(DamageType::Fire),
+        "ColdDamage" => Some(DamageType::Cold),
+        "LightningDamage" => Some(DamageType::Lightning),
+        "ChaosDamage" => Some(DamageType::Chaos),
+        _ => None,
+    };
+
+    NormalizedName {
+        name: out_name,
+        flags: out_flags,
+        keyword_flags: out_kw,
+        damage_type,
     }
 }
 
@@ -361,7 +457,8 @@ mod tests {
         let r = real_rules();
         let o = parse_mod_engine("+50 to maximum Life", &r);
         assert_eq!(o.status, ParseStatus::Parsed, "unparsed={:?}", o.unparsed);
-        assert!(o.mods.iter().any(|m| m.name.as_str() == "Life"
+        // M6.3 路线 B：抽取期归一后引擎产 PoBR StatId `MaximumLife`（非 vendor `Life`）。
+        assert!(o.mods.iter().any(|m| m.name.as_str() == "MaximumLife"
             && m.mod_type == ModType::Base
             && m.value == ModValue::Number(50.0)));
     }
