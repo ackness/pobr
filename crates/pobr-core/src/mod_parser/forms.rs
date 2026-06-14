@@ -6,6 +6,7 @@
 
 use super::compiled::CompiledParserRules;
 use super::scan::LuaMatch;
+use pobr_data::catalog::parser_rules::RuleEffectsDef;
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::prelude::ModType;
 
@@ -26,6 +27,11 @@ pub struct FormResult {
     pub default_keyword: KeywordFlags,
     /// GRANTS/REMOVES 的 local `{Hand}Attack` 条件标记（消费侧 item ingest 实例化）。
     pub hand_attack_condition: bool,
+    /// name_map 命中条目附带的效果（keyword_flags / flags / tags）——M6.3 归一：
+    /// 引擎需把 name_map `effects` 注入产物（vendor `modNameList` 条目自带的
+    /// keywordFlags/tag，如 `magnitude of poison you inflict` 的 Poison kw、
+    /// 各伤害专名的 DamageType tag）。engine 侧 absorb 进累加器。
+    pub name_effects: Option<RuleEffectsDef>,
     /// 剩余文本（form 内部 scan 后切除的）。
     pub remaining: String,
 }
@@ -65,6 +71,7 @@ pub fn eval_form(
         extra_flags: ModFlags::NONE,
         default_keyword: KeywordFlags::NONE,
         hand_attack_condition: false,
+        name_effects: None,
         remaining: name_original.to_string(),
     };
 
@@ -75,7 +82,9 @@ pub fn eval_form(
                   rules: &CompiledParserRules|
      -> Result<(), FormReject> {
         let (idx, rest) = scan_name(name_lower, name_original, rules)?;
-        let names = rules.name_map.payload(idx).names.clone();
+        let payload = rules.name_map.payload(idx);
+        let names = payload.names.clone();
+        result.name_effects = Some(payload.effects.clone());
         result.remaining = rest;
         for n in &names {
             result.names.push(n.clone());
@@ -310,21 +319,44 @@ fn dmg_form(
         .ok_or(FormReject::EmptyTable)?;
     let min = caps.first().and_then(|c| c.parse().ok()).unwrap_or(0.0);
     let max = caps.get(1).and_then(|c| c.parse().ok()).unwrap_or(0.0);
-    result.names.push(format!("{dt}Min"));
-    result.names.push(format!("{dt}Max"));
-    result.types.push(ModType::Base);
-    result.types.push(ModType::Base);
-    result.values.push(min);
-    result.values.push(max);
-    // 默认 keyword/flag（无显式 flag 时补）。
+    // M6.3 归一：PoBR added-damage 名为 `{Type}DamageMin/Max`（legacy 同名），
+    // 而非 vendor `{Type}Min/Max`；附 DamageType tag（与 legacy 一致）。
+    push_added_damage(result, &dt, min, max);
+    // M6.3 归一：「to Attacks/Spells」作用域 legacy 用 ModFlag（ATTACK 0x1 等），
+    // 非 keyword——直接补 extra_flags（vendor keyword 体系差异，对齐 legacy）。
     match form {
-        "DMGATTACKS" => result.default_keyword = KeywordFlags::ATTACK,
-        "DMGSPELLS" => result.default_keyword = KeywordFlags::SPELL,
-        "DMGBOTH" => result.default_keyword = KeywordFlags::ATTACK | KeywordFlags::SPELL,
+        "DMGATTACKS" => result.extra_flags |= ModFlags::ATTACK,
+        "DMGSPELLS" => result.extra_flags |= ModFlags::SPELL,
+        "DMGBOTH" => result.extra_flags |= ModFlags::ATTACK | ModFlags::SPELL,
         "DMGTHORNS" => result.extra_flags |= ModFlags::THORNS,
         _ => {}
     }
     Ok(())
+}
+
+/// 推入一对 `{Type}DamageMin/Max` BASE mod + DamageType tag（legacy added-damage
+/// 形态）。`dt` 为 dmgTypes 值（`Physical`/`Fire`/…）。
+fn push_added_damage(result: &mut FormResult, dt: &str, min: f64, max: f64) {
+    use pobr_data::catalog::parser_rules::TagTemplate;
+    use pobr_data::catalog::stat_map::StatMapValue;
+    let mut fields = std::collections::BTreeMap::new();
+    fields.insert("damageType".to_string(), StatMapValue::Text(dt.to_string()));
+    let dt_tag = TagTemplate {
+        tag_type: "DamageType".to_string(),
+        fields,
+    };
+    let eff = result
+        .name_effects
+        .get_or_insert_with(RuleEffectsDef::default);
+    if !eff.tags.contains(&dt_tag) {
+        eff.tags.push(dt_tag);
+    }
+    result.names.push(format!("{dt}DamageMin"));
+    result.names.push(format!("{dt}DamageMax"));
+    result.types.push(ModType::Base);
+    result.types.push(ModType::Base);
+    result.values.push(min);
+    result.values.push(max);
 }
 
 /// dmgTypes plain 查表（key 是 capture 词）。

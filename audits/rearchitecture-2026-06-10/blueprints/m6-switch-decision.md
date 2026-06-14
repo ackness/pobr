@@ -36,10 +36,43 @@ C1（18-build）双跑：EQ=309 / DIFF=510（name-only 358 + structural 152）/ 
 **B**。理由：(1) 保持引擎纯数据驱动、无运行期特判；(2) 输出即 PoBR StatId，下游零改动即可切换；(3) alias 表是一次性数据资产，version-bump 时随 name_map 重抽自动复用；(4) 契合「计算内部只用稳定 ID」铁律。
 
 落地序（B 路线的 D-T8 重定义）：
-1. 建 `vendor→PoBR` alias 表（自举 legacy 词表 + 核对 358 name-only DIFF + structural 152 的聚合/PerStat 归一规则）。
-2. extract-lua name_map 抽取期套 alias → 重生 mod_parser_rules.json。
+1. 建 `vendor→PoBR` alias 表（自举 legacy 词表 + 核对 358 name-only DIFF + structural 152 的聚合/PerStat 归一规则）。**[done]**
+2. extract-lua name_map 抽取期套 alias → 重生 mod_parser_rules.json。**[done — 第一波]**
 3. 双跑重测：目标 C1 DIFF 收敛到 0（structural 分歧逐条归一或登记为 legacy bug 修正）。
+   **[第一波部分达成：name-only 358→1、structural 152→13、EQ 309→805；剩余 13+41
+   OLD_ONLY 全属 special 通道 / EnemyModifier 包装 / 真 bug——见 m6-dualrun-report.md §2.5]**
 4. DIFF=0 达成 → D-T8 切换 commit（默认开 parser-engine、调用方注入 CompiledParserRules、删 legacy）+ 全量门禁 + baseline 审查（若引擎修正了 legacy 的真 bug 致 parity 变动，独立 commit 显式审查）。
+
+### D-T8 第二波就绪状态（M6.3 第一波交付后）
+
+第一波（commit `2f7dbcc`→`cd58fed`，基线 `76dcefe`）已落地路线 B 的抽取期归一 +
+引擎 C1–C6 结构归一，**行为中性**（parser-engine 默认关、未接调用方、parity 零回归）。
+切换（第二波）前的**剩余必办**（按优先级）：
+
+1. **special 通道接入**（最大块）：vendor `specialModList` 闭包条目——OLD_ONLY 41
+   全是（`Allocates X` / `Gain Deflection` / `Charm Slots` / `Unwavering Stance` …）
+   + 4 条 structural（`bypasses Energy Shield` / `for each type of Elemental Ailment`
+   / `as Extra Damage of all Elements` / `Your Critical Damage Bonus`）。引擎
+   `special_meta` 框架已在，需接 special 通道 dispatch。
+2. **EnemyModifier LIST 包装**（D8）：`Enemies in your Presence` / `Enemies you
+   Curse take`——`apply_to_enemy`/`actor_enemy` 需 wrap 为 `EnemyModifier LIST`
+   + inner 附 `Condition(Effective)` + 敌侧条件（注意 legacy `enemies you curse`
+   用 `EnemyCursed`，data 用 `Cursed` + `mod_suffix:Taken`，包装时需对齐）。
+3. **真 bug baseline 审查**（切换可能动 parity，独立 commit）：
+   - `from Equipped Focus`：引擎产 `SlotName(weapon2)+Condition(UsingFocus)`，legacy
+     仅 `SlotName(weapon2)`（漏装备条件，legacy 弱）。切到引擎语义后 ES from focus
+     的局部值口径变化——需 parity 复核。
+   - `per N Item ES on Equipped Helmet`：引擎 Multiplier var `EnergyShieldOnHelmet`
+     （大小写正确），legacy `EnergyShieldOnhelmet`（小写 artifact）——消费侧注入键
+     须与引擎大小写对齐。
+   - `Triggered Spells deal ... Spell Damage`：SPELL flag 来源歧义（专名吸收位与
+     triggered 独立 SPELL flag 同位），切换后行为以引擎为准、复核。
+   - `LifeGainAsEnergyShield`（name-only 1）：GainAs 基名 vendor 用短名 `Life`、
+     alias 把 `maximum life`→`MaximumLife` 在 GAIN+suffix 形上过度归一——切换前
+     在 GAIN/GAINAS form 上保留 vendor 短基名（或消费侧容双名）。
+4. **回归门禁**：`c1_converged_floor_gate`（已正式断言，上界 name-only≤1/structural≤13/
+   OLD_ONLY≤41/EQ≥805）随第二波收紧；全闭环后 `c1_diff_zero_gate` 从 `#[ignore]`
+   转正式断言（DIFF=0 且 OLD_ONLY=0）。
 
 ## 不阻塞项（切换决策之外可并行推进）
 - special 长尾批次（F，overlay/special_mods.json 扩批，独立）。

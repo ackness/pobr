@@ -355,18 +355,25 @@ fn dual_run_report() {
     );
 }
 
-/// C1 门禁（蓝图 §5.2 字面口径）：DIFF=0 且 OLD_ONLY=0。
+/// C1 字面 diff=0 门禁（蓝图 §5.2 / D-T8 第一波目标）。
 ///
-/// **重大发现（报告 §3）**：legacy 是手写解析器、产 **PoBR 自有 ModName 词表**
-/// （`MaximumLife` / `Strength` / `ColdResistance` …）；新引擎按蓝图 §1.2 忠实落
-/// **vendor PoB2 词表**（`Life` / `Str` / `ColdResist` …）。两者词表不同，字面
-/// `diff=0` **结构上不可达**（蓝图把 canonical 比较单位默认两侧词表一致，是错误
-/// 前提）。DIFF 绝大多数是「去名后等价」的纯词表分歧（`diff_name_only`），非引擎
-/// bug。故本字面门禁 `#[ignore]`，由 [`c1_structural_gate`] 承担可达的工程门禁
-/// （去名后无结构性差异 + OLD_ONLY=0）。词表对齐属 D-T8 切换时的 name 归一层
-/// （或保留 legacy 词表、引擎产出经 name-map 翻译），不在本 track 范围。
+/// **M6.3 路线 B（抽取期词表归一）落地后**（报告 §2.5）：name-only 358→1、
+/// structural 152→13、EQ 309→805。字面 DIFF=0 **仍未达成**，剩余 13 structural +
+/// 41 OLD_ONLY 全部归两类第二波/F 项：
+/// - **vendor specialModList 闭包通道**（OLD_ONLY 41 全是 + `bypasses Energy
+///   Shield` / `for each type of Elemental Ailment` / `as Extra Damage of all
+///   Elements` / `Your Critical Damage Bonus`）——引擎 special 通道未接（D-T8 第二波/F）。
+/// - **EnemyModifier LIST 包装**（`Enemies in your Presence` / `Enemies you Curse
+///   take`）——报告 §2.4 D8 明列本批保守跳过。
+/// - **真 bug / legacy quirk**（引擎更对，不强行劣化）：`from Equipped Focus`
+///   引擎多挂 `Condition(UsingFocus)`、`per Item ES on Helmet` 引擎大小写更对、
+///   `Triggered Spells` SPELL flag 来源歧义——见 m6-alias-table.md 真 bug 清单。
+///
+/// 故本字面门禁仍 `#[ignore]`；可达的回归门禁由 [`c1_converged_floor_gate`] 承担
+/// （已收敛部分不得回退）。剩余项的接入是 D-T8 第二波（special 通道 + EnemyModifier
+/// 包装）的范围。
 #[test]
-#[ignore = "字面 diff=0 因 legacy/vendor 词表分歧不可达；见 c1_structural_gate 与报告 §3"]
+#[ignore = "字面 diff=0 余 13 structural+41 OLD_ONLY 全属 special 通道/EnemyModifier 包装（D-T8 第二波）；见报告 §2.5"]
 fn c1_diff_zero_gate() {
     let rules = load_rules();
     let lines = corpus_c1();
@@ -379,28 +386,19 @@ fn c1_diff_zero_gate() {
     assert_eq!(tally.old_only, 0, "C1 语料 OLD_ONLY 必须为 0");
 }
 
-/// C1 结构性观测（报告 §3.2）：去名后的「结构性 DIFF」与 OLD_ONLY 计数。
+/// C1 收敛回归门禁（M6.3 路线 B 第一波，**正式断言**，进 CI）。
 ///
-/// **结论（报告 §3）**：去名后的结构性 DIFF 也**不是引擎 bug**，而是 legacy
-/// （PoBR 手写语义）与 vendor 数据语义的系统性分歧，主要四类：
-/// 1. **聚合名展开 vs 单名**：`all Elemental Resistances` → legacy 拆 3 个
-///    `*Resistance`，vendor name_map 单 `ElementalResist`（蓝图 §1.2 忠实落 vendor）；
-///    `all Attributes` 同理（legacy Str/Dex/Int，vendor `All`+三分）。
-/// 2. **PerStat vs Multiplier tag**：`per N <resource>` legacy 用 `Multiplier`，
-///    vendor modTagList 用 `PerStat`（vendor ModStore 语义，引擎忠实）。
-/// 3. **damage flag vs 专名**：`Spell Damage` → legacy `SpellDamage`，vendor
-///    `Damage`+Spell flag（蓝图 §3 form dispatch 照搬 vendor）。
-/// 4. **name_map 覆盖差**：个别行 vendor 短语未覆盖（如 `bypasses Energy Shield`）
-///    → 引擎部分消费、留 unparsed（NEW 能力缺口，非回归）。
+/// 钉住第一波归一达成的收敛底线，防止后续改动回退：
+/// - **name-only ≤ 1**：vendor→PoBR 别名归一全覆盖（剩 1 = `LifeGainAsEnergyShield`
+///   的 GainAs 基名歧义，登记）。
+/// - **structural ≤ 13**：六类结构归一闭环；剩余 13 全属 special 通道 / EnemyModifier
+///   包装 / 真 bug（见 [`c1_diff_zero_gate`] doc）。
+/// - **OLD_ONLY ≤ 41**：全是 vendor specialModList 条目（special 通道未接，第二波）。
 ///
-/// 这些都是 vendor-faithful 引擎对 legacy PoBR 词表/语义的预期差异——**字面与
-/// 结构 diff=0 都需要 D-T8 切换时的 name/语义归一层**（或保留 legacy 词表、对
-/// 引擎产物做 vendor→PoBR 翻译），不在本 track 范围。故本用例 `#[ignore]` 为
-/// 观测项（打印计数），不作硬门禁。引擎正确性由 forms/scan/template/engine 的
-/// 逐 form 单测（对照 vendor dispatch）+ dual_run 全语料零 panic 保证。
+/// 阈值是**上界回归门禁**（实际更低即更好——第二波接入后应降至 0 并转 [`c1_diff_zero_gate`]
+/// 正式断言）。引擎仍未接调用方，行为中性、parity 零回归。
 #[test]
-#[ignore = "结构性 DIFF 系 legacy/vendor 语义分歧（非引擎 bug），需 D-T8 归一层；见报告 §3"]
-fn c1_structural_gate() {
+fn c1_converged_floor_gate() {
     let rules = load_rules();
     let lines = corpus_c1();
     let (tally, details) = run_corpus("C1", &lines, &rules);
@@ -408,14 +406,24 @@ fn c1_structural_gate() {
         &BTreeMap::from([("C1".to_string(), tally.clone())]),
         &details,
     );
-    assert_eq!(
-        tally.diff_structural, 0,
-        "C1 去名后仍有 {} 条结构性 DIFF（真正的引擎/数据缺口，见明细）",
+    assert!(
+        tally.diff_name_only <= 1,
+        "C1 name-only DIFF={}（应 ≤1；别名归一回退？见明细）",
+        tally.diff_name_only
+    );
+    assert!(
+        tally.diff_structural <= 13,
+        "C1 structural DIFF={}（应 ≤13；结构归一回退？见明细）",
         tally.diff_structural
     );
-    assert_eq!(
-        tally.old_only, 0,
-        "C1 OLD_ONLY={}（新 parser 必须是旧能力的形态超集）",
+    assert!(
+        tally.old_only <= 41,
+        "C1 OLD_ONLY={}（应 ≤41，全 special 通道；见明细）",
         tally.old_only
+    );
+    assert!(
+        tally.eq >= 805,
+        "C1 EQ={}（应 ≥805；收敛回退？见明细）",
+        tally.eq
     );
 }

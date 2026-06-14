@@ -130,13 +130,14 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             Some(ModTag::condition(var, neg))
         }
         "ActorCondition" => {
+            // M6.3 归一：vendor `ActorCondition{actor=enemy,var=X}` 的 actor 路由由
+            // mod 挂载侧（敌方 ModDb）承担，condition var 用裸名 X（与 legacy 一致：
+            // `against rare`→`RareOrUnique`、`enemies in your presence`→`EnemyInPresence`
+            // 其 var 已含 Enemy 前缀，不再二次加前缀）。早前的 `Enemy{var}` 拼接会
+            // 产 `EnemyRareOrUnique`/`EnemyEnemyInPresence`（双前缀），与 legacy 偏离。
             let var = f.get("var").and_then(|v| field_text(v, captures))?;
             let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
-            let actor = f.get("actor").and_then(|v| field_text(v, captures));
-            match actor.as_deref() {
-                Some("enemy") => Some(ModTag::condition(format!("Enemy{var}"), neg)),
-                _ => Some(ModTag::condition(var, neg)),
-            }
+            Some(ModTag::condition(var, neg))
         }
         "SkillType" => {
             let name = f.get("skill_type").and_then(|v| field_text(v, captures))?;
@@ -147,7 +148,17 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             let name = f.get("damageType").and_then(|v| field_text(v, captures))?;
             damage_type_bit(&name).map(ModTag::DamageType)
         }
+        "SlotName" => {
+            // vendor slot 名（`Body Armour`/`Weapon 2`/`Helmet`…）→ legacy 稳定槽位 ID
+            //（小写 + 去空格，对齐 EquipmentSlot::id）。slotNameList（多槽）本批保守
+            // 跳过（不在 C1 diff 集）。
+            let name = f.get("slotName").and_then(|v| field_text(v, captures))?;
+            Some(ModTag::SlotName(slot_name_to_id(&name)))
+        }
         "PerStat" | "PercentStat" => {
+            // M6.3 归一（C2）：vendor `PerStat{stat,div,limit}` ↔ PoBR `Multiplier
+            // {var=stat,div,limit}` 字段一一对应（计算侧 effective_number 只识别
+            // Multiplier；legacy 也统一产 Multiplier）。归一为 Multiplier。
             let stat = f
                 .get("stat")
                 .or_else(|| f.get("var"))
@@ -157,12 +168,14 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 .and_then(|v| field_number(v, captures))
                 .unwrap_or(1.0);
             let limit = f.get("limit").and_then(|v| field_number(v, captures));
-            Some(ModTag::PerStat {
-                stat,
+            Some(ModTag::Multiplier {
+                var: stat,
                 div,
                 limit,
-                limit_var: None,
                 actor: None,
+                limit_var: None,
+                limit_actor: None,
+                invert: false,
             })
         }
         // 未映射 tag 形态：保守跳过（返回 None；engine 据此处置整行）。
@@ -182,6 +195,7 @@ pub fn is_mappable_tag_type(tag_type: &str) -> bool {
             | "DamageType"
             | "PerStat"
             | "PercentStat"
+            | "SlotName"
     )
 }
 
@@ -262,6 +276,17 @@ fn skill_type_bit(name: &str) -> SkillTypes {
         "Aura" => SkillTypes::AURA,
         "Channel" => SkillTypes::CHANNEL,
         _ => SkillTypes::NONE,
+    }
+}
+
+/// vendor slot 名 → legacy 稳定槽位 ID（小写 + 去空格；副手族归 `weapon2`、
+/// 主手族归 `weapon1`，与 legacy `slot_words_to_id` 同口径）。
+fn slot_name_to_id(name: &str) -> String {
+    match name.to_ascii_lowercase().as_str() {
+        "body armour" => "bodyarmour".to_string(),
+        "focus" | "shield" | "quiver" | "off hand" | "weapon 2" => "weapon2".to_string(),
+        "weapon" | "weapons" | "main hand" | "weapon 1" => "weapon1".to_string(),
+        other => other.replace(' ', ""),
     }
 }
 

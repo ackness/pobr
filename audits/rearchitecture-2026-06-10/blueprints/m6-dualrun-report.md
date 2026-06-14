@@ -37,6 +37,36 @@ C1 的 DIFF/OLD_ONLY 全部归因为 legacy（PoBR 手写词表/语义）与 ven
 系统性分歧，**非引擎 bug**。`c1_diff_zero_gate`（字面）与 `c1_structural_gate`
 （去名）均 `#[ignore]` 为观测项；引擎正确性由逐 form 单测 + 全语料零 panic 保证。
 
+## 2.5 M6 D-T8 第一波收敛结果（路线 B 抽取期归一，基线 `76dcefe`）
+
+路线 B 落地后（commit `feat(m6-conv): ...` 系列），C1 双跑五态：
+
+| 语料源 | EQ | DIFF | (name-only) | (structural) | OLD_ONLY | NEW_ONLY | UNSUP | total |
+|--------|----|------|-------------|--------------|----------|----------|-------|-------|
+| C1 (18-build) | 805 | 14 | 1 | 13 | 41 | 0 | 874 | 1734 |
+| fixture | 12 | 0 | 0 | 0 | 0 | 0 | 1 | 13 |
+
+- **EQ 309→805**（+496）、**name-only 358→1**（别名归一全覆盖）、
+  **structural 152→13**（六类归一基本闭环）、**fixture 全 EQ**。
+- **C1 DIFF=0 未达成**：剩余 13 structural + 41 OLD_ONLY 全部归两类**第二波/F 项**：
+  (a) vendor specialModList 闭包通道（OLD_ONLY 41 全是 + structural 中
+  `bypasses Energy Shield`/`for each type of Elemental Ailment`/`as Extra Damage
+  of all Elements`/`Your Critical Damage Bonus`——vendor `specialModList` 函数条目，
+  引擎 special 通道未接，属 D-T8 第二波 / F）；
+  (b) EnemyModifier LIST 包装（`Enemies in your Presence`×2 / `Enemies you Curse
+  take`——报告 §2.4 D8 明列「ExtraAura/EnemyModifier 本批保守跳过」）。
+- **真 bug（引擎更对，logged 不强行劣化）**：`from Equipped Focus` 引擎产
+  `SlotName(weapon2)+Condition(UsingFocus)`，legacy 仅 `SlotName(weapon2)`
+  （legacy 弱，漏装备条件）——切换 baseline 审查项，见 m6-alias-table.md §3 真 bug 清单。
+- **legacy 量化 quirk**：`per N Item ES on Equipped Helmet` 引擎 Multiplier var
+  `EnergyShieldOnHelmet`（正确大小写），legacy `EnergyShieldOnhelmet`（小写化
+  artifact）——1 例，引擎更对。
+- **flag 来源歧义**：`Triggered Spells deal ... Spell Damage` 引擎 SpellDamage 丢
+  triggered 的 SPELL flag（`Damage`+spell-flag→专名时清吸收位与 triggered 独立
+  SPELL flag 同位不可区分）——1 例，登记。
+- **门禁**：`parser-engine` 默认关、未接调用方，`parity_no_regression` 零回归；
+  workspace 两 feature 态测试 + clippy + fmt 全绿。
+
 ## 3. 根因分析：legacy/vendor 词表与语义分歧（核心发现）
 
 蓝图 §5.2 把 canonical 比较单位默认两侧 ModName 词表一致——**这是错误前提**。

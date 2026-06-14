@@ -93,13 +93,17 @@ mod tests {
         assert_eq!(inc.literal.as_deref(), Some("% increased"));
         assert!(inc.anchored);
 
-        // modNameList：`["attributes"] = { "Str", "Dex", "Int", "All" }`（:161）
+        // modNameList：`["attributes"]` vendor `{ "Str", "Dex", "Int", "All" }`（:161），
+        // 经 M6.3 路线 B 抽取期归一展开为 PoBR 子名（聚合短语展开，去 vendor `All`）。
         let attributes = doc
             .name_map
             .iter()
             .find(|e| e.phrase == "attributes")
             .expect("attributes 应存在");
-        assert_eq!(attributes.names, vec!["Str", "Dex", "Int", "All"]);
+        assert_eq!(
+            attributes.names,
+            vec!["Strength", "Dexterity", "Intelligence"]
+        );
 
         // modNameList 带 tag：`["mana cost of attacks"]`（SkillType.Attack 反查名）
         let mana_cost = doc
