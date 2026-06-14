@@ -863,10 +863,7 @@
     {
       "phrase": "attack damage",
       "names": [
-        "Damage"
-      ],
-      "flags": [
-        "Attack"
+        "AttackDamage"
       ]
     },
     {
@@ -6897,7 +6894,8 @@
     },
     {
       "phrase": "with bow skills",
-      "keyword_flags": [
+      "flags": [
+        "Hit",
         "Bow"
       ]
     },

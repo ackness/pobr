@@ -137,13 +137,24 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
     }
 
     // 8. 合并 flags/kw/tags → Vec<Modifier>。
-    let flags = effects_acc.flags | form_result.extra_flags;
+    let mut flags = effects_acc.flags | form_result.extra_flags;
     // DMG 族默认 keyword：仅当无显式 keyword 时补（vendor `modFlag or {kw=...}`）。
-    let keyword_flags = if effects_acc.keyword_flags.is_empty() {
+    let mut keyword_flags = if effects_acc.keyword_flags.is_empty() {
         form_result.default_keyword
     } else {
         effects_acc.keyword_flags
     };
+    // M6.3 归一（C3）：legacy 无 Attack/Spell keyword 位，统一折为 ModFlag
+    //（legacy parse 约定，见 legacy.rs:1904 / :397）。把 keyword ATTACK/SPELL
+    // 折进 flags，清 keyword 对应位——子集匹配语义等价、与 legacy 逐字节对齐。
+    if keyword_flags.intersects(KeywordFlags::ATTACK) {
+        flags |= ModFlags::ATTACK;
+        keyword_flags = keyword_flags.without(KeywordFlags::ATTACK);
+    }
+    if keyword_flags.intersects(KeywordFlags::SPELL) {
+        flags |= ModFlags::SPELL;
+        keyword_flags = keyword_flags.without(KeywordFlags::SPELL);
+    }
 
     let tags = effects_acc.tags.clone();
 
@@ -175,6 +186,9 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
         }
         if let Some(dt) = norm.damage_type {
             m = m.with_tag(ModTag::DamageType(dt));
+        }
+        for cond in &norm.extra_conditions {
+            m = m.with_tag(ModTag::condition(*cond, false));
         }
         if form_result.hand_attack_condition {
             // GRANTS/REMOVES local：`{Hand}Attack` 条件——pobr 无 hand 占位实例化
@@ -275,12 +289,14 @@ impl EffectsAccumulator {
     }
 }
 
-/// 引擎归一产物：PoBR 专名 + 收吸后的 flag/kw + 应补的 DamageType。
+/// 引擎归一产物：PoBR 专名 + 收吸后的 flag/kw + 应补的 DamageType + 额外 condition。
 struct NormalizedName {
     name: String,
     flags: ModFlags,
     keyword_flags: KeywordFlags,
     damage_type: Option<pobr_data::prelude::DamageType>,
+    /// 额外条件 tag（C3 武器作用域在非伤害名上转 `Condition(UsingX)`）。
+    extra_conditions: Vec<&'static str>,
 }
 
 /// M6.3 路线 B 引擎归一（C3 + C5）：把 vendor「泛名 + flag」组合归一为 PoBR 专名，
@@ -329,6 +345,7 @@ fn normalize_pobr_name(name: &str, flags: ModFlags, kw: KeywordFlags) -> Normali
     }
 
     // C3 Speed 族：泛名 Speed + ATTACK/CAST → AttackSpeed/CastSpeed，清对应位。
+    let mut extra_conditions: Vec<&'static str> = Vec::new();
     if name == "Speed" {
         if flags.intersects(ModFlags::ATTACK) {
             out_name = "AttackSpeed".to_string();
@@ -336,6 +353,22 @@ fn normalize_pobr_name(name: &str, flags: ModFlags, kw: KeywordFlags) -> Normali
         } else if flags.intersects(ModFlags::CAST) {
             out_name = "CastSpeed".to_string();
             out_flags = out_flags.without(ModFlags::CAST);
+        }
+    }
+
+    // C3 武器作用域在非伤害名（Speed/Crit 等）上：legacy 转 `Condition(UsingX)` +
+    // 清 HIT 位（保留武器位）。伤害名已由上面专名分支吸收，不进此分支。
+    if !out_name.ends_with("Damage") && !out_name.starts_with("Damage") {
+        const WEAPON_COND: &[(ModFlags, &str)] = &[
+            (ModFlags::SPEAR, "UsingSpear"),
+            (ModFlags::CROSSBOW, "UsingCrossbow"),
+            (ModFlags::BOW, "UsingBow"),
+            (ModFlags::MACE, "UsingMace"),
+            (ModFlags::WARSTAFF, "UsingQuarterstaff"),
+        ];
+        if let Some((_, cond)) = WEAPON_COND.iter().find(|(b, _)| out_flags.intersects(*b)) {
+            extra_conditions.push(cond);
+            out_flags = out_flags.without(ModFlags::HIT);
         }
     }
 
@@ -354,6 +387,7 @@ fn normalize_pobr_name(name: &str, flags: ModFlags, kw: KeywordFlags) -> Normali
         flags: out_flags,
         keyword_flags: out_kw,
         damage_type,
+        extra_conditions,
     }
 }
 

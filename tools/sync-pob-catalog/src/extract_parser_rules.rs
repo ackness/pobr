@@ -318,12 +318,55 @@ fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
         if FLAGLESS_NAME_PHRASES.contains(&entry.phrase.as_str()) {
             entry.effects.flags.clear();
         }
+        // 4. 专名归一（C3）：legacy parse_name 把 `attack damage` 整体映射为专名
+        //    `AttackDamage`（vendor `Damage`+Attack flag）。改名清 flag。
+        if let Some(special) = SPECIAL_NAME_PHRASES
+            .iter()
+            .find(|(p, _)| *p == entry.phrase.as_str())
+        {
+            entry.names = vec![special.1.to_string()];
+            entry.effects.flags.clear();
+        }
+    }
+
+    // 武器作用域 keyword→flag（C3）：vendor flag_phrases 把 `with bow skills` 记为
+    // keywordFlags Bow（PoBR 无武器 keyword 位会被丢），legacy 折为 ModFlag(Hit,Bow)
+    // 并由专名吸收。归一为 `flags:[Hit,<Weapon>]`（与 `with bows` 同形），引擎 C3
+    // 据此产 BowDamage 等专名。
+    for entry in &mut doc.flag_phrases {
+        let weapon = entry
+            .effects
+            .keyword_flags
+            .iter()
+            .find(|k| WEAPON_KEYWORDS.contains(&k.as_str()))
+            .cloned();
+        if let Some(w) = weapon {
+            entry.effects.keyword_flags.retain(|k| k != &w);
+            entry.effects.flags = vec!["Hit".to_string(), w];
+        }
     }
 }
+
+/// 武器类型名（在 flag_phrases 的 keyword_flags 里出现时归一为 ModFlag）。
+const WEAPON_KEYWORDS: &[&str] = &[
+    "Bow",
+    "Crossbow",
+    "Spear",
+    "Mace",
+    "Quarterstaff",
+    "Warstaff",
+    "Sword",
+    "Claw",
+    "Wand",
+    "Staff",
+];
 
 /// vendor name_map 带作用域 flag、但 legacy 把作用域内嵌进专名（无 flag）的短语。
 /// 抽取期清其 flag 以与 legacy 对齐（C3 内嵌作用域子类）。
 const FLAGLESS_NAME_PHRASES: &[&str] = &["critical spell damage bonus"];
+
+/// vendor `Damage`+作用域 flag、legacy 用独立专名的短语（C3）：抽取期改名清 flag。
+const SPECIAL_NAME_PHRASES: &[(&str, &str)] = &[("attack damage", "AttackDamage")];
 
 /// vendor→PoBR 别名表（real-rename 20 + identity 56，源真理 =
 /// `vendor_name_aliases.json`）。抽取期对 `name_map` 每个 ModName 套此表。
