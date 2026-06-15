@@ -105,6 +105,34 @@ engine 分支直接 `return parse_mod_engine(text, engine)`，**不回退 legacy
 **结论**：「C1 DIFF=0 ⇒ 切换 parity 中性」的前提**在全 ingest 路径上不成立**。
 当前接线已落地、`parser-engine` 默认关、行为中性（master `parity_no_regression` 绿）。
 
+### gap 量化（2026-06-15，POBR_DBG_UNSUPPORTED 全 ingest 实测）
+
+用既有 `POBR_DBG_UNSUPPORTED=1` 仪表跑 `parity_baseline_report`（全 18 build
+真实 ingest 路径）engine-on vs engine-off，对未支持词条集合取差：
+
+- engine-unsupported 唯一模板 = **56**；legacy-unsupported = **121**（引擎反而比
+  legacy 标记更少未支持——引擎"解析"了更多文本，部分进了**不同/错误**的 mod）。
+- **OLD_ONLY 纯丢弃缺口（engine 丢、legacy 解）= 仅 10 个唯一模板**（可枚举、可逐条扩
+  forms/special 表闭合）：`additional maximum Life equal to 100% of the Item Energy
+  Shield on Equipped Body Armour` / `Archon Buffs also grant …`(×2) / `Empowered
+  Attacks Gain 15% of Physical Damage as Extra Fire damage` / `Prevent +N% of Damage
+  from Deflected Hits`(×2) / `Your Life cannot change while you have Energy Shield`
+  / `Magnitude of Poison you inflict` / `Slowed by 20%` / 裸 `Damage`。
+
+**关键反直觉发现**：parity 回归**不能全部归因于纯丢弃**。`druid-oracle-comet` 的
+Armour 1460→0 中，所有 `% increased Armour, Evasion and Energy Shield`（含 `Bonded:`
+/ `Global` 前缀变体）经 CLI `parse-mod` 对照 engine==legacy **逐值相同**（均 `Defences
+Inc`），且 armour 相关文本**不在 10 丢弃模板内**；该装备（Vile Robe）纯 ES 基底无平
+armour——即回归含**解析输出之外的 ingest 路径分歧**（基值/布线或非显式来源丢弃），
+根因待专项定位。**这意味着 hybrid 回退 (b) 不足以达 parity**：引擎对这些文本不标
+Unsupported（自信产出 != legacy 的 mod），fallthrough 永不触发 → (b) 只能救回 10 个
+纯丢弃，救不了"解析分歧/基值分歧"。故无论选 (a)/(b)，引擎的非丢弃分歧都须先 root-cause。
+
+**修正后的 fork 评估**：(a) 纯 A2 = 闭合 10 丢弃 + 根因修复非丢弃分歧（后者规模未知，
+是真风险）；(b) hybrid = 即便保留 legacy fallthrough 仍达不到 parity（非丢弃分歧绕过
+fallthrough）。⇒ **下一波无论如何先做"全 ingest 逐文本 mod-输出对照"**（非仅 parsed/
+unsupported 状态对照），把非丢弃分歧逐条列出，再谈 fork。
+
 **翻开关前必办（下一波）**：
 1. **扩双跑语料到全 ingest 集**：把 engine-vs-legacy 逐文本对照从 item+passive
    扩到宝石/buff/基底隐式等**全部 ingest 来源**（即 orchestrator 实际喂给
