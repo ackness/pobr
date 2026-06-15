@@ -125,7 +125,11 @@ parser 问题**。对 `druid-oracle-comet`（Armour 1460→0）逐源 dump：
   Number(328.0) tags=[SlotName("bodyarmour")] origin=base.Armour`。
 - `POBR_DBG_STAT=Defences`：engine 与 legacy **逐字节相同**——同 2 条全局 `Defences
   Inc`（15 CanUseBondedModifiers / 30），值/tag/source/origin 全等。
-- 即**喂给 Armour 计算的可见 modifier 完全相同，却算出 1460 vs 0**。
+- `POBR_DBG_DROPPED`：engine 与 legacy **逐字节相同**（均 123 条结构丢弃）。
+- 即**四个诊断通道（unsupported / Armour mods / Defences mods / dropped）全逐字节
+  相同，却算出 Armour 1460 vs 0**。⇒ 分歧在**未 dump 的某 ModName 名下** 或
+  condition/multiplier/状态差异——须**全 ModDb dump 逐 mod diff**（现仅有按名 dump
+  仪表，需加一个 dump-all 模式）+ defence.rs 本地 armour 计算逐步 trace 才能定位。
 
 ⇒ 回归源于**引擎 `ParseCtx` ingest 路径的更隐蔽行为差异**（疑似 local-mod 处理 /
 slot 本地增伤 tag / ingest 顺序），而非"丢词条"或"错解析可见 mod"。这与 CLI 单条
