@@ -119,14 +119,26 @@ engine 分支直接 `return parse_mod_engine(text, engine)`，**不回退 legacy
   from Deflected Hits`(×2) / `Your Life cannot change while you have Energy Shield`
   / `Magnitude of Poison you inflict` / `Slowed by 20%` / 裸 `Damage`。
 
-**关键反直觉发现**：parity 回归**不能全部归因于纯丢弃**。`druid-oracle-comet` 的
-Armour 1460→0 中，所有 `% increased Armour, Evasion and Energy Shield`（含 `Bonded:`
-/ `Global` 前缀变体）经 CLI `parse-mod` 对照 engine==legacy **逐值相同**（均 `Defences
-Inc`），且 armour 相关文本**不在 10 丢弃模板内**；该装备（Vile Robe）纯 ES 基底无平
-armour——即回归含**解析输出之外的 ingest 路径分歧**（基值/布线或非显式来源丢弃），
-根因待专项定位。**这意味着 hybrid 回退 (b) 不足以达 parity**：引擎对这些文本不标
-Unsupported（自信产出 != legacy 的 mod），fallthrough 永不触发 → (b) 只能救回 10 个
-纯丢弃，救不了"解析分歧/基值分歧"。故无论选 (a)/(b)，引擎的非丢弃分歧都须先 root-cause。
+**关键反直觉发现（POBR_DBG_STAT 逐源核对，2026-06-15）**：parity 回归**根本不是
+parser 问题**。对 `druid-oracle-comet`（Armour 1460→0）逐源 dump：
+- `POBR_DBG_STAT=Armour`：engine 与 legacy **逐字节相同**——均 `Armour Base
+  Number(328.0) tags=[SlotName("bodyarmour")] origin=base.Armour`。
+- `POBR_DBG_STAT=Defences`：engine 与 legacy **逐字节相同**——同 2 条全局 `Defences
+  Inc`（15 CanUseBondedModifiers / 30），值/tag/source/origin 全等。
+- 即**喂给 Armour 计算的可见 modifier 完全相同，却算出 1460 vs 0**。
+
+⇒ 回归源于**引擎 `ParseCtx` ingest 路径的更隐蔽行为差异**（疑似 local-mod 处理 /
+slot 本地增伤 tag / ingest 顺序），而非"丢词条"或"错解析可见 mod"。这与 CLI 单条
+`parse-mod` engine==legacy 完全自洽（单条解析没问题，但**整件装备 ingest 的本地 mod
+处理在引擎 ctx 下产出了不同的不可见 mod / 计算路径**）。**全 ingest 逐文本 mod-输出
+对照**（下一波）需对比的不止 parsed/unsupported，而是**每件来源 ingest 后玩家 ModDb
+的完整 mod 集合 diff**（含 SlotName-tagged 本地 mod / 隐式折叠值）。
+
+**这意味着 hybrid 回退 (b) 也不足以达 parity**：引擎对这些文本不标 Unsupported
+（产出了 mod，只是 ingest 计算路径有别），fallthrough 永不触发 → (b) 只能救回 10 个
+纯丢弃，救不了这类"ingest 路径分歧"。故无论 (a)/(b)，**引擎 ingest 路径的非丢弃分歧
+是首要、独立的 root-cause 任务**，且规模/性质未知（可能是 ingest_item 在 engine ctx
+下本地 mod 标 tag 或基值折叠的一处 bug，也可能是系统性的）。
 
 **修正后的 fork 评估**：(a) 纯 A2 = 闭合 10 丢弃 + 根因修复非丢弃分歧（后者规模未知，
 是真风险）；(b) hybrid = 即便保留 legacy fallthrough 仍达不到 parity（非丢弃分歧绕过
