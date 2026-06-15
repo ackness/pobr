@@ -393,6 +393,17 @@ pub fn calc_defence_resources(
                 slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
         }
         *value = round(total);
+        // 诊断（POBR_DBG_DEFRES=<idx>）：dump 某 defence 资源逐分量（armour=0）。
+        if std::env::var("POBR_DBG_DEFRES")
+            .ok()
+            .and_then(|v| v.parse::<usize>().ok())
+            == Some(s)
+        {
+            eprintln!(
+                "[POBR_DEFRES] res={} names={:?} kept_global={:.2} received={:.2} global_inc={:.2} global_more={:.4} total_conv={:.2} slots={:?} => {:.2}",
+                MATRIX_RESOURCES[s], names, kept_global[s], received[s], global_inc, global_more, total_conv[s], slots[s], *value
+            );
+        }
     }
 
     DefenceResources {

@@ -123,6 +123,29 @@ PoBR 引擎要忠实复刻 PoB2，须保证 ingest 后的 mod 集**逐条**等�
 merge_flasks_charms）或独立的防御 calc 路径差异——须 **defence.rs armour 计算逐步
 trace**（独立子任务）。
 
+### Armour→0 trace 定位（2026-06-15，POBR_DBG_DEFRES，未结）
+
+加 `POBR_DBG_DEFRES=<resIdx>` 在 `calc_defence_resources` 末尾 dump 逐资源分量。
+**关键发现**：`calc_defence` 每 build 被多次调用（minimal / effective / EHP-per-type
+等多上下文）。druid（res=Armour）两类调用并存：
+- `slots=[("bodyarmour", 328.0)] global_inc=30 => 426.40`（engine==legacy 同值）；
+- `slots=[] => 0.00`（**slot_bases("Armour") 返回空**——槽位底 328 不见了）。
+
+report 读 `output.armour`（display_catalog:533 `"Armour"=>output.armour`；defence.rs:104
+唯一赋值点 = `calc_defence_resources().armour`），即**最后一次** calc_defence 产物。
+engine 末次落在 `slots=[]→0`，legacy 末次 slots 填充→1460。
+
+⇒ 根因**不在 parser、不在 mod 集**（两路 mod 逐字节同），而在 **perform 流水线后段
+（effective/panel 那次 calc_defence）engine 侧 `slot_bases("Armour")` 取空**——slot-tagged
+armour base 在该 pass 被排除/移除。EnergyShield 同槽却正常（8717）⇒ armour 特异。
+最可能：engine 多出的 flask/charm populated buff 在 effective 态 `merge_flasks_charms`/
+env_finalize 改写了玩家 ModDb 或 cfg slot 上下文，使后段 calc_defence 的
+`Modifier::matches(cfg)` 滤掉 SlotName-tagged Armour base。
+
+**下一步（未结子任务）**：trace 末次 calc_defence 的 cfg+db 状态，对比 minimal 态定位
+`slot_bases("Armour")` 为何取空；查 effective/flask-merge pass 对 slot-tagged 防御 base
+的影响。`POBR_DBG_DEFRES` 仪表已留（calc_defence_resources，非 feature 门控）。
+
 **fork(a) 工作清单（按此 druid 样本外推全 18 build）**：
 - (A) 修 `Enemy<Ailment>` 条件映射数据（Ignited/Burning/Chilled/Shocked… 的「against
   X enemies」全族）；
