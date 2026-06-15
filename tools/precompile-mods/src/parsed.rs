@@ -1,11 +1,13 @@
-//! 预解析：逐语料行过 `parse_mod`，产出 `parsed_mods.json` + 覆盖率统计。
+//! 预解析：逐语料行过数据驱动 parser 引擎，产出 `parsed_mods.json` + 覆盖率统计。
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use pobr_core::mod_parser::{ParseStatus, parse_mod};
+use pobr_core::mod_parser::{ParseStatus, parse_mod_with_rules};
+use pobr_core::rules::{HandlerRegistry, SpecialModRules, register_special_handlers};
+use pobr_gamedata::GameData;
 
 use crate::canonical::CanonMod;
 use crate::corpus::Corpus;
@@ -54,8 +56,8 @@ struct Meta<'a> {
     note: &'a str,
     /// 语料行总数（去重后）。
     corpus_lines: usize,
-    /// parse 引擎标识（B 引擎切换后改值，schema 版本随之 bump）。
-    parser_engine: &'a str,
+    /// parse 引擎标识（M6-A2 数据驱动穿线后 = `engine`，schema 版本随之 bump）。
+    engine: &'a str,
 }
 
 #[derive(Serialize)]
@@ -73,14 +75,21 @@ pub struct PrecompileOutcome {
     pub coverage: Coverage,
 }
 
-const SCHEMA: &str = "parsed_mods/v1";
+const SCHEMA: &str = "parsed_mods/v2";
 const GENERATOR: &str = "precompile-mods --data";
-const PARSER_ENGINE: &str = "legacy/mod_parser.rs"; // B 引擎切换后改 "scan/mod_parser"
+// M6-A2：数据驱动穿线——预解析走注入 special 规则的 `parse_mod_with_rules`。
+const ENGINE: &str = "mod_parser+special_rules";
 const NOTE: &str =
-    "M6-T7 离线预解析；运行时（D-T8）作 text→Vec<Modifier> 缓存兜底，cache miss 回退在线 parse_mod";
+    "M6-T7 离线预解析；运行时（D-T8）作 text→Vec<Modifier> 缓存兜底，cache miss 回退在线 parse";
 
-/// 收集语料 → 逐行 parse → 写 `parsed_mods.json`（byte-stable）。
+/// 收集语料 → 逐行过数据驱动 parser 引擎 → 写 `parsed_mods.json`（byte-stable）。
+///
+/// special 规则从 `data_dir` 的游戏数据编译一次、全语料复用（M6-A2 数据驱动穿线）。
 pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome, String> {
+    // 启动期编译一次 parser 规则（special 表 + handler 注册表），全语料复用。
+    let (special_rules, registry) = compile_parser_rules(data_dir)?;
+    let special = special_rules.as_ref();
+
     let mut entries = Vec::with_capacity(corpus.lines.len());
     let mut cov = Coverage {
         total: 0,
@@ -96,36 +105,37 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
         let label = sources.primary_label();
         let slot = cov.by_source.entry(label).or_insert([0, 0, 0]);
 
-        let (status, mods): (&'static str, Vec<CanonMod>) = match parse_mod(text) {
-            Ok(outcome) => match outcome.status {
-                ParseStatus::Parsed => {
-                    cov.parsed += 1;
-                    slot[0] += 1;
-                    let mods = outcome.mods.iter().map(CanonMod::from_mod).collect();
-                    ("parsed", mods)
-                }
-                ParseStatus::Unsupported => {
-                    cov.unsupported += 1;
-                    slot[1] += 1;
+        let (status, mods): (&'static str, Vec<CanonMod>) =
+            match parse_mod_with_rules(text, special, Some(&registry)) {
+                Ok(outcome) => match outcome.status {
+                    ParseStatus::Parsed => {
+                        cov.parsed += 1;
+                        slot[0] += 1;
+                        let mods = outcome.mods.iter().map(CanonMod::from_mod).collect();
+                        ("parsed", mods)
+                    }
+                    ParseStatus::Unsupported => {
+                        cov.unsupported += 1;
+                        slot[1] += 1;
+                        cov.gaps.push(GapEntry {
+                            text: text.clone(),
+                            status: "unsupported".to_string(),
+                            source: label,
+                        });
+                        ("unsupported", Vec::new())
+                    }
+                },
+                Err(_) => {
+                    cov.err += 1;
+                    slot[2] += 1;
                     cov.gaps.push(GapEntry {
                         text: text.clone(),
-                        status: "unsupported".to_string(),
+                        status: "err".to_string(),
                         source: label,
                     });
-                    ("unsupported", Vec::new())
+                    ("err", Vec::new())
                 }
-            },
-            Err(_) => {
-                cov.err += 1;
-                slot[2] += 1;
-                cov.gaps.push(GapEntry {
-                    text: text.clone(),
-                    status: "err".to_string(),
-                    source: label,
-                });
-                ("err", Vec::new())
-            }
-        };
+            };
 
         entries.push(Entry {
             text: text.clone(),
@@ -141,7 +151,7 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
             generator: GENERATOR,
             note: NOTE,
             corpus_lines: corpus.lines.len(),
-            parser_engine: PARSER_ENGINE,
+            engine: ENGINE,
         },
         entries,
     };
@@ -158,6 +168,34 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
         entries: doc.entries.len(),
         coverage: cov,
     })
+}
+
+/// 从 `data_dir` 的游戏数据编译 parser 规则（special 表 + handler 注册表），
+/// 启动期一次、全语料复用（M6-A2）。
+///
+/// `overlay/special_mods.json` 缺失 → special 规则 `None`（解析退回历史无规则
+/// 路径，逐值不变）；编译失败（pattern 非法 / id 重复）上抛 `Err`。
+fn compile_parser_rules(
+    data_dir: &Path,
+) -> Result<(Option<SpecialModRules>, HandlerRegistry), String> {
+    let data = GameData::new(data_dir);
+
+    let mut registry = HandlerRegistry::new();
+    register_special_handlers(&mut registry)
+        .map_err(|e| format!("special handler 注册失败：{e}"))?;
+
+    let special_def = data
+        .special_mods()
+        .map_err(|e| format!("加载 special_mods.json 失败：{e}"))?;
+    let special_rules = match special_def {
+        Some(def) if !def.entries.is_empty() => Some(
+            SpecialModRules::compile(&def.entries, &registry)
+                .map_err(|e| format!("special 规则编译失败：{e}"))?,
+        ),
+        _ => None,
+    };
+
+    Ok((special_rules, registry))
 }
 
 /// 两空格缩进 + 末尾换行的稳定 pretty JSON（与仓库既有 generated 产物风格一致）。

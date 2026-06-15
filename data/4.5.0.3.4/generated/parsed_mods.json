@@ -1,10 +1,10 @@
 {
   "_meta": {
-    "schema": "parsed_mods/v1",
+    "schema": "parsed_mods/v2",
     "generator": "precompile-mods --data",
-    "note": "M6-T7 离线预解析；运行时（D-T8）作 text→Vec<Modifier> 缓存兜底，cache miss 回退在线 parse_mod",
+    "note": "M6-T7 离线预解析；运行时（D-T8）作 text→Vec<Modifier> 缓存兜底，cache miss 回退在线 parse",
     "corpus_lines": 4287,
-    "parser_engine": "legacy/mod_parser.rs"
+    "engine": "mod_parser+special_rules"
   },
   "entries": [
     {
@@ -6362,7 +6362,14 @@
     },
     {
       "text": "10% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "10% increased Spell Damage",
@@ -7197,7 +7204,14 @@
     },
     {
       "text": "10% increased total Power counted by Warcries",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "WarcryPower",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "10% less Damage taken of each [ElementalDamage|Elemental Damage Type] per matching [Adaptation]",
@@ -8190,7 +8204,14 @@
     },
     {
       "text": "12% increased [ESRechargeRate|Energy Shield Recharge Rate]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 12.0
+        }
+      ]
     },
     {
       "text": "12% increased [ElementalDamage|Elemental Damage]",
@@ -9258,7 +9279,14 @@
     },
     {
       "text": "15% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "15% increased Spell Damage while you have [ArcaneSurge|Arcane Surge]",
@@ -10030,7 +10058,14 @@
     },
     {
       "text": "15.1 Life Regeneration per second",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "Base",
+          "value": 15.1
+        }
+      ]
     },
     {
       "text": "150% increased Mana Regeneration Rate if you&apos;ve dealt a Critical Hit Recently",
@@ -10203,7 +10238,14 @@
     },
     {
       "text": "16% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 16.0
+        }
+      ]
     },
     {
       "text": "16% increased Skill Speed",
@@ -10448,7 +10490,14 @@
     },
     {
       "text": "16.3 Life Regeneration per second",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "Base",
+          "value": 16.3
+        }
+      ]
     },
     {
       "text": "168% increased Physical Damage",
@@ -10493,7 +10542,14 @@
     },
     {
       "text": "17% increased Energy Shield Recharge Rate",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 17.0
+        }
+      ]
     },
     {
       "text": "17% increased Rarity of Items found",
@@ -10634,7 +10690,14 @@
     },
     {
       "text": "18% increased Energy Shield Recharge Rate",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 18.0
+        }
+      ]
     },
     {
       "text": "18% increased Glory generation for Banner Skills",
@@ -10803,7 +10866,14 @@
     },
     {
       "text": "19% increased Energy Shield Recharge Rate",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 19.0
+        }
+      ]
     },
     {
       "text": "19% increased Evasion Rating",
@@ -10964,7 +11034,14 @@
     },
     {
       "text": "2% reduced Movement Speed Penalty from using Skills while moving",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MovementSpeedPenalty",
+          "type": "Inc",
+          "value": -2.0
+        }
+      ]
     },
     {
       "text": "20% Chance to build an additional [Combo] on [HitDamage|Hit]",
@@ -10996,7 +11073,14 @@
     },
     {
       "text": "20% chance for Damage with [HitDamage|Hits] to be [Lucky]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LuckyHitsChance",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% chance for [Attack] [HitDamage|Hits] to apply [Incision]",
@@ -11248,7 +11332,14 @@
     },
     {
       "text": "20% increased Energy Shield Recharge Rate",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% increased Fire Damage",
@@ -11405,7 +11496,14 @@
     },
     {
       "text": "20% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% increased Stun Threshold",
@@ -11732,7 +11830,14 @@
     },
     {
       "text": "20% increased [ESRechargeRate|Energy Shield Recharge Rate]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% increased [ESRechargeRate|Energy Shield Recharge Rate] while [Shapeshift|Shapeshifted]",
@@ -12119,7 +12224,14 @@
     },
     {
       "text": "20% increased bonuses gained from Equipped [Quiver]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EffectOfBonusesFromQuiver",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% increased chance to [Shock]",
@@ -12268,7 +12380,14 @@
     },
     {
       "text": "20% of Flask Recovery applied Instantly",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskInstantRecovery",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "20% of [Cold|Cold Damage] taken as [Fire|Fire Damage]",
@@ -12654,7 +12773,14 @@
     },
     {
       "text": "21.1 Life Regeneration per second",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "Base",
+          "value": 21.1
+        }
+      ]
     },
     {
       "text": "211% increased Physical Damage",
@@ -12741,7 +12867,14 @@
     },
     {
       "text": "22% increased Energy Shield Recharge Rate",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 22.0
+        }
+      ]
     },
     {
       "text": "22% increased maximum Energy Shield",
@@ -12887,7 +13020,14 @@
     },
     {
       "text": "24% increased Energy Shield Recharge Rate",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 24.0
+        }
+      ]
     },
     {
       "text": "24% increased Magnitude of Damaging Ailments you inflict with Critical Hits",
@@ -13200,7 +13340,14 @@
     },
     {
       "text": "25% increased Energy Shield Recharge Rate",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "25% increased Life Cost Efficiency",
@@ -13297,7 +13444,14 @@
     },
     {
       "text": "25% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "25% increased Stun Duration",
@@ -13786,7 +13940,29 @@
     },
     {
       "text": "25% increased bonuses gained from Equipped Rings and Amulets",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EffectOfBonusesFromRing 1",
+          "type": "Inc",
+          "value": 25.0
+        },
+        {
+          "name": "EffectOfBonusesFromRing 2",
+          "type": "Inc",
+          "value": 25.0
+        },
+        {
+          "name": "EffectOfBonusesFromRing 3",
+          "type": "Inc",
+          "value": 25.0
+        },
+        {
+          "name": "EffectOfBonusesFromAmulet",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "25% increased chance to [Shock]",
@@ -14139,7 +14315,14 @@
     },
     {
       "text": "28% increased Energy Shield Recharge Rate",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "Inc",
+          "value": 28.0
+        }
+      ]
     },
     {
       "text": "28% increased Global Armour, Evasion and Energy Shield",
@@ -14276,7 +14459,14 @@
     },
     {
       "text": "29.5 Life Regeneration per second",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "Base",
+          "value": 29.5
+        }
+      ]
     },
     {
       "text": "296% increased Energy Shield",
@@ -14695,7 +14885,14 @@
     },
     {
       "text": "3% reduced Movement Speed Penalty from using Skills while moving",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MovementSpeedPenalty",
+          "type": "Inc",
+          "value": -3.0
+        }
+      ]
     },
     {
       "text": "3% reduced [SkillSpeed|Skill Speed]",
@@ -14946,7 +15143,14 @@
     },
     {
       "text": "30% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 30.0
+        }
+      ]
     },
     {
       "text": "30% increased Spell Damage while you have [ArcaneSurge|Arcane Surge]",
@@ -15487,7 +15691,14 @@
     },
     {
       "text": "30% less Movement Speed Penalty from using Skills while moving",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MovementSpeedPenalty",
+          "type": "More",
+          "value": -30.0
+        }
+      ]
     },
     {
       "text": "30% less [CriticalDamageBonus|Critical Damage Bonus] when on Full Life\n30% more Critical Damage Bonus when on [LowLife|Low Life]",
@@ -15576,7 +15787,14 @@
     },
     {
       "text": "30.1 Life Regeneration per second",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "Base",
+          "value": 30.1
+        }
+      ]
     },
     {
       "text": "31% increased Cold Damage",
@@ -15616,7 +15834,14 @@
     },
     {
       "text": "31.3 Life Regeneration per second",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "Base",
+          "value": 31.3
+        }
+      ]
     },
     {
       "text": "32% increased Cold Damage",
@@ -16161,7 +16386,14 @@
     },
     {
       "text": "4% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 4.0
+        }
+      ]
     },
     {
       "text": "4% increased [Armour], [Evasion] and [EnergyShield|Energy Shield] while [Channelling]",
@@ -17449,7 +17681,14 @@
     },
     {
       "text": "5% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "5% increased [Accuracy] Rating",
@@ -17681,7 +17920,14 @@
     },
     {
       "text": "5% increased total Power counted by Warcries",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "WarcryPower",
+          "type": "Inc",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "5% of Damage from [HitDamage|Hits] is taken from your Damageable [Companion]'s Life before you",
@@ -17820,7 +18066,14 @@
     },
     {
       "text": "5% reduced Movement Speed Penalty from using Skills while moving",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MovementSpeedPenalty",
+          "type": "Inc",
+          "value": -5.0
+        }
+      ]
     },
     {
       "text": "5% reduced Movement Speed Penalty while Actively [Block|Blocking]",
@@ -18131,7 +18384,14 @@
     },
     {
       "text": "50% increased effect of [SmallPassive|Small Passive] Skills",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SmallPassiveSkillEffect",
+          "type": "Inc",
+          "value": 50.0
+        }
+      ]
     },
     {
       "text": "50% increased maximum [EnergyShield|Energy Shield]",
@@ -18590,7 +18850,14 @@
     },
     {
       "text": "6% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 6.0
+        }
+      ]
     },
     {
       "text": "6% increased Spell Damage",
@@ -18883,7 +19150,14 @@
     },
     {
       "text": "6% increased bonuses gained from Equipped [Quiver]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EffectOfBonusesFromQuiver",
+          "type": "Inc",
+          "value": 6.0
+        }
+      ]
     },
     {
       "text": "6% increased chance to inflict [Ailments]",
@@ -18932,7 +19206,14 @@
     },
     {
       "text": "6% reduced Movement Speed Penalty from using Skills while moving",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MovementSpeedPenalty",
+          "type": "Inc",
+          "value": -6.0
+        }
+      ]
     },
     {
       "text": "6% reduced [Charm] Charges used",
@@ -19305,7 +19586,14 @@
     },
     {
       "text": "7% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 7.0
+        }
+      ]
     },
     {
       "text": "7% increased Totem Damage",
@@ -19773,7 +20061,14 @@
     },
     {
       "text": "8% increased Skill Effect Duration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 8.0
+        }
+      ]
     },
     {
       "text": "8% increased Skill Effect Duration per Enemy you've [Freeze|Frozen] in the last 8 seconds, up to 40%",
@@ -23510,7 +23805,14 @@
     },
     {
       "text": "Bow Attacks fire an additional Arrow",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "Bramble Clasp",
@@ -23594,7 +23896,29 @@
     },
     {
       "text": "Cannot Immobilise enemies",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CannotElectrocute",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "CannotFreeze",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "CannotHeavyStun",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "CannotPin",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Cannot Regenerate Mana if you haven&apos;t dealt a Critical Hit Recently",
@@ -23602,7 +23926,14 @@
     },
     {
       "text": "Cannot be Ignited",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgniteImmune",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Cannot be Used manually",
@@ -23614,7 +23945,17 @@
     },
     {
       "text": "Cannot be [Blind|Blinded] while on Full Life",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CannotBeBlinded",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"FullLife\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Cannot be [Critical|Critically Hit] while [Parry|Parrying]",
@@ -23622,7 +23963,17 @@
     },
     {
       "text": "Cannot be [HeavyStun|Heavy Stunned] while Sprinting",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunImmune",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"Sprinting\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Cannot be [LightStun|Light Stunned]\nCannot Dodge Roll or Sprint",
@@ -23710,15 +24061,36 @@
     },
     {
       "text": "Charm Slots: 1",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmLimit",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "Charm Slots: 2",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmLimit",
+          "type": "Base",
+          "value": 2.0
+        }
+      ]
     },
     {
       "text": "Charm Slots: 3",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmLimit",
+          "type": "Base",
+          "value": 3.0
+        }
+      ]
     },
     {
       "text": "Charmed Shoes",
@@ -24591,11 +24963,25 @@
     },
     {
       "text": "Enemies you kill with [Empowered] [Attack|Attacks] have a 10% chance to Explode, dealing a tenth of their maximum Life as [Fire] Damage",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanExplode",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Enemy [Critical|Critical Hit Chance] against you is [Unlucky]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyUnluckyCrit",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Energy Shield Recharge starts after spending a total of",
@@ -24607,7 +24993,14 @@
     },
     {
       "text": "Equipment and Skill Gems have 4% reduced [Attributes|Attribute] Requirements",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "GlobalAttributeRequirements",
+          "type": "Inc",
+          "value": -4.0
+        }
+      ]
     },
     {
       "text": "Evergrasping Ring",
@@ -24715,7 +25108,14 @@
     },
     {
       "text": "Flasks gain 0.17 charges per Second",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskChargesGenerated",
+          "type": "Base",
+          "value": 0.17
+        }
+      ]
     },
     {
       "text": "Flesh Crucible",
@@ -24771,7 +25171,14 @@
     },
     {
       "text": "Gain 1 Rage on Melee Hit",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Gain 1 [Rage] when your [HitDamage|Hit] [Ignite|Ignites] a target",
@@ -24779,7 +25186,14 @@
     },
     {
       "text": "Gain 1 [Rage|Rage] on [Melee] [HitDamage|Hit]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Gain 1 [Rage|Rage] on [Melee|Melee] [Axe|Axe] [HitDamage|Hit]",
@@ -25027,7 +25441,14 @@
     },
     {
       "text": "Gain 17 Mana per enemy killed",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "Base",
+          "value": 17.0
+        }
+      ]
     },
     {
       "text": "Gain 18% of Damage as Extra Cold Damage",
@@ -25102,7 +25523,14 @@
     },
     {
       "text": "Gain 25 Mana per enemy killed",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "Base",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "Gain 25% of Damage as Extra Fire Damage",
@@ -25117,7 +25545,14 @@
     },
     {
       "text": "Gain 27 Mana per enemy killed",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "Base",
+          "value": 27.0
+        }
+      ]
     },
     {
       "text": "Gain 27% of Damage as Extra Chaos Damage",
@@ -25218,7 +25653,14 @@
     },
     {
       "text": "Gain 36 Mana per enemy killed",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "Base",
+          "value": 36.0
+        }
+      ]
     },
     {
       "text": "Gain 4 Rage when Hit by an Enemy during effect",
@@ -25344,7 +25786,14 @@
     },
     {
       "text": "Gain 6 Mana per enemy killed",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "Base",
+          "value": 6.0
+        }
+      ]
     },
     {
       "text": "Gain 6% of Cold damage as Extra Lightning damage",
@@ -25829,7 +26278,14 @@
     },
     {
       "text": "Grants 1 Passive Skill Point",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraPoints",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "Grants 2 additional Skill Slots",
@@ -25841,7 +26297,14 @@
     },
     {
       "text": "Grants 4 Passive Skill Points",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraPoints",
+          "type": "Base",
+          "value": 4.0
+        }
+      ]
     },
     {
       "text": "Grants Onslaught during effect",
@@ -26173,7 +26636,15 @@
     },
     {
       "text": "Grenade Skills Fire an additional Projectile",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "Base",
+          "value": 1.0,
+          "flags": 1024
+        }
+      ]
     },
     {
       "text": "Grim Heart",
@@ -26196,7 +26667,14 @@
     },
     {
       "text": "Has +1 to maximum Runic Ward per player level",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "WardPerLevel",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "Has +2 to Evasion Rating per player level",
@@ -26244,7 +26722,14 @@
     },
     {
       "text": "Has no Attribute Requirements",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "NoAttributeRequirements",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Hate Dash",
@@ -26368,7 +26853,14 @@
     },
     {
       "text": "Ignore all [ArmourPenalties|Movement Penalties] from [EquipArmour|Armour]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:IgnoreMovementPenalties",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Immune to [Bleeding] if Equipped Helmet has higher [Armour] than [Evasion] Rating",
@@ -26416,7 +26908,14 @@
     },
     {
       "text": "Immune to [Poison]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PoisonImmune",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Immune to [Poison] if Equipped Helmet has higher [Evasion] Rating than [Armour]",
@@ -26531,23 +27030,63 @@
     },
     {
       "text": "Leech 7.24% of Physical Attack Damage as Mana",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalDamageManaLeech",
+          "type": "Base",
+          "value": 7.24,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "Leech 7.54% of Physical Attack Damage as Life",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalDamageLifeLeech",
+          "type": "Base",
+          "value": 7.54,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "Leech 7.88% of Physical Attack Damage as Life",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalDamageLifeLeech",
+          "type": "Base",
+          "value": 7.88,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "Leech 8.74% of Physical Attack Damage as Mana",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalDamageManaLeech",
+          "type": "Base",
+          "value": 8.74,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "Leech 9.74% of Physical Attack Damage as Life",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalDamageLifeLeech",
+          "type": "Base",
+          "value": 9.74,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "Legacy of Basalt",
@@ -26595,7 +27134,14 @@
     },
     {
       "text": "Life Leech recovers based on your Lightning damage as well as Physical damage",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeLeechBasedOnLightningDamage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Life Recovery from your [Flask|Flasks] also applies to your [Companion|Companions]",
@@ -26691,7 +27237,14 @@
     },
     {
       "text": "Magnitudes of Curses you inflict are zero",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CurseEffect",
+          "type": "More",
+          "value": -100.0
+        }
+      ]
     },
     {
       "text": "Mail Belt",
@@ -26850,7 +27403,14 @@
     },
     {
       "text": "No inherent Mana Regeneration",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:NoInherentManaRegen",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Non-Keystone Passive Skills in Medium Radius of allocated Keystone Passive Skills can be allocated without being connected to your tree",
@@ -27018,7 +27578,7 @@
     },
     {
       "text": "Passives in Radius can be Allocated without being connected to your tree",
-      "status": "err"
+      "status": "unsupported"
     },
     {
       "text": "Passives in Radius of Eldritch Battery can be Allocated",
@@ -28714,23 +29274,58 @@
     },
     {
       "text": "[ArmourBreak|Break] 10% increased [Armour|Armour]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 15% increased [Armour|Armour]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 20% increased [Armour|Armour]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 25% increased [Armour|Armour]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 40% increased [Armour|Armour]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 40.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] 50% of [Armour] on [HeavyStun|Heavy Stunning] an Enemy",
@@ -28742,7 +29337,14 @@
     },
     {
       "text": "[ArmourBreak|Break] 60% increased [Armour|Armour]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "Inc",
+          "value": 60.0
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] [Armour] on [Critical|Critical Hit] with [Spell|Spells] equal to 10% of [Physical|Physical] Damage dealt",
@@ -28949,7 +29551,14 @@
     },
     {
       "text": "[Buff|Buffs] on you expire 10% slower",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[Burning] Enemies you kill have a 5% chance to Explode, dealing a\ntenth of their maximum Life as [Fire] Damage",
@@ -29101,7 +29710,17 @@
     },
     {
       "text": "[Critical|Critical Hits] ignore non-negative Enemy Monster [Resistances|Elemental Resistances]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgnoreNonNegativeEleRes",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Critical|Critical Hits] with [Dagger|Daggers] have a 25% chance to [Poison] the Enemy",
@@ -29121,7 +29740,14 @@
     },
     {
       "text": "[Curse|Cursed] Enemies killed by you, or by [Allies] in your [Presence], have a 33% chance to explode, dealing a quarter of their maximum Life as [Chaos] damage",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanExplode",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Curse|Curses] you inflict have infinite Duration",
@@ -29332,7 +29958,14 @@
     },
     {
       "text": "[Exposure] you inflict lowers [Resistances] by an additional 5%",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraExposure",
+          "type": "Base",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "[Fire] [Spell|Spells] [Conversion|Convert] 100% of Fire Damage to [Chaos|Chaos Damage]\n[Chaos|Chaos Damage] from [Fire] [Spell|Spells] [Contributes] to [Flammability] and [Ignite] [BuffMagnitude|Magnitudes]\n[Ignite] inflicted with [Fire] [Spell|Spells] deals [Chaos|Chaos Damage] instead of Fire Damage",
@@ -29711,7 +30344,15 @@
     },
     {
       "text": "[Grenade] Skills Fire an additional [Projectile|Projectile]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "Base",
+          "value": 1.0,
+          "flags": 1024
+        }
+      ]
     },
     {
       "text": "[Grenade] Skills have +1 Cooldown Use",
@@ -29719,7 +30360,14 @@
     },
     {
       "text": "[Grenade|Grenades] have 15% chance to activate a second time",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "GrenadeActivateTwice",
+          "type": "Base",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "[Hazard|Hazards] have 15% chance to rearm after they are triggered",
@@ -29767,11 +30415,28 @@
     },
     {
       "text": "[HitDamage|Hits] have 25% reduced [Critical|Critical Hit] Chance against you",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyCritChance",
+          "type": "Inc",
+          "value": -25.0
+        }
+      ]
     },
     {
       "text": "[HitDamage|Hits] ignore non-negative [ElementalDamage|Elemental] [Resistances] of [Frozen] Enemies",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgnoreNonNegativeEleRes",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"EnemyFrozen\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Ignite|Ignites] you cause are reflected back to you",

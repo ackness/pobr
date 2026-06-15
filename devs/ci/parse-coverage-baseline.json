@@ -3,13 +3,13 @@
     "schema": "parse-coverage-baseline/v1",
     "purpose": "M6-T7 解析覆盖率棘轮基线（蓝图 §6.3）。PR 不得降低 coverage_ratio；升高时同 PR 更新本文件。",
     "regen": "cargo run -p precompile-mods -- --data data/4.5.0.3.4 --report，取 generated/parse-coverage.json::summary",
-    "parser_engine": "legacy/mod_parser.rs",
-    "note": "当前以旧引擎预解析全语料；B 引擎切换（T3/T4/T5）后覆盖率自动改善，届时同 PR 抬基线。err 高占比来自树语料的 PoB [internal|display] 括号标记 + 大量条件/数值复合词条，legacy 引擎归 Err——B 引擎数据驱动 scan 将大幅消化。"
+    "parser_engine": "mod_parser+special_rules",
+    "note": "M6-A2 数据驱动穿线：预解析走注入 special 规则的 parse_mod_with_rules（overlay/special_mods.json 整行锚定优先），覆盖率 0.376021→0.396548（parsed +88）。err 高占比仍来自树语料的 PoB [internal|display] 括号标记 + 大量条件/数值复合词条，后续 scan 引擎进一步消化。"
   },
   "patch": "4.5.0.3.4",
   "total": 4287,
-  "parsed": 1612,
-  "unsupported": 4,
-  "err": 2671,
-  "coverage_ratio": 0.376021
+  "parsed": 1700,
+  "unsupported": 5,
+  "err": 2582,
+  "coverage_ratio": 0.396548
 }
