@@ -108,6 +108,7 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
     match tag.tag_type.as_str() {
         "Multiplier" => {
             let var = f.get("var").and_then(|v| field_text(v, captures))?;
+            let var = normalize_perstat_slot_suffix(&var);
             let div = f
                 .get("div")
                 .and_then(|v| field_number(v, captures))
@@ -168,6 +169,7 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 .get("stat")
                 .or_else(|| f.get("var"))
                 .and_then(|v| field_text(v, captures))?;
+            let stat = normalize_perstat_slot_suffix(&stat);
             let div = f
                 .get("div")
                 .and_then(|v| field_number(v, captures))
@@ -188,11 +190,41 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
     }
 }
 
-/// vendor `ActorCondition{actor=enemy}` 的 var → PoBR 扁平条件 var（与 legacy + 编排层
-/// cfg 键空间一致）。默认加 `Enemy` 前缀（`Ignited`→`EnemyIgnited`，对齐 legacy
-/// 后缀表 + orchestrator `conditionEnemy<X>`→`Enemy<X>`）；两类例外原样返回：
-/// - 已含 `Enemy` 前缀（`EnemyInPresence`）——避免双前缀；
-/// - 敌人**稀有度**（`Rare`/`Unique`/`RareOrUnique`/`Normal`/`Magic`）——legacy 用裸名。
+/// 归一 PerStat/Multiplier 槽位倍率 var 的 `On<Slot>` 槽名后缀为槽位 ID（小写去空格，经 `slot_name_to_id`），对齐 orchestrator `per_slot_defence_multipliers` 拼的 `<Stat>On<slot.id()>` 键。
+/// vendor 数据槽名大小写不一（`OnBoots`/`OnBody Armour`/`Onhelmet` 混存）；不归一时 `+N to Armour per M ES on Equipped Boots` 产 `EnergyShieldOnBoots`，与消费侧 `EnergyShieldOnboots` 不匹配，倍率取 0，槽位防御底归零（fork-a Armour→0 实测根因）。
+/// 仅归一已知装备槽后缀；`OnAllArmourItems` 等非单槽后缀原样保留（消费侧另有通道）。对已小写的 `Onhelmet` 幂等。
+fn normalize_perstat_slot_suffix(var: &str) -> String {
+    let Some(idx) = var.rfind("On") else {
+        return var.to_string();
+    };
+    let (head, slot) = (&var[..idx], &var[idx + 2..]);
+    let is_known_slot = matches!(
+        slot.to_ascii_lowercase().as_str(),
+        "boots"
+            | "helmet"
+            | "gloves"
+            | "body armour"
+            | "weapon"
+            | "weapon 1"
+            | "weapon 2"
+            | "shield"
+            | "focus"
+            | "quiver"
+            | "off hand"
+            | "main hand"
+            | "ring"
+            | "amulet"
+            | "belt"
+    );
+    if is_known_slot {
+        format!("{head}On{}", slot_name_to_id(slot))
+    } else {
+        var.to_string()
+    }
+}
+
+/// vendor `ActorCondition{actor=enemy}` 的 var 归一为 PoBR 扁平条件 var（与 legacy + 编排层 cfg 键空间一致）。默认加 `Enemy` 前缀（`Ignited`→`EnemyIgnited`，对齐 legacy 后缀表 + orchestrator `conditionEnemy<X>`→`Enemy<X>`）。
+/// 两类例外原样返回：已含 `Enemy` 前缀（`EnemyInPresence`）避免双前缀；敌人稀有度（`Rare`/`Unique`/`RareOrUnique`/`Normal`/`Magic`）legacy 用裸名。
 fn normalize_enemy_cond_var(var: &str) -> String {
     const BARE: &[&str] = &["Rare", "Unique", "RareOrUnique", "Normal", "Magic"];
     if var.starts_with("Enemy") || BARE.contains(&var) {

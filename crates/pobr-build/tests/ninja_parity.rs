@@ -67,6 +67,12 @@ fn golden(stats: &serde_json::Map<String, serde_json::Value>, key: &str) -> Opti
 /// 以指定口径计算一个 build（`mode_effective`：false=面板口径，true=PoB2 主面板
 /// EFFECTIVE 口径，vendor `CalcSetup.lua:583-588`——非 CALCS 模式恒 EFFECTIVE）。
 fn run_build_mode(dir: &Path, data: &BuildData, mode_effective: bool) -> Option<OutputTable> {
+    if std::env::var("POBR_DBG_DEFRES").is_ok() {
+        eprintln!(
+            "[POBR_BUILD] >>> {} (mode_effective={mode_effective})",
+            dir.file_name().unwrap().to_string_lossy()
+        );
+    }
     let code = std::fs::read_to_string(dir.join("code.txt")).ok()?;
     let build = parse_build_from_code(code.trim()).ok()?;
     let opts = DataOrchestratorOptions {
