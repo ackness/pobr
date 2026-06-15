@@ -1125,6 +1125,16 @@ pub fn calculate_with_data(
             eprintln!("[POBR_UNSUP] {t}");
         }
     }
+    // 诊断：POBR_DBG_ALLMODS=1 时 dump 玩家 ModDb 全部 modifier（engine vs legacy ingest
+    // 逐 mod 全集 diff 用；M6 fork(a) 定位 ingest 分歧）。排序前缀 name 便于 sort+diff。
+    if std::env::var("POBR_DBG_ALLMODS").is_ok() {
+        for m in session.all_mods() {
+            eprintln!(
+                "[POBR_ALLMOD] {:?} {:?} {:?} flags={:?} kw={:?} tags={:?}",
+                m.name, m.mod_type, m.value, m.flags, m.keyword_flags, m.tags
+            );
+        }
+    }
     // 诊断：POBR_DBG_STAT=<ModName> 时逐来源 dump 该属性的全部 modifier（parity 排查用）。
     if let Ok(stat) = std::env::var("POBR_DBG_STAT") {
         for m in session.mods_named(&stat) {

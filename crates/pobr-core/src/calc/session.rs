@@ -495,4 +495,10 @@ impl CalculationSession {
             .filter(|m| m.name == target)
             .collect()
     }
+
+    /// 玩家 ModDb 全部 modifier（诊断用，`POBR_DBG_ALLMODS`）：用于 engine vs legacy
+    /// ingest 路径的逐 mod 全集 diff（M6 fork(a) 定位 ingest 分歧）。
+    pub fn all_mods(&self) -> Vec<&Modifier> {
+        self.env.player.mod_db.iter_mods().collect()
+    }
 }
