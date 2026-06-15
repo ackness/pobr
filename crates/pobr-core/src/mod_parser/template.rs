@@ -130,14 +130,19 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             Some(ModTag::condition(var, neg))
         }
         "ActorCondition" => {
-            // M6.3 归一：vendor `ActorCondition{actor=enemy,var=X}` 的 actor 路由由
-            // mod 挂载侧（敌方 ModDb）承担，condition var 用裸名 X（与 legacy 一致：
-            // `against rare`→`RareOrUnique`、`enemies in your presence`→`EnemyInPresence`
-            // 其 var 已含 Enemy 前缀，不再二次加前缀）。早前的 `Enemy{var}` 拼接会
-            // 产 `EnemyRareOrUnique`/`EnemyEnemyInPresence`（双前缀），与 legacy 偏离。
+            // M6.3 归一：vendor `ActorCondition{actor=enemy,var=X}` → PoBR 扁平条件
+            // `Condition{var=Enemy<X>}`（actor=None），与 legacy + 编排层 cfg 键空间一致
+            // （orchestrator 据 build config `conditionEnemy<X>` 置 `Enemy<X>` 真）。
+            // 例外（[`normalize_enemy_cond_var`]）：var 已含 `Enemy` 前缀（EnemyInPresence）
+            // 或为敌人**稀有度**（Rare/Unique/RareOrUnique/Normal/Magic，legacy 用裸名）
+            // 不加前缀，避免双前缀 / 与 legacy 偏离。
+            //
+            // 修复（M6 fork-a）：早前一律用裸名会让 `against ignited enemies` 产
+            // `Condition{Ignited}`（查玩家自身 Ignited，恒假）而非 legacy 的 `EnemyIgnited`
+            // （查敌方异常，编排层置真）——player 侧「against <ailment> enemies」增伤全失效。
             let var = f.get("var").and_then(|v| field_text(v, captures))?;
             let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
-            Some(ModTag::condition(var, neg))
+            Some(ModTag::condition(normalize_enemy_cond_var(&var), neg))
         }
         "SkillType" => {
             let name = f.get("skill_type").and_then(|v| field_text(v, captures))?;
@@ -180,6 +185,20 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
         }
         // 未映射 tag 形态：保守跳过（返回 None；engine 据此处置整行）。
         _ => None,
+    }
+}
+
+/// vendor `ActorCondition{actor=enemy}` 的 var → PoBR 扁平条件 var（与 legacy + 编排层
+/// cfg 键空间一致）。默认加 `Enemy` 前缀（`Ignited`→`EnemyIgnited`，对齐 legacy
+/// 后缀表 + orchestrator `conditionEnemy<X>`→`Enemy<X>`）；两类例外原样返回：
+/// - 已含 `Enemy` 前缀（`EnemyInPresence`）——避免双前缀；
+/// - 敌人**稀有度**（`Rare`/`Unique`/`RareOrUnique`/`Normal`/`Magic`）——legacy 用裸名。
+fn normalize_enemy_cond_var(var: &str) -> String {
+    const BARE: &[&str] = &["Rare", "Unique", "RareOrUnique", "Normal", "Magic"];
+    if var.starts_with("Enemy") || BARE.contains(&var) {
+        var.to_string()
+    } else {
+        format!("Enemy{var}")
     }
 }
 
