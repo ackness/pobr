@@ -399,9 +399,13 @@ pub fn calc_defence_resources(
             .and_then(|v| v.parse::<usize>().ok())
             == Some(s)
         {
+            let raw_base_ct = db
+                .iter_mods()
+                .filter(|m| m.name == ModName::from(MATRIX_RESOURCES[s]) && m.mod_type == ModType::Base)
+                .count();
             eprintln!(
-                "[POBR_DEFRES] res={} names={:?} kept_global={:.2} received={:.2} global_inc={:.2} global_more={:.4} total_conv={:.2} slots={:?} => {:.2}",
-                MATRIX_RESOURCES[s], names, kept_global[s], received[s], global_inc, global_more, total_conv[s], slots[s], *value
+                "[POBR_DEFRES] res={} eff={} combat={} raw_base_ct={} kept_global={:.2} received={:.2} global_inc={:.2} global_more={:.4} total_conv={:.2} slots={:?} => {:.2}",
+                MATRIX_RESOURCES[s], cfg.mode_effective, cfg.mode_combat, raw_base_ct, kept_global[s], received[s], global_inc, global_more, total_conv[s], slots[s], *value
             );
         }
     }

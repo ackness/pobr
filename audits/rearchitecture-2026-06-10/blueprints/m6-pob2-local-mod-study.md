@@ -146,6 +146,25 @@ env_finalize 改写了玩家 ModDb 或 cfg slot 上下文，使后段 calc_defen
 `slot_bases("Armour")` 为何取空；查 effective/flask-merge pass 对 slot-tagged 防御 base
 的影响。`POBR_DBG_DEFRES` 仪表已留（calc_defence_resources，非 feature 门控）。
 
+### 进一步定位（trace 加 raw_base_ct + mode 标志）
+
+DEFRES trace 增 `raw_base_ct`（db 内该资源 BASE mod 计数）+ `eff/combat` 标志后实测
+druid（eff=true combat=true）：
+- 窗口内 player 调用：`raw_base_ct=1 slots=[(bodyarmour,328)] => 426.40`（armour base 在 db、
+  slot_bases 正常取到，但 slot_inc=0 故只 ×1.30；legacy 同窗也 426.40）；
+- 但 **report 读到的 player Armour = 0.00**——对应一个 `raw_base_ct=0 slots=[] => 0` 调用
+  （global_inc=30 同 druid，但 **armour base mod 整个不在该 db**）。
+
+⇒ **armour base 在 calc 上下文之间丢失**：druid player 被 calc_defence 算了两次，一次 db 含
+base（426.40），一次 db **不含** base（0，喂 report）。`matches(cfg)` 对 SlotName 透明
+（modifier.rs:294 恒 true），故非 matches 过滤——是该 db **真没有** armour base mod。
+另：另一 build 出现 `raw_base_ct=1 slots=[]`（base 在但 slot_bases 取空）——存在第二类
+slot 排除路径。两类都指向 **perform/report 的 env 生命周期**（panel vs effective 是否各建
+env、effective env ingest 是否丢 slot-tagged base / 矩阵转换是否吃掉 base mod）。
+
+**未结**：定位 report 喂值的 player calc_defence 落在哪个 env（panel/effective/重算），
+为何其 db `raw_base_ct=0`。这是 perform/orchestrator env 构造问题，非 parser。
+
 **fork(a) 工作清单（按此 druid 样本外推全 18 build）**：
 - (A) 修 `Enemy<Ailment>` 条件映射数据（Ignited/Burning/Chilled/Shocked… 的「against
   X enemies」全族）；
