@@ -17,7 +17,8 @@ use pobr_core::ModValue;
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput};
 use pobr_core::item::ingest_item;
 use pobr_core::item_text::{ItemTextError, parse_item_text};
-use pobr_core::mod_parser::{ParseStatus, parse_mod as core_parse_mod};
+use pobr_core::mod_parser::{ParseStatus, parse_mod_with_rules};
+use pobr_core::rules::{HandlerRegistry, SpecialModRules, register_special_handlers};
 use pobr_data::item::EquipmentSlot;
 use pobr_data::monster::EnemyTier;
 use pobr_gamedata::GameData;
@@ -157,12 +158,60 @@ pub struct ParseModReport {
     pub unparsed: Option<String>,
 }
 
-/// 解析单条 modifier 文本。
+/// 启动期编译一次、复用的 parser 规则上下文（M6-A2 数据驱动穿线）。
+///
+/// special 词条规则集 + handler 注册表从 [`GameData`] 构造。规则缺失（缺
+/// `overlay/special_mods.json`）时 `rules == None`，[`parse_mod`] 退回历史
+/// 无规则路径（逐值不变）。
+pub struct ParseModRules {
+    rules: Option<SpecialModRules>,
+    registry: HandlerRegistry,
+}
+
+impl ParseModRules {
+    /// 从游戏数据编译 parser 规则（special 表 + handler 注册表）。
+    ///
+    /// `overlay/special_mods.json` 缺失 → `rules = None`（解析行为退回历史
+    /// 无规则路径）；编译失败（pattern 非法 / id 重复）上抛 [`CliError::ModParse`]。
+    pub fn from_game_data(data: &GameData) -> Result<Self, CliError> {
+        let mut registry = HandlerRegistry::new();
+        register_special_handlers(&mut registry)
+            .map_err(|e| CliError::ModParse(format!("special handler 注册失败: {e}")))?;
+
+        let rules = match data.special_mods()? {
+            Some(def) if !def.entries.is_empty() => Some(
+                SpecialModRules::compile(&def.entries, &registry)
+                    .map_err(|e| CliError::ModParse(format!("special 规则编译失败: {e}")))?,
+            ),
+            _ => None,
+        };
+
+        Ok(Self { rules, registry })
+    }
+}
+
+/// 解析单条 modifier 文本（无规则路径——保留供测试 / 无数据目录场景）。
 ///
 /// 完全无法识别的文本返回 [`CliError::ModParse`]；可识别但被拒绝的（如 `mirrored`）
-/// 返回 `status == "Unsupported"`。
+/// 返回 `status == "Unsupported"`。等价 `parse_mod_with_data(text, None)`，逐值不变。
 pub fn parse_mod(text: &str) -> Result<ParseModReport, CliError> {
-    let outcome = core_parse_mod(text).map_err(|e| CliError::ModParse(e.to_string()))?;
+    parse_mod_with_data(text, None)
+}
+
+/// 解析单条 modifier 文本，可注入数据驱动 special 规则（M6-A2 生产路径）。
+///
+/// `rules = Some` 时走 special 规则增强路径；`None` 时等价历史 [`parse_mod`]，
+/// 逐值不变。
+pub fn parse_mod_with_data(
+    text: &str,
+    rules: Option<&ParseModRules>,
+) -> Result<ParseModReport, CliError> {
+    let (special, registry) = match rules {
+        Some(r) => (r.rules.as_ref(), Some(&r.registry)),
+        None => (None, None),
+    };
+    let outcome = parse_mod_with_rules(text, special, registry)
+        .map_err(|e| CliError::ModParse(e.to_string()))?;
 
     let status = match outcome.status {
         ParseStatus::Parsed => "Parsed",
@@ -193,8 +242,13 @@ pub fn parse_mod(text: &str) -> Result<ParseModReport, CliError> {
 }
 
 /// 把 [`ParseModReport`] 渲染为美化的 JSON 字符串。
-pub fn parse_mod_json(text: &str) -> Result<String, CliError> {
-    let report = parse_mod(text)?;
+///
+/// `data_dir` 指向版本数据目录；从中编译 parser 规则一次（M6-A2 数据驱动穿线）。
+/// special 表缺失时退回历史无规则解析。
+pub fn parse_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
+    let data = GameData::new(data_dir);
+    let rules = ParseModRules::from_game_data(&data)?;
+    let report = parse_mod_with_data(text, Some(&rules))?;
     Ok(serde_json::to_string_pretty(&report)?)
 }
 

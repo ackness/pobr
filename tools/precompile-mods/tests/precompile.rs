@@ -155,6 +155,7 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
     let tmp_data = tmp.join("data").join(PATCH);
     std::fs::create_dir_all(tmp_data.join("base")).unwrap();
     std::fs::create_dir_all(tmp_data.join("generated")).unwrap();
+    std::fs::create_dir_all(tmp_data.join("overlay")).unwrap();
 
     // base/passive_tree.json（C2）。
     let tree = src_data.join("base/passive_tree.json");
@@ -170,6 +171,13 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
     let sd = src_data.join("generated/special_derived.json");
     if sd.is_file() {
         std::fs::copy(&sd, tmp_data.join("generated/special_derived.json")).unwrap();
+    }
+    // overlay/special_mods.json（M6-A2：parser 引擎注入的 special 规则输入；
+    // 缺它则 fresh 重跑解析退回历史无规则路径，golden 对照会与含规则的已提交
+    // 产物漂移）。存在即拷。
+    let special_mods = src_data.join("overlay/special_mods.json");
+    if special_mods.is_file() {
+        std::fs::copy(&special_mods, tmp_data.join("overlay/special_mods.json")).unwrap();
     }
 
     // examples/demo-bd-test/builds（C1）：软链到临时根，使 grandparent 定位可达。

@@ -104,6 +104,9 @@ struct CalculateBuildArgs {
 struct ParseModArgs {
     /// 待解析的 modifier 文本。
     text: String,
+    /// 版本数据目录（默认 `<repo>/data/4.5.0.3.4`）。从中编译 parser 规则。
+    #[arg(long)]
+    data_dir: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -152,7 +155,13 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
         Command::CalculateBuild(args) => Ok(pobr_cli::calculate_build_json(
             &build_calc_build_request(args)?,
         )?),
-        Command::ParseMod(args) => Ok(pobr_cli::parse_mod_json(&args.text)?),
+        Command::ParseMod(args) => {
+            let data_dir = match args.data_dir {
+                Some(dir) => std::path::PathBuf::from(dir),
+                None => pobr_gamedata::repo_data_root().join("4.5.0.3.4"),
+            };
+            Ok(pobr_cli::parse_mod_json(&args.text, &data_dir)?)
+        }
         Command::ParseItem(args) => {
             let text = read_text_source(args.text, args.file)?;
             Ok(pobr_cli::parse_item_json(&ParseItemRequest { text })?)
