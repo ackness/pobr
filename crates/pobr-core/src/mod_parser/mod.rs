@@ -41,3 +41,8 @@ pub use canonical::canonical_outcome;
 pub use compiled::{CompileError, CompiledParserRules};
 #[cfg(feature = "parser-engine")]
 pub use engine::parse_mod_engine;
+
+#[cfg(feature = "test-rules")]
+mod test_rules;
+#[cfg(feature = "test-rules")]
+pub use test_rules::test_compiled_rules;

@@ -5,7 +5,7 @@ use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::prelude::*;
 
 use crate::item::ingest_item_with_ctx;
-use crate::mod_parser::{ParseCtx, ParseError, ParseStatus, parse_mod};
+use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
 use crate::passive::{AllocatedNode, ingest_passive_nodes_with_ctx};
 use crate::rules::{HandlerRegistry, SpecialModRules};
 use crate::skill_source::{GemModSource, ingest_gem_with_ctx};
@@ -66,6 +66,19 @@ pub struct CalculationSession {
     special_rules: Option<Arc<SpecialModRules>>,
     /// special handler_id 路由用注册表（M5b C-3）。
     special_registry: Option<Arc<HandlerRegistry>>,
+    /// 数据驱动 parser 引擎规则（M6 D-T8 A2 全量穿线）：注入后全部 ingest
+    /// （item/passive/gem/flask/`add_modifier_texts`）解析改走
+    /// [`parse_mod_engine`]（数据驱动终局路径），优先于 legacy special 路径。
+    /// `None` = 历史 legacy 行为（逐值不变）。引擎对语料 + fixture 与 legacy 逐
+    /// 字节一致（C1 DIFF=0 gate），故注入与否 parity 零变动。
+    ///
+    /// 由编排层（pobr-build orchestrator）经 [`set_parser_rules`] 恒注入；仅在
+    /// `parser-engine` feature 下可用。
+    ///
+    /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
+    /// [`set_parser_rules`]: CalculationSession::set_parser_rules
+    #[cfg(feature = "parser-engine")]
+    parser_rules: Option<Arc<crate::mod_parser::CompiledParserRules>>,
 }
 
 impl CalculationSession {
@@ -79,6 +92,8 @@ impl CalculationSession {
             unsupported_modifier_texts: Vec::new(),
             special_rules: None,
             special_registry: None,
+            #[cfg(feature = "parser-engine")]
+            parser_rules: None,
         }
     }
 
@@ -95,8 +110,37 @@ impl CalculationSession {
         self.special_registry = registry;
     }
 
-    /// 当前 ingest 用的解析上下文（special 规则注入时携带，否则空）。
+    /// 注入数据驱动 parser 引擎规则（M6 D-T8 A2 全量穿线契约面）：之后全部
+    /// ingest（[`add_item`](Self::add_item) / [`add_passive_nodes`](Self::add_passive_nodes)
+    /// / [`add_gem`](Self::add_gem) / [`add_flask_charm`](Self::add_flask_charm) /
+    /// [`add_modifier_texts`](Self::add_modifier_texts)）的词条解析改走
+    /// [`parse_mod_engine`]（数据驱动终局路径），**优先于** legacy special 路径
+    /// （special 通道已编译进 [`CompiledParserRules::special`]）。须在 ingest 调用
+    /// **之前**注入。
+    ///
+    /// 这是编排层（Agent B / pobr-build orchestrator）的注入契约面：orchestrator
+    /// 经 pobr-gamedata 恒 load `mod_parser_rules.json` 编译 `CompiledParserRules`
+    /// 后调用本 setter；session/ingest 链由此恒取到 `&CompiledParserRules`。
+    ///
+    /// 不调用时 ingest 行为与历史 `parse_mod` 逐值相等（引擎 == legacy，C1 DIFF=0
+    /// gate）。仅在 `parser-engine` feature 下可用。
+    ///
+    /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
+    /// [`CompiledParserRules::special`]: crate::mod_parser::CompiledParserRules
+    #[cfg(feature = "parser-engine")]
+    pub fn set_parser_rules(&mut self, rules: Arc<crate::mod_parser::CompiledParserRules>) {
+        self.parser_rules = Some(rules);
+    }
+
+    /// 当前 ingest 用的解析上下文。优先级：
+    /// 1. 数据驱动 parser 引擎规则（A2，`parser-engine` feature 下注入）→ engine 路径；
+    /// 2. legacy special 规则（M5b）→ legacy special 路径；
+    /// 3. 皆未注入 → 空上下文（历史 `parse_mod` 行为，逐值不变）。
     fn parse_ctx(&self) -> ParseCtx<'_> {
+        #[cfg(feature = "parser-engine")]
+        if let Some(rules) = &self.parser_rules {
+            return ParseCtx::with_engine(rules);
+        }
         match &self.special_rules {
             Some(rules) => ParseCtx::with_rules(rules, self.special_registry.as_deref()),
             None => ParseCtx::none(),
@@ -147,9 +191,17 @@ impl CalculationSession {
         &mut self,
         texts: impl IntoIterator<Item = impl AsRef<str>>,
     ) -> Result<(), ParseError> {
-        for text in texts {
-            let text = text.as_ref();
-            let outcome = parse_mod(text)?;
+        // A2 穿线：经 `parse_ctx` 走引擎/special/legacy 三态分发（注入 parser-engine
+        // 规则时走数据驱动引擎，否则与历史 `parse_mod` 逐值相等）。`parse_ctx` 不可变
+        // 借 self，与下游 `self.env` 可变写入冲突——先收集 outcome 再消费。
+        let mut outcomes = Vec::new();
+        {
+            let ctx = self.parse_ctx();
+            for text in texts {
+                outcomes.push(ctx.parse(text.as_ref())?);
+            }
+        }
+        for outcome in outcomes {
             match outcome.status {
                 ParseStatus::Parsed => self.env.player.mod_db.add_list(outcome.mods),
                 ParseStatus::Unsupported => {
@@ -187,7 +239,7 @@ impl CalculationSession {
     /// 槽位 `active` 门控承担（vendor CalcSetup.lua:1014-1028）；不可解析词条
     /// 收集进 `unsupported_modifier_texts`。
     pub fn add_flask_charm(&mut self, slot_name: &str, item: &Item) {
-        let ingest = crate::item::ingest_flask_charm(slot_name, item);
+        let ingest = crate::item::ingest_flask_charm_with_ctx(slot_name, item, self.parse_ctx());
         self.env.player.mod_db.add_list(ingest.modifiers);
         self.unsupported_modifier_texts.extend(ingest.unsupported);
     }

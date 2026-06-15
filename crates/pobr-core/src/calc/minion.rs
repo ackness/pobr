@@ -189,6 +189,46 @@ pub struct MinionModifierEntry {
     pub minion_type: Option<String>,
 }
 
+/// 从一组已解析 modifier 中抽取召唤物词条包裹（M6 D-T8 A2 minion 语义迁移）。
+///
+/// **背景（B 项契约）**：legacy `parse_minion_modifier(text) -> Vec<MinionModifierEntry>`
+/// 与数据驱动引擎的 `MinionModifier LIST` 产物是两套形态。引擎（`mod_parser::engine`
+/// 的 `wrap_list`，vendor `ModParser.lua:6680-6750` 的 `addToMinion`）把
+/// `Minions deal/have/take/use …` 类词条包成外层
+/// `Modifier { name: "MinionModifier", mod_type: List, value: NestedMods([inner]) }`，
+/// 与玩家自身的其它 LIST mod（FlaskBuff/EnemyModifier 等）一同回到解析产物流里。
+///
+/// 本函数是**消费侧对齐桥**：从引擎产物（如 `ingest_*` 注入玩家 ModDb 前的 mod 流，
+/// 或玩家 ModDb 里 `MinionModifier` 名下的 list mod）抽出每个 `MinionModifier` 包裹，
+/// 还原为 [`MinionModifierEntry`]（`inner` = 解包后的内层 mod，`minion_type` = `None`，
+/// 与 legacy `parse_minion_modifier` 的「类型限定恒 None」口径一致——类型限定如
+/// `zombies have …` 是后续细化项）。非 `MinionModifier` 名的 mod 忽略。
+///
+/// 编排层（pobr-build orchestrator）切换到引擎后用此把 `MinionModifier` LIST 产物
+/// 喂给 [`MinionInput::minion_modifiers`]，替代 legacy `parse_minion_modifier`，逐值
+/// 对齐（引擎 == legacy 已由 C1 DIFF=0 gate 保证内层 mod 一致）。
+pub fn extract_minion_modifier_entries<'a>(
+    mods: impl IntoIterator<Item = &'a Modifier>,
+) -> Vec<MinionModifierEntry> {
+    let target = ModName::from("MinionModifier");
+    let mut entries = Vec::new();
+    for m in mods {
+        if m.name != target {
+            continue;
+        }
+        let Some(inner_mods) = m.value.as_nested_mods() else {
+            continue;
+        };
+        for inner in inner_mods {
+            entries.push(MinionModifierEntry {
+                inner: inner.clone(),
+                minion_type: None,
+            });
+        }
+    }
+    entries
+}
+
 /// 属性灌注：旗标驱动的玩家属性 → 召唤物 BASE 注入。
 ///
 /// 召唤物默认 0 基础属性、不继承玩家属性；只有这些旗标把玩家属性灌入，灌入后召唤物

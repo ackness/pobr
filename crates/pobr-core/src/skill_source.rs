@@ -68,7 +68,7 @@ use std::collections::HashSet;
 
 use pobr_data::prelude::*;
 
-use crate::mod_parser::{ParseError, ParseStatus, parse_mod};
+use crate::mod_parser::{ParseError, ParseStatus};
 use crate::rules::skill_type_expr;
 use crate::{ModTag, Modifier};
 
@@ -542,11 +542,20 @@ pub fn ingest_gem_with_ctx(
 
 /// 把一颗主动技能宝石接入计算，产出带 `SourceKind::SkillGem` 归因的 modifier。
 pub fn ingest_active_gem(spec: &ActiveSkillSpec) -> Result<GemIngest, ParseError> {
+    ingest_active_gem_with_ctx(spec, crate::mod_parser::ParseCtx::none())
+}
+
+/// [`ingest_active_gem`] 的解析上下文穿线版（M6 D-T8 A2）：词条解析走 `ctx`
+/// （注入 parser-engine 规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_active_gem`]）。
+pub fn ingest_active_gem_with_ctx(
+    spec: &ActiveSkillSpec,
+    ctx: crate::mod_parser::ParseCtx<'_>,
+) -> Result<GemIngest, ParseError> {
     let source_id = spec.source_id();
     let mut ingest = GemIngest::default();
 
     for text in &spec.modifier_texts {
-        let outcome = parse_mod(text)?;
+        let outcome = ctx.parse(text)?;
         match outcome.status {
             ParseStatus::Parsed => {
                 for modifier in outcome.mods {
@@ -623,6 +632,20 @@ pub fn ingest_support_gem(
     spec: &SupportGemSpec,
     active_skill_types: &HashSet<String>,
 ) -> Result<GemIngest, SupportIngestError> {
+    ingest_support_gem_with_ctx(
+        spec,
+        active_skill_types,
+        crate::mod_parser::ParseCtx::none(),
+    )
+}
+
+/// [`ingest_support_gem`] 的解析上下文穿线版（M6 D-T8 A2）：词条解析走 `ctx`
+/// （注入 parser-engine 规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_support_gem`]）。
+pub fn ingest_support_gem_with_ctx(
+    spec: &SupportGemSpec,
+    active_skill_types: &HashSet<String>,
+    ctx: crate::mod_parser::ParseCtx<'_>,
+) -> Result<GemIngest, SupportIngestError> {
     // ── skill-type-gating（PoB2 四段裁决，CalcTools.lua:84-110）────────────
     judge_support(
         &SupportJudgeInput {
@@ -658,7 +681,7 @@ pub fn ingest_support_gem(
 
     // ── 词条文本解析（含 more-multiplier 隔离）──────────────────────────────
     for text in &spec.modifier_texts {
-        let outcome = parse_mod(text)?;
+        let outcome = ctx.parse(text)?;
         match outcome.status {
             ParseStatus::Parsed => {
                 for modifier in outcome.mods {
