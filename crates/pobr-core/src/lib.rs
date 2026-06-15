@@ -36,7 +36,8 @@ pub use rules::{
 pub use skill_source::{
     ActiveSkillJudgeInput, ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError,
     SupportGemSpec, SupportIngestError, SupportJudgeInput, can_support, ingest_active_gem,
-    ingest_gem, ingest_gem_leveled, ingest_support_gem, judge_support,
+    ingest_active_gem_with_ctx, ingest_gem, ingest_gem_leveled, ingest_support_gem,
+    ingest_support_gem_with_ctx, judge_support,
 };
 pub use trace::{
     CombineMode, CritTag, HandTag, PassId, TraceEdge, TraceGraph, TraceNode, TraceNodeId,

@@ -41,7 +41,7 @@
 use pobr_data::prelude::*;
 
 use crate::Modifier;
-use crate::mod_parser::{ParseCtx, ParseError, ParseStatus, parse_mod};
+use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
 
 /// 物品词条的 section，决定归因的 [`SourceKind`] 与 `SourceId` 后缀。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -216,6 +216,12 @@ pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
 /// - 全部行不可解析时**仍产出空载荷**（M4-m：vendor 条件置位与 modList 无关，
 ///   CalcPerform.lua:1634-1643——`UsingCharm`/`UsingFlask` 按激活槽位置真）。
 pub fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
+    ingest_flask_charm_with_ctx(slot_name, item, ParseCtx::none())
+}
+
+/// [`ingest_flask_charm`] 的解析上下文穿线版（M6 D-T8 A2）：剩余行解析走 `ctx`
+/// （注入 parser-engine 规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_flask_charm`]）。
+pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'_>) -> ItemIngest {
     let slot_key: String = slot_name
         .to_lowercase()
         .chars()
@@ -251,7 +257,7 @@ pub fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
             );
             continue;
         }
-        match parse_mod(strip_during_effect(text)) {
+        match ctx.parse(strip_during_effect(text)) {
             Ok(outcome) if outcome.status == ParseStatus::Parsed => {
                 for modifier in outcome.mods {
                     nested.push(modifier.with_origin(make_origin(text)));
