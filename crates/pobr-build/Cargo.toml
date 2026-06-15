@@ -3,6 +3,18 @@ name = "pobr-build"
 version.workspace = true
 edition.workspace = true
 
+[features]
+# M6 D-T8 A2：数据驱动 ModParser 引擎接管 calc 主路径（转发 pobr-core/parser-engine）。
+# **默认关**——切换被实测阻塞：开启后 ninja_parity 回归（defensive core-8 132→129，
+# 多 build 的 Armour/EHP/DPS/DoT 下挫）。根因：引擎 `parse_mod_engine` 不回退 legacy
+# 手写专用解析器，仅覆盖数据驱动 forms/name_map/special 表；C1 双跑语料仅 item+passive
+# 文本（DIFF=0/OLD_ONLY=0），但全 calc 路径还 ingest 宝石/光环·buff/基底隐式等来源，
+# 其文本未被数据表覆盖 → 引擎丢弃 → parity 回归。翻开关前须把双跑语料扩到全 ingest
+# 集、把 OLD_ONLY 缺口驱到 0（扩 forms 表）。详见 m6-switch-decision.md §「切换阻塞」。
+# 接线（BuildData parser_rules 编译 + orchestrator 注入 + minion 桥）已就位、feature 门控、
+# 默认关行为中性，待 gap 闭合后单 commit 翻 default。
+parser-engine = ["pobr-core/parser-engine"]
+
 [dependencies]
 pobr-data.workspace = true
 pobr-core.workspace = true

@@ -217,6 +217,17 @@ pub struct BuildData {
     /// special handler 注册表（handler_id 条目路由，M5b C-3）。与 `special_rules`
     /// 同生命周期；无 special handler 时为空注册表。
     pub special_registry: Arc<HandlerRegistry>,
+    /// 数据驱动 ModParser 引擎规则（M6 D-T8 A2 切换）：`overlay/mod_parser_rules.json`
+    /// 经 [`CompiledParserRules::compile_with_special`] 编译（special 通道复用
+    /// `special_mods` 条目）。`calculate_with_data` 经
+    /// [`CalculationSession::set_parser_rules`] 注入，全部 ingest 词条解析走数据驱动
+    /// scan 引擎。缺 `mod_parser_rules` 域（旧数据包）= `None`（ingest 回退 legacy /
+    /// special，逐值不变）。仅 `parser-engine` feature 下存在。
+    ///
+    /// [`CompiledParserRules::compile_with_special`]: pobr_core::mod_parser::CompiledParserRules::compile_with_special
+    /// [`CalculationSession::set_parser_rules`]: pobr_core::calc::CalculationSession::set_parser_rules
+    #[cfg(feature = "parser-engine")]
+    pub parser_rules: Option<Arc<pobr_core::mod_parser::CompiledParserRules>>,
 }
 
 impl BuildData {
@@ -400,16 +411,38 @@ impl BuildData {
         // （ingest 走历史 parse_mod，逐值不变）；编译失败（pattern 非法 / id 重复
         // 等）照常上抛——数据面已由闸门测试 special_mods_gate.rs 守，运行期 fail-fast。
         let special_registry = Arc::new(crate::handlers::build_special_registry());
-        let special_rules = match ruleset.special_mods {
-            Some(entries) if !entries.is_empty() => Some(Arc::new(
-                SpecialModRules::compile(&entries, &special_registry).map_err(|e| {
+        // 条目数组一次取出：legacy special 通道与 M6 引擎 special 通道共用。
+        let special_entries = ruleset.special_mods.unwrap_or_default();
+        let special_rules = if special_entries.is_empty() {
+            None
+        } else {
+            Some(Arc::new(
+                SpecialModRules::compile(&special_entries, &special_registry).map_err(|e| {
                     LoadError::Overlay {
                         path: "overlay/special_mods.json".into(),
                         message: format!("special 规则编译失败：{e}"),
                     }
                 })?,
+            ))
+        };
+
+        // M6 D-T8 A2：数据驱动 ModParser 引擎规则编译（parser-engine feature）。
+        // gamedata 只 load `mod_parser_rules.json` doc，编译在 core（P9 边界）；
+        // special 通道复用上面同一组 `special_entries`。缺 doc（旧数据包）= None
+        // （ingest 回退 legacy/special，逐值不变）；编译失败照常上抛。
+        #[cfg(feature = "parser-engine")]
+        let parser_rules = match data.mod_parser_rules()? {
+            Some(doc) => Some(Arc::new(
+                pobr_core::mod_parser::CompiledParserRules::compile_with_special(
+                    &doc,
+                    &special_entries,
+                )
+                .map_err(|e| LoadError::Overlay {
+                    path: "overlay/mod_parser_rules.json".into(),
+                    message: format!("parser 规则编译失败：{e}"),
+                })?,
             )),
-            _ => None,
+            None => None,
         };
 
         Ok(Self {
@@ -435,6 +468,8 @@ impl BuildData {
             minions,
             special_rules,
             special_registry,
+            #[cfg(feature = "parser-engine")]
+            parser_rules,
         })
     }
 
@@ -465,6 +500,8 @@ impl BuildData {
             minions: HashMap::new(),
             special_rules: None,
             special_registry: Arc::new(crate::handlers::build_special_registry()),
+            #[cfg(feature = "parser-engine")]
+            parser_rules: None,
         }
     }
 

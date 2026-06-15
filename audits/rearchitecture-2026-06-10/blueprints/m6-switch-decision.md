@@ -79,6 +79,43 @@ OLD_ONLY=0 / EQ 805→860，行为中性、parity 零回归。**2b 切换**（�
 调用方注入 `&CompiledParserRules` + 删 legacy）就绪——清单见 m6-dualrun-report §2.6
 「2b 切换就绪清单」。
 
+## 切换阻塞（2026-06-15 收尾波实测 —— owner 复核项）
+
+D-T8 第三波（真正翻开关）实测**parity 回归，切换暂缓**。过程与根因如下。
+
+**实测**（pobr-build `default = ["parser-engine"]`，orchestrator 经 BuildData 编译
+`CompiledParserRules` 并 `set_parser_rules` 注入、minion 走引擎桥）：
+- `parity_no_regression` 失败：`defensive core-8 @5% 132 → 129`。
+- 逐 build 报告（engine-on vs engine-off diff）：远不止 3 个边界 stat——
+  `druid-oracle-comet` 的 **Armour 1460 → 0**、**PhysDR 13 → 0**、TotalEHP 23312→21176、
+  TotalDPS 63649→57640、TotalDotDPS 182→154；多 build 的 EHP/DPS/DoT 普遍下挫。
+  即引擎接管后**系统性丢词条**，非取整噪声。
+
+**根因（代码级确认）**：`mod_parser/legacy.rs:207-213` 的 `ParseCtx::parse`——
+engine 分支直接 `return parse_mod_engine(text, engine)`，**不回退 legacy 手写专用解析器**。
+引擎只覆盖数据驱动 `forms`/`name_map`/`special` 三表；legacy 经手写 specialized 函数族
+（parse_form / parse_keystone_special / 各专用分支）覆盖更广的词条形态。
+- C1 双跑（parser_dual_run.rs）DIFF=0 / OLD_ONLY=0 **只在 18-build 的 item+passive
+  文本语料上成立**；
+- 但全 calc 路径还 ingest 宝石授予效果 stat、光环/buff 展开、基底隐式等来源，
+  其文本**不在 C1 语料**、也**未被数据表覆盖** → 引擎产 Unsupported 丢弃 → parity 崩。
+- `corpus_unsupported_report`（仅跑 legacy/special 通道）engine-on/off 字节相同，
+  佐证回归来自引擎 ingest 路径而非 legacy 度量。
+
+**结论**：「C1 DIFF=0 ⇒ 切换 parity 中性」的前提**在全 ingest 路径上不成立**。
+当前接线已落地、`parser-engine` 默认关、行为中性（master `parity_no_regression` 绿）。
+
+**翻开关前必办（下一波）**：
+1. **扩双跑语料到全 ingest 集**：把 engine-vs-legacy 逐文本对照从 item+passive
+   扩到宝石/buff/基底隐式等**全部 ingest 来源**（即 orchestrator 实际喂给
+   `parse_ctx` 的全集），重新统计真实 OLD_ONLY（legacy 解析、引擎丢弃）缺口。
+2. **把 OLD_ONLY 驱到 0**：对缺口词条形态扩 `forms`/`name_map` 数据表（extract-lua
+   重抽 + 工具再生 mod_parser_rules.json，禁手改），逐条让引擎产出 == legacy。
+3. 全 ingest DIFF=0 / OLD_ONLY=0 达成后，才单 commit 翻 `default = ["parser-engine"]`
+   + 跑 `parity_no_regression`（应零回归）。**若仍动 parity 报 owner，禁自行 bump baseline。**
+4. （可选）A2 删 legacy 须在引擎全覆盖证实后；在此之前 legacy 是 feature-off 回退路径，
+   不可删。
+
 ## 不阻塞项（切换决策之外可并行推进）
 - special 长尾批次（F，overlay/special_mods.json 扩批，独立）。
 - version-bump-drill.sh 扩展第 4 步 precompile 实跑（F，不依赖切换）。

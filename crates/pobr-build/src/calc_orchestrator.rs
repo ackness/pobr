@@ -462,6 +462,15 @@ pub fn calculate_with_data(
     if let Some(special_rules) = &data.special_rules {
         session.set_special_rules(special_rules.clone(), Some(data.special_registry.clone()));
     }
+    // M6 D-T8 A2 切换：数据驱动 ModParser 引擎规则注入（parser-engine feature）。
+    // 须在下方 add_item/add_passive_nodes/add_gem 之前——注入后 `parse_ctx` 优先走
+    // 数据驱动 scan 引擎（终局路径），优先于 legacy special。缺 parser_rules
+    // （旧数据包）= 不注入（ingest 回退 legacy/special，逐值不变；C1 DIFF=0 gate
+    // 证引擎与 legacy 逐字节等价）。
+    #[cfg(feature = "parser-engine")]
+    if let Some(parser_rules) = &data.parser_rules {
+        session.set_parser_rules(parser_rules.clone());
+    }
     // M3-T2 B3：内建 buff 定义 + handler 注册表注入（env_finalize 阶段 6
     // doActorMisc 等价展开的数据/裁决来源）。整段吃 `cfg.mode_combat` 门控——
     // 默认 false（B4 自动置位是独立行为 commit），故本注入零行为变化。
@@ -1172,14 +1181,27 @@ fn spawn_minions(
     extra_texts: &[String],
 ) {
     use pobr_core::calc::minion::MinionModifierEntry;
-    use pobr_core::mod_parser::parse_minion_modifier;
     use std::collections::BTreeSet;
 
     // B3：收集 `Minions deal/have …` 词条（装备 + extra），包裹为 MinionModifierEntry。
-    // 这些词条在玩家主流程恒走 Unsupported（不影响玩家自身聚合），仅在此进召唤物 ModDb。
+    // 这些词条在玩家主流程不参与玩家自身聚合（legacy 走 Unsupported；引擎产
+    // `MinionModifier` LIST mod，LIST 不参与 sum/more/flag），仅在此进召唤物 ModDb。
+    //
+    // M6 D-T8 A2 切换：注入了 parser 引擎规则时走数据驱动引擎——逐条 `parse_mod_engine`
+    // 后用 `extract_minion_modifier_entries` 从产物里抽 `MinionModifier` 包裹（引擎 ==
+    // legacy 已由 C1 DIFF=0 gate 保证内层 mod 一致）。缺规则（旧数据包 / feature 关）
+    // 回退 legacy `parse_minion_modifier`。
     let mut minion_modifiers: Vec<MinionModifierEntry> = Vec::new();
     for text in collect_item_texts(build).iter().chain(extra_texts.iter()) {
-        if let Some(entries) = parse_minion_modifier(text) {
+        #[cfg(feature = "parser-engine")]
+        if let Some(rules) = data.parser_rules.as_deref() {
+            let outcome = pobr_core::mod_parser::parse_mod_engine(text, rules);
+            minion_modifiers.extend(pobr_core::calc::minion::extract_minion_modifier_entries(
+                &outcome.mods,
+            ));
+            continue;
+        }
+        if let Some(entries) = pobr_core::mod_parser::parse_minion_modifier(text) {
             minion_modifiers.extend(entries);
         }
     }
