@@ -1,0 +1,563 @@
+{
+  "_meta": {
+    "extracted_files": [
+      "Modules/CalcPerform.lua"
+    ],
+    "generator": "manual-curation (00-index 裁决 §4.2-4 批准的 overlay 通道例外)",
+    "regen_command": "人工归纳（doActorMisc :503-765 过程式 if-chain 无法 luajit 序列化）；vendor 升级后跑 `cargo run -p sync-pob-catalog -- check-buff-refs --vendor-root vendor/PathOfBuilding-PoE2/src --defs data/4.5.0.3.4/overlay/buff_definitions.json` 对账，人工复核后 --write 刷新行段 hash",
+    "schema": "buff_definitions/v1",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)"
+  },
+  "buffs": [
+    {
+      "id": "Adrenaline",
+      "trigger_flag": "Adrenaline",
+      "mode_gate": "combat",
+      "effect": {
+        "base": 1.0,
+        "inc_stats": [
+          "BuffEffectOnSelf"
+        ],
+        "rounding": "none"
+      },
+      "mods": [
+        {
+          "name": "Damage",
+          "mod_type": "INC",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 100.0,
+            "rounding": "floor"
+          }
+        },
+        {
+          "name": "Speed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 25.0,
+            "rounding": "floor"
+          },
+          "flags": [
+            "Attack"
+          ]
+        },
+        {
+          "name": "Speed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 25.0,
+            "rounding": "floor"
+          },
+          "flags": [
+            "Cast"
+          ]
+        },
+        {
+          "name": "MovementSpeed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 25.0,
+            "rounding": "floor"
+          }
+        },
+        {
+          "name": "PhysicalDamageReduction",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 10.0,
+            "rounding": "floor"
+          }
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 586,
+        "line_end": 593,
+        "segment_hash": "fnv1a64:e3f46c64c93e2f77"
+      },
+      "notes": "vendor 逐 mod m_floor(coeff × effectMod)，effect 级不取整"
+    },
+    {
+      "id": "ArcaneSurge",
+      "trigger_flag": "Condition:ArcaneSurge",
+      "mode_gate": "combat",
+      "effect": {
+        "base": 1.0,
+        "inc_stats": [
+          "ArcaneSurgeEffect",
+          "BuffEffectOnSelf"
+        ],
+        "rounding": "none"
+      },
+      "mods": [
+        {
+          "name": "Speed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 15.0,
+            "rounding": "none"
+          },
+          "flags": [
+            "Cast"
+          ]
+        },
+        {
+          "name": "ManaRegen",
+          "mod_type": "MORE",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 20.0,
+            "rounding": "none"
+          }
+        }
+      ],
+      "conditions_set": [
+        "AffectedByArcaneSurge"
+      ],
+      "verified": true,
+      "vendor_ref": {
+        "file": "Modules/CalcDefence.lua",
+        "line_start": 1580,
+        "line_end": 1591,
+        "segment_hash": "fnv1a64:144064cc425efef2"
+      },
+      "notes": "基本形（默认 15% Cast Speed / 20% more ManaRegen × effect，effect=1+Σinc/100 不取整，vendor 无 floor）。未覆盖分支：Max(ArcaneSurgeCastSpeed/ManaRegen) 覆写、ArcaneSurgeLifeRegen flag（LifeRegen 改道）、ArcaneSurgeDamage（Spell Damage MORE）——均无树/装备样本，出现时升级 handler。"
+    },
+    {
+      "id": "ChaoticMight",
+      "trigger_flag": "ChaoticMight",
+      "mode_gate": "combat",
+      "effect": {
+        "base": 1.0,
+        "inc_stats": [
+          "BuffEffectOnSelf"
+        ],
+        "rounding": "none"
+      },
+      "mods": [
+        {
+          "name": "PhysicalDamageGainAsChaos",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 30.0,
+            "rounding": "floor"
+          }
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 582,
+        "line_end": 585,
+        "segment_hash": "fnv1a64:dbd8f9c8a44c9452"
+      }
+    },
+    {
+      "id": "Convergence",
+      "trigger_flag": "Convergence",
+      "mode_gate": "combat",
+      "effect": {
+        "base": 30.0,
+        "inc_stats": [
+          "BuffEffectOnSelf"
+        ],
+        "rounding": "floor"
+      },
+      "mods": [
+        {
+          "name": "ElementalDamage",
+          "mod_type": "MORE",
+          "value": {
+            "kind": "per_effect",
+            "coeff": 1.0
+          }
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 594,
+        "line_end": 597,
+        "segment_hash": "fnv1a64:4abf1b725bc2c12b"
+      }
+    },
+    {
+      "id": "Elusive",
+      "trigger_flag": "Elusive",
+      "mode_gate": "combat",
+      "handler_id": "buff:elusive",
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 612,
+        "line_end": 631,
+        "segment_hash": "fnv1a64:36b76d63b4ee74c6"
+      },
+      "notes": "真逻辑：Max({source=Skill}) 查询 + Override 上限 + Nightblade 交互 + 输出字段 ElusiveEffectMod"
+    },
+    {
+      "id": "Fanaticism",
+      "trigger_flag": "Fanaticism",
+      "mode_gate": "combat",
+      "handler_id": "buff:fanaticism",
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 571,
+        "line_end": 576,
+        "segment_hash": "fnv1a64:7d71030ed94f4da6"
+      },
+      "notes": "真逻辑：selfCast 门控需 mainSkill.activeEffect.srcInstance 状态；公式 = floor(75×(1+BuffEffectOnSelf/100)) → Speed MORE / Cost INC -e / AoE INC（全 Cast flag）"
+    },
+    {
+      "id": "Fortify",
+      "trigger_flag": "Fortified",
+      "mode_gate": "combat",
+      "handler_id": "buff:fortify",
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 524,
+        "line_end": 538,
+        "segment_hash": "fnv1a64:9e63cf1ecf4d6c25"
+      },
+      "notes": "真逻辑：stacks 模型（Maximum/Minimum/Override Fortification + alliedFortify）→ DamageTakenWhenHit MORE -floor((1+BuffEffectOnSelf/100)×stacks)；触发还含 Multiplier:Fortification > 0 分支"
+    },
+    {
+      "id": "Freeze",
+      "trigger_flag": "Freeze",
+      "mode_gate": "combat",
+      "effect": {
+        "base": 70.0,
+        "inc_stats": [
+          "SelfChillEffect"
+        ],
+        "more_stats": [
+          "SelfChillEffect"
+        ],
+        "rounding": "floor",
+        "min": 0.0
+      },
+      "mods": [
+        {
+          "name": "ActionSpeed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "per_effect",
+            "coeff": -1.0
+          }
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 684,
+        "line_end": 687,
+        "segment_hash": "fnv1a64:b64bb12d1a1a4549"
+      },
+      "notes": "calcLib.mod = (1+ΣINC/100)×ΠMORE；vendor m_max(m_floor(70×mod),0)——floor 在 clamp 前，与 effect 公式序一致"
+    },
+    {
+      "id": "HerEmbrace",
+      "trigger_flag": "HerEmbrace",
+      "mode_gate": "combat",
+      "mods": [
+        {
+          "name": "AvoidStun",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "literal",
+            "value": 100.0
+          }
+        },
+        {
+          "name": "PhysicalDamageGainAsFire",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "literal",
+            "value": 123.0
+          },
+          "flags": [
+            "Sword"
+          ]
+        },
+        {
+          "name": "AvoidFreeze",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "literal",
+            "value": 100.0
+          }
+        },
+        {
+          "name": "AvoidChill",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "literal",
+            "value": 100.0
+          }
+        },
+        {
+          "name": "AvoidIgnite",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "literal",
+            "value": 100.0
+          }
+        },
+        {
+          "name": "Speed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "literal",
+            "value": 20.0
+          },
+          "flags": [
+            "Attack"
+          ]
+        },
+        {
+          "name": "Speed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "literal",
+            "value": 20.0
+          },
+          "flags": [
+            "Cast"
+          ]
+        },
+        {
+          "name": "MovementSpeed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "literal",
+            "value": 20.0
+          }
+        }
+      ],
+      "conditions_set": [
+        "HerEmbrace"
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 598,
+        "line_end": 608,
+        "segment_hash": "fnv1a64:7ccc1cb631cff09f"
+      },
+      "notes": "全字面量（不吃 BuffEffectOnSelf 缩放）"
+    },
+    {
+      "id": "MaddeningPresence",
+      "trigger_flag": "HasMaddeningPresence",
+      "mode_gate": "combat",
+      "mods": [
+        {
+          "name": "ActionSpeed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "literal",
+            "value": -10.0
+          }
+        },
+        {
+          "name": "Damage",
+          "mod_type": "INC",
+          "value": {
+            "kind": "literal",
+            "value": -10.0
+          }
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 748,
+        "line_end": 751,
+        "segment_hash": "fnv1a64:679897be912337f4"
+      }
+    },
+    {
+      "id": "Malediction",
+      "trigger_flag": "HasMalediction",
+      "mode_gate": "combat",
+      "mods": [
+        {
+          "name": "DamageTaken",
+          "mod_type": "INC",
+          "value": {
+            "kind": "literal",
+            "value": 10.0
+          }
+        },
+        {
+          "name": "Damage",
+          "mod_type": "INC",
+          "value": {
+            "kind": "literal",
+            "value": -10.0
+          }
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 744,
+        "line_end": 747,
+        "segment_hash": "fnv1a64:56f9043453784061"
+      }
+    },
+    {
+      "id": "Onslaught",
+      "trigger_flag": "Onslaught",
+      "mode_gate": "combat",
+      "effect": {
+        "base": 10.0,
+        "inc_stats": [
+          "OnslaughtEffect",
+          "BuffEffectOnSelf"
+        ],
+        "rounding": "floor"
+      },
+      "mods": [
+        {
+          "name": "Speed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "per_effect",
+            "coeff": 2.0
+          },
+          "flags": [
+            "Attack"
+          ]
+        },
+        {
+          "name": "Speed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "per_effect",
+            "coeff": 2.0
+          },
+          "flags": [
+            "Cast"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "per_effect",
+            "coeff": 2.0
+          }
+        },
+        {
+          "name": "MovementSpeed",
+          "mod_type": "INC",
+          "value": {
+            "kind": "per_effect",
+            "coeff": 1.0
+          }
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 539,
+        "line_end": 570,
+        "segment_hash": "fnv1a64:e6f99ba533f1ffe3"
+      },
+      "notes": "基本形（不含 Silver Flask 分支——见 OnslaughtFlask handler 条目）；effect = floor(10×(1+Σinc/100))"
+    },
+    {
+      "id": "OnslaughtFlask",
+      "trigger_flag": "Onslaught",
+      "mode_gate": "combat",
+      "handler_id": "buff:onslaught_flask",
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 539,
+        "line_end": 570,
+        "segment_hash": "fnv1a64:e6f99ba533f1ffe3"
+      },
+      "notes": "真逻辑：Silver Flask 来源时 effect 计入 flaskData.effectInc + FlaskEffect/MagicUtilityFlaskEffect INC（依赖 M3-T4 flask merge，M3 末接通）"
+    },
+    {
+      "id": "ShapersPresence",
+      "trigger_flag": "HasShapersPresence",
+      "mode_gate": "combat",
+      "mods": [
+        {
+          "name": "BuffExpireFaster",
+          "mod_type": "MORE",
+          "value": {
+            "kind": "literal",
+            "value": -20.0
+          }
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 752,
+        "line_end": 754,
+        "segment_hash": "fnv1a64:7b53c45448fcec95"
+      }
+    },
+    {
+      "id": "UnholyMight",
+      "trigger_flag": "UnholyMight",
+      "mode_gate": "combat",
+      "effect": {
+        "base": 1.0,
+        "inc_stats": [
+          "BuffEffectOnSelf"
+        ],
+        "rounding": "none"
+      },
+      "mods": [
+        {
+          "name": "Multiplier:UnholyMightMagnitude",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "literal",
+            "value": 100.0
+          }
+        },
+        {
+          "name": "DamageGainAsChaos",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "scaled_rounded",
+            "coeff": 0.3,
+            "rounding": "none"
+          },
+          "tags": [
+            {
+              "type": "multiplier",
+              "var": "UnholyMightMagnitude"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "vendor_ref": {
+        "file": "Modules/CalcPerform.lua",
+        "line_start": 577,
+        "line_end": 581,
+        "segment_hash": "fnv1a64:6ffdd69243656a03"
+      },
+      "notes": "vendor 注释：Magnitude 经 Multiplier 实现（perStat 数据该阶段不可用）；DamageGainAsChaos = 0.3×(1+BuffEffectOnSelf/100) per Multiplier"
+    }
+  ]
+}

@@ -1,0 +1,1456 @@
+{
+  "_meta": {
+    "schema": "special_mods/v1",
+    "generator": "hand-curated（S0 = parse_keystone_special 搬迁；S1/S2 = vendor specialModList 探针求值转写，详见各 source_note）",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
+    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)",
+    "extracted_files": [
+      "Modules/ModParser.lua"
+    ],
+    "regen_command": "（手工策展域：本字段记录对账命令而非再生命令）sync-pob-catalog check --special-coverage（M5b A-3 落地后启用）"
+  },
+  "entries": [
+    {
+      "id": "all_damage_is_taken_from_mana_before_life",
+      "pattern": "all damage is taken from mana before life",
+      "vendor_pattern": "all damage is taken from mana before life",
+      "mods": [
+        {
+          "name": "DamageTakenFromManaBeforeLife",
+          "type": "BASE",
+          "value": 100
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2389（探针求值自动转写；样本：All Damage is taken from Mana before Life）"
+    },
+    {
+      "id": "allocates_passive",
+      "pattern": "allocates (.+)",
+      "vendor_pattern": "allocates (.+)",
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5809（油涂/anoint 附魔 → GrantedPassive LIST 名；pobr 准源 legacy.rs:1067。开放捕获 (.+) 走模板直引——条件形『if you have the matching modifier on forbidden Y』未建模，本表保守不排除，corpus 无该形）",
+      "handler_id": "special:granted_passive",
+      "handler_args": [
+        "$1"
+      ]
+    },
+    {
+      "id": "base_critical_hit_chance_for_spells_is",
+      "pattern": "base critical hit chance for spells is (\\d+)%",
+      "vendor_pattern": "base critical hit chance for spells is (%d+)%%",
+      "mods": [
+        {
+          "name": "CritChanceBase",
+          "type": "OVERRIDE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Spell"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5801（探针求值自动转写；样本：Base Critical Hit Chance for Spells is 15%）"
+    },
+    {
+      "id": "bow_attacks_fire_an_additional_arrow",
+      "pattern": "bow attacks fire an additional arrow",
+      "vendor_pattern": "bow attacks fire an additional arrow",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "BASE",
+          "value": 1,
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4795（探针求值自动转写；样本：Bow Attacks fire an additional Arrow）"
+    },
+    {
+      "id": "break_increased_armour",
+      "pattern": "break (\\d+)% increased armour",
+      "vendor_pattern": "break (%d+)%% increased armour",
+      "mods": [
+        {
+          "name": "ArmourBreakPerHit",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4258（探针求值自动转写；样本：Break 10% increased Armour）"
+    },
+    {
+      "id": "buffs_on_you_expire_slower",
+      "pattern": "buffs on you expire (\\d+)% slower",
+      "vendor_pattern": "buffs on you expire (%d+)%% slower",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Buff"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4532（探针求值自动转写；样本：Buffs on you expire 10% slower）"
+    },
+    {
+      "id": "cannot_be_blinded_while_on_full_life",
+      "pattern": "cannot be blinded while on full life",
+      "vendor_pattern": "cannot be blinded while on full life",
+      "mods": [
+        {
+          "name": "Condition:CannotBeBlinded",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "FullLife"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5123（探针求值自动转写；样本：Cannot be Blinded while on Full Life）"
+    },
+    {
+      "id": "cannot_be_heavy_stunned_while_sprinting",
+      "pattern": "cannot be heavy stunned while sprinting",
+      "vendor_pattern": "cannot be heavy stunned while sprinting",
+      "mods": [
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Sprinting"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3205（探针求值自动转写；样本：Cannot be Heavy Stunned while Sprinting）"
+    },
+    {
+      "id": "cannot_be_ignited",
+      "pattern": "cannot be ignited",
+      "vendor_pattern": "cannot be ignited",
+      "mods": [
+        {
+          "name": "IgniteImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5131（探针求值自动转写；样本：Cannot be Ignited）"
+    },
+    {
+      "id": "cannot_immobilise_enemies",
+      "pattern": "cannot immobilise enemies",
+      "vendor_pattern": "cannot immobilise enemies",
+      "mods": [
+        {
+          "name": "CannotElectrocute",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "CannotFreeze",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "CannotHeavyStun",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "CannotPin",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5735（探针求值自动转写；样本：Cannot Immobilise enemies）"
+    },
+    {
+      "id": "cannot_regenerate_mana_if_you_haven_t_dealt_a_critical_hit_recently",
+      "pattern": "cannot regenerate mana if you haven't dealt a critical hit recently",
+      "vendor_pattern": "cannot regenerate mana if you haven't dealt a critical hit recently",
+      "mods": [
+        {
+          "name": "NoManaRegen",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "CritRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5028（探针求值自动转写；样本：Cannot Regenerate Mana if you haven't dealt a Critical Hit Recently）"
+    },
+    {
+      "id": "chance_for_damage_with_hits_to_be_lucky",
+      "pattern": "(\\d+)% chance for () ?damage with hits to be lucky",
+      "vendor_pattern": "(%d+)%% chance for (%w*) ?damage with hits to be lucky",
+      "mods": [
+        {
+          "name": "LuckyHitsChance",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4255（探针求值自动转写；样本：20% chance for Damage with Hits to be Lucky）"
+    },
+    {
+      "id": "charm_slots_colon",
+      "pattern": "charm slots: (\\d+)",
+      "vendor_pattern": "h?a?s? ?+?(%d+) charm slots?",
+      "mods": [
+        {
+          "name": "CharmLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:5453（CharmLimit；冒号格式 'Charm Slots: N'，与 has_charm_slots 互补，命中 18 build 首位缺口）"
+    },
+    {
+      "id": "ci_maximum_life_is_1",
+      "pattern": "maximum life is 1",
+      "mods": [
+        {
+          "name": "MaximumLife",
+          "type": "OVERRIDE",
+          "value": 1.0
+        },
+        {
+          "name": "ChaosInoculation",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "Chaos Inoculation（PoE2 树文本）；pobr 准源 mod_parser.rs:524-528；vendor 近似 key = 'maximum life becomes 1, immune to chaos damage'（:2354，另含 ChaosDamageTaken MORE -100——pobr 暂未消费，B-3 升级时对齐）"
+    },
+    {
+      "id": "convert_pct_max_es_to_mana",
+      "pattern": "convert (\\d+(?:\\.\\d+)?)% of maximum energy shield to maximum mana",
+      "vendor_pattern": "convert (%d+)%% of maximum energy shield to maximum mana",
+      "mods": [
+        {
+          "name": "EnergyShieldConvertToMana",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "pobr 准源 mod_parser.rs:508-522；vendor ModParser.lua:2396 同形"
+    },
+    {
+      "id": "converts_all_energy_shield_to_mana",
+      "pattern": "converts all energy shield to mana",
+      "vendor_pattern": "converts all energy shield to mana",
+      "mods": [
+        {
+          "name": "EnergyShieldConvertToMana",
+          "type": "BASE",
+          "value": 100.0
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "Eldritch Battery 型；pobr 准源 mod_parser.rs:533-538；vendor ModParser.lua:2395"
+    },
+    {
+      "id": "critical_hits_ignore_non_negative_enemy_monster_elemental_resistances",
+      "pattern": "critical hits ignore non-negative enemy monster elemental resistances",
+      "vendor_pattern": "critical hits ignore non%-negative enemy monster elemental resistances",
+      "mods": [
+        {
+          "name": "IgnoreNonNegativeEleRes",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CriticalStrike"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3372（探针求值自动转写；样本：Critical Hits ignore non-negative Enemy Monster Elemental Resistances）"
+    },
+    {
+      "id": "cursed_enemies_killed_by_you_or_by_allies_in_your_presence_have_a_chan",
+      "pattern": "cursed enemies killed by you, or by allies in your presence, have a (\\d+)% chance to explode, dealing a (quarter) of their maximum life as (chaos) damage",
+      "vendor_pattern": "cursed enemies killed by you, or by allies in your presence, have a (%d+)%% chance to explode, dealing a (.+) of their maximum life as (.+) damage",
+      "mods": [
+        {
+          "name": "ExplodeMod",
+          "type": "LIST",
+          "value": {
+            "amount": 25,
+            "keyOfScaledMod": "value",
+            "type": "Chaos",
+            "value": "$1"
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Cursed"
+            }
+          ]
+        },
+        {
+          "name": "CanExplode",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2260（探针求值自动转写；样本：Cursed Enemies killed by you, or by Allies in your Presence, have a 33% chance to explode, dealing a quarter of their maximum Life as Chaos damage）"
+    },
+    {
+      "id": "curses_you_inflict_ignore_curse_limit",
+      "pattern": "curses you inflict ignore curse limit",
+      "vendor_pattern": "curses you inflict ignore curse limit",
+      "mods": [
+        {
+          "name": "EnemyCurseLimit",
+          "type": "BASE",
+          "value": 99
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4275（探针求值自动转写；样本：Curses you inflict ignore Curse limit）"
+    },
+    {
+      "id": "defend_with_pct_of_armour",
+      "pattern": "defend with (\\d+(?:\\.\\d+)?)% of armour(?: during effect)?",
+      "vendor_pattern": "defend with (%d+)%% of armour",
+      "mods": [
+        {
+          "name": "ArmourDefense",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "base": -100.0
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2616/:2619（Defend with N% of Armour [during effect] → ArmourDefense BASE N-100；pobr 准源 legacy.rs:1715。during effect 变体同无条件，消费侧 max_of）"
+    },
+    {
+      "id": "double_activation_delay_of_curses",
+      "pattern": "double activation delay of curses",
+      "vendor_pattern": "double activation delay of curses",
+      "mods": [
+        {
+          "name": "CurseDelay",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4278（探针求值自动转写；样本：Double Activation Delay of Curses）"
+    },
+    {
+      "id": "empowered_attacks_deal_increased_damage",
+      "pattern": "empowered attacks deal (\\d+)% increased damage",
+      "vendor_pattern": "empowered attacks deal (%d+)%% increased damage",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Empowered"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2647（Empowered Attacks deal N% increased Damage；vendor 产 EmpoweredIncrease INC，pobr legacy.rs:367 产 Damage INC flags=Attack + Condition:Empowered——双跑收敛以 legacy 为基准。Empowered 默认不激活）"
+    },
+    {
+      "id": "enemies_you_kill_with_empowered_attacks_have_a_chance_to_explode_deali",
+      "pattern": "enemies you kill with empowered attacks have a (\\d+)% chance to explode, dealing a (tenth) of their maximum life as (fire) damage",
+      "vendor_pattern": "enemies you kill with empowered attacks have a (%d+)%% chance to explode, dealing a (.+) of their maximum life as (.+) damage",
+      "mods": [
+        {
+          "name": "ExplodeMod",
+          "type": "LIST",
+          "value": {
+            "amount": 10,
+            "keyOfScaledMod": "value",
+            "type": "Fire",
+            "value": "$1"
+          }
+        },
+        {
+          "name": "CanExplode",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2242（探针求值自动转写；样本：Enemies you kill with Empowered Attacks have a 10% chance to Explode, dealing a tenth of their maximum Life as Fire Damage）"
+    },
+    {
+      "id": "enemy_critical_hit_chance_against_you_is_unlucky",
+      "pattern": "enemy critical hit chance against you is unlucky",
+      "vendor_pattern": "enemy critical hit chance against you is unlucky",
+      "mods": [
+        {
+          "name": "EnemyUnluckyCrit",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3740（探针求值自动转写；样本：Enemy Critical Hit Chance against you is Unlucky）"
+    },
+    {
+      "id": "energy_shield_does_not_recharge",
+      "pattern": "energy shield does not recharge",
+      "vendor_pattern": "energy shield does not recharge",
+      "mods": [
+        {
+          "name": "NoEnergyShieldRecharge",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5030（探针求值自动转写；样本：Energy Shield does not Recharge）"
+    },
+    {
+      "id": "equipment_and_skill_gems_have_reduced_attribute_requirements",
+      "pattern": "equipment and skill gems have (\\d+)% reduced attribute requirements",
+      "vendor_pattern": "equipment and skill gems have (%d+)%% reduced attribute requirements",
+      "mods": [
+        {
+          "name": "GlobalAttributeRequirements",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5610（探针求值自动转写；样本：Equipment and Skill Gems have 4% reduced Attribute Requirements）"
+    },
+    {
+      "id": "exposure_you_inflict_lowers_resistances_by_an_additional",
+      "pattern": "exposure you inflict lowers resistances by an additional (5)%",
+      "vendor_pattern": "exposure you inflict lowers resistances by an additional (%-?%d+)%%",
+      "mods": [
+        {
+          "name": "ExtraExposure",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2917（探针求值自动转写；样本：Exposure you inflict lowers Resistances by an additional 5%）"
+    },
+    {
+      "id": "flasks_gain_charges_per_second",
+      "pattern": "flasks gain (0\\.17) charges? per second",
+      "vendor_pattern": "flasks gain (%d*%.?%d+) charges? per second",
+      "mods": [
+        {
+          "name": "FlaskChargesGenerated",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5441（探针求值自动转写；样本：Flasks gain 0.17 charges per Second）"
+    },
+    {
+      "id": "gain_deflection_rating_equal_to_of_armour",
+      "pattern": "gain deflection rating equal to (\\d+)% of armour",
+      "vendor_pattern": "gain deflection rating equal to (%d+)%% of armour",
+      "mods": [
+        {
+          "name": "ArmourGainAsDeflection",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4159（探针求值自动转写；样本：Gain Deflection Rating equal to 20% of Armour）"
+    },
+    {
+      "id": "gain_deflection_rating_equal_to_of_evasion_rating",
+      "pattern": "gain deflection rating equal to (\\d+)% of evasion rating",
+      "vendor_pattern": "gain deflection rating equal to (%d+)%% of evasion rating",
+      "mods": [
+        {
+          "name": "EvasionGainAsDeflection",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:4158（探针求值自动转写；样本：Gain Deflection Rating equal to 21% of Evasion Rating）"
+    },
+    {
+      "id": "gain_mana_per_enemy_killed",
+      "pattern": "gain (\\d+) mana per enemy killed",
+      "vendor_pattern": "(%d+) mana per enemy killed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:543（mana per enemy killed→ManaOnKill BASE）"
+    },
+    {
+      "id": "gain_pct_damage_as_extra_all_elements",
+      "pattern": "gain (\\d+(?:\\.\\d+)?)% of damage as extra damage of all elements",
+      "vendor_pattern": "gain (%d+)%% of damage as extra damage of all elements",
+      "mods": [
+        {
+          "name": "DamageGainAsFire",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "DamageGainAsCold",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "DamageGainAsLightning",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2244 等（Gain N% of Damage as Extra Damage of all Elements → DamageGainAs{Fire,Cold,Lightning} BASE N，三系展开；pobr 准源 legacy gain-as 通道）"
+    },
+    {
+      "id": "gain_rage_on_melee_hit",
+      "pattern": "gain \\d+ rage on melee hit",
+      "vendor_pattern": "gain %d+ rage on melee hit",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:2761（探针求值自动转写；样本：Gain 1 Rage on Melee Hit）"
+    },
+    {
+      "id": "grants_passive_skill_point",
+      "pattern": "grants (\\d+) passive skill points?",
+      "vendor_pattern": "grants (%d+) passive skill points?",
+      "mods": [
+        {
+          "name": "ExtraPoints",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:2727（探针求值自动转写；样本：Grants 1 Passive Skill Point）"
+    },
+    {
+      "id": "grenade_skills_fire_an_additional_projectile",
+      "pattern": "grenade skills fire an additional projectile",
+      "vendor_pattern": "grenade skills fire an additional projectile",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "BASE",
+          "value": 1,
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Grenade"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:4803（探针求值自动转写；样本：Grenade Skills Fire an additional Projectile）"
+    },
+    {
+      "id": "grenades_have_chance_to_activate_a_second_time",
+      "pattern": "grenades have (\\d+)% chance to activate a second time",
+      "vendor_pattern": "grenades have (%d+)%% chance to activate a second time",
+      "mods": [
+        {
+          "name": "GrenadeActivateTwice",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SkillType:Grenade"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4804（探针求值自动转写；样本：Grenades have 15% chance to activate a second time）"
+    },
+    {
+      "id": "has_charm_slots",
+      "pattern": "h?a?s? ?\\+?(\\d+) charm slots?",
+      "vendor_pattern": "h?a?s? ?+?(%d+) charm slots?",
+      "mods": [
+        {
+          "name": "CharmLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:5453（探针求值自动转写；样本：Has 3 Charm Slots）"
+    },
+    {
+      "id": "has_no_attribute_requirements",
+      "pattern": "has no attribute requirements",
+      "vendor_pattern": "has no attribute requirements",
+      "mods": [
+        {
+          "name": "NoAttributeRequirements",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3464（探针求值自动转写；样本：Has no Attribute Requirements）"
+    },
+    {
+      "id": "has_to_defence_per_player_level",
+      "pattern": "has \\+(\\d+) to (armour|evasion|evasion rating|energy shield|maximum energy shield) per player level",
+      "vendor_pattern": "has %+(%d+) to (.+) per player level",
+      "mods": [
+        {
+          "name": {
+            "enum": 2
+          },
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "enums": {
+        "2": {
+          "armour": "ArmourPerLevel",
+          "evasion": "EvasionPerLevel",
+          "evasion rating": "EvasionPerLevel",
+          "energy shield": "EnergyShieldPerLevel",
+          "maximum energy shield": "EnergyShieldPerLevel"
+        }
+      },
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3400-3402（Has +N to <Defence> per player level → <Defence>PerLevel BASE，件级局部底值；pobr 准源 legacy.rs:640）"
+    },
+    {
+      "id": "has_to_maximum_runic_ward_per_player_level",
+      "pattern": "has ([+-]\\d+) to maximum runic ward per player level",
+      "vendor_pattern": "has ([%+%-]%d+) to maximum runic ward per player level",
+      "mods": [
+        {
+          "name": "WardPerLevel",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3402（探针求值自动转写；样本：Has +1 to maximum Runic Ward per player level）"
+    },
+    {
+      "id": "hits_have_reduced_critical_hit_chance_against_you",
+      "pattern": "hits have (\\d+)% reduced critical hit chance against you",
+      "vendor_pattern": "hits have (%d+)%% reduced critical hit chance against you",
+      "mods": [
+        {
+          "name": "EnemyCritChance",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3771（探针求值自动转写；样本：Hits have 25% reduced Critical Hit Chance against you）"
+    },
+    {
+      "id": "hits_ignore_non_negative_elemental_resistances_of_frozen_enemies",
+      "pattern": "hits ignore non-negative elemental resistances of frozen enemies",
+      "vendor_pattern": "hits ignore non%-negative elemental resistances of frozen enemies",
+      "mods": [
+        {
+          "name": "IgnoreNonNegativeEleRes",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Frozen"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5994（探针求值自动转写；样本：Hits ignore non-negative Elemental Resistances of Frozen Enemies）"
+    },
+    {
+      "id": "ignore_all_movement_penalties_from_armour",
+      "pattern": "ignore all movement penalties from armour",
+      "vendor_pattern": "ignore all movement penalties from armour",
+      "mods": [
+        {
+          "name": "Condition:IgnoreMovementPenalties",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5112（探针求值自动转写；样本：Ignore all Movement Penalties from Armour）"
+    },
+    {
+      "id": "immune_to_chaos_damage",
+      "pattern": "immune to chaos damage",
+      "vendor_pattern": "immune to chaos damage",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "纯识别条目（pobr 现状 = Unsupported 不产 mod，mod_parser.rs:539-548）；vendor :2358 产 ChaosInoculation flag + ChaosDamageTaken MORE -100——B-3 行为升级时改 mods 并对拍"
+    },
+    {
+      "id": "immune_to_chaos_damage_and_bleeding",
+      "pattern": "immune to chaos damage and bleeding",
+      "vendor_pattern": "immune to chaos damage and bleeding",
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "纯识别条目（pobr 现状 = Unsupported，mod_parser.rs:539-548）；vendor :2362 另含 BleedImmune flag"
+    },
+    {
+      "id": "immune_to_poison",
+      "pattern": "immun[ei]t?y? to poison",
+      "vendor_pattern": "immun[ei]t?y? to poison",
+      "mods": [
+        {
+          "name": "PoisonImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5162（探针求值自动转写；样本：Immune to Poison）"
+    },
+    {
+      "id": "increased_bonuses_gained_from_equipped_quiver",
+      "pattern": "(\\d+)% increased bonuses gained from equipped quiver",
+      "vendor_pattern": "(%d+)%% increased bonuses gained from equipped quiver",
+      "mods": [
+        {
+          "name": "EffectOfBonusesFromQuiver",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4866（探针求值自动转写；样本：6% increased bonuses gained from Equipped Quiver）"
+    },
+    {
+      "id": "increased_bonuses_gained_from_equipped_rings_and_amulets",
+      "pattern": "(\\d+)% increased bonuses gained from equipped rings and amulets",
+      "vendor_pattern": "(%d+)%% increased bonuses gained from equipped rings and amulets",
+      "mods": [
+        {
+          "name": "EffectOfBonusesFromRing 1",
+          "type": "INC",
+          "value": "$1"
+        },
+        {
+          "name": "EffectOfBonusesFromRing 2",
+          "type": "INC",
+          "value": "$1"
+        },
+        {
+          "name": "EffectOfBonusesFromRing 3",
+          "type": "INC",
+          "value": "$1"
+        },
+        {
+          "name": "EffectOfBonusesFromAmulet",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4873（探针求值自动转写；样本：25% increased bonuses gained from Equipped Rings and Amulets）"
+    },
+    {
+      "id": "increased_damage_for_each_type_of_elemental_ailment_on_enemy",
+      "pattern": "(\\d+)% increased damage for each type of elemental ailment on enemy",
+      "vendor_pattern": "(%d+)%% increased damage for each type of elemental ailment on enemy",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Electrocuted"
+            }
+          ]
+        },
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Frozen"
+            }
+          ]
+        },
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Chilled"
+            }
+          ]
+        },
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Ignited"
+            }
+          ]
+        },
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Shocked"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:3798（探针求值自动转写；样本：21% increased Damage for each type of Elemental Ailment on Enemy）"
+    },
+    {
+      "id": "increased_effect_of_small_passive_skills",
+      "pattern": "(\\d+)% increased effect of small passive skills",
+      "vendor_pattern": "(%d+)%% increased effect of small passive skills",
+      "mods": [
+        {
+          "name": "SmallPassiveSkillEffect",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3281（探针求值自动转写；样本：50% increased effect of Small Passive Skills）"
+    },
+    {
+      "id": "increased_energy_shield_recharge_rate",
+      "pattern": "(\\d+)% increased energy shield recharge rate",
+      "vendor_pattern": "(%d+)%% increased energy shield recharge rate",
+      "mods": [
+        {
+          "name": "EnergyShieldRecharge",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:234（energy shield recharge rate→EnergyShieldRecharge；form parser modNameList 未含，M6 名表缺口）"
+    },
+    {
+      "id": "increased_skill_effect_duration",
+      "pattern": "(\\d+)% increased skill effect duration",
+      "vendor_pattern": "(%d+)%% increased skill effect duration",
+      "mods": [
+        {
+          "name": "Duration",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:651（skill effect duration→Duration；form parser modNameList 未含，M6 名表缺口）"
+    },
+    {
+      "id": "increased_total_power_counted_by_warcries",
+      "pattern": "(\\d+)% increased total power counted by warcries",
+      "vendor_pattern": "(%d+)%% increased total power counted by warcries",
+      "mods": [
+        {
+          "name": "WarcryPower",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5774（探针求值自动转写；样本：5% increased total Power counted by Warcries）"
+    },
+    {
+      "id": "increases_and_reductions_to_projectile_speed_also_apply_to_damage_with",
+      "pattern": "increases and reductions to projectile speed also apply to damage with bows",
+      "vendor_pattern": "increases and reductions to projectile speed also apply to damage with bows",
+      "mods": [
+        {
+          "name": "ProjectileSpeedAppliesToBowDamage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3648（探针求值自动转写；样本：Increases and Reductions to Projectile Speed also apply to Damage with Bows）"
+    },
+    {
+      "id": "inevitable_critical_hits",
+      "pattern": "inevitable critical hits",
+      "vendor_pattern": "inevitable critical hits",
+      "mods": [
+        {
+          "name": "InevitableCriticalHits",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3393（探针求值自动转写；样本：Inevitable Critical Hits）"
+    },
+    {
+      "id": "inherent_life_granted_by_strength_is_halved",
+      "pattern": "inherent life granted by strength is halved",
+      "vendor_pattern": "inherent life granted by strength is halved",
+      "mods": [
+        {
+          "name": "HalvesLifeFromStrength",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2329（探针求值自动转写；样本：Inherent Life granted by Strength is halved）"
+    },
+    {
+      "id": "leech_of_physical_attack_damage_as_life",
+      "pattern": "leeche?s? (\\d+(?:\\.\\d+)?)% of (physical) attack damage as life",
+      "vendor_pattern": "leeche?s? ([%d%.]+)%% of (%a+) attack damage as life",
+      "mods": [
+        {
+          "name": "PhysicalDamageLifeLeech",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:2671（探针求值自动转写；样本：Leech 7.88% of Physical Attack Damage as Life）"
+    },
+    {
+      "id": "leech_of_physical_attack_damage_as_mana",
+      "pattern": "leeche?s? (\\d+(?:\\.\\d+)?)% of (physical) attack damage as mana",
+      "vendor_pattern": "leeche?s? ([%d%.]+)%% of (%a+) attack damage as mana",
+      "mods": [
+        {
+          "name": "PhysicalDamageManaLeech",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:2668（探针求值自动转写；样本：Leech 8.74% of Physical Attack Damage as Mana）"
+    },
+    {
+      "id": "less_movement_speed_penalty_from_using_skills_while_moving",
+      "pattern": "(\\d+)% less movement speed penalty from using skills while moving",
+      "vendor_pattern": "(%d+)%% less movement speed penalty from using skills while moving",
+      "mods": [
+        {
+          "name": "MovementSpeedPenalty",
+          "type": "MORE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:6018（探针求值自动转写；样本：30% less Movement Speed Penalty from using Skills while moving）"
+    },
+    {
+      "id": "life_leech_recovers_based_on_your_lightning_damage_as_well_as_physical",
+      "pattern": "(life) leech recovers based on y?o?u?r? ?(lightning) damage as well as physical damage",
+      "vendor_pattern": "(%a+%s?%a*) leech recovers based on y?o?u?r? ?(%a+) damage as well as physical damage",
+      "mods": [
+        {
+          "name": "LifeLeechBasedOnLightningDamage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:2677（探针求值自动转写；样本：Life Leech recovers based on your Lightning damage as well as Physical damage）"
+    },
+    {
+      "id": "life_regeneration_per_second",
+      "pattern": "(\\d+(?:\\.\\d+)?) life regeneration per second",
+      "vendor_pattern": "(%d+%.?%d*) life regeneration per second",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:175（life regeneration→LifeRegen BASE 平直每秒回复）"
+    },
+    {
+      "id": "magnitudes_of_curses_you_inflict_are_zero",
+      "pattern": "magnitudes of curses you inflict are zero",
+      "vendor_pattern": "magnitudes of curses you inflict are zero",
+      "mods": [
+        {
+          "name": "CurseEffect",
+          "type": "MORE",
+          "value": -100
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:4276（探针求值自动转写；样本：Magnitudes of Curses you inflict are zero）"
+    },
+    {
+      "id": "mana_costs_are_doubled",
+      "pattern": "d?o?u?b?l?e?s? ?mana costs ?a?r?e? ?d?o?u?b?l?e?d?",
+      "vendor_pattern": "d?o?u?b?l?e?s? ?mana costs ?a?r?e? ?d?o?u?b?l?e?d?",
+      "mods": [
+        {
+          "name": "ManaCost",
+          "type": "MORE",
+          "value": 100
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:2393（探针求值自动转写；样本：Mana Costs are Doubled）"
+    },
+    {
+      "id": "no_inherent_mana_regeneration",
+      "pattern": "no inherent mana regeneration",
+      "vendor_pattern": "no inherent mana regeneration",
+      "mods": [
+        {
+          "name": "Condition:NoInherentManaRegen",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3127（探针求值自动转写；样本：No inherent Mana Regeneration）"
+    },
+    {
+      "id": "no_rage_effect",
+      "pattern": "no rage effect",
+      "vendor_pattern": "no rage effect",
+      "mods": [
+        {
+          "name": "RageEffect",
+          "type": "OVERRIDE",
+          "value": 0
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2788（探针求值自动转写；样本：No Rage effect）"
+    },
+    {
+      "id": "of_armour_also_applies_to_cold_damage",
+      "pattern": "\\+?(\\d+)% of armour also applies to (cold) damage",
+      "vendor_pattern": "%+?(%d+)%% of armour also applies to (%a+) damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToColdDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2543（探针求值自动转写；样本：+15% of Armour also applies to Cold Damage）"
+    },
+    {
+      "id": "of_armour_also_applies_to_elemental_damage",
+      "pattern": "\\+?(\\d+)% of armour (also )applies to elemental damage",
+      "vendor_pattern": "%+?(%d+)%% of armour (a?l?s?o? ?)applies to elemental damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToFireDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ArmourAppliesToColdDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ArmourAppliesToLightningDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2535（探针求值自动转写；样本：+5% of Armour also applies to Elemental Damage）"
+    },
+    {
+      "id": "of_armour_also_applies_to_fire_damage",
+      "pattern": "\\+?(\\d+)% of armour also applies to (fire) damage",
+      "vendor_pattern": "%+?(%d+)%% of armour also applies to (%a+) damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToFireDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2543（探针求值自动转写；样本：+15% of Armour also applies to Fire Damage）"
+    },
+    {
+      "id": "of_armour_also_applies_to_lightning_damage",
+      "pattern": "\\+?(\\d+)% of armour also applies to (lightning) damage",
+      "vendor_pattern": "%+?(%d+)%% of armour also applies to (%a+) damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToLightningDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2543（探针求值自动转写；样本：+15% of Armour also applies to Lightning Damage）"
+    },
+    {
+      "id": "of_damage_taken_bypasses_energy_shield",
+      "pattern": "(\\d+)% of damage taken bypasses energy shield",
+      "vendor_pattern": "(%d+)%% of damage taken bypasses energy shield",
+      "mods": [
+        {
+          "name": "PhysicalEnergyShieldBypass",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "LightningEnergyShieldBypass",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ColdEnergyShieldBypass",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "FireEnergyShieldBypass",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ChaosEnergyShieldBypass",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:2495（探针求值自动转写；样本：12% of Damage taken bypasses Energy Shield）"
+    },
+    {
+      "id": "of_flask_recovery_applied_instantly",
+      "pattern": "(\\d+)% of flask recovery applied instantly",
+      "vendor_pattern": "(%d+)%% of flask recovery applied instantly",
+      "mods": [
+        {
+          "name": "FlaskInstantRecovery",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:3463（探针求值自动转写；样本：20% of Flask Recovery applied Instantly）"
+    },
+    {
+      "id": "passives_in_radius_can_be_allocated_without_being_connected_to_your_tr",
+      "pattern": "passives in radius can be allocated without being connected to your tree",
+      "vendor_pattern": "passives in radius can be allocated without being connected to your tree",
+      "mods": [
+        {
+          "name": "JewelData",
+          "type": "LIST",
+          "value": {
+            "key": "intuitiveLeapLike",
+            "value": true
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:5467（探针求值自动转写；样本：Passives in Radius can be Allocated without being connected to your tree）"
+    },
+    {
+      "id": "reduced_movement_speed_penalty_from_using_skills_while_moving",
+      "pattern": "(\\d+)% reduced movement speed penalty from using skills while moving",
+      "vendor_pattern": "(%d+)%% reduced movement speed penalty from using skills while moving",
+      "mods": [
+        {
+          "name": "MovementSpeedPenalty",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "S1",
+      "source_note": "ModParser.lua:6017（探针求值自动转写；样本：5% reduced Movement Speed Penalty from using Skills while moving）"
+    },
+    {
+      "id": "take_no_extra_damage_from_critical_hits",
+      "pattern": "take no extra damage from critical hits",
+      "vendor_pattern": "take no extra damage from critical hits",
+      "mods": [
+        {
+          "name": "ReduceCritExtraDamage",
+          "type": "BASE",
+          "value": 100.0
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:6129（暴击不造成额外伤害 → ReduceCritExtraDamage BASE 100；pobr 准源 legacy.rs:1445）"
+    },
+    {
+      "id": "targets_can_be_affected_by_poisons",
+      "pattern": "targets can be affected by \\+(\\d+) of your poisons at the same time",
+      "vendor_pattern": "targets can be affected by %+(%d+) of your poisons at the same time",
+      "mods": [
+        {
+          "name": "PoisonCanStack",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "PoisonStacks",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:3895（+N poison stacks → PoisonCanStack FLAG + PoisonStacks BASE N；pobr 准源 legacy.rs:1974）"
+    },
+    {
+      "id": "you_have_no_mana",
+      "pattern": "you have no mana",
+      "vendor_pattern": "you have no mana",
+      "mods": [
+        {
+          "name": "MaximumMana",
+          "type": "OVERRIDE",
+          "value": 0.0
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "pobr 准源 mod_parser.rs:529-531；vendor ModParser.lua:2392（ModName 为 Mana，pobr 现行稳定名 MaximumMana）"
+    },
+    {
+      "id": "your_critical_damage_bonus_override",
+      "pattern": "your critical damage bonus is (\\d+(?:\\.\\d+)?)%",
+      "vendor_pattern": "your critical damage bonus is (%d+)%%",
+      "mods": [
+        {
+          "name": "CriticalStrikeMultiplier",
+          "type": "OVERRIDE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "pobr 准源 mod_parser.rs:490-506（dynamic_overrides）；vendor ModParser.lua:5798 同语义但 ModName 为 CritMultiplier（pobr 现行稳定名 CriticalStrikeMultiplier，B-3 双跑以 pobr 现状为基准）"
+    },
+    {
+      "id": "your_critical_hit_chance_override",
+      "pattern": "your critical hit chance is (\\d+(?:\\.\\d+)?)%",
+      "mods": [
+        {
+          "name": "CriticalStrikeChance",
+          "type": "OVERRIDE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "pobr 准源 mod_parser.rs:490-506；vendor 无数值形同 key（仅 lucky 系 :3730-3732）"
+    }
+  ]
+}

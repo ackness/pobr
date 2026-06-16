@@ -1,0 +1,334 @@
+{
+  "max_enemy_level": 85,
+  "ehp_base_damage_mult": 1.5,
+  "default_enemy_speed": 700.0,
+  "default_enemy_crit_chance": 5.0,
+  "default_enemy_crit_damage_bonus": 30.0,
+  "tiers": [
+    {
+      "id": "None",
+      "label": "No",
+      "is_default": false,
+      "min_level": 1,
+      "elemental_resist_bonus": 0.0,
+      "chaos_resist_bonus": 0.0,
+      "armour_mult_pct": {
+        "base": 100.0,
+        "num": 0.0,
+        "den": 1.0
+      },
+      "evasion_mult_pct": {
+        "base": 100.0,
+        "num": 0.0,
+        "den": 1.0
+      },
+      "pen": 0.0,
+      "dps_mult": {
+        "base": 0.0,
+        "num": 1.0,
+        "den": 4.4
+      },
+      "chaos_damage_div": 2.5,
+      "enemy_mods": [],
+      "player_mods": [],
+      "conditions": []
+    },
+    {
+      "id": "Boss",
+      "label": "Standard Boss",
+      "is_default": false,
+      "min_level": 1,
+      "elemental_resist_bonus": 30.0,
+      "chaos_resist_bonus": 0.0,
+      "armour_mult_pct": {
+        "base": 100.0,
+        "num": 0.0,
+        "den": 1.0
+      },
+      "evasion_mult_pct": {
+        "base": 100.0,
+        "num": 0.0,
+        "den": 1.0
+      },
+      "pen": 0.0,
+      "dps_mult": {
+        "base": 0.0,
+        "num": 4.0,
+        "den": 4.4
+      },
+      "chaos_damage_div": 2.5,
+      "enemy_mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "ExposureEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "KnockbackDistanceOnSelf",
+          "mod_type": "MORE",
+          "value": -75.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "SlowEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "MinimumMovementSpeed",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "PoiseThreshold",
+          "mod_type": "MORE",
+          "value": 500.0,
+          "source_label": "Unique",
+          "effective_only": false
+        },
+        {
+          "name": "PoiseThreshold",
+          "mod_type": "MORE",
+          "value": 213.0,
+          "source_label": "Map Boss",
+          "effective_only": true
+        }
+      ],
+      "player_mods": [
+        {
+          "name": "WarcryPower",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Boss",
+          "effective_only": false
+        },
+        {
+          "name": "Multiplier:EnemyPower",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Boss",
+          "effective_only": false
+        }
+      ],
+      "conditions": [
+        "Unique",
+        "RareOrUnique"
+      ]
+    },
+    {
+      "id": "Pinnacle",
+      "label": "Guardian/Pinnacle Boss",
+      "is_default": true,
+      "min_level": 82,
+      "elemental_resist_bonus": 50.0,
+      "chaos_resist_bonus": 0.0,
+      "armour_mult_pct": {
+        "base": 100.0,
+        "num": 1100.0,
+        "den": 22.0
+      },
+      "evasion_mult_pct": {
+        "base": 100.0,
+        "num": 548.0,
+        "den": 22.0
+      },
+      "pen": 3.0,
+      "dps_mult": {
+        "base": 0.0,
+        "num": 8.0,
+        "den": 4.4
+      },
+      "chaos_damage_div": 2.5,
+      "enemy_mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "ExposureEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "KnockbackDistanceOnSelf",
+          "mod_type": "MORE",
+          "value": -75.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "SlowEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "MinimumMovementSpeed",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "PoiseThreshold",
+          "mod_type": "MORE",
+          "value": 500.0,
+          "source_label": "Unique",
+          "effective_only": false
+        },
+        {
+          "name": "PoiseThreshold",
+          "mod_type": "MORE",
+          "value": 838.0,
+          "source_label": "Xesht",
+          "effective_only": true
+        }
+      ],
+      "player_mods": [
+        {
+          "name": "WarcryPower",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Boss",
+          "effective_only": false
+        },
+        {
+          "name": "Multiplier:EnemyPower",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Boss",
+          "effective_only": false
+        }
+      ],
+      "conditions": [
+        "Unique",
+        "RareOrUnique",
+        "PinnacleBoss"
+      ]
+    },
+    {
+      "id": "Uber",
+      "label": "Uber Pinnacle Boss",
+      "is_default": false,
+      "min_level": 82,
+      "elemental_resist_bonus": 50.0,
+      "chaos_resist_bonus": 0.0,
+      "armour_mult_pct": {
+        "base": 100.0,
+        "num": 175.0,
+        "den": 7.0
+      },
+      "evasion_mult_pct": {
+        "base": 100.0,
+        "num": 116.0,
+        "den": 7.0
+      },
+      "pen": 8.0,
+      "dps_mult": {
+        "base": 0.0,
+        "num": 10.0,
+        "den": 4.25
+      },
+      "chaos_damage_div": 4.0,
+      "enemy_mods": [
+        {
+          "name": "CurseEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "ExposureEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "KnockbackDistanceOnSelf",
+          "mod_type": "MORE",
+          "value": -75.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "SlowEffectOnSelf",
+          "mod_type": "MORE",
+          "value": -50.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "MinimumMovementSpeed",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Unique",
+          "effective_only": true
+        },
+        {
+          "name": "DamageTaken",
+          "mod_type": "MORE",
+          "value": -70.0,
+          "source_label": "Boss",
+          "effective_only": false
+        },
+        {
+          "name": "PoiseThreshold",
+          "mod_type": "MORE",
+          "value": 500.0,
+          "source_label": "Unique",
+          "effective_only": false
+        },
+        {
+          "name": "PoiseThreshold",
+          "mod_type": "MORE",
+          "value": 838.0,
+          "source_label": "Xesht",
+          "effective_only": true
+        }
+      ],
+      "player_mods": [
+        {
+          "name": "WarcryPower",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Boss",
+          "effective_only": false
+        },
+        {
+          "name": "Multiplier:EnemyPower",
+          "mod_type": "BASE",
+          "value": 20.0,
+          "source_label": "Boss",
+          "effective_only": false
+        }
+      ],
+      "conditions": [
+        "Unique",
+        "RareOrUnique",
+        "PinnacleBoss"
+      ]
+    }
+  ]
+}

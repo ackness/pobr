@@ -1,0 +1,5678 @@
+{
+  "_meta": {
+    "schema": "gem_effects/v1",
+    "generator": "sync-pob-catalog extract-lua",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "a82a33b4fbdb7306ed93159664f7abe2c6819413",
+    "vendor_commit_subject": "a82a33b Merge branch 'master' into dev",
+    "extracted_files": [
+      "Data/Gems.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what gem-effects --vendor-root vendor/PathOfBuilding-PoE2/src --out data/4.5.2.1.3/overlay/gem_effects.json"
+  },
+  "gems": [
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAlchemistsBoon",
+      "variant_id": "AlchemistsBoon",
+      "granted_effect_id": "AlchemistsBoonPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAncestralCry",
+      "variant_id": "AncestralCry",
+      "granted_effect_id": "AncestralCryPlayer",
+      "additional_granted_effect_ids": [
+        "AncestralCryShockwavePlayer",
+        "AncestralCryProjectilePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemArchmage",
+      "variant_id": "Archmage",
+      "granted_effect_id": "ArchmagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemArmourPiercingRounds",
+      "variant_id": "ArmourPiercingRounds",
+      "granted_effect_id": "ArmourPiercingBoltsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "ArmourPiercingBoltsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyAlignFate",
+      "variant_id": "AscendancyAlignFate",
+      "granted_effect_id": "AlignFatePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyAncestralSpirits",
+      "variant_id": "AncestralSpriits",
+      "granted_effect_id": "AncestralSpiritsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyBleedingConcoction",
+      "variant_id": "AscendancyBleedingConcoction",
+      "granted_effect_id": "BleedingConcoctionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyBloodBoil",
+      "variant_id": "BloodBoil",
+      "granted_effect_id": "BloodBoilPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyCorpseBeetles",
+      "variant_id": "AscendancyCorpseBeetles",
+      "granted_effect_id": "CorpseBeetlesPlayer",
+      "additional_granted_effect_ids": [
+        "CommandCorpseBeetleExplodePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyDemonForm",
+      "variant_id": "DemonForm",
+      "granted_effect_id": "DemonFormPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyElementalExpression",
+      "variant_id": "AscendancyElementalExpression",
+      "granted_effect_id": "ElementalExpressionTriggeredPlayer",
+      "additional_stat_set_ids": [
+        "ElementalExpressionFirePlayer",
+        "ElementalExpressionColdPlayer",
+        "ElementalExpressionLightningPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyElementalStorm",
+      "variant_id": "AscendancyElementalStorm",
+      "granted_effect_id": "ElementalStormPlayer",
+      "additional_stat_set_ids": [
+        "ElementalStormFirePlayer",
+        "ElementalStormLightningPlayer",
+        "ElementalStormColdPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyEncasedInJade",
+      "variant_id": "AscendancyEncasedInJade",
+      "granted_effect_id": "EncaseInJadePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyExplosiveConcoction",
+      "variant_id": "AscendancyExplosiveConcoction",
+      "granted_effect_id": "ExplosiveConcoctionPlayer",
+      "additional_stat_set_ids": [
+        "ExplosiveConcoctionSecondPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyFireSpellOnHit",
+      "variant_id": "CastFireSpellOnHit",
+      "granted_effect_id": "MetaCastFireSpellOnHitPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastFireSpellOnHitPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyFulminatingConcoction",
+      "variant_id": "AscendancyFulminatingConcoction",
+      "granted_effect_id": "FulminatingConcoctionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyHollowFocus",
+      "variant_id": "HollowFocus",
+      "granted_effect_id": "HollowFocusPlayer",
+      "additional_stat_set_ids": [
+        "HollowFocusNovaPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyHollowForm",
+      "variant_id": "HollowForm",
+      "granted_effect_id": "MetaHollowFormPlayer",
+      "additional_granted_effect_ids": [
+        "SupportHollowFormPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyHollowResonance",
+      "variant_id": "HollowResonance",
+      "granted_effect_id": "HollowResonancePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyInevitableAgony",
+      "variant_id": "InevitableAgony",
+      "granted_effect_id": "InevitableAgonyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyInfuseWeapon",
+      "variant_id": "AscendancyTriggerElementalSurge",
+      "granted_effect_id": "AmazonTriggerElementalSurgePlayer",
+      "additional_stat_set_ids": [
+        "AmazonTriggerFireSurgePlayer",
+        "AmazonTriggerLightningSurgePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyIntoTheBreach",
+      "variant_id": "IntoTheBreach",
+      "granted_effect_id": "IntoTheBreachPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyLifeRemnants",
+      "variant_id": "AscendancyLifeRemnants",
+      "granted_effect_id": "LifeRemnantsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyManifestWeapon",
+      "variant_id": "ManifestWeapon",
+      "granted_effect_id": "ManifestWeaponPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyMeditate",
+      "variant_id": "AscendancyMeditate",
+      "granted_effect_id": "MeditatePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyMirageDeadeye",
+      "variant_id": "MirageDeadeye",
+      "granted_effect_id": "MetaMirageDeadeyePlayer",
+      "additional_granted_effect_ids": [
+        "SupportMirageDeadeyePlayer",
+        "MirageDeadeyeSpawnPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyMomentOfVulnerability",
+      "variant_id": "AscendancyMomentOfVulnerability",
+      "granted_effect_id": "MomentOfVulnerabilityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyPoisonousConcoction",
+      "variant_id": "AscendancyPoisonousConcoction",
+      "granted_effect_id": "AcidicConcoctionPlayer",
+      "additional_stat_set_ids": [
+        "AcidicConcoctionPoisonBurstPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyRitualSacrifice",
+      "variant_id": "RitualSacrifice",
+      "granted_effect_id": "RitualSacrificePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyShatteringConcoction",
+      "variant_id": "AscendancyShatteringConcoction",
+      "granted_effect_id": "ShatteringConcoctionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancySorceryWard",
+      "variant_id": "SorceryWard",
+      "granted_effect_id": "SorceryWardPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancySummonFireDjinn",
+      "variant_id": "AscendancySummonFireDjinn",
+      "granted_effect_id": "SummonFireDjinnPlayer",
+      "additional_granted_effect_ids": [
+        "CommandFireDjinnLivingBombPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancySummonInfernalHound",
+      "variant_id": "AscendancySummonInfernalHound",
+      "granted_effect_id": "SummonInfernalHoundPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancySummonSandDjinn",
+      "variant_id": "AscendancySummonSandDjinn",
+      "granted_effect_id": "SummonSandDjinnPlayer",
+      "additional_granted_effect_ids": [
+        "CommandSandDjinnKnifeThrowPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancySummonWaterDjinn",
+      "variant_id": "AscendancySummonWaterDjinn",
+      "granted_effect_id": "SummonWaterDjinnPlayer",
+      "additional_granted_effect_ids": [
+        "CommandWaterDjinnBubblePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyTemperWeapon",
+      "variant_id": "TemperWeapon",
+      "granted_effect_id": "TemperWeaponPlayer",
+      "additional_granted_effect_ids": [
+        "TemperWeaponCombustionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyTemporalRift",
+      "variant_id": "TemporalRift",
+      "granted_effect_id": "TemporalRiftPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyTimeFreeze",
+      "variant_id": "TimeFreeze",
+      "granted_effect_id": "TimeFreezePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyTimeSnap",
+      "variant_id": "TimeSnap",
+      "granted_effect_id": "TimeSnapPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyUnboundAvatar",
+      "variant_id": "AscendancyUnboundAvatar",
+      "granted_effect_id": "UnboundAvatarPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyVividStampede",
+      "variant_id": "VividStampede",
+      "granted_effect_id": "VividStampedePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendancyVoidIllusion",
+      "variant_id": "VoidIllusion",
+      "granted_effect_id": "VoidIllusionPlayer",
+      "additional_granted_effect_ids": [
+        "VoidIllusionSpawnPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAscendanyMetaDeadeyeMarks",
+      "variant_id": "MetaDeadeyeMarks",
+      "granted_effect_id": "MetaDeadeyeMarksPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaDeadeyeMarksPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemAttrition",
+      "variant_id": "Attrition",
+      "granted_effect_id": "AttritionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBarkskin",
+      "variant_id": "Barkskin",
+      "granted_effect_id": "BarkskinPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBearFuryOfTheMountain",
+      "variant_id": "BearFuryOfTheMountain",
+      "granted_effect_id": "BearFuryOfTheMountainPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBerserk",
+      "variant_id": "Berserk",
+      "granted_effect_id": "BerserkPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBlackPowderBlitz",
+      "variant_id": "BlackPowderBlitzReservation",
+      "granted_effect_id": "BlackPowderBlitzReservationPlayer",
+      "additional_granted_effect_ids": [
+        "BlackPowderBlitzPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBlink",
+      "variant_id": "BlinkReservation",
+      "granted_effect_id": "BlinkReservationPlayer",
+      "additional_granted_effect_ids": [
+        "BlinkPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBloodhoundsMark",
+      "variant_id": "BloodhoundsMark",
+      "granted_effect_id": "BloodhoundsMarkPlayer",
+      "additional_granted_effect_ids": [
+        "BloodhoundsMarkExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBoneBlast",
+      "variant_id": "BoneBlast",
+      "granted_effect_id": "BoneBlastPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBoneCage",
+      "variant_id": "BoneCage",
+      "granted_effect_id": "BoneCagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemBonestorm",
+      "variant_id": "Bonestorm",
+      "granted_effect_id": "BonestormPlayer",
+      "additional_stat_set_ids": [
+        "BonestormExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemChaoticInfusion",
+      "variant_id": "ChaosSpearTriggerChaosSurge",
+      "granted_effect_id": "ChaosSpearTriggerChaosSurgePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemChargeInfusion",
+      "variant_id": "ChargeRegulation",
+      "granted_effect_id": "ChargeRegulationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemClusterGrenade",
+      "variant_id": "ClusterGrenade",
+      "granted_effect_id": "ClusterGrenadePlayer",
+      "additional_stat_set_ids": [
+        "ClusterGrenadeMiniPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemColdSnap",
+      "variant_id": "Snap",
+      "granted_effect_id": "SnapPlayer",
+      "additional_stat_set_ids": [
+        "SnapLightningPlayer",
+        "SnapFirePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemCombatFrenzy",
+      "variant_id": "CombatFrenzy",
+      "granted_effect_id": "CombatFrenzyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemConvalescence",
+      "variant_id": "Convalescence",
+      "granted_effect_id": "ConvalescencePlayer",
+      "additional_granted_effect_ids": [
+        "ConvalescenceActivePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemCrossbowRequiem",
+      "variant_id": "CrossbowRequiem",
+      "granted_effect_id": "CrossbowRequiemAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "CrossbowRequiemPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemCullTheWeak",
+      "variant_id": "CullTheWeak",
+      "granted_effect_id": "CullTheWeakPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemDarkEffigy",
+      "variant_id": "DarkEffigy",
+      "granted_effect_id": "DarkEffigyPlayer",
+      "additional_granted_effect_ids": [
+        "DarkEffigyProjectilePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemDefianceBanner",
+      "variant_id": "DefianceBanner",
+      "granted_effect_id": "DefianceBannerReservationPlayer",
+      "additional_granted_effect_ids": [
+        "DefianceBannerPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemDetonateMinion",
+      "variant_id": "DetonateMinion",
+      "granted_effect_id": "DestructiveLinkSkeletonBombadierMinion"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemDetonatingArrow",
+      "variant_id": "DetonatingArrow",
+      "granted_effect_id": "DetonatingArrowPlayer",
+      "additional_stat_set_ids": [
+        "DetonatingArrowExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemDreadBanner",
+      "variant_id": "DreadBanner",
+      "granted_effect_id": "DreadBannerReservationPlayer",
+      "additional_granted_effect_ids": [
+        "DreadBannerPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemElectrocutingArrow",
+      "variant_id": "ElectrocutingArrow",
+      "granted_effect_id": "ElectrocutingArrowPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemElementalConflux",
+      "variant_id": "ElementalConflux",
+      "granted_effect_id": "ElementalConfluxPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemElementalInvocation",
+      "variant_id": "ElementalInvocation",
+      "granted_effect_id": "MetaElementalInvocationPlayer",
+      "additional_granted_effect_ids": [
+        "SupportElementalInvocationPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemElementalSundering",
+      "variant_id": "ElementalSundering",
+      "granted_effect_id": "ElementalSunderingPlayer",
+      "additional_stat_set_ids": [
+        "ElementalSunderingColdPlayer",
+        "ElementalSunderingFirePlayer",
+        "ElementalSunderingLightningPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemElementalWeakness",
+      "variant_id": "ElementalWeakness",
+      "granted_effect_id": "ElementalWeaknessPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemEmergencyReload",
+      "variant_id": "EmergencyReload",
+      "granted_effect_id": "EmergencyReloadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemEntangle",
+      "variant_id": "Entangle",
+      "granted_effect_id": "EntanglePlayer",
+      "additional_stat_set_ids": [
+        "EntangleVinePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemExplodingPoisonToad",
+      "variant_id": "ExplodingPoisonToad",
+      "granted_effect_id": "ExplodingPoisonToadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemExplosiveGrenade",
+      "variant_id": "ExplosiveGrenade",
+      "granted_effect_id": "ExplosiveGrenadePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemExplosiveShot",
+      "variant_id": "ExplosiveShot",
+      "granted_effect_id": "ExplosiveShotAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "ExplosiveShotPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemExplosiveSpear",
+      "variant_id": "ExplosiveSpear",
+      "granted_effect_id": "ExplosiveSpearPlayer",
+      "additional_stat_set_ids": [
+        "ExplosiveSpearExplodePlayer",
+        "ExplosiveSpearInfusedExplodePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFangsOfFrost",
+      "variant_id": "FangsOfFrost",
+      "granted_effect_id": "FangsOfFrostPlayer",
+      "additional_stat_set_ids": [
+        "FangsOfFrostBurstPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFeastOfFlesh",
+      "variant_id": "FeastOfFlesh",
+      "granted_effect_id": "FeastOfFleshPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFeralInvocation",
+      "variant_id": "FeralInvocation",
+      "granted_effect_id": "MetaFeralInvocationPlayer",
+      "additional_granted_effect_ids": [
+        "SupportFeralInvocationPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFireball",
+      "variant_id": "Fireball",
+      "granted_effect_id": "FireballPlayer",
+      "additional_stat_set_ids": [
+        "FireballExplosionPlayer",
+        "FireballSecondaryProjectilePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFlashGrenade",
+      "variant_id": "FlashGrenade",
+      "granted_effect_id": "FlashGrenadePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemForgeHammer",
+      "variant_id": "ForgeHammer",
+      "granted_effect_id": "ForgeHammerPlayer",
+      "additional_stat_set_ids": [
+        "ForgeHammerFissurePlayer",
+        "ForgeHammerRecallPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFortifyingCry",
+      "variant_id": "FortifyingCry",
+      "granted_effect_id": "FortifyingCryPlayer",
+      "additional_granted_effect_ids": [
+        "FortifyingCryShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFragmentationRounds",
+      "variant_id": "FragmentationRounds",
+      "granted_effect_id": "FragmentationRoundsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "FragmentationRoundsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFreezingMark",
+      "variant_id": "FreezingMark",
+      "granted_effect_id": "FreezingMarkPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFreezingSalvo",
+      "variant_id": "FreezingSalvo",
+      "granted_effect_id": "FreezingSalvoPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFrostDarts",
+      "variant_id": "FrostDarts",
+      "granted_effect_id": "FrostDartsPlayer",
+      "additional_stat_set_ids": [
+        "FrostDartsExplodePlayer",
+        "FrostDartsIceMortarPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFrozenLocus",
+      "variant_id": "FrozenLocus",
+      "granted_effect_id": "FrozenLocusPlayer",
+      "additional_stat_set_ids": [
+        "FrozenLocusExplodePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemFulmination",
+      "variant_id": "Fulmination",
+      "granted_effect_id": "FulminationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemGalvanicShards",
+      "variant_id": "GalvanicShards",
+      "granted_effect_id": "GalvanicShardsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "GalvanicShardsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemGasArrow",
+      "variant_id": "GasArrow",
+      "granted_effect_id": "GasArrowPlayer",
+      "additional_stat_set_ids": [
+        "GasArrowGasDegenPlayer",
+        "GasArrowGasExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemGasGrenade",
+      "variant_id": "ToxicGrenade",
+      "granted_effect_id": "ToxicGrenadePlayer",
+      "additional_stat_set_ids": [
+        "ToxicGrenadeCloudPlayer",
+        "ToxicGrenadeCloudExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemGatheringStorm",
+      "variant_id": "GatheringStorm",
+      "granted_effect_id": "GatheringStormPlayer",
+      "additional_stat_set_ids": [
+        "GatheringStormPerfectPlayer",
+        "GatheringStormExplodePlayer",
+        "GatheringStormExplodeBetterPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemGeminiSurge",
+      "variant_id": "GeminiSurge",
+      "granted_effect_id": "GeminiSurgePlayer",
+      "additional_stat_set_ids": [
+        "GeminiSurgeFirePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemGlacialBolt",
+      "variant_id": "GlacialBolt",
+      "granted_effect_id": "GlacialBoltAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "GlacialBoltPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemGrimFeast",
+      "variant_id": "GrimFeast",
+      "granted_effect_id": "GrimFeastPlayer",
+      "additional_granted_effect_ids": [
+        "GrimFeastResummonPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemHailstormRounds",
+      "variant_id": "HailstormRounds",
+      "granted_effect_id": "HailstormRoundsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "HailstormRoundsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemHammerOfTheGods",
+      "variant_id": "HammerOfTheGods",
+      "granted_effect_id": "HammerOfTheGodsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemHandOfChayula",
+      "variant_id": "HandOfChayula",
+      "granted_effect_id": "HandOfChayulaPlayer",
+      "additional_granted_effect_ids": [
+        "SupportHandOfChayulaPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemHeartOfIce",
+      "variant_id": "HeartOfIce",
+      "granted_effect_id": "HeartOfIcePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemHeraldOfBlood",
+      "variant_id": "HeraldOfBlood",
+      "granted_effect_id": "HeraldOfBloodPlayer",
+      "additional_stat_set_ids": [
+        "HeraldOfBloodExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemHeraldOfPlague",
+      "variant_id": "HeraldOfPlague",
+      "granted_effect_id": "HeraldOfPlaguePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemHighVelocityRounds",
+      "variant_id": "HighVelocityRounds",
+      "granted_effect_id": "HighVelocityRoundsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "HighVelocityRoundsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemIceFragments",
+      "variant_id": "IceFragments",
+      "granted_effect_id": "IceFragmentsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemIceShards",
+      "variant_id": "IceShards",
+      "granted_effect_id": "IceShardsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "IceShardsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemIceShot",
+      "variant_id": "IceShot",
+      "granted_effect_id": "IceShotPlayer",
+      "additional_stat_set_ids": [
+        "IceShotShardPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemIceTippedArrows",
+      "variant_id": "IceTippedArrows",
+      "granted_effect_id": "IceTippedArrowsPlayer",
+      "additional_granted_effect_ids": [
+        "IceTippedArrowsIceFragmentPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemIcestorm",
+      "variant_id": "Icestorm",
+      "granted_effect_id": "IcestormPlayer",
+      "additional_stat_set_ids": [
+        "IcestormEmpoweredPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemIncendiaryShot",
+      "variant_id": "IncendiaryShot",
+      "granted_effect_id": "IncendiaryShotAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "IncendiaryShotPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemIronWard",
+      "variant_id": "IronWard",
+      "granted_effect_id": "IronWardPlayer",
+      "additional_granted_effect_ids": [
+        "IronWardNovaPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemLightningRod",
+      "variant_id": "LightningRod",
+      "granted_effect_id": "LightningRodPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemLivingBombPlayer",
+      "variant_id": "LivingBombPlayer",
+      "granted_effect_id": "LivingBombPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemLunarAssault",
+      "variant_id": "LunarAssault",
+      "granted_effect_id": "LunarAssaultPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemMagmaBarrier",
+      "variant_id": "MagmaBarrier",
+      "granted_effect_id": "MagmaBarrierPlayer",
+      "additional_granted_effect_ids": [
+        "MagmaSprayPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemMagneticSalvo",
+      "variant_id": "MagneticSalvo",
+      "granted_effect_id": "MagneticSalvoPlayer",
+      "additional_stat_set_ids": [
+        "MagneticSalvoEmpoweredPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemMalice",
+      "variant_id": "Malice",
+      "granted_effect_id": "MalicePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemManaDrain",
+      "variant_id": "ManaDrain",
+      "granted_effect_id": "ManaDrainPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemManaRemnants",
+      "variant_id": "ManaRemnants",
+      "granted_effect_id": "ManaRemnantsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemMantraOfDestruction",
+      "variant_id": "MantraOfDestruction",
+      "granted_effect_id": "MantraOfDestructionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemMirageArcher",
+      "variant_id": "MirageArcher",
+      "granted_effect_id": "MetaMirageArcherPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMirageArcherPlayer",
+        "MirageArcherSpawnPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemMoltenBlast",
+      "variant_id": "MoltenBlast",
+      "granted_effect_id": "MoltenBlastPlayer",
+      "additional_stat_set_ids": [
+        "MoltenBlastSecondaryPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemMortarCannon",
+      "variant_id": "MortarCannon",
+      "granted_effect_id": "MetaMortarCannonPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMortarCannonPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemOilBarrage",
+      "variant_id": "OilBarrage",
+      "granted_effect_id": "OilBarragePlayer",
+      "additional_stat_set_ids": [
+        "OilBarrageOilPlayer",
+        "OilBarrageEmpoweredPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemOilGrenade",
+      "variant_id": "OilGrenade",
+      "granted_effect_id": "OilGrenadePlayer",
+      "additional_stat_set_ids": [
+        "OilGrenadeOilGroundPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemOverwhelmingPresence",
+      "variant_id": "OverwhelmingPresence",
+      "granted_effect_id": "OverwhelmingPresencePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemParry",
+      "variant_id": "Parry",
+      "granted_effect_id": "ParryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPerfectStrike",
+      "variant_id": "PerfectStrike",
+      "granted_effect_id": "PerfectStrikePlayer",
+      "additional_stat_set_ids": [
+        "PerfectStrikeShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPermafrostBolts",
+      "variant_id": "PermafrostBolts",
+      "granted_effect_id": "PermafrostBoltsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "PermafrostBoltsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPhantasmalArrow",
+      "variant_id": "PhantasmalArrowPlayer",
+      "granted_effect_id": "PhantasmalArrowPlayer",
+      "additional_stat_set_ids": [
+        "PhantasmalArrowExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPinnacleOfPower",
+      "variant_id": "PinnacleOfPower",
+      "granted_effect_id": "PinnacleOfPowerPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlasmaBlast",
+      "variant_id": "PlasmaBlast",
+      "granted_effect_id": "PlasmaBlastAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "PlasmaBlastPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefault1HMace",
+      "variant_id": "PlayerDefault1HMace",
+      "granted_effect_id": "Melee1HMacePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefault2HMace",
+      "variant_id": "PlayerDefault2HMace",
+      "granted_effect_id": "Melee2HMacePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefaultBow",
+      "variant_id": "PlayerDefaultBow",
+      "granted_effect_id": "MeleeBowPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefaultCrossbow",
+      "variant_id": "PlayerDefaultCrossbow",
+      "granted_effect_id": "MeleeCrossbowPlayer",
+      "additional_granted_effect_ids": [
+        "UnloadAmmoPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefaultGrenadeLauncher",
+      "variant_id": "PlayerDefaultGrenadeLauncher",
+      "granted_effect_id": "MeleeGrenadeLauncherPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefaultMaceMace",
+      "variant_id": "PlayerDefaultMaceMace",
+      "granted_effect_id": "MeleeMaceMacePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefaultQuarterstaff",
+      "variant_id": "PlayerDefaultQuarterstaff",
+      "granted_effect_id": "MeleeQuarterstaffPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefaultSpear",
+      "variant_id": "PlayerDefaultSpear",
+      "granted_effect_id": "MeleeSpearPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefaultSpearOffHand",
+      "variant_id": "PlayerDefaultSpearOffHand",
+      "granted_effect_id": "MeleeSpearOffHandPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPlayerDefaultSpearThrow",
+      "variant_id": "PlayerDefaultSpearThrow",
+      "granted_effect_id": "SpearThrowPlayer",
+      "additional_stat_set_ids": [
+        "SpearThrowFrenzyChargePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPoisonBurstArrow",
+      "variant_id": "PoisonBurstArrow",
+      "granted_effect_id": "PoisonBurstArrowPlayer",
+      "additional_stat_set_ids": [
+        "PoisonBurstArrowCloudPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPrimalBounty",
+      "variant_id": "PrimalBounty",
+      "granted_effect_id": "PrimalBountyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemPrimalStrikes",
+      "variant_id": "PrimalStrikes",
+      "granted_effect_id": "PrimalStrikesPlayer",
+      "additional_stat_set_ids": [
+        "PrimalStrikesSecondPlayer",
+        "PrimalStrikesFinalPlayer",
+        "PrimalStrikesStagWavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemProfaneRitual",
+      "variant_id": "ProfaneRitual",
+      "granted_effect_id": "ProfaneRitualPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemRagingSpirits",
+      "variant_id": "RagingSpirits",
+      "granted_effect_id": "RagingSpiritsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemRake",
+      "variant_id": "Rake",
+      "granted_effect_id": "RakePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemRapidShot",
+      "variant_id": "RapidShot",
+      "granted_effect_id": "RapidShotAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "RapidShotPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemRavenousSwarm",
+      "variant_id": "RavenousSwarm",
+      "granted_effect_id": "RavenousSwarmPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemReapersInvocation",
+      "variant_id": "ReapersInvocation",
+      "granted_effect_id": "MetaReapersInvocationPlayer",
+      "additional_granted_effect_ids": [
+        "SupportReapersInvocationPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemResonatingShield",
+      "variant_id": "ResonatingShield",
+      "granted_effect_id": "ResonatingShieldPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSacrifice",
+      "variant_id": "Sacrifice",
+      "granted_effect_id": "SacrificePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSanguineRevelry",
+      "variant_id": "SanguineRevelry",
+      "granted_effect_id": "SanguineRevelryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemScavengedPlating",
+      "variant_id": "ScavengedPlating",
+      "granted_effect_id": "ScavengedPlatingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemShardScavenger",
+      "variant_id": "ShardScavenger",
+      "granted_effect_id": "ShardScavengerPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemShieldBlock",
+      "variant_id": "ShieldBlock",
+      "granted_effect_id": "ShieldBlockPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemShieldWall",
+      "variant_id": "ShieldWall",
+      "granted_effect_id": "ShieldWallPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemShockburstRounds",
+      "variant_id": "ShockburstRounds",
+      "granted_effect_id": "ShockburstRoundsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "ShockburstRoundsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemShockchainArrow",
+      "variant_id": "ShockchainArrow",
+      "granted_effect_id": "ShockchainArrowPlayer",
+      "additional_stat_set_ids": [
+        "ShockchainArrowExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSiegeCascade",
+      "variant_id": "SiegeCascade",
+      "granted_effect_id": "SiegeCascadeAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "SiegeCascadePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSiphonElements",
+      "variant_id": "SiphonElements",
+      "granted_effect_id": "SiphonElementsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSiphoningStrike",
+      "variant_id": "SiphoningStrike",
+      "granted_effect_id": "SiphoningStrikePlayer",
+      "additional_stat_set_ids": [
+        "SiphoningStrikePulsePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSnipe",
+      "variant_id": "Snipe",
+      "granted_effect_id": "SnipePlayer",
+      "additional_stat_set_ids": [
+        "SnipeExplosionPlayer",
+        "SnipeFrozenExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSolarOrb",
+      "variant_id": "SolarOrb",
+      "granted_effect_id": "SolarOrbPlayer",
+      "additional_stat_set_ids": [
+        "SolarOrbAuraPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSoulOffering",
+      "variant_id": "SoulOffering",
+      "granted_effect_id": "SoulOfferingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSpearOfSolaris",
+      "variant_id": "SpearOfSolaris",
+      "granted_effect_id": "SpearOfSolarisPlayer",
+      "additional_stat_set_ids": [
+        "SpearOfSolarisPulsePlayer",
+        "SpearOfSolarisGroundPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemSpellslinger",
+      "variant_id": "Spellslinger",
+      "granted_effect_id": "MetaSpellslingerPlayer",
+      "additional_granted_effect_ids": [
+        "SupportSpellslingerPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemStampede",
+      "variant_id": "Stampede",
+      "granted_effect_id": "StampedePlayer",
+      "additional_stat_set_ids": [
+        "StampedeSlamPlayer",
+        "StampedeEruptionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemStormLance",
+      "variant_id": "StormLance",
+      "granted_effect_id": "StormLancePlayer",
+      "additional_stat_set_ids": [
+        "StormLanceInfusedPlayer",
+        "StormLanceBeamPlayer",
+        "StormLanceDetonatedBeamPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemStormWave",
+      "variant_id": "StormWave",
+      "granted_effect_id": "StormWavePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemStormblastBolts",
+      "variant_id": "StormblastBolts",
+      "granted_effect_id": "StormblastBoltsAmmoPlayer",
+      "additional_granted_effect_ids": [
+        "StormblastBoltsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemStormcallerArrow",
+      "variant_id": "StormcallerArrow",
+      "granted_effect_id": "StormcallerArrowPlayer",
+      "additional_stat_set_ids": [
+        "StormcallerArrowBoltPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemTameBeast",
+      "variant_id": "TameBeast",
+      "granted_effect_id": "TameBeastPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemTempestBell",
+      "variant_id": "TempestBell",
+      "granted_effect_id": "TempestBellPlayer",
+      "additional_stat_set_ids": [
+        "TempestBellSlamPlayer",
+        "TempestBellShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemThrashingVines",
+      "variant_id": "ThrashingVines",
+      "granted_effect_id": "ThrashingVinesPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemThunderousLeap",
+      "variant_id": "ThunderousLeap",
+      "granted_effect_id": "ThunderousLeapPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemTimeOfNeed",
+      "variant_id": "TimeOfNeed",
+      "granted_effect_id": "TimeOfNeedPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemTornadoShot",
+      "variant_id": "TornadoShot",
+      "granted_effect_id": "TornadoShotPlayer",
+      "additional_stat_set_ids": [
+        "TornadoShotNovaPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemToxicDomain",
+      "variant_id": "ToxicDomain",
+      "granted_effect_id": "ToxicDomainPlayer",
+      "additional_stat_set_ids": [
+        "ToxicDomainPustuleExplosion"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemToxicGrowth",
+      "variant_id": "ToxicGrowth",
+      "granted_effect_id": "ToxicGrowthPlayer",
+      "additional_stat_set_ids": [
+        "ToxicGrowthBurstPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemTriggeredAbyssalApparition",
+      "variant_id": "TriggeredAbyssalApparition",
+      "granted_effect_id": "TriggeredAbyssalApparitionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemTrinity",
+      "variant_id": "Trinity",
+      "granted_effect_id": "TrinityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemTwister",
+      "variant_id": "Twister",
+      "granted_effect_id": "TwisterPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemUnearth",
+      "variant_id": "Unearth",
+      "granted_effect_id": "UnearthPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemUniqueBreachLightningBolt",
+      "variant_id": "UniqueBreachLightningBolt",
+      "granted_effect_id": "UniqueBreachLightningBoltPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemVaultingImpact",
+      "variant_id": "VaultingImpact",
+      "granted_effect_id": "VaultingImpactPlayer",
+      "additional_stat_set_ids": [
+        "VaultingImpactDazedPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemVineArrow",
+      "variant_id": "VineArrow",
+      "granted_effect_id": "VineArrowPlayer",
+      "additional_stat_set_ids": [
+        "VineArrowFlowerPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemVoltaicMark",
+      "variant_id": "VoltaicMark",
+      "granted_effect_id": "VoltaicMarkPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWarBanner",
+      "variant_id": "WarBanner",
+      "granted_effect_id": "WarBannerReservationPlayer",
+      "additional_granted_effect_ids": [
+        "WarBannerPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWhirlwindLance",
+      "variant_id": "WhirlwindLance",
+      "granted_effect_id": "WhirlwindLancePlayer",
+      "additional_stat_set_ids": [
+        "WhirlwindLanceStormPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWildProtector",
+      "variant_id": "WildProtector",
+      "granted_effect_id": "WildProtectorPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWindDancer",
+      "variant_id": "WindDancer",
+      "granted_effect_id": "WindDancerPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredWindDancerPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWindSerpentsFury",
+      "variant_id": "WindSerpentsFury",
+      "granted_effect_id": "WindSerpentsFuryPlayer",
+      "additional_stat_set_ids": [
+        "WindSerpentsFurySnakePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWingBlast",
+      "variant_id": "WingBlast",
+      "granted_effect_id": "WingBlastPlayer",
+      "additional_stat_set_ids": [
+        "WingBlastStunExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWitheringPresence",
+      "variant_id": "WitheringPresence",
+      "granted_effect_id": "WitheringPresencePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWolfArcticHowl",
+      "variant_id": "WolfArcticHowl",
+      "granted_effect_id": "WolfArcticHowlPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWolfCrossSlash",
+      "variant_id": "WolfCrossSlash",
+      "granted_effect_id": "WolfCrossSlashPlayer",
+      "additional_stat_set_ids": [
+        "WolfCrossSlashMarkConsumedPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWolfLunarBlessing",
+      "variant_id": "WolfLunarBlessing",
+      "granted_effect_id": "WolfLunarBlessingPlayer",
+      "additional_granted_effect_ids": [
+        "WolfLunarBlessingBeamAttackPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWolfShred",
+      "variant_id": "WolfShred",
+      "granted_effect_id": "WolfShredPlayer",
+      "additional_granted_effect_ids": [
+        "IceFragmentsPlayer"
+      ],
+      "additional_stat_set_ids": [
+        "WolfShredThirdPlayer",
+        "WolfShredFinalPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWyvernDevour",
+      "variant_id": "WyvernDevour",
+      "granted_effect_id": "WyvernDevourPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SkillGemWyvernFlameBreath",
+      "variant_id": "WyvernFlameBreath",
+      "granted_effect_id": "WyvernFlameBreathPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAbidingHex",
+      "variant_id": "AbidingHexSupport",
+      "granted_effect_id": "SupportAbidingHexPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAblation",
+      "variant_id": "SacrificialOfferingSupport",
+      "granted_effect_id": "SupportSacrificalOfferingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAcrimony",
+      "variant_id": "AcrimonySupport",
+      "granted_effect_id": "SupportAcrimonyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAdhere",
+      "variant_id": "AdhesiveGrenadesSupport",
+      "granted_effect_id": "SupportAdhesiveGrenadesPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAdhereTwo",
+      "variant_id": "AdhesiveGrenadesSupportTwo",
+      "granted_effect_id": "SupportAdhesiveGrenadesPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAdmixture",
+      "variant_id": "AdmixtureSupport",
+      "granted_effect_id": "SupportAdmixturePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAdvancingStorm",
+      "variant_id": "AdvancingStormSupport",
+      "granted_effect_id": "SupportAdvancingStormPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAlignment",
+      "variant_id": "AlignmentSupport",
+      "granted_effect_id": "SupportAlignmentPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAlignmentThree",
+      "variant_id": "AlignmentSupportThree",
+      "granted_effect_id": "SupportAlignmentPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAlignmentTwo",
+      "variant_id": "AlignmentSupportTwo",
+      "granted_effect_id": "SupportAlignmentPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAmanamusTithe",
+      "variant_id": "AmanamusTitheSupport",
+      "granted_effect_id": "SupportAmanamusTithePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAmbrosia",
+      "variant_id": "AmbrosiaSupport",
+      "granted_effect_id": "SupportAmbrosiaPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAmbrosiaTwo",
+      "variant_id": "AmbrosiaSupportTwo",
+      "granted_effect_id": "SupportAmbrosiaPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAmmoConservation",
+      "variant_id": "AmmoConservationSupport",
+      "granted_effect_id": "SupportAmmoConservationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAmmoConservationFour",
+      "variant_id": "AmmoConservationSupportFour",
+      "granted_effect_id": "SupportAmmoConservationPlayerFour"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAmmoConservationThree",
+      "variant_id": "AmmoConservationSupportThree",
+      "granted_effect_id": "SupportAmmoConservationPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAmmoConservationTwo",
+      "variant_id": "AmmoConservationSupportTwo",
+      "granted_effect_id": "SupportAmmoConservationPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAncestralAid",
+      "variant_id": "AncestralAidSupport",
+      "granted_effect_id": "SupportAncestralAidPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAncestralCall",
+      "variant_id": "AncestralCallSupport",
+      "granted_effect_id": "SupportAncestralCallPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAncestralCallTwo",
+      "variant_id": "AncestralCallSupportTwo",
+      "granted_effect_id": "SupportAncestralCallPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAncestralUrgency",
+      "variant_id": "UrgentTotemsSupport",
+      "granted_effect_id": "SupportUrgentTotemsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAncestralUrgencyThree",
+      "variant_id": "UrgentTotemsSupportThree",
+      "granted_effect_id": "SupportUrgentTotemsPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAncestralUrgencyTwo",
+      "variant_id": "UrgentTotemsSupportTwo",
+      "granted_effect_id": "SupportUrgentTotemsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemArakaalisLust",
+      "variant_id": "ArakaalisLustSupport",
+      "granted_effect_id": "SupportArakaalisLustPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemArbitersIgnition",
+      "variant_id": "ArbitersIngitionSupport",
+      "granted_effect_id": "SupportArbitersIgnitionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemArbitersReach",
+      "variant_id": "ArbitersReachSupport",
+      "granted_effect_id": "ArbitersReachWardPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemArmourExplosion",
+      "variant_id": "ArmourExplosionSupport",
+      "granted_effect_id": "SupportArmourExplosionPlayer",
+      "additional_granted_effect_ids": [
+        "ArmourExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemArmsLength",
+      "variant_id": "ArmsLengthSupport",
+      "granted_effect_id": "SupportArmsLengthPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAstralProjection",
+      "variant_id": "AstralProjectionSupport",
+      "granted_effect_id": "SupportAstralProjectionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAtzirisAllure",
+      "variant_id": "AtzirisAllureSupport",
+      "granted_effect_id": "SupportAtzirisAllurePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAtzirisImpatience",
+      "variant_id": "AtzirisImpatienceSupport",
+      "granted_effect_id": "SupportAtzirisImpatiencePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemAutoReload",
+      "variant_id": "AutoReloadSupport",
+      "granted_effect_id": "SupportAutoReloadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBarbs",
+      "variant_id": "BarbsSupport",
+      "granted_effect_id": "SupportBarbsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBarbsThree",
+      "variant_id": "BarbsSupportThree",
+      "granted_effect_id": "SupportBarbsPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBarbsTwo",
+      "variant_id": "BarbsSupportTwo",
+      "granted_effect_id": "SupportBarbsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBattershout",
+      "variant_id": "BattershoutSupport",
+      "granted_effect_id": "SupportBattershoutPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredBattershoutExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBidding",
+      "variant_id": "BiddingSupport",
+      "granted_effect_id": "SupportBiddingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBiddingThree",
+      "variant_id": "BiddingSupportThree",
+      "granted_effect_id": "SupportBiddingPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBiddingTwo",
+      "variant_id": "BiddingSupportTwo",
+      "granted_effect_id": "SupportBiddingPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBlindside",
+      "variant_id": "BlindsideSupport",
+      "granted_effect_id": "SupportBlindsidePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBoneShrapnel",
+      "variant_id": "BoneShrapnelSupport",
+      "granted_effect_id": "SupportBoneShrapnelPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredBoneShrapnelPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBrambleslam",
+      "variant_id": "BrambleslamSupport",
+      "granted_effect_id": "SupportBrambleslamPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredBrambleslamPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBranchingFissures",
+      "variant_id": "BranchingFissuresSupport",
+      "granted_effect_id": "SupportBranchingFissuresPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBranchingFissuresTwo",
+      "variant_id": "BranchingFissuresSupportTwo",
+      "granted_effect_id": "SupportBranchingFissuresPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBreachlordsAmalgam",
+      "variant_id": "BreachlordsAmalgamSupport",
+      "granted_effect_id": "SupportBreachlordsAmalgam"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBreachlordsRift",
+      "variant_id": "BreachlordsRiftSupport",
+      "granted_effect_id": "SupportBreachlordsRift"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBrink",
+      "variant_id": "BrinkSupport",
+      "granted_effect_id": "SupportBrinkPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBrinkTwo",
+      "variant_id": "BrinkSupportTwo",
+      "granted_effect_id": "SupportBrinkPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBurgeon",
+      "variant_id": "BurgeonSupport",
+      "granted_effect_id": "SupportBurgeonPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemBurgeonTwo",
+      "variant_id": "BurgeonSupportTwo",
+      "granted_effect_id": "SupportBurgeonPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCadence",
+      "variant_id": "CadenceSupport",
+      "granted_effect_id": "SupportCadencePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCaltrops",
+      "variant_id": "CaltropsSupport",
+      "granted_effect_id": "SupportCaltropsPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredCaltropsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCapacitor",
+      "variant_id": "EnergyCapacitorSupport",
+      "granted_effect_id": "SupportEnergyCapacitorPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCatharsis",
+      "variant_id": "CatharsisSupport",
+      "granted_effect_id": "SupportCatharsisPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCathasBrilliance",
+      "variant_id": "CathasBrillianceSupport",
+      "granted_effect_id": "SupportCathasBrilliance"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemChaoticFreeze",
+      "variant_id": "ChaoticFreezeSupport",
+      "granted_effect_id": "SupportChaoticFreezePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemChargedShots",
+      "variant_id": "ChargedShotsSupport",
+      "granted_effect_id": "SupportChargedShotsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemChargedShotsTwo",
+      "variant_id": "ChargedShotsSupportTwo",
+      "granted_effect_id": "SupportChargedShotsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCharmBounty",
+      "variant_id": "CharmBountySupport",
+      "granted_effect_id": "SupportCharmBountyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemClash",
+      "variant_id": "ClashSupport",
+      "granted_effect_id": "SupportClashPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCombatReload",
+      "variant_id": "CombatReloadSupport",
+      "granted_effect_id": "SupportCombatReloadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCommandment",
+      "variant_id": "CommandmentSupport",
+      "granted_effect_id": "SupportCommandment"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCommiserate",
+      "variant_id": "CommiserateSupport",
+      "granted_effect_id": "SupportCommiseratePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemConcoct",
+      "variant_id": "ConcoctSupport",
+      "granted_effect_id": "SupportConcoctPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemConcoctTwo",
+      "variant_id": "ConcoctSupportTwo",
+      "granted_effect_id": "SupportConcoctPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemConsideredCasting",
+      "variant_id": "ConsideredCastingSupport",
+      "granted_effect_id": "SupportConsideredCastingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCoolHeaded",
+      "variant_id": "CoolHeadedSupport",
+      "granted_effect_id": "SupportCoolheadedPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCorpseConservation",
+      "variant_id": "CorpseConservationSupport",
+      "granted_effect_id": "SupportCorpseConservationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCracklingBarrier",
+      "variant_id": "CracklingBarrierSupport",
+      "granted_effect_id": "SupportCracklingBarrierPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCrater",
+      "variant_id": "CraterSupport",
+      "granted_effect_id": "SupportCraterPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredCraterPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCrazedMinions",
+      "variant_id": "CrazedMinionsSupport",
+      "granted_effect_id": "SupportCrazedMinionsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCrystallineShards",
+      "variant_id": "CrystallineShardsSupport",
+      "granted_effect_id": "SupportCrystallineShardsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCullingStrike",
+      "variant_id": "CullingStrikeSupport",
+      "granted_effect_id": "SupportCullingStrikePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCullingStrikeTwo",
+      "variant_id": "CullingStrikeSupportTwo",
+      "granted_effect_id": "SupportCullingStrikePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCulmination",
+      "variant_id": "CulminationSupport",
+      "granted_effect_id": "SupportCulminationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCulminationTwo",
+      "variant_id": "CulminationSupportTwo",
+      "granted_effect_id": "SupportCulminationPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemCursedGround",
+      "variant_id": "CursedGroundSupport",
+      "granted_effect_id": "SupportCursedGroundPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDanseMacabre",
+      "variant_id": "DanseMacabreSupport",
+      "granted_effect_id": "SupportDanseMacabrePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDaressosPassion",
+      "variant_id": "DaressosPassionSupport",
+      "granted_effect_id": "SupportDaressosPassionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDauntless",
+      "variant_id": "DauntlessSupport",
+      "granted_effect_id": "SupportDauntlessPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDeadlyResolve",
+      "variant_id": "DangerousResolveSupport",
+      "granted_effect_id": "SupportDeadlyResolvePlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredDeadlyResolvePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDeathmarch",
+      "variant_id": "DeathmarchSupport",
+      "granted_effect_id": "SupportDeathmarchPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDecayingHex",
+      "variant_id": "DecayingHexSupport",
+      "granted_effect_id": "SupportDecayingHexPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredDecayingHexPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDefy",
+      "variant_id": "DefySupport",
+      "granted_effect_id": "SupportDefyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDefyTwo",
+      "variant_id": "DefySupportTwo",
+      "granted_effect_id": "SupportDefyPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDelayedGratification",
+      "variant_id": "DelayedGratificationSupport",
+      "granted_effect_id": "SupportDelayedGratificationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDelayedReaction",
+      "variant_id": "DelayedReactionSupport",
+      "granted_effect_id": "SupportDelayedReactionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDeliberation",
+      "variant_id": "DeliberationSupport",
+      "granted_effect_id": "SupportDeliberationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDerange",
+      "variant_id": "DerangeSupport",
+      "granted_effect_id": "SupportDerangePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDiallasDesire",
+      "variant_id": "DiallasDesireSupport",
+      "granted_effect_id": "SupportDiallasDesirePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDireStrike",
+      "variant_id": "DirestrikeSupport",
+      "granted_effect_id": "SupportDirestrikePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDireStrikeTwo",
+      "variant_id": "DirestrikeSupportTwo",
+      "granted_effect_id": "SupportDirestrikePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDissipate",
+      "variant_id": "FleetingRemnantsSupport",
+      "granted_effect_id": "SupportFleetingRemnantsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDissipateTwo",
+      "variant_id": "FleetingRemnantsSupportTwo",
+      "granted_effect_id": "SupportFleetingRemnantsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDoedresUndoing",
+      "variant_id": "DoedresUndoingSupport",
+      "granted_effect_id": "SupportDoedresUndoingPlayer",
+      "additional_granted_effect_ids": [
+        "ChaosFrogExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDomain",
+      "variant_id": "PersistentGroundSupport",
+      "granted_effect_id": "SupportPersistentGroundPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDomainThree",
+      "variant_id": "PersistentGroundSupportThree",
+      "granted_effect_id": "SupportPersistentGroundPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDomainTwo",
+      "variant_id": "PersistentGroundSupportTwo",
+      "granted_effect_id": "SupportPersistentGroundPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDoubleBarrel",
+      "variant_id": "DoubleBarrelSupport",
+      "granted_effect_id": "SupportDoubleBarrelPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDoubleBarrelThree",
+      "variant_id": "DoubleBarrelSupportThree",
+      "granted_effect_id": "SupportDoubleBarrelPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDoubleBarrelTwo",
+      "variant_id": "DoubleBarrelSupportTwo",
+      "granted_effect_id": "SupportDoubleBarrelPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemDurability",
+      "variant_id": "DurabilitySupport",
+      "granted_effect_id": "SupportDurabilityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemEmbitter",
+      "variant_id": "EmbitterSupport",
+      "granted_effect_id": "SupportEmbitterPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemEnduringImpact",
+      "variant_id": "HeavyStunEnduranceSupportOne",
+      "granted_effect_id": "SupportHeavyStunEndurancePlayerOne"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemEnduringImpactTwo",
+      "variant_id": "HeavyStunEnduranceSupportTwo",
+      "granted_effect_id": "SupportHeavyStunEndurancePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemEnergyRetention",
+      "variant_id": "EnergyRetentionSupport",
+      "granted_effect_id": "SupportEnergyRetentionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemEnormity",
+      "variant_id": "HulkingMinionsSupport",
+      "granted_effect_id": "SupportHulkingMinionsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemEshsProwess",
+      "variant_id": "EshsProwessSupport",
+      "granted_effect_id": "SupportEshsProwess"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemEshsRadiance",
+      "variant_id": "EshsRadianceSupport",
+      "granted_effect_id": "SupportEshsRadiancePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemExcise",
+      "variant_id": "ExciseSupport",
+      "granted_effect_id": "SupportExcisePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemExecrate",
+      "variant_id": "ExecrateSupport",
+      "granted_effect_id": "SupportExecratePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemExpanse",
+      "variant_id": "ExpanseSupport",
+      "granted_effect_id": "SupportExpansePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemExpedite",
+      "variant_id": "ShortFuseSupport",
+      "granted_effect_id": "SupportShortFusePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemExpediteTwo",
+      "variant_id": "ShortFuseSupportTwo",
+      "granted_effect_id": "SupportShortFusePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemExtraction",
+      "variant_id": "ExtractionSupport",
+      "granted_effect_id": "SupportExtractionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFerocity",
+      "variant_id": "FerocitySupport",
+      "granted_effect_id": "SupportFerocityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFigurehead",
+      "variant_id": "SelflessRemnantsSupport",
+      "granted_effect_id": "SupportSelflessRemnantsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFlamePillar",
+      "variant_id": "FlamePillarSupport",
+      "granted_effect_id": "SupportFlamePillarPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredFlamePillarPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFlamepierce",
+      "variant_id": "FlamepierceSupport",
+      "granted_effect_id": "SupportFlamepiercePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFluke",
+      "variant_id": "FlukeSupport",
+      "granted_effect_id": "SupportFlukePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFlukeTwo",
+      "variant_id": "FlukeSupportTwo",
+      "granted_effect_id": "SupportFlukePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFocusedCurse",
+      "variant_id": "FocusedCurseSupport",
+      "granted_effect_id": "SupportFocusedCursePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFreezefork",
+      "variant_id": "FreezeForkSupport",
+      "granted_effect_id": "SupportFreezeforkPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFreshClip",
+      "variant_id": "FreshClipSupport",
+      "granted_effect_id": "SupportFreshClipPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFreshClipTwo",
+      "variant_id": "FreshClipSupportTwo",
+      "granted_effect_id": "SupportFreshClipPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemFrozenSpite",
+      "variant_id": "FrozenSpiteSupport",
+      "granted_effect_id": "SupportFrozenSpitePlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredSupportFrozenSpiteIceFragmentPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemGambleshot",
+      "variant_id": "GambleshotSupport",
+      "granted_effect_id": "SupportGambleshotPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemGarukhansResolve",
+      "variant_id": "GarukhansResolveSupport",
+      "granted_effect_id": "SupportGarukhansResolvePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemGlacier",
+      "variant_id": "GlacierSupport",
+      "granted_effect_id": "SupportGlacierPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemGreatwood",
+      "variant_id": "CirelsCultivationSupport",
+      "granted_effect_id": "SupportCirelsCultivationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemGrudge",
+      "variant_id": "RelentlessRageSupport",
+      "granted_effect_id": "SupportRelentlessRagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemGuatelitzi",
+      "variant_id": "GuatelitzisAblationSupport",
+      "granted_effect_id": "SupportGuatelitzisAblationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHaemocrystals",
+      "variant_id": "HaemocrystalsSupport",
+      "granted_effect_id": "SupportHaemocrystalsPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredHaemocrystalsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHardyTotems",
+      "variant_id": "HardyTotemsSupport",
+      "granted_effect_id": "SupportHardyTotemsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHardyTotemsThree",
+      "variant_id": "HardyTotemsSupportThree",
+      "granted_effect_id": "SupportHardyTotemsPlayerThree",
+      "additional_granted_effect_ids": [
+        "TriggeredSplinterExplosionHardyTotems"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHardyTotemsTwo",
+      "variant_id": "HardyTotemsSupportTwo",
+      "granted_effect_id": "SupportHardyTotemsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHayoxisFulmination",
+      "variant_id": "HayoxisFulminationSupport",
+      "granted_effect_id": "SupportHayoxisBindingPlayer",
+      "additional_granted_effect_ids": [
+        "SupportTriggeredAnnihilationPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHeft",
+      "variant_id": "HeftSupport",
+      "granted_effect_id": "SupportHeftPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHelbrymsHide",
+      "variant_id": "HelbrymsHideSupport",
+      "granted_effect_id": "SupportHelbrymsHidePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHerDeclaration",
+      "variant_id": "HerDeclarationSupport",
+      "granted_effect_id": "SupportHerDeclarationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHitAndRun",
+      "variant_id": "HitAndRunSupport",
+      "granted_effect_id": "SupportHitAndRunPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemHolyDescent",
+      "variant_id": "HolyDescentSupport",
+      "granted_effect_id": "SupportHolyDescentPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemIcicle",
+      "variant_id": "IcicleSupport",
+      "granted_effect_id": "SupportIciclePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemImpale",
+      "variant_id": "ImpaleSupport",
+      "granted_effect_id": "SupportImpalePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemImpetus",
+      "variant_id": "BoundlessEnergySupport",
+      "granted_effect_id": "SupportBoundlessEnergyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemImpetusTwo",
+      "variant_id": "BoundlessEnergySupportTwo",
+      "granted_effect_id": "SupportBoundlessEnergyPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemIncision",
+      "variant_id": "IncisionSupport",
+      "granted_effect_id": "SupportIncisionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemInhibitor",
+      "variant_id": "ChargeInhibitionSupport",
+      "granted_effect_id": "SupportChargeInhibitionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemInnervate",
+      "variant_id": "InnervateSupport",
+      "granted_effect_id": "SupportInnervatePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemIntenseAgony",
+      "variant_id": "IntenseAgonySupport",
+      "granted_effect_id": "SupportIntenseAgonyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemInterlude",
+      "variant_id": "RemnantPotencySupport",
+      "granted_effect_id": "SupportInterludePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemInterludeThree",
+      "variant_id": "RemnantPotencySupportThree",
+      "granted_effect_id": "SupportInterludePlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemInterludeTwo",
+      "variant_id": "RemnantPotencySupportTwo",
+      "granted_effect_id": "SupportInterludePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemIronwood",
+      "variant_id": "ReinforcedTotemsSupport",
+      "granted_effect_id": "SupportReinforcedTotemsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemIronwoodTwo",
+      "variant_id": "ReinforcedTotemsSupportTwo",
+      "granted_effect_id": "SupportReinforcedTotemsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemKalisasCrescendo",
+      "variant_id": "KalisasCrescendoSupport",
+      "granted_effect_id": "SupportKalisasCrescendoPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemKaomsMadness",
+      "variant_id": "KaomsMadnessSupport",
+      "granted_effect_id": "SupportKaomsMadnessPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemKhatalsRejuvenation",
+      "variant_id": "KhatalsRejuvenationSupport",
+      "granted_effect_id": "SupportKhatalsRejuvenationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemKulemaksDominion",
+      "variant_id": "KulemaksDominionSupport",
+      "granted_effect_id": "SupportKulemaksDominionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemKurgalsLeash",
+      "variant_id": "KurgalsLeashSupport",
+      "granted_effect_id": "SupportKurgalsLeashPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemLastGasp",
+      "variant_id": "LastGaspSupport",
+      "granted_effect_id": "SupportLastGaspPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemLivingLightning",
+      "variant_id": "LivingLightningSupport",
+      "granted_effect_id": "SupportLivingLightningPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredLivingLightningPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemLivingLightningTwo",
+      "variant_id": "LivingLightningSupportTwo",
+      "granted_effect_id": "SupportLivingLightningPlayerTwo",
+      "additional_granted_effect_ids": [
+        "TriggeredLivingLightningPlayerTwo"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemLongFuse",
+      "variant_id": "LongFuseSupport",
+      "granted_effect_id": "SupportLongFusePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemLongFuseTwo",
+      "variant_id": "LongFuseSupportTwo",
+      "granted_effect_id": "SupportLongFusePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemLoyalty",
+      "variant_id": "LoyaltySupport",
+      "granted_effect_id": "SupportLoyaltyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMagnetism",
+      "variant_id": "MagneticRemnantsSupport",
+      "granted_effect_id": "SupportMagneticRemnantsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMalady",
+      "variant_id": "MaladySupport",
+      "granted_effect_id": "SupportMaladyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMedvedsFelling",
+      "variant_id": "MedvedsFellingSupport",
+      "granted_effect_id": "SupportMedvedsFelling"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMinionInstability",
+      "variant_id": "MinionInstabilitySupport",
+      "granted_effect_id": "SupportMinionInstabilityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMinionPact",
+      "variant_id": "MinionPactSupport",
+      "granted_effect_id": "SupportMinionPactPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMinionPactTwo",
+      "variant_id": "MinionPactSupportTwo",
+      "granted_effect_id": "SupportMinionPactPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMorganasTempest",
+      "variant_id": "MorganasTempestSupport",
+      "granted_effect_id": "SupportMorganasTempestPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMorrigansInsight",
+      "variant_id": "MorrigansInsightSupport",
+      "granted_effect_id": "SupportMorrigansInsight",
+      "additional_granted_effect_ids": [
+        "TriggeredMorrigansInsightPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMuster",
+      "variant_id": "MusterSupport",
+      "granted_effect_id": "SupportMusterPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMysticism",
+      "variant_id": "MysticismSupport",
+      "granted_effect_id": "SupportMysticismPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemMysticismTwo",
+      "variant_id": "MysticismSupportTwo",
+      "granted_effect_id": "SupportMysticismPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemNimbleReload",
+      "variant_id": "NimbleReloadSupport",
+      "granted_effect_id": "SupportNimbleReloadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemOverextend",
+      "variant_id": "OverextendSupport",
+      "granted_effect_id": "SupportOverextendPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPayload",
+      "variant_id": "PayloadSupport",
+      "granted_effect_id": "SupportPayloadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPerfectedEndurance",
+      "variant_id": "PerfectEnduranceSupport",
+      "granted_effect_id": "SupportPerfectEndurancePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPerfection",
+      "variant_id": "PerfectionSupport",
+      "granted_effect_id": "SupportPerfectionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPietysMercy",
+      "variant_id": "PietysMercySupport",
+      "granted_effect_id": "SupportPietysMercyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPoisonSpores",
+      "variant_id": "PoisonSporesSupport",
+      "granted_effect_id": "SupportPoisonSpores",
+      "additional_granted_effect_ids": [
+        "TriggeredPoisonSporesPustule"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPracticedCombo",
+      "variant_id": "PracticedComboSupport",
+      "granted_effect_id": "SupportPracticedComboPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemProfanity",
+      "variant_id": "ProfanitySupport",
+      "granted_effect_id": "SupportProfanityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemProfanityTwo",
+      "variant_id": "ProfanitySupportTwo",
+      "granted_effect_id": "SupportProfanityPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPrototypeSeventeen",
+      "variant_id": "PrototypeSeventeenSupport",
+      "granted_effect_id": "SupportPrototypeSeventeenPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPunchThrough",
+      "variant_id": "PunchThroughSupport",
+      "granted_effect_id": "SupportPunchThroughPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPursuit",
+      "variant_id": "PursuitSupport",
+      "granted_effect_id": "SupportPursuitPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPursuitThree",
+      "variant_id": "PursuitSupportThree",
+      "granted_effect_id": "SupportPursuitPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemPursuitTwo",
+      "variant_id": "PursuitSupportTwo",
+      "granted_effect_id": "SupportPursuitPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemQuillBurst",
+      "variant_id": "QuillburstSupport",
+      "granted_effect_id": "SupportQuillburstPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredQuillburstPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRageforged",
+      "variant_id": "RageforgedSupport",
+      "granted_effect_id": "SupportRageforgedPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRageforgedTwo",
+      "variant_id": "RageforgedSupportTwo",
+      "granted_effect_id": "SupportRageforgedPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRagingCry",
+      "variant_id": "RagingCrySupport",
+      "granted_effect_id": "SupportRagingCryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRakiatasFlow",
+      "variant_id": "RakiatasFlowSupport",
+      "granted_effect_id": "SupportRakiatasFlowPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemReach",
+      "variant_id": "OverreachSupport",
+      "granted_effect_id": "SupportOverreachPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRearm",
+      "variant_id": "RearmSupport",
+      "granted_effect_id": "SupportRearmPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRearmTwo",
+      "variant_id": "RearmSupportTwo",
+      "granted_effect_id": "SupportRearmPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRefraction",
+      "variant_id": "RefractionSupport",
+      "granted_effect_id": "SupportRefractionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRefractionThree",
+      "variant_id": "RefractionSupportThree",
+      "granted_effect_id": "SupportRefractionPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRefractionTwo",
+      "variant_id": "RefractionSupportTwo",
+      "granted_effect_id": "SupportRefractionPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRetaliate",
+      "variant_id": "RetaliateSupport",
+      "granted_effect_id": "SupportRetaliatePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRetaliateTwo",
+      "variant_id": "RetaliateSupportTwo",
+      "granted_effect_id": "SupportRetaliatePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRetort",
+      "variant_id": "FrenziedRiposteSupport",
+      "granted_effect_id": "SupportFrenziedRipostePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRetreat",
+      "variant_id": "RetreatSupport",
+      "granted_effect_id": "SupportRetreatPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRetreatThree",
+      "variant_id": "RetreatSupportThree",
+      "granted_effect_id": "SupportRetreatPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRetreatTwo",
+      "variant_id": "RetreatSupportTwo",
+      "granted_effect_id": "SupportRetreatPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemReverberate",
+      "variant_id": "ReverberateSupport",
+      "granted_effect_id": "SupportReveberatePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRicochet",
+      "variant_id": "TerrainChainSupport",
+      "granted_effect_id": "SupportRicochetPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRicochetTwo",
+      "variant_id": "TerrainChainSupportTwo",
+      "granted_effect_id": "SupportRicochetPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRigwaldsFerocity",
+      "variant_id": "RigwaldsFerocitySupport",
+      "granted_effect_id": "SupportRigwaldsFerocityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRip",
+      "variant_id": "RipSupport",
+      "granted_effect_id": "SupportRipPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRitualisticCurse",
+      "variant_id": "RitualisticCurseSupport",
+      "granted_effect_id": "SupportRitualisticCursePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRomirasRequital",
+      "variant_id": "RomirasRequitalSupport",
+      "granted_effect_id": "SupportRomirasRequitalPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRupture",
+      "variant_id": "RuptureSupport",
+      "granted_effect_id": "SupportRupturePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemRustedSpikes",
+      "variant_id": "RustedSpikesSupport",
+      "granted_effect_id": "SupportRustedSpikesPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSacrificialLamb",
+      "variant_id": "SacrificialLambSupport",
+      "granted_effect_id": "SupportSacrificialLambPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSacrificialLambTwo",
+      "variant_id": "SacrificialLambSupportTwo",
+      "granted_effect_id": "SupportSacrificialLambPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSalvo",
+      "variant_id": "SalvoSupport",
+      "granted_effect_id": "SupportSalvoPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSeraphsHeart",
+      "variant_id": "SeraphsHeartSupport",
+      "granted_effect_id": "SupportSeraphsHeartPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemShockingLeap",
+      "variant_id": "ShockingLeapSupport",
+      "granted_effect_id": "SupportShockingLeapPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemShockingRift",
+      "variant_id": "ShockingRiftSupport",
+      "granted_effect_id": "SupportShockingRiftPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredShockingRiftPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSingleOut",
+      "variant_id": "MarkForDeathSupport",
+      "granted_effect_id": "SupportMarkForDeathPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSingleOutTwo",
+      "variant_id": "MarkForDeathSupportTwo",
+      "granted_effect_id": "SupportMarkForDeathPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSkitteringStone",
+      "variant_id": "SkitteringStoneSupport",
+      "granted_effect_id": "SupportSkitteringStonePlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredSkitteringStonePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSkitteringStoneTwo",
+      "variant_id": "SkitteringStoneSupportTwo",
+      "granted_effect_id": "SupportSkitteringStonePlayerTwo",
+      "additional_granted_effect_ids": [
+        "TriggeredSkitteringStonePlayerTwo"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSpar",
+      "variant_id": "SparSupport",
+      "granted_effect_id": "SupportSparPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSpectralVolley",
+      "variant_id": "SpectralVolleySupport",
+      "granted_effect_id": "SupportSpectralVolleyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSpellCascade",
+      "variant_id": "SpellCascadeSupport",
+      "granted_effect_id": "SupportSpellCascadePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSplinteringTotem",
+      "variant_id": "SplinteringTotemSupport",
+      "granted_effect_id": "SupportSplinteringTotemPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSplinteringTotemTwo",
+      "variant_id": "SplinteringTotemSupportTwo",
+      "granted_effect_id": "SupportSplinteringTotemPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStaticShocks",
+      "variant_id": "StaticShocksSupport",
+      "granted_effect_id": "SupportStaticShocksPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredStaticShocksPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSteadfast",
+      "variant_id": "SteadfastSupport",
+      "granted_effect_id": "SupportSteadfastPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSteadfastTwo",
+      "variant_id": "SteadfastSupportTwo",
+      "granted_effect_id": "SupportSteadfastPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStoicism",
+      "variant_id": "StoicismSupport",
+      "granted_effect_id": "SupportStoicismPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStoicismTwo",
+      "variant_id": "StoicismSupportTwo",
+      "granted_effect_id": "SupportStoicismPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStompingGround",
+      "variant_id": "StompingGroundSupport",
+      "granted_effect_id": "SupportStompingGroundPlayer",
+      "additional_granted_effect_ids": [
+        "StompingGroundShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStormchain",
+      "variant_id": "StormchainSupport",
+      "granted_effect_id": "SupportStormchainPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStreamlinedRounds",
+      "variant_id": "StreamlinedRoundsSupport",
+      "granted_effect_id": "SupportStreamlinedRoundsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStripAway",
+      "variant_id": "PotentExposureSupport",
+      "granted_effect_id": "SupportPotentExposurePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStrongHearted",
+      "variant_id": "StrongHeartedSupport",
+      "granted_effect_id": "SupportStrongHeartedPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStyrnsFerocity",
+      "variant_id": "StyrnsFerocitySupport",
+      "granted_effect_id": "SupportStyrnsFerocity"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemStyrnsMountain",
+      "variant_id": "StyrnsMountainSupport",
+      "granted_effect_id": "SupportStyrnsMountain"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSuffuse",
+      "variant_id": "EncroachingGroundSupport",
+      "granted_effect_id": "SupportEncroachingGroundPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSwiftAffliction",
+      "variant_id": "SwiftAfflictionSupport",
+      "granted_effect_id": "SupportSwiftAfflictionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSwiftAfflictionThree",
+      "variant_id": "SwiftAfflictionSupportThree",
+      "granted_effect_id": "SupportSwiftAfflictionPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSwiftAfflictionTwo",
+      "variant_id": "SwiftAfflictionSupportTwo",
+      "granted_effect_id": "SupportSwiftAfflictionPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemSyzygy",
+      "variant_id": "SyzygySupport",
+      "granted_effect_id": "SupportSyzygyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTacatisIre",
+      "variant_id": "TacatisIreSupport",
+      "granted_effect_id": "SupportTacatisIrePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTangmazusThurible",
+      "variant_id": "TangmazusThuribleSupport",
+      "granted_effect_id": "SupportTangMazusThuriblePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTasaliosRhythm",
+      "variant_id": "TasaliosRhythmSupport",
+      "granted_effect_id": "SupportTasaliosRhythmPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTear",
+      "variant_id": "TearSupport",
+      "granted_effect_id": "SupportTearPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTecrodsRevenge",
+      "variant_id": "TecrodsRevengeSupport",
+      "granted_effect_id": "SupportTecrodsRevengePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemThornskin",
+      "variant_id": "ThornskinSupport",
+      "granted_effect_id": "SupportThornskinPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemThornskinTwo",
+      "variant_id": "ThornskinSupportTwo",
+      "granted_effect_id": "SupportThornskinPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTireless",
+      "variant_id": "TirelessSupport",
+      "granted_effect_id": "SupportTirelessPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTrickstersShard",
+      "variant_id": "TrickstersShardSupport",
+      "granted_effect_id": "SupportTrickstersShardPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredFracturedSelfPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTulsAvalanche",
+      "variant_id": "TulsAvalancheSupport",
+      "granted_effect_id": "SupportTulsAvalanche"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTulsStillness",
+      "variant_id": "TulsStillnessSupport",
+      "granted_effect_id": "SupportTulsStillnessPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemTwofold",
+      "variant_id": "HeightenedChargesSupport",
+      "granted_effect_id": "SupportHeightenedChargesPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUhtredsAugury",
+      "variant_id": "UhtredAugurySupport",
+      "granted_effect_id": "SupportUhtredAuguryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUhtredsConstellation",
+      "variant_id": "UhtredsConstellationSupport",
+      "granted_effect_id": "SupportUhtredsConstellation"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUhtredsExodus",
+      "variant_id": "UhtredExodusSupport",
+      "granted_effect_id": "SupportUhtredExodusPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUhtredsOmen",
+      "variant_id": "UhtredOmenSupport",
+      "granted_effect_id": "SupportUhtredOmenPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUhtredsRite",
+      "variant_id": "UhtredsRiteSupport",
+      "granted_effect_id": "SupportUhtredsRitePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUndermine",
+      "variant_id": "UndermineSupport",
+      "granted_effect_id": "SupportUnderminePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUnerringPower",
+      "variant_id": "UnerringPowerSupport",
+      "granted_effect_id": "SupportUnerringPowerPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUntouchable",
+      "variant_id": "UntouchableSupport",
+      "granted_effect_id": "SupportUntouchablePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUpheaval",
+      "variant_id": "UpheavalSupport",
+      "granted_effect_id": "SupportUpheavalPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUpheavalTwo",
+      "variant_id": "UpheavalSupportTwo",
+      "granted_effect_id": "SupportUpheavalPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUpwelling",
+      "variant_id": "UpwellingSupport",
+      "granted_effect_id": "SupportUpwellingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUpwellingTwo",
+      "variant_id": "UpwellingSupportTwo",
+      "granted_effect_id": "SupportUpwellingPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemUulNetolsEmbrace",
+      "variant_id": "UulNetolsEmbraceSupport",
+      "granted_effect_id": "SupportUulNetolsEmbracePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVanguard",
+      "variant_id": "VanguardSupport",
+      "granted_effect_id": "SupportVanguardPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVanguardTwo",
+      "variant_id": "VanguardSupportTwo",
+      "granted_effect_id": "SupportVanguardPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVarashtasBlessing",
+      "variant_id": "VarashtasBlessingSupport",
+      "granted_effect_id": "SupportVarashtasBlessingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVerglas",
+      "variant_id": "VerglasSupport",
+      "granted_effect_id": "SupportVerglasPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVolatility",
+      "variant_id": "VolatilitySupport",
+      "granted_effect_id": "SupportVolatilityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVolcanicEruption",
+      "variant_id": "VolcanicEruptionSupport",
+      "granted_effect_id": "SupportVolcanicEruptionPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredVolcanicEruptionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVolt",
+      "variant_id": "VoltSupport",
+      "granted_effect_id": "SupportVoltPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVoranasSiege",
+      "variant_id": "VoranasSiegeSupport",
+      "granted_effect_id": "SupportVoranasSiege"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVruunsAftermath",
+      "variant_id": "VruunsAftermathSupport",
+      "granted_effect_id": "SupportVruunsAftermath"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemVruunsInevitability",
+      "variant_id": "VruunsInevitabilitySupport",
+      "granted_effect_id": "SupportVruunsInevitability"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemWarmBlooded",
+      "variant_id": "WarmBloodedSupport",
+      "granted_effect_id": "SupportWarmbloodedPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemWildshards",
+      "variant_id": "WildshardsSupport",
+      "granted_effect_id": "SupportWildshardsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemWildshardsThree",
+      "variant_id": "WildshardsSupportThree",
+      "granted_effect_id": "SupportWildshardsPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemWildshardsTwo",
+      "variant_id": "WildshardsSupportTwo",
+      "granted_effect_id": "SupportWildshardsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemXibaquasRending",
+      "variant_id": "XibaquasRendingSupport",
+      "granted_effect_id": "SupportXibaquasRendingPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredXibaquasRendingPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemXophsPyre",
+      "variant_id": "XophsPyreSupport",
+      "granted_effect_id": "SupportXophsPyrePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemZarokhsRefrain",
+      "variant_id": "ZarokhsRefrainSupport",
+      "granted_effect_id": "SupportZarokhsRefrainPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemZenith",
+      "variant_id": "ZenithSupport",
+      "granted_effect_id": "SupportZenithPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemZenithTwo",
+      "variant_id": "ZenithSupportTwo",
+      "granted_effect_id": "SupportZenithPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gem/SupportGemZerphisLegacy",
+      "variant_id": "ZerphisLegacySupport",
+      "granted_effect_id": "SupportZerphisLegacyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAncestralWarriorTotem",
+      "variant_id": "AncestralWarriorTotem",
+      "granted_effect_id": "AncestralWarriorTotemPlayer",
+      "additional_granted_effect_ids": [
+        "SupportAncestralWarriorTotemPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAncientGifts",
+      "variant_id": "AncientGifts",
+      "granted_effect_id": "AncientGiftsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAnimusExchange",
+      "variant_id": "AnimusExchange",
+      "granted_effect_id": "AnimusExchangePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAnimusSplinters",
+      "variant_id": "AnimusSplinters",
+      "granted_effect_id": "MetaAnimusSplintersPlayer",
+      "additional_granted_effect_ids": [
+        "SupportAnimusSplintersPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemArc",
+      "variant_id": "Arc",
+      "granted_effect_id": "ArcPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemArchonOfChayula",
+      "variant_id": "ArchonOfChayula",
+      "granted_effect_id": "ArchonOfChayulaPlayer",
+      "additional_granted_effect_ids": [
+        "ArchonOfChayulaTornadoPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemArcticArmour",
+      "variant_id": "ArcticArmour",
+      "granted_effect_id": "ArcticArmourPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemArmourBreaker",
+      "variant_id": "ArmourBreaker",
+      "granted_effect_id": "ArmourBreakerPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemArtilleryBallista",
+      "variant_id": "SiegeBallista",
+      "granted_effect_id": "SiegeBallistaPlayer",
+      "additional_granted_effect_ids": [
+        "SiegeBallistaProjectilePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAscendancyApocalypse",
+      "variant_id": "Apocalypse",
+      "granted_effect_id": "ApocalypsePlayer",
+      "additional_granted_effect_ids": [
+        "ApocalypseColdPlayer",
+        "ApocalypseFirePlayer",
+        "ApocalypseLightningPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAscendancySupportingFire",
+      "variant_id": "SupportingFire",
+      "granted_effect_id": "SupportingFirePlayer",
+      "additional_granted_effect_ids": [
+        "CommandDeathFromAbovePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAscendancyVirtuousBarrier",
+      "variant_id": "AscendancyGemlingVirtuousBarrier",
+      "granted_effect_id": "VirtuousBarrierPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAzmerianSwarm",
+      "variant_id": "AzmerianSwarm",
+      "granted_effect_id": "AzmerianSwarmPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemAzmerianWolf",
+      "variant_id": "AzmerianWolf",
+      "granted_effect_id": "SummonAzmerianWolfPlayer",
+      "additional_granted_effect_ids": [
+        "CommandPackleaderPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBallLightning",
+      "variant_id": "BallLightning",
+      "granted_effect_id": "BallLightningPlayer",
+      "additional_stat_set_ids": [
+        "BallLightningInfusedExplosionPlayer",
+        "BallLightningIgnitedGround"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBarrage",
+      "variant_id": "Barrage",
+      "granted_effect_id": "BarragePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBarrierInvocation",
+      "variant_id": "BarrierInvocation",
+      "granted_effect_id": "MetaBarrierInvocationPlayer",
+      "additional_granted_effect_ids": [
+        "SupportBarrierInvocationPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBearMaul",
+      "variant_id": "BearMaul",
+      "granted_effect_id": "BearMaulPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBearRampage",
+      "variant_id": "BearRampage",
+      "granted_effect_id": "BearRampagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBitterDead",
+      "variant_id": "BitterDead",
+      "granted_effect_id": "BitterDeadPlayer",
+      "additional_stat_set_ids": [
+        "BitterDeadExplosionPlayer",
+        "BitterDeadChillAuraPlayer",
+        "BitterDeadRuneAuraPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBlasphemy",
+      "variant_id": "Blasphemy",
+      "granted_effect_id": "BlasphemyPlayer",
+      "additional_granted_effect_ids": [
+        "SupportBlasphemyPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBloodHunt",
+      "variant_id": "BloodHunt",
+      "granted_effect_id": "BloodHuntPlayer",
+      "additional_stat_set_ids": [
+        "BloodHuntExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBoneOffering",
+      "variant_id": "BoneOffering",
+      "granted_effect_id": "BoneOfferingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBoneshatter",
+      "variant_id": "Boneshatter",
+      "granted_effect_id": "BoneshatterPlayer",
+      "additional_stat_set_ids": [
+        "BoneshatterShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemBriarpatch",
+      "variant_id": "Briarpatch",
+      "granted_effect_id": "BriarpatchPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastCurseOnBlock",
+      "variant_id": "CastCurseOnBlock",
+      "granted_effect_id": "MetaCastCurseOnBlockPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastCurseOnBlockPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastOnBlock",
+      "variant_id": "CastOnBlock",
+      "granted_effect_id": "MetaCastOnBlockPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastOnBlockPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastOnCharmUse",
+      "variant_id": "CastOnCharmUse",
+      "granted_effect_id": "MetaCastOnCharmUsePlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastOnCharmUsePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastOnCritical",
+      "variant_id": "CastOnCriticalStrike",
+      "granted_effect_id": "MetaCastOnCritPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastOnCritPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastOnDodge",
+      "variant_id": "CastOnDodge",
+      "granted_effect_id": "MetaCastOnDodgePlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastOnDodgePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastOnElementalAilment",
+      "variant_id": "CastOnElementalAilment",
+      "granted_effect_id": "MetaCastOnElementalAilmentPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastOnElementalAilmentPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastOnMeleeKill",
+      "variant_id": "CastOnMeleeKill",
+      "granted_effect_id": "MetaCastOnMeleeKillPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastOnMeleeKillPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastOnMeleeStun",
+      "variant_id": "CastOnMeleeStun",
+      "granted_effect_id": "MetaCastOnMeleeStunPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastOnMeleeStunPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCastOnMinionDeath",
+      "variant_id": "CastOnMinionDeath",
+      "granted_effect_id": "MetaCastOnMinionDeathPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastOnMinionDeathPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemChaosbolt",
+      "variant_id": "Chaosbolt",
+      "granted_effect_id": "WeaponGrantedChaosboltPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemChargedStaff",
+      "variant_id": "ChargedStaff",
+      "granted_effect_id": "ChargedStaffPlayer",
+      "additional_granted_effect_ids": [
+        "ChargedStaffShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCoilingBolts",
+      "variant_id": "CoilingBolts",
+      "granted_effect_id": "CoilingBoltsPlayer",
+      "additional_stat_set_ids": [
+        "CoilingBoltsChaosPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemComet",
+      "variant_id": "Comet",
+      "granted_effect_id": "CometPlayer",
+      "additional_stat_set_ids": [
+        "CometFireInfusionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemConductiveRunes",
+      "variant_id": "ConductiveRunes",
+      "granted_effect_id": "ConductiveRunesPlayer",
+      "additional_stat_set_ids": [
+        "ConductiveRunesExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemContagion",
+      "variant_id": "Contagion",
+      "granted_effect_id": "ContagionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCorpseCloud",
+      "variant_id": "CorpseCloud",
+      "granted_effect_id": "CorpseCloudPlayer",
+      "additional_stat_set_ids": [
+        "CorpseCloudExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCracklingPalm",
+      "variant_id": "CracklingPalm",
+      "granted_effect_id": "CracklingPalmPlayer",
+      "additional_stat_set_ids": [
+        "CracklingPalmBoltPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemCrushingFear",
+      "variant_id": "CrushingFear",
+      "granted_effect_id": "CrushingFearPlayer",
+      "additional_stat_set_ids": [
+        "CrushingFearNovaPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemDespair",
+      "variant_id": "Despair",
+      "granted_effect_id": "DespairPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemDetonateDead",
+      "variant_id": "DetonateDead",
+      "granted_effect_id": "DetonateDeadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemDetonateLiving",
+      "variant_id": "DetonateLiving",
+      "granted_effect_id": "DetonateLivingPlayer",
+      "additional_stat_set_ids": [
+        "DetonateLivingExplodePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemDiscipline",
+      "variant_id": "Discipline",
+      "granted_effect_id": "DisciplinePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemDisengage",
+      "variant_id": "Disengage",
+      "granted_effect_id": "DisengagePlayer",
+      "additional_stat_set_ids": [
+        "DisengageShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEarthquake",
+      "variant_id": "Earthquake",
+      "granted_effect_id": "EarthquakePlayer",
+      "additional_stat_set_ids": [
+        "EarthquakeAftershockPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEarthshatter",
+      "variant_id": "Earthshatter",
+      "granted_effect_id": "EarthshatterPlayer",
+      "additional_stat_set_ids": [
+        "EarthshatterSpikePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEmberFusillade",
+      "variant_id": "EmberFusillade",
+      "granted_effect_id": "EmberFusilladePlayer",
+      "additional_stat_set_ids": [
+        "EmberFusilladeExplosionPlayer",
+        "EmberFusilladeBeamPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEnervatingNova",
+      "variant_id": "EnervatingNova",
+      "granted_effect_id": "EnervatingNovaPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEnfeeble",
+      "variant_id": "Enfeeble",
+      "granted_effect_id": "EnfeeblePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEscapeShot",
+      "variant_id": "EscapeShot",
+      "granted_effect_id": "EscapeShotPlayer",
+      "additional_granted_effect_ids": [
+        "EscapeShotIceFragmentPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEssenceDrain",
+      "variant_id": "EssenceDrain",
+      "granted_effect_id": "EssenceDrainPlayer",
+      "additional_stat_set_ids": [
+        "EssenceDrainDotPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEternalMarch",
+      "variant_id": "EternalMarch",
+      "granted_effect_id": "EternalMarchPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEternalRage",
+      "variant_id": "EternalRage",
+      "granted_effect_id": "EternalRagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemExplosiveTransmutation",
+      "variant_id": "ExplosiveTransmutation",
+      "granted_effect_id": "ExplosiveTransmutationPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredExplosiveTransmutationExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemExsanguinate",
+      "variant_id": "Exsanguinate",
+      "granted_effect_id": "ExsanguinatePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemEyeOfWinter",
+      "variant_id": "EyeOfWinter",
+      "granted_effect_id": "EyeOfWinterPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFallingThunder",
+      "variant_id": "FallingThunder",
+      "granted_effect_id": "FallingThunderPlayer",
+      "additional_stat_set_ids": [
+        "FallingThunderProjectilePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFerociousRoar",
+      "variant_id": "FerociousRoar",
+      "granted_effect_id": "FerociousRoarMetaPlayer",
+      "additional_granted_effect_ids": [
+        "SupportFerociousRoarPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFirebolt",
+      "variant_id": "Firebolt",
+      "granted_effect_id": "FireboltPlayer",
+      "additional_stat_set_ids": [
+        "FireboltExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFirestorm",
+      "variant_id": "Firestorm",
+      "granted_effect_id": "FirestormPlayer",
+      "additional_stat_set_ids": [
+        "FirestormColdInfusionPlayer",
+        "FirestormLightningInfusionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFlameWall",
+      "variant_id": "FlameWall",
+      "granted_effect_id": "FlameWallPlayer",
+      "additional_stat_set_ids": [
+        "FlameWallProjectileBuffPlayer",
+        "FlameWallLingeringIgnitePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFlameblast",
+      "variant_id": "Flameblast",
+      "granted_effect_id": "FlameblastPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFlickerStrike",
+      "variant_id": "FlickerStrike",
+      "granted_effect_id": "FlickerStrikePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFragmentsOfThePast",
+      "variant_id": "FragmentsOfThePast",
+      "granted_effect_id": "FragmentsOfThePastPlayer",
+      "additional_granted_effect_ids": [
+        "FragmentsOfThePastFragmentPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFreezingShards",
+      "variant_id": "FreezingShards",
+      "granted_effect_id": "FreezingShardsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFrostBomb",
+      "variant_id": "FrostBomb",
+      "granted_effect_id": "FrostBombPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFrostWall",
+      "variant_id": "FrostWall",
+      "granted_effect_id": "FrostWallPlayer",
+      "additional_stat_set_ids": [
+        "FrostWallInfusedPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFrostbolt",
+      "variant_id": "FrostBolt",
+      "granted_effect_id": "FrostboltPlayer",
+      "additional_stat_set_ids": [
+        "FrostboltExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFrostflameNova",
+      "variant_id": "FrostflameNova",
+      "granted_effect_id": "FrostflameNovaPlayer",
+      "additional_stat_set_ids": [
+        "FrostflameNovaColdHitPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFuriousSlam",
+      "variant_id": "FuriousSlam",
+      "granted_effect_id": "FuriousSlamPlayer",
+      "additional_stat_set_ids": [
+        "FuriousSlamEnragedPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemFuturePast",
+      "variant_id": "FuturePast",
+      "granted_effect_id": "FuturePastPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemGalvanicField",
+      "variant_id": "GalvanicField",
+      "granted_effect_id": "GalvanicFieldBuffPlayer",
+      "additional_stat_set_ids": [
+        "GalvanicFieldOrbPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemGelidPalm",
+      "variant_id": "GelidPalm",
+      "granted_effect_id": "GelidPalmPlayer",
+      "additional_stat_set_ids": [
+        "GelidPalmBoltPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemGhostDance",
+      "variant_id": "GhostDance",
+      "granted_effect_id": "GhostDancePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemGlacialCascade",
+      "variant_id": "GlacialCascade",
+      "granted_effect_id": "GlacialCascadePlayer",
+      "additional_stat_set_ids": [
+        "GlacialCascadeLastSpikePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemGlacialClash",
+      "variant_id": "NightfallShieldThrow",
+      "granted_effect_id": "NightfallSoaringMidnightPlayer",
+      "additional_granted_effect_ids": [
+        "NightfallEmbraceTheFallPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemGlacialLance",
+      "variant_id": "GlacialLance",
+      "granted_effect_id": "GlacialLancePlayer",
+      "additional_stat_set_ids": [
+        "GlacialLanceWallsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemGrimPillars",
+      "variant_id": "GrimPillars",
+      "granted_effect_id": "GrimPillarsPlayer",
+      "additional_stat_set_ids": [
+        "GrimPillarsExplodePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHarbingerOfMadness",
+      "variant_id": "HarbingerOfMadness",
+      "granted_effect_id": "HarbingerOfMadnessPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHeraldOfAsh",
+      "variant_id": "HeraldOfAsh",
+      "granted_effect_id": "HeraldOfAshPlayer",
+      "additional_stat_set_ids": [
+        "HeraldOfAshOnKillPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHeraldOfIce",
+      "variant_id": "HeraldOfIce",
+      "granted_effect_id": "HeraldOfIcePlayer",
+      "additional_stat_set_ids": [
+        "HeraldOfIceOnKillPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHeraldOfThunder",
+      "variant_id": "HeraldOfThunder",
+      "granted_effect_id": "HeraldOfThunderPlayer",
+      "additional_stat_set_ids": [
+        "HeraldOfThunderOnKillPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHexblast",
+      "variant_id": "Hexblast",
+      "granted_effect_id": "HexblastPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHisFoulEmergence",
+      "variant_id": "HisFoulEmergence",
+      "granted_effect_id": "HisFoulEmergencePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHisWinnowingFlame",
+      "variant_id": "HisWinnowingFlame",
+      "granted_effect_id": "HisWinnowingFlamePlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredHisWinnowingFlamePillarPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHollowShell",
+      "variant_id": "HollowShell",
+      "granted_effect_id": "HollowShellPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemHyenaCackle",
+      "variant_id": "HyenaCackle",
+      "granted_effect_id": "HyenaCacklePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemIceNova",
+      "variant_id": "IceNova",
+      "granted_effect_id": "IceNovaPlayer",
+      "additional_stat_set_ids": [
+        "IceNovaPlayerOnFrostbolt",
+        "IceNovaColdInfusedPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemIceStrike",
+      "variant_id": "IceStrike",
+      "granted_effect_id": "IceStrikePlayer",
+      "additional_stat_set_ids": [
+        "IceStrikeThirdAttackPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemImpurity",
+      "variant_id": "Impurity",
+      "granted_effect_id": "ImpurityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemIncinerate",
+      "variant_id": "Incinerate",
+      "granted_effect_id": "IncineratePlayer",
+      "additional_stat_set_ids": [
+        "IncinerateGroundPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemInfernalCry",
+      "variant_id": "InfernallCry",
+      "granted_effect_id": "InfernalCryPlayer",
+      "additional_granted_effect_ids": [
+        "InfernalCryCorpseExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemKillingPalm",
+      "variant_id": "KillingPalm",
+      "granted_effect_id": "KillingPalmPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLeapSlam",
+      "variant_id": "LeapSlam",
+      "granted_effect_id": "LeapSlamPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLeylines",
+      "variant_id": "Leylines",
+      "granted_effect_id": "LeylinesPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLightningArrow",
+      "variant_id": "LightningArrow",
+      "granted_effect_id": "LightningArrowPlayer",
+      "additional_stat_set_ids": [
+        "LightningArrowArcPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLightningBolt",
+      "variant_id": "LightningBolt",
+      "granted_effect_id": "LightningBoltPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLightningConduit",
+      "variant_id": "LightningConduit",
+      "granted_effect_id": "LightningConduitPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLightningSpear",
+      "variant_id": "LightningSpear",
+      "granted_effect_id": "LightningSpearPlayer",
+      "additional_stat_set_ids": [
+        "LightningSpearSecondaryProjectilePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLightningSpellOnHit",
+      "variant_id": "CastLightningSpellOnHit",
+      "granted_effect_id": "MetaCastLightningSpellOnHitPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaCastLightningSpellOnHitPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLightningWarp",
+      "variant_id": "LightningWarp",
+      "granted_effect_id": "LightningWarpPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemLingeringIllusion",
+      "variant_id": "LingeringIllusion",
+      "granted_effect_id": "LingeringIllusionPlayer",
+      "additional_granted_effect_ids": [
+        "LingeringIllusionSpawnPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemManaTempest",
+      "variant_id": "ManaTempest",
+      "granted_effect_id": "ManaTempestPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemMidnightStar",
+      "variant_id": "MidnightStar",
+      "granted_effect_id": "MidnightStarPlayer",
+      "additional_stat_set_ids": [
+        "MidnightStarIceCrystalDetonate"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemMirrorOfRefraction",
+      "variant_id": "MirrorOfRefraction",
+      "granted_effect_id": "MirrorOfRefractionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemMistRaven",
+      "variant_id": "MistRaven",
+      "granted_effect_id": "SummonMistRavenPlayer",
+      "additional_granted_effect_ids": [
+        "CommandMistRavenPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemMoltenCrash",
+      "variant_id": "MoltenCrash",
+      "granted_effect_id": "MoltenCrashPlayer",
+      "additional_stat_set_ids": [
+        "MoltenCrashFissurePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemMoltenShower",
+      "variant_id": "MoltenShower",
+      "granted_effect_id": "TriggeredMoltenShowerPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemOrbOfStorms",
+      "variant_id": "OrbOfStorms",
+      "granted_effect_id": "OrbOfStormsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemPainOffering",
+      "variant_id": "PainOffering",
+      "granted_effect_id": "PainOfferingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemPlagueBearer",
+      "variant_id": "PlagueBearer",
+      "granted_effect_id": "PlagueBearerPlayer",
+      "additional_granted_effect_ids": [
+        "PlagueBearerNovaPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemPowerSiphon",
+      "variant_id": "PowerSiphon",
+      "granted_effect_id": "PowerSiphonPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemPoweredByVerisium",
+      "variant_id": "PoweredByVerisium",
+      "granted_effect_id": "PoweredByVerisiumPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemPurityOfFire",
+      "variant_id": "PurityOfFire",
+      "granted_effect_id": "PurityOfFirePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemPurityOfIce",
+      "variant_id": "PurityOfIce",
+      "granted_effect_id": "PurityOfIcePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemPurityOfLightning",
+      "variant_id": "PurityOfLightning",
+      "granted_effect_id": "PurityOfLightningPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRainOfArrows",
+      "variant_id": "RainOfArrows",
+      "granted_effect_id": "RainOfArrowsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRainOfBlades",
+      "variant_id": "RainOfBlades",
+      "granted_effect_id": "RainOfBladesPlayer",
+      "additional_granted_effect_ids": [
+        "RainOfBladesTriggeredPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRaiseZombie",
+      "variant_id": "RaiseZombie",
+      "granted_effect_id": "RaiseZombiePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRapidAssault",
+      "variant_id": "RapidAssault",
+      "granted_effect_id": "RapidAssaultPlayer",
+      "additional_stat_set_ids": [
+        "RapidAssaultFinalHitPlayer",
+        "RapidAssaultDetonation"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemReap",
+      "variant_id": "Reap",
+      "granted_effect_id": "ReapPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRefutation",
+      "variant_id": "Refutation",
+      "granted_effect_id": "RefutationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRemnantsOfKalguur",
+      "variant_id": "RemnantsOfKalguur",
+      "granted_effect_id": "MetaRemnantsOfKalguurPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRend",
+      "variant_id": "WyvernRend",
+      "granted_effect_id": "WyvernRendPlayer",
+      "additional_stat_set_ids": [
+        "WyvernRendEmpoweredPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRepulsion",
+      "variant_id": "Repulsion",
+      "granted_effect_id": "CurseOfRepulsionPlayer",
+      "additional_granted_effect_ids": [
+        "CurseOfRepulsionShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRhoaMount",
+      "variant_id": "RhoaMount",
+      "granted_effect_id": "RhoaMountPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRighteousDescent",
+      "variant_id": "RighteousDescent",
+      "granted_effect_id": "RighteousDescentPlayer",
+      "additional_stat_set_ids": [
+        "RighteousDescentPlayerBoosted"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRipwireBallista",
+      "variant_id": "ArtilleryBallista",
+      "granted_effect_id": "ArtilleryBallistaPlayer",
+      "additional_granted_effect_ids": [
+        "ArtilleryBallistaProjectilePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRollingMagma",
+      "variant_id": "RollingMagma",
+      "granted_effect_id": "RollingMagmaPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRollingSlam",
+      "variant_id": "RollingSlam",
+      "granted_effect_id": "RollingSlamPlayer",
+      "additional_stat_set_ids": [
+        "RollingSlamFirstSlamPlayer",
+        "RollingSlamSecondSlamPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRunicReprieve",
+      "variant_id": "RunicReprieve",
+      "granted_effect_id": "RunicReprievePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemRunicTempering",
+      "variant_id": "RunicTempering",
+      "granted_effect_id": "RunicTemperingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSavageFury",
+      "variant_id": "SavageFury",
+      "granted_effect_id": "SavageFuryPlayer",
+      "additional_granted_effect_ids": [
+        "SavageFuryActivePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemScatteringCalamity",
+      "variant_id": "ScatteringCalamity",
+      "granted_effect_id": "ScatteringCalamityPlayer",
+      "additional_stat_set_ids": [
+        "ScatteringCalamityExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSeismicCry",
+      "variant_id": "SeismicCry",
+      "granted_effect_id": "SeismicCryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemShatteringPalm",
+      "variant_id": "ShatteringPalm",
+      "granted_effect_id": "ShatteringPalmPlayer",
+      "additional_granted_effect_ids": [
+        "ShatteringPalmExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemShatteringSpite",
+      "variant_id": "ShatteringSpite",
+      "granted_effect_id": "ShatteringSpitePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemShieldCharge",
+      "variant_id": "ShieldCharge",
+      "granted_effect_id": "ShieldChargePlayer",
+      "additional_stat_set_ids": [
+        "ShieldChargeFinalConePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemShockwaveTotem",
+      "variant_id": "ShockwaveTotem",
+      "granted_effect_id": "ShockwaveTotemPlayer",
+      "additional_granted_effect_ids": [
+        "ShockwaveTotemQuakePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSigilOfLife",
+      "variant_id": "SigilOfLife",
+      "granted_effect_id": "SacredGroundPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSigilOfPower",
+      "variant_id": "SigilOfPower",
+      "granted_effect_id": "SigilOfPowerPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkeletalArsonist",
+      "variant_id": "SkeletalArsonist",
+      "granted_effect_id": "SummonSkeletalArsonistsPlayer",
+      "additional_granted_effect_ids": [
+        "CommandSkeletalArsonistPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkeletalBrute",
+      "variant_id": "SkeletalBrute",
+      "granted_effect_id": "SummonSkeletalBrutesPlayer",
+      "additional_granted_effect_ids": [
+        "CommandSkeletalBrutesPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkeletalCleric",
+      "variant_id": "SkeletalCleric",
+      "granted_effect_id": "SummonSkeletalClericsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkeletalFrostMage",
+      "variant_id": "SkeletalFrostMage",
+      "granted_effect_id": "SummonSkeletalFrostMagesPlayer",
+      "additional_granted_effect_ids": [
+        "CommandSkeletalFrostMagePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkeletalReaver",
+      "variant_id": "SkeletalReaver",
+      "granted_effect_id": "SummonSkeletalReaversPlayer",
+      "additional_granted_effect_ids": [
+        "CommandSkeletalReaversPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkeletalSniper",
+      "variant_id": "SkeletalSniper",
+      "granted_effect_id": "SummonSkeletalSnipersPlayer",
+      "additional_granted_effect_ids": [
+        "CommandSkeletalSniperPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkeletalStormMage",
+      "variant_id": "SkeletalStormMage",
+      "granted_effect_id": "SummonSkeletalStormMagesPlayer",
+      "additional_granted_effect_ids": [
+        "CommandSkeletalStormMagePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkeletalWarriorWeaponSkill",
+      "variant_id": "SkeletalWarrior",
+      "granted_effect_id": "SummonSkeletalWarriorsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSkyfall",
+      "variant_id": "Skyfall",
+      "granted_effect_id": "SkyfallPlayer",
+      "additional_stat_set_ids": [
+        "SkyfallInfusedPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSmashToSmithereens",
+      "variant_id": "SmashToSmithereens",
+      "granted_effect_id": "SmashToSmithereensPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSnipersMark",
+      "variant_id": "SnipersMark",
+      "granted_effect_id": "SnipersMarkPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSoulrend",
+      "variant_id": "Soulrend",
+      "granted_effect_id": "SoulrendPlayer",
+      "additional_stat_set_ids": [
+        "SoulrendDotPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSpark",
+      "variant_id": "Spark",
+      "granted_effect_id": "SparkPlayer",
+      "additional_stat_set_ids": [
+        "SparkColdInfusedPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSpearfield",
+      "variant_id": "Spearfield",
+      "granted_effect_id": "SpearfieldPlayer",
+      "additional_stat_set_ids": [
+        "SpearfieldHazardPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSpellTotem",
+      "variant_id": "MetaSpellTotem",
+      "granted_effect_id": "SummonMetaTotemSpellTotemPlayer",
+      "additional_granted_effect_ids": [
+        "SupportMetaTotemSpellTotemPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSpiralVolley",
+      "variant_id": "SpiralVolley",
+      "granted_effect_id": "SpiralVolleyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSpiralingConspiracy",
+      "variant_id": "SpiralingConspiracy",
+      "granted_effect_id": "SummonSpiralingConspiracyPlayer",
+      "additional_granted_effect_ids": [
+        "CommandMadFlightPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSpiritVessel",
+      "variant_id": "SpiritVessel",
+      "granted_effect_id": "SpiritVesselPlayer",
+      "additional_granted_effect_ids": [
+        "SpiritVesselSupport"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemStaggeringPalm",
+      "variant_id": "StaggeringPalm",
+      "granted_effect_id": "StaggeringPalmPlayer",
+      "additional_granted_effect_ids": [
+        "StaggeringPalmProjectilePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemStarbornOnslaught",
+      "variant_id": "StarbornOnslaught",
+      "granted_effect_id": "StarbornOnslaughtPlayer",
+      "additional_stat_set_ids": [
+        "StarbornOnslaughtExplosions"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSummonBeast",
+      "variant_id": "SummonBeast",
+      "granted_effect_id": "SummonBeastPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSummonSpectre",
+      "variant_id": "SummonSpectre",
+      "granted_effect_id": "SummonSpectrePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSunder",
+      "variant_id": "Sunder",
+      "granted_effect_id": "SunderPlayer",
+      "additional_stat_set_ids": [
+        "SunderShockwavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemSuperchargedSlam",
+      "variant_id": "SuperchargedSlam",
+      "granted_effect_id": "SuperchargedSlamPlayer",
+      "additional_stat_set_ids": [
+        "SuperchargedSlamAftershockPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemTempestFlurry",
+      "variant_id": "TempestFlurry",
+      "granted_effect_id": "TempestFlurryPlayer",
+      "additional_stat_set_ids": [
+        "TempestFlurryPlayerThirdStrike",
+        "TempestFlurryPlayerFinalStrike"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemTemporalChains",
+      "variant_id": "TemporalChains",
+      "granted_effect_id": "TemporalChainsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemTheStarsAnswer",
+      "variant_id": "TheStarsAnswer",
+      "granted_effect_id": "TheStarsAnswerPlayer",
+      "additional_granted_effect_ids": [
+        "TheStarsAnswerCometPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemThunderstorm",
+      "variant_id": "Thunderstorm",
+      "granted_effect_id": "ThunderstormPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemTornado",
+      "variant_id": "Tornado",
+      "granted_effect_id": "TornadoPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemTrailOfCaltrops",
+      "variant_id": "TrailOfCaltrops",
+      "granted_effect_id": "TrailOfCaltropsPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredTrailOfCaltropsPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemTriskelionCascade",
+      "variant_id": "TriskelionCascade",
+      "granted_effect_id": "TriskelionCascadePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemUniqueAtziriHerald",
+      "variant_id": "UniqueAtziriHerald",
+      "granted_effect_id": "UniqueAtziriHeraldPlayer",
+      "additional_stat_set_ids": [
+        "UniqueAtziriHeraldExplosionPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemValakosCharge",
+      "variant_id": "ValakosCharge",
+      "granted_effect_id": "ValakosChargePlayer",
+      "additional_stat_set_ids": [
+        "ValakosChargeArcPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemVerisiumManifestation",
+      "variant_id": "VerisiumManifestation",
+      "granted_effect_id": "VerisiumManifestationPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredManifestRunePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemVileDisruption",
+      "variant_id": "VileDisruption",
+      "granted_effect_id": "VileDisruptionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemVolatileDead",
+      "variant_id": "VolatileDead",
+      "granted_effect_id": "VolatileDeadPlayer",
+      "additional_stat_set_ids": [
+        "VolatileDeadExplosionPlayer",
+        "VolatileDeadIgniteAuraPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemVolcanicFissure",
+      "variant_id": "VolcanicFissure",
+      "granted_effect_id": "VolcanicFissurePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemVolcano",
+      "variant_id": "Volcano",
+      "granted_effect_id": "VolcanoPlayer",
+      "additional_stat_set_ids": [
+        "VolcanoProjectilePlayer",
+        "VolcanoSlamPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemVoltaicBarrier",
+      "variant_id": "VoltaicBarrier",
+      "granted_effect_id": "VoltaicBarrierPlayer",
+      "additional_granted_effect_ids": [
+        "VoltaicBarrierTriggeredChainLightningPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemVoltaicGrenade",
+      "variant_id": "ShockGrenade",
+      "granted_effect_id": "ShockGrenadePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemVulnerability",
+      "variant_id": "Vulnerability",
+      "granted_effect_id": "VulnerabilityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWalkingCalamity",
+      "variant_id": "WalkingCalamity",
+      "granted_effect_id": "WalkingCalamityPlayer",
+      "additional_granted_effect_ids": [
+        "WalkingCalamityMeteorPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWardboundMinions",
+      "variant_id": "WardboundMinions",
+      "granted_effect_id": "WardboundMinionsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWaveOfFrost",
+      "variant_id": "WaveOfFrost",
+      "granted_effect_id": "WaveOfFrostPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWhirlingAssault",
+      "variant_id": "WhirlingAssault",
+      "granted_effect_id": "WhirlingAssaultPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWhirlingSlash",
+      "variant_id": "WhirlingSlash",
+      "granted_effect_id": "WhirlingSlashPlayer",
+      "additional_stat_set_ids": [
+        "WhirlingSlashSandstormPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWindBlast",
+      "variant_id": "WindBlast",
+      "granted_effect_id": "GaleStrikePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWither",
+      "variant_id": "Wither",
+      "granted_effect_id": "WitherPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWolfPack",
+      "variant_id": "WolfPack",
+      "granted_effect_id": "WolfPackPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SkillGemWolfPounce",
+      "variant_id": "WolfPounce",
+      "granted_effect_id": "WolfPouncePlayer",
+      "additional_granted_effect_ids": [
+        "SupportWolfPouncePlayer",
+        "WolfPounceMarkPlayer",
+        "WolfPounceSummonWolfPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAcceleration",
+      "variant_id": "ProjectileAccelerationSupport",
+      "granted_effect_id": "SupportProjectileAccelerationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAccelerationThree",
+      "variant_id": "ProjectileAccelerationSupportThree",
+      "granted_effect_id": "SupportProjectileAccelerationPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAccelerationTwo",
+      "variant_id": "ProjectileAccelerationSupportTwo",
+      "granted_effect_id": "SupportProjectileAccelerationPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAftershock",
+      "variant_id": "AftershockChanceSupport",
+      "granted_effect_id": "SupportAftershockChancePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAftershockTwo",
+      "variant_id": "AftershockChanceSupportTwo",
+      "granted_effect_id": "SupportAftershockChancePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAhnsCitadel",
+      "variant_id": "AhnsCitadelSupport",
+      "granted_effect_id": "SupportAhnsCitadelPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAilithLineage",
+      "variant_id": "AilithLineageSupport",
+      "granted_effect_id": "SupportAilithLineagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAmbush",
+      "variant_id": "AmbushSupport",
+      "granted_effect_id": "SupportAmbushPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemArcaneSurge",
+      "variant_id": "ArcaneSurgeSupport",
+      "granted_effect_id": "SupportArcaneSurgePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemArcaneTempo",
+      "variant_id": "RapidCastingSupport",
+      "granted_effect_id": "SupportRapidCastingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemArcaneTempoThree",
+      "variant_id": "RapidCastingSupportThree",
+      "granted_effect_id": "SupportRapidCastingPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemArcaneTempoTwo",
+      "variant_id": "RapidCastingSupportTwo",
+      "granted_effect_id": "SupportRapidCastingPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemAtaluiBloodletting",
+      "variant_id": "AtaluiBloodlettingSupport",
+      "granted_effect_id": "SupportAtaluiBloodlettingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBehead",
+      "variant_id": "BeheadSupport",
+      "granted_effect_id": "SupportBeheadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBeheadTwo",
+      "variant_id": "BeheadSupportTwo",
+      "granted_effect_id": "SupportBeheadPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBhatairsVengeance",
+      "variant_id": "BhatairsVengeanceSupport",
+      "granted_effect_id": "SupportBhatairsVengeancePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBitingFrost",
+      "variant_id": "BitingFrostSupport",
+      "granted_effect_id": "SupportBitingFrostPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBitingFrostTwo",
+      "variant_id": "BitingFrostSupportTwo",
+      "granted_effect_id": "SupportBitingFrostPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBlazingCritical",
+      "variant_id": "BlazingCriticalSupport",
+      "granted_effect_id": "SupportBlazingCriticalPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBlind",
+      "variant_id": "BlindSupport",
+      "granted_effect_id": "SupportBlindPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBlindTwo",
+      "variant_id": "BlindSupportTwo",
+      "granted_effect_id": "SupportBlindPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBloodlust",
+      "variant_id": "BloodlustSupport",
+      "granted_effect_id": "SupportBloodlustPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBludgeon",
+      "variant_id": "KnockbackSupport",
+      "granted_effect_id": "SupportKnockbackPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBounty",
+      "variant_id": "BountySupport",
+      "granted_effect_id": "SupportBountyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBountyTwo",
+      "variant_id": "BountySupportTwo",
+      "granted_effect_id": "SupportBountyPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBrittleArmour",
+      "variant_id": "BrittleArmourSupport",
+      "granted_effect_id": "SupportBrittleArmourPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBrutality",
+      "variant_id": "BrutalitySupport",
+      "granted_effect_id": "SupportBrutalityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBrutalityThree",
+      "variant_id": "BrutalitySupportThree",
+      "granted_effect_id": "SupportBrutalityPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBrutalityTwo",
+      "variant_id": "BrutalitySupportTwo",
+      "granted_effect_id": "SupportBrutalityPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBrutusBrain",
+      "variant_id": "BrutusBrainSupport",
+      "granted_effect_id": "SupportBrutusBrainPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBullseye",
+      "variant_id": "HeightenedAccuracySupport",
+      "granted_effect_id": "SupportHeightenedAccuracyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBullseyeTwo",
+      "variant_id": "HeightenedAccuracySupportTwo",
+      "granted_effect_id": "SupportHeightenedAccuracyPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBurningInscription",
+      "variant_id": "BurningRunesSupport",
+      "granted_effect_id": "SupportBurningRunesPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredBurningRunesPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemBurstingPlague",
+      "variant_id": "SupportBurstingPlague",
+      "granted_effect_id": "SupportBurstingPlaguePlayer",
+      "additional_granted_effect_ids": [
+        "PlagueBurstPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCannibalism",
+      "variant_id": "CannibalismSupport",
+      "granted_effect_id": "SupportCannibalismPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCannibalismTwo",
+      "variant_id": "CannibalismSupportTwo",
+      "granted_effect_id": "SupportCannibalismPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCatalysingElements",
+      "variant_id": "CatalysingElementsSupport",
+      "granted_effect_id": "SupportCatalysingElementsPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredCatalysingDischargePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemChain",
+      "variant_id": "ChainSupport",
+      "granted_effect_id": "SupportChainPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemChainThree",
+      "variant_id": "ChainSupportThree",
+      "granted_effect_id": "SupportChainPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemChainTwo",
+      "variant_id": "ChainSupportTwo",
+      "granted_effect_id": "SupportChainPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemChaosInfusion",
+      "variant_id": "AddedChaosDamageSupport",
+      "granted_effect_id": "SupportAddedChaosDamagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemChaosMastery",
+      "variant_id": "ChaosMasterySupport",
+      "granted_effect_id": "SupportChaosMasteryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemChargedMark",
+      "variant_id": "ChargedMarkSupport",
+      "granted_effect_id": "SupportChargedMarkPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredChargedMarkPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemClarity",
+      "variant_id": "ClaritySupport",
+      "granted_effect_id": "SupportClarityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemClarityTwo",
+      "variant_id": "ClaritySupportTwo",
+      "granted_effect_id": "SupportClarityPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCloseCombat",
+      "variant_id": "CloseCombatSupport",
+      "granted_effect_id": "SupportCloseCombatPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCloseCombatTwo",
+      "variant_id": "CloseCombatSupportTwo",
+      "granted_effect_id": "SupportCloseCombatPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemColdExposure",
+      "variant_id": "ColdExposureSupport",
+      "granted_effect_id": "SupportColdExposurePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemColdInfusion",
+      "variant_id": "AddedColdDamageSupport",
+      "granted_effect_id": "SupportAddedColdDamagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemColdMastery",
+      "variant_id": "ColdMasterySupport",
+      "granted_effect_id": "SupportColdMasteryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemColdPenetration",
+      "variant_id": "ColdPenetrationSupport",
+      "granted_effect_id": "SupportColdPenetrationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemComboFinisher",
+      "variant_id": "ComboFinisherSupport",
+      "granted_effect_id": "SupportComboFinisherPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemComboFinisherTwo",
+      "variant_id": "ComboFinisherSupportTwo",
+      "granted_effect_id": "SupportComboFinisherPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemComorbidity",
+      "variant_id": "EscalatingPoisonSupport",
+      "granted_effect_id": "SupportEscalatingPoisonPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemConcentratedEffect",
+      "variant_id": "ConcentratedAreaSupport",
+      "granted_effect_id": "SupportConcentratedAreaPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemConcussiveRunes",
+      "variant_id": "ConcussiveRunesSupport",
+      "granted_effect_id": "SupportConcussiveRunesPlayer",
+      "additional_granted_effect_ids": [
+        "ConcussiveRunesPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemConcussiveSpells",
+      "variant_id": "ConcussiveSpellsSupport",
+      "granted_effect_id": "SupportConcussiveSpellsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemConduction",
+      "variant_id": "ShockSupport",
+      "granted_effect_id": "SupportShockPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemControlledDestruction",
+      "variant_id": "ControlledDestructionSupport",
+      "granted_effect_id": "SupportControlledDestructionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemControlledHazard",
+      "variant_id": "ControlledHazardSupport",
+      "granted_effect_id": "SupportControlledHazardPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCorrosion",
+      "variant_id": "Corrosion",
+      "granted_effect_id": "SupportCorrosionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCorruptingCry",
+      "variant_id": "CorruptingCrySupport",
+      "granted_effect_id": "SupportCorruptingCryPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredCorruptingCryPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCorruptingCryThree",
+      "variant_id": "CorruptingCrySupportThree",
+      "granted_effect_id": "SupportCorruptingCryPlayerThree",
+      "additional_granted_effect_ids": [
+        "TriggeredCorruptingCryThreePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCorruptingCryTwo",
+      "variant_id": "CorruptingCrySupportTwo",
+      "granted_effect_id": "SupportCorruptingCryPlayerTwo",
+      "additional_granted_effect_ids": [
+        "TriggeredCorruptingCryTwoPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCoursingCurrent",
+      "variant_id": "ShockConductionSupport",
+      "granted_effect_id": "SupportShockConductionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCoursingCurrentTwo",
+      "variant_id": "ShockConductionSupportTwo",
+      "granted_effect_id": "SupportShockConductionPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCreepingChill",
+      "variant_id": "CreepingChillSupport",
+      "granted_effect_id": "SupportCreepingChillPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredCreepingChillPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCrescendo",
+      "variant_id": "CrescendoSupport",
+      "granted_effect_id": "SupportCrescendoPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCrescendoThree",
+      "variant_id": "CrescendoSupportThree",
+      "granted_effect_id": "SupportCrescendoPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemCrescendoTwo",
+      "variant_id": "CrescendoSupportTwo",
+      "granted_effect_id": "SupportCrescendoPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDeadlyCurrent",
+      "variant_id": "DeadlyCurrentSupport",
+      "granted_effect_id": "SupportDeadlyCurrentPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredDeadlyCurrentPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDeadlyHeralds",
+      "variant_id": "DeadlyHeraldsSupport",
+      "granted_effect_id": "SupportDeadlyHeraldsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDeadlyPoison",
+      "variant_id": "DeadlyPoisonSupport",
+      "granted_effect_id": "SupportDeadlyPoisonPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDeadlyPoisonTwo",
+      "variant_id": "DeadlyPoisonSupportTwo",
+      "granted_effect_id": "SupportDeadlyPoisonPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDeceleration",
+      "variant_id": "ProjectileDecelerationSupport",
+      "granted_effect_id": "SupportProjectileDecelerationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDecelerationTwo",
+      "variant_id": "ProjectileDecelerationSupportTwo",
+      "granted_effect_id": "SupportProjectileDecelerationPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDeepCuts",
+      "variant_id": "DeepCutsSupport",
+      "granted_effect_id": "SupportDeepCutsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDeepCutsTwo",
+      "variant_id": "DeepCutsSupportTwo",
+      "granted_effect_id": "SupportDeepCutsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDeepFreeze",
+      "variant_id": "LastingFrostSupport",
+      "granted_effect_id": "SupportLastingFrostPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDemolisher",
+      "variant_id": "ArmourDemolisherSupport",
+      "granted_effect_id": "SupportArmourDemolisherPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDemolisherTwo",
+      "variant_id": "ArmourDemolisherSupportTwo",
+      "granted_effect_id": "SupportArmourDemolisherPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDespoiler",
+      "variant_id": "LastingGroundSupport",
+      "granted_effect_id": "SupportLastingGroundPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDiscombobulate",
+      "variant_id": "DazeSupport",
+      "granted_effect_id": "SupportDazePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemDrainAilments",
+      "variant_id": "DrainedAilmentSupport",
+      "granted_effect_id": "SupportDrainedAilmentPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEchoingCry",
+      "variant_id": "EchoingCrySupport",
+      "granted_effect_id": "SupportEchoingCryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEinharsBeastrite",
+      "variant_id": "EinharsBeastriteSupport",
+      "granted_effect_id": "SupportEinharsBeastritePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemElectrocute",
+      "variant_id": "ElectrocuteSupport",
+      "granted_effect_id": "SupportElectrocutePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemElementalArmy",
+      "variant_id": "ElementalArmySupport",
+      "granted_effect_id": "SupportElementalArmyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemElementalDischarge",
+      "variant_id": "ElementalDischarge",
+      "granted_effect_id": "SupportElementalDischargePlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredElementalDischargePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemElementalFocus",
+      "variant_id": "ElementalFocusSupport",
+      "granted_effect_id": "SupportElementalFocusPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEmpoweredSparks",
+      "variant_id": "EmpoweredSparksSupport",
+      "granted_effect_id": "SupportEmpoweredSparksPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredSparkEmpowerPlayer",
+        "TriggeredEmpoweredSparkPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEncumbrance",
+      "variant_id": "SlowPotencySupport",
+      "granted_effect_id": "SupportSlowPotencyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEnragedWarcry",
+      "variant_id": "EnragedWarcrySupport",
+      "granted_effect_id": "SupportEnragedWarcryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEnragedWarcryTwo",
+      "variant_id": "EnragedWarcrySupportTwo",
+      "granted_effect_id": "SupportEnragedWarcryPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEnvenom",
+      "variant_id": "PoisonSupport",
+      "granted_effect_id": "SupportPoisonPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEnvenomThree",
+      "variant_id": "PoisonSupportThree",
+      "granted_effect_id": "SupportPoisonPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEnvenomTwo",
+      "variant_id": "PoisonSupportTwo",
+      "granted_effect_id": "SupportPoisonPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEonyrsThunder",
+      "variant_id": "EonyrsThunderSupport",
+      "granted_effect_id": "SupportEonyrsThunderPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredLightningDetonateDeadPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEssenceHarvest",
+      "variant_id": "EssenceHarvestSupport",
+      "granted_effect_id": "SupportEssenceHarvestPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEternalFlame",
+      "variant_id": "IgniteDurationSupport",
+      "granted_effect_id": "SupportIgniteDurationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEternalFlameThree",
+      "variant_id": "IgniteDurationSupportThree",
+      "granted_effect_id": "SupportIgniteDurationPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEternalFlameTwo",
+      "variant_id": "IgniteDurationSupportTwo",
+      "granted_effect_id": "SupportIgniteDurationPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemEternalMark",
+      "variant_id": "EternalMarkSupport",
+      "granted_effect_id": "SupportEternalMarkPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemExecute",
+      "variant_id": "ExecuteSupport",
+      "granted_effect_id": "SupportExecutePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemExecuteThree",
+      "variant_id": "ExecuteSupportThree",
+      "granted_effect_id": "SupportExecutePlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemExecuteTwo",
+      "variant_id": "ExecuteSupportTwo",
+      "granted_effect_id": "SupportExecutePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemExpand",
+      "variant_id": "ExpandSupport",
+      "granted_effect_id": "SupportExpandPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemExploitWeakness",
+      "variant_id": "ExploitWeaknessSupport",
+      "granted_effect_id": "SupportExploitWeaknessPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemExplosiveGrowth",
+      "variant_id": "ExplosiveGrowthSupport",
+      "granted_effect_id": "SupportExplosiveGrowthPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredExplosiveGrowthPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemExplosiveGrowthTwo",
+      "variant_id": "ExplosiveGrowthSupportTwo",
+      "granted_effect_id": "SupportExplosiveGrowthPlayerTwo",
+      "additional_granted_effect_ids": [
+        "TriggeredExplosiveGrowthPlayerTwo"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemExposingCry",
+      "variant_id": "ExposingCrySupport",
+      "granted_effect_id": "SupportExposingCryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFanTheFlames",
+      "variant_id": "FanTheFlamesSupport",
+      "granted_effect_id": "SupportFanTheFlamesPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredFanTheFlamesPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFanTheFlamesTwo",
+      "variant_id": "FanTheFlamesSupportTwo",
+      "granted_effect_id": "SupportFanTheFlamesPlayerTwo",
+      "additional_granted_effect_ids": [
+        "TriggeredFanTheFlamesPlayerTwo"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFastForward",
+      "variant_id": "CompressedDurationSupport",
+      "granted_effect_id": "CompressedDurationSupportPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFastForwardTwo",
+      "variant_id": "CompressedDurationSupportTwo",
+      "granted_effect_id": "CompressedDurationSupportPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFeedingFrenzy",
+      "variant_id": "FeedingFrenzySupport",
+      "granted_effect_id": "SupportFeedingFrenzyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFeedingFrenzyTwo",
+      "variant_id": "FeedingFrenzySupportTwo",
+      "granted_effect_id": "SupportFeedingFrenzyPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFieryDeath",
+      "variant_id": "FieryDeathSupport",
+      "granted_effect_id": "SupportFieryDeathPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredFieryDeathPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFireExposure",
+      "variant_id": "FireExposureSupport",
+      "granted_effect_id": "SupportFireExposurePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFireInfusion",
+      "variant_id": "AddedFireDamageSupport",
+      "granted_effect_id": "SupportAddedFireDamagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFireMastery",
+      "variant_id": "FireMasterySupport",
+      "granted_effect_id": "SupportFireMasteryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFirePenetration",
+      "variant_id": "FirePenetrationSupport",
+      "granted_effect_id": "SupportFirePenetrationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFirePenetrationTwo",
+      "variant_id": "FirePenetrationSupportTwo",
+      "granted_effect_id": "SupportFirePenetrationPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFistOfKalguur",
+      "variant_id": "FistOfKalguurSupport",
+      "granted_effect_id": "SupportFistOfKalguurPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredFistOfKalguurPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFistOfWar",
+      "variant_id": "FistOfWarSupport",
+      "granted_effect_id": "FistOfWarSupportPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFistOfWarThree",
+      "variant_id": "FistOfWarSupportThree",
+      "granted_effect_id": "FistOfWarSupportPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFistOfWarTwo",
+      "variant_id": "FistOfWarSupportTwo",
+      "granted_effect_id": "FistOfWarSupportPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFontofBlood",
+      "variant_id": "BloodFountainSupport",
+      "granted_effect_id": "SupportBloodFountainPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFontofMana",
+      "variant_id": "ManaFountainSupport",
+      "granted_effect_id": "SupportManaFountainPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFork",
+      "variant_id": "ForkSupport",
+      "granted_effect_id": "SupportForkPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFortress",
+      "variant_id": "WallFortress",
+      "granted_effect_id": "SupportWallFortressPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFortressTwo",
+      "variant_id": "WallFortressTwo",
+      "granted_effect_id": "SupportWallFortressPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFrostNexus",
+      "variant_id": "ChillingIceSupport",
+      "granted_effect_id": "SupportChillingIcePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemFrostfire",
+      "variant_id": "FrostfireSupport",
+      "granted_effect_id": "SupportFrostfirePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemGlaciation",
+      "variant_id": "FreezeSupport",
+      "granted_effect_id": "SupportFreezePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemGorge",
+      "variant_id": "GorgeSupport",
+      "granted_effect_id": "SupportGorgePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemHealingRunes",
+      "variant_id": "HealingRunesSupport",
+      "granted_effect_id": "SupportHealingRunesPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemHeavySwing",
+      "variant_id": "MeleePhysicalDamageSupport",
+      "granted_effect_id": "SupportMeleePhysicalDamagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemHeightenedCurse",
+      "variant_id": "CurseEffectSupport",
+      "granted_effect_id": "SupportCurseEffectPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemHerbalism",
+      "variant_id": "HerbalismSupport",
+      "granted_effect_id": "SupportHerbalismPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemHerbalismTwo",
+      "variant_id": "HerbalismSupportTwo",
+      "granted_effect_id": "SupportHerbalismPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemHexBloom",
+      "variant_id": "HexBloomSupport",
+      "granted_effect_id": "SupportHexBloomPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemHourglass",
+      "variant_id": "HourglassSupport",
+      "granted_effect_id": "SupportHourglassPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemIceBite",
+      "variant_id": "IceBiteSupport",
+      "granted_effect_id": "SupportIceBitePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemIceBiteTwo",
+      "variant_id": "IceBiteSupportTwo",
+      "granted_effect_id": "SupportIceBitePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemIgnition",
+      "variant_id": "IgniteSupport",
+      "granted_effect_id": "SupportIgnitePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemIgnitionThree",
+      "variant_id": "IgniteSupportThree",
+      "granted_effect_id": "SupportIgnitePlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemIgnitionTwo",
+      "variant_id": "IgniteSupportTwo",
+      "granted_effect_id": "SupportIgnitePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemImmolate",
+      "variant_id": "ImmolateSupport",
+      "granted_effect_id": "SupportImmolatePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemImpactShockwave",
+      "variant_id": "ImpactShockwaveSupport",
+      "granted_effect_id": "ImpactShockwaveSupportPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemImpendingDoom",
+      "variant_id": "ImpendingDoomSupport",
+      "granted_effect_id": "ViciousHexSupportPlayer",
+      "additional_granted_effect_ids": [
+        "DoomBlastPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemInevitableCritical",
+      "variant_id": "InevitableCriticalsSupport",
+      "granted_effect_id": "SupportInevitableCriticalsPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemInevitableCriticalTwo",
+      "variant_id": "InevitableCriticalsSupportTwo",
+      "granted_effect_id": "SupportInevitableCriticalsPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemInfernalLegion",
+      "variant_id": "InfernalLegionSupport",
+      "granted_effect_id": "SupportInfernalLegionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemInfernalLegionThree",
+      "variant_id": "InfernalLegionSupportThree",
+      "granted_effect_id": "SupportInfernalLegionPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemInfernalLegionTwo",
+      "variant_id": "InfernalLegionSupportTwo",
+      "granted_effect_id": "SupportInfernalLegionPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemIngenuity",
+      "variant_id": "CooldownRecoverySupport",
+      "granted_effect_id": "SupportCooldownRecoveryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemIngenuityTwo",
+      "variant_id": "CooldownRecoverySupportTwo",
+      "granted_effect_id": "SupportCooldownRecoveryPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemInspiration",
+      "variant_id": "EfficiencySupport",
+      "granted_effect_id": "SupportEfficiencyPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemInspirationTwo",
+      "variant_id": "EfficiencySupportTwo",
+      "granted_effect_id": "SupportEfficiencyPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemJaggedGround",
+      "variant_id": "JaggedGroundSupport",
+      "granted_effect_id": "SupportJaggedGroundPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemJaggedGroundTwo",
+      "variant_id": "JaggedGroundSupportTwo",
+      "granted_effect_id": "SupportJaggedGroundPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLacerate",
+      "variant_id": "BleedSupport",
+      "granted_effect_id": "SupportBleedPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLacerateFour",
+      "variant_id": "BleedSupportFour",
+      "granted_effect_id": "SupportBleedPlayerFour"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLacerateThree",
+      "variant_id": "BleedSupportThree",
+      "granted_effect_id": "SupportBleedPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLacerateTwo",
+      "variant_id": "BleedSupportTwo",
+      "granted_effect_id": "SupportBleedPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLastingShock",
+      "variant_id": "LastingShockSupport",
+      "granted_effect_id": "SupportLastingShockPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLifeBounty",
+      "variant_id": "LifeFlaskSupport",
+      "granted_effect_id": "SupportLifeFlaskPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLifeDrain",
+      "variant_id": "LifeOnCullSupport",
+      "granted_effect_id": "SupportLifeOnCullPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLifeThief",
+      "variant_id": "LifeLeechSupport",
+      "granted_effect_id": "SupportLifeLeechPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLifeThiefThree",
+      "variant_id": "LifeLeechSupportThree",
+      "granted_effect_id": "SupportLifeLeechPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLifeThiefTwo",
+      "variant_id": "LifeLeechSupportTwo",
+      "granted_effect_id": "SupportLifeLeechPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLifetap",
+      "variant_id": "BloodMagicSupport",
+      "granted_effect_id": "SupportBloodMagicPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLightningExposure",
+      "variant_id": "LightningExposureSupport",
+      "granted_effect_id": "SupportLightningExposurePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLightningInfusion",
+      "variant_id": "AddedLightningDamageSupport",
+      "granted_effect_id": "SupportAddedLightningDamagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLightningMastery",
+      "variant_id": "LightningMasterySupport",
+      "granted_effect_id": "SupportLightningMasteryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLightningPenetration",
+      "variant_id": "LightningPenetrationSupport",
+      "granted_effect_id": "SupportLightningPenetrationPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLockdown",
+      "variant_id": "LockdownSupport",
+      "granted_effect_id": "SupportLockdownPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLongshot",
+      "variant_id": "FarCombatSupport",
+      "granted_effect_id": "SupportFarCombatPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemLongshotTwo",
+      "variant_id": "FarCombatSupportTwo",
+      "granted_effect_id": "SupportFarCombatPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMagnifiedEffect",
+      "variant_id": "MagnifiedAreaSupport",
+      "granted_effect_id": "SupportMagnifiedAreaPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMagnifiedEffectTwo",
+      "variant_id": "MagnifiedAreaSupportTwo",
+      "granted_effect_id": "SupportMagnifiedAreaPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMaim",
+      "variant_id": "MaimSupport",
+      "granted_effect_id": "SupportMaimPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemManaBounty",
+      "variant_id": "ManaFlaskSupport",
+      "granted_effect_id": "SupportManaFlaskPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemManaFlare",
+      "variant_id": "ManaFlareSupport",
+      "granted_effect_id": "SupportManaFlarePlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredManaFlarePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMarkOfSiphoning",
+      "variant_id": "MarkOfSiphoningSupport",
+      "granted_effect_id": "SupportMarkOfSiphoningPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMarkOfSiphoningTwo",
+      "variant_id": "MarkOfSiphoningSupportTwo",
+      "granted_effect_id": "SupportMarkOfSiphoningPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMartialTempo",
+      "variant_id": "RapidAttacksSupport",
+      "granted_effect_id": "SupportRapidAttacksPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMartialTempoThree",
+      "variant_id": "RapidAttacksSupportThree",
+      "granted_effect_id": "SupportRapidAttacksPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMartialTempoTwo",
+      "variant_id": "RapidAttacksSupportTwo",
+      "granted_effect_id": "SupportRapidAttacksPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMeatShield",
+      "variant_id": "MeatShieldSupport",
+      "granted_effect_id": "SupportMeatShieldPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMeatShieldTwo",
+      "variant_id": "MeatShieldSupportTwo",
+      "granted_effect_id": "SupportMeatShieldPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMinionMastery",
+      "variant_id": "MinionMasterySupport",
+      "granted_effect_id": "SupportMinionMasteryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMinionMeleeSplash",
+      "variant_id": "MinionMeleeSplashSupport",
+      "granted_effect_id": "SupportMinionMeleeSplashPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMinionMeleeSplashTwo",
+      "variant_id": "MinionMeleeSplashSupportTwo",
+      "granted_effect_id": "SupportMinionMeleeSplashPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMobility",
+      "variant_id": "MobilitySupport",
+      "granted_effect_id": "SupportMobilityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMomentum",
+      "variant_id": "MomentumSupport",
+      "granted_effect_id": "SupportMomentumPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemMurderousIntent",
+      "variant_id": "EmpoweredCullSupport",
+      "granted_effect_id": "SupportEmpoweredCullPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemNeuralOverload",
+      "variant_id": "NeuralOverload",
+      "granted_effect_id": "SupportNeuralOverloadPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemNovaProjectiles",
+      "variant_id": "NovaProjectilesSupport",
+      "granted_effect_id": "SupportNovaProjectilesPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemNovaProjectilesTwo",
+      "variant_id": "NovaProjectilesTwoSupport",
+      "granted_effect_id": "SupportNovaProjectilesTwoPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOisinsOath",
+      "variant_id": "OisinsOathSupport",
+      "granted_effect_id": "SupportOisinsOathPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOlrothsHubris",
+      "variant_id": "OlrothsHubrisSupport",
+      "granted_effect_id": "SupportOlrothsHubrisPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOpeningMove",
+      "variant_id": "OpeningMoveSupport",
+      "granted_effect_id": "SupportOpeningMovePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOverabundance",
+      "variant_id": "IncreaseLimitSupport",
+      "granted_effect_id": "SupportIncreaseLimitPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOverabundanceTwo",
+      "variant_id": "IncreaseLimitSupportTwo",
+      "granted_effect_id": "SupportIncreaseLimitPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOvercharge",
+      "variant_id": "OverchargeSupport",
+      "granted_effect_id": "SupportOverchargePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOverpower",
+      "variant_id": "StunSupport",
+      "granted_effect_id": "SupportStunPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOverpowerThree",
+      "variant_id": "StunSupportThree",
+      "granted_effect_id": "SupportStunPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemOverpowerTwo",
+      "variant_id": "StunSupportTwo",
+      "granted_effect_id": "SupportStunPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPerpetualCharge",
+      "variant_id": "PerpetualCharge",
+      "granted_effect_id": "SupportPerpetualChargePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPersistence",
+      "variant_id": "ProlongedDurationSupport",
+      "granted_effect_id": "ProlongedDurationSupportPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPersistenceTwo",
+      "variant_id": "ProlongedDurationSupportTwo",
+      "granted_effect_id": "ProlongedDurationSupportPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPhysicalMastery",
+      "variant_id": "PhysicalMasterySupport",
+      "granted_effect_id": "SupportPhysicalMasteryPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPierce",
+      "variant_id": "PierceSupport",
+      "granted_effect_id": "SupportPiercePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPierceThree",
+      "variant_id": "PierceSupportThree",
+      "granted_effect_id": "SupportPiercePlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPierceTwo",
+      "variant_id": "PierceSupportTwo",
+      "granted_effect_id": "SupportPiercePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPin",
+      "variant_id": "PinSupport",
+      "granted_effect_id": "SupportPinPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPinThree",
+      "variant_id": "PinSupportThree",
+      "granted_effect_id": "SupportPinPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPinTwo",
+      "variant_id": "PinSupportTwo",
+      "granted_effect_id": "SupportPinPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPinpointCritical",
+      "variant_id": "PinpointCritical",
+      "granted_effect_id": "SupportPinpointCriticalPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPracticalMagic",
+      "variant_id": "PracticalMagicSupport",
+      "granted_effect_id": "SupportPracticalMagicPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPracticalMagicTwo",
+      "variant_id": "PracticalMagicSupportTwo",
+      "granted_effect_id": "SupportPracticalMagicPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPrecision",
+      "variant_id": "PrecisionSupport",
+      "granted_effect_id": "SupportPrecisionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPrecisionTwo",
+      "variant_id": "PrecisionSupportTwo",
+      "granted_effect_id": "SupportPrecisionPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPrimalArmament",
+      "variant_id": "ElementalArmamentSupport",
+      "granted_effect_id": "SupportElementalArmamentPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPrimalArmamentThree",
+      "variant_id": "ElementalArmamentSupportThree",
+      "granted_effect_id": "SupportElementalArmamentPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemPrimalArmamentTwo",
+      "variant_id": "ElementalArmamentSupportTwo",
+      "granted_effect_id": "SupportElementalArmamentPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemProfusion",
+      "variant_id": "ChargeProfusionSupport",
+      "granted_effect_id": "SupportChargeProfusionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemProfusionTwo",
+      "variant_id": "ChargeProfusionSupportTwo",
+      "granted_effect_id": "SupportChargeProfusionPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRage",
+      "variant_id": "RageSupport",
+      "granted_effect_id": "SupportRagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRageThree",
+      "variant_id": "RageSupportThree",
+      "granted_effect_id": "SupportRagePlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRageTwo",
+      "variant_id": "RageSupportTwo",
+      "granted_effect_id": "SupportRagePlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRendingApex",
+      "variant_id": "RendingApexSupport",
+      "granted_effect_id": "SupportRendingApexPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRisingTempest",
+      "variant_id": "TempestuousTempoSupport",
+      "granted_effect_id": "SupportTempestuousTempoPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRuneforgedBlades",
+      "variant_id": "RuneforgedBladesSupport",
+      "granted_effect_id": "SupportRuneforgedBladesPlayer",
+      "additional_granted_effect_ids": [
+        "TriggeredRuneforgedBladesPlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRunicExtraction",
+      "variant_id": "RunicExtractionSupport",
+      "granted_effect_id": "SupportRunicExtractionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRunicInfusion",
+      "variant_id": "RunicInfusionSupport",
+      "granted_effect_id": "SupportRunicInfusionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemRuthless",
+      "variant_id": "RuthlessSupport",
+      "granted_effect_id": "RuthlessSupportPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemScattershot",
+      "variant_id": "MultishotSupport",
+      "granted_effect_id": "SupportMultishotPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemScattershotTwo",
+      "variant_id": "MultishotSupportTwo",
+      "granted_effect_id": "SupportMultishotPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemScouringFlame",
+      "variant_id": "ScouringFlame",
+      "granted_effect_id": "SupportScouringFlamePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSearingFlame",
+      "variant_id": "DeadlyIgnitesSupport",
+      "granted_effect_id": "SupportDeadlyIgnitesPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSearingFlameTwo",
+      "variant_id": "DeadlyIgnitesSupportTwo",
+      "granted_effect_id": "SupportDeadlyIgnitesPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSecondWind",
+      "variant_id": "SecondWindSupport",
+      "granted_effect_id": "SupportSecondWindPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSecondWindThree",
+      "variant_id": "SecondWindSupportThree",
+      "granted_effect_id": "SupportSecondWindPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSecondWindTwo",
+      "variant_id": "SecondWindSupportTwo",
+      "granted_effect_id": "SupportSecondWindPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemShockSiphon",
+      "variant_id": "EnergyShieldOnShockKillSupport",
+      "granted_effect_id": "SupportEnergyShieldOnShockKillPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSlamAftershocks",
+      "variant_id": "SlamAftershocksSupport",
+      "granted_effect_id": "SupportSlamAftershocksPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSoulDrain",
+      "variant_id": "ManaOnCullSupport",
+      "granted_effect_id": "SupportManaOnCullPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSoulThief",
+      "variant_id": "ManaLeechSupport",
+      "granted_effect_id": "SupportManaLeechPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSpellEcho",
+      "variant_id": "SpellEchoSupport",
+      "granted_effect_id": "SupportSpellEchoPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSplinter",
+      "variant_id": "ArmourBreakSupport",
+      "granted_effect_id": "SupportArmourBreakPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSplinterThree",
+      "variant_id": "ArmourBreakSupportThree",
+      "granted_effect_id": "SupportArmourBreakPlayerThree"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSplinterTwo",
+      "variant_id": "ArmourBreakSupportTwo",
+      "granted_effect_id": "SupportArmourBreakPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemStormfire",
+      "variant_id": "StormfireSupport",
+      "granted_effect_id": "SupportStormfirePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemSupercritical",
+      "variant_id": "IncreasedCriticalDamageSupport",
+      "granted_effect_id": "SupportIncreasedCriticalDamagePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemThrillOfTheKill",
+      "variant_id": "ThrillOfTheKillSupport",
+      "granted_effect_id": "SupportThrillOfTheKillPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemThrillOfTheKillTwo",
+      "variant_id": "ThrillOfTheKillSupportTwo",
+      "granted_effect_id": "SupportThrillOfTheKillPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemUnleash",
+      "variant_id": "UnleashSupport",
+      "granted_effect_id": "SupportUnleashPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemUruksSmelting",
+      "variant_id": "UruksSmeltingSupport",
+      "granted_effect_id": "SupportUruksSmeltingPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemVilentasPropulsion",
+      "variant_id": "VilentasPropulsionSupport",
+      "granted_effect_id": "SupportVilentasPropulsionPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemVitality",
+      "variant_id": "VitalitySupport",
+      "granted_effect_id": "SupportVitalityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemVitalityTwo",
+      "variant_id": "VitalitySupportTwo",
+      "granted_effect_id": "SupportVitalityPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemWildfire",
+      "variant_id": "WildfireSupport",
+      "granted_effect_id": "SupportWildfirePlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemWindWave",
+      "variant_id": "KnockbackWaveSupport",
+      "granted_effect_id": "SupportKnockbackWavePlayer",
+      "additional_granted_effect_ids": [
+        "KnockbackWavePlayer"
+      ]
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemWindowOfOpportunity",
+      "variant_id": "WindowOfOpportunitySupport",
+      "granted_effect_id": "SupportWindowOfOpportunityPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemWindowOfOpportunityTwo",
+      "variant_id": "WindowOfOpportunitySupportTwo",
+      "granted_effect_id": "SupportWindowOfOpportunityPlayerTwo"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemWitheringTouch",
+      "variant_id": "WitheringTouchSupport",
+      "granted_effect_id": "SupportWitheringTouchPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportGemZarokhsRevolt",
+      "variant_id": "ZarokhsRevoltSupport",
+      "granted_effect_id": "SupportZarokhsRevoltPlayer"
+    },
+    {
+      "gem_id": "Metadata/Items/Gems/SupportOlrothsConviction",
+      "variant_id": "OlrothsConvictionSupport",
+      "granted_effect_id": "SupportOlrothsConvictionPlayer"
+    },
+    {
+      "gem_id": "Metadata/items/Gems/SkillGemStaffConsecrate",
+      "variant_id": "StaffConsecrate",
+      "granted_effect_id": "StaffConsecratePlayer"
+    },
+    {
+      "gem_id": "Metadata/items/Gems/SkillGemStaffUnleash",
+      "variant_id": "Unleash",
+      "granted_effect_id": "UnleashPlayer"
+    }
+  ]
+}

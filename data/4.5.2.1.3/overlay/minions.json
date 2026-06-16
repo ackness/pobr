@@ -1,0 +1,1717 @@
+{
+  "_meta": {
+    "schema": "minions/v1",
+    "generator": "sync-pob-catalog extract-lua",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "a82a33b4fbdb7306ed93159664f7abe2c6819413",
+    "vendor_commit_subject": "a82a33b Merge branch 'master' into dev",
+    "extracted_files": [
+      "Data/Minions.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what minions --vendor-root vendor/PathOfBuilding-PoE2/src --out data/4.5.2.1.3/overlay/minions.json"
+  },
+  "minions": [
+    {
+      "id": "AncestralSpiritCaster",
+      "name": "Ancestral Jadecaster",
+      "monster_tags": [
+        "bludgeoning_weapon",
+        "has_one_hand_mace",
+        "has_one_handed_melee",
+        "human",
+        "humanoid",
+        "karui",
+        "light_armour",
+        "medium_height",
+        "medium_movement",
+        "melee",
+        "not_dex",
+        "not_str",
+        "physical_affinity",
+        "ranged",
+        "Unarmed_onhit_audio"
+      ],
+      "life": 0.53,
+      "damage": 1.0,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 14.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 32.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Humanoid",
+      "energy_shield": 0.2,
+      "skill_list": [
+        "MeleeAtAnimationSpeed",
+        "MPSAncestralTotemSpiritSoulCasterProjectile",
+        "EASAncestralEncaseEnemy",
+        "GSAncestralJadePrison"
+      ]
+    },
+    {
+      "id": "AncestralSpiritHulk",
+      "name": "Ancestral Jade Hulk",
+      "monster_tags": [
+        "beast",
+        "Beast_onhit_audio",
+        "bludgeoning_weapon",
+        "has_one_hand_mace",
+        "has_one_handed_melee",
+        "light_armour",
+        "mammal_beast",
+        "medium_height",
+        "melee",
+        "not_dex",
+        "not_int",
+        "physical_affinity",
+        "slow_movement"
+      ],
+      "life": 1.0,
+      "damage": 1.8,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 14.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 27.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Beast",
+      "armour": 0.7,
+      "skill_list": [
+        "MeleeAtAnimationSpeed",
+        "DTTAncestralJadeHulkLeapSlam",
+        "GAAncestralJadeHulkLeapImpact",
+        "TCAncestralLeagueKaruiHulk",
+        "GAAncestralLeagueKaruiHulkCharge",
+        "EGJadeHulkWarcryBuff"
+      ]
+    },
+    {
+      "id": "AncestralSpiritTurtle",
+      "name": "Ancestral Spirit Turtle",
+      "monster_tags": [
+        "beast",
+        "Beast_onhit_audio",
+        "bludgeoning_weapon",
+        "has_one_hand_mace",
+        "has_one_handed_melee",
+        "light_armour",
+        "medium_height",
+        "melee",
+        "not_dex",
+        "not_int",
+        "physical_affinity",
+        "reptile_beast",
+        "very_slow_movement"
+      ],
+      "life": 1.3,
+      "damage": 1.2,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 15.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 9.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Beast",
+      "armour": 1.0,
+      "skill_list": [
+        "MeleeAtAnimationSpeed",
+        "ABTTTortoiseTotemBubble"
+      ],
+      "mod_list": [
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "AncestralSpiritWarhorn",
+      "name": "Ancestral Warhorn",
+      "monster_tags": [
+        "2HBluntWood_onhit_audio",
+        "bludgeoning_weapon",
+        "has_one_hand_mace",
+        "has_one_handed_melee",
+        "human",
+        "humanoid",
+        "karui",
+        "light_armour",
+        "medium_height",
+        "melee",
+        "not_int",
+        "physical_affinity",
+        "very_slow_movement"
+      ],
+      "life": 0.75,
+      "damage": 1.2,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 27.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 13.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Humanoid",
+      "armour": 0.35,
+      "evasion": 0.15,
+      "skill_list": [
+        "MeleeAtAnimationSpeed",
+        "EGTotemSpiritJadeHornBlow"
+      ]
+    },
+    {
+      "id": "AzmerianSwarm",
+      "name": "[DNT] Azmerian Wisp Swarm",
+      "monster_tags": [
+        "beast",
+        "Unarmed_onhit_audio",
+        "very_fast_movement"
+      ],
+      "life": 0.7,
+      "damage": 0.84,
+      "damage_spread": 0.3,
+      "attack_time": 1.0,
+      "attack_range": 1.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 60.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "AzmerianSwarmLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Beast",
+      "weapon_type1": "None",
+      "weapon_type2": "None",
+      "skill_list": [
+        "AzmerianSwarmAttack"
+      ],
+      "mod_list": [
+        {
+          "name": "CurseImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "FrenzyChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "EnduranceChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "PowerChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "HiddenMonster",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "Condition:CannotBeDamaged",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "FreezeImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "Life",
+          "type": "OVERRIDE",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "AzmerianWolf",
+      "name": "Azmerian Wolf",
+      "monster_tags": [
+        "1HSword_onhit_audio",
+        "beast",
+        "mammal_beast",
+        "medium_movement",
+        "not_int",
+        "not_str",
+        "red_blood"
+      ],
+      "life": 2.7,
+      "damage": 2.43,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 18.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 36.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 105.0,
+      "companion_reservation": 49.2,
+      "monster_category": "Beast",
+      "evasion": 0.3,
+      "weapon_type1": "None",
+      "weapon_type2": "None",
+      "skill_list": [
+        "MeleeAtAnimationSpeedWolfPackleader",
+        "WolfPackleaderDashAttack",
+        "WolfPackleaderLungeBite",
+        "GTPackleaderGreatHuntDash",
+        "TBPackleaderGreatHuntDash",
+        "GAPackleaderGreatHuntDash",
+        "GreatHuntPackleaderMinion",
+        "EGPackleaderPrimalInspiration"
+      ],
+      "mod_list": [
+        {
+          "name": "StunDuration",
+          "type": "OVERRIDE",
+          "value": 2.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "BearCompanion",
+      "name": "Wild Bear Spirit",
+      "monster_tags": [
+        "beast",
+        "Claw_onhit_audio",
+        "mammal_beast",
+        "medium_movement",
+        "not_dex",
+        "not_int",
+        "red_blood"
+      ],
+      "life": 1.5,
+      "damage": 4.5,
+      "damage_spread": 0.2,
+      "attack_time": 0.8,
+      "attack_range": 20.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 67.0,
+      "companion_reservation": 36.6,
+      "monster_category": "Beast",
+      "armour": 1.0,
+      "skill_list": [
+        "CompanionBearMaul",
+        "CompanionBearSlam",
+        "CompanionBearWarcry",
+        "CompanionBearLeap",
+        "CompanionBearLeapImpact",
+        "CompanionBearLeapImpact2"
+      ],
+      "mod_list": [
+        {
+          "name": "DamageTaken",
+          "type": "INC",
+          "value": -50.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "BeetleMinion",
+      "name": "Corpse Beetle",
+      "monster_tags": [
+        "allows_inc_aoe",
+        "beast",
+        "Claw_onhit_audio",
+        "insect",
+        "sand_blood",
+        "very_fast_movement"
+      ],
+      "life": 0.4,
+      "damage": 1.0,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 6.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 90.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "limit": "BeetleLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Beast",
+      "skill_list": [
+        "CorpseBeetleExplode"
+      ],
+      "mod_list": [
+        {
+          "name": "CurseImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "FrenzyChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "EnduranceChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "PowerChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "FireDjinn",
+      "name": "Ruzhan, the Blazing Sword",
+      "monster_tags": [
+        "elemental",
+        "fire",
+        "humanoid",
+        "medium_movement",
+        "Unarmed_onhit_audio"
+      ],
+      "life": 1.0,
+      "damage": 1.4,
+      "damage_spread": 0.2,
+      "attack_time": 0.0,
+      "attack_range": 6.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 35.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Humanoid",
+      "skill_list": [
+        "LivingBombFireDjinn",
+        "FireRuneFireDjinn",
+        "MeteorFireDjinn",
+        "MassFusilladeFireDjinn",
+        "FlameSliceFireDjinn"
+      ],
+      "mod_list": [
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunDuration",
+          "type": "OVERRIDE",
+          "value": 5.6,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "HyenaMinion",
+      "name": "Cackling Companion",
+      "monster_tags": [
+        "beast",
+        "Beast_onhit_audio",
+        "mammal_beast",
+        "melee",
+        "not_int",
+        "not_str",
+        "physical_affinity",
+        "red_blood",
+        "very_fast_movement"
+      ],
+      "life": 1.1,
+      "damage": 0.77,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 9.0,
+      "accuracy": 1.0,
+      "crit_chance": 8.0,
+      "base_movement_speed": 50.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "HyenaLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Beast",
+      "evasion": 0.3,
+      "skill_list": [
+        "HyenaCompanionMelee",
+        "HyenaHinderWhoopMinion",
+        "HyenaStandaloneWhoop"
+      ]
+    },
+    {
+      "id": "LivingLightning",
+      "name": "Living Lightning",
+      "monster_tags": [
+        "construct",
+        "extra_small_height",
+        "ghost_armour",
+        "is_unarmed",
+        "melee",
+        "physical_affinity",
+        "very_fast_movement"
+      ],
+      "life": 1.0,
+      "damage": 0.35,
+      "damage_spread": 0.8,
+      "attack_time": 1.0,
+      "attack_range": 20.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 97.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveLivingLightningLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Construct",
+      "skill_list": [
+        "LivingLightningZap"
+      ],
+      "mod_list": [
+        {
+          "name": "CurseImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "FrenzyChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "EnduranceChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "PowerChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "DamageTaken",
+          "type": "MORE",
+          "value": -100.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "Life",
+          "type": "OVERRIDE",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "ManifestWeapon",
+      "name": "Animated Weapon",
+      "monster_tags": [
+        "construct",
+        "fast_movement"
+      ],
+      "life": 1.0,
+      "damage": 1.0,
+      "damage_spread": 0.0,
+      "attack_time": 1.0,
+      "attack_range": 10.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 42.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Construct",
+      "skill_list": [
+        "MinionMelee",
+        "GAAnimateWeaponMaceSlam",
+        "DTTAnimateWeaponSpearDashStab",
+        "DTTAnimateWeaponSpearDashStabImpact",
+        "GAAnimateWeaponQuarterstaffSweep",
+        "GAManifestWeaponTalismanRake"
+      ],
+      "mod_list": [
+        {
+          "name": "DamageTaken",
+          "type": "MORE",
+          "value": -100.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "Life",
+          "type": "OVERRIDE",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "MistRaven",
+      "name": "Raven Conspiracy",
+      "monster_tags": [
+        "ranged",
+        "Unarmed_onhit_audio",
+        "very_slow_movement"
+      ],
+      "life": 1.0,
+      "damage": 0.67,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 6.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 8.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "skill_list": [
+        "ApplyTangmazuSwarmAuraPlayer",
+        "TangmazuMadFlightMinion"
+      ],
+      "mod_list": [
+        {
+          "name": "CurseImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "FrenzyChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "EnduranceChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "PowerChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "HiddenMonster",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "Condition:CannotBeDamaged",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "RaisedSkeletonArsonist",
+      "name": "Skeletal Arsonist",
+      "monster_tags": [
+        "bone_armour",
+        "bones",
+        "caster",
+        "fire_affinity",
+        "is_unarmed",
+        "medium_height",
+        "medium_movement",
+        "not_dex",
+        "not_str",
+        "ranged",
+        "skeleton",
+        "slashing_weapon",
+        "Unarmed_onhit_audio",
+        "undead"
+      ],
+      "life": 0.55,
+      "damage": 0.7,
+      "damage_spread": 0.3,
+      "attack_time": 1.0,
+      "attack_range": 80.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 50.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveSkeletonLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "energy_shield": 0.1,
+      "weapon_type1": "None",
+      "skill_list": [
+        "FireBombSkeletonMinion",
+        "DestructiveLinkSkeletonBombadierMinion"
+      ]
+    },
+    {
+      "id": "RaisedSkeletonBrute",
+      "name": "Skeletal Brute",
+      "monster_tags": [
+        "2HBluntMetal_onhit_audio",
+        "bone_armour",
+        "bones",
+        "fast_movement",
+        "has_one_hand_sword",
+        "has_one_handed_melee",
+        "medium_height",
+        "melee",
+        "not_dex",
+        "not_int",
+        "physical_affinity",
+        "skeleton",
+        "slashing_weapon",
+        "undead"
+      ],
+      "life": 1.2,
+      "damage": 2.0,
+      "damage_spread": 0.3,
+      "attack_time": 1.75,
+      "attack_range": 16.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 42.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveSkeletonLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "armour": 0.7,
+      "weapon_type1": "Two Hand Mace",
+      "skill_list": [
+        "MinionMeleeStep",
+        "BoneshatterBruteMinion",
+        "ShatteringRoarSkeletalBruteMinion"
+      ],
+      "mod_list": [
+        {
+          "name": "EnemyHeavyStunBuildup",
+          "type": "MORE",
+          "value": 50.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "RaisedSkeletonCleric",
+      "name": "Skeletal Cleric",
+      "monster_tags": [
+        "bone_armour",
+        "bones",
+        "caster",
+        "fire_affinity",
+        "is_unarmed",
+        "medium_height",
+        "medium_movement",
+        "not_dex",
+        "not_str",
+        "ranged",
+        "skeleton",
+        "slashing_weapon",
+        "Unarmed_onhit_audio",
+        "undead"
+      ],
+      "life": 0.53,
+      "damage": 0.65,
+      "damage_spread": 0.3,
+      "attack_time": 1.0,
+      "attack_range": 80.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveSkeletonLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "energy_shield": 0.15,
+      "weapon_type1": "One Hand Mace",
+      "skill_list": [
+        "HealSkeletonClericMinion",
+        "ResurrectSkeletonClericMinion",
+        "DoLiterallyNothing"
+      ]
+    },
+    {
+      "id": "RaisedSkeletonFrostMage",
+      "name": "Skeletal Frost Mage",
+      "monster_tags": [
+        "bone_armour",
+        "bones",
+        "caster",
+        "cold_affinity",
+        "is_unarmed",
+        "medium_height",
+        "medium_movement",
+        "not_dex",
+        "not_str",
+        "ranged",
+        "skeleton",
+        "slashing_weapon",
+        "Unarmed_onhit_audio",
+        "undead"
+      ],
+      "life": 0.53,
+      "damage": 0.6,
+      "damage_spread": 0.3,
+      "attack_time": 1.0,
+      "attack_range": 80.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 0.0,
+      "cold_resist": 50.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveSkeletonLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "energy_shield": 0.15,
+      "weapon_type1": "None",
+      "skill_list": [
+        "FrostBoltSkeletonMageMinion",
+        "IceArmourSkeletonMageMinion"
+      ]
+    },
+    {
+      "id": "RaisedSkeletonReaver",
+      "name": "Skeletal Reaver",
+      "monster_tags": [
+        "1HAxe_onhit_audio",
+        "bone_armour",
+        "bones",
+        "fast_movement",
+        "has_one_hand_sword",
+        "has_one_handed_melee",
+        "medium_height",
+        "melee",
+        "not_dex",
+        "not_int",
+        "physical_affinity",
+        "skeleton",
+        "slashing_weapon",
+        "undead"
+      ],
+      "life": 0.7,
+      "damage": 0.46,
+      "damage_spread": 0.3,
+      "attack_time": 0.83,
+      "attack_range": 14.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 42.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveSkeletonLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "armour": 0.2,
+      "weapon_type1": "One Hand Axe",
+      "weapon_type2": "One Hand Axe",
+      "skill_list": [
+        "MinionMeleeStep",
+        "EnrageSkeletonReaverMinion"
+      ]
+    },
+    {
+      "id": "RaisedSkeletonSniper",
+      "name": "Skeletal Sniper",
+      "monster_tags": [
+        "bone_armour",
+        "bones",
+        "has_bow",
+        "medium_movement",
+        "physical_affinity",
+        "puncturing_weapon",
+        "ranged",
+        "skeleton",
+        "Stab_onhit_audio",
+        "undead"
+      ],
+      "life": 0.55,
+      "damage": 1.15,
+      "damage_spread": 0.3,
+      "attack_time": 1.5,
+      "attack_range": 80.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveSkeletonLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "weapon_type1": "Bow",
+      "skill_list": [
+        "MinionMeleeBow",
+        "GasShotSkeletonSniperMinion"
+      ]
+    },
+    {
+      "id": "RaisedSkeletonStormMage",
+      "name": "Skeletal Storm Mage",
+      "monster_tags": [
+        "bone_armour",
+        "bones",
+        "caster",
+        "is_unarmed",
+        "lightning_affinity",
+        "medium_height",
+        "medium_movement",
+        "not_dex",
+        "not_str",
+        "ranged",
+        "skeleton",
+        "slashing_weapon",
+        "Unarmed_onhit_audio",
+        "undead"
+      ],
+      "life": 0.53,
+      "damage": 0.65,
+      "damage_spread": 0.3,
+      "attack_time": 1.0,
+      "attack_range": 80.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 50.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveSkeletonLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "energy_shield": 0.15,
+      "weapon_type1": "Staff",
+      "skill_list": [
+        "ArcSkeletonMageMinion",
+        "DeathStormSkeletonStormMageMinion"
+      ]
+    },
+    {
+      "id": "RaisedSkeletonWarriors",
+      "name": "Skeletal Warrior",
+      "monster_tags": [
+        "1HSword_onhit_audio",
+        "bone_armour",
+        "bones",
+        "fast_movement",
+        "has_one_hand_sword",
+        "has_one_handed_melee",
+        "medium_height",
+        "melee",
+        "not_dex",
+        "not_int",
+        "physical_affinity",
+        "skeleton",
+        "slashing_weapon",
+        "undead"
+      ],
+      "life": 0.88,
+      "damage": 0.7,
+      "damage_spread": 0.3,
+      "attack_time": 1.0,
+      "attack_range": 12.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 42.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveSkeletonLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "armour": 0.5,
+      "weapon_type1": "One Hand Sword",
+      "weapon_type2": "Shield",
+      "skill_list": [
+        "MinionMeleeStep"
+      ],
+      "mod_list": [
+        {
+          "name": "BlockChance",
+          "type": "BASE",
+          "value": 30.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "BlockChanceMax",
+          "type": "BASE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "RaisedZombie",
+      "name": "Raised Zombie",
+      "monster_tags": [
+        "animal_claw_weapon",
+        "flesh_armour",
+        "is_unarmed",
+        "medium_height",
+        "melee",
+        "physical_affinity",
+        "Unarmed_onhit_audio",
+        "undead",
+        "very_slow_movement",
+        "zombie"
+      ],
+      "life": 0.7,
+      "damage": 0.75,
+      "damage_spread": 0.3,
+      "attack_time": 1.25,
+      "attack_range": 9.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 16.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveZombieLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "weapon_type1": "One Hand Axe",
+      "skill_list": [
+        "MinionMeleeStep"
+      ]
+    },
+    {
+      "id": "RavenousSwarm",
+      "name": "Ravenous Swarm",
+      "monster_tags": [
+        "beast",
+        "slow_movement",
+        "Unarmed_onhit_audio"
+      ],
+      "life": 0.7,
+      "damage": 0.84,
+      "damage_spread": 0.3,
+      "attack_time": 1.0,
+      "attack_range": 1.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 24.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Beast",
+      "skill_list": [
+        "RavenousSwarmAttack"
+      ],
+      "mod_list": [
+        {
+          "name": "CurseImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "FrenzyChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "EnduranceChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "PowerChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "Condition:CannotBeDamaged",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "FreezeImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "Life",
+          "type": "OVERRIDE",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "SandDjinn",
+      "name": "Kelari, the Tainted Sands",
+      "monster_tags": [
+        "earth_elemental",
+        "humanoid",
+        "medium_movement",
+        "sand_blood",
+        "Unarmed_onhit_audio"
+      ],
+      "life": 1.0,
+      "damage": 1.0,
+      "damage_spread": 0.2,
+      "attack_time": 0.0,
+      "attack_range": 6.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 35.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Humanoid",
+      "skill_list": [
+        "KnifeThrowSandDjinn",
+        "ExplosiveTeleportSandDjinn",
+        "HandSlamSandDjinn"
+      ],
+      "mod_list": [
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunDuration",
+          "type": "OVERRIDE",
+          "value": 5.6,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "SummonedHellhound",
+      "name": "Infernal Hound",
+      "monster_tags": [
+        "beast",
+        "demon",
+        "medium_movement",
+        "not_int",
+        "red_blood",
+        "Unarmed_onhit_audio"
+      ],
+      "life": 0.88,
+      "damage": 1.25,
+      "damage_spread": 0.3,
+      "attack_time": 0.75,
+      "attack_range": 10.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 50.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Demon",
+      "armour": 0.5,
+      "evasion": 0.5,
+      "skill_list": [
+        "MinionMelee"
+      ]
+    },
+    {
+      "id": "SummonedRagingSpirit",
+      "name": "Raging Spirit",
+      "monster_tags": [
+        "bone_armour",
+        "construct",
+        "extra_extra_small_height",
+        "fast_movement",
+        "is_unarmed",
+        "melee",
+        "physical_affinity",
+        "skeleton",
+        "Unarmed_onhit_audio",
+        "undead"
+      ],
+      "life": 0.25,
+      "damage": 0.7,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 12.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 45.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveRagingSpiritLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Construct",
+      "skill_list": [
+        "MinionMeleeStep"
+      ],
+      "mod_list": [
+        {
+          "name": "Speed",
+          "type": "MORE",
+          "value": 40.0,
+          "flags": 1.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "SummonedRhoa",
+      "name": "Rhoa Companion",
+      "monster_tags": [
+        "beast",
+        "fast_movement",
+        "mammal_beast",
+        "MonsterBlunt_onhit_audio",
+        "not_int",
+        "red_blood"
+      ],
+      "life": 2.0,
+      "damage": 2.0,
+      "damage_spread": 0.2,
+      "attack_time": 1.23,
+      "attack_range": 16.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Beast",
+      "armour": 0.5,
+      "evasion": 0.5,
+      "skill_list": [
+        "MinionMelee"
+      ]
+    },
+    {
+      "id": "TacticianMinion",
+      "name": "Artillery Squad",
+      "monster_tags": [
+        "ranged",
+        "Unarmed_onhit_audio",
+        "very_slow_movement"
+      ],
+      "life": 1.0,
+      "damage": 0.67,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 6.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 8.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "skill_list": [
+        "DeathFromAboveDaemonMinion"
+      ],
+      "mod_list": [
+        {
+          "name": "CurseImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "FrenzyChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "EnduranceChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "PowerChargesMax",
+          "type": "OVERRIDE",
+          "value": 0.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "HiddenMonster",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "Condition:CannotBeDamaged",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "UnearthBoneConstruct",
+      "name": "Bone Crawler",
+      "monster_tags": [
+        "bones",
+        "medium_movement",
+        "MonsterStab_onhit_audio",
+        "skeleton",
+        "undead"
+      ],
+      "life": 0.35,
+      "damage": 0.75,
+      "damage_spread": 0.3,
+      "attack_time": 1.06,
+      "attack_range": 12.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 37.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "ActiveUnearthBoneConstructLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Undead",
+      "skill_list": [
+        "MinionMelee",
+        "DATTBoneConstructPlayerSummoned",
+        "GABoneConstructPlayerSummoned"
+      ],
+      "mod_list": [
+        {
+          "name": "StunDuration",
+          "type": "OVERRIDE",
+          "value": 2.93,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "Wardbound",
+      "name": "Wardbound Caster",
+      "monster_tags": [
+        "fast_movement",
+        "humanoid",
+        "not_str",
+        "red_blood",
+        "Unarmed_onhit_audio"
+      ],
+      "life": 1.0,
+      "damage": 1.0,
+      "damage_spread": 0.2,
+      "attack_time": 1.0,
+      "attack_range": 14.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 41.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "WardboundLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Humanoid",
+      "evasion": 0.25,
+      "energy_shield": 0.15,
+      "skill_list": [
+        "GSWardboundMinionBlast"
+      ]
+    },
+    {
+      "id": "WaterDjinn",
+      "name": "Navira, the Last Mirage",
+      "monster_tags": [
+        "humanoid",
+        "medium_movement",
+        "Unarmed_onhit_audio",
+        "water",
+        "water_elemental"
+      ],
+      "life": 1.0,
+      "damage": 1.0,
+      "damage_spread": 0.2,
+      "attack_time": 0.0,
+      "attack_range": 6.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 35.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Humanoid",
+      "skill_list": [
+        "WaterBubbleWaterDjinn",
+        "ChilledGroundBurstWaterDjinn",
+        "ESRechargeForceRestartWaterDjinn",
+        "ChilledGroundOasisConvertWaterDjinn",
+        "PassiveTriggeredManaWaveWaterDjinn"
+      ],
+      "mod_list": [
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "KnockbackImmune",
+          "type": "FLAG",
+          "value": 1.0,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        },
+        {
+          "name": "StunDuration",
+          "type": "OVERRIDE",
+          "value": 5.6,
+          "flags": 0.0,
+          "keyword_flags": 0.0
+        }
+      ]
+    },
+    {
+      "id": "WolfMinion",
+      "name": "Wolf Companion",
+      "monster_tags": [
+        "beast",
+        "fast_movement",
+        "mammal_beast",
+        "not_int",
+        "not_str",
+        "Snap_onhit_audio"
+      ],
+      "life": 1.1,
+      "damage": 0.7,
+      "damage_spread": 0.2,
+      "attack_time": 0.8,
+      "attack_range": 12.0,
+      "accuracy": 1.0,
+      "crit_chance": 5.0,
+      "base_movement_speed": 42.0,
+      "fire_resist": 0.0,
+      "cold_resist": 0.0,
+      "lightning_resist": 0.0,
+      "chaos_resist": 0.0,
+      "base_damage_ignores_attack_speed": true,
+      "limit": "WolfLimit",
+      "spectre_reservation": 50.0,
+      "companion_reservation": 30.0,
+      "monster_category": "Beast",
+      "evasion": 0.3,
+      "skill_list": [
+        "MeleeAtAnimationSpeedWolfCompanion",
+        "WolfLeapAttackMinion"
+      ]
+    }
+  ]
+}

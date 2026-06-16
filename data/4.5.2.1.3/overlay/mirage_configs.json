@@ -1,0 +1,113 @@
+{
+  "_meta": {
+    "schema": "mirage_configs/v1",
+    "generator": "sync-pob-catalog gen-mirage-configs（数据内嵌于工具源码）",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "a82a33b4fbdb7306ed93159664f7abe2c6819413",
+    "vendor_commit_subject": "a82a33b Merge branch 'master' into dev",
+    "extracted_files": [
+      "Modules/CalcMirages.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- gen-mirage-configs --vendor-root vendor/PathOfBuilding-PoE2/src --out data/4.5.2.1.3/overlay/mirage_configs.json",
+    "vendor_fingerprint": "421L:19160B"
+  },
+  "configs": [
+    {
+      "mirage_id": "generals_cry",
+      "trigger": {
+        "skill_data_flag": "triggeredByGeneralsCry"
+      },
+      "source_skill_filter": {
+        "exclude_used_by_mirage": true,
+        "select": "main_skill"
+      },
+      "count_stat": "GeneralsCryDoubleMaxCount",
+      "calc_main_skill_offence": true,
+      "handler_id": "mirage:generals_cry_exert",
+      "vendor_ref": "Modules/CalcMirages.lua:365-419"
+    },
+    {
+      "mirage_id": "mirage_archer",
+      "trigger": {
+        "skill_data_flag": "triggeredByMirageArcher"
+      },
+      "source_skill_filter": {
+        "weapon_type": "Bow",
+        "exclude_used_by_mirage": true,
+        "select": "main_skill"
+      },
+      "count_stat": "MirageArcherMaxCount",
+      "less_damage_stat": "MirageArcherLessDamage",
+      "less_attack_speed_stat": "MirageArcherLessAttackSpeed",
+      "uses_stored_uses": true,
+      "calc_main_skill_offence": true,
+      "vendor_ref": "Modules/CalcMirages.lua:63-119"
+    },
+    {
+      "mirage_id": "sacred_wisps",
+      "trigger": {
+        "skill_data_flag": "triggeredBySacredWisps"
+      },
+      "source_skill_filter": {
+        "weapon_type": "Wand",
+        "exclude_used_by_mirage": true,
+        "select": "main_skill"
+      },
+      "count_stat": "SacredWispsMaxCount",
+      "less_damage_stat": "SacredWispsLessDamage",
+      "cast_chance_stat": "SacredWispsChance",
+      "uses_stored_uses": true,
+      "calc_main_skill_offence": true,
+      "handler_id": "mirage:sacred_wisps_source_skill",
+      "vendor_ref": "Modules/CalcMirages.lua:299-364"
+    },
+    {
+      "mirage_id": "saviour_mirage_warriors",
+      "trigger": {
+        "granted_effect_name": "Reflection"
+      },
+      "source_skill_filter": {
+        "skill_types": [
+          "Attack"
+        ],
+        "exclude_skill_types": [
+          "Totem",
+          "SummonsTotem"
+        ],
+        "weapon_flags": [
+          "Sword",
+          "Weapon1H"
+        ],
+        "exclude_used_by_mirage": true,
+        "select": "best_dps"
+      },
+      "count_stat": "SaviourMirageWarriorMaxCount",
+      "less_damage_stat": "SaviourMirageWarriorLessDamage",
+      "uses_stored_uses": true,
+      "handler_id": "mirage:saviour_dual_wield_halving",
+      "vendor_ref": "Modules/CalcMirages.lua:120-179"
+    },
+    {
+      "mirage_id": "tawhoas_chosen",
+      "trigger": {
+        "granted_effect_name": "Tawhoa's Chosen"
+      },
+      "source_skill_filter": {
+        "skill_types": [
+          "Attack"
+        ],
+        "exclude_skill_types": [
+          "Vaal",
+          "Totem",
+          "SummonsTotem"
+        ],
+        "exclude_used_by_mirage": true,
+        "select": "best_dps"
+      },
+      "less_damage_stat": "ChieftainMirageChieftainMoreDamage",
+      "uses_stored_uses": true,
+      "handler_id": "mirage:tawhoa_trigger_rate",
+      "vendor_ref": "Modules/CalcMirages.lua:180-298"
+    }
+  ]
+}
