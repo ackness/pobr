@@ -126,8 +126,22 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             })
         }
         "Condition" => {
-            let var = f.get("var").and_then(|v| field_text(v, captures))?;
             let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
+            // vendor Condition 可携带 `var`（单条件）或 `varList`（OR 语义：任一为真即
+            // 成立）。PoBR `ModTag::Condition` 是单 var、无 OR。`var` 优先；缺 `var` 时
+            // 退化处理 **单元素** `varList`（如 `while holding a (%w+)` gear=shield →
+            // `UsingShield`，与 legacy 硬编码 `while holding a shield` 逐字一致）。
+            // 多元素 OR（`X or Y`、`while affected by X`）无 PoBR 单 var 落点，保守丢弃
+            // （与本修复前一致，引擎产出只增不减 → 不新增 c1 OLD_ONLY；登记 10-G3 余量）。
+            let var = match f.get("var").and_then(|v| field_text(v, captures)) {
+                Some(v) => Some(v),
+                None => match f.get("varList") {
+                    Some(StatMapValue::List(items)) if items.len() == 1 => {
+                        field_text(&items[0], captures)
+                    }
+                    _ => None,
+                },
+            }?;
             Some(ModTag::condition(var, neg))
         }
         "ActorCondition" => {
@@ -433,6 +447,42 @@ mod tests {
             compile_tag(&t, &[]).unwrap(),
             ModTag::condition("Onslaught", false)
         );
+    }
+
+    #[test]
+    fn condition_varlist_single_degenerates() {
+        // `while holding a (%w+)` 抽取形态：Condition 缺 `var`、仅 varList=["Using+$1:cap"]。
+        // 单元素 varList 退化为单 Condition（gear=shield → UsingShield，与 legacy 硬编码
+        // `while holding a shield` 逐字一致）。修复前因只读 `var` 而整条丢弃（titan
+        // UsingShield 失效根因）。
+        let t = tag(
+            "Condition",
+            &[(
+                "varList",
+                StatMapValue::List(vec![StatMapValue::Text("Using+$1:cap".into())]),
+            )],
+        );
+        assert_eq!(
+            compile_tag(&t, &["shield".into()]).unwrap(),
+            ModTag::condition("UsingShield", false)
+        );
+    }
+
+    #[test]
+    fn condition_varlist_multi_dropped() {
+        // 多元素 varList（vendor OR 语义，如 `while holding a X or Y`）无 PoBR 单 var
+        // 落点 → 保守丢弃（None），不臆造单条件（取首元素会错误排除 `or Y` 分支）。
+        let t = tag(
+            "Condition",
+            &[(
+                "varList",
+                StatMapValue::List(vec![
+                    StatMapValue::Text("Using+$1:cap".into()),
+                    StatMapValue::Text("Using+$2:cap".into()),
+                ]),
+            )],
+        );
+        assert!(compile_tag(&t, &["claw".into(), "shield".into()]).is_none());
     }
 
     #[test]
