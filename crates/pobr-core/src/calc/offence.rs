@@ -311,14 +311,21 @@ pub fn calculate_minimal_vs_enemy(
     let crit_multiplier = crit.multiplier;
 
     // --- 伤害主体：暴击/非暴击双 pass（M4-T2 W-B3，crit_pass.rs）+ T3 乘区接线 ---
+    // 击中口径 cfg：补 `KeywordFlags::HIT`（击中本就是 hit）——使 `with Hits` 类
+    // keyword 词条（kw=HIT）在击中聚合中命中。kw=NONE 词条恒匹配不受影响（legacy
+    // 多产 NONE，逐值不变）；ailment 缩放另经 `ailment_scoped_cfg` 剥 Hit，ignite/
+    // bleed 等 DoT base 仍由含 Hit 的击中伤害派生（对齐 PoB2：DoT 继承击中增益）。
+    let hit_cfg = cfg
+        .clone()
+        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
     // W-C1 ScaledDamageEffect（DD/TD 乘区；无词条时 effect == 1.0 逐位不变，
     // m4-t3-wiring-notes §2；crit_chance 是分数入参）。
-    let scaled = scaled_damage_effect(db, enemy_db, cfg, crit.chance);
+    let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
     // 两腿聚合 + canDeal（W-C3）+ lucky（W-C2）+ CritBlend（vendor :4395）。
     // 无 CriticalStrike 条件词条时短路走旧单因子公式（取整顺序复刻，逐字节等价）。
     let crit_pass = run_crit_passes(
         db,
-        cfg,
+        &hit_cfg,
         input.base_hit_min,
         input.base_hit_max,
         &crit,
@@ -628,10 +635,14 @@ fn total_dps_traced(
     // sum_traced 各落 Input 节点——RFC §2.4 条款 3）+ CritBlend Combine 节点
     // （pass = Single·Blended，weights = [1−c, c] 冻结系数，§3.3）。
     // TODO(W-C1 归因面)：DD/TD 词条暂无 Input 节点（direct 缺失、marginal 兜底）。
-    let scaled = scaled_damage_effect(db, enemy_db, cfg, crit.chance);
+    // 击中口径 cfg：补 `KeywordFlags::HIT`（与非 traced 路径同源，见该处注释）。
+    let hit_cfg = cfg
+        .clone()
+        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
+    let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
     let crit_pass = run_crit_passes(
         db,
-        cfg,
+        &hit_cfg,
         input.base_hit_min,
         input.base_hit_max,
         &crit,
