@@ -68,6 +68,8 @@ struct Args {
     raw: PathBuf,
     out: PathBuf,
     patch: String,
+    /// CI 严格模式：列漂移转硬失败（默认 false = 仅告警+续跑，见 [`run`]）。
+    strict_columns: bool,
 }
 
 /// 适配器子命令：物品基底域（`--raw`）或被动树域（`--tree`），二者互斥。
@@ -94,6 +96,7 @@ fn parse_args() -> Result<Mode, String> {
     let mut special_derived = None;
     let mut out = None;
     let mut patch = None;
+    let mut strict_columns = false;
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
         let mut take = |name: &str| it.next().ok_or_else(|| format!("{name} 缺少参数值"));
@@ -108,6 +111,8 @@ fn parse_args() -> Result<Mode, String> {
             }
             "--out" => out = Some(PathBuf::from(take("--out")?)),
             "--patch" => patch = Some(take("--patch")?),
+            // 韧性化：默认缺列只告警+续跑（数据/代码隔离）；CI 可加此开关转硬失败。
+            "--strict-columns" => strict_columns = true,
             other => return Err(format!("未知参数：{other}")),
         }
     }
@@ -139,7 +144,12 @@ fn parse_args() -> Result<Mode, String> {
         }));
     }
     if let Some(raw) = raw {
-        Ok(Mode::BaseItems(Args { raw, out, patch }))
+        Ok(Mode::BaseItems(Args {
+            raw,
+            out,
+            patch,
+            strict_columns,
+        }))
     } else if let Some(data_json) = tree {
         Ok(Mode::Tree(tree::TreeArgs {
             data_json,
@@ -341,8 +351,26 @@ fn run(args: Args) -> Result<String, String> {
     let en = args.raw.join("English");
     let tw = args.raw.join(ZH_TW);
 
-    // F2：必需列 fail-fast——缺列即报「表名 + 列名」，拒绝静默降级产出。
-    required_columns::assert_required_columns(&en, &tw)?;
+    // F2 韧性化：必需列检查不再致命——缺列按 serde 默认值降级（字段缺失/为空），
+    // 大声告警 + 写 `_drift.json` 供审查；仅 `--strict-columns`（CI 门禁）转硬失败。
+    let column_drift = required_columns::check_required_columns(&en, &tw)?;
+    if !column_drift.is_empty() {
+        eprintln!(
+            "⚠ pobr-data-adapter：检测到 {} 处列漂移（按 serde 默认降级，相关字段将缺失/为空，\
+             不中止；如需严格门禁用 --strict-columns）：",
+            column_drift.len()
+        );
+        for m in &column_drift {
+            eprintln!("  - {m}");
+        }
+        if args.strict_columns {
+            return Err(format!(
+                "--strict-columns：列漂移 {} 处，拒绝继续：\n  - {}",
+                column_drift.len(),
+                column_drift.join("\n  - ")
+            ));
+        }
+    }
 
     // 外键解析表
     let classes = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("ItemClasses.json"))?);
@@ -412,6 +440,25 @@ fn run(args: Args) -> Result<String, String> {
     fs::create_dir_all(&base_dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
     fs::create_dir_all(version_dir.join("i18n").join("zh-TW"))
         .map_err(|e| format!("创建输出目录失败：{e}"))?;
+
+    // 列漂移报告：有漂移则写 `_drift.json`（机器可读，供 regen/CI 审查），
+    // 无漂移则清理陈旧文件（保持目录干净、可复现）。
+    let drift_path = version_dir.join("_drift.json");
+    if column_drift.is_empty() {
+        let _ = fs::remove_file(&drift_path);
+    } else {
+        let drift = serde_json::json!({
+            "_meta": {
+                "kind": "adapter-column-drift",
+                "note": "GGG .dat 缺少 adapter 期望列；相关产物字段按 serde 默认降级。\
+                         非致命，仅提示数据/schema 漂移待复核。",
+                "patch": args.patch,
+            },
+            "missing_columns": column_drift,
+        });
+        write_pretty(&drift_path, &drift)?;
+        eprintln!("   列漂移报告 → {}", drift_path.display());
+    }
 
     write_pretty(&base_dir.join("base_items.json"), &bases)?;
     write_pretty(&version_dir.join("i18n/zh-TW/base_items.json"), &i18n_zh)?;

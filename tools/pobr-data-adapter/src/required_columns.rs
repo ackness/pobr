@@ -65,9 +65,10 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "Speed",
             "CritChance",
             "RangeMax",
-            // M4-T4 W-D2：弩装填时间（vendor Export/spec.lua:62483 确认列存在；
-            // 本地 tables 快照缺失期间由 overlay 兜底，列断言面向下次重跑）。
-            "ReloadTime",
+            // 注：`ReloadTime` 是 PoB2 spec.lua 列名，社区 dat-schema（pathofexile-dat
+            // 下载用）的 WeaponTypes 表无此列；弩装填时间由 overlay/vendor 兜底
+            // （RawWeaponType.reload_time 为 Option/default）。故不纳入必需列断言，
+            // 否则会因社区 schema 无此列而整表导出失败。
         ],
     ),
     (
@@ -119,7 +120,10 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "AttackTime",
             "CostAmounts",
             "AttackSpeedMultiplier",
-            "BaseMultiplier",
+            // 注：`BaseMultiplier` 不在 GrantedEffectsPerLevel 社区表中（见
+            // skills/levels.rs：恒缺失 → None，真源是 stat-set 表，分等级值由
+            // overlay/skill_overrides.json merge 提供）。故不纳入必需列断言——
+            // 否则 pathofexile-dat 会因社区 schema 无此列而整表导出失败。
             "CostMultiplier",
             "Reservation",
             "EffectOnPlayer",
@@ -153,7 +157,9 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
         "ActiveSkills.json",
         &["Id", "DisplayedName", "ActiveSkillTypes"],
     ),
-    ("ActiveSkillType.json", &["_index", "Id", "Name"]),
+    // 注：`Name` 不在社区 dat-schema 的 ActiveSkillType 表中（adapter 按 Option/default
+    // 读取，恒缺失）；只断言确实存在的 `_index` / `Id`。
+    ("ActiveSkillType.json", &["_index", "Id"]),
     ("CostTypes.json", &["_index", "Id", "Divisor", "PerMinute"]),
 ];
 
@@ -164,12 +170,16 @@ const REQUIRED_TW: &[(&str, &[&str])] = &[
     ("ActiveSkills.json", &["_index", "DisplayedName"]),
 ];
 
-/// `--raw` 模式入口断言：对全部消费表做必需列存在性检查。
+/// `--raw` 模式入口检查：对全部消费表做必需列存在性检查，**返回缺列清单**
+/// （而非中止）。
 ///
-/// - 表文件缺失 / 非对象数组 → 立即报错（含路径，覆盖快照整目录缺失场景）；
-/// - 缺列 → 跨表汇总后一次性报「表名 + 列名」清单；
-/// - 空表（零行）→ 无法校验列，放行给行级解析（不视为缺列）。
-pub(crate) fn assert_required_columns(en: &Path, tw: &Path) -> Result<(), String> {
+/// 韧性化（数据/代码隔离）：缺列**不再致命**——serde 已对缺列按 `Option`/`default`
+/// 降级（相关产物字段缺失/为空），本检查只负责把漂移**大声报出**供调用方决定
+/// （默认 warn 续跑；`--strict-columns` 下转硬错误）。区分两类：
+/// - 表文件缺失 / 非对象数组 → 仍立即 `Err`（输入损坏，无法适配，非"漂移"）；
+/// - 缺列 → 收集进返回的清单（`Ok(missing)`，空 = 全齐）；
+/// - 空表（零行）→ 无法校验列，放行（不计漂移）。
+pub(crate) fn check_required_columns(en: &Path, tw: &Path) -> Result<Vec<String>, String> {
     let mut missing = Vec::new();
     for (dir_label, dir, tables) in [("English", en, REQUIRED_EN), ("繁中边车", tw, REQUIRED_TW)]
     {
@@ -177,15 +187,7 @@ pub(crate) fn assert_required_columns(en: &Path, tw: &Path) -> Result<(), String
             check_table_columns(&dir.join(file), dir_label, file, columns, &mut missing)?;
         }
     }
-    if missing.is_empty() {
-        Ok(())
-    } else {
-        Err(format!(
-            "必需列断言失败（快照漂移 / 导出配置缺列，serde 默认值会静默降级产物，\
-             拒绝继续）：\n  - {}",
-            missing.join("\n  - ")
-        ))
-    }
+    Ok(missing)
 }
 
 /// 单表检查：解析为对象数组并核对首行键集合，缺列追加到 `missing`。
@@ -291,9 +293,9 @@ mod tests {
         assert!(err.contains("NoSuchTable.json"), "err = {err}");
     }
 
-    /// 入口断言：构造缺列目录 → 错误消息含表名 + 列名。
+    /// 入口检查：构造缺列目录 → 返回的缺列清单含「表名 + 列名」（韧性化：返回而非中止）。
     #[test]
-    fn entry_assertion_aggregates_across_tables() {
+    fn entry_check_aggregates_across_tables() {
         let root = std::env::temp_dir().join(format!(
             "pobr-required-columns-entry-{}",
             std::process::id()
@@ -315,10 +317,12 @@ mod tests {
             r#"[{"BaseItemType": 0, "Armour": 1, "Evasion": 0, "EnergyShield": 0, "Ward": 0}]"#,
         )
         .unwrap();
-        let err = assert_required_columns(&en, &tw).unwrap_err();
+        let missing = check_required_columns(&en, &tw).unwrap();
         assert!(
-            err.contains("ArmourTypes.json 缺必需列 `IncreasedMovementSpeed`"),
-            "err = {err}"
+            missing
+                .iter()
+                .any(|m| m.contains("ArmourTypes.json 缺必需列 `IncreasedMovementSpeed`")),
+            "missing = {missing:?}"
         );
     }
 }
