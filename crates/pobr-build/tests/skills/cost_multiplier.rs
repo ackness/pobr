@@ -16,7 +16,7 @@ use serde_json::json;
 use std::path::Path;
 
 fn repo_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join("4.5.0.3.4"));
+    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("加载仓库数据")
 }
 

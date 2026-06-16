@@ -158,7 +158,7 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
         Command::ParseMod(args) => {
             let data_dir = match args.data_dir {
                 Some(dir) => std::path::PathBuf::from(dir),
-                None => pobr_gamedata::repo_data_root().join("4.5.0.3.4"),
+                None => pobr_gamedata::current_data_dir(),
             };
             Ok(pobr_cli::parse_mod_json(&args.text, &data_dir)?)
         }
@@ -215,7 +215,7 @@ fn build_calc_build_request(
 
     let data_dir = match args.data_dir {
         Some(dir) => std::path::PathBuf::from(dir),
-        None => pobr_gamedata::repo_data_root().join("4.5.0.3.4"),
+        None => pobr_gamedata::current_data_dir(),
     };
 
     let enemy_tier = match args.enemy_tier.to_ascii_lowercase().as_str() {

@@ -7,7 +7,7 @@
 use pobr_gamedata::{GameData, repo_data_root};
 
 fn game_data() -> GameData {
-    GameData::new(repo_data_root().join("4.5.0.3.4"))
+    GameData::new(repo_data_root().join(pobr_gamedata::data_version()))
 }
 
 #[test]

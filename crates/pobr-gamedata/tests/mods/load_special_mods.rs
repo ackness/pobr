@@ -10,10 +10,12 @@ use pobr_data::catalog::parser_rules::{
 };
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn load() -> SpecialModsDef {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
         .special_mods()
         .unwrap()
         .expect("special_mods.json 在库")

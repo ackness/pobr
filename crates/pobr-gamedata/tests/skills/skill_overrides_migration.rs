@@ -37,7 +37,7 @@ fn merged_values_equal_old_hand_patched_base() {
     };
     let old_dir = std::path::PathBuf::from(old_dir);
 
-    let data = GameData::new(pobr_gamedata::repo_data_root().join("4.5.0.3.4"));
+    let data = GameData::new(pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version()));
 
     // ---- granted_effect_levels：逐 effect、逐行、逐字段 ----
     let old_levels: BTreeMap<String, Vec<SkillLevelDef>> = serde_json::from_slice(

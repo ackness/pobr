@@ -12,10 +12,12 @@ use pobr_data::monster::{
 };
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn game_data() -> GameData {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
 }
 
 /// chill/shock 边界逐值等于 pobr Rust 准源常量（搬迁不变式核心断言）。
@@ -145,7 +147,7 @@ fn default_ailment_damage_types_match_rust_source_and_vendor() {
 #[test]
 fn committed_json_is_serde_pretty_roundtrip_stable() {
     let path = repo_data_root()
-        .join(VERSION)
+        .join(version())
         .join("base/non_damaging_ailments.json");
     let committed = std::fs::read_to_string(&path).expect("读取已提交 JSON");
     let table = game_data().non_damaging_ailments().unwrap();

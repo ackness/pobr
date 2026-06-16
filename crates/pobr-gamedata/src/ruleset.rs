@@ -209,7 +209,7 @@ mod tests {
     /// ≥ overlay 基数——具体计数随策展批次增长，不钉死。
     #[test]
     fn repo_data_ruleset_loads_special_mods() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let entries = ruleset.special_mods.expect("special_mods 域应已接通");
         assert!(
@@ -223,7 +223,7 @@ mod tests {
     /// `overlay/high_precision_mods.json` ← vendor Data.lua:413-530）。
     #[test]
     fn repo_data_ruleset_loads_high_precision_mods() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset
             .high_precision_mods
@@ -236,7 +236,7 @@ mod tests {
     /// （搬迁不变式：注入与回退两条路径输出一致）。
     #[test]
     fn repo_data_ruleset_loads_game_constants_equal_to_default() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset.game_constants.expect("game_constants 域应已接通");
         assert_eq!(
@@ -250,7 +250,7 @@ mod tests {
     /// 相等（搬迁不变式：注入与回退两条路径输出一致）。
     #[test]
     fn repo_data_ruleset_loads_character_constants_equal_to_default() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset
             .character_constants
@@ -266,7 +266,7 @@ mod tests {
     /// （搬迁不变式：注入与回退两条路径输出一致）。
     #[test]
     fn repo_data_ruleset_loads_jewel_radii_equal_to_default() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset.jewel_radii.expect("jewel_radii 域应已接通");
         assert_eq!(
@@ -280,7 +280,7 @@ mod tests {
     /// 逐值相等**（含 vendor-only ally 两表；搬迁不变式：注入/回退两条路径输出一致）。
     #[test]
     fn repo_data_ruleset_loads_monster_scaling_equal_to_default() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset.monster_scaling.expect("monster_scaling 域应已接通");
         assert_eq!(
@@ -294,7 +294,7 @@ mod tests {
     /// 逐值相等**（含 vendor-only class_id/weapon_type 字段；搬迁不变式）。
     #[test]
     fn repo_data_ruleset_loads_unarmed_data_equal_to_default() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset.unarmed_data.expect("unarmed_data 域应已接通");
         assert_eq!(
@@ -308,7 +308,7 @@ mod tests {
     /// 逐值相等**（19 条 vendor weaponTypeInfo 含 label；搬迁不变式）。
     #[test]
     fn repo_data_ruleset_loads_weapon_types_equal_to_default() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset.weapon_types.expect("weapon_types 域应已接通");
         assert_eq!(
@@ -323,7 +323,7 @@ mod tests {
     /// （蓝图 §4.6 A6：未对拍条目入 parity 报表口径）。
     #[test]
     fn repo_data_ruleset_loads_config_catalog() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let catalog = ruleset.config_catalog.expect("config_catalog 域应已接通");
         assert!(
@@ -369,7 +369,7 @@ mod tests {
     /// 逐值相等**（含 vendor-only mod 组/占位列；搬迁不变式）。
     #[test]
     fn repo_data_ruleset_loads_enemy_presets_equal_to_default() {
-        let data = GameData::new(crate::repo_data_root().join("4.5.0.3.4"));
+        let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset.enemy_presets.expect("enemy_presets 域应已接通");
         assert_eq!(

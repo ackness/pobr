@@ -567,7 +567,10 @@ pub mod test_support {
     pub fn real_rules_path() -> PathBuf {
         // engine.rs 在 crates/pobr-core/src/mod_parser/，向上 4 级到 repo root。
         let manifest = env!("CARGO_MANIFEST_DIR"); // crates/pobr-core
-        PathBuf::from(manifest).join("../../data/4.5.0.3.4/overlay/mod_parser_rules.json")
+        PathBuf::from(manifest)
+            .join("../../data")
+            .join(pobr_data::data_version())
+            .join("overlay/mod_parser_rules.json")
     }
 }
 

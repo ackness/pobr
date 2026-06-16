@@ -177,7 +177,7 @@ fn decode_errors_on_invalid_code() {
 const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
 fn repo_data_dir() -> std::path::PathBuf {
-    pobr_gamedata::repo_data_root().join("4.5.0.3.4")
+    pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version())
 }
 
 #[test]

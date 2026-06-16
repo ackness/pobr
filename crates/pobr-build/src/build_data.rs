@@ -883,7 +883,7 @@ mod tests {
 
     /// 仓库内置数据目录下的版本目录（与 orchestrator 测试共用）。
     pub(crate) fn repo_version_dir() -> std::path::PathBuf {
-        repo_data_root().join("4.5.0.3.4")
+        repo_data_root().join(pobr_gamedata::data_version())
     }
 
     #[test]

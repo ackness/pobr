@@ -53,7 +53,10 @@ fn which(cmd: &str) -> bool {
 }
 
 fn load_entries() -> Vec<SpecialTemplateDef> {
-    let path = repo_root().join("data/4.5.0.3.4/overlay/special_mods.json");
+    let path = repo_root()
+        .join("data")
+        .join(pobr_gamedata::data_version())
+        .join("overlay/special_mods.json");
     let raw = std::fs::read_to_string(&path).expect("special_mods.json 可读");
     let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
     doc.entries

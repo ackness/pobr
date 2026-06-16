@@ -41,7 +41,7 @@ fn discover_builds() -> Vec<PathBuf> {
 }
 
 fn load_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join("4.5.0.3.4"));
+    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("load BuildData")
 }
 
@@ -748,7 +748,9 @@ fn corpus_unsupported_report() {
         use pobr_build::corpus::build_report_with_rules;
         use pobr_core::rules::{HandlerRegistry, SpecialModRules};
         use pobr_data::catalog::parser_rules::SpecialModsDef;
-        let path = repo_data_root().join("4.5.0.3.4/overlay/special_mods.json");
+        let path = repo_data_root()
+            .join(pobr_gamedata::data_version())
+            .join("overlay/special_mods.json");
         if let Ok(raw) = std::fs::read_to_string(&path) {
             let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json");
             let reg = pobr_build::handlers::build_special_registry();

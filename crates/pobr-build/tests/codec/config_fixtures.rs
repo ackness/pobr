@@ -26,7 +26,7 @@ fn fixtures_dir() -> PathBuf {
 }
 
 fn load_catalog() -> ConfigCatalog {
-    GameData::new(repo_data_root().join("4.5.0.3.4"))
+    GameData::new(repo_data_root().join(pobr_gamedata::data_version()))
         .load_ruleset()
         .expect("load ruleset")
         .config_catalog
@@ -212,8 +212,10 @@ fn custom_mods_feed_calculation_end_to_end() {
         "",
     ))
     .expect("parse plain build");
-    let data = BuildData::load(&GameData::new(repo_data_root().join("4.5.0.3.4")))
-        .expect("load build data");
+    let data = BuildData::load(&GameData::new(
+        repo_data_root().join(pobr_gamedata::data_version()),
+    ))
+    .expect("load build data");
     let opts = DataOrchestratorOptions {
         base_input: MinimalInput {
             base_life: 100.0,

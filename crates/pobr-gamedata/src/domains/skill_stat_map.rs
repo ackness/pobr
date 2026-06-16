@@ -106,7 +106,7 @@ mod tests {
     /// vendor 量级（global 950+，per-set 覆盖 300+ 效果）。
     #[test]
     fn loads_repo_overlay_smoke() {
-        let root = crate::repo_data_root().join("4.5.0.3.4");
+        let root = crate::current_data_dir();
         if !root.join("overlay/skill_stat_map.json").exists() {
             return; // 数据包未就位时跳过（不在 CI 数据缺失时误报）
         }

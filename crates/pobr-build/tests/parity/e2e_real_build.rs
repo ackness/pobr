@@ -36,7 +36,7 @@ const MARTIAL_ARTIST_CODE: &str =
 // ── 数据加载（每套测试共用同一 GameData + BuildData）────────────────────────
 
 fn load_game_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join("4.5.0.3.4"));
+    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("load BuildData from repo data")
 }
 

@@ -12,10 +12,12 @@ use pobr_tree::{
     JewelRadius, PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER,
 };
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn load() -> JewelRadiiDef {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
         .jewel_radii()
         .expect("jewel_radii 可加载")
 }

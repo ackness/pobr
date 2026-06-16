@@ -48,7 +48,7 @@ fn report_dir() -> PathBuf {
 }
 
 fn load_game_data() -> GameData {
-    GameData::new(repo_data_root().join("4.5.0.3.4"))
+    GameData::new(repo_data_root().join(pobr_gamedata::data_version()))
 }
 
 fn load_stat_map_catalog(data: &GameData) -> StatMapCatalog {

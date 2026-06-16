@@ -6,9 +6,9 @@
 
 #[path = "aggregation/enemy_mod_db.rs"]
 mod enemy_mod_db;
-#[path = "aggregation/mod_db_traced.rs"]
-mod mod_db_traced;
 #[path = "aggregation/mod_db.rs"]
 mod mod_db;
+#[path = "aggregation/mod_db_traced.rs"]
+mod mod_db_traced;
 #[path = "aggregation/trace.rs"]
 mod trace;

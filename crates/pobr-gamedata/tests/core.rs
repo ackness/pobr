@@ -13,3 +13,5 @@ mod load_config_options;
 mod load_game_constants;
 #[path = "core/multi_stat_sets.rs"]
 mod multi_stat_sets;
+#[path = "core/version_and_patch.rs"]
+mod version_and_patch;

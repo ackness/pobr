@@ -1,15 +1,17 @@
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn game_data() -> GameData {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
 }
 
 #[test]
 fn manifest_describes_committed_bundle() {
     let manifest = game_data().manifest().expect("manifest 可加载");
-    assert_eq!(manifest.poe_version, VERSION);
+    assert_eq!(manifest.poe_version, version());
     assert_eq!(manifest.schema_version, 2);
     assert!(manifest.domains.base.iter().any(|d| d == "base_items"));
     assert!(manifest.languages.iter().any(|l| l == "zh-TW"));

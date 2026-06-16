@@ -15,7 +15,7 @@
 use pobr_gamedata::GameData;
 
 fn repo_game_data() -> GameData {
-    GameData::new(pobr_gamedata::repo_data_root().join("4.5.0.3.4"))
+    GameData::new(pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version()))
 }
 
 /// overlay 文档可加载，且已收窄为两类 stat（M1-T4.3：crit/attspd 改表列直读，
@@ -154,7 +154,9 @@ fn pure_base_has_no_overlay_fields() {
     ));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("base")).unwrap();
-    let repo_base = pobr_gamedata::repo_data_root().join("4.5.0.3.4/base");
+    let repo_base = pobr_gamedata::repo_data_root()
+        .join(pobr_gamedata::data_version())
+        .join("base");
     for f in [
         "granted_effect_levels.json",
         "granted_effect_stat_sets.json",

@@ -10,10 +10,12 @@ use pobr_data::constants::{
 };
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn load() -> GameConstantsDef {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
         .game_constants()
         .expect("game_constants 可加载")
 }

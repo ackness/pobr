@@ -4,10 +4,10 @@
 //! 各子模块即 `tests/engine/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
-#[path = "engine/attribution_passes.rs"]
-mod attribution_passes;
 #[path = "engine/attribution.rs"]
 mod attribution;
+#[path = "engine/attribution_passes.rs"]
+mod attribution_passes;
 #[path = "engine/calc_env.rs"]
 mod calc_env;
 #[path = "engine/calc_minimal.rs"]

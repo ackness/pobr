@@ -135,7 +135,7 @@ mod tests {
     fn serializes_v2_shape_roundtrip() {
         let manifest = DataManifest {
             schema_version: CATALOG_SCHEMA_VERSION,
-            poe_version: "4.5.0.3.4".into(),
+            poe_version: crate::DATA_VERSION.into(),
             languages: vec!["zh-TW".into()],
             domains: DomainSections {
                 base: vec!["base_items".into()],

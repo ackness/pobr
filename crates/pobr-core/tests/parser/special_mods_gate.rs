@@ -18,21 +18,25 @@ use std::collections::BTreeMap;
 use pobr_core::rules::{HandlerRegistry, SpecialModRules};
 use pobr_data::catalog::parser_rules::{SpecialModsDef, SpecialTemplateDef};
 
-const SPECIAL_MODS_PATH: &str = concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../data/4.5.0.3.4/overlay/special_mods.json"
-);
-const SPECIAL_DERIVED_PATH: &str = concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../data/4.5.0.3.4/generated/special_derived.json"
-);
+fn special_mods_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data")
+        .join(pobr_data::data_version())
+        .join("overlay/special_mods.json")
+}
+fn special_derived_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data")
+        .join(pobr_data::data_version())
+        .join("generated/special_derived.json")
+}
 
 /// 加载仓库 special 条目（overlay + 可选 generated 派生，拼接）。
 fn load_entries() -> Vec<SpecialTemplateDef> {
-    let raw = std::fs::read_to_string(SPECIAL_MODS_PATH).expect("special_mods.json 可读");
+    let raw = std::fs::read_to_string(special_mods_path()).expect("special_mods.json 可读");
     let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
     let mut entries = doc.entries;
-    if let Ok(raw) = std::fs::read_to_string(SPECIAL_DERIVED_PATH) {
+    if let Ok(raw) = std::fs::read_to_string(special_derived_path()) {
         let derived: SpecialModsDef =
             serde_json::from_str(&raw).expect("special_derived.json 可解析");
         entries.extend(derived.entries);

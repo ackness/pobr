@@ -10,10 +10,12 @@ use pobr_data::catalog::enemy_presets::{EnemyPresetsTable, EnemyTierPreset};
 use pobr_data::monster::{EnemyTier, MAX_ENEMY_LEVEL, MONSTER_BASE_CRIT_DAMAGE_BONUS};
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn load() -> EnemyPresetsTable {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
         .enemy_presets()
         .expect("enemy_presets 可加载")
 }

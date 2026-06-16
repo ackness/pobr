@@ -6,10 +6,12 @@
 use pobr_data::catalog::buffs::{BuffDef, BuffDefinitionsDef, BuffModValue, Rounding};
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn load() -> BuffDefinitionsDef {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
         .buff_definitions()
         .expect("buff_definitions 可加载")
         .expect("仓库数据包含 overlay/buff_definitions.json")

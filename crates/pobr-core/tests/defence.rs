@@ -8,10 +8,10 @@
 mod defence_ext;
 #[path = "defence/defence_panels.rs"]
 mod defence_panels;
-#[path = "defence/ehp_pob2.rs"]
-mod ehp_pob2;
 #[path = "defence/ehp.rs"]
 mod ehp;
+#[path = "defence/ehp_pob2.rs"]
+mod ehp_pob2;
 #[path = "defence/evade_stun.rs"]
 mod evade_stun;
 #[path = "defence/keystone_defence.rs"]

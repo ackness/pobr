@@ -77,7 +77,13 @@ impl GameData {
         &self.root
     }
 
-    /// 按绝对/已定位路径加载 JSON。
+    /// 按绝对/已定位路径加载 JSON，并叠加**用户 patch 层**（若存在）。
+    ///
+    /// 用户 patch：把自定义 JSON 放到 `data/<version>/patch/<与版本根同构的相对路径>`
+    /// （如 `patch/base/mods.json`、`patch/overlay/uniques.json`），加载期按
+    /// [`merge`] 规则（对象 key 覆盖 / 数组按 `id` 合并 / 标量覆盖）叠在官方数据之上。
+    /// 这是 base→overlay 之外面向**用户的扩展层**——加 JSON 即可加/改 mod、独占、配置，
+    /// 不碰代码、不碰官方数据；patch 目录缺失 = 纯官方数据（向后兼容）。
     pub(crate) fn load_json_at<T: for<'de> serde::Deserialize<'de>>(
         &self,
         path: PathBuf,
@@ -86,6 +92,33 @@ impl GameData {
             path: path.clone(),
             source,
         })?;
+        // 用户 patch：patch/<相对版本根路径>；按相对结构镜像避免文件名碰撞
+        // （base/ 与 i18n/ 都有 base_items.json）。
+        if let Ok(rel) = path.strip_prefix(&self.root) {
+            let patch_path = self.root.join("patch").join(rel);
+            if patch_path.is_file() {
+                let base_val: serde_json::Value =
+                    serde_json::from_slice(&bytes).map_err(|source| LoadError::Parse {
+                        path: path.clone(),
+                        source,
+                    })?;
+                let patch_bytes = fs::read(&patch_path).map_err(|source| LoadError::Io {
+                    path: patch_path.clone(),
+                    source,
+                })?;
+                let patch_val: serde_json::Value =
+                    serde_json::from_slice(&patch_bytes).map_err(|source| LoadError::Parse {
+                        path: patch_path.clone(),
+                        source,
+                    })?;
+                let merged = merge(base_val, patch_val).map_err(|e| LoadError::Overlay {
+                    path: patch_path,
+                    message: e.to_string(),
+                })?;
+                return serde_json::from_value(merged)
+                    .map_err(|source| LoadError::Parse { path, source });
+            }
+        }
         serde_json::from_slice(&bytes).map_err(|source| LoadError::Parse { path, source })
     }
 
@@ -309,4 +342,38 @@ pub fn repo_data_root() -> PathBuf {
         .join("../../data")
         .canonicalize()
         .unwrap_or_else(|_| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data"))
+}
+
+/// 编译期默认数据版本（[`pobr_data::DATA_VERSION`]）的 re-export。
+pub use pobr_data::DATA_VERSION;
+
+/// 运行时数据版本（I/O 层完整发现）：
+/// 1. `POBR_DATA_VERSION` 环境变量；
+/// 2. `data/CURRENT` 标记文件（首行 trim，更新脚本写入）；
+/// 3. [`pobr_data::DATA_VERSION`] 编译期常量兜底。
+///
+/// 让"更新数据后零代码改动切版本"成立：更新脚本写 `data/CURRENT` 即可，
+/// 应用与读此函数的路径自动跟随。
+pub fn data_version() -> String {
+    if let Ok(v) = std::env::var("POBR_DATA_VERSION")
+        && !v.trim().is_empty()
+    {
+        return v.trim().to_string();
+    }
+    if let Ok(content) = fs::read_to_string(repo_data_root().join("CURRENT"))
+        && let Some(line) = content.lines().next()
+        && !line.trim().is_empty()
+    {
+        return line.trim().to_string();
+    }
+    DATA_VERSION.to_string()
+}
+
+/// 当前活动版本的数据目录（`<workspace>/data/<data_version()>`）。
+///
+/// 「加载哪个版本」的唯一运行时入口：替代散落各处的
+/// `crate::current_data_dir()`。版本由 [`data_version`]
+/// 发现（env → `data/CURRENT` → 常量）。
+pub fn current_data_dir() -> PathBuf {
+    repo_data_root().join(data_version())
 }

@@ -884,10 +884,10 @@ mod tests {
     /// 真实仓库数据全量编译成功（闸门冒烟，正式断言在 special_mods_gate.rs）。
     #[test]
     fn repo_special_mods_compile() {
-        let path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../data/4.5.0.3.4/overlay/special_mods.json"
-        );
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../data")
+            .join(pobr_data::data_version())
+            .join("overlay/special_mods.json");
         let raw = std::fs::read_to_string(path).expect("special_mods.json 可读");
         let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
         let rules = SpecialModRules::compile(&doc.entries, &HandlerRegistry::new())

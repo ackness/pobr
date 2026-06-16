@@ -34,10 +34,10 @@ impl GameData {
 mod tests {
     use pobr_data::catalog::stat_map::StatMapValue;
 
-    use crate::{GameData, repo_data_root};
+    use crate::GameData;
 
     fn real_data() -> GameData {
-        GameData::new(repo_data_root().join("4.5.0.3.4"))
+        GameData::new(crate::current_data_dir())
     }
 
     /// 仓库真实数据：各段条目数与钉定 vendor commit 的实测值一致

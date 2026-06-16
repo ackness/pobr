@@ -4,7 +4,7 @@
 //! 各子模块即 `tests/ailments/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
-#[path = "ailments/ailment_apply.rs"]
-mod ailment_apply;
 #[path = "ailments/ailment.rs"]
 mod ailment;
+#[path = "ailments/ailment_apply.rs"]
+mod ailment_apply;

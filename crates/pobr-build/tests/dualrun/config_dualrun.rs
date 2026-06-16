@@ -82,7 +82,7 @@ const DEFAULT_QUEST_STAT_REWARDS: &[(&str, &str)] = &[
 ];
 
 fn load_catalog() -> ConfigCatalog {
-    GameData::new(repo_data_root().join("4.5.0.3.4"))
+    GameData::new(repo_data_root().join(pobr_gamedata::data_version()))
         .load_ruleset()
         .expect("load ruleset")
         .config_catalog

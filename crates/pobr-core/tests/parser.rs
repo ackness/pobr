@@ -4,10 +4,10 @@
 //! 各子模块即 `tests/parser/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
-#[path = "parser/mod_parser_m2_defence.rs"]
-mod mod_parser_m2_defence;
 #[path = "parser/mod_parser.rs"]
 mod mod_parser;
+#[path = "parser/mod_parser_m2_defence.rs"]
+mod mod_parser_m2_defence;
 #[path = "parser/parser_dual_run.rs"]
 mod parser_dual_run;
 #[path = "parser/parser_modcache_golden.rs"]

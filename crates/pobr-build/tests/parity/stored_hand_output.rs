@@ -52,7 +52,7 @@ fn run_build(dir: &Path, data: &BuildData) -> OutputTable {
 #[test]
 fn stored_family_holds_vendor_identities_on_three_real_builds() {
     let data = {
-        let game_data = GameData::new(repo_data_root().join("4.5.0.3.4"));
+        let game_data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
         BuildData::load(&game_data).expect("load BuildData")
     };
 

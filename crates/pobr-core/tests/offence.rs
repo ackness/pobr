@@ -4,10 +4,10 @@
 //! 各子模块即 `tests/offence/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
-#[path = "offence/crit_pass.rs"]
-mod crit_pass;
 #[path = "offence/crit.rs"]
 mod crit;
+#[path = "offence/crit_pass.rs"]
+mod crit_pass;
 #[path = "offence/crossbow_reload.rs"]
 mod crossbow_reload;
 #[path = "offence/damage_components.rs"]

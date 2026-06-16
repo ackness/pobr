@@ -22,10 +22,12 @@ use pobr_data::constants::PLAYER_BASE_CRIT_DAMAGE_BONUS;
 use pobr_data::modifier::ModType;
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn load() -> Vec<BasePlayerModDef> {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
         .base_player_mods()
         .expect("base_player_mods 可加载")
 }

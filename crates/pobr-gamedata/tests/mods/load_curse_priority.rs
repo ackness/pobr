@@ -5,10 +5,12 @@
 
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn game_data() -> GameData {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
 }
 
 /// 四段分类齐全 + vendor 数值抽查（Data.lua:275-300）。

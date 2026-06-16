@@ -13,10 +13,12 @@ use pobr_core::calc::minion::{
 };
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn load_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(VERSION));
+    let data = GameData::new(repo_data_root().join(version()));
     BuildData::load(&data).expect("加载 4.5.0.3.4 数据")
 }
 

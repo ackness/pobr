@@ -78,7 +78,10 @@ fn repo_root() -> PathBuf {
 }
 
 fn load_rules() -> CompiledParserRules {
-    let path = repo_root().join("data/4.5.0.3.4/overlay/mod_parser_rules.json");
+    let path = repo_root()
+        .join("data")
+        .join(pobr_data::data_version())
+        .join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("读取 mod_parser_rules.json");
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("反序列化规则表");
     // special 通道数据（overlay + generated 拼接，id 冲突在 compile fail-fast）。
@@ -89,7 +92,10 @@ fn load_rules() -> CompiledParserRules {
 
 /// 载入一份 special_mods 数据文件（缺文件 → 空，由拼接侧兜底）。
 fn load_special(rel: &str) -> Vec<pobr_data::catalog::parser_rules::SpecialTemplateDef> {
-    let path = repo_root().join("data/4.5.0.3.4").join(rel);
+    let path = repo_root()
+        .join("data")
+        .join(pobr_data::data_version())
+        .join(rel);
     let Ok(json) = std::fs::read_to_string(&path) else {
         return Vec::new();
     };

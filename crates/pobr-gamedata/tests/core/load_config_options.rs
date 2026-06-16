@@ -9,10 +9,12 @@ use pobr_data::catalog::config_def::{
 use pobr_data::catalog::value_expr::{EffectTag, EffectTarget, ValueExpr};
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn load() -> ConfigOptionsDef {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
         .config_options()
         .expect("config_options 可加载")
 }

@@ -21,7 +21,10 @@ fn repo_root() -> PathBuf {
 }
 
 fn load_doc() -> ModParserRulesDoc {
-    let path = repo_root().join("data/4.5.0.3.4/overlay/mod_parser_rules.json");
+    let path = repo_root()
+        .join("data")
+        .join(pobr_data::data_version())
+        .join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("读取 mod_parser_rules.json");
     serde_json::from_str(&json).expect("反序列化规则表")
 }

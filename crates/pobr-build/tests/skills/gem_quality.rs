@@ -28,7 +28,7 @@ use pobr_gamedata::{GameData, repo_data_root};
 use std::path::Path;
 
 fn load_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join("4.5.0.3.4"));
+    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("load BuildData")
 }
 

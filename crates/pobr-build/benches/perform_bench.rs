@@ -51,7 +51,7 @@ fn options() -> DataOrchestratorOptions {
 
 fn bench_perform(c: &mut Criterion) {
     let data = {
-        let game = GameData::new(repo_data_root().join("4.5.0.3.4"));
+        let game = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
         BuildData::load(&game).expect("load BuildData")
     };
     let attack = load_build("monk-martial-artist-flicker-strike");

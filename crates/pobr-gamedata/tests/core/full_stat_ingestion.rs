@@ -9,7 +9,7 @@ use pobr_gamedata::{GameData, repo_data_root};
 
 #[test]
 fn previously_filtered_stats_are_now_ingested() {
-    let data = GameData::new(repo_data_root().join("4.5.0.3.4"));
+    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     let sets = data.skill_stat_sets().expect("load stat sets");
 
     // IceNova 主 set 的 constantStats 含 `base_skill_effect_duration`（8000）与

@@ -11,10 +11,12 @@ use pobr_data::monster::{
 };
 use pobr_gamedata::{GameData, repo_data_root};
 
-const VERSION: &str = "4.5.0.3.4";
+fn version() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn game_data() -> GameData {
-    GameData::new(repo_data_root().join(VERSION))
+    GameData::new(repo_data_root().join(version()))
 }
 
 /// 九张表均应恒为 100 项（等级 1..=100）。

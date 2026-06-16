@@ -22,7 +22,7 @@ fn repo_root() -> PathBuf {
 
 /// 数据版本目录（当前 `4.5.0.3.4`）。
 fn data_root() -> PathBuf {
-    repo_root().join("data/4.5.0.3.4")
+    repo_root().join("data").join(pobr_data::data_version())
 }
 
 /// 载入一份 special_mods 数据文件（缺文件 → 空，由拼接侧兜底）。
