@@ -236,6 +236,27 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
         mods.push(m);
     }
 
+    // C3 续（flagless `Speed` 拆名）：vendor「attack and cast speed」「use speed」「attack,
+    // cast and movement speed」映射为泛名 `Speed`（无 attack/cast flag，故上面 C3 Speed 族
+    // 不触发）。但 PoBR 速度计算的 bucket 按**名** `[AttackSpeed, CastSpeed, SkillSpeed]`
+    // 聚合（calc/skill_use_time.rs），bare `Speed` **不被任何速度计算消费**——attack/cast
+    // 速度全丢（bow-shot/ice-shot 等 Speed 偏低根因）。legacy 从不产 bare `Speed`
+    // （expand_compound `attack and cast speed`→`["attack speed","cast speed"]`→AttackSpeed+
+    // CastSpeed，legacy.rs:735）。对齐：把每条 bare `Speed` 拆成 AttackSpeed + CastSpeed。
+    let mut split_mods = Vec::with_capacity(mods.len());
+    for mut m in mods {
+        if m.name.as_str() == "Speed" {
+            let mut cast = m.clone();
+            cast.name = "CastSpeed".into();
+            m.name = "AttackSpeed".into();
+            split_mods.push(m);
+            split_mods.push(cast);
+        } else {
+            split_mods.push(m);
+        }
+    }
+    let mods = split_mods;
+
     // 9. misc LIST 包装（addToMinion / addToAura / newAura / addToSkill / applyToEnemy）。
     let mods = effects_acc.wrap_list(mods);
 
@@ -619,5 +640,34 @@ mod tests {
         let r = real_rules();
         let o = parse_mod_engine("Mirrored", &r);
         assert_eq!(o.status, ParseStatus::Unsupported);
+    }
+
+    #[test]
+    fn attack_and_cast_speed_splits_to_attack_cast() {
+        // vendor「attack and cast speed」映射为泛名 `Speed`（无 attack/cast flag）；PoBR
+        // 速度 bucket 按名 [AttackSpeed,CastSpeed,SkillSpeed] 聚合、不消费 bare `Speed`，
+        // 故拆为 AttackSpeed + CastSpeed（对齐 legacy expand_compound，legacy.rs:735）。
+        let r = real_rules();
+        let o = parse_mod_engine("8% increased Attack and Cast Speed", &r);
+        assert_eq!(o.status, ParseStatus::Parsed, "unparsed={:?}", o.unparsed);
+        assert!(
+            o.mods.iter().any(|m| m.name.as_str() == "AttackSpeed"
+                && m.mod_type == ModType::Inc
+                && m.value == ModValue::Number(8.0)),
+            "应产 AttackSpeed Inc 8: {:?}",
+            o.mods
+        );
+        assert!(
+            o.mods
+                .iter()
+                .any(|m| m.name.as_str() == "CastSpeed" && m.value == ModValue::Number(8.0)),
+            "应产 CastSpeed Inc 8: {:?}",
+            o.mods
+        );
+        assert!(
+            !o.mods.iter().any(|m| m.name.as_str() == "Speed"),
+            "不应残留 bare Speed: {:?}",
+            o.mods
+        );
     }
 }
