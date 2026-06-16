@@ -1,17 +1,23 @@
+# ── 构建产物 ──
 /target/
 **/target/
-.claude/
-
-# PoB 参考仓库（本地临时 clone，仅用于数据勘察 / 对照，不纳入版本控制）
-/vendor/
-
-# 本机相关的 cargo 配置（如在网络卷上开发时用 target-dir 重定向到本地盘）
-/.cargo/config.toml
-
-# Python bytecode cache
-__pycache__/
-*.pyc
-# 门禁/主线专用隔离 target（CARGO_TARGET_DIR=$PWD/target-gate 等）
+# 门禁 / 并行会话隔离 target（CARGO_TARGET_DIR=$PWD/target-* 等）
 /target-gate/
 /target-master/
 /target-dualrun/
+
+# 本机相关的 cargo 配置（网络卷开发时 target-dir 重定向到本地盘）
+/.cargo/config.toml
+
+# ── 工具 / 编辑器 ──
+.claude/
+
+# ── 本地资料（不纳入版本控制）──
+# PoB 参考仓库（本地临时 clone，仅用于数据勘察 / 对照）
+/vendor/
+# 本地研究笔记
+/study/
+
+# ── Python bytecode cache ──
+__pycache__/
+*.pyc
