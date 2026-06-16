@@ -36,7 +36,7 @@ use pobr_gamedata::{GameData, repo_data_root};
 /// CoC build fixture：Weapon 1 = Wooden Club（源攻击的武器基底），无天赋；组 =
 /// [Armour Breaker(攻击源), Cast on Critical(触发器), Fireball(被触发)]，
 /// 主技能 = Fireball（mainActiveSkill=3，组内非 support 序）。
-const COC_XML: &str = include_str!("fixtures/coc_cast_on_crit.xml");
+const COC_XML: &str = include_str!("../fixtures/coc_cast_on_crit.xml");
 
 // ---------------------------------------------------------------------------
 // Golden 基线（首次建立：本套件落地 commit，worktree 基线 761ebb5）

@@ -4,7 +4,7 @@ use pobr_build::build_code::{decode_pob_code, encode_pob_code};
 use pobr_build::import_detect::{ImportKind, detect_import};
 
 /// 真实 PoB2 build code（从 examples/demo-bd-test 复制的 ninja deadeye build）。
-const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
+const DEADEYE_CODE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
 #[test]
 fn decodes_real_pob2_build_code() {

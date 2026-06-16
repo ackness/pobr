@@ -16,11 +16,11 @@ use pobr_build::{
 use pobr_core::calc::MinimalInput;
 
 /// 真实 PoB2 ninja Deadeye build code。
-const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
+const DEADEYE_CODE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
 /// 真实 PoB2 ninja Martial Artist build code。
 const MARTIAL_ARTIST_CODE: &str =
-    include_str!("../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
+    include_str!("../../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
 
 // ---------------------------------------------------------------------------
 // 容差工具

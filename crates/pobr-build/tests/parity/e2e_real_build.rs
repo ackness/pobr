@@ -28,10 +28,10 @@ use pobr_gamedata::{GameData, repo_data_root};
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
-const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
+const DEADEYE_CODE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
 const MARTIAL_ARTIST_CODE: &str =
-    include_str!("../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
+    include_str!("../../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
 
 // ── 数据加载（每套测试共用同一 GameData + BuildData）────────────────────────
 

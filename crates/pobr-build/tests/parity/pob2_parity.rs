@@ -15,8 +15,8 @@ use pobr_data::monster::EnemyTier;
 use pobr_gamedata::{GameData, repo_data_root};
 use std::collections::HashMap;
 
-const DEADEYE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
-const MARTIAL: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
+const DEADEYE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
+const MARTIAL: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
 
 /// 从解码后的 Build XML 抽取所有 `<PlayerStat stat="X" value="Y"/>`（PoB2 的参照值）。
 fn parse_player_stats(xml: &str) -> HashMap<String, f64> {
