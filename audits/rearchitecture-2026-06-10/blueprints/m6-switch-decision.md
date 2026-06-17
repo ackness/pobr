@@ -165,3 +165,12 @@ unsupported 状态对照），把非丢弃分歧逐条列出，再谈 fork。
 - version-bump-drill.sh 扩展第 4 步 precompile 实跑（F，不依赖切换）。
 - bench 三组补全（F-T10）。
 - stat_id 双通道（E）部分前置核实（但实施依赖 B+D 切换后）。
+
+## 收尾波状态（切换已翻默认后；删 legacy 序列）
+
+切换早已翻默认（`pobr-build default=parser-engine`，fork-a 收官「最后一行 engine-behind」修完）。删 legacy 分三步：
+
+- **1/3**（commit `e8b816e`）：解析输出共享类型迁出 `legacy.rs` → `mod_parser/outcome.rs`。
+- **2/3**（commit `671b686`）：`ParseCtx` 迁出 `legacy.rs` → `mod_parser/dispatch.rs`，与 legacy 解耦。
+- **3a/3**（commit `73c78e9`）：去 `parser-engine` feature 门控，引擎无条件编译，`aho-corasick` 无条件依赖，legacy 降为纯回退路径。三者皆**行为中性**、1540 tests 全绿。
+- **3b（物理删 `legacy.rs` ~4085 行 + 迁测试到引擎）：未做，须本地环境完成。** 可回退探针实测引擎对 `mod_parser.rs` 单测有 **13/84 真实分歧**（PerStat/Multiplier tag 丢失、武器职业 bit 编码、聚合抗性展开等），云环境无 `vendor/` + luajit 无法重生规则/对照 vendor 裁决。**详见 `m6-delete-legacy-3b-handoff.md`（含逐条分歧 + 机械清单）。**
