@@ -428,11 +428,14 @@ fn normalize_pobr_name(
     let mut out_flags = flags;
     let out_kw = kw;
 
-    // M6-conv2（bug #4 收敛）：GainAs 基名保留 vendor 短名——抽取期别名把
-    // `maximum life`→`MaximumLife`，但 vendor gain-as 基名是短名 `Life`
-    // （legacy `LifeGainAsEnergyShield`）。仅在 `GainAs` 后缀名上回退 `Maximum` 前缀，
-    // 与 legacy 逐字节对齐。
-    if name.contains("GainAs") {
+    // M6-conv2（bug #4 收敛）+ fork-a：池资源**前缀**的后缀拼接族（`GainAs<Dst>` /
+    // `ConvertTo<Dst>`）的源池名须用 vendor 短名（`Life`/`Mana`），而非抽取期别名化的
+    // `MaximumLife`/`MaximumMana`。vendor `CalcDefence.lua:92,1316` 与 pobr 消费侧
+    // `calc/defence.rs` `format!("{src}ConvertTo{dst}")`（src=`Life`）都按短名重建查询
+    // 名——若引擎产 `MaximumLifeConvertToEnergyShield` 则资源转换矩阵查不到（→转换被
+    // 静默丢弃，detonate-dead 全防御 0.38x / comet PhysMaxHit 偏低根因）。`GainAs` 早
+    // 前已修，`ConvertTo` 同族此前漏了——一并回退 `Maximum` 前缀，与 legacy 逐字节对齐。
+    if name.contains("GainAs") || name.contains("ConvertTo") {
         if let Some(rest) = name.strip_prefix("MaximumLife") {
             out_name = format!("Life{rest}");
         } else if let Some(rest) = name.strip_prefix("MaximumMana") {
@@ -640,6 +643,32 @@ mod tests {
         let r = real_rules();
         let o = parse_mod_engine("Mirrored", &r);
         assert_eq!(o.status, ParseStatus::Unsupported);
+    }
+
+    #[test]
+    fn life_convert_to_es_strips_maximum_prefix() {
+        // vendor「N% of Maximum Life Converted to Energy Shield」前导名经抽取期别名→
+        // `MaximumLife`，但池转换族 `ConvertTo<Dst>`/`GainAs<Dst>` 的源池名须用 vendor
+        // 短名 `Life`（calc/defence.rs 按 `{src}ConvertTo{dst}` src=`Life` 重建查询名；
+        // vendor CalcDefence.lua:92）。引擎须产 `LifeConvertToEnergyShield`、非
+        // `MaximumLifeConvertToEnergyShield`（后者查不到转换矩阵 → 转换被静默丢弃）。
+        let r = real_rules();
+        let o = parse_mod_engine("5% of Maximum Life Converted to Energy Shield", &r);
+        assert_eq!(o.status, ParseStatus::Parsed, "unparsed={:?}", o.unparsed);
+        assert!(
+            o.mods
+                .iter()
+                .any(|m| m.name.as_str() == "LifeConvertToEnergyShield"),
+            "应产 LifeConvertToEnergyShield: {:?}",
+            o.mods
+        );
+        assert!(
+            !o.mods
+                .iter()
+                .any(|m| m.name.as_str() == "MaximumLifeConvertToEnergyShield"),
+            "不应残留 MaximumLifeConvertToEnergyShield: {:?}",
+            o.mods
+        );
     }
 
     #[test]
