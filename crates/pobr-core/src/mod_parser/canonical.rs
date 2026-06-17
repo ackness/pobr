@@ -6,7 +6,7 @@
 //! `source`（原文）参与、`origin`（SourceId）剔除（双跑两侧来源构造不同）。
 //! status / unparsed 一并入比较。
 
-use super::legacy::{ParseOutcome, ParseStatus};
+use super::outcome::{ParseOutcome, ParseStatus};
 use crate::modifier::ModValue;
 use crate::{ModTag, Modifier};
 

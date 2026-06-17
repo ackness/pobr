@@ -25,7 +25,7 @@ use pobr_data::prelude::ModType;
 
 use super::compiled::CompiledParserRules;
 use super::forms::{FormReject, eval_form};
-use super::legacy::{ParseOutcome, ParseStatus};
+use super::outcome::{ParseOutcome, ParseStatus};
 use super::template::{compile_flags, compile_keyword_flags, compile_tag};
 use crate::{ModTag, ModValue, Modifier};
 use pobr_data::modifier::{KeywordFlags, ModFlags};

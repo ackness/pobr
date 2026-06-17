@@ -16,6 +16,9 @@
 
 pub mod legacy;
 
+/// 解析输出共享类型（legacy 与引擎共用；删 legacy 后随引擎留存）。
+pub mod outcome;
+
 #[cfg(feature = "parser-engine")]
 pub mod canonical;
 #[cfg(feature = "parser-engine")]
@@ -29,11 +32,10 @@ pub mod scan;
 #[cfg(feature = "parser-engine")]
 pub mod template;
 
-// legacy 公有 API 再导出——既有调用方路径不变（搬迁不变式）。
-pub use legacy::{
-    ParseCtx, ParseError, ParseOutcome, ParseStatus, SpecialMatchMeta, parse_minion_modifier,
-    parse_mod, parse_mod_with_rules,
-};
+// 解析输出共享类型从 `outcome` 再导出（调用方路径 `pobr_core::mod_parser::*` 不变）。
+pub use outcome::{ParseError, ParseOutcome, ParseStatus, SpecialMatchMeta};
+// legacy 解析入口再导出——既有调用方路径不变（搬迁不变式；删 legacy 时收掉）。
+pub use legacy::{ParseCtx, parse_minion_modifier, parse_mod, parse_mod_with_rules};
 
 #[cfg(feature = "parser-engine")]
 pub use canonical::canonical_outcome;

@@ -1,54 +1,10 @@
-use std::fmt;
-
 use pobr_data::prelude::*;
 
 use crate::{ModTag, ModValue, Modifier};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParseStatus {
-    Parsed,
-    Unsupported,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ParseOutcome {
-    pub mods: Vec<Modifier>,
-    pub status: ParseStatus,
-    pub unparsed: Option<String>,
-    /// special 词条规则命中元数据（M5b §2.3）。`None` = 走通用解析路径
-    /// （含既有专用函数 / parse_keystone_special）；`Some` = 由
-    /// [`crate::rules::SpecialModRules`] 整行命中产出（entry_id + verified
-    /// 透传归因与 parity 报表）。`parse_mod`（rules=None）路径恒 `None`，
-    /// 保证既有调用方逐值不变（搬迁不变式）。
-    pub special_meta: Option<SpecialMatchMeta>,
-}
-
-/// special 命中元数据（[`ParseOutcome::special_meta`]）。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SpecialMatchMeta {
-    /// 命中的 special 条目稳定 id。
-    pub entry_id: String,
-    /// 该条目是否经 oracle 对拍验证（`verified:false` 在 parity 报表单列）。
-    pub verified: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseError {
-    pub input: String,
-    pub reason: String,
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "failed to parse modifier {:?}: {}",
-            self.input, self.reason
-        )
-    }
-}
-
-impl std::error::Error for ParseError {}
+// 解析输出的共享类型迁出至 `super::outcome`（D-T8 删 legacy 前置——引擎产物类型
+// 不再依赖 legacy 模块）。legacy 内部沿用同名类型。
+use super::outcome::{ParseError, ParseOutcome, ParseStatus, SpecialMatchMeta};
 
 #[derive(Debug, Clone, Copy)]
 enum FormKind {
