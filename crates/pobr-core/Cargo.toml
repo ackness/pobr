@@ -4,24 +4,18 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-# M6-B 数据驱动 parser 引擎（默认 off，新旧并存——本 track 不切换调用方）。
-# 开启编译 mod_parser::{scan,compiled,forms,template,engine,canonical} 与
-# aho-corasick 依赖。切换（删 legacy）是 D-T8 的独立 commit。
-parser-engine = ["dep:aho-corasick"]
-# M6 D-T8 A2：测试专用规则加载 helper（`mod_parser::test_compiled_rules`）。
-# 仅供下游集成测试（独立 crate）穿线时取 `CompiledParserRules`——读仓库
-# `data/4.5.0.3.4/` 的 parser/special 规则文件，故引入 serde_json + fs I/O。
-# **默认 off**：开启才破 pobr-core「本体零 I/O / 不依赖 serde_json」不变式，
-# 生产构建恒不启用此 feature，零 I/O 铁律不变。蕴含 parser-engine（helper 返回
-# 引擎类型）。
-test-rules = ["parser-engine", "dep:serde_json"]
+# 测试专用规则加载 helper（`mod_parser::test_compiled_rules`）。仅供下游集成测试
+# （独立 crate）取 `CompiledParserRules`——读仓库 `data/<version>/` 的 parser/special
+# 规则文件，故引入 serde_json + fs I/O。**默认 off**：开启才破 pobr-core「本体零 I/O
+# / 不依赖 serde_json」不变式，生产构建恒不启用此 feature，零 I/O 铁律不变。
+test-rules = ["dep:serde_json"]
 
 [dependencies]
 pobr-data.workspace = true
 # special 词条模板的整行锚定匹配（M5b rules::special_mod，载入期编译 RegexSet）。
 regex.workspace = true
-# parser-engine 专用（plain 短语索引 + literal 预过滤）；feature 关时不编译。
-aho-corasick = { workspace = true, optional = true }
+# 数据驱动 parser 引擎（plain 短语索引 + literal 预过滤）——无条件依赖。
+aho-corasick.workspace = true
 # test-rules 专用（规则文件反序列化）；feature 关时不编译，零 I/O 不变式不破。
 serde_json = { workspace = true, optional = true }
 
@@ -38,5 +32,4 @@ harness = false
 [[bench]]
 name = "mod_parser_bench"
 harness = false
-required-features = ["parser-engine"]
 

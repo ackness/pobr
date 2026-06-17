@@ -1,14 +1,14 @@
 //! M6-B parser 引擎 vs legacy 中位耗时 bench（蓝图 §9）。
 //!
 //! 门禁口径：`engine ≤ 1.10 × legacy` 中位耗时（roadmap「parse bench 退化 ≤10%」
-//! 操作化）。本 bench 需 `parser-engine` feature（见 Cargo.toml required-features）。
+//! 操作化）。引擎已无条件编译，本 bench 无需任何 feature。
 //!
 //! 三组：
 //! 1. `parse_corpus_legacy` vs `parse_corpus_engine`：同一固定语料逐行解析吞吐；
 //! 2. `compile_rules`：ParserRules → CompiledParserRules（含 aho-corasick 构建）
 //!    一次性成本（载入期、非热路径）。
 //!
-//! 运行：`cargo bench -p pobr-core --features parser-engine --bench mod_parser_bench`
+//! 运行：`cargo bench -p pobr-core --bench mod_parser_bench`
 
 use std::path::PathBuf;
 

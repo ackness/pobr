@@ -77,7 +77,6 @@ pub struct CalculationSession {
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`set_parser_rules`]: CalculationSession::set_parser_rules
-    #[cfg(feature = "parser-engine")]
     parser_rules: Option<Arc<crate::mod_parser::CompiledParserRules>>,
 }
 
@@ -92,7 +91,6 @@ impl CalculationSession {
             unsupported_modifier_texts: Vec::new(),
             special_rules: None,
             special_registry: None,
-            #[cfg(feature = "parser-engine")]
             parser_rules: None,
         }
     }
@@ -127,7 +125,6 @@ impl CalculationSession {
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`CompiledParserRules::special`]: crate::mod_parser::CompiledParserRules
-    #[cfg(feature = "parser-engine")]
     pub fn set_parser_rules(&mut self, rules: Arc<crate::mod_parser::CompiledParserRules>) {
         self.parser_rules = Some(rules);
     }
@@ -137,7 +134,6 @@ impl CalculationSession {
     /// 2. legacy special 规则（M5b）→ legacy special 路径；
     /// 3. 皆未注入 → 空上下文（历史 `parse_mod` 行为，逐值不变）。
     fn parse_ctx(&self) -> ParseCtx<'_> {
-        #[cfg(feature = "parser-engine")]
         if let Some(rules) = &self.parser_rules {
             return ParseCtx::with_engine(rules);
         }
