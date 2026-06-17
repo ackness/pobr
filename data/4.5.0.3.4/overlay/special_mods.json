@@ -12,6 +12,21 @@
   },
   "entries": [
     {
+      "id": "eternal_life_while_energy_shield",
+      "pattern": "your life cannot change while you have energy shield",
+      "vendor_pattern": "your life cannot change while you have energy shield",
+      "mods": [
+        {
+          "name": "EternalLife",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "ModParser.lua:3144（-- Lich specialModList，flag(EternalLife)）；legacy 经 max-hit ES bypass 消费（pool_damage.rs）。fork-a 迁入补 engine 数据驱动 special 通道缺口（detonate-dead MaxHit/EHP 偏低）"
+    },
+    {
       "id": "all_damage_is_taken_from_mana_before_life",
       "pattern": "all damage is taken from mana before life",
       "vendor_pattern": "all damage is taken from mana before life",
