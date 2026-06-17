@@ -64,6 +64,63 @@
       "source_note": "ModParser.lua:2839 function(num)→mod(LifeLossPrevented,BASE,num)；legacy.rs:1824-1827 同。pool_setup.rs:104 `min(ΣLifeLossPrevented,100)` 减伤（max-hit 机制）。vendor 函数形，extract 抽不出静态模板 → 引擎误解析为 MaximumLife BASE 25。fork-a 补 engine special（blood-mage EHP/五类 MaxHit 0.88x）"
     },
     {
+      "id": "fire_damage_while_affected_by_herald_of_ash",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased fire damage while affected by herald of ash",
+      "vendor_pattern": "while affected by (%a+) [via modTagList; legacy.rs:2536 硬编码]",
+      "mods": [
+        {
+          "name": "FireDamage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            { "type": "Condition", "var": "AffectedByHeraldofAsh" },
+            { "type": "DamageType", "damageType": "Fire" }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "vendor `while affected by (%a+)` modTagList 单词捕获抽不出多词「Herald of Ash」+ 多元素 varList 引擎丢弃 → engine 无条件应用、泄漏进 dot（grenade/ice-shot dot over-count）。legacy.rs:2536 硬编码 `AffectedByHeraldofAsh`。整行 data 化对齐 legacy（FireDamage INC + Condition + DamageType）"
+    },
+    {
+      "id": "cold_damage_while_affected_by_herald_of_ice",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased cold damage while affected by herald of ice",
+      "vendor_pattern": "while affected by (%a+) [via modTagList; legacy.rs:2532 硬编码]",
+      "mods": [
+        {
+          "name": "ColdDamage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            { "type": "Condition", "var": "AffectedByHeraldofIce" },
+            { "type": "DamageType", "damageType": "Cold" }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "同 fire_damage_while_affected_by_herald_of_ash；legacy.rs:2532 `AffectedByHeraldofIce`"
+    },
+    {
+      "id": "lightning_damage_while_affected_by_herald_of_thunder",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased lightning damage while affected by herald of thunder",
+      "vendor_pattern": "while affected by (%a+) [via modTagList; legacy.rs:2540 硬编码]",
+      "mods": [
+        {
+          "name": "LightningDamage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            { "type": "Condition", "var": "AffectedByHeraldofThunder" },
+            { "type": "DamageType", "damageType": "Lightning" }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "同 fire_damage_while_affected_by_herald_of_ash；legacy.rs:2540 `AffectedByHeraldofThunder`"
+    },
+    {
       "id": "all_damage_is_taken_from_mana_before_life",
       "pattern": "all damage is taken from mana before life",
       "vendor_pattern": "all damage is taken from mana before life",
