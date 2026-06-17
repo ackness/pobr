@@ -49,6 +49,21 @@
       "source_note": "ModParser.lua:2834（-- Blood Mage specialModList，mod(Life,BASE,1,PerStat{stat=EnergyShieldOnBody Armour,div=100/N}）；legacy.rs:1796-1810 同形（MaximumLife BASE 1 × Multiplier:EnergyShieldOnbodyarmour，div=100/N，slot 倍率经 orchestrator per_slot_defence_multipliers 填充 = Body Armour 件级最终 ES）。本条钉 N=100（升华恒 100%，corpus 唯一形）→ div=1；special 整行命中在 pre_flag 剥 `gain` 前。需 special_mod.rs 字面 Multiplier tag 支持。fork-a 补 engine special 通道（blood-mage Life→EHP/MaxHit 级联）"
     },
     {
+      "id": "life_loss_from_hits_prevented_over_4s",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of life loss from hits is prevented, then that much life is lost over 4 seconds instead",
+      "vendor_pattern": "(%d+)%% of life loss from hits is prevented, then that much life is lost over 4 seconds instead",
+      "mods": [
+        {
+          "name": "LifeLossPrevented",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "ModParser.lua:2839 function(num)→mod(LifeLossPrevented,BASE,num)；legacy.rs:1824-1827 同。pool_setup.rs:104 `min(ΣLifeLossPrevented,100)` 减伤（max-hit 机制）。vendor 函数形，extract 抽不出静态模板 → 引擎误解析为 MaximumLife BASE 25。fork-a 补 engine special（blood-mage EHP/五类 MaxHit 0.88x）"
+    },
+    {
       "id": "all_damage_is_taken_from_mana_before_life",
       "pattern": "all damage is taken from mana before life",
       "vendor_pattern": "all damage is taken from mana before life",
