@@ -468,6 +468,9 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 /// - `SkillType`（去 `SkillType:` 前缀，已知闭集）；
 /// - `DamageType`。
 ///
+/// - `Multiplier`（**字面** var/div/limit；按某资源/属性数量线性缩放，读
+///   `cfg.multiplier(var)`）。
+///
 /// **不可映射**（pobr 无落点）：`ItemCondition` / `GlobalEffect` / `SkillName` /
 /// `PercentStat` / 带 `$n` 字段值的 `Multiplier`——返回 `None`，对应条目保持
 /// `verified:false`（保守门控，不误产可能错误的 tag）。
@@ -500,7 +503,28 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             let name = scalar_text(tag.fields.get("damageType")?)?;
             damage_type_bit(&name).map(ModTag::DamageType)
         }
+        "Multiplier" => {
+            // 字面 var/div/limit 的 Multiplier（资源/属性线性缩放，读 cfg.multiplier(var)）。
+            // 带 `$n` 捕获的 var 仍保守跳过（与文档门控一致，避免误产）。本批仅字面 var
+            //（如 Blood Mage 的 `EnergyShieldOnbodyarmour`，slot 倍率经 orchestrator
+            // per_slot_defence_multipliers 填充）。
+            let var = scalar_text(tag.fields.get("var")?)?;
+            if var.starts_with('$') {
+                None
+            } else {
+                let div = tag.fields.get("div").and_then(scalar_number).unwrap_or(1.0);
+                let limit = tag.fields.get("limit").and_then(scalar_number);
+                Some(ModTag::multiplier(var, div, limit))
+            }
+        }
         // 未映射 tag 形态：保守跳过。
+        _ => None,
+    }
+}
+
+fn scalar_number(scalar: &TemplateScalarDef) -> Option<f64> {
+    match scalar {
+        TemplateScalarDef::Number(n) => Some(*n),
         _ => None,
     }
 }
@@ -779,6 +803,25 @@ mod tests {
         assert!(
             matches!(&m.mods[0].tags[0], ModTag::Condition { var, negated, .. } if var=="NeverCrit" && *negated)
         );
+    }
+
+    /// 字面 Multiplier tag 映射（fork-a：Blood Mage `MaximumLife BASE 1 × Multiplier`）。
+    #[test]
+    fn multiplier_tag_literal() {
+        let d = def(
+            r#"{"id":"t","pattern":"life per es on body","mods":[
+                {"name":"MaximumLife","type":"BASE","value":1,
+                 "tags":[{"type":"Multiplier","var":"EnergyShieldOnbodyarmour","div":1}]}],"batch":"S2"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("life per es on body", &reg).unwrap();
+        assert_eq!(m.mods[0].name.as_str(), "MaximumLife");
+        assert_eq!(m.mods[0].tags.len(), 1);
+        assert!(matches!(
+            &m.mods[0].tags[0],
+            ModTag::Multiplier { var, div, .. } if var == "EnergyShieldOnbodyarmour" && *div == 1.0
+        ));
     }
 
     /// 不可映射 tag（ItemCondition）静默跳过，mod 仍产出。

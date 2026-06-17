@@ -27,6 +27,28 @@
       "source_note": "ModParser.lua:3144（-- Lich specialModList，flag(EternalLife)）；legacy 经 max-hit ES bypass 消费（pool_damage.rs）。fork-a 迁入补 engine 数据驱动 special 通道缺口（detonate-dead MaxHit/EHP 偏低）"
     },
     {
+      "id": "blood_mage_additional_life_from_body_es",
+      "pattern": "gain additional maximum life equal to 100% of the (?:item )?energy shield on equipped body armour",
+      "vendor_pattern": "gain additional maximum life equal to (%d+)%% of the (i?t?e?m? ?)energy shield on equipped body armour",
+      "mods": [
+        {
+          "name": "MaximumLife",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "Multiplier",
+              "var": "EnergyShieldOnbodyarmour",
+              "div": 1
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "ModParser.lua:2834（-- Blood Mage specialModList，mod(Life,BASE,1,PerStat{stat=EnergyShieldOnBody Armour,div=100/N}）；legacy.rs:1796-1810 同形（MaximumLife BASE 1 × Multiplier:EnergyShieldOnbodyarmour，div=100/N，slot 倍率经 orchestrator per_slot_defence_multipliers 填充 = Body Armour 件级最终 ES）。本条钉 N=100（升华恒 100%，corpus 唯一形）→ div=1；special 整行命中在 pre_flag 剥 `gain` 前。需 special_mod.rs 字面 Multiplier tag 支持。fork-a 补 engine special 通道（blood-mage Life→EHP/MaxHit 级联）"
+    },
+    {
       "id": "all_damage_is_taken_from_mana_before_life",
       "pattern": "all damage is taken from mana before life",
       "vendor_pattern": "all damage is taken from mana before life",
