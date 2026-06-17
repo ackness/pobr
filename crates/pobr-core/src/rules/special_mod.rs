@@ -808,11 +808,9 @@ mod tests {
     /// 字面 Multiplier tag 映射（fork-a：Blood Mage `MaximumLife BASE 1 × Multiplier`）。
     #[test]
     fn multiplier_tag_literal() {
-        let d = def(
-            r#"{"id":"t","pattern":"life per es on body","mods":[
+        let d = def(r#"{"id":"t","pattern":"life per es on body","mods":[
                 {"name":"MaximumLife","type":"BASE","value":1,
-                 "tags":[{"type":"Multiplier","var":"EnergyShieldOnbodyarmour","div":1}]}],"batch":"S2"}"#,
-        );
+                 "tags":[{"type":"Multiplier","var":"EnergyShieldOnbodyarmour","div":1}]}],"batch":"S2"}"#);
         let r = rules(vec![d]);
         let reg = HandlerRegistry::new();
         let m = r.try_match("life per es on body", &reg).unwrap();
