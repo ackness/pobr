@@ -121,6 +121,24 @@
       "source_note": "同 fire_damage_while_affected_by_herald_of_ash；legacy.rs:2540 `AffectedByHeraldofThunder`"
     },
     {
+      "id": "body_armour_grants_of_armour_also_applies_to_chaos_damage",
+      "pattern": "body armour grants \\+?(\\d+)% of armour also applies to (chaos) damage",
+      "vendor_pattern": "body armour grants %+(%d+)%% of armour also applies to (%a+) damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToChaosDamageTaken",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            { "type": "Condition", "var": "NormalBodyArmourEquipped" }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "ModParser.lua:3281 -- Warrior - Smith of Kitava，function(num,_,dmgType)→mod(ArmourAppliesTo<Type>DamageTaken,BASE,num,{type=ItemCondition,itemSlot=Body Armour,rarityCond=NORMAL})。vendor 函数形带 (%a+) 伤害类型捕获 + ItemCondition，extract_parser_rules 抽不出（S2 批仅手转非 body-armour 的 fire/cold/lightning 三元素，漏 chaos + 漏 body-armour-grants 变体）。legacy 经 body-armour-grants 前缀剥离 + parse_armour_applies_pct（legacy.rs:393/1621）通用处理任意类型，chaos 正常，故 engine 落后 legacy。本条把 vendor ItemCondition{Body Armour,NORMAL} 映射为 pobr `Condition:NormalBodyArmourEquipped`（orchestrator calc_orchestrator.rs:373 按体甲槽 Normal 稀有度置真，与 legacy.rs:397 同口径），消费侧 taken.rs ArmourAppliesToChaosDamageTaken。修 warrior-smith-of-kitava-shield-wall ChaosMaxHit 0.84x→1.00x"
+    },
+    {
       "id": "all_damage_is_taken_from_mana_before_life",
       "pattern": "all damage is taken from mana before life",
       "vendor_pattern": "all damage is taken from mana before life",
