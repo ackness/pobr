@@ -3,19 +3,6 @@ name = "pobr-build"
 version.workspace = true
 edition.workspace = true
 
-[features]
-# M6 D-T8：数据驱动 ModParser 引擎接管 calc 主路径（转发 pobr-core/parser-engine）。
-# **已翻默认（fork-a 收官，2026-06-17）**：引擎在全部 18-build ninja_parity 的每列、
-# 每容差级别与 legacy 逐项等价（off 61 / dot 17 / def 379 / core-8 132，全量 regress
-# 检查 0 回归行）；全量 pobr-build 测试套件（parity/golden/dualrun/skills/codec）engine
-# 下 259 全绿。曾经的切换阻塞（全 calc 路径 ingest 宝石/光环·buff/基底隐式等文本未被
-# 数据表覆盖 → 引擎丢弃 → parity 回归）已闭合：数据驱动 forms/name_map/special 表 +
-# hand-curated special_mods 长尾（含函数形 vendor 规则——EternalLife/BloodMage/
-# LifeLossPrevented/Herald/armour-applies-chaos/DeflectEffect 等整行迁移）补齐。
-# `--no-default-features` 退回 legacy（删 legacy 前的回退路径）。删 legacy 是后续独立 commit。
-default = ["parser-engine"]
-parser-engine = ["pobr-core/parser-engine"]
-
 [dependencies]
 pobr-data.workspace = true
 pobr-core.workspace = true

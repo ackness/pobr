@@ -3,9 +3,8 @@
 //!
 //! M6 D-T8「删 legacy 前置 2/3」：`ParseCtx` 从 `legacy.rs` 迁出至本独立模块（与 1/3
 //! 把解析输出类型迁到 `outcome.rs` 同范式），使调用方依赖引擎侧的派发类型而非 legacy
-//! 模块——为删 legacy 解耦。当前 `parse` 的 fallback 分支仍调 legacy
-//! [`parse_mod_with_rules`]（删 legacy 前的回退路径），引擎分支走 [`parse_mod_engine`]。
-//! 纯移动零行为变更。
+//! 模块——为删 legacy 解耦。当前 `parse` 的 engine 分支走 [`parse_mod_engine`]，fallback
+//! 仍调 legacy [`parse_mod_with_rules`]（删 legacy 前的回退路径）。
 //!
 //! [`parse_mod_with_rules`]: super::legacy::parse_mod_with_rules
 //! [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
@@ -16,12 +15,11 @@ use super::outcome::{ParseError, ParseOutcome};
 /// special 规则解析上下文——把 [`SpecialModRules`] 与 [`HandlerRegistry`] 引用
 /// 打包，沿 ingest 链（item / passive / gem）传递（M5b B-4 消费激活）。
 ///
-/// 默认（[`ParseCtx::none`]）= 两者皆 `None`：等价历史 `parse_mod`，逐值不变。
-/// `Some` 时 ingest 路径改走 [`parse_mod_with_rules`]，special 条目整行命中优先。
+/// 默认（[`ParseCtx::none`]）= 三者皆 `None`：等价历史 `parse_mod`，逐值不变。
+/// `engine = Some` 时走数据驱动引擎；否则 `rules = Some` 时 special 条目整行命中优先。
 ///
 /// [`SpecialModRules`]: crate::rules::SpecialModRules
 /// [`HandlerRegistry`]: crate::rules::HandlerRegistry
-/// [`parse_mod_with_rules`]: super::legacy::parse_mod_with_rules
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ParseCtx<'a> {
     /// special 规则集（`None` = 不查表）。
@@ -30,12 +28,10 @@ pub struct ParseCtx<'a> {
     pub registry: Option<&'a crate::rules::HandlerRegistry>,
     /// 数据驱动 parser 引擎规则（M6 D-T8 A2 全量穿线）。`Some` 时
     /// [`ParseCtx::parse`] 改走 [`parse_mod_engine`]（数据驱动终局路径）；`None`
-    /// 时走 legacy `parse_mod_with_rules`（既有行为，逐值不变）。引擎对 18-build
-    /// 语料 + fixture 与 legacy 逐字节一致（C1 DIFF=0 gate），故注入与否 parity
-    /// 零变动。仅在 `parser-engine` feature 下可注入。
+    /// 时走 legacy `parse_mod_with_rules`（删 legacy 前的回退路径）。引擎对 18-build
+    /// 语料 + fixture 与 legacy 逐字节一致（C1 DIFF=0 gate），故注入与否 parity 零变动。
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
-    #[cfg(feature = "parser-engine")]
     pub engine: Option<&'a crate::mod_parser::CompiledParserRules>,
 }
 
@@ -54,7 +50,6 @@ impl<'a> ParseCtx<'a> {
         Self {
             rules: Some(rules),
             registry,
-            #[cfg(feature = "parser-engine")]
             engine: None,
         }
     }
@@ -66,7 +61,6 @@ impl<'a> ParseCtx<'a> {
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`CompiledParserRules::special`]: crate::mod_parser::CompiledParserRules
-    #[cfg(feature = "parser-engine")]
     pub fn with_engine(engine: &'a crate::mod_parser::CompiledParserRules) -> Self {
         Self {
             rules: None,
@@ -85,7 +79,6 @@ impl<'a> ParseCtx<'a> {
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`parse_mod_with_rules`]: super::legacy::parse_mod_with_rules
     pub fn parse(&self, text: &str) -> Result<ParseOutcome, ParseError> {
-        #[cfg(feature = "parser-engine")]
         if let Some(engine) = self.engine {
             return Ok(crate::mod_parser::parse_mod_engine(text, engine));
         }

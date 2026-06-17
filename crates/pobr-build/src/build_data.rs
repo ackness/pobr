@@ -226,7 +226,6 @@ pub struct BuildData {
     ///
     /// [`CompiledParserRules::compile_with_special`]: pobr_core::mod_parser::CompiledParserRules::compile_with_special
     /// [`CalculationSession::set_parser_rules`]: pobr_core::calc::CalculationSession::set_parser_rules
-    #[cfg(feature = "parser-engine")]
     pub parser_rules: Option<Arc<pobr_core::mod_parser::CompiledParserRules>>,
 }
 
@@ -430,7 +429,6 @@ impl BuildData {
         // gamedata 只 load `mod_parser_rules.json` doc，编译在 core（P9 边界）；
         // special 通道复用上面同一组 `special_entries`。缺 doc（旧数据包）= None
         // （ingest 回退 legacy/special，逐值不变）；编译失败照常上抛。
-        #[cfg(feature = "parser-engine")]
         let parser_rules = match data.mod_parser_rules()? {
             Some(doc) => Some(Arc::new(
                 pobr_core::mod_parser::CompiledParserRules::compile_with_special(
@@ -468,7 +466,6 @@ impl BuildData {
             minions,
             special_rules,
             special_registry,
-            #[cfg(feature = "parser-engine")]
             parser_rules,
         })
     }
@@ -500,7 +497,6 @@ impl BuildData {
             minions: HashMap::new(),
             special_rules: None,
             special_registry: Arc::new(crate::handlers::build_special_registry()),
-            #[cfg(feature = "parser-engine")]
             parser_rules: None,
         }
     }

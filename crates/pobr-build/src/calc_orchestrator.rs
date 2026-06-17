@@ -467,7 +467,6 @@ pub fn calculate_with_data(
     // 数据驱动 scan 引擎（终局路径），优先于 legacy special。缺 parser_rules
     // （旧数据包）= 不注入（ingest 回退 legacy/special，逐值不变；C1 DIFF=0 gate
     // 证引擎与 legacy 逐字节等价）。
-    #[cfg(feature = "parser-engine")]
     if let Some(parser_rules) = &data.parser_rules {
         session.set_parser_rules(parser_rules.clone());
     }
@@ -1203,7 +1202,6 @@ fn spawn_minions(
     // 回退 legacy `parse_minion_modifier`。
     let mut minion_modifiers: Vec<MinionModifierEntry> = Vec::new();
     for text in collect_item_texts(build).iter().chain(extra_texts.iter()) {
-        #[cfg(feature = "parser-engine")]
         if let Some(rules) = data.parser_rules.as_deref() {
             let outcome = pobr_core::mod_parser::parse_mod_engine(text, rules);
             minion_modifiers.extend(pobr_core::calc::minion::extract_minion_modifier_entries(

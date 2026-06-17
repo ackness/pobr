@@ -8,9 +8,7 @@
 //! 本 track 只达成 diff=0 形态对齐、绝不切换调用方；§2.4 的预期语义差异逐项
 //! 在报告 m6-dualrun-report.md 登记/处置。`parser-engine` feature 下编译。
 //!
-//! 运行：`cargo test -p pobr-core --features parser-engine --test parser_dual_run`
-
-#![cfg(feature = "parser-engine")]
+//! 运行：`cargo test -p pobr-core --test parser`（引擎已无条件编译）。
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
