@@ -139,6 +139,21 @@
       "source_note": "ModParser.lua:3281 -- Warrior - Smith of Kitava，function(num,_,dmgType)→mod(ArmourAppliesTo<Type>DamageTaken,BASE,num,{type=ItemCondition,itemSlot=Body Armour,rarityCond=NORMAL})。vendor 函数形带 (%a+) 伤害类型捕获 + ItemCondition，extract_parser_rules 抽不出（S2 批仅手转非 body-armour 的 fire/cold/lightning 三元素，漏 chaos + 漏 body-armour-grants 变体）。legacy 经 body-armour-grants 前缀剥离 + parse_armour_applies_pct（legacy.rs:393/1621）通用处理任意类型，chaos 正常，故 engine 落后 legacy。本条把 vendor ItemCondition{Body Armour,NORMAL} 映射为 pobr `Condition:NormalBodyArmourEquipped`（orchestrator calc_orchestrator.rs:373 按体甲槽 Normal 稀有度置真，与 legacy.rs:397 同口径），消费侧 taken.rs ArmourAppliesToChaosDamageTaken。修 warrior-smith-of-kitava-shield-wall ChaosMaxHit 0.84x→1.00x"
     },
     {
+      "id": "prevent_pct_of_damage_from_deflected_hits",
+      "pattern": "prevent \\+(\\d+(?:\\.\\d+)?)% of damage from deflected hits",
+      "vendor_pattern": "prevent %+(%d+)%% of damage from deflected hits",
+      "mods": [
+        {
+          "name": "DeflectEffect",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "ModParser.lua:4191 function(num)→mod(DeflectEffect,BASE,num)；legacy.rs:1721 parse_deflection_special 同。defence_panels.rs:241 偏斜减伤=基础40+ΣBASE DeflectEffect，clamp[0,100]（DeflectChance 58% 时生效，非仅≥100）。vendor 函数形 extract 抽不出 → 引擎丢弃（twister 缺 DeflectEffect 3+6=9 → 偏斜减伤 40 而非 49 → EHP 0.89x）。捕获形一条匹配全部 N。fork-a 补 engine special（monk-martial-artist-twister TotalEHP）"
+    },
+    {
       "id": "all_damage_is_taken_from_mana_before_life",
       "pattern": "all damage is taken from mana before life",
       "vendor_pattern": "all damage is taken from mana before life",
