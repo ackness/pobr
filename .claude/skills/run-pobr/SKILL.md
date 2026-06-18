@@ -43,7 +43,7 @@ Look up a PoB2 formula / parse rule in vendor Lua (fixed-string match across Mod
 bash .claude/skills/run-pobr/driver.sh lua "per (%d+) intelligence"
 ```
 
-Other subcommands: `deps` (luajit only), `vendor` (clone/align PoB2 to the pinned commit), `build`, `test`, `data` (data status + regen-pipeline notes), `drill` (version-bump reproducibility — see Gotchas).
+Other subcommands: `deps` (luajit only), `vendor` (clone/align PoB2 to the pinned commit), `build`, `test`, `data` (data status + regen-pipeline notes), `diff <verA> <verB>` (semantic cross-version data diff — what nodes/skills/mods changed), `drill` (version-bump reproducibility — see Gotchas).
 
 ## Vendor reference (PoB2 clone)
 
@@ -62,6 +62,15 @@ bash .claude/skills/run-pobr/driver.sh versions
 ```
 
 The active default stays at the **golden-validated** version (`pobr_data::DATA_VERSION` = `4.5.0.3.4`), because PoB2 golden/parity values are version-specific. Golden tests pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` (decoupled from the active default), so advancing the default doesn't false-red parity; advancing it for real requires **re-recording golden** for the new version. `driver.sh data` prints the regen pipeline — but in this cloud env **data regen is NOT reproducible** (see Gotchas); the committed data is the source of truth.
+
+To see *what actually changed* between two committed versions (the iteration input PoB2 gets from export+CHANGELOG — added/removed/renumbered nodes, skill stat deltas, mod-pool removals, overlay drift):
+
+```bash
+bash .claude/skills/run-pobr/driver.sh diff 4.5.0.3.4 4.5.2.1.3            # all domains
+bash .claude/skills/run-pobr/driver.sh diff 4.5.0.3.4 4.5.2.1.3 --domain tree --limit 40
+```
+
+The full data-versioning + iteration model (PoB2's two regimes vs pobr's snapshot model, the test philosophy, and the open gaps) is documented in `devs/docs/architecture/16-data-versioning-and-iteration.md`.
 
 ## Gotchas
 

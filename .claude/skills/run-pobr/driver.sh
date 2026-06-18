@@ -113,6 +113,17 @@ cmd_versions() {
     | grep -E "multi-version\]|test result:"
 }
 
+cmd_diff() {
+  local a="${2:-}" b="${3:-}"
+  if [ -z "$a" ] || [ -z "$b" ]; then
+    echo "usage: driver.sh diff <verA> <verB> [--domain tree|mods|bases|skill_levels|skill_stats|special_mods|uniques] [--limit N]"
+    echo "已入库版本："; ls -d data/[0-9]*/ 2>/dev/null | sed 's#data/##; s#/##; s/^/    /'
+    return 2
+  fi
+  say "语义数据 diff: $a → $b（节点/技能/词条的增删改）"
+  python3 pipeline/diff-data.py "data/$a" "data/$b" --semantic "${@:4}"
+}
+
 cmd_status() {
   say "就绪态"
   command -v luajit >/dev/null && echo "✓ luajit: $(luajit -v 2>&1 | head -1)" || echo "✗ luajit 未装（driver.sh deps）"
@@ -136,7 +147,8 @@ case "${1:-smoke}" in
   smoke)     cmd_smoke ;;
   data)      cmd_data ;;
   versions)  cmd_versions ;;
+  diff)      cmd_diff "$@" ;;
   lua)       cmd_lua "$@" ;;
   status)    cmd_status ;;
-  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test|drill|smoke|data|versions|lua <pat>|status}"; exit 2 ;;
+  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test|drill|smoke|data|versions|diff <verA> <verB>|lua <pat>|status}"; exit 2 ;;
 esac
