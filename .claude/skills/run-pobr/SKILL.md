@@ -49,9 +49,19 @@ Other subcommands: `deps` (luajit only), `vendor` (clone/align PoB2 to the pinne
 
 `vendor/PathOfBuilding-PoE2/` is a **local clone of Path of Building (PoE2) for reference only** — reading its Lua calc/parse implementation to verify pobr's formulas. It is **gitignored (`/vendor/`) and never committed** (~739 MB). The pinned commit is read from `data/<CURRENT>/overlay/mod_parser_rules.json::_meta.vendor_commit` so it always matches the in-tree data; `driver.sh vendor` clones it shallow (`fetch --depth 1` by SHA). It is **session-local** — it vanishes when the container recycles; re-run `driver.sh vendor` next session.
 
-## Data
+## Data & versions (data/calc are decoupled)
 
-The game data is **committed** under `data/<version>/` (`base`/`overlay`/`generated`/`i18n`) — **testing needs no download**. `driver.sh data` prints the regen pipeline for version bumps. **In this cloud env the data regen is NOT reproducible** (see Gotchas); the committed data is the source of truth.
+The game data is **committed** under `data/<version>/` (`base`/`overlay`/`generated`/`i18n`) — **testing needs no download**. Multiple versions live side by side (currently `4.5.0.3.4` + `4.5.2.1.3`).
+
+The calc is **version-agnostic**: `pobr_gamedata::data_version()` resolves `POBR_DATA_VERSION` env → `data/CURRENT` → `pobr_data::DATA_VERSION` const. Switching the active version is **zero-code** — `export POBR_DATA_VERSION=4.5.2.1.3` or write `data/CURRENT`.
+
+Prove it runs on every committed version (the `multi_version` smoke — `BuildData::load` + full calc per version):
+
+```bash
+bash .claude/skills/run-pobr/driver.sh versions
+```
+
+The active default stays at the **golden-validated** version (`pobr_data::DATA_VERSION` = `4.5.0.3.4`), because PoB2 golden/parity values are version-specific. Golden tests pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` (decoupled from the active default), so advancing the default doesn't false-red parity; advancing it for real requires **re-recording golden** for the new version. `driver.sh data` prints the regen pipeline — but in this cloud env **data regen is NOT reproducible** (see Gotchas); the committed data is the source of truth.
 
 ## Gotchas
 

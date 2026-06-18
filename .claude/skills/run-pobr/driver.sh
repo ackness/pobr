@@ -103,6 +103,16 @@ cmd_lua() {
     "$VENDOR_DIR/src/Modules/CalcPerform.lua" 2>/dev/null | head -30
 }
 
+cmd_versions() {
+  say "已入库数据版本 + 多版本无关性 smoke"
+  echo "data/ 版本目录："; ls -d data/[0-9]*/ 2>/dev/null | sed 's#data/##; s#/##' | sed 's/^/    /'
+  echo "活动默认（data/CURRENT / pobr_data::DATA_VERSION）：$DATA_VER（= golden 校验版本）"
+  echo "切到更新版本运行（零代码改动）：export POBR_DATA_VERSION=<ver>  或  写 data/CURRENT"
+  echo "→ multi_version smoke（对每个版本 BuildData::load + calc）："
+  cargo test -p pobr-build --test parity multi_version -- --nocapture 2>&1 \
+    | grep -E "multi-version\]|test result:"
+}
+
 cmd_status() {
   say "就绪态"
   command -v luajit >/dev/null && echo "✓ luajit: $(luajit -v 2>&1 | head -1)" || echo "✗ luajit 未装（driver.sh deps）"
@@ -125,7 +135,8 @@ case "${1:-smoke}" in
   drill)     cmd_drill ;;
   smoke)     cmd_smoke ;;
   data)      cmd_data ;;
+  versions)  cmd_versions ;;
   lua)       cmd_lua "$@" ;;
   status)    cmd_status ;;
-  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test|drill|smoke|data|lua <pat>|status}"; exit 2 ;;
+  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test|drill|smoke|data|versions|lua <pat>|status}"; exit 2 ;;
 esac
