@@ -41,6 +41,43 @@
 
 > 复现探针：在 `mod_parser.rs` 顶部加一个 `parse_mod(text) -> Ok(parse_mod_engine(text, &rules))` 影子函数（规则用 `parser_dual_run.rs::load_rules` 同款 loader：`overlay/mod_parser_rules.json` + `overlay/special_mods.json` + `generated/special_derived.json`），跑 `cargo test -p pobr-core --test parser`。
 
+## 分歧根因分析（本会话深挖，供本地定向修复）
+
+> 用引擎源码 + 389KB 规则 JSON 深挖（无 vendor Lua，故下列「修复方向」须本地对照
+> `vendor/.../Modules/ModParser.lua` 核实后再落地；尤忌凭猜改 tag 构造致静默错算）。
+
+### PerStat/Multiplier（#1，最关键）— 已定位为「var 名未归一 + 缺数字 form」
+- 规则编码：`per intelligence` → `tag_phrases` 里 `{"type":"PerStat","stat":"Int"}`；带数字
+  divisor 走 `{"type":"Multiplier","div":"$1","var":...}`（JSON 有 73 处 `"div":"$1"`）。
+- 引擎 `template.rs:178-192` `compile_tag` 已把 `PerStat`/`PercentStat` **归一为
+  `ModTag::Multiplier{var:<stat>, div}`**（C2 归一，设计正确）。
+- **gap (a) var 名未 vendor→PoBR 归一**：引擎产 `var:"Int"`，legacy/测试期望
+  `var:"Intelligence"`（`data/.../overlay/vendor_name_aliases.json` 有属性别名）。修复：
+  在 `compile_tag` 的 `PerStat`/`Multiplier` 分支对 `stat`/`var` 套属性别名（**仅 stat-attr
+  名，勿误伤 `AxeItem`/`SummonedMinion` 等非属性 var**），或抽取期归一。
+- **gap (b) `per N <stat>` 数字 form 缺失**：literal `per intelligence` phrase 不吃数字 →
+  `per 10 Intelligence` 丢 `10`（div 落 1）。需补「`per (%d+) (stat)`」form 捕获 `$1` 作 div。
+- **不破 c1 风险低**：c1 语料无此 per-stat 族（故 `c1_diff_zero_gate` 绿却仍分歧）；
+  修后仍须重跑 c1 gate 确认 0。
+
+### 武器职业 keyword-flag 位编码（#3/#7/#12/#13）
+- bitmask 差（如 `4` vs `17179869188`、`16777220` vs `16777216`）+ `UsingOneHandedMelee`
+  condition 缺。须对照 vendor `ModFlag`/`KeywordFlag` 位定义与 weapon-class → flag/condition
+  映射，核引擎 `flag_phrases`/`flag_types` 表的位值与 condition 派生。
+
+### 聚合抗性展开（#2）
+- `all … Resistances`（含混沌）引擎 2 vs legacy 4 mods。核 `name_map` 对 `AllResist` 类聚合
+  名的展开目标集（是否含 Chaos）+ vendor 语义。
+
+### 设计语义类（#9 immunity / #11 unknown→Err）— 非引擎 bug，应改测试
+- 引擎恒返回 `Ok(Unsupported)`（永不 `Err`），且对部分 immunity 短语更能解析。这是引擎
+  既定契约（`m6-switch-decision` 已记），3b 时把 `unwrap_err()`/期望 `Unsupported` 的断言
+  改判为引擎语义即可，无需动引擎。
+
+> 其余（#4 gain-as-per-grenade、#5 bonded enabler、#10 bracket markup）未逐一深挖，
+> 同法：先 `POBR_DBG` dump 引擎产物 vs legacy，对照 vendor `ModParser.lua` 定责。
+
+
 ## 3b 机械清单（分歧裁决后执行）
 
 1. **删 `crates/pobr-core/src/mod_parser/legacy.rs`**（~4085 行）+ `mod.rs` 去 `pub mod legacy;` 与 `pub use legacy::{parse_minion_modifier, parse_mod, parse_mod_with_rules};`。
