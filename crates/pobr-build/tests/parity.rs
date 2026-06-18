@@ -13,6 +13,8 @@ mod defence_panels_golden;
 mod e2e_real_build;
 #[path = "parity/golden_regression.rs"]
 mod golden_regression;
+#[path = "parity/multi_version.rs"]
+mod multi_version;
 #[path = "parity/ninja_parity.rs"]
 mod ninja_parity;
 #[path = "parity/pob2_parity.rs"]

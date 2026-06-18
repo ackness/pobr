@@ -13,13 +13,16 @@ use pobr_core::calc::minion::{
 };
 use pobr_gamedata::{GameData, repo_data_root};
 
+// 召唤物 golden（life/damage/DPS，取自 Minions.lua/Spectres.lua + PoB2 面板）是版本
+// 特定的，故钉定其被校验的数据版本（与活动 DATA_VERSION 解耦，见
+// pobr_data::GOLDEN_PARITY_DATA_VERSION）。
 fn version() -> String {
-    pobr_gamedata::data_version()
+    pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string()
 }
 
 fn load_data() -> BuildData {
     let data = GameData::new(repo_data_root().join(version()));
-    BuildData::load(&data).expect("加载 4.5.0.3.4 数据")
+    BuildData::load(&data).expect("加载 golden parity 版本数据")
 }
 
 fn default_opts() -> DataOrchestratorOptions {

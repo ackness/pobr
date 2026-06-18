@@ -78,7 +78,9 @@ fn repo_root() -> PathBuf {
 fn load_rules() -> CompiledParserRules {
     let path = repo_root()
         .join("data")
-        .join(pobr_data::data_version())
+        // legacy(冻结手写) vs engine(数据驱动) 的 DIFF=0 对齐在 golden 版本上建立，
+        // 故钉定该版本（活动 DATA_VERSION 前进不影响本对拍门禁；删 legacy 后本文件移除）。
+        .join(pobr_data::GOLDEN_PARITY_DATA_VERSION)
         .join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("读取 mod_parser_rules.json");
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("反序列化规则表");
@@ -92,7 +94,9 @@ fn load_rules() -> CompiledParserRules {
 fn load_special(rel: &str) -> Vec<pobr_data::catalog::parser_rules::SpecialTemplateDef> {
     let path = repo_root()
         .join("data")
-        .join(pobr_data::data_version())
+        // legacy(冻结手写) vs engine(数据驱动) 的 DIFF=0 对齐在 golden 版本上建立，
+        // 故钉定该版本（活动 DATA_VERSION 前进不影响本对拍门禁；删 legacy 后本文件移除）。
+        .join(pobr_data::GOLDEN_PARITY_DATA_VERSION)
         .join(rel);
     let Ok(json) = std::fs::read_to_string(&path) else {
         return Vec::new();
