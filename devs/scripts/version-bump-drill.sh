@@ -14,7 +14,8 @@
 #   [3b] 策展域对账（F4）：buff_definitions.json 跑 check-buff-refs（vendor_ref
 #       行段 hash 对账，机跑）；high_precision_mods / local_mods / special_mods
 #       的对账口径见各自 _meta.audit / regen_command 说明（人工域）。
-#   [4] precompile：占位 SKIP（M6 落地后接入）
+#   [4] precompile：重跑 precompile-mods → 临时数据目录（符号链接输入），与已提交
+#       data/<ver>/generated/{parsed_mods,parse-coverage}.json byte-diff（产物可再生性）。
 #   [5] 校验：A) 上述 byte-diff=0  B) cargo build --workspace 零改动编译
 #       C) ninja_parity 可运行（要求不 crash，不要求达标）
 #   [6] 摘要输出；发现项登记到 audits/rearchitecture-2026-06-10/drill-findings-m3.md
@@ -197,16 +198,54 @@ fi
 # 其余策展域（high_precision_mods / local_mods / special_mods）无机跑对账命令，
 # 版本 bump 时按各自 _meta.audit / regen_command 说明人工对账（F4 登记口径）。
 
-# ---- [4] precompile（占位）----
-step 4 "precompile（M6）"
-echo "SKIP: parser 规则 precompile 在 M6 落地后接入"
+# ---- [4] precompile 重放 → byte-diff ----
+step 4 "precompile 重放（generated/parsed_mods + parse-coverage byte-diff）"
+GEN_DIR="$ROOT/data/$VERSION/generated"
+SD="$GEN_DIR/special_derived.json"
+if [[ ! -f "$GEN_DIR/parsed_mods.json" ]]; then
+    echo "SKIP: 无 $GEN_DIR/parsed_mods.json（precompile 产物未入库）"
+    SKIPPED+=("generated/parsed_mods.json 缺失 → precompile 重放跳过")
+elif [[ ! -f "$SD" ]]; then
+    echo "SKIP: 无 $SD（precompile SD 语料输入缺失）"
+    SKIPPED+=("generated/special_derived.json 缺失 → precompile 重放跳过")
+else
+    # 临时数据目录（符号链接输入，real generated 收输出）：examples_dir 取 data_dir
+    # 上溯两级，故布局须为 <tmp>/data/<ver> 并在 <tmp> 放 examples 软链。不就地覆写
+    # 已提交 generated 产物（与步骤 2/3 同纪律）。
+    PC_DIR="$TMP/precompile"
+    PC_DD="$PC_DIR/data/$VERSION"
+    mkdir -p "$PC_DD/generated"
+    ln -s "$ROOT/data/$VERSION/base" "$PC_DD/base"
+    ln -s "$ROOT/data/$VERSION/overlay" "$PC_DD/overlay"
+    [[ -f "$ROOT/data/$VERSION/manifest.json" ]] && ln -s "$ROOT/data/$VERSION/manifest.json" "$PC_DD/manifest.json"
+    ln -s "$SD" "$PC_DD/generated/special_derived.json"
+    [[ -d "$ROOT/examples" ]] && ln -s "$ROOT/examples" "$PC_DIR/examples"
+    if cargo run --quiet -p precompile-mods --manifest-path "$ROOT/Cargo.toml" -- \
+        --data "$PC_DD" --report >/dev/null 2>"$TMP/err-precompile"; then
+        for art in parsed_mods.json parse-coverage.json; do
+            committed="$GEN_DIR/$art"
+            if [[ ! -f "$committed" ]]; then
+                echo "SKIP $art（仓库无对应产物）"; SKIPPED+=("generated/$art 未入库")
+            elif cmp -s "$PC_DD/generated/$art" "$committed"; then
+                echo "OK   $art byte-diff=0"
+            else
+                echo "DIFF $art（重放产物与已提交不一致）"; DIFFED+=("generated/$art"); FAIL=1
+            fi
+        done
+    else
+        echo "FAIL precompile 重放退出非零，stderr 摘要："
+        tail -3 "$TMP/err-precompile" | sed 's/^/       /'
+        FAIL=1
+    fi
+fi
 
 # ---- [5] 编译 + parity 可运行 ----
 step 5 "cargo build --workspace（零改动编译）"
 if (cd "$ROOT" && cargo build --workspace --quiet); then echo "OK"; else echo "FAIL"; FAIL=1; fi
 
 step 5b "ninja_parity 可运行（不要求达标，要求不 crash）"
-if (cd "$ROOT" && cargo test -p pobr-build --test ninja_parity --quiet >"$TMP/parity.out" 2>&1); then
+# ninja_parity 已并入 parity 聚合二进制（53→8 binary）；按子模块名过滤跑。
+if (cd "$ROOT" && cargo test -p pobr-build --test parity --quiet ninja_parity >"$TMP/parity.out" 2>&1); then
     echo "OK: ninja_parity 套件通过"
 else
     if grep -qE "test result:" "$TMP/parity.out"; then
