@@ -82,9 +82,16 @@ python3 pipeline/diff-data.py A B --semantic --json /tmp/diff.json              
    命中率∈[0,1]、跨版本确定性等。这是"引擎逻辑正确"的门。`crates/pobr-build/tests/parity/multi_version.rs`
    是版本无关性的活证；`load_special_mods.rs` 已从"精确计数/快照"改为不变量（id 唯一 / provenance
    非空 / 产物形态）——**数据增长不再误红**。
-2. **黄金参考套件（次级，显式钉版本）**——`ninja_parity` / `defence_panels_golden` 等对 PoB2 数值的比对，
-   钉 `pobr_data::GOLDEN_PARITY_DATA_VERSION`（与活动 `DATA_VERSION` 解耦）。它是**某个 PoB2 版本的参考快照**，
-   不是逻辑门；推进到新版本需**重录 golden**，而非改数据/改测试去凑数。
+2. **黄金参考套件（次级，显式钉版本）**——对 PoB2 / oracle / 自快照**录制数值**的比对，全部按
+   `pobr_data::GOLDEN_PARITY_DATA_VERSION` 加载数据（与活动 `DATA_VERSION` 解耦）。它是**某个 PoB2
+   版本的参考快照**，不是逻辑门；推进到新版本需**重录 golden**，而非改数据/改测试去凑数。
+   聚合二进制 `crates/pobr-build/tests/parity.rs` 已把两类显式分组：**A 组**=版本钉定 golden
+   （`ninja_parity` / `defence_panels_golden` / `coc_trigger_golden` / `crossbow_reload_golden` /
+   `skill_dot_golden` / `pob2_parity` / `stored_hand_output`，统一钉 `GOLDEN_PARITY_DATA_VERSION`）；
+   **B 组**=版本无关（`multi_version` 遍历全版本、`e2e_real_build` 只验范围/确定性/导入、
+   `golden_regression` 用 `calculate()` 零数据加载是纯 calc-CODE 回归锁、`special_oracle_differential`
+   实时差分 skip-guarded）。物理目录不分（`#[path]` 已解耦位置，且多文件含 file-relative
+   `include_str!`，移动易碎），分类以注释分组 + 加载口径为准。
 
 > 黄金值来源：build 导出 XML 内 `<PlayerStat>` = 该 PoB2 版本 Lua 侧算出的数值，随版本快照。
 > 故"精确数值测试"天然版本相关，必须隔离在版本档里；主测试验逻辑是否合理，不单一追数字。
