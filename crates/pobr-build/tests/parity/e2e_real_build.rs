@@ -20,7 +20,10 @@
 //! - Charm / Flask / Ring 3 等 `EquipmentSlot` 枚举外槽位忽略（不进入当前计算）。
 //! - Mastery 效果（masteryEffects）暂未解析 → Mastery 节点词条不进入计算。
 
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
+use pobr_build::{
+    BuildData, DataOrchestratorOptions, calculate_full_dps, calculate_with_data,
+    parse_build_from_code,
+};
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::PassiveTreeSpec;
@@ -287,5 +290,71 @@ fn deadeye_e2e_effective_dps_lower_hit_chance() {
         effective.hit_chance >= 0.0 && effective.hit_chance <= 1.0,
         "effective hit_chance out of range: {}",
         effective.hit_chance
+    );
+}
+
+/// FullDPS（M7 多技能脚手架）：遍历启用伤害技能组、各自整 build 复算后 CombinedDPS 求和。
+#[test]
+fn deadeye_full_dps_sums_enabled_damaging_skills() {
+    let build_data = load_game_data();
+    let build = parse_build_from_code(DEADEYE_CODE).expect("parse deadeye");
+
+    let opts = DataOrchestratorOptions {
+        base_input: MinimalInput::default(),
+        inject_character_base: true,
+        enemy_level: 80,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+        ..Default::default()
+    };
+
+    let report =
+        calculate_full_dps(&build, &build_data, &opts).expect("calculate_full_dps should succeed");
+
+    // 不变式：full_dps == 各分项 CombinedDPS 求和。
+    let sum: f64 = report.per_skill.iter().map(|s| s.combined_dps).sum();
+    assert_eq!(
+        report.full_dps, sum,
+        "full_dps must equal sum of per_skill CombinedDPS"
+    );
+    assert!(
+        report.full_dps.is_finite() && report.full_dps >= 0.0,
+        "full_dps must be finite & non-negative: {}",
+        report.full_dps
+    );
+
+    // 每个分项：启用组、CombinedDPS>0、索引有效。
+    for s in &report.per_skill {
+        assert!(
+            s.combined_dps > 0.0,
+            "per_skill 分项须 CombinedDPS>0：{s:?}"
+        );
+        assert!(
+            s.group_index < build.socket_groups.len(),
+            "group_index 越界：{s:?}"
+        );
+        assert!(
+            build.socket_groups[s.group_index].enabled,
+            "per_skill 分项须来自启用组：{s:?}"
+        );
+    }
+
+    // primary 主技能的 DPS 贡献被计入（其有伤害且组启用时）→ full_dps ≥ primary CombinedDPS。
+    if report.primary.combined_dps > 0.0 {
+        assert!(
+            report.full_dps >= report.primary.combined_dps - 1e-6,
+            "full_dps ({}) 应包含 primary CombinedDPS ({})",
+            report.full_dps,
+            report.primary.combined_dps
+        );
+    }
+
+    // 确定性：两次调用结果一致。
+    let report2 = calculate_full_dps(&build, &build_data, &opts).expect("second full_dps calc");
+    assert_eq!(report.full_dps, report2.full_dps, "full_dps 非确定性");
+    assert_eq!(
+        report.per_skill.len(),
+        report2.per_skill.len(),
+        "per_skill 数量非确定性"
     );
 }
