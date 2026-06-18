@@ -101,7 +101,12 @@ python3 pipeline/diff-data.py A B --semantic --json /tmp/diff.json              
 | 编号 | 差距 | 状态 |
 |------|------|------|
 | A | **语义跨版本 diff 缺失**——旧 `diff-data.py` 仅文件/计数/字节级，看不出"改了什么" | ✅ 本轮解决（§4） |
-| B | **per-build 天赋树版本未钉**——`xml_build.rs` 解析 `<Spec treeVersion="0_5">` 但**丢弃**该属性（`SpecNodes` 只留 `nodes`），导入 build 的分配静默按活动版本树解释，节点跨版本移动/删除时无告警 | ⏳ 待办（需 PoB 树版本 ↔ data 版本映射 + 加载对应树 / 失配告警；行为变更，单列） |
+| B | **per-build 天赋树版本失配**——节点跨版本移动/删除后，calc 对已分配的未知 id **静默丢弃**（`pobr_tree` node.rs `filter_map`），无任何告警 | 🟡 本轮部分：`<Spec treeVersion>` 不再丢弃（挂 `Build::tree_version`）；`diagnose_tree_version`→`TreeVersionReport` 显性检出"已分配但不在已加载树"的节点（非致命、纯只读）。**剩余**：按 build 树版本加载对应树 + 迁移、把诊断接入 calc 输出/CLI 自动提示——待续（需树版本↔数据版本映射 + 多树版本数据集） |
 | C | **手工 overlay 搬运静默过期**——版本升级时 `special_mods` 等从旧版原样搬，无"vendor 锚点在新版是否仍存在"校验 | ⏳ 部分可见（§4 的 `--semantic` 能看出条目漂移）；锚点存活校验需 vendor Lua，单列 |
 
-gap B / C 不在本轮范围（本轮 = diff 工具 + 本文档）。落地顺序与设计待后续单独评估。
+> **实测发现（`diagnose_tree_version`）**：活动 golden 版本 `4.5.0.3.4` 的 `passive_tree`
+> 漏掉真实 0_5 build 分配的若干节点（skill `35387`/`17044`/`6554` = Cold Damage 类，
+> 存在于 `4.5.2.1.3` 却缺于 `4.5.0.3.4`）——calc 现状静默丢其贡献。未破 golden 容差，
+> 但属真实数据缺口；data 再生在云端不可复现，单列跟进。
+
+gap C + gap B 剩余项不在本轮范围。落地顺序与设计待后续单独评估。

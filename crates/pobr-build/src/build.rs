@@ -187,6 +187,11 @@ pub struct Build {
     pub view_mode: ViewMode,
     /// 已分配天赋树。
     pub tree: PassiveTreeSpec,
+    /// 该 build 记录的 PoB 天赋树版本（`<Spec treeVersion>`，如 `"0_5"`）。`None`=旧存档
+    /// 未标注。**纯对账元信息**：calc 仍按已加载数据的树解释已分配节点（对齐 PoB2「用当前
+    /// 池重算」）；树版本失配的实际症状=已分配节点不在已加载树中，用
+    /// [`crate::diagnose_tree_version`] 显性化（calc 现状静默跳过，见 pobr-tree node.rs）。
+    pub tree_version: Option<String>,
     /// 装备：按 [`EquipmentSlot`] 索引。遍历时按 `slot.id()` 字典序排序以保证确定性
     /// （`EquipmentSlot` 仅实现 `Hash` 不实现 `Ord`，REAL 类型不可改）。
     pub items: HashMap<EquipmentSlot, Item>,
@@ -235,6 +240,12 @@ impl Build {
 
     pub fn with_tree(mut self, tree: PassiveTreeSpec) -> Self {
         self.tree = tree;
+        self
+    }
+
+    /// 设定该 build 的 PoB 天赋树版本标注（`<Spec treeVersion>`），返回新副本。
+    pub fn with_tree_version(mut self, version: Option<String>) -> Self {
+        self.tree_version = version;
         self
     }
 

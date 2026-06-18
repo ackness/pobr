@@ -40,3 +40,6 @@ mod multi_version;
 #[path = "parity/special_oracle_differential.rs"]
 // 活动 special_mods vs 实时 oracle（skip-guarded）
 mod special_oracle_differential;
+// gap B：per-build treeVersion 捕获 + 失配诊断
+#[path = "parity/tree_version_diag.rs"]
+mod tree_version_diag;

@@ -148,6 +148,44 @@ pub fn calculate(build: &Build, options: &OrchestratorOptions) -> Result<OutputT
     Ok(OutputTable::from(&minimal))
 }
 
+/// 天赋树版本对账诊断（gap B）：build 记录的 `treeVersion` + **已分配但不在已加载树**
+/// 的节点 id。后者是树版本失配的实际症状——节点跨版本被移动/删除后，calc 会静默跳过
+/// 该 id（`pobr_tree` node.rs：未知 id `filter_map` 丢弃），本诊断把它显性化。
+///
+/// **非致命 / 不改 calc 行为**：仅供调用方（CLI / 测试 / 上层）检出提示；「按 build 的
+/// `treeVersion` 加载对应树 + 迁移」是后续工作（需 树版本↔数据版本映射 + 多树版本数据集，
+/// 见 `devs/docs/architecture/16-data-versioning-and-iteration.md` §6 gap B）。
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TreeVersionReport {
+    /// build 的 `<Spec treeVersion>` 标注（`None`=旧存档未标注）。
+    pub build_tree_version: Option<String>,
+    /// 已分配但**不在已加载树**的节点 skill id（按 `allocated_nodes` 原序，确定性）。
+    pub unknown_nodes: Vec<u32>,
+}
+
+impl TreeVersionReport {
+    /// 全部已分配节点都在已加载树中（无失配症状）。
+    pub fn is_clean(&self) -> bool {
+        self.unknown_nodes.is_empty()
+    }
+}
+
+/// 对账 build 的已分配天赋节点与已加载树（[`BuildData::passive_nodes`]）——见
+/// [`TreeVersionReport`]。纯只读，零 calc 行为改动。
+pub fn diagnose_tree_version(build: &Build, data: &BuildData) -> TreeVersionReport {
+    let unknown_nodes = build
+        .tree
+        .allocated_nodes
+        .iter()
+        .map(|n| n.0)
+        .filter(|id| !data.passive_nodes.contains_key(id))
+        .collect();
+    TreeVersionReport {
+        build_tree_version: build.tree_version.clone(),
+        unknown_nodes,
+    }
+}
+
 /// 单个 socket 组的 DPS 贡献（FullDPS 分项）。
 #[derive(Debug, Clone)]
 pub struct SkillDps {

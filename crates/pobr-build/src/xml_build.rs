@@ -71,7 +71,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     // 再以过滤后的已分配节点集门控树插槽珠宝（珠宝 mod 只经已分配 socket 节点
     // 的 modList 进入计算，PoB2 CalcSetup.lua:175-244 仅遍历 `spec.allocNodes`）。
     let use_second_weapon_set = parse_active_item_set(xml)?.3;
-    let allocated_nodes = parse_passive_nodes(xml, use_second_weapon_set)?;
+    let (allocated_nodes, tree_version) = parse_passive_nodes(xml, use_second_weapon_set)?;
     let allocated_set: std::collections::HashSet<u32> =
         allocated_nodes.iter().map(|n| n.0).collect();
     let (items, jewels, flask_charms, _) = parse_items_and_slots(xml, &allocated_set)?;
@@ -91,7 +91,8 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
             allocated_nodes,
             attribute_overrides,
             ..Default::default()
-        });
+        })
+        .with_tree_version(tree_version);
     if let Some(g) = main_socket_group {
         build = build.with_main_socket_group(g);
     }
@@ -414,6 +415,8 @@ fn parse_main_socket_group(xml: &str) -> Option<usize> {
 struct SpecNodes {
     nodes: Vec<NodeId>,
     weapon_set: [Vec<NodeId>; 2],
+    /// `<Spec treeVersion>`（如 `"0_5"`）——PoB 天赋树版本标注，gap B 对账用。
+    tree_version: Option<String>,
 }
 
 /// 抽取 `<Tree activeSpec>` 选中 `<Spec nodes>` 的已分配节点 id，并按当前武器集
@@ -426,7 +429,10 @@ struct SpecNodes {
 /// 只对当前激活武器集置真（`useSecondWeaponSet` ? 2 : 1）——净效果是非激活集
 /// 专属点的词条**整体不生效**。PoBR 在解析层等价实现：从已分配节点中剔除
 /// 非激活集的专属点（mod 收集 / 范围珠宝计数 / per-X 倍率均随之一致）。
-fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<Vec<NodeId>, XmlError> {
+fn parse_passive_nodes(
+    xml: &str,
+    use_second_weapon_set: bool,
+) -> Result<(Vec<NodeId>, Option<String>), XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
@@ -448,8 +454,10 @@ fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<Vec<Nod
                     let nodes = attr_value(&e, b"nodes")
                         .map(|v| parse_node_csv(&v))
                         .unwrap_or_default();
+                    let tree_version = attr_value(&e, b"treeVersion");
                     specs.push(SpecNodes {
                         nodes,
+                        tree_version,
                         ..Default::default()
                     });
                 } else if let Some(set_idx) = match name.as_str() {
@@ -470,10 +478,11 @@ fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<Vec<Nod
     }
 
     if specs.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), None));
     }
     let idx = active_spec.saturating_sub(1).min(specs.len() - 1);
     let spec = specs.swap_remove(idx);
+    let tree_version = spec.tree_version;
 
     // 剔除非激活武器集的专属点（保持原始顺序，确定性）。
     let inactive: std::collections::HashSet<NodeId> = spec.weapon_set
@@ -481,11 +490,12 @@ fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<Vec<Nod
     .iter()
     .copied()
     .collect();
-    Ok(spec
+    let nodes = spec
         .nodes
         .into_iter()
         .filter(|n| !inactive.contains(n))
-        .collect())
+        .collect();
+    Ok((nodes, tree_version))
 }
 
 /// 解析 `nodes="65091,58814,…"` CSV 为 [`NodeId`]，跳过非数字片段。
