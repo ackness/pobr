@@ -88,6 +88,8 @@ python3 pipeline/diff-data.py A B --semantic --json /tmp/diff.json              
    聚合二进制 `crates/pobr-build/tests/parity.rs` 已把两类显式分组：**A 组**=版本钉定 golden
    （`ninja_parity` / `defence_panels_golden` / `coc_trigger_golden` / `crossbow_reload_golden` /
    `skill_dot_golden` / `pob2_parity` / `stored_hand_output`，统一钉 `GOLDEN_PARITY_DATA_VERSION`）；
+   另有 `golden_canary`——跨伤害类型/防御层各 1 个代表 build 的**宽容标定 sanity**（Life/防御 ±10–15%、
+   DPS ±40% 只抓数量级漂移），是 ninja_parity 之外的**额外**快速锚点（**不替代**全量门禁）；
    **B 组**=版本无关（`multi_version` 遍历全版本、`e2e_real_build` 只验范围/确定性/导入、
    `golden_regression` 用 `calculate()` 零数据加载是纯 calc-CODE 回归锁、`special_oracle_differential`
    实时差分 skip-guarded）。物理目录不分（`#[path]` 已解耦位置，且多文件含 file-relative

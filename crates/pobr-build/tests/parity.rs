@@ -21,6 +21,8 @@ mod coc_trigger_golden;
 mod crossbow_reload_golden;
 #[path = "parity/defence_panels_golden.rs"]
 mod defence_panels_golden;
+#[path = "parity/golden_canary.rs"] // 额外的跨伤害/防御 canary 标定锚点（非门禁替代）
+mod golden_canary;
 #[path = "parity/ninja_parity.rs"]
 mod ninja_parity;
 #[path = "parity/pob2_parity.rs"]
