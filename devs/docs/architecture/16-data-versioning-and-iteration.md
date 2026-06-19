@@ -101,7 +101,7 @@ python3 pipeline/diff-data.py A B --semantic --json /tmp/diff.json              
 | 编号 | 差距 | 状态 |
 |------|------|------|
 | A | **语义跨版本 diff 缺失**——旧 `diff-data.py` 仅文件/计数/字节级，看不出"改了什么" | ✅ 本轮解决（§4） |
-| B | **per-build 天赋树版本失配**——节点跨版本移动/删除后，calc 对已分配的未知 id **静默丢弃**（`pobr_tree` node.rs `filter_map`），无任何告警 | 🟡 本轮部分：`<Spec treeVersion>` 不再丢弃（挂 `Build::tree_version`）；`diagnose_tree_version`→`TreeVersionReport` 显性检出"已分配但不在已加载树"的节点（非致命、纯只读）。**剩余**：按 build 树版本加载对应树 + 迁移、把诊断接入 calc 输出/CLI 自动提示——待续（需树版本↔数据版本映射 + 多树版本数据集） |
+| B | **per-build 天赋树版本失配**——节点跨版本移动/删除后，calc 对已分配的未知 id **静默丢弃**（`pobr_tree` node.rs `filter_map`），无任何告警 | 🟡 本轮部分：(1) `<Spec treeVersion>` 不再丢弃（挂 `Build::tree_version`）；(2) `diagnose_tree_version`→`TreeVersionReport` 显性检出"已分配但不在已加载树"的节点（非致命、只读）；(3) 已接入 CLI `calculate-build`——JSON 带 `tree_version` 诊断块 + 未知节点>0 时 stderr 告警（**"无告警"已闭环**）。**剩余**：按 build 树版本加载对应树 + 迁移——待续（需树版本↔数据版本映射 + 多树版本数据集） |
 | C | **手工 overlay 搬运静默过期**——版本升级时 `special_mods` 等从旧版原样搬，无"vendor 锚点在新版是否仍存在"校验 | ⏳ 部分可见（§4 的 `--semantic` 能看出条目漂移）；锚点存活校验需 vendor Lua，单列 |
 
 > **实测发现（`diagnose_tree_version`）**：活动 golden 版本 `4.5.0.3.4` 的 `passive_tree`

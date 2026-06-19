@@ -12,7 +12,10 @@
 
 use std::path::PathBuf;
 
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
+use pobr_build::{
+    BuildData, DataOrchestratorOptions, calculate_with_data, diagnose_tree_version,
+    parse_build_from_code,
+};
 use pobr_core::ModValue;
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput};
 use pobr_core::item::ingest_item;
@@ -428,11 +431,22 @@ pub struct CalculateBuildOutput {
     pub mana_cost: f64,
 }
 
-/// `calculate-build` 报告：Build 摘要 + 计算输出。
+/// 天赋树版本对账诊断（gap B）：build 记录的 `treeVersion` + 已分配但**不在已加载树**
+/// 的节点（calc 会静默跳过其贡献——树版本失配的实际症状）。`unknown_node_count > 0`
+/// 时 CLI 向 stderr 告警。
+#[derive(Debug, Clone, Serialize)]
+pub struct TreeVersionDiag {
+    pub build_tree_version: Option<String>,
+    pub unknown_node_count: usize,
+    pub unknown_nodes: Vec<u32>,
+}
+
+/// `calculate-build` 报告：Build 摘要 + 计算输出 + 天赋树版本对账诊断。
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildReport {
     pub build: BuildSummary,
     pub output: CalculateBuildOutput,
+    pub tree_version: TreeVersionDiag,
 }
 
 /// 从一份 PoB Build Code 端到端计算：decode → [`parse_build_from_code`] →
@@ -456,6 +470,7 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         ..Default::default()
     };
     let out = calculate_with_data(&build, &build_data, &opts)?;
+    let tree_report = diagnose_tree_version(&build, &build_data);
 
     let summary = BuildSummary {
         level: build.character.level,
@@ -487,6 +502,11 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
     Ok(CalculateBuildReport {
         build: summary,
         output,
+        tree_version: TreeVersionDiag {
+            build_tree_version: tree_report.build_tree_version,
+            unknown_node_count: tree_report.unknown_nodes.len(),
+            unknown_nodes: tree_report.unknown_nodes,
+        },
     })
 }
 
