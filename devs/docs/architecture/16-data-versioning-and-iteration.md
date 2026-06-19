@@ -104,9 +104,15 @@ python3 pipeline/diff-data.py A B --semantic --json /tmp/diff.json              
 | B | **per-build 天赋树版本失配**——节点跨版本移动/删除后，calc 对已分配的未知 id **静默丢弃**（`pobr_tree` node.rs `filter_map`），无任何告警 | 🟡 本轮部分：(1) `<Spec treeVersion>` 不再丢弃（挂 `Build::tree_version`）；(2) `diagnose_tree_version`→`TreeVersionReport` 显性检出"已分配但不在已加载树"的节点（非致命、只读）；(3) 已接入 CLI `calculate-build`——JSON 带 `tree_version` 诊断块 + 未知节点>0 时 stderr 告警（**"无告警"已闭环**）。**剩余**：按 build 树版本加载对应树 + 迁移——待续（需树版本↔数据版本映射 + 多树版本数据集） |
 | C | **手工 overlay 搬运静默过期**——版本升级时 `special_mods` 等从旧版原样搬，无"vendor 锚点在新版是否仍存在"校验 | ⏳ 部分可见（§4 的 `--semantic` 能看出条目漂移）；锚点存活校验需 vendor Lua，单列 |
 
-> **实测发现（`diagnose_tree_version`）**：活动 golden 版本 `4.5.0.3.4` 的 `passive_tree`
-> 漏掉真实 0_5 build 分配的若干节点（skill `35387`/`17044`/`6554` = Cold Damage 类，
-> 存在于 `4.5.2.1.3` 却缺于 `4.5.0.3.4`）——calc 现状静默丢其贡献。未破 golden 容差，
-> 但属真实数据缺口；data 再生在云端不可复现，单列跟进。
+> **实测发现（`diagnose_tree_version`）— golden 版本与 demo build 树版本不吻合**：
+> 真实 demo build `sorceress-stormweaver-comet`（`<Spec treeVersion="0_5">`）的已分配节点，
+> 在 `4.5.2.1.3` 上 **156/156 完整解析**，在活动 golden 版本 `4.5.0.3.4` 上仅 **153/156**
+> （缺 skill `35387`/`17044`/`6554` = Cold Damage 类，calc 静默丢其贡献）。即 **0_5 树
+> 精确对应 `4.5.2.1.3`，而 `4.5.0.3.4` 是更早的树**。推论（待决，影响 §5 golden 基线）：
+> - 这正是 gap B「per-build 树版本」的实证——build 节点 id 只能假定对**匹配的**数据版本解析；
+> - `GOLDEN_PARITY_DATA_VERSION` 选 `4.5.0.3.4` 与 demo build 的 0_5 树存在 3 节点错配
+>   （未破现有 @容差，cold DPS 略低估）；把 golden 基线推进到 `4.5.2.1.3` 可消除错配，
+>   但需**重录 golden**（§5 约定）。**不**用跨版本拷贝节点来"修" `4.5.0.3.4`（混版数据，
+>   真实 0_5 表示需正规 GGG 0_5 树再导出，云端 CDN 404 不可得）。
 
 gap C + gap B 剩余项不在本轮范围。落地顺序与设计待后续单独评估。
