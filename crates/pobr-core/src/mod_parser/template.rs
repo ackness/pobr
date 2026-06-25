@@ -123,6 +123,7 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 limit_var: None,
                 limit_actor: None,
                 invert: false,
+                limit_total: f.get("limitTotal").and_then(field_bool).unwrap_or(false),
             })
         }
         "Condition" => {
@@ -197,6 +198,7 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 limit_var: None,
                 limit_actor: None,
                 invert: false,
+                limit_total: f.get("limitTotal").and_then(field_bool).unwrap_or(false),
             })
         }
         "MultiplierThreshold" => {
