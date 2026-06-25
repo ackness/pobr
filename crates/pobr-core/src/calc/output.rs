@@ -133,6 +133,10 @@ pub struct OutputTable {
     pub poison_active_stacks: f64,
     pub ignite_stacked_dps: f64,
     pub ignite_active_stacks: f64,
+    /// 各 damaging ailment 的叠层上限（`max_stacks`；1 = 不可叠层）。诊断/面板用。
+    pub bleed_max_stacks: f64,
+    pub poison_max_stacks: f64,
+    pub ignite_max_stacks: f64,
 
     // --- 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗；perform fill 写入，无 base 时 0） ---
     /// AoE 最终半径（内部坐标单位）与面积乘数。
@@ -427,6 +431,9 @@ impl Default for OutputTable {
             poison_active_stacks: 0.0,
             ignite_stacked_dps: 0.0,
             ignite_active_stacks: 0.0,
+            bleed_max_stacks: 0.0,
+            poison_max_stacks: 0.0,
+            ignite_max_stacks: 0.0,
             // Lane C：技能功能默认 0（无 base 配置时不写入）。
             aoe_radius: 0.0,
             aoe_area_mod: 0.0,

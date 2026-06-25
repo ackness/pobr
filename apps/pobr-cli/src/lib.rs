@@ -433,6 +433,10 @@ pub struct CalculateBuildOutput {
     pub bleed_active_stacks: f64,
     pub ignite_active_stacks: f64,
     pub poison_active_stacks: f64,
+    /// 异常叠层上限（诊断用：bleed/ignite/poison；1 = 不可叠层）。
+    pub bleed_max_stacks: f64,
+    pub ignite_max_stacks: f64,
+    pub poison_max_stacks: f64,
     /// 主技能行动速率（次/秒，来自宝石分等级 cast/attack 时间）。
     pub action_rate: f64,
     /// 主技能冷却（秒，来自分等级 cooldown）。
@@ -511,6 +515,9 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         bleed_active_stacks: out.bleed_active_stacks,
         ignite_active_stacks: out.ignite_active_stacks,
         poison_active_stacks: out.poison_active_stacks,
+        bleed_max_stacks: out.bleed_max_stacks,
+        ignite_max_stacks: out.ignite_max_stacks,
+        poison_max_stacks: out.poison_max_stacks,
         action_rate: out.action_rate,
         cooldown: out.cooldown,
         mana_cost: out.mana_cost,
