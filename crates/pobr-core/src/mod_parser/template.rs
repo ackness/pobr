@@ -199,9 +199,43 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 invert: false,
             })
         }
+        "MultiplierThreshold" => {
+            // vendor `MultiplierThreshold{actor=enemy, var=<X>Stacks, threshold=1, upper}`
+            // 表达「敌方异常存在/不存在」的二元条件（如 "on targets that are not Poisoned"
+            // → 敌方毒层 <1）→ PoBR 扁平 `Condition{Enemy<X past>, negated=upper}`，镜像
+            // legacy 对该短语的处理（`EnemyPoisoned` 取反）。仅 **异常叠层 var + 字面常量
+            // threshold=1** 映射；限幅式（`$n` 阈值 = "per X up to N"）与非异常 var 无
+            // pobr 二元落点，仍返回 None（保守失配，与修复前一致）。
+            let var = f.get("var").and_then(|v| field_text(v, captures))?;
+            let cond = ailment_stacks_condition(&var)?;
+            if !matches!(f.get("threshold"), Some(StatMapValue::Number(n)) if *n == 1.0) {
+                return None;
+            }
+            let upper = f.get("upper").and_then(field_bool).unwrap_or(false);
+            Some(ModTag::condition(cond, upper))
+        }
         // 未映射 tag 形态：保守跳过（返回 None；engine 据此处置整行）。
         _ => None,
     }
+}
+
+/// `<Ailment>Stacks` 阈值 var → 敌方异常存在条件 var（`PoisonStacks`→`EnemyPoisoned`…），
+/// 镜像 legacy「on targets that are [not] <ailment>ed」的 `Enemy<X>` 条件落点（编排层据
+/// build config `conditionEnemy<X>` 置真）。仅伤害/常见异常；其余返回 None（保守失配）。
+fn ailment_stacks_condition(var: &str) -> Option<String> {
+    let past = match var.strip_suffix("Stacks")? {
+        "Poison" => "Poisoned",
+        "Bleed" => "Bleeding",
+        "Ignite" => "Ignited",
+        "Shock" => "Shocked",
+        "Chill" => "Chilled",
+        "Freeze" => "Frozen",
+        "Scorch" => "Scorched",
+        "Sap" => "Sapped",
+        "Brittle" => "Brittle",
+        _ => return None,
+    };
+    Some(format!("Enemy{past}"))
 }
 
 /// 归一 PerStat/Multiplier 槽位倍率 var 的 `On<Slot>` 槽名后缀为槽位 ID（小写去空格，经 `slot_name_to_id`），对齐 orchestrator `per_slot_defence_multipliers` 拼的 `<Stat>On<slot.id()>` 键。
@@ -493,6 +527,50 @@ mod tests {
         );
         assert!(compile_tag(&t, &[]).is_none());
         assert!(!is_mappable_tag_type("SkillName"));
+    }
+
+    #[test]
+    fn multiplier_threshold_ailment_maps_to_enemy_condition() {
+        // vendor `MultiplierThreshold{actor=enemy, var=PoisonStacks, threshold=1, upper=true}`
+        // （"on targets that are not Poisoned"，敌方毒层 <1）→ `Condition{EnemyPoisoned,
+        // negated=true}`，镜像 legacy。修复前返回 None → 整行被 engine 判失配丢弃
+        // （Low Tolerance +60% poison magnitude 失效根因）。
+        let t = tag(
+            "MultiplierThreshold",
+            &[
+                ("var", StatMapValue::Text("PoisonStacks".into())),
+                ("threshold", StatMapValue::Number(1.0)),
+                ("upper", StatMapValue::Bool(true)),
+                ("actor", StatMapValue::Text("enemy".into())),
+            ],
+        );
+        assert_eq!(
+            compile_tag(&t, &[]).unwrap(),
+            ModTag::condition("EnemyPoisoned", true)
+        );
+    }
+
+    #[test]
+    fn multiplier_threshold_scaling_limit_returns_none() {
+        // 限幅式（"per Poison up to N"，threshold=`$1` 捕获）非二元条件 → 仍 None（保守，
+        // 不臆造条件；与修复前一致，避免把 per-stack 倍率误判为存在性条件）。
+        let t = tag(
+            "MultiplierThreshold",
+            &[
+                ("var", StatMapValue::Text("PoisonStacks".into())),
+                ("threshold", StatMapValue::Text("$1".into())),
+            ],
+        );
+        assert!(compile_tag(&t, &["5".into()]).is_none());
+        // 非异常 var 的 MultiplierThreshold 同样保守 None。
+        let t2 = tag(
+            "MultiplierThreshold",
+            &[
+                ("var", StatMapValue::Text("Rage".into())),
+                ("threshold", StatMapValue::Number(1.0)),
+            ],
+        );
+        assert!(compile_tag(&t2, &[]).is_none());
     }
 
     #[test]
