@@ -1787,6 +1787,14 @@ fn parse_ailment_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>> {
         Some(stripped) => (stripped.to_string(), true),
         None => (after, false),
     };
+    // 「... with Critical Hits」（vendor ModParser.lua:1431 → Condition CriticalStrike）。
+    // 异常 magnitude 计算把 dotCfg `CriticalStrike` 恒置真（CalcOffence.lua:5006），故
+    // 此类异常 magnitude 词条恒生效（见 `ailment::ailment_scoped_cfg`）。须在名表匹配
+    // 前剥离——sentence parser 先于通用 strip_tag_once 路径，否则整句落 resolve_names 失败。
+    let (after, with_crit) = match after.strip_suffix(" with critical hits") {
+        Some(stripped) => (stripped.to_string(), true),
+        None => (after, false),
+    };
     let kw = match after.as_str() {
         "magnitude of bleeding you inflict" | "bleed magnitude" => KeywordFlags::BLEED,
         "magnitude of ignite you inflict" | "ignite magnitude" => KeywordFlags::IGNITE,
@@ -1809,6 +1817,9 @@ fn parse_ailment_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>> {
     }
     if not_poisoned {
         m = m.with_tag(ModTag::condition("EnemyPoisoned", true));
+    }
+    if with_crit {
+        m = m.with_tag(ModTag::condition("CriticalStrike", false));
     }
     Some(vec![m])
 }
@@ -2251,6 +2262,27 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
         (
             " while not on full life",
             ModTag::condition("FullLife", true),
+        ),
+        // 暴击条件后缀（vendor ModParser.lua:1429-1431：`with critical hits` /
+        // `on critical hit` / `from critical hits` → Condition CriticalStrike）。
+        // 异常 magnitude/damage 计算把 dotCfg 的 `CriticalStrike` 恒置真
+        // （CalcOffence.lua:5006 `skillCond["CriticalStrike"]=true`），故这类
+        // 「with Critical Hits」异常词条在异常侧恒生效——见 `ailment_scoped_cfg`。
+        (
+            " with critical hits",
+            ModTag::condition("CriticalStrike", false),
+        ),
+        (
+            " with critical strikes",
+            ModTag::condition("CriticalStrike", false),
+        ),
+        (
+            " on critical hit",
+            ModTag::condition("CriticalStrike", false),
+        ),
+        (
+            " from critical hits",
+            ModTag::condition("CriticalStrike", false),
         ),
         // 低魔条件族（vendor ModParser.lua:1761-1763：`while/when [you are]
         // [not] on low mana` → Condition:LowMana[/neg]；cfg 真值由 config
@@ -3402,6 +3434,30 @@ mod per_slot_defence_tests {
         assert!(m.tags.iter().any(|t| matches!(
             t,
             ModTag::Condition { var, negated: true, actor: None } if var == "EnemyPoisoned"
+        )));
+    }
+
+    /// 「... Damaging Ailments you inflict with Critical Hits」（vendor ModParser.lua:789
+    /// kw=bor(Poison,Bleed,Ignite) + :1431 `with critical hits` → Condition CriticalStrike）。
+    /// 异常 magnitude cfg 恒置 CriticalStrike=true（CalcOffence.lua:5006），故恒生效。
+    #[test]
+    fn parses_damaging_ailment_magnitude_with_critical_hits() {
+        let out = parse_mod(
+            "24% increased Magnitude of Damaging Ailments you inflict with Critical Hits",
+        )
+        .expect("parses");
+        assert_eq!(out.status, ParseStatus::Parsed);
+        assert_eq!(out.mods.len(), 1);
+        let m = &out.mods[0];
+        assert_eq!(m.name.as_str(), "AilmentMagnitude");
+        assert_eq!(m.mod_type, ModType::Inc);
+        assert_eq!(m.value.as_number(), Some(24.0));
+        assert!(m.keyword_flags.intersects(KeywordFlags::POISON));
+        assert!(m.keyword_flags.intersects(KeywordFlags::BLEED));
+        assert!(m.keyword_flags.intersects(KeywordFlags::IGNITE));
+        assert!(m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Condition { var, negated: false, actor: None } if var == "CriticalStrike"
         )));
     }
 

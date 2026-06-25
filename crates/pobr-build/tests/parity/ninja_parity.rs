@@ -539,8 +539,12 @@ const BASELINE_OFF_HIT10: usize = 69; // 实测 69/80 = 86.2%
 ///    CombinedDPS 0.52x → 0.82x 收敛但未回带。剩余 per-hit ~0.82x 缺口
 ///    登记 m4-skill-gaps §7（含「attack/spell area damage」暂缓短语——其
 ///    启用前提『冷却线修复后』已满足，归 parser 线）。
-const BASELINE_DOT_HIT5: usize = 17; // 实测 17/37 = 45.9%（n 波 ignite/varashta dot 收敛）
-const BASELINE_DOT_HIT10: usize = 21; // 实测 21/37 = 56.8%
+// 上调 17→20 / 21→24（damaging-ailment magnitude 的 `with Critical Hits` 条件词条
+// 接入：parser 新增暴击后缀剥离 + `ailment_scoped_cfg` 置 CriticalStrike=true，对齐
+// vendor dotCfg `skillCond["CriticalStrike"]=true`，CalcOffence.lua:5006）。huntress
+// poison 0.58x→1.04x、bleed 0.64x→1.11x，TotalDotDPS/CombinedDPS 双列入命中。
+const BASELINE_DOT_HIT5: usize = 20; // 实测 20/37 = 54.1%
+const BASELINE_DOT_HIT10: usize = 24; // 实测 24/37 = 64.9%
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

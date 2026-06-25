@@ -174,6 +174,11 @@ pub fn ailment_scoped_cfg(cfg: &CalcConfig, ailment: AilmentType) -> CalcConfig 
     let stripped = cfg.keyword_flags.without(KeywordFlags::HIT);
     cfg.clone()
         .with_keyword_flags(stripped | KeywordFlags::AILMENT | kw | type_dot)
+        // vendor dotCfg `skillCond["CriticalStrike"] = true`（CalcOffence.lua:5006）：
+        // 异常的 magnitude/damage 一律按「来自暴击」计（叠层暴击模型），故
+        // `with Critical Hits` 限定的异常词条（如「increased Magnitude of Damaging
+        // Ailments you inflict with Critical Hits」）在异常侧恒生效。
+        .with_condition("CriticalStrike", true)
 }
 
 /// 异常名（`"Bleed"`/`"Ignite"`/`"Poison"`/…）→ [`AilmentType`]（chance 路径的

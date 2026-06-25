@@ -6,23 +6,23 @@
   },
   "summary": {
     "total": 4287,
-    "parsed": 1700,
+    "parsed": 1706,
     "unsupported": 5,
-    "err": 2582,
-    "coverage_ratio": 0.396548
+    "err": 2576,
+    "coverage_ratio": 0.397947
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 884,
+      "parsed": 888,
       "unsupported": 1,
-      "err": 819
+      "err": 815
     },
     {
       "source": "C2_tree",
-      "parsed": 783,
+      "parsed": 785,
       "unsupported": 4,
-      "err": 1763
+      "err": 1761
     },
     {
       "source": "SD_derived",
