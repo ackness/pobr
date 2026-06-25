@@ -423,6 +423,16 @@ pub struct CalculateBuildOutput {
     pub hit_chance: f64,
     pub total_hit_avg: f64,
     pub dps: f64,
+    /// 持续伤害（异常）DPS：流血 / 点燃 / 中毒（PoB2 BleedDPS/IgniteDPS/PoisonDPS）。
+    pub bleed_dps: f64,
+    pub ignite_dps: f64,
+    pub poison_dps: f64,
+    /// 全部 DoT 合计（PoB2 TotalDotDPS）。
+    pub total_dot_dps: f64,
+    /// 异常活跃叠层数（诊断用：bleed/ignite/poison）。
+    pub bleed_active_stacks: f64,
+    pub ignite_active_stacks: f64,
+    pub poison_active_stacks: f64,
     /// 主技能行动速率（次/秒，来自宝石分等级 cast/attack 时间）。
     pub action_rate: f64,
     /// 主技能冷却（秒，来自分等级 cooldown）。
@@ -494,6 +504,13 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         hit_chance: out.hit_chance,
         total_hit_avg: out.total_hit_avg,
         dps: out.dps,
+        bleed_dps: out.bleed_dps,
+        ignite_dps: out.ignite_dps,
+        poison_dps: out.poison_dps,
+        total_dot_dps: out.total_dot_dps,
+        bleed_active_stacks: out.bleed_active_stacks,
+        ignite_active_stacks: out.ignite_active_stacks,
+        poison_active_stacks: out.poison_active_stacks,
         action_rate: out.action_rate,
         cooldown: out.cooldown,
         mana_cost: out.mana_cost,
