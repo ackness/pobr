@@ -32,7 +32,7 @@
 
 use pobr_core::calc::minion::AttributeInfusion;
 use pobr_core::calc::{BuffKind, BuffSpec, CalculationSession, MinimalInput, OutputTable};
-use pobr_core::mod_parser::parse_mod;
+use pobr_core::mod_parser::{ParseCtx, parse_mod};
 use pobr_core::passive::AllocatedNode;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome, StatMapCatalog};
 use pobr_core::skill_source::GemModSource;
@@ -970,8 +970,11 @@ pub fn calculate_with_data(
                 .cloned()
                 .collect();
             if !small_nodes.is_empty() {
-                let ingest = pobr_core::passive::ingest_passive_nodes(&small_nodes)
-                    .map_err(|e| BuildError::Parse(e.to_string()))?;
+                let ingest = pobr_core::passive::ingest_passive_nodes_with_ctx(
+                    &small_nodes,
+                    engine_ctx(data),
+                )
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
                 let scaled: Vec<Modifier> = ingest
                     .modifiers
                     .into_iter()
@@ -5403,6 +5406,16 @@ fn append_granted_passives(build: &Build, data: &BuildData, nodes: &mut Vec<Allo
 /// 解析全部装备/珠宝词条行的 `GrantedPassive`（`Allocates <name>` enchant），按
 /// 名称匹配 Notable 节点定义并去重返回（[`append_granted_passives`] 与
 /// [`gem_property_bonuses`] 的共享解析；语义注释见前者）。
+/// 从 `data` 取数据驱动解析规则打包成解析上下文（注入时走新引擎，缺规则的旧数据包
+/// 回退旧解析器，逐值不变）。供未经 `CalculationSession`（已自带规则注入）的零散
+/// passive ingest 调用统一走与主路径一致的解析路径。
+fn engine_ctx(data: &BuildData) -> ParseCtx<'_> {
+    match data.parser_rules.as_deref() {
+        Some(rules) => ParseCtx::with_engine(rules),
+        None => ParseCtx::none(),
+    }
+}
+
 fn granted_passive_defs<'d>(
     build: &Build,
     data: &'d BuildData,
@@ -5541,8 +5554,10 @@ fn keystone_mod_map(
             modifier_texts: filter_parseable(def.stats.clone()),
         };
         // 解析失败（硬错）/ 零产出的 keystone 不入 map（merge 端静默跳过，欠算安全）。
-        let Ok(ingest) = pobr_core::passive::ingest_passive_nodes(std::slice::from_ref(&node))
-        else {
+        let Ok(ingest) = pobr_core::passive::ingest_passive_nodes_with_ctx(
+            std::slice::from_ref(&node),
+            engine_ctx(data),
+        ) else {
             continue;
         };
         if !ingest.modifiers.is_empty() {
@@ -5800,8 +5815,11 @@ fn radius_jewel_notable_effect_copies(
             continue;
         }
         let scale = 1.0 + f64::from(inc) / 100.0;
-        let ingest = pobr_core::passive::ingest_passive_nodes(std::slice::from_ref(node))
-            .map_err(|e| BuildError::Parse(e.to_string()))?;
+        let ingest = pobr_core::passive::ingest_passive_nodes_with_ctx(
+            std::slice::from_ref(node),
+            engine_ctx(data),
+        )
+        .map_err(|e| BuildError::Parse(e.to_string()))?;
         out.extend(
             ingest
                 .modifiers
