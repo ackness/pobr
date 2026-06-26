@@ -220,7 +220,7 @@ pub fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
 }
 
 /// [`ingest_flask_charm`] 的解析上下文穿线版（M6 D-T8 A2）：剩余行解析走 `ctx`
-/// （注入 parser-engine 规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_flask_charm`]）。
+/// （注入引擎规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_flask_charm`]）。
 pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'_>) -> ItemIngest {
     let slot_key: String = slot_name
         .to_lowercase()

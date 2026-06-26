@@ -148,6 +148,118 @@ pub fn calculate(build: &Build, options: &OrchestratorOptions) -> Result<OutputT
     Ok(OutputTable::from(&minimal))
 }
 
+/// 天赋树版本对账诊断（gap B）：build 记录的 `treeVersion` + **已分配但不在已加载树**
+/// 的节点 id。后者是树版本失配的实际症状——节点跨版本被移动/删除后，calc 会静默跳过
+/// 该 id（`pobr_tree` node.rs：未知 id `filter_map` 丢弃），本诊断把它显性化。
+///
+/// **非致命 / 不改 calc 行为**：仅供调用方（CLI / 测试 / 上层）检出提示；「按 build 的
+/// `treeVersion` 加载对应树 + 迁移」是后续工作（需 树版本↔数据版本映射 + 多树版本数据集，
+/// 见 `devs/docs/architecture/16-data-versioning-and-iteration.md` §6 gap B）。
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TreeVersionReport {
+    /// build 的 `<Spec treeVersion>` 标注（`None`=旧存档未标注）。
+    pub build_tree_version: Option<String>,
+    /// 已分配但**不在已加载树**的节点 skill id（按 `allocated_nodes` 原序，确定性）。
+    pub unknown_nodes: Vec<u32>,
+}
+
+impl TreeVersionReport {
+    /// 全部已分配节点都在已加载树中（无失配症状）。
+    pub fn is_clean(&self) -> bool {
+        self.unknown_nodes.is_empty()
+    }
+}
+
+/// 对账 build 的已分配天赋节点与已加载树（[`BuildData::passive_nodes`]）——见
+/// [`TreeVersionReport`]。纯只读，零 calc 行为改动。
+pub fn diagnose_tree_version(build: &Build, data: &BuildData) -> TreeVersionReport {
+    let unknown_nodes = build
+        .tree
+        .allocated_nodes
+        .iter()
+        .map(|n| n.0)
+        .filter(|id| !data.passive_nodes.contains_key(id))
+        .collect();
+    TreeVersionReport {
+        build_tree_version: build.tree_version.clone(),
+        unknown_nodes,
+    }
+}
+
+/// 单个 socket 组的 DPS 贡献（FullDPS 分项）。
+#[derive(Debug, Clone)]
+pub struct SkillDps {
+    /// `build.socket_groups` 内的 0-based 索引。
+    pub group_index: usize,
+    /// 该组主技能授予效果 id（`pick_group_main_skill` 选中）。
+    pub skill_id: String,
+    /// 该技能在整 build 视角下单独计算的 CombinedDPS。
+    pub combined_dps: f64,
+}
+
+/// FullDPS 报告（PoB2 `FullDPS`，M7 多技能脚手架）。
+#[derive(Debug, Clone)]
+pub struct FullDpsReport {
+    /// 全部启用伤害技能的 CombinedDPS 之和（= `per_skill` 各项求和）。
+    pub full_dps: f64,
+    /// 逐技能分项（仅含 CombinedDPS>0 的启用组）。
+    pub per_skill: Vec<SkillDps>,
+    /// 主技能（`resolve_main_skill` 选中）的完整输出表（单技能/面板口径不变）。
+    pub primary: OutputTable,
+}
+
+/// 计算 FullDPS（M7 多技能脚手架）——PoB2 的「全部技能 DPS 求和」。
+///
+/// 遍历每个**启用且有可解析伤害主技能**的 socket 组，各自经 [`calculate_with_data`]
+/// 独立计算（临时把该组设为 `mainSocketGroup`，**其余组保持启用**以保留光环/增益
+/// 贡献，对齐 PoB2「每技能整 build 视角」），取各自 CombinedDPS 求和。`primary` 仍是
+/// [`resolve_main_skill`] 选中的主技能完整输出。
+///
+/// **脚手架边界**（PoB2 FullDPS 的后续精化，本版不处理）：
+/// - 不去重多技能共享的 DoT / 异常（可能重复计入持续伤害）；
+/// - 不特判触发壳 / Mirage 分身的内部技能；
+/// - 顺序复算、未并行（多技能并行执行是后续性能工作的着力点）。
+///
+/// 仅迭代 [`pick_group_main_skill`] 为 `Some` 的组，避免 `resolve_main_skill` 在
+/// `mainSocketGroup` 指向无伤害技能组时回退到别组而重复计入。
+pub fn calculate_full_dps(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> Result<FullDpsReport, BuildError> {
+    let primary = calculate_with_data(build, data, options)?;
+
+    let mut per_skill = Vec::new();
+    let mut full_dps = 0.0;
+    for (i, group) in build.socket_groups.iter().enumerate() {
+        if !group.enabled {
+            continue;
+        }
+        let Some((skill_id, _level, _set)) = pick_group_main_skill(data, group) else {
+            continue;
+        };
+        let skill_id = skill_id.to_string();
+
+        let mut scoped = build.clone();
+        scoped.main_socket_group = Some(i + 1);
+        let out = calculate_with_data(&scoped, data, options)?;
+        if out.combined_dps > 0.0 {
+            full_dps += out.combined_dps;
+            per_skill.push(SkillDps {
+                group_index: i,
+                skill_id,
+                combined_dps: out.combined_dps,
+            });
+        }
+    }
+
+    Ok(FullDpsReport {
+        full_dps,
+        per_skill,
+        primary,
+    })
+}
+
 /// 对一个 [`Build`] 执行**端到端归因**计算，返回标量 [`OutputTable`]。
 ///
 /// 调用方先用 [`pobr_gamedata::GameData`] 加载 [`BuildData`]（节点表 / 宝石表 / 职业
@@ -462,7 +574,7 @@ pub fn calculate_with_data(
     if let Some(special_rules) = &data.special_rules {
         session.set_special_rules(special_rules.clone(), Some(data.special_registry.clone()));
     }
-    // M6 D-T8 A2 切换：数据驱动 ModParser 引擎规则注入（parser-engine feature）。
+    // M6 D-T8 A2 切换：数据驱动 ModParser 引擎规则注入。
     // 须在下方 add_item/add_passive_nodes/add_gem 之前——注入后 `parse_ctx` 优先走
     // 数据驱动 scan 引擎（终局路径），优先于 legacy special。缺 parser_rules
     // （旧数据包）= 不注入（ingest 回退 legacy/special，逐值不变；C1 DIFF=0 gate

@@ -1707,7 +1707,15 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             Ok(ModTag::condition(format!("Enemy{var}"), negated))
         }
         "Multiplier" => {
-            if !keys_subset_of(&["type", "var", "div", "limit", "limitVar", "invert"]) {
+            if !keys_subset_of(&[
+                "type",
+                "var",
+                "div",
+                "limit",
+                "limitVar",
+                "invert",
+                "limitTotal",
+            ]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "Multiplier 含约定外键：{:?}",
                     tag.keys().collect::<Vec<_>>()
@@ -1719,9 +1727,10 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 ));
             };
             // limitVar（vendor ModStore.lua:369 动态上限，如 Sigil of Power
-            // `SigilOfPowerStage` 受 `SigilOfPowerMaxStages` 封顶）与 invert
+            // `SigilOfPowerStage` 受 `SigilOfPowerMaxStages` 封顶）、invert
             // （:378-380 倒数缩放，如 Elemental Conflux 三元素按
-            // `ElementalConflux<El>Effect` 取 1/N 均摊）直译为 ModTag 字段。
+            // `ElementalConflux<El>Effect` 取 1/N 均摊）与 limitTotal（:370-371 +
+            // 402-404 总量封顶，如「每层中毒 +N% 伤害至多 +M%」）直译为 ModTag 字段。
             Ok(ModTag::Multiplier {
                 var,
                 div: number("div").unwrap_or(1.0),
@@ -1730,6 +1739,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 limit_var: text("limitVar"),
                 limit_actor: None,
                 invert: matches!(tag.get("invert"), Some(StatMapValue::Bool(true))),
+                limit_total: matches!(tag.get("limitTotal"), Some(StatMapValue::Bool(true))),
             })
         }
         "PerStat" => {
@@ -2394,15 +2404,38 @@ mod tests {
                 "tag 应整条拒绝：{tag}"
             );
         }
-        // 已支持类型 + 约定外键（limitTotal 携带额外语义）→ 同样拒绝。
+    }
+
+    /// `Multiplier{limitTotal}`（vendor ModStore.lua:370-371 + 402-404 总量封顶）：
+    /// `limit` 不截断乘数计数，而在 `value × mult` 后对最终贡献封顶。
+    /// 形如「每层中毒 +15% 伤害，至多 +75%」（var=PoisonStacks, limit=75, limitTotal）。
+    #[test]
+    fn multiplier_limit_total_caps_final_contribution() {
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC",
-                 "tags": [ { "type": "Multiplier", "var": "X", "limitTotal": true } ] } ] }"#,
+                 "tags": [ { "type": "Multiplier", "var": "PoisonStacks", "limit": 75.0,
+                             "limitTotal": true } ] } ] }"#,
         );
-        assert!(matches!(
-            map_entry(&entry, 1.0),
-            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-        ));
+        let mods = expect_modifiers(map_entry(&entry, 15.0));
+        assert_eq!(
+            mods[0].tags,
+            vec![ModTag::Multiplier {
+                var: "PoisonStacks".into(),
+                div: 1.0,
+                limit: Some(75.0),
+                actor: None,
+                limit_var: None,
+                limit_actor: None,
+                invert: false,
+                limit_total: true,
+            }]
+        );
+        // 3 层：15×3 = 45 ≤ 75 → 45（未触顶）。
+        let cfg3 = crate::CalcConfig::new().with_multiplier("PoisonStacks", 3.0);
+        assert_eq!(mods[0].effective_number(&cfg3), Some(45.0));
+        // 8 层：15×8 = 120 → 总量封顶到 75（计数封顶会给 15×min(8,75)=120，错算）。
+        let cfg8 = crate::CalcConfig::new().with_multiplier("PoisonStacks", 8.0);
+        assert_eq!(mods[0].effective_number(&cfg8), Some(75.0));
     }
 
     // ---- skill_data / flag 构造器 ----
@@ -3253,6 +3286,7 @@ mod tests {
                 limit_var: Some("SigilOfPowerMaxStages".into()),
                 limit_actor: None,
                 invert: false,
+                limit_total: false,
             }],
             "Multiplier limitVar 直译，GlobalEffect 剥除"
         );

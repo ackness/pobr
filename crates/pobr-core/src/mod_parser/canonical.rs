@@ -93,8 +93,9 @@ fn canonical_tag(tag: &ModTag) -> String {
             limit_var,
             limit_actor,
             invert,
+            limit_total,
         } => format!(
-            "Multiplier(var={var},div={},limit={:?},actor={actor:?},limit_var={limit_var:?},limit_actor={limit_actor:?},invert={invert})",
+            "Multiplier(var={var},div={},limit={:?},actor={actor:?},limit_var={limit_var:?},limit_actor={limit_actor:?},invert={invert},limit_total={limit_total})",
             fmt_f64(*div),
             limit.map(fmt_f64),
         ),

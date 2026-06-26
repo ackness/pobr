@@ -427,6 +427,19 @@ local intermediates = {}
 intermediates.IncDamage = smlSum("INC", skillCfg, "Damage")
 intermediates.MoreDamage = smlMore(skillCfg, "Damage")
 
+-- Damaging-ailment magnitude breakdown (the `<Ailment>MagnitudeEffect` factor =
+-- calcLib.mod(skillModList, dotCfg, "AilmentMagnitude"), CalcOffence.lua:5145).
+-- Uses the exact per-ailment dotCfg PoB2 stashes on the active skill
+-- (activeSkill["poisonCfg"] etc., :5010) so inc/more match the engine's value.
+for _, ail in ipairs({ "poison", "bleed", "ignite" }) do
+	local dotCfg = mainSkill and mainSkill[ail .. "Cfg"]
+	if dotCfg then
+		local cap = ail:sub(1, 1):upper() .. ail:sub(2)
+		intermediates["IncAilmentMagnitude_" .. cap] = smlSum("INC", dotCfg, "AilmentMagnitude")
+		intermediates["MoreAilmentMagnitude_" .. cap] = smlMore(dotCfg, "AilmentMagnitude")
+	end
+end
+
 -- Per damage-type: increased, more, conversion-out, gain-as-extra
 for _, dt in ipairs(damageTypes) do
 	local lower = dt:lower()

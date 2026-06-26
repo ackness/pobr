@@ -37,7 +37,9 @@ mod tests {
     use crate::GameData;
 
     fn real_data() -> GameData {
-        GameData::new(crate::current_data_dir())
+        // 本模块测试钉定段计数 / vendor-commit 实测样本（版本特定，随抽取增长），故加载
+        // golden 校验版本而非活动版本（数据/计算解耦，见 pobr_data::GOLDEN_PARITY_DATA_VERSION）。
+        GameData::new(crate::repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION))
     }
 
     /// 仓库真实数据：各段条目数与钉定 vendor commit 的实测值一致

@@ -113,6 +113,12 @@ pub enum ModTag {
         /// MORE 按 `Multiplier:ElementalConflux<El>Effect`（Average 档 = 3）
         /// 取 1/3 均摊）。
         invert: bool,
+        /// 总量限幅（PoB2 ModStore.lua:370-371 + 402-404 `tag.limitTotal`）：为真时
+        /// `limit`/`limit_var` **不**截断乘数 `mult`，而是在 `value × mult` 之后对
+        /// **最终贡献**封顶（`value = min(value, limit)`）。如「每层中毒 +N% 伤害，
+        /// 至多 +M%」（`Multiplier{var, limit=M, limitTotal}`）。缺省 `false` ＝ 旧的
+        /// 计数封顶（`mult = min(mult, limit)`）。
+        limit_total: bool,
     },
     /// 按 actor **已算出 stat（output 表）**线性缩放（M4-T1 W-A3；PoB2 `PerStat`
     /// tag，ModStore.lua:440-489）。与 [`ModTag::Multiplier`] 拆开：Multiplier 读
@@ -183,6 +189,7 @@ impl ModTag {
             limit_var: None,
             limit_actor: None,
             invert: false,
+            limit_total: false,
         }
     }
 }
@@ -331,6 +338,7 @@ impl Modifier {
                     limit_var,
                     limit_actor,
                     invert,
+                    limit_total,
                 } => {
                     // 取数源按 actor 维度切换（PoB2 ModStore.lua:347-353 `tag.actor` →
                     // getActor(self, ...).modDB）：None＝当前 cfg.multiplier；Some＝
@@ -353,13 +361,24 @@ impl Modifier {
                             Some(actor) => cfg.actor_multiplier(*actor, lv),
                         })
                     });
-                    let mut count = effective_limit.map_or(count, |max| count.min(max));
+                    // limitTotal（vendor :370-371）：limit 不截断 mult，留待 value×mult
+                    // 之后封顶最终贡献；否则计数封顶（:375 `mult = min(mult, limit)`）。
+                    let mut count = if *limit_total {
+                        count
+                    } else {
+                        effective_limit.map_or(count, |max| count.min(max))
+                    };
                     // 倒数缩放（PoB2 ModStore.lua:378-380：limit 之后
                     // `if tag.invert and mult ~= 0 then mult = 1 / mult end`）。
                     if *invert && count != 0.0 {
                         count = 1.0 / count;
                     }
                     value *= count;
+                    // 总量封顶（vendor :402-404 `value = m_min(value, limitTotal)`）——
+                    // 作用于本 tag 乘算后的累计贡献。
+                    if *limit_total && let Some(max) = effective_limit {
+                        value = value.min(max);
+                    }
                 }
                 ModTag::PerStat {
                     stat,
@@ -431,6 +450,7 @@ mod tests {
             limit_var: None,
             limit_actor: None,
             invert: false,
+            limit_total: false,
         });
         assert_eq!(modifier.effective_number(&cfg), Some(24.0));
 
@@ -443,6 +463,7 @@ mod tests {
             limit_var: None,
             limit_actor: None,
             invert: false,
+            limit_total: false,
         });
         assert_eq!(missing.effective_number(&cfg), Some(0.0));
     }
@@ -465,6 +486,7 @@ mod tests {
             limit_var: Some("MaxCharges".into()),
             limit_actor: None,
             invert: false,
+            limit_total: false,
         });
         assert_eq!(local.effective_number(&cfg), Some(4.0));
 
@@ -477,6 +499,7 @@ mod tests {
             limit_var: Some("MaxCharges".into()),
             limit_actor: Some(ActorRef::Player),
             invert: false,
+            limit_total: false,
         });
         assert_eq!(cross.effective_number(&cfg), Some(6.0));
 
@@ -490,6 +513,7 @@ mod tests {
                 limit_var: Some("MaxCharges".into()),
                 limit_actor: Some(ActorRef::Player),
                 invert: false,
+                limit_total: false,
             });
         assert_eq!(static_wins.effective_number(&cfg), Some(2.0));
     }

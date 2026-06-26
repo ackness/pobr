@@ -574,12 +574,19 @@ mod tests {
     /// 仓库真实数据全表编译成功（pattern 子集语法全覆盖——无越界）。
     #[test]
     fn compiles_real_data() {
+        // 加载**活动版本**的真实规则表并全量编译——版本无关 sanity：计数随版本增长
+        // （4.5.0.3.4=91/775/682，4.5.2.1.3=95/788/686），故断言"充分填充"的下界而非
+        // 精确值，使本测试在任一数据版本上都成立（与 multi_version smoke 同口径）。
         let path = crate::mod_parser::engine::test_support::real_rules_path();
         let json = std::fs::read_to_string(path).unwrap();
         let doc: ModParserRulesDoc = serde_json::from_str(&json).unwrap();
         let c = CompiledParserRules::compile(&doc).expect("真实规则表应全部编译成功");
-        assert_eq!(c.forms.len(), 91);
-        assert_eq!(c.name_map.len(), 775);
-        assert_eq!(c.tag_phrases.len(), 682);
+        assert!(c.forms.len() >= 85, "forms={}", c.forms.len());
+        assert!(c.name_map.len() >= 750, "name_map={}", c.name_map.len());
+        assert!(
+            c.tag_phrases.len() >= 650,
+            "tag_phrases={}",
+            c.tag_phrases.len()
+        );
     }
 }

@@ -28,7 +28,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Dexterity\", div: 4.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Dexterity\", div: 4.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -85,7 +85,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Life\", div: 6.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Life\", div: 6.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -119,7 +119,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Life\", div: 8.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Life\", div: 8.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -133,7 +133,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"ArmourOnhelmet\", div: 8.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"ArmourOnhelmet\", div: 8.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -151,7 +151,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"ArmourOngloves\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"ArmourOngloves\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -165,7 +165,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"EnergyShieldOnhelmet\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"EnergyShieldOnhelmet\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -187,7 +187,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Dexterity\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Dexterity\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -201,7 +201,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"EnergyShieldOnhelmet\", div: 2.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"EnergyShieldOnhelmet\", div: 2.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -1908,7 +1908,7 @@
           "type": "Base",
           "value": 2.0,
           "tags": [
-            "Multiplier { var: \"Spirit\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Spirit\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -1966,7 +1966,7 @@
           "type": "Base",
           "value": 2.0,
           "tags": [
-            "Multiplier { var: \"EnergyShieldOnboots\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"EnergyShieldOnboots\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -2980,7 +2980,7 @@
           "type": "Base",
           "value": 3.0,
           "tags": [
-            "Multiplier { var: \"Strength\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Strength\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -3828,7 +3828,7 @@
           "type": "Base",
           "value": 4.0,
           "tags": [
-            "Multiplier { var: \"Dexterity\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Dexterity\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -5641,7 +5641,7 @@
           "type": "Base",
           "value": -10.0,
           "tags": [
-            "Multiplier { var: \"PowerCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"PowerCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         },
         {
@@ -5649,7 +5649,7 @@
           "type": "Base",
           "value": -10.0,
           "tags": [
-            "Multiplier { var: \"PowerCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"PowerCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         },
         {
@@ -5657,7 +5657,7 @@
           "type": "Base",
           "value": -10.0,
           "tags": [
-            "Multiplier { var: \"PowerCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"PowerCharge\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -5800,7 +5800,7 @@
           "type": "Inc",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Strength\", div: 15.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Strength\", div: 15.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -5829,7 +5829,7 @@
           "type": "Inc",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Dexterity\", div: 25.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Dexterity\", div: 25.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -7024,7 +7024,7 @@
           "type": "Inc",
           "value": 10.0,
           "tags": [
-            "Multiplier { var: \"PoisonAppliedRecently\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }",
+            "Multiplier { var: \"PoisonAppliedRecently\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
             "GlobalLimit { value: 100.0, key: \"NoxiousStrike\" }"
           ]
         }
@@ -8622,7 +8622,18 @@
     },
     {
       "text": "13% increased Magnitude of Damaging Ailments you inflict with Critical Hits",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentMagnitude",
+          "type": "Inc",
+          "value": 13.0,
+          "kw": 14680064,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "13% increased Rarity of Items found",
@@ -9495,7 +9506,18 @@
     },
     {
       "text": "15% increased [BuffMagnitude|Magnitude] of [Bleeding|Bleeding] you inflict with [Critical|Critical Hits]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentMagnitude",
+          "type": "Inc",
+          "value": 15.0,
+          "kw": 4194304,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "15% increased [BuffMagnitude|Magnitude] of [Chill] you inflict",
@@ -9503,7 +9525,18 @@
     },
     {
       "text": "15% increased [BuffMagnitude|Magnitude] of [DamagingAilments|Damaging Ailments] you inflict with [Critical|Critical Hits]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentMagnitude",
+          "type": "Inc",
+          "value": 15.0,
+          "kw": 14680064,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "15% increased [BuffMagnitude|Magnitude] of [Daze]",
@@ -10899,7 +10932,18 @@
     },
     {
       "text": "19% increased Magnitude of Damaging Ailments you inflict with Critical Hits",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentMagnitude",
+          "type": "Inc",
+          "value": 19.0,
+          "kw": 14680064,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "19% increased Rarity of Items found",
@@ -10993,7 +11037,7 @@
           "type": "Inc",
           "value": 2.0,
           "tags": [
-            "Multiplier { var: \"Strength\", div: 10.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Strength\", div: 10.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -11417,7 +11461,18 @@
     },
     {
       "text": "20% increased Magnitude of Damaging Ailments you inflict with Critical Hits",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentMagnitude",
+          "type": "Inc",
+          "value": 20.0,
+          "kw": 14680064,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "20% increased Mana Cost [Efficiency]",
@@ -13031,7 +13086,18 @@
     },
     {
       "text": "24% increased Magnitude of Damaging Ailments you inflict with Critical Hits",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentMagnitude",
+          "type": "Inc",
+          "value": 24.0,
+          "kw": 14680064,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "24% increased Mana Regeneration Rate",
@@ -14766,7 +14832,7 @@
           "type": "Inc",
           "value": 3.0,
           "tags": [
-            "Multiplier { var: \"Intelligence\", div: 10.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Intelligence\", div: 10.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -14807,7 +14873,7 @@
           "type": "Inc",
           "value": 3.0,
           "tags": [
-            "Multiplier { var: \"Mana\", div: 100.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"Mana\", div: 100.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -23349,7 +23415,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"Level\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }",
+            "Multiplier { var: \"Level\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
             "Condition { var: \"CanUseBondedModifiers\", negated: false, actor: None }"
           ]
         }
@@ -26128,7 +26194,7 @@
           "type": "Base",
           "value": 1.0,
           "tags": [
-            "Multiplier { var: \"EnergyShieldOnbodyarmour\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"EnergyShieldOnbodyarmour\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -28396,7 +28462,7 @@
           "value": 27.0,
           "flags": 6,
           "tags": [
-            "Multiplier { var: \"CurseOnEnemy\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"CurseOnEnemy\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -28411,7 +28477,7 @@
           "value": 30.0,
           "flags": 6,
           "tags": [
-            "Multiplier { var: \"CurseOnEnemy\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false }"
+            "Multiplier { var: \"CurseOnEnemy\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]
@@ -30141,7 +30207,7 @@
           "type": "Base",
           "value": 4.0,
           "tags": [
-            "Multiplier { var: \"DifferentGrenadeFired\", div: 1.0, limit: None, actor: None, limit_var: Some(\"GrenadeTypes\"), limit_actor: None, invert: false }"
+            "Multiplier { var: \"DifferentGrenadeFired\", div: 1.0, limit: None, actor: None, limit_var: Some(\"GrenadeTypes\"), limit_actor: None, invert: false, limit_total: false }"
           ]
         }
       ]

@@ -12,7 +12,10 @@
 
 use std::path::PathBuf;
 
-use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
+use pobr_build::{
+    BuildData, DataOrchestratorOptions, calculate_with_data, diagnose_tree_version,
+    parse_build_from_code,
+};
 use pobr_core::ModValue;
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput};
 use pobr_core::item::ingest_item;
@@ -420,6 +423,20 @@ pub struct CalculateBuildOutput {
     pub hit_chance: f64,
     pub total_hit_avg: f64,
     pub dps: f64,
+    /// 持续伤害（异常）DPS：流血 / 点燃 / 中毒（PoB2 BleedDPS/IgniteDPS/PoisonDPS）。
+    pub bleed_dps: f64,
+    pub ignite_dps: f64,
+    pub poison_dps: f64,
+    /// 全部 DoT 合计（PoB2 TotalDotDPS）。
+    pub total_dot_dps: f64,
+    /// 异常活跃叠层数（诊断用：bleed/ignite/poison）。
+    pub bleed_active_stacks: f64,
+    pub ignite_active_stacks: f64,
+    pub poison_active_stacks: f64,
+    /// 异常叠层上限（诊断用：bleed/ignite/poison；1 = 不可叠层）。
+    pub bleed_max_stacks: f64,
+    pub ignite_max_stacks: f64,
+    pub poison_max_stacks: f64,
     /// 主技能行动速率（次/秒，来自宝石分等级 cast/attack 时间）。
     pub action_rate: f64,
     /// 主技能冷却（秒，来自分等级 cooldown）。
@@ -428,11 +445,22 @@ pub struct CalculateBuildOutput {
     pub mana_cost: f64,
 }
 
-/// `calculate-build` 报告：Build 摘要 + 计算输出。
+/// 天赋树版本对账诊断（gap B）：build 记录的 `treeVersion` + 已分配但**不在已加载树**
+/// 的节点（calc 会静默跳过其贡献——树版本失配的实际症状）。`unknown_node_count > 0`
+/// 时 CLI 向 stderr 告警。
+#[derive(Debug, Clone, Serialize)]
+pub struct TreeVersionDiag {
+    pub build_tree_version: Option<String>,
+    pub unknown_node_count: usize,
+    pub unknown_nodes: Vec<u32>,
+}
+
+/// `calculate-build` 报告：Build 摘要 + 计算输出 + 天赋树版本对账诊断。
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildReport {
     pub build: BuildSummary,
     pub output: CalculateBuildOutput,
+    pub tree_version: TreeVersionDiag,
 }
 
 /// 从一份 PoB Build Code 端到端计算：decode → [`parse_build_from_code`] →
@@ -456,6 +484,7 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         ..Default::default()
     };
     let out = calculate_with_data(&build, &build_data, &opts)?;
+    let tree_report = diagnose_tree_version(&build, &build_data);
 
     let summary = BuildSummary {
         level: build.character.level,
@@ -479,6 +508,16 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         hit_chance: out.hit_chance,
         total_hit_avg: out.total_hit_avg,
         dps: out.dps,
+        bleed_dps: out.bleed_dps,
+        ignite_dps: out.ignite_dps,
+        poison_dps: out.poison_dps,
+        total_dot_dps: out.total_dot_dps,
+        bleed_active_stacks: out.bleed_active_stacks,
+        ignite_active_stacks: out.ignite_active_stacks,
+        poison_active_stacks: out.poison_active_stacks,
+        bleed_max_stacks: out.bleed_max_stacks,
+        ignite_max_stacks: out.ignite_max_stacks,
+        poison_max_stacks: out.poison_max_stacks,
         action_rate: out.action_rate,
         cooldown: out.cooldown,
         mana_cost: out.mana_cost,
@@ -487,6 +526,11 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
     Ok(CalculateBuildReport {
         build: summary,
         output,
+        tree_version: TreeVersionDiag {
+            build_tree_version: tree_report.build_tree_version,
+            unknown_node_count: tree_report.unknown_nodes.len(),
+            unknown_nodes: tree_report.unknown_nodes,
+        },
     })
 }
 

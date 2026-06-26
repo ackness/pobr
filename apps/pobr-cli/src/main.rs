@@ -152,9 +152,21 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
     match cli.command {
         Command::Calculate(args) => Ok(pobr_cli::calculate_json(&build_calculate_request(args)?)?),
-        Command::CalculateBuild(args) => Ok(pobr_cli::calculate_build_json(
-            &build_calc_build_request(args)?,
-        )?),
+        Command::CalculateBuild(args) => {
+            let report = pobr_cli::calculate_build(&build_calc_build_request(args)?)?;
+            // gap B：树版本失配（已分配节点不在已加载树）不再静默——向 stderr 告警。
+            let diag = &report.tree_version;
+            if diag.unknown_node_count > 0 {
+                eprintln!(
+                    "warning: {} 个已分配天赋节点不在已加载树中（build treeVersion={}），\
+                     其贡献被静默跳过：{:?}",
+                    diag.unknown_node_count,
+                    diag.build_tree_version.as_deref().unwrap_or("?"),
+                    diag.unknown_nodes,
+                );
+            }
+            Ok(serde_json::to_string_pretty(&report)?)
+        }
         Command::ParseMod(args) => {
             let data_dir = match args.data_dir {
                 Some(dir) => std::path::PathBuf::from(dir),

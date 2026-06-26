@@ -222,7 +222,7 @@ pub struct BuildData {
     /// `special_mods` 条目）。`calculate_with_data` 经
     /// [`CalculationSession::set_parser_rules`] 注入，全部 ingest 词条解析走数据驱动
     /// scan 引擎。缺 `mod_parser_rules` 域（旧数据包）= `None`（ingest 回退 legacy /
-    /// special，逐值不变）。仅 `parser-engine` feature 下存在。
+    /// special，逐值不变）。
     ///
     /// [`CompiledParserRules::compile_with_special`]: pobr_core::mod_parser::CompiledParserRules::compile_with_special
     /// [`CalculationSession::set_parser_rules`]: pobr_core::calc::CalculationSession::set_parser_rules
@@ -425,7 +425,7 @@ impl BuildData {
             ))
         };
 
-        // M6 D-T8 A2：数据驱动 ModParser 引擎规则编译（parser-engine feature）。
+        // M6 D-T8 A2：数据驱动 ModParser 引擎规则编译。
         // gamedata 只 load `mod_parser_rules.json` doc，编译在 core（P9 边界）；
         // special 通道复用上面同一组 `special_entries`。缺 doc（旧数据包）= None
         // （ingest 回退 legacy/special，逐值不变）；编译失败照常上抛。

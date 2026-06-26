@@ -26,7 +26,8 @@ fn build_dir(name: &str) -> PathBuf {
 }
 
 fn load_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
+    // golden 钉定被校验的数据版本（与活动 DATA_VERSION 解耦）；见 pobr_data::GOLDEN_PARITY_DATA_VERSION。
+    let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
     BuildData::load(&data).expect("load BuildData")
 }
 

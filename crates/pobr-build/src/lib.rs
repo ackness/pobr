@@ -43,8 +43,9 @@ pub use build_config::BuildConfig;
 pub use build_data::{BuildData, ClassBaseAttributes, EffectStats, ResolvedSkillLevel};
 pub use calc_cache::CalcCache;
 pub use calc_orchestrator::{
-    DataOrchestratorOptions, OrchestratorOptions, StatMapCompareRecord, StatMapMode, calculate,
-    calculate_with_data, take_stat_map_compare_records,
+    DataOrchestratorOptions, FullDpsReport, OrchestratorOptions, SkillDps, StatMapCompareRecord,
+    StatMapMode, TreeVersionReport, calculate, calculate_full_dps, calculate_with_data,
+    diagnose_tree_version, take_stat_map_compare_records,
 };
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};

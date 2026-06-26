@@ -1,8 +1,8 @@
 //! 数据驱动 parseMod 编排（蓝图 §4；vendor `ModParser.lua:6389-6755`）。
 //!
 //! 签名 [`parse_mod_engine`]`(text, &CompiledParserRules) -> ParseOutcome`。
-//! 与 legacy 并存（`feature = "parser-engine"`），**不接调用方**——本 track 只
-//! 建引擎 + 双跑 diff=0，切换是 D-T8 的独立 commit。
+//! 引擎已是 calc 主路径：编排层经 pobr-gamedata 恒 load `mod_parser_rules.json`
+//! 编译 [`CompiledParserRules`] 注入 session；legacy 仅作回退（未注入引擎规则时）。
 //!
 //! 主序（vendor 逐段对照）：
 //! 1. PoBR pre-pass（括号剥离 + 空白归一 + 小写视图，复用 legacy 同款语义）；

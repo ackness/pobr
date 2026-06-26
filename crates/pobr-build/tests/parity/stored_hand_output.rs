@@ -52,7 +52,8 @@ fn run_build(dir: &Path, data: &BuildData) -> OutputTable {
 #[test]
 fn stored_family_holds_vendor_identities_on_three_real_builds() {
     let data = {
-        let game_data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
+        // golden 钉定被校验的数据版本（与活动 DATA_VERSION 解耦）；见 pobr_data::GOLDEN_PARITY_DATA_VERSION。
+        let game_data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
         BuildData::load(&game_data).expect("load BuildData")
     };
 

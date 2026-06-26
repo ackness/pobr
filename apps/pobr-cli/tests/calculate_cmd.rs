@@ -211,6 +211,19 @@ fn calculate_build_summarizes_and_computes_from_code() {
     assert!(report.output.hit_chance >= 0.0 && report.output.hit_chance <= 1.0);
     // PoE2 基础爆伤倍率 2.0（无额外增伤词条）。
     assert_eq!(report.output.crit_multiplier, 2.0);
+
+    // gap B：报告携带天赋树版本对账诊断（真实 PoB2 build 必带 <Spec treeVersion>）。
+    // 不钉未知节点精确数（数据版本相关），只验捕获 + 计数自洽。
+    let diag = &report.tree_version;
+    assert!(
+        diag.build_tree_version.is_some(),
+        "应捕获 build 的 treeVersion"
+    );
+    assert_eq!(
+        diag.unknown_node_count,
+        diag.unknown_nodes.len(),
+        "unknown_node_count 与 unknown_nodes 自洽"
+    );
 }
 
 #[test]

@@ -1036,10 +1036,15 @@ fn damaging_ailment_for_pass(
 
 /// MH/OH 双 pass 的 ailment 结果合并（vendor combineStat `CHANCE_AILMENT`，`:2498-2533`
 /// + `:5738`）。单 pass 直通；双 pass `max×s + min×(1−s)`，`s = min(1, stacks/max)`。
-fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64)> {
+fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64, f64)> {
     match results {
         [] => None,
-        [only] => Some((only.dps, only.stacked_dps, only.active_stacks_panel)),
+        [only] => Some((
+            only.dps,
+            only.stacked_dps,
+            only.active_stacks_panel,
+            only.max_stacks,
+        )),
         [a, b, ..] => {
             let stacks = a.stacks_estimate.max(b.stacks_estimate);
             let max_stacks = a.max_stacks.max(b.max_stacks);
@@ -1047,6 +1052,7 @@ fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64)
                 merge_hand_ailment_dps(a.dps, b.dps, stacks, max_stacks),
                 merge_hand_ailment_dps(a.stacked_dps, b.stacked_dps, stacks, max_stacks),
                 a.active_stacks_panel.max(b.active_stacks_panel),
+                max_stacks,
             ))
         }
     }
@@ -1219,7 +1225,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                 )
             })
             .collect();
-        let Some((dps, stacked, active)) = merge_ailment_passes(&results) else {
+        let Some((dps, stacked, active, max_stacks)) = merge_ailment_passes(&results) else {
             continue;
         };
         let out = &mut env.player.output;
@@ -1228,16 +1234,19 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                 out.bleed_dps = dps;
                 out.bleed_stacked_dps = stacked;
                 out.bleed_active_stacks = active;
+                out.bleed_max_stacks = max_stacks;
             }
             AilmentType::Ignite => {
                 out.ignite_dps = dps;
                 out.ignite_stacked_dps = stacked;
                 out.ignite_active_stacks = active;
+                out.ignite_max_stacks = max_stacks;
             }
             AilmentType::Poison => {
                 out.poison_dps = dps;
                 out.poison_stacked_dps = stacked;
                 out.poison_active_stacks = active;
+                out.poison_max_stacks = max_stacks;
             }
             _ => unreachable!(),
         }
