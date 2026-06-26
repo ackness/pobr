@@ -2,6 +2,11 @@ name: CI
 
 # Gate per CLAUDE.md: fmt + clippy + test. Runs on every PR to master and on
 # pushes to master (so the default branch is always validated post-merge).
+#
+# Single sequential job (private repo, cost-optimized): GitHub bills per job
+# rounded up to the minute, so one job = one rounding instead of three. Cheapest
+# checks run first, so a fmt/clippy failure exits before the ~4-min test compile
+# and no billed minutes are wasted on test for a broken PR.
 on:
   push:
     branches: [master]
@@ -18,49 +23,34 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  fmt:
-    name: rustfmt
+  ci:
+    name: fmt + clippy + test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
-      - run: cargo fmt --all --check
-
-  clippy:
-    name: clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
           # Only master writes the cache; PRs restore it read-only. Keeps cache
-          # storage lean (no per-PR-branch copies churning the 10 GB repo limit)
-          # and skips the save step on PRs. PRs still restore master's warm cache.
-          save-if: ${{ github.ref == 'refs/heads/master' }}
-      # Warnings are failures, matching the local merge gate.
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-
-  test:
-    name: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          # See clippy job: master produces the cache, PRs consume it read-only.
+          # storage lean (no per-PR-branch copies churning the 10 GB repo limit).
+          # PRs still restore master's warm dependency cache.
           save-if: ${{ github.ref == 'refs/heads/master' }}
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
+
+      # Cheapest first — fail fast before the expensive test compile.
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
       # luajit lets the fixture-based extract-lua tooling tests run instead of
       # self-skipping. Tests that need the gitignored vendor PoB2 checkout still
-      # skip gracefully (it is not present in CI) — see CLAUDE.md "Parity 体系".
+      # skip gracefully in CI by design (see CLAUDE.md "Parity 体系"). Installed
+      # after clippy so a lint failure skips it too.
       - name: Install luajit
         run: sudo apt-get update && sudo apt-get install -y luajit
       - name: Test (nextest)
