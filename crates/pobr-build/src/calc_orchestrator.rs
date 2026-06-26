@@ -5403,9 +5403,6 @@ fn append_granted_passives(build: &Build, data: &BuildData, nodes: &mut Vec<Allo
     }
 }
 
-/// 解析全部装备/珠宝词条行的 `GrantedPassive`（`Allocates <name>` enchant），按
-/// 名称匹配 Notable 节点定义并去重返回（[`append_granted_passives`] 与
-/// [`gem_property_bonuses`] 的共享解析；语义注释见前者）。
 /// 从 `data` 取数据驱动解析规则打包成解析上下文（注入时走新引擎，缺规则的旧数据包
 /// 回退旧解析器，逐值不变）。供未经 `CalculationSession`（已自带规则注入）的零散
 /// passive ingest 调用统一走与主路径一致的解析路径。
@@ -5416,6 +5413,9 @@ fn engine_ctx(data: &BuildData) -> ParseCtx<'_> {
     }
 }
 
+/// 解析全部装备/珠宝词条行的 `GrantedPassive`（`Allocates <name>` enchant），按
+/// 名称匹配 Notable 节点定义并去重返回（[`append_granted_passives`] 与
+/// [`gem_property_bonuses`] 的共享解析；语义注释见前者）。
 fn granted_passive_defs<'d>(
     build: &Build,
     data: &'d BuildData,

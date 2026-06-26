@@ -483,7 +483,10 @@ fn normalize_pobr_name(
             (ModFlags::CROSSBOW, "CrossbowDamage"),
             (ModFlags::BOW, "BowDamage"),
             (ModFlags::MACE, "MaceDamage"),
-            (ModFlags::WARSTAFF, "QuarterstaffDamage"),
+            // PoE2 长杖位 = `Staff`（0x200000），非 `Warstaff`——与下方 WEAPON_COND
+            // 同口径修正（此前用 WARSTAFF 永不命中 Staff-flag 长杖词条，QuarterstaffDamage
+            // 不可达；改 STAFF 后与 legacy 专名映射对齐）。
+            (ModFlags::STAFF, "QuarterstaffDamage"),
         ];
         if flags.intersects(ModFlags::SPELL) {
             out_name = "SpellDamage".to_string();
