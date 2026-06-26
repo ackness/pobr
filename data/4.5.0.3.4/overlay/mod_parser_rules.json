@@ -634,7 +634,9 @@
     {
       "phrase": "all resistances",
       "names": [
-        "ElementalResist",
+        "FireResistance",
+        "ColdResistance",
+        "LightningResistance",
         "ChaosResistance"
       ]
     },

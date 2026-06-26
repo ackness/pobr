@@ -271,10 +271,10 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
 /// 累积 pre_flag / flag_phrase / tag_phrase 的效果（flags / kw / tags + minion /
 /// enemy 包装）。
 ///
-/// 已实现 LIST 包装：`addToMinion`（MinionModifier）与 `applyToEnemy`
-/// （EnemyModifier，M6-conv2）。其余 misc 包装指令（addToAura / newAura /
-/// addToSkill）在 vendor parseMod :6680-6750 有对应包装，本批暂不接（对应行
-/// 产物原样返回，由双跑裁决登记，见报告 §2.4 D8）。
+/// 已实现 LIST 包装：`addToMinion`（MinionModifier）、`applyToEnemy`
+/// （EnemyModifier，M6-conv2）、`newAura`+`newAuraOnlyAllies`（ExtraAura，仅盟友
+/// 时玩家不消费——vendor `ModParser.lua:6877` + `CalcPerform.lua:3104`）。其余 misc
+/// 包装（addToAura / addToSkill）暂不接（对应行产物原样返回）。
 #[derive(Default)]
 struct EffectsAccumulator {
     flags: ModFlags,
@@ -285,6 +285,11 @@ struct EffectsAccumulator {
     /// `applyToEnemy`（vendor `applyToEnemy` / `actorEnemy`）——产物包成
     /// `EnemyModifier LIST`，inner 附敌侧条件 + `Condition(Effective)`。
     apply_to_enemy: bool,
+    /// `newAura`（vendor）——产物包成 `ExtraAura LIST`（玩家进攻管线不消费）。
+    new_aura: bool,
+    /// `newAuraOnlyAllies`（vendor）——光环仅作用盟友，玩家本人贡献为 0
+    /// （`CalcPerform.lua:3104` 的 `if not onlyAllies` 跳过玩家）。
+    new_aura_only_allies: bool,
     /// `modSuffix`（vendor，如 `take ` → `"Taken"`）——附加到 inner 名末尾。
     mod_suffix: String,
 }
@@ -311,6 +316,9 @@ impl EffectsAccumulator {
         }
         // enemy 包装指令（applyToEnemy / actorEnemy 同走 EnemyModifier 包装）+ modSuffix。
         self.apply_to_enemy |= eff.apply_to_enemy || eff.actor_enemy;
+        // aura 包装指令（newAura + newAuraOnlyAllies）。
+        self.new_aura |= eff.new_aura;
+        self.new_aura_only_allies |= eff.new_aura_only_allies;
         if let Some(suffix) = &eff.mod_suffix {
             self.mod_suffix = suffix.clone();
         }
@@ -330,9 +338,32 @@ impl EffectsAccumulator {
     }
 
     /// misc 包装：把生成的 mods 转为 LIST 包裹 mod（vendor :6680-6750）。
-    /// 已实现 MinionModifier（最高频）与 EnemyModifier（applyToEnemy）；其余包装
-    /// （ExtraAura / ExtraSkillMod）保守跳过——对应行产物原样返回（双跑裁决，§2.4 D8）。
+    /// 已实现 MinionModifier、EnemyModifier、ExtraAura（newAura+onlyAllies）；其余
+    /// （addToAura / addToSkill）保守跳过——对应行产物原样返回。
     fn wrap_list(&self, mods: Vec<Modifier>) -> Vec<Modifier> {
+        // `newAura` + `newAuraOnlyAllies`（vendor `ModParser.lua:6877`）：把每条内层 mod
+        // 包成 `ExtraAura LIST`——玩家进攻管线只读 `Damage`/`SpellDamage` 等专名、不读
+        // `ExtraAura` 包装，故玩家贡献为 0（对齐 `CalcPerform.lua:3104` 的 `if not
+        // onlyAllies` 跳过玩家、仅发随从）。**非** onlyAllies（「You and Allies in your
+        // Presence …」）不包装——玩家本人也吃该内层 mod（vendor 同口径：player 在
+        // `if not onlyAllies` 分支纳入）。随从侧的 ExtraAura 消费属后续（本 build 集随从
+        // 不参与玩家 DPS，包装即修复玩家虚高）。
+        if self.new_aura && self.new_aura_only_allies && !mods.is_empty() {
+            return mods
+                .into_iter()
+                .map(|inner| {
+                    let mut wrapper = Modifier::new(
+                        "ExtraAura",
+                        ModType::List,
+                        ModValue::NestedMods(vec![inner.clone()]),
+                    );
+                    if let Some(src) = &inner.source {
+                        wrapper = wrapper.with_source(src.clone());
+                    }
+                    wrapper
+                })
+                .collect();
+        }
         if self.add_to_minion && !mods.is_empty() {
             return mods
                 .into_iter()
@@ -452,7 +483,10 @@ fn normalize_pobr_name(
             (ModFlags::CROSSBOW, "CrossbowDamage"),
             (ModFlags::BOW, "BowDamage"),
             (ModFlags::MACE, "MaceDamage"),
-            (ModFlags::WARSTAFF, "QuarterstaffDamage"),
+            // PoE2 长杖位 = `Staff`（0x200000），非 `Warstaff`——与下方 WEAPON_COND
+            // 同口径修正（此前用 WARSTAFF 永不命中 Staff-flag 长杖词条，QuarterstaffDamage
+            // 不可达；改 STAFF 后与 legacy 专名映射对齐）。
+            (ModFlags::STAFF, "QuarterstaffDamage"),
         ];
         if flags.intersects(ModFlags::SPELL) {
             out_name = "SpellDamage".to_string();
@@ -490,14 +524,36 @@ fn normalize_pobr_name(
     // C3 武器作用域在非伤害名（Speed/Crit 等）上：legacy 转 `Condition(UsingX)` +
     // 清 HIT 位（保留武器位）。伤害名已由上面专名分支吸收，不进此分支。
     if !out_name.ends_with("Damage") && !out_name.starts_with("Damage") {
+        // 组合武器类别（Weapon1H/2H + WeaponMelee）→ `UsingOneHandedMelee` /
+        // `UsingTwoHandedMelee`（vendor `with one handed melee weapons` = Weapon1H|
+        // WeaponMelee|Hit）。按**全位子集**判定且**先于**单类型——避免纯
+        // `with melee weapons`（仅 WeaponMelee）被误判为单/双手 melee。`|` 非 const → let。
+        let weapon_combo_cond: [(ModFlags, &str); 2] = [
+            (
+                ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
+                "UsingOneHandedMelee",
+            ),
+            (
+                ModFlags::WEAPON_2H | ModFlags::WEAPON_MELEE,
+                "UsingTwoHandedMelee",
+            ),
+        ];
+        // 单武器类型 → `Using<Type>`。PoE2 长杖（Quarterstaff）的位 = `Staff`（0x200000），
+        // 旧表错用 `WARSTAFF`（0x20000000）→ 长杖攻速/暴击类全局词条漏挂条件、漏匹配。
         const WEAPON_COND: &[(ModFlags, &str)] = &[
             (ModFlags::SPEAR, "UsingSpear"),
             (ModFlags::CROSSBOW, "UsingCrossbow"),
             (ModFlags::BOW, "UsingBow"),
             (ModFlags::MACE, "UsingMace"),
-            (ModFlags::WARSTAFF, "UsingQuarterstaff"),
+            (ModFlags::STAFF, "UsingQuarterstaff"),
         ];
-        if let Some((_, cond)) = WEAPON_COND.iter().find(|(b, _)| out_flags.intersects(*b)) {
+        if let Some((_, cond)) = weapon_combo_cond
+            .iter()
+            .find(|(b, _)| b.is_subset_of(out_flags))
+        {
+            extra_conditions.push(cond);
+            out_flags = out_flags.without(ModFlags::HIT);
+        } else if let Some((_, cond)) = WEAPON_COND.iter().find(|(b, _)| out_flags.intersects(*b)) {
             extra_conditions.push(cond);
             out_flags = out_flags.without(ModFlags::HIT);
         }

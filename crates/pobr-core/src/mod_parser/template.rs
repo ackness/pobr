@@ -109,19 +109,25 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
         "Multiplier" => {
             let var = f.get("var").and_then(|v| field_text(v, captures))?;
             let var = normalize_perstat_slot_suffix(&var);
+            let var = normalize_attribute_var(&var);
             let div = f
                 .get("div")
                 .and_then(|v| field_number(v, captures))
                 .unwrap_or(1.0);
             let limit = f.get("limit").and_then(|v| field_number(v, captures));
             let actor = f.get("actor").and_then(|v| field_text(v, captures));
+            // 动态上限通道（vendor `tag.limitVar`/`limitActor`，如 "for every different
+            // grenade fired" → `Multiplier{var=DifferentGrenadeFired, limitVar=GrenadeTypes}`）。
+            // 此前硬编码 `None` → JSON 里的 limitVar 被静默丢弃，乘数不按已装类型数封顶。
+            let limit_var = f.get("limitVar").and_then(|v| field_text(v, captures));
+            let limit_actor = f.get("limitActor").and_then(|v| field_text(v, captures));
             Some(ModTag::Multiplier {
                 var,
                 div,
                 limit,
                 actor: parse_actor(actor.as_deref()),
-                limit_var: None,
-                limit_actor: None,
+                limit_var,
+                limit_actor: parse_actor(limit_actor.as_deref()),
                 invert: false,
                 limit_total: f.get("limitTotal").and_then(field_bool).unwrap_or(false),
             })
@@ -185,6 +191,7 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 .or_else(|| f.get("var"))
                 .and_then(|v| field_text(v, captures))?;
             let stat = normalize_perstat_slot_suffix(&stat);
+            let stat = normalize_attribute_var(&stat);
             let div = f
                 .get("div")
                 .and_then(|v| field_number(v, captures))
@@ -273,6 +280,22 @@ fn normalize_perstat_slot_suffix(var: &str) -> String {
     }
 }
 
+/// vendor 短属性名（`Str`/`Dex`/`Int`）→ PoBR 全名（`Strength`/`Dexterity`/
+/// `Intelligence`）。PerStat/Multiplier 的属性缩放 var 须用全名——编排层
+/// `set_multiplier("Strength"/"Dexterity"/"Intelligence", …)` 与 legacy 都用全名，
+/// 短名 var 查不到 multiplier → 静默 0 贡献（per-attr 缩放失效）。
+/// 闭集，仅属性三连；其余 var（`AxeItem`/`SummonedMinion`/`Rage`/`PowerCharge`/
+/// `Spirit`…）原样返回（与 `stat_map_engine.rs` 同口径 / `vendor_name_aliases.json`）。
+fn normalize_attribute_var(var: &str) -> String {
+    match var {
+        "Str" => "Strength",
+        "Dex" => "Dexterity",
+        "Int" => "Intelligence",
+        other => other,
+    }
+    .to_string()
+}
+
 /// vendor `ActorCondition{actor=enemy}` 的 var 归一为 PoBR 扁平条件 var（与 legacy + 编排层 cfg 键空间一致）。默认加 `Enemy` 前缀（`Ignited`→`EnemyIgnited`，对齐 legacy 后缀表 + orchestrator `conditionEnemy<X>`→`Enemy<X>`）。
 /// 两类例外原样返回：已含 `Enemy` 前缀（`EnemyInPresence`）避免双前缀；敌人稀有度（`Rare`/`Unique`/`RareOrUnique`/`Normal`/`Magic`）legacy 用裸名。
 fn normalize_enemy_cond_var(var: &str) -> String {
@@ -322,6 +345,14 @@ pub fn flag_bit(name: &str) -> Option<ModFlags> {
         "Projectile" => ModFlags::PROJECTILE,
         "Ailment" => ModFlags::AILMENT,
         "Weapon" => ModFlags::WEAPON,
+        // 武器**类别**位（vendor `ModFlag.Weapon1H`/`Weapon2H`/`WeaponMelee`/
+        // `WeaponRanged`，Data/Global.lua）。`weapon_type_bit` 只认武器**类型**名
+        // （Axe/Bow/Staff…），不含这些类别名——缺则 `with one handed (melee) weapons`
+        // 等短语的 Weapon1H/WeaponMelee 位被静默丢弃（只剩 Hit）。
+        "Weapon1H" => ModFlags::WEAPON_1H,
+        "Weapon2H" => ModFlags::WEAPON_2H,
+        "WeaponMelee" => ModFlags::WEAPON_MELEE,
+        "WeaponRanged" => ModFlags::WEAPON_RANGED,
         "Thorns" => ModFlags::THORNS,
         other => return ModFlags::weapon_type_bit(other),
     })

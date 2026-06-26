@@ -1593,6 +1593,21 @@
       "verified": false,
       "batch": "S0",
       "source_note": "pobr 准源 mod_parser.rs:490-506；vendor 无数值形同 key（仅 lucky 系 :3730-3732）"
+    },
+    {
+      "id": "bonded_modifiers_enabler",
+      "pattern": "gain the benefits of bonded modifiers on runes and idols",
+      "vendor_pattern": "gain the benefits of bonded modifiers on runes and idols",
+      "mods": [
+        {
+          "name": "Condition:CanUseBondedModifiers",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "M6-3b",
+      "source_note": "ModParser.lua:3418-3419（Druid Oracle specialModList 整行；flag(Condition:CanUseBondedModifiers) 解锁 'Bonded:' 前缀词条，vendor :1437）"
     }
   ]
 }
