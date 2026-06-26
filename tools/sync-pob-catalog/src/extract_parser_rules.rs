@@ -466,6 +466,19 @@ const AGGREGATE_EXPANSION: &[(&str, &[&str])] = &[
         "all elemental resistances",
         &["FireResistance", "ColdResistance", "LightningResistance"],
     ),
+    // vendor `["all resistances"] = { "ElementalResist", "ChaosResist" }`（ModParser.lua:288）。
+    // PoBR 玩家侧抗性 calc 只读离散 `FireResistance`/`ColdResistance`/`LightningResistance`
+    // （+ChaosResistance），不识别聚合名 `ElementalResist`（仅敌侧消费）→ 不展开则元素
+    // 抗部分静默丢弃。含混沌：vendor 的 `ChaosResist` → PoBR `ChaosResistance`。
+    (
+        "all resistances",
+        &[
+            "FireResistance",
+            "ColdResistance",
+            "LightningResistance",
+            "ChaosResistance",
+        ],
+    ),
     ("all attributes", &["Strength", "Dexterity", "Intelligence"]),
     ("attributes", &["Strength", "Dexterity", "Intelligence"]),
     ("strength and intelligence", &["Strength", "Intelligence"]),

@@ -490,14 +490,36 @@ fn normalize_pobr_name(
     // C3 武器作用域在非伤害名（Speed/Crit 等）上：legacy 转 `Condition(UsingX)` +
     // 清 HIT 位（保留武器位）。伤害名已由上面专名分支吸收，不进此分支。
     if !out_name.ends_with("Damage") && !out_name.starts_with("Damage") {
+        // 组合武器类别（Weapon1H/2H + WeaponMelee）→ `UsingOneHandedMelee` /
+        // `UsingTwoHandedMelee`（vendor `with one handed melee weapons` = Weapon1H|
+        // WeaponMelee|Hit）。按**全位子集**判定且**先于**单类型——避免纯
+        // `with melee weapons`（仅 WeaponMelee）被误判为单/双手 melee。`|` 非 const → let。
+        let weapon_combo_cond: [(ModFlags, &str); 2] = [
+            (
+                ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
+                "UsingOneHandedMelee",
+            ),
+            (
+                ModFlags::WEAPON_2H | ModFlags::WEAPON_MELEE,
+                "UsingTwoHandedMelee",
+            ),
+        ];
+        // 单武器类型 → `Using<Type>`。PoE2 长杖（Quarterstaff）的位 = `Staff`（0x200000），
+        // 旧表错用 `WARSTAFF`（0x20000000）→ 长杖攻速/暴击类全局词条漏挂条件、漏匹配。
         const WEAPON_COND: &[(ModFlags, &str)] = &[
             (ModFlags::SPEAR, "UsingSpear"),
             (ModFlags::CROSSBOW, "UsingCrossbow"),
             (ModFlags::BOW, "UsingBow"),
             (ModFlags::MACE, "UsingMace"),
-            (ModFlags::WARSTAFF, "UsingQuarterstaff"),
+            (ModFlags::STAFF, "UsingQuarterstaff"),
         ];
-        if let Some((_, cond)) = WEAPON_COND.iter().find(|(b, _)| out_flags.intersects(*b)) {
+        if let Some((_, cond)) = weapon_combo_cond
+            .iter()
+            .find(|(b, _)| b.is_subset_of(out_flags))
+        {
+            extra_conditions.push(cond);
+            out_flags = out_flags.without(ModFlags::HIT);
+        } else if let Some((_, cond)) = WEAPON_COND.iter().find(|(b, _)| out_flags.intersects(*b)) {
             extra_conditions.push(cond);
             out_flags = out_flags.without(ModFlags::HIT);
         }
