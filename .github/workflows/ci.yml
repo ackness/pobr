@@ -1,0 +1,62 @@
+name: CI
+
+# Gate per CLAUDE.md: fmt + clippy + test. Runs on every PR to master and on
+# pushes to master (so the default branch is always validated post-merge).
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Cancel superseded runs for the same ref (e.g. force-push to a PR branch).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      # Warnings are failures, matching the local merge gate.
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      # luajit lets the fixture-based extract-lua tooling tests run instead of
+      # self-skipping. Tests that need the gitignored vendor PoB2 checkout still
+      # skip gracefully (it is not present in CI) — see CLAUDE.md "Parity 体系".
+      - name: Install luajit
+        run: sudo apt-get update && sudo apt-get install -y luajit
+      - name: Test (nextest)
+        run: cargo nextest run --workspace
+      # nextest does not run doctests; cover them separately.
+      - name: Doctests
+        run: cargo test --workspace --doc
