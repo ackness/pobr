@@ -1,0 +1,63 @@
+name: CI
+
+# Gate per CLAUDE.md: fmt + clippy + test.
+#
+# Trigger strategy (cost-optimized for a private repo): CI does NOT run on every
+# push/PR. It runs only on:
+#   - a pushed version tag (v0.0.1, v1.2.3, ...) — i.e. on release;
+#   - a manual dispatch (Actions tab "Run workflow", or `gh workflow run ci.yml`),
+#     to validate a branch on demand.
+# Day-to-day commits cost nothing; you pay only when releasing or when you ask.
+#
+# Single sequential job: GitHub bills per job rounded up to the minute, so one
+# job = one rounding. Cheapest checks run first, so a fmt/clippy failure exits
+# before the ~4-min test compile.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# Cancel superseded runs for the same ref (e.g. re-dispatch on the same branch).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  ci:
+    name: fmt + clippy + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      # Best-effort dependency cache. With tag/manual-only triggers runs are
+      # infrequent, so a cache often evicts (7-day idle) before reuse — that is
+      # expected; a release run starting cold is fine.
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      # Cheapest first — fail fast before the expensive test compile.
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # luajit lets the fixture-based extract-lua tooling tests run instead of
+      # self-skipping. Tests that need the gitignored vendor PoB2 checkout still
+      # skip gracefully in CI by design (see CLAUDE.md "Parity 体系"). Installed
+      # after clippy so a lint failure skips it too.
+      - name: Install luajit
+        run: sudo apt-get update && sudo apt-get install -y luajit
+      - name: Test (nextest)
+        run: cargo nextest run --workspace
+      # nextest does not run doctests; cover them separately.
+      - name: Doctests
+        run: cargo test --workspace --doc
