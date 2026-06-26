@@ -26,7 +26,8 @@ VENDOR_REPO="https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2.git"
 say() { printf '\n\033[1m== %s ==\033[0m\n' "$*"; }
 
 vendor_commit() {
-  python3 -c "import json;print(json.load(open('$RULES'))['_meta']['vendor_commit'])" 2>/dev/null
+  # 路径经 argv（sys.argv[1]）传入，不插值进脚本串——避免 $RULES 含引号时的注入面。
+  python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['_meta']['vendor_commit'])" "$RULES" 2>/dev/null
 }
 
 cmd_deps() {

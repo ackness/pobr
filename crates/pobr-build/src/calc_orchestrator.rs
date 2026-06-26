@@ -574,7 +574,7 @@ pub fn calculate_with_data(
     if let Some(special_rules) = &data.special_rules {
         session.set_special_rules(special_rules.clone(), Some(data.special_registry.clone()));
     }
-    // M6 D-T8 A2 切换：数据驱动 ModParser 引擎规则注入（parser-engine feature）。
+    // M6 D-T8 A2 切换：数据驱动 ModParser 引擎规则注入。
     // 须在下方 add_item/add_passive_nodes/add_gem 之前——注入后 `parse_ctx` 优先走
     // 数据驱动 scan 引擎（终局路径），优先于 legacy special。缺 parser_rules
     // （旧数据包）= 不注入（ingest 回退 legacy/special，逐值不变；C1 DIFF=0 gate

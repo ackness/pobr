@@ -546,7 +546,7 @@ pub fn ingest_active_gem(spec: &ActiveSkillSpec) -> Result<GemIngest, ParseError
 }
 
 /// [`ingest_active_gem`] 的解析上下文穿线版（M6 D-T8 A2）：词条解析走 `ctx`
-/// （注入 parser-engine 规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_active_gem`]）。
+/// （注入引擎规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_active_gem`]）。
 pub fn ingest_active_gem_with_ctx(
     spec: &ActiveSkillSpec,
     ctx: crate::mod_parser::ParseCtx<'_>,
@@ -640,7 +640,7 @@ pub fn ingest_support_gem(
 }
 
 /// [`ingest_support_gem`] 的解析上下文穿线版（M6 D-T8 A2）：词条解析走 `ctx`
-/// （注入 parser-engine 规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_support_gem`]）。
+/// （注入引擎规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_support_gem`]）。
 pub fn ingest_support_gem_with_ctx(
     spec: &SupportGemSpec,
     active_skill_types: &HashSet<String>,

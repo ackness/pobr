@@ -6,7 +6,7 @@
 //! 超集；NEW_ONLY 增益不阻塞）。
 //!
 //! 本 track 只达成 diff=0 形态对齐、绝不切换调用方；§2.4 的预期语义差异逐项
-//! 在报告 m6-dualrun-report.md 登记/处置。`parser-engine` feature 下编译。
+//! 在报告 m6-dualrun-report.md 登记/处置。
 //!
 //! 运行：`cargo test -p pobr-core --test parser`（引擎已无条件编译）。
 
@@ -386,9 +386,8 @@ fn dual_run_report() {
 /// 不在解析范围）。
 ///
 /// 本门禁断言新引擎是旧引擎能力的**逐字节形态超集**（剔 origin、source 不参与）：
-/// C1 18-build 语料无 DIFF、无 OLD_ONLY。引擎仍未接调用方（`parser-engine` 默认关、
-/// 五个调用方零改动）——行为中性、parity 零回归；切换（默认开 + 调用方注入 + 删
-/// legacy）是 D-T8 第二波 2b 的范围。
+/// C1 18-build 语料无 DIFF、无 OLD_ONLY。该等价性是「引擎接管 calc 主路径」的前提
+/// （现已落地：编排层恒注入引擎规则，legacy 仅作回退）——切换全程 parity 零回归。
 #[test]
 fn c1_diff_zero_gate() {
     let rules = load_rules();

@@ -72,8 +72,7 @@ pub struct CalculationSession {
     /// `None` = 历史 legacy 行为（逐值不变）。引擎对语料 + fixture 与 legacy 逐
     /// 字节一致（C1 DIFF=0 gate），故注入与否 parity 零变动。
     ///
-    /// 由编排层（pobr-build orchestrator）经 [`set_parser_rules`] 恒注入；仅在
-    /// `parser-engine` feature 下可用。
+    /// 由编排层（pobr-build orchestrator）经 [`set_parser_rules`] 恒注入。
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`set_parser_rules`]: CalculationSession::set_parser_rules
@@ -121,7 +120,7 @@ impl CalculationSession {
     /// 后调用本 setter；session/ingest 链由此恒取到 `&CompiledParserRules`。
     ///
     /// 不调用时 ingest 行为与历史 `parse_mod` 逐值相等（引擎 == legacy，C1 DIFF=0
-    /// gate）。仅在 `parser-engine` feature 下可用。
+    /// gate）。
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`CompiledParserRules::special`]: crate::mod_parser::CompiledParserRules
@@ -130,7 +129,7 @@ impl CalculationSession {
     }
 
     /// 当前 ingest 用的解析上下文。优先级：
-    /// 1. 数据驱动 parser 引擎规则（A2，`parser-engine` feature 下注入）→ engine 路径；
+    /// 1. 数据驱动 parser 引擎规则（A2，编排层恒注入）→ engine 路径；
     /// 2. legacy special 规则（M5b）→ legacy special 路径；
     /// 3. 皆未注入 → 空上下文（历史 `parse_mod` 行为，逐值不变）。
     fn parse_ctx(&self) -> ParseCtx<'_> {
@@ -187,8 +186,8 @@ impl CalculationSession {
         &mut self,
         texts: impl IntoIterator<Item = impl AsRef<str>>,
     ) -> Result<(), ParseError> {
-        // A2 穿线：经 `parse_ctx` 走引擎/special/legacy 三态分发（注入 parser-engine
-        // 规则时走数据驱动引擎，否则与历史 `parse_mod` 逐值相等）。`parse_ctx` 不可变
+        // A2 穿线：经 `parse_ctx` 走引擎/special/legacy 三态分发（注入引擎规则时走
+        // 数据驱动引擎，否则与历史 `parse_mod` 逐值相等）。`parse_ctx` 不可变
         // 借 self，与下游 `self.env` 可变写入冲突——先收集 outcome 再消费。
         let mut outcomes = Vec::new();
         {
