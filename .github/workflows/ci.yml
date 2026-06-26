@@ -37,6 +37,11 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          # Only master writes the cache; PRs restore it read-only. Keeps cache
+          # storage lean (no per-PR-branch copies churning the 10 GB repo limit)
+          # and skips the save step on PRs. PRs still restore master's warm cache.
+          save-if: ${{ github.ref == 'refs/heads/master' }}
       # Warnings are failures, matching the local merge gate.
       - run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -47,6 +52,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          # See clippy job: master produces the cache, PRs consume it read-only.
+          save-if: ${{ github.ref == 'refs/heads/master' }}
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
