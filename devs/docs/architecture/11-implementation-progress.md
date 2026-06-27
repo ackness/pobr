@@ -1,5 +1,16 @@
 # 实现进度同步
 
+> ⚠️ **本文档已过时（OUTDATED），请勿据此判断实现状态。**
+>
+> 本文件自标注于 2026-06-04，描述的是「最小计算闭环」阶段。引擎此后已大幅推进：
+> 完整 DPS / 防御 / 异常（ailment）/ buff 管线均已落地，并有 parity 回归门禁守护。
+> 文中标记为 TODO 的若干项（如 SkillUseTime、伤害转换 parser、辅助宝石法力乘数等）
+> **实际均已实现**。
+>
+> **权威实现状态以以下为准**：① 源码本身；② `14-remaining-work-recheck.md`；
+> ③ parity 门禁（`cargo test -p pobr-build --test parity`，`parity_no_regression` 用例）。
+> 本文件保留作历史快照，不再逐行维护。
+
 ---
 
 ## 0. 维护规则

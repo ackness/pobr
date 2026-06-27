@@ -104,9 +104,11 @@ pobr/
 │       └── src/lib.rs
 │
 ├── tools/
-│   ├── export-poe-data/          # 数据导出/转换工具
-│   ├── gen-mod-cache/            # Modifier cache 生成与回归检查
-│   └── lint-i18n/                # 语言包完整性检查
+│   ├── pobr-data-adapter/        # GGG .dat 导出 → 入库最小 JSON 适配器
+│   ├── sync-pob-catalog/         # PoB Lua 属性 catalog 抽取 / parity 检查 / overlay 生成
+│   ├── precompile-mods/          # M6 mod-parser 规则离线预编译 + 覆盖率报表
+│   ├── lint-i18n/                # 语言包完整性检查
+│   └── pob2-oracle/              # 非 workspace 成员：PoB2 headless 计算分解 dump（Lua）
 │
 ├── fixtures/
 │   ├── pob-codes/

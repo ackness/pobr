@@ -34,7 +34,7 @@ cargo nextest run -p pobr-core -E 'test(sum_traced)'   # 单个用例（filterse
 cargo bench -p pobr-core --bench mod_db_bench          # ModDB 热查询基准（criterion）
 
 # PoB2 parity 仪表盘：逐 build 打印 PoBR vs PoB2 对照 + 聚合命中率
-cargo test -p pobr-build --test ninja_parity -- --nocapture
+cargo test -p pobr-build --test parity -- --nocapture
 # 其中 parity_no_regression 用例是回归门禁（命中率不得低于已记录基线）
 
 # CLI（apps/pobr-cli，二进制名 pobr）
@@ -57,7 +57,7 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 
 ## Workspace 结构
 
-`devs/docs/architecture/`（00–15 共 16 篇）描述目标架构与路线图；当前实现进度见 `11-implementation-progress.md`。14 个 member 中，除 `pobr-item` 外均已落地实现：
+`devs/docs/architecture/`（00–15 共 16 篇）描述目标架构与路线图；当前实现进度以代码 + `14-remaining-work-recheck.md` + parity 门禁为准（`11-implementation-progress.md` 已过时，见其顶部声明）。15 个 member 均已落地实现：
 
 | Crate | 职责 | 依赖 |
 |-------|------|------|
@@ -67,14 +67,15 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 | `crates/pobr-i18n` | 语言包加载 / fallback / 显示文本映射；`en-US`（canonical）+ `zh-TW`，locale toml 经 `include_str!` 内嵌 | `pobr-data` + `toml` |
 | `crates/pobr-tree` | 天赋树拓扑、allocated node mod 收集、范围珠宝（first pass） | `pobr-data` |
 | `crates/pobr-build` | Build 状态、PoB Build Code 编解码（XML ↔ zlib ↔ URL-safe Base64，padding 容错）、导入识别、`CalcOrchestrator`（带缓存）、Build 对比。**parity 测试的主战场**（见下） | `pobr-data`/`pobr-core`/`pobr-tree`/`pobr-item` + `quick-xml`/`base64`/`flate2` |
-| `crates/pobr-trade` | Trade 查询/价格抽象：`TradeBackend` trait + 离线 `MockBackend`（测试不联网） | `pobr-data` |
-| `crates/pobr-item` | **占位骨架（仍未实现）**——raw item 文本解析当前由 `pobr-core::item_text` + `item::ingest_item` 承担；本 crate 的职责边界（custom item 编辑态）待厘清 | `pobr-data` + `pobr-core` |
+| `crates/pobr-trade` | Trade 查询/价格抽象：`TradeBackend` trait + 离线 `MockBackend`（测试不联网） | 独立叶子，自带类型（`query`/`types`），无项目内 crate 依赖；接真实后端时应桥接到 `pobr-data` 的 item/stat ID |
+| `crates/pobr-item` | raw item 文本的**全保真编辑态**解析 + 逆向序列化（P16，`draft.rs`/`annotations.rs`/`build_raw.rs`，~1039 行）。职责边界清晰：**calc 视图**（剥标注 / variant 门控 / range 取值后喂引擎）由 `pobr-core::item_text` + `item::ingest_item` 承担；**编辑态视图**（保留 calc 刻意丢弃的 variant 名列表 / 行级标注 / 未建模标注，支持 BuildRaw 往返）由本 crate 的 `ItemDraft` 承担。复用 `pobr-core::mod_parser` 解析 modifier，避免规则重复 | `pobr-data` + `pobr-core` |
 | `apps/pobr-cli` | CLI：`calculate` / `parse-mod` / `decode-code` / `encode-code`（命令逻辑在 lib，便于测试） | `pobr-build`/`pobr-core`/`pobr-i18n` |
 | `apps/pobr-wasm` | Web/WASM API：默认 features 纯 Rust JSON 入出，`wasm` feature 下 wasm-bindgen 绑定 | 同上 |
 | `apps/pobr-desktop` | 桌面入口最小骨架（headless 不验证 GUI） | 同上 |
-| `tools/pobr-data-adapter` | 数据管线适配器——GGG `.dat` 导出 → 解析外键、反范式化为入库最小 JSON 落到 `data/<poe_version>/`。必需列缺失 fail-fast；产物 `_meta.regen_command` 记录再生成命令 | `pobr-data` + `serde_json` |
+| `tools/pobr-data-adapter` | 数据管线适配器——GGG `.dat` 导出 → 解析外键、反范式化为入库最小 JSON 落到 `data/<poe_version>/`。缺列默认告警降级（不中止，serde 按 `Option`/`default` 兜底），`--strict-columns` 才致命；产物 `_meta.regen_command` 记录再生成命令 | `pobr-data` + `serde_json` |
 | `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、parity 检查/diff、vendor Lua → overlay JSON | `pobr-data` + `regex`/`serde_json` |
 | `tools/lint-i18n` | 语言包完整性检查（非 canonical 语言不得有 en-US 之外的多余 key） | `pobr-i18n` |
+| `tools/precompile-mods` | M6 mod-parser 规则离线预编译 / codegen 工具：把四层语料（build XML / passive_tree / special_derived / `--corpus-extra`）去重后逐行过 `pobr-core::parse_mod` 预解析，产出 `data/<version>/generated/parsed_mods.json` + 覆盖率报表（运行时懒加载为 `text→Vec<Modifier>` 缓存，热路径零解析） | `pobr-data` + `pobr-core` + `pobr-gamedata` |
 | `tools/pob2-oracle` | **非 workspace 成员**（纯 Lua wrapper）：把 vendored PoB2 引导成 headless，加载 build 并 dump Lua 侧完整计算分解（中间值+最终值）为 JSON，用于钉死逐分量偏差。不修改 vendor 源 | luajit |
 
 依赖方向只能向下，`pobr-data` 是最底层、不依赖任何项目内 crate。计算核心保持纯函数 + 确定性，不引入共享可变状态。
