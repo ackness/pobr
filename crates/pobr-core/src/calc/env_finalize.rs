@@ -69,10 +69,11 @@ pub fn merge_keystones(env: &mut Env) {
 ///   转发后 inner 仍可回溯到原来源（归因穿透）。
 /// - :487-498 `actor.appliedEnemyModifiers` 实例缓存（调用点 :762 / :1107-1111 多次
 ///   触发，已转发 mod 不重复注入；值相等的不同实例各自保留）。pobr 单 perform 内的
-///   无状态等价：enemy db 现存 modifier 指纹**多重集**——候选先抵扣同指纹存量，剩余
-///   才注入，重复调用幂等且不吞值相等的多来源条目。指纹 = 来源回退后 inner 的
-///   `Debug` 序列化（含 name/type/value/tags/flags/source/origin 全字段；与 enemy db
-///   原生注入碰撞需全字段相同，setup_env 系来源串 `enemy <id>` 与词条原文不可能同串）。
+///   无状态等价：enemy db 现存 modifier 身份**多重集**——候选先抵扣同身份存量，剩余
+///   才注入，重复调用幂等且不吞值相等的多来源条目。身份 = 来源回退后 inner 的全字段
+///   等价（[`DedupSeed`] 语义 scalar 分桶 + 桶内 `Modifier` 派生 `PartialEq` 裁定，含
+///   name/type/value/tags/flags/source/origin；与 enemy db 原生注入碰撞需全字段相同，
+///   setup_env 系来源串 `enemy <id>` 与词条原文不可能同串）。
 ///
 /// 空转兼容：无 `EnemyModifier` 条目时不写任何状态（D1 搬迁不变式锚点）。inner 一律带
 /// `Condition:Effective`（解析层附加），面板口径（`mode_effective == false`）聚合不命中
@@ -80,10 +81,16 @@ pub fn merge_keystones(env: &mut Env) {
 pub fn forward_enemy_modifiers(env: &mut Env) {
     let enemy_modifier = ModName::from("EnemyModifier");
 
-    // enemy db 现存指纹多重集（幂等抵扣基底）。
-    let mut existing: HashMap<String, usize> = HashMap::new();
+    // enemy db 现存「桶键 → (代表 mod, 余量)」多重集（幂等抵扣基底）。桶键 = 语义
+    // scalar（见 [`DedupSeed`]）；桶内最终身份由 `Modifier` 派生 `PartialEq`（含
+    // tags/origin 全字段）裁定，等价旧 Debug 全字段指纹但不耦合 Debug 文本。
+    let mut existing: HashMap<DedupSeed, Vec<(Modifier, usize)>> = HashMap::new();
     for m in env.enemy.mod_db.iter_mods() {
-        *existing.entry(fingerprint(m)).or_insert(0) += 1;
+        let bucket = existing.entry(dedup_seed(m)).or_default();
+        match bucket.iter_mut().find(|(rep, _)| *rep == *m) {
+            Some(entry) => entry.1 += 1,
+            None => bucket.push((m.clone(), 1)),
+        }
     }
 
     // 先只读收集（player + minions），再统一写 enemy（借用分离 + 确定性顺序）。
@@ -110,9 +117,19 @@ pub fn forward_enemy_modifiers(env: &mut Env) {
                 if fwd.origin.is_none() {
                     fwd.origin = outer.origin.clone();
                 }
-                match existing.get_mut(&fingerprint(&fwd)) {
-                    Some(count) if *count > 0 => *count -= 1, // 已转发（幂等抵扣）。
-                    _ => forwarded.push(fwd),
+                // 幂等抵扣：桶内存在同身份（PartialEq）且仍有余量的代表 → 抵扣，
+                // 不重复注入；否则视为新条目转发。
+                let abated = existing
+                    .get_mut(&dedup_seed(&fwd))
+                    .and_then(|bucket| {
+                        bucket
+                            .iter_mut()
+                            .find(|(rep, count)| *count > 0 && *rep == fwd)
+                    })
+                    .map(|entry| entry.1 -= 1)
+                    .is_some();
+                if !abated {
+                    forwarded.push(fwd);
                 }
             }
         }
@@ -122,10 +139,50 @@ pub fn forward_enemy_modifiers(env: &mut Env) {
     }
 }
 
-/// 转发去重指纹：mod 全字段身份（vendor 实例缓存的值域等价，见
-/// [`forward_enemy_modifiers`] 文档）。
-fn fingerprint(m: &Modifier) -> String {
-    format!("{m:?}")
+/// 转发去重的「桶键」（见 [`forward_enemy_modifiers`] 文档）。
+///
+/// 替代旧 `format!("{m:?}")`：旧实现把 dedup 行为耦合到 `Modifier` 的**非契约**
+/// `Debug` 文本，并在 forwarding 热路径上每条 mod 堆分配一个完整 Debug String。
+/// 这里改为按语义 scalar 字段构造 `Hash+Eq` 桶键；桶内最终身份由 `Modifier` 自身的
+/// 派生 `PartialEq`（含 tags/origin 全字段）裁定——既不在 `Modifier` 上铺设全局
+/// `Hash/Eq`（f64 + 语义过宽），又对未来新增字段保持健壮（身份判定始终走派生
+/// `PartialEq`，不会因手写镜像漏字段而静默错配）。`name`/`mod_type`/`value`(f64→bits)/
+/// `source`/`flags`/`keyword_flags` 仅作分桶，碰撞由桶内 `PartialEq` 兜底。
+#[derive(PartialEq, Eq, Hash)]
+struct DedupSeed {
+    name: ModName,
+    mod_type: ModType,
+    value: ValueSeed,
+    source: Option<String>,
+    flags: u64,
+    keyword_flags: u64,
+}
+
+/// [`DedupSeed`] 的 value 分桶投影：f64 取 `to_bits`（精确分桶，规避 f64 非 `Eq`）；
+/// 嵌套载荷不进键（forwarding 路径几乎不出现），统一落同一桶交 `PartialEq` 裁定。
+#[derive(PartialEq, Eq, Hash)]
+enum ValueSeed {
+    Number(u64),
+    Bool(bool),
+    Text(String),
+    Nested,
+}
+
+fn dedup_seed(m: &Modifier) -> DedupSeed {
+    let value = match &m.value {
+        crate::ModValue::Number(n) => ValueSeed::Number(n.to_bits()),
+        crate::ModValue::Bool(b) => ValueSeed::Bool(*b),
+        crate::ModValue::Text(t) => ValueSeed::Text(t.clone()),
+        crate::ModValue::NestedMods(_) => ValueSeed::Nested,
+    };
+    DedupSeed {
+        name: m.name.clone(),
+        mod_type: m.mod_type,
+        value,
+        source: m.source.clone(),
+        flags: m.flags.bits(),
+        keyword_flags: m.keyword_flags.bits(),
+    }
 }
 
 /// 阶段 3（M3-T4 D2）：flask/charm 词条合并——载荷 List mod 经 effect 乘区缩放后
@@ -230,7 +287,10 @@ pub fn merge_flasks_charms(env: &mut Env) {
     if carriers.is_empty() {
         return;
     }
-
+    // 确定性说明：charm 超 `charm_limit` 时「丢哪颗」按载荷插入序——所有 charm 载荷
+    // 同享 `charm_list` 这一个 ModName，落在 ModDb 的单个 Vec 桶内、按 ingest 槽位序
+    // 连续排列（不经 HashMap 跨桶序），故扣减顺序确定。见
+    // `charm_limit_caps_number_of_active_charms` 测试钉住此插入序语义。
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     // 取整精度规则（M4-I 去重：ScaleAddMod 原语的例外表；vendor ScaleAddList →
