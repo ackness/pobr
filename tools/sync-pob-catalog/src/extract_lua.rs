@@ -231,6 +231,8 @@ fn canonical_overlay_file(target: &str) -> Option<&'static str> {
         "skill-overrides" => "skill_overrides.json",
         "gem-quality" => "gem_quality_stats.json",
         "stat-map" => "skill_stat_map.json",
+        "stat-descriptions" => "stat_descriptions.json",
+        "stat-id-map" => "stat_id_map.json",
         "gem-effects" => "gem_effects.json",
         "stat-set-labels" => "stat_set_labels.json",
         "config-options" => "config_options.json",

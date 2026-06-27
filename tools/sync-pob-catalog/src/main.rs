@@ -22,15 +22,19 @@ use sync_pob_catalog::extract_minions::{
 };
 use sync_pob_catalog::extract_parser_rules::{diff_parser_rules, run_extract_parser_rules};
 use sync_pob_catalog::extract_quality::run_extract_gem_quality;
+use sync_pob_catalog::extract_stat_descriptions::{
+    DEFAULT_STAT_DESC_FILES, run_extract_stat_descriptions,
+};
 use sync_pob_catalog::extract_stat_map::run_extract_stat_map;
 use sync_pob_catalog::extract_stat_set_labels::run_extract_stat_set_labels;
+use sync_pob_catalog::gen_stat_id_map::run_gen_stat_id_map;
 use sync_pob_catalog::mirage_configs::run_gen_mirage_configs;
 use sync_pob_catalog::trigger_configs::run_gen_trigger_configs;
 use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|gem-effects|stat-set-labels|config-options|curse-priority|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-trigger-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|stat-descriptions|gem-effects|stat-set-labels|config-options|curse-priority|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-trigger-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-stat-id-map --overlay-dir <path> [--out <path>]\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -50,6 +54,7 @@ fn run() -> io::Result<()> {
         Some("check-buff-refs") => run_check_buff_refs_command(raw_args),
         Some("gen-mirage-configs") => run_gen_mirage_configs_command(raw_args),
         Some("gen-trigger-configs") => run_gen_trigger_configs_command(raw_args),
+        Some("gen-stat-id-map") => run_gen_stat_id_map_command(raw_args),
         Some("parser-rules-drift") => run_parser_rules_drift_command(raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
@@ -77,6 +82,8 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
     } else {
         match parsed.what.as_deref() {
             Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
+            // stat-descriptions：root + passive + presence/aura（M6 E/F tree 通道）
+            Some("stat-descriptions") => DEFAULT_STAT_DESC_FILES,
             Some("gem-effects") => &["Gems"],
             // config-options 恒读 Modules/ConfigOptions.lua（headless 引导，--files 仅占位）
             Some("config-options") => &["ConfigOptions"],
@@ -135,6 +142,7 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             None | Some("skill-overrides") => run_extract_lua(&extract_args)?,
             Some("gem-quality") => run_extract_gem_quality(&extract_args)?,
             Some("stat-map") => run_extract_stat_map(&extract_args)?,
+            Some("stat-descriptions") => run_extract_stat_descriptions(&extract_args)?,
             Some("gem-effects") => run_extract_gem_effects(&extract_args)?,
             Some("stat-set-labels") => run_extract_stat_set_labels(&extract_args)?,
             Some("config-options") => run_extract_config_options(&extract_args)?,
@@ -229,6 +237,48 @@ fn run_gen_trigger_configs_command(args: impl Iterator<Item = String>) -> io::Re
             }
             fs::write(&out, json)?;
             eprintln!("gen-trigger-configs: wrote {}", out.display());
+            Ok(())
+        }
+        None => {
+            print!("{json}");
+            Ok(())
+        }
+    }
+}
+
+// ---- gen-stat-id-map（M6 E/F 段 B）：消费两份 overlay，跑引擎派生 stat_id → modifier ----
+
+fn run_gen_stat_id_map_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
+    let mut overlay_dir = None;
+    let mut out = None;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--overlay-dir" => overlay_dir = args.next().map(PathBuf::from),
+            "--out" => out = args.next().map(PathBuf::from),
+            other => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("unknown argument: {other}\n{USAGE}"),
+                ));
+            }
+        }
+    }
+    let Some(overlay_dir) = overlay_dir else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("gen-stat-id-map 缺少 --overlay-dir <path>\n{USAGE}"),
+        ));
+    };
+    // _meta.regen_command 的 --out 归一化为 canonical 相对路径（与其他目标一致）。
+    let out_for_meta = canonical_out_for_meta(out.as_deref(), "stat-id-map", None);
+    let json = run_gen_stat_id_map(&overlay_dir, out_for_meta)?;
+    match out {
+        Some(out) => {
+            if let Some(parent) = out.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&out, json)?;
+            eprintln!("gen-stat-id-map: wrote {}", out.display());
             Ok(())
         }
         None => {

@@ -42,6 +42,11 @@ pub mod skill_overrides;
 // ---- M1-T2 SkillStatMap overlay schema（vendor Lua 抽取，skill_stat_map/v1）----
 pub mod stat_map;
 
+// ---- M6 E/F：StatDescriptions overlay schema（stat_id → canonical 文本第二通道）----
+pub mod stat_descriptions;
+// ---- M6 E/F 段 B：StatId→Modifier 映射表（stat_descriptions 经引擎解析固化）----
+pub mod stat_id_map;
+
 // ---- M2-D1 基底物品覆盖值 overlay schema（vendor Data/Bases 抽取：block/spirit）----
 pub mod base_item_overrides;
 

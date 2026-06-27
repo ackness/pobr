@@ -37,7 +37,7 @@ pub use dispatch::ParseCtx;
 // legacy 解析入口再导出——既有调用方路径不变（删 legacy 时收掉）。
 pub use legacy::{parse_minion_modifier, parse_mod, parse_mod_with_rules};
 
-pub use canonical::canonical_outcome;
+pub use canonical::{canonical_outcome, canonical_tags};
 pub use compiled::{CompileError, CompiledParserRules};
 pub use engine::parse_mod_engine;
 
