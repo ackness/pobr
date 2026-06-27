@@ -1,14 +1,31 @@
-//! Golden 回归 harness：以真实 PoB2 ninja build code 为输入，锁定当前计算输出的关键字段。
+//! 端对端管线烟雾测试 + 确定性守卫（**不是** PoB2 数值 parity）。
 //!
-//! 目标：防止未来重构/机制修改静默改变已有的计算结果。不要求与真实 PoB2 数值逐字对齐
-//! （那需要用同一 build 跑 PoB2 并对比，留后续）；只要求 PoBR 自身每次运行结果一致。
+//! 本套件以真实 PoB2 ninja build code 为输入，验证 `decode → Build → calc` 整条管线：
+//! 解码 build code → 解析 header → 构造 Build → 跑 CalcOrchestrator，全程不崩溃，
+//! 且同一输入两次调用结果逐字段一致（确定性）。
+//!
+//! 关键限制：`build_from_code` 只构造 `CharacterIdentity`（level / class / ascendancy），
+//! **不加载任何装备或天赋词条**。CalcOrchestrator 只聚合 `build.equipped_items()` 的词条，
+//! 此处 Build 无装备，故绝大多数输出落到 `OutputTable::default()` 的中性空 build 默认值
+//! （life / mana / 抗性 / dps = 0.0；taken_multi_* / enemy_crit_effect / crit_multiplier 等
+//! 维持中性 1.0 / 2.0）。下面命名为 `*_NEUTRAL_*` 的常量即这些默认值，**不是**真实 PoB2
+//! 黄金数值，不要当作数值 parity 基线读。（带 `_golden_` 的测试函数名同理：此处“golden”
+//! 指“快照/回归锁”，不指数值对齐。）
+//!
+//! 因此本套件实际守卫三件事：
+//! 1. 管线烟雾：编解码 + header 解析 + Build 构造 + CalcOrchestrator 端对端跑通；
+//! 2. 确定性：相同输入两次调用逐字段一致；
+//! 3. 注入词条 sanity：唯一会“算出非零结果”的断言来自显式注入的 `MinimalInput`
+//!    （如 base_life 500 + `"+1000 to maximum Life"` → life = 1500），验证词条确实进入计算。
+//!
+//! 真实 PoB2 逐字段数值 parity 由 `ninja_parity.rs` 等套件负责，不在此处。
 //!
 //! 容差规则：
 //! - 整数型字段（life / mana 等无小数的基础属性）：`delta.abs() < 0.5`（舍入容差）。
 //! - 浮点型字段（crit_chance / dps 等）：`relative < 1e-6`（相对误差百万分之一）。
 //!
-//! 首次建立基线：运行 `cargo test -p pobr-build -- golden` 并以输出的实际值更新
-//! `GOLDEN_*` 常量（或直接 `BLESS=1 cargo test …` 重新生成，见注释）。
+//! 若将来 `build_from_code` 改为加载装备/天赋词条，请把对应 `*_NEUTRAL_*` 常量替换为
+//! 真实期望值——届时本套件才升级为数值 parity。
 
 use pobr_build::{
     Build, CharacterIdentity, OrchestratorOptions, calculate, decode_pob_code, parse_build_header,
@@ -79,12 +96,13 @@ fn default_opts() -> OrchestratorOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Deadeye golden 基线
+// Deadeye 中性空 build 基线
 //
-// 基线使用全零 MinimalInput（无装备/天赋词条注入；calc_orchestrator 只收集
+// 使用全零 MinimalInput（无装备/天赋词条注入；CalcOrchestrator 只收集
 // build.equipped_items() 的词条，本测试 Build 无装备，故输出为基础默认值）。
 // 这样可稳定测试编解码 → Build 构造 → CalcOrchestrator 的端对端管线，
-// 同时不依赖外部数据文件。
+// 同时不依赖外部数据文件。这些是 OutputTable::default() 的中性默认值，
+// 不是真实 PoB2 黄金数值。
 //
 // 若将来添加装备/天赋词条注入，在此更新基线。
 // ---------------------------------------------------------------------------
@@ -95,13 +113,13 @@ const DEADEYE_EXPECTED_LEVEL: u32 = 98;
 /// Deadeye build 解码后的职业名期望值。
 const DEADEYE_EXPECTED_CLASS: &str = "Ranger";
 
-/// 空 Build（无装备）+ 空 MinimalInput → 计算基线：全零/默认防御。
-const DEADEYE_GOLDEN_LIFE: f64 = 0.0;
-const DEADEYE_GOLDEN_MANA: f64 = 0.0;
-const DEADEYE_GOLDEN_FIRE_RES: f64 = 0.0;
-const DEADEYE_GOLDEN_COLD_RES: f64 = 0.0;
-const DEADEYE_GOLDEN_LIGHTNING_RES: f64 = 0.0;
-const DEADEYE_GOLDEN_DPS: f64 = 0.0;
+/// 空 Build（无装备）+ 空 MinimalInput → 中性默认值：全零/默认防御。
+const DEADEYE_NEUTRAL_LIFE: f64 = 0.0;
+const DEADEYE_NEUTRAL_MANA: f64 = 0.0;
+const DEADEYE_NEUTRAL_FIRE_RES: f64 = 0.0;
+const DEADEYE_NEUTRAL_COLD_RES: f64 = 0.0;
+const DEADEYE_NEUTRAL_LIGHTNING_RES: f64 = 0.0;
+const DEADEYE_NEUTRAL_DPS: f64 = 0.0;
 
 // ---------------------------------------------------------------------------
 // 测试：Deadeye build 端对端 golden
@@ -136,24 +154,24 @@ fn deadeye_golden_calc_baseline() {
     let opts = default_opts();
     let out = calculate(&build, &opts).expect("calculate");
 
-    assert_near_int("life", DEADEYE_GOLDEN_LIFE, out.life);
-    assert_near_int("mana", DEADEYE_GOLDEN_MANA, out.mana);
+    assert_near_int("life", DEADEYE_NEUTRAL_LIFE, out.life);
+    assert_near_int("mana", DEADEYE_NEUTRAL_MANA, out.mana);
     assert_near_float(
         "fire_resistance",
-        DEADEYE_GOLDEN_FIRE_RES,
+        DEADEYE_NEUTRAL_FIRE_RES,
         out.fire_resistance,
     );
     assert_near_float(
         "cold_resistance",
-        DEADEYE_GOLDEN_COLD_RES,
+        DEADEYE_NEUTRAL_COLD_RES,
         out.cold_resistance,
     );
     assert_near_float(
         "lightning_resistance",
-        DEADEYE_GOLDEN_LIGHTNING_RES,
+        DEADEYE_NEUTRAL_LIGHTNING_RES,
         out.lightning_resistance,
     );
-    assert_near_float("dps", DEADEYE_GOLDEN_DPS, out.dps);
+    assert_near_float("dps", DEADEYE_NEUTRAL_DPS, out.dps);
 }
 
 #[test]
@@ -259,7 +277,7 @@ fn pipeline_smoke_test_both_fixtures() {
 ///
 /// 说明：crit_multiplier 基值 = 1 + PLAYER_BASE_CRIT_DAMAGE_BONUS/100 = 2.0（PoE2 口径）；
 /// 无额外增伤词条时维持 2.0。crit_chance 无词条 → 0.0（无暴击 base）。
-const DEADEYE_GOLDEN_CRIT_MULTIPLIER: f64 = 2.0;
+const DEADEYE_NEUTRAL_CRIT_MULTIPLIER: f64 = 2.0;
 
 #[test]
 fn deadeye_golden_wave1_crit_fields() {
@@ -271,7 +289,7 @@ fn deadeye_golden_wave1_crit_fields() {
     // 暴击加成：PoE2 基础值 2.0（PLAYER_BASE_CRIT_DAMAGE_BONUS = 100%）。
     assert_near_float(
         "crit_multiplier",
-        DEADEYE_GOLDEN_CRIT_MULTIPLIER,
+        DEADEYE_NEUTRAL_CRIT_MULTIPLIER,
         out.crit_multiplier,
     );
     // 未应用 mode_effective 前暴击率：无 base → 0.0。
@@ -401,7 +419,7 @@ fn deadeye_golden_wave1_ailment_dps_fields() {
 ///
 /// 说明：hit_chance 在 base_accuracy=0 + enemy_evasion=0 时命中率公式退化为 1.0（100%）。
 /// action_rate / effective_action_rate 无 base 词条 → 0.0。
-const DEADEYE_GOLDEN_HIT_CHANCE: f64 = 1.0;
+const DEADEYE_NEUTRAL_HIT_CHANCE: f64 = 1.0;
 
 #[test]
 fn deadeye_golden_wave1_action_rate_fields() {
@@ -411,7 +429,7 @@ fn deadeye_golden_wave1_action_rate_fields() {
     assert_near_float("action_rate", 0.0, out.action_rate);
     assert_near_float("effective_action_rate", 0.0, out.effective_action_rate);
     // hit_chance: base_accuracy=0 + enemy_evasion=0 → formula returns 1.0（100%）。
-    assert_near_float("hit_chance", DEADEYE_GOLDEN_HIT_CHANCE, out.hit_chance);
+    assert_near_float("hit_chance", DEADEYE_NEUTRAL_HIT_CHANCE, out.hit_chance);
 }
 
 /// Wave 2 ES 词条注入：验证 ES 词条被正确解析并注入计算管线。
