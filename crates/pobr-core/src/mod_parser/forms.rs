@@ -61,7 +61,15 @@ pub fn eval_form(
     let caps = &form_match.captures;
     // formCap[1] 数值（多数 form 的 value）。
     let cap1 = caps.first().map(|s| s.as_str()).unwrap_or("");
-    let value1 = cap1.parse::<f64>().unwrap_or(0.0);
+    // 解析为 Option，不在此处 eager 拒绝：FLAG/DMG/DOUBLED 等非数值 form 不读取
+    // 它（cap1 允许为空/非数值），eager 拒绝会误伤这些分支、拖垮 parse-rate。
+    let value1_parsed = cap1.parse::<f64>().ok();
+    // value-consuming form 取数值的统一入口：解析失败 → 整条文本升级为 Unsupported
+    // （audit HIGH-1：旧 `unwrap_or(0.0)` 会对畸形规则产物静默注入 value=0 的
+    // Modifier，无报错、无 unsupported 记录，污染聚合计算）。仅数值 form 调用，
+    // 而数值 form 之所以分发到此即因其数值模式已匹配，cap1 必为干净数字，故对今天
+    // 能解析的输入零行为变化。
+    let value1 = || value1_parsed.ok_or(FormReject::Nil);
 
     let mut result = FormResult {
         names: Vec::new(),
@@ -95,36 +103,36 @@ pub fn eval_form(
     };
 
     match form {
-        "INC" => simple(&mut result, ModType::Inc, value1, rules)?,
-        "RED" => simple(&mut result, ModType::Inc, -value1, rules)?,
-        "MORE" => simple(&mut result, ModType::More, value1, rules)?,
-        "LESS" => simple(&mut result, ModType::More, -value1, rules)?,
-        "OVERRIDE" => simple(&mut result, ModType::Override, value1, rules)?,
-        "CHANCE" => simple(&mut result, ModType::Base, value1, rules)?,
+        "INC" => simple(&mut result, ModType::Inc, value1()?, rules)?,
+        "RED" => simple(&mut result, ModType::Inc, -value1()?, rules)?,
+        "MORE" => simple(&mut result, ModType::More, value1()?, rules)?,
+        "LESS" => simple(&mut result, ModType::More, -value1()?, rules)?,
+        "OVERRIDE" => simple(&mut result, ModType::Override, value1()?, rules)?,
+        "CHANCE" => simple(&mut result, ModType::Base, value1()?, rules)?,
         "BASE" | "GAIN" => {
-            simple(&mut result, ModType::Base, value1, rules)?;
+            simple(&mut result, ModType::Base, value1()?, rules)?;
             scan_suffix(&mut result, rules);
         }
         "LOSE" => {
-            simple(&mut result, ModType::Base, -value1, rules)?;
+            simple(&mut result, ModType::Base, -value1()?, rules)?;
             scan_suffix(&mut result, rules);
         }
         "GRANTS" => {
-            simple(&mut result, ModType::Base, value1, rules)?;
+            simple(&mut result, ModType::Base, value1()?, rules)?;
             result.hand_attack_condition = true;
             scan_suffix(&mut result, rules);
         }
         "GRANTS_GLOBAL" => {
-            simple(&mut result, ModType::Base, value1, rules)?;
+            simple(&mut result, ModType::Base, value1()?, rules)?;
             scan_suffix(&mut result, rules);
         }
         "REMOVES" => {
-            simple(&mut result, ModType::Base, -value1, rules)?;
+            simple(&mut result, ModType::Base, -value1()?, rules)?;
             result.hand_attack_condition = true;
             scan_suffix(&mut result, rules);
         }
-        "TOTALCOST" => cost_form(&mut result, value1, &rules.cost_types_map, rules)?,
-        "BASECOST" => cost_form(&mut result, value1, &rules.base_cost_types, rules)?,
+        "TOTALCOST" => cost_form(&mut result, value1()?, &rules.cost_types_map, rules)?,
+        "BASECOST" => cost_form(&mut result, value1()?, &rules.base_cost_types, rules)?,
         "PEN" => {
             // pen_types 先扫（失配→空表），再 modNameList 清尾。
             let (idx, rest) = rules
@@ -141,14 +149,14 @@ pub fn eval_form(
                 .unwrap_or(rest2);
             result.names.push(pen_name);
             result.types.push(ModType::Base);
-            result.values.push(value1);
+            result.values.push(value1()?);
             result.remaining = rest_final;
         }
         "REGENFLAT" | "REGENPERCENT" => {
-            regen_form(&mut result, form, value1, caps, &rules.regen_types)?
+            regen_form(&mut result, form, value1()?, caps, &rules.regen_types)?
         }
         "DEGENFLAT" | "DEGENPERCENT" => {
-            regen_form(&mut result, form, value1, caps, &rules.degen_types)?
+            regen_form(&mut result, form, value1()?, caps, &rules.degen_types)?
         }
         "DEGEN" => {
             // dmgTypes[cap2] + "Degen"
@@ -158,7 +166,7 @@ pub fn eval_form(
                 .ok_or(FormReject::EmptyTable)?;
             result.names.push(format!("{dt}Degen"));
             result.types.push(ModType::Base);
-            result.values.push(value1);
+            result.values.push(value1()?);
         }
         "DMG" | "DMGATTACKS" | "DMGSPELLS" | "DMGBOTH" | "DMGTHORNS" => {
             dmg_form(&mut result, form, caps, rules)?;
@@ -317,8 +325,16 @@ fn dmg_form(
         .get(2)
         .and_then(|c| lookup_dmg_type(c, rules))
         .ok_or(FormReject::EmptyTable)?;
-    let min = caps.first().and_then(|c| c.parse().ok()).unwrap_or(0.0);
-    let max = caps.get(1).and_then(|c| c.parse().ok()).unwrap_or(0.0);
+    // dmg form 必带两个数值捕获；解析失败视为规则产物畸形 → 整条升级 Unsupported
+    // （audit HIGH-1：避免静默产出 value=0 的伤害词条），不再 `unwrap_or(0.0)`。
+    let min = caps
+        .first()
+        .and_then(|c| c.parse::<f64>().ok())
+        .ok_or(FormReject::Nil)?;
+    let max = caps
+        .get(1)
+        .and_then(|c| c.parse::<f64>().ok())
+        .ok_or(FormReject::Nil)?;
     // M6.3 归一：PoBR added-damage 名为 `{Type}DamageMin/Max`（legacy 同名），
     // 而非 vendor `{Type}Min/Max`；附 DamageType tag（与 legacy 一致）。
     push_added_damage(result, &dt, min, max);
