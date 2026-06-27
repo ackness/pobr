@@ -16,6 +16,7 @@ pub mod extract_lua;
 pub mod extract_minions;
 pub mod extract_parser_rules;
 pub mod extract_quality;
+pub mod extract_stat_descriptions;
 pub mod extract_stat_map;
 pub mod extract_stat_set_labels;
 pub mod mirage_configs;

@@ -110,6 +110,7 @@ soft_step runes           "${SYNC[@]}" extract-lua --what runes           --vend
 soft_step skill_overrides "${SYNC[@]}" extract-lua --vendor-root "$VENDOR" --files "$GEMFILES" --out "$OVL/skill_overrides.json"
 soft_step skill_stat_map  "${SYNC[@]}" extract-lua --what stat-map        --vendor-root "$VENDOR" --files "$SMFILES" --out "$OVL/skill_stat_map.json"
 soft_step spectres        "${SYNC[@]}" extract-lua --what spectres        --vendor-root "$VENDOR" --out "$OVL/spectres.json"
+soft_step stat_descriptions "${SYNC[@]}" extract-lua --what stat-descriptions --vendor-root "$VENDOR" --out "$OVL/stat_descriptions.json"
 soft_step stat_set_labels "${SYNC[@]}" extract-lua --what stat-set-labels --vendor-root "$VENDOR" --files "$GEMFILES" --out "$OVL/stat_set_labels.json"
 soft_step uniques         "${SYNC[@]}" extract-lua --what uniques         --vendor-root "$VENDOR" --out "$OVL/uniques.json"
 soft_step mirage_configs  "${SYNC[@]}" gen-mirage-configs  --vendor-root "$VENDOR" --out "$OVL/mirage_configs.json"
