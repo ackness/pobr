@@ -4,11 +4,11 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+# pobr-core：gen-stat-id-map（M6 E/F 段 B）构建期跑 parse_mod_engine 派生
+# stat_id → modifier 映射；仅工具用，不进运行时计算路径。
+pobr-core.workspace = true
 pobr-data.workspace = true
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-
-[dev-dependencies]
-pobr-core.workspace = true
 

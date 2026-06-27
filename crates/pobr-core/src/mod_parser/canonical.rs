@@ -70,7 +70,8 @@ fn fmt_f64(n: f64) -> String {
     }
 }
 
-fn canonical_tags(tags: &[ModTag]) -> String {
+/// 一组 tag 的规范字符串（结构比较 / stat_id_map 模板的单源 tag 序列化）。
+pub fn canonical_tags(tags: &[ModTag]) -> String {
     let mut out: Vec<String> = tags.iter().map(canonical_tag).collect();
     out.sort();
     format!("[{}]", out.join(","))

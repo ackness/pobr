@@ -115,6 +115,8 @@ soft_step stat_set_labels "${SYNC[@]}" extract-lua --what stat-set-labels --vend
 soft_step uniques         "${SYNC[@]}" extract-lua --what uniques         --vendor-root "$VENDOR" --out "$OVL/uniques.json"
 soft_step mirage_configs  "${SYNC[@]}" gen-mirage-configs  --vendor-root "$VENDOR" --out "$OVL/mirage_configs.json"
 soft_step trigger_configs "${SYNC[@]}" gen-trigger-configs --vendor-root "$VENDOR" --out "$OVL/trigger_configs.json"
+# stat_id_map（M6 E/F 段 B）须在 stat_descriptions + mod_parser_rules 之后——消费两者跑引擎派生。
+soft_step stat_id_map     "${SYNC[@]}" gen-stat-id-map --overlay-dir "$OVL" --out "$OVL/stat_id_map.json"
 
 # ---- 6) 手工策展 overlay：从 OLD_PATCH 沿用（需人工复核）----
 echo "== [6/8] 手工策展 overlay 从 $OLD_PATCH 沿用"
