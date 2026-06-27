@@ -41,7 +41,10 @@ fn measure_single_stat_parse_rate() {
 
     let mut sample_unsupported: Vec<String> = Vec::new();
     println!("\n===== stat_descriptions 单 stat 文本解析率（parse_mod_engine）=====");
-    println!("{:<42}{:>10}{:>10}{:>9}", "scope", "parsed", "total", "rate");
+    println!(
+        "{:<42}{:>10}{:>10}{:>9}",
+        "scope", "parsed", "total", "rate"
+    );
 
     let mut grand_parsed = 0usize;
     let mut grand_total = 0usize;
