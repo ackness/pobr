@@ -48,7 +48,11 @@ pub(crate) fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<Allo
 /// `spec.tree.notableMap`，CalcSetup.lua:1322-1331 只查 notable），追加为
 /// [`AllocatedNode`]。已分配节点跳过（vendor `allocNodes[id]` 幂等同语义）。
 /// 同名 notable（切换类变体等）按最小 skill id 取（确定性）。
-pub(crate) fn append_granted_passives(build: &Build, data: &BuildData, nodes: &mut Vec<AllocatedNode>) {
+pub(crate) fn append_granted_passives(
+    build: &Build,
+    data: &BuildData,
+    nodes: &mut Vec<AllocatedNode>,
+) {
     let mut allocated: std::collections::HashSet<u32> = nodes.iter().map(|n| n.node_id.0).collect();
     for def in granted_passive_defs(build, data) {
         if !allocated.insert(def.skill) {

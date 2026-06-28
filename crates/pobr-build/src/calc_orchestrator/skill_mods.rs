@@ -101,7 +101,11 @@ pub(crate) fn skill_base_modifiers(
 /// 取出，注入与 stat 驱动通道（`stat_map_engine::collect_skill_data` 的
 /// dotIs* skill_data 键）同名的 FLAG——`calc::skill_dot::DotIsFlags::from_db`
 /// 是两路的合一消费点。全 false（未核验/无旗标）时返回空，零注入。
-pub(crate) fn dot_flag_modifiers(group: &SocketGroup, data: &BuildData, skill_id: &str) -> Vec<Modifier> {
+pub(crate) fn dot_flag_modifiers(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> Vec<Modifier> {
     let set_index = group
         .gem_skills
         .iter()
@@ -217,7 +221,11 @@ pub(crate) fn corpse_explosion_modifiers(
 /// 敌人等级解析（与 `calculate_with_data` 步骤 5 setup_enemy 同序，vendor
 /// CalcSetup.lua:529）：编排选项显式等级 → build config `enemyLevel`
 /// （Input/Placeholder）→ `min(MaxEnemyLevel, 角色等级)`。
-pub(crate) fn resolved_enemy_level(build: &Build, data: &BuildData, options: &DataOrchestratorOptions) -> u32 {
+pub(crate) fn resolved_enemy_level(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> u32 {
     if options.enemy_level != 0 {
         options.enemy_level
     } else {

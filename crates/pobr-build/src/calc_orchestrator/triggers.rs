@@ -410,7 +410,11 @@ pub(crate) fn source_cond_matches(
 /// 源宝石基础速率（子计算回退口径 + 候选排序键）：`1/use_time`；攻击技能无
 /// 自带 use_time 时取武器基底攻速（含 attackSpeedMultiplier，与主装配路径
 /// `weapon_contribution` 同源——vendor 攻击源速率本就由武器决定）。
-pub(crate) fn base_rate_of(build: &Build, data: &BuildData, gem: &crate::build::GemSkillRef) -> Option<f64> {
+pub(crate) fn base_rate_of(
+    build: &Build,
+    data: &BuildData,
+    gem: &crate::build::GemSkillRef,
+) -> Option<f64> {
     let resolved = resolve_skill_level_with_gem_bonus(
         build,
         data,
