@@ -514,8 +514,8 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 const BASELINE_DEF_CORE_HIT5: usize = 132; // 实测 132/144 = 91.7%（M4-k2 油涂池连带）
 const BASELINE_DEF_HIT5: usize = 379; // 实测 379/450 = 84.2%（M4-k 波合并重记）
 const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
-const BASELINE_OFF_HIT5: usize = 61; // 实测 61/80 = 76.2%（M4-n 波终值；M4 验收线 ≥70% 达成）
-const BASELINE_OFF_HIT10: usize = 69; // 实测 69/80 = 86.2%
+const BASELINE_OFF_HIT5: usize = 62; // 实测 62/80 = 77.5%（essence-drain DoT-only hit 抑制 +1）
+const BASELINE_OFF_HIT10: usize = 70; // 实测 70/80 = 87.5%
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -543,8 +543,8 @@ const BASELINE_OFF_HIT10: usize = 69; // 实测 69/80 = 86.2%
 // 接入：parser 新增暴击后缀剥离 + `ailment_scoped_cfg` 置 CriticalStrike=true，对齐
 // vendor dotCfg `skillCond["CriticalStrike"]=true`，CalcOffence.lua:5006）。huntress
 // poison 0.58x→1.04x、bleed 0.64x→1.11x，TotalDotDPS/CombinedDPS 双列入命中。
-const BASELINE_DOT_HIT5: usize = 20; // 实测 20/37 = 54.1%
-const BASELINE_DOT_HIT10: usize = 24; // 实测 24/37 = 64.9%
+const BASELINE_DOT_HIT5: usize = 22; // 实测 22/37 = 59.5%（essence-drain DoT-only hit 抑制 +2）
+const BASELINE_DOT_HIT10: usize = 26; // 实测 26/37 = 70.3%
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
