@@ -650,81 +650,16 @@ pub fn calculate_with_data(
     // 1. 角色基础（等级 + 职业派生属性）+ 元素抗性惩罚（战役进度档位）。
     inject_character_base(&mut session, build, data, options, &resolved_config);
 
-    // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
-    // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
-    // 不再有单技能硬编码。
-    if let Some((skill, group, skill_id)) = &main_skill {
-        // 选中 statSet 的 per-set 覆盖键（W-J：statSetIndex 显式选择接进引擎 set_key）。
-        let main_set_key = group
-            .gem_skills
-            .iter()
-            .find(|g| g.skill_id == *skill_id)
-            .and_then(|g| data.selected_set_key(skill_id, g.stat_set_index));
-        session.add_modifiers(skill_base_modifiers(
-            skill,
-            skill_id,
-            main_set_key.as_deref(),
-        ));
-        // 1b-i-q. 主技能宝石品质 stat（T1.7）：quality 段经 stat-map 映射注入，
-        //         SourceKind::GemQuality 归因（id 前缀 gem.<效果 id>.q<Q>）。
-        session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
-        // 1b-i-g. 主技能未选 statSet 的 global-only merge（W-J，CalcActiveSkill.lua:124-140）。
-        session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
-        // 1b-i-d. 选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG（M4-T4 W-D1；
-        //         statSet baseMods 直挂布尔，calc::skill_dot 据此保留 dotCfg 位）。
-        session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
-        // 1b-i-c. 尸体爆炸基伤（M4-G）：explodeCorpse 门控 statSet 的
-        //         `monsterLife × corpseExplosionLifeMultiplier` → Physical
-        //         BASE（vendor CalcOffence.lua:2211-2217；如 Detonate Dead）。
-        session.add_modifiers(corpse_explosion_modifiers(
-            build, data, options, group, skill, skill_id,
-        ));
-        // 1b-i-x. 弩 reload 数据通道（M4-T4 W-D2）：CrossbowReloadTimeBase（武器
-        //         reload_time_ms）+ CrossbowBoltCount（ammo 兄弟技能 stat），
-        //         perform `fill_crossbow_reload` 消费。非弩/grenade 返回空。
-        session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
-        session.add_modifiers(support_modifiers(group, data, skill_id));
-
-        // 1b-iii. 触发链路（findings 03-01/03-02/03-06；M4-T5 W-E1/W-E2 扩展）：
-        // ① 数据驱动识别（trigger_configs.json 四级 key → 组内宝石/主技能 id 匹配）；
-        // ② 内建触发（`skill_types` 含 `Triggered`/`InbuiltTrigger`，PoB2 `isTriggered`）。
-        // 注入触发冷却 + 触发源**子计算**统计（计算后攻速/命中/暴击）BASE，驱动 perform
-        // `fill_trigger` 写出非占位 trigger_rate_cap / skill_trigger_rate。无触发关系时
-        // 返回空、面板保持 0（向后兼容）。
-        session.add_modifiers(trigger_modifiers(
-            build, data, options, skill, group, skill_id,
-        ));
-    }
-
-    // 1b-ii. 技能伤害倍率 → `AddedDamage` MORE，使**附加 flat 伤害**（武器+装备 added）
-    //        同武器击中一并按 baseMultiplier 放大（武器击中已在 base_input × dmg_mult）。
-    if (dmg_mult - 1.0).abs() > f64::EPSILON {
-        let origin = ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.damageMult"))
-            .with_raw_text(format!("skill damage multiplier {dmg_mult:.2}"));
-        session.add_modifiers(vec![
-            Modifier::number("AddedDamage", ModType::More, (dmg_mult - 1.0) * 100.0)
-                .with_origin(origin),
-        ]);
-    }
-
-    // 1c. 武器基底暴击率 → Weapon1 归因的 BASE SkillBaseCritChance（**仅攻击技能**；
-    //     底材桶，区别于词条桶——见 skill_base_modifiers 同名注释）。法术技能用自身
-    //     基础暴击（skill_base_modifiers 注入），不吃武器暴击——故主技能自带 crit_chance 时跳过。
-    let main_skill_has_own_crit = main_skill
-        .as_ref()
-        .map(|(s, _, _)| s.crit_chance.is_some_and(|c| c > 0.0))
-        .unwrap_or(false);
-    if let Some(w) = &weapon
-        && w.crit_chance > 0.0
-        && !main_skill_has_own_crit
-    {
-        let origin = ModifierSource::new(SourceId::new(SourceKind::Item, "weapon1.base"))
-            .with_raw_text(format!("weapon base crit {}%", w.crit_chance));
-        session.add_modifiers(vec![
-            Modifier::number("SkillBaseCritChance", ModType::Base, w.crit_chance)
-                .with_origin(origin),
-        ]);
-    }
+    // 1b/1b-ii/1c. 主技能 base/品质/未选set/DoT/尸爆/弩/support/trigger + 伤害倍率 + 武器暴击。
+    inject_main_skill_mods(
+        &mut session,
+        build,
+        data,
+        options,
+        &main_skill,
+        weapon.as_ref(),
+        dmg_mult,
+    );
 
     // 1d. 装备基底防御 / 盾基底格挡 / 件级 Spirit / Ward → BASE 词条。
     inject_defence_base(&mut session, build, data);
@@ -1215,6 +1150,94 @@ fn inject_enemy(
         if exposure.iter().any(|&on| on) {
             session.apply_enemy_exposure(exposure, EXPOSURE_MAGNITUDE);
         }
+    }
+}
+
+/// 1b/1b-ii/1c 阶段：主技能 base mod / 品质 / 未选 set / DoT flag / 尸爆 / 弩 reload /
+/// support / trigger 注入 + 技能伤害倍率 MORE + 武器基底暴击。
+fn inject_main_skill_mods(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    main_skill: &Option<(ResolvedSkillLevel, &SocketGroup, &str)>,
+    weapon: Option<&WeaponContribution>,
+    dmg_mult: f64,
+) {
+    // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
+    // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
+    // 不再有单技能硬编码。
+    if let Some((skill, group, skill_id)) = main_skill {
+        // 选中 statSet 的 per-set 覆盖键（W-J：statSetIndex 显式选择接进引擎 set_key）。
+        let main_set_key = group
+            .gem_skills
+            .iter()
+            .find(|g| g.skill_id == *skill_id)
+            .and_then(|g| data.selected_set_key(skill_id, g.stat_set_index));
+        session.add_modifiers(skill_base_modifiers(
+            skill,
+            skill_id,
+            main_set_key.as_deref(),
+        ));
+        // 1b-i-q. 主技能宝石品质 stat（T1.7）：quality 段经 stat-map 映射注入，
+        //         SourceKind::GemQuality 归因（id 前缀 gem.<效果 id>.q<Q>）。
+        session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
+        // 1b-i-g. 主技能未选 statSet 的 global-only merge（W-J，CalcActiveSkill.lua:124-140）。
+        session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
+        // 1b-i-d. 选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG（M4-T4 W-D1；
+        //         statSet baseMods 直挂布尔，calc::skill_dot 据此保留 dotCfg 位）。
+        session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
+        // 1b-i-c. 尸体爆炸基伤（M4-G）：explodeCorpse 门控 statSet 的
+        //         `monsterLife × corpseExplosionLifeMultiplier` → Physical
+        //         BASE（vendor CalcOffence.lua:2211-2217；如 Detonate Dead）。
+        session.add_modifiers(corpse_explosion_modifiers(
+            build, data, options, group, skill, skill_id,
+        ));
+        // 1b-i-x. 弩 reload 数据通道（M4-T4 W-D2）：CrossbowReloadTimeBase（武器
+        //         reload_time_ms）+ CrossbowBoltCount（ammo 兄弟技能 stat），
+        //         perform `fill_crossbow_reload` 消费。非弩/grenade 返回空。
+        session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
+        session.add_modifiers(support_modifiers(group, data, skill_id));
+
+        // 1b-iii. 触发链路（findings 03-01/03-02/03-06；M4-T5 W-E1/W-E2 扩展）：
+        // ① 数据驱动识别（trigger_configs.json 四级 key → 组内宝石/主技能 id 匹配）；
+        // ② 内建触发（`skill_types` 含 `Triggered`/`InbuiltTrigger`，PoB2 `isTriggered`）。
+        // 注入触发冷却 + 触发源**子计算**统计（计算后攻速/命中/暴击）BASE，驱动 perform
+        // `fill_trigger` 写出非占位 trigger_rate_cap / skill_trigger_rate。无触发关系时
+        // 返回空、面板保持 0（向后兼容）。
+        session.add_modifiers(trigger_modifiers(
+            build, data, options, skill, group, skill_id,
+        ));
+    }
+
+    // 1b-ii. 技能伤害倍率 → `AddedDamage` MORE，使**附加 flat 伤害**（武器+装备 added）
+    //        同武器击中一并按 baseMultiplier 放大（武器击中已在 base_input × dmg_mult）。
+    if (dmg_mult - 1.0).abs() > f64::EPSILON {
+        let origin = ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.damageMult"))
+            .with_raw_text(format!("skill damage multiplier {dmg_mult:.2}"));
+        session.add_modifiers(vec![
+            Modifier::number("AddedDamage", ModType::More, (dmg_mult - 1.0) * 100.0)
+                .with_origin(origin),
+        ]);
+    }
+
+    // 1c. 武器基底暴击率 → Weapon1 归因的 BASE SkillBaseCritChance（**仅攻击技能**；
+    //     底材桶，区别于词条桶——见 skill_base_modifiers 同名注释）。法术技能用自身
+    //     基础暴击（skill_base_modifiers 注入），不吃武器暴击——故主技能自带 crit_chance 时跳过。
+    let main_skill_has_own_crit = main_skill
+        .as_ref()
+        .map(|(s, _, _)| s.crit_chance.is_some_and(|c| c > 0.0))
+        .unwrap_or(false);
+    if let Some(w) = weapon
+        && w.crit_chance > 0.0
+        && !main_skill_has_own_crit
+    {
+        let origin = ModifierSource::new(SourceId::new(SourceKind::Item, "weapon1.base"))
+            .with_raw_text(format!("weapon base crit {}%", w.crit_chance));
+        session.add_modifiers(vec![
+            Modifier::number("SkillBaseCritChance", ModType::Base, w.crit_chance)
+                .with_origin(origin),
+        ]);
     }
 }
 
