@@ -264,17 +264,25 @@ the premise. **Do not trust #1/#2/#5/#8 as written.** Verified findings:
   `Condition:UsingFlask` to the flag. **But that fix would NOT work**: oracle test — forcing
   `conditionUsingFlask=true` on detonate-dead leaves Speed at 2.625 / Onslaught=0. UsingFlask is
   already true (flasks active) yet vendor still applies no Onslaught.
-- Real gating: the charm's **"during effect" buff is only granted while the charm's *effect* is
-  active (triggered by the "Used when affected by a Slow" condition)**, which PoBR does not model.
-  PoBR's `item.rs::parse_granted_buff_flag` emits an **unconditional** `Modifier::flag("Onslaught")`
-  and `env_finalize::merge_flasks_charms` merges all charm/flask nested mods within charm budget,
-  with no charm-effect-active gate. A correct fix must model charm-effect-active (trigger
-  uptime), not just a UsingFlask condition. Worth doing (detonate-dead would gain Speed+TotalDPS,
-  +2 hits) but it is NOT the localized change the roadmap claimed, and any fix must be
-  oracle-verified per affected build.
+- **ACTUAL root cause (run-parsemod.sh-verified) — NOT charm-effect-active:** PoB2's ModParser
+  returns `unsupported` for the exact line `Grants Onslaught during effect`
+  (`tools/pob2-oracle/run-parsemod.sh` → `{mods:[], unsupported:true}`) — it creates **no**
+  Onslaught at all, which is why forcing UsingFlask changes nothing. PoBR's
+  `item.rs::parse_granted_buff_flag` went **beyond** PoB2's parser and emitted an unconditional
+  `Modifier::flag("Onslaught")`. So this is a PoBR-ahead-of-PoB2 over-parse, not a missing gate.
+- **LANDED (PR #15, branch `fix/onslaught-over-parse`):** removed `parse_granted_buff_flag`; the
+  line now falls through to `ctx.parse` → Unsupported, matching PoB2 line-for-line (and PoBR's
+  own "unparseable → Unsupported" design). Cooldown/trigger-rate-capped builds (grenades,
+  frost-bomb) were unaffected on Speed and stay 1.00x; only detonate-dead/coiling/flicker move.
+  Parity: **offensive 62→65 @5% / 70→71 @10%**; reviewed exception **dot @10% 26→25** (flicker
+  CombinedDPS ~1.04x was a false-hit — phantom Onslaught speed × flicker's real ~0.90x AvgDamage
+  shortfall cancelling; removing the phantom unmasks the true ~0.90x, tracked as a follow-up).
 
 ### Methodology lesson
 Every offensive root cause MUST be `tools/pob2-oracle`-verified (oracle output vs the build's
-golden) BEFORE implementation. Static analysis of data+formula missed two independent gates
-(Input-vs-Placeholder for skillDist; charm-effect-active for "during effect" buffs). The
+golden) BEFORE implementation — **and run `run-parsemod.sh` to confirm PoB2 actually parses the
+mod text in question**. Static analysis of data+formula missed three independent traps: (1)
+Input-vs-Placeholder for skillDist (#2); (2) PoB2 leaving a mod-text `unsupported` so PoBR's
+"extra" parse is a parity regression (#1 — the real cause, *not* the charm-effect-active theory
+an earlier read of this doc proposed); (3) compensating false-hits that flip when corrected. The
 remaining static-only items (#5 Heft, #6, #9–#12) are suspect until oracle-checked.
