@@ -250,13 +250,6 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
             );
             continue;
         }
-        if let Some(flag) = parse_granted_buff_flag(text) {
-            nested.push(
-                flag.with_source(text.clone())
-                    .with_origin(make_origin(text)),
-            );
-            continue;
-        }
         match ctx.parse(strip_during_effect(text)) {
             Ok(outcome) if outcome.status == ParseStatus::Parsed => {
                 for modifier in outcome.mods {
@@ -301,17 +294,16 @@ fn parse_local_effect_inc(text: &str) -> Option<f64> {
     number.parse::<f64>().ok().map(|value| value * sign)
 }
 
-/// `Grants <Buff名> [during effect]` → 对应 Flag mod（当前白名单：Onslaught，
-/// 对应 buff_definitions `OnslaughtFlask.trigger_flag`）。
-fn parse_granted_buff_flag(text: &str) -> Option<Modifier> {
-    let lower = text.trim().to_lowercase();
-    let granted = lower.strip_prefix("grants ")?;
-    let granted = granted.strip_suffix(" during effect").unwrap_or(granted);
-    match granted {
-        "onslaught" => Some(Modifier::flag("Onslaught")),
-        _ => None,
-    }
-}
+// 注：`Grants Onslaught during effect`（Silver Charm 唯一词条 The Fall of the Axe 等）
+// **刻意不再特判解析**。PoB2 ModParser 对该行返回 `unsupported`（无 mod 产出，
+// 经 `tools/pob2-oracle/run-parsemod.sh` 核实）——其 Onslaught 不进 modDB，golden
+// 不含该 Onslaught 速度。早前 `parse_granted_buff_flag` 越过 PoB2 解析能力无条件发
+// `flag("Onslaught")`，使 Speed 相对 golden 偏高（detonate-dead 2.87 vs 2.62 = 1.09x、
+// coiling 1.08x、flicker 1.15x；冷却/触发限速的 grenade/frost-bomb 不受影响故 1.00x）。
+// 移除后该行落入下方 `ctx.parse` → Unsupported，与 PoB2 逐行一致（PoBR 设计哲学亦同：
+// 不可解析文本归 Unsupported）。Silver **Flask** 的 Onslaught（CalcPerform.lua:618-648
+// `item.baseName:match("Silver Flask")` 主动形）是另一通道，与此文本词条无关；待该真实
+// 机制落地时再于对应来源接入，而非靠文本特判。
 
 /// 剥 `... during [flask] effect` 后缀（大小写不敏感），返回正文切片。
 fn strip_during_effect(text: &str) -> &str {

@@ -86,8 +86,10 @@ fn charm_mods_merge_and_scale_with_charm_effect() {
 }
 
 /// flask 载荷：局部 `25% increased effect` 与全局 FlaskEffect INC 相加进乘区
-/// （10 × (1 + (20+25)/100) = 14.5 → 整数截断 14）；Onslaught Flag 不缩放、置位；
-/// UsingFlask 条件置位。
+/// （10 × (1 + (20+25)/100) = 14.5 → 整数截断 14）；UsingFlask 条件置位。
+///
+/// `Grants Onslaught during effect` **不产出 Onslaught flag**——PoB2 ModParser 对该行
+/// 返回 unsupported（见 item.rs 注释 + item_source.rs 对应测试），PoBR 逐行一致。
 #[test]
 fn flask_local_and_global_effect_inc_stack_additively() {
     let mut carriers = carrier_for(
@@ -112,8 +114,8 @@ fn flask_local_and_global_effect_inc_stack_additively() {
         "10 × 1.45 = 14.5 → m_modf(round(…,2)) 截断 14"
     );
     assert!(
-        env.player.mod_db.flag(&env.cfg, ModName::from("Onslaught")),
-        "flag 词条不缩放、直接置位"
+        !env.player.mod_db.flag(&env.cfg, ModName::from("Onslaught")),
+        "Grants Onslaught during effect 与 PoB2 一致归 Unsupported，不置 Onslaught flag"
     );
     assert_eq!(env.cfg.conditions.get("UsingFlask"), Some(&true));
     assert_eq!(env.cfg.conditions.get("UsingQuicksilverFlask"), Some(&true));
