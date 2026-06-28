@@ -647,22 +647,8 @@ pub fn calculate_with_data(
         session.add_modifiers(vec![Modifier::flag("CooldownBypass").with_origin(origin)]);
     }
 
-    // 1. 角色基础（等级 + 职业派生属性）→ CharacterBase 归因的 BASE modifier。
-    if options.inject_character_base
-        && let Some(base) = character_base(build, data)
-    {
-        // M0-W3：派生系数自注入的 character_constants 域读取（与 Default 逐值相等）。
-        session.add_modifiers(base.modifiers(&data.constants.character_constants));
-        // 元素抗性惩罚（火/冰/电；混沌无惩罚）：XML Config `resistancePenalty` 显式档位
-        // 优先；省略时按 PoB2 CalcSetup.lua `configInput.resistancePenalty or -60`（即
-        // Endgame）。档位 → 惩罚 modifier 走 [`CampaignProgress`] 既有表（带
-        // `campaign.resistance_penalty` 归因；Act1 惩罚为 0、不产生 modifier）。
-        let progress = resolved_config
-            .config
-            .campaign_progress
-            .unwrap_or(CampaignProgress::Endgame);
-        session.add_modifiers(progress.modifiers());
-    }
+    // 1. 角色基础（等级 + 职业派生属性）+ 元素抗性惩罚（战役进度档位）。
+    inject_character_base(&mut session, build, data, options, &resolved_config);
 
     // 1b. 主技能 cost / cooldown / 基础伤害 + 该组 support 宝石倍率 → 归因 modifier。
     // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
@@ -743,124 +729,8 @@ pub fn calculate_with_data(
     // 1d. 装备基底防御 / 盾基底格挡 / 件级 Spirit / Ward → BASE 词条。
     inject_defence_base(&mut session, build, data);
 
-    // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
-    //    真实词条中含解析器尚未支持的硬失败形式（如 `[Bleeding] on [Hit]`），逐件
-    //    先过滤为可解析子集（保留归因），避免单条文本中止整次计算（PoB 的
-    //    skip-and-collect 语义）。
-    // 槽位加成效果（『N% increased bonuses gained from Equipped Rings and Amulets』，
-    // Ritualist 等）：对应槽位物品词条按 scale 追加缩放副本（PoB2 CalcPerform.lua:
-    // 1326-1370 `EffectOfBonusesFrom<Slot>` ScaleAddMod 语义；仅 scale>0 生效）。
-    let bonus_scales = slot_bonus_effect_scales(build, data);
-    for (slot, item) in build.equipped_items() {
-        // Kalandra's Touch『Reflects opposite Ring』：镜射对侧戒指的全部词条
-        // （vendor CalcSetup.lua:1221-1243），来源仍归 Kalandra 所在槽。
-        let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
-        let mut filtered = filter_item_parseable(item);
-        // 主手武器：剔除局部物理增伤/附加（已作为武器 source 独立乘区 × baseMultiplier 计入
-        // weapon_contribution）；留在全局会重复且错误地并入加法桶（PoB 是独立乘区）。
-        // 双持副手（W-B2）：Weapon2 作为 off-hand 武器源消费时同样剔除——其局部词条
-        // 已折入 off-hand WeaponContribution（未消费时维持现状，不动全局注入）。
-        if slot == EquipmentSlot::Weapon1
-            || (slot == EquipmentSlot::Weapon2 && off_weapon.is_some())
-        {
-            let drop_local = |texts: Vec<String>| -> Vec<String> {
-                texts
-                    .into_iter()
-                    .filter(|t| !is_weapon_local_mod(t, &data.local_mods.weapon))
-                    .collect()
-            };
-            filtered.implicit_texts = drop_local(filtered.implicit_texts);
-            filtered.modifier_texts = drop_local(filtered.modifier_texts);
-            filtered.enchant_texts = drop_local(filtered.enchant_texts);
-        }
-        // 护甲件：剔除局部「increased / +flat Armour/Evasion/ES」（已折入 rolled 件级底值 /
-        // 基底兜底乘区，见 defence_base_modifiers）；留在全局会重复（且错误地变成全局加法）。
-        // 判定护甲件：有基底护甲项 **或** 文本给出 rolled 防御行（兜底覆盖无 catalog 的 unique）。
-        let rd = &item.rolled_defence;
-        // per-level 防御件（如纯 implicit 唯一手套）也算护甲件——其 `Has +N per level` 已折入
-        // 件级底值（item_rolled_defence），须从全局路径剔除，避免重复/错误全局注入。
-        let has_per_level_def = item_per_level_defence(item).iter().any(|&v| v > 0.0);
-        let is_armour_piece = data.armour_base(&item.base.to_string()).is_some()
-            || rd.armour.is_some()
-            || rd.evasion.is_some()
-            || rd.energy_shield.is_some()
-            || has_per_level_def;
-        if is_armour_piece {
-            let drop_def = |texts: Vec<String>| -> Vec<String> {
-                texts
-                    .into_iter()
-                    .filter(|t| {
-                        let c = clean_item_text(t);
-                        parse_local_defence_inc(&c).is_none()
-                            && parse_local_defence_flat(&c).is_none()
-                            && parse_has_per_level_defence(&c).is_none()
-                    })
-                    .collect()
-            };
-            filtered.implicit_texts = drop_def(filtered.implicit_texts);
-            filtered.modifier_texts = drop_def(filtered.modifier_texts);
-            filtered.enchant_texts = drop_def(filtered.enchant_texts);
-        }
-        // 带 Spirit 基底的件（权杖）：剔除局部 `increased Spirit` / `+N to Spirit`
-        // ——已折入 rolled `Spirit:` 行（Item.lua:1724-1727 calcLocal 折算）或由
-        // item_spirit_modifiers 按基底重算；留在全局会双计（M2 Track D，13-G11）。
-        let has_spirit_base = item.rolled_defence.spirit.is_some()
-            || data
-                .base_items
-                .get(&item.base.to_string())
-                .and_then(|b| b.spirit)
-                .is_some();
-        if has_spirit_base {
-            let drop_spirit = |texts: Vec<String>| -> Vec<String> {
-                texts
-                    .into_iter()
-                    .filter(|t| !is_local_spirit_mod(&clean_item_text(t)))
-                    .collect()
-            };
-            filtered.implicit_texts = drop_spirit(filtered.implicit_texts);
-            filtered.modifier_texts = drop_spirit(filtered.modifier_texts);
-            filtered.enchant_texts = drop_spirit(filtered.enchant_texts);
-        }
-        session
-            .add_item(slot, &filtered)
-            .map_err(|e| BuildError::Parse(e.to_string()))?;
-
-        // 槽位加成效果副本：该槽位有 `EffectOfBonusesFrom<Slot>` INC 时，把本件已
-        // 注入词条的**数值差额副本** 追加注入（vendor CalcPerform.lua:1347-1369
-        // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`——数值
-        // 缩放为截尾语义 [`vendor_scale_mod_value`]，差额 = trunc(round(v×(1+s),2))−v；
-        // flag 副本为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
-        // :1328-1334 的对侧取词条一致。
-        // 注入词条的**数值副本 × scale** 追加注入（vendor CalcPerform.lua:1347-1369
-        // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`；flag 副本
-        // 为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
-        // :1328-1334 的对侧取词条一致。负向 scale（focus -50%，CalcSetup.lua:
-        // 1209-1220）同路径：全值 + 负副本 = 净 ×(1+scale)，与 vendor
-        // combinedList+ScaleAddList 合并等价（vendor 对缩放副本取
-        // `m_modf(round(v*scale,2))` 截断，此处保留浮点，逐件 ≤0.5 偏差）。
-        if let Some(&(_, scale)) = bonus_scales
-            .iter()
-            .find(|(s, scale)| *s == slot && *scale != 0.0)
-        {
-            let ingest = pobr_core::ingest_item(slot, &filtered)
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
-            let scaled: Vec<Modifier> = ingest
-                .modifiers
-                .into_iter()
-                .filter_map(|m| match m.value {
-                    pobr_core::ModValue::Number(v) => {
-                        let delta = vendor_scale_mod_value(v, 1.0 + scale) - v;
-                        (delta != 0.0).then_some(Modifier {
-                            value: pobr_core::ModValue::Number(delta),
-                            ..m
-                        })
-                    }
-                    _ => None,
-                })
-                .collect();
-            session.add_modifiers(scaled);
-        }
-    }
+    // 2. 装备：归因路径注入（逐件 filter / Kalandra 镜射 / 局部词条剔除 / 槽位加成数值副本）。
+    inject_items(&mut session, build, data, off_weapon.is_some())?;
 
     // 2b. 珠宝（天赋树/深渊槽）：词条按**全局**注入（多数珠宝为全局 mod；radius 珠宝
     //     当前近似为全局）。沿用 add_item 的 skip-and-collect 容错。
@@ -1013,25 +883,13 @@ pub fn calculate_with_data(
     // 4b/4b'/4b''. 光环·诅咒 BuffSpec + support 授予 buff + herald 在场计数/条件。
     inject_buffs_and_heralds(&mut session, build, data);
 
-    // 4c. Mark 激活授予玩家的**进攻自身 buff**（gain-as-extra）→ SkillGem 归因 modifier。
-    //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
-    //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
-    session.add_modifiers(self_buff_offensive_modifiers(build, data));
-
-    // 4c'.（M4-L）非主组曝光效果 support（h3 登记 Potent Exposure 同根）：
-    //     曝光源所在副组的兼容 support 的 `<El>ExposureEffect` INC 全局注入
-    //     （vendor 按来源技能作用域，CalcPerform.lua:3193-3211/:3226-3231；
-    //     PoBR 曝光归约扁平求和近似）。主组 support 已由 support_modifiers
-    //     全量注入，函数内跳过防双注入。
-    session.add_modifiers(exposure_support_modifiers(
+    // 4c/4c'/4d. Mark 自身进攻 buff + 非主组曝光 support + Spirit 预留聚合。
+    inject_self_buff_exposure_spirit(
+        &mut session,
         build,
         data,
         main_skill.as_ref().map(|(_, g, _)| *g),
-    ));
-
-    // 4d.（M1-T4.5）持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
-    //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
-    session.add_modifiers(spirit_reservation_modifiers(build, data));
+    );
 
     // 5/5a/5b. 敌人配置（setup_enemy）+ config enemy 桶 + 玩家施加的元素曝光。
     inject_enemy(&mut session, build, options, enemy_tier, &resolved_config);
@@ -1358,6 +1216,171 @@ fn inject_enemy(
             session.apply_enemy_exposure(exposure, EXPOSURE_MAGNITUDE);
         }
     }
+}
+
+/// 1 阶段：角色基础（等级 + 职业派生属性 → BASE）+ 元素抗性惩罚（战役进度档位）。
+fn inject_character_base(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    resolved_config: &crate::config_resolve::ResolvedConfig,
+) {
+    // 1. 角色基础（等级 + 职业派生属性）→ CharacterBase 归因的 BASE modifier。
+    if options.inject_character_base
+        && let Some(base) = character_base(build, data)
+    {
+        // M0-W3：派生系数自注入的 character_constants 域读取（与 Default 逐值相等）。
+        session.add_modifiers(base.modifiers(&data.constants.character_constants));
+        // 元素抗性惩罚（火/冰/电；混沌无惩罚）：XML Config `resistancePenalty` 显式档位
+        // 优先；省略时按 PoB2 CalcSetup.lua `configInput.resistancePenalty or -60`（即
+        // Endgame）。档位 → 惩罚 modifier 走 [`CampaignProgress`] 既有表（带
+        // `campaign.resistance_penalty` 归因；Act1 惩罚为 0、不产生 modifier）。
+        let progress = resolved_config
+            .config
+            .campaign_progress
+            .unwrap_or(CampaignProgress::Endgame);
+        session.add_modifiers(progress.modifiers());
+    }
+}
+
+/// 2 阶段：装备归因路径注入——逐件 filter / Kalandra 镜射 / 局部词条（武器·防御·Spirit）
+/// 剔除 / add_item / 槽位加成效果数值副本。`off_weapon_active` = 副手武器源是否被消费。
+fn inject_items(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+    off_weapon_active: bool,
+) -> Result<(), BuildError> {
+    // 槽位加成效果（『N% increased bonuses gained from Equipped Rings and Amulets』，
+    // Ritualist 等）：对应槽位物品词条按 scale 追加缩放副本（PoB2 CalcPerform.lua:
+    // 1326-1370 `EffectOfBonusesFrom<Slot>` ScaleAddMod 语义；仅 scale>0 生效）。
+    let bonus_scales = slot_bonus_effect_scales(build, data);
+    for (slot, item) in build.equipped_items() {
+        // Kalandra's Touch『Reflects opposite Ring』：镜射对侧戒指的全部词条
+        // （vendor CalcSetup.lua:1221-1243），来源仍归 Kalandra 所在槽。
+        let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
+        let mut filtered = filter_item_parseable(item);
+        // 主手武器：剔除局部物理增伤/附加（已作为武器 source 独立乘区 × baseMultiplier 计入
+        // weapon_contribution）；留在全局会重复且错误地并入加法桶（PoB 是独立乘区）。
+        // 双持副手（W-B2）：Weapon2 作为 off-hand 武器源消费时同样剔除——其局部词条
+        // 已折入 off-hand WeaponContribution（未消费时维持现状，不动全局注入）。
+        if slot == EquipmentSlot::Weapon1 || (slot == EquipmentSlot::Weapon2 && off_weapon_active) {
+            let drop_local = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| !is_weapon_local_mod(t, &data.local_mods.weapon))
+                    .collect()
+            };
+            filtered.implicit_texts = drop_local(filtered.implicit_texts);
+            filtered.modifier_texts = drop_local(filtered.modifier_texts);
+            filtered.enchant_texts = drop_local(filtered.enchant_texts);
+        }
+        // 护甲件：剔除局部「increased / +flat Armour/Evasion/ES」（已折入 rolled 件级底值 /
+        // 基底兜底乘区，见 defence_base_modifiers）；留在全局会重复（且错误地变成全局加法）。
+        // 判定护甲件：有基底护甲项 **或** 文本给出 rolled 防御行（兜底覆盖无 catalog 的 unique）。
+        let rd = &item.rolled_defence;
+        // per-level 防御件（如纯 implicit 唯一手套）也算护甲件——其 `Has +N per level` 已折入
+        // 件级底值（item_rolled_defence），须从全局路径剔除，避免重复/错误全局注入。
+        let has_per_level_def = item_per_level_defence(item).iter().any(|&v| v > 0.0);
+        let is_armour_piece = data.armour_base(&item.base.to_string()).is_some()
+            || rd.armour.is_some()
+            || rd.evasion.is_some()
+            || rd.energy_shield.is_some()
+            || has_per_level_def;
+        if is_armour_piece {
+            let drop_def = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| {
+                        let c = clean_item_text(t);
+                        parse_local_defence_inc(&c).is_none()
+                            && parse_local_defence_flat(&c).is_none()
+                            && parse_has_per_level_defence(&c).is_none()
+                    })
+                    .collect()
+            };
+            filtered.implicit_texts = drop_def(filtered.implicit_texts);
+            filtered.modifier_texts = drop_def(filtered.modifier_texts);
+            filtered.enchant_texts = drop_def(filtered.enchant_texts);
+        }
+        // 带 Spirit 基底的件（权杖）：剔除局部 `increased Spirit` / `+N to Spirit`
+        // ——已折入 rolled `Spirit:` 行（Item.lua:1724-1727 calcLocal 折算）或由
+        // item_spirit_modifiers 按基底重算；留在全局会双计（M2 Track D，13-G11）。
+        let has_spirit_base = item.rolled_defence.spirit.is_some()
+            || data
+                .base_items
+                .get(&item.base.to_string())
+                .and_then(|b| b.spirit)
+                .is_some();
+        if has_spirit_base {
+            let drop_spirit = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| !is_local_spirit_mod(&clean_item_text(t)))
+                    .collect()
+            };
+            filtered.implicit_texts = drop_spirit(filtered.implicit_texts);
+            filtered.modifier_texts = drop_spirit(filtered.modifier_texts);
+            filtered.enchant_texts = drop_spirit(filtered.enchant_texts);
+        }
+        session
+            .add_item(slot, &filtered)
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+
+        // 槽位加成效果副本：该槽位有 `EffectOfBonusesFrom<Slot>` INC 时，把本件已
+        // 注入词条的**数值差额副本** 追加注入（vendor CalcPerform.lua:1347-1369
+        // 把 BASE/INC 数值 mod 分组后 `ScaleAddMod(mod, slotEffectMod)`——数值
+        // 缩放为截尾语义 [`vendor_scale_mod_value`]，差额 = trunc(round(v×(1+s),2))−v；
+        // flag 副本为无操作，跳过）。Kalandra 镜射已在上方顶替 `filtered`，与 vendor
+        // :1328-1334 的对侧取词条一致。负向 scale（focus -50%，CalcSetup.lua:
+        // 1209-1220）同路径：全值 + 负副本 = 净 ×(1+scale)，与 vendor
+        // combinedList+ScaleAddList 合并等价（vendor 对缩放副本取
+        // `m_modf(round(v*scale,2))` 截断，此处保留浮点，逐件 ≤0.5 偏差）。
+        if let Some(&(_, scale)) = bonus_scales
+            .iter()
+            .find(|(s, scale)| *s == slot && *scale != 0.0)
+        {
+            let ingest = pobr_core::ingest_item(slot, &filtered)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+            let scaled: Vec<Modifier> = ingest
+                .modifiers
+                .into_iter()
+                .filter_map(|m| match m.value {
+                    pobr_core::ModValue::Number(v) => {
+                        let delta = vendor_scale_mod_value(v, 1.0 + scale) - v;
+                        (delta != 0.0).then_some(Modifier {
+                            value: pobr_core::ModValue::Number(delta),
+                            ..m
+                        })
+                    }
+                    _ => None,
+                })
+                .collect();
+            session.add_modifiers(scaled);
+        }
+    }
+    Ok(())
+}
+
+/// 4c/4c'/4d 阶段：Mark 自身进攻 buff（gain-as-extra）+ 非主组曝光 support + Spirit 预留聚合。
+fn inject_self_buff_exposure_spirit(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+    main_skill_group: Option<&SocketGroup>,
+) {
+    // 4c. Mark 激活授予玩家的**进攻自身 buff**（gain-as-extra）→ SkillGem 归因 modifier。
+    //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
+    //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
+    session.add_modifiers(self_buff_offensive_modifiers(build, data));
+    // 4c'.（M4-L）非主组曝光效果 support：曝光源所在副组的兼容 support 的
+    //     `<El>ExposureEffect` INC 全局注入。主组 support 已由 support_modifiers
+    //     全量注入，函数内跳过防双注入。
+    session.add_modifiers(exposure_support_modifiers(build, data, main_skill_group));
+    // 4d.（M1-T4.5）持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
+    //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
+    session.add_modifiers(spirit_reservation_modifiers(build, data));
 }
 
 // ---- statmap 双跑上下文（M1-T2.3）----
