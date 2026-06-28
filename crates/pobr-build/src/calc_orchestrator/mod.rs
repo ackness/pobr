@@ -1541,10 +1541,13 @@ mod tests {
     #[test]
     fn combine_wrapped_then_filter_joins_wrapped_tree_lines() {
         // Demolitionist 实例：两行 = 一条 mod（入库 stat 的 `\n` 折行）。
-        let joined = combine_wrapped_then_filter(vec![
-            "Gain 4% of Damage as Extra Fire Damage for".into(),
-            "every different Grenade fired in the past 8 seconds".into(),
-        ]);
+        let joined = combine_wrapped_then_filter(
+            vec![
+                "Gain 4% of Damage as Extra Fire Damage for".into(),
+                "every different Grenade fired in the past 8 seconds".into(),
+            ],
+            ParseCtx::none(),
+        );
         assert_eq!(
             joined,
             vec![
@@ -1554,11 +1557,14 @@ mod tests {
         );
 
         // 可独立解析的行不受影响；无法合并成功的失败行按原口径丢弃。
-        let mixed = combine_wrapped_then_filter(vec![
-            "10% increased Damage".into(),
-            "this line is not a known modifier".into(),
-            "+50 to maximum Life".into(),
-        ]);
+        let mixed = combine_wrapped_then_filter(
+            vec![
+                "10% increased Damage".into(),
+                "this line is not a known modifier".into(),
+                "+50 to maximum Life".into(),
+            ],
+            ParseCtx::none(),
+        );
         assert_eq!(
             mixed,
             vec![

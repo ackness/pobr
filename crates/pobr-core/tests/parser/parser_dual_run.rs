@@ -386,6 +386,55 @@ fn dual_run_report() {
 /// 不在解析范围）。
 ///
 /// 本门禁断言新引擎是旧引擎能力的**逐字节形态超集**（剔 origin、source 不参与）：
+/// `... against enemies within/further than N metres` → 引擎产 `MultiplierThreshold:
+/// enemyDistance` tag（#8 node 5802「Stand and Deliver」逐字含 `[A|B]` markup）。回归
+/// 锚：threshold 须 = N×10（米→单位，`"$1:mult(10)"` 算子），不是裸 N。
+#[test]
+fn within_metres_parses_to_multiplier_threshold() {
+    use pobr_core::ModTag;
+    let rules = load_rules();
+    // node 5802 逐字（带 markup）：「Projectiles have 40% increased Critical Damage Bonus
+    // against Enemies within 2m」→ CriticalStrikeMultiplier INC 40 + MultiplierThreshold(20,upper)。
+    let out = parse_mod_engine(
+        "[Projectile|Projectiles] have 40% increased [CriticalDamageBonus|Critical Damage Bonus] against Enemies within 2m",
+        &rules,
+    );
+    assert_eq!(out.status, ParseStatus::Parsed, "应解析，不丢弃");
+    assert_eq!(out.mods.len(), 1);
+    assert_eq!(out.mods[0].name.as_str(), "CriticalStrikeMultiplier");
+    let mt = out.mods[0]
+        .tags
+        .iter()
+        .find_map(|t| match t {
+            ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper,
+            } => Some((var.clone(), *threshold, *upper)),
+            _ => None,
+        })
+        .expect("含 MultiplierThreshold tag");
+    assert_eq!(
+        mt,
+        ("enemyDistance".to_string(), 20.0, true),
+        "within 2m → 阈值 20、upper"
+    );
+
+    // further than 3m → 非 upper、阈值 30。
+    let far = parse_mod_engine(
+        "10% increased Damage against enemies further than 3m",
+        &rules,
+    );
+    assert_eq!(far.status, ParseStatus::Parsed);
+    let far_mt = far.mods[0].tags.iter().find_map(|t| match t {
+        ModTag::MultiplierThreshold {
+            threshold, upper, ..
+        } => Some((*threshold, *upper)),
+        _ => None,
+    });
+    assert_eq!(far_mt, Some((30.0, false)));
+}
+
 /// C1 18-build 语料无 DIFF、无 OLD_ONLY。该等价性是「引擎接管 calc 主路径」的前提
 /// （现已落地：编排层恒注入引擎规则，legacy 仅作回退）——切换全程 parity 零回归。
 #[test]

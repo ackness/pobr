@@ -514,19 +514,19 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 const BASELINE_DEF_CORE_HIT5: usize = 132; // 实测 132/144 = 91.7%（M4-k2 油涂池连带）
 const BASELINE_DEF_HIT5: usize = 379; // 实测 379/450 = 84.2%（M4-k 波合并重记）
 const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
-// **Onslaught 幻影修复重记（独立 baseline commit，显式审查）**：移除 item.rs
-// `parse_granted_buff_flag`——PoBR 越过 PoB2 解析能力把 `Grants Onslaught during
-// effect`（Silver Charm 唯一词条）无条件发 `flag("Onslaught")`，使 detonate-dead/
-// coiling/flicker 的 Speed 相对 golden 偏高 +20%。PoB2 ModParser 对该行返回
-// unsupported（`run-parsemod.sh` 核实），golden 不含该 Onslaught。修复后 Speed 三 build
-// 归 1.00x：进攻 @5% 62→65（detonate Speed+TotalDPS、coiling Speed、flicker Speed），
-// @10% 70→71（flicker Speed 越回 10% 带沿）。逐 build 见 offensive-parity-roadmap-2026-06-28.md。
-// **CI→FullLife 桥重记（独立 baseline commit，叠加在 Onslaught 修复之上）**：CI build
-// 补 `Condition:FullLife`（vendor CalcDefence.lua:123-126）后「while on Full Life」增伤
-// 生效——flicker（CI）AvgDamage 0.90x→0.99x、TotalDPS/CombinedDPS 0.99x；配合上面的
-// Onslaught Speed 修复，flicker 五分量齐转命中。进攻 @5% 65→67（flicker AvgDamage+TotalDPS）。
-const BASELINE_OFF_HIT5: usize = 67; // 实测 67/80 = 83.8%（CI→FullLife 桥 +2）
-const BASELINE_OFF_HIT10: usize = 71; // 实测 71/80 = 88.8%（不变）
+// **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
+// - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
+//   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker
+//   Speed +20% 偏高 → 归 1.00x。
+// - CI→FullLife 桥（vendor CalcDefence.lua:123-126：CI build 恒满生命）：flicker（CI）
+//   「while on Full Life」增伤生效 → AvgDamage 0.90x→0.99x、五分量齐命中。
+// - MultiplierThreshold:enemyDistance（`... against enemies within/further than N metres`
+//   接通，含 collect.rs 预过滤闸门窄放行）：monk-twister node 5802「Stand and Deliver」
+//   等 within-metres 节点生效 → monk-twister CritMult/Avg/TotalDPS 转命中，huntress-twister/
+//   titan-shield-wall 连带。
+// 三修复 build 互不重叠、增益叠加；合并后全量实测重记（master 62/70 → 70/73）。
+const BASELINE_OFF_HIT5: usize = 70; // 实测 70/80 = 87.5%（Onslaught+FullLife+MultiplierThreshold 合并 +8）
+const BASELINE_OFF_HIT10: usize = 73; // 实测 73/80 = 91.2%（+3）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -554,12 +554,11 @@ const BASELINE_OFF_HIT10: usize = 71; // 实测 71/80 = 88.8%（不变）
 // 接入：parser 新增暴击后缀剥离 + `ailment_scoped_cfg` 置 CriticalStrike=true，对齐
 // vendor dotCfg `skillCond["CriticalStrike"]=true`，CalcOffence.lua:5006）。huntress
 // poison 0.58x→1.04x、bleed 0.64x→1.11x，TotalDotDPS/CombinedDPS 双列入命中。
-// **CI→FullLife 桥重记**：flicker（CI）补 FullLife 后真实 AverageDamage 0.90x→0.99x，
-// 其 CombinedDPS 同步 0.99x（配合 Onslaught Speed 修复转命中）。这恰好闭合了 Onslaught
-// 修复时记下的 flicker dot 例外——彼时 flicker CombinedDPS 因缺 FullLife 真低估 ~0.90x，
-// 补上后命中。dot @5% 22→24（flicker TotalDotDPS/CombinedDPS 入命中）、@10% 25→26。
-const BASELINE_DOT_HIT5: usize = 24; // 实测 24/37 = 64.9%（CI→FullLife 桥 +2）
-const BASELINE_DOT_HIT10: usize = 26; // 实测 26/37 = 70.3%（CI→FullLife 桥 +1）
+// **进攻修复簇 dot 列累计重记**：flicker（CI→FullLife）CombinedDPS 0.90x→0.99x、
+// monk-twister / titan-shield-wall（MultiplierThreshold）CombinedDPS 随 hit 转命中。
+// 三修复合并后 dot 列全量实测重记（master 22/26 → 26/28）。
+const BASELINE_DOT_HIT5: usize = 26; // 实测 26/37 = 70.3%（合并 +4）
+const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（合并 +2）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
