@@ -740,24 +740,8 @@ pub fn calculate_with_data(
         ]);
     }
 
-    // 1d. 装备基底防御（armour/evasion/ES）→ Item 归因的 BASE 词条（× 品质）。装备的
-    //     `increased Armour/Evasion/EnergyShield` 词条经 add_item 注入 INC，于此 base 上缩放。
-    session.add_modifiers(defence_base_modifiers(build, data));
-
-    // 1d'. 盾牌基底格挡 → `ShieldBlockChance` BASE（M2 Track D，13-G8）。
-    //      PoB2 CalcDefence.lua:975-980 读 Weapon 2/3 `armourData.BlockChance`
-    //      作为盾基底；catalog 值经 overlay/base_item_overrides merge 注入。
-    session.add_modifiers(shield_block_modifiers(build, data));
-
-    // 1d''. 件级 Spirit（权杖 rolled `Spirit:` 行 / catalog 基底 spirit）→
-    //       `Spirit` BASE（M2 Track D，13-G11；PoB2 CalcSetup.lua:1275-1277
-    //       `item.spiritValue → NewMod("Spirit","BASE")` 等价）。
-    session.add_modifiers(item_spirit_modifiers(build, data));
-
-    // 1d'''. 件级 Ward（rolled `Ward:` 行 / catalog 基底 ward）→ `Ward` BASE
-    //        （M2 Track D，13-G14；PoB2 CalcDefence.lua:1158-1186 armourData.Ward
-    //        per-slot 聚合等价）。
-    session.add_modifiers(item_ward_modifiers(build, data));
+    // 1d. 装备基底防御 / 盾基底格挡 / 件级 Spirit / Ward → BASE 词条。
+    inject_defence_base(&mut session, build, data);
 
     // 2. 装备：归因路径（按槽位 + 来源类别），替代 text dump。
     //    真实词条中含解析器尚未支持的硬失败形式（如 `[Bleeding] on [Hit]`），逐件
@@ -894,17 +878,8 @@ pub fn calculate_with_data(
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
-    // 2b''. 激活态药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`，
-    //       xml_build 已按 `active` 门控——vendor CalcSetup.lua:1014-1028 `slot.active`
-    //       决定 env.flasks/charms）：经 `ingest_flask_charm` 打包为 FlaskBuff/
-    //       CharmBuff 载荷注入 session（M3-T4 通道切换，替代旧「原值直注」路径），
-    //       由 env_finalize 阶段 3 merge_flasks_charms 在 mode_combat 门控下按
-    //       effect 乘区合并 + UsingFlask/UsingCharm 条件置位（vendor
-    //       CalcPerform.lua:1429-1663）。charm 需 CharmLimit 来源（腰带 implicit
-    //       等）方进预算（:1589）；不可解析行（触发/恢复行）skip-and-collect。
-    for (slot_name, item) in &build.utility_slots {
-        session.add_flask_charm(slot_name, item);
-    }
+    // 2b''. 激活态药剂/护符载荷注入（env_finalize 阶段 3 合并消费）。
+    inject_flasks_charms(&mut session, build);
 
     // 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
     //      已分配**对应种类节点数 × 授予，展开为全局 modifier text 注入（PoB2 几何口径）。
@@ -1033,63 +1008,10 @@ pub fn calculate_with_data(
     session.set_keystone_mods(keystone_mod_map(data, &passive_nodes));
 
     // 4. 技能宝石：按 active/support 分类，经各自归因入口注入。
-    for gem in resolve_gems(build, data) {
-        if gem.is_support {
-            session
-                .add_support_gem(&gem)
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
-        } else {
-            session
-                .add_skill_gem(&gem)
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
-        }
-    }
+    inject_skill_gems(&mut session, build, data)?;
 
-    // 4b. 光环/诅咒技能 → BuffSpec 经 `session.add_buff_skill` 注入（§2.4 契约），
-    //     消费在 pobr-core buff_pass（env_finalize 阶段 4；上方已置 cfg.mode_buffs）：
-    //     aura 防御 buff（Discipline→EnergyShield、Purity of Fire→FireResistance…）
-    //     吃 AuraEffect 系乘区（CalcPerform.lua:2102-2105）后并入 player db；curse
-    //     走 priority/limit/分槽（:2829-2896）。C5-2 切换前的 `aura_buff_modifiers`
-    //     静态直注已关（双跑依据 m3-c5-dualrun-report.md，删函数属 C5-3）。
-    for spec in buff_skill_specs(build, data) {
-        // （M4-n）buff 载荷中的 `Multiplier:<X>` BASE → cfg.multipliers 桥
-        // （vendor GetMultiplier 对 modDB `Multiplier:<X>` 全局求和取数，
-        // ModStore.lua:369；PoBR 的 ModTag::Multiplier 读 cfg.multipliers
-        // 预灌表，需在此显式回填）。首个消费方 = Sigil of Power
-        // `Multiplier:SigilOfPowerMaxStages` BASE 4（per-stage MORE 的
-        // limitVar 分母）。
-        for m in &spec.mods {
-            if let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
-                && m.mod_type == ModType::Base
-                && let Some(v) = m.value.as_number()
-            {
-                session.set_multiplier(var, v);
-            }
-        }
-        session.add_buff_skill(spec);
-    }
-    // 4b'.（M4-G）support 授予的玩家侧 buff（Precision I/II → Accuracy INC，
-    //     sup_dex.lua:4181-4250）→ BuffSpec(kind=Buff)，buff_pass Buff 分支
-    //     （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db。
-    for spec in support_buff_specs(build, data) {
-        session.add_buff_skill(spec);
-    }
-
-    // 4b''.（M4-m）herald 在场计数/条件（vendor CalcPerform.lua:1792-1805，
-    //     mode_buffs 段——本编排路径恒置 mode_buffs=true）：已启用组中
-    //     skill_types 含 Herald 的主动技能按显示名去重 → `Multiplier:Herald`
-    //     = 数量 + `Condition:AffectedByHerald`；并逐 herald 置
-    //     `AffectedBy<名去空格>`（vendor buff 分支命名 `buff.name:gsub(" ","")`，
-    //     "Herald of Plague" → AffectedByHeraldofPlague——of 保持小写）。
-    //     消费方 = mod_parser 的 herald 条件后缀族（ModParser.lua:1826/:6326-6328）。
-    let heralds = herald_skill_names(build, data);
-    if !heralds.is_empty() {
-        session.set_multiplier("Herald", heralds.len() as f64);
-        session.set_condition("AffectedByHerald", true);
-        for name in &heralds {
-            session.set_condition(format!("AffectedBy{}", name.replace(' ', "")), true);
-        }
-    }
+    // 4b/4b'/4b''. 光环·诅咒 BuffSpec + support 授予 buff + herald 在场计数/条件。
+    inject_buffs_and_heralds(&mut session, build, data);
 
     // 4c. Mark 激活授予玩家的**进攻自身 buff**（gain-as-extra）→ SkillGem 归因 modifier。
     //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
@@ -1294,6 +1216,115 @@ pub fn calculate_with_data(
     // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
     session.perform_minimal();
     Ok(session.output().clone())
+}
+
+// ---- calculate_with_data 注入阶段（主脉拆分：行为不变，纯分组）----
+// 下列 `inject_*` 自由函数从 `calculate_with_data` 主脉逐段抽出，每个对应原主脉
+// 一个自包含注入阶段（仅依赖 session + build/data/options，无跨阶段中间状态），
+// 调用顺序与原内联顺序逐字一致 → 零行为变化（parity 门禁逐值兜底）。
+
+/// 1d 阶段：装备基底防御（armour/evasion/ES）+ 盾基底格挡 + 件级 Spirit/Ward → BASE 词条。
+fn inject_defence_base(session: &mut CalculationSession, build: &Build, data: &BuildData) {
+    // 1d. 装备基底防御（armour/evasion/ES）→ Item 归因的 BASE 词条（× 品质）。装备的
+    //     `increased Armour/Evasion/EnergyShield` 词条经 add_item 注入 INC，于此 base 上缩放。
+    session.add_modifiers(defence_base_modifiers(build, data));
+    // 1d'. 盾牌基底格挡 → `ShieldBlockChance` BASE（M2 Track D，13-G8）。
+    //      PoB2 CalcDefence.lua:975-980 读 Weapon 2/3 `armourData.BlockChance`
+    //      作为盾基底；catalog 值经 overlay/base_item_overrides merge 注入。
+    session.add_modifiers(shield_block_modifiers(build, data));
+    // 1d''. 件级 Spirit（权杖 rolled `Spirit:` 行 / catalog 基底 spirit）→
+    //       `Spirit` BASE（M2 Track D，13-G11；PoB2 CalcSetup.lua:1275-1277
+    //       `item.spiritValue → NewMod("Spirit","BASE")` 等价）。
+    session.add_modifiers(item_spirit_modifiers(build, data));
+    // 1d'''. 件级 Ward（rolled `Ward:` 行 / catalog 基底 ward）→ `Ward` BASE
+    //        （M2 Track D，13-G14；PoB2 CalcDefence.lua:1158-1186 armourData.Ward
+    //        per-slot 聚合等价）。
+    session.add_modifiers(item_ward_modifiers(build, data));
+}
+
+/// 2b'' 阶段：激活态药剂/护符载荷注入（env_finalize 阶段 3 合并消费）。
+fn inject_flasks_charms(session: &mut CalculationSession, build: &Build) {
+    // 2b''. 激活态药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`，
+    //       xml_build 已按 `active` 门控——vendor CalcSetup.lua:1014-1028 `slot.active`
+    //       决定 env.flasks/charms）：经 `ingest_flask_charm` 打包为 FlaskBuff/
+    //       CharmBuff 载荷注入 session（M3-T4 通道切换，替代旧「原值直注」路径），
+    //       由 env_finalize 阶段 3 merge_flasks_charms 在 mode_combat 门控下按
+    //       effect 乘区合并 + UsingFlask/UsingCharm 条件置位（vendor
+    //       CalcPerform.lua:1429-1663）。charm 需 CharmLimit 来源（腰带 implicit
+    //       等）方进预算（:1589）；不可解析行（触发/恢复行）skip-and-collect。
+    for (slot_name, item) in &build.utility_slots {
+        session.add_flask_charm(slot_name, item);
+    }
+}
+
+/// 4 阶段：技能宝石按 active/support 分类经各自归因入口注入。
+fn inject_skill_gems(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+) -> Result<(), BuildError> {
+    // 4. 技能宝石：按 active/support 分类，经各自归因入口注入。
+    for gem in resolve_gems(build, data) {
+        if gem.is_support {
+            session
+                .add_support_gem(&gem)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        } else {
+            session
+                .add_skill_gem(&gem)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
+/// 4b/4b'/4b'' 阶段：光环/诅咒 BuffSpec + support 授予 buff + herald 在场计数/条件注入。
+fn inject_buffs_and_heralds(session: &mut CalculationSession, build: &Build, data: &BuildData) {
+    // 4b. 光环/诅咒技能 → BuffSpec 经 `session.add_buff_skill` 注入（§2.4 契约），
+    //     消费在 pobr-core buff_pass（env_finalize 阶段 4；上方已置 cfg.mode_buffs）：
+    //     aura 防御 buff（Discipline→EnergyShield、Purity of Fire→FireResistance…）
+    //     吃 AuraEffect 系乘区（CalcPerform.lua:2102-2105）后并入 player db；curse
+    //     走 priority/limit/分槽（:2829-2896）。C5-2 切换前的 `aura_buff_modifiers`
+    //     静态直注已关（双跑依据 m3-c5-dualrun-report.md，删函数属 C5-3）。
+    for spec in buff_skill_specs(build, data) {
+        // （M4-n）buff 载荷中的 `Multiplier:<X>` BASE → cfg.multipliers 桥
+        // （vendor GetMultiplier 对 modDB `Multiplier:<X>` 全局求和取数，
+        // ModStore.lua:369；PoBR 的 ModTag::Multiplier 读 cfg.multipliers
+        // 预灌表，需在此显式回填）。首个消费方 = Sigil of Power
+        // `Multiplier:SigilOfPowerMaxStages` BASE 4（per-stage MORE 的
+        // limitVar 分母）。
+        for m in &spec.mods {
+            if let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
+                && m.mod_type == ModType::Base
+                && let Some(v) = m.value.as_number()
+            {
+                session.set_multiplier(var, v);
+            }
+        }
+        session.add_buff_skill(spec);
+    }
+    // 4b'.（M4-G）support 授予的玩家侧 buff（Precision I/II → Accuracy INC，
+    //     sup_dex.lua:4181-4250）→ BuffSpec(kind=Buff)，buff_pass Buff 分支
+    //     （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db。
+    for spec in support_buff_specs(build, data) {
+        session.add_buff_skill(spec);
+    }
+
+    // 4b''.（M4-m）herald 在场计数/条件（vendor CalcPerform.lua:1792-1805，
+    //     mode_buffs 段——本编排路径恒置 mode_buffs=true）：已启用组中
+    //     skill_types 含 Herald 的主动技能按显示名去重 → `Multiplier:Herald`
+    //     = 数量 + `Condition:AffectedByHerald`；并逐 herald 置
+    //     `AffectedBy<名去空格>`（vendor buff 分支命名 `buff.name:gsub(" ","")`，
+    //     "Herald of Plague" → AffectedByHeraldofPlague——of 保持小写）。
+    //     消费方 = mod_parser 的 herald 条件后缀族（ModParser.lua:1826/:6326-6328）。
+    let heralds = herald_skill_names(build, data);
+    if !heralds.is_empty() {
+        session.set_multiplier("Herald", heralds.len() as f64);
+        session.set_condition("AffectedByHerald", true);
+        for name in &heralds {
+            session.set_condition(format!("AffectedBy{}", name.replace(' ', "")), true);
+        }
+    }
 }
 
 // ---- statmap 双跑上下文（M1-T2.3）----
