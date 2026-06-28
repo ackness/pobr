@@ -1086,94 +1086,14 @@ pub fn calculate_with_data(
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
-    // 6b. 属性派生（PoE2）：life/mana/accuracy 须用**最终**属性（职业基础 + 装备/树/珠宝
-    //     的 +Strength/Dex/Int，并经 `N% increased <Attr>` 缩放——PoB2
-    //     `calculateAttributes`，CalcPerform.lua:381-388
-    //     `output[stat] = m_max(round(calcLib.val(modDB, stat)), 0)`）。
-    //     character_base 已注入「未经 INC 缩放的职业起始」派生部分；此处补注入
-    //     `最终总量 − 职业起始` 的增量（2 life/力量、2 mana/智力、6 accuracy/敏捷，
-    //     vendor :424-441 Life/Accuracy/Mana from Str/Dex/Int），须在全部来源注入后。
-    if options.inject_character_base {
-        // PoE2 属性派生系数（每点力量 +2 生命、每点智力 +2 魔力、每点敏捷 +6 精准）：
-        // M0-W3 起自注入的 character_constants 域读取，与 CharacterBase 派生同一来源。
-        let cc = &data.constants.character_constants;
-        // 职业起始属性（CharacterBase 烘焙部分；未知职业 = 未注入 CharacterBase → 0）。
-        let cls = character_base(build, data);
-        let (cls_str, cls_dex, cls_int) = cls
-            .map(|c| (c.strength, c.dexterity, c.intelligence))
-            .unwrap_or((0.0, 0.0, 0.0));
-        let str_total = session.attribute_total("Strength", cls_str);
-        let dex_total = session.attribute_total("Dexterity", cls_dex);
-        let int_total = session.attribute_total("Intelligence", cls_int);
-        let mk = |stat: &str, value: f64| {
-            let origin = ModifierSource::new(SourceId::new(
-                SourceKind::CharacterBase,
-                "base.attr_derived",
-            ))
-            .with_raw_text(format!("{stat} from attributes"));
-            Modifier::number(stat, ModType::Base, value).with_origin(origin)
-        };
-        session.add_modifiers([
-            mk("MaximumLife", cc.life_per_strength * (str_total - cls_str)),
-            mk(
-                "MaximumMana",
-                cc.mana_per_intelligence * (int_total - cls_int),
-            ),
-            mk(
-                "Accuracy",
-                cc.accuracy_per_dexterity * (dex_total - cls_dex),
-            ),
-        ]);
-    }
+    // 6b. PoE2 属性派生（最终 Str/Dex/Int → Life/Mana/Accuracy 增量）。
+    inject_attribute_derivation(&mut session, build, data, options);
 
-    // 6c. per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量）：把全部来源注入后的属性 /
-    //     Spirit BASE 总量与角色等级写入 cfg.multipliers，使 `+N to <stat> per M <resource>`
-    //     这类词条（解析为 ModTag::Multiplier{var, div}）在 perform 查询时按 count/div 展开。
-    //     须在全部来源注入后、perform 之前；属性/Spirit 不参与 per-X 自缩放，base_sum 取值稳定。
-    //     Life/Mana 分母 = **全管线池值**（OVERRIDE → base×(1+inc)×more，
-    //     `CalculationSession::pool_total`，与 perform 内 offence 池计算同源）——vendor
-    //     PerStat 读 actor **output**（ModStore.lua:440-460 GetStat → output.Mana/Life），
-    //     BASE-only 会把「3% increased Spell Damage per 100 maximum Mana」（druid
-    //     ember-fusillade Tree:19044，vendor 档位 234 = 3×floor(7889/100)）严重欠算。
-    {
-        let str_total = session.base_sum("Strength");
-        let dex_total = session.base_sum("Dexterity");
-        let int_total = session.base_sum("Intelligence");
-        let spirit_total = session.base_sum("Spirit");
-        let mana_total = session.pool_total("MaximumMana");
-        let life_total = session.pool_total("MaximumLife");
-        session.set_multiplier("Strength", str_total);
-        session.set_multiplier("Dexterity", dex_total);
-        session.set_multiplier("Intelligence", int_total);
-        session.set_multiplier("Spirit", spirit_total);
-        session.set_multiplier("Mana", mana_total);
-        session.set_multiplier("Life", life_total);
-        session.set_multiplier("Level", f64::from(build.character.level));
-        // per-槽位防御缩放（`<Stat>On<Slot>`）：使 `+N to Armour per M Item Energy Shield on
-        // Equipped Boots` 这类按某件装备防御值缩放的词条生效（PoB2 PerStat `<Stat>On<Slot>`）。
-        for (var, value) in per_slot_defence_multipliers(build, data) {
-            session.set_multiplier(var, value);
-        }
-        // GrenadeTypes（M4-H；vendor CalcPerform.lua:1238-1242：去重统计已启用
-        // 主动技能中 `SkillType.Grenade` 的不同授予效果数）——Demolitionist
-        // 「… for every different Grenade fired …」的 Multiplier limitVar 分母。
-        session.set_multiplier("GrenadeTypes", grenade_type_count(build, data));
-    }
+    // 6c. per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量）。
+    inject_per_x_multipliers(&mut session, build, data);
 
-    // 6d. 来源授予的条件 flag → cfg 条件桥接：如「Gain the benefits of Bonded modifiers on
-    //     Runes and Idols」授予 `Condition:CanUseBondedModifiers` flag 后，符文 `Bonded: <mod>`
-    //     词条（挂 Condition tag）才生效（PoB2 ModParser `["^bonded: "]` 语义）。
-    if session.has_flag("Condition:CanUseBondedModifiers") {
-        session.set_condition("CanUseBondedModifiers", true);
-    }
-    // 奥术涌动桥（vendor CalcDefence.lua:1580-1582：`Condition:ArcaneSurge` flag →
-    // `AffectedByArcaneSurge` 条件）：树/词条授予的「chance to Gain Arcane Surge …」
-    // FLAG（含 CritRecently 等触发条件 tag，按当前 cfg 求值）为真时，使
-    // 「while you have Arcane Surge」族词条（Condition:AffectedByArcaneSurge tag）
-    // 生效。druid ember-fusillade：Tree:27388 激活源 → Tree:16940 +30 INC。
-    if session.has_flag("Condition:ArcaneSurge") {
-        session.set_condition("AffectedByArcaneSurge", true);
-    }
+    // 6d. 来源授予的条件 flag → cfg 条件桥接（Bonded modifiers / Arcane Surge）。
+    inject_condition_bridges(&mut session);
 
     // 诊断：POBR_DBG_UNSUPPORTED=1 时 dump 全部未解析词条文本（parity 排查用）。
     if std::env::var("POBR_DBG_UNSUPPORTED").is_ok() {
@@ -1324,6 +1244,107 @@ fn inject_buffs_and_heralds(session: &mut CalculationSession, build: &Build, dat
         for name in &heralds {
             session.set_condition(format!("AffectedBy{}", name.replace(' ', "")), true);
         }
+    }
+}
+
+/// 6b 阶段：PoE2 属性派生（最终 Str/Dex/Int → Life/Mana/Accuracy 增量），须在全部来源注入后。
+fn inject_attribute_derivation(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) {
+    // 6b. 属性派生（PoE2）：life/mana/accuracy 须用**最终**属性（职业基础 + 装备/树/珠宝
+    //     的 +Strength/Dex/Int，并经 `N% increased <Attr>` 缩放——PoB2
+    //     `calculateAttributes`，CalcPerform.lua:381-388
+    //     `output[stat] = m_max(round(calcLib.val(modDB, stat)), 0)`）。
+    //     character_base 已注入「未经 INC 缩放的职业起始」派生部分；此处补注入
+    //     `最终总量 − 职业起始` 的增量（2 life/力量、2 mana/智力、6 accuracy/敏捷，
+    //     vendor :424-441 Life/Accuracy/Mana from Str/Dex/Int），须在全部来源注入后。
+    if options.inject_character_base {
+        // PoE2 属性派生系数（每点力量 +2 生命、每点智力 +2 魔力、每点敏捷 +6 精准）：
+        // M0-W3 起自注入的 character_constants 域读取，与 CharacterBase 派生同一来源。
+        let cc = &data.constants.character_constants;
+        // 职业起始属性（CharacterBase 烘焙部分；未知职业 = 未注入 CharacterBase → 0）。
+        let cls = character_base(build, data);
+        let (cls_str, cls_dex, cls_int) = cls
+            .map(|c| (c.strength, c.dexterity, c.intelligence))
+            .unwrap_or((0.0, 0.0, 0.0));
+        let str_total = session.attribute_total("Strength", cls_str);
+        let dex_total = session.attribute_total("Dexterity", cls_dex);
+        let int_total = session.attribute_total("Intelligence", cls_int);
+        let mk = |stat: &str, value: f64| {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::CharacterBase,
+                "base.attr_derived",
+            ))
+            .with_raw_text(format!("{stat} from attributes"));
+            Modifier::number(stat, ModType::Base, value).with_origin(origin)
+        };
+        session.add_modifiers([
+            mk("MaximumLife", cc.life_per_strength * (str_total - cls_str)),
+            mk(
+                "MaximumMana",
+                cc.mana_per_intelligence * (int_total - cls_int),
+            ),
+            mk(
+                "Accuracy",
+                cc.accuracy_per_dexterity * (dex_total - cls_dex),
+            ),
+        ]);
+    }
+}
+
+/// 6c 阶段：per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量），须在全部来源注入后、perform 前。
+fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, data: &BuildData) {
+    // 6c. per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量）：把全部来源注入后的属性 /
+    //     Spirit BASE 总量与角色等级写入 cfg.multipliers，使 `+N to <stat> per M <resource>`
+    //     这类词条（解析为 ModTag::Multiplier{var, div}）在 perform 查询时按 count/div 展开。
+    //     须在全部来源注入后、perform 之前；属性/Spirit 不参与 per-X 自缩放，base_sum 取值稳定。
+    //     Life/Mana 分母 = **全管线池值**（OVERRIDE → base×(1+inc)×more，
+    //     `CalculationSession::pool_total`，与 perform 内 offence 池计算同源）——vendor
+    //     PerStat 读 actor **output**（ModStore.lua:440-460 GetStat → output.Mana/Life），
+    //     BASE-only 会把「3% increased Spell Damage per 100 maximum Mana」（druid
+    //     ember-fusillade Tree:19044，vendor 档位 234 = 3×floor(7889/100)）严重欠算。
+    let str_total = session.base_sum("Strength");
+    let dex_total = session.base_sum("Dexterity");
+    let int_total = session.base_sum("Intelligence");
+    let spirit_total = session.base_sum("Spirit");
+    let mana_total = session.pool_total("MaximumMana");
+    let life_total = session.pool_total("MaximumLife");
+    session.set_multiplier("Strength", str_total);
+    session.set_multiplier("Dexterity", dex_total);
+    session.set_multiplier("Intelligence", int_total);
+    session.set_multiplier("Spirit", spirit_total);
+    session.set_multiplier("Mana", mana_total);
+    session.set_multiplier("Life", life_total);
+    session.set_multiplier("Level", f64::from(build.character.level));
+    // per-槽位防御缩放（`<Stat>On<Slot>`）：使 `+N to Armour per M Item Energy Shield on
+    // Equipped Boots` 这类按某件装备防御值缩放的词条生效（PoB2 PerStat `<Stat>On<Slot>`）。
+    for (var, value) in per_slot_defence_multipliers(build, data) {
+        session.set_multiplier(var, value);
+    }
+    // GrenadeTypes（M4-H；vendor CalcPerform.lua:1238-1242：去重统计已启用
+    // 主动技能中 `SkillType.Grenade` 的不同授予效果数）——Demolitionist
+    // 「… for every different Grenade fired …」的 Multiplier limitVar 分母。
+    session.set_multiplier("GrenadeTypes", grenade_type_count(build, data));
+}
+
+/// 6d 阶段：来源授予的条件 flag → cfg 条件桥接（Bonded modifiers / Arcane Surge）。
+fn inject_condition_bridges(session: &mut CalculationSession) {
+    // 6d. 来源授予的条件 flag → cfg 条件桥接：如「Gain the benefits of Bonded modifiers on
+    //     Runes and Idols」授予 `Condition:CanUseBondedModifiers` flag 后，符文 `Bonded: <mod>`
+    //     词条（挂 Condition tag）才生效（PoB2 ModParser `["^bonded: "]` 语义）。
+    if session.has_flag("Condition:CanUseBondedModifiers") {
+        session.set_condition("CanUseBondedModifiers", true);
+    }
+    // 奥术涌动桥（vendor CalcDefence.lua:1580-1582：`Condition:ArcaneSurge` flag →
+    // `AffectedByArcaneSurge` 条件）：树/词条授予的「chance to Gain Arcane Surge …」
+    // FLAG（含 CritRecently 等触发条件 tag，按当前 cfg 求值）为真时，使
+    // 「while you have Arcane Surge」族词条（Condition:AffectedByArcaneSurge tag）
+    // 生效。druid ember-fusillade：Tree:27388 激活源 → Tree:16940 +30 INC。
+    if session.has_flag("Condition:ArcaneSurge") {
+        session.set_condition("AffectedByArcaneSurge", true);
     }
 }
 
