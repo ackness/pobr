@@ -101,6 +101,21 @@ pub struct CalcConfig {
     ///
     /// 默认 **false**，语义与 [`CalcConfig::mode_buffs`] 同步引入（M3 T0-2，蓝图 D5）。
     pub mode_combat: bool,
+    /// 距离 ramp 的 skillDist（PoB2 `skillCfg.skillDist = env.mode_effective and
+    /// env.configInput.enemyDistance`，CalcActiveSkill.lua:655）：[`ModTag::DistanceRamp`]
+    /// （Close/Far Combat 等近/远战伤害随距离变化）的插值距离。
+    ///
+    /// **关键**：vendor 取的是 `configInput.enemyDistance`——**仅 `<Input>` 显式值**
+    /// （或 catalog 的 `defaultState`），**不含 `<Placeholder>` 显示占位值**。这与
+    /// `Multiplier:enemyDistance`（ConfigTab apply 时 placeholder 也会兜底，用于命中
+    /// 距离惩罚）是**两条独立通道**。demo 套件 18 个 build 的 enemyDistance 全是
+    /// placeholder（无 Input）→ 此处 `None` → DistanceRamp 整条跳过，与 golden 一致
+    /// （PoB2 同样不应用 Close Combat 距离 MORE）。
+    ///
+    /// `None`（默认 / panel 口径 / 未显式设 enemyDistance）→ DistanceRamp mod 在
+    /// [`crate::Modifier::effective_number`] 返回 `None`（跳过），镜像 vendor
+    /// `if not cfg.skillDist then return end`（ModStore.lua:575）。
+    pub skill_distance: Option<f64>,
     /// 跨 actor multiplier 快照（M3 T0 为 S2-D 预留，本阶段零消费）。
     ///
     /// 对应 PoB2 ModStore EvalMod 的 `actor`/`limitActor` tag：`Multiplier`/`PerStat`
@@ -200,6 +215,12 @@ impl CalcConfig {
     /// 设置 buffMode 之 combat 维度（见 [`CalcConfig::mode_combat`]）。
     pub fn with_mode_combat(mut self, mode_combat: bool) -> Self {
         self.mode_combat = mode_combat;
+        self
+    }
+
+    /// 设置 DistanceRamp 的 skillDist（见 [`CalcConfig::skill_distance`]）。
+    pub fn with_skill_distance(mut self, skill_distance: Option<f64>) -> Self {
+        self.skill_distance = skill_distance;
         self
     }
 
