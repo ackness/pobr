@@ -466,7 +466,10 @@ pub(crate) fn additional_ring_slot_allocated(build: &Build, data: &BuildData) ->
 ///
 /// 来源扫描：树上已分配节点词条 + 全部装备词条（vendor 为 modDB 全局 `Sum("INC")`，
 /// CalcPerform.lua:1326）。文本先剥 `{tag}`/`[A|B]` 标记再小写比对。
-pub(crate) fn slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(EquipmentSlot, f64)> {
+pub(crate) fn slot_bonus_effect_scales(
+    build: &Build,
+    data: &BuildData,
+) -> Vec<(EquipmentSlot, f64)> {
     use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3, Weapon2};
     let mut scales: Vec<(EquipmentSlot, f64)> = Vec::new();
     let mut add = |slots: &[EquipmentSlot], inc: f64| {
@@ -746,7 +749,11 @@ pub(crate) fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
 ///   主技能 `skill_types`（`applyGemMods` 对 keywordList 逐项 `gemIsType`，任一
 ///   不中即整条不生效——如「Cold Spell」需同时具备 `Cold` 与 `Spell`）。单词
 ///   类别是该规则的退化情形，语义不变。
-pub(crate) fn gem_level_category_matches(category: &str, skill_types: &[String], skill_id: &str) -> bool {
+pub(crate) fn gem_level_category_matches(
+    category: &str,
+    skill_types: &[String],
+    skill_id: &str,
+) -> bool {
     if category.is_empty() || category == "skill gems" {
         return true;
     }

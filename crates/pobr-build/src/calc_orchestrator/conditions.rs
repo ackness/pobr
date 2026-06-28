@@ -10,7 +10,11 @@ use crate::build_data::BuildData;
 
 /// 主技能关键词 + 主武器类别 → 额外伤害缩放 ModName（`GrenadeDamage`/`CrossbowDamage` 等）。
 /// 使 `increased Grenade Damage` / `Damage with Crossbows` 这类按技能/武器作用的增伤生效。
-pub(crate) fn damage_keywords(build: &Build, data: &BuildData, skill_types: &[String]) -> Vec<String> {
+pub(crate) fn damage_keywords(
+    build: &Build,
+    data: &BuildData,
+    skill_types: &[String],
+) -> Vec<String> {
     let mut names = Vec::new();
     // 技能关键词（非 flag 的伤害关键词，如 Grenade）。
     if skill_types.iter().any(|t| t == "Grenade") {
@@ -279,7 +283,10 @@ pub(crate) fn grenade_type_count(build: &Build, data: &BuildData) -> f64 {
 ///   `Vaal` token，保留对齐 vendor，恒不触发）；
 /// - `SkillType.Channel` → `Channelling`（:264-266，offence 的引导分支
 ///   `offence.rs` 既有消费方）。
-pub(crate) fn combat_conditions(skill_types: &[String], skill_flags: ModFlags) -> Vec<&'static str> {
+pub(crate) fn combat_conditions(
+    skill_types: &[String],
+    skill_flags: ModFlags,
+) -> Vec<&'static str> {
     let has = |t: &str| skill_types.iter().any(|x| x == t);
     if has("Triggered") || has("InbuiltTrigger") || has("RemoteMined") || has("SummonsTotem") {
         return Vec::new();
