@@ -696,6 +696,19 @@ for _, name in ipairs(damageNames) do
 	if #moreList > 0 then damageModList.MORE[name] = moreList end
 end
 
+-- Per-mod crit list dump (same shape as damageModList). Surfaces every source
+-- contributing to CritMultiplier / CritChance so PoBR can diff its
+-- POBR_DBG_STAT=CriticalStrikeMultiplier / CriticalStrikeChance dump mod-by-mod
+-- (e.g. monk-twister's missing ~40 INC CritMultiplier). vendor stat names are
+-- "CritMultiplier" / "CritChance"; PoBR maps both to CriticalStrike* internally.
+local critModList = { INC = {}, MORE = {}, BASE = {} }
+for _, name in ipairs({ "CritMultiplier", "CritChance" }) do
+	for _, mt in ipairs({ "BASE", "INC", "MORE" }) do
+		local list = tabulateModList(mt, name)
+		if #list > 0 then critModList[mt][name] = list end
+	end
+end
+
 -- Aggregate cross-check: Sum/More over the same names PoBR uses, so the JSON
 -- carries the authoritative PoB2 totals alongside the per-mod breakdown.
 local damageAgg = {
@@ -823,6 +836,7 @@ local report = {
 	calcsOffHandOutput = type(calcsOutput.OffHand) == "table" and scalarsOf(calcsOutput.OffHand) or nil,
 	intermediates = intermediates,
 	damageModList = damageModList,
+	critModList = critModList,
 	damageAgg = damageAgg,
 	components = components,
 	summedBase = summedBase,
