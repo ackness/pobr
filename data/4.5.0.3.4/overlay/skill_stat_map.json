@@ -12102,6 +12102,16 @@
     }
   },
   "per_stat_set": {
+    "EssenceDrainPlayer": {
+      "2": {
+        "spell_minimum_base_chaos_damage": {
+          "mods": []
+        },
+        "spell_maximum_base_chaos_damage": {
+          "mods": []
+        }
+      }
+    },
     "AcidicConcoctionPlayer": {
       "2": {
         "active_skill_base_secondary_area_of_effect_radius": {
