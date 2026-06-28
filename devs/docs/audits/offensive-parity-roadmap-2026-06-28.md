@@ -158,3 +158,30 @@ NET: introduce one `CalcCtx` struct + handle the Build-rebind ownership (Cow or 
 
 ## Summary
 Deduped 14 raw root causes across 4 clusters into 13 distinct fixes via two cross-cluster merges: (a) DistanceRamp tag drop = one stat_map_engine fix covering monk-twister, flicker, and Shield-Wall-Smith (cluster-1 + cluster-4); (b) Onslaught flask-flag = one item.rs fix covering coiling, detonate-dead, flicker (cluster-4 + the cluster-1 flicker-Speed symptom, which it explains better than the original 'extra MORE-speed' guess). Two dominant failure modes emerge: (1) MORE-damage mods silently dropped because a tag arm is missing in translate_tag (DistanceRamp / MaxPhysicalDamage), and (2) phantom additions inflating outputs (unconditional Onslaught flag, a fabricated hit on a DoT-only skill, plus a MISSING enemy-exposure injection that under-credits). Four high-confidence, vendor-anchored, localized fixes (#1 Onslaught, #2 DistanceRamp, #3 Essence Drain, #4 frost-bomb exposure) cover the bulk of the offensive gap and are all bounded by the ninja_parity per-component gate. The honest cautions: flicker-strike is a coordination case (needs #1 + #2 together or its three compensating errors flip the apparent parity), and four entries (#9-#11, plus #8) are genuinely not isolatable from static analysis and are marked low/medium confidence pending a tools/pob2-oracle dump — none of these are 'tune a number to hit the rate'; each names a concrete missing vendor mechanism. #12 (comet trigger jitter) is within tolerance and #13 (Wolf Pack minion) has zero current parity impact, so both are deprioritized.
+---
+
+## Fix #3 (Essence Drain) — deep-dive findings (2026-06-28)
+
+Investigated for landing; de-risked but needs `tools/pob2-oracle` to implement safely.
+
+**Confirmed via `POBR_DBG_ALLMODS` mod dump on `sorceress-chronomancer-essence-drain`:**
+- Phantom hit source = `ChaosDamageMin/Max` = 62 / 115 (from statSet `spell_*_base_chaos_damage` → stat_map `SkillData{ChaosMin/ChaosMax}`) → hit DPS 171.76.
+- Correct DoT source = `ChaosDot` = 179.56 (from `base_chaos_damage_to_deal_per_minute`) → TotalDot 335 (golden-exact, ratio 1.0000).
+- **The hit and DoT come from SEPARATE stats** → a clean hit-only suppression is possible.
+
+**The trap:** PoBR's existing `DealNoChaos` / `DealNoDamage` flag gates BOTH the hit (offence canDeal) AND the DoT (`skill_dot.rs:248`). So it CANNOT be used as-is — it would zero the golden-exact 335 DoT.
+
+**Required to land correctly (next focused session):**
+1. Run `tools/pob2-oracle` on this build to confirm PoB2's exact mechanism for `TotalDPS=0` (whether the `essence_drain` statDescriptionScope reinterprets `spell_*_base_chaos` as DoT-only, or a baseMod/flag disables the hit).
+2. Implement a **hit-only** suppression that matches vendor (e.g. a new `DealNoHitDamage` flag checked in offence's hit pass but NOT in `skill_dot`, applied to essence drain), and verify it does NOT break hybrid hit+DoT skills (comet).
+3. Per-component parity verify: essence-drain CombinedDPS 1.51x → 1.00x (clean +1 hit), no other build changes.
+
+## Landing-order constraint discovered (2026-06-28)
+
+**Fix #2 (DistanceRamp) must NOT be landed alone** — it would regress the parity gate:
+- flicker-strike currently passes TotalDPS at 1.04x as a *false hit* (Speed +15% × AvgDamage −10% cancel).
+- Adding Close Combat's +18% MORE damage pushes flicker AvgDamage 0.90x→1.06x → TotalDPS ~1.23x → **false-hit flips to a real miss (off −1)**.
+- monk-twister 0.80x→0.85x and shield-wall 0.69x→0.79x both remain misses (need Fix #8 crit-mult / #5 Heft respectively).
+- Net: **off hit count −1 → `parity_no_regression` gate FAILS**. Fix #2 must be bundled with #1 (flicker Speed) + #8 (twister crit-mult) + #5 (shield-wall Heft).
+
+**Implication:** the only standalone, metric-improving offensive fix is **#3 (Essence Drain)**. The Close-Combat cluster (#1/#2/#5/#8) must land as a coordinated bundle.

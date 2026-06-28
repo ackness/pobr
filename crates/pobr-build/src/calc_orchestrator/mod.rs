@@ -1033,51 +1033,8 @@ pub fn calculate_with_data(
     //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
     session.add_modifiers(spirit_reservation_modifiers(build, data));
 
-    // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
-    //    敌人等级解析对齐 vendor（CalcSetup.lua:529 `env.enemyLevel =
-    //    build.configTab.enemyLevel or m_min(data.misc.MaxEnemyLevel, charLevel)`）：
-    //    调用方显式等级（编排选项 ≠0）优先；否则 build XML Config 的 `enemyLevel`
-    //    标量；两者皆缺回落 0 → setup_enemy 内部按 min(MaxEnemyLevel, 角色等级) 推导。
-    let enemy_level = if options.enemy_level != 0 {
-        options.enemy_level
-    } else {
-        config_enemy_level(build).unwrap_or(0)
-    };
-    session.setup_enemy(enemy_level, enemy_tier);
-
-    // 5a'. config 解释器的 enemy 桶产物（M3-T1 A5 主路径）：enemy 条件 actor 化
-    //      条目（vendor `enemyModList:NewMod("Condition:<X>", FLAG, ...)`，带
-    //      `Condition:Effective` tag + EnemyConfig 归因）。`mode_effective=false`
-    //      下天然惰性；cfg 侧 `Enemy<X>` 条件由 `config_resolve` 反桥维持既有语义。
-    if !resolved_config.enemy_mods.is_empty() {
-        session.add_enemy_modifiers(resolved_config.enemy_mods.clone());
-    }
-
-    // 5b. 玩家施加的元素曝光（build config `conditionEnemy*Exposure`）→ enemy 抗性减项
-    //     （PoB2 config 默认每点 -20%）。仅有效口径生效，须在 setup_enemy 后。
-    if options.mode_effective {
-        let exposure = [
-            resolved_config
-                .config
-                .conditions
-                .get("EnemyFireExposure")
-                .copied(),
-            resolved_config
-                .config
-                .conditions
-                .get("EnemyColdExposure")
-                .copied(),
-            resolved_config
-                .config
-                .conditions
-                .get("EnemyLightningExposure")
-                .copied(),
-        ]
-        .map(|c| c.unwrap_or(false));
-        if exposure.iter().any(|&on| on) {
-            session.apply_enemy_exposure(exposure, EXPOSURE_MAGNITUDE);
-        }
-    }
+    // 5/5a/5b. 敌人配置（setup_enemy）+ config enemy 桶 + 玩家施加的元素曝光。
+    inject_enemy(&mut session, build, options, enemy_tier, &resolved_config);
 
     // 6. 额外全局文本（战役奖励 / 调试覆盖）。
     if !options.extra_modifier_texts.is_empty() {
@@ -1345,6 +1302,61 @@ fn inject_condition_bridges(session: &mut CalculationSession) {
     // 生效。druid ember-fusillade：Tree:27388 激活源 → Tree:16940 +30 INC。
     if session.has_flag("Condition:ArcaneSurge") {
         session.set_condition("AffectedByArcaneSurge", true);
+    }
+}
+
+/// 5/5a/5b 阶段：敌人配置（setup_enemy）+ config 解释器 enemy 桶 + 玩家施加的元素曝光。
+fn inject_enemy(
+    session: &mut CalculationSession,
+    build: &Build,
+    options: &DataOrchestratorOptions,
+    enemy_tier: EnemyTier,
+    resolved_config: &crate::config_resolve::ResolvedConfig,
+) {
+    // 5. 敌人 + 有效 DPS：setup_enemy 写 enemy 缩放/抗性/减伤；mode_effective 已在 cfg。
+    //    敌人等级解析对齐 vendor（CalcSetup.lua:529 `env.enemyLevel =
+    //    build.configTab.enemyLevel or m_min(data.misc.MaxEnemyLevel, charLevel)`）：
+    //    调用方显式等级（编排选项 ≠0）优先；否则 build XML Config 的 `enemyLevel`
+    //    标量；两者皆缺回落 0 → setup_enemy 内部按 min(MaxEnemyLevel, 角色等级) 推导。
+    let enemy_level = if options.enemy_level != 0 {
+        options.enemy_level
+    } else {
+        config_enemy_level(build).unwrap_or(0)
+    };
+    session.setup_enemy(enemy_level, enemy_tier);
+
+    // 5a'. config 解释器的 enemy 桶产物（M3-T1 A5 主路径）：enemy 条件 actor 化
+    //      条目（vendor `enemyModList:NewMod("Condition:<X>", FLAG, ...)`，带
+    //      `Condition:Effective` tag + EnemyConfig 归因）。`mode_effective=false`
+    //      下天然惰性；cfg 侧 `Enemy<X>` 条件由 `config_resolve` 反桥维持既有语义。
+    if !resolved_config.enemy_mods.is_empty() {
+        session.add_enemy_modifiers(resolved_config.enemy_mods.clone());
+    }
+
+    // 5b. 玩家施加的元素曝光（build config `conditionEnemy*Exposure`）→ enemy 抗性减项
+    //     （PoB2 config 默认每点 -20%）。仅有效口径生效，须在 setup_enemy 后。
+    if options.mode_effective {
+        let exposure = [
+            resolved_config
+                .config
+                .conditions
+                .get("EnemyFireExposure")
+                .copied(),
+            resolved_config
+                .config
+                .conditions
+                .get("EnemyColdExposure")
+                .copied(),
+            resolved_config
+                .config
+                .conditions
+                .get("EnemyLightningExposure")
+                .copied(),
+        ]
+        .map(|c| c.unwrap_or(false));
+        if exposure.iter().any(|&on| on) {
+            session.apply_enemy_exposure(exposure, EXPOSURE_MAGNITUDE);
+        }
     }
 }
 
