@@ -224,7 +224,13 @@ pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
                     inputs.placeholders.insert(name, value);
                 }
             }
-            Ok(Event::Eof) | Err(_) => break,
+            Ok(Event::Eof) => break,
+            Err(e) => {
+                // XML 扫描中途出错：停止扫描（保留已收集项的宽松语义），但发出诊断
+                // 而非静默——否则后段 `<Input>` 被无声丢弃会导致错算且无任何信号。
+                eprintln!("[POBR_WARN] parse_config_inputs: XML scan halted on error: {e}");
+                break;
+            }
             _ => {}
         }
     }
@@ -316,7 +322,14 @@ fn parse_config(xml: &str) -> ParsedConfig {
                     }
                 }
             }
-            Ok(Event::Eof) | Err(_) => break,
+            Ok(Event::Eof) => break,
+            Err(e) => {
+                // XML 扫描中途出错：停止扫描（保留已收集项的宽松语义），但发出诊断
+                // 而非静默——否则后段 condition/multiplier/quest 被无声丢弃会导致错算
+                // 且无任何信号。
+                eprintln!("[POBR_WARN] parse_config: XML scan halted on error: {e}");
+                break;
+            }
             _ => {}
         }
     }
@@ -654,11 +667,12 @@ fn parse_raw_item_texts(xml: &str) -> Result<std::collections::HashMap<u32, Stri
                     .and_then(|v| v.parse::<u32>().ok())
                     .unwrap_or(0);
             }
-            Ok(Event::Text(t)) if in_item => {
-                if let Ok(text) = t.unescape() {
-                    current_text.push_str(&text);
-                }
-            }
+            Ok(Event::Text(t)) if in_item => match t.unescape() {
+                Ok(text) => current_text.push_str(&text),
+                // entity-decode 失败时退化为原始字节的有损解码，而非整段丢弃——
+                // 否则会静默截断一行词条（PoB raw item 文本以行为单位解析）。
+                Err(_) => current_text.push_str(&String::from_utf8_lossy(&t)),
+            },
             Ok(Event::End(e)) if element_name_end(&e) == "Item" && in_item => {
                 in_item = false;
                 if current_id > 0 {
@@ -761,6 +775,8 @@ fn parse_item_blocks(xml: &str) -> Result<std::collections::HashMap<u32, Item>, 
     let mut in_item = false;
     let mut current_id: u32 = 0;
     let mut current_text = String::new();
+    // 结构性解析失败而被跳过的 `<Item>` 块计数（循环末统一诊断，见下）。
+    let mut skipped: usize = 0;
 
     loop {
         match reader.read_event() {
@@ -771,23 +787,33 @@ fn parse_item_blocks(xml: &str) -> Result<std::collections::HashMap<u32, Item>, 
                     .and_then(|v| v.parse::<u32>().ok())
                     .unwrap_or(0);
             }
-            Ok(Event::Text(t)) if in_item => {
-                if let Ok(text) = t.unescape() {
-                    current_text.push_str(&text);
-                }
-            }
+            Ok(Event::Text(t)) if in_item => match t.unescape() {
+                Ok(text) => current_text.push_str(&text),
+                // entity-decode 失败时退化为原始字节的有损解码，而非整段丢弃——
+                // 否则会静默截断一行词条，使该件物品计算出错。
+                Err(_) => current_text.push_str(&String::from_utf8_lossy(&t)),
+            },
             Ok(Event::End(e)) if element_name_end(&e) == "Item" && in_item => {
                 in_item = false;
-                if current_id > 0
-                    && let Ok(item) = parse_pob_xml_item(&current_text)
-                {
-                    result.insert(current_id, item);
+                if current_id > 0 {
+                    match parse_pob_xml_item(&current_text) {
+                        Ok(item) => {
+                            result.insert(current_id, item);
+                        }
+                        // 结构性解析失败仍跳过该件（保留 PoB 容错语义，不中止整次
+                        // 导入），但计数后于循环末统一诊断——避免一件畸形自定义物品
+                        // 被无声丢弃、以错误属性参与计算却无任何信号。
+                        Err(_) => skipped += 1,
+                    }
                 }
             }
             Ok(Event::Eof) => break,
             Err(e) => return Err(XmlError::Parse(e.to_string())),
             _ => {}
         }
+    }
+    if skipped > 0 {
+        eprintln!("[POBR_WARN] parse_item_blocks: skipped {skipped} unparseable <Item> block(s)");
     }
     Ok(result)
 }

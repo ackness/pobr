@@ -12,6 +12,13 @@ use pobr_data::item::EquipmentSlot;
 use crate::build::Build;
 
 /// 计算输入的只读快照。字段顺序固定，遍历确定性，可安全用于内容哈希。
+///
+/// **范围限定（勿误用）**：本快照只覆盖 **text-only `calculate`** 的输入
+/// （等级 / 职业 / 已分配节点 / 物品词条文本 / socket 组 gem id / config 键）。
+/// 它**不足以**作为 [`crate::calc_orchestrator::calculate_with_data`] 的缓存键——
+/// 后者还消费 gem 等级 / 品质、珠宝半径效果、运行时数据等本快照未捕获的输入。
+/// `calculate_with_data` 的缓存需要在 `(build_hash, options, data...)` 维度上自建键，
+/// 切勿直接拿 [`content_hash`](BuildSnapshot::content_hash) 当其缓存键。
 #[derive(Debug, Clone, PartialEq)]
 pub struct BuildSnapshot {
     pub level: u32,
@@ -52,6 +59,11 @@ impl BuildSnapshot {
     }
 
     /// 64 位确定性内容哈希（FNV-1a，跨平台稳定）。
+    ///
+    /// 仅覆盖 text-only `calculate` 的输入；作 [`crate::calc_cache::CalcCache`] 键时
+    /// 必须再叠加 [`OrchestratorOptions`](crate::calc_orchestrator::OrchestratorOptions)
+    /// 的哈希（见 `calc_cache`）。**不要**单独拿它当 `calculate_with_data` 的缓存键
+    /// （gem 等级/品质、珠宝等未捕获）——详见 [`BuildSnapshot`] 上的范围限定说明。
     pub fn content_hash(&self) -> u64 {
         let mut hasher = Fnv1a::new();
         hasher.write_u32(self.level);
