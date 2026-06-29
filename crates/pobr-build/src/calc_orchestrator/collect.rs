@@ -328,8 +328,18 @@ pub(crate) fn radius_jewel_expansions<'a>(
         return Vec::new();
     }
     // 已分配节点集合（含种类）。坐标取自 data.passive_nodes（树数据回填的 x/y）。
-    let allocated: std::collections::HashSet<u32> =
-        build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+    //
+    // 并入 `inactive_weapon_set_nodes`：非激活武器组专属点的**自身** mod 虽已 masking，
+    // 但 PoB2 仍把它们留在 allocNodes（CalcSetup.lua:209-228），范围珠宝授予照样落上去。
+    // radius 几何因此须按完整已分配集筛 in-radius 节点（gemling crit jewel 实测：6 个
+    // in-radius notable 中 5 个在非激活组，缺它们会把 +7×6 误算成 +7×1）。
+    let allocated: std::collections::HashSet<u32> = build
+        .tree
+        .allocated_nodes
+        .iter()
+        .chain(build.inactive_weapon_set_nodes.iter())
+        .map(|n| n.0)
+        .collect();
 
     // 位置表：socket 自身 + 全部已分配节点（候选只在已分配集合中筛）。
     let mut positions: std::collections::HashMap<u32, (f64, f64)> =
