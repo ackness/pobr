@@ -1052,6 +1052,20 @@ fn parse_keystone_special(rest: &str, source: &str) -> Option<ParseOutcome> {
         "curses you inflict ignore curse limit" => {
             vec![Modifier::number("EnemyCurseLimit", ModType::Base, 99.0).with_source(source)]
         }
+        // 额外诅咒上限（vendor ModParser.lua:4302-4306/4309 specialModList 平表）：
+        // Whispers of Doom keystone（tree 47759『You can apply an additional Curse』）等
+        // 抬高 `EnemyCurseLimit`，消费 = buff_pass 槽位预算（DEFAULT 1 + Σ EnemyCurseLimit）。
+        // 缺它时第二个诅咒（如 frost-bomb 的 Elemental Weakness，priority 低于 Temporal
+        // Chains）因只有 1 槽被挤掉，敌侧 -抗丢失。条件型变体（while affected by …）暂不收。
+        "you can apply an additional curse" | "enemies can have 1 additional curse" => {
+            vec![Modifier::number("EnemyCurseLimit", ModType::Base, 1.0).with_source(source)]
+        }
+        "you can apply one fewer curse" => {
+            vec![Modifier::number("EnemyCurseLimit", ModType::Base, -1.0).with_source(source)]
+        }
+        "you can apply an additional mark" => {
+            vec![Modifier::number("EnemyMarkLimit", ModType::Base, 1.0).with_source(source)]
+        }
         // Eldritch Battery 型关键石（PoB2 `converts all energy shield to mana` → BASE 100）。
         "converts all energy shield to mana" => {
             vec![
