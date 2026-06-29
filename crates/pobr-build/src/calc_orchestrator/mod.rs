@@ -1096,6 +1096,16 @@ fn inject_condition_bridges(session: &mut CalculationSession) {
     if session.has_flag("Condition:ArcaneSurge") {
         session.set_condition("AffectedByArcaneSurge", true);
     }
+    // Chaos Inoculation → FullLife 桥（vendor CalcDefence.lua:123-126：CI 时 `output.Life=1`
+    // 且 `condList["FullLife"]=true`——CI build 恒视为满生命）。PoBR 既有 CI 接线只建模
+    // Life=1 / 混沌免疫（perform.rs:320-334 EhpOptions），未把 FullLife 条件桥到 cfg，
+    // 致「while on Full Life」族增伤（如 Tree:56453 +40% Attack Damage）在 CI build 上失效。
+    // 仅 CI build 触发（flicker：AvgDamage 0.90x→0.99x）；非 CI build（含满生命的普通 build）
+    // 不受影响——FullLife 在 PoB 由实际生命态决定，普通满生命 build 的判定属另一档（未建模），
+    // 此处只补 vendor 明文的 CI 分支，避免全局置真对 deadeye 等的过量（实测全局置真 off −2）。
+    if session.has_flag("ChaosInoculation") {
+        session.set_condition("FullLife", true);
+    }
 }
 
 /// 5/5a/5b 阶段：敌人配置（setup_enemy）+ config 解释器 enemy 桶 + 玩家施加的元素曝光。
