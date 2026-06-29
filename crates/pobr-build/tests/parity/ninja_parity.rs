@@ -525,8 +525,17 @@ const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
 //   等 within-metres 节点生效 → monk-twister CritMult/Avg/TotalDPS 转命中，huntress-twister/
 //   titan-shield-wall 连带。
 // 三修复 build 互不重叠、增益叠加；合并后全量实测重记（master 62/70 → 70/73）。
-const BASELINE_OFF_HIT5: usize = 70; // 实测 70/80 = 87.5%（Onslaught+FullLife+MultiplierThreshold 合并 +8）
-const BASELINE_OFF_HIT10: usize = 73; // 实测 73/80 = 91.2%（+3）
+//
+// **radius-jewel × weapon-set 交互修复重记（gemling CritChance）**：非激活武器组专属点
+// 在 PoB2 仍留在 allocNodes（CalcSetup.lua:209-228），范围珠宝授予（`... in Radius also
+// grant`，源=jewel）照样落到这些 notable 上。PoBR 原先把非激活组节点整个剔除 → gemling
+// crit jewel 的 `7% increased Crit Hit Chance for Attacks` 只命中 1/6 个 in-radius
+// notable（其余 5 个在 WeaponSet2）→ CritChance 8.55 vs 10.30（0.83x）。修复=
+// `parse_passive_nodes` 单独回传被剔除的非激活组节点，`radius_jewel_expansions` 在几何里
+// 并回完整已分配集（节点自身 mod 仍 masking，行为不变）。gemling CritChance→1.00x、
+// AvgDamage/TotalDPS 0.96x→1.03x。其余 build 零回归（off 70/73 → 71/74）。
+const BASELINE_OFF_HIT5: usize = 71; // 实测 71/80 = 88.8%（radius-jewel weapon-set 修复 +1）
+const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
