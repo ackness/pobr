@@ -521,8 +521,12 @@ const BASELINE_DEF_HIT10: usize = 392; // 实测 392/450 = 87.1%
 // unsupported（`run-parsemod.sh` 核实），golden 不含该 Onslaught。修复后 Speed 三 build
 // 归 1.00x：进攻 @5% 62→65（detonate Speed+TotalDPS、coiling Speed、flicker Speed），
 // @10% 70→71（flicker Speed 越回 10% 带沿）。逐 build 见 offensive-parity-roadmap-2026-06-28.md。
-const BASELINE_OFF_HIT5: usize = 65; // 实测 65/80 = 81.2%（Onslaught 幻影修复 +3）
-const BASELINE_OFF_HIT10: usize = 71; // 实测 71/80 = 88.8%（Onslaught 幻影修复 +1）
+// **CI→FullLife 桥重记（独立 baseline commit，叠加在 Onslaught 修复之上）**：CI build
+// 补 `Condition:FullLife`（vendor CalcDefence.lua:123-126）后「while on Full Life」增伤
+// 生效——flicker（CI）AvgDamage 0.90x→0.99x、TotalDPS/CombinedDPS 0.99x；配合上面的
+// Onslaught Speed 修复，flicker 五分量齐转命中。进攻 @5% 65→67（flicker AvgDamage+TotalDPS）。
+const BASELINE_OFF_HIT5: usize = 67; // 实测 67/80 = 83.8%（CI→FullLife 桥 +2）
+const BASELINE_OFF_HIT10: usize = 71; // 实测 71/80 = 88.8%（不变）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -550,14 +554,12 @@ const BASELINE_OFF_HIT10: usize = 71; // 实测 71/80 = 88.8%（Onslaught 幻影
 // 接入：parser 新增暴击后缀剥离 + `ailment_scoped_cfg` 置 CriticalStrike=true，对齐
 // vendor dotCfg `skillCond["CriticalStrike"]=true`，CalcOffence.lua:5006）。huntress
 // poison 0.58x→1.04x、bleed 0.64x→1.11x，TotalDotDPS/CombinedDPS 双列入命中。
-// **Onslaught 幻影修复已审查例外（−1 @10%）**：flicker-strike CombinedDPS 旧 ~1.04x
-// 是伪命中——幻影 Onslaught 把命中 Speed 高估 +20%，恰好部分抵消 flicker 自身真实
-// AverageDamage ~0.90x 低估（与 Onslaught 无关、roadmap 标记的独立缺口）。移除幻影
-// Onslaught 后 Speed 归 1.00x（进攻列 +1，已计入 BASELINE_OFF_HIT10），真实
-// CombinedDPS ~0.90x 暴露越过 10% 带沿 → dot @10% 26→25。这是「揭示」非倒退（同
-// druid-comet / deadeye-grenade 伪命中修复先例）；flicker 真实伤害缺口待后续专项。
-const BASELINE_DOT_HIT5: usize = 22; // 实测 22/37 = 59.5%（essence-drain DoT-only hit 抑制 +2）
-const BASELINE_DOT_HIT10: usize = 25; // 实测 25/37 = 67.6%（Onslaught 幻影修复揭示 flicker CombinedDPS −1）
+// **CI→FullLife 桥重记**：flicker（CI）补 FullLife 后真实 AverageDamage 0.90x→0.99x，
+// 其 CombinedDPS 同步 0.99x（配合 Onslaught Speed 修复转命中）。这恰好闭合了 Onslaught
+// 修复时记下的 flicker dot 例外——彼时 flicker CombinedDPS 因缺 FullLife 真低估 ~0.90x，
+// 补上后命中。dot @5% 22→24（flicker TotalDotDPS/CombinedDPS 入命中）、@10% 25→26。
+const BASELINE_DOT_HIT5: usize = 24; // 实测 24/37 = 64.9%（CI→FullLife 桥 +2）
+const BASELINE_DOT_HIT10: usize = 26; // 实测 26/37 = 70.3%（CI→FullLife 桥 +1）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
