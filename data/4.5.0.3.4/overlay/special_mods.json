@@ -512,6 +512,66 @@
       "source_note": "ModParser.lua:4275（探针求值自动转写；样本：Curses you inflict ignore Curse limit）"
     },
     {
+      "id": "you_can_apply_an_additional_curse",
+      "pattern": "you can apply an additional curse",
+      "vendor_pattern": "you can apply an additional curse",
+      "mods": [
+        {
+          "name": "EnemyCurseLimit",
+          "type": "BASE",
+          "value": 1
+        }
+      ],
+      "verified": false,
+      "batch": "hand-curated",
+      "source_note": "ModParser.lua:4303（Whispers of Doom keystone tree 47759 第一行『You can apply an additional Curse』；第二行 Double Activation Delay 已在 double_activation_delay_of_curses 条目）。缺它时 frost-bomb 第二诅咒 Elemental Weakness 被挤出唯一槽，敌侧 -45 元素抗丢失（CritChance 路径外的 hit 伤害缺口）"
+    },
+    {
+      "id": "enemies_can_have_1_additional_curse",
+      "pattern": "enemies can have 1 additional curse",
+      "vendor_pattern": "enemies can have 1 additional curse",
+      "mods": [
+        {
+          "name": "EnemyCurseLimit",
+          "type": "BASE",
+          "value": 1
+        }
+      ],
+      "verified": false,
+      "batch": "hand-curated",
+      "source_note": "ModParser.lua:4302（curse limit 平表同族）"
+    },
+    {
+      "id": "you_can_apply_one_fewer_curse",
+      "pattern": "you can apply one fewer curse",
+      "vendor_pattern": "you can apply one fewer curse",
+      "mods": [
+        {
+          "name": "EnemyCurseLimit",
+          "type": "BASE",
+          "value": -1
+        }
+      ],
+      "verified": false,
+      "batch": "hand-curated",
+      "source_note": "ModParser.lua:4306（curse limit 平表同族）"
+    },
+    {
+      "id": "you_can_apply_an_additional_mark",
+      "pattern": "you can apply an additional mark",
+      "vendor_pattern": "you can apply an additional mark",
+      "mods": [
+        {
+          "name": "EnemyMarkLimit",
+          "type": "BASE",
+          "value": 1
+        }
+      ],
+      "verified": false,
+      "batch": "hand-curated",
+      "source_note": "ModParser.lua:4309（mark limit 平表同族）"
+    },
+    {
       "id": "defend_with_pct_of_armour",
       "pattern": "defend with (\\d+(?:\\.\\d+)?)% of armour(?: during effect)?",
       "vendor_pattern": "defend with (%d+)%% of armour",

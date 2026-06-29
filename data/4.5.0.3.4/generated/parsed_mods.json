@@ -29095,11 +29095,25 @@
     },
     {
       "text": "You can apply an additional Curse",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyCurseLimit",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "You can apply an additional [Curse]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyCurseLimit",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "You can apply an additional [Curse]\nDouble Activation Delay of [Curse|Curses]",
