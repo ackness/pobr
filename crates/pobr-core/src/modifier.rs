@@ -165,6 +165,23 @@ pub enum ModTag {
     /// 由 [`crate::ModDb`] 的 per-slot 查询路径（`sum_for_slot`/`more_for_slot`）显式按槽位读取，
     /// 避免影响进攻 / 其他全局查询语义。槽名为稳定槽位 ID（见 `EquipmentSlot::id`）。
     SlotName(String),
+    /// 按敌方距离线性插值缩放（PoB2 `DistanceRamp` tag，ModStore.lua:574-590）：
+    /// Close Combat / Far Combat / Point Blank / Far Shot 等「近/远战伤害随距离变化」
+    /// 的 MORE/INC 词条。生效值 = `base × interp(ramp, skillDist)`——`skillDist` 取
+    /// [`CalcConfig::skill_distance`]（vendor `skillCfg.skillDist = env.mode_effective
+    /// and configInput.enemyDistance`，**仅 effective 口径 + enemyDistance 的 `<Input>`
+    /// 显式值**，不含 `<Placeholder>` 占位值）。
+    ///
+    /// `ramp` 为 `(距离, 倍率)` 升序点列：`skillDist ≤ 首点距离` → 取首点倍率；
+    /// `≥ 末点距离` → 取末点倍率；区间内线性插值。**panel 口径 / enemyDistance 仅
+    /// placeholder 未设 Input**（`skill_distance == None`）→ [`Modifier::effective_number`]
+    /// 返回 `None`（整条 mod 跳过），镜像 vendor `if not cfg.skillDist then return end`。
+    /// demo 套件 18 个 build 的 enemyDistance 全是 placeholder → 此 tag 全休眠，
+    /// 与 golden 一致（PoB2 同样不应用 Close Combat 距离 MORE）。
+    DistanceRamp {
+        /// `(距离, 倍率)` 点列，按距离升序（如 Close Combat `[(10,1),(35,0)]`）。
+        ramp: Vec<(f64, f64)>,
+    },
 }
 
 impl ModTag {
@@ -291,8 +308,11 @@ impl Modifier {
                 };
                 if *negated { !enabled } else { enabled }
             }
-            // 数值缩放 / 累计限幅 tag 不参与匹配过滤（求值期消费）。
-            ModTag::Multiplier { .. } | ModTag::PerStat { .. } | ModTag::GlobalLimit { .. } => true,
+            // 数值缩放 / 累计限幅 / 距离插值 tag 不参与匹配过滤（求值期消费）。
+            ModTag::Multiplier { .. }
+            | ModTag::PerStat { .. }
+            | ModTag::GlobalLimit { .. }
+            | ModTag::DistanceRamp { .. } => true,
             ModTag::DamageType(damage_type) => cfg.damage_type == Some(*damage_type),
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
@@ -402,12 +422,51 @@ impl Modifier {
                         limit.or_else(|| limit_var.as_ref().map(|lv| cfg.multiplier(lv)));
                     value *= effective_limit.map_or(count, |max| count.min(max));
                 }
-                _ => {}
+                ModTag::DistanceRamp { ramp } => {
+                    // vendor ModStore.lua:574-590：`skillDist` 缺位 → 整条 mod 跳过
+                    // （`return`）。`cfg.skill_distance` = vendor `skillCfg.skillDist`
+                    // （`mode_effective and configInput.enemyDistance`，**仅 Input 值**，
+                    // 不含 placeholder——见 [`CalcConfig::skill_distance`]）。`None` →
+                    // 返回 None 让 ModDb 聚合跳过该 mod（区别于 Multiplier 的 0 倍率：
+                    // 距离 0 仍会按 ramp 首点倍率生效，故必须 None 跳过而非按 0 插值）。
+                    let dist = cfg.skill_distance?;
+                    value *= ramp_factor(ramp, dist)?;
+                }
+                ModTag::Condition { .. }
+                | ModTag::GlobalLimit { .. }
+                | ModTag::DamageType(_)
+                | ModTag::SkillTypes(_)
+                | ModTag::SlotName(_) => {}
             }
         }
 
         Some(value)
     }
+}
+
+/// 距离插值倍率（PoB2 ModStore.lua:578-589 `DistanceRamp` 分支逐句对译）。
+///
+/// `ramp` 为 `(距离, 倍率)` 升序点列；`dist`（= skillDist）夹在两点之间时线性插值，
+/// 越过首/末点则取端点倍率（clamp）。空点列返回 `None`（防御，使整条 mod 跳过）。
+fn ramp_factor(ramp: &[(f64, f64)], dist: f64) -> Option<f64> {
+    let first = *ramp.first()?;
+    let last = *ramp.last()?;
+    if dist <= first.0 {
+        return Some(first.1);
+    }
+    if dist >= last.0 {
+        return Some(last.1);
+    }
+    // 找包夹 `dist` 的相邻点对线性插值（vendor :583-588 同序）。
+    for pair in ramp.windows(2) {
+        let (d0, m0) = pair[0];
+        let (d1, m1) = pair[1];
+        if dist <= d1 {
+            return Some(m0 + (m1 - m0) * (dist - d0) / (d1 - d0));
+        }
+    }
+    // 理论不可达（dist < last.0 必落入某区间）；保守取末点。
+    Some(last.1)
 }
 
 #[cfg(test)]
@@ -544,5 +603,46 @@ mod tests {
             actor: Some(ActorRef::Player),
         });
         assert!(negated.matches(&cfg));
+    }
+
+    /// DistanceRamp（Close Combat `[(10,1),(35,0)]`）按 `skill_distance` 线性插值：
+    /// 距离 20 → 倍率 0.6 → 30% MORE × 0.6 = 18%（vendor ModStore.lua:586 同算）。
+    #[test]
+    fn distance_ramp_interpolates_with_skill_distance() {
+        let modifier =
+            Modifier::number("Damage", ModType::More, 30.0).with_tag(ModTag::DistanceRamp {
+                ramp: vec![(10.0, 1.0), (35.0, 0.0)],
+            });
+        // 距离 20：插值 1 + (0-1)*(20-10)/(35-10) = 0.6 → 30 × 0.6 = 18。
+        let cfg = CalcConfig::new().with_skill_distance(Some(20.0));
+        assert_eq!(modifier.effective_number(&cfg), Some(18.0));
+    }
+
+    /// DistanceRamp 端点 clamp：≤ 首点距离取首点倍率，≥ 末点距离取末点倍率。
+    #[test]
+    fn distance_ramp_clamps_at_endpoints() {
+        let modifier =
+            Modifier::number("Damage", ModType::More, 30.0).with_tag(ModTag::DistanceRamp {
+                ramp: vec![(10.0, 1.0), (35.0, 0.0)],
+            });
+        // 距离 5 ≤ 10 → 倍率 1.0 → 30。
+        let close = CalcConfig::new().with_skill_distance(Some(5.0));
+        assert_eq!(modifier.effective_number(&close), Some(30.0));
+        // 距离 50 ≥ 35 → 倍率 0.0 → 0。
+        let far = CalcConfig::new().with_skill_distance(Some(50.0));
+        assert_eq!(modifier.effective_number(&far), Some(0.0));
+    }
+
+    /// DistanceRamp 无 `skill_distance`（panel 口径 / enemyDistance 仅 placeholder 未设
+    /// Input）→ 整条 mod 跳过（`effective_number` 返回 `None`，镜像 vendor
+    /// `if not cfg.skillDist then return`）。demo 套件全 build 走此路径，匹配 golden。
+    #[test]
+    fn distance_ramp_skipped_without_skill_distance() {
+        let modifier =
+            Modifier::number("Damage", ModType::More, 30.0).with_tag(ModTag::DistanceRamp {
+                ramp: vec![(10.0, 1.0), (35.0, 0.0)],
+            });
+        let cfg = CalcConfig::new();
+        assert_eq!(modifier.effective_number(&cfg), None);
     }
 }

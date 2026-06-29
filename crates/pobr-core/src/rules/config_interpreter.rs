@@ -43,7 +43,9 @@ pub enum ConfigInputValue {
 }
 
 impl ConfigInputValue {
-    fn as_number(&self) -> Option<f64> {
+    /// 数值视图（`Number` 原样；`Bool` → 1.0/0.0；`Text` → `None`）。供编排层读取
+    /// count/integer 型 config 输入（如 DistanceRamp 的 enemyDistance Input 值）。
+    pub fn as_number(&self) -> Option<f64> {
         match self {
             Self::Number(value) => Some(*value),
             Self::Bool(value) => Some(if *value { 1.0 } else { 0.0 }),

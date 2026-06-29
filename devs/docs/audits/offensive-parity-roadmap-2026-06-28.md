@@ -211,3 +211,78 @@ extract-lua`. This manual `per_stat_set` correction would be lost on regen — t
 should eventually learn PoB2's DoT-set scope handling (the `statDescriptionScope`
 reinterpretation that makes the inherited spell base non-hit). Until then, preserve this
 entry across regens.
+
+---
+
+## ⚠️ MAJOR CORRECTION (2026-06-28, oracle-verified) — Close-Combat cluster was MISDIAGNOSED
+
+The cluster (#1/#2/#5/#8) above was produced by a **static-analysis** workflow that read the
+DATA (skill_stat_map has DistanceRamp; item.rs emits an Onslaught flag) and the vendor FORMULAS,
+but did **not** run `tools/pob2-oracle` to confirm whether vendor actually *applies* those mods
+to these builds. Direct oracle runs (oracle output == golden for the affected builds) overturn
+the premise. **Do not trust #1/#2/#5/#8 as written.** Verified findings:
+
+### #2 DistanceRamp — NOT a parity-mover. Premise invalid.
+- vendor `skillCfg.skillDist = env.mode_effective and env.configInput.enemyDistance`
+  (CalcActiveSkill.lua:655). `configInput` is the `<Input>` channel; it does **NOT** include
+  `<Placeholder>` values. **All 18 demo builds carry `enemyDistance` as `<Placeholder
+  number="20">`, none as `<Input>`** → `skillDist == nil` → vendor skips EVERY DistanceRamp mod.
+- Oracle proof (flicker): editing the build's enemyDistance 5→40 leaves AvgDamage **unchanged**
+  at 108623.8 (== golden); `MoreDamage` intermediate = 1.3 = Concentrated Area only, no Close
+  Combat. So PoB2 applies **no** Close Combat distance MORE to these builds.
+- `Multiplier:enemyDistance` (placeholder-inclusive, =20 via ConfigTab apply fallback) is a
+  **separate** channel feeding only the accuracy distance penalty — NOT skillDist.
+- Before this session PoBR dropped DistanceRamp as `UnsupportedTag` → 0 contribution →
+  accidentally matched golden. The roadmap's "fix" (translate it) + reading the wrong
+  (placeholder-inclusive) channel would OVER-apply: flicker 0.902x→1.067x, shield-wall
+  0.686x→0.812x — a real regression vs golden.
+- **DONE (commit on branch `feat/offensive-close-combat-cluster`):** implemented the tag
+  correctly reading the **input-only** `CalcConfig::skill_distance` (vendor-faithful). Dormant
+  for the whole demo suite → `parity_no_regression` unchanged. Activates only for builds that set
+  enemyDistance as an explicit `<Input>`. Expected gains for monk-twister/flicker/shield-wall in
+  #2/#5/#8 above are **VOID**.
+
+### monk-twister — has NO Close Combat on its main skill.
+- `skillInfo.supports` for `Twister` = Retreat III / Projectile Acceleration III / Elemental
+  Armament II / **Pinpoint Critical** / Rakiata's Flow. Close Combat II is socketed in the
+  **Hollow Focus** and **Righteous Descent** groups, not the Twister group. PoBR correctly does
+  not apply CC to Twister. The roadmap's "monk-twister needs CC ×1.18" is wrong.
+- Its real CritMultiplier gap (#8) IS real (oracle/golden 5.16 vs PoBR 4.88) but tangled:
+  PoBR CriticalStrikeMultiplier INC=327 vs oracle 367 (~40 missing) AND a Pinpoint Critical
+  `_final` MORE −30 interacting with the bifurcate term. Not a clean one-source fix; needs more
+  oracle work. The remaining ~1.18 AvgDamage factor the roadmap attributed to CC is unidentified
+  (candidate: WeaponSet2 / MultiplierThreshold:enemyDistance INC mods — but oracle≠golden config
+  for this build, so its weapon-set state needs pinning first).
+
+### #1 Onslaught — REAL over-application, but the roadmap's FIX is also wrong.
+- Confirmed real: PoBR over-applies Onslaught speed — detonate-dead Speed 2.87 vs golden 2.62
+  (1.09x), coiling 2.17 vs 2.00 (1.08x), flicker 7.08 vs 6.13 (1.15x). Oracle/golden have NO
+  Onslaught (detonate-dead IncSpeed 109.75, `Onslaught` mentions = 0).
+- The grantor is a **Silver Charm** ("The Fall of the Axe", `Used when you are affected by a
+  Slow / Grants Onslaught during effect`), NOT a flask. Its slot is `active="true"`.
+- vendor ModParser: `"during effect"` → `Condition:UsingFlask`. So the roadmap's fix = add
+  `Condition:UsingFlask` to the flag. **But that fix would NOT work**: oracle test — forcing
+  `conditionUsingFlask=true` on detonate-dead leaves Speed at 2.625 / Onslaught=0. UsingFlask is
+  already true (flasks active) yet vendor still applies no Onslaught.
+- **ACTUAL root cause (run-parsemod.sh-verified) — NOT charm-effect-active:** PoB2's ModParser
+  returns `unsupported` for the exact line `Grants Onslaught during effect`
+  (`tools/pob2-oracle/run-parsemod.sh` → `{mods:[], unsupported:true}`) — it creates **no**
+  Onslaught at all, which is why forcing UsingFlask changes nothing. PoBR's
+  `item.rs::parse_granted_buff_flag` went **beyond** PoB2's parser and emitted an unconditional
+  `Modifier::flag("Onslaught")`. So this is a PoBR-ahead-of-PoB2 over-parse, not a missing gate.
+- **LANDED (PR #15, branch `fix/onslaught-over-parse`):** removed `parse_granted_buff_flag`; the
+  line now falls through to `ctx.parse` → Unsupported, matching PoB2 line-for-line (and PoBR's
+  own "unparseable → Unsupported" design). Cooldown/trigger-rate-capped builds (grenades,
+  frost-bomb) were unaffected on Speed and stay 1.00x; only detonate-dead/coiling/flicker move.
+  Parity: **offensive 62→65 @5% / 70→71 @10%**; reviewed exception **dot @10% 26→25** (flicker
+  CombinedDPS ~1.04x was a false-hit — phantom Onslaught speed × flicker's real ~0.90x AvgDamage
+  shortfall cancelling; removing the phantom unmasks the true ~0.90x, tracked as a follow-up).
+
+### Methodology lesson
+Every offensive root cause MUST be `tools/pob2-oracle`-verified (oracle output vs the build's
+golden) BEFORE implementation — **and run `run-parsemod.sh` to confirm PoB2 actually parses the
+mod text in question**. Static analysis of data+formula missed three independent traps: (1)
+Input-vs-Placeholder for skillDist (#2); (2) PoB2 leaving a mod-text `unsupported` so PoBR's
+"extra" parse is a parity regression (#1 — the real cause, *not* the charm-effect-active theory
+an earlier read of this doc proposed); (3) compensating false-hits that flip when corrected. The
+remaining static-only items (#5 Heft, #6, #9–#12) are suspect until oracle-checked.

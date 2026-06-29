@@ -1786,6 +1786,45 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             };
             Ok(ModTag::SkillTypes(bits))
         }
+        // 距离插值（vendor `{ type = "DistanceRamp", ramp = {{d,m},...} }`，如 Close
+        // Combat `support_close_combat_attack_damage_+%_final_from_distance`）→
+        // [`ModTag::DistanceRamp`]（求值期按 `enemyDistance` 线性插值，ModStore.lua:574-590）。
+        "DistanceRamp" => {
+            if !keys_subset_of(&["type", "ramp"]) {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "DistanceRamp 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            let Some(StatMapValue::List(points)) = tag.get("ramp") else {
+                return Err(UnsupportedReason::UnsupportedTag(
+                    "DistanceRamp 缺 ramp 点列".into(),
+                ));
+            };
+            let mut ramp = Vec::with_capacity(points.len());
+            for point in points {
+                // 每点须是 `[距离, 倍率]` 二元数组。
+                let StatMapValue::List(pair) = point else {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "DistanceRamp ramp 点非数组".into(),
+                    ));
+                };
+                let (Some(StatMapValue::Number(d)), Some(StatMapValue::Number(m))) =
+                    (pair.first(), pair.get(1))
+                else {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "DistanceRamp ramp 点非 [距离,倍率] 数对".into(),
+                    ));
+                };
+                ramp.push((*d, *m));
+            }
+            if ramp.is_empty() {
+                return Err(UnsupportedReason::UnsupportedTag(
+                    "DistanceRamp ramp 点列为空".into(),
+                ));
+            }
+            Ok(ModTag::DistanceRamp { ramp })
+        }
         other => Err(UnsupportedReason::UnsupportedTag(other.to_string())),
     }
 }
@@ -2385,25 +2424,47 @@ mod tests {
         );
     }
 
-    /// 第一批之外的 tag（GlobalEffect / DistanceRamp）→ 整条 Unsupported。
+    /// 第一批之外的 tag（GlobalEffect）→ 整条 Unsupported。
     #[test]
     fn unsupported_tag_types_reject_entry() {
-        for tag in [
-            r#"{ "type": "GlobalEffect", "effectType": "Buff" }"#,
-            r#"{ "type": "DistanceRamp", "ramp": [[10,1],[35,0]] }"#,
-        ] {
-            let entry = entry_json(&format!(
-                r#"{{ "mods": [ {{ "kind": "mod", "name": "Damage", "mod_type": "MORE",
-                     "tags": [ {tag} ] }} ] }}"#
-            ));
-            assert!(
-                matches!(
-                    map_entry(&entry, 1.0),
-                    MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-                ),
-                "tag 应整条拒绝：{tag}"
-            );
-        }
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "MORE",
+                 "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] }"#,
+        );
+        assert!(matches!(
+            map_entry(&entry, 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
+    }
+
+    /// `DistanceRamp` tag（Close Combat `..._final_from_distance`）→
+    /// [`ModTag::DistanceRamp`]，ramp 点列原样翻译（vendor ModStore.lua:574-590）。
+    #[test]
+    fn distance_ramp_tag_translates() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "MORE",
+                 "tags": [ { "type": "DistanceRamp", "ramp": [[10,1],[35,0]] } ] } ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, 30.0));
+        assert_eq!(
+            mods[0].tags,
+            vec![ModTag::DistanceRamp {
+                ramp: vec![(10.0, 1.0), (35.0, 0.0)],
+            }]
+        );
+    }
+
+    /// DistanceRamp 含约定外键 → 整条 Unsupported（多余键往往携带额外语义）。
+    #[test]
+    fn distance_ramp_rejects_extra_keys() {
+        let entry = entry_json(
+            r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "MORE",
+                 "tags": [ { "type": "DistanceRamp", "ramp": [[10,1]], "var": "x" } ] } ] }"#,
+        );
+        assert!(matches!(
+            map_entry(&entry, 1.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
     }
 
     /// `Multiplier{limitTotal}`（vendor ModStore.lua:370-371 + 402-404 总量封顶）：

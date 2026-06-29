@@ -448,6 +448,24 @@ pub fn calculate_with_data(
         // （编排路径暂无 FlaskBuff/CharmBuff 载荷，T4 槽位接线后生效）+ 阶段 6
         // buff_expander（trigger flag 未置仍零输出）。
         .with_mode_combat(true);
+    // DistanceRamp 的 skillDist（vendor CalcActiveSkill.lua:655 `skillCfg.skillDist =
+    // env.mode_effective and env.configInput.enemyDistance`）：仅 effective 口径 +
+    // enemyDistance 的 `<Input>` **显式值**（vendor `configInput`，不含 `<Placeholder>`
+    // 占位值——后者经 ConfigTab apply 只兜底 `Multiplier:enemyDistance`（命中距离惩罚），
+    // 不喂 skillDist）。demo 套件 18 个 build 的 enemyDistance 全是 placeholder → 此处
+    // None → Close/Far Combat 距离 MORE 整条跳过，与 golden 一致（PoB2 同样不应用）。
+    let skill_distance = options
+        .mode_effective
+        .then(|| {
+            build
+                .config
+                .raw_inputs
+                .values
+                .get("enemyDistance")
+                .and_then(|v| v.as_number())
+        })
+        .flatten();
+    cfg = cfg.with_skill_distance(skill_distance);
     // （M3-T2 B4）主技能派生战斗条件（vendor CalcPerform.lua:242-266 实读，
     // `if env.mode_combat` 段）：attack/spell/Movement/Minion/Vaal/Channel →
     // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免（M4-m：
