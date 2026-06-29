@@ -124,6 +124,14 @@ fn canonical_tag(tag: &ModTag) -> String {
                 .collect();
             format!("DistanceRamp([{}])", points.join(","))
         }
+        ModTag::MultiplierThreshold {
+            var,
+            threshold,
+            upper,
+        } => format!(
+            "MultiplierThreshold(var={var},threshold={},upper={upper})",
+            fmt_f64(*threshold)
+        ),
     }
 }
 

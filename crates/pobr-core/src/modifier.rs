@@ -156,6 +156,24 @@ pub enum ModTag {
         /// 记账桶键（vendor `tag.globalLimitKey`，如 `"DoubleDamage"`）。
         key: String,
     },
+    /// 按某 multiplier 是否越过阈值的二元 gate（PoB2 `MultiplierThreshold` tag，
+    /// ModStore.lua:559-573）。典型来源「against enemies within/further than N metres」
+    /// → `var = "enemyDistance"`，`threshold = N×10`（米→单位）。
+    ///
+    /// 生效判定（vendor `if (upper and stat>th) or (not upper and stat<th) then return`，
+    /// 落在错误一侧时跳过该 mod）：读 `cfg.multiplier(var)` 为 `stat`——
+    /// - `upper = true`（within，近）：`stat ≤ threshold` 时生效；
+    /// - `upper = false`（further，远）：`stat ≥ threshold` 时生效。
+    ///
+    /// `enemyDistance` 由编排层从 `Multiplier:enemyDistance`（Condition:Effective，
+    /// 默认 20）折入 cfg.multipliers（effective＝20、panel＝0）。异常叠层形态
+    /// （`<X>Stacks`, threshold=1）仍由 parser 扁平化为 `Condition{Enemy<X>}`，不走本 tag。
+    MultiplierThreshold {
+        var: String,
+        threshold: f64,
+        /// `true` = within（`stat ≤ threshold` 生效）；`false` = further（`≥` 生效）。
+        upper: bool,
+    },
     DamageType(DamageType),
     SkillTypes(SkillTypes),
     /// 槽位限定（PoB2 `calcLib.mod({slotName=slot})`）：该 modifier 仅作用于匹配槽位的
@@ -313,6 +331,19 @@ impl Modifier {
             | ModTag::PerStat { .. }
             | ModTag::GlobalLimit { .. }
             | ModTag::DistanceRamp { .. } => true,
+            // 阈值 gate（vendor ModStore.lua:559-573）：stat 落在错误一侧 → 不生效。
+            ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper,
+            } => {
+                let stat = cfg.multiplier(var);
+                if *upper {
+                    stat <= *threshold
+                } else {
+                    stat >= *threshold
+                }
+            }
             ModTag::DamageType(damage_type) => cfg.damage_type == Some(*damage_type),
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
@@ -432,7 +463,9 @@ impl Modifier {
                     let dist = cfg.skill_distance?;
                     value *= ramp_factor(ramp, dist)?;
                 }
+                // MultiplierThreshold 是二元 gate（在 matches 里求值），不缩放数值。
                 ModTag::Condition { .. }
+                | ModTag::MultiplierThreshold { .. }
                 | ModTag::GlobalLimit { .. }
                 | ModTag::DamageType(_)
                 | ModTag::SkillTypes(_)
@@ -644,5 +677,34 @@ mod tests {
             });
         let cfg = CalcConfig::new();
         assert_eq!(modifier.effective_number(&cfg), None);
+    }
+
+    /// MultiplierThreshold（vendor ModStore.lua:559-573）：`within`（upper）在
+    /// `stat ≤ threshold` 生效；`further`（!upper）在 `stat ≥ threshold` 生效。
+    #[test]
+    fn multiplier_threshold_within_and_further() {
+        let within = Modifier::number("CriticalStrikeMultiplier", ModType::Inc, 40.0).with_tag(
+            ModTag::MultiplierThreshold {
+                var: "enemyDistance".into(),
+                threshold: 20.0,
+                upper: true,
+            },
+        );
+        let further =
+            Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::MultiplierThreshold {
+                var: "enemyDistance".into(),
+                threshold: 30.0,
+                upper: false,
+            });
+
+        // within 2m（≤20）：敌距 20 → 生效；敌距 25 → 不生效。
+        assert!(within.matches(&CalcConfig::new().with_multiplier("enemyDistance", 20.0)));
+        assert!(!within.matches(&CalcConfig::new().with_multiplier("enemyDistance", 25.0)));
+        // further 3m（≥30）：敌距 30 → 生效；敌距 20 → 不生效。
+        assert!(further.matches(&CalcConfig::new().with_multiplier("enemyDistance", 30.0)));
+        assert!(!further.matches(&CalcConfig::new().with_multiplier("enemyDistance", 20.0)));
+        // 缺 enemyDistance（默认 0）：within ≤ threshold 恒真；further ≥ threshold 恒假。
+        assert!(within.matches(&CalcConfig::new()));
+        assert!(!further.matches(&CalcConfig::new()));
     }
 }

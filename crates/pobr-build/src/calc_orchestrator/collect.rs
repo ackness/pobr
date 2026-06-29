@@ -36,7 +36,7 @@ pub(crate) fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<Allo
             AllocatedNode {
                 node_id: node.node_id,
                 ascendancy,
-                modifier_texts: combine_wrapped_then_filter(node.modifier_texts),
+                modifier_texts: combine_wrapped_then_filter(node.modifier_texts, engine_ctx(data)),
             }
         })
         .collect()
@@ -62,7 +62,7 @@ pub(crate) fn append_granted_passives(
             node_id: pobr_data::passive_tree::NodeId(def.skill),
             ascendancy: def.ascendancy_id.is_some(),
             // 树 stat 同样可能折行（与 combine_wrapped_then_filter 同源数据）。
-            modifier_texts: combine_wrapped_then_filter(def.stats.clone()),
+            modifier_texts: combine_wrapped_then_filter(def.stats.clone(), engine_ctx(data)),
         });
     }
 }
@@ -157,11 +157,36 @@ pub(crate) fn granted_passive_defs<'d>(
 /// 「Gain 4% of Damage as Extra Fire Damage for / every different Grenade
 /// fired in the past 8 seconds」是**一条** mod 的两行。仅树路径需要此合并
 /// （装备词条本就按行入库）。
-pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>) -> Vec<String> {
+pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<String> {
+    // 可解析性闸门：legacy `parse_mod` 通过即保留（与历史口径逐字一致）；**额外**保留
+    // legacy 不能但引擎能解析为 **MultiplierThreshold tag** 的行（`... against enemies
+    // within/further than N metres` → MultiplierThreshold:enemyDistance）。否则这些行会被
+    // legacy 闸门在预过滤阶段丢弃、永到不了下游引擎 ingest（node 5802 "Stand and Deliver"
+    // 的 +40 crit / +25% damage 即此症）。
+    //
+    // **窄放行**：只放 MultiplierThreshold（本批新增能力），不整体切到引擎闸门——后者会
+    // 连带放行其它 engine-vs-legacy 分歧行（未裁决），在树节点广面造成 over-apply 回归
+    // （实测 def core −3 / canary_physical_armour_block 失败）。整体闸门切换属 legacy 退役
+    // 范畴，须逐条裁决，非本修复范围。
+    let parses = |t: &str| {
+        if parse_mod(t).is_ok() {
+            return true;
+        }
+        ctx.parse(t)
+            .map(|o| {
+                matches!(o.status, pobr_core::mod_parser::ParseStatus::Parsed)
+                    && o.mods.iter().any(|m| {
+                        m.tags
+                            .iter()
+                            .any(|tag| matches!(tag, pobr_core::ModTag::MultiplierThreshold { .. }))
+                    })
+            })
+            .unwrap_or(false)
+    };
     let mut out = Vec::new();
     let mut i = 0;
     while i < texts.len() {
-        if parse_mod(&texts[i]).is_ok() {
+        if parses(&texts[i]) {
             out.push(texts[i].clone());
             i += 1;
             continue;
@@ -170,7 +195,7 @@ pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>) -> Vec<String> {
         let mut combined: Option<(String, usize)> = None;
         for end in (i + 1)..texts.len() {
             let comb = texts[i..=end].join(" ");
-            if parse_mod(&comb).is_ok() {
+            if parses(&comb) {
                 combined = Some((comb, end));
                 break;
             }

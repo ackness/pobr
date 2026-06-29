@@ -90,6 +90,40 @@ fn field_bool(value: &StatMapValue) -> Option<bool> {
     }
 }
 
+/// 数值字段值含**捕获算子**的求值（`$n:mult(N)`→×N、`$n:div(N)`→÷N、
+/// `$n:base(N)`→+N；无算子退化为 [`field_number`]）。template/special 方言与
+/// `interpolate_segment` 的 `:cap` 同源，但作用于数值。
+///
+/// 仅 MultiplierThreshold 的 `threshold = "$1:mult(10)"`（米→单位）等消费——
+/// **不**改 [`field_number`]（避免连带改动 Multiplier `limit="$1:base(6)"` 等既有
+/// 字段的口径，那些是独立 latent bug，超出本改动范围）。
+fn field_number_capop(value: &StatMapValue, captures: &[String]) -> Option<f64> {
+    let StatMapValue::Text(s) = value else {
+        return field_number(value, captures);
+    };
+    let Some(rest) = s.strip_prefix('$') else {
+        return field_number(value, captures);
+    };
+    let (idx_str, op) = match rest.split_once(':') {
+        Some((i, o)) => (i, Some(o)),
+        None => (rest, None),
+    };
+    let idx: usize = idx_str.parse().ok()?;
+    let mut v: f64 = captures.get(idx.saturating_sub(1))?.parse().ok()?;
+    if let Some(op) = op {
+        let (name, arg) = op.split_once('(')?;
+        let arg: f64 = arg.strip_suffix(')')?.parse().ok()?;
+        v = match name {
+            "mult" => v * arg,
+            "div" if arg != 0.0 => v / arg,
+            "div" => v,
+            "base" => v + arg,
+            _ => return None,
+        };
+    }
+    Some(v)
+}
+
 /// 把 [`TagTemplate`] 实例化为 pobr [`ModTag`]（蓝图 §3 / §1.5）。
 ///
 /// **可映射清单**（与 special_mod::compile_tag 同口径，扩展 Multiplier/PerStat/
@@ -216,12 +250,31 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             // threshold=1** 映射；限幅式（`$n` 阈值 = "per X up to N"）与非异常 var 无
             // pobr 二元落点，仍返回 None（保守失配，与修复前一致）。
             let var = f.get("var").and_then(|v| field_text(v, captures))?;
-            let cond = ailment_stacks_condition(&var)?;
-            if !matches!(f.get("threshold"), Some(StatMapValue::Number(n)) if *n == 1.0) {
+            let upper = f.get("upper").and_then(field_bool).unwrap_or(false);
+            if let Some(cond) = ailment_stacks_condition(&var) {
+                // 异常叠层仅 **threshold=1 字面常量** 二元化；其余（限幅式 `$n`）无落点。
+                return matches!(f.get("threshold"), Some(StatMapValue::Number(n)) if *n == 1.0)
+                    .then(|| ModTag::condition(cond, upper));
+            }
+            // 距离阈值（vendor ModStore.lua:559-573）：「against enemies within/further than
+            // N metres」→ `var=enemyDistance`、`threshold=N×10`（`"$1:mult(10)"` 米→单位，须经
+            // field_number_capop 应用 `:mult(10)` 算子）→ [`ModTag::MultiplierThreshold`]。
+            //
+            // **仅 `enemyDistance`**：它是 PoBR 唯一可靠灌入 cfg.multipliers 的阈值 var
+            // （编排层从 `Multiplier:enemyDistance` 折入，effective=20/panel=0）。其它 var
+            // （数据中无非异常非距离 MultiplierThreshold）若盲产 tag，求值读 cfg.multiplier
+            // 缺键＝0 → upper 恒真 over-apply。保守只接 enemyDistance，余仍 None（与修复前一致）。
+            if var != "enemyDistance" {
                 return None;
             }
-            let upper = f.get("upper").and_then(field_bool).unwrap_or(false);
-            Some(ModTag::condition(cond, upper))
+            let threshold = f
+                .get("threshold")
+                .and_then(|v| field_number_capop(v, captures))?;
+            Some(ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper,
+            })
         }
         // 未映射 tag 形态：保守跳过（返回 None；engine 据此处置整行）。
         _ => None,
@@ -595,7 +648,8 @@ mod tests {
             ],
         );
         assert!(compile_tag(&t, &["5".into()]).is_none());
-        // 非异常 var 的 MultiplierThreshold 同样保守 None。
+        // 非异常**非距离** var 的 MultiplierThreshold 仍保守 None（仅 enemyDistance 接通，
+        // 见 compile_tag 注释——其它 var 无可靠 cfg.multiplier 落点，盲产 tag 会 over-apply）。
         let t2 = tag(
             "MultiplierThreshold",
             &[
@@ -604,6 +658,28 @@ mod tests {
             ],
         );
         assert!(compile_tag(&t2, &[]).is_none());
+    }
+
+    /// `MultiplierThreshold{var=enemyDistance}`（"within/further than N metres"）→
+    /// [`ModTag::MultiplierThreshold`]，threshold 经 `:mult(10)` 算子米→单位。
+    #[test]
+    fn multiplier_threshold_enemy_distance_translates() {
+        let within = tag(
+            "MultiplierThreshold",
+            &[
+                ("var", StatMapValue::Text("enemyDistance".into())),
+                ("threshold", StatMapValue::Text("$1:mult(10)".into())),
+                ("upper", StatMapValue::Bool(true)),
+            ],
+        );
+        assert_eq!(
+            compile_tag(&within, &["2".into()]).unwrap(),
+            ModTag::MultiplierThreshold {
+                var: "enemyDistance".into(),
+                threshold: 20.0,
+                upper: true,
+            }
+        );
     }
 
     #[test]
