@@ -858,8 +858,8 @@ fn collect_player_buff_mod(
     };
     // flags 走 ModFlag 子集直译（M4-n 放开：Sigil of Power 的 Damage MORE 带
     // `Spell` flag——vendor flags=ModFlag.Spell，匹配语义两边一致；子集外
-    // token 仍整条上报）。
-    let flags = translate_mod_flags(&element.flags)?;
+    // token 仍整条上报）。`Hit` ModFlag 路由到 keyword HIT（见 translate_mod_flags）。
+    let (flags, kw_from_flags) = translate_mod_flags(&element.flags)?;
     if !element.keyword_flags.is_empty() {
         return Err(UnsupportedReason::UnsupportedKeywordFlags(
             element.keyword_flags.join("|"),
@@ -896,6 +896,7 @@ fn collect_player_buff_mod(
             Modifier::number(translated, mod_type, merged_value)
         };
         modifier.flags = flags;
+        modifier.keyword_flags = modifier.keyword_flags | kw_from_flags;
         for tag in &tags {
             modifier = modifier.with_tag(tag.clone());
         }
@@ -1388,25 +1389,34 @@ impl TranslatedName {
 
 /// ModFlag token 直译（PoBR [`ModFlags`] 已移植子集；匹配语义两边一致——
 /// PoB2 `ModList.lua` 子集判定 = PoBR `Modifier::matches` 的 `is_subset_of`）。
-/// 子集外 token（Hit/Dot/Thorns/Weapon/武器类…）→ 条目 Unsupported（PoBR cfg
+/// 子集外 token（Thorns/Weapon/武器类…）→ 条目 Unsupported（PoBR cfg
 /// 不会置这些位，附上会让 mod 永不匹配 = 静默欠算，宁可整条上报）。
-fn translate_mod_flags(tokens: &[String]) -> Result<ModFlags, UnsupportedReason> {
+///
+/// 返回 `(mod_flags, keyword_flags)`：`Hit` 是 vendor `ModFlag.Hit`，但 PoBR 的
+/// hit-scoping **走 KeywordFlag.Hit 通道**（`offence` 击中 cfg `| KeywordFlags::HIT`，
+/// `skill_dot`/`ailment` 剥 `KeywordFlags::HIT`）——cfg.flags 从不置 `ModFlags::HIT`。
+/// 故把 `Hit` ModFlag 路由到 keyword HIT：匹配语义与 vendor 逐位一致（命中适用、
+/// 异常/DoT 不适用），与 [`translate_keyword_flags`] 对 `KeywordFlag.Hit` 的处理同口径。
+fn translate_mod_flags(tokens: &[String]) -> Result<(ModFlags, KeywordFlags), UnsupportedReason> {
     let mut flags = ModFlags::NONE;
+    let mut keyword_flags = KeywordFlags::NONE;
     for token in tokens {
-        flags |= match token.as_str() {
-            "Attack" => ModFlags::ATTACK,
-            "Spell" => ModFlags::SPELL,
-            "Melee" => ModFlags::MELEE,
-            "Projectile" => ModFlags::PROJECTILE,
-            "Area" => ModFlags::AREA,
+        match token.as_str() {
+            "Attack" => flags |= ModFlags::ATTACK,
+            "Spell" => flags |= ModFlags::SPELL,
+            "Melee" => flags |= ModFlags::MELEE,
+            "Projectile" => flags |= ModFlags::PROJECTILE,
+            "Area" => flags |= ModFlags::AREA,
             // M4-T4 W-D1：Dot 位——dotCfg（`calc::skill_dot`）置 DOT 位后该类
             // mod（如 `support_rapid_decay_damage_over_time_+%_final` →
             // Damage MORE Dot）只命中 DoT 聚合（M4-i1 切换 PoB2 全位表后常驻）。
-            "Dot" => ModFlags::DOT,
+            "Dot" => flags |= ModFlags::DOT,
+            // vendor `ModFlag.Hit` → PoBR keyword HIT 通道（见函数文档）。
+            "Hit" => keyword_flags = keyword_flags | KeywordFlags::HIT,
             _ => return Err(UnsupportedReason::UnsupportedFlags(tokens.join("|"))),
-        };
+        }
     }
-    Ok(flags)
+    Ok((flags, keyword_flags))
 }
 
 /// 名字本身已承载作用域、且 PoBR 当前无消费方的惰性名：其 KeywordFlag 仅是
@@ -1547,6 +1557,21 @@ pub fn translate_mod_name(
         | "LightningDamage"
         | "ChaosDamage"
         | "ElementalDamage"
+        // 区间端 MORE 族（vendor `mod("Max<Type>Damage"/"Min<Type>Damage","MORE",…)`，
+        // 如 Heft `support_heft_maximum_physical_damage_+%_final` →
+        // `MaxPhysicalDamage` MORE，sup_str.lua:4222-4223）。消费方 =
+        // `calc::damage::scale_with_path`（CalcOffence.lua:138-139,153-154 的
+        // `Min/Max<Type>Damage` 独立 MORE 乘区，仅缩放区间一端）。
+        | "MaxPhysicalDamage"
+        | "MaxFireDamage"
+        | "MaxColdDamage"
+        | "MaxLightningDamage"
+        | "MaxChaosDamage"
+        | "MinPhysicalDamage"
+        | "MinFireDamage"
+        | "MinColdDamage"
+        | "MinLightningDamage"
+        | "MinChaosDamage"
         | "FirePenetration"
         | "ColdPenetration"
         | "LightningPenetration"
@@ -1624,9 +1649,10 @@ pub fn translate_mod_name(
         }
     };
     let (kw, extra_mod_flags) = translate_keyword_flags(keyword_flags, &translated)?;
+    let (mod_flags, kw_from_flags) = translate_mod_flags(&remaining_flags)?;
     Ok(TranslatedName {
-        flags: translate_mod_flags(&remaining_flags)? | extra_mod_flags,
-        keyword_flags: kw,
+        flags: mod_flags | extra_mod_flags,
+        keyword_flags: kw | kw_from_flags,
         name: translated,
     })
 }
@@ -2220,14 +2246,15 @@ mod tests {
         let mods = expect_modifiers(map_entry(&entry, 25.0));
         assert_eq!(mods[0].name.as_str(), "PhysicalDamage");
         assert_eq!(mods[0].flags, ModFlags::MELEE);
-        // 子集外 token（Hit）→ 整条 Unsupported（cfg 不置该位，附上 = 静默欠算）。
+        // vendor `ModFlag.Hit` → PoBR keyword HIT 通道（hit-scoping 走 KeywordFlag，
+        // cfg.flags 从不置 ModFlags::HIT）：mod 产出、ModFlags 为空、keyword 含 HIT。
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "PhysicalDamage", "mod_type": "MORE", "flags": ["Hit"] } ] }"#,
         );
-        assert!(matches!(
-            map_entry(&entry, 1.0),
-            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedFlags(_))
-        ));
+        let mods = expect_modifiers(map_entry(&entry, 25.0));
+        assert_eq!(mods[0].name.as_str(), "PhysicalDamage");
+        assert_eq!(mods[0].flags, ModFlags::NONE);
+        assert_eq!(mods[0].keyword_flags, KeywordFlags::HIT);
     }
 
     /// gain-as + ModFlag.Attack（vendor `SkillStatMap.lua:1116`
