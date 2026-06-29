@@ -416,10 +416,15 @@ fn ingest_charm_with_no_parseable_mods_still_emits_empty_carrier() {
     );
 }
 
-/// flask 特殊行：`Grants Onslaught during effect` → Onslaught Flag；
-/// `N% increased effect` → LocalUtilityEffect；`... during effect` 后缀剥除复用 parser。
+/// flask 特殊行：`N% increased effect` → LocalUtilityEffect；`... during effect`
+/// 后缀剥除复用 parser（MovementSpeed）。
+///
+/// **`Grants Onslaught during effect` 刻意归 Unsupported**——PoB2 ModParser 对该行
+/// 返回 unsupported（无 mod 产出，`run-parsemod.sh` 核实），其 Onslaught 不进 modDB；
+/// PoBR 与之逐行一致，不再越过 PoB2 解析能力无条件发 `flag("Onslaught")`（那会让
+/// detonate-dead/coiling/flicker 的 Speed 相对 golden 偏高 +20%）。
 #[test]
-fn ingest_flask_parses_onslaught_local_effect_and_during_effect_suffix() {
+fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses() {
     let flask = utility_item(
         "Quicksilver Flask",
         &[],
@@ -432,18 +437,25 @@ fn ingest_flask_parses_onslaught_local_effect_and_during_effect_suffix() {
     assert_eq!(classify_utility_item(&flask), UtilityItemKind::Flask);
 
     let ingest = ingest_flask_charm("Flask 1", &flask);
-    assert!(ingest.unsupported.is_empty(), "{:?}", ingest.unsupported);
+    assert_eq!(
+        ingest.unsupported,
+        vec!["Grants Onslaught during effect".to_string()],
+        "Onslaught 行与 PoB2 一致归 Unsupported（不发 Onslaught flag）"
+    );
     let carrier = &ingest.modifiers[0];
     assert_eq!(carrier.name, ModName::from(FLASK_BUFF_LIST_NAME));
     let nested = carrier.value.as_nested_mods().unwrap();
-    assert_eq!(nested.len(), 3);
-    assert_eq!(nested[0].name, ModName::from("Onslaught"));
-    assert_eq!(nested[0].mod_type, ModType::Flag);
-    assert_eq!(nested[1].name, ModName::from(LOCAL_UTILITY_EFFECT_NAME));
-    assert_eq!(nested[1].value.as_number(), Some(25.0));
-    assert_eq!(nested[2].name, ModName::from("MovementSpeed"));
-    assert_eq!(nested[2].mod_type, ModType::Inc);
-    assert_eq!(nested[2].value.as_number(), Some(10.0));
+    // Onslaught 行不产出 mod → 仅 LocalUtilityEffect + MovementSpeed 两条。
+    assert_eq!(nested.len(), 2);
+    assert!(
+        nested.iter().all(|m| m.name != ModName::from("Onslaught")),
+        "不得有 Onslaught flag"
+    );
+    assert_eq!(nested[0].name, ModName::from(LOCAL_UTILITY_EFFECT_NAME));
+    assert_eq!(nested[0].value.as_number(), Some(25.0));
+    assert_eq!(nested[1].name, ModName::from("MovementSpeed"));
+    assert_eq!(nested[1].mod_type, ModType::Inc);
+    assert_eq!(nested[1].value.as_number(), Some(10.0));
 }
 
 /// 全部行不可解析 → **仍产出空载荷**（M4-m 行为切换：vendor 条件置位与
