@@ -467,10 +467,7 @@ struct ParsedPassives {
     tree_version: Option<String>,
 }
 
-fn parse_passive_nodes(
-    xml: &str,
-    use_second_weapon_set: bool,
-) -> Result<ParsedPassives, XmlError> {
+fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<ParsedPassives, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 

@@ -31,6 +31,8 @@ enum Command {
     CalculateBuild(CalculateBuildArgs),
     /// 解析单条 modifier 文本，输出解析报告。
     ParseMod(ParseModArgs),
+    /// 解剖单条 modifier 文本：摊开 name/type/value + flags + tags（词条的条件与缩放灵魂），附人话解释。
+    ExplainMod(ExplainModArgs),
     /// 解析 raw item text（--text / --file / stdin）。当前为占位，返回未实现错误。
     ParseItem(ParseItemArgs),
     /// 解码 PoB Build Code → XML。
@@ -110,6 +112,18 @@ struct ParseModArgs {
 }
 
 #[derive(Debug, Args)]
+struct ExplainModArgs {
+    /// 待解剖的 modifier 文本。
+    text: String,
+    /// 版本数据目录（默认 `<repo>/data/4.5.0.3.4`）。从中编译 parser 规则。
+    #[arg(long)]
+    data_dir: Option<String>,
+    /// 输出结构化 JSON（默认输出人类可读文本）。
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Debug, Args)]
 struct ParseItemArgs {
     /// 内联 raw item text。
     #[arg(long)]
@@ -173,6 +187,17 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                 None => pobr_gamedata::current_data_dir(),
             };
             Ok(pobr_cli::parse_mod_json(&args.text, &data_dir)?)
+        }
+        Command::ExplainMod(args) => {
+            let data_dir = match args.data_dir {
+                Some(dir) => std::path::PathBuf::from(dir),
+                None => pobr_gamedata::current_data_dir(),
+            };
+            if args.json {
+                Ok(pobr_cli::explain_mod_json(&args.text, &data_dir)?)
+            } else {
+                Ok(pobr_cli::explain_mod_text(&args.text, &data_dir)?)
+            }
         }
         Command::ParseItem(args) => {
             let text = read_text_source(args.text, args.file)?;
