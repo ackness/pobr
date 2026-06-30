@@ -13,10 +13,10 @@
 use std::path::PathBuf;
 
 use pobr_build::{
-    BuildData, DataOrchestratorOptions, calculate_with_data, diagnose_tree_version,
+    Build, BuildData, DataOrchestratorOptions, calculate_with_data, diagnose_tree_version,
     parse_build_from_code,
 };
-use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput};
+use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput, OutputTable};
 use pobr_core::item::ingest_item;
 use pobr_core::item_text::{ItemTextError, parse_item_text};
 use pobr_core::mod_parser::{ParseStatus, parse_mod_with_rules};
@@ -892,14 +892,7 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
     let out = calculate_with_data(&build, &build_data, &opts)?;
     let tree_report = diagnose_tree_version(&build, &build_data);
 
-    let summary = BuildSummary {
-        level: build.character.level,
-        class_name: build.character.class_name.clone(),
-        ascendancy_name: build.character.ascendancy_name.clone(),
-        allocated_node_count: build.tree.allocated_nodes.len(),
-        equipped_item_count: build.items.len(),
-        socket_group_count: build.socket_groups.len(),
-    };
+    let summary = build_summary(&build);
     let output = CalculateBuildOutput {
         life: out.life,
         mana: out.mana,
@@ -944,6 +937,241 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
 pub fn calculate_build_json(req: &CalculateBuildRequest) -> Result<String, CliError> {
     let report = calculate_build(req)?;
     Ok(serde_json::to_string_pretty(&report)?)
+}
+
+/// 解析出的 [`Build`] → [`BuildSummary`]（calculate_build 与 marginal 共用）。
+fn build_summary(build: &Build) -> BuildSummary {
+    BuildSummary {
+        level: build.character.level,
+        class_name: build.character.class_name.clone(),
+        ascendancy_name: build.character.ascendancy_name.clone(),
+        allocated_node_count: build.tree.allocated_nodes.len(),
+        equipped_item_count: build.items.len(),
+        socket_group_count: build.socket_groups.len(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 边际贡献（explain-mod --build）
+//
+// 「在我现有的 build 上加这条词条，会怎样？」把候选词条文本作为 extra_modifier_texts
+// 注入玩家侧管线，重算一遍，与基线逐字段对比——复用 calculate_with_data 既有机制
+// （extra_modifier_texts 经 session.add_modifier_texts 入玩家 ModDb）。
+// ---------------------------------------------------------------------------
+
+/// 单个输出字段的边际变化（加入候选词条前后）。
+#[derive(Debug, Clone, Serialize)]
+pub struct OutputDelta {
+    /// 输出字段可读名（如 `DPS (hit)` / `Life`）。
+    pub key: String,
+    /// 加词条前的值。
+    pub before: f64,
+    /// 加词条后的值。
+    pub after: f64,
+    /// 差值（after − before）。
+    pub delta: f64,
+    /// 相对变化百分比（before == 0 时为 `None`）。
+    pub pct: Option<f64>,
+}
+
+/// `explain-mod --build` 的边际贡献请求。
+#[derive(Debug, Clone)]
+pub struct MarginalRequest {
+    /// PoB Build Code（URL-safe Base64 + zlib）。
+    pub build_code: String,
+    /// 游戏数据版本目录。
+    pub data_dir: PathBuf,
+    /// 敌人等级（`0` = 跟随角色等级）。
+    pub enemy_level: u32,
+    /// 敌人档位。
+    pub enemy_tier: EnemyTier,
+    /// 有效 DPS 口径（`true`）/ 面板口径（`false`）。
+    pub mode_effective: bool,
+    /// 要加进 build 的候选词条文本（通常即 explain 的那条）。
+    pub mod_texts: Vec<String>,
+}
+
+/// 边际贡献报告：build 摘要 + 加入的词条 + 有变化的输出字段差值。
+#[derive(Debug, Clone, Serialize)]
+pub struct MarginalReport {
+    /// build 摘要（角色身份 + 各来源计数）。
+    pub build: BuildSummary,
+    /// 加进 build 的候选词条文本。
+    pub added_mod_texts: Vec<String>,
+    /// **有变化**的输出字段差值（无变化字段不列；全空 = 该词条对关键输出无可见影响）。
+    pub deltas: Vec<OutputDelta>,
+}
+
+/// 计算候选词条对一份 build 的边际贡献：基线 vs 基线+词条，逐字段差值。
+///
+/// 两次 [`calculate_with_data`] 只差 `extra_modifier_texts`；其余编排选项（敌人 /
+/// 口径 / 角色基础注入）完全一致，确保差值纯由候选词条引起。
+pub fn marginal_contribution(req: &MarginalRequest) -> Result<MarginalReport, CliError> {
+    let build = parse_build_from_code(&req.build_code)?;
+    let game_data = GameData::new(req.data_dir.clone());
+    let build_data = BuildData::load(&game_data)?;
+
+    let base_opts = DataOrchestratorOptions {
+        base_input: MinimalInput::default(),
+        extra_modifier_texts: Vec::new(),
+        inject_character_base: true,
+        enemy_level: req.enemy_level,
+        enemy_tier: req.enemy_tier,
+        mode_effective: req.mode_effective,
+        ..Default::default()
+    };
+    let before = calculate_with_data(&build, &build_data, &base_opts)?;
+
+    let with_opts = DataOrchestratorOptions {
+        extra_modifier_texts: req.mod_texts.clone(),
+        ..base_opts.clone()
+    };
+    let after = calculate_with_data(&build, &build_data, &with_opts)?;
+
+    Ok(MarginalReport {
+        build: build_summary(&build),
+        added_mod_texts: req.mod_texts.clone(),
+        deltas: build_deltas(&before, &after),
+    })
+}
+
+/// 逐字段对比基线与加词条后的 [`OutputTable`]，仅保留**有变化**的字段（确定性序）。
+fn build_deltas(before: &OutputTable, after: &OutputTable) -> Vec<OutputDelta> {
+    let pairs: [(&str, f64, f64); 17] = [
+        ("DPS (hit)", before.dps, after.dps),
+        ("Total DoT DPS", before.total_dot_dps, after.total_dot_dps),
+        ("Bleed DPS", before.bleed_dps, after.bleed_dps),
+        ("Ignite DPS", before.ignite_dps, after.ignite_dps),
+        ("Poison DPS", before.poison_dps, after.poison_dps),
+        ("Avg Hit", before.total_hit_avg, after.total_hit_avg),
+        ("Hit Chance", before.hit_chance, after.hit_chance),
+        ("Crit Chance", before.crit_chance, after.crit_chance),
+        (
+            "Crit Multiplier",
+            before.crit_multiplier,
+            after.crit_multiplier,
+        ),
+        ("Life", before.life, after.life),
+        ("Mana", before.mana, after.mana),
+        ("Energy Shield", before.energy_shield, after.energy_shield),
+        ("Armour", before.armour, after.armour),
+        ("Evasion", before.evasion, after.evasion),
+        ("Fire Res", before.fire_resistance, after.fire_resistance),
+        ("Cold Res", before.cold_resistance, after.cold_resistance),
+        (
+            "Lightning Res",
+            before.lightning_resistance,
+            after.lightning_resistance,
+        ),
+    ];
+    pairs
+        .iter()
+        .filter(|(_, b, a)| (a - b).abs() > 1e-6)
+        .map(|(key, b, a)| {
+            let delta = a - b;
+            let pct = if *b != 0.0 {
+                Some(delta / b * 100.0)
+            } else {
+                None
+            };
+            OutputDelta {
+                key: (*key).to_string(),
+                before: *b,
+                after: *a,
+                delta,
+                pct,
+            }
+        })
+        .collect()
+}
+
+/// 紧凑数值格式：|n|≥100 时不留小数，否则 2 位（DPS 等大数避免冗长尾数）。
+fn fmt_num(n: f64) -> String {
+    if n.abs() >= 100.0 {
+        format!("{n:.0}")
+    } else {
+        format!("{n:.2}")
+    }
+}
+
+/// 把 [`MarginalReport`] 渲染为人类可读文本（接在 explain 输出之后）。
+pub fn render_marginal(report: &MarginalReport) -> String {
+    use std::fmt::Write as _;
+    let mut s = String::new();
+    let _ = writeln!(s, "\n═══ 边际贡献（加到 build 上前后对比）═══");
+    let b = &report.build;
+    let _ = writeln!(
+        s,
+        "build: Lv{} {}/{} · {} 天赋节点 · {} 装备 · {} 技能组",
+        b.level,
+        b.class_name,
+        b.ascendancy_name,
+        b.allocated_node_count,
+        b.equipped_item_count,
+        b.socket_group_count
+    );
+    let _ = writeln!(s, "加入词条: {}", report.added_mod_texts.join(" / "));
+    if report.deltas.is_empty() {
+        let _ = writeln!(
+            s,
+            "（该词条对当前 build 的关键输出无可见影响——可能条件未满足、不适用主技能，或词条未被解析支持）"
+        );
+        return s;
+    }
+    for d in &report.deltas {
+        let pct = match d.pct {
+            Some(p) => format!("{p:+.2}%"),
+            None => "—".to_string(),
+        };
+        let _ = writeln!(
+            s,
+            "  {:<16} {} → {}   ({:+}, {})",
+            d.key,
+            fmt_num(d.before),
+            fmt_num(d.after),
+            fmt_num(d.delta),
+            pct
+        );
+    }
+    s
+}
+
+/// explain 解剖 + 边际贡献的合并报告（`explain-mod --build --json`）。
+#[derive(Debug, Clone, Serialize)]
+pub struct ExplainWithMarginal {
+    /// 词条解剖。
+    pub explain: ExplainModReport,
+    /// 在 build 上的边际贡献。
+    pub marginal: MarginalReport,
+}
+
+/// `explain-mod --build`（文本）：解剖 + 边际贡献拼接输出。
+pub fn explain_mod_with_marginal_text(
+    text: &str,
+    req: &MarginalRequest,
+) -> Result<String, CliError> {
+    let data = GameData::new(req.data_dir.clone());
+    let rules = ParseModRules::from_game_data(&data)?;
+    let explain = explain_mod(text, Some(&rules))?;
+    let marginal = marginal_contribution(req)?;
+    let mut s = render_explain(&explain);
+    s.push_str(&render_marginal(&marginal));
+    Ok(s)
+}
+
+/// `explain-mod --build --json`：解剖 + 边际贡献的合并 JSON。
+pub fn explain_mod_with_marginal_json(
+    text: &str,
+    req: &MarginalRequest,
+) -> Result<String, CliError> {
+    let data = GameData::new(req.data_dir.clone());
+    let rules = ParseModRules::from_game_data(&data)?;
+    let explain = explain_mod(text, Some(&rules))?;
+    let marginal = marginal_contribution(req)?;
+    Ok(serde_json::to_string_pretty(&ExplainWithMarginal {
+        explain,
+        marginal,
+    })?)
 }
 
 #[cfg(test)]
@@ -1028,5 +1256,79 @@ mod explain_tests {
         assert!(text.contains("Parsed"));
         assert!(text.contains("Condition"));
         assert!(text.contains("FullLife"));
+    }
+}
+
+#[cfg(test)]
+mod marginal_tests {
+    use super::*;
+
+    /// 真实 demo build code（与 calculate-build 集成测试同源）。
+    const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
+
+    fn deadeye_request(mod_texts: Vec<String>) -> MarginalRequest {
+        MarginalRequest {
+            build_code: DEADEYE_CODE.to_string(),
+            data_dir: pobr_gamedata::current_data_dir(),
+            enemy_level: 0,
+            enemy_tier: EnemyTier::Pinnacle,
+            mode_effective: true,
+            mod_texts,
+        }
+    }
+
+    /// 加 maximum Life 词条：Life 上升，且因 build 的 increased Life% 乘区，增量 ≥ 基础值。
+    #[test]
+    fn adding_life_raises_life_through_increase_multipliers() {
+        let report =
+            marginal_contribution(&deadeye_request(vec!["+500 to maximum Life".to_string()]))
+                .unwrap();
+        let life = report
+            .deltas
+            .iter()
+            .find(|d| d.key == "Life")
+            .expect("Life 应有变化");
+        assert!(life.after > life.before, "Life 应上升");
+        // 基础 +500 经 increased Life% 放大 → 实际增量 ≥ 500（证明走了真实聚合管线）。
+        assert!(
+            life.delta >= 500.0,
+            "Life 增量应被 increased% 乘区放大，实际 {}",
+            life.delta
+        );
+    }
+
+    /// 加 increased Damage 词条：DPS 与 Avg Hit 上升（边际为正）。
+    #[test]
+    fn adding_increased_damage_raises_dps() {
+        let report =
+            marginal_contribution(&deadeye_request(vec!["40% increased Damage".to_string()]))
+                .unwrap();
+        let dps = report
+            .deltas
+            .iter()
+            .find(|d| d.key == "DPS (hit)")
+            .expect("DPS 应有变化");
+        assert!(dps.delta > 0.0, "增伤词条应提升 DPS");
+        assert!(dps.pct.unwrap() > 0.0);
+    }
+
+    /// 边际报告空 deltas 时，文本渲染给出"无可见影响"提示（不依赖解析 / build）。
+    #[test]
+    fn render_marginal_reports_no_impact_when_empty() {
+        let report = MarginalReport {
+            build: BuildSummary {
+                level: 92,
+                class_name: "Ranger".to_string(),
+                ascendancy_name: "Deadeye".to_string(),
+                allocated_node_count: 100,
+                equipped_item_count: 9,
+                socket_group_count: 6,
+            },
+            added_mod_texts: vec!["+5 to Fishing Line Strength".to_string()],
+            deltas: Vec::new(),
+        };
+        let text = render_marginal(&report);
+        assert!(text.contains("边际贡献"));
+        assert!(text.contains("无可见影响"));
     }
 }
