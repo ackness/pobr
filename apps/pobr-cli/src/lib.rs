@@ -16,13 +16,14 @@ use pobr_build::{
     BuildData, DataOrchestratorOptions, calculate_with_data, diagnose_tree_version,
     parse_build_from_code,
 };
-use pobr_core::ModValue;
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput};
 use pobr_core::item::ingest_item;
 use pobr_core::item_text::{ItemTextError, parse_item_text};
 use pobr_core::mod_parser::{ParseStatus, parse_mod_with_rules};
 use pobr_core::rules::{HandlerRegistry, SpecialModRules, register_special_handlers};
+use pobr_core::{ActorRef, ModTag, ModValue, Modifier};
 use pobr_data::item::EquipmentSlot;
+use pobr_data::modifier::{KeywordFlags, ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
 use pobr_gamedata::GameData;
 use serde::Serialize;
@@ -253,6 +254,411 @@ pub fn parse_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, 
     let rules = ParseModRules::from_game_data(&data)?;
     let report = parse_mod_with_data(text, Some(&rules))?;
     Ok(serde_json::to_string_pretty(&report)?)
+}
+
+// ---------------------------------------------------------------------------
+// explain-mod（词条解剖）
+//
+// 与 parse-mod 的区别：parse-mod 只给 name/type/value/source，**丢掉了 flags 和
+// tags**——而 tags（Condition / Multiplier / PerStat / SkillTypes / SlotName …）正是
+// 一条词条「在什么情境下生效、按什么缩放」的灵魂（PoB2「一切皆带 tag 的 Mod」那一层）。
+// explain-mod 把这些摊开并用人话解释，让「词条是怎么运作的」在命令行直接看得见。
+// ---------------------------------------------------------------------------
+
+/// 单个 tag 的人话解释。
+#[derive(Debug, Clone, Serialize)]
+pub struct TagExplain {
+    /// tag 类别（`Condition` / `Multiplier` / `PerStat` / …）。
+    pub kind: String,
+    /// 人类可读的语义说明。
+    pub detail: String,
+}
+
+/// 单条 modifier 的「解剖」——比 [`ModSummary`] 多出 flags / keyword_flags / tags
+/// （词条的条件与缩放灵魂），并附一行人话总结。
+#[derive(Debug, Clone, Serialize)]
+pub struct ModAnatomy {
+    /// 稳定 stat 名（如 `FireDamage`）。
+    pub name: String,
+    /// 聚合类型（`BASE` / `INC` / `MORE` / `FLAG` / `OVERRIDE` / `LIST`）。
+    pub mod_type: String,
+    /// 数值（文本 / 嵌套载荷为 `None`）。
+    pub value: Option<f64>,
+    /// 文本载荷（`ModValue::Text` / 嵌套提示；数值型为 `None`）。
+    pub text_value: Option<String>,
+    /// 命中的 [`ModFlags`] 名（如 `Attack` / `Melee` / `Bow`）；空 = 无 flag 约束。
+    pub flags: Vec<String>,
+    /// 命中的 [`KeywordFlags`] 名（如 `Aura` / `Curse` / `Poison`）；空 = 无。
+    pub keyword_flags: Vec<String>,
+    /// tag 解释（词条的条件与缩放灵魂）；空 = 任何情境下恒定生效。
+    pub tags: Vec<TagExplain>,
+    /// 原始来源文本。
+    pub source: Option<String>,
+    /// 一行人话总结。
+    pub plain: String,
+}
+
+/// `explain-mod` 解剖报告。
+#[derive(Debug, Clone, Serialize)]
+pub struct ExplainModReport {
+    /// 输入的原始 modifier 文本。
+    pub input: String,
+    /// `Parsed` 或 `Unsupported`。
+    pub status: String,
+    /// 解析出的每条 modifier 的解剖。
+    pub mods: Vec<ModAnatomy>,
+    /// 未能识别归类的原始文本（仅 `Unsupported` 时出现）。
+    pub unparsed: Option<String>,
+}
+
+/// 解剖单条 modifier 文本：解析后摊开每条 [`Modifier`] 的全部字段（含 flags / tags），
+/// 附人话解释。`rules` 同 [`parse_mod_with_data`]（`None` = 无 special 规则路径）。
+pub fn explain_mod(
+    text: &str,
+    rules: Option<&ParseModRules>,
+) -> Result<ExplainModReport, CliError> {
+    let (special, registry) = match rules {
+        Some(r) => (r.rules.as_ref(), Some(&r.registry)),
+        None => (None, None),
+    };
+    let outcome = parse_mod_with_rules(text, special, registry)
+        .map_err(|e| CliError::ModParse(e.to_string()))?;
+
+    let status = match outcome.status {
+        ParseStatus::Parsed => "Parsed",
+        ParseStatus::Unsupported => "Unsupported",
+    };
+
+    let mods = outcome.mods.iter().map(anatomy_of).collect();
+
+    Ok(ExplainModReport {
+        input: text.to_string(),
+        status: status.to_string(),
+        mods,
+        unparsed: outcome.unparsed,
+    })
+}
+
+/// 把一条 [`Modifier`] 拆成可序列化的 [`ModAnatomy`]。
+fn anatomy_of(m: &Modifier) -> ModAnatomy {
+    let (value, text_value) = match &m.value {
+        ModValue::Number(n) => (Some(*n), None),
+        ModValue::Bool(b) => (Some(if *b { 1.0 } else { 0.0 }), None),
+        ModValue::Text(t) => (None, Some(t.clone())),
+        ModValue::NestedMods(_) => (None, Some("<嵌套 modifier 载荷>".to_string())),
+    };
+    let tags: Vec<TagExplain> = m.tags.iter().map(explain_tag).collect();
+    let plain = plain_summary(m, &tags);
+    ModAnatomy {
+        name: m.name.to_string(),
+        mod_type: m.mod_type.as_trace_label().to_string(),
+        value,
+        text_value,
+        flags: mod_flag_names(m.flags),
+        keyword_flags: keyword_flag_names(m.keyword_flags),
+        tags,
+        source: m.source.clone(),
+        plain,
+    }
+}
+
+/// [`ModFlags`] 位 → 名字列表（仅独立位，不含 mask）。
+fn mod_flag_names(flags: ModFlags) -> Vec<String> {
+    const TABLE: &[(ModFlags, &str)] = &[
+        (ModFlags::ATTACK, "Attack"),
+        (ModFlags::SPELL, "Spell"),
+        (ModFlags::HIT, "Hit"),
+        (ModFlags::DOT, "Dot"),
+        (ModFlags::CAST, "Cast"),
+        (ModFlags::THORNS, "Thorns"),
+        (ModFlags::MELEE, "Melee"),
+        (ModFlags::AREA, "Area"),
+        (ModFlags::PROJECTILE, "Projectile"),
+        (ModFlags::AILMENT, "Ailment"),
+        (ModFlags::MELEE_HIT, "MeleeHit"),
+        (ModFlags::WEAPON, "Weapon"),
+        (ModFlags::AXE, "Axe"),
+        (ModFlags::BOW, "Bow"),
+        (ModFlags::CLAW, "Claw"),
+        (ModFlags::DAGGER, "Dagger"),
+        (ModFlags::MACE, "Mace"),
+        (ModFlags::STAFF, "Staff"),
+        (ModFlags::SWORD, "Sword"),
+        (ModFlags::WAND, "Wand"),
+        (ModFlags::UNARMED, "Unarmed"),
+        (ModFlags::CROSSBOW, "Crossbow"),
+        (ModFlags::FLAIL, "Flail"),
+        (ModFlags::SPEAR, "Spear"),
+        (ModFlags::WARSTAFF, "Warstaff"),
+        (ModFlags::TALISMAN, "Talisman"),
+        (ModFlags::FISHING, "Fishing"),
+        (ModFlags::WEAPON_MELEE, "WeaponMelee"),
+        (ModFlags::WEAPON_RANGED, "WeaponRanged"),
+        (ModFlags::WEAPON_1H, "Weapon1H"),
+        (ModFlags::WEAPON_2H, "Weapon2H"),
+    ];
+    TABLE
+        .iter()
+        .filter(|(bit, _)| flags.intersects(*bit))
+        .map(|(_, name)| (*name).to_string())
+        .collect()
+}
+
+/// [`KeywordFlags`] 位 → 名字列表（带 `MatchAll` 标记）。
+fn keyword_flag_names(flags: KeywordFlags) -> Vec<String> {
+    const TABLE: &[(KeywordFlags, &str)] = &[
+        (KeywordFlags::AURA, "Aura"),
+        (KeywordFlags::CURSE, "Curse"),
+        (KeywordFlags::TOTEM, "Totem"),
+        (KeywordFlags::ATTACK, "Attack"),
+        (KeywordFlags::SPELL, "Spell"),
+        (KeywordFlags::HIT, "Hit"),
+        (KeywordFlags::AILMENT, "Ailment"),
+        (KeywordFlags::POISON, "Poison"),
+        (KeywordFlags::BLEED, "Bleed"),
+        (KeywordFlags::IGNITE, "Ignite"),
+        (KeywordFlags::PHYSICAL_DOT, "PhysicalDot"),
+        (KeywordFlags::LIGHTNING_DOT, "LightningDot"),
+        (KeywordFlags::COLD_DOT, "ColdDot"),
+        (KeywordFlags::FIRE_DOT, "FireDot"),
+        (KeywordFlags::CHAOS_DOT, "ChaosDot"),
+    ];
+    let masked = flags.without_match_all();
+    let mut names: Vec<String> = TABLE
+        .iter()
+        .filter(|(bit, _)| masked.intersects(*bit))
+        .map(|(_, name)| (*name).to_string())
+        .collect();
+    if flags.requires_match_all() {
+        names.push("MatchAll".to_string());
+    }
+    names
+}
+
+/// 跨 actor 取数后缀（同 actor 为空串）。
+fn actor_label(actor: Option<ActorRef>) -> &'static str {
+    match actor {
+        None => "",
+        Some(ActorRef::Player) => "玩家侧 ",
+        Some(ActorRef::Parent) => "父 actor 侧 ",
+        Some(ActorRef::Minion) => "召唤物侧 ",
+    }
+}
+
+/// 单个 [`ModTag`] → 人话解释。
+fn explain_tag(tag: &ModTag) -> TagExplain {
+    match tag {
+        ModTag::Condition {
+            var,
+            negated,
+            actor,
+        } => TagExplain {
+            kind: "Condition".to_string(),
+            detail: format!(
+                "仅当{}条件 `{}` {}",
+                actor_label(*actor),
+                var,
+                if *negated {
+                    "不成立时生效"
+                } else {
+                    "成立时生效"
+                }
+            ),
+        },
+        ModTag::Multiplier {
+            var,
+            div,
+            limit,
+            actor,
+            limit_var,
+            limit_actor,
+            invert,
+            limit_total,
+        } => {
+            let mut detail = if *div == 1.0 {
+                format!("每点{}`{}` 缩放数值", actor_label(*actor), var)
+            } else {
+                format!("每 {} 点{}`{}` 缩放数值", div, actor_label(*actor), var)
+            };
+            let cap = if *limit_total { "总量" } else { "计数" };
+            if let Some(l) = limit {
+                detail.push_str(&format!("，{cap}上限 {l}"));
+            } else if let Some(lv) = limit_var {
+                detail.push_str(&format!(
+                    "，{cap}上限取 {}`{lv}`",
+                    actor_label(*limit_actor)
+                ));
+            }
+            if *invert {
+                detail.push_str("，取倒数(1/n)");
+            }
+            TagExplain {
+                kind: "Multiplier".to_string(),
+                detail,
+            }
+        }
+        ModTag::PerStat {
+            stat,
+            div,
+            limit,
+            limit_var,
+            actor,
+        } => {
+            let mut detail = if *div == 1.0 {
+                format!("按{}已算出属性 `{}` 缩放数值", actor_label(*actor), stat)
+            } else {
+                format!(
+                    "按{}已算出属性 `{}` / {} 缩放数值",
+                    actor_label(*actor),
+                    stat,
+                    div
+                )
+            };
+            if let Some(l) = limit {
+                detail.push_str(&format!("，上限 {l}"));
+            } else if let Some(lv) = limit_var {
+                detail.push_str(&format!("，上限取 `{lv}`"));
+            }
+            TagExplain {
+                kind: "PerStat".to_string(),
+                detail,
+            }
+        }
+        ModTag::MultiplierThreshold {
+            var,
+            threshold,
+            upper,
+        } => TagExplain {
+            kind: "MultiplierThreshold".to_string(),
+            detail: format!(
+                "仅当 `{}` {} {} 时生效",
+                var,
+                if *upper { "≤" } else { "≥" },
+                threshold
+            ),
+        },
+        ModTag::GlobalLimit { value, key } => TagExplain {
+            kind: "GlobalLimit".to_string(),
+            detail: format!("全局累计上限 {value}（记账桶 `{key}`）"),
+        },
+        ModTag::DamageType(dt) => TagExplain {
+            kind: "DamageType".to_string(),
+            detail: format!("限 {dt:?} 伤害"),
+        },
+        ModTag::SkillTypes(st) => TagExplain {
+            kind: "SkillTypes".to_string(),
+            detail: format!("限技能类型 {st:?}"),
+        },
+        ModTag::SlotName(slot) => TagExplain {
+            kind: "SlotName".to_string(),
+            detail: format!("仅作用于装备槽 `{slot}`"),
+        },
+        ModTag::DistanceRamp { ramp } => TagExplain {
+            kind: "DistanceRamp".to_string(),
+            detail: format!("随与敌人距离插值缩放（(距离,倍率) 点列：{ramp:?}）"),
+        },
+    }
+}
+
+/// 一行人话总结：把聚合桶 + 数值 + 条件串成自然语言。
+fn plain_summary(m: &Modifier, tags: &[TagExplain]) -> String {
+    let bucket = match m.mod_type {
+        ModType::Base => "基础值(BASE)桶",
+        ModType::Inc => "增加(INC)加算桶",
+        ModType::More => "更多(MORE)连乘桶",
+        ModType::Flag => "开关(FLAG)",
+        ModType::Override => "覆盖(OVERRIDE)",
+        ModType::List => "列表(LIST)",
+    };
+    let val = match &m.value {
+        ModValue::Number(n) => format!("{n:+}"),
+        ModValue::Bool(b) => b.to_string(),
+        ModValue::Text(t) => t.clone(),
+        ModValue::NestedMods(_) => "<嵌套>".to_string(),
+    };
+    let cond = if tags.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "（{}）",
+            tags.iter()
+                .map(|t| t.detail.clone())
+                .collect::<Vec<_>>()
+                .join("；")
+        )
+    };
+    format!("给属性 `{}` 的{bucket} {val}{cond}", m.name)
+}
+
+/// 把 [`ExplainModReport`] 渲染为人类可读文本（命令行默认输出）。
+pub fn render_explain(report: &ExplainModReport) -> String {
+    use std::fmt::Write as _;
+    let mut s = String::new();
+    let _ = writeln!(s, "词条原文: {}", report.input);
+    let _ = writeln!(s, "状态:     {}", report.status);
+    if let Some(un) = &report.unparsed {
+        let _ = writeln!(s, "未识别:   {un}");
+    }
+    if report.mods.is_empty() {
+        let _ = writeln!(s, "\n（没有解析出任何 modifier）");
+        return s;
+    }
+    for (i, m) in report.mods.iter().enumerate() {
+        let _ = writeln!(s, "\n→ Modifier #{}", i + 1);
+        let _ = writeln!(s, "   名字 (ModName): {}", m.name);
+        match (m.value, &m.text_value) {
+            (Some(v), _) => {
+                let _ = writeln!(s, "   类型 / 值:      {} = {v}", m.mod_type);
+            }
+            (None, Some(t)) => {
+                let _ = writeln!(s, "   类型 / 值:      {} = {t}", m.mod_type);
+            }
+            (None, None) => {
+                let _ = writeln!(s, "   类型:           {}", m.mod_type);
+            }
+        }
+        let flags = if m.flags.is_empty() {
+            "(无)".to_string()
+        } else {
+            m.flags.join(" | ")
+        };
+        let _ = writeln!(s, "   flags:          {flags}");
+        let kw = if m.keyword_flags.is_empty() {
+            "(无)".to_string()
+        } else {
+            m.keyword_flags.join(" | ")
+        };
+        let _ = writeln!(s, "   keyword:        {kw}");
+        if m.tags.is_empty() {
+            let _ = writeln!(s, "   tags:           (无——任何情境下恒定生效)");
+        } else {
+            let _ = writeln!(s, "   tags（条件与缩放灵魂）:");
+            for t in &m.tags {
+                let _ = writeln!(s, "     • {:<14} {}", t.kind, t.detail);
+            }
+        }
+        if let Some(src) = &m.source {
+            let _ = writeln!(s, "   来源文本:       {src}");
+        }
+        let _ = writeln!(s, "   人话:           {}", m.plain);
+    }
+    s
+}
+
+/// `explain-mod` 的 JSON 输出（`--json`）：从游戏数据编译规则一次后解剖。
+pub fn explain_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
+    let data = GameData::new(data_dir);
+    let rules = ParseModRules::from_game_data(&data)?;
+    let report = explain_mod(text, Some(&rules))?;
+    Ok(serde_json::to_string_pretty(&report)?)
+}
+
+/// `explain-mod` 的人类可读文本输出（命令行默认）：从游戏数据编译规则一次后解剖。
+pub fn explain_mod_text(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
+    let data = GameData::new(data_dir);
+    let rules = ParseModRules::from_game_data(&data)?;
+    let report = explain_mod(text, Some(&rules))?;
+    Ok(render_explain(&report))
 }
 
 // ---------------------------------------------------------------------------
@@ -538,4 +944,89 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
 pub fn calculate_build_json(req: &CalculateBuildRequest) -> Result<String, CliError> {
     let report = calculate_build(req)?;
     Ok(serde_json::to_string_pretty(&report)?)
+}
+
+#[cfg(test)]
+mod explain_tests {
+    use super::*;
+
+    /// 无条件 / 无缩放的平凡词条：无 tags，值与桶正确。
+    #[test]
+    fn flat_modifier_has_no_tags() {
+        let report = explain_mod("+50 to maximum Life", None).unwrap();
+        assert_eq!(report.status, "Parsed");
+        assert_eq!(report.mods.len(), 1);
+        let m = &report.mods[0];
+        assert_eq!(m.name, "MaximumLife");
+        assert_eq!(m.mod_type, "BASE");
+        assert_eq!(m.value, Some(50.0));
+        assert!(m.tags.is_empty(), "平凡词条不应有 tag");
+        assert!(m.flags.is_empty());
+    }
+
+    /// 带条件 + 伤害类型的词条：摊开 Condition 与 DamageType tag（parse-mod 会丢掉这些）。
+    #[test]
+    fn conditional_modifier_surfaces_condition_and_damage_type_tags() {
+        let report = explain_mod("25% increased Fire Damage while on Full Life", None).unwrap();
+        assert_eq!(report.status, "Parsed");
+        let m = report
+            .mods
+            .iter()
+            .find(|m| m.name == "FireDamage")
+            .expect("应解析出 FireDamage modifier");
+        assert_eq!(m.mod_type, "INC");
+        assert!(
+            m.tags
+                .iter()
+                .any(|t| t.kind == "Condition" && t.detail.contains("FullLife")),
+            "应有 Condition(FullLife) tag，实际 tags = {:?}",
+            m.tags
+        );
+        assert!(
+            m.tags.iter().any(|t| t.kind == "DamageType"),
+            "应有 DamageType tag"
+        );
+        // 人话总结把条件串进去。
+        assert!(m.plain.contains("FullLife"));
+    }
+
+    /// 带「per N 资源」缩放的词条：摊开 Multiplier tag。
+    #[test]
+    fn per_stat_modifier_surfaces_multiplier_tag() {
+        let report = explain_mod("1% increased Attack Damage per 10 Strength", None).unwrap();
+        assert_eq!(report.status, "Parsed");
+        let m = report
+            .mods
+            .iter()
+            .find(|m| m.name == "AttackDamage")
+            .expect("应解析出 AttackDamage modifier");
+        assert!(
+            m.tags
+                .iter()
+                .any(|t| t.kind == "Multiplier" && t.detail.contains("Strength")),
+            "应有 Multiplier(Strength) tag，实际 tags = {:?}",
+            m.tags
+        );
+    }
+
+    /// flag 位分解：命名位被正确还原为可读名。
+    #[test]
+    fn mod_flag_names_decomposes_named_bits() {
+        let names = mod_flag_names(ModFlags::ATTACK | ModFlags::MELEE | ModFlags::BOW);
+        assert!(names.contains(&"Attack".to_string()));
+        assert!(names.contains(&"Melee".to_string()));
+        assert!(names.contains(&"Bow".to_string()));
+        assert!(mod_flag_names(ModFlags::NONE).is_empty());
+    }
+
+    /// 文本渲染器冒烟：含原文、状态、tag 段。
+    #[test]
+    fn render_explain_smoke() {
+        let report = explain_mod("25% increased Fire Damage while on Full Life", None).unwrap();
+        let text = render_explain(&report);
+        assert!(text.contains("词条原文:"));
+        assert!(text.contains("Parsed"));
+        assert!(text.contains("Condition"));
+        assert!(text.contains("FullLife"));
+    }
 }
