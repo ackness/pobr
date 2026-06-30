@@ -40,8 +40,8 @@
 
 use pobr_data::prelude::*;
 
-use crate::Modifier;
 use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
+use crate::{ModTag, Modifier};
 
 /// 物品词条的 section，决定归因的 [`SourceKind`] 与 `SourceId` 后缀。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -146,7 +146,8 @@ fn ingest_section(
         let outcome = ctx.parse(text)?;
         match outcome.status {
             ParseStatus::Parsed => {
-                for modifier in outcome.mods {
+                for mut modifier in outcome.mods {
+                    substitute_slot_placeholder(&mut modifier, slot.id());
                     let origin = ModifierSource::new(source_id.clone())
                         .with_slot(slot.id())
                         .with_raw_text(text.clone());
@@ -162,6 +163,29 @@ fn ingest_section(
     }
 
     Ok(())
+}
+
+/// 把物品词条 Multiplier tag 里的 `{SlotName}` 占位符替换为本件槽位 ID。
+///
+/// PoB2 在合并物品 mod 时按所在槽展开 `{SlotName}`（`calcLib.mod`）。典型来源
+/// `per Socket filled` / `per socketed rune or soul core` →
+/// `Multiplier{var:"RunesSocketedIn{SlotName}"}`（ModParser.lua:1477-1478）。替换后
+/// 由编排层预灌的 `RunesSocketedIn<slot>` multiplier 取数；缺替换则 var 永不命中、
+/// 静默 0 贡献（per-socket 缩放失效）。
+fn substitute_slot_placeholder(modifier: &mut Modifier, slot_id: &str) {
+    const PLACEHOLDER: &str = "{SlotName}";
+    for tag in &mut modifier.tags {
+        if let ModTag::Multiplier { var, limit_var, .. } = tag {
+            if var.contains(PLACEHOLDER) {
+                *var = var.replace(PLACEHOLDER, slot_id);
+            }
+            if let Some(lv) = limit_var.as_mut()
+                && lv.contains(PLACEHOLDER)
+            {
+                *lv = lv.replace(PLACEHOLDER, slot_id);
+            }
+        }
+    }
 }
 
 // ── flask / charm 词条接入（M3-T4 D2，蓝图 m3-orchestration.md §7.2）───────────

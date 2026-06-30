@@ -2324,6 +2324,18 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
             " per endurance charge",
             ModTag::multiplier("EnduranceCharge", 1.0, None),
         ),
+        // 已填充 socket 计数（vendor ModParser.lua:1477-1478，`per socket filled` 与
+        // `per socketed rune or soul core` 同 var）。`{SlotName}` 由 item ingest 按所在槽
+        // 替换为槽位 ID，再由编排层预灌的 `RunesSocketedIn<slot>` 取数。与引擎规则同形态，
+        // 维持 legacy↔engine DIFF=0（亦使 collect.rs::filter_parseable 闸门放行该词条）。
+        (
+            " per socket filled",
+            ModTag::multiplier("RunesSocketedIn{SlotName}", 1.0, None),
+        ),
+        (
+            " per socketed rune or soul core",
+            ModTag::multiplier("RunesSocketedIn{SlotName}", 1.0, None),
+        ),
         // 敌人稀有度条件（DPS 默认 vs Boss/Unique → 由 orchestrator 据敌人档位置真）。
         (
             " against rare or unique enemies",

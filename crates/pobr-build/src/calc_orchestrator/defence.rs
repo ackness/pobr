@@ -300,3 +300,19 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
     }
     out
 }
+
+/// 每件装备的已填充 socket 数（`item.rolled_defence.sockets_filled`）× 槽位 ID 拼出
+/// `RunesSocketedIn<slot>` 倍率键，供 `per Socket filled` / `per socketed rune or soul
+/// core` 词条（解析为 `Multiplier{var:"RunesSocketedIn{SlotName}"}`，ingest 已把
+/// `{SlotName}` 替换为槽位 ID）取数（PoB2 同口径，ModParser.lua:1477-1478）。
+/// 通用：按槽位拼键，绝不针对具体物品。
+pub(crate) fn per_slot_socket_multipliers(build: &Build) -> Vec<(String, f64)> {
+    let mut out = Vec::new();
+    for (slot, item) in &build.items {
+        let filled = item.rolled_defence.sockets_filled;
+        if filled > 0 {
+            out.push((format!("RunesSocketedIn{}", slot.id()), f64::from(filled)));
+        }
+    }
+    out
+}

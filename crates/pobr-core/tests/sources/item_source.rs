@@ -1,6 +1,6 @@
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::item::{ItemIngest, ingest_item};
-use pobr_core::{CalcConfig, ModDb};
+use pobr_core::{CalcConfig, ModDb, ModTag};
 use pobr_data::prelude::*;
 
 fn helmet(texts: &[&str]) -> Item {
@@ -14,6 +14,27 @@ fn helmet(texts: &[&str]) -> Item {
         rolled_defence: RolledDefence::default(),
         parsed_stats: Vec::new(),
     }
+}
+
+#[test]
+fn ingest_substitutes_slotname_in_per_socket_multiplier() {
+    // `per Socket filled` → `Multiplier{var:"RunesSocketedIn{SlotName}"}`；ingest 按所在槽
+    // 把 `{SlotName}` 替换为槽位 ID（编排层预灌 `RunesSocketedIn<slot>` 取数）。
+    let item = helmet(&["+14 to Spirit per Socket filled"]);
+    let ingest = ingest_item(EquipmentSlot::BodyArmour, &item).unwrap();
+    let spirit = ingest
+        .modifiers
+        .iter()
+        .find(|m| m.name.as_str() == "Spirit")
+        .expect("Spirit mod 应被解析");
+    assert!(
+        spirit.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Multiplier { var, .. } if var == "RunesSocketedInbodyarmour"
+        )),
+        "{{SlotName}} 应替换为槽位 ID: {:?}",
+        spirit.tags
+    );
 }
 
 #[test]

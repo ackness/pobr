@@ -388,6 +388,12 @@ fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
         // `Ward: N` 行（PoB2 `armourData.Ward` 同口径；M2 Track D，13-G14）。
         out.ward = Some(out.ward.unwrap_or(0.0) + n);
         return true;
+    } else if line.starts_with("Rune:") || line.starts_with("Soul Core:") {
+        // 每行命名一个已镶嵌的符文/魂核 → 一个已填充 socket（PoB2 `RunesSocketedIn`
+        // 计数，ModParser.lua:1477-1478）。其词条以 `{rune}` 前缀单列、各自解析；
+        // 此处仅累加 socket 数供 `per Socket filled` Multiplier 取数。
+        out.sockets_filled += 1;
+        return true;
     }
     false
 }
