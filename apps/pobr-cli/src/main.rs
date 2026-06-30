@@ -121,6 +121,21 @@ struct ExplainModArgs {
     /// 输出结构化 JSON（默认输出人类可读文本）。
     #[arg(long)]
     json: bool,
+    /// 在该 PoB Build Code 上额外计算这条词条的边际贡献（前后对比）。
+    #[arg(long)]
+    build: Option<String>,
+    /// 从文件读取 build code（与 --build 二选一）。
+    #[arg(long)]
+    build_file: Option<String>,
+    /// 边际计算用的敌人等级（0 = 跟随角色等级）。
+    #[arg(long, default_value_t = 0)]
+    enemy_level: u32,
+    /// 边际计算用的敌人档位：none / boss / pinnacle / uber。
+    #[arg(long, default_value = "pinnacle")]
+    enemy_tier: String,
+    /// 边际计算用面板口径（不计敌人交互）。缺省为有效 DPS 口径。
+    #[arg(long, default_value_t = false)]
+    panel: bool,
 }
 
 #[derive(Debug, Args)]
@@ -193,10 +208,28 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                 Some(dir) => std::path::PathBuf::from(dir),
                 None => pobr_gamedata::current_data_dir(),
             };
+            let has_build = args.build.is_some() || args.build_file.is_some();
+            if !has_build {
+                return if args.json {
+                    Ok(pobr_cli::explain_mod_json(&args.text, &data_dir)?)
+                } else {
+                    Ok(pobr_cli::explain_mod_text(&args.text, &data_dir)?)
+                };
+            }
+            // has_build 保证 build / build_file 至少一个 Some → read_text_source 不会落到 stdin。
+            let build_code = read_text_source(args.build, args.build_file)?;
+            let req = pobr_cli::MarginalRequest {
+                build_code,
+                data_dir,
+                enemy_level: args.enemy_level,
+                enemy_tier: parse_enemy_tier(&args.enemy_tier)?,
+                mode_effective: !args.panel,
+                mod_texts: vec![args.text.clone()],
+            };
             if args.json {
-                Ok(pobr_cli::explain_mod_json(&args.text, &data_dir)?)
+                Ok(pobr_cli::explain_mod_with_marginal_json(&args.text, &req)?)
             } else {
-                Ok(pobr_cli::explain_mod_text(&args.text, &data_dir)?)
+                Ok(pobr_cli::explain_mod_with_marginal_text(&args.text, &req)?)
             }
         }
         Command::ParseItem(args) => {
@@ -255,20 +288,23 @@ fn build_calc_build_request(
         None => pobr_gamedata::current_data_dir(),
     };
 
-    let enemy_tier = match args.enemy_tier.to_ascii_lowercase().as_str() {
+    Ok(CalculateBuildRequest {
+        code,
+        data_dir,
+        enemy_level: args.enemy_level,
+        enemy_tier: parse_enemy_tier(&args.enemy_tier)?,
+        mode_effective: !args.panel,
+    })
+}
+
+/// 敌人档位字符串 → [`EnemyTier`]（none / boss / pinnacle / uber）。
+fn parse_enemy_tier(tier: &str) -> Result<EnemyTier, Box<dyn std::error::Error>> {
+    Ok(match tier.to_ascii_lowercase().as_str() {
         "none" => EnemyTier::None,
         "boss" => EnemyTier::Boss,
         "pinnacle" => EnemyTier::Pinnacle,
         "uber" => EnemyTier::Uber,
         other => return Err(format!("unknown enemy tier: {other}").into()),
-    };
-
-    Ok(CalculateBuildRequest {
-        code,
-        data_dir,
-        enemy_level: args.enemy_level,
-        enemy_tier,
-        mode_effective: !args.panel,
     })
 }
 
