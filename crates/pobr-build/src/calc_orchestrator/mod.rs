@@ -1092,6 +1092,11 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     for (var, value) in per_slot_defence_multipliers(build, data) {
         session.set_multiplier(var, value);
     }
+    // per-槽位已填充 socket 数（`RunesSocketedIn<slot>`）：使 `+N to <stat> per Socket
+    // filled` 这类按本件已镶嵌符文/魂核数缩放的词条生效（PoB2 ModParser.lua:1477-1478）。
+    for (var, value) in per_slot_socket_multipliers(build) {
+        session.set_multiplier(var, value);
+    }
     // GrenadeTypes（M4-H；vendor CalcPerform.lua:1238-1242：去重统计已启用
     // 主动技能中 `SkillType.Grenade` 的不同授予效果数）——Demolitionist
     // 「… for every different Grenade fired …」的 Multiplier limitVar 分母。

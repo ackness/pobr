@@ -45,6 +45,11 @@ pub struct RolledDefence {
     pub spirit: Option<f64>,
     /// 已掷出的 Ward（`Ward:` 行；PoB2 `armourData.Ward` 同口径）。
     pub ward: Option<f64>,
+    /// 已填充的 socket 数（`Rune:` / `Soul Core:` 命名行计数）。供
+    /// `per Socket filled` / `per socketed rune or soul core` 词条的
+    /// `RunesSocketedIn{SlotName}` Multiplier 取数（PoB2 同口径，
+    /// ModParser.lua:1477-1478）。`0` ＝ 无已镶嵌符文/魂核。
+    pub sockets_filled: u32,
 }
 
 #[derive(Debug, Clone)]

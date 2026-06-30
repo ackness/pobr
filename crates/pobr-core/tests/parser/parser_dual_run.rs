@@ -75,6 +75,35 @@ fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+#[test]
+fn engine_parses_per_socket_filled_to_runes_socketed_multiplier() {
+    use pobr_core::{ModTag, ModValue};
+    use pobr_data::modifier::ModType;
+    let rules = load_rules();
+    let outcome = parse_mod_engine("+14 to Spirit per Socket filled", &rules);
+    assert_eq!(
+        format!("{:?}", outcome.status),
+        "Parsed",
+        "leftover={:?}",
+        outcome.unparsed
+    );
+    let m = outcome
+        .mods
+        .iter()
+        .find(|m| m.name.as_str() == "Spirit")
+        .unwrap_or_else(|| panic!("无 Spirit mod: {:?}", outcome.mods));
+    assert!(matches!(m.mod_type, ModType::Base));
+    assert!(matches!(m.value, ModValue::Number(v) if (v - 14.0).abs() < 1e-9));
+    assert!(
+        m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Multiplier { var, .. } if var == "RunesSocketedIn{SlotName}"
+        )),
+        "Spirit mod 应带 RunesSocketedIn{{SlotName}} Multiplier tag: {:?}",
+        m.tags
+    );
+}
+
 fn load_rules() -> CompiledParserRules {
     let path = repo_root()
         .join("data")

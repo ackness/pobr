@@ -380,6 +380,53 @@ fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
 }
 
 #[test]
+fn xml_item_counts_filled_sockets_from_rune_lines() {
+    // `Sockets: S S` 声明 2 槽，但仅 1 行 `Rune:` → 已填充 1（PoB2 `RunesSocketedIn`
+    // 数已镶嵌符文/魂核，非槽位总数）。
+    let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("parse");
+    assert_eq!(item.rolled_defence.sockets_filled, 1);
+}
+
+/// 5 槽全填（Morior Invictus 形态）：5 行 `Rune:` → 已填充 5；
+/// `per Socket filled` 词条按此取数（gemling Spirit +14×5 = 70）。
+const XML_FIVE_RUNE_BODY: &str = "\
+\t\t\tRarity: UNIQUE
+Morior Invictus
+Grand Regalia
+Armour: 939
+Sockets: S S S S S
+Rune: Perfect Body Rune
+Rune: Perfect Rebirth Rune
+Rune: Greater Glacial Rune
+Rune: Perfect Body Rune
+Rune: Rabbit Idol
+Implicits: 0
++14 to Spirit per Socket filled
+";
+
+#[test]
+fn xml_item_counts_five_filled_sockets() {
+    let item = parse_pob_xml_item(XML_FIVE_RUNE_BODY).expect("parse");
+    assert_eq!(item.rolled_defence.sockets_filled, 5);
+    // Rune: 行被识别为已填充 socket，不泄漏到词条段。
+    let all: Vec<&String> = item
+        .implicit_texts
+        .iter()
+        .chain(&item.modifier_texts)
+        .chain(&item.enchant_texts)
+        .collect();
+    assert!(
+        all.iter().all(|t| !t.starts_with("Rune:")),
+        "Rune: 元数据行不得进入词条段: {all:?}"
+    );
+    assert!(
+        all.iter()
+            .any(|t| t.as_str() == "+14 to Spirit per Socket filled"),
+        "per-socket 词条应保留: {all:?}"
+    );
+}
+
+#[test]
 fn xml_item_handles_magic_flask_without_separate_base_line() {
     // MAGIC 物品（药剂/护身符）只有 1 行名称、基底嵌在名称内，名称后直接是元数据。
     let raw = "\
