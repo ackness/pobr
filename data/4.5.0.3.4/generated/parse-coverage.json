@@ -6,17 +6,17 @@
   },
   "summary": {
     "total": 4287,
-    "parsed": 1708,
+    "parsed": 1710,
     "unsupported": 5,
-    "err": 2574,
-    "coverage_ratio": 0.398414
+    "err": 2572,
+    "coverage_ratio": 0.39888
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 889,
+      "parsed": 891,
       "unsupported": 1,
-      "err": 814
+      "err": 812
     },
     {
       "source": "C2_tree",
@@ -218,11 +218,6 @@
       "source": "C2_tree"
     },
     {
-      "text": "+14 to Spirit per Socket filled",
-      "status": "err",
-      "source": "C1_build"
-    },
-    {
       "text": "+15 maximum [Rage] if you've used a Skill that Requires [Glory] in the past 20 seconds",
       "status": "err",
       "source": "C2_tree"
@@ -231,6 +226,11 @@
       "text": "+15 to Maximum [Rage]",
       "status": "err",
       "source": "C2_tree"
+    },
+    {
+      "text": "+197% Surpassing chance to fire an additional Arrow",
+      "status": "err",
+      "source": "C1_build"
     }
   ]
 }

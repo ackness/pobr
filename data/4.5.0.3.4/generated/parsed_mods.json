@@ -1037,7 +1037,17 @@
     },
     {
       "text": "+14 to Spirit per Socket filled",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Spirit",
+          "type": "Base",
+          "value": 14.0,
+          "tags": [
+            "Multiplier { var: \"RunesSocketedIn{SlotName}\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "+14% to Chaos Resistance",
@@ -4223,7 +4233,17 @@
     },
     {
       "text": "+47 to maximum Life per Socket filled",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaximumLife",
+          "type": "Base",
+          "value": 47.0,
+          "tags": [
+            "Multiplier { var: \"RunesSocketedIn{SlotName}\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "+48 to Spirit",
