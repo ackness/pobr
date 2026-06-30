@@ -511,13 +511,17 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 132; // 实测 132/144 = 91.7%（M4-k2 油涂池连带）
+const BASELINE_DEF_CORE_HIT5: usize = 133; // 实测 133/144 = 92.4%（charm-buff 火抗修复 +1）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
 // legacy/engine per-socket 后缀 + ingest {SlotName} 替换 + per_slot_socket_multipliers 预灌。
-const BASELINE_DEF_HIT5: usize = 380; // 实测 380/450 = 84.4%（per-socket-filled 修复重记）
-const BASELINE_DEF_HIT10: usize = 393; // 实测 393/450 = 87.3%
+// **charm base buff 修复重记（+3 @5% / +2 @10%）**：huntress-ritualist-bow-shot 的
+// Sunburst Ruby Charm（base `Ruby Charm`）固有 buff `+25% to Fire Resistance` 经
+// base_items.charm_buff（overlay vendor 抽取）并入 CharmBuff 载荷 → FireResist
+// 12→37（0.32x→1.00x），连带 FireMaxHit 0.73x→1.00x、TotalEHP 0.93x→1.00x。
+const BASELINE_DEF_HIT5: usize = 383; // 实测 383/450 = 85.1%（charm-buff 修复重记）
+const BASELINE_DEF_HIT10: usize = 395; // 实测 395/450 = 87.8%
 // **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
 // - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
 //   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker

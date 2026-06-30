@@ -8,6 +8,8 @@
 --   spirit         ← itemBases[name].spirit                  （`ItemSpirit.SpiritGranted`）
 --   reload_time_ms ← itemBases[name].weapon.ReloadTimeBase×1000（`WeaponTypes.ReloadTime`，
 --                    M4-T4 W-D2 弩装填；vendor 值为秒，毫秒整数入库）
+--   charm_buff     ← itemBases[name].charm.buff（charm 基底固有 buff 词条数组，
+--                    如 Ruby Charm "+25% to Fire Resistance"；空串占位过滤）
 --
 -- 确定性约定：本脚本只负责「忠实抽取 + 合法 JSON」；最终按 name 排序与整体
 -- 文档（_meta + overrides）的 byte-stable 序列化由 Rust 侧统一完成。
@@ -76,7 +78,21 @@ for name, base in pairs(itemBases) do
 			-- vendor 秒值（bases.lua 导出时已 /1000 round 两位）→ 毫秒整数。
 			reloadMs = math.floor(base.weapon.ReloadTimeBase * 1000 + 0.5)
 		end
-		if blockChance or spirit or reloadMs then
+		-- charm 基底固有 buff 词条数组（如 Ruby Charm "+25% to Fire Resistance"）；
+		-- 过滤空串（Cleansing Charm 的占位 buff = { "" }）。无有效行 → nil。
+		local charmBuff = nil
+		if type(base.charm) == "table" and type(base.charm.buff) == "table" then
+			local lines = {}
+			for _, line in ipairs(base.charm.buff) do
+				if type(line) == "string" and line ~= "" then
+					lines[#lines + 1] = '"' .. jsonEscape(line) .. '"'
+				end
+			end
+			if #lines > 0 then
+				charmBuff = "[" .. table.concat(lines, ",") .. "]"
+			end
+		end
+		if blockChance or spirit or reloadMs or charmBuff then
 			local parts = { '"name":"' .. jsonEscape(name) .. '"' }
 			if blockChance then
 				parts[#parts + 1] = '"block_chance":' .. jsonNum(blockChance)
@@ -86,6 +102,9 @@ for name, base in pairs(itemBases) do
 			end
 			if reloadMs then
 				parts[#parts + 1] = '"reload_time_ms":' .. string.format("%d", reloadMs)
+			end
+			if charmBuff then
+				parts[#parts + 1] = '"charm_buff":' .. charmBuff
 			end
 			print("{" .. table.concat(parts, ",") .. "}")
 		end
