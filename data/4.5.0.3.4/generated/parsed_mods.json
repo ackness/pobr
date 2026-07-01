@@ -19460,7 +19460,14 @@
     },
     {
       "text": "60% of your current [EnergyShield|Energy Shield] is added to your [Armour] for\ndetermining your Physical Damage Reduction from [Armour]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnergyShieldAppliesToPhysicalDamageTaken",
+          "type": "Base",
+          "value": 60.0
+        }
+      ]
     },
     {
       "text": "60% reduced Freeze Duration on you",

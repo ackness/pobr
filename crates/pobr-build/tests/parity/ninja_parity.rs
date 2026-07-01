@@ -520,8 +520,13 @@ const BASELINE_DEF_CORE_HIT5: usize = 133; // 实测 133/144 = 92.4%（charm-buf
 // Sunburst Ruby Charm（base `Ruby Charm`）固有 buff `+25% to Fire Resistance` 经
 // base_items.charm_buff（overlay vendor 抽取）并入 CharmBuff 载荷 → FireResist
 // 12→37（0.32x→1.00x），连带 FireMaxHit 0.73x→1.00x、TotalEHP 0.93x→1.00x。
-const BASELINE_DEF_HIT5: usize = 383; // 实测 383/450 = 85.1%（charm-buff 修复重记）
-const BASELINE_DEF_HIT10: usize = 395; // 实测 395/450 = 87.8%
+// **Disciple of Varashta ES→armour 修复重记（+2 @5% / +2 @10%）**：升华 Sacred Rituals
+// （tree node 56857）『N% of your current Energy Shield is added to your Armour for
+// determining your Physical Damage Reduction from Armour』→ EnergyShieldAppliesTo
+// PhysicalDamageTaken=60，taken.rs effective_applied_armour 加 60% ES 借入项 → PhysDR
+// 0.08x→1.03x（连带 PhysMaxHit 命中）。sorceress-disciple-of-varashta-comet。
+const BASELINE_DEF_HIT5: usize = 385; // 实测 385/450 = 85.6%（charm +3 与 disciple +2 叠加）
+const BASELINE_DEF_HIT10: usize = 397; // 实测 397/450 = 88.2%（charm +2 与 disciple +2 叠加）
 // **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
 // - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
 //   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker
