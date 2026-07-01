@@ -3,14 +3,15 @@
     "schema": "base_item_overrides/v1",
     "generator": "sync-pob-catalog extract-bases",
     "vendor": "PathOfBuilding-PoE2",
-    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
-    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)",
+    "vendor_commit": "a82a33b4fbdb7306ed93159664f7abe2c6819413",
+    "vendor_commit_subject": "a82a33b Merge branch 'master' into dev",
     "extracted_files": [
       "Data/Bases/crossbow.lua",
+      "Data/Bases/flask.lua",
       "Data/Bases/sceptre.lua",
       "Data/Bases/shield.lua"
     ],
-    "regen_command": "cargo run -p sync-pob-catalog -- extract-bases --vendor-root vendor/PathOfBuilding-PoE2/src --files crossbow,sceptre,shield --out data/4.5.0.3.4/overlay/base_item_overrides.json"
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-bases --vendor-root vendor/PathOfBuilding-PoE2/src --files crossbow,flask,sceptre,shield --out data/4.5.0.3.4/overlay/base_item_overrides.json"
   },
   "overrides": [
     {
@@ -26,12 +27,24 @@
       "reload_time_ms": 700
     },
     {
+      "name": "Amethyst Charm",
+      "charm_buff": [
+        "+18% to Chaos Resistance"
+      ]
+    },
+    {
       "name": "Ancestor Tower Shield",
       "block_chance": 26.0
     },
     {
       "name": "Ancient Buckler",
       "block_chance": 20.0
+    },
+    {
+      "name": "Antidote Charm",
+      "charm_buff": [
+        "Immune to Poison"
+      ]
     },
     {
       "name": "Aromatic Sceptre",
@@ -170,6 +183,12 @@
       "spirit": 100
     },
     {
+      "name": "Dousing Charm",
+      "charm_buff": [
+        "Immune to Ignite"
+      ]
+    },
+    {
       "name": "Dyad Crossbow",
       "reload_time_ms": 1100
     },
@@ -226,8 +245,18 @@
       "reload_time_ms": 1100
     },
     {
+      "name": "Glacial Fortress",
+      "block_chance": 26.0
+    },
+    {
       "name": "Glowering Crest Shield",
       "block_chance": 25.0
+    },
+    {
+      "name": "Golden Charm",
+      "charm_buff": [
+        "15% increased Rarity of Items found"
+      ]
     },
     {
       "name": "Golden Flame",
@@ -244,6 +273,12 @@
     {
       "name": "Grand Targe",
       "block_chance": 25.0
+    },
+    {
+      "name": "Grounding Charm",
+      "charm_buff": [
+        "Immune to Shock"
+      ]
     },
     {
       "name": "Gutspike Buckler",
@@ -408,6 +443,12 @@
     {
       "name": "Royal Tower Shield",
       "block_chance": 26.0
+    },
+    {
+      "name": "Ruby Charm",
+      "charm_buff": [
+        "+25% to Fire Resistance"
+      ]
     },
     {
       "name": "Runeforged Aegis Buckler",
@@ -770,6 +811,10 @@
       "block_chance": 25.0
     },
     {
+      "name": "Runemastered Glacial Fortress",
+      "block_chance": 26.0
+    },
+    {
       "name": "Runemastered Hardwood Targe",
       "block_chance": 25.0
     },
@@ -838,8 +883,18 @@
       "block_chance": 26.0
     },
     {
+      "name": "Runemastered Venerable Defender",
+      "block_chance": 25.0
+    },
+    {
       "name": "Runemastered Wooden Buckler",
       "block_chance": 20.0
+    },
+    {
+      "name": "Sapphire Charm",
+      "charm_buff": [
+        "+25% to Cold Resistance"
+      ]
     },
     {
       "name": "Sectarian Crest Shield",
@@ -878,6 +933,12 @@
       "block_chance": 25.0
     },
     {
+      "name": "Silver Charm",
+      "charm_buff": [
+        "Your speed is unaffected by Slows"
+      ]
+    },
+    {
       "name": "Soaring Targe",
       "block_chance": 25.0
     },
@@ -894,12 +955,24 @@
       "block_chance": 26.0
     },
     {
+      "name": "Staunching Charm",
+      "charm_buff": [
+        "You are Immune to Bleeding"
+      ]
+    },
+    {
       "name": "Stoic Crest Shield",
       "block_chance": 25.0
     },
     {
       "name": "Stoic Sceptre",
       "spirit": 100
+    },
+    {
+      "name": "Stone Charm",
+      "charm_buff": [
+        "Cannot be Stunned"
+      ]
     },
     {
       "name": "Stone Targe",
@@ -938,6 +1011,18 @@
       "reload_time_ms": 850
     },
     {
+      "name": "Thawing Charm",
+      "charm_buff": [
+        "Immune to Freeze"
+      ]
+    },
+    {
+      "name": "Topaz Charm",
+      "charm_buff": [
+        "+25% to Lightning Resistance"
+      ]
+    },
+    {
       "name": "Twin Crossbow",
       "reload_time_ms": 1100
     },
@@ -952,6 +1037,10 @@
     {
       "name": "Varnished Crossbow",
       "reload_time_ms": 800
+    },
+    {
+      "name": "Venerable Defender",
+      "block_chance": 28.0
     },
     {
       "name": "Wayward Crest Shield",

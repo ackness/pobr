@@ -20,6 +20,8 @@
 //! 5. `reload_time_ms`（M4-T4 W-D2，弩装填）写入 `BaseItemDef::weapon
 //!    .reload_time_ms`；base 侧无 `weapon` 段（理论上弩必有 `WeaponTypes` 行）
 //!    时补零值 [`WeaponBaseStats`] 再写，不丢值（与规则 2 同构）。
+//! 6. `charm_buff`（charm 基底固有 buff 词条，vendor `flask.lua` `charm.buff`）
+//!    覆盖写入 `BaseItemDef::charm_buff`（`Some` 时 clone 覆盖，`None` 不动）。
 
 use pobr_data::catalog::base_item_overrides::BaseItemOverridesDef;
 use pobr_data::catalog::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
@@ -87,6 +89,9 @@ pub fn apply_base_item_overrides(bases: &mut [BaseItemDef], overrides: &BaseItem
                 })
                 .reload_time_ms = Some(reload);
         }
+        if let Some(charm_buff) = entry.charm_buff.as_ref() {
+            base.charm_buff = charm_buff.clone();
+        }
     }
 }
 
@@ -109,6 +114,7 @@ mod tests {
             weapon: None,
             armour,
             spirit: None,
+            charm_buff: Vec::new(),
         }
     }
 
@@ -137,12 +143,14 @@ mod tests {
                     block_chance: Some(26.0),
                     spirit: None,
                     reload_time_ms: None,
+                    charm_buff: None,
                 },
                 BaseItemOverrideEntry {
                     name: "Omen Sceptre".to_string(),
                     block_chance: None,
                     spirit: Some(100),
                     reload_time_ms: None,
+                    charm_buff: None,
                 },
             ],
         };
@@ -167,6 +175,7 @@ mod tests {
                 block_chance: Some(20.0),
                 spirit: None,
                 reload_time_ms: None,
+                charm_buff: None,
             }],
         };
         apply_base_item_overrides(&mut bases, &overrides);
@@ -185,6 +194,7 @@ mod tests {
                 block_chance: Some(30.0),
                 spirit: None,
                 reload_time_ms: None,
+                charm_buff: None,
             }],
         };
         apply_base_item_overrides(&mut bases, &overrides);
@@ -213,12 +223,14 @@ mod tests {
                     block_chance: None,
                     spirit: None,
                     reload_time_ms: Some(800),
+                    charm_buff: None,
                 },
                 BaseItemOverrideEntry {
                     name: "Weaponless Oddity".to_string(),
                     block_chance: None,
                     spirit: None,
                     reload_time_ms: Some(750),
+                    charm_buff: None,
                 },
             ],
         };
@@ -233,5 +245,61 @@ mod tests {
             "无 weapon 段时补结构"
         );
         assert_eq!(synthesized.physical_min, 0);
+    }
+
+    /// 规则 6：`charm_buff` Some 覆盖写入 `BaseItemDef::charm_buff`（含覆盖旧值）；
+    /// None 不动，未命中名称不写入。
+    #[test]
+    fn merges_charm_buff_overriding_base() {
+        let ruby = base("Ruby Charm", None);
+        let mut topaz = base("Topaz Charm", None);
+        topaz.charm_buff = vec!["stale".to_string()]; // 应被 Some 覆盖
+        let mut bases = vec![
+            ruby,
+            topaz,
+            base("Crude Tower Shield", Some(armour_stats(18))),
+        ];
+        let overrides = BaseItemOverridesDef {
+            overrides: vec![
+                BaseItemOverrideEntry {
+                    name: "Ruby Charm".to_string(),
+                    block_chance: None,
+                    spirit: None,
+                    reload_time_ms: None,
+                    charm_buff: Some(vec!["+25% to Fire Resistance".to_string()]),
+                },
+                BaseItemOverrideEntry {
+                    name: "Topaz Charm".to_string(),
+                    block_chance: None,
+                    spirit: None,
+                    reload_time_ms: None,
+                    charm_buff: Some(vec!["+25% to Lightning Resistance".to_string()]),
+                },
+                // charm_buff None → 不动（保持空），且校验非 charm 基底不受扰动。
+                BaseItemOverrideEntry {
+                    name: "Crude Tower Shield".to_string(),
+                    block_chance: Some(26.0),
+                    spirit: None,
+                    reload_time_ms: None,
+                    charm_buff: None,
+                },
+            ],
+        };
+        apply_base_item_overrides(&mut bases, &overrides);
+        assert_eq!(
+            bases[0].charm_buff,
+            vec!["+25% to Fire Resistance".to_string()]
+        );
+        assert_eq!(
+            bases[1].charm_buff,
+            vec!["+25% to Lightning Resistance".to_string()],
+            "Some 覆盖旧值"
+        );
+        assert!(bases[2].charm_buff.is_empty(), "charm_buff None 不写入");
+        assert_eq!(
+            bases[2].armour.as_ref().unwrap().block_chance,
+            Some(26.0),
+            "其它字段照常 merge"
+        );
     }
 }

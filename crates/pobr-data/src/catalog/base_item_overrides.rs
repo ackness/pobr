@@ -29,6 +29,11 @@ pub struct BaseItemOverrideEntry {
     /// vendor 抽取兜底，消费侧写入 [`super::WeaponBaseStats::reload_time_ms`]）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reload_time_ms: Option<u32>,
+    /// charm 基底固有 buff 词条（vendor `Data/Bases/flask.lua` 的 `charm.buff`，
+    /// 如 Ruby Charm `"+25% to Fire Resistance"`）；消费侧写入
+    /// [`super::BaseItemDef::charm_buff`]。GGG `.dat` 无此列，vendor 抽取兜底。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub charm_buff: Option<Vec<String>>,
 }
 
 /// `overlay/base_item_overrides.json` 顶层（消费侧视角：`_meta` 头部为生成溯源
