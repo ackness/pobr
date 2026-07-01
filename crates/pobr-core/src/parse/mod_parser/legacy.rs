@@ -1638,6 +1638,28 @@ fn parse_deflection_special(rest: &str, source: &str) -> Option<Vec<Modifier>> {
 
 /// 数值开头/带数值的防御句式（block 承伤、闪避上限、损失防止、无符号 chance-to 族）。
 fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    // Disciple of Varashta 升华「Sacred Rituals」（tree node 56857）：『N% of your
+    // current Energy Shield is added to your Armour for determining your Physical
+    // Damage Reduction from Armour』（ModParser.lua:2917-2919 →
+    // EnergyShieldAppliesToPhysicalDamageTaken BASE N）。消费：taken.rs
+    // effective_applied_armour 的 ES 借入项 from_es（CalcDefence.lua:2358-2367）。
+    // stat 原文带 [internal|display] 标记 + 折行，经 strip_pob_brackets +
+    // normalize_spaces 归一后到此。**须走 legacy**：collect.rs
+    // combine_wrapped_then_filter 用 legacy parse_mod 作树 stat 闸门，legacy 不解析
+    // 则该行到不了引擎 ingest（「引擎能解析≠生产能解析」）。
+    if let Some((pct, words)) = strip_pct_of(rest)
+        && words
+            == "your current energy shield is added to your armour for determining your physical damage reduction from armour"
+    {
+        return Some(vec![
+            Modifier::number(
+                "EnergyShieldAppliesToPhysicalDamageTaken",
+                ModType::Base,
+                pct,
+            )
+            .with_source(source),
+        ]);
+    }
     // 『Defend with N% of Armour [during effect]』（ModParser.lua:2616/:2619 →
     // ArmourDefense MAX N−100；during effect 变体同样无条件——flask/charm 激活态由
     // 编排层注入门控）。消费：taken.rs `max_of("ArmourDefense")/100` 入 effArmour

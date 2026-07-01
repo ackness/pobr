@@ -516,8 +516,13 @@ const BASELINE_DEF_CORE_HIT5: usize = 132; // 实测 132/144 = 91.7%（M4-k2 油
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
 // legacy/engine per-socket 后缀 + ingest {SlotName} 替换 + per_slot_socket_multipliers 预灌。
-const BASELINE_DEF_HIT5: usize = 380; // 实测 380/450 = 84.4%（per-socket-filled 修复重记）
-const BASELINE_DEF_HIT10: usize = 393; // 实测 393/450 = 87.3%
+// **Disciple of Varashta ES→armour 修复重记（+2 @5% / +2 @10%）**：升华 Sacred Rituals
+// （tree node 56857）『N% of your current Energy Shield is added to your Armour for
+// determining your Physical Damage Reduction from Armour』→ EnergyShieldAppliesTo
+// PhysicalDamageTaken=60，taken.rs effective_applied_armour 加 60% ES 借入项 → PhysDR
+// 0.08x→1.03x（连带 PhysMaxHit 命中）。sorceress-disciple-of-varashta-comet。
+const BASELINE_DEF_HIT5: usize = 382; // 实测 382/450 = 84.9%（disciple ES→armour 修复重记）
+const BASELINE_DEF_HIT10: usize = 395; // 实测 395/450 = 87.8%
 // **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
 // - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
 //   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker

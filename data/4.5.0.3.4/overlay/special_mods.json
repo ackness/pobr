@@ -594,6 +594,21 @@
       "source_note": "ModParser.lua:2616/:2619（Defend with N% of Armour [during effect] → ArmourDefense BASE N-100；pobr 准源 legacy.rs:1715。during effect 变体同无条件，消费侧 max_of）"
     },
     {
+      "id": "es_added_to_armour_for_pdr",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of your current energy shield is added to your armour for determining your physical damage reduction from armour",
+      "vendor_pattern": "(%d+)%% of your current energy shield is added to your armour for determining your physical damage reduction from armour",
+      "mods": [
+        {
+          "name": "EnergyShieldAppliesToPhysicalDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "hand-curated",
+      "source_note": "ModParser.lua:2917-2919（Disciple of Varashta 升华 Sacred Rituals，tree node 56857 —— N% of your current Energy Shield is added to your Armour for determining your Physical Damage Reduction from Armour → EnergyShieldAppliesToPhysicalDamageTaken BASE N）。消费 taken.rs effective_applied_armour 的 from_es 借入项（CalcDefence.lua:2358-2367）。pobr 准源 legacy.rs parse_defence_numeric_sentence（须走 legacy 以过 collect.rs::combine_wrapped_then_filter 树 stat 闸门）。"
+    },
+    {
       "id": "double_activation_delay_of_curses",
       "pattern": "double activation delay of curses",
       "vendor_pattern": "double activation delay of curses",
