@@ -40,6 +40,17 @@ pub struct BaseItemDef {
     /// §6 开放问题 2 的双路线兜底。无 Spirit 的基底为 `None`。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spirit: Option<u32>,
+    /// charm 基底固有 buff 词条（vendor `Data/Bases/flask.lua` 的 `charm.buff`，
+    /// 如 Ruby Charm `"+25% to Fire Resistance"`、Sapphire/Topaz 冰/电抗、Amethyst
+    /// 混抗、其余免疫类）。该 buff **不在物品文本里**，是基底固有属性——charm
+    /// active 时由 `pobr_core::ingest::item::ingest_flask_charm` 并入 `CharmBuff`
+    /// 载荷（vendor `Item.lua:838-844` 把 `base.charm.buff` 逐行 parseMod 进
+    /// `buffModList`）。GGG `.dat` 无此列，由 `overlay/base_item_overrides.json`
+    /// （vendor `Data/Bases/flask.lua` 抽取，`sync-pob-catalog extract-bases`）经
+    /// gamedata merge 填充——与 [`BaseItemDef::spirit`] 同款双路线兜底。
+    /// 非 charm / 无 buff 为空。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub charm_buff: Vec<String>,
 }
 
 /// 武器基底数值（`WeaponTypes.dat` 外键解析；攻击技能伤害的基底，对照 PoB2

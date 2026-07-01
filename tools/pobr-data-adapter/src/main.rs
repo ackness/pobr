@@ -429,6 +429,9 @@ fn run(args: Args) -> Result<String, String> {
             // 基底 Spirit（`ItemSpirit.SpiritGranted`）：同 block_chance，`.dat`
             // bundle 不可得 → 恒 None，由 overlay 在 gamedata 加载侧 merge 填充。
             spirit: None,
+            // charm 基底 buff（vendor `Data/Bases/flask.lua` 的 `charm.buff`）：`.dat`
+            // 无此列 → 恒空，由 overlay 在 gamedata 加载侧 merge 填充。
+            charm_buff: Vec::new(),
         });
     }
 

@@ -702,7 +702,7 @@ pub fn calculate_with_data(
     }
 
     // 2b''. 激活态药剂/护符载荷注入（env_finalize 阶段 3 合并消费）。
-    inject_flasks_charms(&mut session, build);
+    inject_flasks_charms(&mut session, build, data);
 
     // 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
     //      已分配**对应种类节点数 × 授予，展开为全局 modifier text 注入（PoB2 几何口径）。
@@ -931,7 +931,7 @@ fn inject_defence_base(session: &mut CalculationSession, build: &Build, data: &B
 }
 
 /// 2b'' 阶段：激活态药剂/护符载荷注入（env_finalize 阶段 3 合并消费）。
-fn inject_flasks_charms(session: &mut CalculationSession, build: &Build) {
+fn inject_flasks_charms(session: &mut CalculationSession, build: &Build, data: &BuildData) {
     // 2b''. 激活态药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`，
     //       xml_build 已按 `active` 门控——vendor CalcSetup.lua:1014-1028 `slot.active`
     //       决定 env.flasks/charms）：经 `ingest_flask_charm` 打包为 FlaskBuff/
@@ -941,7 +941,31 @@ fn inject_flasks_charms(session: &mut CalculationSession, build: &Build) {
     //       CalcPerform.lua:1429-1663）。charm 需 CharmLimit 来源（腰带 implicit
     //       等）方进预算（:1589）；不可解析行（触发/恢复行）skip-and-collect。
     for (slot_name, item) in &build.utility_slots {
-        session.add_flask_charm(slot_name, item);
+        // charm 基底固有 buff（如 Ruby Charm `+25% to Fire Resistance`）**不在物品
+        // 文本里**，是基底属性（vendor `Item.lua:838-844` 把 `base.charm.buff` 逐行
+        // 并入 `buffModList`）。从 base_items 取 `charm_buff` 并入物品的 implicit
+        // 文本流，使 `ingest_flask_charm` 一并打包进 CharmBuff 载荷（归因同 charm 槽，
+        // merge 阶段一并 effect-scale）。无 buff（非 charm / 免疫类未建模）→ 直注原件。
+        //
+        // 名称匹配：magic charm 的 `item.base` 是物品全名（前缀+base+后缀单行，
+        // `parse_base` 取唯一名称行），精确名查不到 base_items；charm base 名
+        // （"Ruby Charm" 等 13 个）互不为子串，用「全名 contains base 名」可靠定位
+        // （normal/rare 全名 = base 名亦命中）。
+        let item_name = item.base.to_string();
+        let base_buff: &[String] = data
+            .base_items
+            .values()
+            .filter(|def| !def.charm_buff.is_empty())
+            .find(|def| item_name.contains(def.name.as_str()))
+            .map(|def| def.charm_buff.as_slice())
+            .unwrap_or_default();
+        if base_buff.is_empty() {
+            session.add_flask_charm(slot_name, item);
+        } else {
+            let mut augmented = item.clone();
+            augmented.implicit_texts.extend(base_buff.iter().cloned());
+            session.add_flask_charm(slot_name, &augmented);
+        }
     }
 }
 
@@ -3809,6 +3833,7 @@ mod tests {
             weapon: None,
             armour: None,
             spirit: None,
+            charm_buff: Vec::new(),
         }
     }
 
