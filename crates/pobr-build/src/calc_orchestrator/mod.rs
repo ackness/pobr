@@ -1125,6 +1125,50 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     // 主动技能中 `SkillType.Grenade` 的不同授予效果数）——Demolitionist
     // 「… for every different Grenade fired …」的 Multiplier limitVar 分母。
     session.set_multiplier("GrenadeTypes", grenade_type_count(build, data));
+    // Gemling 升华 Virtuous Barrier 的 per-Attribute-Mote 计数（vendor
+    // CalcSetup.lua:1396,1766-1781）：base {Str,Dex,Int}=3，每个启用的非辅助技能
+    // 宝石按其必需属性（str/dex/int_pct>0）计——单属性 +2、多属性各 +1。仅
+    // Virtuous Barrier 的 `<res> INC ×<Attr>MoteSkillCount` 消费（本仓库唯一来源），
+    // 非该升华的 build 这三个 multiplier 无人引用 → 零行为。
+    // ponytail: 未按 vendor 排除 fromNode/fromItem 授予技能（PoBR SocketGroup 不带
+    // source）——现无授予技能带属性需求会污染计数；若将来某带 Virtuous Barrier 的
+    // build 又含带属性需求的授予技能，给 SocketGroup 加 source 字段再按 source 排除。
+    let (str_mote, dex_mote, int_mote) = virtuous_mote_counts(build, data);
+    session.set_multiplier("StrengthMoteSkillCount", str_mote);
+    session.set_multiplier("DexterityMoteSkillCount", dex_mote);
+    session.set_multiplier("IntelligenceMoteSkillCount", int_mote);
+}
+
+/// Attribute-Mote 计数（Gemling Virtuous Barrier）：base 3/3/3 + 每个启用非辅助
+/// 技能宝石按必需属性数计（单属性 +2、多属性各 +1）。返回 `(Str, Dex, Int)`。
+fn virtuous_mote_counts(build: &Build, data: &BuildData) -> (f64, f64, f64) {
+    let (mut s, mut d, mut i) = (3.0, 3.0, 3.0);
+    for group in build.enabled_socket_groups() {
+        for gem_id in &group.gem_ids {
+            let Some(def) = data.skill_gems.get(gem_id) else {
+                continue;
+            };
+            if def.is_support {
+                continue;
+            }
+            let req = [def.str_pct > 0, def.dex_pct > 0, def.int_pct > 0];
+            let n_attr = req.iter().filter(|&&r| r).count();
+            if n_attr == 0 {
+                continue;
+            }
+            let mote = if n_attr == 1 { 2.0 } else { 1.0 };
+            if req[0] {
+                s += mote;
+            }
+            if req[1] {
+                d += mote;
+            }
+            if req[2] {
+                i += mote;
+            }
+        }
+    }
+    (s, d, i)
 }
 
 /// 6d 阶段：来源授予的条件 flag → cfg 条件桥接（Bonded modifiers / Arcane Surge）。
