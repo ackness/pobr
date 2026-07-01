@@ -511,7 +511,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 133; // 实测 133/144 = 92.4%（charm-buff 火抗修复 +1）
+const BASELINE_DEF_CORE_HIT5: usize = 136; // 实测 136/144 = 94.4%（Virtuous Barrier motes +3）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -525,8 +525,16 @@ const BASELINE_DEF_CORE_HIT5: usize = 133; // 实测 133/144 = 92.4%（charm-buf
 // determining your Physical Damage Reduction from Armour』→ EnergyShieldAppliesTo
 // PhysicalDamageTaken=60，taken.rs effective_applied_armour 加 60% ES 借入项 → PhysDR
 // 0.08x→1.03x（连带 PhysMaxHit 命中）。sorceress-disciple-of-varashta-comet。
-const BASELINE_DEF_HIT5: usize = 385; // 实测 385/450 = 85.6%（charm +3 与 disciple +2 叠加）
-const BASELINE_DEF_HIT10: usize = 397; // 实测 397/450 = 88.2%（charm +2 与 disciple +2 叠加）
+// **Gemling Virtuous Barrier per-Mote 升华 buff 修复重记（+7 @5% / +7 @10%）**：升华 notable
+// 「Essence of Virtue」（tree node 11641）`Grants Skill: Virtuous Barrier`，该 buff 按属性
+// Mote 数给 INC（Armour/Evasion/EnergyShield ×DexterityMoteSkillCount、Life ×StrengthMote…）。
+// 修复双路：① stat_map_engine buff 域允收名单加 Armour/Evasion/EnergyShield/Life/LifeRegen
+// （barrier stat 已在 data，唯缺放行）；② inject_per_x_multipliers 按 vendor CalcSetup.lua:1766-
+// 1781 计 Attribute-Mote（base 3/3/3 + 单属性宝石 +2/多属性各 +1）并 provision 三 multiplier。
+// mercenary-gemling-legionnaire-explosive-grenade：Armour 0.70x→1.00x、Evasion 0.81x→1.00x、
+// EnergyShield 0.72x→1.00x，连带 PhysDR/各 MaxHit/EHP 下游。
+const BASELINE_DEF_HIT5: usize = 392; // 实测 392/450 = 87.1%（Virtuous Barrier motes +7）
+const BASELINE_DEF_HIT10: usize = 404; // 实测 404/450 = 89.8%（Virtuous Barrier motes +7）
 // **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
 // - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
 //   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker

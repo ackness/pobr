@@ -707,7 +707,17 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
     match name {
         "Accuracy" => Ok(vec!["Accuracy"]),
         "ManaRegen" => Ok(vec!["ManaRegen"]),
+        "LifeRegen" => Ok(vec!["LifeRegen"]),
         "LifeRegenPercent" => Ok(vec!["LifeRegenPercent"]),
+        // 防御 buff 族（Gemling 升华 Virtuous Barrier 的 per-Mote INC：
+        // `gem_barrier_green_grants_*` → Armour/Evasion/EnergyShield INC ×Mote、
+        // `gem_barrier_red_grants_maximum_life_+%` → Life INC ×Mote）。消费方 =
+        // `calc::defence`（Armour/Evasion/EnergyShield 聚合）+ life 池。Multiplier
+        // tag（StrengthMoteSkillCount/DexterityMoteSkillCount）在编排层 provision。
+        "Armour" => Ok(vec!["Armour"]),
+        "Evasion" => Ok(vec!["Evasion"]),
+        "EnergyShield" => Ok(vec!["EnergyShield"]),
+        "Life" => Ok(vec!["Life"]),
         // （M4-n）伤害向量族（Sigil of Power `circle_of_power_spell_damage_+%
         // _final_per_stage` → Damage MORE Spell；Elemental Conflux
         // `skill_elemental_conflux_active_element_damage_+%_final` →
