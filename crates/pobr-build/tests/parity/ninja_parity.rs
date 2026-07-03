@@ -816,6 +816,21 @@ fn corpus_unsupported_report() {
                 sp.gap_rate() * 100.0,
                 rules.len(),
             );
+            // 生产视角的缺口模板（plain 视角见下——两榜对照能看出 special
+            // 通道消化了哪些头部模板）。
+            eprintln!("--- Top-20 gap templates (special-aware) ---");
+            for (i, t) in sp.gap_templates.iter().take(20).enumerate() {
+                eprintln!(
+                    "{:>2}. [{:?}] hit={} cnt={} (item={} jewel={}) | {}",
+                    i + 1,
+                    t.class,
+                    t.builds_hit,
+                    t.total_count,
+                    t.item_count,
+                    t.jewel_count,
+                    t.template,
+                );
+            }
         }
     }
     eprintln!("--- Top-20 gap templates (builds_hit desc, count desc) ---");

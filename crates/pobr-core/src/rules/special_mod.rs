@@ -358,6 +358,9 @@ fn compile_template(
                 capture_index: *capture_index,
             });
         }
+        // 嵌套 mod 载荷的 fail-fast 校验（实例化期按需再编译，见
+        // `instantiate_mod_def`）。
+        validate_nested_value(&def.id, &m.value, enums)?;
         let flags = compile_flags(&m.flags);
         let keyword_flags = compile_keyword_flags(&m.keyword_flags);
         let tags = m.tags.iter().filter_map(compile_tag).collect();
@@ -373,6 +376,34 @@ fn compile_template(
         });
     }
     Ok(CompiledTemplate { mods })
+}
+
+/// `TemplateValueDef::Nested` 编译期校验：内层 mod_type 已知、enums 引用不
+/// 越界（递归）。非嵌套值形态直接通过。
+fn validate_nested_value(
+    entry_id: &str,
+    value: &TemplateValueDef,
+    enums: &BTreeMap<u32, BTreeMap<String, String>>,
+) -> Result<(), SpecialCompileError> {
+    let TemplateValueDef::Nested { mods } = value else {
+        return Ok(());
+    };
+    for m in mods {
+        parse_mod_type(&m.mod_type).ok_or_else(|| SpecialCompileError::BadModType {
+            entry_id: entry_id.to_string(),
+            literal: m.mod_type.clone(),
+        })?;
+        if let TemplateNameDef::Enum { capture_index } = &m.name
+            && !enums.contains_key(capture_index)
+        {
+            return Err(SpecialCompileError::EnumRefMissing {
+                entry_id: entry_id.to_string(),
+                capture_index: *capture_index,
+            });
+        }
+        validate_nested_value(entry_id, &m.value, enums)?;
+    }
+    Ok(())
 }
 
 /// ModFlags 名 → 位（伤害模式 / 武器类型公用 vendor 名）。未知名跳过（保守）。
@@ -638,7 +669,7 @@ fn instantiate_template(
         let Some(name) = resolve_name(&m.name, captures, enums) else {
             continue;
         };
-        let value = match instantiate_value(&m.value, captures, m.mod_type) {
+        let value = match instantiate_value(&m.value, captures, m.mod_type, enums, source) {
             Some(v) => v,
             None => continue,
         };
@@ -655,6 +686,33 @@ fn instantiate_template(
         out.push(modifier);
     }
     out
+}
+
+/// 嵌套 mod 模板（`TemplateValueDef::Nested` 内层）实例化：mod_type / flags /
+/// tags 按需即时编译（编译期已由 [`validate_nested_value`] fail-fast 校验
+/// mod_type / enums；嵌套命中频率低，即时编译开销可忽略）。
+fn instantiate_mod_def(
+    def: &pobr_data::catalog::parser_rules::ModTemplateDef,
+    captures: &[String],
+    enums: &BTreeMap<u32, BTreeMap<String, String>>,
+    source: &str,
+) -> Option<Modifier> {
+    let mod_type = parse_mod_type(&def.mod_type)?;
+    let name = resolve_name(&def.name, captures, enums)?;
+    let value = instantiate_value(&def.value, captures, mod_type, enums, source)?;
+    let mut modifier = Modifier::new(name, mod_type, value).with_source(source);
+    let flags = compile_flags(&def.flags);
+    if !flags.is_empty() {
+        modifier = modifier.with_flags(flags);
+    }
+    let keyword_flags = compile_keyword_flags(&def.keyword_flags);
+    if !keyword_flags.is_empty() {
+        modifier = modifier.with_keyword_flags(keyword_flags);
+    }
+    for tag in def.tags.iter().filter_map(compile_tag) {
+        modifier = modifier.with_tag(tag);
+    }
+    Some(modifier)
 }
 
 fn resolve_name(
@@ -683,6 +741,8 @@ fn instantiate_value(
     value: &TemplateValueDef,
     captures: &[String],
     mod_type: ModType,
+    enums: &BTreeMap<u32, BTreeMap<String, String>>,
+    source: &str,
 ) -> Option<ModValue> {
     match value {
         TemplateValueDef::Flag(b) => Some(ModValue::Bool(*b)),
@@ -701,6 +761,20 @@ fn instantiate_value(
             }
         }
         TemplateValueDef::Expr(expr) => Some(ModValue::Number(eval_value_expr_def(expr, captures))),
+        // 嵌套 mod 载荷（`{ mod = mod(...) }` 形态）→ ModValue::NestedMods，
+        // 编排层经 `ModDb::list_nested` 转发（EnemyModifier/MinionModifier 等）。
+        // 内层全部实例化失败 → None（跳过外层 mod，不产空载荷）。
+        TemplateValueDef::Nested { mods } => {
+            let nested: Vec<Modifier> = mods
+                .iter()
+                .filter_map(|m| instantiate_mod_def(m, captures, enums, source))
+                .collect();
+            if nested.is_empty() {
+                None
+            } else {
+                Some(ModValue::NestedMods(nested))
+            }
+        }
         // 复杂 LIST 载荷（explode/level grant 等 PoB2 table）尚无 pobr 落点——
         // 跳过该 mod（条目保持 verified:false，由 handler_id 接管属后续）。
         TemplateValueDef::List(_) => None,
@@ -747,6 +821,42 @@ mod tests {
         let reg = HandlerRegistry::new();
         let m = r.try_match("buffs expire 30% slower", &reg).unwrap();
         assert_eq!(m.mods[0].value.as_number(), Some(-30.0));
+    }
+
+    /// 嵌套 mod 载荷：`{"mods":[...]}` 值 → ModValue::NestedMods（捕获在内层
+    /// 求值），编排层经 list_nested 转发。
+    #[test]
+    fn nested_mods_value() {
+        let d = def(
+            r#"{"id":"t","pattern":"enemies have (\\d+)% reduced armour","mods":[
+                {"name":"EnemyModifier","type":"LIST","value":{"mods":[
+                    {"name":"Armour","type":"INC",
+                     "value":{"ref":"$1","ops":[{"negate":{}}]}}]}}],"batch":"V0"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match("enemies have 20% reduced armour", &reg)
+            .unwrap();
+        assert_eq!(m.mods.len(), 1);
+        assert_eq!(m.mods[0].name, "EnemyModifier".into());
+        let ModValue::NestedMods(inner) = &m.mods[0].value else {
+            panic!("expected nested mods value");
+        };
+        assert_eq!(inner.len(), 1);
+        assert_eq!(inner[0].name, "Armour".into());
+        assert_eq!(inner[0].mod_type, ModType::Inc);
+        assert_eq!(inner[0].value.as_number(), Some(-20.0));
+    }
+
+    /// 嵌套 mod 载荷编译期校验：内层未知 mod_type fail-fast。
+    #[test]
+    fn nested_bad_mod_type_fails_compile() {
+        let d = def(r#"{"id":"t","pattern":"x","mods":[
+                {"name":"EnemyModifier","type":"LIST","value":{"mods":[
+                    {"name":"Armour","type":"MAX","value":1}]}}],"batch":"V0"}"#);
+        let err = SpecialModRules::compile(&[d], &HandlerRegistry::new()).unwrap_err();
+        assert!(matches!(err, SpecialCompileError::BadModType { .. }));
     }
 
     /// 线性折叠 div：`$1 / 100`。

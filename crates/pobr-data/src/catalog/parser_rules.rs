@@ -122,8 +122,8 @@ pub struct ValueExprDef {
     pub ops: Vec<ValueOpDef>,
 }
 
-/// 模板值三态：数字字面量 | `"$n"` 捕获直引 | 带算子链表达式。
-/// `Flag(bool)` 供 FLAG 型 mod 的 value=true 字面量。
+/// 模板值形态：数字字面量 | `"$n"` 捕获直引 | 带算子链表达式 | 嵌套 mod 载荷
+/// | 标量表。`Flag(bool)` 供 FLAG 型 mod 的 value=true 字面量。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TemplateValueDef {
@@ -135,6 +135,16 @@ pub enum TemplateValueDef {
     Capture(String),
     /// 表达式（捕获 + 算子链）。
     Expr(ValueExprDef),
+    /// 嵌套 mod 载荷（vendor `mod("EnemyModifier", "LIST", { mod = mod(...) })`
+    /// 形态；JSON 形 `{"mods": [<ModTemplateDef>...]}`）。实例化为
+    /// `ModValue::NestedMods`，由编排层（env_finalize `forward_enemy_modifiers`
+    /// 等）经 `ModDb::list_nested` 透传转发到目标 db。**必须列在 `List` 之前**：
+    /// untagged 按声明序尝试，`{"mods": ...}` 的数组值会让 `List`（标量表）
+    /// 反序列化失败，但反向顺序会把标量表误吞。
+    Nested {
+        /// 内层 mod 模板（与顶层 [`ModTemplateDef`] 同 schema，可递归）。
+        mods: Vec<ModTemplateDef>,
+    },
     /// LIST 型 mod 的结构化值（如 `Keystone LIST` 的关键石名）。值内字符串
     /// 必须是字面量或 enums 闭集产物，禁运行时拼接（DSL 硬边界）。
     List(BTreeMap<String, TemplateScalarDef>),

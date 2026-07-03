@@ -490,6 +490,130 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_all_damage_from_you_and_allies_in_your_p_66a1c118",
+      "pattern": "all damage from you and allies in your presence contributes to flammability and ignite magnitudes",
+      "vendor_pattern": "^all damage from you and allies in your presence contributes to flammability and ignite magnitudes$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdCanIgnite",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningCanIgnite",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ChaosCanIgnite",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalCanIgnite",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_all_damage_from_you_and_allies_in_your_p_f16a6275",
+      "pattern": "all damage from you and allies in your presence contributes to ignite chance and magnitude",
+      "vendor_pattern": "^all damage from you and allies in your presence contributes to ignite chance and magnitude$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdCanIgnite",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningCanIgnite",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ChaosCanIgnite",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalCanIgnite",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_all_damage_inflicts_poison_while_affecte_e780cfb5",
       "pattern": "all damage inflicts poison while affected by glorious madness",
       "vendor_pattern": "^all damage inflicts poison while affected by glorious madness$",
@@ -959,6 +1083,35 @@
           "value": "$1",
           "flags": [
             "Attack"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_and_nearby_allies_regenerate_d_life_per_b580bc13",
+      "pattern": "and nearby allies regenerate (\\d+) life per second",
+      "vendor_pattern": "^and nearby allies regenerate (%d+) life per second$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeRegen",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "KilledPoisonedLast2Seconds"
+            }
           ]
         }
       ],
@@ -1796,6 +1949,58 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_bleeding_you_inflict_is_aggravated_e771473d",
+      "pattern": "bleeding you inflict is aggravated",
+      "vendor_pattern": "^bleeding you inflict is aggravated$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:BleedAggravated",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_bleeding_you_inflict_on_cursed_targets_i_a5064da3",
+      "pattern": "bleeding you inflict on cursed targets is aggravated",
+      "vendor_pattern": "^bleeding you inflict on cursed targets is aggravated$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:BleedAggravated",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Cursed"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_bleeding_you_inflict_on_non_bleeding_ene_3943b12c",
       "pattern": "bleeding you inflict on non-bleeding enemies deals (\\d+)% more damage",
       "vendor_pattern": "^bleeding you inflict on non%-bleeding enemies deals (%d+)%% more damage$",
@@ -1818,6 +2023,35 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_bleeding_you_inflict_on_pinned_enemies_i_0df599d5",
+      "pattern": "bleeding you inflict on pinned enemies is aggravated",
+      "vendor_pattern": "^bleeding you inflict on pinned enemies is aggravated$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:BleedAggravated",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Pinned"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
       "id": "vnd_blind_does_not_affect_your_chance_to_hit_ecf91756",
@@ -3703,6 +3937,29 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_chaos_damage_t_a_k_e_n_does_not_bypass_m_29d0ddd1",
+      "pattern": "chaos damage t?a?k?e?n? ?does not bypass minions' energy shield",
+      "vendor_pattern": "^chaos damage t?a?k?e?n? ?does not bypass minions' energy shield$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ChaosNotBypassEnergyShield",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_chaos_resistance_is_zero_ebd4876e",
       "pattern": "chaos resistance is zero",
       "vendor_pattern": "^chaos resistance is zero$",
@@ -3891,6 +4148,191 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_consecrated_ground_created_during_effect_09eb01ed",
+      "pattern": "consecrated ground created during effect applies (\\d+)% increased damage taken to enemies",
+      "vendor_pattern": "^consecrated ground created during effect applies (%d+)%% increased damage taken to enemies$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTakenConsecratedGround",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "OnConsecratedGround"
+                  }
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_consecrated_ground_from_holy_flame_totem_4d8fa21f",
+      "pattern": "consecrated ground from holy flame totem applies (\\d+)% increased damage taken to enemies",
+      "vendor_pattern": "^consecrated ground from holy flame totem applies (%d+)%% increased damage taken to enemies$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTakenConsecratedGround",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "OnConsecratedGround"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_consecrated_ground_you_create_applies_d_1ce96b08",
+      "pattern": "consecrated ground you create applies (\\d+)% increased damage taken to enemies",
+      "vendor_pattern": "^consecrated ground you create applies (%d+)%% increased damage taken to enemies$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTakenConsecratedGround",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "OnConsecratedGround"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_consecrated_ground_you_create_causes_lif_6d020ad0",
+      "pattern": "consecrated ground you create causes life regeneration to also recover energy shield for you and allies",
+      "vendor_pattern": "^consecrated ground you create causes life regeneration to also recover energy shield for you and allies$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeRegenerationRecoversEnergyShield",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "OnConsecratedGround"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_consecrated_ground_you_create_grants_imm_90098145",
+      "pattern": "consecrated ground you create grants immun[ei]t?y? to elemental ailments to you and allies",
+      "vendor_pattern": "^consecrated ground you create grants immun[ei]t?y? to elemental ailments to you and allies$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ElementalAilmentImmune",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "OnConsecratedGround"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_consecrated_ground_you_create_while_affe_4a159b35",
+      "pattern": "consecrated ground you create while affected by zealotry causes enemies to take (\\d+)% increased damage",
+      "vendor_pattern": "^consecrated ground you create while affected by zealotry causes enemies to take (%d+)%% increased damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTakenConsecratedGround",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "OnConsecratedGround"
+            },
+            {
+              "type": "Condition",
+              "var": "AffectedByZealotry"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_consecrated_path_and_purifying_flame_cre_e034f6d5",
@@ -4572,6 +5014,58 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_crush_enemies_on_hit_with_maces_and_scep_fc273657",
+      "pattern": "crush enemies on hit with maces and sceptres",
+      "vendor_pattern": "^crush enemies on hit with maces and sceptres$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Crushed",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingMace"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_crushes_enemies_on_hit_b940ffe3",
+      "pattern": "crushes enemies on hit",
+      "vendor_pattern": "^crushes enemies on hit$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Crushed",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_culling_strike_against_burning_enemies_0d53ebe3",
       "pattern": "culling strike against burning enemies",
       "vendor_pattern": "^culling strike against burning enemies$",
@@ -4689,6 +5183,29 @@
               "var": "UseCurrentEnergyShield"
             }
           ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_curses_are_inflicted_on_you_instead_of_l_4d2bfde6",
+      "pattern": "curses are inflicted on you instead of linked targets",
+      "vendor_pattern": "^curses are inflicted on you instead of linked targets$",
+      "mods": [
+        {
+          "name": "ExtraLinkEffect",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "CurseImmune",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
         }
       ],
       "verified": false,
@@ -5465,6 +5982,29 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_increased_blind_effect_238ce3d9",
+      "pattern": "(\\d+)% increased blind effect",
+      "vendor_pattern": "^(%d+)%% increased blind effect$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "BlindEffect",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_increased_bonuses_gained_from_equipped_f09dc8ea",
       "pattern": "(\\d+)% increased bonuses gained from equipped rings",
       "vendor_pattern": "^(%d+)%% increased bonuses gained from equipped rings$",
@@ -5578,6 +6118,29 @@
               "var": "Poisoned"
             }
           ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_increased_effect_of_blind_from_melee_w_64ca475f",
+      "pattern": "(\\d+)% increased effect of blind from melee weapons",
+      "vendor_pattern": "^(%d+)%% increased effect of blind from melee weapons$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "BlindEffect",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          }
         }
       ],
       "verified": false,
@@ -5828,6 +6391,64 @@
               }
             ]
           }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_increased_minion_damage_if_you_have_hi_8223adcc",
+      "pattern": "(\\d+)% increased minion damage if you have hit recently",
+      "vendor_pattern": "^(%d+)%% increased minion damage if you have hit recently$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "HitRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_increased_minion_damage_if_you_ve_used_5ed54764",
+      "pattern": "(\\d+)% increased minion damage if you've used a minion skill recently",
+      "vendor_pattern": "^(%d+)%% increased minion damage if you've used a minion skill recently$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedMinionSkillRecently"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -7887,6 +8508,64 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_each_totem_applies_d_increased_damage_ta_4dbda59d",
+      "pattern": "each totem applies (\\d+)% increased damage taken to enemies near it",
+      "vendor_pattern": "^each totem applies (%d+)%% increased damage taken to enemies near it$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Multiplier",
+                    "var": "TotemsSummoned"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_each_totem_applies_d_increased_damage_ta_ca1a10b4",
+      "pattern": "each totem applies (\\d+)% increased damage taken to enemies in their presence",
+      "vendor_pattern": "^each totem applies (%d+)%% increased damage taken to enemies in their presence$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Multiplier",
+                    "var": "TotemsSummoned"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_earthquake_deals_d_increased_damage_per_9a1b1097",
       "pattern": "earthquake deals (\\d+)% increased damage per ([\\d.]+) seconds duration",
       "vendor_pattern": "^earthquake deals (%d+)%% increased damage per ([%d%.]+) seconds duration$",
@@ -7970,6 +8649,29 @@
           "name": "AilmentThresholdIncreasedByUncappedChaosRes",
           "type": "FLAG",
           "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_elemental_ailments_are_inflicted_on_you_7699768e",
+      "pattern": "elemental ailments are inflicted on you instead of linked targets",
+      "vendor_pattern": "^elemental ailments are inflicted on you instead of linked targets$",
+      "mods": [
+        {
+          "name": "ExtraLinkEffect",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ElementalAilmentImmune",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
         }
       ],
       "verified": false,
@@ -8173,6 +8875,146 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_enemies_blinded_by_you_have_malediction_7ca7d62b",
+      "pattern": "enemies blinded by you have malediction",
+      "vendor_pattern": "^enemies blinded by you have malediction$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "HasMalediction",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Blinded"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_blinded_by_you_while_you_are_bli_4f2c6ceb",
+      "pattern": "enemies blinded by you while you are blinded have malediction",
+      "vendor_pattern": "^enemies blinded by you while you are blinded have malediction$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "HasMalediction",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Blinded"
+                  }
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Blinded"
+            },
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "CannotBeBlinded"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_chilled_by_you_take_d_increased_8ae26e2d",
+      "pattern": "enemies chilled by you take (\\d+)% increased burning damage",
+      "vendor_pattern": "^enemies chilled by you take (%d+)%% increased burning damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDamageTakenOverTime",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Chilled"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_chilled_by_your_hits_are_shocked_9b919209",
+      "pattern": "enemies chilled by your hits are shocked",
+      "vendor_pattern": "^enemies chilled by your hits are shocked$",
+      "mods": [
+        {
+          "name": "ShockBase",
+          "type": "BASE",
+          "value": 20.0,
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "ChilledByYourHits"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Shocked",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "ChilledByYourHits"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_enemies_chilled_by_your_hits_have_damage_54a1dfdf",
       "pattern": "enemies chilled by your hits have damage taken increased by chill effect",
       "vendor_pattern": "^enemies chilled by your hits have damage taken increased by chill effect$",
@@ -8258,6 +9100,36 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_enemies_ignited_by_you_during_f_l_a_s_k_2aca3006",
+      "pattern": "enemies ignited by you during f?l?a?s?k? ?effect take (\\d+)% increased damage",
+      "vendor_pattern": "^enemies ignited by you during f?l?a?s?k? ?effect take (%d+)%% increased damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Ignited"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_enemies_ignited_by_you_take_chaos_damage_73149906",
       "pattern": "enemies ignited by you take chaos damage instead of fire damage from ignite",
       "vendor_pattern": "^enemies ignited by you take chaos damage instead of fire damage from ignite$",
@@ -8271,6 +9143,36 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_in_your_chilling_areas_take_d_in_04142052",
+      "pattern": "enemies in your chilling areas take (\\d+)% increased lightning damage",
+      "vendor_pattern": "^enemies in your chilling areas take (%d+)%% increased lightning damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "InChillingArea"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_enemies_in_your_link_beams_cannot_apply_2851ed51",
@@ -8295,6 +9197,100 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_enemies_in_your_presence_are_hindered_78320b7f",
+      "pattern": "enemies in your presence are hindered",
+      "vendor_pattern": "^enemies in your presence are hindered$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Hindered",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_in_your_presence_are_slowed_by_d_2416055e",
+      "pattern": "enemies in your presence are slowed by (\\d+)%",
+      "vendor_pattern": "^enemies in your presence are slowed by (%d+)%%$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ActionSpeed",
+                "type": "INC",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_in_your_presence_count_as_being_c0926b8a",
+      "pattern": "enemies in your presence count as being on low life",
+      "vendor_pattern": "^enemies in your presence count as being on low life$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:LowLife",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_enemies_in_your_presence_gain_critical_w_dc01f7c6",
       "pattern": "enemies in your presence gain critical weakness every second",
       "vendor_pattern": "^enemies in your presence gain critical weakness every second$",
@@ -8303,6 +9299,206 @@
           "name": "ApplyCriticalWeakness",
           "type": "FLAG",
           "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_in_your_presence_have_at_least_d_828d7ffd",
+      "pattern": "enemies in your presence have at least (\\d+)% of life reserved",
+      "vendor_pattern": "^enemies in your presence have at least (%d+)%% of life reserved$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeReservationPercent",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "ActorCondition",
+                    "actor": "enemy",
+                    "var": "EnemyInPresence"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_in_your_presence_have_exposure_2b3f3ef8",
+      "pattern": "enemies in your presence have exposure",
+      "vendor_pattern": "^enemies in your presence have exposure$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "EnemyInPresence"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "EnemyInPresence"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_in_your_presence_have_fire_expos_29110614",
+      "pattern": "enemies in your presence have fire exposure",
+      "vendor_pattern": "^enemies in your presence have fire exposure$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": 20.0,
+                "tags": [
+                  {
+                    "type": "ActorCondition",
+                    "actor": "enemy",
+                    "var": "EnemyInPresence"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_in_your_presence_have_no_element_9d8d6f2f",
+      "pattern": "enemies in your presence have no elemental resistances",
+      "vendor_pattern": "^enemies in your presence have no elemental resistances$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireResist",
+                "type": "OVERRIDE",
+                "value": 0.0,
+                "tags": [
+                  {
+                    "type": "ActorCondition",
+                    "actor": "enemy",
+                    "var": "EnemyInPresence"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdResist",
+                "type": "OVERRIDE",
+                "value": 0.0,
+                "tags": [
+                  {
+                    "type": "ActorCondition",
+                    "actor": "enemy",
+                    "var": "EnemyInPresence"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningResist",
+                "type": "OVERRIDE",
+                "value": 0.0,
+                "tags": [
+                  {
+                    "type": "ActorCondition",
+                    "actor": "enemy",
+                    "var": "EnemyInPresence"
+                  }
+                ]
+              }
+            ]
+          }
         }
       ],
       "verified": false,
@@ -8322,6 +9518,106 @@
             {
               "type": "Condition",
               "var": "EnemyInPresence"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_maimed_by_you_take_d_increased_d_277915f0",
+      "pattern": "enemies maimed by you take (\\d+)% increased damage over time",
+      "vendor_pattern": "^enemies maimed by you take (%d+)%% increased damage over time$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTakenOverTime",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Maimed"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_near_corpses_you_spawned_recentl_4d55eb97",
+      "pattern": "enemies near corpses you spawned recently are chilled and shocked",
+      "vendor_pattern": "^enemies near corpses you spawned recently are chilled and shocked$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Chilled",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "SpawnedCorpseRecently"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Shocked",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "SpawnedCorpseRecently"
+            }
+          ]
+        },
+        {
+          "name": "ChillBase",
+          "type": "BASE",
+          "value": 30.0,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "SpawnedCorpseRecently"
+            }
+          ]
+        },
+        {
+          "name": "ShockBase",
+          "type": "BASE",
+          "value": 20.0,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "SpawnedCorpseRecently"
             }
           ]
         }
@@ -8352,6 +9648,742 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_enemies_near_your_linked_targets_have_fi_359eb09e",
+      "pattern": "enemies near your linked targets have fire, cold and lightning exposure",
+      "vendor_pattern": "^enemies near your linked targets have fire, cold and lightning exposure$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": 20.0,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "NearLinkedTarget"
+                  }
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": 20.0,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "NearLinkedTarget"
+                  }
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": 20.0,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "NearLinkedTarget"
+                  }
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_near_your_totems_take_d_increase_8ddfedc5",
+      "pattern": "enemies near your totems take (\\d+)% increased physical and fire damage",
+      "vendor_pattern": "^enemies near your totems take (%d+)%% increased physical and fire damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_poisoned_by_you_cannot_deal_crit_25d88b2e",
+      "pattern": "enemies poisoned by you cannot deal critical hits",
+      "vendor_pattern": "^enemies poisoned by you cannot deal critical hits$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "NeverCrit",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Poisoned"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:NeverCrit",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Poisoned"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_take_d_increased_damage_for_each_95902776",
+      "pattern": "enemies take (\\d+)% increased damage for each of your brands attached to them",
+      "vendor_pattern": "^enemies take (%d+)%% increased damage for each of your brands attached to them$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Multiplier",
+                    "var": "BrandsAttached"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_take_d_increased_damage_for_each_ae33ce1c",
+      "pattern": "enemies take (\\d+)% increased damage for each elemental ailment type among your ailments on them",
+      "vendor_pattern": "^enemies take (%d+)%% increased damage for each elemental ailment type among your ailments on them$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Frozen"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Chilled"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Ignited"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Shocked"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Scorched"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Brittle"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Sapped"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Electrocuted"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_take_d_increased_damage_for_each_d54c574a",
+      "pattern": "enemies take (\\d+)% increased damage for each type of ailment you have inflicted on them",
+      "vendor_pattern": "^enemies take (%d+)%% increased damage for each type of ailment you have inflicted on them$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Frozen"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Chilled"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Ignited"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Shocked"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Scorched"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Brittle"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Sapped"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Bleeding"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Poisoned"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Electrocuted"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_take_d_increased_elemental_damag_c3efc610",
+      "pattern": "enemies take (\\d+)% increased elemental damage from your hits for each withered you have inflicted on them",
+      "vendor_pattern": "^enemies take (%d+)%% increased elemental damage from your hits for each withered you have inflicted on them$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ElementalDamageTaken",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Multiplier",
+                    "limit": 15.0,
+                    "var": "WitheredStack"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_taunted_by_you_cannot_evade_atta_fdc61b80",
+      "pattern": "enemies taunted by you cannot evade attacks",
+      "vendor_pattern": "^enemies taunted by you cannot evade attacks$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "CannotEvade",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Taunted"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_taunted_by_your_warcries_are_int_ba702b8d",
+      "pattern": "enemies taunted by your warcries are intimidated",
+      "vendor_pattern": "^enemies taunted by your warcries are intimidated$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Intimidated",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Taunted"
+                  }
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_taunted_by_your_warcries_take_d_9520fe67",
+      "pattern": "enemies taunted by your warcries take (\\d+)% increased damage",
+      "vendor_pattern": "^enemies taunted by your warcries take (%d+)%% increased damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Taunted"
+                  }
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_you_apply_incision_to_take_d_inc_d0d4516c",
+      "pattern": "enemies you apply incision to take (\\d+)% increased physical damage per incision",
+      "vendor_pattern": "^enemies you apply incision to take (%d+)%% increased physical damage per incision$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageTaken",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Multiplier",
+                    "var": "IncisionStack"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_enemies_you_impale_have_d_to_total_physi_e02c7168",
       "pattern": "enemies you impale have -(\\d+)% to total physical damage reduction against impale hits",
       "vendor_pattern": "^enemies you impale have %-(%d+)%% to total physical damage reduction against impale hits$",
@@ -8367,6 +10399,121 @@
               }
             ]
           }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_you_mark_cannot_deal_critical_hi_549f0eb4",
+      "pattern": "enemies you mark cannot deal critical hits",
+      "vendor_pattern": "^enemies you mark cannot deal critical hits$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "NeverCrit",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Marked"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:NeverCrit",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Marked"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_you_mark_have_d_reduced_accuracy_587dd7d7",
+      "pattern": "enemies you mark have (\\d+)% reduced accuracy rating",
+      "vendor_pattern": "^enemies you mark have (%d+)%% reduced accuracy rating$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Accuracy",
+                "type": "INC",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Marked"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_you_mark_take_d_increased_damage_e2c42c39",
+      "pattern": "enemies you mark take (\\d+)% increased damage",
+      "vendor_pattern": "^enemies you mark take (%d+)%% increased damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Marked"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -10313,6 +12460,35 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_gain_maddening_presence_for_10_seconds_w_2b92c82c",
+      "pattern": "gain maddening presence for 10 seconds when you kill a rare or unique enemy",
+      "vendor_pattern": "^gain maddening presence for 10 seconds when you kill a rare or unique enemy$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "HasMaddeningPresence",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "KilledUniqueEnemy"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_gain_maximum_life_instead_of_maximum_ene_658cf683",
       "pattern": "gain maximum life instead of maximum energy shield from equipped armour items",
       "vendor_pattern": "^gain maximum life instead of maximum energy shield from equipped armour items$",
@@ -10454,6 +12630,35 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_gain_shaper_s_presence_for_10_seconds_wh_d648d057",
+      "pattern": "gain shaper's presence for 10 seconds when you kill a rare or unique enemy",
+      "vendor_pattern": "^gain shaper's presence for 10 seconds when you kill a rare or unique enemy$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "HasShapersPresence",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "KilledUniqueEnemy"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_gain_shocking_conflux_for_d_seconds_26ef19b6",
       "pattern": "gain shocking conflux for \\d seconds",
       "vendor_pattern": "^gain shocking conflux for %d seconds$",
@@ -10545,6 +12750,66 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_grants_armour_equal_to_d_of_your_reserve_554f8792",
+      "pattern": "grants armour equal to (\\d+)% of your reserved life to you and nearby allies",
+      "vendor_pattern": "^grants armour equal to (%d+)%% of your reserved life to you and nearby allies$",
+      "mods": [
+        {
+          "name": "GrantReservedLifeAsAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Armour",
+                "type": "BASE",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "div": 100.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_grants_armour_equal_to_d_of_your_reserve_8e816cf7",
+      "pattern": "grants armour equal to (\\d+)% of your reserved mana to you and nearby allies",
+      "vendor_pattern": "^grants armour equal to (%d+)%% of your reserved mana to you and nearby allies$",
+      "mods": [
+        {
+          "name": "GrantReservedManaAsAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Armour",
+                "type": "BASE",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "div": 100.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_grants_immunity_to_bleeding_for_d_second_2532e511",
@@ -10671,6 +12936,36 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_grants_maximum_energy_shield_equal_to_d_f19c2cd9",
+      "pattern": "grants maximum energy shield equal to (\\d+)% of your reserved mana to you and nearby allies",
+      "vendor_pattern": "^grants maximum energy shield equal to (%d+)%% of your reserved mana to you and nearby allies$",
+      "mods": [
+        {
+          "name": "GrantReservedManaAsAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "EnergyShield",
+                "type": "BASE",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "div": 100.0
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_grants_skill_sorcery_ward_e5e0a76d",
@@ -10825,6 +13120,35 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_heavy_stuns_enemies_that_are_on_full_lif_73f01aec",
+      "pattern": "heavy stuns enemies that are on full life",
+      "vendor_pattern": "^heavy stuns enemies that are on full life$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:HeavyStunned",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "FullLife"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_herald_of_thunder_s_storms_hit_enemies_w_f44cbd19",
       "pattern": "herald of thunder's storms hit enemies with (\\d+)% increased frequency",
       "vendor_pattern": "^herald of thunder's storms hit enemies with (%d+)%% increased frequency$",
@@ -10858,6 +13182,90 @@
       "id": "vnd_historic_ec4b36ed",
       "pattern": "historic",
       "vendor_pattern": "^historic$",
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_hits_against_you_are_always_critical_hit_1dac3586",
+      "pattern": "hits against you are always critical hits",
+      "vendor_pattern": "^hits against you are always critical hits$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "AlwaysCrit",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:AlwaysCrit",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_hits_against_you_cannot_be_critical_hits_b054a51f",
+      "pattern": "hits against you cannot be critical hits if you've been stunned recently",
+      "vendor_pattern": "^hits against you cannot be critical hits if you've been stunned recently$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "NeverCrit",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "StunnedRecently"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:NeverCrit",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "StunnedRecently"
+            }
+          ]
+        }
+      ],
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
@@ -11515,6 +13923,271 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_if_you_consumed_a_corpse_recently_you_an_e9311513",
+      "pattern": "if you consumed a corpse recently, you and nearby allies regenerate (\\d+)% of life per second",
+      "vendor_pattern": "^if you consumed a corpse recently, you and nearby allies regenerate (%d+)%% of life per second$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeRegenPercent",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ConsumedCorpseRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_if_you_have_blocked_recently_you_and_nea_65afcf69",
+      "pattern": "if you have blocked recently, you and nearby allies regenerate (\\d+)% of life per second",
+      "vendor_pattern": "^if you have blocked recently, you and nearby allies regenerate (%d+)%% of life per second$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeRegenPercent",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "BlockedRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_if_you_ve_attacked_recently_you_and_near_2c1020a0",
+      "pattern": "if you've attacked recently, you and nearby allies have \\+(\\d+)% chance to block attack damage",
+      "vendor_pattern": "^if you've attacked recently, you and nearby allies have %+(%d+)%% chance to block attack damage$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "BlockChance",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "AttackedRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_if_you_ve_cast_a_spell_recently_you_and_e46afa81",
+      "pattern": "if you've cast a spell recently, you and nearby allies have \\+(\\d+)% chance to block spell damage",
+      "vendor_pattern": "^if you've cast a spell recently, you and nearby allies have %+(%d+)%% chance to block spell damage$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "SpellBlockChance",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CastSpellRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_if_you_ve_consumed_a_corpse_recently_you_91770764",
+      "pattern": "if you've consumed a corpse recently, you and your minions have (\\d+)% increased area of effect",
+      "vendor_pattern": "^if you've consumed a corpse recently, you and your minions have (%d+)%% increased area of effect$",
+      "mods": [
+        {
+          "name": "AreaOfEffect",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ConsumedCorpseRecently"
+            }
+          ]
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "AreaOfEffect",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ConsumedCorpseRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_if_you_ve_impaled_an_enemy_recently_you_c523de76",
+      "pattern": "if you've impaled an enemy recently, you and nearby allies have \\+(\\d+) to armour",
+      "vendor_pattern": "^if you've impaled an enemy recently, you and nearby allies have %+(%d+) to armour$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Armour",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ImpaledRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_if_you_ve_warcried_recently_you_and_near_42b3bb98",
+      "pattern": "if you've warcried recently, you and nearby allies have (\\d+)% increased attack, cast and movement speed",
+      "vendor_pattern": "^if you've warcried recently, you and nearby allies have (%d+)%% increased attack, cast and movement speed$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Speed",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        },
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "MovementSpeed",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_if_you_ve_warcried_recently_you_and_near_51bc47c9",
+      "pattern": "if you've warcried recently, you and nearby allies have (\\d+)% increased attack speed",
+      "vendor_pattern": "^if you've warcried recently, you and nearby allies have (%d+)%% increased attack speed$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Speed",
+                "type": "INC",
+                "value": "$1",
+                "flags": [
+                  "Attack"
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_ignite_you_inflict_deals_chaos_damage_in_355b2532",
       "pattern": "ignite you inflict deals chaos damage instead of fire damage",
       "vendor_pattern": "^ignite you inflict deals chaos damage instead of fire damage$",
@@ -11634,6 +14307,36 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_immobilise_enemies_at_d_buildup_instead_609cc61d",
+      "pattern": "immobilise enemies at (\\d+)% buildup instead of (\\d+)%",
+      "vendor_pattern": "^immobilise enemies at (%d+)%% buildup instead of (%d+)%%$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PoiseThreshold",
+                "type": "MORE",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_immun_ei_t_y_to_bleeding_and_corrupted_b_5cbbb357",
@@ -12381,6 +15084,213 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_inflict_elemental_exposure_on_hit_loweri_bc9b1657",
+      "pattern": "inflict elemental exposure on hit, lowering total elemental resistances by (\\d+)%",
+      "vendor_pattern": "^inflict elemental exposure on hit, lowering total elemental resistances by (%d+)%%$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_inflict_fire_cold_and_lightning_exposure_1fb0c16b",
+      "pattern": "inflict fire, cold and lightning exposure on nearby enemies when used",
+      "vendor_pattern": "^inflict fire, cold and lightning exposure on nearby enemies when used$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_inflict_fire_cold_and_lightning_exposure_24f23d61",
+      "pattern": "inflict fire, cold and lightning exposure on enemies when you suppress their spell damage",
+      "vendor_pattern": "^inflict fire, cold and lightning exposure on enemies when you suppress their spell damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "SuppressedRecently"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "SuppressedRecently"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "SuppressedRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_inflict_fire_cold_and_lightning_exposure_d616fbd6",
       "pattern": "inflict fire, cold, and lightning exposure on hit",
       "vendor_pattern": "^inflict fire, cold, and lightning exposure on hit$",
@@ -12757,6 +15667,39 @@
           "name": "NoIntBonusToES",
           "type": "FLAG",
           "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_intimidate_enemies_for_d_seconds_on_bloc_c6b270d6",
+      "pattern": "intimidate enemies for (?:\\d+) seconds on block while holding a shield",
+      "vendor_pattern": "^intimidate enemies for (%d+) seconds on block while holding a shield$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Intimidated",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "BlockedRecently"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingShield"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -14064,6 +17007,541 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_minion_critical_hits_do_not_deal_extra_d_28488b55",
+      "pattern": "minion critical hits do not deal extra damage",
+      "vendor_pattern": "^minion critical hits do not deal extra damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "NoCritMultiplier",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minion_hits_can_t_be_evaded_63f299c7",
+      "pattern": "minion hits can't be evaded",
+      "vendor_pattern": "^minion hits can't be evaded$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "CannotBeEvaded",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_attacks_overwhelm_d_physical_dam_afa4aca3",
+      "pattern": "minions attacks overwhelm (\\d+)% physical damage reduction",
+      "vendor_pattern": "^minions attacks overwhelm (%d+)%% physical damage reduction$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "EnemyPhysicalDamageReduction",
+                "type": "BASE",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                },
+                "tags": [
+                  {
+                    "type": "SkillType",
+                    "skillType": "Attack"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_base_attack_critical_hit_chance_9823e4e7",
+      "pattern": "minions' base attack critical hit chance is equal to the critical hit chance of your main hand weapon",
+      "vendor_pattern": "^minions' base attack critical hit chance is equal to the critical hit chance of your main hand weapon$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "AttackCritIsEqualToParentMainHand",
+                "type": "FLAG",
+                "value": true,
+                "flags": [
+                  "Attack"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_created_recently_have_d_increase_3d0e2541",
+      "pattern": "minions created recently have (\\d+)% increased attack and cast speed",
+      "vendor_pattern": "^minions created recently have (%d+)%% increased attack and cast speed$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Speed",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "MinionsCreatedRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_created_recently_have_d_increase_c008cdee",
+      "pattern": "minions created recently have (\\d+)% increased movement speed",
+      "vendor_pattern": "^minions created recently have (%d+)%% increased movement speed$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "MovementSpeed",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "MinionsCreatedRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_deal_d_increased_damage_if_you_v_a4b4846d",
+      "pattern": "minions deal (\\d+)% increased damage if you've used a minion skill recently",
+      "vendor_pattern": "^minions deal (%d+)%% increased damage if you've used a minion skill recently$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedMinionSkillRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_deal_d_increased_damage_while_yo_3bac6e88",
+      "pattern": "minions deal (\\d+)% increased damage while you are affected by a herald",
+      "vendor_pattern": "^minions deal (%d+)%% increased damage while you are affected by a herald$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "ActorCondition",
+                    "actor": "parent",
+                    "var": "AffectedByHerald"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_deal_no_non_chaos_damage_04d49f87",
+      "pattern": "minions deal no non-chaos damage",
+      "vendor_pattern": "^minions deal no non%-chaos damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoPhysical",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoLightning",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoCold",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoFire",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_deal_no_non_cold_damage_b9b34d4b",
+      "pattern": "minions deal no non-cold damage",
+      "vendor_pattern": "^minions deal no non%-cold damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoPhysical",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoLightning",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoFire",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoChaos",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_deal_no_non_fire_damage_410e585e",
+      "pattern": "minions deal no non-fire damage",
+      "vendor_pattern": "^minions deal no non%-fire damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoPhysical",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoLightning",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoCold",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoChaos",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_deal_no_non_lightning_damage_a124c54c",
+      "pattern": "minions deal no non-lightning damage",
+      "vendor_pattern": "^minions deal no non%-lightning damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoPhysical",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoLCold",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoFire",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoChaos",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_deal_no_non_physical_damage_47a60443",
+      "pattern": "minions deal no non-physical damage",
+      "vendor_pattern": "^minions deal no non%-physical damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoLightning",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoCold",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoFire",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DealNoChaos",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_minions_explode_when_reduced_to_low_life_352ca3d3",
       "pattern": "minions explode when reduced to low life, dealing 33% of their maximum life as fire damage to surrounding enemies",
       "vendor_pattern": "^minions explode when reduced to low life, dealing 33%% of their maximum life as fire damage to surrounding enemies$",
@@ -14098,6 +17576,58 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_minions_have_a_d_chance_to_impale_on_hit_44294783",
+      "pattern": "minions have a (\\d+)% chance to impale on hit with attacks",
+      "vendor_pattern": "^minions have a (%d+)%% chance to impale on hit with attacks$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ImpaleChance",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_have_d_chance_to_deal_double_dam_b50d2cc3",
+      "pattern": "minions have (\\d+)% chance to deal double damage while they are on full life",
+      "vendor_pattern": "^minions have (%d+)%% chance to deal double damage while they are on full life$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DoubleDamageChance",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "FullLife"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_minions_have_d_chance_to_inflict_withere_d4338b18",
       "pattern": "minions have (?:\\d+)% chance to inflict withered on hit",
       "vendor_pattern": "^minions have (%d+)%% chance to inflict withered on hit$",
@@ -14111,6 +17641,59 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_have_d_chance_to_poison_enemies_0e93f1cf",
+      "pattern": "minions have (\\d+)% chance to poison enemies on hit",
+      "vendor_pattern": "^minions have (%d+)%% chance to poison enemies on hit$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PoisonChance",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_have_d_increased_attack_and_cast_d90e080d",
+      "pattern": "minions have (\\d+)% increased attack and cast speed while you are affected by a herald",
+      "vendor_pattern": "^minions have (%d+)%% increased attack and cast speed while you are affected by a herald$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Speed",
+                "type": "INC",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "ActorCondition",
+                    "actor": "parent",
+                    "var": "AffectedByHerald"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_minions_have_d_reduced_reservation_77bbbd0d",
@@ -14141,6 +17724,134 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_minions_have_unholy_might_8f5625c2",
+      "pattern": "minions have unholy might",
+      "vendor_pattern": "^minions have unholy might$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:UnholyMight",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_hits_have_d_chance_to_ignore_ene_25eaa260",
+      "pattern": "minions hits have (\\d+)% chance to ignore enemy physical damage reduction",
+      "vendor_pattern": "^minions hits have (%d+)%% chance to ignore enemy physical damage reduction$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ChanceToIgnoreEnemyPhysicalDamageReduction",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_never_deal_critical_hits_1fb5e17b",
+      "pattern": "minions never deal critical hits",
+      "vendor_pattern": "^minions never deal critical hits$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "NeverCrit",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:NeverCrit",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_poison_enemies_on_hit_277f2e67",
+      "pattern": "minions poison enemies on hit",
+      "vendor_pattern": "^minions poison enemies on hit$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PoisonChance",
+                "type": "BASE",
+                "value": 100.0
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_recoup_d_of_damage_taken_as_life_61f22cbd",
+      "pattern": "minions recoup (\\d+)% of damage taken as life",
+      "vendor_pattern": "^minions recoup (%d+)%% of damage taken as life$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeRecoup",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_minions_revive_d_faster_1b9a77db",
       "pattern": "minions revive (\\d+)% faster",
       "vendor_pattern": "^minions revive (%d+)%% faster$",
@@ -14149,6 +17860,59 @@
           "name": "MinionRevivalSpeed",
           "type": "INC",
           "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_take_d_increased_damage_aec7f648",
+      "pattern": "minions take (\\d+)% increased damage",
+      "vendor_pattern": "^minions take (%d+)%% increased damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_minions_take_d_reduced_damage_634a0fb2",
+      "pattern": "minions take (\\d+)% reduced damage",
+      "vendor_pattern": "^minions take (%d+)%% reduced damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageTaken",
+                "type": "INC",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         }
       ],
       "verified": false,
@@ -14456,6 +18220,29 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_monsters_cannot_block_your_attacks_2ad72c5e",
+      "pattern": "monsters cannot block your attacks",
+      "vendor_pattern": "^monsters cannot block your attacks$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "CannotBlockAttacks",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_movement_speed_cannot_be_modified_to_bel_c40e853d",
       "pattern": "movement speed cannot be modified to below base value",
       "vendor_pattern": "^movement speed cannot be modified to below base value$",
@@ -14464,6 +18251,73 @@
           "name": "MovementSpeedCannotBeBelowBase",
           "type": "FLAG",
           "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_chilled_enemies_deal_d_reduced_da_ff98a8a2",
+      "pattern": "nearby chilled enemies deal (\\d+)% reduced damage with hits",
+      "vendor_pattern": "^nearby chilled enemies deal (%d+)%% reduced damage with hits$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "INC",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Chilled"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_nearby_enemies_are_blinded_while_physica_f5f5e3b8",
+      "pattern": "nearby enemies are blinded while physical aegis is not depleted",
+      "vendor_pattern": "^nearby enemies are blinded while physical aegis is not depleted$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Blinded",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "PhysicalAegisDepleted"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -14484,6 +18338,591 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_are_crushed_e57f8ffa",
+      "pattern": "nearby enemies are crushed",
+      "vendor_pattern": "^nearby enemies are crushed$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Crushed",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_are_scorched_d02f6475",
+      "pattern": "nearby enemies are scorched",
+      "vendor_pattern": "^nearby enemies are scorched$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Scorched",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "ScorchBase",
+          "type": "BASE",
+          "value": 10.0
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_cannot_deal_critical_hits_e896a3e0",
+      "pattern": "nearby enemies cannot deal critical hits",
+      "vendor_pattern": "^nearby enemies cannot deal critical hits$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "NeverCrit",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:NeverCrit",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_chaos_resistance_is_d_88475087",
+      "pattern": "nearby enemies' chaos resistance is (\\d+)",
+      "vendor_pattern": "^nearby enemies' chaos resistance is (%d+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ChaosResist",
+                "type": "OVERRIDE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_an_additional_d_chan_c25de5e7",
+      "pattern": "nearby enemies have an additional (\\d+)% chance to receive a critical hit",
+      "vendor_pattern": "^nearby enemies have an additional (%d+)%% chance to receive a critical hit$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "SelfExtraCritChance",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_cold_exposure_fdfcf561",
+      "pattern": "nearby enemies have cold exposure",
+      "vendor_pattern": "^nearby enemies have cold exposure$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_cold_exposure_while_6451cd57",
+      "pattern": "nearby enemies have cold exposure while you are affected by herald of ice",
+      "vendor_pattern": "^nearby enemies have cold exposure while you are affected by herald of ice$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "AffectedByHeraldofIce"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_d_increased_fire_and_d1d10aa8",
+      "pattern": "nearby enemies have (\\d+)% increased fire and cold resistances",
+      "vendor_pattern": "^nearby enemies have (%d+)%% increased fire and cold resistances$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireResist",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdResist",
+                "type": "INC",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_d_less_accuracy_rati_b26839db",
+      "pattern": "nearby enemies have (\\d+)% less accuracy rating while you have phasing",
+      "vendor_pattern": "^nearby enemies have (%d+)%% less accuracy rating while you have phasing$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Accuracy",
+                "type": "MORE",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Phasing"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_fire_cold_and_lightn_470ecaaf",
+      "pattern": "nearby enemies have fire, cold and lightning exposure while you have phasing, applying -(\\d+)% to those resistances",
+      "vendor_pattern": "^nearby enemies have fire, cold and lightning exposure while you have phasing, applying %-(%d+)%% to those resistances$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Phasing"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Phasing"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Phasing"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_fire_cold_and_lightn_b7cf771b",
+      "pattern": "nearby enemies have fire, cold and lightning exposure while you have phasing",
+      "vendor_pattern": "^nearby enemies have fire, cold and lightning exposure while you have phasing$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Phasing"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Phasing"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Phasing"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_fire_exposure_88f68fc1",
+      "pattern": "nearby enemies have fire exposure",
+      "vendor_pattern": "^nearby enemies have fire exposure$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_fire_exposure_while_8e093f3e",
+      "pattern": "nearby enemies have fire exposure while you are affected by herald of ash",
+      "vendor_pattern": "^nearby enemies have fire exposure while you are affected by herald of ash$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "AffectedByHeraldofAsh"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_lightning_exposure_16740995",
+      "pattern": "nearby enemies have lightning exposure",
+      "vendor_pattern": "^nearby enemies have lightning exposure$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_lightning_exposure_w_c13228b5",
+      "pattern": "nearby enemies have lightning exposure while you are affected by herald of thunder",
+      "vendor_pattern": "^nearby enemies have lightning exposure while you are affected by herald of thunder$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningExposure",
+                "type": "BASE",
+                "value": 20.0
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Effective"
+            },
+            {
+              "type": "Condition",
+              "var": "AffectedByHeraldofThunder"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_have_malediction_119cd5c9",
+      "pattern": "nearby enemies have malediction",
+      "vendor_pattern": "^nearby enemies have malediction$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "HasMalediction",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_hindered_enemies_deal_d_reduced_d_5ffc92fb",
+      "pattern": "nearby hindered enemies deal (\\d+)% reduced damage over time",
+      "vendor_pattern": "^nearby hindered enemies deal (%d+)%% reduced damage over time$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "DamageOverTime",
+                "type": "INC",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Hindered"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_never_deal_critical_hits_df404960",
@@ -15147,6 +19586,35 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_permanently_intimidate_enemies_on_block_de95e6f6",
+      "pattern": "permanently intimidate enemies on block",
+      "vendor_pattern": "^permanently intimidate enemies on block$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Intimidated",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "BlockedRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_phasing_5f2ea8fd",
       "pattern": "phasing",
       "vendor_pattern": "^phasing$",
@@ -15206,6 +19674,54 @@
           "name": "PhysicalEnergyShieldBypass",
           "type": "BASE",
           "value": 100.0
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_pinned_enemies_cannot_deal_critical_hits_3e64e959",
+      "pattern": "pinned enemies cannot deal critical hits",
+      "vendor_pattern": "^pinned enemies cannot deal critical hits$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "NeverCrit",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Pinned"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:NeverCrit",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Pinned"
+                  }
+                ]
+              }
+            ]
+          }
         }
       ],
       "verified": false,
@@ -16405,6 +20921,46 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_shock_attackers_for_d_seconds_on_block_7a427b06",
+      "pattern": "shock attackers for (?:\\d+) seconds on block",
+      "vendor_pattern": "^shock attackers for (%d+) seconds on block$",
+      "mods": [
+        {
+          "name": "ShockBase",
+          "type": "BASE",
+          "value": 20.0,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "BlockedRecently"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Shocked",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "BlockedRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_shock_enemies_as_though_dealing_d_more_d_db77ced9",
       "pattern": "shock enemies as though dealing (\\d+)% more damage",
       "vendor_pattern": "^shock enemies as though dealing (%d+)%% more damage$",
@@ -16418,6 +20974,46 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_shock_nearby_enemies_for_d_seconds_when_a739ea0a",
+      "pattern": "shock nearby enemies for (?:\\d+) seconds when you focus",
+      "vendor_pattern": "^shock nearby enemies for (%d+) seconds when you focus$",
+      "mods": [
+        {
+          "name": "ShockBase",
+          "type": "BASE",
+          "value": 20.0,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Focused"
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Shocked",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Focused"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
       "id": "vnd_shock_yourself_for_d_seconds_when_you_fo_3b9ae447",
@@ -17318,6 +21914,35 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_targets_cursed_by_you_have_at_least_d_of_a747324a",
+      "pattern": "targets cursed by you have at least (\\d+)% of life reserved",
+      "vendor_pattern": "^targets cursed by you have at least (%d+)%% of life reserved$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeReservationPercent",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Cursed"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_the_effect_of_blind_on_you_is_reversed_66889239",
@@ -18243,6 +22868,35 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_when_you_warcry_you_and_nearby_allies_ga_0541be15",
+      "pattern": "when you warcry, you and nearby allies gain onslaught for 4 seconds",
+      "vendor_pattern": "^when you warcry, you and nearby allies gain onslaught for 4 seconds$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Onslaught",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsedWarcryRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_while_a_pinnacle_atlas_boss_is_in_your_p_c252772c",
       "pattern": "while a pinnacle atlas boss is in your presence, drops shocked ground while moving, lasting (?:\\d+) seconds",
       "vendor_pattern": "^while a pinnacle atlas boss is in your presence, drops shocked ground while moving, lasting (%d+) seconds$",
@@ -18341,6 +22995,36 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_while_you_are_not_on_low_mana_you_and_al_d6d386df",
+      "pattern": "while you are not on low mana, you and allies in your presence have unholy might",
+      "vendor_pattern": "^while you are not on low mana, you and allies in your presence have unholy might$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:UnholyMight",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "LowMana"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_while_your_passive_skill_tree_connects_t_92bbf488",
       "pattern": "while your passive skill tree connects to a class' starting location, you gain:",
       "vendor_pattern": "^while your passive skill tree connects to a class' starting location, you gain:$",
@@ -18357,6 +23041,35 @@
           "name": "Multiplier:WinterOrbMaxStages",
           "type": "BASE",
           "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_with_a_ghastly_eye_jewel_socketed_minion_41e77a97",
+      "pattern": "with a ghastly eye jewel socketed, minions have \\+(\\d+) to accuracy rating",
+      "vendor_pattern": "^with a ghastly eye jewel socketed, minions have %+(%d+) to accuracy rating$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Accuracy",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "HaveGhastlyEyeJewelIn{SlotName}"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -18600,6 +23313,72 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_you_and_allies_affected_by_your_placed_b_26726eda",
+      "pattern": "you and allies affected by your placed banners regenerate ([\\d.]+)% of life per second for each stage",
+      "vendor_pattern": "^you and allies affected by your placed banners regenerate ([%d%.]+)%% of life per second for each stage$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeRegenPercent",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "AffectedByPlacedBanner"
+                  },
+                  {
+                    "type": "Multiplier",
+                    "var": "BannerValour"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_you_and_allies_near_your_banner_regenera_d381d6b9",
+      "pattern": "you and allies near your banner regenerate ([\\d.]+)% of life per second for each valour consumed for that banner",
+      "vendor_pattern": "^you and allies near your banner regenerate ([%d%.]+)%% of life per second for each valour consumed for that banner$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LifeRegenPercent",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "AffectedByPlacedBanner"
+                  },
+                  {
+                    "type": "Multiplier",
+                    "var": "BannerValour"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_you_and_nearby_party_members_gain_d_rage_5a718604",
@@ -20847,6 +25626,35 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_your_hits_permanently_intimidate_enemies_a293ffd4",
+      "pattern": "your hits permanently intimidate enemies that are on full life",
+      "vendor_pattern": "^your hits permanently intimidate enemies that are on full life$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Intimidated",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "ChampionIntimidate"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_your_hits_treat_cold_resistance_as_d_hig_69daf91f",
       "pattern": "your hits treat cold resistance as (\\d+)% higher than actual value",
       "vendor_pattern": "^your hits treat cold resistance as (%d+)%% higher than actual value$",
@@ -21018,6 +25826,29 @@
               "var": "Stationary"
             }
           ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_your_minions_are_gigantic_24faefa0",
+      "pattern": "your minions are gigantic",
+      "vendor_pattern": "^your minions are gigantic$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Gigantic",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          }
         }
       ],
       "verified": false,

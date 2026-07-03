@@ -554,6 +554,24 @@ fn transform_value(v: &serde_json::Value) -> Result<TemplateValueDef, String> {
             parse_capture_template(s).ok_or("value_form".into())
         }
         serde_json::Value::Object(map) => {
+            // 嵌套 mod 载荷：纯 `{ "mod": <mod|[mod...]> }` 形态 → Nested
+            //（运行时 ModValue::NestedMods，编排层转发）。混合形态
+            //（mod + 其他标量键，如 ExtraAura 的 onlyAllies）运行时无法
+            // 表达 → 整条跳过。
+            if map.contains_key("mod") {
+                if map.len() != 1 {
+                    return Err("value_mixed_nested".into());
+                }
+                let mods = match &map["mod"] {
+                    inner @ serde_json::Value::Object(_) => vec![transform_mod(inner)?],
+                    serde_json::Value::Array(items) => items
+                        .iter()
+                        .map(transform_mod)
+                        .collect::<Result<Vec<_>, _>>()?,
+                    _ => return Err("value_form".into()),
+                };
+                return Ok(TemplateValueDef::Nested { mods });
+            }
             let mut fields = BTreeMap::new();
             for (k, val) in map {
                 fields.insert(k.clone(), transform_scalar(val)?);
@@ -654,6 +672,7 @@ fn validate_refs(mods: &[ModTemplateDef], caps: usize) -> Result<(), String> {
                     }
                 }
             }
+            TemplateValueDef::Nested { mods } => validate_refs(mods, caps)?,
             TemplateValueDef::Flag(_) | TemplateValueDef::Number(_) => {}
         }
     }
@@ -781,10 +800,44 @@ mod tests {
     }
 
     #[test]
-    fn nested_mod_value_rejected() {
+    fn pure_nested_mod_value_transforms() {
         let raw = serde_json::json!([{
-            "name": "ExtraSkillMod", "type": "LIST",
-            "value": { "mod": { "name": "ProjectileCount", "type": "BASE", "value": 1 } }
+            "name": "EnemyModifier", "type": "LIST",
+            "value": { "mod": { "name": "FireExposure", "type": "BASE", "value": "$1:negate" } }
+        }]);
+        let mods = transform_mods(&raw).unwrap();
+        let TemplateValueDef::Nested { mods: inner } = &mods[0].value else {
+            panic!("expected nested value");
+        };
+        assert_eq!(inner.len(), 1);
+        assert!(matches!(
+            &inner[0].name,
+            TemplateNameDef::Literal(n) if n == "FireExposure"
+        ));
+    }
+
+    #[test]
+    fn mixed_nested_mod_value_rejected() {
+        // ExtraAura 的 { mod = ..., onlyAllies = true } 混合形态运行时无法表达
+        let raw = serde_json::json!([{
+            "name": "ExtraAura", "type": "LIST",
+            "value": {
+                "mod": { "name": "Speed", "type": "INC", "value": 10 },
+                "onlyAllies": true
+            }
+        }]);
+        assert_eq!(transform_mods(&raw), Err("value_mixed_nested".to_string()));
+    }
+
+    #[test]
+    fn nested_mod_with_unmappable_tag_rejected() {
+        // 内层 mod 的 tag 白名单同样生效（丢 tag = 条件词条变常驻）
+        let raw = serde_json::json!([{
+            "name": "MinionModifier", "type": "LIST",
+            "value": { "mod": {
+                "name": "Damage", "type": "INC", "value": "$1",
+                "tags": [{ "type": "GlobalEffect", "effectType": "Buff" }]
+            } }
         }]);
         assert!(transform_mods(&raw).is_err());
     }
