@@ -303,7 +303,7 @@ fn ailment_stacks_condition(var: &str) -> Option<String> {
 /// 归一 PerStat/Multiplier 槽位倍率 var 的 `On<Slot>` 槽名后缀为槽位 ID（小写去空格，经 `slot_name_to_id`），对齐 orchestrator `per_slot_defence_multipliers` 拼的 `<Stat>On<slot.id()>` 键。
 /// vendor 数据槽名大小写不一（`OnBoots`/`OnBody Armour`/`Onhelmet` 混存）；不归一时 `+N to Armour per M ES on Equipped Boots` 产 `EnergyShieldOnBoots`，与消费侧 `EnergyShieldOnboots` 不匹配，倍率取 0，槽位防御底归零（fork-a Armour→0 实测根因）。
 /// 仅归一已知装备槽后缀；`OnAllArmourItems` 等非单槽后缀原样保留（消费侧另有通道）。对已小写的 `Onhelmet` 幂等。
-fn normalize_perstat_slot_suffix(var: &str) -> String {
+pub(crate) fn normalize_perstat_slot_suffix(var: &str) -> String {
     let Some(idx) = var.rfind("On") else {
         return var.to_string();
     };
@@ -339,7 +339,7 @@ fn normalize_perstat_slot_suffix(var: &str) -> String {
 /// 短名 var 查不到 multiplier → 静默 0 贡献（per-attr 缩放失效）。
 /// 闭集，仅属性三连；其余 var（`AxeItem`/`SummonedMinion`/`Rage`/`PowerCharge`/
 /// `Spirit`…）原样返回（与 `stat_map_engine.rs` 同口径 / `vendor_name_aliases.json`）。
-fn normalize_attribute_var(var: &str) -> String {
+pub(crate) fn normalize_attribute_var(var: &str) -> String {
     match var {
         "Str" => "Strength",
         "Dex" => "Dexterity",

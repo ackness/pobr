@@ -297,6 +297,13 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
                 out.push((format!("{name}On{slot_id}"), values[idx]));
             }
         }
+        // vendor CalcDefence.lua:816 `output["LowestOfArmourAndEvasionOn"..slot]
+        // = m_min(armourBase, evasionBase)`——PerStat 消费（如 Svalinn 风味的
+        // AilmentThreshold per lowest）。min≤0 时缺键＝0 等价，不落键。
+        let lowest = values[0].min(values[1]);
+        if lowest > 0.0 {
+            out.push((format!("LowestOfArmourAndEvasionOn{slot_id}"), lowest));
+        }
     }
     out
 }

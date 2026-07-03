@@ -34,6 +34,7 @@ use pobr_data::skill::SkillTypes;
 use regex::{Regex, RegexSet};
 
 use crate::modifier::{ActorRef, ModTag, ModValue, Modifier};
+use crate::parse::mod_parser::template::{normalize_attribute_var, normalize_perstat_slot_suffix};
 use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::value_expr::eval;
 
@@ -569,6 +570,7 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             if stat.starts_with('$') {
                 return None;
             }
+            let stat = normalize_stat_name(&stat);
             let div = tag.fields.get("div").and_then(scalar_number).unwrap_or(1.0);
             let limit = tag.fields.get("limit").and_then(scalar_number);
             Some(ModTag::PerStat {
@@ -587,6 +589,7 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             if stat.starts_with('$') {
                 return None;
             }
+            let stat = normalize_stat_name(&stat);
             // percent 出现但非数字（如手写 overlay 误填 `$n`）→ 整 tag 不可映射，
             // 不能静默降级为 or-1 侧（mult 会差 100 倍）。
             let percent = match tag.fields.get("percent") {
@@ -639,6 +642,7 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             if stat.starts_with('$') {
                 return None;
             }
+            let stat = normalize_stat_name(&stat);
             let threshold = tag.fields.get("threshold").and_then(scalar_number)?;
             let upper = tag
                 .fields
@@ -654,6 +658,15 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
         // 未映射 tag 形态：保守跳过。
         _ => None,
     }
+}
+
+/// PerStat/PercentStat/StatThreshold 的 stat 名归一：vendor 短属性名
+/// （`Str`→`Strength`）+ `On<Slot>` 槽名后缀（`OnBoots`→`Onboots`），与
+/// statmap 引擎（`template.rs::compile_tag`）同口径——回填侧
+/// （orchestrator `inject_per_x_multipliers` 写 `cfg.stats`）的键空间是
+/// `Strength`/`<Stat>On<slot.id()>`，不归一则读数缺键恒 0。
+fn normalize_stat_name(stat: &str) -> String {
+    normalize_attribute_var(&normalize_perstat_slot_suffix(stat))
 }
 
 /// 供离线抽取器（`sync-pob-catalog extract-lua --what special-mods`）预检：
@@ -973,6 +986,24 @@ mod tests {
                 actor: None,
             }]
         );
+
+        // 槽名后缀归一（normalize_stat_name）：vendor `OnBoots` → `Onboots`，
+        // 对齐编排层 per_slot_defence_multipliers 回填的 `<Stat>On<slot.id()>` 键。
+        let d = def(r#"{"id":"t2","pattern":"noop","mods":[
+                {"name":"X","type":"BASE","value":1,
+                 "tags":[{"type":"PerStat","stat":"ArmourOnBoots","div":25.0}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let m = r.try_match("noop", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::PerStat {
+                stat: "ArmourOnboots".into(),
+                div: 25.0,
+                limit: None,
+                limit_var: None,
+                actor: None,
+            }]
+        );
     }
 
     /// PercentStat tag 映射（V2 slice 2）：按已算出 stat 的百分比缩放，
@@ -989,10 +1020,12 @@ mod tests {
         let m = r
             .try_match("gain accuracy equal to 40% of dexterity", &reg)
             .unwrap();
+        // stat 名归一（normalize_stat_name）：短属性名 Dex → 全名 Dexterity，
+        // 对齐编排层 cfg.stats 回填键空间。
         assert_eq!(
             m.mods[0].tags,
             vec![ModTag::PercentStat {
-                stat: "Dex".into(),
+                stat: "Dexterity".into(),
                 percent: Some(40.0),
             }]
         );
