@@ -549,6 +549,10 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
             kind: "SkillTypes".to_string(),
             detail: format!("限技能类型 {st:?}"),
         },
+        ModTag::SkillName { names } => TagExplain {
+            kind: "SkillName".to_string(),
+            detail: format!("仅当主技能是 `{}` 时生效", names.join("` / `")),
+        },
         ModTag::SlotName(slot) => TagExplain {
             kind: "SlotName".to_string(),
             detail: format!("仅作用于装备槽 `{slot}`"),

@@ -116,6 +116,11 @@ pub struct CalcConfig {
     /// [`crate::Modifier::effective_number`] 返回 `None`（跳过），镜像 vendor
     /// `if not cfg.skillDist then return end`（ModStore.lua:575）。
     pub skill_distance: Option<f64>,
+    /// 主技能显示名（小写；vendor `cfg.skillName`，ModStore.lua:752-780 `SkillName`
+    /// tag 的匹配口径）。由编排层按 `skill_name_from_id(skill_id)` 填入主技能 cfg；
+    /// `None`（默认 / 防御侧 / 无主技能）→ [`ModTag::SkillName`] 恒不匹配（镜像
+    /// vendor `cfg.skillName or ""` 空串不等于任何 tag 名的保守口径）。
+    pub skill_name: Option<String>,
     /// 跨 actor multiplier 快照（M3 T0 为 S2-D 预留，本阶段零消费）。
     ///
     /// 对应 PoB2 ModStore EvalMod 的 `actor`/`limitActor` tag：`Multiplier`/`PerStat`
@@ -221,6 +226,12 @@ impl CalcConfig {
     /// 设置 DistanceRamp 的 skillDist（见 [`CalcConfig::skill_distance`]）。
     pub fn with_skill_distance(mut self, skill_distance: Option<f64>) -> Self {
         self.skill_distance = skill_distance;
+        self
+    }
+
+    /// 设置主技能显示名（见 [`CalcConfig::skill_name`]；小写）。
+    pub fn with_skill_name(mut self, skill_name: Option<String>) -> Self {
+        self.skill_name = skill_name;
         self
     }
 

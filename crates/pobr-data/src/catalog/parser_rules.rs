@@ -167,6 +167,9 @@ pub enum TemplateScalarDef {
         #[serde(rename = "enum")]
         capture_index: u32,
     },
+    /// 字符串字面量列表（vendor `SkillName` tag 的 `skillNameList` 形态）。
+    /// JSON 数组形状与其余标量变体互斥，untagged 无歧义。
+    TextList(Vec<String>),
 }
 
 /// 模板 tag（pobr `ModTag` 的 serde 形态投影；`type` 之外的字段开放转录，

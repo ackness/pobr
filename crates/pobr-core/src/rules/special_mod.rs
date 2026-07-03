@@ -16,7 +16,7 @@
 //! pattern 形态（编译只校验 regex 合法性），形态合规由策展 + 闸门测试（C-4）守。
 //!
 //! **保守门控**：本批次条目携带的若干 PoB2 原生 tag 形态（`ItemCondition` /
-//! `GlobalEffect` / `SkillName` / 复杂 LIST 载荷等）尚无 pobr `ModTag` 落点——
+//! `GlobalEffect` / 复杂 LIST 载荷等）尚无 pobr `ModTag` 落点——
 //! 这类 tag 在实例化时被**跳过**（产出 mod 但不挂该 tag），对应条目保持
 //! `verified:false`，由 differential（Track D）与 parity 报表把关。能映射的清单见
 //! [`compile_tag`]。
@@ -503,9 +503,14 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 /// - `PerStat`（**字面** stat/div/limit；按 actor 已算出 stat 线性缩放，读
 ///   `EvalContext::stat_lookup`——运行时 [`ModTag::PerStat`] M4-T1 已接通）；
 /// - `MultiplierThreshold`（**字面** var/threshold/upper 二元 gate，运行时
-///   [`ModTag::MultiplierThreshold`] 已接通）。
+///   [`ModTag::MultiplierThreshold`] 已接通）；
+/// - `SkillName`（V2：`skillName` 单名 / `skillNameList` 列表统一小写收编为
+///   [`ModTag::SkillName`]，按 `cfg.skill_name` 等值 gate；`includeTransfigured`
+///   忽略——PoE2 无变体宝石，vendor 的 gem name→gameId 等值退化为名字等值。
+///   `partialMatch`/`summonSkill`/`neg` 在 vendor PoE2 数据零出现，由抽取器
+///   白名单挡在门外）。
 ///
-/// **不可映射**（pobr 无落点）：`ItemCondition` / `GlobalEffect` / `SkillName` /
+/// **不可映射**（pobr 无落点）：`ItemCondition` / `GlobalEffect` /
 /// `PercentStat` / 带 `$n` 字段值的 `Multiplier`——返回 `None`，对应条目保持
 /// `verified:false`（保守门控，不误产可能错误的 tag）。
 fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
@@ -568,6 +573,22 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 actor: None,
             })
         }
+        "SkillName" => {
+            // skillName 单名或 skillNameList 列表二选一（vendor ModStore.lua:752-780），
+            // 小写收编；空列表 / 含 `$n` 捕获 → 不可映射（防御，抽取器同样拦截）。
+            let names: Vec<String> =
+                match (tag.fields.get("skillName"), tag.fields.get("skillNameList")) {
+                    (Some(single), None) => vec![scalar_text(single)?.to_lowercase()],
+                    (None, Some(TemplateScalarDef::TextList(list))) if !list.is_empty() => {
+                        list.iter().map(|s| s.to_lowercase()).collect()
+                    }
+                    _ => return None,
+                };
+            if names.iter().any(|n| n.contains('$')) {
+                return None;
+            }
+            Some(ModTag::SkillName { names })
+        }
         "MultiplierThreshold" => {
             // 字面 var/threshold/upper（vendor `thresholdVar`/`actor` 形态跳过）。
             // upper 缺省 false = vendor `stat ≥ threshold` 生效侧。
@@ -622,7 +643,7 @@ fn scalar_text(scalar: &TemplateScalarDef) -> Option<String> {
         TemplateScalarDef::Text(s) => Some(s.clone()),
         TemplateScalarDef::Number(n) => Some(n.to_string()),
         TemplateScalarDef::Bool(b) => Some(b.to_string()),
-        TemplateScalarDef::Enum { .. } => None,
+        TemplateScalarDef::Enum { .. } | TemplateScalarDef::TextList(_) => None,
     }
 }
 
@@ -931,6 +952,44 @@ mod tests {
                 upper: true,
             }]
         );
+    }
+
+    /// SkillName tag 映射：单名 / 列表统一小写收编；includeTransfigured 忽略
+    ///（PoE2 无变体宝石，等值退化）；缺名字段 → tag 跳过。
+    #[test]
+    fn skill_name_tag_maps() {
+        let d = def(r#"{"id":"t","pattern":"fireball explodes twice","mods":[
+                {"name":"FireballExtraExplosion","type":"FLAG","value":true,
+                 "tags":[{"type":"SkillName","skillName":"Fireball","includeTransfigured":true}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("fireball explodes twice", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::SkillName {
+                names: vec!["fireball".into()],
+            }]
+        );
+
+        let d = def(r#"{"id":"t2","pattern":"strikes chain","mods":[
+                {"name":"ChainCountMax","type":"BASE","value":1,
+                 "tags":[{"type":"SkillName","skillNameList":["Flicker Strike","Viper Strike"]}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let m = r.try_match("strikes chain", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::SkillName {
+                names: vec!["flicker strike".into(), "viper strike".into()],
+            }]
+        );
+
+        // 名字段缺失 → tag 保守跳过（mod 保留、不挂 tag）。
+        let d = def(r#"{"id":"t3","pattern":"noop","mods":[
+                {"name":"X","type":"BASE","value":1,
+                 "tags":[{"type":"SkillName"}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let m = r.try_match("noop", &reg).unwrap();
+        assert!(m.mods[0].tags.is_empty());
     }
 
     /// 嵌套 mod 载荷编译期校验：内层未知 mod_type fail-fast。

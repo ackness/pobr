@@ -176,6 +176,19 @@ pub enum ModTag {
     },
     DamageType(DamageType),
     SkillTypes(SkillTypes),
+    /// 具名技能限定（PoB2 `SkillName` tag，ModStore.lua:752-780）：mod 仅在
+    /// 主技能名命中列表任一项时生效。vendor `skillName` 单名与 `skillNameList`
+    /// 列表统一收编为 `names`；两侧均按小写等值比较（vendor `:lower()` 双向）。
+    ///
+    /// vendor 的 `includeTransfigured` 走 gem name → gameId 等值——PoE2 无变体
+    /// 宝石（同名同 gameId），退化为名字等值，编译期直接忽略该字段。
+    /// `partialMatch`/`summonSkill`/`neg` 在 vendor PoE2 数据中零出现，不建模。
+    /// `cfg.skill_name == None`（防御侧 / 无主技能）→ 不匹配（保守，镜像
+    /// vendor 空串口径）。
+    SkillName {
+        /// 匹配名列表（小写），任一命中即生效。
+        names: Vec<String>,
+    },
     /// 槽位限定（PoB2 `calcLib.mod({slotName=slot})`）：该 modifier 仅作用于匹配槽位的
     /// per-slot 防御聚合（如 `80% increased Armour from Equipped Body Armour`）。
     ///
@@ -348,6 +361,12 @@ impl Modifier {
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
             }
+            // 具名技能限定（vendor ModStore.lua:752-780）：主技能名任一命中；
+            // cfg 无主技能名 → 不匹配（保守）。
+            ModTag::SkillName { names } => cfg
+                .skill_name
+                .as_deref()
+                .is_some_and(|sn| names.iter().any(|n| n.eq_ignore_ascii_case(sn))),
             // 槽位限定对普通过滤透明（由 ModDb 的 per-slot 查询路径显式处理）。
             ModTag::SlotName(_) => true,
         })
@@ -463,12 +482,13 @@ impl Modifier {
                     let dist = cfg.skill_distance?;
                     value *= ramp_factor(ramp, dist)?;
                 }
-                // MultiplierThreshold 是二元 gate（在 matches 里求值），不缩放数值。
+                // MultiplierThreshold / SkillName 是二元 gate（在 matches 里求值），不缩放数值。
                 ModTag::Condition { .. }
                 | ModTag::MultiplierThreshold { .. }
                 | ModTag::GlobalLimit { .. }
                 | ModTag::DamageType(_)
                 | ModTag::SkillTypes(_)
+                | ModTag::SkillName { .. }
                 | ModTag::SlotName(_) => {}
             }
         }
@@ -524,6 +544,29 @@ mod tests {
         let cond = Modifier::number("Damage", ModType::Inc, 10.0)
             .with_tag(ModTag::condition("FullLife", false));
         assert!(cond.matches(&cfg));
+    }
+
+    /// SkillName tag（vendor ModStore.lua:752-780）：主技能名任一命中即生效
+    /// （大小写不敏感）；cfg 无主技能名 → 不匹配（保守口径）。
+    #[test]
+    fn skill_name_tag_gates_on_main_skill_name() {
+        let m = Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::SkillName {
+            names: vec!["flicker strike".into(), "shield wall".into()],
+        });
+
+        // 命中（等值 / 大小写不敏感）。
+        let hit = CalcConfig::new().with_skill_name(Some("Shield Wall".into()));
+        assert!(m.matches(&hit));
+
+        // 名字不同 → 不匹配。
+        let miss = CalcConfig::new().with_skill_name(Some("fireball".into()));
+        assert!(!m.matches(&miss));
+
+        // cfg 无主技能名（防御侧 / 无主技能）→ 不匹配。
+        assert!(!m.matches(&CalcConfig::new()));
+
+        // 求值期透明：不缩放数值。
+        assert_eq!(m.effective_number(&hit), Some(10.0));
     }
 
     /// `actor: Some(_)` 的 Multiplier 改查 `cfg.actor_multipliers["<actor>.<var>"]`；

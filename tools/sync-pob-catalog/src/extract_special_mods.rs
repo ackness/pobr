@@ -621,6 +621,9 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
         "Multiplier" => &["var", "div", "limit"],
         "PerStat" => &["stat", "div", "limit"],
         "MultiplierThreshold" => &["var", "threshold", "upper"],
+        // includeTransfigured 编译侧忽略（PoE2 无变体宝石，gem name→gameId
+        // 等值退化为名字等值）；partialMatch/summonSkill/neg 零出现，不放行。
+        "SkillName" => &["skillName", "skillNameList", "includeTransfigured"],
         _ => return Err("tag_type_unmappable".into()),
     };
     let mut fields = BTreeMap::new();
@@ -630,6 +633,22 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
         }
         if !allowed.contains(&k.as_str()) {
             return Err("tag_field_shape".into());
+        }
+        // skillNameList 是唯一允许的数组字段（字符串字面量列表 → TextList）。
+        if k == "skillNameList" {
+            let items = val.as_array().ok_or("tag_field_shape")?;
+            let names = items
+                .iter()
+                .map(|v| match v.as_str() {
+                    Some(s) if !s.contains('$') => Ok(s.to_string()),
+                    _ => Err("tag_field_shape".to_string()),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            if names.is_empty() {
+                return Err("tag_field_shape".into());
+            }
+            fields.insert(k.clone(), TemplateScalarDef::TextList(names));
+            continue;
         }
         let scalar = transform_scalar(val).map_err(|_| "tag_field_shape".to_string())?;
         // tag 字段禁捕获引用（compile_tag 会把 `$n` var 当字面量或静默丢 tag）
@@ -799,6 +818,38 @@ mod tests {
         assert!(transform_tag(&tag).is_err());
         let ok = serde_json::json!({ "type": "Condition", "var": "LowLife" });
         assert_eq!(transform_tag(&ok).unwrap().tag_type, "Condition");
+    }
+
+    #[test]
+    fn skill_name_tag_transforms() {
+        // 单名 + includeTransfigured（编译侧忽略）通过。
+        let single = serde_json::json!({
+            "type": "SkillName", "skillName": "Fireball", "includeTransfigured": true
+        });
+        assert_eq!(transform_tag(&single).unwrap().tag_type, "SkillName");
+
+        // skillNameList 数组 → TextList。
+        let list = serde_json::json!({
+            "type": "SkillName", "skillNameList": ["Flicker Strike", "Viper Strike"]
+        });
+        let tag = transform_tag(&list).unwrap();
+        assert_eq!(
+            tag.fields.get("skillNameList"),
+            Some(&TemplateScalarDef::TextList(vec![
+                "Flicker Strike".into(),
+                "Viper Strike".into()
+            ]))
+        );
+
+        // 白名单外字段（partialMatch）/ 空列表 / 含捕获名 → 拒。
+        let partial = serde_json::json!({
+            "type": "SkillName", "skillName": "Fireball", "partialMatch": true
+        });
+        assert!(transform_tag(&partial).is_err());
+        let empty = serde_json::json!({ "type": "SkillName", "skillNameList": [] });
+        assert!(transform_tag(&empty).is_err());
+        let cap = serde_json::json!({ "type": "SkillName", "skillNameList": ["$1"] });
+        assert!(transform_tag(&cap).is_err());
     }
 
     #[test]

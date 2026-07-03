@@ -116,6 +116,7 @@ fn canonical_tag(tag: &ModTag) -> String {
         }
         ModTag::DamageType(dt) => format!("DamageType({dt:?})"),
         ModTag::SkillTypes(st) => format!("SkillTypes({:#x})", st.bits()),
+        ModTag::SkillName { names } => format!("SkillName(names=[{}])", names.join(",")),
         ModTag::SlotName(s) => format!("SlotName({s})"),
         ModTag::DistanceRamp { ramp } => {
             let points: Vec<String> = ramp
