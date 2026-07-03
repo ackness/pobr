@@ -111,11 +111,16 @@ fn canonical_tag(tag: &ModTag) -> String {
             fmt_f64(*div),
             limit.map(fmt_f64),
         ),
+        ModTag::PercentStat { stat, percent } => format!(
+            "PercentStat(stat={stat},percent={:?})",
+            percent.map(fmt_f64),
+        ),
         ModTag::GlobalLimit { value, key } => {
             format!("GlobalLimit(value={},key={key})", fmt_f64(*value))
         }
         ModTag::DamageType(dt) => format!("DamageType({dt:?})"),
         ModTag::SkillTypes(st) => format!("SkillTypes({:#x})", st.bits()),
+        ModTag::SkillName { names } => format!("SkillName(names=[{}])", names.join(",")),
         ModTag::SlotName(s) => format!("SlotName({s})"),
         ModTag::DistanceRamp { ramp } => {
             let points: Vec<String> = ramp
@@ -130,6 +135,14 @@ fn canonical_tag(tag: &ModTag) -> String {
             upper,
         } => format!(
             "MultiplierThreshold(var={var},threshold={},upper={upper})",
+            fmt_f64(*threshold)
+        ),
+        ModTag::StatThreshold {
+            stat,
+            threshold,
+            upper,
+        } => format!(
+            "StatThreshold(stat={stat},threshold={},upper={upper})",
             fmt_f64(*threshold)
         ),
     }

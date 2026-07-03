@@ -524,6 +524,13 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
                 detail,
             }
         }
+        ModTag::PercentStat { stat, percent } => TagExplain {
+            kind: "PercentStat".to_string(),
+            detail: match percent {
+                Some(p) => format!("按已算出属性 `{stat}` 的 {p}% 缩放数值（结果向上取整）"),
+                None => format!("按已算出属性 `{stat}` 缩放数值（结果向上取整）"),
+            },
+        },
         ModTag::MultiplierThreshold {
             var,
             threshold,
@@ -533,6 +540,19 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
             detail: format!(
                 "仅当 `{}` {} {} 时生效",
                 var,
+                if *upper { "≤" } else { "≥" },
+                threshold
+            ),
+        },
+        ModTag::StatThreshold {
+            stat,
+            threshold,
+            upper,
+        } => TagExplain {
+            kind: "StatThreshold".to_string(),
+            detail: format!(
+                "仅当已算出属性 `{}` {} {} 时生效",
+                stat,
                 if *upper { "≤" } else { "≥" },
                 threshold
             ),
@@ -548,6 +568,10 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
         ModTag::SkillTypes(st) => TagExplain {
             kind: "SkillTypes".to_string(),
             detail: format!("限技能类型 {st:?}"),
+        },
+        ModTag::SkillName { names } => TagExplain {
+            kind: "SkillName".to_string(),
+            detail: format!("仅当主技能是 `{}` 时生效", names.join("` / `")),
         },
         ModTag::SlotName(slot) => TagExplain {
             kind: "SlotName".to_string(),

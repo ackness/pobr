@@ -707,6 +707,74 @@ fn per_stat_reads_output_snapshot_via_eval_context() {
     assert_eq!(db.sum(ModType::Inc, ctx, &names), 54.0);
 }
 
+/// PercentStat 按已算出 stat 的百分比缩放（V2 slice 2；vendor ModStore.lua:506-555）：
+/// `value = ceil(value × stat × percent/100)`——ceil 作用在最终贡献（区别 PerStat
+/// 的 floor 作用在乘数）；无快照 → stat=0 → 贡献 0（保守）；percent 缺省 → mult=stat。
+#[test]
+fn percent_stat_scales_by_stat_percentage_with_ceil() {
+    use pobr_core::EvalContext;
+    let cfg = CalcConfig::new();
+    // 「gain Accuracy equal to 40% of Dexterity」形态：value=1 × Dex×40%。
+    let m = Modifier::number("Accuracy", ModType::Base, 1.0).with_tag(ModTag::PercentStat {
+        stat: "Dex".into(),
+        percent: Some(40.0),
+    });
+
+    // 无 output 快照 → stat=0 → ceil(0)=0。
+    assert_eq!(m.effective_number(&cfg), Some(0.0));
+
+    // Dex=333 → 1 × 333×0.4 = 133.2 → ceil = 134（vendor m_ceil 作用最终值）。
+    let lookup = |stat: &str| (stat == "Dex").then_some(333.0);
+    let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
+    assert_eq!(m.effective_number(ctx), Some(134.0));
+
+    // percent 缺省（vendor `(percent and percent/100 or 1)` 的 or-1 侧）→ mult=stat。
+    let plain = Modifier::number("X", ModType::Base, 2.0).with_tag(ModTag::PercentStat {
+        stat: "Dex".into(),
+        percent: None,
+    });
+    let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
+    assert_eq!(plain.effective_number(ctx), Some(666.0));
+}
+
+/// StatThreshold 二元 gate（V2s4；vendor ModStore.lua:556-573）：读 cfg.stats
+/// 快照在 matches 判定——FLAG 查询路径同样过闸（gate 在 matches 而非求值期，
+/// 这是与 MultiplierThreshold 同构、与 PerStat 求值期消费的关键差别）。
+#[test]
+fn stat_threshold_gates_in_matches_for_all_query_paths() {
+    let mut db = ModDb::new();
+    // 「cannot be stunned if you have at least 5 crab barriers」形态（FLAG）。
+    db.add_mod(
+        Modifier::flag("StunImmune").with_tag(ModTag::StatThreshold {
+            stat: "CrabBarriers".into(),
+            threshold: 5.0,
+            upper: false,
+        }),
+    );
+    // 数值路径：「30% more damage while energy shield is at most 100」（upper）。
+    db.add_mod(
+        Modifier::number("Damage", ModType::More, 30.0).with_tag(ModTag::StatThreshold {
+            stat: "EnergyShield".into(),
+            threshold: 100.0,
+            upper: true,
+        }),
+    );
+    let names = [ModName::from("Damage")];
+
+    // 无快照（缺键=0）：lower gate 关（0 < 5），upper gate 开（0 ≤ 100）——
+    // 与 vendor output 缺 stat（GetStat=0）逐值一致。
+    let cfg = CalcConfig::new();
+    assert!(!db.flag(&cfg, ModName::from("StunImmune")));
+    assert_eq!(db.more(&cfg, &names), 1.3);
+
+    // 快照越阈：lower 开、upper 关。
+    let cfg = CalcConfig::new()
+        .with_stat("CrabBarriers", 5.0)
+        .with_stat("EnergyShield", 250.0);
+    assert!(db.flag(&cfg, ModName::from("StunImmune")));
+    assert_eq!(db.more(&cfg, &names), 1.0);
+}
+
 /// PerStat 的 limit / limit_var / actor 维度（与 M3 Multiplier 形态统一）。
 #[test]
 fn per_stat_applies_limits_and_actor_dimension() {

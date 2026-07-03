@@ -142,6 +142,20 @@ pub enum ModTag {
         /// 查 `cfg.actor_multipliers["<actor>.<stat>"]` 快照，缺键＝0）。
         actor: Option<ActorRef>,
     },
+    /// 按 actor 已算出 stat 的**百分比**缩放（V2 slice 2；PoB2 `PercentStat`
+    /// tag，ModStore.lua:506-555）。与 [`ModTag::PerStat`] 同读
+    /// [`EvalContext::stat_lookup`]，区别在结算形状：
+    /// `value = ceil(value × stat × percent/100)`——**ceil 作用在最终贡献**
+    /// （vendor :549 `m_ceil(value * mult + (tag.base or 0))`），而 PerStat 是
+    /// floor 作用在乘数。vendor 的 `statList`/`percentVar`/`actor`/`base`/
+    /// `limit`/`floor` 形态本批不做（DSL 白名单挡在门外，故 base 恒 0）。
+    PercentStat {
+        /// output 表 stat 名（如 `Life`/`EnergyShield`）。
+        stat: String,
+        /// 百分比（vendor `tag.percent`）；缺省 = vendor `(percent and
+        /// percent/100 or 1)` 的 or-1 侧（mult = stat 本身）。
+        percent: Option<f64>,
+    },
     /// 跨 mod 累计限幅（M4-T1 W-A3；PoB2 EvalMod 尾段 ModStore.lua:895-905
     /// `tag.globalLimit`/`tag.globalLimitKey`）：同 `key` 的 mod 生效值在**单次
     /// 聚合查询内**（vendor 每次 Sum/More/Tabulate 调用新建 `globalLimits` 表）
@@ -174,8 +188,35 @@ pub enum ModTag {
         /// `true` = within（`stat ≤ threshold` 生效）；`false` = further（`≥` 生效）。
         upper: bool,
     },
+    /// 按已算出 stat 是否越阈的二元 gate（V2s4；PoB2 `StatThreshold` tag，
+    /// ModStore.lua:556-573 经 GetStat 读 actor output）。与
+    /// [`ModTag::MultiplierThreshold`] 同构，读数换成 [`CalcConfig::stat`]
+    /// 快照（编排层回填；缺键＝0，与 vendor output 缺 stat 同语义——如
+    /// `EnergyShield≥1` gate 在无 ES 时 vendor 同样关闭）。vendor 的
+    /// `statList`/`thresholdStat`/`thresholdPercent(Var)`/`actor` 形态由
+    /// 抽取器白名单挡在门外。
+    StatThreshold {
+        stat: String,
+        threshold: f64,
+        /// vendor `tag.upper`：`true` = `stat ≤ threshold` 生效；`false`（缺省）
+        /// = `stat ≥ threshold` 生效。
+        upper: bool,
+    },
     DamageType(DamageType),
     SkillTypes(SkillTypes),
+    /// 具名技能限定（PoB2 `SkillName` tag，ModStore.lua:752-780）：mod 仅在
+    /// 主技能名命中列表任一项时生效。vendor `skillName` 单名与 `skillNameList`
+    /// 列表统一收编为 `names`；两侧均按小写等值比较（vendor `:lower()` 双向）。
+    ///
+    /// vendor 的 `includeTransfigured` 走 gem name → gameId 等值——PoE2 无变体
+    /// 宝石（同名同 gameId），退化为名字等值，编译期直接忽略该字段。
+    /// `partialMatch`/`summonSkill`/`neg` 在 vendor PoE2 数据中零出现，不建模。
+    /// `cfg.skill_name == None`（防御侧 / 无主技能）→ 不匹配（保守，镜像
+    /// vendor 空串口径）。
+    SkillName {
+        /// 匹配名列表（小写），任一命中即生效。
+        names: Vec<String>,
+    },
     /// 槽位限定（PoB2 `calcLib.mod({slotName=slot})`）：该 modifier 仅作用于匹配槽位的
     /// per-slot 防御聚合（如 `80% increased Armour from Equipped Body Armour`）。
     ///
@@ -329,6 +370,7 @@ impl Modifier {
             // 数值缩放 / 累计限幅 / 距离插值 tag 不参与匹配过滤（求值期消费）。
             ModTag::Multiplier { .. }
             | ModTag::PerStat { .. }
+            | ModTag::PercentStat { .. }
             | ModTag::GlobalLimit { .. }
             | ModTag::DistanceRamp { .. } => true,
             // 阈值 gate（vendor ModStore.lua:559-573）：stat 落在错误一侧 → 不生效。
@@ -344,10 +386,29 @@ impl Modifier {
                     stat >= *threshold
                 }
             }
+            // 同构 gate，读数换 stats 快照（vendor :556-573 GetStat 分支）。
+            ModTag::StatThreshold {
+                stat,
+                threshold,
+                upper,
+            } => {
+                let value = cfg.stat(stat);
+                if *upper {
+                    value <= *threshold
+                } else {
+                    value >= *threshold
+                }
+            }
             ModTag::DamageType(damage_type) => cfg.damage_type == Some(*damage_type),
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
             }
+            // 具名技能限定（vendor ModStore.lua:752-780）：主技能名任一命中；
+            // cfg 无主技能名 → 不匹配（保守）。
+            ModTag::SkillName { names } => cfg
+                .skill_name
+                .as_deref()
+                .is_some_and(|sn| names.iter().any(|n| n.eq_ignore_ascii_case(sn))),
             // 槽位限定对普通过滤透明（由 ModDb 的 per-slot 查询路径显式处理）。
             ModTag::SlotName(_) => true,
         })
@@ -453,6 +514,15 @@ impl Modifier {
                         limit.or_else(|| limit_var.as_ref().map(|lv| cfg.multiplier(lv)));
                     value *= effective_limit.map_or(count, |max| count.min(max));
                 }
+                ModTag::PercentStat { stat, percent } => {
+                    // vendor ModStore.lua:506-555：`mult = stat × (percent/100 or 1)`，
+                    // `value = m_ceil(value × mult + (tag.base or 0))`——base 由 DSL
+                    // 白名单挡在门外恒 0；ceil 作用于最终贡献（多 tag 串联时 vendor
+                    // 同样逐 tag 结算，本循环顺序一致）。
+                    let base = ctx.stat(stat);
+                    let mult = base * percent.map_or(1.0, |p| p / 100.0);
+                    value = (value * mult).ceil();
+                }
                 ModTag::DistanceRamp { ramp } => {
                     // vendor ModStore.lua:574-590：`skillDist` 缺位 → 整条 mod 跳过
                     // （`return`）。`cfg.skill_distance` = vendor `skillCfg.skillDist`
@@ -463,12 +533,15 @@ impl Modifier {
                     let dist = cfg.skill_distance?;
                     value *= ramp_factor(ramp, dist)?;
                 }
-                // MultiplierThreshold 是二元 gate（在 matches 里求值），不缩放数值。
+                // MultiplierThreshold / StatThreshold / SkillName 是二元 gate
+                //（在 matches 里求值），不缩放数值。
                 ModTag::Condition { .. }
                 | ModTag::MultiplierThreshold { .. }
+                | ModTag::StatThreshold { .. }
                 | ModTag::GlobalLimit { .. }
                 | ModTag::DamageType(_)
                 | ModTag::SkillTypes(_)
+                | ModTag::SkillName { .. }
                 | ModTag::SlotName(_) => {}
             }
         }
@@ -524,6 +597,29 @@ mod tests {
         let cond = Modifier::number("Damage", ModType::Inc, 10.0)
             .with_tag(ModTag::condition("FullLife", false));
         assert!(cond.matches(&cfg));
+    }
+
+    /// SkillName tag（vendor ModStore.lua:752-780）：主技能名任一命中即生效
+    /// （大小写不敏感）；cfg 无主技能名 → 不匹配（保守口径）。
+    #[test]
+    fn skill_name_tag_gates_on_main_skill_name() {
+        let m = Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::SkillName {
+            names: vec!["flicker strike".into(), "shield wall".into()],
+        });
+
+        // 命中（等值 / 大小写不敏感）。
+        let hit = CalcConfig::new().with_skill_name(Some("Shield Wall".into()));
+        assert!(m.matches(&hit));
+
+        // 名字不同 → 不匹配。
+        let miss = CalcConfig::new().with_skill_name(Some("fireball".into()));
+        assert!(!m.matches(&miss));
+
+        // cfg 无主技能名（防御侧 / 无主技能）→ 不匹配。
+        assert!(!m.matches(&CalcConfig::new()));
+
+        // 求值期透明：不缩放数值。
+        assert_eq!(m.effective_number(&hit), Some(10.0));
     }
 
     /// `actor: Some(_)` 的 Multiplier 改查 `cfg.actor_multipliers["<actor>.<var>"]`；

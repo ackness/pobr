@@ -16,7 +16,7 @@
 //! pattern 形态（编译只校验 regex 合法性），形态合规由策展 + 闸门测试（C-4）守。
 //!
 //! **保守门控**：本批次条目携带的若干 PoB2 原生 tag 形态（`ItemCondition` /
-//! `GlobalEffect` / `SkillName` / 复杂 LIST 载荷等）尚无 pobr `ModTag` 落点——
+//! `GlobalEffect` / 复杂 LIST 载荷等）尚无 pobr `ModTag` 落点——
 //! 这类 tag 在实例化时被**跳过**（产出 mod 但不挂该 tag），对应条目保持
 //! `verified:false`，由 differential（Track D）与 parity 报表把关。能映射的清单见
 //! [`compile_tag`]。
@@ -358,6 +358,9 @@ fn compile_template(
                 capture_index: *capture_index,
             });
         }
+        // 嵌套 mod 载荷的 fail-fast 校验（实例化期按需再编译，见
+        // `instantiate_mod_def`）。
+        validate_nested_value(&def.id, &m.value, enums)?;
         let flags = compile_flags(&m.flags);
         let keyword_flags = compile_keyword_flags(&m.keyword_flags);
         let tags = m.tags.iter().filter_map(compile_tag).collect();
@@ -373,6 +376,34 @@ fn compile_template(
         });
     }
     Ok(CompiledTemplate { mods })
+}
+
+/// `TemplateValueDef::Nested` 编译期校验：内层 mod_type 已知、enums 引用不
+/// 越界（递归）。非嵌套值形态直接通过。
+fn validate_nested_value(
+    entry_id: &str,
+    value: &TemplateValueDef,
+    enums: &BTreeMap<u32, BTreeMap<String, String>>,
+) -> Result<(), SpecialCompileError> {
+    let TemplateValueDef::Nested { mods } = value else {
+        return Ok(());
+    };
+    for m in mods {
+        parse_mod_type(&m.mod_type).ok_or_else(|| SpecialCompileError::BadModType {
+            entry_id: entry_id.to_string(),
+            literal: m.mod_type.clone(),
+        })?;
+        if let TemplateNameDef::Enum { capture_index } = &m.name
+            && !enums.contains_key(capture_index)
+        {
+            return Err(SpecialCompileError::EnumRefMissing {
+                entry_id: entry_id.to_string(),
+                capture_index: *capture_index,
+            });
+        }
+        validate_nested_value(entry_id, &m.value, enums)?;
+    }
+    Ok(())
 }
 
 /// ModFlags 名 → 位（伤害模式 / 武器类型公用 vendor 名）。未知名跳过（保守）。
@@ -466,13 +497,27 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 /// 模板 tag → pobr `ModTag`。**可映射清单**：
 /// - `Condition` / `ActorCondition`（actor=enemy → `Enemy<Var>` 条件）；
 /// - `SkillType`（去 `SkillType:` 前缀，已知闭集）；
-/// - `DamageType`。
-///
+/// - `DamageType`；
 /// - `Multiplier`（**字面** var/div/limit；按某资源/属性数量线性缩放，读
-///   `cfg.multiplier(var)`）。
+///   `cfg.multiplier(var)`）；
+/// - `PerStat`（**字面** stat/div/limit；按 actor 已算出 stat 线性缩放，读
+///   `EvalContext::stat_lookup`——运行时 [`ModTag::PerStat`] M4-T1 已接通）；
+/// - `PercentStat`（V2 slice 2：**字面** stat/percent；按已算出 stat 的百分比
+///   缩放，`value = ceil(value × stat × percent/100)`，运行时
+///   [`ModTag::PercentStat`]。vendor 的 `statList`/`percentVar`/`actor`/
+///   `base`/`limit`/`floor` 形态由抽取器白名单挡在门外）；
+/// - `MultiplierThreshold`（**字面** var/threshold/upper 二元 gate，运行时
+///   [`ModTag::MultiplierThreshold`] 已接通）；
+/// - `StatThreshold`（V2s4：**字面** stat/threshold/upper 二元 gate，读
+///   [`CalcConfig::stat`] 快照，运行时 [`ModTag::StatThreshold`]）；
+/// - `SkillName`（V2：`skillName` 单名 / `skillNameList` 列表统一小写收编为
+///   [`ModTag::SkillName`]，按 `cfg.skill_name` 等值 gate；`includeTransfigured`
+///   忽略——PoE2 无变体宝石，vendor 的 gem name→gameId 等值退化为名字等值。
+///   `partialMatch`/`summonSkill`/`neg` 在 vendor PoE2 数据零出现，由抽取器
+///   白名单挡在门外）。
 ///
-/// **不可映射**（pobr 无落点）：`ItemCondition` / `GlobalEffect` / `SkillName` /
-/// `PercentStat` / 带 `$n` 字段值的 `Multiplier`——返回 `None`，对应条目保持
+/// **不可映射**（pobr 无落点）：`ItemCondition` / `GlobalEffect` /
+/// 带 `$n` 字段值的 `Multiplier`——返回 `None`，对应条目保持
 /// `verified:false`（保守门控，不误产可能错误的 tag）。
 fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
     match tag.tag_type.as_str() {
@@ -517,9 +562,116 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 Some(ModTag::multiplier(var, div, limit))
             }
         }
+        "PerStat" => {
+            // 字面 stat/div/limit（vendor `statList`/`base`/`actor` 形态无落点，
+            // 由调用方形态白名单挡在门外——本处 fields 只可能是这三键）。
+            let stat = scalar_text(tag.fields.get("stat")?)?;
+            if stat.starts_with('$') {
+                return None;
+            }
+            let div = tag.fields.get("div").and_then(scalar_number).unwrap_or(1.0);
+            let limit = tag.fields.get("limit").and_then(scalar_number);
+            Some(ModTag::PerStat {
+                stat,
+                div,
+                limit,
+                limit_var: None,
+                actor: None,
+            })
+        }
+        "PercentStat" => {
+            // 字面 stat/percent（vendor statList/percentVar/actor/base/limit/floor
+            // 形态由抽取器白名单挡在门外）。percent 缺省 = vendor `(percent and
+            // percent/100 or 1)` 的 or-1 侧（mult = stat 本身）。
+            let stat = scalar_text(tag.fields.get("stat")?)?;
+            if stat.starts_with('$') {
+                return None;
+            }
+            // percent 出现但非数字（如手写 overlay 误填 `$n`）→ 整 tag 不可映射，
+            // 不能静默降级为 or-1 侧（mult 会差 100 倍）。
+            let percent = match tag.fields.get("percent") {
+                None => None,
+                Some(v) => Some(scalar_number(v)?),
+            };
+            Some(ModTag::PercentStat { stat, percent })
+        }
+        "SkillName" => {
+            // skillName 单名或 skillNameList 列表二选一（vendor ModStore.lua:752-780），
+            // 小写收编；空列表 / 含 `$n` 捕获 → 不可映射（防御，抽取器同样拦截）。
+            let names: Vec<String> =
+                match (tag.fields.get("skillName"), tag.fields.get("skillNameList")) {
+                    (Some(single), None) => vec![scalar_text(single)?.to_lowercase()],
+                    (None, Some(TemplateScalarDef::TextList(list))) if !list.is_empty() => {
+                        list.iter().map(|s| s.to_lowercase()).collect()
+                    }
+                    _ => return None,
+                };
+            if names.iter().any(|n| n.contains('$')) {
+                return None;
+            }
+            Some(ModTag::SkillName { names })
+        }
+        "MultiplierThreshold" => {
+            // 字面 var/threshold/upper（vendor `thresholdVar`/`actor` 形态跳过）。
+            // upper 缺省 false = vendor `stat ≥ threshold` 生效侧。
+            let var = scalar_text(tag.fields.get("var")?)?;
+            if var.starts_with('$') {
+                return None;
+            }
+            let threshold = tag.fields.get("threshold").and_then(scalar_number)?;
+            let upper = tag
+                .fields
+                .get("upper")
+                .and_then(scalar_bool)
+                .unwrap_or(false);
+            Some(ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper,
+            })
+        }
+        "StatThreshold" => {
+            // 字面 stat/threshold/upper（vendor `statList`/`thresholdStat`/
+            // `thresholdPercent(Var)`/`actor` 形态由抽取器白名单挡在门外）。
+            // gate 在 matches 读 cfg.stats 快照——对 FLAG/LIST/OVERRIDE 全
+            // 查询路径生效（区别于求值期 tag）。
+            let stat = scalar_text(tag.fields.get("stat")?)?;
+            if stat.starts_with('$') {
+                return None;
+            }
+            let threshold = tag.fields.get("threshold").and_then(scalar_number)?;
+            let upper = tag
+                .fields
+                .get("upper")
+                .and_then(scalar_bool)
+                .unwrap_or(false);
+            Some(ModTag::StatThreshold {
+                stat,
+                threshold,
+                upper,
+            })
+        }
         // 未映射 tag 形态：保守跳过。
         _ => None,
     }
+}
+
+/// 供离线抽取器（`sync-pob-catalog extract-lua --what special-mods`）预检：
+/// tag 能否被 [`compile_tag`] 忠实映射。不可映射的 tag 在编译期会被静默丢弃——
+/// 批量抽取必须把这类条目**整条跳过**而不是丢 tag（否则条件词条变常驻）。
+pub fn tag_is_mappable(tag: &TemplateTagDef) -> bool {
+    compile_tag(tag).is_some()
+}
+
+/// 同上预检：ModFlags 位名是否可映射（[`flag_bit`]；未知名编译期静默跳过，
+/// 会拓宽 mod 适用范围）。
+pub fn flag_name_is_mappable(name: &str) -> bool {
+    flag_bit(name).is_some()
+}
+
+/// 同上预检：KeywordFlags 位名是否可映射（[`keyword_bit`]）。
+pub fn keyword_flag_name_is_mappable(name: &str) -> bool {
+    keyword_bit(name).is_some()
 }
 
 fn scalar_number(scalar: &TemplateScalarDef) -> Option<f64> {
@@ -534,7 +686,7 @@ fn scalar_text(scalar: &TemplateScalarDef) -> Option<String> {
         TemplateScalarDef::Text(s) => Some(s.clone()),
         TemplateScalarDef::Number(n) => Some(n.to_string()),
         TemplateScalarDef::Bool(b) => Some(b.to_string()),
-        TemplateScalarDef::Enum { .. } => None,
+        TemplateScalarDef::Enum { .. } | TemplateScalarDef::TextList(_) => None,
     }
 }
 
@@ -620,7 +772,7 @@ fn instantiate_template(
         let Some(name) = resolve_name(&m.name, captures, enums) else {
             continue;
         };
-        let value = match instantiate_value(&m.value, captures, m.mod_type) {
+        let value = match instantiate_value(&m.value, captures, m.mod_type, enums, source) {
             Some(v) => v,
             None => continue,
         };
@@ -637,6 +789,33 @@ fn instantiate_template(
         out.push(modifier);
     }
     out
+}
+
+/// 嵌套 mod 模板（`TemplateValueDef::Nested` 内层）实例化：mod_type / flags /
+/// tags 按需即时编译（编译期已由 [`validate_nested_value`] fail-fast 校验
+/// mod_type / enums；嵌套命中频率低，即时编译开销可忽略）。
+fn instantiate_mod_def(
+    def: &pobr_data::catalog::parser_rules::ModTemplateDef,
+    captures: &[String],
+    enums: &BTreeMap<u32, BTreeMap<String, String>>,
+    source: &str,
+) -> Option<Modifier> {
+    let mod_type = parse_mod_type(&def.mod_type)?;
+    let name = resolve_name(&def.name, captures, enums)?;
+    let value = instantiate_value(&def.value, captures, mod_type, enums, source)?;
+    let mut modifier = Modifier::new(name, mod_type, value).with_source(source);
+    let flags = compile_flags(&def.flags);
+    if !flags.is_empty() {
+        modifier = modifier.with_flags(flags);
+    }
+    let keyword_flags = compile_keyword_flags(&def.keyword_flags);
+    if !keyword_flags.is_empty() {
+        modifier = modifier.with_keyword_flags(keyword_flags);
+    }
+    for tag in def.tags.iter().filter_map(compile_tag) {
+        modifier = modifier.with_tag(tag);
+    }
+    Some(modifier)
 }
 
 fn resolve_name(
@@ -665,6 +844,8 @@ fn instantiate_value(
     value: &TemplateValueDef,
     captures: &[String],
     mod_type: ModType,
+    enums: &BTreeMap<u32, BTreeMap<String, String>>,
+    source: &str,
 ) -> Option<ModValue> {
     match value {
         TemplateValueDef::Flag(b) => Some(ModValue::Bool(*b)),
@@ -683,6 +864,20 @@ fn instantiate_value(
             }
         }
         TemplateValueDef::Expr(expr) => Some(ModValue::Number(eval_value_expr_def(expr, captures))),
+        // 嵌套 mod 载荷（`{ mod = mod(...) }` 形态）→ ModValue::NestedMods，
+        // 编排层经 `ModDb::list_nested` 转发（EnemyModifier/MinionModifier 等）。
+        // 内层全部实例化失败 → None（跳过外层 mod，不产空载荷）。
+        TemplateValueDef::Nested { mods } => {
+            let nested: Vec<Modifier> = mods
+                .iter()
+                .filter_map(|m| instantiate_mod_def(m, captures, enums, source))
+                .collect();
+            if nested.is_empty() {
+                None
+            } else {
+                Some(ModValue::NestedMods(nested))
+            }
+        }
         // 复杂 LIST 载荷（explode/level grant 等 PoB2 table）尚无 pobr 落点——
         // 跳过该 mod（条目保持 verified:false，由 handler_id 接管属后续）。
         TemplateValueDef::List(_) => None,
@@ -729,6 +924,185 @@ mod tests {
         let reg = HandlerRegistry::new();
         let m = r.try_match("buffs expire 30% slower", &reg).unwrap();
         assert_eq!(m.mods[0].value.as_number(), Some(-30.0));
+    }
+
+    /// 嵌套 mod 载荷：`{"mods":[...]}` 值 → ModValue::NestedMods（捕获在内层
+    /// 求值），编排层经 list_nested 转发。
+    #[test]
+    fn nested_mods_value() {
+        let d = def(
+            r#"{"id":"t","pattern":"enemies have (\\d+)% reduced armour","mods":[
+                {"name":"EnemyModifier","type":"LIST","value":{"mods":[
+                    {"name":"Armour","type":"INC",
+                     "value":{"ref":"$1","ops":[{"negate":{}}]}}]}}],"batch":"V0"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match("enemies have 20% reduced armour", &reg)
+            .unwrap();
+        assert_eq!(m.mods.len(), 1);
+        assert_eq!(m.mods[0].name, "EnemyModifier".into());
+        let ModValue::NestedMods(inner) = &m.mods[0].value else {
+            panic!("expected nested mods value");
+        };
+        assert_eq!(inner.len(), 1);
+        assert_eq!(inner[0].name, "Armour".into());
+        assert_eq!(inner[0].mod_type, ModType::Inc);
+        assert_eq!(inner[0].value.as_number(), Some(-20.0));
+    }
+
+    /// PerStat tag 映射：按已算出 stat 缩放（M4-T1 运行时通道）。
+    #[test]
+    fn per_stat_tag_maps() {
+        let d = def(
+            r#"{"id":"t","pattern":"gain (\\d+) armour per 50 life","mods":[
+                {"name":"Armour","type":"BASE","value":"$1",
+                 "tags":[{"type":"PerStat","stat":"Life","div":50.0}]}],"batch":"V0"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("gain 10 armour per 50 life", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::PerStat {
+                stat: "Life".into(),
+                div: 50.0,
+                limit: None,
+                limit_var: None,
+                actor: None,
+            }]
+        );
+    }
+
+    /// PercentStat tag 映射（V2 slice 2）：按已算出 stat 的百分比缩放，
+    /// percent 可缺省（vendor or-1 侧）。
+    #[test]
+    fn percent_stat_tag_maps() {
+        let d = def(
+            r#"{"id":"t","pattern":"gain accuracy equal to (\\d+)% of dexterity","mods":[
+                {"name":"Accuracy","type":"BASE","value":1,
+                 "tags":[{"type":"PercentStat","stat":"Dex","percent":40.0}]}],"batch":"V2"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match("gain accuracy equal to 40% of dexterity", &reg)
+            .unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::PercentStat {
+                stat: "Dex".into(),
+                percent: Some(40.0),
+            }]
+        );
+
+        // percent 缺省 → None（运行时 mult = stat 本身）。
+        let d = def(r#"{"id":"t2","pattern":"noop","mods":[
+                {"name":"X","type":"BASE","value":1,
+                 "tags":[{"type":"PercentStat","stat":"Life"}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let m = r.try_match("noop", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::PercentStat {
+                stat: "Life".into(),
+                percent: None,
+            }]
+        );
+    }
+
+    /// StatThreshold tag 映射（V2s4）：读 cfg.stats 快照的二元 gate。
+    #[test]
+    fn stat_threshold_tag_maps() {
+        let d = def(
+            r#"{"id":"t","pattern":"gain (\\d+) rage on hit while at maximum frenzy charges","mods":[
+                {"name":"RageOnHit","type":"BASE","value":"$1",
+                 "tags":[{"type":"StatThreshold","stat":"FrenzyCharges","threshold":3.0}]}],"batch":"V2"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match("gain 2 rage on hit while at maximum frenzy charges", &reg)
+            .unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::StatThreshold {
+                stat: "FrenzyCharges".into(),
+                threshold: 3.0,
+                upper: false,
+            }]
+        );
+    }
+
+    /// MultiplierThreshold tag 映射：二元 gate。
+    #[test]
+    fn multiplier_threshold_tag_maps() {
+        let d = def(
+            r#"{"id":"t","pattern":"(\\d+)% more damage at close range","mods":[
+                {"name":"Damage","type":"MORE","value":"$1",
+                 "tags":[{"type":"MultiplierThreshold","var":"enemyDistance",
+                          "threshold":20.0,"upper":true}]}],"batch":"V0"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("30% more damage at close range", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::MultiplierThreshold {
+                var: "enemyDistance".into(),
+                threshold: 20.0,
+                upper: true,
+            }]
+        );
+    }
+
+    /// SkillName tag 映射：单名 / 列表统一小写收编；includeTransfigured 忽略
+    ///（PoE2 无变体宝石，等值退化）；缺名字段 → tag 跳过。
+    #[test]
+    fn skill_name_tag_maps() {
+        let d = def(r#"{"id":"t","pattern":"fireball explodes twice","mods":[
+                {"name":"FireballExtraExplosion","type":"FLAG","value":true,
+                 "tags":[{"type":"SkillName","skillName":"Fireball","includeTransfigured":true}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("fireball explodes twice", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::SkillName {
+                names: vec!["fireball".into()],
+            }]
+        );
+
+        let d = def(r#"{"id":"t2","pattern":"strikes chain","mods":[
+                {"name":"ChainCountMax","type":"BASE","value":1,
+                 "tags":[{"type":"SkillName","skillNameList":["Flicker Strike","Viper Strike"]}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let m = r.try_match("strikes chain", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::SkillName {
+                names: vec!["flicker strike".into(), "viper strike".into()],
+            }]
+        );
+
+        // 名字段缺失 → tag 保守跳过（mod 保留、不挂 tag）。
+        let d = def(r#"{"id":"t3","pattern":"noop","mods":[
+                {"name":"X","type":"BASE","value":1,
+                 "tags":[{"type":"SkillName"}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let m = r.try_match("noop", &reg).unwrap();
+        assert!(m.mods[0].tags.is_empty());
+    }
+
+    /// 嵌套 mod 载荷编译期校验：内层未知 mod_type fail-fast。
+    #[test]
+    fn nested_bad_mod_type_fails_compile() {
+        let d = def(r#"{"id":"t","pattern":"x","mods":[
+                {"name":"EnemyModifier","type":"LIST","value":{"mods":[
+                    {"name":"Armour","type":"MAX","value":1}]}}],"batch":"V0"}"#);
+        let err = SpecialModRules::compile(&[d], &HandlerRegistry::new()).unwrap_err();
+        assert!(matches!(err, SpecialCompileError::BadModType { .. }));
     }
 
     /// 线性折叠 div：`$1 / 100`。

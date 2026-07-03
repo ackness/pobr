@@ -41,4 +41,19 @@ impl GameData {
             Err(e) => Err(e),
         }
     }
+
+    /// 加载 vendor 批量抽取 special 表（`generated/special_vendor.json`，
+    /// `sync-pob-catalog extract-lua --what special-mods` 产物，V0 批次；
+    /// schema 同 `special_mods/v1`）。缺表返回 `Ok(None)`；坏 JSON 照常上抛。
+    pub fn special_vendor(&self) -> Result<Option<SpecialModsDef>, LoadError> {
+        match self.load_json_at::<SpecialModsDef>(self.generated_path("special_vendor.json")) {
+            Ok(def) => Ok(Some(def)),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
+    }
 }

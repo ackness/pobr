@@ -433,6 +433,13 @@ pub fn calculate_with_data(
         .clone()
         .with_flags(base_cfg.flags | skill_flags)
         .with_skill_types(skill_type_bits)
+        // 主技能显示名（vendor `skillCfg.skillName`）：special 通道 `SkillName` tag
+        // 的匹配口径。与 gem_level_category_matches 同源（skill_name_from_id，小写）。
+        .with_skill_name(
+            main_skill
+                .as_ref()
+                .map(|(_, _, skill_id)| skill_resolve::skill_name_from_id(skill_id)),
+        )
         .with_damage_keywords(dmg_keywords)
         .with_mode_effective(options.mode_effective)
         // （M3-T3 C5-2 切换，D5 MAIN 口径）：vendor 非 CALCS 模式 buffMode 恒

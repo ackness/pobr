@@ -793,19 +793,18 @@ fn corpus_unsupported_report() {
     );
 
     // M5b A-2 曲线：special 规则激活后（B-4）的缺口率——special 整行命中把缺口
-    // 语料从 Err/Unsupported 转 Parsed。用仓库 special 数据编译规则集对照。
+    // 语料从 Err/Unsupported 转 Parsed。经 `load_ruleset` 取三源拼接条目
+    //（overlay + derived + vendor V0），与生产编排器同一加载路径。
     {
         use pobr_build::corpus::build_report_with_rules;
-        use pobr_core::rules::{HandlerRegistry, SpecialModRules};
-        use pobr_data::catalog::parser_rules::SpecialModsDef;
-        let path = repo_data_root()
-            .join(pobr_gamedata::data_version())
-            .join("overlay/special_mods.json");
-        if let Ok(raw) = std::fs::read_to_string(&path) {
-            let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json");
+        use pobr_core::rules::SpecialModRules;
+        let data_dir = repo_data_root().join(pobr_gamedata::data_version());
+        let ruleset = pobr_gamedata::GameData::new(&data_dir)
+            .load_ruleset()
+            .expect("load_ruleset");
+        if let Some(entries) = ruleset.special_mods {
             let reg = pobr_build::handlers::build_special_registry();
-            let rules = SpecialModRules::compile(&doc.entries, &reg).expect("compile special");
-            let _ = HandlerRegistry::new();
+            let rules = SpecialModRules::compile(&entries, &reg).expect("compile special");
             let sp = build_report_with_rules(&all_lines, &rules, &reg);
             eprintln!(
                 "[special-aware]  lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%  (special entries: {})",
@@ -817,6 +816,21 @@ fn corpus_unsupported_report() {
                 sp.gap_rate() * 100.0,
                 rules.len(),
             );
+            // 生产视角的缺口模板（plain 视角见下——两榜对照能看出 special
+            // 通道消化了哪些头部模板）。
+            eprintln!("--- Top-20 gap templates (special-aware) ---");
+            for (i, t) in sp.gap_templates.iter().take(20).enumerate() {
+                eprintln!(
+                    "{:>2}. [{:?}] hit={} cnt={} (item={} jewel={}) | {}",
+                    i + 1,
+                    t.class,
+                    t.builds_hit,
+                    t.total_count,
+                    t.item_count,
+                    t.jewel_count,
+                    t.template,
+                );
+            }
         }
     }
     eprintln!("--- Top-20 gap templates (builds_hit desc, count desc) ---");
