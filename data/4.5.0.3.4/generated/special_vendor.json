@@ -4553,6 +4553,21 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_can_summon_up_to_d_additional_golems_at_5a8313c2",
+      "pattern": "can summon up to (\\d) additional golems? at a time",
+      "vendor_pattern": "^can summon up to (%d) additional golems? at a time$",
+      "mods": [
+        {
+          "name": "ActiveGolemLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_cannot_be_blinded_c32f2c34",
       "pattern": "cannot be blinded",
       "vendor_pattern": "^cannot be blinded$",
@@ -6849,6 +6864,28 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_cold_exposure_you_inflict_applies_an_ext_c86f66c2",
+      "pattern": "cold exposure you inflict applies an extra (-?\\d+)% to cold resistance",
+      "vendor_pattern": "^cold exposure you inflict applies an extra (%-?%d+)%% to cold resistance$",
+      "mods": [
+        {
+          "name": "ExtraColdExposure",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_cold_exposure_you_inflict_lowers_total_c_a44ae88f",
@@ -11270,6 +11307,90 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_seconds_to_avian_s_flight_duration_df5a88b4",
+      "pattern": "([+-][\\d.]+) seconds to avian's flight duration",
+      "vendor_pattern": "^([%+%-][%d%.]+) seconds to avian's flight duration$",
+      "mods": [
+        {
+          "name": "SecondaryDuration",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Aspect of the Avian"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_seconds_to_avian_s_might_duration_558850e1",
+      "pattern": "([+-][\\d.]+) seconds to avian's might duration",
+      "vendor_pattern": "^([%+%-][%d%.]+) seconds to avian's might duration$",
+      "mods": [
+        {
+          "name": "PrimaryDuration",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Aspect of the Avian"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_seconds_to_cat_s_agility_duration_cb8e417f",
+      "pattern": "([+-][\\d.]+) seconds to cat's agility duration",
+      "vendor_pattern": "^([%+%-][%d%.]+) seconds to cat's agility duration$",
+      "mods": [
+        {
+          "name": "SecondaryDuration",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Aspect of the Cat"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_seconds_to_cat_s_stealth_duration_f5c88a40",
+      "pattern": "([+-][\\d.]+) seconds to cat's stealth duration",
+      "vendor_pattern": "^([%+%-][%d%.]+) seconds to cat's stealth duration$",
+      "mods": [
+        {
+          "name": "PrimaryDuration",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Aspect of the Cat"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_seconds_to_flameblast_and_incinerate_c_cf91078c",
       "pattern": "\\+([\\d.]+) seconds to flameblast and incinerate cooldown",
       "vendor_pattern": "^%+([%d%.]+) seconds to flameblast and incinerate cooldown$",
@@ -11374,6 +11495,27 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_d_to_critical_damage_bonus_if_you_ve_sha_483c8b47",
+      "pattern": "([+-]\\d+)% to critical damage bonus if you've shattered an enemy recently",
+      "vendor_pattern": "^([%+%-]%d+)%% to critical damage bonus if you've shattered an enemy recently$",
+      "mods": [
+        {
+          "name": "CritMultiplier",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "ShatteredEnemyRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_to_critical_damage_bonus_per_power_cha_8d8e08b7",
       "pattern": "\\+(\\d+)% to critical damage bonus per power charge",
       "vendor_pattern": "^%+(%d+)%% to critical damage bonus per power charge$",
@@ -11388,6 +11530,26 @@
               "var": "PowerCharge"
             }
           ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_to_maximum_blade_flurry_stages_b844cbe9",
+      "pattern": "([+-]\\d) to maximum blade flurry stages",
+      "vendor_pattern": "^([%+%-]%d) to maximum blade flurry stages$",
+      "mods": [
+        {
+          "name": "Multiplier:BladeFlurryMaxStages",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "Multiplier:BladeFlurryofIncisionMaxStages",
+          "type": "BASE",
+          "value": "$1"
         }
       ],
       "verified": false,
@@ -11410,6 +11572,81 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_to_maximum_number_of_eaten_souls_541e4f13",
+      "pattern": "([+-]\\d+) to maximum number of eaten souls",
+      "vendor_pattern": "^([%+%-]%d+) to maximum number of eaten souls$",
+      "mods": [
+        {
+          "name": "SoulEaterMax",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_to_maximum_number_of_sacred_wisps_bf89c12d",
+      "pattern": "([+-]\\d+) to maximum number of sacred wisps",
+      "vendor_pattern": "^([%-%+]%d+) to maximum number of sacred wisps$",
+      "mods": [
+        {
+          "name": "SacredWispsMaxCount",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_to_maximum_number_of_sentinels_of_puri_78bb4b64",
+      "pattern": "\\+(\\d) to maximum number of sentinels of purity",
+      "vendor_pattern": "^%+(%d) to maximum number of sentinels of purity$",
+      "mods": [
+        {
+          "name": "ActiveSentinelOfPurityLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_to_maximum_number_of_summoned_mirage_a_21341689",
+      "pattern": "([+-]\\d+) to maximum number of summoned mirage archers",
+      "vendor_pattern": "^([%-%+]%d+) to maximum number of summoned mirage archers$",
+      "mods": [
+        {
+          "name": "MirageArcherMaxCount",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_to_maximum_virulence_995a51ba",
+      "pattern": "\\+(\\d) to maximum virulence",
+      "vendor_pattern": "^%+(%d) to maximum virulence$",
+      "mods": [
+        {
+          "name": "Multiplier:VirulenceStacksMax",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_to_quality_71fb1a52",
       "pattern": "\\+(\\d+)% to quality",
       "vendor_pattern": "^%+(%d+)%% to quality$",
@@ -11418,6 +11655,26 @@
           "name": "Quality",
           "type": "BASE",
           "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_to_quality_of_all_skills_66c52738",
+      "pattern": "([+-]\\d+)% to quality of all skills",
+      "vendor_pattern": "^([%+%-]%d+)%% to quality of all skills$",
+      "mods": [
+        {
+          "name": "GemProperty",
+          "type": "LIST",
+          "value": {
+            "key": "quality",
+            "keyOfScaledMod": "value",
+            "keyword": "grants_active_skill",
+            "value": "$1"
+          }
         }
       ],
       "verified": false,
@@ -11446,6 +11703,21 @@
       "mods": [
         {
           "name": "AlternateQualityLocalWeaponRangePer10Quality",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_weapon_set_passive_skill_points_55b77cd7",
+      "pattern": "\\+(\\d) weapon set passive skill points",
+      "vendor_pattern": "^%+(%d) weapon set passive skill points$",
+      "mods": [
+        {
+          "name": "WeaponSetPassivePoints",
           "type": "BASE",
           "value": "$1"
         }
@@ -13566,6 +13838,30 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_enemies_drenched_by_hydrosphere_have_col_90943a28",
+      "pattern": "enemies drenched by hydrosphere have cold and lightning exposure, applying (-\\d+)% to resistances",
+      "vendor_pattern": "^enemies drenched by hydrosphere have cold and lightning exposure, applying (%-%d+)%% to resistances$",
+      "mods": [
+        {
+          "name": "ExtraSkillStat",
+          "type": "LIST",
+          "value": {
+            "key": "water_sphere_cold_lightning_exposure_%",
+            "value": "$1"
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Hydrosphere"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_enemies_have_an_accuracy_penalty_against_2fff706b",
@@ -16205,6 +16501,80 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_exposure_you_inflict_applies_an_extra_d_96e686a2",
+      "pattern": "exposure you inflict applies an extra (-?\\d+)% to the affected resistance",
+      "vendor_pattern": "^exposure you inflict applies an extra (%-?%d+)%% to the affected resistance$",
+      "mods": [
+        {
+          "name": "ExtraExposure",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_exposure_you_inflict_applies_at_least_d_d49f8f3c",
+      "pattern": "exposure you inflict applies at least (-\\d+)% to the affected resistance",
+      "vendor_pattern": "^exposure you inflict applies at least (%-%d+)%% to the affected resistance$",
+      "mods": [
+        {
+          "name": "ExposureMin",
+          "type": "OVERRIDE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_exposure_you_inflict_lowers_resistances_1b3b40f5",
+      "pattern": "exposure you inflict lowers resistances by an additional (-?\\d+)%",
+      "vendor_pattern": "^exposure you inflict lowers resistances by an additional (%-?%d+)%%$",
+      "mods": [
+        {
+          "name": "ExtraExposure",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_exposure_you_inflict_lowers_the_affected_394fee55",
+      "pattern": "exposure you inflict lowers the affected resistance by an additional (-?\\d+)%",
+      "vendor_pattern": "^exposure you inflict lowers the affected resistance by an additional (%-?%d+)%%$",
+      "mods": [
+        {
+          "name": "ExtraExposure",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_exsanguinate_chains_an_additional_d_time_45448c87",
       "pattern": "exsanguinate chains an additional (\\d+) times",
       "vendor_pattern": "^exsanguinate chains an additional (%d+) times",
@@ -16644,6 +17014,28 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_fire_exposure_you_inflict_applies_an_ext_983dc205",
+      "pattern": "fire exposure you inflict applies an extra (-?\\d+)% to fire resistance",
+      "vendor_pattern": "^fire exposure you inflict applies an extra (%-?%d+)%% to fire resistance$",
+      "mods": [
+        {
+          "name": "ExtraFireExposure",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_fire_exposure_you_inflict_lowers_total_f_ba254000",
@@ -20253,6 +20645,27 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_gain_unholy_might_on_block_for_d_seconds_5cb2bfc2",
+      "pattern": "gain unholy might on block for (?:\\d) seconds",
+      "vendor_pattern": "^gain unholy might on block for (%d) seconds$",
+      "mods": [
+        {
+          "name": "Condition:UnholyMight",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "BlockedRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_gain_ward_instead_of_d_of_armour_and_eva_d6b23cd6",
       "pattern": "gain ward instead of (\\d+)% of armour and evasion rating from equipped body armour",
       "vendor_pattern": "^gain ward instead of (%d+)%% of armour and evasion rating from equipped body armour$",
@@ -20624,6 +21037,21 @@
               "skillName": "Gas Grenade"
             }
           ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_general_s_cry_has_d_to_maximum_number_of_f3beca80",
+      "pattern": "general's cry has ([+-]\\d) to maximum number of mirage warriors",
+      "vendor_pattern": "^general's cry has ([%+%-]%d) to maximum number of mirage warriors$",
+      "mods": [
+        {
+          "name": "GeneralsCryDoubleMaxCount",
+          "type": "BASE",
+          "value": "$1"
         }
       ],
       "verified": false,
@@ -21221,6 +21649,36 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_has_d_to_evasion_rating_per_player_level_2f533c27",
+      "pattern": "has ([+-]\\d+) to evasion rating per player level",
+      "vendor_pattern": "^has ([%+%-]%d+) to evasion rating per player level$",
+      "mods": [
+        {
+          "name": "EvasionPerLevel",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_has_d_to_maximum_energy_shield_per_playe_00a73ee4",
+      "pattern": "has ([+-]\\d+) to maximum energy shield per player level",
+      "vendor_pattern": "^has ([%+%-]%d+) to maximum energy shield per player level$",
+      "mods": [
+        {
+          "name": "EnergyShieldPerLevel",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_has_no_accuracy_penalty_from_range_290727d4",
       "pattern": "has no accuracy penalty from range",
       "vendor_pattern": "^has no accuracy penalty from range$",
@@ -21311,6 +21769,21 @@
         {
           "name": "HeraldStormFrequency",
           "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_hexes_you_inflict_have_d_to_maximum_doom_e36395e5",
+      "pattern": "hexes you inflict have ([+-]\\d+) to maximum doom",
+      "vendor_pattern": "^hexes you inflict have ([%+%-]%d+) to maximum doom$",
+      "mods": [
+        {
+          "name": "MaxDoom",
+          "type": "BASE",
           "value": "$1"
         }
       ],
@@ -22689,6 +23162,28 @@
             {
               "type": "Condition",
               "var": "ConsumedCorpseRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_if_you_have_3_primordial_jewels_can_summ_45eaaa98",
+      "pattern": "if you have 3 primordial jewels, can summon up to (\\d) additional golems? at a time",
+      "vendor_pattern": "^if you have 3 primordial jewels, can summon up to (%d) additional golems? at a time$",
+      "mods": [
+        {
+          "name": "ActiveGolemLimit",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 3.0,
+              "var": "PrimordialItem"
             }
           ]
         }
@@ -25473,6 +25968,28 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_lightning_exposure_you_inflict_applies_a_47e9b99b",
+      "pattern": "lightning exposure you inflict applies an extra (-?\\d+)% to lightning resistance",
+      "vendor_pattern": "^lightning exposure you inflict applies an extra (%-?%d+)%% to lightning resistance$",
+      "mods": [
+        {
+          "name": "ExtraLightningExposure",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_lightning_exposure_you_inflict_lowers_to_2925fcb8",
@@ -30740,6 +31257,42 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_nearby_enemies_have_d_to_all_resistances_058cfc28",
+      "pattern": "nearby enemies have (-\\d+)% to all resistances",
+      "vendor_pattern": "^nearby enemies have (%-%d+)%% to all resistances$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ElementalResist",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ChaosResist",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_nearby_enemies_have_fire_cold_and_lightn_470ecaaf",
       "pattern": "nearby enemies have fire, cold and lightning exposure while you have phasing, applying -(\\d+)% to those resistances",
       "vendor_pattern": "^nearby enemies have fire, cold and lightning exposure while you have phasing, applying %-(%d+)%% to those resistances$",
@@ -32897,6 +33450,30 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_projectiles_chain_d_times_while_you_have_451abd5b",
+      "pattern": "projectiles chain \\+(\\d) times while you have phasing",
+      "vendor_pattern": "^projectiles chain %+(%d) times while you have phasing$",
+      "mods": [
+        {
+          "name": "ChainCountMax",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "Phasing"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_projectiles_deal_d_increased_damage_for_b3bc51d0",
       "pattern": "projectiles deal (\\d+)% increased damage for each remaining chain",
       "vendor_pattern": "^projectiles deal (%d+)%% increased damage for each remaining chain$",
@@ -33243,6 +33820,21 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_projectiles_split_towards_d_targets_de7c5d47",
+      "pattern": "projectiles split towards \\+(\\d) targets",
+      "vendor_pattern": "^projectiles split towards %+(%d) targets$",
+      "mods": [
+        {
+          "name": "SplitCount",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_quality_does_not_increase_defences_050713d7",
@@ -35863,6 +36455,21 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_skills_chain_d_times_8a5488f6",
+      "pattern": "skills chain \\+(\\d) times",
+      "vendor_pattern": "^skills chain %+(%d) times$",
+      "mods": [
+        {
+          "name": "ChainCountMax",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_skills_cost_d_rage_b346d49e",
       "pattern": "skills cost \\+(\\d+) rage",
       "vendor_pattern": "^skills cost %+(%d+) rage$",
@@ -36151,6 +36758,21 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_skills_supported_by_intensify_have_d_to_bf322e2d",
+      "pattern": "skills supported by intensify have \\+(\\d) to maximum intensity",
+      "vendor_pattern": "^skills supported by intensify have %+(%d) to maximum intensity$",
+      "mods": [
+        {
+          "name": "Multiplier:IntensityLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_skills_supported_by_nightblade_have_d_in_ccf70256",
       "pattern": "skills supported by nightblade have (\\d+)% increased effect of elusive",
       "vendor_pattern": "^skills supported by nightblade have (%d+)%% increased effect of elusive$",
@@ -36173,6 +36795,21 @@
         {
           "name": "SealGainFrequency",
           "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_skills_supported_by_unleash_have_d_to_ma_b95041c5",
+      "pattern": "skills supported by unleash have \\+(\\d) to maximum number of seals",
+      "vendor_pattern": "^skills supported by unleash have %+(%d) to maximum number of seals$",
+      "mods": [
+        {
+          "name": "SealCount",
+          "type": "BASE",
           "value": "$1"
         }
       ],
@@ -37225,6 +37862,21 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_spells_which_can_gain_intensity_have_d_t_202344cf",
+      "pattern": "spells which can gain intensity have \\+(\\d) to maximum intensity",
+      "vendor_pattern": "^spells which can gain intensity have %+(%d) to maximum intensity$",
+      "mods": [
+        {
+          "name": "Multiplier:IntensityLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_spend_energy_shield_before_mana_for_skil_2ca98804",
@@ -39737,6 +40389,27 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_unearth_spawns_corpses_with_d_level_d3b60fbe",
+      "pattern": "unearth spawns corpses with ([+-]\\d) level",
+      "vendor_pattern": "^unearth spawns corpses with ([%+%-]%d) level$",
+      "mods": [
+        {
+          "name": "CorpseLevel",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Unearth"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_unholy_might_a74bd298",
       "pattern": "unholy might",
       "vendor_pattern": "^unholy might$",
@@ -40721,6 +41394,54 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_wave_of_conviction_s_exposure_applies_an_e55f9a79",
+      "pattern": "wave of conviction's exposure applies an extra (-\\d+)% to elemental resistance",
+      "vendor_pattern": "^wave of conviction's exposure applies an extra (%-%d+)%% to elemental resistance$",
+      "mods": [
+        {
+          "name": "ExtraSkillStat",
+          "type": "LIST",
+          "value": {
+            "key": "purge_expose_resist_%_matching_highest_element_damage",
+            "value": "$1"
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Wave of Conviction"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_wave_of_conviction_s_exposure_applies_d_942d7f13",
+      "pattern": "wave of conviction's exposure applies (-\\d+)% elemental resistance",
+      "vendor_pattern": "^wave of conviction's exposure applies (%-%d+)%% elemental resistance$",
+      "mods": [
+        {
+          "name": "ExtraSkillStat",
+          "type": "LIST",
+          "value": {
+            "key": "purge_expose_resist_%_matching_highest_element_damage",
+            "value": "$1"
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Wave of Conviction"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_when_an_enemy_hit_deals_elemental_damage_5a9f2fca",
       "pattern": "when an enemy hit deals elemental damage to you, their resistance to those elements becomes zero for (?:\\d+) seconds",
       "vendor_pattern": "^when an enemy hit deals elemental damage to you, their resistance to those elements becomes zero for (%d+) seconds$",
@@ -41455,6 +42176,35 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_with_a_murderous_eye_jewel_socketed_inti_a382d493",
+      "pattern": "with a murderous eye jewel socketed, intimidate enemies for (?:\\d) seconds on hit with attacks",
+      "vendor_pattern": "^with a murderous eye jewel socketed, intimidate enemies for (%d) seconds on hit with attacks$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Intimidated",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "HaveMurderousEyeJewelIn{SlotName}"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_with_a_murderous_eye_jewel_socketed_mele_70dbe463",
       "pattern": "with a murderous eye jewel socketed, melee attacks grant (?:\\d+) rage on hit, no more than once every second",
       "vendor_pattern": "^with a murderous eye jewel socketed, melee attacks grant (%d+) rage on hit, no more than once every second$",
@@ -41467,6 +42217,70 @@
             {
               "type": "Condition",
               "var": "HaveMurderousEyeJewelIn{SlotName}"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_with_a_searching_eye_jewel_socketed_blin_8dfa6b60",
+      "pattern": "with a searching eye jewel socketed, blind enemies for (?:\\d) seconds on hit with attacks",
+      "vendor_pattern": "^with a searching eye jewel socketed, blind enemies for (%d) seconds on hit with attacks$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Blinded",
+                "type": "FLAG",
+                "value": true,
+                "flags": [
+                  "Attack"
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "HaveSearchingEyeJewelIn{SlotName}"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_with_a_searching_eye_jewel_socketed_maim_9989f0c2",
+      "pattern": "with a searching eye jewel socketed, maim enemies for (?:\\d) seconds on hit with attacks",
+      "vendor_pattern": "^with a searching eye jewel socketed, maim enemies for (%d) seconds on hit with attacks$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Maimed",
+                "type": "FLAG",
+                "value": true,
+                "flags": [
+                  "Attack"
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "HaveSearchingEyeJewelIn{SlotName}"
             }
           ]
         }
