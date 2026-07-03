@@ -685,6 +685,8 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
         // statList/percentVar/actor/base/limit/floor 形态无落点，字段超集整条跳过。
         "PercentStat" => &["stat", "percent"],
         "MultiplierThreshold" => &["var", "threshold", "upper"],
+        // statList/thresholdStat/thresholdPercent(Var)/actor 形态无落点，整条跳过。
+        "StatThreshold" => &["stat", "threshold", "upper"],
         // includeTransfigured 编译侧忽略（PoE2 无变体宝石，gem name→gameId
         // 等值退化为名字等值）；partialMatch/summonSkill/neg 零出现，不放行。
         "SkillName" => &["skillName", "skillNameList", "includeTransfigured"],

@@ -188,6 +188,20 @@ pub enum ModTag {
         /// `true` = within（`stat ≤ threshold` 生效）；`false` = further（`≥` 生效）。
         upper: bool,
     },
+    /// 按已算出 stat 是否越阈的二元 gate（V2s4；PoB2 `StatThreshold` tag，
+    /// ModStore.lua:556-573 经 GetStat 读 actor output）。与
+    /// [`ModTag::MultiplierThreshold`] 同构，读数换成 [`CalcConfig::stat`]
+    /// 快照（编排层回填；缺键＝0，与 vendor output 缺 stat 同语义——如
+    /// `EnergyShield≥1` gate 在无 ES 时 vendor 同样关闭）。vendor 的
+    /// `statList`/`thresholdStat`/`thresholdPercent(Var)`/`actor` 形态由
+    /// 抽取器白名单挡在门外。
+    StatThreshold {
+        stat: String,
+        threshold: f64,
+        /// vendor `tag.upper`：`true` = `stat ≤ threshold` 生效；`false`（缺省）
+        /// = `stat ≥ threshold` 生效。
+        upper: bool,
+    },
     DamageType(DamageType),
     SkillTypes(SkillTypes),
     /// 具名技能限定（PoB2 `SkillName` tag，ModStore.lua:752-780）：mod 仅在
@@ -372,6 +386,19 @@ impl Modifier {
                     stat >= *threshold
                 }
             }
+            // 同构 gate，读数换 stats 快照（vendor :556-573 GetStat 分支）。
+            ModTag::StatThreshold {
+                stat,
+                threshold,
+                upper,
+            } => {
+                let value = cfg.stat(stat);
+                if *upper {
+                    value <= *threshold
+                } else {
+                    value >= *threshold
+                }
+            }
             ModTag::DamageType(damage_type) => cfg.damage_type == Some(*damage_type),
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
@@ -506,9 +533,11 @@ impl Modifier {
                     let dist = cfg.skill_distance?;
                     value *= ramp_factor(ramp, dist)?;
                 }
-                // MultiplierThreshold / SkillName 是二元 gate（在 matches 里求值），不缩放数值。
+                // MultiplierThreshold / StatThreshold / SkillName 是二元 gate
+                //（在 matches 里求值），不缩放数值。
                 ModTag::Condition { .. }
                 | ModTag::MultiplierThreshold { .. }
+                | ModTag::StatThreshold { .. }
                 | ModTag::GlobalLimit { .. }
                 | ModTag::DamageType(_)
                 | ModTag::SkillTypes(_)

@@ -737,6 +737,44 @@ fn percent_stat_scales_by_stat_percentage_with_ceil() {
     assert_eq!(plain.effective_number(ctx), Some(666.0));
 }
 
+/// StatThreshold 二元 gate（V2s4；vendor ModStore.lua:556-573）：读 cfg.stats
+/// 快照在 matches 判定——FLAG 查询路径同样过闸（gate 在 matches 而非求值期，
+/// 这是与 MultiplierThreshold 同构、与 PerStat 求值期消费的关键差别）。
+#[test]
+fn stat_threshold_gates_in_matches_for_all_query_paths() {
+    let mut db = ModDb::new();
+    // 「cannot be stunned if you have at least 5 crab barriers」形态（FLAG）。
+    db.add_mod(
+        Modifier::flag("StunImmune").with_tag(ModTag::StatThreshold {
+            stat: "CrabBarriers".into(),
+            threshold: 5.0,
+            upper: false,
+        }),
+    );
+    // 数值路径：「30% more damage while energy shield is at most 100」（upper）。
+    db.add_mod(
+        Modifier::number("Damage", ModType::More, 30.0).with_tag(ModTag::StatThreshold {
+            stat: "EnergyShield".into(),
+            threshold: 100.0,
+            upper: true,
+        }),
+    );
+    let names = [ModName::from("Damage")];
+
+    // 无快照（缺键=0）：lower gate 关（0 < 5），upper gate 开（0 ≤ 100）——
+    // 与 vendor output 缺 stat（GetStat=0）逐值一致。
+    let cfg = CalcConfig::new();
+    assert!(!db.flag(&cfg, ModName::from("StunImmune")));
+    assert_eq!(db.more(&cfg, &names), 1.3);
+
+    // 快照越阈：lower 开、upper 关。
+    let cfg = CalcConfig::new()
+        .with_stat("CrabBarriers", 5.0)
+        .with_stat("EnergyShield", 250.0);
+    assert!(db.flag(&cfg, ModName::from("StunImmune")));
+    assert_eq!(db.more(&cfg, &names), 1.0);
+}
+
 /// PerStat 的 limit / limit_var / actor 维度（与 M3 Multiplier 形态统一）。
 #[test]
 fn per_stat_applies_limits_and_actor_dimension() {

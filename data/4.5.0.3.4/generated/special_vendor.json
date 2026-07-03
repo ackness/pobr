@@ -8959,6 +8959,38 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_chance_to_suppress_spell_damage_if_you_4bb9e590",
+      "pattern": "+(\\d+)% chance to suppress spell damage if your e?q?u?i?p?p?e?d? ?boots, helmet and gloves have evasion",
+      "vendor_pattern": "^+(%d+)%% chance to suppress spell damage if your e?q?u?i?p?p?e?d? ?boots, helmet and gloves have evasion$",
+      "mods": [
+        {
+          "name": "SpellSuppressionChance",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "EvasionOnBoots",
+              "threshold": 1.0
+            },
+            {
+              "type": "StatThreshold",
+              "stat": "EvasionOnHelmet",
+              "threshold": 1.0
+            },
+            {
+              "type": "StatThreshold",
+              "stat": "EvasionOnGloves",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_energy_shield_gained_on_kill_per_level_b12f1660",
       "pattern": "\\+(\\d+) energy shield gained on kill per level",
       "vendor_pattern": "^%+(%d+) energy shield gained on kill per level$",
@@ -9098,6 +9130,53 @@
               "type": "Condition",
               "neg": true,
               "var": "Convergence"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_increased_armour_and_energy_shield_fro_35fdaad6",
+      "pattern": "(\\d+)% increased armour and energy shield from equipped body armour if equipped helmet, gloves and boots all have armour and energy shield",
+      "vendor_pattern": "^(%d+)%% increased armour and energy shield from equipped body armour if equipped helmet, gloves and boots all have armour and energy shield$",
+      "mods": [
+        {
+          "name": "Body ArmourESAndArmour",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "ArmourOnGloves",
+              "threshold": 1.0
+            },
+            {
+              "type": "StatThreshold",
+              "stat": "EnergyShieldOnGloves",
+              "threshold": 1.0
+            },
+            {
+              "type": "StatThreshold",
+              "stat": "ArmourOnHelmet",
+              "threshold": 1.0
+            },
+            {
+              "type": "StatThreshold",
+              "stat": "EnergyShieldOnHelmet",
+              "threshold": 1.0
+            },
+            {
+              "type": "StatThreshold",
+              "stat": "ArmourOnBoots",
+              "threshold": 1.0
+            },
+            {
+              "type": "StatThreshold",
+              "stat": "EnergyShieldOnBoots",
+              "threshold": 1.0
             }
           ]
         }
@@ -33837,6 +33916,31 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_projectiles_that_have_chained_gain_d_of_14f4d255",
+      "pattern": "projectiles that have chained gain (\\d+)% of non-chaos damage as extra chaos damage",
+      "vendor_pattern": "^projectiles that have chained gain (%d+)%% of non%-chaos damage as extra chaos damage$",
+      "mods": [
+        {
+          "name": "NonChaosDamageGainAsChaos",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "Chain",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_quality_does_not_increase_defences_050713d7",
       "pattern": "quality does not increase defences",
       "vendor_pattern": "^quality does not increase defences$",
@@ -41756,6 +41860,36 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_while_minions_have_energy_shield_their_h_ef5aef98",
+      "pattern": "while minions have energy shield, their hits ignore monster elemental resistances",
+      "vendor_pattern": "^while minions have energy shield, their hits ignore monster elemental resistances$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "IgnoreElementalResistances",
+                "type": "FLAG",
+                "value": true,
+                "tags": [
+                  {
+                    "type": "StatThreshold",
+                    "stat": "EnergyShield",
+                    "threshold": 1.0
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_while_not_on_full_life_sacrifice_d_of_m_72dd5b66",
       "pattern": "while not on full life, sacrifice ([\\d.]+)% of ?m?a?x?i?m?u?m? mana per second to recover that much life",
       "vendor_pattern": "^while not on full life, sacrifice ([%d%.]+)%% of ?m?a?x?i?m?u?m? mana per second to recover that much life$",
@@ -44049,6 +44183,29 @@
               "type": "ActorCondition",
               "actor": "enemy",
               "var": "Cursed"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_you_take_d_reduced_extra_damage_from_cri_763e5adf",
+      "pattern": "you take (\\d+)% reduced extra damage from critical hits while you have no power charges",
+      "vendor_pattern": "^you take (%d+)%% reduced extra damage from critical hits while you have no power charges$",
+      "mods": [
+        {
+          "name": "ReduceCritExtraDamage",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "PowerCharges",
+              "threshold": 0.0,
+              "upper": true
             }
           ]
         }

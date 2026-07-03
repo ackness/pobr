@@ -73,6 +73,13 @@ pub struct CalcConfig {
     pub damage_type: Option<DamageType>,
     pub conditions: HashMap<String, bool>,
     pub multipliers: HashMap<String, f64>,
+    /// 已算出 stat 快照（V2s4；PoB2 `StatThreshold` tag 经 GetStat 读 actor
+    /// **output**，ModStore.lua:556-573）。由编排层在来源注入后回填（与
+    /// `multipliers` 的 6c 回填同模式）；缺键＝0（vendor output 缺 stat 同为 0）。
+    /// 与 [`EvalContext`] 的 `stat_lookup`（PerStat/PercentStat 求值通道）是同一
+    /// 语义的两个入口——matches 侧无 EvalContext，故 gate 类 tag 走本快照；
+    /// 两通道真正接线时应统一回填源。
+    pub stats: HashMap<String, f64>,
     /// 额外的伤害缩放 ModName（按主技能关键词 / 武器类别派生，如 `GrenadeDamage`、
     /// `CrossbowDamage`）。`damage::aggregate_inc_more` 把它们纳入通用增伤桶，使
     /// `increased Grenade Damage` / `Damage with Crossbows` 对该技能生效。
@@ -259,6 +266,17 @@ impl CalcConfig {
 
     pub fn multiplier(&self, name: &str) -> f64 {
         self.multipliers.get(name).copied().unwrap_or(0.0)
+    }
+
+    /// 读已算出 stat 快照（见 [`CalcConfig::stats`]；缺键＝0）。
+    pub fn stat(&self, name: &str) -> f64 {
+        self.stats.get(name).copied().unwrap_or(0.0)
+    }
+
+    /// 写入已算出 stat 快照（编排层回填 / 测试构造）。
+    pub fn with_stat(mut self, name: impl Into<String>, value: f64) -> Self {
+        self.stats.insert(name.into(), value);
+        self
     }
 
     /// 写入跨 actor multiplier 快照（见 [`CalcConfig::actor_multipliers`]；键形如

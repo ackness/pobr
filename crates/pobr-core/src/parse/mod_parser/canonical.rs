@@ -137,6 +137,14 @@ fn canonical_tag(tag: &ModTag) -> String {
             "MultiplierThreshold(var={var},threshold={},upper={upper})",
             fmt_f64(*threshold)
         ),
+        ModTag::StatThreshold {
+            stat,
+            threshold,
+            upper,
+        } => format!(
+            "StatThreshold(stat={stat},threshold={},upper={upper})",
+            fmt_f64(*threshold)
+        ),
     }
 }
 

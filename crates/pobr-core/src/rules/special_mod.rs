@@ -508,6 +508,8 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 ///   `base`/`limit`/`floor` 形态由抽取器白名单挡在门外）；
 /// - `MultiplierThreshold`（**字面** var/threshold/upper 二元 gate，运行时
 ///   [`ModTag::MultiplierThreshold`] 已接通）；
+/// - `StatThreshold`（V2s4：**字面** stat/threshold/upper 二元 gate，读
+///   [`CalcConfig::stat`] 快照，运行时 [`ModTag::StatThreshold`]）；
 /// - `SkillName`（V2：`skillName` 单名 / `skillNameList` 列表统一小写收编为
 ///   [`ModTag::SkillName`]，按 `cfg.skill_name` 等值 gate；`includeTransfigured`
 ///   忽略——PoE2 无变体宝石，vendor 的 gem name→gameId 等值退化为名字等值。
@@ -624,6 +626,27 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 .unwrap_or(false);
             Some(ModTag::MultiplierThreshold {
                 var,
+                threshold,
+                upper,
+            })
+        }
+        "StatThreshold" => {
+            // 字面 stat/threshold/upper（vendor `statList`/`thresholdStat`/
+            // `thresholdPercent(Var)`/`actor` 形态由抽取器白名单挡在门外）。
+            // gate 在 matches 读 cfg.stats 快照——对 FLAG/LIST/OVERRIDE 全
+            // 查询路径生效（区别于求值期 tag）。
+            let stat = scalar_text(tag.fields.get("stat")?)?;
+            if stat.starts_with('$') {
+                return None;
+            }
+            let threshold = tag.fields.get("threshold").and_then(scalar_number)?;
+            let upper = tag
+                .fields
+                .get("upper")
+                .and_then(scalar_bool)
+                .unwrap_or(false);
+            Some(ModTag::StatThreshold {
+                stat,
                 threshold,
                 upper,
             })
@@ -985,6 +1008,29 @@ mod tests {
             vec![ModTag::PercentStat {
                 stat: "Life".into(),
                 percent: None,
+            }]
+        );
+    }
+
+    /// StatThreshold tag 映射（V2s4）：读 cfg.stats 快照的二元 gate。
+    #[test]
+    fn stat_threshold_tag_maps() {
+        let d = def(
+            r#"{"id":"t","pattern":"gain (\\d+) rage on hit while at maximum frenzy charges","mods":[
+                {"name":"RageOnHit","type":"BASE","value":"$1",
+                 "tags":[{"type":"StatThreshold","stat":"FrenzyCharges","threshold":3.0}]}],"batch":"V2"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match("gain 2 rage on hit while at maximum frenzy charges", &reg)
+            .unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::StatThreshold {
+                stat: "FrenzyCharges".into(),
+                threshold: 3.0,
+                upper: false,
             }]
         );
     }

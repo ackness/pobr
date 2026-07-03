@@ -544,6 +544,19 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
                 threshold
             ),
         },
+        ModTag::StatThreshold {
+            stat,
+            threshold,
+            upper,
+        } => TagExplain {
+            kind: "StatThreshold".to_string(),
+            detail: format!(
+                "仅当已算出属性 `{}` {} {} 时生效",
+                stat,
+                if *upper { "≤" } else { "≥" },
+                threshold
+            ),
+        },
         ModTag::GlobalLimit { value, key } => TagExplain {
             kind: "GlobalLimit".to_string(),
             detail: format!("全局累计上限 {value}（记账桶 `{key}`）"),
