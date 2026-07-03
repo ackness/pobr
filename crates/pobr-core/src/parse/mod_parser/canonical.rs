@@ -111,6 +111,10 @@ fn canonical_tag(tag: &ModTag) -> String {
             fmt_f64(*div),
             limit.map(fmt_f64),
         ),
+        ModTag::PercentStat { stat, percent } => format!(
+            "PercentStat(stat={stat},percent={:?})",
+            percent.map(fmt_f64),
+        ),
         ModTag::GlobalLimit { value, key } => {
             format!("GlobalLimit(value={},key={key})", fmt_f64(*value))
         }

@@ -502,6 +502,10 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 ///   `cfg.multiplier(var)`）；
 /// - `PerStat`（**字面** stat/div/limit；按 actor 已算出 stat 线性缩放，读
 ///   `EvalContext::stat_lookup`——运行时 [`ModTag::PerStat`] M4-T1 已接通）；
+/// - `PercentStat`（V2 slice 2：**字面** stat/percent；按已算出 stat 的百分比
+///   缩放，`value = ceil(value × stat × percent/100)`，运行时
+///   [`ModTag::PercentStat`]。vendor 的 `statList`/`percentVar`/`actor`/
+///   `base`/`limit`/`floor` 形态由抽取器白名单挡在门外）；
 /// - `MultiplierThreshold`（**字面** var/threshold/upper 二元 gate，运行时
 ///   [`ModTag::MultiplierThreshold`] 已接通）；
 /// - `SkillName`（V2：`skillName` 单名 / `skillNameList` 列表统一小写收编为
@@ -511,7 +515,7 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 ///   白名单挡在门外）。
 ///
 /// **不可映射**（pobr 无落点）：`ItemCondition` / `GlobalEffect` /
-/// `PercentStat` / 带 `$n` 字段值的 `Multiplier`——返回 `None`，对应条目保持
+/// 带 `$n` 字段值的 `Multiplier`——返回 `None`，对应条目保持
 /// `verified:false`（保守门控，不误产可能错误的 tag）。
 fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
     match tag.tag_type.as_str() {
@@ -572,6 +576,22 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 limit_var: None,
                 actor: None,
             })
+        }
+        "PercentStat" => {
+            // 字面 stat/percent（vendor statList/percentVar/actor/base/limit/floor
+            // 形态由抽取器白名单挡在门外）。percent 缺省 = vendor `(percent and
+            // percent/100 or 1)` 的 or-1 侧（mult = stat 本身）。
+            let stat = scalar_text(tag.fields.get("stat")?)?;
+            if stat.starts_with('$') {
+                return None;
+            }
+            // percent 出现但非数字（如手写 overlay 误填 `$n`）→ 整 tag 不可映射，
+            // 不能静默降级为 or-1 侧（mult 会差 100 倍）。
+            let percent = match tag.fields.get("percent") {
+                None => None,
+                Some(v) => Some(scalar_number(v)?),
+            };
+            Some(ModTag::PercentStat { stat, percent })
         }
         "SkillName" => {
             // skillName 单名或 skillNameList 列表二选一（vendor ModStore.lua:752-780），
@@ -928,6 +948,43 @@ mod tests {
                 limit: None,
                 limit_var: None,
                 actor: None,
+            }]
+        );
+    }
+
+    /// PercentStat tag 映射（V2 slice 2）：按已算出 stat 的百分比缩放，
+    /// percent 可缺省（vendor or-1 侧）。
+    #[test]
+    fn percent_stat_tag_maps() {
+        let d = def(
+            r#"{"id":"t","pattern":"gain accuracy equal to (\\d+)% of dexterity","mods":[
+                {"name":"Accuracy","type":"BASE","value":1,
+                 "tags":[{"type":"PercentStat","stat":"Dex","percent":40.0}]}],"batch":"V2"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match("gain accuracy equal to 40% of dexterity", &reg)
+            .unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::PercentStat {
+                stat: "Dex".into(),
+                percent: Some(40.0),
+            }]
+        );
+
+        // percent 缺省 → None（运行时 mult = stat 本身）。
+        let d = def(r#"{"id":"t2","pattern":"noop","mods":[
+                {"name":"X","type":"BASE","value":1,
+                 "tags":[{"type":"PercentStat","stat":"Life"}]}],"batch":"V2"}"#);
+        let r = rules(vec![d]);
+        let m = r.try_match("noop", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::PercentStat {
+                stat: "Life".into(),
+                percent: None,
             }]
         );
     }

@@ -142,6 +142,20 @@ pub enum ModTag {
         /// 查 `cfg.actor_multipliers["<actor>.<stat>"]` 快照，缺键＝0）。
         actor: Option<ActorRef>,
     },
+    /// 按 actor 已算出 stat 的**百分比**缩放（V2 slice 2；PoB2 `PercentStat`
+    /// tag，ModStore.lua:506-555）。与 [`ModTag::PerStat`] 同读
+    /// [`EvalContext::stat_lookup`]，区别在结算形状：
+    /// `value = ceil(value × stat × percent/100)`——**ceil 作用在最终贡献**
+    /// （vendor :549 `m_ceil(value * mult + (tag.base or 0))`），而 PerStat 是
+    /// floor 作用在乘数。vendor 的 `statList`/`percentVar`/`actor`/`base`/
+    /// `limit`/`floor` 形态本批不做（DSL 白名单挡在门外，故 base 恒 0）。
+    PercentStat {
+        /// output 表 stat 名（如 `Life`/`EnergyShield`）。
+        stat: String,
+        /// 百分比（vendor `tag.percent`）；缺省 = vendor `(percent and
+        /// percent/100 or 1)` 的 or-1 侧（mult = stat 本身）。
+        percent: Option<f64>,
+    },
     /// 跨 mod 累计限幅（M4-T1 W-A3；PoB2 EvalMod 尾段 ModStore.lua:895-905
     /// `tag.globalLimit`/`tag.globalLimitKey`）：同 `key` 的 mod 生效值在**单次
     /// 聚合查询内**（vendor 每次 Sum/More/Tabulate 调用新建 `globalLimits` 表）
@@ -342,6 +356,7 @@ impl Modifier {
             // 数值缩放 / 累计限幅 / 距离插值 tag 不参与匹配过滤（求值期消费）。
             ModTag::Multiplier { .. }
             | ModTag::PerStat { .. }
+            | ModTag::PercentStat { .. }
             | ModTag::GlobalLimit { .. }
             | ModTag::DistanceRamp { .. } => true,
             // 阈值 gate（vendor ModStore.lua:559-573）：stat 落在错误一侧 → 不生效。
@@ -471,6 +486,15 @@ impl Modifier {
                     let effective_limit =
                         limit.or_else(|| limit_var.as_ref().map(|lv| cfg.multiplier(lv)));
                     value *= effective_limit.map_or(count, |max| count.min(max));
+                }
+                ModTag::PercentStat { stat, percent } => {
+                    // vendor ModStore.lua:506-555：`mult = stat × (percent/100 or 1)`，
+                    // `value = m_ceil(value × mult + (tag.base or 0))`——base 由 DSL
+                    // 白名单挡在门外恒 0；ceil 作用于最终贡献（多 tag 串联时 vendor
+                    // 同样逐 tag 结算，本循环顺序一致）。
+                    let base = ctx.stat(stat);
+                    let mult = base * percent.map_or(1.0, |p| p / 100.0);
+                    value = (value * mult).ceil();
                 }
                 ModTag::DistanceRamp { ramp } => {
                     // vendor ModStore.lua:574-590：`skillDist` 缺位 → 整条 mod 跳过

@@ -707,6 +707,36 @@ fn per_stat_reads_output_snapshot_via_eval_context() {
     assert_eq!(db.sum(ModType::Inc, ctx, &names), 54.0);
 }
 
+/// PercentStat 按已算出 stat 的百分比缩放（V2 slice 2；vendor ModStore.lua:506-555）：
+/// `value = ceil(value × stat × percent/100)`——ceil 作用在最终贡献（区别 PerStat
+/// 的 floor 作用在乘数）；无快照 → stat=0 → 贡献 0（保守）；percent 缺省 → mult=stat。
+#[test]
+fn percent_stat_scales_by_stat_percentage_with_ceil() {
+    use pobr_core::EvalContext;
+    let cfg = CalcConfig::new();
+    // 「gain Accuracy equal to 40% of Dexterity」形态：value=1 × Dex×40%。
+    let m = Modifier::number("Accuracy", ModType::Base, 1.0).with_tag(ModTag::PercentStat {
+        stat: "Dex".into(),
+        percent: Some(40.0),
+    });
+
+    // 无 output 快照 → stat=0 → ceil(0)=0。
+    assert_eq!(m.effective_number(&cfg), Some(0.0));
+
+    // Dex=333 → 1 × 333×0.4 = 133.2 → ceil = 134（vendor m_ceil 作用最终值）。
+    let lookup = |stat: &str| (stat == "Dex").then_some(333.0);
+    let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
+    assert_eq!(m.effective_number(ctx), Some(134.0));
+
+    // percent 缺省（vendor `(percent and percent/100 or 1)` 的 or-1 侧）→ mult=stat。
+    let plain = Modifier::number("X", ModType::Base, 2.0).with_tag(ModTag::PercentStat {
+        stat: "Dex".into(),
+        percent: None,
+    });
+    let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
+    assert_eq!(plain.effective_number(ctx), Some(666.0));
+}
+
 /// PerStat 的 limit / limit_var / actor 维度（与 M3 Multiplier 形态统一）。
 #[test]
 fn per_stat_applies_limits_and_actor_dimension() {

@@ -439,8 +439,48 @@ fn transform_mods(v: &serde_json::Value) -> Result<Vec<ModTemplateDef>, String> 
     arr.iter().map(transform_mod).collect()
 }
 
+/// PercentStat 捕获 percent 的等价改写：`value × stat × percent/100` 对
+/// value/percent 可交换——`value=1, percent=$n` ≡ `value=$n, percent=1`
+/// （vendor 主流形态 "gain X equal to (N)% of stat"，percent 来自捕获）。
+/// 改写后 tag 字段全字面量，走既有白名单；不满足形态（value≠1 / 多个捕获
+/// percent）→ None，条目按原路径落 `tag_field_capture` 跳过。
+fn rewrite_percent_capture(
+    obj: &serde_json::Map<String, serde_json::Value>,
+) -> Option<serde_json::Map<String, serde_json::Value>> {
+    if obj.get("value").and_then(serde_json::Value::as_f64) != Some(1.0) {
+        return None;
+    }
+    let tags = obj.get("tags")?.as_array()?;
+    let is_pure_capture = |v: &serde_json::Value| {
+        v.as_str()
+            .and_then(|s| s.strip_prefix('$'))
+            .is_some_and(|rest| rest.parse::<u32>().is_ok())
+    };
+    let hits: Vec<usize> = tags
+        .iter()
+        .enumerate()
+        .filter(|(_, t)| {
+            t.get("type").and_then(serde_json::Value::as_str) == Some("PercentStat")
+                && t.get("percent").is_some_and(&is_pure_capture)
+        })
+        .map(|(i, _)| i)
+        .collect();
+    let [idx] = hits[..] else { return None };
+    let capture = tags[idx].get("percent").cloned().unwrap();
+    let mut out = obj.clone();
+    out.insert("value".into(), capture);
+    let tags = out.get_mut("tags").unwrap().as_array_mut().unwrap();
+    tags[idx]
+        .as_object_mut()
+        .unwrap()
+        .insert("percent".into(), serde_json::json!(1.0));
+    Some(out)
+}
+
 fn transform_mod(v: &serde_json::Value) -> Result<ModTemplateDef, String> {
     let obj = v.as_object().ok_or("mod_not_object")?;
+    let rewritten = rewrite_percent_capture(obj);
+    let obj = rewritten.as_ref().unwrap_or(obj);
     for key in obj.keys() {
         if !matches!(
             key.as_str(),
@@ -481,6 +521,18 @@ fn transform_mod(v: &serde_json::Value) -> Result<ModTemplateDef, String> {
             .collect::<Result<Vec<_>, _>>()?,
         Some(_) => return Err("tags_not_array".into()),
     };
+    // 嵌套载荷 + 缩放 tag：vendor 会缩放内层 value.mod.value（ModStore.lua
+    // table 分支），但 pobr 的 list_nested 转发只透传不求值——放行会静默丢缩放。
+    if matches!(value, TemplateValueDef::Nested { .. })
+        && tags.iter().any(|t| {
+            matches!(
+                t.tag_type.as_str(),
+                "Multiplier" | "PerStat" | "PercentStat"
+            )
+        })
+    {
+        return Err("nested_scaling_tag".into());
+    }
     Ok(ModTemplateDef {
         name: TemplateNameDef::Literal(name.to_string()),
         mod_type: mod_type.to_string(),
@@ -620,6 +672,8 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
         "DamageType" => &["damageType"],
         "Multiplier" => &["var", "div", "limit"],
         "PerStat" => &["stat", "div", "limit"],
+        // statList/percentVar/actor/base/limit/floor 形态无落点，字段超集整条跳过。
+        "PercentStat" => &["stat", "percent"],
         "MultiplierThreshold" => &["var", "threshold", "upper"],
         // includeTransfigured 编译侧忽略（PoE2 无变体宝石，gem name→gameId
         // 等值退化为名字等值）；partialMatch/summonSkill/neg 零出现，不放行。

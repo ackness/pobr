@@ -286,6 +286,106 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_adds_d_of_your_maximum_energy_shield_as_33b196a9",
+      "pattern": "adds (\\d+)% of your maximum energy shield as cold damage to attacks with this weapon",
+      "vendor_pattern": "^adds (%d+)%% of your maximum energy shield as cold damage to attacks with this weapon$",
+      "mods": [
+        {
+          "name": "ColdMin",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "Condition",
+              "var": "{Hand}Attack"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
+        },
+        {
+          "name": "ColdMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "Condition",
+              "var": "{Hand}Attack"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_adds_d_of_your_maximum_mana_as_fire_dama_d266e20b",
+      "pattern": "adds (\\d+)% of your maximum mana as fire damage to attacks with this weapon",
+      "vendor_pattern": "^adds (%d+)%% of your maximum mana as fire damage to attacks with this weapon$",
+      "mods": [
+        {
+          "name": "FireMin",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            },
+            {
+              "type": "Condition",
+              "var": "{Hand}Attack"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
+        },
+        {
+          "name": "FireMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            },
+            {
+              "type": "Condition",
+              "var": "{Hand}Attack"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_adds_d_passive_skills_0663080b",
       "pattern": "adds (\\d+) passive skills",
       "vendor_pattern": "^adds (%d+) passive skills$",
@@ -1860,6 +1960,56 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_arc_and_crackling_lance_gains_added_cold_126d589b",
+      "pattern": "arc and crackling lance gains added cold damage equal to (\\d+)% of mana cost, if mana cost is not higher than the maximum you could spend",
+      "vendor_pattern": "^arc and crackling lance gains added cold damage equal to (%d+)%% of mana cost, if mana cost is not higher than the maximum you could spend$",
+      "mods": [
+        {
+          "name": "ColdMin",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ManaCost"
+            },
+            {
+              "type": "SkillName",
+              "includeTransfigured": true,
+              "skillNameList": [
+                "Arc",
+                "Crackling Lance"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "ColdMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ManaCost"
+            },
+            {
+              "type": "SkillName",
+              "includeTransfigured": true,
+              "skillNameList": [
+                "Arc",
+                "Crackling Lance"
+              ]
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_arc_chains_an_additional_d_times_f5a64ca8",
       "pattern": "arc chains an additional (\\d+) times",
       "vendor_pattern": "^arc chains an additional (%d+) times",
@@ -2568,6 +2718,46 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_attack_skills_have_added_lightning_damag_3fb9a05e",
+      "pattern": "attack skills have added lightning damage equal to (\\d+)% of maximum mana",
+      "vendor_pattern": "^attack skills have added lightning damage equal to (%d+)%% of maximum mana$",
+      "mods": [
+        {
+          "name": "LightningMin",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            }
+          ]
+        },
+        {
+          "name": "LightningMax",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Attack"
+          ],
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_attacks_against_you_always_hit_66d5de2c",
       "pattern": "attacks against you always hit",
       "vendor_pattern": "^attacks against you always hit$",
@@ -2719,6 +2909,74 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_attacks_have_added_maximum_lightning_dam_af8307f1",
+      "pattern": "attacks have added maximum lightning damage equal to (\\d+)% of maximum mana",
+      "vendor_pattern": "^attacks have added maximum lightning damage equal to (%d+)%% of maximum mana$",
+      "mods": [
+        {
+          "name": "LightningMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_attacks_have_added_physical_damage_equal_28f5b6da",
+      "pattern": "attacks have added physical damage equal to (\\d+)% of maximum life",
+      "vendor_pattern": "^attacks have added physical damage equal to (%d+)%% of maximum life$",
+      "mods": [
+        {
+          "name": "PhysicalMin",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
+        },
+        {
+          "name": "PhysicalMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_attacks_have_blood_magic_5b910ffa",
       "pattern": "attacks have blood magic",
       "vendor_pattern": "^attacks have blood magic$",
@@ -2816,6 +3074,66 @@
           "name": "PhysicalDamageGainAsFire",
           "type": "BASE",
           "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_attacks_with_this_weapon_have_added_maxi_085cc47d",
+      "pattern": "attacks with this weapon have added maximum lightning damage equal to (\\d+)% of your energy shield",
+      "vendor_pattern": "^attacks with this weapon have added maximum lightning damage equal to (%d+)%% of your energy shield$",
+      "mods": [
+        {
+          "name": "LightningMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "Condition",
+              "var": "{Hand}Attack"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_attacks_with_this_weapon_have_added_maxi_7ff1f0e7",
+      "pattern": "attacks with this weapon have added maximum lightning damage equal to (\\d+)% of your maximum energy shield",
+      "vendor_pattern": "^attacks with this weapon have added maximum lightning damage equal to (%d+)%% of your maximum energy shield$",
+      "mods": [
+        {
+          "name": "LightningMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "Condition",
+              "var": "{Hand}Attack"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Attack"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -8493,6 +8811,48 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_d_chance_to_recover_all_life_when_you_ki_740206d3",
+      "pattern": "(\\d+)% chance to recover all life when you kill an enemy",
+      "vendor_pattern": "^(%d+)%% chance to recover all life when you kill an enemy$",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "Condition",
+              "var": "AverageResourceGain"
+            }
+          ]
+        },
+        {
+          "name": "LifeOnKill",
+          "type": "BASE",
+          "value": 1.0,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 100.0,
+              "stat": "Life"
+            },
+            {
+              "type": "Condition",
+              "var": "MaxResourceGain"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_chance_to_sap_enemies_in_chilling_area_44c8b2dd",
       "pattern": "(\\d+)% chance to sap enemies in chilling areas",
       "vendor_pattern": "^(%d+)%% chance to sap enemies in chilling areas$",
@@ -10077,6 +10437,64 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_of_base_armour_from_equipment_also_add_d1cd1dee",
+      "pattern": "(\\d+)% of base armour from equipment also added to stun threshold",
+      "vendor_pattern": "^(%d+)%% of base armour from equipment also added to stun threshold$",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ArmourOnHelmet"
+            }
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ArmourOnGloves"
+            }
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ArmourOnBoots"
+            }
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ArmourOnBody Armour"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_of_chaos_damage_t_a_k_e_n_does_not_byp_c59dffe6",
       "pattern": "(\\d+)% of chaos damage t?a?k?e?n? ?does not bypass energy shield",
       "vendor_pattern": "^(%d+)%% of chaos damage t?a?k?e?n? ?does not bypass energy shield$",
@@ -10273,6 +10691,32 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_of_evasion_rating_is_regenerated_as_li_de777d6c",
+      "pattern": "([\\d.]+)% of evasion rating is regenerated as life per second while focus?sed",
+      "vendor_pattern": "^([%d%.]+)%% of evasion rating is regenerated as life per second while focus?sed$",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Evasion"
+            },
+            {
+              "type": "Condition",
+              "var": "Focused"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_of_exsanguinate_and_reap_physical_dama_3370dfb2",
       "pattern": "(\\d+)% of exsanguinate and reap physical damage converted to fire damage",
       "vendor_pattern": "^(%d+)%% of exsanguinate and reap physical damage converted to fire damage$",
@@ -10408,6 +10852,28 @@
                 "Manabond",
                 "Stormbind"
               ]
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_of_maximum_life_taken_as_chaos_damage_155b8cfb",
+      "pattern": "(\\d+)% of maximum life taken as chaos damage per second",
+      "vendor_pattern": "^(%d+)%% of maximum life taken as chaos damage per second$",
+      "mods": [
+        {
+          "name": "ChaosDegen",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
             }
           ]
         }
@@ -10571,6 +11037,52 @@
                 "Spectral Shield Throw",
                 "Shield Crush"
               ]
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_of_strength_requirements_from_boots_gl_2149d22f",
+      "pattern": "(\\d+)% of strength requirements from boots, gloves and helmets also added to armour",
+      "vendor_pattern": "^(%d+)%% of strength requirements from boots, gloves and helmets also added to armour$",
+      "mods": [
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "StrRequirementsOnBoots"
+            }
+          ]
+        },
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "StrRequirementsOnGloves"
+            }
+          ]
+        },
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "StrRequirementsOnHelmet"
             }
           ]
         }
@@ -17074,6 +17586,56 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_forbidden_rite_and_dark_pact_gains_added_f41d9a06",
+      "pattern": "forbidden rite and dark pact gains added chaos damage equal to (\\d+)% of mana cost, if mana cost is not higher than the maximum you could spend",
+      "vendor_pattern": "^forbidden rite and dark pact gains added chaos damage equal to (%d+)%% of mana cost, if mana cost is not higher than the maximum you could spend$",
+      "mods": [
+        {
+          "name": "ChaosMin",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ManaCost"
+            },
+            {
+              "type": "SkillName",
+              "includeTransfigured": true,
+              "skillNameList": [
+                "Forbidden Rite",
+                "Dark Pact"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "ChaosMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ManaCost"
+            },
+            {
+              "type": "SkillName",
+              "includeTransfigured": true,
+              "skillNameList": [
+                "Forbidden Rite",
+                "Dark Pact"
+              ]
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_forks_critical_hits_fd6b0f92",
       "pattern": "forks critical hits",
       "vendor_pattern": "^forks critical hits$",
@@ -18221,6 +18783,40 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_gain_added_chaos_damage_equal_to_d_of_wa_98cbe982",
+      "pattern": "gain added chaos damage equal to (\\d+)% of ward",
+      "vendor_pattern": "^gain added chaos damage equal to (%d+)%% of ward$",
+      "mods": [
+        {
+          "name": "ChaosMin",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Ward"
+            }
+          ]
+        },
+        {
+          "name": "ChaosMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Ward"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_gain_additional_critical_hit_chance_equa_135c4205",
       "pattern": "gain additional critical hit chance equal to (\\d+)% of excess chance to hit with attacks",
       "vendor_pattern": "^gain additional critical hit chance equal to (%d+)%% of excess chance to hit with attacks$",
@@ -18366,6 +18962,52 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_gain_armour_equal_to_d_of_total_strength_2ffef7ee",
+      "pattern": "gain armour equal to (\\d+)% of total strength requirements of equipped boots, gloves and helmet",
+      "vendor_pattern": "^gain armour equal to (%d+)%% of total strength requirements of equipped boots, gloves and helmet$",
+      "mods": [
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "StrRequirementsOnBoots"
+            }
+          ]
+        },
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "StrRequirementsOnGloves"
+            }
+          ]
+        },
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "StrRequirementsOnHelmet"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_gain_armour_equal_to_your_reserved_mana_66d92d60",
@@ -27306,6 +27948,32 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_lose_d_of_life_per_second_per_rage_while_d1129ec6",
+      "pattern": "lose ([\\d.]+)% of life per second per rage while you are not losing rage",
+      "vendor_pattern": "^lose ([%d%.]+)%% of life per second per rage while you are not losing rage$",
+      "mods": [
+        {
+          "name": "LifeDegen",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "Multiplier",
+              "var": "RageEffect"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_magnetic_salvo_fires_an_additional_proje_1afb0144",
       "pattern": "magnetic salvo fires an additional projectile",
       "vendor_pattern": "^magnetic salvo fires an additional projectile",
@@ -28150,6 +28818,84 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_minions_can_hear_the_whispers_for_5_seco_0d16165f",
+      "pattern": "minions can hear the whispers for 5 seconds after they deal a critical hit",
+      "vendor_pattern": "^minions can hear the whispers for 5 seconds after they deal a critical hit$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "INC",
+                "value": 50.0,
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "neg": true,
+                    "var": "NeverCrit"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Speed",
+                "type": "INC",
+                "value": 50.0,
+                "flags": [
+                  "Attack"
+                ],
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "neg": true,
+                    "var": "NeverCrit"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ChaosDegen",
+                "type": "BASE",
+                "value": 1.0,
+                "tags": [
+                  {
+                    "type": "PercentStat",
+                    "percent": 20.0,
+                    "stat": "Life"
+                  },
+                  {
+                    "type": "Condition",
+                    "neg": true,
+                    "var": "NeverCrit"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_minions_created_recently_have_d_increase_3d0e2541",
       "pattern": "minions created recently have (\\d+)% increased attack and cast speed",
       "vendor_pattern": "^minions created recently have (%d+)%% increased attack and cast speed$",
@@ -28609,6 +29355,36 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_minions_gain_d_of_their_maximum_life_as_541035f2",
+      "pattern": "minions gain (\\d+)% of their maximum life as extra maximum energy shield",
+      "vendor_pattern": "^minions gain (%d+)%% of their maximum life as extra maximum energy shield$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "EnergyShield",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "PercentStat",
+                    "percent": 1.0,
+                    "stat": "Life"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_minions_have_a_d_chance_to_impale_on_hit_44294783",
@@ -32788,6 +33564,43 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_raised_zombies_take_d_of_their_maximum_l_8d5e360b",
+      "pattern": "raised zombies take ([\\d.]+)% of their maximum life per second as fire damage",
+      "vendor_pattern": "^raised zombies take ([%d%.]+)%% of their maximum life per second as fire damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDegen",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "PercentStat",
+                    "percent": 1.0,
+                    "stat": "Life"
+                  }
+                ]
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "includeTransfigured": true,
+              "skillName": "Raise Zombie"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_rampage_3a09c7ea",
       "pattern": "rampage",
       "vendor_pattern": "^rampage$",
@@ -32907,6 +33720,503 @@
           "name": "LifeOnSuppress",
           "type": "BASE",
           "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_energy_shield_on_kill_43364a51",
+      "pattern": "recover (\\d+)% of energy shield on kill",
+      "vendor_pattern": "^recover (%d+)%% of energy shield on kill$",
+      "mods": [
+        {
+          "name": "EnergyShieldOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_energy_shield_on_kill_for_e_881b06b1",
+      "pattern": "recover (\\d+)% of energy shield on kill for each different type of mastery you have allocated",
+      "vendor_pattern": "^recover (%d+)%% of energy shield on kill for each different type of mastery you have allocated$",
+      "mods": [
+        {
+          "name": "EnergyShieldOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "Multiplier",
+              "var": "AllocatedMasteryType"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_energy_shield_when_you_bloc_57ba337d",
+      "pattern": "recover (\\d+)% of energy shield when you block",
+      "vendor_pattern": "^recover (%d+)%% of energy shield when you block$",
+      "mods": [
+        {
+          "name": "EnergyShieldOnBlock",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_energy_shield_when_you_bloc_d2d693e6",
+      "pattern": "recover (\\d+)% of energy shield when you block spell damage while wielding a staff",
+      "vendor_pattern": "^recover (%d+)%% of energy shield when you block spell damage while wielding a staff$",
+      "mods": [
+        {
+          "name": "EnergyShieldOnSpellBlock",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingStaff"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_energy_shield_when_you_kill_12af4ffa",
+      "pattern": "recover (\\d+)% of energy shield when you kill a cursed enemy",
+      "vendor_pattern": "^recover (%d+)%% of energy shield when you kill a cursed enemy$",
+      "mods": [
+        {
+          "name": "EnergyShieldOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Cursed"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_energy_shield_when_you_kill_8d4767a3",
+      "pattern": "recover (\\d+)% of energy shield when you kill an enemy during f?l?a?s?k? ?effect",
+      "vendor_pattern": "^recover (%d+)%% of energy shield when you kill an enemy during f?l?a?s?k? ?effect$",
+      "mods": [
+        {
+          "name": "EnergyShieldOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_life_on_kill_for_each_diffe_76b7023a",
+      "pattern": "recover (\\d+)% of life on kill for each different type of mastery you have allocated",
+      "vendor_pattern": "^recover (%d+)%% of life on kill for each different type of mastery you have allocated$",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "Multiplier",
+              "var": "AllocatedMasteryType"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_life_on_kill_if_you_ve_spen_d8840421",
+      "pattern": "recover (\\d+)% of life on kill if you've spent life recently",
+      "vendor_pattern": "^recover (%d+)%% of life on kill if you've spent life recently$",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "LifeSpentRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_life_on_killing_a_chilled_e_3498a043",
+      "pattern": "recover (\\d+)% of life on killing a chilled enemy",
+      "vendor_pattern": "^recover (%d+)%% of life on killing a chilled enemy$",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Chilled"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_life_when_you_kill_a_cursed_d05e7259",
+      "pattern": "recover (\\d+)% of life when you kill a cursed enemy",
+      "vendor_pattern": "^recover (%d+)%% of life when you kill a cursed enemy$",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Cursed"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_life_when_you_kill_an_enemy_dcc8cf22",
+      "pattern": "recover (\\d+)% of life when you kill an enemy during f?l?a?s?k? ?effect",
+      "vendor_pattern": "^recover (%d+)%% of life when you kill an enemy during f?l?a?s?k? ?effect$",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_m_a_x_i_m_u_m_life_on_kill_82a0c657",
+      "pattern": "recover (\\d+)% of ?m?a?x?i?m?u?m? life on kill",
+      "vendor_pattern": "^recover (%d+)%% of ?m?a?x?i?m?u?m? life on kill$",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_m_a_x_i_m_u_m_life_when_you_0a74d508",
+      "pattern": "recover (\\d+)% of  ?m?a?x?i?m?u?m? life when you block attack damage while wielding a staff",
+      "vendor_pattern": "^recover (%d+)%% of  ?m?a?x?i?m?u?m? life when you block attack damage while wielding a staff$",
+      "mods": [
+        {
+          "name": "LifeOnBlock",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingStaff"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_m_a_x_i_m_u_m_life_when_you_b56cd772",
+      "pattern": "recover (\\d+)% of  ?m?a?x?i?m?u?m? life when you block",
+      "vendor_pattern": "^recover (%d+)%% of  ?m?a?x?i?m?u?m? life when you block$",
+      "mods": [
+        {
+          "name": "LifeOnBlock",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_m_a_x_i_m_u_m_mana_on_kill_286635cd",
+      "pattern": "recover (\\d+)% of ?m?a?x?i?m?u?m? mana on kill",
+      "vendor_pattern": "^recover (%d+)%% of ?m?a?x?i?m?u?m? mana on kill$",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_mana_on_kill_for_each_diffe_3a8026ec",
+      "pattern": "recover (\\d+)% of mana on kill for each different type of mastery you have allocated",
+      "vendor_pattern": "^recover (%d+)%% of mana on kill for each different type of mastery you have allocated$",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            },
+            {
+              "type": "Multiplier",
+              "var": "AllocatedMasteryType"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_mana_when_you_kill_a_cursed_b57f823c",
+      "pattern": "recover (\\d+)% of mana when you kill a cursed enemy",
+      "vendor_pattern": "^recover (%d+)%% of mana when you kill a cursed enemy$",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            },
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Cursed"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_mana_when_you_kill_an_enemy_2cd3dd7b",
+      "pattern": "recover (\\d+)% of mana when you kill an enemy during f?l?a?s?k? ?effect",
+      "vendor_pattern": "^recover (%d+)%% of mana when you kill an enemy during f?l?a?s?k? ?effect$",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            },
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_d_of_your_maximum_mana_when_you_4d916747",
+      "pattern": "recover (\\d+)% of your maximum mana when you block",
+      "vendor_pattern": "^recover (%d+)%% of your maximum mana when you block$",
+      "mods": [
+        {
+          "name": "ManaOnBlock",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_recover_energy_shield_equal_to_d_of_armo_8bf3dbec",
+      "pattern": "recover energy shield equal to (\\d+)% of armour when you block",
+      "vendor_pattern": "^recover energy shield equal to (%d+)%% of armour when you block$",
+      "mods": [
+        {
+          "name": "EnergyShieldOnBlock",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Armour"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -33355,6 +34665,28 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_replenishes_energy_shield_by_d_of_armour_80209d51",
+      "pattern": "replenishes energy shield by (\\d+)% of armour when you block",
+      "vendor_pattern": "^replenishes energy shield by (%d+)%% of armour when you block$",
+      "mods": [
+        {
+          "name": "EnergyShieldOnBlock",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Armour"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_require_d_fewer_enemies_to_be_surrounded_a52f68a0",
@@ -35806,6 +37138,48 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_spells_deal_added_chaos_damage_equal_to_835ed7e3",
+      "pattern": "spells deal added chaos damage equal to (\\d+)% of your maximum life",
+      "vendor_pattern": "^spells deal added chaos damage equal to (%d+)%% of your maximum life$",
+      "mods": [
+        {
+          "name": "ChaosMin",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Spell"
+            }
+          ]
+        },
+        {
+          "name": "ChaosMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Spell"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_spells_for_which_this_sacrifice_was_full_40e898b0",
       "pattern": "spells for which this sacrifice was fully made deal (\\d+)% more damage",
       "vendor_pattern": "^spells for which this sacrifice was fully made deal (%d+)%% more damage$",
@@ -37101,6 +38475,43 @@
                 "name": "PhysicalDamageConvertToChaos",
                 "type": "BASE",
                 "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "includeTransfigured": true,
+              "skillName": "Summon Skeletons"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_summoned_skeletons_take_d_of_their_maxim_068459fb",
+      "pattern": "summoned skeletons take ([\\d.]+)% of their maximum life per second as fire damage",
+      "vendor_pattern": "^summoned skeletons take ([%d%.]+)%% of their maximum life per second as fire damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDegen",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "PercentStat",
+                    "percent": 1.0,
+                    "stat": "Life"
+                  }
+                ]
               }
             ]
           },
@@ -39346,6 +40757,37 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_when_you_cast_a_spell_sacrifice_all_mana_a5ac89c6",
+      "pattern": "when you cast a spell, sacrifice all mana to gain added maximum lightning damage equal to (\\d+)% of sacrificed mana for 4 seconds",
+      "vendor_pattern": "^when you cast a spell, sacrifice all mana to gain added maximum lightning damage equal to (%d+)%% of sacrificed mana for 4 seconds$",
+      "mods": [
+        {
+          "name": "Condition:HaveManaStorm",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "LightningMax",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ManaUnreserved"
+            },
+            {
+              "type": "Condition",
+              "var": "SacrificeManaForLightning"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_when_you_kill_an_enemy_affected_by_a_non_f0c7b568",
       "pattern": "when you kill an enemy affected by a non-aura hex, become immune to curses for remaining hex duration",
       "vendor_pattern": "^when you kill an enemy affected by a non%-aura hex, become immune to curses for remaining hex duration$",
@@ -39541,6 +40983,95 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_while_in_her_embrace_take_d_of_your_tota_273def04",
+      "pattern": "while in her embrace, take ([\\d.]+)% of your total maximum life and energy shield as fire damage per second per level",
+      "vendor_pattern": "^while in her embrace, take ([%d%.]+)%% of your total maximum life and energy shield as fire damage per second per level$",
+      "mods": [
+        {
+          "name": "FireDegen",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Life"
+            },
+            {
+              "type": "Multiplier",
+              "var": "Level"
+            },
+            {
+              "type": "Condition",
+              "var": "HerEmbrace"
+            }
+          ]
+        },
+        {
+          "name": "FireDegen",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            },
+            {
+              "type": "Multiplier",
+              "var": "Level"
+            },
+            {
+              "type": "Condition",
+              "var": "HerEmbrace"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_while_not_on_full_life_sacrifice_d_of_m_72dd5b66",
+      "pattern": "while not on full life, sacrifice ([\\d.]+)% of ?m?a?x?i?m?u?m? mana per second to recover that much life",
+      "vendor_pattern": "^while not on full life, sacrifice ([%d%.]+)%% of ?m?a?x?i?m?u?m? mana per second to recover that much life$",
+      "mods": [
+        {
+          "name": "ManaDegenPercent",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "FullLife"
+            }
+          ]
+        },
+        {
+          "name": "LifeRecovery",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "Mana"
+            },
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "FullLife"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_while_there_are_at_least_five_nearby_all_c0e94049",

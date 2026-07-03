@@ -524,6 +524,13 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
                 detail,
             }
         }
+        ModTag::PercentStat { stat, percent } => TagExplain {
+            kind: "PercentStat".to_string(),
+            detail: match percent {
+                Some(p) => format!("按已算出属性 `{stat}` 的 {p}% 缩放数值（结果向上取整）"),
+                None => format!("按已算出属性 `{stat}` 缩放数值（结果向上取整）"),
+            },
+        },
         ModTag::MultiplierThreshold {
             var,
             threshold,
