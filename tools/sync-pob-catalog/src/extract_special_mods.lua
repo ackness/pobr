@@ -400,6 +400,56 @@ local function callSpecial(fn, caps)
 end
 
 ----------------------------------------------------------------------
+-- V2s5 词类捕获字典探针：词槽逐词试调闭包，命中集 = enums 闭集候选。
+-- 域字典按 197 条 nonnumeric 语料归纳（伤害类型/资源/属性/充能/异常/
+-- 技能种类/诅咒/分数词/部位/装备类/无时珠宝阵营/可选前缀）；字典外的
+-- 开放词汇（触发技能名等）自然落空 → enum_no_dict_hit / 开放集在 Rust
+-- 侧按 dict_size 判定跳过。
+----------------------------------------------------------------------
+local DICT_DAMAGE = { "physical", "fire", "cold", "lightning", "chaos", "elemental" }
+local DICT_ALL = {
+	-- 伤害类型
+	"physical", "fire", "cold", "lightning", "chaos", "elemental",
+	-- 资源/池
+	"life", "mana", "energy shield", "spirit", "rage",
+	-- 属性
+	"strength", "dexterity", "intelligence", "attributes",
+	-- 充能
+	"power", "frenzy", "endurance",
+	-- 异常/状态（含词形变体）
+	"ignite", "ignited", "burning", "chill", "chilled", "freeze", "frozen",
+	"shock", "shocked", "electrocute", "electrocuted", "bleed", "bleeding",
+	"poison", "poisoned", "stun", "stunned", "daze", "dazed", "blind",
+	"blinded", "maim", "maimed", "hinder", "hindered", "intimidate",
+	"wither", "withered", "corrupted blood",
+	-- 技能种类
+	"attack", "attacks", "spell", "spells", "melee", "projectile", "area",
+	"minion", "minions", "totem", "trap", "mine", "brand", "curse", "aura",
+	"warcry", "herald", "mark",
+	-- 诅咒（PoE2 + 传统词形）
+	"flammability", "hypothermia", "conductivity", "despair", "enfeeble",
+	"temporal chains", "vulnerability", "elemental weakness", "punishment",
+	"frostbite",
+	-- 分数词
+	"quarter", "third", "half", "fifth", "tenth",
+	-- 部位/方向
+	"left", "right",
+	-- 装备类
+	"wand", "wands", "staff", "staves", "sceptre", "sceptres", "bow", "bows",
+	"crossbow", "crossbows", "axe", "axes", "sword", "swords", "mace",
+	"maces", "claw", "claws", "dagger", "daggers", "spear", "spears",
+	"flail", "flails", "quiver", "quivers", "shield", "shields", "focus",
+	"helmet", "gloves", "boots", "body armour", "ring", "rings", "amulet",
+	"belt",
+	-- 防御
+	"armour", "evasion", "evasion rating", "accuracy",
+	-- 无时珠宝阵营
+	"karui", "maraketh", "templar", "vaal", "eternal empire",
+	-- 可选前缀捕获（`(i?t?e?m? ?)` 等）的两个合法取值
+	"item ", "also ", "",
+}
+
+----------------------------------------------------------------------
 -- 主循环：逐 key 导出
 ----------------------------------------------------------------------
 local emit = realPrint
@@ -433,7 +483,83 @@ for pattern, value in pairs(U.specialModList) do
 			end
 		end
 		if nonNum then
-			emitFailed(pattern, "nonnumeric_capture")
+			local wordSlots = {}
+			for i, t in ipairs(slots) do
+				if t ~= "num" then
+					wordSlots[#wordSlots + 1] = i
+				end
+			end
+			if #wordSlots > 3 then
+				emitFailed(pattern, "nonnumeric_capture")
+			else
+				-- 3 词槽只跑伤害类型域（全字典立方组合数过大；语料里的
+				-- 3 词槽 pattern 全是元素/伤害类型互换形态）。
+				local dict = (#wordSlots >= 3) and DICT_DAMAGE or DICT_ALL
+				local variants = {}
+				local combo = {}
+				local function probeCombo()
+					local capsA, capsB = {}, {}
+					local wi, ni = 0, 0
+					for i = 1, #slots do
+						if slots[i] == "num" then
+							ni = ni + 1
+							capsA[i] = NUM_A[ni]
+							capsB[i] = NUM_B[ni]
+						else
+							wi = wi + 1
+							capsA[i] = combo[wi]
+							capsB[i] = combo[wi]
+						end
+					end
+					local resA = callSpecial(value, capsA)
+					if not resA then
+						return
+					end
+					local resB = callSpecial(value, capsB)
+					if not resB then
+						return
+					end
+					local inferred = inferValue(resA, resB, capsA, capsB)
+					if not inferred then
+						return
+					end
+					local ok, json = pcall(encodeRaw, inferred)
+					if not ok then
+						return
+					end
+					local ws = {}
+					for i, w in ipairs(combo) do
+						ws[i] = jsonStr(w)
+					end
+					variants[#variants + 1] = '{"words":['
+						.. table.concat(ws, ",")
+						.. '],"mods":'
+						.. json
+						.. "}"
+				end
+				local function walk(depth)
+					if depth > #wordSlots then
+						probeCombo()
+						return
+					end
+					for _, w in ipairs(dict) do
+						combo[depth] = w
+						walk(depth + 1)
+					end
+				end
+				walk(1)
+				if #variants == 0 then
+					emitFailed(pattern, "enum_no_dict_hit")
+				else
+					local si = {}
+					for i, s in ipairs(wordSlots) do
+						si[i] = tostring(s)
+					end
+					emit('{"pattern":' .. jsonStr(pattern) .. ',"kind":"enum","dict_size":' .. #dict
+						.. ',"word_slots":[' .. table.concat(si, ",")
+						.. '],"variants":[' .. table.concat(variants, ",") .. "]}")
+				end
+			end
 		else
 			local capsA, capsB = {}, {}
 			for i = 1, #slots do

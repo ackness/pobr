@@ -80,6 +80,480 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_a_damage_also_contributes_to_bleeding_ma_e2e0cd32",
+      "pattern": "(lightning|cold|fire) damage also contributes to bleeding magnitude",
+      "vendor_pattern": "^(%a+) damage also contributes to bleeding magnitude$",
+      "mods": [
+        {
+          "name": {
+            "enum": 1
+          },
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "enums": {
+        "1": {
+          "cold": "ColdCanBleed",
+          "fire": "FireCanBleed",
+          "lightning": "LightningCanBleed"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_chaos_chill",
+      "pattern": "(chaos) damage from hits ?a?l?s?o? contributes to (chill) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "ChaosCanChill",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_chaos_freeze",
+      "pattern": "(chaos) damage from hits ?a?l?s?o? contributes to (freeze) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "ChaosCanFreeze",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_chaos_ignite",
+      "pattern": "(chaos) damage from hits ?a?l?s?o? contributes to (ignite) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "ChaosCanIgnite",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_chaos_shock",
+      "pattern": "(chaos) damage from hits ?a?l?s?o? contributes to (shock) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "ChaosCanShock",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_cold_bleed",
+      "pattern": "(cold) damage from hits ?a?l?s?o? contributes to (bleed) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "ColdCanBleed",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_cold_ignite",
+      "pattern": "(cold) damage from hits ?a?l?s?o? contributes to (ignite) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "ColdCanIgnite",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_cold_poison",
+      "pattern": "(cold) damage from hits ?a?l?s?o? contributes to (poison) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "ColdCanPoison",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_cold_shock",
+      "pattern": "(cold) damage from hits ?a?l?s?o? contributes to (shock) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "ColdCanShock",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_fire_bleed",
+      "pattern": "(fire) damage from hits ?a?l?s?o? contributes to (bleed) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "FireCanBleed",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_fire_chill",
+      "pattern": "(fire) damage from hits ?a?l?s?o? contributes to (chill) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "FireCanChill",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_fire_freeze",
+      "pattern": "(fire) damage from hits ?a?l?s?o? contributes to (freeze) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "FireCanFreeze",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_fire_poison",
+      "pattern": "(fire) damage from hits ?a?l?s?o? contributes to (poison) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "FireCanPoison",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_fire_shock",
+      "pattern": "(fire) damage from hits ?a?l?s?o? contributes to (shock) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "FireCanShock",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_lightning_bleed",
+      "pattern": "(lightning) damage from hits ?a?l?s?o? contributes to (bleed) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "LightningCanBleed",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_lightning_chill",
+      "pattern": "(lightning) damage from hits ?a?l?s?o? contributes to (chill) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "LightningCanChill",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_lightning_freeze",
+      "pattern": "(lightning) damage from hits ?a?l?s?o? contributes to (freeze) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "LightningCanFreeze",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_lightning_ignite",
+      "pattern": "(lightning) damage from hits ?a?l?s?o? contributes to (ignite) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "LightningCanIgnite",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_lightning_poison",
+      "pattern": "(lightning) damage from hits ?a?l?s?o? contributes to (poison) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "LightningCanPoison",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_physical_chill",
+      "pattern": "(physical) damage from hits ?a?l?s?o? contributes to (chill) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "PhysicalCanChill",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_physical_freeze",
+      "pattern": "(physical) damage from hits ?a?l?s?o? contributes to (freeze) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "PhysicalCanFreeze",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_physical_ignite",
+      "pattern": "(physical) damage from hits ?a?l?s?o? contributes to (ignite) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "PhysicalCanIgnite",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_from_hits_a_l_s_o_contributes_t_3141ba21_physical_shock",
+      "pattern": "(physical) damage from hits ?a?l?s?o? contributes to (shock) buildup",
+      "vendor_pattern": "^(%a+) damage from hits ?a?l?s?o? contributes to (%a+%s*%a*) buildup$",
+      "mods": [
+        {
+          "name": "PhysicalCanShock",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_damage_is_pinning_10169df9",
+      "pattern": "() damage is pinning",
+      "vendor_pattern": "^(%a+) damage is pinning$",
+      "mods": [
+        {
+          "name": "CanPin",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_a_s_a_leech_recovers_based_on_y_o_u_r_a_4849ec43_life_chaos",
+      "pattern": "(life) leech recovers based on y?o?u?r? ?(chaos) damage instead of physical damage",
+      "vendor_pattern": "^(%a+%s?%a*) leech recovers based on y?o?u?r? ?(%a+) damage instead of physical damage$",
+      "mods": [
+        {
+          "name": "LifeLeechBasedOnChaosDamage",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "Condition:NoLifeLeechFromPhysicalDamage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_s_a_leech_recovers_based_on_y_o_u_r_a_4849ec43_mana_chaos",
+      "pattern": "(mana) leech recovers based on y?o?u?r? ?(chaos) damage instead of physical damage",
+      "vendor_pattern": "^(%a+%s?%a*) leech recovers based on y?o?u?r? ?(%a+) damage instead of physical damage$",
+      "mods": [
+        {
+          "name": "ManaLeechBasedOnChaosDamage",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "Condition:NoManaLeechFromPhysicalDamage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_s_a_leech_recovers_based_on_y_o_u_r_a_4849ec43_mana_elemental",
+      "pattern": "(mana) leech recovers based on y?o?u?r? ?(elemental) damage instead of physical damage",
+      "vendor_pattern": "^(%a+%s?%a*) leech recovers based on y?o?u?r? ?(%a+) damage instead of physical damage$",
+      "mods": [
+        {
+          "name": "ManaLeechBasedOnElementalDamage",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "Condition:NoManaLeechFromPhysicalDamage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_s_a_leech_recovers_based_on_y_o_u_r_a_bba64719_life_chaos",
+      "pattern": "(life) leech recovers based on y?o?u?r? ?(chaos) damage as well as physical damage",
+      "vendor_pattern": "^(%a+%s?%a*) leech recovers based on y?o?u?r? ?(%a+) damage as well as physical damage$",
+      "mods": [
+        {
+          "name": "LifeLeechBasedOnChaosDamage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_s_a_leech_recovers_based_on_y_o_u_r_a_bba64719_mana_chaos",
+      "pattern": "(mana) leech recovers based on y?o?u?r? ?(chaos) damage as well as physical damage",
+      "vendor_pattern": "^(%a+%s?%a*) leech recovers based on y?o?u?r? ?(%a+) damage as well as physical damage$",
+      "mods": [
+        {
+          "name": "ManaLeechBasedOnChaosDamage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_a_s_a_leech_recovers_based_on_y_o_u_r_a_bba64719_mana_elemental",
+      "pattern": "(mana) leech recovers based on y?o?u?r? ?(elemental) damage as well as physical damage",
+      "vendor_pattern": "^(%a+%s?%a*) leech recovers based on y?o?u?r? ?(%a+) damage as well as physical damage$",
+      "mods": [
+        {
+          "name": "ManaLeechBasedOnElementalDamage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
       "id": "vnd_acidic_concoction_fires_an_additional_pr_88bafe16",
       "pattern": "acidic concoction fires an additional projectile",
       "vendor_pattern": "^acidic concoction fires an additional projectile",
@@ -2288,6 +2762,54 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_armour_also_applies_to_a_damage_2fbe0ddf",
+      "pattern": "armour also applies to (lightning|cold|fire) damage",
+      "vendor_pattern": "^armour also applies to (%a+) damage$",
+      "mods": [
+        {
+          "name": {
+            "enum": 1
+          },
+          "type": "BASE",
+          "value": 100.0
+        }
+      ],
+      "enums": {
+        "1": {
+          "cold": "ArmourAppliesToColdDamageTaken",
+          "fire": "ArmourAppliesToFireDamageTaken",
+          "lightning": "ArmourAppliesToLightningDamageTaken"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_armour_also_applies_to_a_damage_taken_fr_629d3075",
+      "pattern": "armour also applies to (lightning|cold|fire) damage taken from hits",
+      "vendor_pattern": "^armour also applies to (%a+) damage taken from hits$",
+      "mods": [
+        {
+          "name": {
+            "enum": 1
+          },
+          "type": "BASE",
+          "value": 100.0
+        }
+      ],
+      "enums": {
+        "1": {
+          "cold": "ArmourAppliesToColdDamageTaken",
+          "fire": "ArmourAppliesToFireDamageTaken",
+          "lightning": "ArmourAppliesToLightningDamageTaken"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_armour_applies_to_elemental_damage_74384d2e",
       "pattern": "armour applies to elemental damage",
       "vendor_pattern": "^armour applies to elemental damage$",
@@ -2756,6 +3278,42 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_attack_with_level_d_when_you_kill_a_blee_fdb40427",
+      "pattern": "attack with level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you kill a bleeding enemy",
+      "vendor_pattern": "^attack with level (%d+) (.+) when you kill a bleeding enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_attacks_against_you_always_hit_66d5de2c",
@@ -7297,6 +7855,78 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_consumes_a_void_charge_to_trigger_level_1b710259",
+      "pattern": "consumes a void charge to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you fire arrows",
+      "vendor_pattern": "^consumes a void charge to trigger level (%d+) (.+) when you fire arrows$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_consumes_a_void_charge_to_trigger_level_830c21d4",
+      "pattern": "consumes a void charge to trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you fire arrows with a non-triggered skill",
+      "vendor_pattern": "^consumes a void charge to trigger level (%d+) (.+) when you fire arrows with a non%-triggered skill$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_convert_d_of_maximum_energy_shield_to_ma_e74ffc48",
       "pattern": "convert (\\d+)% of maximum energy shield to maximum mana",
       "vendor_pattern": "^convert (%d+)%% of maximum energy shield to maximum mana$",
@@ -8147,6 +8777,258 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_ct_ar_si_tg_g_e_r_s_level_d_on_a_c6aee2b5",
+      "pattern": "[ct][ar][si][tg]g?e?r?s? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on [a-z]+",
+      "vendor_pattern": "^[ct][ar][si][tg]g?e?r?s? level (%d+) (.+) on %a+$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_ct_ar_si_tg_g_e_r_s_level_d_when_equippe_6a9f2f11",
+      "pattern": "[ct][ar][si][tg]g?e?r?s? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when equipped",
+      "vendor_pattern": "^[ct][ar][si][tg]g?e?r?s? level (%d+) (.+) when equipped$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_ct_ar_si_tg_g_e_r_s_level_d_when_hit_5c001669",
+      "pattern": "[ct][ar][si][tg]g?e?r?s? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when hit",
+      "vendor_pattern": "^[ct][ar][si][tg]g?e?r?s? level (%d+) (.+) when hit$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_ct_ar_si_tg_g_e_r_s_level_d_when_you_att_bedf3ad3",
+      "pattern": "[ct][ar][si][tg]g?e?r?s? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you attack",
+      "vendor_pattern": "^[ct][ar][si][tg]g?e?r?s? level (%d+) (.+) when you attack$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_ct_ar_si_tg_g_e_r_s_level_d_when_you_dea_eacf8050",
+      "pattern": "[ct][ar][si][tg]g?e?r?s? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you deal a critical hit",
+      "vendor_pattern": "^[ct][ar][si][tg]g?e?r?s? level (%d+) (.+) when you deal a critical hit$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_ct_ar_si_tg_g_e_r_s_level_d_when_you_kil_6a42496a",
+      "pattern": "[ct][ar][si][tg]g?e?r?s? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you kill an enemy",
+      "vendor_pattern": "^[ct][ar][si][tg]g?e?r?s? level (%d+) (.+) when you kill an enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_ct_ar_si_tg_g_e_r_s_level_d_when_you_use_a0b3d3ed",
+      "pattern": "[ct][ar][si][tg]g?e?r?s? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you use a skill",
+      "vendor_pattern": "^[ct][ar][si][tg]g?e?r?s? level (%d+) (.+) when you use a skill$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_culling_strike_against_burning_enemies_0d53ebe3",
       "pattern": "culling strike against burning enemies",
       "vendor_pattern": "^culling strike against burning enemies$",
@@ -8269,6 +9151,80 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_curse_enemies_with_d_on_a_f328a329",
+      "pattern": "curse enemies with (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on [a-z]+",
+      "vendor_pattern": "^curse enemies with (%D+) on %a+$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": 1.0,
+            "noSupports": true,
+            "skillId": {
+              "enum": 1
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "1": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_curse_enemies_with_level_d_on_a_a255d0a9",
+      "pattern": "curse enemies with level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on [a-z]+",
+      "vendor_pattern": "^curse enemies with level (%d+) (.+) on %a+$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "noSupports": true,
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_curses_are_inflicted_on_you_instead_of_l_4d2bfde6",
@@ -10526,6 +11482,79 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_of_armour_a_l_s_o_applies_to_elemental_e54b2a0b",
+      "pattern": "\\+?(\\d+)% of armour (a?l?s?o? ?)applies to elemental damage",
+      "vendor_pattern": "^%+?(%d+)%% of armour (a?l?s?o? ?)applies to elemental damage$",
+      "mods": [
+        {
+          "name": "ArmourAppliesToFireDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ArmourAppliesToColdDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ArmourAppliesToLightningDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_of_armour_also_applies_to_a_damage_c3c70a41",
+      "pattern": "\\+?(\\d+)% of armour also applies to (lightning|cold|fire) damage",
+      "vendor_pattern": "^%+?(%d+)%% of armour also applies to (%a+) damage$",
+      "mods": [
+        {
+          "name": {
+            "enum": 2
+          },
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "enums": {
+        "2": {
+          "cold": "ArmourAppliesToColdDamageTaken",
+          "fire": "ArmourAppliesToFireDamageTaken",
+          "lightning": "ArmourAppliesToLightningDamageTaken"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_of_armour_also_applies_to_a_damage_tak_f9c596e8",
+      "pattern": "\\+?(\\d+)% of armour also applies to (lightning|cold|fire) damage taken from hits",
+      "vendor_pattern": "^%+?(%d+)%% of armour also applies to (%a+) damage taken from hits$",
+      "mods": [
+        {
+          "name": {
+            "enum": 2
+          },
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "enums": {
+        "2": {
+          "cold": "ArmourAppliesToColdDamageTaken",
+          "fire": "ArmourAppliesToFireDamageTaken",
+          "lightning": "ArmourAppliesToLightningDamageTaken"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_d_of_armour_applies_to_fire_cold_and_lig_c08d3c9b",
@@ -14028,6 +15057,209 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_enemies_ignited_by_you_have_d_of_a_damag_ef3dbaf0_cold_chaos",
+      "pattern": "enemies ignited by you have (\\d+)% of (cold) damage they deal converted to (chaos)",
+      "vendor_pattern": "^enemies ignited by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Ignited"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_ignited_by_you_have_d_of_a_damag_ef3dbaf0_cold_fire",
+      "pattern": "enemies ignited by you have (\\d+)% of (cold) damage they deal converted to (fire)",
+      "vendor_pattern": "^enemies ignited by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Ignited"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_ignited_by_you_have_d_of_a_damag_ef3dbaf0_fire_chaos",
+      "pattern": "enemies ignited by you have (\\d+)% of (fire) damage they deal converted to (chaos)",
+      "vendor_pattern": "^enemies ignited by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Ignited"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_ignited_by_you_have_d_of_a_damag_ef3dbaf0_lightning_chaos",
+      "pattern": "enemies ignited by you have (\\d+)% of (lightning) damage they deal converted to (chaos)",
+      "vendor_pattern": "^enemies ignited by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Ignited"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_ignited_by_you_have_d_of_a_damag_ef3dbaf0_lightning_fire",
+      "pattern": "enemies ignited by you have (\\d+)% of (lightning) damage they deal converted to (fire)",
+      "vendor_pattern": "^enemies ignited by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Ignited"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_ignited_by_you_have_d_of_a_damag_ef3dbaf0_physical_chaos",
+      "pattern": "enemies ignited by you have (\\d+)% of (physical) damage they deal converted to (chaos)",
+      "vendor_pattern": "^enemies ignited by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Ignited"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_ignited_by_you_have_d_of_a_damag_ef3dbaf0_physical_fire",
+      "pattern": "enemies ignited by you have (\\d+)% of (physical) damage they deal converted to (fire)",
+      "vendor_pattern": "^enemies ignited by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Ignited"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
       "id": "vnd_enemies_ignited_by_you_take_chaos_damage_73149906",
       "pattern": "enemies ignited by you take chaos damage instead of fire damage from ignite",
       "vendor_pattern": "^enemies ignited by you take chaos damage instead of fire damage from ignite$",
@@ -14750,6 +15982,209 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_enemies_shocked_by_you_have_d_of_a_damag_9fa12e35_cold_chaos",
+      "pattern": "enemies shocked by you have (\\d+)% of (cold) damage they deal converted to (chaos)",
+      "vendor_pattern": "^enemies shocked by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Shocked"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_shocked_by_you_have_d_of_a_damag_9fa12e35_cold_fire",
+      "pattern": "enemies shocked by you have (\\d+)% of (cold) damage they deal converted to (fire)",
+      "vendor_pattern": "^enemies shocked by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Shocked"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_shocked_by_you_have_d_of_a_damag_9fa12e35_fire_chaos",
+      "pattern": "enemies shocked by you have (\\d+)% of (fire) damage they deal converted to (chaos)",
+      "vendor_pattern": "^enemies shocked by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Shocked"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_shocked_by_you_have_d_of_a_damag_9fa12e35_lightning_chaos",
+      "pattern": "enemies shocked by you have (\\d+)% of (lightning) damage they deal converted to (chaos)",
+      "vendor_pattern": "^enemies shocked by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Shocked"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_shocked_by_you_have_d_of_a_damag_9fa12e35_lightning_fire",
+      "pattern": "enemies shocked by you have (\\d+)% of (lightning) damage they deal converted to (fire)",
+      "vendor_pattern": "^enemies shocked by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Shocked"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_shocked_by_you_have_d_of_a_damag_9fa12e35_physical_chaos",
+      "pattern": "enemies shocked by you have (\\d+)% of (physical) damage they deal converted to (chaos)",
+      "vendor_pattern": "^enemies shocked by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Shocked"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_shocked_by_you_have_d_of_a_damag_9fa12e35_physical_fire",
+      "pattern": "enemies shocked by you have (\\d+)% of (physical) damage they deal converted to (fire)",
+      "vendor_pattern": "^enemies shocked by you have (%d+)%% of (%a+) damage they deal converted to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1",
+                "tags": [
+                  {
+                    "type": "Condition",
+                    "var": "Shocked"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
       "id": "vnd_enemies_take_d_increased_damage_for_each_95902776",
       "pattern": "enemies take (\\d+)% increased damage for each of your brands attached to them",
       "vendor_pattern": "^enemies take (%d+)%% increased damage for each of your brands attached to them$",
@@ -15337,6 +16772,68 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_enemies_you_kill_during_effect_have_a_d_8672b924_quarter",
+      "pattern": "enemies you kill during effect have a (\\d+)% chance to explode, dealing a (quarter) of their maximum life as damage of a random element",
+      "vendor_pattern": "^enemies you kill during effect have a (%d+)%% chance to explode, dealing a (.+) of their maximum life as damage of a random element$",
+      "mods": [
+        {
+          "name": "ExplodeMod",
+          "type": "LIST",
+          "value": {
+            "amount": 25.0,
+            "keyOfScaledMod": "value",
+            "type": "RandomElement",
+            "value": "$1"
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        },
+        {
+          "name": "CanExplode",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_enemies_you_kill_during_effect_have_a_d_8672b924_tenth",
+      "pattern": "enemies you kill during effect have a (\\d+)% chance to explode, dealing a (tenth) of their maximum life as damage of a random element",
+      "vendor_pattern": "^enemies you kill during effect have a (%d+)%% chance to explode, dealing a (.+) of their maximum life as damage of a random element$",
+      "mods": [
+        {
+          "name": "ExplodeMod",
+          "type": "LIST",
+          "value": {
+            "amount": 10.0,
+            "keyOfScaledMod": "value",
+            "type": "RandomElement",
+            "value": "$1"
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        },
+        {
+          "name": "CanExplode",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
     },
     {
       "id": "vnd_enemies_you_mark_cannot_deal_critical_hi_549f0eb4",
@@ -19342,6 +20839,86 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_gain_additional_maximum_life_equal_to_d_de73d126",
+      "pattern": "gain additional maximum life equal to (\\d+)% of the (i?t?e?m? ?)energy shield on equipped body armour",
+      "vendor_pattern": "^gain additional maximum life equal to (%d+)%% of the (i?t?e?m? ?)energy shield on equipped body armour$",
+      "mods": [
+        {
+          "name": "Life",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShieldOnBody Armour"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_gain_additional_stun_threshold_equal_to_301f4058",
+      "pattern": "gain additional stun threshold equal to (\\d+)% of (i?t?e?m? ?)armour on equipped armour items",
+      "vendor_pattern": "^gain additional stun threshold equal to (%d+)%% of (i?t?e?m? ?)armour on equipped armour items$",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ArmourOnHelmet"
+            }
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ArmourOnGloves"
+            }
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ArmourOnBoots"
+            }
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "ArmourOnBody Armour"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_gain_adrenaline_for_1_second_when_you_ch_a376141b",
       "pattern": "gain adrenaline for 1 second when you change stance",
       "vendor_pattern": "^gain adrenaline for 1 second when you change stance$",
@@ -19911,6 +21488,28 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_gain_d_of_maximum_energy_shield_as_addit_6d535bd2",
+      "pattern": "gain (\\d+)% of maximum energy shield as additional (stun) threshold",
+      "vendor_pattern": "^gain (%d+)%% of maximum energy shield as additional (%a+) threshold$",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PercentStat",
+              "percent": 1.0,
+              "stat": "EnergyShield"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_gain_d_of_physical_damage_as_extra_damag_3a62e6bd",
       "pattern": "gain (\\d+)% of physical damage as extra damage of a random element",
       "vendor_pattern": "^gain (%d+)%% of physical damage as extra damage of a random element$",
@@ -20075,6 +21674,21 @@
       "id": "vnd_gain_d_rage_on_critical_hit_with_attacks_ea40ca25",
       "pattern": "gain \\d+ rage on critical hit with attacks, no more than once every [\\d.]+ seconds",
       "vendor_pattern": "^gain %d+ rage on critical hit with attacks, no more than once every [%d%.]+ seconds$",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_gain_d_rage_on_d_20ccc8a3",
+      "pattern": "gain \\d+ rage on (?:[\\D]+)",
+      "vendor_pattern": "^gain %d+ rage on ([%D]+)$",
       "mods": [
         {
           "name": "Condition:CanGainRage",
@@ -21340,6 +22954,21 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_grants_d_rage_on_d_3dfd6e29",
+      "pattern": "grants \\d+ rage on (?:[\\D]+)",
+      "vendor_pattern": "^grants %d+ rage on ([%D]+)$",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_grants_immunity_to_bleeding_for_d_second_2532e511",
       "pattern": "grants immunity to bleeding for (?:\\d+) seconds if used while bleeding",
       "vendor_pattern": "^grants immunity to bleeding for (%d+) seconds if used while bleeding$",
@@ -21494,6 +23123,76 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_grants_skill_d_a8589f7e",
+      "pattern": "grants skill: (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim)",
+      "vendor_pattern": "^grants skill: (%D+)$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": 1.0,
+            "skillId": {
+              "enum": 1
+            }
+          }
+        }
+      ],
+      "enums": {
+        "1": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_grants_skill_level_d_c86c0fa7",
+      "pattern": "grants skill: level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim)",
+      "vendor_pattern": "^grants skill: level (%d+) (.+)$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            }
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_grants_skill_sorcery_ward_e5e0a76d",
@@ -29492,6 +31191,167 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_minions_convert_d_of_damage_to_damage_d283e730_cold_chaos",
+      "pattern": "minions convert (\\d+)% of (cold) damage to (chaos) damage",
+      "vendor_pattern": "^minions convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_minions_convert_d_of_damage_to_damage_d283e730_cold_fire",
+      "pattern": "minions convert (\\d+)% of (cold) damage to (fire) damage",
+      "vendor_pattern": "^minions convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_minions_convert_d_of_damage_to_damage_d283e730_fire_chaos",
+      "pattern": "minions convert (\\d+)% of (fire) damage to (chaos) damage",
+      "vendor_pattern": "^minions convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_minions_convert_d_of_damage_to_damage_d283e730_lightning_chaos",
+      "pattern": "minions convert (\\d+)% of (lightning) damage to (chaos) damage",
+      "vendor_pattern": "^minions convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_minions_convert_d_of_damage_to_damage_d283e730_lightning_fire",
+      "pattern": "minions convert (\\d+)% of (lightning) damage to (fire) damage",
+      "vendor_pattern": "^minions convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_minions_convert_d_of_damage_to_damage_d283e730_physical_chaos",
+      "pattern": "minions convert (\\d+)% of (physical) damage to (chaos) damage",
+      "vendor_pattern": "^minions convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_minions_convert_d_of_damage_to_damage_d283e730_physical_fire",
+      "pattern": "minions convert (\\d+)% of (physical) damage to (fire) damage",
+      "vendor_pattern": "^minions convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
       "id": "vnd_minions_created_recently_have_d_increase_3d0e2541",
       "pattern": "minions created recently have (\\d+)% increased attack and cast speed",
       "vendor_pattern": "^minions created recently have (%d+)%% increased attack and cast speed$",
@@ -31179,6 +33039,167 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_nearby_enemies_convert_d_of_their_a_dama_7d314091_cold_chaos",
+      "pattern": "nearby enemies convert (\\d+)% of their (cold) damage to (chaos)",
+      "vendor_pattern": "^nearby enemies convert (%d+)%% of their (%a+) damage to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_nearby_enemies_convert_d_of_their_a_dama_7d314091_cold_fire",
+      "pattern": "nearby enemies convert (\\d+)% of their (cold) damage to (fire)",
+      "vendor_pattern": "^nearby enemies convert (%d+)%% of their (%a+) damage to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_nearby_enemies_convert_d_of_their_a_dama_7d314091_fire_chaos",
+      "pattern": "nearby enemies convert (\\d+)% of their (fire) damage to (chaos)",
+      "vendor_pattern": "^nearby enemies convert (%d+)%% of their (%a+) damage to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_nearby_enemies_convert_d_of_their_a_dama_7d314091_lightning_chaos",
+      "pattern": "nearby enemies convert (\\d+)% of their (lightning) damage to (chaos)",
+      "vendor_pattern": "^nearby enemies convert (%d+)%% of their (%a+) damage to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_nearby_enemies_convert_d_of_their_a_dama_7d314091_lightning_fire",
+      "pattern": "nearby enemies convert (\\d+)% of their (lightning) damage to (fire)",
+      "vendor_pattern": "^nearby enemies convert (%d+)%% of their (%a+) damage to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_nearby_enemies_convert_d_of_their_a_dama_7d314091_physical_chaos",
+      "pattern": "nearby enemies convert (\\d+)% of their (physical) damage to (chaos)",
+      "vendor_pattern": "^nearby enemies convert (%d+)%% of their (%a+) damage to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_nearby_enemies_convert_d_of_their_a_dama_7d314091_physical_fire",
+      "pattern": "nearby enemies convert (\\d+)% of their (physical) damage to (fire)",
+      "vendor_pattern": "^nearby enemies convert (%d+)%% of their (%a+) damage to (%a+)$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
       "id": "vnd_nearby_enemies_have_an_additional_d_chan_c25de5e7",
       "pattern": "nearby enemies have an additional (\\d+)% chance to receive a critical hit",
       "vendor_pattern": "^nearby enemies have an additional (%d+)%% chance to receive a critical hit$",
@@ -32758,6 +34779,14 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_passives_in_radius_are_conquered_by_the_7f743382",
+      "pattern": "passives in radius are conquered by the (?:\\D+)",
+      "vendor_pattern": "^passives in radius are conquered by the (%D+)$",
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
       "id": "vnd_perforate_creates_d_spikes_850d5ab7",
@@ -36847,6 +38876,28 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_skills_reserve_d_less_2053870f",
+      "pattern": "skills reserve (\\d+)% less ()",
+      "vendor_pattern": "^skills reserve (%d+)%% less (.+)$",
+      "mods": [
+        {
+          "name": "Reserved",
+          "type": "MORE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_skills_reserve_life_instead_of_mana_7b634655",
       "pattern": "skills reserve life instead of mana",
       "vendor_pattern": "^skills reserve life instead of mana$",
@@ -38783,6 +40834,209 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_summoned_arbalists_convert_d_of_damage_t_cb7502e1_cold_chaos",
+      "pattern": "summoned arbalists convert (\\d+)% of (cold) damage to (chaos) damage",
+      "vendor_pattern": "^summoned arbalists convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Summon Arbalists"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_summoned_arbalists_convert_d_of_damage_t_cb7502e1_cold_fire",
+      "pattern": "summoned arbalists convert (\\d+)% of (cold) damage to (fire) damage",
+      "vendor_pattern": "^summoned arbalists convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "ColdDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Summon Arbalists"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_summoned_arbalists_convert_d_of_damage_t_cb7502e1_fire_chaos",
+      "pattern": "summoned arbalists convert (\\d+)% of (fire) damage to (chaos) damage",
+      "vendor_pattern": "^summoned arbalists convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "FireDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Summon Arbalists"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_summoned_arbalists_convert_d_of_damage_t_cb7502e1_lightning_chaos",
+      "pattern": "summoned arbalists convert (\\d+)% of (lightning) damage to (chaos) damage",
+      "vendor_pattern": "^summoned arbalists convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Summon Arbalists"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_summoned_arbalists_convert_d_of_damage_t_cb7502e1_lightning_fire",
+      "pattern": "summoned arbalists convert (\\d+)% of (lightning) damage to (fire) damage",
+      "vendor_pattern": "^summoned arbalists convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "LightningDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Summon Arbalists"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_summoned_arbalists_convert_d_of_damage_t_cb7502e1_physical_chaos",
+      "pattern": "summoned arbalists convert (\\d+)% of (physical) damage to (chaos) damage",
+      "vendor_pattern": "^summoned arbalists convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToChaos",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Summon Arbalists"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
+      "id": "vnd_summoned_arbalists_convert_d_of_damage_t_cb7502e1_physical_fire",
+      "pattern": "summoned arbalists convert (\\d+)% of (physical) damage to (fire) damage",
+      "vendor_pattern": "^summoned arbalists convert (%d+)%% of (.+) damage to (.+) damage$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "PhysicalDamageConvertToFire",
+                "type": "BASE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Summon Arbalists"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
+    },
+    {
       "id": "vnd_summoned_arbalists_have_d_chance_to_free_09307dab",
       "pattern": "summoned arbalists have (\\d+)% chance to freeze, shock, and ignite",
       "vendor_pattern": "^summoned arbalists have (%d+)%% chance to freeze, shock, and ignite$",
@@ -38848,6 +41102,36 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_summoned_arbalists_have_d_chance_to_infl_b5f452f2",
+      "pattern": "summoned arbalists have (\\d+)% chance to inflict (lightning|cold|fire) exposure on hit",
+      "vendor_pattern": "^summoned arbalists have (%d+)%% chance to inflict (.+) exposure on hit$",
+      "mods": [
+        {
+          "name": {
+            "enum": 2
+          },
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillName",
+              "skillName": "Summon Arbalists"
+            }
+          ]
+        }
+      ],
+      "enums": {
+        "2": {
+          "cold": "ColdExposureChance",
+          "fire": "FireExposureChance",
+          "lightning": "LightningExposureChance"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_summoned_arbalists_projectiles_chain_d_t_a27a5341",
@@ -39764,6 +42048,21 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_totems_gain_d_to_w_resistance_a21b1f23",
+      "pattern": "totems gain \\+(\\d+)% to (elemental) resistance",
+      "vendor_pattern": "^totems gain %+(%d+)%% to (%w+) resistance$",
+      "mods": [
+        {
+          "name": "TotemElementalResist",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_totems_you_place_grant_embankment_auras_435dbe59",
       "pattern": "totems you place grant embankment auras",
       "vendor_pattern": "^totems you place grant embankment auras$",
@@ -40100,6 +42399,798 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_trigger_level_d_after_spending_a_total_o_c260e78c",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) after spending a total of (\\d+) mana",
+      "vendor_pattern": "^trigger level (%d+) (.+) after spending a total of (%d+) mana$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_every_d_seconds_f3689104",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) every (\\d+) seconds",
+      "vendor_pattern": "^trigger level (%d+) (.+) every (%d+) seconds$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_every_d_seconds_while_ph_88b529a2",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) every [\\d.]+ seconds while phasing",
+      "vendor_pattern": "^trigger level (%d+) (.+) every [%d%.]+ seconds while phasing$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_on_hit_with_this_weapon_0b0642fa",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on hit with this weapon",
+      "vendor_pattern": "^trigger level (%d+) (.+) on hit with this weapon$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_on_melee_hit_if_you_have_c6e9c349",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on melee hit if you have at least (\\d+) strength",
+      "vendor_pattern": "^trigger level (%d+) (.+) on melee hit if you have at least (%d+) strength$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_on_melee_hit_while_curse_9bf5c91d",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on melee hit while cursed",
+      "vendor_pattern": "^trigger level (%d+) (.+) on melee hit while cursed$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_on_melee_hit_with_this_w_5bb8ae3c",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on melee hit with this weapon",
+      "vendor_pattern": "^trigger level (%d+) (.+) on melee hit with this weapon$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_animated_guardian_k_e261eb64",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when animated guardian kills an enemy",
+      "vendor_pattern": "^trigger level (%d+) (.+) when animated guardian kills an enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_attack_with_a_b_4a4ea255",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you attack with a bow",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you attack with a bow$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_attack_with_a_n_58a8603d",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you attack with a non-vaal slam or strike skill near an enemy",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you attack with a non%-vaal slam or strike skill near an enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_block_6a0f5cc4",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you block",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you block$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_consume_a_corps_eab27ab1",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you consume a corpse",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you consume a corpse$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_gain_avian_s_mi_6bb8af3e",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you gain avian's might or avian's flight",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you gain avian's might or avian's flight$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_hit_a_bleeding_67eb05d0",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you hit a bleeding enemy",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you hit a bleeding enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_hit_a_frozen_en_88e995a0",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you hit a frozen enemy",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you hit a frozen enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_hit_a_rare_or_u_1eacf765",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you hit a rare or unique enemy and have no mark",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you hit a rare or unique enemy and have no mark$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_hit_a_rare_or_u_eeba1661",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you hit a rare or unique enemy",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you hit a rare or unique enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_hit_an_enemy_wh_eeca4d47",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you hit an enemy while cursed",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you hit an enemy while cursed$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_kill_a_frozen_e_07e19abb",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you kill a frozen enemy",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you kill a frozen enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_lose_cat_s_stea_c0bc22ba",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you lose cat's stealth",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you lose cat's stealth$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_you_use_a_skill_whi_003cf508",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you use a skill while you have a spirit charge",
+      "vendor_pattern": "^trigger level (%d+) (.+) when you use a skill while you have a spirit charge$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_trigger_level_d_when_your_trap_is_trigge_aad36031",
+      "pattern": "trigger level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when your trap is triggered",
+      "vendor_pattern": "^trigger level (%d+) (.+) when your trap is triggered$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_triggers_level_d_summon_triggerbots_when_77107118",
       "pattern": "triggers level (?:\\d+) summon triggerbots when allocated",
       "vendor_pattern": "^triggers level (%d+) summon triggerbots when allocated$",
@@ -40113,6 +43204,114 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_triggers_level_d_when_allocated_e45df5f1",
+      "pattern": "triggers level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when allocated",
+      "vendor_pattern": "^triggers level (%d+) (.+) when allocated$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_triggers_level_d_when_equipped_86dd7296",
+      "pattern": "triggers level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when equipped",
+      "vendor_pattern": "^triggers level (%d+) (.+) when equipped$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_triggers_level_d_when_you_kill_a_bleedin_b5067464",
+      "pattern": "triggers? level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) when you kill a bleeding enemy",
+      "vendor_pattern": "^triggers? level (%d+) (.+) when you kill a bleeding enemy$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_triple_attribute_requirements_of_martial_eff7e4c4",
@@ -40596,6 +43795,42 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_use_level_d_on_a_14900ff5",
+      "pattern": "use level (\\d+) (elemental weakness|temporal chains|vulnerability|electrocute|enfeeble|despair|freeze|wither|shock|daze|maim) on [a-z]+",
+      "vendor_pattern": "^use level (%d+) (.+) on %a+$",
+      "mods": [
+        {
+          "name": "ExtraSkill",
+          "type": "LIST",
+          "value": {
+            "level": "$1",
+            "skillId": {
+              "enum": 2
+            },
+            "triggered": true
+          }
+        }
+      ],
+      "enums": {
+        "2": {
+          "daze": "SupportDazePlayer",
+          "despair": "DespairPlayer",
+          "electrocute": "SupportElectrocutePlayer",
+          "elemental weakness": "ElementalWeaknessPlayer",
+          "enfeeble": "EnfeeblePlayer",
+          "freeze": "SupportFreezePlayer",
+          "maim": "SupportMaimPlayer",
+          "shock": "SupportShockPlayer",
+          "temporal chains": "TemporalChainsPlayer",
+          "vulnerability": "VulnerabilityPlayer",
+          "wither": "WitherPlayer"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_using_warcries_is_instant_5b7df398",
@@ -41284,6 +44519,32 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_w_damage_with_hits_is_lucky_7c5ccf30",
+      "pattern": "(lightning|physical|chaos|cold|fire) damage with hits is lucky",
+      "vendor_pattern": "^(%w+) damage with hits is lucky$",
+      "mods": [
+        {
+          "name": {
+            "enum": 1
+          },
+          "type": "BASE",
+          "value": 100.0
+        }
+      ],
+      "enums": {
+        "1": {
+          "chaos": "ChaosLuckyHitsChance",
+          "cold": "ColdLuckyHitsChance",
+          "fire": "FireLuckyHitsChance",
+          "lightning": "LightningLuckyHitsChance",
+          "physical": "PhysicalLuckyHitsChance"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_walk_the_paths_not_taken_a1928bac",

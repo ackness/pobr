@@ -58,6 +58,23 @@ struct RawRow {
     mods: serde_json::Value,
     #[serde(default)]
     reason: Option<String>,
+    /// `kind:"enum"` 行：词槽的捕获序号（1-based）。
+    #[serde(default)]
+    word_slots: Vec<usize>,
+    /// `kind:"enum"` 行：探针字典大小（开放词汇判定：命中数 == 字典全量
+    /// 且 mods 依赖该词 → 闭集假设不成立，整条跳过）。
+    #[serde(default)]
+    dict_size: usize,
+    /// `kind:"enum"` 行：逐词组合的推断结果。
+    #[serde(default)]
+    variants: Vec<RawEnumVariant>,
+}
+
+/// 词类探针的单个命中组合（words[i] 对应 word_slots[i] 槽）。
+#[derive(Deserialize)]
+struct RawEnumVariant {
+    words: Vec<String>,
+    mods: serde_json::Value,
 }
 
 /// 执行抽取，返回最终 JSON 文本。
@@ -73,6 +90,17 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
     let mut seen_patterns: BTreeSet<String> = BTreeSet::new();
     let mut seen_ids: BTreeSet<String> = BTreeSet::new();
     let registry = HandlerRegistry::new();
+
+    // V2s5 预扫：全库已知 mod name 集（静态/数字推断行，非词类探针产物）。
+    // 词类探针的开放槽用它过滤拼接型闭包的有效词——`FireResist` 在其他
+    // 词条反复出现（有效），`StrengthResist` 全库唯一（字典噪声词）。
+    // vendor 数据自证，无语义启发式。
+    let mut known_names: BTreeSet<String> = BTreeSet::new();
+    for row in &rows {
+        if row.kind == "static" || row.kind == "inferred" {
+            collect_mod_names(&row.mods, &mut known_names);
+        }
+    }
 
     for row in rows {
         bump(&mut stats, "total");
@@ -93,19 +121,81 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
             bump(&mut stats, "skip_dedup_existing_key");
             continue;
         }
+        // V2s5：词类捕获字典探针行 → enums 闭集统一化；统一化因结构差异
+        // 失败时降级为单词条目（词特定值全字面量，tag 差异自然消解）。
+        if row.kind == "enum" {
+            let rescued = match rescue_open_variants(&row, &known_names) {
+                Ok(v) => v,
+                Err(reason) => {
+                    bump(&mut stats, &format!("skip_{reason}"));
+                    continue;
+                }
+            };
+            let unified = build_enum_entry(
+                &row,
+                &rescued,
+                &registry,
+                &existing_patterns,
+                &mut seen_patterns,
+                &mut seen_ids,
+            );
+            match unified {
+                Ok(entry) => {
+                    bump(
+                        &mut stats,
+                        if entry.mods.is_empty() {
+                            "emitted_empty"
+                        } else {
+                            "emitted_enum"
+                        },
+                    );
+                    entries.push(entry);
+                }
+                Err(reason)
+                    if matches!(
+                        reason.as_str(),
+                        "enum_diff_position"
+                            | "enum_diff_scalar"
+                            | "enum_diff_shape"
+                            | "enum_diff_multislot"
+                            | "enum_slot_conflict"
+                    ) =>
+                {
+                    match build_singleton_entries(
+                        &row,
+                        &rescued,
+                        &registry,
+                        &existing_patterns,
+                        &mut seen_patterns,
+                        &mut seen_ids,
+                    ) {
+                        Ok(list) => {
+                            for entry in list {
+                                bump(&mut stats, "emitted_enum_singleton");
+                                entries.push(entry);
+                            }
+                        }
+                        Err(reason) => bump(&mut stats, &format!("skip_{reason}")),
+                    }
+                }
+                Err(reason) => bump(&mut stats, &format!("skip_{reason}")),
+            }
+            continue;
+        }
         // 静态条目的捕获值未被 mods 引用 → 降级非捕获组；inferred 保留捕获。
         let keep_captures = row.kind == "inferred";
-        let (regex, caps) = match lua_pattern_to_regex(&row.pattern, keep_captures) {
-            Ok(v) => v,
-            Err(reason) => {
-                bump(&mut stats, "skip_pattern_unconvertible");
-                eprintln!(
-                    "extract-special-mods: pattern unconvertible `{}`：{reason}",
-                    row.pattern
-                );
-                continue;
-            }
-        };
+        let (regex, caps) =
+            match lua_pattern_to_regex(&row.pattern, keep_captures, &BTreeMap::new()) {
+                Ok(v) => v,
+                Err(reason) => {
+                    bump(&mut stats, "skip_pattern_unconvertible");
+                    eprintln!(
+                        "extract-special-mods: pattern unconvertible `{}`：{reason}",
+                        row.pattern
+                    );
+                    continue;
+                }
+            };
         if existing_patterns.contains(&regex) {
             bump(&mut stats, "skip_dedup_existing_pattern");
             continue;
@@ -322,13 +412,26 @@ fn push_literal(out: &mut String, c: char) {
     out.push(c);
 }
 
+/// 词槽的 regex 形态（V2s5；键 = 捕获组序号，1-based 计**全部** `(` 组）。
+enum WordAlt {
+    /// enums 闭集：`(w1|w2|...)`。
+    Alternation(Vec<String>),
+    /// 无 enums 依赖且命中全字典（可选前缀捕获等）：按 Lua 词类原样泛化。
+    Fragment,
+}
+
 /// 转换入口。`keep_captures=false` 时捕获组降级为 `(?:...)`（静态条目捕获值
 /// 未被引用）。返回 `(regex, 捕获组数)`；白名单之外 → `Err(原因)`。
-fn lua_pattern_to_regex(key: &str, keep_captures: bool) -> Result<(String, usize), String> {
+fn lua_pattern_to_regex(
+    key: &str,
+    keep_captures: bool,
+    word_alts: &BTreeMap<usize, WordAlt>,
+) -> Result<(String, usize), String> {
     let chars: Vec<char> = key.chars().collect();
     let n = chars.len();
     let mut out = String::with_capacity(key.len() + 8);
     let mut caps = 0usize;
+    let mut ordinal = 0usize;
     let mut i = 0usize;
     // 引擎整行锚定（编译期包 ^...$），首 ^ / 尾 $ 直接吸收。
     if i < n && chars[i] == '^' {
@@ -345,6 +448,7 @@ fn lua_pattern_to_regex(key: &str, keep_captures: bool) -> Result<(String, usize
                 let e = chars[i];
                 match e {
                     'd' => out.push_str(r"\d"),
+                    'D' => out.push_str(r"\D"),
                     'a' | 'l' => out.push_str("[a-z]"),
                     's' => out.push_str(r"\s"),
                     'w' => out.push_str("[a-z0-9]"),
@@ -360,16 +464,55 @@ fn lua_pattern_to_regex(key: &str, keep_captures: bool) -> Result<(String, usize
                     .map(|p| i + 1 + p)
                     .ok_or("unbalanced (")?;
                 let content: String = chars[i + 1..close].iter().collect();
-                let body = numeric_capture_body(&content).ok_or(format!("capture `{content}`"))?;
-                if keep_captures {
-                    out.push('(');
-                    out.push_str(body);
-                    out.push(')');
-                    caps += 1;
-                } else {
-                    out.push_str("(?:");
-                    out.push_str(body);
-                    out.push(')');
+                ordinal += 1;
+                match word_alts.get(&ordinal) {
+                    // 词类闭集：alternation（长词优先，避免 `evasion` 吞并
+                    // `evasion rating` 前缀）。恒保留捕获（enums 按序号查表）。
+                    Some(WordAlt::Alternation(words)) => {
+                        let mut ws: Vec<&String> = words.iter().collect();
+                        ws.sort_by(|a, b| b.len().cmp(&a.len()).then(a.cmp(b)));
+                        let alt = ws
+                            .iter()
+                            .map(|w| regex::escape(w))
+                            .collect::<Vec<_>>()
+                            .join("|");
+                        out.push('(');
+                        out.push_str(&alt);
+                        out.push(')');
+                        caps += 1;
+                    }
+                    // 无 enums 依赖的词槽（可选前缀等）：按原词类泛化转换，
+                    // 保留捕获以维持后续 $n 序号对齐。
+                    Some(WordAlt::Fragment) => {
+                        let (frag, _) = lua_pattern_to_regex(&content, false, &BTreeMap::new())?;
+                        out.push('(');
+                        out.push_str(&frag);
+                        out.push(')');
+                        caps += 1;
+                    }
+                    None => {
+                        let body = match numeric_capture_body(&content) {
+                            Some(b) => b.to_string(),
+                            // 静态条目（捕获值未被 mods 引用）的词类捕获：按
+                            // 原词类泛化、降级非捕获（V2s5，如 `(%D+)`）。
+                            None if !keep_captures => {
+                                lua_pattern_to_regex(&content, false, &BTreeMap::new())
+                                    .map_err(|_| format!("capture `{content}`"))?
+                                    .0
+                            }
+                            None => return Err(format!("capture `{content}`")),
+                        };
+                        if keep_captures {
+                            out.push('(');
+                            out.push_str(&body);
+                            out.push(')');
+                            caps += 1;
+                        } else {
+                            out.push_str("(?:");
+                            out.push_str(&body);
+                            out.push(')');
+                        }
+                    }
                 }
                 i = close + 1;
             }
@@ -391,7 +534,9 @@ fn lua_pattern_to_regex(key: &str, keep_captures: bool) -> Result<(String, usize
                             let e = chars[i];
                             match e {
                                 'd' => out.push_str(r"\d"),
+                                'D' => out.push_str(r"\D"),
                                 'a' | 'l' => out.push_str("a-z"),
+                                's' => out.push_str(r"\s"),
                                 c if !c.is_ascii_alphanumeric() => {
                                     if matches!(c, '\\' | ']' | '^') {
                                         out.push('\\');
@@ -440,6 +585,402 @@ fn lua_pattern_to_regex(key: &str, keep_captures: bool) -> Result<(String, usize
         }
     }
     Ok((out, caps))
+}
+
+// ---- V2s5：kind:"enum" 行 → 带 enums 闭集的模板条目 ----
+
+/// 词类探针行的统一化：
+/// - 逐词组合的推断 mods 做结构 diff——全组合相等的叶子按字面量保留；
+/// - 差异叶子必须是字符串、位于 mod name 或 LIST 值字段（tags/flags/type
+///   差异整条跳过——compile_tag 是编译期静态求值），且恰由一个词槽决定 →
+///   收编为 `{"enum": slot}` 引用 + `enums[slot][word]` 映射；
+/// - 词槽命中全字典且被 enums 依赖 → 开放词汇（触发技能名等，闭集假设
+///   不成立）整条跳过；命中全字典且无依赖 → 词类原样泛化（可选前缀捕获）；
+///   命中真子集 → alternation 闭集限定匹配面。
+fn build_enum_entry(
+    row: &RawRow,
+    variants: &[&RawEnumVariant],
+    registry: &HandlerRegistry,
+    existing_patterns: &BTreeSet<String>,
+    seen_patterns: &mut BTreeSet<String>,
+    seen_ids: &mut BTreeSet<String>,
+) -> Result<SpecialTemplateDef, String> {
+    if variants.is_empty() || row.word_slots.is_empty() || row.dict_size == 0 {
+        return Err("enum_row_malformed".into());
+    }
+    let slot_count = row.word_slots.len();
+    if variants.iter().any(|v| v.words.len() != slot_count) {
+        return Err("enum_row_malformed".into());
+    }
+
+    // 1. 结构 diff（JSON Pointer 路径收集差异字符串叶子）。
+    let values: Vec<&serde_json::Value> = variants.iter().map(|v| &v.mods).collect();
+    let mut diff_paths: Vec<String> = Vec::new();
+    collect_diffs("", &values, &mut diff_paths)?;
+
+    // 2. 差异位置白名单：`/<i>/name` 或 `/<i>/value/<field>`（field ≠ mod）。
+    for path in &diff_paths {
+        let segs: Vec<&str> = path.split('/').collect(); // ["", i, ...]
+        let ok = match segs.as_slice() {
+            ["", idx, "name"] => idx.parse::<usize>().is_ok(),
+            ["", idx, "value", field] => idx.parse::<usize>().is_ok() && *field != "mod",
+            _ => false,
+        };
+        if !ok {
+            return Err("enum_diff_position".into());
+        }
+    }
+
+    // 3. 每个差异归属恰一个词槽（叶子 = f(该槽词)），并组装 enums 映射。
+    let mut enums: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    let mut slot_for_diff: Vec<usize> = Vec::with_capacity(diff_paths.len());
+    for path in &diff_paths {
+        let mut chosen = None;
+        for p in 0..slot_count {
+            let mut word_to_leaf: BTreeMap<&str, &str> = BTreeMap::new();
+            let mut consistent = true;
+            for var in variants {
+                let leaf = var
+                    .mods
+                    .pointer(path)
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or("enum_diff_shape")?;
+                match word_to_leaf.entry(var.words[p].as_str()) {
+                    std::collections::btree_map::Entry::Occupied(e) if *e.get() != leaf => {
+                        consistent = false;
+                        break;
+                    }
+                    std::collections::btree_map::Entry::Vacant(e) => {
+                        e.insert(leaf);
+                    }
+                    _ => {}
+                }
+            }
+            if consistent {
+                chosen = Some((p, word_to_leaf));
+                break;
+            }
+        }
+        let (p, word_to_leaf) = chosen.ok_or("enum_diff_multislot")?;
+        slot_for_diff.push(p);
+        let map: BTreeMap<String, String> = word_to_leaf
+            .into_iter()
+            .map(|(w, l)| (w.to_string(), l.to_string()))
+            .collect();
+        let key = row.word_slots[p].to_string();
+        match enums.entry(key) {
+            std::collections::btree_map::Entry::Occupied(e) => {
+                // 同槽被多个差异位置引用：映射必须逐字一致（resolve_enum 对
+                // 同一槽只查一张表）。
+                if *e.get() != map {
+                    return Err("enum_slot_conflict".into());
+                }
+            }
+            std::collections::btree_map::Entry::Vacant(e) => {
+                e.insert(map);
+            }
+        }
+    }
+
+    // 4. 词槽 → regex 形态（开放词汇判定按 dict_size）。
+    let contents = capture_contents(&row.pattern);
+    let mut word_alts: BTreeMap<usize, WordAlt> = BTreeMap::new();
+    for (p, &slot) in row.word_slots.iter().enumerate() {
+        let hits: BTreeSet<String> = variants.iter().map(|v| v.words[p].clone()).collect();
+        let relevant = enums.contains_key(&slot.to_string());
+        if relevant {
+            if hits.len() >= row.dict_size {
+                return Err("enum_open_vocabulary".into());
+            }
+            word_alts.insert(slot, WordAlt::Alternation(hits.into_iter().collect()));
+        } else if hits.len() >= row.dict_size {
+            // 全字典命中且 mods 不依赖该词：只有**纯可选前缀捕获**（`(i?t?e?m? ?)`
+            // 等，内容无通配原子）可信为"闭包真忽略此词"→ 原样泛化；词类捕获
+            // （`.+`/`%a+`）全命中往往是闭包对字典外词退化（skillId 置 nil 丢键
+            // 使各组合输出趋同）——按开放词汇跳过，防假阳性。
+            let junk = contents
+                .get(slot.saturating_sub(1))
+                .is_some_and(|c| is_optional_junk(c));
+            if !junk {
+                return Err("enum_open_vocabulary".into());
+            }
+            word_alts.insert(slot, WordAlt::Fragment);
+        } else {
+            word_alts.insert(slot, WordAlt::Alternation(hits.into_iter().collect()));
+        }
+    }
+
+    // 5. 统一模板：diff 位置替换为 {"enum": slot}。
+    let mut unified = variants[0].mods.clone();
+    for (path, &p) in diff_paths.iter().zip(&slot_for_diff) {
+        *unified.pointer_mut(path).ok_or("enum_row_malformed")? =
+            serde_json::json!({ "enum": row.word_slots[p] });
+    }
+
+    // 6. regex + 去重 + 白名单转换 + 编译验证（与常规路径同一闸门）。
+    let (regex, caps) = lua_pattern_to_regex(&row.pattern, true, &word_alts)
+        .map_err(|_| "enum_pattern_unconvertible".to_string())?;
+    if existing_patterns.contains(&regex) {
+        return Err("dedup_existing_pattern".into());
+    }
+    if !seen_patterns.insert(regex.clone()) {
+        return Err("dedup_self".into());
+    }
+    let mods = transform_mods(&unified)?;
+    validate_refs(&mods, caps)?;
+    let id = format!("vnd_{}_{}", slug(&row.pattern), stable_hash8(&row.pattern));
+    if !seen_ids.insert(id.clone()) {
+        return Err("dedup_id".into());
+    }
+    let entry = SpecialTemplateDef {
+        id,
+        pattern: regex,
+        vendor_pattern: Some(row.pattern.clone()),
+        mods,
+        handler_id: None,
+        handler_args: Vec::new(),
+        enums,
+        verified: false,
+        batch: BATCH.to_string(),
+        source_note: Some("vendor specialModList 批量抽取（词类字典探针）".to_string()),
+    };
+    SpecialModRules::compile(std::slice::from_ref(&entry), registry)
+        .map_err(|_| "enum_compile_failed".to_string())?;
+    Ok(entry)
+}
+
+/// 统一化失败的降级路径：逐词组合出**单词条目**——mods 全字面量（词特定
+/// 的 tag / 数值 / 形状差异不再需要 enum 落点），pattern 的词槽收窄为该
+/// 组合的单词 alternation。前置闸：任一词槽命中全字典 → 开放词汇整条
+/// 跳过；组合数 > 40 → 跳过（多槽全叉积防数据爆炸）。单个组合转换失败
+/// 只丢该组合（匹配面收窄，保守）。
+fn build_singleton_entries(
+    row: &RawRow,
+    variants: &[&RawEnumVariant],
+    registry: &HandlerRegistry,
+    existing_patterns: &BTreeSet<String>,
+    seen_patterns: &mut BTreeSet<String>,
+    seen_ids: &mut BTreeSet<String>,
+) -> Result<Vec<SpecialTemplateDef>, String> {
+    let slot_count = row.word_slots.len();
+    for p in 0..slot_count {
+        let hits: BTreeSet<&str> = variants.iter().map(|v| v.words[p].as_str()).collect();
+        if hits.len() >= row.dict_size {
+            return Err("enum_open_vocabulary".into());
+        }
+    }
+    if variants.len() > 40 {
+        return Err("enum_singleton_too_many".into());
+    }
+    let mut out = Vec::new();
+    for var in variants {
+        let word_alts: BTreeMap<usize, WordAlt> = row
+            .word_slots
+            .iter()
+            .enumerate()
+            .map(|(p, &slot)| (slot, WordAlt::Alternation(vec![var.words[p].clone()])))
+            .collect();
+        let Ok((regex, caps)) = lua_pattern_to_regex(&row.pattern, true, &word_alts) else {
+            continue;
+        };
+        if existing_patterns.contains(&regex) || !seen_patterns.insert(regex.clone()) {
+            continue;
+        }
+        let Ok(mods) = transform_mods(&var.mods) else {
+            continue;
+        };
+        if validate_refs(&mods, caps).is_err() {
+            continue;
+        }
+        let mut word_slug = slug(&var.words.join("_"));
+        if word_slug.is_empty() {
+            word_slug = "blank".to_string();
+        }
+        let id = format!(
+            "vnd_{}_{}_{}",
+            slug(&row.pattern),
+            stable_hash8(&row.pattern),
+            word_slug
+        );
+        if !seen_ids.insert(id.clone()) {
+            continue;
+        }
+        let entry = SpecialTemplateDef {
+            id,
+            pattern: regex,
+            vendor_pattern: Some(row.pattern.clone()),
+            mods,
+            handler_id: None,
+            handler_args: Vec::new(),
+            enums: BTreeMap::new(),
+            verified: false,
+            batch: BATCH.to_string(),
+            source_note: Some(
+                "vendor specialModList 批量抽取（词类字典探针·单词降级）".to_string(),
+            ),
+        };
+        if SpecialModRules::compile(std::slice::from_ref(&entry), registry).is_ok() {
+            out.push(entry);
+        }
+    }
+    if out.is_empty() {
+        return Err("enum_singleton_all_failed".into());
+    }
+    Ok(out)
+}
+
+/// 递归收集 mods JSON 里全部 `name` 字符串（含嵌套载荷）。
+fn collect_mod_names(v: &serde_json::Value, out: &mut BTreeSet<String>) {
+    match v {
+        serde_json::Value::Object(map) => {
+            if let Some(serde_json::Value::String(s)) = map.get("name") {
+                out.insert(s.clone());
+            }
+            for val in map.values() {
+                collect_mod_names(val, out);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                collect_mod_names(item, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// 开放槽救援：词槽命中全字典且非可选前缀捕获时，用全库已知 name 集过滤
+/// 组合——拼接型闭包对噪声词造出的 name（`StrengthResist`）全库唯一，
+/// 有效词的 name（`FireResist`）在其他词条反复出现。过滤后仍开放交给
+/// 调用方 step-4 判定；全滤空 → 开放词汇跳过。无开放槽的行原样返回
+/// （防止误伤本条目独有的合法 name）。
+fn rescue_open_variants<'a>(
+    row: &'a RawRow,
+    known_names: &BTreeSet<String>,
+) -> Result<Vec<&'a RawEnumVariant>, String> {
+    let contents = capture_contents(&row.pattern);
+    let has_open_word_slot = (0..row.word_slots.len()).any(|p| {
+        let hits: BTreeSet<&str> = row.variants.iter().map(|v| v.words[p].as_str()).collect();
+        hits.len() >= row.dict_size
+            && !contents
+                .get(row.word_slots[p].saturating_sub(1))
+                .is_some_and(|c| is_optional_junk(c))
+    });
+    if !has_open_word_slot {
+        return Ok(row.variants.iter().collect());
+    }
+    let filtered: Vec<&RawEnumVariant> = row
+        .variants
+        .iter()
+        .filter(|v| {
+            if v.mods.as_array().is_none_or(Vec::is_empty) {
+                return false; // 闭包对噪声词短路返回空表
+            }
+            let mut names = BTreeSet::new();
+            collect_mod_names(&v.mods, &mut names);
+            !names.is_empty() && names.iter().all(|n| known_names.contains(n))
+        })
+        .collect();
+    if filtered.is_empty() {
+        return Err("enum_open_vocabulary".into());
+    }
+    Ok(filtered)
+}
+
+/// 逐捕获组提取 Lua pattern 的括号内容（1-based 序号对齐 `word_slots`）。
+fn capture_contents(pattern: &str) -> Vec<String> {
+    let chars: Vec<char> = pattern.chars().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        match chars[i] {
+            '%' => i += 2,
+            '(' => {
+                let close = chars[i + 1..]
+                    .iter()
+                    .position(|&c| c == ')')
+                    .map(|p| i + 1 + p)
+                    .unwrap_or(chars.len());
+                out.push(chars[i + 1..close.min(chars.len())].iter().collect());
+                i = close + 1;
+            }
+            _ => i += 1,
+        }
+    }
+    out
+}
+
+/// 纯可选前缀捕获判定：内容不含通配原子（`.` / `%字母` 类 / `[]` 字符类），
+/// 只由字面字符与 `?` 量词组成（如 `i?t?e?m? ?`）。
+fn is_optional_junk(content: &str) -> bool {
+    let chars: Vec<char> = content.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        match chars[i] {
+            '.' | '[' | ']' | '+' | '*' | '-' => return false,
+            '%' => {
+                if chars.get(i + 1).is_some_and(char::is_ascii_alphanumeric) {
+                    return false;
+                }
+                i += 2;
+            }
+            _ => i += 1,
+        }
+    }
+    true
+}
+
+/// 结构 diff：全组合相等 → 跳过；对象/数组同形递归；字符串叶子差异 →
+/// 记录 JSON Pointer；其余（形状不一致 / 数字布尔差异）→ Err 整条跳过。
+fn collect_diffs(
+    path: &str,
+    variants: &[&serde_json::Value],
+    out: &mut Vec<String>,
+) -> Result<(), String> {
+    let first = variants[0];
+    if variants.iter().all(|v| *v == first) {
+        return Ok(());
+    }
+    match first {
+        serde_json::Value::Object(map) => {
+            for v in variants {
+                let o = v.as_object().ok_or("enum_diff_shape")?;
+                if o.len() != map.len() || !map.keys().all(|k| o.contains_key(k)) {
+                    return Err("enum_diff_shape".into());
+                }
+            }
+            for k in map.keys() {
+                if k.contains('/') || k.contains('~') {
+                    return Err("enum_diff_shape".into()); // JSON Pointer 转义不建模
+                }
+                let subs: Vec<&serde_json::Value> =
+                    variants.iter().map(|v| &v[k.as_str()]).collect();
+                collect_diffs(&format!("{path}/{k}"), &subs, out)?;
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in variants {
+                if v.as_array().map(Vec::len) != Some(arr.len()) {
+                    return Err("enum_diff_shape".into());
+                }
+            }
+            for idx in 0..arr.len() {
+                let subs: Vec<&serde_json::Value> = variants.iter().map(|v| &v[idx]).collect();
+                collect_diffs(&format!("{path}/{idx}"), &subs, out)?;
+            }
+        }
+        serde_json::Value::String(_) => {
+            for v in variants {
+                if !v.is_string() {
+                    return Err("enum_diff_shape".into());
+                }
+            }
+            out.push(path.to_string());
+        }
+        // 数字/布尔随词变化（分数词值等）：TemplateValueDef 无 enum 数值落点。
+        _ => return Err("enum_diff_scalar".into()),
+    }
+    Ok(())
 }
 
 // ---- raw mod JSON → ModTemplateDef（忠实性白名单）----
@@ -499,13 +1040,20 @@ fn transform_mod(v: &serde_json::Value) -> Result<ModTemplateDef, String> {
             return Err("mod_unknown_key".into());
         }
     }
-    let name = obj
-        .get("name")
-        .and_then(serde_json::Value::as_str)
-        .ok_or("mod_name_missing")?;
-    if name.contains('$') || name.contains('+') {
-        return Err("mod_name_nonliteral".into());
-    }
+    let name = match obj.get("name") {
+        Some(serde_json::Value::String(s)) => {
+            if s.contains('$') || s.contains('+') {
+                return Err("mod_name_nonliteral".into());
+            }
+            TemplateNameDef::Literal(s.clone())
+        }
+        // enums 闭集引用（V2s5 统一化产物 `{"enum": n}`）。
+        Some(v) => match enum_ref(v) {
+            Some(idx) => TemplateNameDef::Enum { capture_index: idx },
+            None => return Err("mod_name_missing".into()),
+        },
+        None => return Err("mod_name_missing".into()),
+    };
     let mod_type = obj
         .get("type")
         .and_then(serde_json::Value::as_str)
@@ -544,7 +1092,7 @@ fn transform_mod(v: &serde_json::Value) -> Result<ModTemplateDef, String> {
         return Err("nested_scaling_tag".into());
     }
     Ok(ModTemplateDef {
-        name: TemplateNameDef::Literal(name.to_string()),
+        name,
         mod_type: mod_type.to_string(),
         value,
         flags,
@@ -662,9 +1210,23 @@ fn transform_scalar(v: &serde_json::Value) -> Result<TemplateScalarDef, String> 
             }
             Ok(TemplateScalarDef::Text(s.clone()))
         }
-        serde_json::Value::Object(_) | serde_json::Value::Array(_) => Err("value_nested".into()),
+        // enums 闭集引用（V2s5 统一化产物 `{"enum": n}`）——其余对象形态仍拒。
+        serde_json::Value::Object(_) => match enum_ref(v) {
+            Some(idx) => Ok(TemplateScalarDef::Enum { capture_index: idx }),
+            None => Err("value_nested".into()),
+        },
+        serde_json::Value::Array(_) => Err("value_nested".into()),
         serde_json::Value::Null => Err("value_form".into()),
     }
+}
+
+/// `{"enum": n}` 引用识别（单键对象 + 非负整数）。
+fn enum_ref(v: &serde_json::Value) -> Option<u32> {
+    let map = v.as_object()?;
+    if map.len() != 1 {
+        return None;
+    }
+    map.get("enum")?.as_u64().map(|n| n as u32)
 }
 
 /// tag 形态白名单：与 `pobr-core::rules::special_mod::compile_tag` 的**忠实映射**
@@ -826,38 +1388,95 @@ mod tests {
 
     #[test]
     fn numeric_captures_convert_faithfully() {
-        let (re, caps) = lua_pattern_to_regex("gain (%d+) rage", true).unwrap();
+        let (re, caps) = lua_pattern_to_regex("gain (%d+) rage", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, r"gain (\d+) rage");
         assert_eq!(caps, 1);
-        let (re, caps) = lua_pattern_to_regex("^(%d+%.?%d*)%% of damage", true).unwrap();
+        let (re, caps) =
+            lua_pattern_to_regex("^(%d+%.?%d*)%% of damage", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, r"(\d+(?:\.\d+)?)% of damage");
         assert_eq!(caps, 1);
     }
 
     #[test]
     fn static_mode_discards_captures() {
-        let (re, caps) = lua_pattern_to_regex("has (%d+) sockets?", false).unwrap();
+        let (re, caps) =
+            lua_pattern_to_regex("has (%d+) sockets?", false, &BTreeMap::new()).unwrap();
         assert_eq!(re, r"has (?:\d+) sockets?");
         assert_eq!(caps, 0);
     }
 
     #[test]
     fn lua_escapes_and_quantifiers() {
-        let (re, _) = lua_pattern_to_regex("50%% increased effect", true).unwrap();
+        let (re, _) =
+            lua_pattern_to_regex("50%% increased effect", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, "50% increased effect");
-        let (re, _) = lua_pattern_to_regex("armou?r", true).unwrap();
+        let (re, _) = lua_pattern_to_regex("armou?r", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, "armou?r");
         // `%-` 转义 = 字面连字符；裸 `-` = Lua 懒惰量词 → regex `*?`
-        let (re, _) = lua_pattern_to_regex("off%-hand", true).unwrap();
+        let (re, _) = lua_pattern_to_regex("off%-hand", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, "off-hand");
-        let (re, _) = lua_pattern_to_regex("a-b", true).unwrap();
+        let (re, _) = lua_pattern_to_regex("a-b", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, "a*?b");
     }
 
     #[test]
     fn open_and_word_captures_rejected() {
-        assert!(lua_pattern_to_regex("deal (.-) damage", true).is_err());
-        assert!(lua_pattern_to_regex("(%a+) skills", true).is_err());
+        assert!(lua_pattern_to_regex("deal (.-) damage", true, &BTreeMap::new()).is_err());
+        assert!(lua_pattern_to_regex("(%a+) skills", true, &BTreeMap::new()).is_err());
+        // 静态行（keep_captures=false）的词类捕获按泛化非捕获组放行（V2s5）。
+        let (re, caps) = lua_pattern_to_regex("(%D+) skills", false, &BTreeMap::new()).unwrap();
+        assert_eq!(re, r"(?:\D+) skills");
+        assert_eq!(caps, 0);
+    }
+
+    #[test]
+    fn word_alt_slots_convert_to_alternation_and_fragment() {
+        // 词槽 alternation：长词优先（evasion rating 不被 evasion 前缀吞并）。
+        let mut alts = BTreeMap::new();
+        alts.insert(
+            2,
+            WordAlt::Alternation(vec!["evasion".into(), "evasion rating".into()]),
+        );
+        let (re, caps) = lua_pattern_to_regex("gain (%d+) (%a+) per level", true, &alts).unwrap();
+        assert_eq!(re, r"gain (\d+) (evasion rating|evasion) per level");
+        assert_eq!(caps, 2);
+
+        // Fragment：可选前缀捕获按原词类泛化，保留捕获维持序号对齐。
+        let mut alts = BTreeMap::new();
+        alts.insert(1, WordAlt::Fragment);
+        let (re, caps) = lua_pattern_to_regex("(i?t?e?m? ?)armour applies", true, &alts).unwrap();
+        assert_eq!(re, "(i?t?e?m? ?)armour applies");
+        assert_eq!(caps, 1);
+    }
+
+    #[test]
+    fn enum_diff_collects_string_leaves_only() {
+        let a = serde_json::json!([{"name": "FireResist", "type": "BASE", "value": "$1"}]);
+        let b = serde_json::json!([{"name": "ColdResist", "type": "BASE", "value": "$1"}]);
+        let mut out = Vec::new();
+        collect_diffs("", &[&a, &b], &mut out).unwrap();
+        assert_eq!(out, vec!["/0/name"]);
+
+        // 数字叶子差异（分数词值）→ Err 整条跳过（单词降级兜接）。
+        let a = serde_json::json!([{"name": "X", "value": 25.0}]);
+        let b = serde_json::json!([{"name": "X", "value": 10.0}]);
+        let mut out = Vec::new();
+        assert!(collect_diffs("", &[&a, &b], &mut out).is_err());
+
+        // 形状差异（键缺失，闭包对噪声词丢 skillId 键）→ Err。
+        let a = serde_json::json!([{"name": "X", "skillId": "A"}]);
+        let b = serde_json::json!([{"name": "X"}]);
+        let mut out = Vec::new();
+        assert!(collect_diffs("", &[&a, &b], &mut out).is_err());
+    }
+
+    #[test]
+    fn optional_junk_detection() {
+        assert!(is_optional_junk("i?t?e?m? ?"));
+        assert!(is_optional_junk("a?l?s?o? ?"));
+        assert!(!is_optional_junk(".+"));
+        assert!(!is_optional_junk("%a+"));
+        assert!(!is_optional_junk("[lr][ei][fg][th]t?"));
     }
 
     #[test]
