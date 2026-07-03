@@ -619,6 +619,8 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
         "SkillType" => &["skillType"],
         "DamageType" => &["damageType"],
         "Multiplier" => &["var", "div", "limit"],
+        "PerStat" => &["stat", "div", "limit"],
+        "MultiplierThreshold" => &["var", "threshold", "upper"],
         _ => return Err("tag_type_unmappable".into()),
     };
     let mut fields = BTreeMap::new();

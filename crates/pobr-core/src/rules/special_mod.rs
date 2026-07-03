@@ -497,10 +497,13 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 /// 模板 tag → pobr `ModTag`。**可映射清单**：
 /// - `Condition` / `ActorCondition`（actor=enemy → `Enemy<Var>` 条件）；
 /// - `SkillType`（去 `SkillType:` 前缀，已知闭集）；
-/// - `DamageType`。
-///
+/// - `DamageType`；
 /// - `Multiplier`（**字面** var/div/limit；按某资源/属性数量线性缩放，读
-///   `cfg.multiplier(var)`）。
+///   `cfg.multiplier(var)`）；
+/// - `PerStat`（**字面** stat/div/limit；按 actor 已算出 stat 线性缩放，读
+///   `EvalContext::stat_lookup`——运行时 [`ModTag::PerStat`] M4-T1 已接通）；
+/// - `MultiplierThreshold`（**字面** var/threshold/upper 二元 gate，运行时
+///   [`ModTag::MultiplierThreshold`] 已接通）。
 ///
 /// **不可映射**（pobr 无落点）：`ItemCondition` / `GlobalEffect` / `SkillName` /
 /// `PercentStat` / 带 `$n` 字段值的 `Multiplier`——返回 `None`，对应条目保持
@@ -547,6 +550,42 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 let limit = tag.fields.get("limit").and_then(scalar_number);
                 Some(ModTag::multiplier(var, div, limit))
             }
+        }
+        "PerStat" => {
+            // 字面 stat/div/limit（vendor `statList`/`base`/`actor` 形态无落点，
+            // 由调用方形态白名单挡在门外——本处 fields 只可能是这三键）。
+            let stat = scalar_text(tag.fields.get("stat")?)?;
+            if stat.starts_with('$') {
+                return None;
+            }
+            let div = tag.fields.get("div").and_then(scalar_number).unwrap_or(1.0);
+            let limit = tag.fields.get("limit").and_then(scalar_number);
+            Some(ModTag::PerStat {
+                stat,
+                div,
+                limit,
+                limit_var: None,
+                actor: None,
+            })
+        }
+        "MultiplierThreshold" => {
+            // 字面 var/threshold/upper（vendor `thresholdVar`/`actor` 形态跳过）。
+            // upper 缺省 false = vendor `stat ≥ threshold` 生效侧。
+            let var = scalar_text(tag.fields.get("var")?)?;
+            if var.starts_with('$') {
+                return None;
+            }
+            let threshold = tag.fields.get("threshold").and_then(scalar_number)?;
+            let upper = tag
+                .fields
+                .get("upper")
+                .and_then(scalar_bool)
+                .unwrap_or(false);
+            Some(ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper,
+            })
         }
         // 未映射 tag 形态：保守跳过。
         _ => None,
@@ -847,6 +886,51 @@ mod tests {
         assert_eq!(inner[0].name, "Armour".into());
         assert_eq!(inner[0].mod_type, ModType::Inc);
         assert_eq!(inner[0].value.as_number(), Some(-20.0));
+    }
+
+    /// PerStat tag 映射：按已算出 stat 缩放（M4-T1 运行时通道）。
+    #[test]
+    fn per_stat_tag_maps() {
+        let d = def(
+            r#"{"id":"t","pattern":"gain (\\d+) armour per 50 life","mods":[
+                {"name":"Armour","type":"BASE","value":"$1",
+                 "tags":[{"type":"PerStat","stat":"Life","div":50.0}]}],"batch":"V0"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("gain 10 armour per 50 life", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::PerStat {
+                stat: "Life".into(),
+                div: 50.0,
+                limit: None,
+                limit_var: None,
+                actor: None,
+            }]
+        );
+    }
+
+    /// MultiplierThreshold tag 映射：二元 gate。
+    #[test]
+    fn multiplier_threshold_tag_maps() {
+        let d = def(
+            r#"{"id":"t","pattern":"(\\d+)% more damage at close range","mods":[
+                {"name":"Damage","type":"MORE","value":"$1",
+                 "tags":[{"type":"MultiplierThreshold","var":"enemyDistance",
+                          "threshold":20.0,"upper":true}]}],"batch":"V0"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r.try_match("30% more damage at close range", &reg).unwrap();
+        assert_eq!(
+            m.mods[0].tags,
+            vec![ModTag::MultiplierThreshold {
+                var: "enemyDistance".into(),
+                threshold: 20.0,
+                upper: true,
+            }]
+        );
     }
 
     /// 嵌套 mod 载荷编译期校验：内层未知 mod_type fail-fast。

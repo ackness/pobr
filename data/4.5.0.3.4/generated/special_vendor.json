@@ -2853,6 +2853,28 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_cannot_be_stunned_while_you_have_ghost_s_3b42a76c",
+      "pattern": "cannot be stunned while you have ghost shrouds",
+      "vendor_pattern": "^cannot be stunned while you have ghost shrouds$",
+      "mods": [
+        {
+          "name": "StunImmune",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "GhostShroud"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_cannot_block_70fcc706",
       "pattern": "cannot block",
       "vendor_pattern": "^cannot block$",
@@ -6060,6 +6082,47 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_increased_critical_hit_chance_per_poin_818473f4",
+      "pattern": "(\\d+)% increased critical hit chance per point of strength or intelligence, whichever is lower",
+      "vendor_pattern": "^(%d+)%% increased critical hit chance per point of strength or intelligence, whichever is lower$",
+      "mods": [
+        {
+          "name": "CritChance",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "Str"
+            },
+            {
+              "type": "Condition",
+              "var": "IntHigherThanStr"
+            }
+          ]
+        },
+        {
+          "name": "CritChance",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "Int"
+            },
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "IntHigherThanStr"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_increased_critical_hit_chance_with_spe_24bc5a64",
       "pattern": "(\\d+)% increased critical hit chance with spells which remove the maximum number of seals",
       "vendor_pattern": "^(%d+)%% increased critical hit chance with spells which remove the maximum number of seals$",
@@ -6116,6 +6179,28 @@
               "type": "ActorCondition",
               "actor": "enemy",
               "var": "Poisoned"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_increased_defences_while_you_have_at_l_48c7dd4e",
+      "pattern": "(\\d+)% increased defences while you have at least four linked targets",
+      "vendor_pattern": "^(%d+)%% increased defences while you have at least four linked targets$",
+      "mods": [
+        {
+          "name": "Defences",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 4.0,
+              "var": "LinkedTargets"
             }
           ]
         }
@@ -6483,6 +6568,28 @@
             {
               "type": "Condition",
               "var": "FullLife"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_increased_movement_speed_while_you_hav_05b72c13",
+      "pattern": "(\\d+)% increased movement speed while you have at least two linked targets",
+      "vendor_pattern": "^(%d+)%% increased movement speed while you have at least two linked targets$",
+      "mods": [
+        {
+          "name": "MovementSpeed",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 2.0,
+              "var": "LinkedTargets"
             }
           ]
         }
@@ -7538,6 +7645,35 @@
               }
             ]
           }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_reduced_damage_taken_while_there_are_a_979737c0",
+      "pattern": "(\\d+)% reduced damage taken while there are at least two rare or unique enemies nearby",
+      "vendor_pattern": "^(%d+)%% reduced damage taken while there are at least two rare or unique enemies nearby$",
+      "mods": [
+        {
+          "name": "DamageTaken",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 2.0,
+              "var": "NearbyRareOrUniqueEnemies"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -9557,6 +9693,41 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_enemies_near_corpses_affected_by_your_cu_e6217b0b",
+      "pattern": "enemies near corpses affected by your curses are blinded",
+      "vendor_pattern": "^enemies near corpses affected by your curses are blinded$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Blinded",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "NearbyCorpse"
+            },
+            {
+              "type": "ActorCondition",
+              "actor": "enemy",
+              "var": "Cursed"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_enemies_near_corpses_you_spawned_recentl_4d55eb97",
       "pattern": "enemies near corpses you spawned recently are chilled and shocked",
       "vendor_pattern": "^enemies near corpses you spawned recently are chilled and shocked$",
@@ -11442,6 +11613,69 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_gain_accuracy_rating_equal_to_twice_your_459465dc",
+      "pattern": "gain accuracy rating equal to twice your strength",
+      "vendor_pattern": "^gain accuracy rating equal to twice your strength$",
+      "mods": [
+        {
+          "name": "Accuracy",
+          "type": "BASE",
+          "value": 2.0,
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "Str"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_gain_accuracy_rating_equal_to_your_intel_c6c38cb5",
+      "pattern": "gain accuracy rating equal to your intelligence",
+      "vendor_pattern": "^gain accuracy rating equal to your intelligence$",
+      "mods": [
+        {
+          "name": "Accuracy",
+          "type": "BASE",
+          "value": 1.0,
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "Int"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_gain_accuracy_rating_equal_to_your_stren_98ade281",
+      "pattern": "gain accuracy rating equal to your strength",
+      "vendor_pattern": "^gain accuracy rating equal to your strength$",
+      "mods": [
+        {
+          "name": "Accuracy",
+          "type": "BASE",
+          "value": 1.0,
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "Str"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_gain_additional_critical_hit_chance_equa_135c4205",
       "pattern": "gain additional critical hit chance equal to (\\d+)% of excess chance to hit with attacks",
       "vendor_pattern": "^gain additional critical hit chance equal to (%d+)%% of excess chance to hit with attacks$",
@@ -11472,6 +11706,28 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_gain_additional_elemental_damage_reducti_bc71ea59",
+      "pattern": "gain additional elemental damage reduction equal to half your chaos resistance",
+      "vendor_pattern": "^gain additional elemental damage reduction equal to half your chaos resistance$",
+      "mods": [
+        {
+          "name": "ElementalDamageReduction",
+          "type": "BASE",
+          "value": 1.0,
+          "tags": [
+            {
+              "type": "PerStat",
+              "div": 2.0,
+              "stat": "ChaosResist"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
       "id": "vnd_gain_adrenaline_for_1_second_when_you_ch_a376141b",
@@ -11531,6 +11787,27 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_gain_ailment_threshold_equal_to_the_lowe_1ae79d3f",
+      "pattern": "gain ailment threshold equal to the lowest of evasion and armour on your boots",
+      "vendor_pattern": "^gain ailment threshold equal to the lowest of evasion and armour on your boots$",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "BASE",
+          "value": 1.0,
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "LowestOfArmourAndEvasionOnBoots"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_gain_alchemist_s_genius_when_you_use_a_f_06feba92",
       "pattern": "gain alchemist's genius when you use a flask",
       "vendor_pattern": "^gain alchemist's genius when you use a flask$",
@@ -11539,6 +11816,28 @@
           "name": "Condition:CanHaveAlchemistGenius",
           "type": "FLAG",
           "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_gain_armour_equal_to_your_reserved_mana_66d92d60",
+      "pattern": "gain armour equal to your reserved mana",
+      "vendor_pattern": "^gain armour equal to your reserved mana$",
+      "mods": [
+        {
+          "name": "Armour",
+          "type": "BASE",
+          "value": 1.0,
+          "tags": [
+            {
+              "type": "PerStat",
+              "div": 1.0,
+              "stat": "ManaReserved"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -12265,6 +12564,28 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_gain_energy_shield_from_equipped_body_ar_74771d45",
+      "pattern": "gain energy shield from equipped body armour as extra maximum life",
+      "vendor_pattern": "^gain energy shield from equipped body armour as extra maximum life$",
+      "mods": [
+        {
+          "name": "Life",
+          "type": "BASE",
+          "value": 1.0,
+          "tags": [
+            {
+              "type": "PerStat",
+              "div": 1.0,
+              "stat": "EnergyShieldOnBody Armour"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_gain_fanaticism_for_4_seconds_on_reachin_b54a6191",
       "pattern": "gain fanaticism for 4 seconds on reaching maximum fanatic charges",
       "vendor_pattern": "^gain fanaticism for 4 seconds on reaching maximum fanatic charges$",
@@ -12715,6 +13036,27 @@
             {
               "type": "Condition",
               "var": "ShockingConflux"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_gain_stun_threshold_equal_to_the_lowest_76ed63a5",
+      "pattern": "gain stun threshold equal to the lowest of evasion and armour on your helmet",
+      "vendor_pattern": "^gain stun threshold equal to the lowest of evasion and armour on your helmet$",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": 1.0,
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "LowestOfArmourAndEvasionOnHelmet"
             }
           ]
         }
@@ -15614,6 +15956,30 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_intelligence_is_added_to_accuracy_rating_c40afd5f",
+      "pattern": "intelligence is added to accuracy rating with wands",
+      "vendor_pattern": "^intelligence is added to accuracy rating with wands$",
+      "mods": [
+        {
+          "name": "Accuracy",
+          "type": "BASE",
+          "value": 1.0,
+          "flags": [
+            "Wand"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "Int"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_intelligence_provides_no_bonus_to_energy_7159c1cc",
       "pattern": "intelligence provides no bonus to energy shield",
       "vendor_pattern": "^intelligence provides no bonus to energy shield$",
@@ -15705,6 +16071,67 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_iron_grip_f645b05b",
+      "pattern": "iron grip",
+      "vendor_pattern": "^iron grip$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": 1.0,
+          "flags": [
+            "Spell"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "div": 2.0,
+              "stat": "Str"
+            }
+          ]
+        },
+        {
+          "name": "NoStrBonusToLife",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_iron_will_676e2795",
+      "pattern": "iron will",
+      "vendor_pattern": "^iron will$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": 1.0,
+          "flags": [
+            "Attack",
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "div": 2.0,
+              "stat": "Str"
+            }
+          ]
+        },
+        {
+          "name": "NoStrBonusToLife",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_knockback_direction_is_reversed_a881dfa5",
@@ -17053,6 +17480,36 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_minion_life_is_increased_by_t_h_e_i_r_ov_f6ca4760",
+      "pattern": "minion life is increased by t?h?e?i?r? ?overcapped fire resistance",
+      "vendor_pattern": "^minion life is increased by t?h?e?i?r? ?overcapped fire resistance$",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Life",
+                "type": "INC",
+                "value": 1.0,
+                "tags": [
+                  {
+                    "type": "PerStat",
+                    "div": 1.0,
+                    "stat": "FireResistOverCap"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_minions_attacks_overwhelm_d_physical_dam_afa4aca3",
       "pattern": "minions attacks overwhelm (\\d+)% physical damage reduction",
       "vendor_pattern": "^minions attacks overwhelm (%d+)%% physical damage reduction$",
@@ -18356,6 +18813,36 @@
               }
             ]
           }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_nearby_enemies_are_intimidated_while_you_e89ada1c",
+      "pattern": "nearby enemies are intimidated while you have rage",
+      "vendor_pattern": "^nearby enemies are intimidated while you have rage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Condition:Intimidated",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "RageStack"
+            }
+          ]
         }
       ],
       "verified": false,
@@ -20040,6 +20527,141 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_projectiles_deal_d_increased_damage_for_b3bc51d0",
+      "pattern": "projectiles deal (\\d+)% increased damage for each remaining chain",
+      "vendor_pattern": "^projectiles deal (%d+)%% increased damage for each remaining chain$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "ChainRemaining"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_projectiles_deal_d_increased_damage_with_0b8e82dd",
+      "pattern": "projectiles deal (\\d+)% increased damage with hits and ailments for each time they have chained",
+      "vendor_pattern": "^projectiles deal (%d+)%% increased damage with hits and ailments for each time they have chained$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "keyword_flags": [
+            "Hit",
+            "Ailment"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "Chain"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Projectile"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_projectiles_deal_d_increased_damage_with_d69a0a93",
+      "pattern": "projectiles deal (\\d+)% increased damage with hits and ailments for each remaining chain",
+      "vendor_pattern": "^projectiles deal (%d+)%% increased damage with hits and ailments for each remaining chain$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "keyword_flags": [
+            "Hit",
+            "Ailment"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "ChainRemaining"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Projectile"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_projectiles_deal_d_increased_damage_with_dd2a9125",
+      "pattern": "projectiles deal (\\d+)% increased damage with hits and ailments for each enemy pierced",
+      "vendor_pattern": "^projectiles deal (%d+)%% increased damage with hits and ailments for each enemy pierced$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "keyword_flags": [
+            "Hit",
+            "Ailment"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "PiercedCount"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Projectile"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_projectiles_deal_d_more_damage_for_each_1434c82b",
+      "pattern": "projectiles deal (\\d+)% more damage for each remaining chain",
+      "vendor_pattern": "^projectiles deal (%d+)%% more damage for each remaining chain$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "MORE",
+          "value": "$1",
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "ChainRemaining"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_projectiles_fork_f802a31e",
       "pattern": "projectiles fork",
       "vendor_pattern": "^projectiles fork$",
@@ -20082,6 +20704,30 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_projectiles_gain_d_of_non_chaos_damage_a_51adc0d9",
+      "pattern": "projectiles gain (\\d+)% of non-chaos damage as extra chaos damage per chain",
+      "vendor_pattern": "^projectiles gain (%d+)%% of non%-chaos damage as extra chaos damage per chain$",
+      "mods": [
+        {
+          "name": "NonChaosDamageGainAsChaos",
+          "type": "BASE",
+          "value": "$1",
+          "flags": [
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "Chain"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_projectiles_pierce_all_burning_enemies_a5ca7047",
@@ -20516,6 +21162,28 @@
             {
               "type": "Condition",
               "var": "BeenHitRecently"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_regenerate_d_life_per_second_per_maximum_e2580b58",
+      "pattern": "regenerate ([\\d.]+) life per second per maximum energy shield",
+      "vendor_pattern": "^regenerate ([%d%.]+) life per second per maximum energy shield$",
+      "mods": [
+        {
+          "name": "LifeRegen",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PerStat",
+              "div": 1.0,
+              "stat": "MaximumEnergyShield"
             }
           ]
         }
@@ -22995,6 +23663,66 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_while_there_are_at_least_five_nearby_all_c0e94049",
+      "pattern": "while there are at least five nearby allies, you and nearby allies have onslaught",
+      "vendor_pattern": "^while there are at least five nearby allies, you and nearby allies have onslaught$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Onslaught",
+                "type": "FLAG",
+                "value": true
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 5.0,
+              "var": "NearbyAlly"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_while_there_is_at_least_one_nearby_ally_9e0b8b1a",
+      "pattern": "while there is at least one nearby ally, you and nearby allies deal (\\d+)% more damage",
+      "vendor_pattern": "^while there is at least one nearby ally, you and nearby allies deal (%d+)%% more damage$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "MORE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "NearbyAlly"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_while_you_are_not_on_low_mana_you_and_al_d6d386df",
       "pattern": "while you are not on low mana, you and allies in your presence have unholy might",
       "vendor_pattern": "^while you are not on low mana, you and allies in your presence have unholy might$",
@@ -23046,6 +23774,40 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_with_5_corrupted_items_equipped_life_lee_e5268cca",
+      "pattern": "with 5 corrupted items equipped: life leech recovers based on your chaos damage instead",
+      "vendor_pattern": "^with 5 corrupted items equipped: life leech recovers based on your chaos damage instead$",
+      "mods": [
+        {
+          "name": "LifeLeechBasedOnChaosDamage",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 5.0,
+              "var": "CorruptedItem"
+            }
+          ]
+        },
+        {
+          "name": "Condition:NoLifeLeechFromPhysicalDamage",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 5.0,
+              "var": "CorruptedItem"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
       "id": "vnd_with_a_ghastly_eye_jewel_socketed_minion_41e77a97",
@@ -23121,6 +23883,73 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_with_at_least_one_nearby_corpse_nearby_e_b81728d6",
+      "pattern": "with at least one nearby corpse, nearby enemies deal (\\d+)% reduced damage",
+      "vendor_pattern": "^with at least one nearby corpse, nearby enemies deal (%d+)%% reduced damage$",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "INC",
+                "value": {
+                  "ref": "$1",
+                  "ops": [
+                    {
+                      "negate": {}
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "NearbyCorpse"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_with_at_least_one_nearby_corpse_you_and_860f4ddf",
+      "pattern": "with at least one nearby corpse, you and nearby allies deal (\\d+)% more damage",
+      "vendor_pattern": "^with at least one nearby corpse, you and nearby allies deal (%d+)%% more damage$",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "LIST",
+          "value": {
+            "mods": [
+              {
+                "name": "Damage",
+                "type": "MORE",
+                "value": "$1"
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "NearbyCorpse"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_y_o_u_cannot_recharge_energy_shield_5b5c98df",
@@ -24077,6 +24906,48 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_you_gain_d_increased_area_of_effect_for_048a2391",
+      "pattern": "you gain (\\d+)% increased area of effect for each mine",
+      "vendor_pattern": "^you gain (%d+)%% increased area of effect for each mine$",
+      "mods": [
+        {
+          "name": "AreaOfEffect",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "ActiveMineLimit"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_you_gain_d_increased_damage_for_each_tra_eac5a98e",
+      "pattern": "you gain (\\d+)% increased damage for each trap",
+      "vendor_pattern": "^you gain (%d+)%% increased damage for each trap$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "PerStat",
+              "stat": "ActiveTrapLimit"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_you_gain_divinity_for_d_seconds_on_reach_49bf10c2",
@@ -25925,6 +26796,28 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_your_movement_speed_is_equal_to_the_high_c9a96640",
+      "pattern": "your movement speed is equal to the highest movement speed among linked players",
+      "vendor_pattern": "^your movement speed is equal to the highest movement speed among linked players$",
+      "mods": [
+        {
+          "name": "MovementSpeedEqualHighestLinkedPlayers",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "threshold": 1.0,
+              "var": "LinkedTargets"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
       "id": "vnd_your_nearby_party_members_maximum_endura_24bd9c24",
