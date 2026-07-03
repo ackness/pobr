@@ -30,8 +30,15 @@ fn special_derived_path() -> std::path::PathBuf {
         .join(pobr_data::data_version())
         .join("generated/special_derived.json")
 }
+fn special_vendor_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data")
+        .join(pobr_data::data_version())
+        .join("generated/special_vendor.json")
+}
 
-/// 加载仓库 special 条目（overlay + 可选 generated 派生，拼接）。
+/// 加载仓库 special 条目（overlay + 可选 generated 派生/vendor 批量，拼接——与
+/// pobr-gamedata `load_ruleset` 三源同序）。
 fn load_entries() -> Vec<SpecialTemplateDef> {
     let raw = std::fs::read_to_string(special_mods_path()).expect("special_mods.json 可读");
     let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
@@ -40,6 +47,11 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
         let derived: SpecialModsDef =
             serde_json::from_str(&raw).expect("special_derived.json 可解析");
         entries.extend(derived.entries);
+    }
+    if let Ok(raw) = std::fs::read_to_string(special_vendor_path()) {
+        let vendor: SpecialModsDef =
+            serde_json::from_str(&raw).expect("special_vendor.json 可解析");
+        entries.extend(vendor.entries);
     }
     entries
 }

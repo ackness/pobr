@@ -522,6 +522,24 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
     }
 }
 
+/// 供离线抽取器（`sync-pob-catalog extract-lua --what special-mods`）预检：
+/// tag 能否被 [`compile_tag`] 忠实映射。不可映射的 tag 在编译期会被静默丢弃——
+/// 批量抽取必须把这类条目**整条跳过**而不是丢 tag（否则条件词条变常驻）。
+pub fn tag_is_mappable(tag: &TemplateTagDef) -> bool {
+    compile_tag(tag).is_some()
+}
+
+/// 同上预检：ModFlags 位名是否可映射（[`flag_bit`]；未知名编译期静默跳过，
+/// 会拓宽 mod 适用范围）。
+pub fn flag_name_is_mappable(name: &str) -> bool {
+    flag_bit(name).is_some()
+}
+
+/// 同上预检：KeywordFlags 位名是否可映射（[`keyword_bit`]）。
+pub fn keyword_flag_name_is_mappable(name: &str) -> bool {
+    keyword_bit(name).is_some()
+}
+
 fn scalar_number(scalar: &TemplateScalarDef) -> Option<f64> {
     match scalar {
         TemplateScalarDef::Number(n) => Some(*n),

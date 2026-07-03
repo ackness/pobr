@@ -26,4 +26,7 @@ pub use keystone_registry::DefenceKeystones;
 pub use registry::{
     DuplicateHandlerError, Handler, HandlerCtx, HandlerOutcome, HandlerRegistry, MainSkillCtx,
 };
-pub use special_mod::{SpecialCompileError, SpecialMatch, SpecialModRules};
+pub use special_mod::{
+    SpecialCompileError, SpecialMatch, SpecialModRules, flag_name_is_mappable,
+    keyword_flag_name_is_mappable, tag_is_mappable,
+};

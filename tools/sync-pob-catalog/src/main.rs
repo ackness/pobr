@@ -22,6 +22,7 @@ use sync_pob_catalog::extract_minions::{
 };
 use sync_pob_catalog::extract_parser_rules::{diff_parser_rules, run_extract_parser_rules};
 use sync_pob_catalog::extract_quality::run_extract_gem_quality;
+use sync_pob_catalog::extract_special_mods::run_extract_special_mods;
 use sync_pob_catalog::extract_stat_descriptions::{
     DEFAULT_STAT_DESC_FILES, run_extract_stat_descriptions,
 };
@@ -34,7 +35,7 @@ use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|stat-descriptions|gem-effects|stat-set-labels|config-options|curse-priority|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-trigger-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-stat-id-map --overlay-dir <path> [--out <path>]\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|stat-descriptions|gem-effects|stat-set-labels|config-options|curse-priority|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules|special-mods] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-trigger-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-stat-id-map --overlay-dir <path> [--out <path>]\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -98,8 +99,9 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             Some("runes") => &["ModRunes"],
             Some("catalysts") => &["Item"],
             Some("uniques") => DEFAULT_UNIQUE_FILES,
-            // parser-rules 恒读 Modules/ModParser.lua（headless 全量引导，--files 仅占位）
-            Some("parser-rules") => &["ModParser"],
+            // parser-rules / special-mods 恒读 Modules/ModParser.lua
+            //（headless 全量引导，--files 仅占位）
+            Some("parser-rules") | Some("special-mods") => &["ModParser"],
             _ => DEFAULT_SKILL_FILES,
         }
     };
@@ -155,6 +157,7 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             Some("uniques") => run_extract_uniques(&extract_args)?,
             Some("catalysts") => run_extract_catalysts(&extract_args)?,
             Some("parser-rules") => run_extract_parser_rules(&extract_args)?,
+            Some("special-mods") => run_extract_special_mods(&extract_args)?,
             Some(other) => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,

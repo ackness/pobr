@@ -154,19 +154,23 @@ impl GameData {
             Err(LoadError::Io { .. }) => None,
             Err(e) => return Err(e),
         };
-        // special 词条模板：overlay（人工策展）+ generated（keystone 派生）拼接。
-        // 两者皆缺 → None（消费方走纯通用解析）；任一存在则拼接 entries（id 冲突由
-        // 消费侧 `SpecialModRules::compile` fail-fast，不在加载期去重）。
+        // special 词条模板：overlay（人工策展，居先）+ generated（keystone 派生）
+        // + generated（vendor 批量抽取 V0）三源拼接。全缺 → None（消费方走纯通用
+        // 解析）；任一存在则按此序拼接 entries（id 冲突由消费侧
+        // `SpecialModRules::compile` fail-fast，不在加载期去重——vendor 批次在
+        // 抽取期已对前两源做 vendor_pattern/pattern 去重）。
         let special_overlay = self.special_mods()?;
         let special_derived = self.special_derived()?;
-        let special_mods = match (special_overlay, special_derived) {
-            (None, None) => None,
-            (overlay, derived) => {
-                let mut entries = overlay.map(|d| d.entries).unwrap_or_default();
-                entries.extend(derived.map(|d| d.entries).unwrap_or_default());
+        let special_vendor = self.special_vendor()?;
+        let special_mods =
+            if special_overlay.is_none() && special_derived.is_none() && special_vendor.is_none() {
+                None
+            } else {
+                let mut entries = special_overlay.map(|d| d.entries).unwrap_or_default();
+                entries.extend(special_derived.map(|d| d.entries).unwrap_or_default());
+                entries.extend(special_vendor.map(|d| d.entries).unwrap_or_default());
                 Some(entries)
-            }
-        };
+            };
         Ok(RuleSet {
             parser_rules: None,
             game_constants,
