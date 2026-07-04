@@ -493,6 +493,7 @@ fn skill_type_bit(name: &str) -> SkillTypes {
         // （「Meta Skills have N% increased Reservation Efficiency」等）的作用域。
         "Meta" => SkillTypes::META,
         "Herald" => SkillTypes::HERALD,
+        "SummonsTotem" => SkillTypes::SUMMONS_TOTEM,
         _ => SkillTypes::NONE,
     }
 }

@@ -62,6 +62,9 @@ impl SkillTypes {
     pub const WARCRY: Self = Self::bit(62);
     /// PoB2 SkillType.Herald = 52
     pub const HERALD: Self = Self::bit(51);
+    /// PoB2 SkillType.SummonsTotem = 25（Ancestral Bond「Totems reserve N
+    /// Spirit each」的 ExtraSpirit tag 作用域 + 预留循环入选位）
+    pub const SUMMONS_TOTEM: Self = Self::bit(24);
     /// PoB2 SkillType.Meta = 122（Blasphemy / Spellslinger / Archmage /
     /// Cast-on-X 等 meta gem；「Meta Skills have N% increased Reservation
     /// Efficiency」词条的作用域）

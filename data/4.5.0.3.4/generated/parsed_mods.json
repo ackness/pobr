@@ -23835,8 +23835,8 @@
           "type": "Inc",
           "value": 30.0,
           "tags": [
-            "SkillTypes(SkillTypes(2251799813685248))",
-            "Condition { var: \"CanUseBondedModifiers\", negated: false, actor: None }"
+            "Condition { var: \"CanUseBondedModifiers\", negated: false, actor: None }",
+            "SkillTypes(SkillTypes(2251799813685248))"
           ]
         }
       ]
@@ -23922,8 +23922,8 @@
           "type": "Inc",
           "value": 15.0,
           "tags": [
-            "SkillTypes(SkillTypes([0, 144115188075855872, 0, 0, 0]))",
-            "Condition { var: \"CanUseBondedModifiers\", negated: false, actor: None }"
+            "Condition { var: \"CanUseBondedModifiers\", negated: false, actor: None }",
+            "SkillTypes(SkillTypes([0, 144115188075855872, 0, 0, 0]))"
           ]
         }
       ]

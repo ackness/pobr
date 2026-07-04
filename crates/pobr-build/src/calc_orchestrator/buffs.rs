@@ -454,14 +454,23 @@ pub(crate) fn spirit_reservation_modifiers(
     }
     let mut mods = Vec::new();
     let mut seen: HashSet<&str> = HashSet::new();
+    // Ancestral Bond（tree node 45202『Totems reserve N Spirit each』产
+    // `AncestralBond` FLAG）：SummonsTotem 技能因它入选预留循环
+    // （vendor CalcDefence.lua:197 `isTotemAndAncestralBond`）。flag 无 tag，
+    // 任意 cfg 可查。
+    let ancestral_bond = db.flag(
+        &pobr_core::CalcConfig::new(),
+        pobr_data::prelude::ModName::from("AncestralBond"),
+    );
     for group in build.enabled_socket_groups() {
         for gem in &group.gem_skills {
             let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
                 continue;
             };
             let has = |t: &str| effect.skill_types.iter().any(|x| x == t);
+            let totem_under_bond = ancestral_bond && has("SummonsTotem");
             if effect.is_support
-                || !has("HasReservation")
+                || !(has("HasReservation") || totem_under_bond)
                 || has("ReservationBecomesCost")
                 || !seen.insert(gem.skill_id.as_str())
             {
@@ -517,6 +526,14 @@ pub(crate) fn spirit_reservation_modifiers(
                 ],
             );
             let efficiency = (quality_eff + mod_eff).max(-100.0);
+            // 词条侧 ExtraSpirit（vendor :217 per-skill Sum 汇入 baseFlat；如
+            // Ancestral Bond 的 `ExtraSpirit 75 + SkillType(SummonsTotem)` 只对
+            // totem 技能命中）。support 数据侧 flat 走上方 level_row 路（互不重叠）。
+            flat += db.sum(
+                pobr_data::prelude::ModType::Base,
+                &gem_cfg,
+                &[pobr_data::prelude::ModName::from("ExtraSpirit")],
+            );
             // PoB2 对保留倍率乘积截断到 4 位小数后再乘 base（floor(x, 4)）。
             let mult = (mult * 10000.0).floor() / 10000.0;
             let mut reserved = (flat * mult / (1.0 + efficiency / 100.0)).round().max(0.0);

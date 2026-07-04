@@ -1306,6 +1306,7 @@ fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         .or_else(|| parse_defence_resource_conversion(rest, original))
         .or_else(|| parse_deflection_special(rest, original))
         .or_else(|| parse_reservation_efficiency(rest, original))
+        .or_else(|| parse_totem_spirit_reservation(rest, original))
         .or_else(|| parse_defence_numeric_sentence(rest, original))?;
     Some(ParseOutcome {
         mods,
@@ -1313,6 +1314,25 @@ fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         unparsed: None,
         special_meta: None,
     })
+}
+
+/// Ancestral Bond keystone 词条『Totems reserve N Spirit each』（tree node 45202）：
+/// vendor（run-parsemod 实证）产两条 mod——`AncestralBond` FLAG（预留循环入选位，
+/// CalcDefence.lua:197 `SummonsTotem and Flag(AncestralBond)`）+ `ExtraSpirit`
+/// BASE N + SkillType(SummonsTotem) tag（:217 per-skill Sum 汇入 baseFlat）。
+/// 消费 = `spirit_reservation_modifiers` 的 totem 入选分支。
+fn parse_totem_spirit_reservation(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let tail = rest.strip_prefix("totems reserve ")?;
+    let (num, tail) = take_unsigned_number(tail)?;
+    if tail != " spirit each" {
+        return None;
+    }
+    Some(vec![
+        Modifier::flag("AncestralBond").with_source(source),
+        Modifier::number("ExtraSpirit", ModType::Base, num)
+            .with_tag(ModTag::SkillTypes(SkillTypes::SUMMONS_TOTEM))
+            .with_source(source),
+    ])
 }
 
 /// 域限定预留效率词条（vendor ModParser → `ReservationEfficiency INC ± N +

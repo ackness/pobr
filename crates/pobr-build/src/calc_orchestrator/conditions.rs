@@ -200,6 +200,8 @@ pub(crate) fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
             // Efficiency」）的匹配位（SkillTypes 320 位扩容后高位 id 可表达）。
             "Meta" => bits |= SkillTypes::META,
             "Herald" => bits |= SkillTypes::HERALD,
+            // Ancestral Bond totem 预留（ExtraSpirit 的 SummonsTotem tag 匹配位）。
+            "SummonsTotem" => bits |= SkillTypes::SUMMONS_TOTEM,
             _ => {}
         }
     }
