@@ -600,3 +600,49 @@ fn take_verb_prefixed_damage_taken() {
     assert_parses("Take 10% reduced Damage", &[N("DamageTaken", Inc, -10.0)]);
     assert_parses("Take 25% increased Damage", &[N("DamageTaken", Inc, 25.0)]);
 }
+
+/// 域限定预留效率词条（vendor → `ReservationEfficiency INC ±N + SkillType tag`，
+/// run-parsemod 实证；Meta=122 依赖 SkillTypes 320 位扩容）+ Ancestral Bond
+/// 『Totems reserve N Spirit each』（双 mod：AncestralBond FLAG + ExtraSpirit
+/// BASE N + SkillType(SummonsTotem)）。消费 = spirit_reservation_modifiers。
+#[test]
+fn reservation_efficiency_and_totem_reserve_lines() {
+    use pobr_core::modifier::ModTag;
+    use pobr_data::skill::SkillTypes;
+
+    let o = parse_mod("Meta Skills have 20% increased Reservation Efficiency").unwrap();
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name.as_str(), "ReservationEfficiency");
+    assert_eq!(o.mods[0].value.as_number(), Some(20.0));
+    assert!(
+        o.mods[0]
+            .tags
+            .iter()
+            .any(|t| matches!(t, ModTag::SkillTypes(st) if st == &SkillTypes::META))
+    );
+
+    let o = parse_mod("8% increased Reservation Efficiency of Herald Skills").unwrap();
+    assert!(
+        o.mods[0]
+            .tags
+            .iter()
+            .any(|t| matches!(t, ModTag::SkillTypes(st) if st == &SkillTypes::HERALD))
+    );
+
+    let o = parse_mod("20% reduced Spirit Reservation Efficiency of Skills").unwrap();
+    assert_eq!(o.mods[0].name.as_str(), "SpiritReservationEfficiency");
+    assert_eq!(o.mods[0].value.as_number(), Some(-20.0));
+    assert!(o.mods[0].tags.is_empty());
+
+    let o = parse_mod("Totems reserve 75 Spirit each").unwrap();
+    assert_eq!(o.mods.len(), 2);
+    assert_eq!(o.mods[0].name.as_str(), "AncestralBond");
+    assert_eq!(o.mods[1].name.as_str(), "ExtraSpirit");
+    assert_eq!(o.mods[1].value.as_number(), Some(75.0));
+    assert!(
+        o.mods[1]
+            .tags
+            .iter()
+            .any(|t| matches!(t, ModTag::SkillTypes(st) if st == &SkillTypes::SUMMONS_TOTEM))
+    );
+}

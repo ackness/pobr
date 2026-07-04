@@ -829,7 +829,11 @@ end
 local spiritReservations = {}
 for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
 	local st = as.skillTypes or {}
-	if st[SkillType.HasReservation] and not st[SkillType.ReservationBecomesCost] then
+	-- Same eligibility as the vendor reservation loop (CalcDefence.lua:197-198):
+	-- HasReservation, or SummonsTotem under Ancestral Bond.
+	local isTotemAB = st[SkillType.SummonsTotem]
+		and mainEnv.player.modDB:Flag(nil, "AncestralBond")
+	if (st[SkillType.HasReservation] and not st[SkillType.ReservationBecomesCost]) or isTotemAB then
 		local lvl = as.activeEffect and as.activeEffect.grantedEffectLevel or {}
 		local sd = as.skillData or {}
 		local okX, extraSpirit = pcall(function()
@@ -838,7 +842,28 @@ for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
 		local okM, resMult = pcall(function()
 			return as.skillModList:More(as.skillCfg, "ReservationMultiplier")
 		end)
+		-- Efficiency inputs (CalcDefence.lua:240-243): per-skill INC sum plus the
+		-- individual contributing mods (Tabulate) with their sources, so scoped
+		-- efficiency modifiers (Meta/Herald/support-injected) can be attributed.
+		local okE, effSum = pcall(function()
+			return as.skillModList:Sum("INC", as.skillCfg, "SpiritReservationEfficiency", "ReservationEfficiency")
+		end)
+		local effMods = {}
+		pcall(function()
+			for _, m in ipairs(as.skillModList:Tabulate("INC", as.skillCfg, "SpiritReservationEfficiency", "ReservationEfficiency")) do
+				effMods[#effMods + 1] = { value = m.value, source = m.mod.source, name = m.mod.name }
+			end
+		end)
+		local extraMods = {}
+		pcall(function()
+			for _, m in ipairs(as.skillModList:Tabulate("BASE", as.skillCfg, "ExtraSpirit")) do
+				extraMods[#extraMods + 1] = { value = m.value, source = m.mod.source }
+			end
+		end)
 		spiritReservations[#spiritReservations + 1] = {
+			efficiencySum = okE and effSum or nil,
+			efficiencyMods = #effMods > 0 and effMods or nil,
+			extraSpiritMods = #extraMods > 0 and extraMods or nil,
 			name = as.activeEffect and as.activeEffect.grantedEffect
 				and as.activeEffect.grantedEffect.name or "?",
 			skillDataFlat = sd.spiritReservationFlat,

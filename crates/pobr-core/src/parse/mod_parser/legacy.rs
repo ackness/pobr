@@ -1305,6 +1305,8 @@ fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         .or_else(|| parse_taken_as_family(rest, original))
         .or_else(|| parse_defence_resource_conversion(rest, original))
         .or_else(|| parse_deflection_special(rest, original))
+        .or_else(|| parse_reservation_efficiency(rest, original))
+        .or_else(|| parse_totem_spirit_reservation(rest, original))
         .or_else(|| parse_defence_numeric_sentence(rest, original))?;
     Some(ParseOutcome {
         mods,
@@ -1312,6 +1314,89 @@ fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         unparsed: None,
         special_meta: None,
     })
+}
+
+/// Ancestral Bond keystone 词条『Totems reserve N Spirit each』（tree node 45202）：
+/// vendor（run-parsemod 实证）产两条 mod——`AncestralBond` FLAG（预留循环入选位，
+/// CalcDefence.lua:197 `SummonsTotem and Flag(AncestralBond)`）+ `ExtraSpirit`
+/// BASE N + SkillType(SummonsTotem) tag（:217 per-skill Sum 汇入 baseFlat）。
+/// 消费 = `spirit_reservation_modifiers` 的 totem 入选分支。
+fn parse_totem_spirit_reservation(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let tail = rest.strip_prefix("totems reserve ")?;
+    let (num, tail) = take_unsigned_number(tail)?;
+    if tail != " spirit each" {
+        return None;
+    }
+    Some(vec![
+        Modifier::flag("AncestralBond").with_source(source),
+        Modifier::number("ExtraSpirit", ModType::Base, num)
+            .with_tag(ModTag::SkillTypes(SkillTypes::SUMMONS_TOTEM))
+            .with_source(source),
+    ])
+}
+
+/// 域限定预留效率词条（vendor ModParser → `ReservationEfficiency INC ± N +
+/// SkillType tag`，run-parsemod 实证；消费 = 预留公式 `/(1+eff/100)`，
+/// CalcDefence.lua:240-243/:251）。三个形态：
+/// - 前缀域形『Meta Skills have N% increased Reservation Efficiency』
+///   （tree node 42245/63236）→ + SkillTypes(META)；
+/// - 后缀域形『N% increased Reservation Efficiency of Herald Skills』
+///   → + SkillTypes(HERALD)；
+/// - 裸 Spirit 形『N% reduced Spirit Reservation Efficiency of Skills』
+///   → `SpiritReservationEfficiency`（vendor 同名，无 tag）。
+/// 未建模域（Minion/Companion=消费侧无 minion 预留通道、per-Idol=Multiplier
+/// 形）保守 None（落回 Err）。
+fn parse_reservation_efficiency(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let domain_bit = |d: &str| match d {
+        "meta" => Some(SkillTypes::META),
+        "herald" => Some(SkillTypes::HERALD),
+        _ => None,
+    };
+    // 形1：「<domain> skills have N% increased/reduced reservation efficiency」。
+    if let Some((domain, tail)) = rest.split_once(" skills have ") {
+        let st = domain_bit(domain)?;
+        let (num, tail) = take_unsigned_number(tail)?;
+        let dir = tail.strip_prefix("% ")?;
+        let value = match dir {
+            "increased reservation efficiency" => num,
+            "reduced reservation efficiency" => -num,
+            _ => return None,
+        };
+        return Some(vec![
+            Modifier::number("ReservationEfficiency", ModType::Inc, value)
+                .with_tag(ModTag::SkillTypes(st))
+                .with_source(source),
+        ]);
+    }
+    // 形2/3：「N% increased/reduced [spirit] reservation efficiency of <X> skills」。
+    let (num, tail) = take_unsigned_number(rest)?;
+    let tail = tail.strip_prefix("% ")?;
+    let (positive, tail) = if let Some(t) = tail.strip_prefix("increased ") {
+        (true, t)
+    } else if let Some(t) = tail.strip_prefix("reduced ") {
+        (false, t)
+    } else {
+        return None;
+    };
+    let (name, tail) = if let Some(t) = tail.strip_prefix("spirit reservation efficiency of ") {
+        ("SpiritReservationEfficiency", t)
+    } else if let Some(t) = tail.strip_prefix("reservation efficiency of ") {
+        ("ReservationEfficiency", t)
+    } else {
+        return None;
+    };
+    let value = if positive { num } else { -num };
+    if tail == "skills" {
+        return Some(vec![
+            Modifier::number(name, ModType::Inc, value).with_source(source),
+        ]);
+    }
+    let st = domain_bit(tail.strip_suffix(" skills")?)?;
+    Some(vec![
+        Modifier::number(name, ModType::Inc, value)
+            .with_tag(ModTag::SkillTypes(st))
+            .with_source(source),
+    ])
 }
 
 /// 剥离前导「`{N}% of `」（无符号百分比 of 形，PoB 防御句式高频前缀）。

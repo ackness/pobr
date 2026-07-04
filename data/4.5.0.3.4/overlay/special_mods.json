@@ -1761,6 +1761,229 @@
       "verified": true,
       "batch": "hand-curated",
       "source_note": "tree node 28153「Phased Form」等动词前置形受伤词条；oracle run-parsemod 实证四方向（less/more→MORE±N、reduced/increased→INC±N）；消费 defence.rs taken_mult_for_type_*；legacy parse_defence_numeric_sentence 同形分支过 collect.rs 树闸门"
+    },
+    {
+      "id": "meta_skills_res_eff_inc",
+      "pattern": "meta skills have (\\d+)% increased reservation efficiency",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证 tag 口径）",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Meta"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定预留效率（tree 42245/63236「Meta Skills have N% increased Reservation Efficiency」等）；vendor→ReservationEfficiency INC±N+SkillType tag（run-parsemod 实证）；消费=spirit_reservation_modifiers 预留公式 /(1+eff/100)（CalcDefence.lua:240-243/:251）；legacy parse_reservation_efficiency 同形过树闸门"
+    },
+    {
+      "id": "meta_skills_res_eff_red",
+      "pattern": "meta skills have (\\d+)% reduced reservation efficiency",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证 tag 口径）",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Meta"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定预留效率（tree 42245/63236「Meta Skills have N% increased Reservation Efficiency」等）；vendor→ReservationEfficiency INC±N+SkillType tag（run-parsemod 实证）；消费=spirit_reservation_modifiers 预留公式 /(1+eff/100)（CalcDefence.lua:240-243/:251）；legacy parse_reservation_efficiency 同形过树闸门"
+    },
+    {
+      "id": "herald_res_eff_inc",
+      "pattern": "(\\d+)% increased reservation efficiency of herald skills",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证 tag 口径）",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Herald"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定预留效率（tree 42245/63236「Meta Skills have N% increased Reservation Efficiency」等）；vendor→ReservationEfficiency INC±N+SkillType tag（run-parsemod 实证）；消费=spirit_reservation_modifiers 预留公式 /(1+eff/100)（CalcDefence.lua:240-243/:251）；legacy parse_reservation_efficiency 同形过树闸门"
+    },
+    {
+      "id": "herald_res_eff_red",
+      "pattern": "(\\d+)% reduced reservation efficiency of herald skills",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证 tag 口径）",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Herald"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定预留效率（tree 42245/63236「Meta Skills have N% increased Reservation Efficiency」等）；vendor→ReservationEfficiency INC±N+SkillType tag（run-parsemod 实证）；消费=spirit_reservation_modifiers 预留公式 /(1+eff/100)（CalcDefence.lua:240-243/:251）；legacy parse_reservation_efficiency 同形过树闸门"
+    },
+    {
+      "id": "spirit_res_eff_inc",
+      "pattern": "(\\d+)% increased spirit reservation efficiency of skills",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证 tag 口径）",
+      "mods": [
+        {
+          "name": "SpiritReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定预留效率（tree 42245/63236「Meta Skills have N% increased Reservation Efficiency」等）；vendor→ReservationEfficiency INC±N+SkillType tag（run-parsemod 实证）；消费=spirit_reservation_modifiers 预留公式 /(1+eff/100)（CalcDefence.lua:240-243/:251）；legacy parse_reservation_efficiency 同形过树闸门"
+    },
+    {
+      "id": "spirit_res_eff_red",
+      "pattern": "(\\d+)% reduced spirit reservation efficiency of skills",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证 tag 口径）",
+      "mods": [
+        {
+          "name": "SpiritReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定预留效率（tree 42245/63236「Meta Skills have N% increased Reservation Efficiency」等）；vendor→ReservationEfficiency INC±N+SkillType tag（run-parsemod 实证）；消费=spirit_reservation_modifiers 预留公式 /(1+eff/100)（CalcDefence.lua:240-243/:251）；legacy parse_reservation_efficiency 同形过树闸门"
+    },
+    {
+      "id": "totems_reserve_spirit_each",
+      "pattern": "totems reserve (\\d+) spirit each",
+      "vendor_pattern": "（ModParser.lua:4644 Ancestral Bond；run-parsemod 实证双 mod）",
+      "mods": [
+        {
+          "name": "AncestralBond",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "ExtraSpirit",
+          "type": "BASE",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "SummonsTotem"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "tree node 45202「Ancestral Bond」Totems reserve 75 Spirit each；消费=spirit_reservation_modifiers totem 入选分支（SummonsTotem×AncestralBond flag，CalcDefence.lua:197）+ ExtraSpirit per-gem Sum；legacy parse_totem_spirit_reservation 同形过树闸门"
+    },
+    {
+      "id": "bonded_meta_res_eff_inc",
+      "pattern": "bonded: meta skills have (\\d+)% increased reservation efficiency",
+      "vendor_pattern": "（Bonded 前缀 + 域限定效率；见 source_note 口径说明）",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CanUseBondedModifiers"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Meta"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "Bonded rune 变体（语料 C1 双跑对齐：legacy 的 bonded 递归会命中 parse_reservation_efficiency，引擎须同产出；Condition:CanUseBondedModifiers 默认不激活）。vendor 对前缀域形 Bonded 变体 unsupported（special 表不在前缀剥离后重查）——此处取 legacy 超集方向（条件门控恒 false 时零行为）"
+    },
+    {
+      "id": "bonded_herald_res_eff_inc",
+      "pattern": "bonded: (\\d+)% increased reservation efficiency of herald skills",
+      "vendor_pattern": "（Bonded 前缀 + 域限定效率；见 source_note 口径说明）",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CanUseBondedModifiers"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Herald"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "Bonded rune 变体（语料 C1 双跑对齐：legacy 的 bonded 递归会命中 parse_reservation_efficiency，引擎须同产出；Condition:CanUseBondedModifiers 默认不激活）。vendor 对前缀域形 Bonded 变体 unsupported（special 表不在前缀剥离后重查）——此处取 legacy 超集方向（条件门控恒 false 时零行为）"
     }
   ]
 }

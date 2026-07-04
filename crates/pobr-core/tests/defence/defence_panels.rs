@@ -288,14 +288,17 @@ fn reservation_multiplier_floor4() {
     assert_eq!(r.reserved, 12345.0);
 }
 
-/// Spirit 技能预留效率（skill_mechanics 段）：`25% increased Spirit Reservation
-/// Efficiency` → base 100 × mult 1 ÷ 1.25 = 80（floor）。
+/// Spirit 预留效率**不在**聚合侧二次应用：efficiency 是 per-skill 语义
+/// （vendor CalcDefence.lua:240-243 按 skillCfg 求），PoBR 的应用点在注入侧
+/// `spirit_reservation_modifiers`（每条 SkillSpiritReservationBase 注入前已除
+/// 完）——`calc_spirit_reservation` 对聚合总量**不再**除 efficiency（旧实现的
+/// 全局除法与注入侧构成双重应用）。
 #[test]
-fn spirit_reservation_efficiency_via_texts() {
+fn spirit_reservation_efficiency_not_applied_twice_at_aggregate() {
     let db = db_from_texts(&["25% increased Spirit Reservation Efficiency"]);
     let cfg = CalcConfig::new();
 
     let r = calc::skill_mechanics::calc_spirit_reservation(&db, &cfg, 100.0);
 
-    assert_eq!(r.final_cost, 80.0);
+    assert_eq!(r.final_cost, 100.0);
 }

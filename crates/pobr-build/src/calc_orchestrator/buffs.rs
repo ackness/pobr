@@ -437,7 +437,11 @@ pub(crate) fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> 
 ///
 /// 同一效果在多组重复出现按 id 去重（与 [`aura_buff_modifiers`] 同口径）；support
 /// 贡献现按组内全量取（T3.6 兼容名单合并后随 `support_modifiers` 同口径收紧）。
-pub(crate) fn spirit_reservation_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+pub(crate) fn spirit_reservation_modifiers(
+    build: &Build,
+    data: &BuildData,
+    db: &pobr_core::ModDb,
+) -> Vec<Modifier> {
     use std::collections::HashSet;
     /// 取 ≤ gem_level 的最高等级行（与 [`BuildData::resolve_skill_level`] 同规则）。
     fn level_row<'d>(
@@ -450,14 +454,23 @@ pub(crate) fn spirit_reservation_modifiers(build: &Build, data: &BuildData) -> V
     }
     let mut mods = Vec::new();
     let mut seen: HashSet<&str> = HashSet::new();
+    // Ancestral Bond（tree node 45202『Totems reserve N Spirit each』产
+    // `AncestralBond` FLAG）：SummonsTotem 技能因它入选预留循环
+    // （vendor CalcDefence.lua:197 `isTotemAndAncestralBond`）。flag 无 tag，
+    // 任意 cfg 可查。
+    let ancestral_bond = db.flag(
+        &pobr_core::CalcConfig::new(),
+        pobr_data::prelude::ModName::from("AncestralBond"),
+    );
     for group in build.enabled_socket_groups() {
         for gem in &group.gem_skills {
             let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
                 continue;
             };
             let has = |t: &str| effect.skill_types.iter().any(|x| x == t);
+            let totem_under_bond = ancestral_bond && has("SummonsTotem");
             if effect.is_support
-                || !has("HasReservation")
+                || !(has("HasReservation") || totem_under_bond)
                 || has("ReservationBecomesCost")
                 || !seen.insert(gem.skill_id.as_str())
             {
@@ -491,15 +504,36 @@ pub(crate) fn spirit_reservation_modifiers(build: &Build, data: &BuildData) -> V
                 gem.quality,
                 gem.stat_set_index,
             );
-            // 预留效率（vendor :251 `/(1 + efficiency/100)`）：宝石自身品质 stat
-            // `base_reservation_efficiency_+%`（q20 Blasphemy = 10%）。树/装备的
-            // `ReservationEfficiency` 词条族（per-skill cfg 匹配）仍缺——M2 Track D
-            // 登记，此处只接宝石品质数据（effect_stats 的 quality 段，斜率×q trunc）。
-            let efficiency: f64 = es
+            // 预留效率（vendor :240-243/:251 `/(1 + efficiency/100)`，clamp ≥ −100）：
+            // - 宝石自身品质 stat `base_reservation_efficiency_+%`（q20 Blasphemy=10%）；
+            // - 树/装备词条族（`Spirit`/裸 `ReservationEfficiency` INC，域限定经
+            //   `ModTag::SkillTypes` 匹配——per-gem cfg 带该效果的类型位，vendor
+            //   skillCfg Sum 同口径。「Meta Skills have N% increased Reservation
+            //   Efficiency」（tree 42245/63236）对 Blasphemy/Archmage 等 Meta 效果生效）。
+            let quality_eff: f64 = es
                 .all()
                 .filter(|s| s.stat == "base_reservation_efficiency_+%")
                 .map(|s| s.value)
                 .sum();
+            let gem_cfg = pobr_core::CalcConfig::new()
+                .with_skill_types(super::conditions::skill_type_bits(&effect.skill_types));
+            let mod_eff = db.sum(
+                pobr_data::prelude::ModType::Inc,
+                &gem_cfg,
+                &[
+                    pobr_data::prelude::ModName::from("SpiritReservationEfficiency"),
+                    pobr_data::prelude::ModName::from("ReservationEfficiency"),
+                ],
+            );
+            let efficiency = (quality_eff + mod_eff).max(-100.0);
+            // 词条侧 ExtraSpirit（vendor :217 per-skill Sum 汇入 baseFlat；如
+            // Ancestral Bond 的 `ExtraSpirit 75 + SkillType(SummonsTotem)` 只对
+            // totem 技能命中）。support 数据侧 flat 走上方 level_row 路（互不重叠）。
+            flat += db.sum(
+                pobr_data::prelude::ModType::Base,
+                &gem_cfg,
+                &[pobr_data::prelude::ModName::from("ExtraSpirit")],
+            );
             // PoB2 对保留倍率乘积截断到 4 位小数后再乘 base（floor(x, 4)）。
             let mult = (mult * 10000.0).floor() / 10000.0;
             let mut reserved = (flat * mult / (1.0 + efficiency / 100.0)).round().max(0.0);

@@ -196,6 +196,12 @@ pub(crate) fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
             // 「Triggered Spells deal …」族词条的 `ModTag::SkillTypes(TRIGGERED)`
             // 命中位（vendor activeSkill.skillTypes[SkillType.Triggered]）。
             "Triggered" => bits |= SkillTypes::TRIGGERED,
+            // 预留效率域词条（「Meta/Herald Skills have N% increased Reservation
+            // Efficiency」）的匹配位（SkillTypes 320 位扩容后高位 id 可表达）。
+            "Meta" => bits |= SkillTypes::META,
+            "Herald" => bits |= SkillTypes::HERALD,
+            // Ancestral Bond totem 预留（ExtraSpirit 的 SummonsTotem tag 匹配位）。
+            "SummonsTotem" => bits |= SkillTypes::SUMMONS_TOTEM,
             _ => {}
         }
     }

@@ -702,21 +702,18 @@ pub fn calc_spirit_reservation(
     let more = db.more(cfg, &reservation_more_names);
     let extra_flat = db.sum(ModType::Base, cfg, &extra_spirit_names);
 
-    // M2 Track D（13-G11）：补 Spirit Reservation Efficiency 除法语义
-    // （CalcDefence.lua:240-241/:249-258——`efficiency = max(Σinc(<X>Reservation
-    // Efficiency, ReservationEfficiency), −100)` 与同名 more 同为**除数**；
-    // 效率提高 → 预留变少）。除数 ≤ 0（efficiency −100%）→ 预留发散，
-    // 由消费侧池 clamp 收口。
-    let eff_names = [
-        ModName::from("SpiritReservationEfficiency"),
-        ModName::from("ReservationEfficiency"),
-    ];
-    let eff_inc = db.sum(ModType::Inc, cfg, &eff_names).max(-100.0);
-    let eff_divisor = ((1.0 + eff_inc / 100.0) * db.more(cfg, &eff_names)).max(1e-12);
-
-    // Spirit 保留 = base × more ÷ efficiency + extra_flat
-    // （扁平加值，按 PoB2 CalcOffence.lua 保留段 + CalcDefence.lua 效率除数）
-    let reserved = (base_spirit_reservation * more / eff_divisor + extra_flat)
+    // ⚠️ Reservation Efficiency **不在此处**除——vendor 的 efficiency 是
+    // per-skill（CalcDefence.lua:240-243 对每个 activeSkill 以 skillCfg 求
+    // `Σinc(SpiritReservationEfficiency, ReservationEfficiency)`，域词条
+    // 「Meta Skills have N% …」只作用于匹配技能）。PoBR 的应用点在**注入侧**
+    // `pobr-build::spirit_reservation_modifiers`（per-gem cfg + 宝石品质项），
+    // 每条 `SkillSpiritReservationBase` 注入前已除完。旧实现曾在此对聚合总量
+    // 除全局 efficiency——与注入侧构成**双重应用**（frost-bomb 面板预留 148 vs
+    // 注入合计 166 的 18 差值根因），已迁移删除。
+    //
+    // Spirit 保留 = base × more + extra_flat
+    // （扁平加值，按 PoB2 CalcOffence.lua 保留段）
+    let reserved = (base_spirit_reservation * more + extra_flat)
         .floor()
         .max(0.0);
 

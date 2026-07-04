@@ -225,6 +225,14 @@ impl CalculationSession {
         self.env.player.mod_db.add_list(modifiers);
     }
 
+    /// 玩家 ModDb 只读视图——编排层的注入阶段查询已 ingest 的词条
+    /// （如 Spirit 预留按 per-gem cfg 取 `ReservationEfficiency` INC）。
+    /// 反映**调用时点**的库内容：树/装备词条在早期注入步 ingest，之后的
+    /// 注入函数可据此取数。
+    pub fn mod_db(&self) -> &crate::ModDb {
+        &self.env.player.mod_db
+    }
+
     /// 接入一件装备：按 section（implicit / explicit / enchant）解析其词条文本为
     /// 带槽位 + 来源类别归因的 modifier 并注入计算，无法解析的词条收集进
     /// `unsupported_modifier_texts`。

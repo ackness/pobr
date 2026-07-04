@@ -12187,7 +12187,17 @@
     },
     {
       "text": "20% increased [Reservation] [Efficiency] of [Herald] Skills",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "SkillTypes(SkillTypes(2251799813685248))"
+          ]
+        }
+      ]
     },
     {
       "text": "20% increased [Shock] Duration",
@@ -19198,7 +19208,17 @@
     },
     {
       "text": "6% increased [Reservation] [Efficiency] of [Herald] Skills",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "SkillTypes(SkillTypes(2251799813685248))"
+          ]
+        }
+      ]
     },
     {
       "text": "6% increased [SkillSpeed|Skill Speed]",
@@ -20584,7 +20604,17 @@
     },
     {
       "text": "8% increased [Reservation] [Efficiency] of [Herald] Skills",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "Inc",
+          "value": 8.0,
+          "tags": [
+            "SkillTypes(SkillTypes(2251799813685248))"
+          ]
+        }
+      ]
     },
     {
       "text": "8% increased [SkillSpeed|Skill Speed] while [Shapeshift|Shapeshifted]",
@@ -23798,7 +23828,18 @@
     },
     {
       "text": "Bonded: 30% increased Reservation Efficiency of Herald Skills",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "Inc",
+          "value": 30.0,
+          "tags": [
+            "Condition { var: \"CanUseBondedModifiers\", negated: false, actor: None }",
+            "SkillTypes(SkillTypes(2251799813685248))"
+          ]
+        }
+      ]
     },
     {
       "text": "Bonded: 40% increased Damage while Shapeshifted",
@@ -23874,7 +23915,18 @@
     },
     {
       "text": "Bonded: Meta Skills have 15% increased Reservation Efficiency",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "Inc",
+          "value": 15.0,
+          "tags": [
+            "Condition { var: \"CanUseBondedModifiers\", negated: false, actor: None }",
+            "SkillTypes(SkillTypes([0, 144115188075855872, 0, 0, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "Bonded: Minions have 30% increased Cooldown Recovery Rate for Command Skills",
@@ -30693,11 +30745,31 @@
     },
     {
       "text": "[Meta] Skills have 20% increased [Reservation] [Efficiency]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 144115188075855872, 0, 0, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Meta] Skills have 50% increased [Reservation] [Efficiency]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "Inc",
+          "value": 50.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 144115188075855872, 0, 0, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Minion|Minions] Regenerate 3% of maximum Life per second",

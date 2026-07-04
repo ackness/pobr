@@ -552,8 +552,21 @@ const BASELINE_DEF_CORE_HIT5: usize = 137; // 实测 137/144 = 95.1%（essence-d
 //   60→55×3=165，SpiritUnres 28.5x→1.00x 精确翻正）。
 // 剩余：druid-comet 1.26x/coiling（Spell Totem 化预留 + ReservationEfficiency 词条族，
 // M2 Track D）、wolf-pack（companion 管线）。
-const BASELINE_DEF_HIT5: usize = 407; // 实测 407/450 = 90.4%（spirit reservation +8）
-const BASELINE_DEF_HIT10: usize = 418; // 实测 418/450 = 92.9%（spirit reservation +7）
+// **域限定预留效率 + Ancestral Bond totem 预留重记（+2 @5% / +3 @10%）**：
+// ① SkillTypes 位掩码 u64→[u64;5]（320 位，Meta=122/SummonsTotem=25 等全域可表达，
+//   Debug/canonical 高位全零保旧格式→缓存 byte-stable）；
+// ② 域限定效率词条（「Meta Skills have N% increased Reservation Efficiency」→
+//   ReservationEfficiency INC + SkillTypes tag，per-gem cfg 消费）+ **删除**
+//   calc_spirit_reservation 的聚合侧全局 efficiency 除法（与注入侧构成双重应用，
+//   frost-bomb 面板 148 vs 注入 166 的 18 差值根因）；
+// ③ Ancestral Bond『Totems reserve 75 Spirit each』→ AncestralBond FLAG +
+//   ExtraSpirit 75 + SkillType(SummonsTotem)（run-parsemod 双 mod 口径），
+//   SummonsTotem×flag 入选预留循环（CalcDefence.lua:197）。
+// druid-comet SpiritUnres 209/209 精确翻正、frost-bomb 136/138（0.99x）翻正、
+// disciple 连带（efficiency）。coiling/wolf-pack/gemling 仍 miss（companion 管线
+// / Blasphemy ExtraSpirit 交互待审计）。
+const BASELINE_DEF_HIT5: usize = 409; // 实测 409/450 = 90.9%（reservation efficiency + totem +2）
+const BASELINE_DEF_HIT10: usize = 421; // 实测 421/450 = 93.6%（同上 +3）
 // **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
 // - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
 //   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker
