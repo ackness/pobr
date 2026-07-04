@@ -310,19 +310,9 @@ fn fill_mechanics(env: &mut Env) {
         fire: env.player.output.fire_resistance,
         cold: env.player.output.cold_resistance,
         lightning: env.player.output.lightning_resistance,
-        chaos: {
-            // 混沌抗同样按最大抗性上限截断（PoB2 默认 75%，+max chaos res 提升、硬上限 90%）。
-            let total = db.sum(ModType::Base, cfg, &[ModName::from("ChaosResistance")]);
-            let max_bonus = db.sum(
-                ModType::Base,
-                cfg,
-                &[ModName::from("MaximumChaosResistance")],
-            );
-            // M0-W3：抗性边界改读注入常量包（fallback == 旧 const，值不变）。
-            let max = (cfg.constants.character().base_maximum_all_resistances_pct + max_bonus)
-                .min(cfg.constants.game().resist_hard_cap);
-            total.min(max)
-        },
+        // 混沌抗走与三元素同一条 vendor 全通道口径（Override/INC/MORE + 双口径名 +
+        // resist_floor；vendor resistTypeList 含 Chaos，isElemental=false 不并共享名）。
+        chaos: super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value,
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
     // M2 Track B-2（13-G7）：减伤侧统一整备 MitigationCtx——ArmourAppliesTo 改百分比模型

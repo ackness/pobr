@@ -162,40 +162,66 @@ impl MinimalOutput {
 }
 
 /// 单条抗性的解析结果：capped final / 最大抗性 / over-cap。
-struct ResistanceResolution {
-    final_value: f64,
+pub(crate) struct ResistanceResolution {
+    pub(crate) final_value: f64,
     max: f64,
     over_cap: f64,
 }
 
-/// 解析一条元素抗性：
-/// - total = base + Σ`<element>Resistance` Base
-/// - max   = min(75 + Σ`Maximum<element>Resistance` + Σ`MaximumAllElementalResistances`, 90)
+/// 解析一条抗性（vendor CalcDefence.lua:888-930 全通道口径）：
+/// - total = Override(`<X>Resistance`/`<X>Resist`)，缺位时
+///   `(base + Σ BASE) × max((1 + ΣINC/100) × ΠMORE, 0)`（:891-899，
+///   "fire resistance is N%" 走 override，"reduced fire resistance" 走 INC 乘区）
+/// - max   = Override(`Maximum<X>Resistance`/`<X>ResistMax`)，缺位时
+///   `min(75 + Σ BASE, 90)`（:875/:914——max 的 override **不过** hard_cap）
 /// - final = max(min(total, max), −200)（M2-E3：负抗下界 `resist_floor`，
-///   PoB2 CalcDefence.lua:886 `min = data.misc.ResistFloor` / :919
-///   `final = m_max(m_min(total, max), min)`，Data.lua:180 ResistFloor = −200）
+///   :890 `min = data.misc.ResistFloor` / :924 `final = m_max(m_min(total, max), min)`）
 /// - over  = max(total - max, 0)
-fn resolve_resistance(
+///
+/// mod 名取双口径：PoBR parser 长名（`FireResistance`）+ vendor special 通道
+/// 短名（`FireResist`），元素类型再并共享名 `ElementalResist`/`ElementalResistMax`
+/// （:895 `isElemental[elem]`；override 与 vendor 一致只查单元素名）。enemy 侧
+/// （`resolve_enemy_resistance`）早已同构双口径，此处对齐玩家侧。
+pub(crate) fn resolve_resistance(
     db: &ModDb,
     cfg: &CalcConfig,
     base: f64,
-    res_name: &str,
-    max_res_name: &str,
+    element: &str,
+    is_elemental: bool,
 ) -> ResistanceResolution {
-    let total = base + db.sum(ModType::Base, cfg, &[ModName::from(res_name)]);
-    let max_bonus = db.sum(
-        ModType::Base,
-        cfg,
-        &[
-            ModName::from(max_res_name),
-            ModName::from("MaximumAllElementalResistances"),
-        ],
-    );
-    // M0-W3：默认最大抗性 / 硬上限改读注入常量包（fallback == 旧 const，值不变）。
-    let max = (cfg.constants.character().base_maximum_all_resistances_pct + max_bonus)
-        .min(cfg.constants.game().resist_hard_cap);
+    let long = ModName::from(format!("{element}Resistance").as_str());
+    let short = ModName::from(format!("{element}Resist").as_str());
+    let max_long = ModName::from(format!("Maximum{element}Resistance").as_str());
+    let max_short = ModName::from(format!("{element}ResistMax").as_str());
+
+    let mut res_names = vec![long.clone(), short.clone()];
+    let mut max_names = vec![max_long.clone(), max_short.clone()];
+    if is_elemental {
+        res_names.push(ModName::from("ElementalResist"));
+        max_names.push(ModName::from("MaximumAllElementalResistances"));
+        max_names.push(ModName::from("ElementalResistMax"));
+    }
+
+    let total = db
+        .override_(cfg, long)
+        .or_else(|| db.override_(cfg, short))
+        .unwrap_or_else(|| {
+            let summed = base + db.sum(ModType::Base, cfg, &res_names);
+            let factor = ((1.0 + db.sum(ModType::Inc, cfg, &res_names) / 100.0)
+                * db.more(cfg, &res_names))
+            .max(0.0);
+            summed * factor
+        });
+    let max = db
+        .override_(cfg, max_long)
+        .or_else(|| db.override_(cfg, max_short))
+        .unwrap_or_else(|| {
+            // M0-W3：默认最大抗性 / 硬上限改读注入常量包（fallback == 旧 const，值不变）。
+            (cfg.constants.character().base_maximum_all_resistances_pct
+                + db.sum(ModType::Base, cfg, &max_names))
+            .min(cfg.constants.game().resist_hard_cap)
+        });
     ResistanceResolution {
-        // M2-E3（CalcDefence.lua:886/:919）：final 受 resist_floor(−200) 下界保护。
         final_value: round(total.min(max).max(cfg.constants.game().resist_floor)),
         max: round(max),
         over_cap: round((total - max).max(0.0)),
@@ -224,27 +250,9 @@ pub fn calculate_minimal_vs_enemy(
 ) -> MinimalOutput {
     let life = scaled_pool(db, cfg, input.base_life, "MaximumLife");
     let mana = scaled_pool(db, cfg, input.base_mana, "MaximumMana");
-    let fire = resolve_resistance(
-        db,
-        cfg,
-        input.base_fire_resistance,
-        "FireResistance",
-        "MaximumFireResistance",
-    );
-    let cold = resolve_resistance(
-        db,
-        cfg,
-        input.base_cold_resistance,
-        "ColdResistance",
-        "MaximumColdResistance",
-    );
-    let lightning = resolve_resistance(
-        db,
-        cfg,
-        input.base_lightning_resistance,
-        "LightningResistance",
-        "MaximumLightningResistance",
-    );
+    let fire = resolve_resistance(db, cfg, input.base_fire_resistance, "Fire", true);
+    let cold = resolve_resistance(db, cfg, input.base_cold_resistance, "Cold", true);
+    let lightning = resolve_resistance(db, cfg, input.base_lightning_resistance, "Lightning", true);
     let fire_resistance = fire.final_value;
     let cold_resistance = cold.final_value;
     let lightning_resistance = lightning.final_value;

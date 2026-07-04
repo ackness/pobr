@@ -406,3 +406,78 @@ fn traced_dps_matches_non_traced_dps() {
     assert_eq!(traced.output.total_hit_avg, plain.total_hit_avg);
     assert_eq!(traced.output.crit_multiplier, plain.crit_multiplier);
 }
+
+/// 玩家侧抗性双口径：vendor special 通道短名（`FireResist`）与 PoBR parser
+/// 长名（`FireResistance`）同桶相加（vendor CalcDefence.lua:895 双名 Sum 口径）。
+#[test]
+fn resistance_vendor_short_name_shares_bucket_with_long_name() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("FireResistance", ModType::Base, 30.0));
+    db.add_mod(Modifier::number("FireResist", ModType::Base, 20.0));
+    db.add_mod(Modifier::number("ElementalResist", ModType::Base, 5.0));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &MinimalInput::default());
+
+    assert_eq!(output.fire_resistance, 55.0);
+    // 共享名 `ElementalResist` 同样进 cold/lightning 桶（vendor isElemental）。
+    assert_eq!(output.cold_resistance, 5.0);
+    assert_eq!(output.lightning_resistance, 5.0);
+}
+
+/// OVERRIDE 锁定抗性（"fire resistance is N%"）：跳过 base×inc，但 final 仍被
+/// 最大抗性钳制（vendor CalcDefence.lua:891 override / :924 final clamp）。
+#[test]
+fn resistance_override_locks_value_but_respects_max_cap() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("FireResistance", ModType::Base, 40.0));
+    db.add_mod(Modifier::number("FireResist", ModType::Override, 120.0));
+    db.add_mod(Modifier::number("ColdResistance", ModType::Base, 60.0));
+    db.add_mod(Modifier::number("ColdResist", ModType::Override, 0.0));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &MinimalInput::default());
+
+    // override 120 越过 BASE 词条，但 final 钳到默认 max 75。
+    assert_eq!(output.fire_resistance, 75.0);
+    // "elemental resistances are zero"：override 0 压掉 BASE 60。
+    assert_eq!(output.cold_resistance, 0.0);
+}
+
+/// INC/MORE 乘区（"reduced fire resistance"）：`(base + ΣBASE) × max(1+ΣINC/100, 0)`
+/// （vendor CalcDefence.lua:896-897，factor 负值 clamp 到 0）。
+#[test]
+fn resistance_inc_scales_and_clamps_at_zero() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("FireResistance", ModType::Base, 40.0));
+    db.add_mod(Modifier::number("FireResist", ModType::Inc, -50.0));
+    db.add_mod(Modifier::number("ColdResistance", ModType::Base, 40.0));
+    db.add_mod(Modifier::number("ColdResist", ModType::Inc, -150.0));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &MinimalInput::default());
+
+    assert_eq!(output.fire_resistance, 20.0);
+    // factor = max(1 - 1.5, 0) = 0。
+    assert_eq!(output.cold_resistance, 0.0);
+}
+
+/// 最大抗性 OVERRIDE（"your maximum resistances are N%"，vendor 名 `<X>ResistMax`）：
+/// override 直取、不过 hard_cap（vendor CalcDefence.lua:875/:914）；BASE 形态
+/// （`Maximum<X>Resistance` 长名）仍受 hard_cap 钳制。
+#[test]
+fn resistance_max_override_bypasses_hard_cap() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("FireResistance", ModType::Base, 100.0));
+    db.add_mod(Modifier::number("FireResistMax", ModType::Override, 92.0));
+    db.add_mod(Modifier::number("ColdResistance", ModType::Base, 100.0));
+    db.add_mod(Modifier::number(
+        "MaximumColdResistance",
+        ModType::Base,
+        30.0,
+    ));
+
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &MinimalInput::default());
+
+    // max override 92 > hard_cap 90 仍生效（vendor override 不过 m_min）。
+    assert_eq!(output.fire_resistance, 92.0);
+    // BASE 抬升 75+30=105 → hard_cap 钳到 90。
+    assert_eq!(output.cold_resistance, 90.0);
+}
