@@ -76,6 +76,45 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
                 .with_source("defence resource conversion")]);
             }
         }
+
+        // defence output 快照回填 cfg.stats（vendor calcs.defence 先于 offence，
+        // CalcPerform.lua:3298/:3361——offence 及后续阶段的 GetStat 能读到防御终值；
+        // PoBR 的 hand_pass 先于 calc_defence，故在此用同一 calc_defence_resources
+        // 的三防终值提前回填。后面 calc_defence 同输入重算得到相同值（确定性），
+        // 等价 vendor 顺序。MaximumEnergyShield 与 EnergyShield 同值双键
+        // （CalcDefence.lua:1400-1401）；LowestOfArmourAndEvasion 见 :1414。
+        // 注意：若未来出现 stat 自引用词条（如 PercentStat{EnergyShield}→ES BASE），
+        // 快照值与 calc_defence 终值会分歧——vendor 同样对 GetStat 时机敏感，届时
+        // 须按 vendor 逐 stat 计算序钉对齐。
+        env.cfg.stats.insert("Armour".into(), resources.armour);
+        env.cfg.stats.insert("Evasion".into(), resources.evasion);
+        env.cfg
+            .stats
+            .insert("EnergyShield".into(), resources.energy_shield);
+        env.cfg
+            .stats
+            .insert("MaximumEnergyShield".into(), resources.energy_shield);
+        env.cfg.stats.insert(
+            "LowestOfArmourAndEvasion".into(),
+            resources.armour.min(resources.evasion),
+        );
+        // Life/Mana 池快照刷新：编排层 6c 的回填在 perform 之前，不含上面刚注入的
+        // 防御转换 ExtraLife/ExtraMana——此处按 offence 同源管线重算，快照与
+        // hand_pass 实际用到的池值一致（无转换词条时与 6c 值逐位相等）。
+        let life_pool = super::offence::scaled_pool(
+            &env.player.mod_db,
+            &env.cfg,
+            env.player.base.life,
+            "MaximumLife",
+        );
+        let mana_pool = super::offence::scaled_pool(
+            &env.player.mod_db,
+            &env.cfg,
+            env.player.base.mana,
+            "MaximumMana",
+        );
+        env.cfg.stats.insert("Life".into(), life_pool);
+        env.cfg.stats.insert("Mana".into(), mana_pool);
     }
 
     let mut input = MinimalInput::from(env.player.base);
