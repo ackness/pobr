@@ -820,9 +820,66 @@ if mainSkill and mainSkill.conversionTable then
 end
 
 ----------------------------------------------------------------------
+-- Per-skill spirit reservation dump (CalcDefence.lua:192-249 inputs):
+-- for every activeSkill with HasReservation, capture the exact fields the
+-- vendor reservation loop reads (skillData / grantedEffectLevel flat+percent,
+-- ExtraSpirit sum, ReservationMultiplier). Diagnostic surface for
+-- SpiritReserved gaps (which skills reserve, and from which field).
+----------------------------------------------------------------------
+local spiritReservations = {}
+for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
+	local st = as.skillTypes or {}
+	if st[SkillType.HasReservation] and not st[SkillType.ReservationBecomesCost] then
+		local lvl = as.activeEffect and as.activeEffect.grantedEffectLevel or {}
+		local sd = as.skillData or {}
+		local okX, extraSpirit = pcall(function()
+			return as.skillModList:Sum("BASE", as.skillCfg, "ExtraSpirit")
+		end)
+		local okM, resMult = pcall(function()
+			return as.skillModList:More(as.skillCfg, "ReservationMultiplier")
+		end)
+		spiritReservations[#spiritReservations + 1] = {
+			name = as.activeEffect and as.activeEffect.grantedEffect
+				and as.activeEffect.grantedEffect.name or "?",
+			skillDataFlat = sd.spiritReservationFlat,
+			levelFlat = lvl.spiritReservationFlat,
+			levelPercent = lvl.spiritReservationPercent,
+			skillDataPercent = sd.spiritReservationPercent,
+			extraSpirit = okX and extraSpirit or nil,
+			reservationMultiplier = okM and resMult or nil,
+		}
+	end
+end
+
+-- Authoritative per-skill reservation rows straight from the vendor breakdown
+-- (CalcDefence.lua:293-306 writes breakdown.SpiritReserved.reservations with
+-- skillName/base/mult/more/inc/efficiency/count/total per reserving skill).
+local spiritReservedBreakdown = nil
+do
+	local bd = calcsBreakdown and calcsBreakdown.SpiritReserved
+	if bd and bd.reservations then
+		spiritReservedBreakdown = {}
+		for _, row in ipairs(bd.reservations) do
+			spiritReservedBreakdown[#spiritReservedBreakdown + 1] = {
+				skillName = row.skillName,
+				base = row.base,
+				mult = row.mult,
+				more = row.more,
+				inc = row.inc,
+				efficiency = row.efficiency,
+				count = row.count,
+				total = row.total,
+			}
+		end
+	end
+end
+
+----------------------------------------------------------------------
 -- Assemble report
 ----------------------------------------------------------------------
 local report = {
+	spiritReservations = spiritReservations,
+	spiritReservedBreakdown = spiritReservedBreakdown,
 	mainOutput = scalarsOf(mainOutput),
 	calcsOutput = scalarsOf(calcsOutput),
 	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
