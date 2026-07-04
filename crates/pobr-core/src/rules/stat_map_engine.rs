@@ -1360,7 +1360,7 @@ const DAMAGE_TYPES: [&str; 5] = ["Physical", "Fire", "Cold", "Lightning", "Chaos
 
 /// `<Type>Min` / `<Type>Max` → `<Type>DamageMin/Max`（mod 与 skill_data 共用：
 /// vendor 两条通道都用这组键名承载伤害基值）。
-fn damage_bound_mod_name(name: &str) -> Option<String> {
+pub(crate) fn damage_bound_mod_name(name: &str) -> Option<String> {
     for ty in DAMAGE_TYPES {
         if let Some(bound) = name.strip_prefix(ty)
             && (bound == "Min" || bound == "Max")

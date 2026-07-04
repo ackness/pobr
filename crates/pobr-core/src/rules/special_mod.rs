@@ -36,6 +36,7 @@ use regex::{Regex, RegexSet};
 use crate::modifier::{ActorRef, ModTag, ModValue, Modifier};
 use crate::parse::mod_parser::template::{normalize_attribute_var, normalize_perstat_slot_suffix};
 use crate::rules::registry::{HandlerCtx, HandlerRegistry};
+use crate::rules::stat_map_engine::damage_bound_mod_name;
 use crate::rules::value_expr::eval;
 
 /// 编译期错误（载入期 fail-fast，不静默）。
@@ -362,12 +363,20 @@ fn compile_template(
         // 嵌套 mod 载荷的 fail-fast 校验（实例化期按需再编译，见
         // `instantiate_mod_def`）。
         validate_nested_value(&def.id, &m.value, enums)?;
-        let flags = compile_flags(&m.flags);
+        // vendor→PoBR mod 名翻译（Literal 名；enums 表已审计无受影响名）。
+        let (name, flag_names) = match &m.name {
+            TemplateNameDef::Literal(n) => {
+                let (translated, remaining) = translate_vendor_name(n, &m.flags);
+                (TemplateNameDef::Literal(translated), remaining)
+            }
+            other => (other.clone(), m.flags.clone()),
+        };
+        let flags = compile_flags(&flag_names);
         let keyword_flags = compile_keyword_flags(&m.keyword_flags);
         let tags = m.tags.iter().filter_map(compile_tag).collect();
         let target = m.target.as_deref().and_then(parse_target);
         mods.push(CompiledModTemplate {
-            name: m.name.clone(),
+            name,
             mod_type,
             value: m.value.clone(),
             flags,
@@ -669,6 +678,42 @@ fn normalize_stat_name(stat: &str) -> String {
     normalize_attribute_var(&normalize_perstat_slot_suffix(stat))
 }
 
+/// vendor→PoBR mod 名翻译（窄闭集，与 statmap 引擎 `translate_mod_name` 的
+/// 对应分派同口径）。special 条目名来自 vendor Lua 字面量，与 PoBR 消费名
+/// 错位的条目躺 db 无人查询（激活性修复，非行为改写）：
+/// - `<Type>Min/Max` → `<Type>DamageMin/Max`（消费方 `calc::damage`:236 附加
+///   伤害桶；[`damage_bound_mod_name`] 精确匹配，`FireResistMax` 等不误伤）；
+/// - `CritChance`/`CritMultiplier` → `CriticalStrike{Chance,Multiplier}`
+///   （消费方 `calc::crit`）；
+/// - `Speed` 按 flag 分派 `Attack→AttackSpeed`/`Cast→CastSpeed`/裸→`SkillSpeed`
+///   （消费方 `skill_use_time::SPEED_BUCKET`，bare `Speed` 无人查询），分派吃掉
+///   的 flag 从直译集合移除（statmap :1528-1539 同口径）。
+///
+/// 其余名字原样返回（PoBR 名直通 + 休眠 LIST 通道不动）。
+fn translate_vendor_name(name: &str, flags: &[String]) -> (String, Vec<String>) {
+    if let Some(bound) = damage_bound_mod_name(name) {
+        return (bound, flags.to_vec());
+    }
+    match name {
+        "CritChance" => ("CriticalStrikeChance".into(), flags.to_vec()),
+        "CritMultiplier" => ("CriticalStrikeMultiplier".into(), flags.to_vec()),
+        "Speed" => {
+            if let Some(pos) = flags.iter().position(|f| f == "Attack") {
+                let mut rest = flags.to_vec();
+                rest.remove(pos);
+                ("AttackSpeed".into(), rest)
+            } else if let Some(pos) = flags.iter().position(|f| f == "Cast") {
+                let mut rest = flags.to_vec();
+                rest.remove(pos);
+                ("CastSpeed".into(), rest)
+            } else {
+                ("SkillSpeed".into(), flags.to_vec())
+            }
+        }
+        _ => (name.to_string(), flags.to_vec()),
+    }
+}
+
 /// 供离线抽取器（`sync-pob-catalog extract-lua --what special-mods`）预检：
 /// tag 能否被 [`compile_tag`] 忠实映射。不可映射的 tag 在编译期会被静默丢弃——
 /// 批量抽取必须把这类条目**整条跳过**而不是丢 tag（否则条件词条变常驻）。
@@ -815,9 +860,11 @@ fn instantiate_mod_def(
 ) -> Option<Modifier> {
     let mod_type = parse_mod_type(&def.mod_type)?;
     let name = resolve_name(&def.name, captures, enums)?;
+    // 与 compile_template 同款 vendor→PoBR 名翻译（嵌套载荷即时编译路径）。
+    let (name, flag_names) = translate_vendor_name(&name, &def.flags);
     let value = instantiate_value(&def.value, captures, mod_type, enums, source)?;
     let mut modifier = Modifier::new(name, mod_type, value).with_source(source);
-    let flags = compile_flags(&def.flags);
+    let flags = compile_flags(&flag_names);
     if !flags.is_empty() {
         modifier = modifier.with_flags(flags);
     }
@@ -1004,6 +1051,45 @@ mod tests {
                 actor: None,
             }]
         );
+    }
+
+    /// vendor→PoBR mod 名翻译（translate_vendor_name）：`<Type>Min/Max` 附加
+    /// 伤害族、CritChance/CritMultiplier、Speed 按 flag 分派（吃掉分派 flag）；
+    /// PoBR 名与休眠通道名原样直通。
+    #[test]
+    fn vendor_mod_names_translate_to_pobr_names() {
+        let d = def(
+            r#"{"id":"t","pattern":"adds (\\d+)% of your maximum energy shield as cold damage","mods":[
+                {"name":"ColdMin","type":"BASE","value":1,
+                 "tags":[{"type":"PercentStat","stat":"EnergyShield","percent":"$1"}]},
+                {"name":"CritChance","type":"INC","value":50},
+                {"name":"Speed","type":"INC","value":8,"flags":["Attack"]},
+                {"name":"Speed","type":"MORE","value":5},
+                {"name":"FireResistMax","type":"OVERRIDE","value":90},
+                {"name":"Armour","type":"BASE","value":100}],"batch":"V2"}"#,
+        );
+        let r = rules(vec![d]);
+        let reg = HandlerRegistry::new();
+        let m = r
+            .try_match(
+                "adds 10% of your maximum energy shield as cold damage",
+                &reg,
+            )
+            .unwrap();
+        let names: Vec<&str> = m.mods.iter().map(|m| m.name.as_str()).collect();
+        assert_eq!(
+            names,
+            vec![
+                "ColdDamageMin",        // 附加伤害族改写（damage.rs:236 消费名）
+                "CriticalStrikeChance", // crit 族改写
+                "AttackSpeed",          // Speed+Attack 分派
+                "SkillSpeed",           // 裸 Speed 分派
+                "FireResistMax",        // strip 后非 Min/Max 整词，不误伤
+                "Armour",               // PoBR 名直通
+            ]
+        );
+        // Speed→AttackSpeed 分派吃掉 Attack flag（statmap 同口径）。
+        assert!(m.mods[2].flags.is_empty());
     }
 
     /// PercentStat tag 映射（V2 slice 2）：按已算出 stat 的百分比缩放，
