@@ -1984,6 +1984,69 @@
       "verified": true,
       "batch": "hand-curated",
       "source_note": "Bonded rune 变体（语料 C1 双跑对齐：legacy 的 bonded 递归会命中 parse_reservation_efficiency，引擎须同产出；Condition:CanUseBondedModifiers 默认不激活）。vendor 对前缀域形 Bonded 变体 unsupported（special 表不在前缀剥离后重查）——此处取 legacy 超集方向（条件门控恒 false 时零行为）"
+    },
+    {
+      "id": "banner_aura_magnitudes_inc",
+      "pattern": "banner skills have (\\d+)% increased aura magnitudes",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证）",
+      "mods": [
+        {
+          "name": "AuraEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Banner"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定 buff magnitude（wolf-pack banner/aura 词条族；run-parsemod 实证 tag 口径）；消费=buff_pass aura 乘区（AuraEffect 桶×Magnitude 桶分乘，CalcPerform.lua:2204-2205）；legacy parse_scoped_buff_magnitude 同形过树/装备闸门"
+    },
+    {
+      "id": "aura_skills_magnitudes_inc",
+      "pattern": "aura skills have (\\d+)% increased magnitudes",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证）",
+      "mods": [
+        {
+          "name": "Magnitude",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillType": "Aura"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定 buff magnitude（wolf-pack banner/aura 词条族；run-parsemod 实证 tag 口径）；消费=buff_pass aura 乘区（AuraEffect 桶×Magnitude 桶分乘，CalcPerform.lua:2204-2205）；legacy parse_scoped_buff_magnitude 同形过树/装备闸门"
+    },
+    {
+      "id": "aura_magnitudes_bare_inc",
+      "pattern": "(\\d+)% increased aura magnitudes",
+      "vendor_pattern": "（vendor 通用改写链；oracle run-parsemod 实证）",
+      "mods": [
+        {
+          "name": "AuraEffect",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "域限定 buff magnitude（wolf-pack banner/aura 词条族；run-parsemod 实证 tag 口径）；消费=buff_pass aura 乘区（AuraEffect 桶×Magnitude 桶分乘，CalcPerform.lua:2204-2205）；legacy parse_scoped_buff_magnitude 同形过树/装备闸门"
     }
   ]
 }

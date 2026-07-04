@@ -646,3 +646,36 @@ fn reservation_efficiency_and_totem_reserve_lines() {
             .any(|t| matches!(t, ModTag::SkillTypes(st) if st == &SkillTypes::SUMMONS_TOTEM))
     );
 }
+
+/// 域限定 buff magnitude 词条（vendor run-parsemod 实证）：banner 域 →
+/// `AuraEffect INC + SkillType(Banner=89)`、aura 域 → `Magnitude INC +
+/// SkillType(Aura)`、裸复数形 → `AuraEffect INC`。消费 = buff_pass aura 乘区
+/// 双桶分乘（CalcPerform.lua:2204-2205）。
+#[test]
+fn scoped_buff_magnitude_lines() {
+    use pobr_core::modifier::ModTag;
+    use pobr_data::skill::SkillTypes;
+
+    let o = parse_mod("Banner Skills have 15% increased Aura Magnitudes").unwrap();
+    assert_eq!(o.mods[0].name.as_str(), "AuraEffect");
+    assert_eq!(o.mods[0].value.as_number(), Some(15.0));
+    assert!(
+        o.mods[0]
+            .tags
+            .iter()
+            .any(|t| matches!(t, ModTag::SkillTypes(st) if st == &SkillTypes::BANNER))
+    );
+
+    let o = parse_mod("Aura Skills have 25% increased Magnitudes").unwrap();
+    assert_eq!(o.mods[0].name.as_str(), "Magnitude");
+    assert!(
+        o.mods[0]
+            .tags
+            .iter()
+            .any(|t| matches!(t, ModTag::SkillTypes(st) if st == &SkillTypes::AURA))
+    );
+
+    let o = parse_mod("5% increased Aura Magnitudes").unwrap();
+    assert_eq!(o.mods[0].name.as_str(), "AuraEffect");
+    assert!(o.mods[0].tags.is_empty());
+}

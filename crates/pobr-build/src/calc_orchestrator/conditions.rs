@@ -202,6 +202,9 @@ pub(crate) fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
             "Herald" => bits |= SkillTypes::HERALD,
             // Ancestral Bond totem 预留（ExtraSpirit 的 SummonsTotem tag 匹配位）。
             "SummonsTotem" => bits |= SkillTypes::SUMMONS_TOTEM,
+            // aura buff 乘区的域匹配位（banner/aura 域 magnitude 词条）。
+            "Banner" => bits |= SkillTypes::BANNER,
+            "Aura" => bits |= SkillTypes::AURA,
             _ => {}
         }
     }

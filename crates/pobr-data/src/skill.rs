@@ -65,6 +65,9 @@ impl SkillTypes {
     /// PoB2 SkillType.SummonsTotem = 25（Ancestral Bond「Totems reserve N
     /// Spirit each」的 ExtraSpirit tag 作用域 + 预留循环入选位）
     pub const SUMMONS_TOTEM: Self = Self::bit(24);
+    /// PoB2 SkillType.Banner = 89（「Banner Skills have N% increased Aura
+    /// Magnitudes」等 banner 域词条的作用域）
+    pub const BANNER: Self = Self::bit(88);
     /// PoB2 SkillType.Meta = 122（Blasphemy / Spellslinger / Archmage /
     /// Cast-on-X 等 meta gem；「Meta Skills have N% increased Reservation
     /// Efficiency」词条的作用域）

@@ -511,7 +511,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 137; // 实测 137/144 = 95.1%（essence-drain taken+Total +1）
+const BASELINE_DEF_CORE_HIT5: usize = 138; // 实测 138/144 = 95.8%（aura magnitude 乘区 +1）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -565,8 +565,18 @@ const BASELINE_DEF_CORE_HIT5: usize = 137; // 实测 137/144 = 95.1%（essence-d
 // druid-comet SpiritUnres 209/209 精确翻正、frost-bomb 136/138（0.99x）翻正、
 // disciple 连带（efficiency）。coiling/wolf-pack/gemling 仍 miss（companion 管线
 // / Blasphemy ExtraSpirit 交互待审计）。
-const BASELINE_DEF_HIT5: usize = 409; // 实测 409/450 = 90.9%（reservation efficiency + totem +2）
-const BASELINE_DEF_HIT10: usize = 424; // 实测 424/450 = 94.2%（additional effects +3）
+// **aura magnitude 乘区重记（+5 @5% / +6 @10% / core-8 +1）**：buff_pass aura
+// 乘区对齐 vendor CalcPerform.lua:2204-2205——① per-skill cfg（BuffSpec 携带
+// 来源效果类型位，域词条「Banner Skills have N% increased Aura Magnitudes」
+// = AuraEffect INC + SkillTypes(Banner=89) 只命中对应 aura）；② `Magnitude`
+// 独立乘区桶（「Aura Skills have N% increased Magnitudes」= Magnitude INC +
+// SkillTypes(Aura)，与 AuraEffect 桶分别成 (1+Σinc/100) 后相乘——wolf-pack
+// Defiance Banner 30×(1+39%)×(1+88%)=78.4 对 vendor 78）。三形态词条双 parser
+// 落地（legacy parse_scoped_buff_magnitude + overlay 3 条目）。
+// wolf-pack Armour 0.71→0.98✓/EvadeChance·MeleeEvade→0.95✓/PhysDR→0.96✓，
+// huntress-spirit-walker ChaosMaxHit 0.88→1.00✓（aura 小点词条正外溢）。
+const BASELINE_DEF_HIT5: usize = 414; // 实测 414/450 = 92.0%（aura magnitude +5）
+const BASELINE_DEF_HIT10: usize = 430; // 实测 430/450 = 95.6%（aura magnitude +6）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
