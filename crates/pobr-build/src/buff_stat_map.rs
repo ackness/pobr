@@ -95,9 +95,11 @@ pub fn map_aura_buff_stat(stat: &str) -> Vec<MappedStat> {
             base("ColdResistance"),
             base("LightningResistance"),
         ],
-        "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply" => {
-            vec![base("MaximumAllElementalResistances")]
-        }
+        // `..._additional_maximum_all_elemental_resistances_%_to_apply`（Dread
+        // Banner buff 侧）**不映射**：vendor SkillStatMap.lua 无该条目（PoB2 丢弃
+        // 该 stat 不计算，M4-I 实查）。旧映射在 additional-granted-effects 展开
+        // （banner buff 侧进 aura 分支）后会给 +5% max res 造成 vendor 之上的多算
+        // （wolf-pack FireResist 75→78.75 回归），按忠实口径删除。
         _ => Vec::new(),
     }
 }
@@ -151,15 +153,14 @@ mod tests {
                 MappedStat::new("LightningResistance", ModType::Base),
             ]
         );
-        // 最大全元素抗
-        assert_eq!(
+        // 最大全元素抗（Dread Banner buff 侧）**不映射**：vendor SkillStatMap
+        // 无该条目（PoB2 丢弃不计算）——附加授予效果展开后旧映射会造成
+        // vendor 之上的 +5% max res 多算，按忠实口径归空。
+        assert!(
             map_aura_buff_stat(
                 "base_skill_buff_additional_maximum_all_elemental_resistances_%_to_apply"
-            ),
-            vec![MappedStat::new(
-                "MaximumAllElementalResistances",
-                ModType::Base
-            )]
+            )
+            .is_empty()
         );
     }
 

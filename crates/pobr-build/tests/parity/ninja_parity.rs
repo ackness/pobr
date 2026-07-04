@@ -566,7 +566,17 @@ const BASELINE_DEF_CORE_HIT5: usize = 137; // 实测 137/144 = 95.1%（essence-d
 // disciple 连带（efficiency）。coiling/wolf-pack/gemling 仍 miss（companion 管线
 // / Blasphemy ExtraSpirit 交互待审计）。
 const BASELINE_DEF_HIT5: usize = 409; // 实测 409/450 = 90.9%（reservation efficiency + totem +2）
-const BASELINE_DEF_HIT10: usize = 421; // 实测 421/450 = 93.6%（同上 +3）
+const BASELINE_DEF_HIT10: usize = 424; // 实测 424/450 = 94.2%（additional effects +3）
+// **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
+// （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
+// ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
+// 展开为独立效果参与 aura/curse/debuff 分类。wolf-pack：Defiance Banner 的
+// Armour/Evasion MORE 30（Condition:BannerPlanted，config 无 tag FLAG 桥已放行）
+// 激活——Armour 0.55→0.71、Evasion 0.49→0.63、三 MaxHit 0.89→0.91（@10% 翻正）、
+// EHP 0.28→0.37。到 1.00x 还差 banner valour 缩放（AuraEffect MORE per-resource
+// ×Multiplier:BannerValour，vendor :1186/:2783——见记忆 companion 管线路线）。
+// Dread Banner 的 `..._additional_maximum_all_elemental_resistances_%_to_apply`
+// 静态映射按 vendor 口径删除（PoB2 丢弃该 stat，M4-I 实查）。
 // **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
 // - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
 //   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker
