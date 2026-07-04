@@ -174,3 +174,56 @@ fn dedupes_across_groups_and_skips_disabled() {
         .add_socket_group(disabled);
     assert_eq!(calc(&build, &data), 0.0, "禁用组不预留");
 }
+
+/// Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy` 效果按
+/// 同组 AppliesCurse 主动技能数各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
+/// （constant stat 60），口径 = 单份缩放 round 后 ×count。品质效率（:251，
+/// q20 Blasphemy = 20×0.5 = 10%）除在每份上：round(60/1.1) = 55。
+#[test]
+fn blasphemy_reserves_per_socketed_curse_with_quality_efficiency() {
+    let data = repo_data();
+    // q20 Blasphemy + 2 条 curse → 55 × 2 = 110（curse 自身预留 0）。
+    let build = build_with_group(
+        SocketGroup::new()
+            .with_gem_skill_quality("BlasphemyPlayer", 19, 20)
+            .with_gem_skill("TemporalChainsPlayer", 19)
+            .with_gem_skill("EnfeeblePlayer", 19),
+    );
+    assert_eq!(calc(&build, &data), 110.0);
+
+    // q0 Blasphemy + 1 条 curse → 60（无效率缩放）。
+    let build = build_with_group(
+        SocketGroup::new()
+            .with_gem_skill("BlasphemyPlayer", 19)
+            .with_gem_skill("TemporalChainsPlayer", 19),
+    );
+    assert_eq!(calc(&build, &data), 60.0);
+
+    // 无 curse 的裸 Blasphemy → 0（per-curse 无实例、自身 flat 为空）。
+    let build = build_with_group(SocketGroup::new().with_gem_skill("BlasphemyPlayer", 19));
+    assert_eq!(calc(&build, &data), 0.0);
+}
+
+/// 宝石品质预留效率对普通预留技能同样生效（vendor :251 对每技能 skillCfg 求
+/// efficiency；此处数据源 = overlay/gem_quality_stats.json 的
+/// `base_reservation_efficiency_+%` 斜率）。Herald of Thunder q20 = 20×0.5 = 10%
+/// → round(30/1.1) = 27。
+#[test]
+fn gem_quality_reservation_efficiency_scales_flat() {
+    let data = repo_data();
+    // 数据前提自证：HeraldOfThunderPlayer 有 quality efficiency 斜率才断言缩放。
+    let has_quality_eff = data
+        .gem_quality_stats
+        .get("HeraldOfThunderPlayer")
+        .is_some_and(|rows| {
+            rows.iter()
+                .any(|q| q.stat == "base_reservation_efficiency_+%")
+        });
+    let build =
+        build_with_group(SocketGroup::new().with_gem_skill_quality("HeraldOfThunderPlayer", 1, 20));
+    if has_quality_eff {
+        assert_eq!(calc(&build, &data), 27.0);
+    } else {
+        assert_eq!(calc(&build, &data), 30.0);
+    }
+}

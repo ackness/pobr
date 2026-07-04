@@ -480,9 +480,56 @@ pub(crate) fn spirit_reservation_modifiers(build: &Build, data: &BuildData) -> V
                     mult *= 1.0 + row.reservation_multiplier.unwrap_or(0.0) / 100.0;
                 }
             }
+            // Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy`
+            // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
+            // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
+            // AppliesCurse 主动技能数）。被包 curse 自身预留 0（levels 无 flat，
+            // 进 vendor 预留循环但 baseFlat=0——两侧一致，无需额外排除）。
+            let es = data.effect_stats(
+                &gem.skill_id,
+                gem.gem_level,
+                gem.quality,
+                gem.stat_set_index,
+            );
+            // 预留效率（vendor :251 `/(1 + efficiency/100)`）：宝石自身品质 stat
+            // `base_reservation_efficiency_+%`（q20 Blasphemy = 10%）。树/装备的
+            // `ReservationEfficiency` 词条族（per-skill cfg 匹配）仍缺——M2 Track D
+            // 登记，此处只接宝石品质数据（effect_stats 的 quality 段，斜率×q trunc）。
+            let efficiency: f64 = es
+                .all()
+                .filter(|s| s.stat == "base_reservation_efficiency_+%")
+                .map(|s| s.value)
+                .sum();
             // PoB2 对保留倍率乘积截断到 4 位小数后再乘 base（floor(x, 4)）。
             let mult = (mult * 10000.0).floor() / 10000.0;
-            let reserved = (flat * mult).round().max(0.0);
+            let mut reserved = (flat * mult / (1.0 + efficiency / 100.0)).round().max(0.0);
+            // Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy`
+            // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
+            // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
+            // AppliesCurse 主动技能数）。口径 = **单份缩放后 round 再 ×instances**
+            // （:282-283 `blasphemyEffectiveFlat = round(...)；reservedFlat += ... ×
+            // instances`，essence-drain 60→55×3=165 ≠ round(180/1.1)=164）。被包
+            // curse 自身预留 0（levels 无 flat，vendor 同——无需额外排除）。
+            if has("IsBlasphemy") {
+                let per_curse: f64 = es
+                    .all()
+                    .filter(|s| s.stat == "blasphemy_base_spirit_reservation_per_socketed_curse")
+                    .map(|s| s.value)
+                    .sum();
+                let curse_count = group
+                    .gem_skills
+                    .iter()
+                    .filter(|g| {
+                        data.granted_effects.get(&g.skill_id).is_some_and(|e| {
+                            !e.is_support && e.skill_types.iter().any(|t| t == "AppliesCurse")
+                        })
+                    })
+                    .count();
+                reserved += (per_curse * mult / (1.0 + efficiency / 100.0))
+                    .round()
+                    .max(0.0)
+                    * curse_count as f64;
+            }
             if reserved <= 0.0 {
                 continue;
             }
