@@ -173,6 +173,15 @@ impl CalculationSession {
         self.env.cfg.conditions.insert(name.into(), value);
     }
 
+    /// 在已注入全部来源后，向计算上下文写入一个已算出 stat 快照值（PoB2 GetStat 读
+    /// actor **output** 的 PoBR 落点，见 [`crate::CalcConfig::stats`]）。供
+    /// `ModTag::PerStat`/`PercentStat`（求值缩放）与 `StatThreshold`（matches gate）
+    /// 词条取数。与 [`set_multiplier`](Self::set_multiplier) 同为编排层回填入口，
+    /// 须在 [`perform_minimal`](Self::perform_minimal) 之前调用。
+    pub fn set_stat(&mut self, name: impl Into<String>, value: f64) {
+        self.env.cfg.stats.insert(name.into(), value);
+    }
+
     /// 查询玩家 modDB 中某 FLAG modifier 是否为真（按当前 cfg）。供编排层把来源授予的
     /// `Condition:<X>` flag（如 Bonded 激活源）桥接为 cfg 条件。
     pub fn has_flag(&self, name: &str) -> bool {

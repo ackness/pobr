@@ -43,10 +43,14 @@ impl<'a> EvalContext<'a> {
 
     /// vendor `GetStat` 默认路径：output 快照值，缺位 → 0（ModStore.lua:323
     /// `(self.actor.output and self.actor.output[stat]) or ... or 0`）。
+    ///
+    /// 读数优先级：`stat_lookup`（消费方现算通道）→ [`CalcConfig::stats`] 快照
+    /// （编排层 6c 回填，与 `multipliers` 同源；两通道统一回填源见
+    /// [`CalcConfig::stats`] doc）→ 0。
     pub fn stat(&self, name: &str) -> f64 {
         self.stat_lookup
             .and_then(|lookup| lookup(name))
-            .unwrap_or(0.0)
+            .unwrap_or_else(|| self.cfg.stat(name))
     }
 }
 
@@ -73,12 +77,16 @@ pub struct CalcConfig {
     pub damage_type: Option<DamageType>,
     pub conditions: HashMap<String, bool>,
     pub multipliers: HashMap<String, f64>,
-    /// 已算出 stat 快照（V2s4；PoB2 `StatThreshold` tag 经 GetStat 读 actor
-    /// **output**，ModStore.lua:556-573）。由编排层在来源注入后回填（与
-    /// `multipliers` 的 6c 回填同模式）；缺键＝0（vendor output 缺 stat 同为 0）。
-    /// 与 [`EvalContext`] 的 `stat_lookup`（PerStat/PercentStat 求值通道）是同一
-    /// 语义的两个入口——matches 侧无 EvalContext，故 gate 类 tag 走本快照；
-    /// 两通道真正接线时应统一回填源。
+    /// 已算出 stat 快照（V2s4；PoB2 `StatThreshold`/`PerStat`/`PercentStat` tag
+    /// 经 GetStat 读 actor **output**，ModStore.lua:556-573）。由编排层在来源注入
+    /// 后回填（`inject_per_x_multipliers` 6c，与 `multipliers` 同源同值）；缺键＝0
+    /// （vendor output 缺 stat 同为 0）。与 [`EvalContext`] 的 `stat_lookup`
+    /// （PerStat/PercentStat 求值通道）已统一回填源：matches 侧 gate 类 tag 直读
+    /// 本快照，求值侧经 `EvalContext::stat` 在无 lookup 时回退到本快照。
+    ///
+    /// 回填范围＝perform 前可算的子集（属性/Life/Mana 池值/per-slot 装备防御）；
+    /// perform 内才算出的全局 Armour/Evasion/EnergyShield/Ward 等留 0
+    /// （保守＝该类条目休眠，等 output 快照通道接入）。
     pub stats: HashMap<String, f64>,
     /// 额外的伤害缩放 ModName（按主技能关键词 / 武器类别派生，如 `GrenadeDamage`、
     /// `CrossbowDamage`）。`damage::aggregate_inc_more` 把它们纳入通用增伤桶，使

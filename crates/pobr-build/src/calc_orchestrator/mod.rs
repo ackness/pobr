@@ -1118,9 +1118,20 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     session.set_multiplier("Mana", mana_total);
     session.set_multiplier("Life", life_total);
     session.set_multiplier("Level", f64::from(build.character.level));
+    // cfg.stats 快照回填（同值镜像）：PerStat/PercentStat（EvalContext::stat 回退
+    // cfg.stats）与 StatThreshold（matches gate）的取数通道，键空间与 multiplier
+    // 侧一致（special_mod::normalize_stat_name 归一后对齐）。仅回填 perform 前
+    // 可算的子集；perform 内才算出的全局 Armour/ES 等留 0（见 CalcConfig::stats doc）。
+    session.set_stat("Strength", str_total);
+    session.set_stat("Dexterity", dex_total);
+    session.set_stat("Intelligence", int_total);
+    session.set_stat("Spirit", spirit_total);
+    session.set_stat("Mana", mana_total);
+    session.set_stat("Life", life_total);
     // per-槽位防御缩放（`<Stat>On<Slot>`）：使 `+N to Armour per M Item Energy Shield on
     // Equipped Boots` 这类按某件装备防御值缩放的词条生效（PoB2 PerStat `<Stat>On<Slot>`）。
     for (var, value) in per_slot_defence_multipliers(build, data) {
+        session.set_stat(var.clone(), value);
         session.set_multiplier(var, value);
     }
     // per-槽位已填充 socket 数（`RunesSocketedIn<slot>`）：使 `+N to <stat> per Socket

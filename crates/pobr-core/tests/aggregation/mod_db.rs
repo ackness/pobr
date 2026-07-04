@@ -707,6 +707,34 @@ fn per_stat_reads_output_snapshot_via_eval_context() {
     assert_eq!(db.sum(ModType::Inc, ctx, &names), 54.0);
 }
 
+/// EvalContext::stat 无 lookup 时回退 cfg.stats 快照（生产接线通道：编排层 6c
+/// 回填 cfg.stats，mod_db 内部 `EvalContext::new(cfg)` 查询即取到值——
+/// PerStat/PercentStat 不再依赖消费方显式构造 stat_lookup）。lookup 命中仍优先。
+#[test]
+fn eval_context_stat_falls_back_to_cfg_stats_snapshot() {
+    use pobr_core::EvalContext;
+    let mut db = ModDb::new();
+    db.add_mod(
+        Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
+            stat: "Life".into(),
+            div: 100.0,
+            limit: None,
+            limit_var: None,
+            actor: None,
+        }),
+    );
+    let names = [ModName::from("Damage")];
+
+    // 仅 cfg.stats 快照（&cfg 直传 → EvalContext::new，无 lookup）→ 回退取到值。
+    let cfg = CalcConfig::new().with_stat("Life", 5430.0);
+    assert_eq!(db.sum(ModType::Inc, &cfg, &names), 54.0);
+
+    // lookup 优先于快照（lookup Life=200 覆盖快照 5430）。
+    let lookup = |stat: &str| (stat == "Life").then_some(200.0);
+    let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
+    assert_eq!(db.sum(ModType::Inc, ctx, &names), 2.0);
+}
+
 /// PercentStat 按已算出 stat 的百分比缩放（V2 slice 2；vendor ModStore.lua:506-555）：
 /// `value = ceil(value × stat × percent/100)`——ceil 作用在最终贡献（区别 PerStat
 /// 的 floor 作用在乘数）；无快照 → stat=0 → 贡献 0（保守）；percent 缺省 → mult=stat。
