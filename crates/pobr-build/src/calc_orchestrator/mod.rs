@@ -1522,7 +1522,10 @@ fn inject_self_buff_exposure_spirit(
     session.add_modifiers(exposure_support_modifiers(build, data, main_skill_group));
     // 4d.（M1-T4.5）持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
     //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
-    session.add_modifiers(spirit_reservation_modifiers(build, data));
+    //     db 传只读视图取树/装备的 ReservationEfficiency 词条（此时点树/装备已
+    //     ingest）；先算后注避免同语句可变/不可变借用冲突。
+    let spirit_mods = spirit_reservation_modifiers(build, data, session.mod_db());
+    session.add_modifiers(spirit_mods);
 }
 
 // ---- statmap 双跑上下文（M1-T2.3）----

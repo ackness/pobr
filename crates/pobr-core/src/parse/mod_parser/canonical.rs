@@ -119,7 +119,17 @@ fn canonical_tag(tag: &ModTag) -> String {
             format!("GlobalLimit(value={},key={key})", fmt_f64(*value))
         }
         ModTag::DamageType(dt) => format!("DamageType({dt:?})"),
-        ModTag::SkillTypes(st) => format!("SkillTypes({:#x})", st.bits()),
+        // 高位全零保持历史 u64 hex 形（既有缓存/双跑基线逐字节不变）；高位类型
+        // （Meta=122 等）附全字数组段。
+        ModTag::SkillTypes(st) => {
+            let w = st.words();
+            if w[1..].iter().all(|&x| x == 0) {
+                format!("SkillTypes({:#x})", w[0])
+            } else {
+                let hex: Vec<String> = w.iter().map(|x| format!("{x:#x}")).collect();
+                format!("SkillTypes({})", hex.join(","))
+            }
+        }
         ModTag::SkillName { names } => format!("SkillName(names=[{}])", names.join(",")),
         ModTag::SlotName(s) => format!("SlotName({s})"),
         ModTag::DistanceRamp { ramp } => {

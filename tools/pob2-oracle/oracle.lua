@@ -838,7 +838,21 @@ for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
 		local okM, resMult = pcall(function()
 			return as.skillModList:More(as.skillCfg, "ReservationMultiplier")
 		end)
+		-- Efficiency inputs (CalcDefence.lua:240-243): per-skill INC sum plus the
+		-- individual contributing mods (Tabulate) with their sources, so scoped
+		-- efficiency modifiers (Meta/Herald/support-injected) can be attributed.
+		local okE, effSum = pcall(function()
+			return as.skillModList:Sum("INC", as.skillCfg, "SpiritReservationEfficiency", "ReservationEfficiency")
+		end)
+		local effMods = {}
+		pcall(function()
+			for _, m in ipairs(as.skillModList:Tabulate("INC", as.skillCfg, "SpiritReservationEfficiency", "ReservationEfficiency")) do
+				effMods[#effMods + 1] = { value = m.value, source = m.mod.source, name = m.mod.name }
+			end
+		end)
 		spiritReservations[#spiritReservations + 1] = {
+			efficiencySum = okE and effSum or nil,
+			efficiencyMods = #effMods > 0 and effMods or nil,
 			name = as.activeEffect and as.activeEffect.grantedEffect
 				and as.activeEffect.grantedEffect.name or "?",
 			skillDataFlat = sd.spiritReservationFlat,
