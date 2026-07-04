@@ -1683,6 +1683,84 @@
       "verified": false,
       "batch": "M6-3b",
       "source_note": "ModParser.lua:3418-3419（Druid Oracle specialModList 整行；flag(Condition:CanUseBondedModifiers) 解锁 'Bonded:' 前缀词条，vendor :1437）"
+    },
+    {
+      "id": "take_pct_less_damage",
+      "pattern": "take (\\d+)% less damage",
+      "vendor_pattern": "（vendor 通用改写链解析动词前置形；oracle: Take 30% less Damage）",
+      "mods": [
+        {
+          "name": "DamageTaken",
+          "type": "MORE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "tree node 28153「Phased Form」等动词前置形受伤词条；oracle run-parsemod 实证四方向（less/more→MORE±N、reduced/increased→INC±N）；消费 defence.rs taken_mult_for_type_*；legacy parse_defence_numeric_sentence 同形分支过 collect.rs 树闸门"
+    },
+    {
+      "id": "take_pct_more_damage",
+      "pattern": "take (\\d+)% more damage",
+      "vendor_pattern": "（vendor 通用改写链解析动词前置形；oracle: Take 30% more Damage）",
+      "mods": [
+        {
+          "name": "DamageTaken",
+          "type": "MORE",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "tree node 28153「Phased Form」等动词前置形受伤词条；oracle run-parsemod 实证四方向（less/more→MORE±N、reduced/increased→INC±N）；消费 defence.rs taken_mult_for_type_*；legacy parse_defence_numeric_sentence 同形分支过 collect.rs 树闸门"
+    },
+    {
+      "id": "take_pct_reduced_damage",
+      "pattern": "take (\\d+)% reduced damage",
+      "vendor_pattern": "（vendor 通用改写链解析动词前置形；oracle: Take 30% reduced Damage）",
+      "mods": [
+        {
+          "name": "DamageTaken",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "tree node 28153「Phased Form」等动词前置形受伤词条；oracle run-parsemod 实证四方向（less/more→MORE±N、reduced/increased→INC±N）；消费 defence.rs taken_mult_for_type_*；legacy parse_defence_numeric_sentence 同形分支过 collect.rs 树闸门"
+    },
+    {
+      "id": "take_pct_increased_damage",
+      "pattern": "take (\\d+)% increased damage",
+      "vendor_pattern": "（vendor 通用改写链解析动词前置形；oracle: Take 30% increased Damage）",
+      "mods": [
+        {
+          "name": "DamageTaken",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "tree node 28153「Phased Form」等动词前置形受伤词条；oracle run-parsemod 实证四方向（less/more→MORE±N、reduced/increased→INC±N）；消费 defence.rs taken_mult_for_type_*；legacy parse_defence_numeric_sentence 同形分支过 collect.rs 树闸门"
     }
   ]
 }
