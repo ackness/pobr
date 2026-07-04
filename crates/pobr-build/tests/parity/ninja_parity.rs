@@ -542,8 +542,18 @@ const BASELINE_DEF_CORE_HIT5: usize = 137; // 实测 137/144 = 95.1%（essence-d
 // 叠加后 sorceress-chronomancer-essence-drain 七列翻正（ES/ESRecoveryCap 1.13x→1.03x、
 // 四 MaxHit+TotalEHP 0.79x→1.03x）。⚠️ 单独合并 ② 会让 MaxHit 0.79→0.72 更差（Total
 // 修复缩 ES 而 taken 缺口仍在）——两 commit 同 PR 防拆。
-const BASELINE_DEF_HIT5: usize = 399; // 实测 399/450 = 88.7%（essence-drain +7）
-const BASELINE_DEF_HIT10: usize = 411; // 实测 411/450 = 91.3%（essence-drain +7）
+// **Spirit 预留双机制修复重记（+8 @5% / +7 @10%）**：
+// ① 宝石品质预留效率（vendor CalcDefence.lua:251 `/(1+efficiency/100)`，数据 =
+//   overlay/gem_quality_stats.json 的 `base_reservation_efficiency_+%` 斜率×q）——
+//   跨 build 通用缺口，ember/frost-bomb/flicker/monk-twister/pathfinder/stormweaver/
+//   detonate-dead 七 build 的 SpiritUnres 列翻正；
+// ② Blasphemy per-curse 预留（:273-284 `blasphemy_base_spirit_reservation_per_socketed_curse`
+//   =60 × 同组 AppliesCurse 数，**单份缩放 round 后 ×count**——essence-drain
+//   60→55×3=165，SpiritUnres 28.5x→1.00x 精确翻正）。
+// 剩余：druid-comet 1.26x/coiling（Spell Totem 化预留 + ReservationEfficiency 词条族，
+// M2 Track D）、wolf-pack（companion 管线）。
+const BASELINE_DEF_HIT5: usize = 407; // 实测 407/450 = 90.4%（spirit reservation +8）
+const BASELINE_DEF_HIT10: usize = 418; // 实测 418/450 = 92.9%（spirit reservation +7）
 // **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
 // - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
 //   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker
