@@ -1344,6 +1344,7 @@ fn parse_totem_spirit_reservation(rest: &str, source: &str) -> Option<Vec<Modifi
 ///   → + SkillTypes(HERALD)；
 /// - 裸 Spirit 形『N% reduced Spirit Reservation Efficiency of Skills』
 ///   → `SpiritReservationEfficiency`（vendor 同名，无 tag）。
+///
 /// 未建模域（Minion/Companion=消费侧无 minion 预留通道、per-Idol=Multiplier
 /// 形）保守 None（落回 Err）。
 fn parse_reservation_efficiency(rest: &str, source: &str) -> Option<Vec<Modifier>> {

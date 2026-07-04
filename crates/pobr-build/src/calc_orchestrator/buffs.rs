@@ -101,193 +101,201 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
     let mut seen: HashSet<&str> = HashSet::new();
     for group in build.enabled_socket_groups() {
         for (idx, gem) in group.gem_skills.iter().enumerate() {
-            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
-                continue;
-            };
-            if effect.is_support {
-                continue;
-            }
-            let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
-            let is_aura = has_type("Aura");
-            let is_mark = has_type("Mark");
-            let is_curse = is_mark || has_type("AppliesCurse");
-            let socket_index = (idx + 1) as u32;
-            if !is_aura && !is_curse {
-                // （M4-L）Debuff 分支：非 aura/curse 主动技能的敌侧 debuff 载荷
-                // （GlobalEffect effectType=Debuff，vendor CalcActiveSkill.lua:976-1046
-                // 搬入 buff.modList → CalcPerform.lua:2219-2285 Debuff 分支写 enemyDB）。
-                // 如 Frost Bomb `active_skill_all_elemental_exposure_magnitude` →
-                // `<El>Exposure BASE 20`（SkillStatMap.lua:1721-1725），经 buff_pass
-                // Debuff 路径入 enemy db 后由曝光归约折成 `<El>Resist BASE -magnitude`
-                // （CalcPerform.lua:3214-3247）。vendor 对**全部** activeSkillList 生效
-                // （非仅 mainSkill）——此处同口径扫所有启用 socket group。
-                // 无 debuff 载荷（绝大多数技能）→ 空 mods 跳过，零行为。
-                let es = data.effect_stats(
-                    &gem.skill_id,
-                    gem.gem_level,
-                    gem.quality,
-                    gem.stat_set_index,
-                );
-                let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-                let debuff_mods =
-                    debuff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
-                // （M4-n）玩家侧 Buff 载荷：buff 授予类主动技能（武器授予的
-                // Pinnacle of Power（other.lua:12503，fromItem）等——PoB 把
-                // `Grants Skill` 写成带 `source="Item:…"` 的 socket group，
-                // 与显式组同走本扫描，seen 去重）statSet 的 GlobalEffect
-                // effectType=Buff 条目经 [`player_buff_stat_modifiers`]（statmap
-                // buff 域，数值允收名单 + `<El>Can<Ailment>` flag 通道）映射为
-                // 玩家侧 modifier → BuffSpec(kind=Buff)，buff_pass Buff 分支
-                // （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db
-                // （vendor buff 循环写全局，对位 GlobalEffect/Buff 全局作用域）。
-                // 与 support_buff_specs 的 support 路无交集（此处仅主动技能）。
-                // （M4-n）玩家侧 Buff 分支：非 aura/curse 主动技能的玩家侧 buff
-                // 载荷（GlobalEffect effectType=Buff，vendor 同一 buff 循环
-                // CalcPerform.lua:1949-1962 Buff 分支写 player db）。如 Sigil of
-                // Power `circle_of_power_spell_damage_+%_final_per_stage` →
-                // Damage MORE Spell ×SigilOfPowerStage、Elemental Conflux →
-                // 三元素 MORE ×(1/ElementalConflux<El>Effect)。取数等级 = 宝石
-                // 等级 + 适用的 `+N to Level of all <X> Skills`（vendor
-                // applyGemMods 对每个 gem effect 生效，CalcSetup.lua:410-435；
-                // Sigil 实测 20→32）。support 授予的等级（Uhtred's Exodus
-                // `SupportedGemProperty` +3）未建模，登记残差。
-                let buff_level = gem.gem_level + additional_gem_levels(build, data, &gem.skill_id);
-                let es_buff = if buff_level == gem.gem_level {
-                    es
-                } else {
-                    data.effect_stats(&gem.skill_id, buff_level, gem.quality, gem.stat_set_index)
+            // 主授予效果 + 附加授予效果（overlay/gem_effects.json 外键；vendor 对
+            // 每 gem 的 additionalGrantedEffectId1..N 各建一个 activeSkill——如
+            // banner 的 buff 侧 DefianceBannerPlayer（Aura）在附加位，主位是
+            // 预留侧 ReservationPlayer）。等级/品质/set 沿用宿主宝石（PoB2 附加
+            // 效果与宿主同 gemInstance）。
+            let effect_ids: Vec<&str> = std::iter::once(gem.skill_id.as_str())
+                .chain(
+                    data.gem_effects
+                        .get(&gem.skill_id)
+                        .into_iter()
+                        .flat_map(|l| l.additional_granted_effect_ids.iter().map(String::as_str)),
+                )
+                .collect();
+            for skill_id in effect_ids {
+                let Some(effect) = data.granted_effects.get(skill_id) else {
+                    continue;
                 };
-                let buff_mods =
-                    player_buff_stat_modifiers(data, &es_buff, &gem.skill_id, set_key.as_deref());
-                if (debuff_mods.is_empty() && buff_mods.is_empty())
-                    || !seen.insert(gem.skill_id.as_str())
-                {
+                if effect.is_support {
                     continue;
                 }
-                if !debuff_mods.is_empty() {
-                    specs.push(BuffSpec {
-                        name: buff_skill_name(data, &gem.skill_id),
-                        kind: BuffKind::Debuff,
-                        skill_id: gem.skill_id.clone(),
-                        mods: debuff_mods,
-                        magnitude: 1.0,
-                        slot: group.slot.clone(),
-                        socket_index,
-                        is_mark: false,
-                        ignore_curse_limit: false,
-                    });
-                }
-                if !buff_mods.is_empty() {
-                    specs.push(BuffSpec {
-                        name: buff_skill_name(data, &gem.skill_id),
-                        kind: BuffKind::Buff,
-                        skill_id: gem.skill_id.clone(),
-                        mods: buff_mods,
-                        magnitude: 1.0,
-                        slot: group.slot.clone(),
-                        socket_index,
-                        is_mark: false,
-                        ignore_curse_limit: false,
-                    });
-                }
-                continue;
-            }
-            if !seen.insert(gem.skill_id.as_str()) {
-                continue;
-            }
-            if is_aura {
-                // aura 防御 buff：与 aura_buff_modifiers 同一 stat→mod 映射与
-                // SkillGem 归因（buff_pass 缩放时保留 origin，trace 不丢弃）。
-                let es = data.effect_stats(
-                    &gem.skill_id,
-                    gem.gem_level,
-                    gem.quality,
-                    gem.stat_set_index,
-                );
-                let mut mods = Vec::new();
-                for ds in es.all() {
-                    for mapped in map_aura_buff_stat(&ds.stat) {
-                        if ds.value == 0.0 {
-                            continue;
-                        }
-                        let origin = ModifierSource::new(SourceId::new(
-                            SourceKind::SkillGem,
-                            format!("aura.{}.{}", gem.skill_id, ds.stat),
-                        ))
-                        .with_raw_text(format!("aura {} {} ({})", gem.skill_id, ds.stat, ds.value));
-                        mods.push(
-                            Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, ds.value)
-                                .with_origin(origin),
-                        );
+                let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
+                let is_aura = has_type("Aura");
+                let is_mark = has_type("Mark");
+                let is_curse = is_mark || has_type("AppliesCurse");
+                let socket_index = (idx + 1) as u32;
+                if !is_aura && !is_curse {
+                    // （M4-L）Debuff 分支：非 aura/curse 主动技能的敌侧 debuff 载荷
+                    // （GlobalEffect effectType=Debuff，vendor CalcActiveSkill.lua:976-1046
+                    // 搬入 buff.modList → CalcPerform.lua:2219-2285 Debuff 分支写 enemyDB）。
+                    // 如 Frost Bomb `active_skill_all_elemental_exposure_magnitude` →
+                    // `<El>Exposure BASE 20`（SkillStatMap.lua:1721-1725），经 buff_pass
+                    // Debuff 路径入 enemy db 后由曝光归约折成 `<El>Resist BASE -magnitude`
+                    // （CalcPerform.lua:3214-3247）。vendor 对**全部** activeSkillList 生效
+                    // （非仅 mainSkill）——此处同口径扫所有启用 socket group。
+                    // 无 debuff 载荷（绝大多数技能）→ 空 mods 跳过，零行为。
+                    let es =
+                        data.effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                    let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
+                    let debuff_mods =
+                        debuff_stat_modifiers(data, &es, skill_id, set_key.as_deref());
+                    // （M4-n）玩家侧 Buff 载荷：buff 授予类主动技能（武器授予的
+                    // Pinnacle of Power（other.lua:12503，fromItem）等——PoB 把
+                    // `Grants Skill` 写成带 `source="Item:…"` 的 socket group，
+                    // 与显式组同走本扫描，seen 去重）statSet 的 GlobalEffect
+                    // effectType=Buff 条目经 [`player_buff_stat_modifiers`]（statmap
+                    // buff 域，数值允收名单 + `<El>Can<Ailment>` flag 通道）映射为
+                    // 玩家侧 modifier → BuffSpec(kind=Buff)，buff_pass Buff 分支
+                    // （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db
+                    // （vendor buff 循环写全局，对位 GlobalEffect/Buff 全局作用域）。
+                    // 与 support_buff_specs 的 support 路无交集（此处仅主动技能）。
+                    // （M4-n）玩家侧 Buff 分支：非 aura/curse 主动技能的玩家侧 buff
+                    // 载荷（GlobalEffect effectType=Buff，vendor 同一 buff 循环
+                    // CalcPerform.lua:1949-1962 Buff 分支写 player db）。如 Sigil of
+                    // Power `circle_of_power_spell_damage_+%_final_per_stage` →
+                    // Damage MORE Spell ×SigilOfPowerStage、Elemental Conflux →
+                    // 三元素 MORE ×(1/ElementalConflux<El>Effect)。取数等级 = 宝石
+                    // 等级 + 适用的 `+N to Level of all <X> Skills`（vendor
+                    // applyGemMods 对每个 gem effect 生效，CalcSetup.lua:410-435；
+                    // Sigil 实测 20→32）。support 授予的等级（Uhtred's Exodus
+                    // `SupportedGemProperty` +3）未建模，登记残差。
+                    let buff_level = gem.gem_level + additional_gem_levels(build, data, skill_id);
+                    let es_buff = if buff_level == gem.gem_level {
+                        es
+                    } else {
+                        data.effect_stats(skill_id, buff_level, gem.quality, gem.stat_set_index)
+                    };
+                    let buff_mods =
+                        player_buff_stat_modifiers(data, &es_buff, skill_id, set_key.as_deref());
+                    if (debuff_mods.is_empty() && buff_mods.is_empty()) || !seen.insert(skill_id) {
+                        continue;
                     }
-                }
-                // （M4-G）statmap buff 域补充通道：玩家侧允收名单（Accuracy）
-                // 的 GlobalEffect Buff/Aura 载荷（如 War Banner
-                // `base_skill_buff_banner_accuracy_+%_to_apply` → Accuracy INC +
-                // Condition:BannerPlanted 直译保留），与 map_aura_buff_stat 的
-                // 防御静态名单（ES/抗性族）不重叠，无双注入。
-                let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-                mods.extend(player_buff_stat_modifiers(
-                    data,
-                    &es,
-                    &gem.skill_id,
-                    set_key.as_deref(),
-                ));
-                specs.push(BuffSpec {
-                    name: buff_skill_name(data, &gem.skill_id),
-                    kind: BuffKind::Aura,
-                    skill_id: gem.skill_id.clone(),
-                    mods,
-                    magnitude: 1.0,
-                    slot: group.slot.clone(),
-                    socket_index,
-                    is_mark: false,
-                    ignore_curse_limit: false,
-                });
-            } else {
-                // curse 效果词条（M3-W4）：statset stat 经 statmap curse 域映射
-                // 为敌侧 modifier（Despair→ChaosResist 减抗、Enfeeble→Damage MORE…），
-                // buff_pass 施 CurseEffect 乘区 + Condition:Effective 后入 enemy db。
-                let es = data.effect_stats(
-                    &gem.skill_id,
-                    gem.gem_level,
-                    gem.quality,
-                    gem.stat_set_index,
-                );
-                let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-                // vendor 注册前置（M4-l）：buffList 仅由 GlobalEffect 载荷构成
-                // （CalcActiveSkill.lua:976-1041），curse 表项只从 buffList 构造
-                // （CalcPerform.lua:2286-2316）——statMap 数据上**无任何** curse
-                // 载荷的技能（Repulsion `CurseOfRepulsionPlayer`，per-set statMap
-                // 全空）不注册 curse：不入槽、不计 `Multiplier:CurseOnEnemy`
-                // （:2969 `#curseSlots`）。存在性判定不要求允收名单可翻译
-                // （Temporal Chains `TemporalChainsActionSpeed`、Freezing Mark
-                // `Dummy` 占位载荷仍算，vendor 同样入槽）。无 catalog（旧数据包）
-                // 维持既有行为（恒注册）。
-                if let Some(catalog) = resolve_stat_map_catalog(data)
-                    && !es.all().any(|ds| {
-                        stat_map_engine::has_curse_payload(
-                            &catalog,
-                            &gem.skill_id,
-                            set_key.as_deref(),
-                            &ds.stat,
-                        )
-                    })
-                {
+                    if !debuff_mods.is_empty() {
+                        specs.push(BuffSpec {
+                            name: buff_skill_name(data, skill_id),
+                            kind: BuffKind::Debuff,
+                            skill_id: skill_id.to_string(),
+                            mods: debuff_mods,
+                            magnitude: 1.0,
+                            slot: group.slot.clone(),
+                            socket_index,
+                            is_mark: false,
+                            ignore_curse_limit: false,
+                        });
+                    }
+                    if !buff_mods.is_empty() {
+                        specs.push(BuffSpec {
+                            name: buff_skill_name(data, skill_id),
+                            kind: BuffKind::Buff,
+                            skill_id: skill_id.to_string(),
+                            mods: buff_mods,
+                            magnitude: 1.0,
+                            slot: group.slot.clone(),
+                            socket_index,
+                            is_mark: false,
+                            ignore_curse_limit: false,
+                        });
+                    }
                     continue;
                 }
-                let mods = curse_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
-                specs.push(BuffSpec {
-                    name: buff_skill_name(data, &gem.skill_id),
-                    kind: BuffKind::Curse,
-                    skill_id: gem.skill_id.clone(),
-                    mods,
-                    magnitude: 1.0,
-                    slot: group.slot.clone(),
-                    socket_index,
-                    is_mark,
-                    ignore_curse_limit: false,
-                });
+                if !seen.insert(skill_id) {
+                    continue;
+                }
+                if is_aura {
+                    // aura 防御 buff：与 aura_buff_modifiers 同一 stat→mod 映射与
+                    // SkillGem 归因（buff_pass 缩放时保留 origin，trace 不丢弃）。
+                    let es =
+                        data.effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                    let mut mods = Vec::new();
+                    for ds in es.all() {
+                        for mapped in map_aura_buff_stat(&ds.stat) {
+                            if ds.value == 0.0 {
+                                continue;
+                            }
+                            let origin = ModifierSource::new(SourceId::new(
+                                SourceKind::SkillGem,
+                                format!("aura.{}.{}", gem.skill_id, ds.stat),
+                            ))
+                            .with_raw_text(format!(
+                                "aura {} {} ({})",
+                                gem.skill_id, ds.stat, ds.value
+                            ));
+                            mods.push(
+                                Modifier::number(
+                                    mapped.mod_name.as_str(),
+                                    mapped.mod_type,
+                                    ds.value,
+                                )
+                                .with_origin(origin),
+                            );
+                        }
+                    }
+                    // （M4-G）statmap buff 域补充通道：玩家侧允收名单（Accuracy）
+                    // 的 GlobalEffect Buff/Aura 载荷（如 War Banner
+                    // `base_skill_buff_banner_accuracy_+%_to_apply` → Accuracy INC +
+                    // Condition:BannerPlanted 直译保留），与 map_aura_buff_stat 的
+                    // 防御静态名单（ES/抗性族）不重叠，无双注入。
+                    let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
+                    mods.extend(player_buff_stat_modifiers(
+                        data,
+                        &es,
+                        skill_id,
+                        set_key.as_deref(),
+                    ));
+                    specs.push(BuffSpec {
+                        name: buff_skill_name(data, skill_id),
+                        kind: BuffKind::Aura,
+                        skill_id: skill_id.to_string(),
+                        mods,
+                        magnitude: 1.0,
+                        slot: group.slot.clone(),
+                        socket_index,
+                        is_mark: false,
+                        ignore_curse_limit: false,
+                    });
+                } else {
+                    // curse 效果词条（M3-W4）：statset stat 经 statmap curse 域映射
+                    // 为敌侧 modifier（Despair→ChaosResist 减抗、Enfeeble→Damage MORE…），
+                    // buff_pass 施 CurseEffect 乘区 + Condition:Effective 后入 enemy db。
+                    let es =
+                        data.effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                    let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
+                    // vendor 注册前置（M4-l）：buffList 仅由 GlobalEffect 载荷构成
+                    // （CalcActiveSkill.lua:976-1041），curse 表项只从 buffList 构造
+                    // （CalcPerform.lua:2286-2316）——statMap 数据上**无任何** curse
+                    // 载荷的技能（Repulsion `CurseOfRepulsionPlayer`，per-set statMap
+                    // 全空）不注册 curse：不入槽、不计 `Multiplier:CurseOnEnemy`
+                    // （:2969 `#curseSlots`）。存在性判定不要求允收名单可翻译
+                    // （Temporal Chains `TemporalChainsActionSpeed`、Freezing Mark
+                    // `Dummy` 占位载荷仍算，vendor 同样入槽）。无 catalog（旧数据包）
+                    // 维持既有行为（恒注册）。
+                    if let Some(catalog) = resolve_stat_map_catalog(data)
+                        && !es.all().any(|ds| {
+                            stat_map_engine::has_curse_payload(
+                                &catalog,
+                                skill_id,
+                                set_key.as_deref(),
+                                &ds.stat,
+                            )
+                        })
+                    {
+                        continue;
+                    }
+                    let mods = curse_stat_modifiers(data, &es, skill_id, set_key.as_deref());
+                    specs.push(BuffSpec {
+                        name: buff_skill_name(data, skill_id),
+                        kind: BuffKind::Curse,
+                        skill_id: skill_id.to_string(),
+                        mods,
+                        magnitude: 1.0,
+                        slot: group.slot.clone(),
+                        socket_index,
+                        is_mark,
+                        ignore_curse_limit: false,
+                    });
+                }
             }
         }
     }

@@ -876,6 +876,25 @@ for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
 	end
 end
 
+-- Player-side defence mod attribution (Armour/Evasion aggregation inputs):
+-- every INC/BASE/MORE mod the modDB holds for the defence name set, with its
+-- source. Diagnostic surface for defence-column gaps (missing auras/banners).
+local defenceModList = {}
+do
+	local pdb = mainEnv.player.modDB
+	for _, name in ipairs({ "Armour", "Evasion", "ArmourAndEvasion", "Defences", "EnergyShield" }) do
+		for _, mtype in ipairs({ "BASE", "INC", "MORE" }) do
+			pcall(function()
+				for _, m in ipairs(pdb:Tabulate(mtype, nil, name)) do
+					defenceModList[#defenceModList + 1] = {
+						name = name, type = mtype, value = m.value, source = m.mod.source,
+					}
+				end
+			end)
+		end
+	end
+end
+
 -- Authoritative per-skill reservation rows straight from the vendor breakdown
 -- (CalcDefence.lua:293-306 writes breakdown.SpiritReserved.reservations with
 -- skillName/base/mult/more/inc/efficiency/count/total per reserving skill).
@@ -905,6 +924,7 @@ end
 local report = {
 	spiritReservations = spiritReservations,
 	spiritReservedBreakdown = spiritReservedBreakdown,
+	defenceModList = defenceModList,
 	mainOutput = scalarsOf(mainOutput),
 	calcsOutput = scalarsOf(calcsOutput),
 	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
