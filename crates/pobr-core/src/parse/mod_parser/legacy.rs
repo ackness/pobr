@@ -1660,6 +1660,29 @@ fn parse_defence_numeric_sentence(rest: &str, source: &str) -> Option<Vec<Modifi
             .with_source(source),
         ]);
     }
+    // 『Take N% less Damage』动词前置形（tree node 28153「Phased Form」）：vendor
+    // 解析为 DamageTaken MORE −N（oracle run-parsemod 实证），与后置形
+    // 「N% less Damage taken」同义。消费：defence.rs taken_mult_for_type_*。
+    // 须走 legacy：collect.rs combine_wrapped_then_filter 用 legacy 作树 stat 闸门
+    // （「引擎能解析≠生产能解析」）；引擎侧同形条目在 overlay/special_mods.json。
+    // 带条件/`from hits`/`over time` 变体不在此收（语义不同，保持 Err）。
+    if let Some(tail) = rest.strip_prefix("take ")
+        && let Some((num, words)) = take_unsigned_number(tail)
+        && let Some(dir) = words.strip_prefix("% ")
+    {
+        let mod_of = |mod_type, value| {
+            Some(vec![
+                Modifier::number("DamageTaken", mod_type, value).with_source(source),
+            ])
+        };
+        match dir {
+            "less damage" => return mod_of(ModType::More, -num),
+            "more damage" => return mod_of(ModType::More, num),
+            "reduced damage" => return mod_of(ModType::Inc, -num),
+            "increased damage" => return mod_of(ModType::Inc, num),
+            _ => {}
+        }
+    }
     // 『Defend with N% of Armour [during effect]』（ModParser.lua:2616/:2619 →
     // ArmourDefense MAX N−100；during effect 变体同样无条件——flask/charm 激活态由
     // 编排层注入门控）。消费：taken.rs `max_of("ArmourDefense")/100` 入 effArmour

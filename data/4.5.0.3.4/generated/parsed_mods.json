@@ -28619,7 +28619,14 @@
     },
     {
       "text": "Take 30% less Damage",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "DamageTaken",
+          "type": "More",
+          "value": -30.0
+        }
+      ]
     },
     {
       "text": "Take 50% less Damage over Time if you've started taking Damage over Time in the past second\nTake 50% more Damage over Time if you haven't started taking Damage over Time in the past second",

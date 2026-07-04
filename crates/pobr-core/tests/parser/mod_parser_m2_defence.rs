@@ -586,3 +586,17 @@ fn m2_followup_armour_defense() {
         &[N("ArmourDefense", Base, 100.0)],
     );
 }
+
+/// 『Take N% less/more/reduced/increased Damage』动词前置形（tree node 28153
+/// 「Phased Form」）：vendor 与后置形「N% less Damage taken」同义，oracle
+/// run-parsemod 实证四方向 → DamageTaken MORE±N / INC±N。消费：defence.rs
+/// taken_mult_for_type_*。引擎侧同形条目在 overlay/special_mods.json。
+#[test]
+fn take_verb_prefixed_damage_taken() {
+    use ModType::*;
+
+    assert_parses("Take 30% less Damage", &[N("DamageTaken", More, -30.0)]);
+    assert_parses("Take 15% more Damage", &[N("DamageTaken", More, 15.0)]);
+    assert_parses("Take 10% reduced Damage", &[N("DamageTaken", Inc, -10.0)]);
+    assert_parses("Take 25% increased Damage", &[N("DamageTaken", Inc, 25.0)]);
+}

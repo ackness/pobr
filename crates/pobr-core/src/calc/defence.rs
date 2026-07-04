@@ -311,17 +311,28 @@ pub fn calc_defence_resources(
     let mut received = [0.0_f64; MATRIX_RESOURCES.len()];
     // kept_global：defence 源缩残后的留存全局底（聚合用）。
     let mut kept_global = [0.0_f64; MATRIX_DEFENCE_COUNT];
+    // Total 直加通道（vendor :1331 `source.totalBase = Sum(BASE, modsTotal)`，如
+    // Discipline 光环的 `EnergyShieldTotal`——"additional **Total** Energy Shield"）：
+    // **绕过 inc/more 直加终值**（:1394 `output = … × calcLib.mod(…) + res.totalBase`），
+    // 转换按同 rate 传播（:1362-1366）、随源缩残（:1388）。与 global 底同构串行。
+    let mut total_received = [0.0_f64; MATRIX_RESOURCES.len()];
+    let mut kept_total = [0.0_f64; MATRIX_DEFENCE_COUNT];
     for (s, src) in MATRIX_RESOURCES.iter().enumerate() {
         // 源处理时点的全局底 = 入参基底 + 全局 flat BASE + 此前源转入（串行语义，:1328-1329
         // `globalBase = Sum(BASE, source.mods) + source.globalBase`）。
         let global_s = base_inputs[s]
             + db.sum_global_only(ModType::Base, cfg, &[ModName::from(global_base_names[s])])
             + received[s];
+        // Total 通道输入 = `<Src>Total` BASE + 此前源的 total 转入（:1331/:1364 串行同构）。
+        let total_s =
+            db.sum_global_only(ModType::Base, cfg, &[ModName::from(format!("{src}Total"))])
+                + total_received[s];
         let is_defence_src = s < MATRIX_DEFENCE_COUNT;
         if is_defence_src {
             // defence 源：此前转入并入全局底参与本源转换/缩残（归 kept_global），清零防双计；
             // 非 defence 源保留 received（即 Extra* 输出，vendor `res.globalBase` 同语义）。
             received[s] = 0.0;
+            total_received[s] = 0.0;
         }
         // 槽位快照：本源全部目标都从同一快照取值（vendor 在 target 循环内边转边缩残属
         // bug，蓝图裁决不复刻）。
@@ -360,11 +371,13 @@ pub fn calc_defence_resources(
                         received[t] += target_base;
                     }
                 }
-                // 全局底部分（:1355）。
+                // 全局底部分（:1355）；Total 通道同 rate 传播（:1362-1363）。
                 received[t] += global_s * rate / 100.0;
+                total_received[t] += total_s * rate / 100.0;
             } else {
-                // 非 defence 源：全局 ceil 取整（:1364-1366）。
+                // 非 defence 源：全局 ceil 取整（:1364-1366），Total 同（:1365）。
                 received[t] += (global_s * rate / 100.0).ceil();
+                total_received[t] += (total_s * rate / 100.0).ceil();
             }
         }
         if is_defence_src {
@@ -374,6 +387,7 @@ pub fn calc_defence_resources(
                 *value *= keep;
             }
             kept_global[s] = global_s * keep;
+            kept_total[s] = total_s * keep;
         }
     }
 
@@ -392,6 +406,8 @@ pub fn calc_defence_resources(
             total +=
                 slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
         }
+        // Total 直加通道不乘 inc/more（vendor :1394 `… + res.totalBase`）。
+        total += kept_total[s] + total_received[s];
         *value = round(total);
         // 诊断（POBR_DBG_DEFRES=<idx>）：dump 某 defence 资源逐分量（armour=0）。
         if std::env::var("POBR_DBG_DEFRES")
@@ -406,7 +422,7 @@ pub fn calc_defence_resources(
                 })
                 .count();
             eprintln!(
-                "[POBR_DEFRES] res={} eff={} combat={} raw_base_ct={} kept_global={:.2} received={:.2} global_inc={:.2} global_more={:.4} total_conv={:.2} slots={:?} => {:.2}",
+                "[POBR_DEFRES] res={} eff={} combat={} raw_base_ct={} kept_global={:.2} received={:.2} global_inc={:.2} global_more={:.4} total_conv={:.2} total_flat={:.2} slots={:?} => {:.2}",
                 MATRIX_RESOURCES[s],
                 cfg.mode_effective,
                 cfg.mode_combat,
@@ -416,12 +432,17 @@ pub fn calc_defence_resources(
                 global_inc,
                 global_more,
                 total_conv[s],
+                kept_total[s] + total_received[s],
                 slots[s],
                 *value
             );
         }
     }
 
+    // Life/Mana 的 Total 转入（total_received[3]/[4]，vendor :1397 `NewMod("<Res>Total")`
+    // 供池计算直加）当前无输出通道——现有数据唯一 Total 来源是 Discipline 的
+    // EnergyShieldTotal（defence 侧），defence→Life/Mana 无转换词条时恒 0；接入时
+    // 需 scaled_pool 加直加项（不乘 inc）。
     DefenceResources {
         armour: out[0],
         evasion: out[1],
