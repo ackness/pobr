@@ -1557,3 +1557,56 @@ fn perform_ignite_source_uses_real_crit_leg() {
         "on-crit 词条应放大点燃 magnitude：plain={plain} on_crit={with_on_crit}"
     );
 }
+
+/// defence output 快照（vendor calcs.defence 先于 offence，CalcPerform.lua:3298/
+/// :3361）：perform 在 hand_pass 之前用 calc_defence_resources 的三防终值回填
+/// cfg.stats，使 PerStat/PercentStat/StatThreshold 引用 EnergyShield/Armour/
+/// Evasion 的词条在 hit 伤害与后续 fill 阶段取到真值（此前恒 0 休眠）。
+#[test]
+fn perform_snapshots_defence_output_stats_before_offence() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        hit_min: 100.0,
+        hit_max: 100.0,
+        ..ActorBaseStats::default()
+    };
+    let per_es_damage = || {
+        // 「1% increased Damage per 50 maximum Energy Shield」形态
+        // （vendor PerStat{stat=EnergyShield, div=50}）。
+        Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
+            stat: "EnergyShield".into(),
+            div: 50.0,
+            limit: None,
+            limit_var: None,
+            actor: None,
+        })
+    };
+    let run = |mods: Vec<Modifier>| {
+        let mut env = player_with(base, mods);
+        env.cfg = CalcConfig::attack();
+        perform(&mut env).unwrap();
+        env
+    };
+
+    // 无 ES → PerStat 乘数 0 → 词条无贡献（快照缺键=0 保守口径不变）。
+    let control = run(vec![per_es_damage()]);
+    // +500 ES → floor(500/50)=10 → Damage Inc +10%。
+    let with_es = run(vec![
+        Modifier::number("EnergyShield", ModType::Base, 500.0),
+        per_es_damage(),
+    ]);
+
+    assert_eq!(with_es.cfg.stat("EnergyShield"), 500.0);
+    assert_eq!(with_es.cfg.stat("MaximumEnergyShield"), 500.0);
+    // armour=0/evasion=0 → lowest=min=0（缺键=0 等价）。
+    assert_eq!(with_es.cfg.stat("LowestOfArmourAndEvasion"), 0.0);
+    let (base_hit, scaled_hit) = (
+        control.player.output.total_hit_avg,
+        with_es.player.output.total_hit_avg,
+    );
+    assert!(base_hit > 0.0);
+    assert!(
+        (scaled_hit / base_hit - 1.1).abs() < 1e-9,
+        "per-ES 增伤应在 offence 生效：base={base_hit} scaled={scaled_hit}"
+    );
+}
