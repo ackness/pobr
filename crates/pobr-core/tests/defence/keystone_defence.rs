@@ -466,3 +466,45 @@ fn perform_injects_matrix_extra_mana() {
     assert_eq!(output.energy_shield, 0.0);
     assert_eq!(output.mana, 600.0);
 }
+
+/// Total 直加通道（vendor CalcDefence.lua:1331/:1394）：`<Res>Total` BASE（如
+/// Discipline 光环的 `EnergyShieldTotal`）**不乘 inc/more 直加终值**，与普通
+/// flat（进 base 吃 inc）区分。旧实现曾把 Discipline buff 错并入 `EnergyShield`
+/// 桶吃全局 inc（essence-drain ES 多算 1.13x 根因）。
+#[test]
+fn total_channel_adds_flat_without_scaling() {
+    let mut db = ModDb::new();
+    db.add_list([
+        Modifier::number("EnergyShield", ModType::Base, 100.0),
+        Modifier::number("EnergyShield", ModType::Inc, 100.0),
+        Modifier::number("EnergyShieldTotal", ModType::Base, 235.0),
+    ]);
+    let cfg = CalcConfig::new();
+    let ks = DefenceKeystones::from_db(&db, &cfg);
+
+    let res = calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks);
+
+    // 100×(1+100%) + 235（直加，不吃 inc）= 435；旧错位口径会给 (100+235)×2 = 670。
+    assert_eq!(res.energy_shield, 435.0);
+}
+
+/// Total 通道随转换传播并缩残（vendor :1362-1366/:1388）：ES→Armour 60% 转换时
+/// EnergyShieldTotal 的 60% 直加进 Armour 终值（同样不乘 Armour inc），残余 40%
+/// 直加 ES。
+#[test]
+fn total_channel_follows_conversion() {
+    let mut db = ModDb::new();
+    db.add_list([
+        Modifier::number("EnergyShieldTotal", ModType::Base, 100.0),
+        Modifier::number("EnergyShieldConvertToArmour", ModType::Base, 60.0),
+        Modifier::number("Armour", ModType::Inc, 50.0),
+    ]);
+    let cfg = CalcConfig::new();
+    let ks = DefenceKeystones::from_db(&db, &cfg);
+
+    let res = calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks);
+
+    // Armour 收到 total 60（直加，不吃自身 50% inc）；ES 残余 40。
+    assert_eq!(res.armour, 60.0);
+    assert_eq!(res.energy_shield, 40.0);
+}

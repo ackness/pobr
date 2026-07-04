@@ -67,9 +67,10 @@ const TYPES: [(&str, &str); 5] = [
 /// `all_elements` 同时给火/冰/电）。无法映射（未知/条件型 buff）返回空 `Vec`。
 ///
 /// 对应 PoB2 各光环 statSet 的 `statMap`（移植到 PoBR 防御侧消费的 ModName）：
-/// - Discipline `..._total_maximum_energy_shield_+_to_apply` → `EnergyShield` BASE
-///   （PoB 用 `EnergyShieldTotal`，PoBR 防御侧聚合的是 `EnergyShield`；并享全局
-///   `increased ES%`，与 PoB 在 buff 上叠 inc 同口径）；
+/// - Discipline `..._total_maximum_energy_shield_+_to_apply` → `EnergyShieldTotal` BASE
+///   （vendor 同名；"additional **Total** Energy Shield" = 直加终值**不乘 inc/more**，
+///   CalcDefence.lua:1331/:1394，消费方 `defence.rs::calc_defence_resources` 的 Total
+///   直加通道。旧映射曾错并入 `EnergyShield` 桶吃全局 inc，essence-drain ES 多算 1.13x）；
 /// - Purity of Fire/Ice/Lightning / Impurity `..._<elem>_damage_resistance_%_to_apply`
 ///   → `<Elem>Resistance` BASE；
 /// - Purity of Elements `..._all_elements_resistance_%_to_apply` → 火/冰/电三抗 BASE；
@@ -82,7 +83,7 @@ const TYPES: [(&str, &str); 5] = [
 pub fn map_aura_buff_stat(stat: &str) -> Vec<MappedStat> {
     let base = |n: &str| MappedStat::new(n, ModType::Base);
     match stat {
-        "base_skill_buff_total_maximum_energy_shield_+_to_apply" => vec![base("EnergyShield")],
+        "base_skill_buff_total_maximum_energy_shield_+_to_apply" => vec![base("EnergyShieldTotal")],
         "base_skill_buff_fire_damage_resistance_%_to_apply" => vec![base("FireResistance")],
         "base_skill_buff_cold_damage_resistance_%_to_apply" => vec![base("ColdResistance")],
         "base_skill_buff_lightning_damage_resistance_%_to_apply" => {
@@ -126,10 +127,10 @@ mod tests {
 
     #[test]
     fn maps_aura_buff_defence_stats() {
-        // Discipline → EnergyShield BASE
+        // Discipline → EnergyShieldTotal BASE（直加通道，不乘 inc/more）。
         assert_eq!(
             map_aura_buff_stat("base_skill_buff_total_maximum_energy_shield_+_to_apply"),
-            vec![MappedStat::new("EnergyShield", ModType::Base)]
+            vec![MappedStat::new("EnergyShieldTotal", ModType::Base)]
         );
         // Purity of Fire → FireResistance BASE
         assert_eq!(

@@ -2821,7 +2821,7 @@ mod tests {
         let spec_es: f64 = aura
             .mods
             .iter()
-            .filter(|m| m.name.as_str() == "EnergyShield")
+            .filter(|m| m.name.as_str() == "EnergyShieldTotal")
             .filter_map(|m| m.value.as_number())
             .sum();
         assert!(spec_es > 0.0, "Discipline 应携带 ES buff 词条");
