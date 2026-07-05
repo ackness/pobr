@@ -1307,6 +1307,7 @@ fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         .or_else(|| parse_deflection_special(rest, original))
         .or_else(|| parse_reservation_efficiency(rest, original))
         .or_else(|| parse_totem_spirit_reservation(rest, original))
+        .or_else(|| parse_scoped_buff_magnitude(rest, original))
         .or_else(|| parse_defence_numeric_sentence(rest, original))?;
     Some(ParseOutcome {
         mods,
@@ -1314,6 +1315,41 @@ fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         unparsed: None,
         special_meta: None,
     })
+}
+
+/// 域限定 buff magnitude 词条（vendor run-parsemod 实证）：
+/// - 『Banner Skills have N% increased Aura Magnitudes』→ `AuraEffect INC +
+///   SkillType(Banner=89)`；
+/// - 『Aura Skills have N% increased Magnitudes』→ `Magnitude INC +
+///   SkillType(Aura=39)`；
+/// - 裸『N% increased Aura Magnitudes』→ `AuraEffect INC`（无 tag）。
+///
+/// 消费 = buff_pass aura 乘区（vendor CalcPerform.lua:2204-2205——AuraEffect
+/// 名集桶与 `Magnitude` 桶**分别**成 (1+Σinc/100)×Πmore 后相乘）。
+fn parse_scoped_buff_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    // 域形：「<domain> skills have N% increased <name>」。
+    if let Some((domain, tail)) = rest.split_once(" skills have ") {
+        let (num, tail) = take_unsigned_number(tail)?;
+        let dir = tail.strip_prefix("% ")?;
+        let (name, st) = match (domain, dir) {
+            ("banner", "increased aura magnitudes") => ("AuraEffect", SkillTypes::BANNER),
+            ("aura", "increased magnitudes") => ("Magnitude", SkillTypes::AURA),
+            _ => return None,
+        };
+        return Some(vec![
+            Modifier::number(name, ModType::Inc, num)
+                .with_tag(ModTag::SkillTypes(st))
+                .with_source(source),
+        ]);
+    }
+    // 裸形：「N% increased aura magnitudes」。
+    let (num, tail) = take_unsigned_number(rest)?;
+    if tail.strip_prefix("% ")? != "increased aura magnitudes" {
+        return None;
+    }
+    Some(vec![
+        Modifier::number("AuraEffect", ModType::Inc, num).with_source(source),
+    ])
 }
 
 /// Ancestral Bond keystone 词条『Totems reserve N Spirit each』（tree node 45202）：

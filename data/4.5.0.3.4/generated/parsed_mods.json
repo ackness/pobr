@@ -23205,7 +23205,17 @@
     },
     {
       "text": "Aura Skills have 25% increased Magnitudes",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Magnitude",
+          "type": "Inc",
+          "value": 25.0,
+          "tags": [
+            "SkillTypes(SkillTypes(274877906944))"
+          ]
+        }
+      ]
     },
     {
       "text": "Banner Skills have 11% increased Area of Effect",
@@ -23217,7 +23227,17 @@
     },
     {
       "text": "Banner Skills have 12% increased Aura [BuffMagnitude|Magnitudes]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AuraEffect",
+          "type": "Inc",
+          "value": 12.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 16777216, 0, 0, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "Banner Skills have 14% increased Area of Effect",
@@ -23225,7 +23245,17 @@
     },
     {
       "text": "Banner Skills have 15% increased Aura [BuffMagnitude|Magnitudes]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AuraEffect",
+          "type": "Inc",
+          "value": 15.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 16777216, 0, 0, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "Banner Skills have 16% increased Area of Effect",
@@ -29645,23 +29675,73 @@
     },
     {
       "text": "[Aura] Skills have 10% increased [BuffMagnitude|Magnitudes]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Magnitude",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "SkillTypes(SkillTypes(274877906944))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Aura] Skills have 12% increased [BuffMagnitude|Magnitudes]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Magnitude",
+          "type": "Inc",
+          "value": 12.0,
+          "tags": [
+            "SkillTypes(SkillTypes(274877906944))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Aura] Skills have 14% increased [BuffMagnitude|Magnitudes]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Magnitude",
+          "type": "Inc",
+          "value": 14.0,
+          "tags": [
+            "SkillTypes(SkillTypes(274877906944))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Aura] Skills have 5% increased [BuffMagnitude|Magnitudes]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Magnitude",
+          "type": "Inc",
+          "value": 5.0,
+          "tags": [
+            "SkillTypes(SkillTypes(274877906944))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Aura] Skills have 6% increased [BuffMagnitude|Magnitudes]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Magnitude",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "SkillTypes(SkillTypes(274877906944))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Banner] Skills have 12% increased Area of Effect",

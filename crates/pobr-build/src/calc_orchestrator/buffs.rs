@@ -183,6 +183,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
+                            skill_types: pobr_data::skill::SkillTypes::NONE,
                         });
                     }
                     if !buff_mods.is_empty() {
@@ -196,6 +197,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
+                            skill_types: pobr_data::skill::SkillTypes::NONE,
                         });
                     }
                     continue;
@@ -254,6 +256,10 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         socket_index,
                         is_mark: false,
                         ignore_curse_limit: false,
+                        // vendor per-skill skillCfg（buff_pass 乘区对域限定词条——
+                        // 「Banner Skills have N% increased Aura Magnitudes」的
+                        // SkillTypes(Banner) tag——按本效果类型位匹配）。
+                        skill_types: super::conditions::skill_type_bits(&effect.skill_types),
                     });
                 } else {
                     // curse 效果词条（M3-W4）：statset stat 经 statmap curse 域映射
@@ -294,6 +300,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         socket_index,
                         is_mark,
                         ignore_curse_limit: false,
+                        skill_types: pobr_data::skill::SkillTypes::NONE,
                     });
                 }
             }
@@ -371,6 +378,7 @@ pub(crate) fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpe
                 socket_index: (idx + 1) as u32,
                 is_mark: false,
                 ignore_curse_limit: false,
+                skill_types: pobr_data::skill::SkillTypes::NONE,
             });
         }
     }

@@ -52,6 +52,10 @@ pub struct BuffSpec {
     pub socket_index: u32,
     pub is_mark: bool,
     pub ignore_curse_limit: bool,
+    /// 来源效果的技能类型位（vendor per-skill `skillCfg`——buff_pass 乘区对
+    /// 域限定词条（「Banner Skills have N% increased Aura Magnitudes」的
+    /// SkillTypes tag）按此匹配；默认 NONE = 旧行为，域词条不命中）。
+    pub skill_types: pobr_data::skill::SkillTypes,
 }
 
 #[derive(Debug, Clone)]

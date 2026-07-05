@@ -305,15 +305,27 @@ pub fn buff_pass(env: &mut Env) {
     for spec in &specs {
         match spec.kind {
             BuffKind::Aura => {
-                // vendor :2102-2105：自身乘区（简化 (a)：skill_db = player.mod_db 全局聚合；
+                // vendor :2204-2205：自身乘区（简化 (a)：skill_db = player.mod_db 全局聚合；
                 // (b) ally 取强恒空；(c) auraCannotAffectSelf 恒 false）。
+                // per-skill cfg：spec 携带来源效果的技能类型位（vendor skillCfg），
+                // 使域限定词条（「Banner Skills have N% increased Aura Magnitudes」
+                // 的 SkillTypes(Banner) tag）只命中对应 aura。
+                let aura_cfg = env.cfg.clone().with_skill_types(spec.skill_types);
                 let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
                     .iter()
                     .map(|n| ModName::from(*n))
                     .collect();
-                let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &names);
-                let more = env.player.mod_db.more(&env.cfg, &names) * spec.magnitude;
-                let mult = (1.0 + inc / 100.0) * more;
+                let inc = env.player.mod_db.sum(ModType::Inc, &aura_cfg, &names);
+                let more = env.player.mod_db.more(&aura_cfg, &names) * spec.magnitude;
+                // `Magnitude` 独立乘区（vendor :2205 尾部 `× calcLib.mod(skillCfg,
+                // "Magnitude")`——与 AuraEffect 名集**分桶各成 (1+Σinc/100)×Πmore
+                // 后相乘**，非同桶相加。词条如「Aura Skills have N% increased
+                // Magnitudes」→ Magnitude INC + SkillTypes(Aura) tag）。
+                let mag_names = [ModName::from("Magnitude")];
+                let mag_mult = (1.0
+                    + env.player.mod_db.sum(ModType::Inc, &aura_cfg, &mag_names) / 100.0)
+                    * env.player.mod_db.more(&aura_cfg, &mag_names);
+                let mult = (1.0 + inc / 100.0) * more * mag_mult;
                 // vendor :2107-2110：条件置位。
                 conditions.push("AffectedByAura".to_string());
                 conditions.push(affected_by_condition(&spec.name));
@@ -640,6 +652,7 @@ mod tests {
             socket_index,
             is_mark,
             ignore_curse_limit,
+            skill_types: pobr_data::skill::SkillTypes::NONE,
         }
     }
 
@@ -654,6 +667,7 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            skill_types: pobr_data::skill::SkillTypes::NONE,
         }
     }
 
@@ -1054,6 +1068,7 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            skill_types: pobr_data::skill::SkillTypes::NONE,
         });
 
         buff_pass(&mut env);
@@ -1085,6 +1100,7 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            skill_types: pobr_data::skill::SkillTypes::NONE,
         });
 
         buff_pass(&mut env);

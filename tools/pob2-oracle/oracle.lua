@@ -876,6 +876,56 @@ for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
 	end
 end
 
+-- Per-aura-skill AuraEffect attribution: the vendor aura path multiplies each
+-- aura's buff mods by (1 + Sum(INC, skillCfg, AuraEffect)/100) * More(...) —
+-- per-skill scoped (banner per-valour magnitude etc). Dump the contributing
+-- mods per aura skill for magnitude-gap diagnosis.
+local auraEffectList = {}
+for _, as in ipairs(mainEnv.player.activeSkillList or {}) do
+	local st = as.skillTypes or {}
+	if st[SkillType.Aura] then
+		-- Full vendor aura-self multiplier name set (CalcPerform.lua:2204-2205).
+		local NAMES = { "AuraEffect", "BuffEffect", "BuffEffectOnSelf", "AuraEffectOnSelf",
+			"AuraBuffEffect", "SkillAuraEffectOnSelf", "Magnitude" }
+		local okI, incSum = pcall(function()
+			return as.skillModList:Sum("INC", as.skillCfg, unpack(NAMES))
+		end)
+		local okM, moreProd = pcall(function()
+			return as.skillModList:More(as.skillCfg, unpack(NAMES))
+		end)
+		local mods = {}
+		pcall(function()
+			for _, m in ipairs(as.skillModList:Tabulate("INC", as.skillCfg, unpack(NAMES))) do
+				mods[#mods + 1] = { type = "INC", name = m.mod.name, value = m.value, source = m.mod.source }
+			end
+			for _, m in ipairs(as.skillModList:Tabulate("MORE", as.skillCfg, unpack(NAMES))) do
+				mods[#mods + 1] = { type = "MORE", name = m.mod.name, value = m.value, source = m.mod.source }
+			end
+		end)
+		-- Raw (pre-scaling) buff payload values from the skill's buffList
+		-- (CalcActiveSkill.lua:996-1046 extraction) — lets us separate the base
+		-- buff magnitude from the aura-effect multiplier.
+		local buffMods = {}
+		pcall(function()
+			for _, buff in ipairs(as.buffList or {}) do
+				for _, m in ipairs(buff.modList or {}) do
+					buffMods[#buffMods + 1] = {
+						buff = buff.name, name = m.name, type = m.type, value = m.value,
+					}
+				end
+			end
+		end)
+		auraEffectList[#auraEffectList + 1] = {
+			name = as.activeEffect and as.activeEffect.grantedEffect
+				and as.activeEffect.grantedEffect.name or "?",
+			incSum = okI and incSum or nil,
+			moreProduct = okM and moreProd or nil,
+			mods = #mods > 0 and mods or nil,
+			buffMods = #buffMods > 0 and buffMods or nil,
+		}
+	end
+end
+
 -- Player-side defence mod attribution (Armour/Evasion aggregation inputs):
 -- every INC/BASE/MORE mod the modDB holds for the defence name set, with its
 -- source. Diagnostic surface for defence-column gaps (missing auras/banners).
@@ -925,6 +975,7 @@ local report = {
 	spiritReservations = spiritReservations,
 	spiritReservedBreakdown = spiritReservedBreakdown,
 	defenceModList = defenceModList,
+	auraEffectList = auraEffectList,
 	mainOutput = scalarsOf(mainOutput),
 	calcsOutput = scalarsOf(calcsOutput),
 	-- Per-hand attack pass outputs (CalcOffence.lua:2371 output.MainHand = {}):
