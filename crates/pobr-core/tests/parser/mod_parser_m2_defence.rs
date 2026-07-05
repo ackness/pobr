@@ -679,3 +679,44 @@ fn scoped_buff_magnitude_lines() {
     assert_eq!(o.mods[0].name.as_str(), "AuraEffect");
     assert!(o.mods[0].tags.is_empty());
 }
+
+/// 「Persistent Buffs have N% less Reservation」（Tactician 升华 node 15044
+/// 『A Solid Plan』）：vendor ModParser.lua:1339 前缀 tagList =
+/// SkillType.Persistent + SkillType.Buff（AND），「reservation」→ `Reserved`
+/// （:231）。PoBR 以两个独立 SkillTypes tag 复现 AND（`matches` 逐 tag all）：
+/// 只带 Persistent 无 Buff 的技能（如 Wolf Pack companion）不得命中。
+/// 消费 = 预留公式 `Reserved` inc/more 桶（CalcDefence.lua:240-252）。
+#[test]
+fn persistent_buff_reservation_lines() {
+    use pobr_core::modifier::ModTag;
+    use pobr_data::skill::SkillTypes;
+
+    let o = parse_mod("Persistent Buffs have 50% less Reservation").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 1);
+    let m = &o.mods[0];
+    assert_eq!(m.name.as_str(), "Reserved");
+    assert_eq!(m.mod_type, ModType::More);
+    assert_eq!(m.value.as_number(), Some(-50.0));
+    // 双 tag AND：Persistent 与 Buff 各为独立 tag（缺一不可）。
+    let has_bit = |want: SkillTypes| {
+        m.tags
+            .iter()
+            .any(|t| matches!(t, ModTag::SkillTypes(st) if st == &want))
+    };
+    assert!(has_bit(SkillTypes::PERSISTENT), "缺 Persistent tag");
+    assert!(has_bit(SkillTypes::BUFF), "缺 Buff tag");
+
+    // AND 语义实证：cfg 只带 Persistent（Wolf Pack companion 形态）不命中；
+    // Persistent+Buff（banner/herald 形态）命中。
+    use pobr_core::CalcConfig;
+    let only_persistent = CalcConfig::new().with_skill_types(SkillTypes::PERSISTENT);
+    assert!(!m.matches(&only_persistent), "仅 Persistent 不应命中");
+    let both = CalcConfig::new().with_skill_types(SkillTypes::PERSISTENT | SkillTypes::BUFF);
+    assert!(m.matches(&both), "Persistent+Buff 应命中");
+
+    // more 反向。
+    let o = parse_mod("Persistent Buffs have 20% more Reservation").unwrap();
+    assert_eq!(o.mods[0].value.as_number(), Some(20.0));
+    assert_eq!(o.mods[0].mod_type, ModType::More);
+}

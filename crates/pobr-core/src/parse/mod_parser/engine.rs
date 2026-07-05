@@ -89,6 +89,11 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
             // handler 兜底条目：保守跳过效果（不产 mod，留 unparsed）——本批不接
             // handler 注册表（Track A 实测仅 3 条 handler 兜底）。
             if payload.handler_id.is_none() {
+                // 注：absorb 返回 false（tag 含 pobr 无落点的类型）时**沿用静默丢
+                // tag**——大量 pre_flag 词条（buff/aura 域前缀）依赖丢 tag 后全局
+                // 生效的近似（消费侧 cfg 多不带 skill_types 位）；收紧为保守失配
+                // 实测 -4 def@5% / -9 @10%。作用域收紧随消费侧 per-skill cfg
+                // 铺开逐步落地（同 tag_phrase 口径）。
                 effects_acc.absorb_pre_flag(payload, &_m.captures);
                 work = rest;
             }

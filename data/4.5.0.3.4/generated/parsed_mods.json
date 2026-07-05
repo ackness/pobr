@@ -29802,7 +29802,10 @@
         {
           "name": "Duration",
           "type": "Inc",
-          "value": 10.0
+          "value": 10.0,
+          "tags": [
+            "SkillTypes(SkillTypes(16))"
+          ]
         }
       ]
     },
@@ -31173,7 +31176,18 @@
     },
     {
       "text": "[Persistent] [Buff|Buffs] have 50% less [Reservation]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Reserved",
+          "type": "More",
+          "value": -50.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 2048, 0, 0]))",
+            "SkillTypes(SkillTypes(16))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Physical] [Spell] [Critical] [HitDamage|Hits] build [Pinned|Pin]",

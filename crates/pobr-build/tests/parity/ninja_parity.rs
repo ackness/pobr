@@ -575,8 +575,16 @@ const BASELINE_DEF_CORE_HIT5: usize = 138; // 实测 138/144 = 95.8%（aura magn
 // 落地（legacy parse_scoped_buff_magnitude + overlay 3 条目）。
 // wolf-pack Armour 0.71→0.98✓/EvadeChance·MeleeEvade→0.95✓/PhysDR→0.96✓，
 // huntress-spirit-walker ChaosMaxHit 0.88→1.00✓（aura 小点词条正外溢）。
-const BASELINE_DEF_HIT5: usize = 414; // 实测 414/450 = 92.0%（aura magnitude +5）
-const BASELINE_DEF_HIT10: usize = 430; // 实测 430/450 = 95.6%（aura magnitude +6）
+// **Tactician『A Solid Plan』预留 more 桶（+1 @5%/+1 @10%）**：「Persistent Buffs
+// have 50% less Reservation」（tree 15044）→ `Reserved MORE −50 + Persistent+Buff
+// 双 tag AND`（vendor ModParser.lua:1339 tagList）；spirit_reservation_modifiers
+// 消费 `SpiritReserved`/`Reserved` inc/more + efficiency MORE（CalcDefence.lua:
+// 240-252 全式）。wolf-pack SpiritUnres −210→21 精确闭合（oracle 逐技能对账：
+// banner 自身 10% efficiency 原有 quality 路径已覆盖；Wolf Pack companion 只带
+// Persistent 无 Buff，AND 语义下不吃 ×0.5——两侧一致）。engine 侧 template
+// skill_type_bit 补 Persistent/Buff 位映射（pre_flag 丢 tag 根因）。
+const BASELINE_DEF_HIT5: usize = 415; // 实测 415/450 = 92.2%（Tactician 预留 +1）
+const BASELINE_DEF_HIT10: usize = 431; // 实测 431/450 = 95.8%（Tactician 预留 +1）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs

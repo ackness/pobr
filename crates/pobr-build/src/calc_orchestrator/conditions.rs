@@ -205,6 +205,10 @@ pub(crate) fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
             // aura buff 乘区的域匹配位（banner/aura 域 magnitude 词条）。
             "Banner" => bits |= SkillTypes::BANNER,
             "Aura" => bits |= SkillTypes::AURA,
+            // 「Persistent Buffs have N% less Reservation」（Tactician
+            // 『A Solid Plan』node 15044）的双 tag AND 匹配位。
+            "Persistent" => bits |= SkillTypes::PERSISTENT,
+            "Buff" => bits |= SkillTypes::BUFF,
             _ => {}
         }
     }
