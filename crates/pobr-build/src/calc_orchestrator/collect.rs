@@ -100,9 +100,10 @@ pub(crate) fn granted_passive_defs<'d>(
             .chain(&jewel.modifier_texts)
             .chain(&jewel.enchant_texts)
     });
+    let ctx = engine_ctx(data);
     let mut granted: Vec<String> = Vec::new();
     for text in item_texts.chain(jewel_texts) {
-        let Ok(outcome) = parse_mod(text) else {
+        let Ok(outcome) = ctx.parse(text) else {
             continue;
         };
         for m in outcome.mods {
@@ -158,31 +159,7 @@ pub(crate) fn granted_passive_defs<'d>(
 /// fired in the past 8 seconds」是**一条** mod 的两行。仅树路径需要此合并
 /// （装备词条本就按行入库）。
 pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<String> {
-    // 可解析性闸门：legacy `parse_mod` 通过即保留（与历史口径逐字一致）；**额外**保留
-    // legacy 不能但引擎能解析为 **MultiplierThreshold tag** 的行（`... against enemies
-    // within/further than N metres` → MultiplierThreshold:enemyDistance）。否则这些行会被
-    // legacy 闸门在预过滤阶段丢弃、永到不了下游引擎 ingest（node 5802 "Stand and Deliver"
-    // 的 +40 crit / +25% damage 即此症）。
-    //
-    // **窄放行**：只放 MultiplierThreshold（本批新增能力），不整体切到引擎闸门——后者会
-    // 连带放行其它 engine-vs-legacy 分歧行（未裁决），在树节点广面造成 over-apply 回归
-    // （实测 def core −3 / canary_physical_armour_block 失败）。整体闸门切换属 legacy 退役
-    // 范畴，须逐条裁决，非本修复范围。
-    let parses = |t: &str| {
-        if parse_mod(t).is_ok() {
-            return true;
-        }
-        ctx.parse(t)
-            .map(|o| {
-                matches!(o.status, pobr_core::mod_parser::ParseStatus::Parsed)
-                    && o.mods.iter().any(|m| {
-                        m.tags
-                            .iter()
-                            .any(|tag| matches!(tag, pobr_core::ModTag::MultiplierThreshold { .. }))
-                    })
-            })
-            .unwrap_or(false)
-    };
+    let parses = |t: &str| gate_parses(ctx, t);
     let mut out = Vec::new();
     let mut i = 0;
     while i < texts.len() {
@@ -240,7 +217,7 @@ pub(crate) fn keystone_mod_map(
         let node = AllocatedNode {
             node_id: pobr_data::passive_tree::NodeId(*id),
             ascendancy: def.ascendancy_id.is_some(),
-            modifier_texts: filter_parseable(def.stats.clone()),
+            modifier_texts: filter_parseable(def.stats.clone(), engine_ctx(data)),
         };
         // 解析失败（硬错）/ 零产出的 keystone 不入 map（merge 端静默跳过，欠算安全）。
         let Ok(ingest) = pobr_core::passive::ingest_passive_nodes_with_ctx(
@@ -539,17 +516,51 @@ pub(crate) fn radius_jewel_notable_effect_copies(
     Ok(out)
 }
 
-/// 保留 [`parse_mod`] 不**硬失败**（`Ok(_)`，含 Parsed / Unsupported）的词条文本，
-/// 丢弃结构性解析失败（`Err`）的词条。
+/// 可解析性闸门单点（B3 杀双 parser）：engine 注入时判定 = vendor `list and not
+/// extra`（PassiveTree.lua:447 `if not list or extra` 触发折行重试）——即
+/// `status == Parsed && unparsed == None`。ingest 侧本就走 engine，闸门与 ingest
+/// 自此同一 parser；新词条缺口一律修数据表（mod_parser_rules.json / overlay），
+/// **禁止再写 legacy 函数**。engine 未注入（旧数据包）保持 legacy 历史口径
+/// （`parse_mod` 不硬失败即保留，含 Unsupported）逐值不变。
+pub(crate) fn gate_parses(ctx: ParseCtx<'_>, t: &str) -> bool {
+    match ctx.engine {
+        Some(_) => {
+            // 诊断：POBR_GATE_DENY=子串1,子串2 强制丢弃匹配行（parity 二分定位用）。
+            if let Ok(deny) = std::env::var("POBR_GATE_DENY")
+                && deny.split(',').any(|p| !p.is_empty() && t.contains(p))
+            {
+                return false;
+            }
+            let pass = ctx.parse(t).is_ok_and(|o| {
+                matches!(o.status, pobr_core::mod_parser::ParseStatus::Parsed)
+                    && o.unparsed.is_none()
+            });
+            // 诊断：POBR_DBG_GATE=1 时 dump 与 legacy 历史闸门的裁决分歧行。
+            if std::env::var("POBR_DBG_GATE").is_ok() && pass != parse_mod(t).is_ok() {
+                let dir = if pass { "NEW_PASS" } else { "NEW_DROP" };
+                let mods = if pass {
+                    format!("{:?}", ctx.parse(t).map(|o| o.mods).unwrap_or_default())
+                } else {
+                    String::new()
+                };
+                eprintln!("[GATE_{dir}] {t} => {mods}");
+            }
+            pass
+        }
+        None => parse_mod(t).is_ok(),
+    }
+}
+
+/// 保留通过 [`gate_parses`] 闸门的词条文本，丢弃解析失败/残留的词条。
 ///
-/// 解析器对部分真实词条形式（如 `[Bleeding] on [Hit]`）会返回硬 `ParseError`；这些
-/// 文本无法贡献 modifier，且会中止整批注入。此处遵循 PoB 的 skip-and-collect 语义在
-/// 入口侧过滤，使端到端计算对真实数据健壮（被丢弃的文本不报错，亦不臆造数值）。
-pub(crate) fn filter_parseable(texts: Vec<String>) -> Vec<String> {
+/// 部分真实词条形式无法贡献 modifier（legacy 硬 `ParseError` / engine 残留
+/// unparsed）；此处遵循 PoB 的 skip-and-collect 语义在入口侧过滤，使端到端计算
+/// 对真实数据健壮（被丢弃的文本不报错，亦不臆造数值）。
+pub(crate) fn filter_parseable(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<String> {
     texts
         .into_iter()
         .filter(|text| {
-            let ok = parse_mod(text).is_ok();
+            let ok = gate_parses(ctx, text);
             // 诊断：POBR_DBG_DROPPED=1 时 dump 被结构性丢弃的词条（parity 排查用）。
             if !ok && std::env::var("POBR_DBG_DROPPED").is_ok() {
                 eprintln!("[POBR_DROP] {text}");
@@ -561,11 +572,11 @@ pub(crate) fn filter_parseable(texts: Vec<String>) -> Vec<String> {
 
 /// 对一件装备的三段词条（implicit / explicit / enchant）各自过滤为可解析子集，
 /// 保留段落归属（[`CalculationSession::add_item`] 按段分配来源类别归因）。
-pub(crate) fn filter_item_parseable(item: &Item) -> Item {
+pub(crate) fn filter_item_parseable(item: &Item, ctx: ParseCtx<'_>) -> Item {
     let mut filtered = item.clone();
-    filtered.implicit_texts = filter_parseable(filtered.implicit_texts);
-    filtered.modifier_texts = filter_parseable(filtered.modifier_texts);
-    filtered.enchant_texts = filter_parseable(filtered.enchant_texts);
+    filtered.implicit_texts = filter_parseable(filtered.implicit_texts, ctx);
+    filtered.modifier_texts = filter_parseable(filtered.modifier_texts, ctx);
+    filtered.enchant_texts = filter_parseable(filtered.enchant_texts, ctx);
     filtered
 }
 

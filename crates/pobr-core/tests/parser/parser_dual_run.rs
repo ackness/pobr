@@ -499,3 +499,57 @@ fn c1_converged_floor_gate() {
         tally.eq
     );
 }
+
+/// B3：flag_types 的 Lua pattern 条目（`hindered,? with (%d+)%% reduced movement
+/// speed`，ModParser.lua:6376）须整行消费——PlainTable 时代该条目永不命中，短
+/// 条目 `hindered` 命中后残留 `, with 15% reduced` 被引擎闸门丢弃（blood-mage
+/// TotalDotDPS 1.01x→0.54x 实测）。PatternTable 化后与 vendor 无残留对齐。
+#[test]
+fn engine_flag_types_pattern_entry_consumes_full_line() {
+    let rules = load_rules();
+    let o = parse_mod_engine(
+        "Enemies you [Curse] are [Hinder|Hindered], with 15% reduced Movement Speed",
+        &rules,
+    );
+    assert_eq!(format!("{:?}", o.status), "Parsed");
+    assert_eq!(o.unparsed, None, "flag pattern 条目应吃掉数值尾巴");
+    assert!(
+        o.mods.iter().any(|m| m.name.as_str() == "EnemyModifier"),
+        "应产 EnemyModifier LIST: {:?}",
+        o.mods
+    );
+}
+
+/// B3 迁表：具名 herald 条件短语（legacy 硬写 → POBR_EXTRA_TAG_PHRASES 数据
+/// 条目）。vendor ModParser.lua:6437 运行时对 herald 宝石名动态注册，静态抽取
+/// 拿不到；缺失时该行残留 `while affected by herald of plague` 被闸门丢弃
+/// （huntress-ritualist AvgDmg/TotalDPS 0.96x→0.92x LOST 实测）。
+#[test]
+fn engine_parses_named_herald_condition_phrases() {
+    use pobr_core::ModTag;
+    let rules = load_rules();
+    let o = parse_mod_engine(
+        "40% increased [Chaos] Damage while affected by [Herald] of Plague",
+        &rules,
+    );
+    assert_eq!(
+        format!("{:?}", o.status),
+        "Parsed",
+        "unparsed={:?}",
+        o.unparsed
+    );
+    assert_eq!(o.unparsed, None);
+    let m = o
+        .mods
+        .iter()
+        .find(|m| m.name.as_str() == "ChaosDamage")
+        .unwrap_or_else(|| panic!("无 ChaosDamage mod: {:?}", o.mods));
+    assert!(
+        m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::Condition { var, .. } if var == "AffectedByHeraldofPlague"
+        )),
+        "应带 AffectedByHeraldofPlague 条件 tag: {:?}",
+        m.tags
+    );
+}

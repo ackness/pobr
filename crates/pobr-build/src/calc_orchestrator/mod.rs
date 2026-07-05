@@ -695,7 +695,7 @@ pub fn calculate_with_data(
     // 2b. 珠宝（天赋树/深渊槽）：词条按**全局**注入（多数珠宝为全局 mod；radius 珠宝
     //     当前近似为全局）。沿用 add_item 的 skip-and-collect 容错。
     for jewel in &build.jewels {
-        let filtered = filter_item_parseable(jewel);
+        let filtered = filter_item_parseable(jewel, engine_ctx(data));
         let texts: Vec<&str> = filtered
             .implicit_texts
             .iter()
@@ -714,7 +714,7 @@ pub fn calculate_with_data(
     // 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
     //      已分配**对应种类节点数 × 授予，展开为全局 modifier text 注入（PoB2 几何口径）。
     //      与装备/天赋路径一致，先 skip-and-collect 过滤硬失败词条，避免单条中止整批。
-    let radius_texts = filter_parseable(radius_jewel_grant_texts(build, data));
+    let radius_texts = filter_parseable(radius_jewel_grant_texts(build, data), engine_ctx(data));
     if !radius_texts.is_empty() {
         let refs: Vec<&str> = radius_texts.iter().map(String::as_str).collect();
         session
@@ -729,7 +729,10 @@ pub fn calculate_with_data(
     if !resolved_config.config.global_modifier_texts.is_empty() {
         // 与装备/珠宝路径一致：先过滤掉硬失败词条（skip-and-collect），避免单条不可解析
         // 文本中止整批注入。
-        let texts = filter_parseable(resolved_config.config.global_modifier_texts.clone());
+        let texts = filter_parseable(
+            resolved_config.config.global_modifier_texts.clone(),
+            engine_ctx(data),
+        );
         if !texts.is_empty() {
             session
                 .add_modifier_texts(&texts)
@@ -751,7 +754,7 @@ pub fn calculate_with_data(
     //     可见性通道（session.unsupported_modifier_texts）；结构性硬失败行
     //     经 filter_parseable 跳过（与 2c quest / 装备文本通道同口径）。
     if !resolved_config.custom_mod_lines.is_empty() {
-        let texts = filter_parseable(resolved_config.custom_mod_lines.clone());
+        let texts = filter_parseable(resolved_config.custom_mod_lines.clone(), engine_ctx(data));
         if !texts.is_empty() {
             session
                 .add_modifier_texts(&texts)
@@ -1402,7 +1405,7 @@ fn inject_items(
         // Kalandra's Touch『Reflects opposite Ring』：镜射对侧戒指的全部词条
         // （vendor CalcSetup.lua:1221-1243），来源仍归 Kalandra 所在槽。
         let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
-        let mut filtered = filter_item_parseable(item);
+        let mut filtered = filter_item_parseable(item, engine_ctx(data));
         // 主手武器：剔除局部物理增伤/附加（已作为武器 source 独立乘区 × baseMultiplier 计入
         // weapon_contribution）；留在全局会重复且错误地并入加法桶（PoB 是独立乘区）。
         // 双持副手（W-B2）：Weapon2 作为 off-hand 武器源消费时同样剔除——其局部词条
