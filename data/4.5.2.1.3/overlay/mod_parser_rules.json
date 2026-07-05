@@ -6178,15 +6178,6 @@
       ]
     },
     {
-      "phrase": "for grenade skills",
-      "tags": [
-        {
-          "type": "SkillType",
-          "skill_type": "Grenade"
-        }
-      ]
-    },
-    {
       "phrase": "for hexes",
       "tags": [
         {
@@ -16108,6 +16099,56 @@
       ]
     },
     {
+      "pattern": "while affected by herald of ash",
+      "literal": "while affected by herald of ash",
+      "tags": [
+        {
+          "type": "Condition",
+          "var": "AffectedByHeraldofAsh"
+        }
+      ]
+    },
+    {
+      "pattern": "while affected by herald of blood",
+      "literal": "while affected by herald of blood",
+      "tags": [
+        {
+          "type": "Condition",
+          "var": "AffectedByHeraldofBlood"
+        }
+      ]
+    },
+    {
+      "pattern": "while affected by herald of ice",
+      "literal": "while affected by herald of ice",
+      "tags": [
+        {
+          "type": "Condition",
+          "var": "AffectedByHeraldofIce"
+        }
+      ]
+    },
+    {
+      "pattern": "while affected by herald of plague",
+      "literal": "while affected by herald of plague",
+      "tags": [
+        {
+          "type": "Condition",
+          "var": "AffectedByHeraldofPlague"
+        }
+      ]
+    },
+    {
+      "pattern": "while affected by herald of thunder",
+      "literal": "while affected by herald of thunder",
+      "tags": [
+        {
+          "type": "Condition",
+          "var": "AffectedByHeraldofThunder"
+        }
+      ]
+    },
+    {
       "pattern": "while an enemy with an open weakness is in your presence",
       "literal": "while an enemy with an open weakness is in your presence",
       "tags": [
@@ -18808,6 +18849,9 @@
     "mirrored"
   ],
   "unsupported_pobr_extra": [
-    "split"
+    "split",
+    "grenades have 15% chance to activate a second time",
+    "25% increased damage with hits against rare and unique enemies",
+    "magnitudes of curses you inflict are zero"
   ]
 }

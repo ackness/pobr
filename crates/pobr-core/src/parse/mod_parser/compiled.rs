@@ -295,8 +295,9 @@ pub struct CompiledParserRules {
     pub cost_types_map: PlainTable<Vec<String>>,
     /// baseCostTypes（plain → 名集）。
     pub base_cost_types: PlainTable<Vec<String>>,
-    /// flagTypes（plain → 条件字符串 / 内嵌 mod）。
-    pub flag_types: PlainTable<FlagTypePayload>,
+    /// flagTypes（pattern → 条件字符串 / 内嵌 mod；vendor 表混有 Lua pattern
+    /// 条目，见 [`compile_flag_types`]）。
+    pub flag_types: PatternTable<FlagTypePayload>,
     /// unsupportedModList（vendor + pobr 自加，小写整行查）。
     pub unsupported: std::collections::HashSet<String>,
     /// specialModList 通道（M5b `overlay/special_mods.json` +
@@ -497,21 +498,30 @@ fn compile_phrase_names(defs: &[PhraseNamesDef]) -> Result<PlainTable<Vec<String
     )
 }
 
-fn compile_flag_types(defs: &[FlagTypeDef]) -> Result<PlainTable<FlagTypePayload>, CompileError> {
-    PlainTable::build(
-        defs.iter()
-            .map(|d| PlainEntry {
-                phrase: d.phrase.clone(),
-                payload: FlagTypePayload {
-                    condition: d.condition.clone(),
-                    mod_def: d
-                        .mod_def
-                        .as_ref()
-                        .map(|m| (m.name.clone(), m.mod_type.clone(), m.value)),
-                },
-            })
-            .collect(),
-    )
+fn compile_flag_types(defs: &[FlagTypeDef]) -> Result<PatternTable<FlagTypePayload>, CompileError> {
+    // vendor flagTypes 混有 Lua pattern 条目（如 `hindered,? with (%d+)%% reduced
+    // movement speed`，ModParser.lua:6376）——纯子串 PlainTable 永远匹配不到这些
+    // 条目（B3 实测 blood-mage 该行残留尾巴被闸门丢弃）。PatternTable 对字面量
+    // 条目同样工作，且 scan 选择规则 = vendor `scan`（最早 + 最长）。
+    let mut entries = Vec::with_capacity(defs.len());
+    let mut literals = Vec::with_capacity(defs.len());
+    for (i, d) in defs.iter().enumerate() {
+        entries.push(PatternEntry {
+            pattern: LuaPattern::compile(&d.phrase)?,
+            index: i,
+            payload: FlagTypePayload {
+                condition: d.condition.clone(),
+                mod_def: d
+                    .mod_def
+                    .as_ref()
+                    .map(|m| (m.name.clone(), m.mod_type.clone(), m.value)),
+            },
+        });
+        // 纯字面量 phrase 进 AC 预过滤桶；含 pattern 元字符的进 always-check 桶。
+        let is_literal = !d.phrase.contains(['%', '?', '(', '[', '+', '*', '-']);
+        literals.push(is_literal.then(|| d.phrase.clone()));
+    }
+    PatternTable::build(entries, literals)
 }
 
 #[cfg(test)]

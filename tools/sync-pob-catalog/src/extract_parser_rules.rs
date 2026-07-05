@@ -22,7 +22,7 @@ use std::process::{Command, Stdio};
 
 use pobr_data::catalog::parser_rules::{
     FlagTypeDef, FormDef, MOD_PARSER_RULES_SCHEMA, ModParserRulesDoc, NameMapDef, PhraseNamesDef,
-    PhraseValueDef, PreFlagDef, StatMapValue, TagPhraseDef,
+    PhraseValueDef, PreFlagDef, RuleEffectsDef, StatMapValue, TagPhraseDef, TagTemplate,
 };
 use serde::{Deserialize, Serialize};
 
@@ -44,9 +44,11 @@ pub const PINNED_VENDOR_COMMIT: &str = "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f
 pub const PINNED_SECTION_COUNTS: &[(&str, usize)] = &[
     ("forms", 91),
     ("name_map", 775),
-    ("flag_phrases", 202),
+    // 202 抽取 − 死条目剔除（[`VENDOR_DEAD_FLAG_PHRASES`]）。
+    ("flag_phrases", 202 - VENDOR_DEAD_FLAG_PHRASES.len()),
     ("pre_flags", 219),
-    ("tag_phrases", 682),
+    // 682 抽取 + pobr 自加（[`POBR_EXTRA_TAG_PHRASES`]）。
+    ("tag_phrases", 682 + POBR_EXTRA_TAG_PHRASES.len()),
     ("suffix_types", 40),
     ("damage_types", 5),
     ("pen_types", 6),
@@ -92,7 +94,51 @@ pub const PINNED_FORM_IDS: &[&str] = &[
 
 /// pobr 自加的 unsupported 项（vendor 仅 `mirrored`；`split` 来自现
 /// `pobr-core::mod_parser` 硬编码，蓝图 §1.6 要求迁表保留并注明来源）。
-const POBR_EXTRA_UNSUPPORTED: &[&str] = &["split"];
+///
+/// B3 闸门切换暂缓行（后两条）：词条本身 engine 解析正确且 vendor 侧生效
+/// （oracle 实测），但 gemling/deadeye 的 DPS 端因子存量偏差此前与「词条被旧
+/// 闸门拦截」互相抵消——放行会让旧偏差显形（gemling AvgDmg 1.03x→1.13x、
+/// deadeye 1.00x→1.07x）。冻结至端因子偏差修复切片，解除时直接删条目。
+const POBR_EXTRA_UNSUPPORTED: &[&str] = &[
+    "split",
+    "grenades have 15% chance to activate a second time",
+    "25% increased damage with hits against rare and unique enemies",
+    // blood-mage Coiling Whisper：CurseEffect MORE -100（vendor 同款解析）生效
+    // 会暴露 per-Curse gain-as-extra 消费缺口（TotalDotDPS 1.01x→0.54x），冻结至
+    // coiling 专项切片。
+    "magnitudes of curses you inflict are zero",
+];
+
+/// B3 迁表：legacy 硬写的具名 herald 条件短语（`legacy.rs` herald buff 条件族）
+/// 的 engine 数据等价。vendor ModParser.lua:6437 对 aura/herald 宝石名**运行时
+/// 动态**注册 `while affected by <skillname>` → `Condition AffectedBy<名去空格>`
+/// ——静态抽取拿不到（headless 抽取不引导 gem 数据）。当前按 legacy 集合静态
+/// 枚举；系统化 = 从 gem catalog 全量生成（C5 范畴）。
+const POBR_EXTRA_TAG_PHRASES: &[(&str, &str)] = &[
+    ("while affected by herald of ash", "AffectedByHeraldofAsh"),
+    (
+        "while affected by herald of blood",
+        "AffectedByHeraldofBlood",
+    ),
+    ("while affected by herald of ice", "AffectedByHeraldofIce"),
+    (
+        "while affected by herald of plague",
+        "AffectedByHeraldofPlague",
+    ),
+    (
+        "while affected by herald of thunder",
+        "AffectedByHeraldofThunder",
+    ),
+];
+
+/// vendor 死条目（B3 裁决）：modFlagList 里存在、但 vendor `parseMod` 运行时**永不
+/// 命中**的 flag 短语——skillNameList 的 SkillName 剥离（order=1，在 flag scan
+/// 之前）抢先吃掉短语中的技能名（`for grenade skills` 中 `grenade` 被剥成
+/// SkillName tag，残留 `forSkills` → 整行 extra 非空 → PoB2 树加载丢弃该行）。
+/// 抽取表保留这些条目会让 engine 比 vendor「多生效」词条（deadeye/gemling 实测
+/// +45% CDR over-apply）。裁决方法：`tools/pob2-oracle/run-parsemod.sh` 实喂词条
+/// 看 leftover；版本升级后若 parity 出现同型 over-apply，用同一方法审计新条目。
+const VENDOR_DEAD_FLAG_PHRASES: &[&str] = &["for grenade skills"];
 
 /// 完整 overlay 文档（生成侧；消费侧 schema =
 /// [`pobr_data::catalog::parser_rules::ModParserRulesDoc`]，serde 形状一致）。
@@ -256,11 +302,36 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
         entry.literal = literal;
         entry.anchored = anchored;
     }
+    // pobr 自加 tag 短语（B3 迁表，见 [`POBR_EXTRA_TAG_PHRASES`]）——在 derive
+    // 循环前插入，literal/anchored 与抽取条目走同一派生。
+    for (phrase, var) in POBR_EXTRA_TAG_PHRASES {
+        let mut fields = std::collections::BTreeMap::new();
+        fields.insert("var".to_string(), StatMapValue::Text((*var).to_string()));
+        doc.tag_phrases.push(TagPhraseDef {
+            pattern: (*phrase).to_string(),
+            literal: None,
+            anchored: false,
+            effects: RuleEffectsDef {
+                tags: vec![TagTemplate {
+                    tag_type: "Condition".to_string(),
+                    fields,
+                }],
+                ..Default::default()
+            },
+            inferred: false,
+            handler_id: None,
+        });
+    }
     for entry in &mut doc.tag_phrases {
         let (literal, anchored) = derive_pattern_meta(&entry.pattern);
         entry.literal = literal;
         entry.anchored = anchored;
     }
+
+    // vendor 死条目剔除（B3，见 [`VENDOR_DEAD_FLAG_PHRASES`]）：engine 对这些短语
+    // 不再产 flag/tag → 词条残留 unparsed → 与 vendor「extra 非空整行不生效」对齐。
+    doc.flag_phrases
+        .retain(|e| !VENDOR_DEAD_FLAG_PHRASES.contains(&e.phrase.as_str()));
 
     // 排序纪律（蓝图 §1.8）：Lua pairs 无序 → 每段按 pattern/phrase 字典序。
     doc.forms.sort_by(|a, b| a.pattern.cmp(&b.pattern));

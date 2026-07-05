@@ -187,7 +187,7 @@ pub fn eval_form(
         }
         "FLAG" => {
             // flag_types 先扫（失配→nil），命中给 condition/mod；再 modNameList 清尾。
-            let (idx, rest) = rules
+            let (idx, _m, rest) = rules
                 .flag_types
                 .scan(name_lower, name_original)
                 .ok_or(FormReject::Nil)?;
