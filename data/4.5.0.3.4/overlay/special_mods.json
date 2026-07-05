@@ -2047,6 +2047,226 @@
       "verified": true,
       "batch": "hand-curated",
       "source_note": "域限定 buff magnitude（wolf-pack banner/aura 词条族；run-parsemod 实证 tag 口径）；消费=buff_pass aura 乘区（AuraEffect 桶×Magnitude 桶分乘，CalcPerform.lua:2204-2205）；legacy parse_scoped_buff_magnitude 同形过树/装备闸门"
+    },
+    {
+      "id": "stun_threshold_from_es_8",
+      "pattern": "gain additional stun threshold equal to 8% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 8
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "stun_threshold_from_es_12",
+      "pattern": "gain additional stun threshold equal to 12% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 12
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "stun_threshold_from_es_15",
+      "pattern": "gain additional stun threshold equal to 15% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 15
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "stun_threshold_from_es_20",
+      "pattern": "gain additional stun threshold equal to 20% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 20
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "stun_threshold_from_es_30",
+      "pattern": "gain additional stun threshold equal to 30% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 30
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "ailment_threshold_from_es_8",
+      "pattern": "gain additional ailment threshold equal to 8% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 8
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "ailment_threshold_from_es_12",
+      "pattern": "gain additional ailment threshold equal to 12% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 12
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "ailment_threshold_from_es_15",
+      "pattern": "gain additional ailment threshold equal to 15% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 15
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "ailment_threshold_from_es_20",
+      "pattern": "gain additional ailment threshold equal to 20% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 20
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "ailment_threshold_from_es_30",
+      "pattern": "gain additional ailment threshold equal to 30% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": 30
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
     }
   ]
 }
