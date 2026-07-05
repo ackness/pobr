@@ -876,6 +876,49 @@ fn corpus_unsupported_report() {
     if let Some(rules) = data.parser_rules.as_deref() {
         use pobr_build::corpus::build_report_engine;
         let er = build_report_engine(&all_lines, rules);
+        // vendor 裁决源：ModCache golden（vendor 全语料预解析缓存落盘，M6-C）。
+        // gap 模板按样本（strip 方括号后小写）精查——「vendor 同款不支持」= 伪缺口
+        // （不用修，slowing-potency 教训：vendor 空 mods + 全残留 = PoB2 不生效）；
+        // 「vendor parsed」= 真缺口（迁移目标清单）。
+        let vendor_verdict: std::collections::HashMap<String, bool> = {
+            let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../pobr-core/tests/fixtures/modcache_golden.json");
+            std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .and_then(|v| v.get("entries").and_then(|e| e.as_array()).cloned())
+                .map(|entries| {
+                    entries
+                        .iter()
+                        .filter_map(|e| {
+                            let text = e.get("text")?.as_str()?.trim().to_ascii_lowercase();
+                            // 「vendor 生效」= parsed 且无 leftover——ModCache 的
+                            // status 不含 leftover 判定，但树加载对 extra 非空整行
+                            // 丢弃（B3 语义），故 leftover 非空一律按不生效裁决。
+                            let parsed = e.get("status")?.as_str()? == "parsed"
+                                && e.get("leftover")
+                                    .and_then(|l| l.as_str())
+                                    .is_none_or(|l| l.trim().is_empty());
+                            Some((text, parsed))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let verdict_of = |t: &pobr_build::corpus::EngineTemplateStat| -> &'static str {
+            let mut any_hit = false;
+            for s in &t.samples {
+                let key = pobr_build::corpus::strip_brackets(s)
+                    .trim()
+                    .to_ascii_lowercase();
+                match vendor_verdict.get(&key) {
+                    Some(true) => return "vendor=PARSED",
+                    Some(false) => any_hit = true,
+                    None => {}
+                }
+            }
+            if any_hit { "vendor=unsup" } else { "vendor=?" }
+        };
         eprintln!("\n============ ENGINE PRODUCTION REPORT (A2) ============");
         eprintln!(
             "[engine] lines: {}  parsed: {} ({:.1}%)  partial: {}  unsupported: {}  gap_rate: {:.1}%",
@@ -894,16 +937,42 @@ fn corpus_unsupported_report() {
             "[engine] dropped-tag lines: {}  total dropped tags: {}",
             er.lines_with_dropped_tags, er.total_dropped_tags,
         );
+        let (mut real, mut pseudo, mut unknown) = (0usize, 0usize, 0usize);
+        for t in &er.gap_templates {
+            match verdict_of(t) {
+                "vendor=PARSED" => real += 1,
+                "vendor=unsup" => pseudo += 1,
+                _ => unknown += 1,
+            }
+        }
+        eprintln!(
+            "[vendor-verdict] gap templates: {real} REAL (vendor parses, we drop)  {pseudo} pseudo (vendor also unsupported)  {unknown} unknown (not in ModCache)",
+        );
         eprintln!("--- Top-20 engine gap templates (production drops) ---");
         for (i, t) in er.gap_templates.iter().take(20).enumerate() {
             eprintln!(
-                "{:>2}. [{:?}] hit={} cnt={} | {}",
+                "{:>2}. [{:?}] hit={} cnt={} {} | {}",
                 i + 1,
                 t.class,
                 t.builds_hit,
                 t.total_count,
+                verdict_of(t),
                 t.template,
             );
+        }
+        eprintln!("--- Top-20 REAL gaps (vendor parses, we drop — migration list) ---");
+        let mut shown = 0usize;
+        for t in &er.gap_templates {
+            if verdict_of(t) == "vendor=PARSED" {
+                shown += 1;
+                eprintln!(
+                    "{:>2}. [{:?}] hit={} cnt={} | {}",
+                    shown, t.class, t.builds_hit, t.total_count, t.template,
+                );
+                if shown >= 20 {
+                    break;
+                }
+            }
         }
         eprintln!("--- Top-10 dropped-tag templates (scope-widening risk) ---");
         for (i, t) in er.dropped_tag_templates.iter().take(10).enumerate() {

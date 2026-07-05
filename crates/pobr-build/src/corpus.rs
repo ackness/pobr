@@ -104,7 +104,8 @@ pub fn normalize_template(text: &str) -> String {
 }
 
 /// 剥离 PoB2 方括号标记：`[内部名|显示名]`→显示名、`[名]`→名。
-fn strip_brackets(text: &str) -> String {
+/// pub：报表侧对照 vendor ModCache golden（其 key 为展开后文本）时同一口径。
+pub fn strip_brackets(text: &str) -> String {
     if !text.contains('[') {
         return text.to_string();
     }

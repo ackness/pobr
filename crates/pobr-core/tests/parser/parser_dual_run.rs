@@ -520,6 +520,43 @@ fn engine_flag_types_pattern_entry_consumes_full_line() {
     );
 }
 
+/// A2 真缺口迁移：`Gain additional Stun/Ailment Threshold equal to N% of maximum
+/// Energy Shield`（vendor ModParser.lua:5234 函数条目，抽取探针推不出——overlay
+/// special 按语料数值集钉值展开，`a2-real-gaps` 批次）。
+#[test]
+fn engine_parses_threshold_from_es_special_entries() {
+    use pobr_core::ModTag;
+    let rules = load_rules();
+    for (line, name) in [
+        (
+            "Gain additional [StunThreshold|Stun Threshold] equal to 20% of maximum [EnergyShield|Energy Shield]",
+            "StunThreshold",
+        ),
+        (
+            "Gain additional [AilmentThreshold|Ailment Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
+            "AilmentThreshold",
+        ),
+    ] {
+        let o = parse_mod_engine(line, &rules);
+        assert_eq!(format!("{:?}", o.status), "Parsed", "{line}");
+        assert_eq!(o.unparsed, None, "{line}");
+        let m = o
+            .mods
+            .iter()
+            .find(|m| m.name.as_str() == name)
+            .unwrap_or_else(|| panic!("无 {name} mod: {:?}", o.mods));
+        assert!(
+            m.tags.iter().any(|t| matches!(
+                t,
+                ModTag::PercentStat { stat, percent: Some(p) }
+                    if stat == "EnergyShield" && *p > 0.0
+            )),
+            "应带 PercentStat(EnergyShield) tag: {:?}",
+            m.tags
+        );
+    }
+}
+
 /// B3 迁表：具名 herald 条件短语（legacy 硬写 → POBR_EXTRA_TAG_PHRASES 数据
 /// 条目）。vendor ModParser.lua:6437 运行时对 herald 宝石名动态注册，静态抽取
 /// 拿不到；缺失时该行残留 `while affected by herald of plague` 被闸门丢弃
