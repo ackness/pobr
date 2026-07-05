@@ -78,3 +78,59 @@ fn detects_unknown_allocated_node() {
     assert_eq!(report.unknown_nodes, vec![bogus]);
     assert_eq!(report.build_tree_version.as_deref(), Some("9_9"));
 }
+
+/// 多版本树适配（PoB2 `TreeData/<v>` 对位）：历史赛季树（vendor 抽取，
+/// `base/passive_trees/<v>.json`）已入库且按 `<Spec treeVersion>` 正确选择。
+/// 验收锚点 = 53853『Backup Plan』：0_3 是 50/50 两条条件词条，当前默认
+/// （0_5）是 20/40/40 三条——同一节点 id、不同赛季数值形态。
+#[test]
+fn versioned_tree_selects_historic_stats() {
+    let data = load_data();
+
+    // 0_1..0_4 已抽取入库。
+    for v in ["0_1", "0_2", "0_3", "0_4"] {
+        assert!(
+            data.versioned_passive_nodes.contains_key(v),
+            "历史树 {v} 应已入库（base/passive_trees/{v}.json）"
+        );
+    }
+
+    // 0_3 树：Backup Plan = 50/50 两条（历史形态）。
+    let n3 = data
+        .passive_nodes_for(Some("0_3"))
+        .get(&53853)
+        .expect("0_3 树含 53853");
+    assert_eq!(
+        n3.stats.len(),
+        2,
+        "0_3 Backup Plan 两条词条: {:?}",
+        n3.stats
+    );
+    assert!(
+        n3.stats[0].starts_with("50% increased Evasion Rating"),
+        "0_3 形态应为 50%：{:?}",
+        n3.stats
+    );
+
+    // 当前默认版本（0_5）不在 versioned 表 → 落回默认树（20/40/40 三条）；
+    // 未标注（None）同。
+    for tv in [Some("0_5"), None] {
+        let n5 = data
+            .passive_nodes_for(tv)
+            .get(&53853)
+            .expect("默认树含 53853");
+        assert_eq!(
+            n5.stats.len(),
+            3,
+            "默认树 Backup Plan 三条词条（tv={tv:?}）: {:?}",
+            n5.stats
+        );
+    }
+
+    // 未知版本号（乱写/未抽取）安全落默认。
+    assert_eq!(
+        data.passive_nodes_for(Some("9_9")).len(),
+        data.passive_nodes.len(),
+        "未知版本落回默认树"
+    );
+}

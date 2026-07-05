@@ -333,6 +333,56 @@ impl GameData {
     pub fn passive_tree_meta(&self) -> Result<PassiveTreeMeta, LoadError> {
         self.load_domain("passive_tree_meta.json")
     }
+
+    /// 加载某历史赛季树版本的节点表（`base/passive_trees/<v>.json`，vendor
+    /// `TreeData/<v>/tree.lua` 经 `pobr-data-adapter --tree-full` 抽取——词条
+    /// 最小集：skill/name/kind/stats/ascendancy，无拓扑/坐标）。文件缺失（该
+    /// 版本未抽取 / 旧数据包）返回 `Ok(None)`——消费侧回退当前默认树；其余
+    /// IO / 解析错误照常上抛，不静默。
+    pub fn passive_nodes_versioned(
+        &self,
+        tree_version: &str,
+    ) -> Result<Option<Vec<PassiveNodeDef>>, LoadError> {
+        // 版本号来自 build XML 的 `<Spec treeVersion>`，只允许保守字符集
+        //（字母数字/下划线），防路径拼接注入。
+        if !tree_version
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            return Ok(None);
+        }
+        let path = self
+            .root()
+            .join("base/passive_trees")
+            .join(format!("{tree_version}.json"));
+        match self.load_json_at::<Vec<PassiveNodeDef>>(path) {
+            Ok(nodes) => Ok(Some(nodes)),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// 枚举已入库的历史树版本号（`base/passive_trees/*.json` 文件名）。目录
+    /// 缺失 = 空表。
+    pub fn available_tree_versions(&self) -> Vec<String> {
+        let dir = self.root().join("base/passive_trees");
+        let Ok(rd) = std::fs::read_dir(dir) else {
+            return Vec::new();
+        };
+        let mut versions: Vec<String> = rd
+            .filter_map(|e| e.ok())
+            .filter_map(|e| {
+                let name = e.file_name().into_string().ok()?;
+                name.strip_suffix(".json").map(str::to_string)
+            })
+            .collect();
+        versions.sort();
+        versions
+    }
 }
 
 /// 仓库内置数据目录的根（`<workspace>/data`）。用于测试与默认加载。
