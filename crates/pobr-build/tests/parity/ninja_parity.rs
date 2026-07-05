@@ -660,8 +660,14 @@ const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（合并 +2）
 /// 纯收敛（TotalDPS 0.81x→0.83x，主基线 41/47 不倒退；dot 列 twister
 /// 0.96x 新入列 3→4）。panel 侧待 effective 减伤线把 DD 过记根因收敛后
 /// 回升再上记。同 commit panel @5% 35→36（titan 入列），下限保守不上调。
-const PANEL_OFF_HIT5: usize = 35; // 实测 36/80 = 45.0%（M4-K，基线保守持平）
-const PANEL_OFF_HIT10: usize = 40; // 实测 40/80 = 50.0%（M4-K 例外下修）
+/// **SkillType 全量化重记（数据驱动 A1，panel +8 @5% / +6 @10%）**：cfg 侧
+/// `skill_type_bits` 从手工白名单（Attack/Spell/… 十余位）换全量枚举置位
+/// （`SkillTypes::from_pob2_name`，vendor Global.lua 290 名生成表），tag 侧
+/// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
+/// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
+/// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
+const PANEL_OFF_HIT5: usize = 44; // 实测 44/80 = 55.0%（SkillType 全量化 +8）
+const PANEL_OFF_HIT10: usize = 46; // 实测 46/80 = 57.5%（SkillType 全量化 +6）
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

@@ -28,6 +28,7 @@ use sync_pob_catalog::extract_stat_descriptions::{
 };
 use sync_pob_catalog::extract_stat_map::run_extract_stat_map;
 use sync_pob_catalog::extract_stat_set_labels::run_extract_stat_set_labels;
+use sync_pob_catalog::gen_skill_types::run_gen_skill_types;
 use sync_pob_catalog::gen_stat_id_map::run_gen_stat_id_map;
 use sync_pob_catalog::mirage_configs::run_gen_mirage_configs;
 use sync_pob_catalog::trigger_configs::run_gen_trigger_configs;
@@ -35,7 +36,7 @@ use sync_pob_catalog::{
     CatalogDiff, check_against_fixture, collect_catalog, diff_catalogs, read_catalog, write_catalog,
 };
 
-const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|stat-descriptions|gem-effects|stat-set-labels|config-options|curse-priority|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules|special-mods] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-trigger-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-stat-id-map --overlay-dir <path> [--out <path>]\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
+const USAGE: &str = "usage:\n  sync-pob-catalog <scan|check|diff|fixture-check> --pob-root <path> [--out <path>] [--catalog <path>]\n  sync-pob-catalog extract-lua --vendor-root <path> [--what skill-overrides|gem-quality|stat-map|stat-descriptions|gem-effects|stat-set-labels|config-options|curse-priority|minions|spectres|minion-list|mod-scalability|runes|uniques|catalysts|parser-rules|special-mods] [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog extract-bases --vendor-root <path> [--out <path>] [--files <a,b,c>] [--luajit <path>] [--version-file <path>]\n  sync-pob-catalog check-buff-refs --vendor-root <path> --defs <path> [--write]\n  sync-pob-catalog gen-mirage-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-trigger-configs --vendor-root <path> [--out <path>] [--version-file <path>]\n  sync-pob-catalog gen-stat-id-map --overlay-dir <path> [--out <path>]\n  sync-pob-catalog gen-skill-types --vendor-root <path> --out <path>\n  sync-pob-catalog parser-rules-drift --vendor-root <path> --committed <path> [--luajit <path>] [--version-file <path>]";
 
 fn main() -> ExitCode {
     match run() {
@@ -56,6 +57,7 @@ fn run() -> io::Result<()> {
         Some("gen-mirage-configs") => run_gen_mirage_configs_command(raw_args),
         Some("gen-trigger-configs") => run_gen_trigger_configs_command(raw_args),
         Some("gen-stat-id-map") => run_gen_stat_id_map_command(raw_args),
+        Some("gen-skill-types") => run_gen_skill_types_command(raw_args),
         Some("parser-rules-drift") => run_parser_rules_drift_command(raw_args),
         Some(other @ ("scan" | "check" | "diff" | "fixture-check")) => {
             run_catalog_command(other, raw_args)
@@ -289,6 +291,34 @@ fn run_gen_stat_id_map_command(mut args: impl Iterator<Item = String>) -> io::Re
             Ok(())
         }
     }
+}
+
+// ---- gen-skill-types（数据驱动 A1）：Global.lua SkillType 全量枚举 → pobr-data 静态表 ----
+
+fn run_gen_skill_types_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
+    let mut vendor_root = None;
+    let mut out = None;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--vendor-root" => vendor_root = args.next().map(PathBuf::from),
+            "--out" => out = args.next().map(PathBuf::from),
+            other => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("unknown argument: {other}\n{USAGE}"),
+                ));
+            }
+        }
+    }
+    let (Some(vendor_root), Some(out)) = (vendor_root, out) else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("gen-skill-types 需要 --vendor-root <path> 与 --out <path>\n{USAGE}"),
+        ));
+    };
+    let message = run_gen_skill_types(&vendor_root, &out)?;
+    eprintln!("{message}");
+    Ok(())
 }
 
 #[derive(Debug)]

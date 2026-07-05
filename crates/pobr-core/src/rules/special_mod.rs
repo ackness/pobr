@@ -476,31 +476,6 @@ fn parse_target(target: &str) -> Option<ActorRef> {
     }
 }
 
-/// SkillTypes 名 → 位（vendor `SkillType:Spell` 形态去前缀）。未知名 → NONE。
-fn skill_type_bit(name: &str) -> SkillTypes {
-    let bare = name.strip_prefix("SkillType:").unwrap_or(name);
-    match bare {
-        "Attack" => SkillTypes::ATTACK,
-        "Spell" => SkillTypes::SPELL,
-        "Projectile" => SkillTypes::PROJECTILE,
-        "Area" => SkillTypes::AREA,
-        "Melee" => SkillTypes::MELEE,
-        "Triggered" => SkillTypes::TRIGGERED,
-        "Minion" => SkillTypes::MINION,
-        "Aura" => SkillTypes::AURA,
-        "Channel" => SkillTypes::CHANNEL,
-        // 高位类型（id>64，SkillTypes 320 位扩容后可表达）：预留效率域词条
-        // （「Meta Skills have N% increased Reservation Efficiency」等）的作用域。
-        "Meta" => SkillTypes::META,
-        "Herald" => SkillTypes::HERALD,
-        "SummonsTotem" => SkillTypes::SUMMONS_TOTEM,
-        "Banner" => SkillTypes::BANNER,
-        "Persistent" => SkillTypes::PERSISTENT,
-        "Buff" => SkillTypes::BUFF,
-        _ => SkillTypes::NONE,
-    }
-}
-
 fn damage_type_bit(name: &str) -> Option<DamageType> {
     Some(match name {
         "Physical" => DamageType::Physical,
@@ -555,12 +530,13 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
         }
         "SkillType" => {
             let name = scalar_text(tag.fields.get("skillType")?)?;
-            let st = skill_type_bit(&name);
-            if st == SkillTypes::NONE {
-                None
-            } else {
-                Some(ModTag::SkillTypes(st))
-            }
+            let bare = name.strip_prefix("SkillType:").unwrap_or(&name);
+            // 全量枚举表（数据驱动 A1，单源 `SkillTypes::from_pob2_name`）：
+            // special_vendor 的名来自 vendor 枚举反查，miss = 数据损坏——
+            // debug 构建炸出（A2 可见化），release 保守丢 tag。
+            let st = SkillTypes::from_pob2_name(bare);
+            debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
+            st.map(ModTag::SkillTypes)
         }
         "DamageType" => {
             let name = scalar_text(tag.fields.get("damageType")?)?;
