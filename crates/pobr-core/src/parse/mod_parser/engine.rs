@@ -31,9 +31,38 @@ use crate::{ModTag, ModValue, Modifier};
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::skill::SkillTypes;
 
+/// engine 解析的静默降级诊断（A2 可见化）：随 [`parse_mod_engine_diag`] 返回，
+/// corpus 报表按行聚合。不进 [`ParseOutcome`]（40 处构造点零改动）、不进
+/// canonical（C1 dual-run gate 不比较）。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EngineDiag {
+    /// pre_flag 条目命中但 tag 含 pobr 无落点类型 → 静默丢弃的 tag 数
+    /// （丢 tag = 词条作用域被放大为全局生效的近似，over-apply 风险面）。
+    pub dropped_pre_flag_tags: u16,
+}
+
 /// 数据驱动解析一行词条。永不报错（与 legacy `Unsupported` 同款收口；空输入
 /// 返回 Unsupported 空表）。
 pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome {
+    parse_mod_engine_diag(text, rules).0
+}
+
+/// [`parse_mod_engine`] 的诊断版：额外返回静默降级计数（A2 报表用；两者共享
+/// 同一实现）。
+pub fn parse_mod_engine_diag(
+    text: &str,
+    rules: &CompiledParserRules,
+) -> (ParseOutcome, EngineDiag) {
+    let mut diag = EngineDiag::default();
+    let outcome = parse_mod_engine_impl(text, rules, &mut diag);
+    (outcome, diag)
+}
+
+fn parse_mod_engine_impl(
+    text: &str,
+    rules: &CompiledParserRules,
+    diag: &mut EngineDiag,
+) -> ParseOutcome {
     let original = text.trim();
     if original.is_empty() {
         return unsupported(text);
@@ -89,12 +118,12 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
             // handler 兜底条目：保守跳过效果（不产 mod，留 unparsed）——本批不接
             // handler 注册表（Track A 实测仅 3 条 handler 兜底）。
             if payload.handler_id.is_none() {
-                // 注：absorb 返回 false（tag 含 pobr 无落点的类型）时**沿用静默丢
+                // 注：absorb 丢弃数 >0（tag 含 pobr 无落点的类型）时**沿用静默丢
                 // tag**——大量 pre_flag 词条（buff/aura 域前缀）依赖丢 tag 后全局
                 // 生效的近似（消费侧 cfg 多不带 skill_types 位）；收紧为保守失配
                 // 实测 -4 def@5% / -9 @10%。作用域收紧随消费侧 per-skill cfg
-                // 铺开逐步落地（同 tag_phrase 口径）。
-                effects_acc.absorb_pre_flag(payload, &_m.captures);
+                // 铺开逐步落地（同 tag_phrase 口径）。丢弃数进 diag（A2 报表）。
+                diag.dropped_pre_flag_tags += effects_acc.absorb_pre_flag(payload, &_m.captures);
                 work = rest;
             }
         }
@@ -120,9 +149,9 @@ pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome
                     // handler 兜底：本批不接，停止 tag 扫描（保守）。
                     break;
                 }
-                let absorbed = effects_acc.absorb_tag_phrase(&payload.effects, &m.captures);
+                let dropped = effects_acc.absorb_tag_phrase(&payload.effects, &m.captures);
                 work = rest;
-                if !absorbed {
+                if dropped > 0 {
                     // tag 含 pobr 无落点的类型 → 整行保守失配。
                     return unsupported_remaining(&work);
                 }
@@ -300,16 +329,16 @@ struct EffectsAccumulator {
 }
 
 impl EffectsAccumulator {
-    /// 吸收一个 RuleEffectsDef（flags/kw/tags + minion/enemy 包装指令）。返回 tags
-    /// 是否全部可映射（false = 含 pobr 无落点的 tag 类型）。
-    fn absorb_effects(&mut self, eff: &RuleEffectsDef, captures: &[String]) -> bool {
+    /// 吸收一个 RuleEffectsDef（flags/kw/tags + minion/enemy 包装指令）。返回
+    /// **丢弃的 tag 数**（>0 = 含 pobr 无落点的 tag 类型；A2 报表可见化）。
+    fn absorb_effects(&mut self, eff: &RuleEffectsDef, captures: &[String]) -> u16 {
         self.flags |= compile_flags(&eff.flags);
         self.keyword_flags = self.keyword_flags | compile_keyword_flags(&eff.keyword_flags);
-        let mut all_mapped = true;
+        let mut dropped: u16 = 0;
         for tag in &eff.tags {
             match compile_tag(tag, captures) {
                 Some(t) => self.tags.push(t),
-                None => all_mapped = false,
+                None => dropped += 1,
             }
         }
         // minion 包装指令。
@@ -327,18 +356,18 @@ impl EffectsAccumulator {
         if let Some(suffix) = &eff.mod_suffix {
             self.mod_suffix = suffix.clone();
         }
-        all_mapped
+        dropped
     }
 
     fn absorb_pre_flag(
         &mut self,
         payload: &super::compiled::PreFlagPayload,
         captures: &[String],
-    ) -> bool {
+    ) -> u16 {
         self.absorb_effects(&payload.effects, captures)
     }
 
-    fn absorb_tag_phrase(&mut self, eff: &RuleEffectsDef, captures: &[String]) -> bool {
+    fn absorb_tag_phrase(&mut self, eff: &RuleEffectsDef, captures: &[String]) -> u16 {
         self.absorb_effects(eff, captures)
     }
 

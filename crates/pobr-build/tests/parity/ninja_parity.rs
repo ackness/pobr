@@ -789,9 +789,11 @@ fn parity_baseline_report() {
     );
 }
 
-/// 收集一个 build 的全量词条语料行（装备三段 + 珠宝），供 unsupported 分类。
-/// **绕开** `filter_parseable`——直接对原始行分类，使缺口语料可见（A-1 方法 §1）。
-fn collect_corpus_lines(dir: &Path) -> Vec<CorpusLine> {
+/// 收集一个 build 的全量词条语料行（装备三段 + 珠宝 + **已分配树节点**），供
+/// unsupported 分类。**绕开** `filter_parseable` / 树侧闸门——直接对原始行分类，
+/// 使缺口语料可见（A-1 方法 §1；树行为 A2 并入——B3 后闸门/ingest 同一 engine，
+/// 树侧缺口同样是生产缺口）。
+fn collect_corpus_lines(dir: &Path, data: &BuildData) -> Vec<CorpusLine> {
     let Ok(code) = std::fs::read_to_string(dir.join("code.txt")) else {
         return Vec::new();
     };
@@ -829,6 +831,26 @@ fn collect_corpus_lines(dir: &Path) -> Vec<CorpusLine> {
     for jewel in &build.jewels {
         push_item(jewel, LineSource::Jewel, &mut lines);
     }
+    // 已分配树节点 stats（含 `\n` 折行摊平——与 pobr_tree::split_lines 同口径）。
+    // 注意：本语料按**独立行**分类，树侧生产还有折行合并兜底（combine_wrapped），
+    // 故此处的 Partial/Unsupported 是生产缺口的**上界**。
+    for node_id in &build.tree.allocated_nodes {
+        let Some(def) = data.passive_nodes.get(&node_id.0) else {
+            continue;
+        };
+        for stat in &def.stats {
+            for line in stat.split('\n') {
+                let t = line.trim();
+                if !t.is_empty() {
+                    lines.push(CorpusLine {
+                        text: t.to_string(),
+                        source: LineSource::Passive,
+                        build_id: build_id.clone(),
+                    });
+                }
+            }
+        }
+    }
     lines
 }
 
@@ -841,11 +863,66 @@ fn collect_corpus_lines(dir: &Path) -> Vec<CorpusLine> {
 #[test]
 fn corpus_unsupported_report() {
     let builds = discover_builds();
+    let data = load_data();
     let mut all_lines: Vec<CorpusLine> = Vec::new();
     for dir in &builds {
-        all_lines.extend(collect_corpus_lines(dir));
+        all_lines.extend(collect_corpus_lines(dir, &data));
     }
     let report = build_report(&all_lines);
+
+    // A2：engine 生产口径段（B3 后闸门/ingest 同一 parser——本段数字即生产行为）。
+    // Partial = 引擎识别一半但整行被闸门丢弃（迁移候选）；dropped-tags = pre_flag
+    // 静默丢 tag（作用域放大 over-apply 风险面，此前完全不可见）。
+    if let Some(rules) = data.parser_rules.as_deref() {
+        use pobr_build::corpus::build_report_engine;
+        let er = build_report_engine(&all_lines, rules);
+        eprintln!("\n============ ENGINE PRODUCTION REPORT (A2) ============");
+        eprintln!(
+            "[engine] lines: {}  parsed: {} ({:.1}%)  partial: {}  unsupported: {}  gap_rate: {:.1}%",
+            er.total_lines,
+            er.parsed,
+            if er.total_lines == 0 {
+                0.0
+            } else {
+                er.parsed as f64 / er.total_lines as f64 * 100.0
+            },
+            er.partial,
+            er.unsupported,
+            er.gap_rate() * 100.0,
+        );
+        eprintln!(
+            "[engine] dropped-tag lines: {}  total dropped tags: {}",
+            er.lines_with_dropped_tags, er.total_dropped_tags,
+        );
+        eprintln!("--- Top-20 engine gap templates (production drops) ---");
+        for (i, t) in er.gap_templates.iter().take(20).enumerate() {
+            eprintln!(
+                "{:>2}. [{:?}] hit={} cnt={} | {}",
+                i + 1,
+                t.class,
+                t.builds_hit,
+                t.total_count,
+                t.template,
+            );
+        }
+        eprintln!("--- Top-10 dropped-tag templates (scope-widening risk) ---");
+        for (i, t) in er.dropped_tag_templates.iter().take(10).enumerate() {
+            eprintln!(
+                "{:>2}. dropped={} hit={} cnt={} | {}",
+                i + 1,
+                t.dropped_tags,
+                t.builds_hit,
+                t.total_count,
+                t.template,
+            );
+        }
+        eprintln!(
+            "total distinct engine gap templates: {}  dropped-tag templates: {}",
+            er.gap_templates.len(),
+            er.dropped_tag_templates.len(),
+        );
+        assert!(er.total_lines > 0, "engine 语料为空");
+    }
 
     eprintln!("\n============ CORPUS UNSUPPORTED REPORT ============");
     eprintln!(
