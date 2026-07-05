@@ -39,7 +39,7 @@ pub use legacy::{parse_minion_modifier, parse_mod, parse_mod_with_rules};
 
 pub use canonical::{canonical_outcome, canonical_tags};
 pub use compiled::{CompileError, CompiledParserRules};
-pub use engine::parse_mod_engine;
+pub use engine::{EngineDiag, parse_mod_engine, parse_mod_engine_diag};
 
 #[cfg(feature = "test-rules")]
 mod test_rules;
