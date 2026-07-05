@@ -2701,6 +2701,26 @@ fn strip_tag_once(text: &str, tags: &mut Vec<ModTag>, weapon_flags: &mut ModFlag
             " if you have dealt a crit recently",
             ModTag::condition("CritRecently", false),
         ),
+        // 近期被击中（4 秒窗）条件（vendor ModParser.lua:1955/:1961
+        // `if you[' ]h?a?ve been hit recently` → Condition `BeenHitRecently`、
+        // `if you have ?n[o']t …` → 同名 neg；cfg 真值由 config
+        // `conditionBeenHitRecently` 供给）。树点『Backup Plan』(53853) 等。
+        (
+            " if you have been hit recently",
+            ModTag::condition("BeenHitRecently", false),
+        ),
+        (
+            " if you've been hit recently",
+            ModTag::condition("BeenHitRecently", false),
+        ),
+        (
+            " if you haven't been hit recently",
+            ModTag::condition("BeenHitRecently", true),
+        ),
+        (
+            " if you have not been hit recently",
+            ModTag::condition("BeenHitRecently", true),
+        ),
     ];
 
     for (suffix, tag) in known_tags {
