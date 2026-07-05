@@ -72,6 +72,10 @@ impl SkillTypes {
     /// Cast-on-X 等 meta gem；「Meta Skills have N% increased Reservation
     /// Efficiency」词条的作用域）
     pub const META: Self = Self::bit(121);
+    /// PoB2 SkillType.Persistent = 140（banner/herald/aura 等持续预留效果；
+    /// 「Persistent Buffs have N% less Reservation」（Tactician『A Solid
+    /// Plan』）以 Persistent+Buff 双 tag AND 限定作用域）
+    pub const PERSISTENT: Self = Self::bit(139);
 
     /// 第 `index` 位（0-based）置 1 的掩码（const 构造）。
     const fn bit(index: u32) -> Self {

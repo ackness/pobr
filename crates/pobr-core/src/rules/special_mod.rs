@@ -495,6 +495,8 @@ fn skill_type_bit(name: &str) -> SkillTypes {
         "Herald" => SkillTypes::HERALD,
         "SummonsTotem" => SkillTypes::SUMMONS_TOTEM,
         "Banner" => SkillTypes::BANNER,
+        "Persistent" => SkillTypes::PERSISTENT,
+        "Buff" => SkillTypes::BUFF,
         _ => SkillTypes::NONE,
     }
 }

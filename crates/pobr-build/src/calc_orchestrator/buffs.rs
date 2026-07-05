@@ -542,6 +542,28 @@ pub(crate) fn spirit_reservation_modifiers(
                 ],
             );
             let efficiency = (quality_eff + mod_eff).max(-100.0);
+            let eff_more = db.more(
+                &gem_cfg,
+                &[
+                    pobr_data::prelude::ModName::from("SpiritReservationEfficiency"),
+                    pobr_data::prelude::ModName::from("ReservationEfficiency"),
+                ],
+            );
+            // 预留量 inc/more 桶（vendor :240-241/:252 `Sum("INC"/More, skillCfg,
+            // "SpiritReserved", "Reserved")`；「Persistent Buffs have 50% less
+            // Reservation」（Tactician）经 Persistent+Buff 双 tag 命中此桶）。
+            // vendor gate：more ≤ 0 或 inc ≤ −100 → 预留 0。
+            let reserved_names = [
+                pobr_data::prelude::ModName::from("SpiritReserved"),
+                pobr_data::prelude::ModName::from("Reserved"),
+            ];
+            let res_inc = db.sum(pobr_data::prelude::ModType::Inc, &gem_cfg, &reserved_names);
+            let res_more = db.more(&gem_cfg, &reserved_names);
+            let res_factor = if res_more > 0.0 && res_inc > -100.0 {
+                (100.0 + res_inc) / 100.0 * res_more
+            } else {
+                0.0
+            };
             // 词条侧 ExtraSpirit（vendor :217 per-skill Sum 汇入 baseFlat；如
             // Ancestral Bond 的 `ExtraSpirit 75 + SkillType(SummonsTotem)` 只对
             // totem 技能命中）。support 数据侧 flat 走上方 level_row 路（互不重叠）。
@@ -552,7 +574,9 @@ pub(crate) fn spirit_reservation_modifiers(
             );
             // PoB2 对保留倍率乘积截断到 4 位小数后再乘 base（floor(x, 4)）。
             let mult = (mult * 10000.0).floor() / 10000.0;
-            let mut reserved = (flat * mult / (1.0 + efficiency / 100.0)).round().max(0.0);
+            let mut reserved = (flat * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
+                .round()
+                .max(0.0);
             // Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy`
             // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
             // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
@@ -575,7 +599,7 @@ pub(crate) fn spirit_reservation_modifiers(
                         })
                     })
                     .count();
-                reserved += (per_curse * mult / (1.0 + efficiency / 100.0))
+                reserved += (per_curse * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
                     .round()
                     .max(0.0)
                     * curse_count as f64;

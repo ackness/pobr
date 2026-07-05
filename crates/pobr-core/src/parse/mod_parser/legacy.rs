@@ -1306,6 +1306,7 @@ fn parse_defence_special(rest: &str, original: &str) -> Option<ParseOutcome> {
         .or_else(|| parse_defence_resource_conversion(rest, original))
         .or_else(|| parse_deflection_special(rest, original))
         .or_else(|| parse_reservation_efficiency(rest, original))
+        .or_else(|| parse_persistent_buff_reservation(rest, original))
         .or_else(|| parse_totem_spirit_reservation(rest, original))
         .or_else(|| parse_scoped_buff_magnitude(rest, original))
         .or_else(|| parse_defence_numeric_sentence(rest, original))?;
@@ -1357,6 +1358,30 @@ fn parse_scoped_buff_magnitude(rest: &str, source: &str) -> Option<Vec<Modifier>
 /// CalcDefence.lua:197 `SummonsTotem and Flag(AncestralBond)`）+ `ExtraSpirit`
 /// BASE N + SkillType(SummonsTotem) tag（:217 per-skill Sum 汇入 baseFlat）。
 /// 消费 = `spirit_reservation_modifiers` 的 totem 入选分支。
+/// 『Persistent Buffs have N% less/more/increased/reduced Reservation』
+/// （Tactician 升华 node 15044『A Solid Plan』）。vendor ModParser.lua:1339
+/// 前缀 tagList = SkillType.Persistent + SkillType.Buff（AND），词干
+/// 「reservation」→ `Reserved`（:231）。PoBR 以两个独立 `ModTag::SkillTypes`
+/// 复现 AND 语义（`matches` 对 tags 逐个 all）。消费 = 预留公式的
+/// `Reserved` inc/more 桶（CalcDefence.lua:240-252）。
+fn parse_persistent_buff_reservation(rest: &str, source: &str) -> Option<Vec<Modifier>> {
+    let tail = rest.strip_prefix("persistent buffs have ")?;
+    let (num, tail) = take_unsigned_number(tail)?;
+    let (mod_type, value) = match tail {
+        "% less reservation" => (ModType::More, -num),
+        "% more reservation" => (ModType::More, num),
+        "% reduced reservation" => (ModType::Inc, -num),
+        "% increased reservation" => (ModType::Inc, num),
+        _ => return None,
+    };
+    Some(vec![
+        Modifier::number("Reserved", mod_type, value)
+            .with_tag(ModTag::SkillTypes(SkillTypes::PERSISTENT))
+            .with_tag(ModTag::SkillTypes(SkillTypes::BUFF))
+            .with_source(source),
+    ])
+}
+
 fn parse_totem_spirit_reservation(rest: &str, source: &str) -> Option<Vec<Modifier>> {
     let tail = rest.strip_prefix("totems reserve ")?;
     let (num, tail) = take_unsigned_number(tail)?;

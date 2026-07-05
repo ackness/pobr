@@ -460,6 +460,10 @@ fn skill_type_bit(name: &str) -> SkillTypes {
         "Minion" => SkillTypes::MINION,
         "Aura" => SkillTypes::AURA,
         "Channel" => SkillTypes::CHANNEL,
+        // 「Persistent Buffs have N% less Reservation」（Tactician）前缀
+        // tagList 的双位（vendor ModParser.lua:1339，AND 语义）。
+        "Persistent" => SkillTypes::PERSISTENT,
+        "Buff" => SkillTypes::BUFF,
         _ => SkillTypes::NONE,
     }
 }

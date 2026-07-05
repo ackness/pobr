@@ -4,12 +4,12 @@
     "purpose": "M6-T7 解析覆盖率棘轮基线（蓝图 §6.3）。PR 不得降低 coverage_ratio；升高时同 PR 更新本文件。",
     "regen": "cargo run -p precompile-mods -- --data data/4.5.0.3.4 --report，取 generated/parse-coverage.json::summary",
     "parser_engine": "mod_parser+special_rules",
-    "note": "M6-A2 数据驱动穿线：预解析走注入 special 规则的 parse_mod_with_rules（overlay/special_mods.json 整行锚定优先），覆盖率 0.376021→0.396548（parsed +88）。err 高占比仍来自树语料的 PoB [internal|display] 括号标记 + 大量条件/数值复合词条，后续 scan 引擎进一步消化。"
+    "note": "Tactician『A Solid Plan』预留词条：「Persistent Buffs have N% less Reservation」前缀 tagList（Persistent+Buff 双 tag）经 legacy+engine 双路径落地，parsed +1（0.402846→0.403079）。"
   },
   "patch": "4.5.0.3.4",
   "total": 4287,
-  "parsed": 1711,
+  "parsed": 1728,
   "unsupported": 5,
-  "err": 2571,
-  "coverage_ratio": 0.402846
+  "err": 2554,
+  "coverage_ratio": 0.403079
 }
