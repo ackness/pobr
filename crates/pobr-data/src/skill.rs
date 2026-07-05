@@ -94,6 +94,15 @@ impl SkillTypes {
         }
     }
 
+    /// 从 PoB2 枚举名构造（`Global.lua::SkillType` **全量** 290 名，生成边车
+    /// `skill_type_names.txt`，vendor 升级后 regen）——SkillType 名→位映射的
+    /// **单一入口**，parser tag 侧与编排 cfg 侧共用（数据驱动 A1：取代
+    /// template.rs / special_mod.rs / conditions.rs 的手工白名单副本）。
+    /// 未知名（vendor 枚举外）→ `None`，由调用侧决定丢弃语义。
+    pub fn from_pob2_name(name: &str) -> Option<Self> {
+        crate::skill_type_names::lookup(name).map(Self::from_pob2_index)
+    }
+
     pub fn is_empty(self) -> bool {
         self.0 == [0; SKILL_TYPE_WORDS]
     }

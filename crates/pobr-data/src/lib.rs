@@ -46,6 +46,7 @@ pub mod modifier;
 pub mod monster;
 pub mod passive_tree;
 pub mod skill;
+mod skill_type_names;
 pub mod source;
 pub mod stat;
 

@@ -26817,7 +26817,10 @@
           "name": "ProjectileCount",
           "type": "Base",
           "value": 1.0,
-          "flags": 1024
+          "flags": 1024,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
+          ]
         }
       ]
     },
@@ -30599,7 +30602,10 @@
           "name": "ProjectileCount",
           "type": "Base",
           "value": 1.0,
-          "flags": 1024
+          "flags": 1024,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
+          ]
         }
       ]
     },
@@ -30614,7 +30620,10 @@
         {
           "name": "GrenadeActivateTwice",
           "type": "Base",
-          "value": 15.0
+          "value": 15.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
+          ]
         }
       ]
     },

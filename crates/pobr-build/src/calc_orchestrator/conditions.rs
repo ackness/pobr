@@ -179,37 +179,18 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
 /// output.AccuracyHitChance = 100`，法术/非攻击必中），有效口径下还连带错误降级
 /// 暴击（`:3700` 暴击二次命中检定只乘 `AccuracyHitChance`）。
 ///
-/// 仅映射 Attack/Spell 两个判别位（命中检定语义所需的最小集）+ M4-m（h3）
-/// Trapped/RemoteMined 判别位（TrapMineDamageTaken 受伤链取数口径，
-/// CalcOffence.lua:4158-4159；语料无 trap/mine 主技能，对既有 build 零行为）。
-/// 其余类型位（Projectile/Area/...）的激活面留待独立 commit 评估
-/// （`ModTag::SkillTypes` 匹配会随位扩展而扩大）。
+/// （数据驱动 A1）**全量**置位：技能带的每个类型名经单源
+/// `SkillTypes::from_pob2_name`（vendor Global.lua 全 290 枚举生成表）映射，
+/// 与 vendor `activeSkill.skillTypes`（全类型置真）同构——tag 侧
+/// （template.rs / special_mod.rs 的 `ModTag::SkillTypes`）同 commit 全量化，
+/// 两侧必须同开：单侧收紧会让既有靠「丢 tag 全局生效」近似的词条失配。
+/// 未知名（数据 ⊆ 枚举，miss = 数据损坏）debug 构建炸出，release 忽略。
 pub(crate) fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
     let mut bits = SkillTypes::NONE;
     for t in skill_types {
-        match t.as_str() {
-            "Attack" => bits |= SkillTypes::ATTACK,
-            "Spell" => bits |= SkillTypes::SPELL,
-            "Trapped" => bits |= SkillTypes::TRAPPED,
-            "RemoteMined" => bits |= SkillTypes::REMOTE_MINED,
-            // （M4-m）触发态（meta support addSkillTypes / 技能自带）：
-            // 「Triggered Spells deal …」族词条的 `ModTag::SkillTypes(TRIGGERED)`
-            // 命中位（vendor activeSkill.skillTypes[SkillType.Triggered]）。
-            "Triggered" => bits |= SkillTypes::TRIGGERED,
-            // 预留效率域词条（「Meta/Herald Skills have N% increased Reservation
-            // Efficiency」）的匹配位（SkillTypes 320 位扩容后高位 id 可表达）。
-            "Meta" => bits |= SkillTypes::META,
-            "Herald" => bits |= SkillTypes::HERALD,
-            // Ancestral Bond totem 预留（ExtraSpirit 的 SummonsTotem tag 匹配位）。
-            "SummonsTotem" => bits |= SkillTypes::SUMMONS_TOTEM,
-            // aura buff 乘区的域匹配位（banner/aura 域 magnitude 词条）。
-            "Banner" => bits |= SkillTypes::BANNER,
-            "Aura" => bits |= SkillTypes::AURA,
-            // 「Persistent Buffs have N% less Reservation」（Tactician
-            // 『A Solid Plan』node 15044）的双 tag AND 匹配位。
-            "Persistent" => bits |= SkillTypes::PERSISTENT,
-            "Buff" => bits |= SkillTypes::BUFF,
-            _ => {}
+        match SkillTypes::from_pob2_name(t) {
+            Some(st) => bits |= st,
+            None => debug_assert!(false, "unknown SkillType name: {t}"),
         }
     }
     bits

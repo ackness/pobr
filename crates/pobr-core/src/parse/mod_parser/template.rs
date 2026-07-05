@@ -202,8 +202,12 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
         }
         "SkillType" => {
             let name = f.get("skill_type").and_then(|v| field_text(v, captures))?;
-            let st = skill_type_bit(&name);
-            (st != SkillTypes::NONE).then_some(ModTag::SkillTypes(st))
+            let bare = name.strip_prefix("SkillType:").unwrap_or(&name);
+            // 全量枚举表（数据驱动 A1）：规则 JSON 的名来自 vendor 枚举反查，
+            // miss = 数据损坏——debug 构建炸出（A2 可见化），release 保守丢 tag。
+            let st = SkillTypes::from_pob2_name(bare);
+            debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
+            st.map(ModTag::SkillTypes)
         }
         "DamageType" => {
             let name = f.get("damageType").and_then(|v| field_text(v, captures))?;
@@ -446,26 +450,6 @@ pub fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
             Some(bit) => acc | bit,
             None => acc,
         })
-}
-
-fn skill_type_bit(name: &str) -> SkillTypes {
-    let bare = name.strip_prefix("SkillType:").unwrap_or(name);
-    match bare {
-        "Attack" => SkillTypes::ATTACK,
-        "Spell" => SkillTypes::SPELL,
-        "Projectile" => SkillTypes::PROJECTILE,
-        "Area" => SkillTypes::AREA,
-        "Melee" => SkillTypes::MELEE,
-        "Triggered" => SkillTypes::TRIGGERED,
-        "Minion" => SkillTypes::MINION,
-        "Aura" => SkillTypes::AURA,
-        "Channel" => SkillTypes::CHANNEL,
-        // 「Persistent Buffs have N% less Reservation」（Tactician）前缀
-        // tagList 的双位（vendor ModParser.lua:1339，AND 语义）。
-        "Persistent" => SkillTypes::PERSISTENT,
-        "Buff" => SkillTypes::BUFF,
-        _ => SkillTypes::NONE,
-    }
 }
 
 /// vendor slot 名 → legacy 稳定槽位 ID（小写 + 去空格；副手族归 `weapon2`、
