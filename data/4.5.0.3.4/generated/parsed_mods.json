@@ -7520,11 +7520,31 @@
     },
     {
       "text": "100% increased [Evasion] Rating if you haven't been [HitDamage|Hit] [Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "Inc",
+          "value": 100.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "100% increased [Evasion|Evasion Rating] if you have been [HitDamage|Hit] [Recently|Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "Inc",
+          "value": 100.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "100% increased [Evasion|Evasion Rating] while Sprinting",
@@ -9447,7 +9467,17 @@
     },
     {
       "text": "15% increased [Attack] Speed if you've been Hit [Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AttackSpeed",
+          "type": "Inc",
+          "value": 15.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "15% increased [Attack] Speed while Leeching",
@@ -11652,7 +11682,17 @@
     },
     {
       "text": "20% increased [Armour] if you have been [HitDamage|Hit] [Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Armour",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "20% increased [Armour] if you've consumed an [Charges|Endurance Charge] [Recently]",
@@ -11685,7 +11725,17 @@
     },
     {
       "text": "20% increased [Armour|Armour] if you haven't been [HitDamage|Hit] [Recently|Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Armour",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "20% increased [Armour|Armour] while [Surrounded|Surrounded]",
@@ -11951,7 +12001,17 @@
     },
     {
       "text": "20% increased [Evasion] Rating if you haven't been [HitDamage|Hit] [Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "Inc",
+          "value": 20.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "20% increased [Evasion] Rating while moving",
@@ -15856,11 +15916,31 @@
     },
     {
       "text": "30% reduced [Evasion] Rating if you haven't been [HitDamage|Hit] [Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "Inc",
+          "value": -30.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "30% reduced [Evasion|Evasion Rating] if you have been [HitDamage|Hit] [Recently|Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "Inc",
+          "value": -30.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "30% reduced effect of Shock on you",
@@ -16797,7 +16877,17 @@
     },
     {
       "text": "40% increased [Armour|Armour] if you haven't been [HitDamage|Hit] [Recently|Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Armour",
+          "type": "Inc",
+          "value": 40.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "40% increased [Attack] Damage against Maimed Enemies",
@@ -16972,7 +17062,17 @@
     },
     {
       "text": "40% increased [Evasion|Evasion Rating] if you have been [HitDamage|Hit] [Recently|Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Evasion",
+          "type": "Inc",
+          "value": 40.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "40% increased [Evasion|Evasion Rating] if you've Dodge Rolled [Recently]",
@@ -19039,7 +19139,17 @@
     },
     {
       "text": "6% increased [Attack] Speed if you've been Hit [Recently]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AttackSpeed",
+          "type": "Inc",
+          "value": 6.0,
+          "tags": [
+            "Condition { var: \"BeenHitRecently\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "6% increased [Attack] Speed while [DualWield|Dual Wielding]",

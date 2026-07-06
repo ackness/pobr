@@ -720,3 +720,29 @@ fn persistent_buff_reservation_lines() {
     assert_eq!(o.mods[0].value.as_number(), Some(20.0));
     assert_eq!(o.mods[0].mod_type, ModType::More);
 }
+
+/// 「… if you have/haven't been Hit Recently」条件后缀（vendor
+/// ModParser.lua:1955/:1961 → Condition `BeenHitRecently`（负形 neg）；cfg
+/// 真值由 config `conditionBeenHitRecently` 通用透传供给）。树点『Backup
+/// Plan』(53853) 的 Evasion/Armour 条件词条（wolf-pack Evasion 1.00x 闭合）。
+#[test]
+fn been_hit_recently_condition_lines() {
+    use pobr_core::modifier::ModTag;
+
+    let cond = |m: &pobr_core::Modifier, want_neg: bool| {
+        m.tags.iter().any(|t| {
+            matches!(t, ModTag::Condition { var, negated, .. }
+                if var == "BeenHitRecently" && *negated == want_neg)
+        })
+    };
+
+    let o = parse_mod("40% increased Evasion Rating if you have been Hit Recently").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods[0].name.as_str(), "Evasion");
+    assert_eq!(o.mods[0].value.as_number(), Some(40.0));
+    assert!(cond(&o.mods[0], false), "缺正形条件");
+
+    let o = parse_mod("40% increased Armour if you haven't been Hit Recently").unwrap();
+    assert_eq!(o.mods[0].name.as_str(), "Armour");
+    assert!(cond(&o.mods[0], true), "缺负形条件");
+}

@@ -511,7 +511,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 138; // 实测 138/144 = 95.8%（aura magnitude 乘区 +1）
+const BASELINE_DEF_CORE_HIT5: usize = 139; // 实测 139/144 = 96.5%（BeenHitRecently 条件 +1）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -583,8 +583,15 @@ const BASELINE_DEF_CORE_HIT5: usize = 138; // 实测 138/144 = 95.8%（aura magn
 // banner 自身 10% efficiency 原有 quality 路径已覆盖；Wolf Pack companion 只带
 // Persistent 无 Buff，AND 语义下不吃 ×0.5——两侧一致）。engine 侧 template
 // skill_type_bit 补 Persistent/Buff 位映射（pre_flag 丢 tag 根因）。
-const BASELINE_DEF_HIT5: usize = 415; // 实测 415/450 = 92.2%（Tactician 预留 +1）
-const BASELINE_DEF_HIT10: usize = 431; // 实测 431/450 = 95.8%（Tactician 预留 +1）
+// **BeenHitRecently 条件后缀（+1 @5%/+1 @10%，core-8 +1）**：「… if you
+// have/haven't been Hit Recently」（vendor ModParser.lua:1955/:1961）→
+// Condition `BeenHitRecently`（负形 neg），cfg 真值走 config
+// `conditionBeenHitRecently` 通用透传（既有）。wolf-pack 树点『Backup Plan』
+// (53853，0_5 树) 的 40% Evasion 条件词条激活——Evasion 14618→16824.47 对
+// vendor 16824 精确闭合（oracle defenceModList 对账：INC 165→205），EHP
+// 0.54→0.59 正外溢。
+const BASELINE_DEF_HIT5: usize = 416; // 实测 416/450 = 92.4%（BeenHitRecently +1）
+const BASELINE_DEF_HIT10: usize = 432; // 实测 432/450 = 96.0%（BeenHitRecently +1）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
