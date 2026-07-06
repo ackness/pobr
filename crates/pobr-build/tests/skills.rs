@@ -19,3 +19,5 @@ mod skill_damage_dps;
 mod spirit_reservation;
 #[path = "skills/support_gating.rs"]
 mod support_gating;
+#[path = "skills/support_gem_count.rs"]
+mod support_gem_count;

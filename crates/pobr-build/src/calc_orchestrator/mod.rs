@@ -416,12 +416,16 @@ pub fn calculate_with_data(
             // （config_interpreter.rs:362-377），此处再加即双计（M4-n 实查：
             // sigilOfPowerStages placeholder 1 在 eff 口径被加成 2，Sigil of
             // Power per-stage MORE 17→34 伪高）。
+            // `Combat` 与 `Effective` 同门控（vendor 主输出 env 两者恒真，
+            // CalcSetup.lua:583-588 + mode_combat；如 `multiplierNearbyAlly` 的
+            // `Multiplier:NearbyAlly BASE + Condition{Combat}`——NearbyAlly≥1
+            // 阈值行的分母，ConfigOptions.lua:1018）。
             if m.mod_type == ModType::Base
                 && let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
                 && let pobr_core::ModValue::Number(n) = m.value
                 && !m.tags.is_empty()
                 && m.tags.iter().all(|t| {
-                    matches!(t, pobr_core::ModTag::Condition { var, negated: false, actor: None } if var == "Effective")
+                    matches!(t, pobr_core::ModTag::Condition { var, negated: false, actor: None } if var == "Effective" || var == "Combat")
                 })
             {
                 *base_cfg.multipliers.entry(var.to_string()).or_insert(0.0) += n;
@@ -870,6 +874,11 @@ pub fn calculate_with_data(
     // 6c. per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量）。
     inject_per_x_multipliers(&mut session, build, data);
 
+    // 6c2. 已装辅助宝石按颜色计数（PoB2 CalcSetup.lua:2015-2044）→
+    //      Red/Green/BlueSupportGems multipliers（MultiplierThreshold 钉值条目
+    //      「if you have at least 10 <color> Support Gems Socketed」的分母）。
+    inject_support_gem_counts(&mut session, build, data);
+
     // 6d. 来源授予的条件 flag → cfg 条件桥接（Bonded modifiers / Arcane Surge）。
     inject_condition_bridges(&mut session);
 
@@ -1098,6 +1107,36 @@ fn inject_attribute_derivation(
 }
 
 /// 6c 阶段：per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量），须在全部来源注入后、perform 前。
+/// 已装辅助宝石按颜色计数 → `Red/Green/BlueSupportGems` multipliers（PoB2
+/// CalcSetup.lua:2015-2044：遍历 **enabled** socket group，按辅助宝石
+/// `grantedEffect.color`（1=R/2=G/3=B，与 GGG `gem_colour` 同枚举）计数后写
+/// `env.modDB.multipliers`）。消费方 = a2-real-gaps 钉值条目的
+/// `MultiplierThreshold{<Color>SupportGems, 10}`（下界盲产，缺键=不生效——本
+/// 注入接通后自动激活）。vendor 同址的 `Majority<Color>SocketedSupports`
+/// conditions 暂无 PoBR 数据消费者，不注入（YAGNI，接需求时同函数补）。
+fn inject_support_gem_counts(session: &mut CalculationSession, build: &Build, data: &BuildData) {
+    let (mut r, mut g, mut b) = (0.0_f64, 0.0_f64, 0.0_f64);
+    for group in build.enabled_socket_groups() {
+        for gem_id in &group.gem_ids {
+            let Some(def) = data.skill_gems.get(gem_id) else {
+                continue;
+            };
+            if !def.is_support {
+                continue;
+            }
+            match def.gem_colour {
+                Some(1) => r += 1.0,
+                Some(2) => g += 1.0,
+                Some(3) => b += 1.0,
+                _ => {}
+            }
+        }
+    }
+    session.set_multiplier("RedSupportGems", r);
+    session.set_multiplier("GreenSupportGems", g);
+    session.set_multiplier("BlueSupportGems", b);
+}
+
 fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, data: &BuildData) {
     // 6c. per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量）：把全部来源注入后的属性 /
     //     Spirit BASE 总量与角色等级写入 cfg.multipliers，使 `+N to <stat> per M <resource>`
