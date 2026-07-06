@@ -1194,24 +1194,34 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     // fill_mechanics 已写入的有效行动速率（无速率 → 0）。
     let hit_chance_frac = env.player.output.hit_chance.clamp(0.0, 1.0);
     let hit_speed = env.player.output.effective_action_rate.max(0.0);
+    // vendor :3878 在异常段之前把 `DPS` 乘区折进 `skillData.dpsMultiplier`，
+    // :5046 的 `ailmentStacks` 因此吃到它（如 Payload 二次起爆 ×1.5）。PoBR 与
+    // TotalDPS 同源取 `dps_end_factors().dps_multiplier`（deadeye ignite dot
+    // 0.69x 低估根因——stacks 少乘 1.5）。quantity_multiplier 不参与（vendor
+    // 仅乘在 TotalDPS 末端）。
+    let ailment_dps_mult = super::scaled_damage::dps_end_factors(&env.player.mod_db, cfg, None)
+        .dps_multiplier
+        .max(0.0);
 
     // pass 上下文（先克隆，避免与下方 output 写入的借用冲突）。
     let passes: Vec<AilmentPassCtx> = {
         let out = &env.player.output;
         let hands: Vec<_> = out.main_hand.iter().chain(out.off_hand.iter()).collect();
         match hands.len() {
+            // speed 统一折入 ailment_dps_mult（vendor :3880 `hitRate = HitChance ×
+            // Speed × dpsMultiplier`；ctx.speed 仅喂叠层估算）。
             0 => vec![AilmentPassCtx {
                 ranges: fallback_ranges.to_vec(),
                 crit_chance,
                 hit_chance: hit_chance_frac,
-                speed: hit_speed,
+                speed: hit_speed * ailment_dps_mult,
             }],
             // 单 hand（OR 直通）：速率/命中用顶层有效值（含帧 cap / reload 折算）。
             1 => vec![AilmentPassCtx {
                 ranges: hands[0].stored_ranges.clone(),
                 crit_chance: hands[0].crit_chance,
                 hit_chance: hit_chance_frac,
-                speed: hit_speed,
+                speed: hit_speed * ailment_dps_mult,
             }],
             _ => hands
                 .iter()
@@ -1219,7 +1229,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                     ranges: hand.stored_ranges.clone(),
                     crit_chance: hand.crit_chance,
                     hit_chance: hand.hit_chance.clamp(0.0, 1.0),
-                    speed: hand.speed.max(0.0),
+                    speed: hand.speed.max(0.0) * ailment_dps_mult,
                 })
                 .collect(),
         }
