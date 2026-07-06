@@ -296,8 +296,71 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
     base_level: u32,
     set_index: Option<u32>,
 ) -> Option<ResolvedSkillLevel> {
-    let bonus = additional_gem_levels(build, data, skill_id);
+    let bonus = additional_gem_levels(build, data, skill_id)
+        .saturating_add(support_granted_gem_levels(build, data, skill_id));
+    if std::env::var("POBR_DBG_GEMLVL").is_ok() {
+        eprintln!("[POBR_GEMLVL] {skill_id} base={base_level} bonus={bonus}");
+    }
     data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)
+}
+
+/// 同组**兼容**辅助宝石授予的 +N 宝石等级（vendor SkillStatMap:3019-3041
+/// `supported_(active|<type>)_skill_gem_level_+` → `SupportedGemProperty LIST
+/// {key=level}` + SkillType tag，对同组主动技能生效——如 Chaos Mastery
+/// 「granting them an additional level」；blood-mage Coiling Bolts L30→31 的
+/// 缺 1 级根因，oracle 逐来源 A/B 钉定）。
+///
+/// - 组定位：首个把 `skill_id` 作为成员的启用组（与 resolve 主路径的组遍历同序）；
+///   support 自身不吃授予（vendor 只对 active gem 生效）。
+/// - 兼容性：走 [`super::triggers::judge_group_supports`] 四段裁决（不兼容
+///   support 的授予不吃，对齐 vendor effectList 门槛）；类型化变体
+///   （chaos/fire/…）按裁决后的 `final_skill_types`（含 addSkillTypes 不动点）
+///   匹配，与 vendor tag 求值同基。
+pub(crate) fn support_granted_gem_levels(build: &Build, data: &BuildData, skill_id: &str) -> u32 {
+    if data
+        .granted_effects
+        .get(skill_id)
+        .is_none_or(|e| e.is_support)
+    {
+        return 0;
+    }
+    for group in build.enabled_socket_groups() {
+        if !group.gem_skills.iter().any(|g| g.skill_id == skill_id) {
+            continue;
+        }
+        let judgement = super::triggers::judge_group_supports(group, data, skill_id);
+        let mut total = 0u32;
+        for &idx in &judgement.compatible {
+            let sup = &group.gem_skills[idx];
+            let stats = data.effect_stats(
+                &sup.skill_id,
+                sup.gem_level,
+                sup.quality,
+                sup.stat_set_index,
+            );
+            for s in &stats.base {
+                let Some(rest) = s.stat.strip_prefix("supported_") else {
+                    continue;
+                };
+                let Some(kind) = rest.strip_suffix("_skill_gem_level_+") else {
+                    continue;
+                };
+                let type_name = {
+                    let mut c = kind.chars();
+                    c.next()
+                        .map(|f| f.to_ascii_uppercase().to_string() + c.as_str())
+                        .unwrap_or_default()
+                };
+                if (kind == "active" || judgement.final_skill_types.contains(&type_name))
+                    && s.value > 0.0
+                {
+                    total += s.value as u32;
+                }
+            }
+        }
+        return total;
+    }
+    0
 }
 
 /// 扫描全部 GemProperty 词条来源（装备 implicit/explicit/enchant + 珠宝 +

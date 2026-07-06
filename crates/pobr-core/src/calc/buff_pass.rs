@@ -556,6 +556,13 @@ pub fn buff_pass(env: &mut Env) {
     env.cfg
         .multipliers
         .insert("CurseOnEnemy".to_string(), occupied.len() as f64);
+    if std::env::var("POBR_DBG_CURSE").is_ok() {
+        eprintln!(
+            "[POBR_CURSE] occupied={} limit={curse_limit} names={:?}",
+            occupied.len(),
+            occupied.iter().map(|s| s.name.clone()).collect::<Vec<_>>()
+        );
+    }
     let mut slot_names = Vec::with_capacity(occupied.len());
     for slot in occupied {
         conditions.push("EnemyCursed".to_string());

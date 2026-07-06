@@ -95,17 +95,12 @@ pub const PINNED_FORM_IDS: &[&str] = &[
 /// pobr 自加的 unsupported 项（vendor 仅 `mirrored`；`split` 来自现
 /// `pobr-core::mod_parser` 硬编码，蓝图 §1.6 要求迁表保留并注明来源）。
 ///
-/// B3 闸门切换暂缓行。历史欠条已逐一解冻（与 overlay JSON 手术同步，此表是
-/// regen 的单源）：deadeye 两条（25% rare-unique / 33% ailments）随 gain-as
-/// fallback 根因修复解冻（PR#50）；gemling grenade 行随「grenade 短语
-/// skillNameList 抢先」修复解冻（本 commit——放行后 dps 端因子 1.65 两侧一致）。
-const POBR_EXTRA_UNSUPPORTED: &[&str] = &[
-    "split",
-    // blood-mage Coiling Whisper：CurseEffect MORE -100（vendor 同款解析）生效
-    // 会暴露 per-Curse gain-as-extra 消费缺口（TotalDotDPS 1.01x→0.54x），冻结至
-    // coiling 专项切片。
-    "magnitudes of curses you inflict are zero",
-];
+/// B3 闸门切换暂缓行。历史欠条已**全部**解冻（与 overlay JSON 手术同步，此表是
+/// regen 的单源）：deadeye 两条随 gain-as fallback 修复解冻（PR#50）；gemling
+/// grenade 行随「grenade 短语 skillNameList 抢先」修复解冻（PR#53）；blood-mage
+/// curse 行随 curse 机制全链验证 + 同组辅助授予等级修复解冻（诚实显形其
+/// per-hit 存量低估,见 ninja_parity dot 基线注）。冻结榜只剩 legacy `split`。
+const POBR_EXTRA_UNSUPPORTED: &[&str] = &["split"];
 
 /// B3 迁表：legacy 硬写的具名 herald 条件短语（`legacy.rs` herald buff 条件族）
 /// 的 engine 数据等价。vendor ModParser.lua:6437 对 aura/herald 宝石名**运行时
