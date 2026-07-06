@@ -671,8 +671,15 @@ const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
 // ctx.speed（:3880 hitRate 同语义）。deadeye ignite 0.69x→1.04x✓ 找回；gemling
 // dot 0.77x→1.16x（miss→miss 不计数,其底层 ~1.27x 高估属 gemling 多因子独立
 // 缺口）；其余 16 build 逐格不变。
-const BASELINE_DOT_HIT5: usize = 26; // 实测 26/37 = 70.3%（ignite dpsMultiplier +1）
-const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（+1）
+// **上调 26→27 / 28→29（grenade 短语 skillNameList 抢先修复,2026-07-06）**：
+// vendor 运行时把裸 `grenade` 短语剥成惰性 SkillName{"Grenade"}（恒不匹配 = 零
+// 效果,ModCache/oracle 探针双证）,PoBR 旧 flag_phrase 产 SkillTypes(Grenade) 反而
+// 生效 → gemling/deadeye 全类型 inc +60 over-apply。payload 改写 + gemling 冻结行
+// 解冻（dps 端因子 1.65 两侧一致）后：gemling AvgDmg/TotalDPS/dot 三列 1.00x 精确
+// 闭合（dot 0.77x→1.00x 入列）,deadeye 残余 ~2% 同根消散（AvgDmg/dot 均 1.00x）。
+// 18 build 逐格 diff 仅 gemling dot 一格翻正。
+const BASELINE_DOT_HIT5: usize = 27; // 实测 27/37 = 73.0%（grenade 短语修复 +1）
+const BASELINE_DOT_HIT10: usize = 29; // 实测 29/37 = 78.4%（+1）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

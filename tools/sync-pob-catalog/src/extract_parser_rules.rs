@@ -95,14 +95,12 @@ pub const PINNED_FORM_IDS: &[&str] = &[
 /// pobr 自加的 unsupported 项（vendor 仅 `mirrored`；`split` 来自现
 /// `pobr-core::mod_parser` 硬编码，蓝图 §1.6 要求迁表保留并注明来源）。
 ///
-/// B3 闸门切换暂缓行（后两条）：词条本身 engine 解析正确且 vendor 侧生效
-/// （oracle 实测），但 gemling/deadeye 的 DPS 端因子存量偏差此前与「词条被旧
-/// 闸门拦截」互相抵消——放行会让旧偏差显形（gemling AvgDmg 1.03x→1.13x、
-/// deadeye 1.00x→1.07x）。冻结至端因子偏差修复切片，解除时直接删条目。
+/// B3 闸门切换暂缓行。历史欠条已逐一解冻（与 overlay JSON 手术同步，此表是
+/// regen 的单源）：deadeye 两条（25% rare-unique / 33% ailments）随 gain-as
+/// fallback 根因修复解冻（PR#50）；gemling grenade 行随「grenade 短语
+/// skillNameList 抢先」修复解冻（本 commit——放行后 dps 端因子 1.65 两侧一致）。
 const POBR_EXTRA_UNSUPPORTED: &[&str] = &[
     "split",
-    "grenades have 15% chance to activate a second time",
-    "25% increased damage with hits against rare and unique enemies",
     // blood-mage Coiling Whisper：CurseEffect MORE -100（vendor 同款解析）生效
     // 会暴露 per-Curse gain-as-extra 消费缺口（TotalDotDPS 1.01x→0.54x），冻结至
     // coiling 专项切片。
@@ -139,6 +137,17 @@ const POBR_EXTRA_TAG_PHRASES: &[(&str, &str)] = &[
 /// +45% CDR over-apply）。裁决方法：`tools/pob2-oracle/run-parsemod.sh` 实喂词条
 /// 看 leftover；版本升级后若 parity 出现同型 over-apply，用同一方法审计新条目。
 const VENDOR_DEAD_FLAG_PHRASES: &[&str] = &["for grenade skills"];
+
+/// vendor skillNameList 抢先条目（B3 死条目机制的**改写**变体）：modFlagList 的裸
+/// `grenade` 短语在 vendor 运行时永不产 SkillType tag——skillNameList（order=1）
+/// 先把词剥成 `SkillName{"Grenade"}`（技能名单里存在字面名 "Grenade" 的条目），
+/// 残留恰好可解析 → 整行保留但 tag 恒不匹配（无真实技能叫 "grenade"）= 零效果。
+/// ModCache golden 逐字对齐：`12% increased Grenade Damage` → `Damage INC 12 +
+/// SkillName{"Grenade"}`；oracle 探针（塞词条到 gemling 戒指）实测 ratio=1.0000。
+/// 抽取表保留 SkillType payload 会让 engine 比 vendor 多生效（gemling/deadeye
+/// 全类型 inc +60 over-apply，AvgDmg 1.13x 根因）。与死条目的区别：这里 vendor
+/// 行为是「保留行 + 惰性 tag」而非丢行，故改写 payload 而非剔除条目。
+const VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES: &[(&str, &str)] = &[("grenade", "Grenade")];
 
 /// 完整 overlay 文档（生成侧；消费侧 schema =
 /// [`pobr_data::catalog::parser_rules::ModParserRulesDoc`]，serde 形状一致）。
@@ -332,6 +341,25 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
     // 不再产 flag/tag → 词条残留 unparsed → 与 vendor「extra 非空整行不生效」对齐。
     doc.flag_phrases
         .retain(|e| !VENDOR_DEAD_FLAG_PHRASES.contains(&e.phrase.as_str()));
+
+    // skillNameList 抢先改写（见 [`VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES`]）：
+    // payload 由 SkillType 改为惰性 SkillName（vendor 运行时实际产物）。
+    for entry in &mut doc.flag_phrases {
+        if let Some((_, skill_name)) = VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES
+            .iter()
+            .find(|(p, _)| *p == entry.phrase)
+        {
+            entry.effects.tags = vec![TagTemplate {
+                tag_type: "SkillName".into(),
+                fields: [(
+                    "skillName".to_string(),
+                    StatMapValue::Text((*skill_name).to_string()),
+                )]
+                .into_iter()
+                .collect(),
+            }];
+        }
+    }
 
     // 排序纪律（蓝图 §1.8）：Lua pairs 无序 → 每段按 pattern/phrase 字典序。
     doc.forms.sort_by(|a, b| a.pattern.cmp(&b.pattern));

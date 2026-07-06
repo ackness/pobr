@@ -6394,8 +6394,8 @@
       "phrase": "grenade",
       "tags": [
         {
-          "type": "SkillType",
-          "skill_type": "Grenade"
+          "type": "SkillName",
+          "skillName": "Grenade"
         }
       ]
     },
@@ -18850,7 +18850,6 @@
   ],
   "unsupported_pobr_extra": [
     "split",
-    "grenades have 15% chance to activate a second time",
     "magnitudes of curses you inflict are zero"
   ]
 }

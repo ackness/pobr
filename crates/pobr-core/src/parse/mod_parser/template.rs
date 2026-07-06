@@ -230,6 +230,25 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
             st.map(ModTag::SkillTypes)
         }
+        "SkillName" => {
+            // 具名技能限定（vendor `skillName` 单名 / `skillNameList` 列表，小写等值
+            // 匹配，[`ModTag::SkillName`] 语义已在 matches 落地；special_mod DSL V2
+            // 同口径）。首个数据消费者：vendor skillNameList 抢先剥离产物（如
+            // `increased Grenade Damage` → Damage + SkillName{"grenade"}——技能名
+            // 是字面 "Grenade"，任何真实技能都不叫这个名，恒不匹配 = vendor 零效果，
+            // ModCache golden 逐字对齐）。`includeTransfigured` 忽略（PoE2 无变体）。
+            let names: Vec<String> = if let Some(v) = f.get("skillName") {
+                vec![field_text(v, captures)?.to_ascii_lowercase()]
+            } else if let Some(StatMapValue::List(items)) = f.get("skillNameList") {
+                items
+                    .iter()
+                    .map(|v| field_text(v, captures).map(|s| s.to_ascii_lowercase()))
+                    .collect::<Option<_>>()?
+            } else {
+                return None;
+            };
+            (!names.is_empty()).then_some(ModTag::SkillName { names })
+        }
         "DamageType" => {
             let name = f.get("damageType").and_then(|v| field_text(v, captures))?;
             damage_type_bit(&name).map(ModTag::DamageType)
@@ -395,6 +414,7 @@ pub fn is_mappable_tag_type(tag_type: &str) -> bool {
             | "Condition"
             | "ActorCondition"
             | "SkillType"
+            | "SkillName"
             | "DamageType"
             | "PerStat"
             | "PercentStat"
@@ -650,13 +670,31 @@ mod tests {
     }
 
     #[test]
-    fn unmappable_tag_returns_none() {
+    fn skill_name_tag_maps_lowercased() {
+        // vendor skillNameList 抢先剥离产物（`increased Grenade Damage` →
+        // Damage + SkillName{"Grenade"}）——名小写收编，任何真实技能名不等于
+        // 字面 "grenade" → 恒不匹配 = vendor 零效果（ModCache golden 同款）。
         let t = tag(
             "SkillName",
-            &[("skillName", StatMapValue::Text("Fireball".into()))],
+            &[("skillName", StatMapValue::Text("Grenade".into()))],
+        );
+        assert_eq!(
+            compile_tag(&t, &[]).unwrap(),
+            ModTag::SkillName {
+                names: vec!["grenade".into()],
+            }
+        );
+        assert!(is_mappable_tag_type("SkillName"));
+    }
+
+    #[test]
+    fn unmappable_tag_returns_none() {
+        let t = tag(
+            "GlobalEffect",
+            &[("effectName", StatMapValue::Text("Buff".into()))],
         );
         assert!(compile_tag(&t, &[]).is_none());
-        assert!(!is_mappable_tag_type("SkillName"));
+        assert!(!is_mappable_tag_type("GlobalEffect"));
     }
 
     #[test]
@@ -682,8 +720,9 @@ mod tests {
 
     #[test]
     fn multiplier_threshold_scaling_limit_returns_none() {
-        // 限幅式（"per Poison up to N"，threshold=`$1` 捕获）非二元条件 → 仍 None（保守，
-        // 不臆造条件；与修复前一致，避免把 per-stack 倍率误判为存在性条件）。
+        // 限幅式（"per Poison up to N"，threshold=`$1` 捕获）异常叠层 var 非
+        // threshold=1 字面常量 → 仍 None（保守，不臆造条件；避免把 per-stack
+        // 倍率误判为存在性条件）。
         let t = tag(
             "MultiplierThreshold",
             &[
@@ -692,8 +731,10 @@ mod tests {
             ],
         );
         assert!(compile_tag(&t, &["5".into()]).is_none());
-        // 非异常**非距离** var 的 MultiplierThreshold 仍保守 None（仅 enemyDistance 接通，
-        // 见 compile_tag 注释——其它 var 无可靠 cfg.multiplier 落点，盲产 tag 会 over-apply）。
+        // 非异常非距离 var 的**下界**阈值（upper 缺省=false）→ 盲产放行（A2 批 2：
+        // 缺键 0 < threshold 不生效 = 欠算安全；编排层灌 multiplier 后自动接通）。
+        // 本断言曾停留在旧「保守 None」语义——PR#46 改语义时未同步（lib 单测
+        // 不在当时的定向门禁集内），随 grenade 切片修正。
         let t2 = tag(
             "MultiplierThreshold",
             &[
@@ -701,7 +742,24 @@ mod tests {
                 ("threshold", StatMapValue::Number(1.0)),
             ],
         );
-        assert!(compile_tag(&t2, &[]).is_none());
+        assert_eq!(
+            compile_tag(&t2, &[]).unwrap(),
+            ModTag::MultiplierThreshold {
+                var: "Rage".into(),
+                threshold: 1.0,
+                upper: false,
+            }
+        );
+        // 上界（upper=true）仍保守 None（缺键 0 ≤ threshold 恒真 = over-apply）。
+        let t3 = tag(
+            "MultiplierThreshold",
+            &[
+                ("var", StatMapValue::Text("Rage".into())),
+                ("threshold", StatMapValue::Number(1.0)),
+                ("upper", StatMapValue::Bool(true)),
+            ],
+        );
+        assert!(compile_tag(&t3, &[]).is_none());
     }
 
     /// `MultiplierThreshold{var=enemyDistance}`（"within/further than N metres"）→
