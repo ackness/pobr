@@ -24,6 +24,7 @@ mod tree;
 mod tree_anoints;
 mod tree_coords;
 mod tree_variants;
+mod tree_versions;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -49,6 +50,7 @@ fn main() -> ExitCode {
         Ok(Mode::TreeCoords(args)) => tree_coords::run(args),
         Ok(Mode::TreeVariants(args)) => tree_variants::run(args),
         Ok(Mode::TreeAnoints(args)) => tree_anoints::run(args),
+        Ok(Mode::TreeVersions(args)) => tree_versions::run(args),
         Ok(Mode::SpecialDerived(args)) => special_derived::run(args),
         Err(err) => Err(err),
     };
@@ -82,6 +84,9 @@ enum Mode {
     TreeVariants(tree_variants::TreeVariantsArgs),
     /// 从 vendor `tree.lua` 追加 `passive_tree.json` 缺失的油涂 notable 池。
     TreeAnoints(tree_anoints::TreeAnointsArgs),
+    /// 历史赛季树版本抽取（vendor `TreeData/<v>/tree.lua` →
+    /// `base/passive_trees/<v>.json`，旧 build 的 treeVersion 适配）。
+    TreeVersions(tree_versions::TreeVersionsArgs),
     /// 从既有 `passive_tree.json` keystone 节点派生
     /// `generated/special_derived.json`（M5b C-1）。
     SpecialDerived(special_derived::SpecialDerivedArgs),
@@ -93,6 +98,8 @@ fn parse_args() -> Result<Mode, String> {
     let mut tree_coords = None;
     let mut tree_variants = None;
     let mut tree_anoints = None;
+    let mut tree_full = None;
+    let mut tree_version = None;
     let mut special_derived = None;
     let mut out = None;
     let mut patch = None;
@@ -106,6 +113,8 @@ fn parse_args() -> Result<Mode, String> {
             "--tree-coords" => tree_coords = Some(PathBuf::from(take("--tree-coords")?)),
             "--tree-variants" => tree_variants = Some(PathBuf::from(take("--tree-variants")?)),
             "--tree-anoints" => tree_anoints = Some(PathBuf::from(take("--tree-anoints")?)),
+            "--tree-full" => tree_full = Some(PathBuf::from(take("--tree-full")?)),
+            "--tree-version" => tree_version = Some(take("--tree-version")?),
             "--emit-special-derived" => {
                 special_derived = Some(PathBuf::from(take("--emit-special-derived")?))
             }
@@ -124,6 +133,7 @@ fn parse_args() -> Result<Mode, String> {
         tree_coords.is_some(),
         tree_variants.is_some(),
         tree_anoints.is_some(),
+        tree_full.is_some(),
         special_derived.is_some(),
     ]
     .into_iter()
@@ -171,6 +181,13 @@ fn parse_args() -> Result<Mode, String> {
     } else if let Some(tree_lua) = tree_anoints {
         Ok(Mode::TreeAnoints(tree_anoints::TreeAnointsArgs {
             tree_lua,
+            out,
+            patch,
+        }))
+    } else if let Some(tree_lua) = tree_full {
+        Ok(Mode::TreeVersions(tree_versions::TreeVersionsArgs {
+            tree_lua,
+            tree_version: tree_version.ok_or("--tree-full 需要 --tree-version <如 0_3>")?,
             out,
             patch,
         }))

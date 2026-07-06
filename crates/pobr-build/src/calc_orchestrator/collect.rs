@@ -24,12 +24,15 @@ pub(crate) fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<Allo
         class_name: &build.character.class_name,
         ascendancy_name: &build.character.ascendancy_name,
     };
-    collect_allocated_mods_for_class(&build.tree, &data.passive_nodes, class)
+    // 多版本树适配（PoB2 TreeData/<v> 对位）：旧赛季 build 按 `<Spec
+    // treeVersion>` 选历史树词条（如 53853『Backup Plan』0_3 = 50/50 两条 vs
+    // 0_5 = 20/40/40 三条）；无对应历史树数据落回默认树。
+    let nodes = data.passive_nodes_for(build.tree_version.as_deref());
+    collect_allocated_mods_for_class(&build.tree, nodes, class)
         .into_iter()
         .map(|node| {
             // 飞升节点由其 PassiveNodeDef::ascendancy_id 判定。
-            let ascendancy = data
-                .passive_nodes
+            let ascendancy = nodes
                 .get(&node.node_id.0)
                 .map(|def| def.ascendancy_id.is_some())
                 .unwrap_or(false);

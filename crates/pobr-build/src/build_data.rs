@@ -129,6 +129,11 @@ pub struct ResolvedCost {
 pub struct BuildData {
     /// 被动节点表，以 `skill` 数值 id 为键。
     pub passive_nodes: HashMap<u32, PassiveNodeDef>,
+    /// 历史赛季树版本节点表（`treeVersion -> skill id -> 节点定义`；vendor
+    /// `TreeData/<v>/tree.lua` 抽取的词条最小集，见 `base/passive_trees/`）。
+    /// 当前默认版本**不在**此表——[`Self::passive_nodes_for`] 查不到即落回
+    /// [`Self::passive_nodes`]，赛季升级后把旧默认版本抽入即可。
+    pub versioned_passive_nodes: HashMap<String, HashMap<u32, PassiveNodeDef>>,
     /// 技能宝石表，以稳定 gem id 为键（如 `Metadata/Items/Gem/...`）。
     pub skill_gems: HashMap<String, SkillGemDef>,
     /// 职业基础属性表，以英文 canonical 职业名为键（如 `Ranger`）。
@@ -240,6 +245,19 @@ impl BuildData {
             .into_iter()
             .map(|node| (node.skill, node))
             .collect();
+
+        // 历史赛季树（PoB2 多版本 TreeData 对位）：`base/passive_trees/*.json`
+        // 全量预载（每版 ~0.5-0.8MB；目录缺失 = 空表，零成本）。
+        let mut versioned_passive_nodes: HashMap<String, HashMap<u32, PassiveNodeDef>> =
+            HashMap::new();
+        for version in data.available_tree_versions() {
+            if let Some(nodes) = data.passive_nodes_versioned(&version)? {
+                versioned_passive_nodes.insert(
+                    version,
+                    nodes.into_iter().map(|node| (node.skill, node)).collect(),
+                );
+            }
+        }
 
         let skill_gems = data
             .skill_gems()?
@@ -445,6 +463,7 @@ impl BuildData {
 
         Ok(Self {
             passive_nodes,
+            versioned_passive_nodes,
             skill_gems,
             class_attributes,
             granted_effects,
@@ -476,6 +495,7 @@ impl BuildData {
     pub fn empty() -> Self {
         Self {
             passive_nodes: HashMap::new(),
+            versioned_passive_nodes: HashMap::new(),
             skill_gems: HashMap::new(),
             class_attributes: HashMap::new(),
             granted_effects: HashMap::new(),
@@ -579,6 +599,17 @@ impl BuildData {
         self.select_stat_set(skill_id, set_index)
             .map(|s| s.explode_corpse)
             .unwrap_or(false)
+    }
+
+    /// 按 build 的 `<Spec treeVersion>` 选被动节点表：有对应历史版本树
+    /// （`base/passive_trees/<v>.json` 已抽取）用之，否则（当前默认版本 /
+    /// 未抽取 / 未标注）落回默认树 [`Self::passive_nodes`]——PoB2 多版本
+    /// TreeData 的 PoBR 对位。历史树是词条最小集（无拓扑/坐标），radius
+    /// 珠宝几何等高级面仍用默认树近似。
+    pub fn passive_nodes_for(&self, tree_version: Option<&str>) -> &HashMap<u32, PassiveNodeDef> {
+        tree_version
+            .and_then(|v| self.versioned_passive_nodes.get(v))
+            .unwrap_or(&self.passive_nodes)
     }
 
     /// 解析某主动技能在某等级上的参数：cast/attack 时间（秒）、各资源消耗、冷却（秒）。
