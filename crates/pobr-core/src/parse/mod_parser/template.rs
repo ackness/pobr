@@ -169,21 +169,24 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
         "Condition" => {
             let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
             // vendor Condition 可携带 `var`（单条件）或 `varList`（OR 语义：任一为真即
-            // 成立）。PoBR `ModTag::Condition` 是单 var、无 OR。`var` 优先；缺 `var` 时
-            // 退化处理 **单元素** `varList`（如 `while holding a (%w+)` gear=shield →
-            // `UsingShield`，与 legacy 硬编码 `while holding a shield` 逐字一致）。
-            // 多元素 OR（`X or Y`、`while affected by X`）无 PoBR 单 var 落点，保守丢弃
-            // （与本修复前一致，引擎产出只增不减 → 不新增 c1 OLD_ONLY；登记 10-G3 余量）。
-            let var = match f.get("var").and_then(|v| field_text(v, captures)) {
-                Some(v) => Some(v),
-                None => match f.get("varList") {
-                    Some(StatMapValue::List(items)) if items.len() == 1 => {
-                        field_text(&items[0], captures)
-                    }
-                    _ => None,
-                },
-            }?;
-            Some(ModTag::condition(var, neg))
+            // 成立，ModStore.lua:596-607）。`var` 优先；`varList` 单元素退化为单
+            // Condition（如 `while holding a (%w+)` gear=shield → `UsingShield`，与
+            // legacy 逐字一致），多元素 → `ConditionAnyOf`（OR）。
+            if let Some(var) = f.get("var").and_then(|v| field_text(v, captures)) {
+                return Some(ModTag::condition(var, neg));
+            }
+            let Some(StatMapValue::List(items)) = f.get("varList") else {
+                return None;
+            };
+            let vars: Vec<String> = items
+                .iter()
+                .map(|v| field_text(v, captures))
+                .collect::<Option<_>>()?;
+            match vars.len() {
+                0 => None,
+                1 => Some(ModTag::condition(vars.into_iter().next().unwrap(), neg)),
+                _ => Some(ModTag::ConditionAnyOf { vars, negated: neg }),
+            }
         }
         "ActorCondition" => {
             // M6.3 归一：vendor `ActorCondition{actor=enemy,var=X}` → PoBR 扁平条件
@@ -196,9 +199,27 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             // 修复（M6 fork-a）：早前一律用裸名会让 `against ignited enemies` 产
             // `Condition{Ignited}`（查玩家自身 Ignited，恒假）而非 legacy 的 `EnemyIgnited`
             // （查敌方异常，编排层置真）——player 侧「against <ailment> enemies」增伤全失效。
-            let var = f.get("var").and_then(|v| field_text(v, captures))?;
+            //
+            // `varList`（OR 语义，ModStore.lua:631-640）：逐 var 同样归一后收进
+            // `ConditionAnyOf`（如 "against enemies affected by ailments" →
+            // Enemy<九异常> 任一真；"while a rare or unique enemy is in your presence"
+            // → {EnemyNearbyRareOrUniqueEnemy, RareOrUnique}，后者 boss 档编排层置真）。
             let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
-            Some(ModTag::condition(normalize_enemy_cond_var(&var), neg))
+            if let Some(var) = f.get("var").and_then(|v| field_text(v, captures)) {
+                return Some(ModTag::condition(normalize_enemy_cond_var(&var), neg));
+            }
+            let Some(StatMapValue::List(items)) = f.get("varList") else {
+                return None;
+            };
+            let vars: Vec<String> = items
+                .iter()
+                .map(|v| field_text(v, captures).map(|t| normalize_enemy_cond_var(&t)))
+                .collect::<Option<_>>()?;
+            match vars.len() {
+                0 => None,
+                1 => Some(ModTag::condition(vars.into_iter().next().unwrap(), neg)),
+                _ => Some(ModTag::ConditionAnyOf { vars, negated: neg }),
+            }
         }
         "SkillType" => {
             let name = f.get("skill_type").and_then(|v| field_text(v, captures))?;
@@ -578,9 +599,9 @@ mod tests {
     }
 
     #[test]
-    fn condition_varlist_multi_dropped() {
-        // 多元素 varList（vendor OR 语义，如 `while holding a X or Y`）无 PoBR 单 var
-        // 落点 → 保守丢弃（None），不臆造单条件（取首元素会错误排除 `or Y` 分支）。
+    fn condition_varlist_multi_maps_to_any_of() {
+        // 多元素 varList（vendor OR 语义，ModStore.lua:596-607）→ `ConditionAnyOf`
+        // （任一为真即命中）。早前无落点保守丢弃整行。
         let t = tag(
             "Condition",
             &[(
@@ -591,7 +612,41 @@ mod tests {
                 ]),
             )],
         );
-        assert!(compile_tag(&t, &["claw".into(), "shield".into()]).is_none());
+        assert_eq!(
+            compile_tag(&t, &["claw".into(), "shield".into()]).unwrap(),
+            ModTag::ConditionAnyOf {
+                vars: vec!["UsingClaw".into(), "UsingShield".into()],
+                negated: false,
+            }
+        );
+    }
+
+    #[test]
+    fn actor_condition_varlist_normalizes_each_var() {
+        // vendor `while a rare or unique enemy is in your presence` →
+        // ActorCondition{actor=enemy, varList={NearbyRareOrUniqueEnemy, RareOrUnique}}。
+        // 逐 var 过 normalize_enemy_cond_var：非稀有度名加 Enemy 前缀，稀有度保裸名
+        // （legacy/编排层键空间）。REAL gap #4 放行根因。
+        let t = tag(
+            "ActorCondition",
+            &[
+                ("actor", StatMapValue::Text("enemy".into())),
+                (
+                    "varList",
+                    StatMapValue::List(vec![
+                        StatMapValue::Text("NearbyRareOrUniqueEnemy".into()),
+                        StatMapValue::Text("RareOrUnique".into()),
+                    ]),
+                ),
+            ],
+        );
+        assert_eq!(
+            compile_tag(&t, &[]).unwrap(),
+            ModTag::ConditionAnyOf {
+                vars: vec!["EnemyNearbyRareOrUniqueEnemy".into(), "RareOrUnique".into()],
+                negated: false,
+            }
+        );
     }
 
     #[test]
