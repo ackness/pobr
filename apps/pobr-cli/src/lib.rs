@@ -465,6 +465,21 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
                 }
             ),
         },
+        ModTag::ConditionAnyOf { vars, negated } => TagExplain {
+            kind: "ConditionAnyOf".to_string(),
+            detail: format!(
+                "仅当条件 {} 中任一{}",
+                vars.iter()
+                    .map(|v| format!("`{v}`"))
+                    .collect::<Vec<_>>()
+                    .join("/"),
+                if *negated {
+                    "都不成立时生效"
+                } else {
+                    "成立时生效"
+                }
+            ),
+        },
         ModTag::Multiplier {
             var,
             div,

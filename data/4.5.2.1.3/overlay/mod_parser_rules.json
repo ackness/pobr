@@ -18852,6 +18852,7 @@
     "split",
     "grenades have 15% chance to activate a second time",
     "25% increased damage with hits against rare and unique enemies",
-    "magnitudes of curses you inflict are zero"
+    "magnitudes of curses you inflict are zero",
+    "33% increased damage with hits against enemies affected by ailments"
   ]
 }

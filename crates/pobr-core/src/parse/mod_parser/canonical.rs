@@ -86,6 +86,9 @@ fn canonical_tag(tag: &ModTag) -> String {
         } => {
             format!("Condition(var={var},neg={negated},actor={actor:?})")
         }
+        ModTag::ConditionAnyOf { vars, negated } => {
+            format!("ConditionAnyOf(vars=[{}],neg={negated})", vars.join(","))
+        }
         ModTag::Multiplier {
             var,
             div,

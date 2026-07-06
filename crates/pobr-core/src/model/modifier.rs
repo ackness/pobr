@@ -86,6 +86,15 @@ pub enum ModTag {
         /// `cfg.actor_multipliers["<actor>.<var>"]` 真值（≠0 为真；快照缺键＝假）。
         actor: Option<ActorRef>,
     },
+    /// OR 语义条件（PoB2 `Condition`/`ActorCondition` 的 `varList` 形态，
+    /// ModStore.lua:596-607/631-640：任一 var 为真即命中，再套 `neg`）。与
+    /// [`ModTag::Condition`] 分开建变体——`tags` 迭代是 AND 语义，多条单 var
+    /// Condition 无法表达 OR。enemy 侧 var 已在编译期经 `normalize_enemy_cond_var`
+    /// 归一进扁平键空间（`Enemy<X>` / 稀有度裸名），求值只读 `cfg.condition`。
+    ConditionAnyOf {
+        vars: Vec<String>,
+        negated: bool,
+    },
     /// 按某资源/属性数量线性缩放（PoB2 `Multiplier` / `PerStat` tag）。
     ///
     /// 有效值 = `cfg.multiplier(var) / div`（再受 `limit` 上限约束）。
@@ -367,6 +376,11 @@ impl Modifier {
                 };
                 if *negated { !enabled } else { enabled }
             }
+            // OR 条件（vendor varList）：任一 var 为真即命中，再套 neg。
+            ModTag::ConditionAnyOf { vars, negated } => {
+                let enabled = vars.iter().any(|v| cfg.condition(v));
+                if *negated { !enabled } else { enabled }
+            }
             // 数值缩放 / 累计限幅 / 距离插值 tag 不参与匹配过滤（求值期消费）。
             ModTag::Multiplier { .. }
             | ModTag::PerStat { .. }
@@ -536,6 +550,7 @@ impl Modifier {
                 // MultiplierThreshold / StatThreshold / SkillName 是二元 gate
                 //（在 matches 里求值），不缩放数值。
                 ModTag::Condition { .. }
+                | ModTag::ConditionAnyOf { .. }
                 | ModTag::MultiplierThreshold { .. }
                 | ModTag::StatThreshold { .. }
                 | ModTag::GlobalLimit { .. }
@@ -732,6 +747,24 @@ mod tests {
             actor: Some(ActorRef::Player),
         });
         assert!(negated.matches(&cfg));
+    }
+
+    /// ConditionAnyOf（vendor varList）OR 语义：任一 var 为真即命中，neg 套在 OR 结果上。
+    #[test]
+    fn condition_any_of_matches_on_any_var() {
+        let make = |negated| {
+            Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::ConditionAnyOf {
+                vars: vec!["EnemyIgnited".into(), "EnemyChilled".into()],
+                negated,
+            })
+        };
+        // 任一为真 → 命中；全假 → 不命中。
+        let one_true = CalcConfig::new().with_condition("EnemyChilled", true);
+        assert!(make(false).matches(&one_true));
+        assert!(!make(false).matches(&CalcConfig::new()));
+        // neg 作用于 OR 结果（vendor ModStore.lua:618-620）。
+        assert!(!make(true).matches(&one_true));
+        assert!(make(true).matches(&CalcConfig::new()));
     }
 
     /// DistanceRamp（Close Combat `[(10,1),(35,0)]`）按 `skill_distance` 线性插值：
