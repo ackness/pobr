@@ -393,7 +393,7 @@ pub fn build_report_engine(
             report.lines_with_dropped_tags += 1;
             report.total_dropped_tags += u32::from(dropped);
         }
-        let mut absorb = |map: &mut BTreeMap<String, Agg>| {
+        let absorb = |map: &mut BTreeMap<String, Agg>| {
             let agg = map
                 .entry(normalize_template(&line.text))
                 .or_insert_with(|| Agg {
