@@ -1781,6 +1781,93 @@
       "verified": false,
       "batch": "a2-real-gaps",
       "source_note": "A2 真缺口 #4/#5/#6（oracle：<stat> INC 5 + MultiplierThreshold{<Color>SupportGems,10}，vendor ModParser.lua:1697 函数 tag）；下界阈值盲产欠算安全（cfg.multiplier 未灌 <Color>SupportGems 时不生效，编排层计数接线后自动生效）；DSL 不吃捕获——按语料钉值"
+    },
+    {
+      "id": "body_armour_grants_reduced_crit_damage_bonus_100",
+      "pattern": "body armour grants hits against you have 100% reduced critical damage bonus",
+      "vendor_pattern": "body armour grants hits against you have (%d+)%% reduced critical damage bonus",
+      "mods": [
+        {
+          "name": "ReduceCritExtraDamage",
+          "type": "BASE",
+          "value": 100
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:3284（mod(ReduceCritExtraDamage, BASE, num, ItemCondition{Body Armour, rarityCond=NORMAL})；ItemCondition 无 PoBR 落点按 body-armour-grants pre_flag 族同口径丢弃（dropped-tag 报表 7 行同款欠条）——Smith of Kitava 机制要求白装胸甲，语料 build 满足故不 over-apply。语料数值集 {100} 钉值。消费方 defence.rs CritExtraDamageReduction 已存在"
+    },
+    {
+      "id": "body_armour_grants_unaffected_by_damaging_ailments",
+      "pattern": "body armour grants unaffected by damaging ailments",
+      "vendor_pattern": "body armour grants unaffected by damaging ailments",
+      "mods": [
+        {
+          "name": "SelfBleedEffect",
+          "type": "MORE",
+          "value": -100
+        },
+        {
+          "name": "SelfIgniteEffect",
+          "type": "MORE",
+          "value": -100
+        },
+        {
+          "name": "SelfPoisonEffect",
+          "type": "MORE",
+          "value": -100
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:3288（Self{Bleed,Ignite,Poison}Effect MORE -100 ×3，ItemCondition 同上丢弃）。Self*Effect 玩家侧 calc 暂无消费（解析对齐 vendor，自异常效果消费端接线时词条已就位；AilmentThreshold 先例）"
+    },
+    {
+      "id": "break_armour_on_crit_with_spells",
+      "pattern": "break armour on critical hit with spells equal to (\\d+)% of physical damage dealt",
+      "vendor_pattern": "break armour on critical hit with spells equal to (%d+)%% of physical damage dealt",
+      "mods": [
+        {
+          "name": "Condition:CanArmourBreak",
+          "type": "FLAG",
+          "value": true,
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "NeverCrit"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:3803（flag(Condition:CanArmourBreak, GlobalEffect{Buff, ArmourBreak}, Condition{neg NeverCrit})；数值不进 mods——vendor 同样忽略捕获，正则一条覆盖语料 {5,10}。GlobalEffect 无 PoBR 落点丢弃（已有评估：不值窄做）；CanArmourBreak 玩家侧 calc 暂无消费（armour break 机制未建模，解析对齐 vendor）"
+    },
+    {
+      "id": "limit_for_elemental_skills",
+      "pattern": "\\+(\\d+) to limit for elemental skills",
+      "vendor_pattern": "%+(%d+) to limit for elemental skills",
+      "mods": [
+        {
+          "name": "AdditionalCooldownUses",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "SkillType",
+              "skillTypeList": [
+                "Cold",
+                "Fire",
+                "Lightning"
+              ]
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "ModParser.lua:3374（mod(AdditionalCooldownUses, BASE, num, SkillType{skillTypeList={Cold,Fire,Lightning}})；skillTypeList → SkillTypes 位集并集（intersects 即 OR，与 vendor ModStore SkillType 任一命中同语义）。消费方 skill_mechanics.rs stored uses 已存在）"
     }
   ]
 }
