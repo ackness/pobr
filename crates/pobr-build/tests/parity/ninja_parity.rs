@@ -928,9 +928,32 @@ fn corpus_unsupported_report() {
                 })
                 .unwrap_or_default()
         };
+        // 显式裁决过的「不迁」模板（A2 收尾）——与 deferred/modeled-elsewhere 同属
+        // 伪待办剥离，防止 REAL 榜反复误列：
+        // - no-consumer(pobr)：`grants skill:` 族（vendor ExtraSkill LIST）。PoBR 技能
+        //   来自 build XML 技能列表，树/装备授予行没有 ModDb 消费者——迁 LIST 只是
+        //   噪音（gem-level 族同理），待 granted-skill 消费端立项时一并接线。
+        // - wont-do(pobr)：树分配规则行（non-keystone medium radius——不是 stat mod，
+        //   属 pobr-tree 分配语义）与 per-skill distance ramp（demo 套件 enemyDistance
+        //   全 placeholder → DistanceRamp 恒休眠，DSL 亦无 4 捕获 ramp 形态；见
+        //   ModTag::DistanceRamp 文档）。
+        const NO_CONSUMER_PREFIXES: &[&str] = &["grants skill:"];
+        const WONT_DO_PREFIXES: &[&str] = &[
+            "non-keystone passive skills in medium radius",
+            "projectiles deal #% more hit damage to targets in the first",
+        ];
         let verdict_of = |t: &pobr_build::corpus::EngineTemplateStat| -> &'static str {
             if t.template.starts_with("+# to level of all") {
                 return "modeled-elsewhere";
+            }
+            if NO_CONSUMER_PREFIXES
+                .iter()
+                .any(|p| t.template.starts_with(p))
+            {
+                return "no-consumer(pobr)";
+            }
+            if WONT_DO_PREFIXES.iter().any(|p| t.template.starts_with(p)) {
+                return "wont-do(pobr)";
             }
             let mut any_hit = false;
             for s in &t.samples {
@@ -971,12 +994,14 @@ fn corpus_unsupported_report() {
             match verdict_of(t) {
                 "vendor=PARSED" => real += 1,
                 "vendor=unsup" => pseudo += 1,
-                "deferred(pobr)" | "modeled-elsewhere" => skipped += 1,
+                "deferred(pobr)" | "modeled-elsewhere" | "no-consumer(pobr)" | "wont-do(pobr)" => {
+                    skipped += 1
+                }
                 _ => unknown += 1,
             }
         }
         eprintln!(
-            "[vendor-verdict] gap templates: {real} REAL (vendor parses, we drop)  {pseudo} pseudo (vendor also unsupported)  {skipped} deferred/modeled-elsewhere  {unknown} unknown (not in ModCache)",
+            "[vendor-verdict] gap templates: {real} REAL (vendor parses, we drop)  {pseudo} pseudo (vendor also unsupported)  {skipped} deferred/modeled-elsewhere/no-consumer/wont-do  {unknown} unknown (not in ModCache)",
         );
         eprintln!("--- Top-20 engine gap templates (production drops) ---");
         for (i, t) in er.gap_templates.iter().take(20).enumerate() {
