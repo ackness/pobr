@@ -294,6 +294,17 @@ pub(crate) fn calculate_components(
 
     // 第三步：跑转换链，产出带 type_path 的「转换后基础分量」。
     let converted = apply_conversion_chain(&base, &rules);
+    if std::env::var("POBR_DBG_BASES").is_ok() {
+        for (t, mn, mx) in &base {
+            eprintln!("[POBR_BASE] {t:?} {mn:.2}/{mx:.2}");
+        }
+        for c in &converted {
+            eprintln!(
+                "[POBR_SUMMED] {:?} {:.2}/{:.2}",
+                c.damage_type, c.min, c.max
+            );
+        }
+    }
 
     // 第四步：各自按最终伤害类型聚合 inc/more（PoE2 无转换源 double-dip）。
     converted
@@ -333,6 +344,12 @@ fn scale_components_no_conversion(
 fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> DamageComponent {
     let (inc, more) = aggregate_inc_more(db, cfg, comp.damage_type);
     let scale = (1.0 + inc / 100.0) * more;
+    if std::env::var("POBR_DBG_BASES").is_ok() {
+        eprintln!(
+            "[POBR_POOL] {:?} inc={inc:.2} more={more:.4} scale={scale:.4}",
+            comp.damage_type
+        );
+    }
     // PoB2 `calcDamage`（CalcOffence.lua:138-139,153-154）：min 与 max 各额外乘一个独立 MORE
     // 乘区 `Min<Type>Damage` / `Max<Type>Damage`（如「more maximum Lightning Damage」「less
     // minimum Physical Attack Damage」），仅缩放区间一端。这些 ModName 类型编码在名字里、不带
@@ -380,6 +397,15 @@ pub(crate) fn aggregate_inc_more(
     // 通用桶只算一次（不限定伤害类型）。
     let mut inc = db.sum(ModType::Inc, cfg, &generic_names);
     let mut more = db.more(cfg, &generic_names);
+    if std::env::var("POBR_DBG_BASES").is_ok() && final_type == DamageType::Physical {
+        eprintln!("[POBR_POOL_NAMES] {generic_names:?}");
+        for c in db.contributions(ModType::Inc, cfg, &generic_names) {
+            eprintln!(
+                "[POBR_POOL_SRC] {:?} {} src={:?}",
+                c.name, c.value, c.raw_text
+            );
+        }
+    }
 
     // PoB2-PoE2：类型化 inc/more 只按分量**最终伤害类型**聚合，**不**叠加转换源类型
     // （PoE1 的「按转换源 increased 双重 dip」在 PoE2 已移除——PoB2 headless oracle 逐分量一手
