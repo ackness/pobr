@@ -590,7 +590,12 @@ const BASELINE_DEF_CORE_HIT5: usize = 139; // 实测 139/144 = 96.5%（BeenHitRe
 // (53853，0_5 树) 的 40% Evasion 条件词条激活——Evasion 14618→16824.47 对
 // vendor 16824 精确闭合（oracle defenceModList 对账：INC 165→205），EHP
 // 0.54→0.59 正外溢。
-const BASELINE_DEF_HIT5: usize = 416; // 实测 416/450 = 92.4%（BeenHitRecently +1）
+// **过时导入修正（PR#40 合并后回记 416→415）**：#40 是 B3 前分支——其 legacy.rs
+// 词条 + 基线 416 在 pre-B3 世界线实测；B3 闸门切 engine 后该词条已经由
+// mod_parser_rules 数据通道生效（B3 commit 的 core-8 138→139 即此格），wolf-pack
+// Evasion 在 #40 合并前即 1.00x ✓。合并 #40 行为零变化（18 build 逐格 diff 为空），
+// 416 是双重计数；当前实测 415（@10% 432 与 core-8 139 恰与现实吻合，保留）。
+const BASELINE_DEF_HIT5: usize = 415; // 实测 415/450 = 92.2%（#40 过时基线回记）
 const BASELINE_DEF_HIT10: usize = 432; // 实测 432/450 = 96.0%（BeenHitRecently +1）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
