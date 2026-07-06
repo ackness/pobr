@@ -647,8 +647,14 @@ const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
 // **进攻修复簇 dot 列累计重记**：flicker（CI→FullLife）CombinedDPS 0.90x→0.99x、
 // monk-twister / titan-shield-wall（MultiplierThreshold）CombinedDPS 随 hit 转命中。
 // 三修复合并后 dot 列全量实测重记（master 22/26 → 26/28）。
-const BASELINE_DOT_HIT5: usize = 26; // 实测 26/37 = 70.3%（合并 +4）
-const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（合并 +2）
+// **诚实下调 26→25 / 28→27（gain-as fallback 修复,2026-07-06）**：deadeye ignite
+// TotalDotDPS 0.97x✓ 是双错抵消——旧 gain-as base 回退使 fire 分量高估 ~1.30x,
+// 恰好补偿 PoBR ignite 链自身 ~0.69x 低估（vendor IgniteChance 2.5%/StackPotential/
+// RollAverage 公式链未对齐,登记下一切片）。修复 fire 基础后该格如实显形为 0.69x✗。
+// 同 commit：进攻/防御全指标持平（off 71/80·def 415/450·core-8 139/144,且系
+// deadeye 两条 INC 冻结行解冻后仍持平）,全 18 build 仅 deadeye 自身 dot 一格变动。
+const BASELINE_DOT_HIT5: usize = 25; // 实测 25/37 = 67.6%（诚实显形 -1）
+const BASELINE_DOT_HIT10: usize = 27; // 实测 27/37 = 73.0%（诚实显形 -1）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

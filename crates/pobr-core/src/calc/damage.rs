@@ -682,25 +682,14 @@ fn apply_conversion_chain(
                 continue;
             }
             // gain 来源恒为转换后的中间类型量（对角线留存 + 转入量），对齐 PoB2
-            // calcGainedDamage：源量 = floor(MinBase*mult) + convertedMin。convert[mid][mid]
-            // 已含留存 mult，故纯 gain 无转换时 conv_min[mid] == base_min[mid]；mid 被 100%
-            // 转走且无转入时源量为 0（不回退原始 base 凭空产出 gain）。
-            // gain 来源是转换后的中间类型量（若该类型无转换后量，回退到其 flat base）。
-            // 注：04-02 审查曾建议去掉此 fallback（理论上 PoB2 全转走时 gain 源为 0），但 ninja_parity
-            // 经验证据表明去掉会让某真实 build 的进攻值偏离 PoB2 golden——conv_min[mid] 在某些路径
-            // 并未携带应有的对角线留存，fallback 是 load-bearing 的，故保留。详见 audits 04-offence-core。
-            let src_min = if conv_min[mid] != 0.0 || conv_max[mid] != 0.0 {
-                conv_min[mid]
-            } else {
-                base_min[mid]
-            };
-            let src_max = if conv_min[mid] != 0.0 || conv_max[mid] != 0.0 {
-                conv_max[mid]
-            } else {
-                base_max[mid]
-            };
-            let add_min = src_min * frac;
-            let add_max = src_max * frac;
+            // calcGainedDamage：源量 = MinBase*conversionTable[mid].mult + convertedMin。
+            // convert[mid][mid] 已含留存 mult，故纯 gain 无转换时 conv_min[mid] ==
+            // base_min[mid]；mid 被 100% 转走且无转入时源量为 0——**不回退原始 base**。
+            // （旧 fallback 会在 fire 100%→lightning 场景凭空用 raw fire base 产 gain，
+            // deadeye hit_avg +13% 高估根因之一；vendor 侧 FireSummedBase=basis×gain
+            // 数值验证 basis 不含被转走的 fire。04-offence-core 04-02 处方落地。）
+            let add_min = conv_min[mid] * frac;
+            let add_max = conv_max[mid] * frac;
             if add_min == 0.0 && add_max == 0.0 {
                 continue;
             }
