@@ -529,14 +529,29 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             }
         }
         "SkillType" => {
-            let name = scalar_text(tag.fields.get("skillType")?)?;
-            let bare = name.strip_prefix("SkillType:").unwrap_or(&name);
             // 全量枚举表（数据驱动 A1，单源 `SkillTypes::from_pob2_name`）：
             // special_vendor 的名来自 vendor 枚举反查，miss = 数据损坏——
             // debug 构建炸出（A2 可见化），release 保守丢 tag。
-            let st = SkillTypes::from_pob2_name(bare);
-            debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
-            st.map(ModTag::SkillTypes)
+            let lookup = |name: &str| {
+                let bare = name.strip_prefix("SkillType:").unwrap_or(name);
+                let st = SkillTypes::from_pob2_name(bare);
+                debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
+                st
+            };
+            if let Some(v) = tag.fields.get("skillType") {
+                return lookup(&scalar_text(v)?).map(ModTag::SkillTypes);
+            }
+            // `skillTypeList`（vendor 多类型 OR，ModStore SkillType 分支任一命中即
+            // 生效）→ 并入单个 SkillTypes 位集（ModTag::SkillTypes 的 intersects
+            // 匹配即 OR 语义）。任一名 miss → 整 tag 保守丢弃。
+            let TemplateScalarDef::TextList(items) = tag.fields.get("skillTypeList")? else {
+                return None;
+            };
+            let mut acc = SkillTypes::NONE;
+            for name in items {
+                acc |= lookup(name)?;
+            }
+            (!acc.is_empty()).then_some(ModTag::SkillTypes(acc))
         }
         "DamageType" => {
             let name = scalar_text(tag.fields.get("damageType")?)?;
