@@ -590,3 +590,66 @@ fn engine_parses_named_herald_condition_phrases() {
         m.tags
     );
 }
+
+/// A2 真缺口迁移（第二批）：5 条钉值 special 条目 + MultiplierThreshold 下界
+/// 放行（`while you have an ally in your presence` → NearbyAlly≥1，cfg 未灌时
+/// 欠算安全不生效）。
+#[test]
+fn engine_parses_a2_second_batch_entries() {
+    use pobr_core::{ModTag, ModValue};
+    use pobr_data::modifier::ModType;
+    let rules = load_rules();
+
+    // 钉值 special：ManaRegen %Life / AilmentThreshold %Evasion / 三色 support gems。
+    for (line, name) in [
+        (
+            "Regenerate Mana equal to 6% of maximum Life per second",
+            "ManaRegen",
+        ),
+        (
+            "[Gain] 100% of [Evasion|Evasion Rating] as extra [AilmentThreshold|Ailment Threshold]",
+            "AilmentThreshold",
+        ),
+        (
+            "5% increased Maximum Life if you have at least 10 Red [SupportGem|Support Gems] Socketed",
+            "Life",
+        ),
+    ] {
+        let o = parse_mod_engine(line, &rules);
+        assert_eq!(format!("{:?}", o.status), "Parsed", "{line}");
+        assert_eq!(o.unparsed, None, "{line}");
+        assert!(
+            o.mods.iter().any(|m| m.name.as_str() == name),
+            "{line} 应产 {name}: {:?}",
+            o.mods
+        );
+    }
+
+    // MultiplierThreshold 下界放行：NearbyAlly≥1 tag 落地（非 enemyDistance var）。
+    let o = parse_mod_engine(
+        "8% increased [Attack|Attack] Damage while you have an [Allies|Ally] in your [Presence|Presence]",
+        &rules,
+    );
+    assert_eq!(
+        format!("{:?}", o.status),
+        "Parsed",
+        "unparsed={:?}",
+        o.unparsed
+    );
+    let m = o
+        .mods
+        .iter()
+        .find(|m| m.name.as_str() == "AttackDamage")
+        .unwrap_or_else(|| panic!("无 AttackDamage mod: {:?}", o.mods));
+    assert!(matches!(m.mod_type, ModType::Inc));
+    assert!(matches!(m.value, ModValue::Number(v) if (v - 8.0).abs() < 1e-9));
+    assert!(
+        m.tags.iter().any(|t| matches!(
+            t,
+            ModTag::MultiplierThreshold { var, threshold, upper: false }
+                if var == "NearbyAlly" && (*threshold - 1.0).abs() < 1e-9
+        )),
+        "应带 MultiplierThreshold(NearbyAlly≥1): {:?}",
+        m.tags
+    );
+}

@@ -264,11 +264,12 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             // N metres」→ `var=enemyDistance`、`threshold=N×10`（`"$1:mult(10)"` 米→单位，须经
             // field_number_capop 应用 `:mult(10)` 算子）→ [`ModTag::MultiplierThreshold`]。
             //
-            // **仅 `enemyDistance`**：它是 PoBR 唯一可靠灌入 cfg.multipliers 的阈值 var
-            // （编排层从 `Multiplier:enemyDistance` 折入，effective=20/panel=0）。其它 var
-            // （数据中无非异常非距离 MultiplierThreshold）若盲产 tag，求值读 cfg.multiplier
-            // 缺键＝0 → upper 恒真 over-apply。保守只接 enemyDistance，余仍 None（与修复前一致）。
-            if var != "enemyDistance" {
+            // 非距离/非异常 var 的方向性放行（A2 真缺口 #12「while you have an ally
+            // in your presence」→ NearbyAlly≥1）：**下界阈值（upper=false）盲产 tag
+            // 欠算安全**——求值读 cfg.multiplier 缺键＝0 < threshold → 条件不满足 →
+            // mod 不生效；编排层将来灌入该 multiplier 时词条自动接通。**上界
+            // （upper=true）仍保守 None**：缺键 0 ≤ threshold 恒真 = over-apply。
+            if var != "enemyDistance" && upper {
                 return None;
             }
             let threshold = f

@@ -2267,6 +2267,116 @@
       "verified": false,
       "batch": "a2-real-gaps",
       "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
+    },
+    {
+      "id": "mana_regen_from_life_6",
+      "pattern": "regenerate mana equal to 6% of maximum life per second",
+      "vendor_pattern": "regenerate mana equal to (%d+)%% of maximum life per second",
+      "mods": [
+        {
+          "name": "ManaRegen",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "Life",
+              "percent": 6
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "A2 真缺口 #28（oracle：ManaRegen BASE 1 + PercentStat{Life,6}）；DSL PercentStat 字面值——按语料数值钉 6"
+    },
+    {
+      "id": "ailment_threshold_from_evasion_100",
+      "pattern": "gain 100% of evasion rating as extra ailment threshold",
+      "vendor_pattern": "gain (%d+)%% of evasion rating as extra ailment threshold",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "Evasion",
+              "percent": 100
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "A2 真缺口 #24（oracle：AilmentThreshold BASE 1 + PercentStat{Evasion,100}）；玩家侧 AilmentThreshold 暂无 calc 消费——解析对齐 vendor，接线即生效"
+    },
+    {
+      "id": "threshold_10_red_support_gems_5pct",
+      "pattern": "5% increased maximum life if you have at least 10 red support gems socketed",
+      "vendor_pattern": "if you have at least (%d+) (%a+) support gems socketed",
+      "mods": [
+        {
+          "name": "Life",
+          "type": "INC",
+          "value": 5,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "var": "RedSupportGems",
+              "threshold": 10
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "A2 真缺口 #4/#5/#6（oracle：<stat> INC 5 + MultiplierThreshold{<Color>SupportGems,10}，vendor ModParser.lua:1697 函数 tag）；下界阈值盲产欠算安全（cfg.multiplier 未灌 <Color>SupportGems 时不生效，编排层计数接线后自动生效）；DSL 不吃捕获——按语料钉值"
+    },
+    {
+      "id": "threshold_10_blue_support_gems_5pct",
+      "pattern": "5% increased maximum mana if you have at least 10 blue support gems socketed",
+      "vendor_pattern": "if you have at least (%d+) (%a+) support gems socketed",
+      "mods": [
+        {
+          "name": "Mana",
+          "type": "INC",
+          "value": 5,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "var": "BlueSupportGems",
+              "threshold": 10
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "A2 真缺口 #4/#5/#6（oracle：<stat> INC 5 + MultiplierThreshold{<Color>SupportGems,10}，vendor ModParser.lua:1697 函数 tag）；下界阈值盲产欠算安全（cfg.multiplier 未灌 <Color>SupportGems 时不生效，编排层计数接线后自动生效）；DSL 不吃捕获——按语料钉值"
+    },
+    {
+      "id": "threshold_10_green_support_gems_5pct",
+      "pattern": "5% increased movement speed if you have at least 10 green support gems socketed",
+      "vendor_pattern": "if you have at least (%d+) (%a+) support gems socketed",
+      "mods": [
+        {
+          "name": "MovementSpeed",
+          "type": "INC",
+          "value": 5,
+          "tags": [
+            {
+              "type": "MultiplierThreshold",
+              "var": "GreenSupportGems",
+              "threshold": 10
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "a2-real-gaps",
+      "source_note": "A2 真缺口 #4/#5/#6（oracle：<stat> INC 5 + MultiplierThreshold{<Color>SupportGems,10}，vendor ModParser.lua:1697 函数 tag）；下界阈值盲产欠算安全（cfg.multiplier 未灌 <Color>SupportGems 时不生效，编排层计数接线后自动生效）；DSL 不吃捕获——按语料钉值"
     }
   ]
 }
