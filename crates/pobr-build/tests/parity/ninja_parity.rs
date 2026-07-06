@@ -665,8 +665,14 @@ const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
 // RollAverage 公式链未对齐,登记下一切片）。修复 fire 基础后该格如实显形为 0.69x✗。
 // 同 commit：进攻/防御全指标持平（off 71/80·def 415/450·core-8 139/144,且系
 // deadeye 两条 INC 冻结行解冻后仍持平）,全 18 build 仅 deadeye 自身 dot 一格变动。
-const BASELINE_DOT_HIT5: usize = 25; // 实测 25/37 = 67.6%（诚实显形 -1）
-const BASELINE_DOT_HIT10: usize = 27; // 实测 27/37 = 73.0%（诚实显形 -1）
+// **回记 25→26 / 27→28（ailment stacks × dpsMultiplier,同日）**：vendor :3878 在
+// 异常段前把 `DPS` 乘区折进 skillData.dpsMultiplier,:5046 ailmentStacks 因此吃到
+// （Payload 二次起爆 ×1.5）；PoBR 与 TotalDPS 同源取 dps_end_factors 折入
+// ctx.speed（:3880 hitRate 同语义）。deadeye ignite 0.69x→1.04x✓ 找回；gemling
+// dot 0.77x→1.16x（miss→miss 不计数,其底层 ~1.27x 高估属 gemling 多因子独立
+// 缺口）；其余 16 build 逐格不变。
+const BASELINE_DOT_HIT5: usize = 26; // 实测 26/37 = 70.3%（ignite dpsMultiplier +1）
+const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（+1）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
