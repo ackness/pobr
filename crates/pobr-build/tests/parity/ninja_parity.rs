@@ -905,12 +905,41 @@ fn corpus_unsupported_report() {
                 })
                 .unwrap_or_default()
         };
+        // pobr 主动降级/另行建模的模板——从 REAL 榜剥离，防止反复误列为待办：
+        // - deferred：B3 暂缓行（unsupported_pobr_extra，双错抵消欠条）；
+        // - modeled-elsewhere：gem-level 族（gem_property_bonuses 独立扫原始行
+        //   已建模，GemProperty LIST 在 ModDb 无消费者；C5 统一）。
+        let deferred: std::collections::HashSet<String> = {
+            let path = repo_data_root()
+                .join(pobr_data::GOLDEN_PARITY_DATA_VERSION)
+                .join("overlay/mod_parser_rules.json");
+            std::fs::read_to_string(&path)
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .and_then(|v| {
+                    v.get("unsupported_pobr_extra")
+                        .and_then(|e| e.as_array())
+                        .cloned()
+                })
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|s| Some(s.as_str()?.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
         let verdict_of = |t: &pobr_build::corpus::EngineTemplateStat| -> &'static str {
+            if t.template.starts_with("+# to level of all") {
+                return "modeled-elsewhere";
+            }
             let mut any_hit = false;
             for s in &t.samples {
                 let key = pobr_build::corpus::strip_brackets(s)
                     .trim()
                     .to_ascii_lowercase();
+                if deferred.contains(&key) {
+                    return "deferred(pobr)";
+                }
                 match vendor_verdict.get(&key) {
                     Some(true) => return "vendor=PARSED",
                     Some(false) => any_hit = true,
@@ -937,16 +966,17 @@ fn corpus_unsupported_report() {
             "[engine] dropped-tag lines: {}  total dropped tags: {}",
             er.lines_with_dropped_tags, er.total_dropped_tags,
         );
-        let (mut real, mut pseudo, mut unknown) = (0usize, 0usize, 0usize);
+        let (mut real, mut pseudo, mut unknown, mut skipped) = (0usize, 0usize, 0usize, 0usize);
         for t in &er.gap_templates {
             match verdict_of(t) {
                 "vendor=PARSED" => real += 1,
                 "vendor=unsup" => pseudo += 1,
+                "deferred(pobr)" | "modeled-elsewhere" => skipped += 1,
                 _ => unknown += 1,
             }
         }
         eprintln!(
-            "[vendor-verdict] gap templates: {real} REAL (vendor parses, we drop)  {pseudo} pseudo (vendor also unsupported)  {unknown} unknown (not in ModCache)",
+            "[vendor-verdict] gap templates: {real} REAL (vendor parses, we drop)  {pseudo} pseudo (vendor also unsupported)  {skipped} deferred/modeled-elsewhere  {unknown} unknown (not in ModCache)",
         );
         eprintln!("--- Top-20 engine gap templates (production drops) ---");
         for (i, t) in er.gap_templates.iter().take(20).enumerate() {
@@ -960,18 +990,20 @@ fn corpus_unsupported_report() {
                 t.template,
             );
         }
-        eprintln!("--- Top-20 REAL gaps (vendor parses, we drop — migration list) ---");
+        eprintln!("--- REAL gaps (vendor parses, we drop — migration list, full) ---");
         let mut shown = 0usize;
         for t in &er.gap_templates {
             if verdict_of(t) == "vendor=PARSED" {
                 shown += 1;
                 eprintln!(
-                    "{:>2}. [{:?}] hit={} cnt={} | {}",
-                    shown, t.class, t.builds_hit, t.total_count, t.template,
+                    "{:>2}. [{:?}] hit={} cnt={} | {} || sample: {}",
+                    shown,
+                    t.class,
+                    t.builds_hit,
+                    t.total_count,
+                    t.template,
+                    t.samples.first().map(String::as_str).unwrap_or(""),
                 );
-                if shown >= 20 {
-                    break;
-                }
             }
         }
         eprintln!("--- Top-10 dropped-tag templates (scope-widening risk) ---");
