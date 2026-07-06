@@ -678,8 +678,17 @@ const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
 // 解冻（dps 端因子 1.65 两侧一致）后：gemling AvgDmg/TotalDPS/dot 三列 1.00x 精确
 // 闭合（dot 0.77x→1.00x 入列）,deadeye 残余 ~2% 同根消散（AvgDmg/dot 均 1.00x）。
 // 18 build 逐格 diff 仅 gemling dot 一格翻正。
-const BASELINE_DOT_HIT5: usize = 27; // 实测 27/37 = 73.0%（grenade 短语修复 +1）
-const BASELINE_DOT_HIT10: usize = 29; // 实测 29/37 = 78.4%（+1）
+// **诚实下调 27→26 / 29→28（blood-mage curse 欠条解冻,2026-07-07）**：
+// `magnitudes of curses you inflict are zero`（Coiling Whisper）解冻——curse 机制
+// 全链已验证与 vendor 一致（5 诅咒占槽/ignore limit=99/per-Curse gain-as ×5 经
+// Multiplier{CurseOnEnemy} 生效）。冻结态的 blood-mage dot 1.01x✓ 是双错抵消：
+// 诅咒按满效果错误生效（物品明言 zero）恰好补偿 per-hit/dot 存量低估。解冻 +
+// 同组辅助授予等级修复（Chaos Mastery +1,L30→31 vendor 精确）后 TotalDPS
+// 0.73x→0.84x、dot 0.54x→0.70x 收敛但未回带；剩余 ~16% per-hit 低估是
+// blood-mage 自身根因（deadeye/gemling 同型剧本）,修复后基线回记。
+// 18 build 逐格 diff 仅 blood-mage 三格变动。冻结榜只剩 legacy `split`。
+const BASELINE_DOT_HIT5: usize = 26; // 实测 26/37 = 70.3%（诚实显形 -1）
+const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（-1）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
