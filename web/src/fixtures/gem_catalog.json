@@ -1,0 +1,4827 @@
+[
+  {
+    "is_support": true,
+    "name": "Abiding Hex",
+    "skill_id": "SupportAbidingHexPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Abyssal Apparition",
+    "skill_id": "TriggeredAbyssalApparitionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Accelerated Growth",
+    "skill_id": "SupportExplosiveGrowthPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Accelerated Growth II",
+    "skill_id": "SupportExplosiveGrowthPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Acidic Concoction",
+    "skill_id": "AcidicConcoctionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Acrimony",
+    "skill_id": "SupportAcrimonyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Adhesive Grenades I",
+    "skill_id": "SupportAdhesiveGrenadesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Adhesive Grenades II",
+    "skill_id": "SupportAdhesiveGrenadesPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Admixture",
+    "skill_id": "SupportAdmixturePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Advancing Storm",
+    "skill_id": "SupportAdvancingStormPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Aftershock I",
+    "skill_id": "SupportAftershockChancePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Aftershock II",
+    "skill_id": "SupportAftershockChancePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Ahn's Citadel",
+    "skill_id": "SupportAhnsCitadelPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ailith's Chimes",
+    "skill_id": "SupportAilithLineagePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Alchemist's Boon",
+    "skill_id": "AlchemistsBoonPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Align Fate",
+    "skill_id": "AlignFatePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Alignment I",
+    "skill_id": "SupportAlignmentPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Alignment II",
+    "skill_id": "SupportAlignmentPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Alignment III",
+    "skill_id": "SupportAlignmentPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Amanamu's Tithe",
+    "skill_id": "SupportAmanamusTithePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ambrosia",
+    "skill_id": "SupportAmbrosiaPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ambrosia II",
+    "skill_id": "SupportAmbrosiaPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Ambush",
+    "skill_id": "SupportAmbushPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ammo Conservation I",
+    "skill_id": "SupportAmmoConservationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ammo Conservation II",
+    "skill_id": "SupportAmmoConservationPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Ammo Conservation III",
+    "skill_id": "SupportAmmoConservationPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Ancestral Aid",
+    "skill_id": "SupportAncestralAidPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ancestral Call I",
+    "skill_id": "SupportAncestralCallPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ancestral Call II",
+    "skill_id": "SupportAncestralCallPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Ancestral Cry",
+    "skill_id": "AncestralCryPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ancestral Spirits",
+    "skill_id": "AncestralSpiritsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ancestral Warrior Totem",
+    "skill_id": "AncestralWarriorTotemPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Animus Exchange",
+    "skill_id": "AnimusExchangePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Animus Splinters",
+    "skill_id": "MetaAnimusSplintersPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Apocalypse",
+    "skill_id": "ApocalypsePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Arakaali's Lust",
+    "skill_id": "SupportArakaalisLustPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Arbiter's Ignition",
+    "skill_id": "SupportArbitersIgnitionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Arbiter's Reach",
+    "skill_id": "ArbitersReachWardPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Arc",
+    "skill_id": "ArcPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Arcane Surge",
+    "skill_id": "SupportArcaneSurgePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Archmage",
+    "skill_id": "ArchmagePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Archon of Chayula",
+    "skill_id": "ArchonOfChayulaPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Arctic Armour",
+    "skill_id": "ArcticArmourPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Arctic Howl",
+    "skill_id": "WolfArcticHowlPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Arjun's Medal",
+    "skill_id": "SupportAmmoConservationPlayerFour"
+  },
+  {
+    "is_support": true,
+    "name": "Armour Break I",
+    "skill_id": "SupportArmourBreakPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Armour Break II",
+    "skill_id": "SupportArmourBreakPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Armour Break III",
+    "skill_id": "SupportArmourBreakPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Armour Breaker",
+    "skill_id": "ArmourBreakerPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Armour Demolisher I",
+    "skill_id": "SupportArmourDemolisherPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Armour Demolisher II",
+    "skill_id": "SupportArmourDemolisherPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Armour Explosion",
+    "skill_id": "SupportArmourExplosionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Armour Piercing Rounds",
+    "skill_id": "ArmourPiercingBoltsAmmoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Arms Length",
+    "skill_id": "SupportArmsLengthPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Artillery Ballista",
+    "skill_id": "ArtilleryBallistaPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Astral Projection",
+    "skill_id": "SupportAstralProjectionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Atalui's Bloodletting",
+    "skill_id": "SupportAtaluiBloodlettingPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Attrition",
+    "skill_id": "AttritionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Atziri's Allure",
+    "skill_id": "SupportAtzirisAllurePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Atziri's Impatience",
+    "skill_id": "SupportAtzirisImpatiencePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Auto Reload",
+    "skill_id": "SupportAutoReloadPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Azmerian Swarms",
+    "skill_id": "AzmerianSwarmPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Azmerian Wolf",
+    "skill_id": "SummonAzmerianWolfPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ball Lightning",
+    "skill_id": "BallLightningPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Barbs I",
+    "skill_id": "SupportBarbsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Barbs II",
+    "skill_id": "SupportBarbsPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Barbs III",
+    "skill_id": "SupportBarbsPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Barkskin",
+    "skill_id": "BarkskinPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Barrage",
+    "skill_id": "BarragePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Barrier Invocation",
+    "skill_id": "MetaBarrierInvocationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Battershout",
+    "skill_id": "SupportBattershoutPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Behead I",
+    "skill_id": "SupportBeheadPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Behead II",
+    "skill_id": "SupportBeheadPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Berserk",
+    "skill_id": "BerserkPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bhatair's Vengeance",
+    "skill_id": "SupportBhatairsVengeancePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bidding I",
+    "skill_id": "SupportBiddingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bidding II",
+    "skill_id": "SupportBiddingPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Bidding III",
+    "skill_id": "SupportBiddingPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Biting Frost I",
+    "skill_id": "SupportBitingFrostPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Biting Frost II",
+    "skill_id": "SupportBitingFrostPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Bitter Dead",
+    "skill_id": "BitterDeadPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Black Powder Blitz",
+    "skill_id": "BlackPowderBlitzReservationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Blasphemy",
+    "skill_id": "BlasphemyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Blazing Critical",
+    "skill_id": "SupportBlazingCriticalPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bleed I",
+    "skill_id": "SupportBleedPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bleed II",
+    "skill_id": "SupportBleedPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Bleed III",
+    "skill_id": "SupportBleedPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Bleed IV",
+    "skill_id": "SupportBleedPlayerFour"
+  },
+  {
+    "is_support": false,
+    "name": "Bleeding Concoction",
+    "skill_id": "BleedingConcoctionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Blind I",
+    "skill_id": "SupportBlindPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Blind II",
+    "skill_id": "SupportBlindPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Blindside",
+    "skill_id": "SupportBlindsidePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Blood Boil",
+    "skill_id": "BloodBoilPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Blood Hunt",
+    "skill_id": "BloodHuntPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Bloodhound's Mark",
+    "skill_id": "BloodhoundsMarkPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bloodlust",
+    "skill_id": "SupportBloodlustPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Bone Blast",
+    "skill_id": "BoneBlastPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Bone Cage",
+    "skill_id": "BoneCagePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Bone Offering",
+    "skill_id": "BoneOfferingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bone Shrapnel",
+    "skill_id": "SupportBoneShrapnelPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Boneshatter",
+    "skill_id": "BoneshatterPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Bonestorm",
+    "skill_id": "BonestormPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Boundless Energy I",
+    "skill_id": "SupportBoundlessEnergyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Boundless Energy II",
+    "skill_id": "SupportBoundlessEnergyPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Bounty I",
+    "skill_id": "SupportBountyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bounty II",
+    "skill_id": "SupportBountyPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Bow Shot",
+    "skill_id": "MeleeBowPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Brambleslam",
+    "skill_id": "SupportBrambleslamPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Branching Fissures I",
+    "skill_id": "SupportBranchingFissuresPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Branching Fissures II",
+    "skill_id": "SupportBranchingFissuresPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Breachlord's Amalgam",
+    "skill_id": "SupportBreachlordsAmalgam"
+  },
+  {
+    "is_support": true,
+    "name": "Breachlord's Rift",
+    "skill_id": "SupportBreachlordsRift"
+  },
+  {
+    "is_support": false,
+    "name": "Briarpatch",
+    "skill_id": "BriarpatchPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Brink I",
+    "skill_id": "SupportBrinkPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Brink II",
+    "skill_id": "SupportBrinkPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Brittle Armour",
+    "skill_id": "SupportBrittleArmourPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Brutality I",
+    "skill_id": "SupportBrutalityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Brutality II",
+    "skill_id": "SupportBrutalityPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Brutality III",
+    "skill_id": "SupportBrutalityPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Brutus' Brain",
+    "skill_id": "SupportBrutusBrainPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Burgeon I",
+    "skill_id": "SupportBurgeonPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Burgeon II",
+    "skill_id": "SupportBurgeonPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Burning Inscription",
+    "skill_id": "SupportBurningRunesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Bursting Fen Toad",
+    "skill_id": "ExplodingPoisonToadPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Bursting Plague",
+    "skill_id": "SupportBurstingPlaguePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cackling Companions",
+    "skill_id": "HyenaCacklePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cadence",
+    "skill_id": "SupportCadencePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Called Shots",
+    "skill_id": "MetaDeadeyeMarksPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Caltrops",
+    "skill_id": "SupportCaltropsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cannibalism I",
+    "skill_id": "SupportCannibalismPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cannibalism II",
+    "skill_id": "SupportCannibalismPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Cast on Block",
+    "skill_id": "MetaCastOnBlockPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cast on Charm Use",
+    "skill_id": "MetaCastOnCharmUsePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cast on Critical",
+    "skill_id": "MetaCastOnCritPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cast on Dodge",
+    "skill_id": "MetaCastOnDodgePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cast on Elemental Ailment",
+    "skill_id": "MetaCastOnElementalAilmentPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cast on Melee Kill",
+    "skill_id": "MetaCastOnMeleeKillPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cast on Melee Stun",
+    "skill_id": "MetaCastOnMeleeStunPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cast on Minion Death",
+    "skill_id": "MetaCastOnMinionDeathPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Catalysing Elements",
+    "skill_id": "SupportCatalysingElementsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Catha's Brilliance",
+    "skill_id": "SupportCathasBrilliance"
+  },
+  {
+    "is_support": true,
+    "name": "Catharsis",
+    "skill_id": "SupportCatharsisPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Chain I",
+    "skill_id": "SupportChainPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Chain II",
+    "skill_id": "SupportChainPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Chain III",
+    "skill_id": "SupportChainPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Chaos Attunement",
+    "skill_id": "SupportAddedChaosDamagePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Chaos Bolt",
+    "skill_id": "WeaponGrantedChaosboltPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Chaos Mastery",
+    "skill_id": "SupportChaosMasteryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Chaotic Freeze",
+    "skill_id": "SupportChaoticFreezePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Chaotic Surge",
+    "skill_id": "ChaosSpearTriggerChaosSurgePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Charge Profusion I",
+    "skill_id": "SupportChargeProfusionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Charge Profusion II",
+    "skill_id": "SupportChargeProfusionPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Charge Regulation",
+    "skill_id": "ChargeRegulationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Charged Mark",
+    "skill_id": "SupportChargedMarkPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Charged Shots I",
+    "skill_id": "SupportChargedShotsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Charged Shots II",
+    "skill_id": "SupportChargedShotsPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Charged Staff",
+    "skill_id": "ChargedStaffPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Charm Bounty",
+    "skill_id": "SupportCharmBountyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cirel's Cultivation",
+    "skill_id": "SupportCirelsCultivationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Clarity I",
+    "skill_id": "SupportClarityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Clarity II",
+    "skill_id": "SupportClarityPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Clash",
+    "skill_id": "SupportClashPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Close Combat I",
+    "skill_id": "SupportCloseCombatPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Close Combat II",
+    "skill_id": "SupportCloseCombatPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Cluster Grenade",
+    "skill_id": "ClusterGrenadePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Coiling Bolts",
+    "skill_id": "CoilingBoltsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cold Attunement",
+    "skill_id": "SupportAddedColdDamagePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cold Exposure",
+    "skill_id": "SupportColdExposurePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cold Mastery",
+    "skill_id": "SupportColdMasteryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cold Penetration",
+    "skill_id": "SupportColdPenetrationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Combat Frenzy",
+    "skill_id": "CombatFrenzyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Combo Finisher I",
+    "skill_id": "SupportComboFinisherPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Combo Finisher II",
+    "skill_id": "SupportComboFinisherPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Comet",
+    "skill_id": "CometPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Commandment",
+    "skill_id": "SupportCommandment"
+  },
+  {
+    "is_support": true,
+    "name": "Commiserate",
+    "skill_id": "SupportCommiseratePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Companion: {0}",
+    "skill_id": "SummonBeastPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Compressed Duration I",
+    "skill_id": "CompressedDurationSupportPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Compressed Duration II",
+    "skill_id": "CompressedDurationSupportPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Concentrated Area",
+    "skill_id": "SupportConcentratedAreaPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Concoct I",
+    "skill_id": "SupportConcoctPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Concoct II",
+    "skill_id": "SupportConcoctPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Concussive Runes",
+    "skill_id": "SupportConcussiveRunesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Concussive Spells",
+    "skill_id": "SupportConcussiveSpellsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Conductive Runes",
+    "skill_id": "ConductiveRunesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Consecrate",
+    "skill_id": "StaffConsecratePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Considered Casting",
+    "skill_id": "SupportConsideredCastingPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Contagion",
+    "skill_id": "ContagionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Controlled Destruction",
+    "skill_id": "SupportControlledDestructionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Controlled Hazard",
+    "skill_id": "SupportControlledHazardPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Convalescence",
+    "skill_id": "ConvalescencePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cool Headed",
+    "skill_id": "SupportCoolheadedPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cooldown Recovery I",
+    "skill_id": "SupportCooldownRecoveryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cooldown Recovery II",
+    "skill_id": "SupportCooldownRecoveryPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Corpse Conservation",
+    "skill_id": "SupportCorpseConservationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Corrosion",
+    "skill_id": "SupportCorrosionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Corrupting Cry I",
+    "skill_id": "SupportCorruptingCryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Corrupting Cry II",
+    "skill_id": "SupportCorruptingCryPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Coursing Current",
+    "skill_id": "SupportDeadlyCurrentPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Crackling Barrier",
+    "skill_id": "SupportCracklingBarrierPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Crackling Palm",
+    "skill_id": "CracklingPalmPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Crater",
+    "skill_id": "SupportCraterPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Crazed Minions",
+    "skill_id": "SupportCrazedMinionsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Creeping Chill",
+    "skill_id": "SupportCreepingChillPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Crescendo I",
+    "skill_id": "SupportCrescendoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Crescendo II",
+    "skill_id": "SupportCrescendoPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Crescendo III",
+    "skill_id": "SupportCrescendoPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Cross Slash",
+    "skill_id": "WolfCrossSlashPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Crossbow Shot",
+    "skill_id": "MeleeCrossbowPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Crushing Fear",
+    "skill_id": "CrushingFearPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Crystalline Shards",
+    "skill_id": "SupportCrystallineShardsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Cull The Weak",
+    "skill_id": "CullTheWeakPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Culling Strike I",
+    "skill_id": "SupportCullingStrikePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Culling Strike II",
+    "skill_id": "SupportCullingStrikePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Culmination I",
+    "skill_id": "SupportCulminationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Culmination II",
+    "skill_id": "SupportCulminationPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Curse on Block",
+    "skill_id": "MetaCastCurseOnBlockPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Cursed Ground",
+    "skill_id": "SupportCursedGroundPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Danse Macabre",
+    "skill_id": "SupportDanseMacabrePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Daresso's Passion",
+    "skill_id": "SupportDaressosPassionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Dark Effigy",
+    "skill_id": "DarkEffigyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Dauntless",
+    "skill_id": "SupportDauntlessPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Daze",
+    "skill_id": "SupportDazePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Deadly Herald",
+    "skill_id": "SupportDeadlyHeraldsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Deadly Poison I",
+    "skill_id": "SupportDeadlyPoisonPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Deadly Poison II",
+    "skill_id": "SupportDeadlyPoisonPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Deadly Resolve",
+    "skill_id": "SupportDeadlyResolvePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Deathmarch",
+    "skill_id": "SupportDeathmarchPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Decaying Hex",
+    "skill_id": "SupportDecayingHexPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Deep Cuts I",
+    "skill_id": "SupportDeepCutsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Deep Cuts II",
+    "skill_id": "SupportDeepCutsPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Deep Freeze",
+    "skill_id": "SupportLastingFrostPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Defiance Banner",
+    "skill_id": "DefianceBannerReservationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Defy I",
+    "skill_id": "SupportDefyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Defy II",
+    "skill_id": "SupportDefyPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Delayed Gratification",
+    "skill_id": "SupportDelayedGratificationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Delayed Reaction",
+    "skill_id": "SupportDelayedReactionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Deliberation",
+    "skill_id": "SupportDeliberationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Demon Form",
+    "skill_id": "DemonFormPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Derange",
+    "skill_id": "SupportDerangePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Despair",
+    "skill_id": "DespairPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Detonate Dead",
+    "skill_id": "DetonateDeadPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Detonate Living",
+    "skill_id": "DetonateLivingPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Detonate Minion",
+    "skill_id": "DestructiveLinkSkeletonBombadierMinion"
+  },
+  {
+    "is_support": false,
+    "name": "Detonating Arrow",
+    "skill_id": "DetonatingArrowPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Devour",
+    "skill_id": "WyvernDevourPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Dialla's Desire",
+    "skill_id": "SupportDiallasDesirePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Direstrike I",
+    "skill_id": "SupportDirestrikePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Direstrike II",
+    "skill_id": "SupportDirestrikePlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Discipline",
+    "skill_id": "DisciplinePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Disengage",
+    "skill_id": "DisengagePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Doedre's Undoing",
+    "skill_id": "SupportDoedresUndoingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Dominus' Grasp",
+    "skill_id": "SupportPietysMercyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Double Barrel I",
+    "skill_id": "SupportDoubleBarrelPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Double Barrel II",
+    "skill_id": "SupportDoubleBarrelPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Double Barrel III",
+    "skill_id": "SupportDoubleBarrelPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Drain Ailments",
+    "skill_id": "SupportDrainedAilmentPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Dread Banner",
+    "skill_id": "DreadBannerReservationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Durability",
+    "skill_id": "SupportDurabilityPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Earthquake",
+    "skill_id": "EarthquakePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Earthshatter",
+    "skill_id": "EarthshatterPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Echoing Cry",
+    "skill_id": "SupportEchoingCryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Efficiency I",
+    "skill_id": "SupportEfficiencyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Efficiency II",
+    "skill_id": "SupportEfficiencyPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Einhar's Beastrite",
+    "skill_id": "SupportEinharsBeastritePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Electrocute",
+    "skill_id": "SupportElectrocutePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Electrocuting Arrow",
+    "skill_id": "ElectrocutingArrowPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Electromagnetism",
+    "skill_id": "SupportShockingRiftPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Elemental Armament I",
+    "skill_id": "SupportElementalArmamentPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Elemental Armament II",
+    "skill_id": "SupportElementalArmamentPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Elemental Armament III",
+    "skill_id": "SupportElementalArmamentPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Elemental Army",
+    "skill_id": "SupportElementalArmyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Elemental Conflux",
+    "skill_id": "ElementalConfluxPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Elemental Discharge",
+    "skill_id": "SupportElementalDischargePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Elemental Expression",
+    "skill_id": "ElementalExpressionTriggeredPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Elemental Focus",
+    "skill_id": "SupportElementalFocusPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Elemental Invocation",
+    "skill_id": "MetaElementalInvocationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Elemental Storm",
+    "skill_id": "ElementalStormPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Elemental Sundering",
+    "skill_id": "ElementalSunderingPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Elemental Surge",
+    "skill_id": "AmazonTriggerElementalSurgePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Elemental Weakness",
+    "skill_id": "ElementalWeaknessPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ember Fusillade",
+    "skill_id": "EmberFusilladePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Embitter",
+    "skill_id": "SupportEmbitterPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Emergency Reload",
+    "skill_id": "EmergencyReloadPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Empowered Sparks I",
+    "skill_id": "SupportEmpoweredSparksPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Encase in Jade",
+    "skill_id": "EncaseInJadePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Encroaching Ground",
+    "skill_id": "SupportEncroachingGroundPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Enduring Impact I",
+    "skill_id": "SupportHeavyStunEndurancePlayerOne"
+  },
+  {
+    "is_support": true,
+    "name": "Enduring Impact II",
+    "skill_id": "SupportHeavyStunEndurancePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Energy Capacitor",
+    "skill_id": "SupportEnergyCapacitorPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Energy Retention",
+    "skill_id": "SupportEnergyRetentionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Enervating Nova",
+    "skill_id": "EnervatingNovaPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Enfeeble",
+    "skill_id": "EnfeeblePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Enraged Warcry I",
+    "skill_id": "SupportEnragedWarcryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Enraged Warcry II",
+    "skill_id": "SupportEnragedWarcryPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Entangle",
+    "skill_id": "EntanglePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Eonyr's Thunder",
+    "skill_id": "SupportEonyrsThunderPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Escalating Poison",
+    "skill_id": "SupportEscalatingPoisonPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Escape Shot",
+    "skill_id": "EscapeShotPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Esh's Prowess",
+    "skill_id": "SupportEshsProwess"
+  },
+  {
+    "is_support": true,
+    "name": "Esh's Radiance",
+    "skill_id": "SupportEshsRadiancePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Essence Drain",
+    "skill_id": "EssenceDrainPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Essence Harvest",
+    "skill_id": "SupportEssenceHarvestPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Eternal Flame I",
+    "skill_id": "SupportIgniteDurationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Eternal Flame II",
+    "skill_id": "SupportIgniteDurationPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Eternal Flame III",
+    "skill_id": "SupportIgniteDurationPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Eternal March",
+    "skill_id": "EternalMarchPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Eternal Mark",
+    "skill_id": "SupportEternalMarkPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Eternal Rage",
+    "skill_id": "EternalRagePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Excise",
+    "skill_id": "SupportExcisePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Execrate",
+    "skill_id": "SupportExecratePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Execute I",
+    "skill_id": "SupportExecutePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Execute II",
+    "skill_id": "SupportExecutePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Execute III",
+    "skill_id": "SupportExecutePlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Expand",
+    "skill_id": "SupportExpandPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Expanse",
+    "skill_id": "SupportExpansePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Exploit Weakness",
+    "skill_id": "SupportExploitWeaknessPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Explosive Concoction",
+    "skill_id": "ExplosiveConcoctionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Explosive Grenade",
+    "skill_id": "ExplosiveGrenadePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Explosive Shot",
+    "skill_id": "ExplosiveShotAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Explosive Spear",
+    "skill_id": "ExplosiveSpearPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Explosive Transmutation",
+    "skill_id": "ExplosiveTransmutationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Exposing Cry",
+    "skill_id": "SupportExposingCryPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Exsanguinate",
+    "skill_id": "ExsanguinatePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Extraction",
+    "skill_id": "SupportExtractionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Eye of Winter",
+    "skill_id": "EyeOfWinterPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Falling Thunder",
+    "skill_id": "FallingThunderPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fan The Flames",
+    "skill_id": "SupportFanTheFlamesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fan The Flames II",
+    "skill_id": "SupportFanTheFlamesPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Fangs of Frost",
+    "skill_id": "FangsOfFrostPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Feast of Flesh",
+    "skill_id": "FeastOfFleshPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Feeding Frenzy I",
+    "skill_id": "SupportFeedingFrenzyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Feeding Frenzy II",
+    "skill_id": "SupportFeedingFrenzyPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Feral Invocation",
+    "skill_id": "MetaFeralInvocationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ferocious Roar",
+    "skill_id": "FerociousRoarMetaPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ferocity",
+    "skill_id": "SupportFerocityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fiery Death",
+    "skill_id": "SupportFieryDeathPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fire Attunement",
+    "skill_id": "SupportAddedFireDamagePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fire Exposure",
+    "skill_id": "SupportFireExposurePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fire Mastery",
+    "skill_id": "SupportFireMasteryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fire Penetration I",
+    "skill_id": "SupportFirePenetrationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fire Penetration II",
+    "skill_id": "SupportFirePenetrationPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Fire Spell on Hit",
+    "skill_id": "MetaCastFireSpellOnHitPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Fireball",
+    "skill_id": "FireballPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Firebolt",
+    "skill_id": "FireboltPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Firestorm",
+    "skill_id": "FirestormPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fist Of Kalguur",
+    "skill_id": "SupportFistOfKalguurPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fist of War I",
+    "skill_id": "FistOfWarSupportPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fist of War II",
+    "skill_id": "FistOfWarSupportPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Fist of War III",
+    "skill_id": "FistOfWarSupportPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Flame Breath",
+    "skill_id": "WyvernFlameBreathPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Flame Pillar",
+    "skill_id": "SupportFlamePillarPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Flame Wall",
+    "skill_id": "FlameWallPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Flameblast",
+    "skill_id": "FlameblastPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Flamepierce",
+    "skill_id": "SupportFlamepiercePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Flash Grenade",
+    "skill_id": "FlashGrenadePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Flicker Strike",
+    "skill_id": "FlickerStrikePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fluke",
+    "skill_id": "SupportFlukePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Focused Curse",
+    "skill_id": "SupportFocusedCursePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Font of Blood",
+    "skill_id": "SupportBloodFountainPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Font of Mana",
+    "skill_id": "SupportManaFountainPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Forge Hammer",
+    "skill_id": "ForgeHammerPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fork",
+    "skill_id": "SupportForkPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Fortifying Cry",
+    "skill_id": "FortifyingCryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fortress I",
+    "skill_id": "SupportWallFortressPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fortress II",
+    "skill_id": "SupportWallFortressPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Fragmentation Rounds",
+    "skill_id": "FragmentationRoundsAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Fragments Of The Past",
+    "skill_id": "FragmentsOfThePastPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Freeze",
+    "skill_id": "SupportFreezePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Freezefork",
+    "skill_id": "SupportFreezeforkPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Freezing Mark",
+    "skill_id": "FreezingMarkPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Freezing Salvo",
+    "skill_id": "FreezingSalvoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Freezing Shards",
+    "skill_id": "FreezingShardsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Frenzied Riposte",
+    "skill_id": "SupportFrenziedRipostePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fresh Clip I",
+    "skill_id": "SupportFreshClipPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Fresh Clip II",
+    "skill_id": "SupportFreshClipPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Frost Bomb",
+    "skill_id": "FrostBombPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Frost Darts",
+    "skill_id": "FrostDartsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Frost Nexus",
+    "skill_id": "SupportChillingIcePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Frost Wall",
+    "skill_id": "FrostWallPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Frostbolt",
+    "skill_id": "FrostboltPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Frostfire",
+    "skill_id": "SupportFrostfirePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Frostflame Nova",
+    "skill_id": "FrostflameNovaPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Frozen Locus",
+    "skill_id": "FrozenLocusPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Frozen Spite",
+    "skill_id": "SupportFrozenSpitePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Fulminating Concoction",
+    "skill_id": "FulminatingConcoctionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Fulmination",
+    "skill_id": "FulminationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Furious Slam",
+    "skill_id": "FuriousSlamPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Fury of the Mountain",
+    "skill_id": "BearFuryOfTheMountainPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Future-Past",
+    "skill_id": "FuturePastPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Galvanic Field",
+    "skill_id": "GalvanicFieldBuffPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Galvanic Shards",
+    "skill_id": "GalvanicShardsAmmoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Gambleshot",
+    "skill_id": "SupportGambleshotPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Garukhan's Resolve",
+    "skill_id": "SupportGarukhansResolvePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Gas Arrow",
+    "skill_id": "GasArrowPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Gas Grenade",
+    "skill_id": "ToxicGrenadePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Gathering Storm",
+    "skill_id": "GatheringStormPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Gelid Palm",
+    "skill_id": "GelidPalmPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Gemini Surge",
+    "skill_id": "GeminiSurgePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ghost Dance",
+    "skill_id": "GhostDancePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Glacial Bolt",
+    "skill_id": "GlacialBoltAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Glacial Cascade",
+    "skill_id": "GlacialCascadePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Glacial Lance",
+    "skill_id": "GlacialLancePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Glacier",
+    "skill_id": "SupportGlacierPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Gorge",
+    "skill_id": "SupportGorgePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Grenade",
+    "skill_id": "MeleeGrenadeLauncherPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Grim Feast",
+    "skill_id": "GrimFeastPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Grim Pillars",
+    "skill_id": "GrimPillarsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Guatelitzi's Ablation",
+    "skill_id": "SupportGuatelitzisAblationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Haemocrystals",
+    "skill_id": "SupportHaemocrystalsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Hailstorm Rounds",
+    "skill_id": "HailstormRoundsAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Hammer of the Gods",
+    "skill_id": "HammerOfTheGodsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Hand of Chayula",
+    "skill_id": "HandOfChayulaPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Harbinger of Madness",
+    "skill_id": "HarbingerOfMadnessPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Hardy Totems I",
+    "skill_id": "SupportHardyTotemsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Hardy Totems II",
+    "skill_id": "SupportHardyTotemsPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Harmonic Remnants I",
+    "skill_id": "SupportFleetingRemnantsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Harmonic Remnants II",
+    "skill_id": "SupportFleetingRemnantsPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Hayoxi's Fulmination",
+    "skill_id": "SupportHayoxisBindingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Healing Runes",
+    "skill_id": "SupportHealingRunesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Heart of Ice",
+    "skill_id": "HeartOfIcePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Heavy Swing",
+    "skill_id": "SupportMeleePhysicalDamagePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Heft",
+    "skill_id": "SupportHeftPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Heightened Accuracy I",
+    "skill_id": "SupportHeightenedAccuracyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Heightened Accuracy II",
+    "skill_id": "SupportHeightenedAccuracyPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Heightened Charges",
+    "skill_id": "SupportHeightenedChargesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Heightened Curse",
+    "skill_id": "SupportCurseEffectPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Helbrym's Hide",
+    "skill_id": "SupportHelbrymsHidePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Her Declaration",
+    "skill_id": "SupportHerDeclarationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Herald of Blood",
+    "skill_id": "HeraldOfBloodPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Herald of Plague",
+    "skill_id": "HeraldOfPlaguePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Herald of the Royal Queen",
+    "skill_id": "UniqueAtziriHeraldPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Herbalism I",
+    "skill_id": "SupportHerbalismPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Herbalism II",
+    "skill_id": "SupportHerbalismPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Hex Bloom",
+    "skill_id": "SupportHexBloomPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Hexblast",
+    "skill_id": "HexblastPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "High Velocity Rounds",
+    "skill_id": "HighVelocityRoundsAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "His Foul Emergence",
+    "skill_id": "HisFoulEmergencePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "His Scattering Calamity",
+    "skill_id": "ScatteringCalamityPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "His Vile Intrusion",
+    "skill_id": "VileDisruptionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "His Winnowing Flame",
+    "skill_id": "HisWinnowingFlamePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Hit and Run",
+    "skill_id": "SupportHitAndRunPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Hollow Focus",
+    "skill_id": "HollowFocusPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Hollow Form",
+    "skill_id": "MetaHollowFormPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Hollow Resonance",
+    "skill_id": "HollowResonancePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Hollow Shell",
+    "skill_id": "HollowShellPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Holy Descent",
+    "skill_id": "SupportHolyDescentPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Hourglass",
+    "skill_id": "SupportHourglassPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Hulking Minions",
+    "skill_id": "SupportHulkingMinionsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ice Bite I",
+    "skill_id": "SupportIceBitePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ice Bite II",
+    "skill_id": "SupportIceBitePlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Ice Fragments",
+    "skill_id": "IceFragmentsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ice Nova",
+    "skill_id": "IceNovaPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ice Shards",
+    "skill_id": "IceShardsAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ice Shot",
+    "skill_id": "IceShotPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ice Strike",
+    "skill_id": "IceStrikePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ice-Tipped Arrows",
+    "skill_id": "IceTippedArrowsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Icestorm",
+    "skill_id": "IcestormPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Icicle",
+    "skill_id": "SupportIciclePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ignite I",
+    "skill_id": "SupportIgnitePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ignite II",
+    "skill_id": "SupportIgnitePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Ignite III",
+    "skill_id": "SupportIgnitePlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Immolate",
+    "skill_id": "SupportImmolatePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Impact Shockwave",
+    "skill_id": "ImpactShockwaveSupportPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Impale",
+    "skill_id": "SupportImpalePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Impending Doom",
+    "skill_id": "ViciousHexSupportPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Impurity",
+    "skill_id": "ImpurityPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Incendiary Shot",
+    "skill_id": "IncendiaryShotAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Incinerate",
+    "skill_id": "IncineratePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Incision",
+    "skill_id": "SupportIncisionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Inevitable Agony",
+    "skill_id": "InevitableAgonyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Inexorable Critical I",
+    "skill_id": "SupportInevitableCriticalsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Inexorable Critical II",
+    "skill_id": "SupportInevitableCriticalsPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Infernal Cry",
+    "skill_id": "InfernalCryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Infernal Legion I",
+    "skill_id": "SupportInfernalLegionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Infernal Legion II",
+    "skill_id": "SupportInfernalLegionPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Infernal Legion III",
+    "skill_id": "SupportInfernalLegionPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Inhibitor",
+    "skill_id": "SupportChargeInhibitionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Innervate",
+    "skill_id": "SupportInnervatePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Intense Agony",
+    "skill_id": "SupportIntenseAgonyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Into the Breach",
+    "skill_id": "IntoTheBreachPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Iron Ward",
+    "skill_id": "IronWardPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ixchel's Torment",
+    "skill_id": "SupportFlukePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Jagged Ground I",
+    "skill_id": "SupportJaggedGroundPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Jagged Ground II",
+    "skill_id": "SupportJaggedGroundPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Kalisa's Crescendo",
+    "skill_id": "SupportKalisasCrescendoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Kaom's Madness",
+    "skill_id": "SupportKaomsMadnessPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Kelari's Malediction",
+    "skill_id": "CorpseBeetlesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Kelari, the Tainted Sands",
+    "skill_id": "SummonSandDjinnPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Khatal's Rejuvenation",
+    "skill_id": "SupportKhatalsRejuvenationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Killing Palm",
+    "skill_id": "KillingPalmPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Knockback",
+    "skill_id": "SupportKnockbackPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Kulemak's Dominion",
+    "skill_id": "SupportKulemaksDominionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Kurgal's Leash",
+    "skill_id": "SupportKurgalsLeashPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Last Gasp",
+    "skill_id": "SupportLastGaspPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Lasting Ground",
+    "skill_id": "SupportLastingGroundPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Lasting Shock",
+    "skill_id": "SupportLastingShockPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Leap Slam",
+    "skill_id": "LeapSlamPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Leylines",
+    "skill_id": "LeylinesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Life Bounty",
+    "skill_id": "SupportLifeFlaskPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Life Drain",
+    "skill_id": "SupportLifeOnCullPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Life Leech I",
+    "skill_id": "SupportLifeLeechPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Life Leech II",
+    "skill_id": "SupportLifeLeechPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Life Leech III",
+    "skill_id": "SupportLifeLeechPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Life Remnants",
+    "skill_id": "LifeRemnantsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Lifetap",
+    "skill_id": "SupportBloodMagicPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lightning Arrow",
+    "skill_id": "LightningArrowPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Lightning Attunement",
+    "skill_id": "SupportAddedLightningDamagePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lightning Bolt",
+    "skill_id": "LightningBoltPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lightning Conduit",
+    "skill_id": "LightningConduitPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Lightning Exposure",
+    "skill_id": "SupportLightningExposurePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Lightning Mastery",
+    "skill_id": "SupportLightningMasteryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Lightning Penetration",
+    "skill_id": "SupportLightningPenetrationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lightning Rod",
+    "skill_id": "LightningRodPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lightning Spear",
+    "skill_id": "LightningSpearPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lightning Warp",
+    "skill_id": "LightningWarpPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lingering Illusion",
+    "skill_id": "LingeringIllusionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Living Bomb",
+    "skill_id": "LivingBombPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Living Lightning",
+    "skill_id": "SupportLivingLightningPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Living Lightning II",
+    "skill_id": "SupportLivingLightningPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Lockdown",
+    "skill_id": "SupportLockdownPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Long Fuse I",
+    "skill_id": "SupportLongFusePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Long Fuse II",
+    "skill_id": "SupportLongFusePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Longshot I",
+    "skill_id": "SupportFarCombatPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Longshot II",
+    "skill_id": "SupportFarCombatPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Loyalty",
+    "skill_id": "SupportLoyaltyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lunar Assault",
+    "skill_id": "LunarAssaultPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Lunar Blessing",
+    "skill_id": "WolfLunarBlessingPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mace Strike",
+    "skill_id": "MeleeMaceMacePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Magma Barrier",
+    "skill_id": "MagmaBarrierPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Magnetic Remnants",
+    "skill_id": "SupportMagneticRemnantsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Magnetic Salvo",
+    "skill_id": "MagneticSalvoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Magnified Area I",
+    "skill_id": "SupportMagnifiedAreaPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Magnified Area II",
+    "skill_id": "SupportMagnifiedAreaPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Maim",
+    "skill_id": "SupportMaimPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Malady",
+    "skill_id": "SupportMaladyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Malice",
+    "skill_id": "MalicePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mana Bounty",
+    "skill_id": "SupportManaFlaskPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mana Drain",
+    "skill_id": "ManaDrainPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mana Flare",
+    "skill_id": "SupportManaFlarePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mana Leech",
+    "skill_id": "SupportManaLeechPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mana Remnants",
+    "skill_id": "ManaRemnantsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mana Tempest",
+    "skill_id": "ManaTempestPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Manifest Weapon",
+    "skill_id": "ManifestWeaponPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mantra of Destruction",
+    "skill_id": "MantraOfDestructionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mark for Death",
+    "skill_id": "SupportMarkForDeathPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mark for Death II",
+    "skill_id": "SupportMarkForDeathPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Mark of Siphoning",
+    "skill_id": "SupportMarkOfSiphoningPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mark of Siphoning II",
+    "skill_id": "SupportMarkOfSiphoningPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Maul",
+    "skill_id": "BearMaulPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Meat Shield I",
+    "skill_id": "SupportMeatShieldPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Meat Shield II",
+    "skill_id": "SupportMeatShieldPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Meditate",
+    "skill_id": "MeditatePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Medved's Felling",
+    "skill_id": "SupportMedvedsFelling"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemBlink",
+    "skill_id": "BlinkReservationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemPlayerDefault1HMace",
+    "skill_id": "Melee1HMacePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemPlayerDefault2HMace",
+    "skill_id": "Melee2HMacePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemPlayerDefaultSpear",
+    "skill_id": "MeleeSpearPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemUniqueBreachLightningBolt",
+    "skill_id": "UniqueBreachLightningBoltPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemWitheringPresence",
+    "skill_id": "WitheringPresencePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemCorpseCloud",
+    "skill_id": "CorpseCloudPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemHeraldOfAsh",
+    "skill_id": "HeraldOfAshPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemHeraldOfIce",
+    "skill_id": "HeraldOfIcePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemHeraldOfThunder",
+    "skill_id": "HeraldOfThunderPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemSkeletalSniper",
+    "skill_id": "SummonSkeletalSnipersPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Metadata/Items/Gems/SupportGemUnleash",
+    "skill_id": "SupportUnleashPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Midnight Zenith",
+    "skill_id": "MidnightStarPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Minion Instability",
+    "skill_id": "SupportMinionInstabilityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Minion Mastery",
+    "skill_id": "SupportMinionMasteryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Minion Pact I",
+    "skill_id": "SupportMinionPactPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Minion Pact II",
+    "skill_id": "SupportMinionPactPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Minion Splash I",
+    "skill_id": "SupportMinionMeleeSplashPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Minion Splash II",
+    "skill_id": "SupportMinionMeleeSplashPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Mirage Archer",
+    "skill_id": "MetaMirageArcherPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mirage Deadeye",
+    "skill_id": "MetaMirageDeadeyePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mirror of Refraction",
+    "skill_id": "MirrorOfRefractionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mist Raven",
+    "skill_id": "SummonMistRavenPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mobility",
+    "skill_id": "SupportMobilityPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Molten Blast",
+    "skill_id": "MoltenBlastPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Molten Crash",
+    "skill_id": "MoltenCrashPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Molten Shower",
+    "skill_id": "TriggeredMoltenShowerPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Moment of Vulnerability",
+    "skill_id": "MomentOfVulnerabilityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Momentum",
+    "skill_id": "SupportMomentumPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Morgana's Tempest",
+    "skill_id": "SupportMorganasTempestPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Mortar Cannon",
+    "skill_id": "MetaMortarCannonPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Multishot I",
+    "skill_id": "SupportMultishotPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Multishot II",
+    "skill_id": "SupportMultishotPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Murderous Intent",
+    "skill_id": "SupportEmpoweredCullPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Muster",
+    "skill_id": "SupportMusterPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mysticism I",
+    "skill_id": "SupportMysticismPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Mysticism II",
+    "skill_id": "SupportMysticismPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Mórrigan's Insight",
+    "skill_id": "SupportMorrigansInsight"
+  },
+  {
+    "is_support": false,
+    "name": "Navira, the Last Mirage",
+    "skill_id": "SummonWaterDjinnPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Neural Overload",
+    "skill_id": "SupportNeuralOverloadPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Nimble Reload",
+    "skill_id": "SupportNimbleReloadPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Nova Projectiles I",
+    "skill_id": "SupportNovaProjectilesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Nova Projectiles II",
+    "skill_id": "SupportNovaProjectilesTwoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Oil Barrage",
+    "skill_id": "OilBarragePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Oil Grenade",
+    "skill_id": "OilGrenadePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Oisín's Oath",
+    "skill_id": "SupportOisinsOathPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Olroth's Conviction",
+    "skill_id": "SupportOlrothsConvictionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Olroth's Hubris",
+    "skill_id": "SupportOlrothsHubrisPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Opening Move",
+    "skill_id": "SupportOpeningMovePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Orb of Storms",
+    "skill_id": "OrbOfStormsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Overabundance I",
+    "skill_id": "SupportIncreaseLimitPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Overabundance II",
+    "skill_id": "SupportIncreaseLimitPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Overcharge",
+    "skill_id": "SupportOverchargePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Overextend",
+    "skill_id": "SupportOverextendPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Overreach",
+    "skill_id": "SupportOverreachPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Overwhelming Presence",
+    "skill_id": "OverwhelmingPresencePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Pain Offering",
+    "skill_id": "PainOfferingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Paquate's Pact",
+    "skill_id": "SupportCorruptingCryPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Parry",
+    "skill_id": "ParryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Payload",
+    "skill_id": "SupportPayloadPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Perfect Strike",
+    "skill_id": "PerfectStrikePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Perfected Endurance",
+    "skill_id": "SupportPerfectEndurancePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Perfection",
+    "skill_id": "SupportPerfectionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Permafrost Bolts",
+    "skill_id": "PermafrostBoltsAmmoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Perpetual Charge",
+    "skill_id": "SupportPerpetualChargePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Persistent Ground I",
+    "skill_id": "SupportPersistentGroundPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Persistent Ground II",
+    "skill_id": "SupportPersistentGroundPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Persistent Ground III",
+    "skill_id": "SupportPersistentGroundPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Phantasmal Arrow",
+    "skill_id": "PhantasmalArrowPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Physical Mastery",
+    "skill_id": "SupportPhysicalMasteryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Pierce I",
+    "skill_id": "SupportPiercePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Pierce II",
+    "skill_id": "SupportPiercePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Pierce III",
+    "skill_id": "SupportPiercePlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Pin I",
+    "skill_id": "SupportPinPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Pin II",
+    "skill_id": "SupportPinPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Pin III",
+    "skill_id": "SupportPinPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Pinnacle of Power",
+    "skill_id": "PinnacleOfPowerPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Pinpoint Critical",
+    "skill_id": "SupportPinpointCriticalPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Plague Bearer",
+    "skill_id": "PlagueBearerPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Plasma Blast",
+    "skill_id": "PlasmaBlastAmmoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Poison I",
+    "skill_id": "SupportPoisonPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Poison II",
+    "skill_id": "SupportPoisonPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Poison III",
+    "skill_id": "SupportPoisonPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Poison Spores",
+    "skill_id": "SupportPoisonSpores"
+  },
+  {
+    "is_support": false,
+    "name": "Poisonburst Arrow",
+    "skill_id": "PoisonBurstArrowPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Potent Exposure",
+    "skill_id": "SupportPotentExposurePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Pounce",
+    "skill_id": "WolfPouncePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Power Siphon",
+    "skill_id": "PowerSiphonPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Powered by Verisium",
+    "skill_id": "PoweredByVerisiumPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Practical Magic I",
+    "skill_id": "SupportPracticalMagicPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Practical Magic II",
+    "skill_id": "SupportPracticalMagicPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Practiced Combo",
+    "skill_id": "SupportPracticedComboPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Precision I",
+    "skill_id": "SupportPrecisionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Precision II",
+    "skill_id": "SupportPrecisionPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Primal Bounty",
+    "skill_id": "PrimalBountyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Primal Strikes",
+    "skill_id": "PrimalStrikesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Profane Ritual",
+    "skill_id": "ProfaneRitualPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Profanity I",
+    "skill_id": "SupportProfanityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Profanity II",
+    "skill_id": "SupportProfanityPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Projectile Acceleration I",
+    "skill_id": "SupportProjectileAccelerationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Projectile Acceleration II",
+    "skill_id": "SupportProjectileAccelerationPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Projectile Acceleration III",
+    "skill_id": "SupportProjectileAccelerationPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Projectile Deceleration I",
+    "skill_id": "SupportProjectileDecelerationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Projectile Deceleration II",
+    "skill_id": "SupportProjectileDecelerationPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Prolonged Duration I",
+    "skill_id": "ProlongedDurationSupportPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Prolonged Duration II",
+    "skill_id": "ProlongedDurationSupportPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Prototype Seventeen",
+    "skill_id": "SupportPrototypeSeventeenPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Punch Through",
+    "skill_id": "SupportPunchThroughPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Purity of Fire",
+    "skill_id": "PurityOfFirePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Purity of Ice",
+    "skill_id": "PurityOfIcePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Purity of Lightning",
+    "skill_id": "PurityOfLightningPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Pursuit I",
+    "skill_id": "SupportPursuitPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Pursuit II",
+    "skill_id": "SupportPursuitPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Pursuit III",
+    "skill_id": "SupportPursuitPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Quarterstaff Strike",
+    "skill_id": "MeleeQuarterstaffPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Quill Burst",
+    "skill_id": "SupportQuillburstPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rage I",
+    "skill_id": "SupportRagePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rage II",
+    "skill_id": "SupportRagePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Rage III",
+    "skill_id": "SupportRagePlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Rageforged I",
+    "skill_id": "SupportRageforgedPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rageforged II",
+    "skill_id": "SupportRageforgedPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Raging Cry",
+    "skill_id": "SupportRagingCryPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Raging Spirits",
+    "skill_id": "RagingSpiritsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rain of Arrows",
+    "skill_id": "RainOfArrowsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rain of Blades",
+    "skill_id": "RainOfBladesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Raise Shield",
+    "skill_id": "ShieldBlockPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Raise Zombie",
+    "skill_id": "RaiseZombiePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rake",
+    "skill_id": "RakePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rakiata's Flow",
+    "skill_id": "SupportRakiatasFlowPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rampage",
+    "skill_id": "BearRampagePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rapid Assault",
+    "skill_id": "RapidAssaultPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rapid Attacks I",
+    "skill_id": "SupportRapidAttacksPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rapid Attacks II",
+    "skill_id": "SupportRapidAttacksPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Rapid Attacks III",
+    "skill_id": "SupportRapidAttacksPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Rapid Casting I",
+    "skill_id": "SupportRapidCastingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rapid Casting II",
+    "skill_id": "SupportRapidCastingPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Rapid Casting III",
+    "skill_id": "SupportRapidCastingPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Rapid Shot",
+    "skill_id": "RapidShotAmmoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ratha's Assault",
+    "skill_id": "SupportCombatReloadPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ravenous Swarm",
+    "skill_id": "RavenousSwarmPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Reap",
+    "skill_id": "ReapPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Reaper's Invocation",
+    "skill_id": "MetaReapersInvocationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rearm I",
+    "skill_id": "SupportRearmPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rearm II",
+    "skill_id": "SupportRearmPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Refraction I",
+    "skill_id": "SupportRefractionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Refraction II",
+    "skill_id": "SupportRefractionPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Refraction III",
+    "skill_id": "SupportRefractionPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Refutation",
+    "skill_id": "RefutationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Reinforced Totems I",
+    "skill_id": "SupportReinforcedTotemsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Reinforced Totems II",
+    "skill_id": "SupportReinforcedTotemsPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Relentless Rage",
+    "skill_id": "SupportRelentlessRagePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Remnant Potency I",
+    "skill_id": "SupportInterludePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Remnant Potency II",
+    "skill_id": "SupportInterludePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Remnant Potency III",
+    "skill_id": "SupportInterludePlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Remnants of Kalguur",
+    "skill_id": "MetaRemnantsOfKalguurPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rend",
+    "skill_id": "WyvernRendPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rending Apex",
+    "skill_id": "SupportRendingApexPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Repulsion",
+    "skill_id": "CurseOfRepulsionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Requiem",
+    "skill_id": "CrossbowRequiemAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Resonating Shield",
+    "skill_id": "ResonatingShieldPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Retaliate I",
+    "skill_id": "SupportRetaliatePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Retaliate II",
+    "skill_id": "SupportRetaliatePlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Retreat I",
+    "skill_id": "SupportRetreatPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Retreat II",
+    "skill_id": "SupportRetreatPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Retreat III",
+    "skill_id": "SupportRetreatPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Reverberate",
+    "skill_id": "SupportReveberatePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rhoa Mount",
+    "skill_id": "RhoaMountPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ricochet I",
+    "skill_id": "SupportRicochetPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ricochet II",
+    "skill_id": "SupportRicochetPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Righteous Descent",
+    "skill_id": "RighteousDescentPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rigwald's Ferocity",
+    "skill_id": "SupportRigwaldsFerocityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rip",
+    "skill_id": "SupportRipPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rising Tempest",
+    "skill_id": "SupportTempestuousTempoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rite of Restoration",
+    "skill_id": "SacredGroundPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ritual Sacrifice",
+    "skill_id": "RitualSacrificePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ritualistic Curse",
+    "skill_id": "SupportRitualisticCursePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rolling Magma",
+    "skill_id": "RollingMagmaPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Rolling Slam",
+    "skill_id": "RollingSlamPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Romira's Requital",
+    "skill_id": "SupportRomirasRequitalPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Runeforged Blades",
+    "skill_id": "SupportRuneforgedBladesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Runic Extraction",
+    "skill_id": "SupportRunicExtractionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Runic Infusion",
+    "skill_id": "SupportRunicInfusionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Runic Reprieve",
+    "skill_id": "RunicReprievePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Runic Tempering",
+    "skill_id": "RunicTemperingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rupture",
+    "skill_id": "SupportRupturePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Rusted Spikes",
+    "skill_id": "SupportRustedSpikesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Ruthless",
+    "skill_id": "RuthlessSupportPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Ruzhan, the Blazing Sword",
+    "skill_id": "SummonFireDjinnPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Sacrifice",
+    "skill_id": "SacrificePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Sacrificial Lamb I",
+    "skill_id": "SupportSacrificialLambPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Sacrificial Lamb II",
+    "skill_id": "SupportSacrificialLambPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Sacrificial Offering",
+    "skill_id": "SupportSacrificalOfferingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Salvo",
+    "skill_id": "SupportSalvoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Sanguine Revelry",
+    "skill_id": "SanguineRevelryPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Savage Fury",
+    "skill_id": "SavageFuryPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Scavenged Plating",
+    "skill_id": "ScavengedPlatingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Scouring Flame",
+    "skill_id": "SupportScouringFlamePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Searing Flame I",
+    "skill_id": "SupportDeadlyIgnitesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Searing Flame II",
+    "skill_id": "SupportDeadlyIgnitesPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Second Wind I",
+    "skill_id": "SupportSecondWindPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Second Wind II",
+    "skill_id": "SupportSecondWindPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Second Wind III",
+    "skill_id": "SupportSecondWindPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Seismic Cry",
+    "skill_id": "SeismicCryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Selfless Remnants",
+    "skill_id": "SupportSelflessRemnantsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Seraph's Heart",
+    "skill_id": "SupportSeraphsHeartPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shard Scavenger",
+    "skill_id": "ShardScavengerPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shattering Concoction",
+    "skill_id": "ShatteringConcoctionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shattering Palm",
+    "skill_id": "ShatteringPalmPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shattering Spite",
+    "skill_id": "ShatteringSpitePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shield Charge",
+    "skill_id": "ShieldChargePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shield Wall",
+    "skill_id": "ShieldWallPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Shock",
+    "skill_id": "SupportShockPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Shock Conduction",
+    "skill_id": "SupportShockConductionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Shock Conduction II",
+    "skill_id": "SupportShockConductionPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Shock Siphon",
+    "skill_id": "SupportEnergyShieldOnShockKillPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shockburst Rounds",
+    "skill_id": "ShockburstRoundsAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shockchain Arrow",
+    "skill_id": "ShockchainArrowPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Shocking Leap",
+    "skill_id": "SupportShockingLeapPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Shockwave Totem",
+    "skill_id": "ShockwaveTotemPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Short Fuse I",
+    "skill_id": "SupportShortFusePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Short Fuse II",
+    "skill_id": "SupportShortFusePlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Shred",
+    "skill_id": "WolfShredPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Siege Ballista",
+    "skill_id": "SiegeBallistaPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Siege Cascade",
+    "skill_id": "SiegeCascadeAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Sigil of Power",
+    "skill_id": "SigilOfPowerPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Sione's Temper",
+    "skill_id": "SupportWildshardsPlayerThree"
+  },
+  {
+    "is_support": false,
+    "name": "Siphon Elements",
+    "skill_id": "SiphonElementsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Siphoning Strike",
+    "skill_id": "SiphoningStrikePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Skeletal Arsonist",
+    "skill_id": "SummonSkeletalArsonistsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Skeletal Brute",
+    "skill_id": "SummonSkeletalBrutesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Skeletal Cleric",
+    "skill_id": "SummonSkeletalClericsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Skeletal Frost Mage",
+    "skill_id": "SummonSkeletalFrostMagesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Skeletal Reaver",
+    "skill_id": "SummonSkeletalReaversPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Skeletal Storm Mage",
+    "skill_id": "SummonSkeletalStormMagesPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Skeletal Warrior",
+    "skill_id": "SummonSkeletalWarriorsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Skittering Stone I",
+    "skill_id": "SupportSkitteringStonePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Skittering Stone II",
+    "skill_id": "SupportSkitteringStonePlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Skyfall",
+    "skill_id": "SkyfallPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Slow Potency",
+    "skill_id": "SupportSlowPotencyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Smash to Smithereens",
+    "skill_id": "SmashToSmithereensPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Snap",
+    "skill_id": "SnapPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Snipe",
+    "skill_id": "SnipePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Sniper's Mark",
+    "skill_id": "SnipersMarkPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Soaring Midnight",
+    "skill_id": "NightfallSoaringMidnightPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Solar Orb",
+    "skill_id": "SolarOrbPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Sorcery Ward",
+    "skill_id": "SorceryWardPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Soul Drain",
+    "skill_id": "SupportManaOnCullPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Soul Offering",
+    "skill_id": "SoulOfferingPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Soulrend",
+    "skill_id": "SoulrendPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Spar",
+    "skill_id": "SupportSparPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spark",
+    "skill_id": "SparkPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spear Stab",
+    "skill_id": "MeleeSpearOffHandPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spear Throw",
+    "skill_id": "SpearThrowPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spear of Solaris",
+    "skill_id": "SpearOfSolarisPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spearfield",
+    "skill_id": "SpearfieldPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Spectral Volley",
+    "skill_id": "SupportSpectralVolleyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spectre: {0}",
+    "skill_id": "SummonSpectrePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Spell Cascade",
+    "skill_id": "SupportSpellCascadePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Spell Echo",
+    "skill_id": "SupportSpellEchoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spell Totem",
+    "skill_id": "SummonMetaTotemSpellTotemPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spellslinger",
+    "skill_id": "MetaSpellslingerPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spiral Volley",
+    "skill_id": "SpiralVolleyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spiraling Conspiracy",
+    "skill_id": "SummonSpiralingConspiracyPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Spirit Vessel",
+    "skill_id": "SpiritVesselPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Splinter Totem I",
+    "skill_id": "SupportSplinteringTotemPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Splinter Totem II",
+    "skill_id": "SupportSplinteringTotemPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Staggering Palm",
+    "skill_id": "StaggeringPalmPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Stampede",
+    "skill_id": "StampedePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Starborn Onslaught",
+    "skill_id": "StarbornOnslaughtPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Static Shocks",
+    "skill_id": "SupportStaticShocksPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Steadfast I",
+    "skill_id": "SupportSteadfastPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Steadfast II",
+    "skill_id": "SupportSteadfastPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Stoicism I",
+    "skill_id": "SupportStoicismPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Stoicism II",
+    "skill_id": "SupportStoicismPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Stomping Ground",
+    "skill_id": "SupportStompingGroundPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Storm Lance",
+    "skill_id": "StormLancePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Storm Wave",
+    "skill_id": "StormWavePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Stormblast Bolts",
+    "skill_id": "StormblastBoltsAmmoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Stormcaller Arrow",
+    "skill_id": "StormcallerArrowPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Stormchain",
+    "skill_id": "SupportStormchainPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Stormfire",
+    "skill_id": "SupportStormfirePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Streamlined Rounds",
+    "skill_id": "SupportStreamlinedRoundsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Strong Hearted",
+    "skill_id": "SupportStrongHeartedPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Stun I",
+    "skill_id": "SupportStunPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Stun II",
+    "skill_id": "SupportStunPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Stun III",
+    "skill_id": "SupportStunPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Styrn's Ferocity",
+    "skill_id": "SupportStyrnsFerocity"
+  },
+  {
+    "is_support": true,
+    "name": "Styrn's Mountain",
+    "skill_id": "SupportStyrnsMountain"
+  },
+  {
+    "is_support": false,
+    "name": "Summon Infernal Hound",
+    "skill_id": "SummonInfernalHoundPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Sunder",
+    "skill_id": "SunderPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Supercharged Slam",
+    "skill_id": "SuperchargedSlamPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Supercritical",
+    "skill_id": "SupportIncreasedCriticalDamagePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Supporting Fire",
+    "skill_id": "SupportingFirePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Swift Affliction I",
+    "skill_id": "SupportSwiftAfflictionPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Swift Affliction II",
+    "skill_id": "SupportSwiftAfflictionPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Swift Affliction III",
+    "skill_id": "SupportSwiftAfflictionPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Syzygy",
+    "skill_id": "SupportSyzygyPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Tacati's Ire",
+    "skill_id": "SupportTacatisIrePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Tame Beast",
+    "skill_id": "TameBeastPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Tangmazu's Thurible",
+    "skill_id": "SupportTangMazusThuriblePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Tasalio's Rhythm",
+    "skill_id": "SupportTasaliosRhythmPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Tawhoa's Tending",
+    "skill_id": "SupportHardyTotemsPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Tear",
+    "skill_id": "SupportTearPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Tecrod's Revenge",
+    "skill_id": "SupportTecrodsRevengePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Tectonic Slams",
+    "skill_id": "SupportSlamAftershocksPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Temper Weapon",
+    "skill_id": "TemperWeaponPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Tempest Bell",
+    "skill_id": "TempestBellPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Tempest Flurry",
+    "skill_id": "TempestFlurryPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Temporal Chains",
+    "skill_id": "TemporalChainsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Temporal Rift",
+    "skill_id": "TemporalRiftPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "The Stars Answer",
+    "skill_id": "TheStarsAnswerPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Thornskin I",
+    "skill_id": "SupportThornskinPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Thornskin II",
+    "skill_id": "SupportThornskinPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Thrashing Vines",
+    "skill_id": "ThrashingVinesPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Thrill of the Kill",
+    "skill_id": "SupportThrillOfTheKillPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Thrill of the Kill II",
+    "skill_id": "SupportThrillOfTheKillPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Thundergod's Wrath",
+    "skill_id": "MetaCastLightningSpellOnHitPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Thunderous Leap",
+    "skill_id": "ThunderousLeapPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Thunderstorm",
+    "skill_id": "ThunderstormPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Time Freeze",
+    "skill_id": "TimeFreezePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Time Snap",
+    "skill_id": "TimeSnapPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Time of Need",
+    "skill_id": "TimeOfNeedPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Tireless",
+    "skill_id": "SupportTirelessPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Tornado",
+    "skill_id": "TornadoPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Tornado Shot",
+    "skill_id": "TornadoShotPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Toxic Domain",
+    "skill_id": "ToxicDomainPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Toxic Growth",
+    "skill_id": "ToxicGrowthPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Trail of Caltrops",
+    "skill_id": "TrailOfCaltropsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Trickster's Shard",
+    "skill_id": "SupportTrickstersShardPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Trinity",
+    "skill_id": "TrinityPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Triskelion Cascade",
+    "skill_id": "TriskelionCascadePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Tul's Avalanche",
+    "skill_id": "SupportTulsAvalanche"
+  },
+  {
+    "is_support": true,
+    "name": "Tul's Stillness",
+    "skill_id": "SupportTulsStillnessPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Twister",
+    "skill_id": "TwisterPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Uhtred's Augury",
+    "skill_id": "SupportUhtredAuguryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Uhtred's Constellation",
+    "skill_id": "SupportUhtredsConstellation"
+  },
+  {
+    "is_support": true,
+    "name": "Uhtred's Exodus",
+    "skill_id": "SupportUhtredExodusPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Uhtred's Omen",
+    "skill_id": "SupportUhtredOmenPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Uhtred's Rite",
+    "skill_id": "SupportUhtredsRitePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Unbound Avatar",
+    "skill_id": "UnboundAvatarPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Undermine",
+    "skill_id": "SupportUnderminePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Unearth",
+    "skill_id": "UnearthPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Unerring Power",
+    "skill_id": "SupportUnerringPowerPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Unleash",
+    "skill_id": "UnleashPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Untouchable",
+    "skill_id": "SupportUntouchablePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Upheaval I",
+    "skill_id": "SupportUpheavalPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Upheaval II",
+    "skill_id": "SupportUpheavalPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Upwelling I",
+    "skill_id": "SupportUpwellingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Upwelling II",
+    "skill_id": "SupportUpwellingPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Urgent Totems I",
+    "skill_id": "SupportUrgentTotemsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Urgent Totems II",
+    "skill_id": "SupportUrgentTotemsPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Urgent Totems III",
+    "skill_id": "SupportUrgentTotemsPlayerThree"
+  },
+  {
+    "is_support": true,
+    "name": "Uruk's Smelting",
+    "skill_id": "SupportUruksSmeltingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Uul-Netol's Embrace",
+    "skill_id": "SupportUulNetolsEmbracePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Valako's Charge",
+    "skill_id": "ValakosChargePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Vanguard I",
+    "skill_id": "SupportVanguardPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Vanguard II",
+    "skill_id": "SupportVanguardPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Varashta's Blessing",
+    "skill_id": "SupportVarashtasBlessingPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Vaulting Impact",
+    "skill_id": "VaultingImpactPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Verglas",
+    "skill_id": "SupportVerglasPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Verisium Manifestations",
+    "skill_id": "VerisiumManifestationPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Vilenta's Propulsion",
+    "skill_id": "SupportVilentasPropulsionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Vine Arrow",
+    "skill_id": "VineArrowPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Virtuous Barrier",
+    "skill_id": "VirtuousBarrierPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Vitality I",
+    "skill_id": "SupportVitalityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Vitality II",
+    "skill_id": "SupportVitalityPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Vivid Stampede",
+    "skill_id": "VividStampedePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Void Illusion",
+    "skill_id": "VoidIllusionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Volatile Dead",
+    "skill_id": "VolatileDeadPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Volatility",
+    "skill_id": "SupportVolatilityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Volcanic Eruption",
+    "skill_id": "SupportVolcanicEruptionPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Volcanic Fissure",
+    "skill_id": "VolcanicFissurePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Volcano",
+    "skill_id": "VolcanoPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Volt",
+    "skill_id": "SupportVoltPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Voltaic Barrier",
+    "skill_id": "VoltaicBarrierPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Voltaic Grenade",
+    "skill_id": "ShockGrenadePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Voltaic Mark",
+    "skill_id": "VoltaicMarkPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Vorana's Siege",
+    "skill_id": "SupportVoranasSiege"
+  },
+  {
+    "is_support": true,
+    "name": "Vruun's Aftermath",
+    "skill_id": "SupportVruunsAftermath"
+  },
+  {
+    "is_support": true,
+    "name": "Vruun's Inevitability",
+    "skill_id": "SupportVruunsInevitability"
+  },
+  {
+    "is_support": false,
+    "name": "Vulnerability",
+    "skill_id": "VulnerabilityPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Walking Calamity",
+    "skill_id": "WalkingCalamityPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "War Banner",
+    "skill_id": "WarBannerReservationPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Wardbound Minions",
+    "skill_id": "WardboundMinionsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Warm Blooded",
+    "skill_id": "SupportWarmbloodedPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Wave of Frost",
+    "skill_id": "WaveOfFrostPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Whirling Assault",
+    "skill_id": "WhirlingAssaultPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Whirling Slash",
+    "skill_id": "WhirlingSlashPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Whirlwind Lance",
+    "skill_id": "WhirlwindLancePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Wild Protector",
+    "skill_id": "WildProtectorPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Wildfire",
+    "skill_id": "SupportWildfirePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Wildshards I",
+    "skill_id": "SupportWildshardsPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Wildshards II",
+    "skill_id": "SupportWildshardsPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Wildwood's Gifts",
+    "skill_id": "AncientGiftsPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Wind Blast",
+    "skill_id": "GaleStrikePlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Wind Dancer",
+    "skill_id": "WindDancerPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Wind Serpent's Fury",
+    "skill_id": "WindSerpentsFuryPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Wind Wave",
+    "skill_id": "SupportKnockbackWavePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Window of Opportunity I",
+    "skill_id": "SupportWindowOfOpportunityPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Window of Opportunity II",
+    "skill_id": "SupportWindowOfOpportunityPlayerTwo"
+  },
+  {
+    "is_support": false,
+    "name": "Wing Blast",
+    "skill_id": "WingBlastPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Wither",
+    "skill_id": "WitherPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Withering Touch",
+    "skill_id": "SupportWitheringTouchPlayer"
+  },
+  {
+    "is_support": false,
+    "name": "Wolf Pack",
+    "skill_id": "WolfPackPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Xibaqua's Rending",
+    "skill_id": "SupportXibaquasRendingPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Xoph's Pyre",
+    "skill_id": "SupportXophsPyrePlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Zarokh's Refrain",
+    "skill_id": "SupportZarokhsRefrainPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Zarokh's Revolt",
+    "skill_id": "SupportZarokhsRevoltPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Zenith I",
+    "skill_id": "SupportZenithPlayer"
+  },
+  {
+    "is_support": true,
+    "name": "Zenith II",
+    "skill_id": "SupportZenithPlayerTwo"
+  },
+  {
+    "is_support": true,
+    "name": "Zerphi's Infamy",
+    "skill_id": "SupportZerphisLegacyPlayer"
+  }
+]

@@ -10,12 +10,15 @@
 
 use std::collections::BTreeMap;
 
+use pobr_build::build::GemSkillRef;
 use pobr_build::{
-    Build, CharacterIdentity, DataOrchestratorOptions, calculate_with_data_session,
-    decode_pob_code, parse_build, parse_raw_items_view,
+    Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
+    calculate_with_data_session, decode_pob_code, parse_build, parse_raw_items_view,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
+use pobr_data::item::EquipmentSlot;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::NodeId;
 use serde::{Deserialize, Serialize};
@@ -165,6 +168,54 @@ pub struct CharacterOverride {
     ascendancy_name: Option<String>,
 }
 
+/// 手动技能组的宝石条目（active 与 support 皆可；组内首个即主动技能，
+/// 与 XML 导入同语义）。`gem_id` 不上行——由 `gem_effects` 表按 `skill_id`
+/// 反查（support 分类依赖 gem id）。
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct GemInput {
+    skill_id: String,
+    level: u32,
+    quality: u32,
+}
+
+impl Default for GemInput {
+    fn default() -> Self {
+        Self {
+            skill_id: String::new(),
+            level: 20,
+            quality: 0,
+        }
+    }
+}
+
+/// 手动技能组（整份替换 build 的 socket_groups）。
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SocketGroupInput {
+    slot: Option<String>,
+    enabled: bool,
+    gems: Vec<GemInput>,
+}
+
+impl Default for SocketGroupInput {
+    fn default() -> Self {
+        Self {
+            slot: None,
+            enabled: true,
+            gems: Vec::new(),
+        }
+    }
+}
+
+/// 手动装备（PoB 原始文本块，与导入路径同一解析器；整份替换装备槽）。
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct SlotItemInput {
+    slot: String,
+    text: String,
+}
+
 /// 计算请求：`pob_code` 与 `character` 至少给一个——有 code 则解码为基线再套
 /// 覆盖项；无 code 时以 `character` 白手起一个空 build（PoB2 新建 build 语义）。
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -175,6 +226,10 @@ pub struct CalculateBuildRequest {
     character: Option<CharacterOverride>,
     /// 覆盖已加点集合（交互加点：整份替换 build 的 allocated_nodes）。
     allocated_nodes: Option<Vec<u32>>,
+    /// 覆盖技能组（手动编辑：整份替换；`None` = 保持 code 解码结果）。
+    socket_groups: Option<Vec<SocketGroupInput>>,
+    /// 覆盖装备（手动编辑：整份替换全部装备槽；珠宝/药剂不在此列，v1 只读）。
+    items: Option<Vec<SlotItemInput>>,
     /// 覆盖主技能组（0-based，Skills 页切换主技能用）。
     main_socket_group: Option<usize>,
     /// 有效 DPS 口径（默认 true，与 PoB2 主面板同口径）。
@@ -206,8 +261,71 @@ fn json_to_config_value(v: &serde_json::Value) -> Result<ConfigInputValue, Strin
     }
 }
 
-/// 把请求应用到解码/新建的 build（角色 / 树 / 主技能组 / config 覆盖）。
-fn apply_request_overrides(build: &mut Build, req: &CalculateBuildRequest) -> Result<(), String> {
+/// 装备槽稳定 id → [`EquipmentSlot`]（与 `EquipmentSlot::id()` 互逆）。
+fn slot_from_id(id: &str) -> Result<EquipmentSlot, String> {
+    const ALL: [EquipmentSlot; 11] = [
+        EquipmentSlot::Weapon1,
+        EquipmentSlot::Weapon2,
+        EquipmentSlot::Helmet,
+        EquipmentSlot::BodyArmour,
+        EquipmentSlot::Gloves,
+        EquipmentSlot::Boots,
+        EquipmentSlot::Amulet,
+        EquipmentSlot::Ring1,
+        EquipmentSlot::Ring2,
+        EquipmentSlot::Ring3,
+        EquipmentSlot::Belt,
+    ];
+    ALL.into_iter()
+        .find(|s| s.id() == id)
+        .ok_or_else(|| format!("unknown equipment slot: {id}"))
+}
+
+/// 手动技能组 → [`SocketGroup`]：主动技能 = 组内首个非 support 宝石（查数据表，
+/// 比 XML 的「首个即 active」更鲁棒）；gem id 由 `gem_effects` 表按效果 id 反查
+/// （support 分类依赖它）。
+fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> SocketGroup {
+    let mut group = SocketGroup {
+        slot: input.slot.clone(),
+        enabled: input.enabled,
+        ..SocketGroup::default()
+    };
+    for gem in &input.gems {
+        if gem.skill_id.is_empty() {
+            continue;
+        }
+        let gem_id = data
+            .gem_effects
+            .get(&gem.skill_id)
+            .map(|e| e.gem_id.clone());
+        let is_support = gem_id
+            .as_deref()
+            .and_then(|id| data.is_support_gem(id))
+            .unwrap_or(false);
+        if group.active_skill_id.is_none() && !is_support {
+            group.active_skill_id = Some(gem.skill_id.clone());
+            group.active_gem_level = Some(gem.level);
+            group.active_gem_quality = Some(gem.quality);
+        }
+        group.gem_skills.push(GemSkillRef {
+            skill_id: gem.skill_id.clone(),
+            gem_level: gem.level,
+            quality: gem.quality,
+            stat_set_index: None,
+        });
+        if let Some(gem_id) = gem_id {
+            group.gem_ids.push(gem_id);
+        }
+    }
+    group
+}
+
+/// 把请求应用到解码/新建的 build（角色 / 树 / 技能组 / 装备 / 主技能组 / config 覆盖）。
+fn apply_request_overrides(
+    build: &mut Build,
+    req: &CalculateBuildRequest,
+    data: &BuildData,
+) -> Result<(), String> {
     if let Some(ch) = &req.character {
         if let Some(level) = ch.level {
             build.character.level = level;
@@ -221,6 +339,21 @@ fn apply_request_overrides(build: &mut Build, req: &CalculateBuildRequest) -> Re
     }
     if let Some(nodes) = &req.allocated_nodes {
         build.tree.allocated_nodes = nodes.iter().map(|&n| NodeId(n)).collect();
+    }
+    if let Some(groups) = &req.socket_groups {
+        build.socket_groups = groups
+            .iter()
+            .map(|g| socket_group_from_input(g, data))
+            .collect();
+    }
+    if let Some(items) = &req.items {
+        build.items.clear();
+        for item in items {
+            let slot = slot_from_id(&item.slot)?;
+            let parsed = parse_pob_xml_item(&item.text)
+                .map_err(|e| format!("parse item in slot {}: {e:?}", item.slot))?;
+            build.items.insert(slot, parsed);
+        }
     }
     if let Some(main) = req.main_socket_group {
         build.main_socket_group = Some(main);
@@ -253,8 +386,9 @@ fn orchestrator_options(req: &CalculateBuildRequest) -> Result<DataOrchestratorO
 
 /// 跑一次完整编排（decode → Build → calculate_with_data_session）。
 fn run_session(req: &CalculateBuildRequest) -> Result<CalculationSession, String> {
+    let data = state::build_data()?;
     let mut build = parse_build_from_request(req)?;
-    apply_request_overrides(&mut build, req)?;
+    apply_request_overrides(&mut build, req, &data)?;
     run_session_for_build(&build, req)
 }
 
@@ -423,6 +557,8 @@ pub struct AttributionRequest {
     fields: Vec<String>,
     character: Option<CharacterOverride>,
     allocated_nodes: Option<Vec<u32>>,
+    socket_groups: Option<Vec<SocketGroupInput>>,
+    items: Option<Vec<SlotItemInput>>,
     main_socket_group: Option<usize>,
     mode_effective: Option<bool>,
     enemy_tier: Option<String>,
@@ -477,13 +613,16 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
         pob_code: req.pob_code.clone(),
         character: req.character.clone(),
         allocated_nodes: req.allocated_nodes.clone(),
+        socket_groups: req.socket_groups.clone(),
+        items: req.items.clone(),
         main_socket_group: req.main_socket_group,
         mode_effective: req.mode_effective,
         enemy_tier: req.enemy_tier.clone(),
         ..Default::default()
     };
+    let data = state::build_data()?;
     let mut build = parse_build_from_request(&calc_req)?;
-    apply_request_overrides(&mut build, &calc_req)?;
+    apply_request_overrides(&mut build, &calc_req, &data)?;
 
     let baseline_session = run_session_for_build(&build, &calc_req)?;
     let baseline = display_values_map(&baseline_session, &fields);
@@ -531,4 +670,45 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
 
     let response = AttributionResponse { baseline, entries };
     serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))
+}
+
+// ---------------------------------------------------------------------------
+// gem_catalog_json（手动技能编辑的宝石选择器目录）
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+struct GemCatalogEntry {
+    /// 授予效果 id（[`GemInput::skill_id`] 上行用的键）。
+    skill_id: String,
+    /// 展示名（base_items canonical 名；缺失回退 gem id）。
+    name: String,
+    is_support: bool,
+}
+
+/// 宝石目录：`{skill_id, name, is_support}` 按名称排序。只收带主效果连边的
+/// 玩家宝石（`gem_effects` overlay 即 vendor Gems.lua 的策展面）。
+pub fn gem_catalog_json() -> Result<String, String> {
+    let data = state::build_data()?;
+    let name_by_gem_id: std::collections::HashMap<&str, &str> = data
+        .base_items
+        .iter()
+        .map(|(name, def)| (def.id.as_str(), name.as_str()))
+        .collect();
+    let mut by_skill: BTreeMap<String, GemCatalogEntry> = BTreeMap::new();
+    for gem in data.skill_gems.values() {
+        let Some(skill_id) = gem.granted_effect_id.clone() else {
+            continue;
+        };
+        by_skill.entry(skill_id.clone()).or_insert(GemCatalogEntry {
+            skill_id,
+            name: name_by_gem_id
+                .get(gem.id.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| gem.id.clone()),
+            is_support: gem.is_support,
+        });
+    }
+    let mut entries: Vec<GemCatalogEntry> = by_skill.into_values().collect();
+    entries.sort_by(|a, b| a.name.cmp(&b.name).then(a.skill_id.cmp(&b.skill_id)));
+    serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))
 }

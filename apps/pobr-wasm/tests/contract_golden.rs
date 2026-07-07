@@ -226,6 +226,85 @@ fn calculate_scratch_build_without_code() {
     );
 }
 
+/// 手动添加技能组 / 装备（无 code 的完整手搓路径）+ 宝石目录形状。
+#[test]
+fn manual_skills_and_items_without_code() {
+    ensure_data();
+
+    // 宝石目录：非空，条目形状 {skill_id, name, is_support}，含 active 与 support 两类。
+    let catalog: Value =
+        serde_json::from_str(&pobr_wasm::gem_catalog_json().expect("gem catalog")).unwrap();
+    let entries = catalog.as_array().unwrap();
+    assert!(entries.len() > 100, "catalog too small: {}", entries.len());
+    assert_keys(
+        &entries[0],
+        &["skill_id", "name", "is_support"],
+        "gem catalog entry",
+    );
+    assert!(entries.iter().any(|e| e["is_support"] == false));
+    assert!(entries.iter().any(|e| e["is_support"] == true));
+    // 找一个已知法术（Comet 来自 druid 参考 build）。
+    let comet = entries
+        .iter()
+        .find(|e| e["name"] == "Comet")
+        .expect("Comet gem in catalog");
+    let comet_id = comet["skill_id"].as_str().unwrap();
+
+    let base_req = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "allocated_nodes": [],
+    });
+    let stat = |resp: &Value, id: &str| -> f64 {
+        resp["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap_or(0.0)
+    };
+
+    // 手动技能组：白手 build + Comet → TotalDPS > 0。
+    let mut with_skill = base_req.clone();
+    with_skill["socket_groups"] =
+        serde_json::json!([{ "gems": [{ "skill_id": comet_id, "level": 20, "quality": 0 }] }]);
+    let resp: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&with_skill.to_string()).expect("manual skill"),
+    )
+    .unwrap();
+    assert!(
+        stat(&resp, "TotalDPS") > 0.0,
+        "manual Comet group should produce DPS"
+    );
+
+    // 手动装备：+50 Life 戒指 → Life 恰好 +50（无任何 inc 来源）。
+    let baseline: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&base_req.to_string()).expect("baseline"),
+    )
+    .unwrap();
+    let mut with_item = base_req.clone();
+    with_item["items"] = serde_json::json!([{
+        "slot": "ring1",
+        "text": "Rarity: MAGIC\nSapphire Ring\n+50 to maximum Life",
+    }]);
+    let resp: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&with_item.to_string()).expect("manual item"),
+    )
+    .unwrap();
+    let delta = stat(&resp, "Life") - stat(&baseline, "Life");
+    assert!(
+        (delta - 50.0).abs() < 0.5,
+        "manual +50 Life ring should add 50 Life, got {delta}"
+    );
+
+    // 非法槽位 → 可读错误。
+    let mut bad = base_req.clone();
+    bad["items"] = serde_json::json!([{ "slot": "hat", "text": "Rarity: NORMAL\nIron Hat" }]);
+    let err = pobr_wasm::calculate_build_json(&bad.to_string()).unwrap_err();
+    assert!(err.contains("unknown equipment slot"), "unexpected: {err}");
+}
+
 #[test]
 fn attribution_json_shape() {
     ensure_data();

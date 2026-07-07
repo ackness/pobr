@@ -54,7 +54,7 @@ export default function App() {
           {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => setTab('items')} />}
           {tab === 'tree' && <TreePanel session={session} lang={lang} />}
           {tab === 'skills' && <SkillsPanel session={session} lang={lang} />}
-          {tab === 'items' && <ItemsPanel build={session.build} lang={lang} />}
+          {tab === 'items' && <ItemsPanel session={session} lang={lang} />}
           {tab === 'calcs' && <CalcsPanel session={session} lang={lang} />}
           {tab === 'config' && <ConfigPanel session={session} lang={lang} />}
           {tab === 'notes' && <NotesPlaceholder lang={lang} />}

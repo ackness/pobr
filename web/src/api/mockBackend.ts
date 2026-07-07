@@ -9,6 +9,7 @@ import type {
   BuildJson,
   CalculateBuildResponse,
   AttributionResponse,
+  GemCatalogEntry,
   PassiveNode,
   PassiveTreeMeta,
 } from './types';
@@ -17,6 +18,7 @@ import calculateFixture from '../fixtures/calculate.json';
 import attributionFixture from '../fixtures/attribution.json';
 import treeFixture from '../fixtures/tree.json';
 import treeMetaFixture from '../fixtures/tree_meta.json';
+import gemCatalogFixture from '../fixtures/gem_catalog.json';
 
 export function createMockBackend(): PobrBackend {
   return {
@@ -40,6 +42,9 @@ export function createMockBackend(): PobrBackend {
     },
     async loadTreeMeta() {
       return treeMetaFixture as unknown as PassiveTreeMeta;
+    },
+    async gemCatalog() {
+      return gemCatalogFixture as unknown as GemCatalogEntry[];
     },
     translate(_lang, key) {
       return key;

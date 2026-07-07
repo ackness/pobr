@@ -50,3 +50,46 @@
   color: var(--text-secondary);
   font-size: var(--text-sm);
 }
+
+/* 编辑器 */
+.item-card-empty {
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+.item-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.item-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.item-actions button {
+  font-size: var(--text-xs);
+  padding: 0 var(--space-2);
+}
+
+.item-empty-hint {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  margin: var(--space-2) 0 0;
+}
+
+.item-editor textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+  resize: vertical;
+}
+
+.item-editor-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}

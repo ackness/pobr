@@ -16,6 +16,8 @@ import type {
   ConfigInputValue,
   EnemyTier,
   PassiveTreeMeta,
+  SlotItemInput,
+  SocketGroupInput,
 } from '../api/types';
 
 export interface CharacterState {
@@ -35,17 +37,23 @@ interface BuildState {
   pobCode: string | null;
   character: CharacterState;
   allocatedNodes: number[];
+  /** 技能组（导入时物化，手动可增删改；始终以整份覆盖上行）。 */
+  socketGroups: SocketGroupInput[];
+  /** 装备槽原始文本（同上；珠宝/药剂 v1 只读，仍由 pob_code 基线携带）。 */
+  items: SlotItemInput[];
   params: CalcParams;
 }
 
 export interface BuildSession {
   bootMessage: string | null;
   bootError: string | null;
-  /** 解码出的原始 build（Items/Skills 展示；白手 build 为 null）。 */
+  /** 解码出的原始 build（珠宝/药剂等只读展示；白手 build 为 null）。 */
   build: BuildJson | null;
   treeMeta: PassiveTreeMeta | null;
   character: CharacterState | null;
   allocatedNodes: number[];
+  socketGroups: SocketGroupInput[];
+  items: SlotItemInput[];
   calc: CalculateBuildResponse | null;
   calcParams: CalcParams;
   busy: boolean;
@@ -54,6 +62,10 @@ export interface BuildSession {
   newBuild: (className: string, ascendancyName: string) => void;
   setCharacter: (patch: Partial<CharacterState>) => void;
   toggleNode: (skill: number) => void;
+  /** 整份替换技能组（Skills 编辑器）。 */
+  setSocketGroups: (groups: SocketGroupInput[]) => void;
+  /** 整份替换装备（Items 编辑器）。 */
+  setItems: (items: SlotItemInput[]) => void;
   updateParams: (patch: Partial<CalcParams>) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
@@ -64,9 +76,27 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     pob_code: state.pobCode ?? undefined,
     character: state.character,
     allocated_nodes: state.allocatedNodes,
+    socket_groups: state.socketGroups,
+    items: state.items,
     main_socket_group: state.params.main_socket_group,
     enemy_tier: state.params.enemy_tier,
     config_inputs: state.params.config_inputs,
+  };
+}
+
+/** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
+function materialize(decoded: BuildJson): Pick<BuildState, 'socketGroups' | 'items'> {
+  return {
+    socketGroups: decoded.socket_groups.map((g) => ({
+      slot: g.slot,
+      enabled: g.enabled,
+      gems: g.gems.map((gem) => ({
+        skill_id: gem.skill_id,
+        level: gem.level,
+        quality: gem.quality,
+      })),
+    })),
+    items: decoded.items.equipped.map((item) => ({ slot: item.slot, text: item.text })),
   };
 }
 
@@ -123,6 +153,8 @@ export function useBuildSession(): BuildSession {
           pobCode: null,
           character: { level: 1, class_name: firstClass, ascendancy_name: '' },
           allocatedNodes: [],
+          socketGroups: [],
+          items: [],
           params: { config_inputs: {} },
         });
       })
@@ -150,6 +182,7 @@ export function useBuildSession(): BuildSession {
             ascendancy_name: decoded.character.ascendancy_name,
           },
           allocatedNodes: decoded.tree.allocated_nodes,
+          ...materialize(decoded),
           params: { config_inputs: {} },
         });
       } catch (err) {
@@ -167,10 +200,28 @@ export function useBuildSession(): BuildSession {
         pobCode: null,
         character: { level: 1, class_name: className, ascendancy_name: ascendancyName },
         allocatedNodes: [],
+        socketGroups: [],
+        items: [],
         params: { config_inputs: {} },
       });
     },
     [apply],
+  );
+
+  const setSocketGroups = useCallback(
+    (socketGroups: SocketGroupInput[]) => {
+      if (!state) return;
+      apply({ ...state, socketGroups });
+    },
+    [apply, state],
+  );
+
+  const setItems = useCallback(
+    (items: SlotItemInput[]) => {
+      if (!state) return;
+      apply({ ...state, items });
+    },
+    [apply, state],
   );
 
   const setCharacter = useCallback(
@@ -223,6 +274,8 @@ export function useBuildSession(): BuildSession {
         pob_code: state.pobCode ?? undefined,
         character: state.character,
         allocated_nodes: state.allocatedNodes,
+        socket_groups: state.socketGroups,
+        items: state.items,
         fields,
         main_socket_group: state.params.main_socket_group,
         enemy_tier: state.params.enemy_tier,
@@ -238,6 +291,8 @@ export function useBuildSession(): BuildSession {
     treeMeta,
     character: state?.character ?? null,
     allocatedNodes: state?.allocatedNodes ?? [],
+    socketGroups: state?.socketGroups ?? [],
+    items: state?.items ?? [],
     calc,
     calcParams: state?.params ?? { config_inputs: {} },
     busy,
@@ -246,6 +301,8 @@ export function useBuildSession(): BuildSession {
     newBuild,
     setCharacter,
     toggleNode,
+    setSocketGroups,
+    setItems,
     updateParams,
     setConfigInput,
     runAttribution,

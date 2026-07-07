@@ -68,6 +68,10 @@ fn generate_web_fixtures() {
     )
     .unwrap();
 
+    // 宝石目录（手动技能编辑选择器）。
+    let catalog = pobr_wasm::gem_catalog_json().expect("gem catalog");
+    std::fs::write(out.join("gem_catalog.json"), pretty(&catalog)).unwrap();
+
     // 职业/升华元数据（新建 build 选择器用）：直接镜像数据文件。
     std::fs::copy(
         dir.join("base/passive_tree_meta.json"),

@@ -29,4 +29,20 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 30_000 });
   await page.locator('.node').first().click({ force: true });
   await expect(page.locator('.tree-count')).toContainText('1 allocated', { timeout: 30_000 });
+
+  // 手动添加技能：搜索框选 Comet → 新组出现 → Total DPS 出数。
+  await page.getByRole('button', { name: 'Skills' }).click();
+  await page.getByLabel(/Search an active gem/).fill('Comet');
+  await expect(page.locator('.skill-group')).toHaveCount(1, { timeout: 30_000 });
+  const dpsValue = sidebar.locator('.stat-row', { hasText: 'Total DPS' }).locator('dd').first();
+  await expect(dpsValue).not.toHaveText('0', { timeout: 30_000 });
+  await expect(dpsValue).not.toHaveText('—');
+
+  // 手动添加装备：ring1 加默认模板（+50 Life）→ Life 变化。
+  const lifeBeforeItem = await lifeValue.textContent();
+  await page.getByRole('button', { name: 'Items' }).click();
+  const ringCard = page.locator('.item-card', { hasText: 'ring1' });
+  await ringCard.getByRole('button', { name: 'Add' }).click();
+  await ringCard.getByRole('button', { name: 'Apply' }).click();
+  await expect(lifeValue).not.toHaveText(lifeBeforeItem!, { timeout: 30_000 });
 });

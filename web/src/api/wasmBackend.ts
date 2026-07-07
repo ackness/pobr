@@ -11,6 +11,7 @@ import type {
   BuildJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
+  GemCatalogEntry,
   PassiveNode,
   PassiveTreeMeta,
 } from './types';
@@ -24,6 +25,7 @@ interface WasmModule {
   decodeBuildJson(code: string): string;
   calculateBuildJson(requestJson: string): string;
   attributionJson(requestJson: string): string;
+  gemCatalogJson(): string;
   translate(lang: string, key: string): string;
 }
 
@@ -117,6 +119,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       }
       const text = await fetchText(`/data/${manifest.version}/base/passive_tree.json`);
       return JSON.parse(text) as PassiveNode[];
+    },
+    async gemCatalog() {
+      return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
     },
     async loadTreeMeta() {
       if (!manifest) {

@@ -16,7 +16,7 @@ pub mod i18n;
 pub mod session;
 pub mod state;
 
-pub use build_api::{attribution_json, calculate_build_json, decode_build_json};
+pub use build_api::{attribution_json, calculate_build_json, decode_build_json, gem_catalog_json};
 pub use i18n::translate;
 pub use session::calculate_json;
 pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_file};
@@ -72,5 +72,11 @@ pub mod wasm {
     #[wasm_bindgen(js_name = attributionJson)]
     pub fn attribution_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::attribution_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`gemCatalogJson() -> string`（宝石选择器目录）。
+    #[wasm_bindgen(js_name = gemCatalogJson)]
+    pub fn gem_catalog_json() -> Result<String, JsError> {
+        crate::build_api::gem_catalog_json().map_err(|err| JsError::new(&err))
     }
 }

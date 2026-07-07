@@ -82,3 +82,65 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* 编辑器控件 */
+.skills-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.skills-toolbar input[list] {
+  min-width: 280px;
+}
+
+.skill-group-title {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.skill-group-toggle {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.skill-remove {
+  padding: 0 var(--space-2);
+  color: var(--text-muted);
+}
+
+.skill-remove:hover {
+  color: var(--color-negative);
+  border-color: var(--color-negative);
+}
+
+.gem-name {
+  flex: 1;
+}
+
+.gem-controls {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.gem-controls input[type='number'] {
+  width: 56px;
+}
+
+.skill-group input[list] {
+  width: 100%;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+}

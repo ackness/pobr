@@ -69,12 +69,43 @@ export interface CharacterOverride {
   ascendancy_name?: string;
 }
 
+/** 手动技能组宝石条目（gem id 由后端按 skill_id 反查）。 */
+export interface GemInput {
+  skill_id: string;
+  level: number;
+  quality: number;
+}
+
+/** 手动技能组（整份替换 build 的 socket_groups）。 */
+export interface SocketGroupInput {
+  slot?: string | null;
+  enabled: boolean;
+  gems: GemInput[];
+}
+
+/** 手动装备（PoB 原始文本块；整份替换装备槽）。 */
+export interface SlotItemInput {
+  slot: string;
+  text: string;
+}
+
+/** 宝石目录条目（gem_catalog_json）。 */
+export interface GemCatalogEntry {
+  skill_id: string;
+  name: string;
+  is_support: boolean;
+}
+
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
 export interface CalculateBuildRequest {
   pob_code?: string;
   character?: CharacterOverride;
   /** 整份替换已加点集合（交互加点）。 */
   allocated_nodes?: number[];
+  /** 整份替换技能组（手动编辑）。 */
+  socket_groups?: SocketGroupInput[];
+  /** 整份替换装备槽（手动编辑；珠宝/药剂 v1 只读）。 */
+  items?: SlotItemInput[];
   main_socket_group?: number;
   mode_effective?: boolean;
   enemy_tier?: EnemyTier;
@@ -142,6 +173,8 @@ export interface AttributionRequest {
   fields?: string[];
   character?: CharacterOverride;
   allocated_nodes?: number[];
+  socket_groups?: SocketGroupInput[];
+  items?: SlotItemInput[];
   main_socket_group?: number;
   mode_effective?: boolean;
   enemy_tier?: EnemyTier;

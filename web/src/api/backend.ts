@@ -11,6 +11,7 @@ import type {
   BuildJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
+  GemCatalogEntry,
   PassiveNode,
   PassiveTreeMeta,
 } from './types';
@@ -25,6 +26,8 @@ export interface PobrBackend {
   loadPassiveTree(): Promise<PassiveNode[]>;
   /** 职业/升华元数据（新建 build 选择器）。 */
   loadTreeMeta(): Promise<PassiveTreeMeta>;
+  /** 宝石目录（手动技能编辑选择器）。 */
+  gemCatalog(): Promise<GemCatalogEntry[]>;
   translate(lang: string, key: string): string;
 }
 
