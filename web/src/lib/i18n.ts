@@ -120,6 +120,22 @@ const DICT = {
   'tree.loading': { 'en-US': 'Loading tree…', 'zh-TW': '載入樹資料…', 'zh-CN': '加载树数据…' },
   'tree.ascendancy': { 'en-US': 'Ascendancy', 'zh-TW': '升華', 'zh-CN': '升华' },
   'tree.focusAsc': { 'en-US': 'Focus ascendancy', 'zh-TW': '定位升華盤', 'zh-CN': '定位升华盘' },
+  'tree.pickAscHint': {
+    'en-US': 'Pick an ascendancy (top right) to show its cluster',
+    'zh-TW': '在右上選擇升華以顯示升華盤',
+    'zh-CN': '在右上选择升华以显示升华盘',
+  },
+  'tree.attrPick': { 'en-US': 'Attribute:', 'zh-TW': '屬性：', 'zh-CN': '属性：' },
+  'tree.attr.str': { 'en-US': 'Strength', 'zh-TW': '力量', 'zh-CN': '力量' },
+  'tree.attr.dex': { 'en-US': 'Dexterity', 'zh-TW': '敏捷', 'zh-CN': '敏捷' },
+  'tree.attr.int': { 'en-US': 'Intelligence', 'zh-TW': '智慧', 'zh-CN': '智慧' },
+  'tree.attrDistribute': { 'en-US': 'Attribute points', 'zh-TW': '屬性點調配', 'zh-CN': '属性点调配' },
+  'tree.attrUnassigned': { 'en-US': 'unassigned', 'zh-TW': '未分配', 'zh-CN': '未分配' },
+  'tree.attrHotkeys': {
+    'en-US': 'Hotkeys: S/D/I (or 1/2/3) on a hovered attribute node',
+    'zh-TW': '快捷鍵：懸停屬性小點按 S/D/I（或 1/2/3）',
+    'zh-CN': '快捷键：悬停属性小点按 S/D/I（或 1/2/3）',
+  },
 
   // Config 页
   'config.title': { 'en-US': 'Configuration', 'zh-TW': '戰鬥配置', 'zh-CN': '战斗配置' },

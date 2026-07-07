@@ -15,9 +15,13 @@ export interface CharacterJson {
   ascendancy_name: string;
 }
 
+export type AttributeChoice = 'str' | 'dex' | 'int';
+
 export interface TreeJson {
   allocated_nodes: number[];
   tree_version: string | null;
+  /** 属性小点三选一（node skill id → str/dex/int）。 */
+  attribute_choices: Record<string, AttributeChoice>;
 }
 
 export interface SlotItemJson {
@@ -110,6 +114,8 @@ export interface CalculateBuildRequest {
   character?: CharacterOverride;
   /** 整份替换已加点集合（交互加点）。 */
   allocated_nodes?: number[];
+  /** 整份替换属性小点三选一。 */
+  attribute_choices?: Record<string, AttributeChoice>;
   /** 整份替换技能组（手动编辑）。 */
   socket_groups?: SocketGroupInput[];
   /** 整份替换装备槽（手动编辑；珠宝/药剂 v1 只读）。 */
@@ -181,6 +187,7 @@ export interface AttributionRequest {
   fields?: string[];
   character?: CharacterOverride;
   allocated_nodes?: number[];
+  attribute_choices?: Record<string, AttributeChoice>;
   socket_groups?: SocketGroupInput[];
   items?: SlotItemInput[];
   main_socket_group?: number;

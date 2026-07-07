@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
-import type { PassiveNode } from '../../api/types';
+import type { AttributeChoice, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
 import './tree.css';
@@ -34,6 +34,10 @@ export function TreePanel({ session, lang }: Props) {
   const [hover, setHover] = useState<PassiveNode | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoverStats, setHoverStats] = useState<string[] | null>(null);
+  /** 属性小点三选一弹窗（node + 屏幕坐标）。 */
+  const [attrPicker, setAttrPicker] = useState<{ node: PassiveNode; x: number; y: number } | null>(
+    null,
+  );
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
   const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -71,6 +75,47 @@ export function TreePanel({ session, lang }: Props) {
   );
 
   const byId = useMemo(() => new Map(placed.map((n) => [n.skill, n])), [placed]);
+
+  /** 属性小点判定（`+5 to any Attribute`）。 */
+  const isAttrNode = (node: PassiveNode) =>
+    node.name === 'Attribute' &&
+    (node.stats ?? []).some((line) => line.includes('any') && line.includes('Attribute'));
+
+  /** 已加点的属性小点（升序，批量调配的确定性分配序）。 */
+  const allocatedAttrNodes = useMemo(
+    () =>
+      session.allocatedNodes
+        .filter((skill) => {
+          const node = byId.get(skill);
+          return node ? isAttrNode(node) : false;
+        })
+        .sort((a, b) => a - b),
+    [session.allocatedNodes, byId],
+  );
+
+  const attrCounts = useMemo(() => {
+    const counts = { str: 0, dex: 0, int: 0 };
+    for (const skill of allocatedAttrNodes) {
+      const choice = session.attributeChoices[String(skill)];
+      if (choice) counts[choice] += 1;
+    }
+    return counts;
+  }, [allocatedAttrNodes, session.attributeChoices]);
+
+  /** 批量调配：前 str 个给力量、其次 dex、再 int，其余不分配（引擎语义=无贡献）。 */
+  const distributeAttributes = (str: number, dex: number, int: number) => {
+    const next: Record<string, AttributeChoice> = {};
+    // 保留非属性小点位（理论上没有，防御性）+ 重建属性小点位。
+    for (const [k, v] of Object.entries(session.attributeChoices)) {
+      if (!allocatedAttrNodes.includes(Number(k))) next[k] = v;
+    }
+    allocatedAttrNodes.forEach((skill, i) => {
+      if (i < str) next[String(skill)] = 'str';
+      else if (i < str + dex) next[String(skill)] = 'dex';
+      else if (i < str + dex + int) next[String(skill)] = 'int';
+    });
+    session.setAttributeChoices(next);
+  };
 
   const edges = useMemo(() => {
     const out: { x1: number; y1: number; x2: number; y2: number; active: boolean }[] = [];
@@ -117,7 +162,9 @@ export function TreePanel({ session, lang }: Props) {
       setHoverStats(null);
       return;
     }
-    const raw = (hover.stats ?? []).map((line) =>
+    const chosen = session.attributeChoices[String(hover.skill)];
+    const chosenLine = chosen ? [`→ ${tt(`tree.attr.${chosen}` as Parameters<typeof tt>[0])}`] : [];
+    const raw = [...(hover.stats ?? []), ...chosenLine.map((l) => l)].map((line) =>
       line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1'),
     );
     if (lang === 'en-US' || raw.length === 0) {
@@ -154,6 +201,40 @@ export function TreePanel({ session, lang }: Props) {
     if (ascExtent) setViewBox(ascExtent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentAscId]);
+
+  // 快捷键 S/D/I（或 1/2/3）：弹窗打开时选择；hover 属性小点时直接加点或改选。
+  useEffect(() => {
+    const KEYMAP: Record<string, AttributeChoice> = {
+      s: 'str', d: 'dex', i: 'int', '1': 'str', '2': 'dex', '3': 'int',
+    };
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      const choice = KEYMAP[e.key.toLowerCase()];
+      if (!choice) return;
+      if (attrPicker) {
+        session.toggleNode(attrPicker.node.skill, choice);
+        setAttrPicker(null);
+        e.preventDefault();
+        return;
+      }
+      if (hover && isAttrNode(hover)) {
+        if (allocated.has(hover.skill)) {
+          // 已加点：仅改选（不取消）。
+          session.setAttributeChoices({
+            ...session.attributeChoices,
+            [String(hover.skill)]: choice,
+          });
+        } else {
+          session.toggleNode(hover.skill, choice);
+        }
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
 
   const view = viewBox ?? fullExtent;
 
@@ -194,9 +275,15 @@ export function TreePanel({ session, lang }: Props) {
     }, 0);
   };
 
-  /** 点选加点/取消（拖拽平移不触发）。 */
-  const onNodeClick = (node: PassiveNode) => {
+  /** 点选加点/取消（拖拽平移不触发）；属性小点加点前先弹三选一。 */
+  const onNodeClick = (node: PassiveNode, e: React.MouseEvent) => {
     if (dragRef.current?.moved) return;
+    if (!allocated.has(node.skill) && isAttrNode(node)) {
+      const rect = svgRef.current!.getBoundingClientRect();
+      setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
+      return;
+    }
+    setAttrPicker(null);
     session.toggleNode(node.skill);
   };
 
@@ -234,6 +321,43 @@ export function TreePanel({ session, lang }: Props) {
         )}
         <button onClick={() => setViewBox(null)}>{tt('tree.reset')}</button>
       </div>
+      {allocatedAttrNodes.length > 0 && (
+        <div className="attr-distribute" role="group" aria-label={tt('tree.attrDistribute')}>
+          <span className="attr-distribute-title">
+            {tt('tree.attrDistribute')}（{allocatedAttrNodes.length}）
+          </span>
+          {(['str', 'dex', 'int'] as AttributeChoice[]).map((key) => (
+            <label key={key} className={`attr-count attr-${key}`}>
+              {tt(`tree.attr.${key}` as Parameters<typeof tt>[0])}
+              <input
+                type="number"
+                min={0}
+                max={allocatedAttrNodes.length}
+                value={attrCounts[key]}
+                disabled={session.busy}
+                onChange={(e) => {
+                  const value = Math.max(0, Math.min(allocatedAttrNodes.length, Number(e.target.value) || 0));
+                  const next = { ...attrCounts, [key]: value };
+                  // 超额时压缩其它两项（保持总和 ≤ 已加点数）。
+                  const order: AttributeChoice[] = ['str', 'dex', 'int'];
+                  let overflow = next.str + next.dex + next.int - allocatedAttrNodes.length;
+                  for (const other of order.filter((o) => o !== key)) {
+                    if (overflow <= 0) break;
+                    const cut = Math.min(next[other], overflow);
+                    next[other] -= cut;
+                    overflow -= cut;
+                  }
+                  distributeAttributes(next.str, next.dex, next.int);
+                }}
+              />
+            </label>
+          ))}
+          <span className="attr-distribute-rest">
+            {tt('tree.attrUnassigned')}: {allocatedAttrNodes.length - attrCounts.str - attrCounts.dex - attrCounts.int}
+          </span>
+          <span className="tree-hint">{tt('tree.attrHotkeys')}</span>
+        </div>
+      )}
       <div className="tree-canvas">
         <svg
           ref={svgRef}
@@ -279,14 +403,46 @@ export function TreePanel({ session, lang }: Props) {
                 }}
                 onPointerMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
                 onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
-                onClick={() => onNodeClick(node)}
+                onClick={(e) => onNodeClick(node, e)}
               />
             ))}
           </g>
         </svg>
-        {hover && (
+        {hover && !attrPicker && (
           <TreeTooltip node={hover} stats={hoverStats ?? []} pos={hoverPos} canvasRef={svgRef} />
         )}
+        {attrPicker && (
+          <div
+            className="attr-picker"
+            role="menu"
+            style={{ left: attrPicker.x + 10, top: attrPicker.y + 10 }}
+          >
+            <div className="attr-picker-title">{tt('tree.attrPick')}</div>
+            {(['str', 'dex', 'int'] as AttributeChoice[]).map((choice) => (
+              <button
+                key={choice}
+                role="menuitem"
+                className={`attr-choice attr-${choice}`}
+                onClick={() => {
+                  session.toggleNode(attrPicker.node.skill, choice);
+                  setAttrPicker(null);
+                }}
+              >
+                {tt(`tree.attr.${choice}` as Parameters<typeof tt>[0])}
+                <kbd>{choice === 'str' ? 'S' : choice === 'dex' ? 'D' : 'I'}</kbd>
+              </button>
+            ))}
+            <button className="attr-cancel" onClick={() => setAttrPicker(null)}>
+              ×
+            </button>
+          </div>
+        )}
+        {!currentAscId &&
+          ((session.treeMeta?.classes ?? []).find(
+            (c) => c.name === session.character?.class_name,
+          )?.ascendancies?.length ?? 0) > 0 && (
+            <div className="asc-hint">{tt('tree.pickAscHint')}</div>
+          )}
       </div>
     </section>
   );

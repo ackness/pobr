@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
 import type {
+  AttributeChoice,
   AttributionResponse,
   BuildJson,
   CalculateBuildRequest,
@@ -37,6 +38,8 @@ interface BuildState {
   pobCode: string | null;
   character: CharacterState;
   allocatedNodes: number[];
+  /** 属性小点三选一（skill id → str/dex/int）。 */
+  attributeChoices: Record<string, AttributeChoice>;
   /** 技能组（导入时物化，手动可增删改；始终以整份覆盖上行）。 */
   socketGroups: SocketGroupInput[];
   /** 装备槽原始文本（同上；珠宝/药剂 v1 只读，仍由 pob_code 基线携带）。 */
@@ -52,6 +55,7 @@ export interface BuildSession {
   treeMeta: PassiveTreeMeta | null;
   character: CharacterState | null;
   allocatedNodes: number[];
+  attributeChoices: Record<string, AttributeChoice>;
   socketGroups: SocketGroupInput[];
   items: SlotItemInput[];
   calc: CalculateBuildResponse | null;
@@ -68,7 +72,10 @@ export interface BuildSession {
   importCode: (code: string) => Promise<void>;
   newBuild: (className: string, ascendancyName: string) => void;
   setCharacter: (patch: Partial<CharacterState>) => void;
-  toggleNode: (skill: number) => void;
+  /** 点选加点/取消；属性小点加点时带三选一。 */
+  toggleNode: (skill: number, choice?: AttributeChoice) => void;
+  /** 整表替换属性三选一（批量调配 / 快捷键改单点）。 */
+  setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
   /** 整份替换技能组（Skills 编辑器）。 */
   setSocketGroups: (groups: SocketGroupInput[]) => void;
   /** 整份替换装备（Items 编辑器）。 */
@@ -83,6 +90,7 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     pob_code: state.pobCode ?? undefined,
     character: state.character,
     allocated_nodes: state.allocatedNodes,
+    attribute_choices: state.attributeChoices,
     socket_groups: state.socketGroups,
     items: state.items,
     main_socket_group: state.params.main_socket_group,
@@ -132,6 +140,7 @@ function parseSaved(json: string): SavedSession | null {
         pobCode: typeof state.pobCode === 'string' ? state.pobCode : null,
         character: state.character,
         allocatedNodes: state.allocatedNodes,
+        attributeChoices: state.attributeChoices ?? {},
         socketGroups: state.socketGroups,
         items: state.items,
         params: state.params ?? { config_inputs: {} },
@@ -240,6 +249,7 @@ export function useBuildSession(): BuildSession {
           pobCode: null,
           character: { level: 1, class_name: firstClass, ascendancy_name: '' },
           allocatedNodes: [],
+          attributeChoices: {},
           socketGroups: [],
           items: [],
           params: { config_inputs: {} },
@@ -272,6 +282,7 @@ export function useBuildSession(): BuildSession {
             ascendancy_name: decoded.character.ascendancy_name,
           },
           allocatedNodes: decoded.tree.allocated_nodes,
+          attributeChoices: decoded.tree.attribute_choices ?? {},
           ...materialize(decoded),
           params: { config_inputs: {} },
         });
@@ -290,6 +301,7 @@ export function useBuildSession(): BuildSession {
         pobCode: null,
         character: { level: 1, class_name: className, ascendancy_name: ascendancyName },
         allocatedNodes: [],
+        attributeChoices: {},
         socketGroups: [],
         items: [],
         params: { config_inputs: {} },
@@ -323,13 +335,27 @@ export function useBuildSession(): BuildSession {
   );
 
   const toggleNode = useCallback(
-    (skill: number) => {
+    (skill: number, choice?: AttributeChoice) => {
       if (!state) return;
       const has = state.allocatedNodes.includes(skill);
       const allocatedNodes = has
         ? state.allocatedNodes.filter((n) => n !== skill)
         : [...state.allocatedNodes, skill];
-      apply({ ...state, allocatedNodes });
+      const attributeChoices = { ...state.attributeChoices };
+      if (has) {
+        delete attributeChoices[String(skill)];
+      } else if (choice) {
+        attributeChoices[String(skill)] = choice;
+      }
+      apply({ ...state, allocatedNodes, attributeChoices });
+    },
+    [apply, state],
+  );
+
+  const setAttributeChoices = useCallback(
+    (attributeChoices: Record<string, AttributeChoice>) => {
+      if (!state) return;
+      apply({ ...state, attributeChoices });
     },
     [apply, state],
   );
@@ -391,6 +417,7 @@ export function useBuildSession(): BuildSession {
         pob_code: state.pobCode ?? undefined,
         character: state.character,
         allocated_nodes: state.allocatedNodes,
+        attribute_choices: state.attributeChoices,
         socket_groups: state.socketGroups,
         items: state.items,
         fields,
@@ -408,6 +435,7 @@ export function useBuildSession(): BuildSession {
     treeMeta,
     character: state?.character ?? null,
     allocatedNodes: state?.allocatedNodes ?? [],
+    attributeChoices: state?.attributeChoices ?? {},
     socketGroups: state?.socketGroups ?? [],
     items: state?.items ?? [],
     calc,
@@ -422,6 +450,7 @@ export function useBuildSession(): BuildSession {
     newBuild,
     setCharacter,
     toggleNode,
+    setAttributeChoices,
     setSocketGroups,
     setItems,
     updateParams,

@@ -135,3 +135,95 @@
   fill: var(--accent-gold);
   stroke: var(--accent-gold-bright);
 }
+
+/* 属性小点三选一弹窗 */
+.attr-picker {
+  position: absolute;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--surface-raised);
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+.attr-picker-title {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  margin-right: var(--space-1);
+}
+
+.attr-choice.attr-str { color: var(--color-life); }
+.attr-choice.attr-dex { color: var(--color-positive); }
+.attr-choice.attr-int { color: var(--color-mana); }
+
+.attr-cancel {
+  padding: 0 var(--space-1);
+  color: var(--text-muted);
+}
+
+/* 未选升华引导 */
+.asc-hint {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-raised);
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+
+/* 属性点批量调配 */
+.attr-distribute {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.attr-distribute-title {
+  color: var(--accent-gold-dim);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.attr-count {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.attr-count input {
+  width: 64px;
+}
+
+.attr-count.attr-str { color: var(--color-life); }
+.attr-count.attr-dex { color: var(--color-positive); }
+.attr-count.attr-int { color: var(--color-mana); }
+
+.attr-distribute-rest {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.attr-picker kbd {
+  margin-left: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  padding: 0 4px;
+}

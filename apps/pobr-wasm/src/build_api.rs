@@ -20,7 +20,7 @@ use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::item::EquipmentSlot;
 use pobr_data::monster::EnemyTier;
-use pobr_data::passive_tree::NodeId;
+use pobr_data::passive_tree::{AttributeChoice, NodeId};
 use serde::{Deserialize, Serialize};
 
 use crate::state;
@@ -40,6 +40,25 @@ struct CharacterJson {
 struct TreeJson {
     allocated_nodes: Vec<u32>,
     tree_version: Option<String>,
+    /// 属性小点三选一（node skill id → `"str"|"dex"|"int"`）。
+    attribute_choices: BTreeMap<u32, &'static str>,
+}
+
+fn attribute_choice_str(choice: AttributeChoice) -> &'static str {
+    match choice {
+        AttributeChoice::Strength => "str",
+        AttributeChoice::Dexterity => "dex",
+        AttributeChoice::Intelligence => "int",
+    }
+}
+
+fn parse_attribute_choice(s: &str) -> Result<AttributeChoice, String> {
+    match s {
+        "str" => Ok(AttributeChoice::Strength),
+        "dex" => Ok(AttributeChoice::Dexterity),
+        "int" => Ok(AttributeChoice::Intelligence),
+        other => Err(format!("unknown attribute choice: {other}")),
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -104,6 +123,12 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
         tree: TreeJson {
             allocated_nodes: build.tree.allocated_nodes.iter().map(|n| n.0).collect(),
             tree_version: build.tree_version.clone(),
+            attribute_choices: build
+                .tree
+                .attribute_overrides
+                .iter()
+                .map(|(node, choice)| (node.0, attribute_choice_str(*choice)))
+                .collect(),
         },
         items: ItemsJson {
             equipped: raw_items
@@ -229,6 +254,8 @@ pub struct CalculateBuildRequest {
     character: Option<CharacterOverride>,
     /// 覆盖已加点集合（交互加点：整份替换 build 的 allocated_nodes）。
     allocated_nodes: Option<Vec<u32>>,
+    /// 覆盖属性小点三选一（node skill id → `"str"|"dex"|"int"`；整份替换）。
+    attribute_choices: Option<BTreeMap<u32, String>>,
     /// 覆盖技能组（手动编辑：整份替换；`None` = 保持 code 解码结果）。
     socket_groups: Option<Vec<SocketGroupInput>>,
     /// 覆盖装备（手动编辑：整份替换全部装备槽；珠宝/药剂不在此列，v1 只读）。
@@ -342,6 +369,12 @@ fn apply_request_overrides(
     }
     if let Some(nodes) = &req.allocated_nodes {
         build.tree.allocated_nodes = nodes.iter().map(|&n| NodeId(n)).collect();
+    }
+    if let Some(choices) = &req.attribute_choices {
+        build.tree.attribute_overrides = choices
+            .iter()
+            .map(|(&node, choice)| Ok((NodeId(node), parse_attribute_choice(choice)?)))
+            .collect::<Result<_, String>>()?;
     }
     if let Some(groups) = &req.socket_groups {
         build.socket_groups = groups
@@ -588,6 +621,7 @@ pub struct AttributionRequest {
     fields: Vec<String>,
     character: Option<CharacterOverride>,
     allocated_nodes: Option<Vec<u32>>,
+    attribute_choices: Option<BTreeMap<u32, String>>,
     socket_groups: Option<Vec<SocketGroupInput>>,
     items: Option<Vec<SlotItemInput>>,
     main_socket_group: Option<usize>,
@@ -644,6 +678,7 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
         pob_code: req.pob_code.clone(),
         character: req.character.clone(),
         allocated_nodes: req.allocated_nodes.clone(),
+        attribute_choices: req.attribute_choices.clone(),
         socket_groups: req.socket_groups.clone(),
         items: req.items.clone(),
         main_socket_group: req.main_socket_group,

@@ -61,7 +61,11 @@ fn decode_build_json_shape() {
         &["level", "class_name", "ascendancy_name"],
         "character",
     );
-    assert_keys(&json["tree"], &["allocated_nodes", "tree_version"], "tree");
+    assert_keys(
+        &json["tree"],
+        &["allocated_nodes", "tree_version", "attribute_choices"],
+        "tree",
+    );
     assert_keys(&json["items"], &["equipped", "jewels", "flasks"], "items");
 
     // 真实 build 的内容 sanity：有职业、有装备、有已加点、有技能组。
@@ -414,6 +418,33 @@ fn chinese_mod_lines_translate_to_english() {
     assert!(
         (life(&unknown) - life(&baseline)).abs() < f64::EPSILON,
         "未知中文行应静默跳过不影响数值"
+    );
+}
+
+/// 属性小点三选一：同一节点选 dex 提升命中（vs 选 str），引擎 attribute_overrides 通道。
+#[test]
+fn attribute_choice_changes_derived_stats() {
+    ensure_data();
+    // 节点 722 = `+5 to any Attribute` 属性小点（data/base/passive_tree.json）。
+    let accuracy_with = |choice: &str| -> f64 {
+        let request = serde_json::json!({
+            "character": { "class_name": "Ranger", "level": 1 },
+            "allocated_nodes": [722],
+            "attribute_choices": { "722": choice },
+        })
+        .to_string();
+        let json: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("calc"))
+                .expect("valid json");
+        json["breakdowns"]["Accuracy"]["base_total"]
+            .as_f64()
+            .unwrap_or(0.0)
+    };
+    let dex = accuracy_with("dex");
+    let str_ = accuracy_with("str");
+    assert!(
+        dex > str_,
+        "dex 三选一应提升命中派生（dex={dex} str={str_}）"
     );
 }
 
