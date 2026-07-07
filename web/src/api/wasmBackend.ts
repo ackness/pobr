@@ -68,27 +68,38 @@ export async function createWasmBackend(): Promise<PobrBackend> {
   await wasm.default();
 
   let manifest: DataManifest | null = null;
-  let initialized = false;
+  // 单飞：init 可能被并发调用（React dev StrictMode 会把挂载 effect 跑两遍）。
+  // 若两次 init 并行 stage 文件，先完成的 initStagedData() 会清空 wasm 侧暂存区，
+  // 后一次只带残缺文件表构建 → “file not in memory data”。共享同一个 Promise 根治。
+  let initPromise: Promise<void> | null = null;
+
+  const doInit = async (onProgress?: (message: string) => void): Promise<void> => {
+    if (wasm.isDataReady()) return;
+    onProgress?.('加载数据清单…');
+    manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+    const { version, files } = manifest;
+    let done = 0;
+    await fetchAll(files, async (rel) => {
+      const content = await fetchText(`/data/${version}/${rel}`);
+      wasm.stageDataFile(rel, content);
+      done += 1;
+      if (done % 20 === 0 || done === files.length) {
+        onProgress?.(`加载游戏数据 ${done}/${files.length}…`);
+      }
+    });
+    onProgress?.('构建数据索引…');
+    wasm.initStagedData();
+    onProgress?.('就绪');
+  };
 
   const backend: PobrBackend = {
-    async init(onProgress) {
-      if (initialized) return;
-      onProgress?.('加载数据清单…');
-      manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
-      const { version, files } = manifest;
-      let done = 0;
-      await fetchAll(files, async (rel) => {
-        const content = await fetchText(`/data/${version}/${rel}`);
-        wasm.stageDataFile(rel, content);
-        done += 1;
-        if (done % 20 === 0 || done === files.length) {
-          onProgress?.(`加载游戏数据 ${done}/${files.length}…`);
-        }
+    init(onProgress) {
+      // 失败后清掉缓存的 Promise，允许刷新/重试重新初始化。
+      initPromise ??= doInit(onProgress).catch((err: unknown) => {
+        initPromise = null;
+        throw err;
       });
-      onProgress?.('构建数据索引…');
-      wasm.initStagedData();
-      initialized = true;
-      onProgress?.('就绪');
+      return initPromise;
     },
     async decodeBuild(pobCode) {
       return JSON.parse(wasm.decodeBuildJson(pobCode)) as BuildJson;
