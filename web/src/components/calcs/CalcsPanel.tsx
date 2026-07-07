@@ -2,7 +2,9 @@ import { useState } from 'react';
 import type { AttributionResponse, Breakdown } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
-import { bindT, slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
+import { bindT, originKindLabel, slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
+import { getBackend } from '../../api/backend';
+import { useEffect } from 'react';
 import { prettySkillId } from '../skills/SkillsPanel';
 import './calcs.css';
 
@@ -13,16 +15,63 @@ interface Props {
 
 const MOD_TYPE_ORDER = ['BASE', 'INC', 'MORE', 'OVERRIDE', 'FLAG', 'LIST'];
 
+/** 数字统一格式：千分位 + 最多 2 位小数（清掉浮点尾巴）。 */
+function fmtNum(value: number): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+/** 词条展示清洗：剥 `[A|B]` 内部标注。 */
+function cleanModText(text: string): string {
+  return text
+    .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
+    .replace(/\[([^\]]*)\]/g, '$1');
+}
+
 function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Breakdown; lang: Lang }) {
   const tt = bindT(lang);
+  // 中文界面：词条行批量反查翻译（清洗标注后送翻译器；结果缓存本组件）。
+  const [zhLines, setZhLines] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (lang === 'en-US') return;
+    const pending = [
+      ...new Set(
+        breakdown.mods
+          .map((m) => m.source_text)
+          .filter((t): t is string => !!t)
+          .map(cleanModText),
+      ),
+    ];
+    if (pending.length === 0) return;
+    let cancelled = false;
+    getBackend()
+      .then((b) => b.translateLines(pending))
+      .then((translated) => {
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        pending.forEach((en, i) => {
+          if (translated[i] !== en) map[en] = translated[i];
+        });
+        setZhLines(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [breakdown, lang]);
+
+  const modText = (raw: string | null) => {
+    if (!raw) return tt('calcs.baseDerived');
+    const cleaned = cleanModText(raw);
+    return lang !== 'en-US' ? (zhLines[cleaned] ?? cleaned) : cleaned;
+  };
   return (
     <div className="breakdown-detail">
       <div className="breakdown-summary">
         <span>
-          {tt('calcs.baseTotal')}: <strong>{breakdown.base_total}</strong>
+          {tt('calcs.baseTotal')}: <strong>{fmtNum(breakdown.base_total)}</strong>
         </span>
         <span>
-          {tt('calcs.incTotal')}: <strong>{breakdown.inc_total}%</strong>
+          {tt('calcs.incTotal')}: <strong>{fmtNum(breakdown.inc_total)}%</strong>
         </span>
       </div>
       <div className="breakdown-scroll">
@@ -41,10 +90,14 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
               .map((mod, i) => (
                 <tr key={`${name}-${i}`}>
                   <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{mod.mod_type}</td>
-                  <td className="mod-value">{mod.value ?? '—'}</td>
-                  <td className="mod-text">{mod.source_text ?? tt('calcs.baseDerived')}</td>
+                  <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
+                  <td className="mod-text">{modText(mod.source_text)}</td>
                   <td className="mod-origin">
-                    {mod.origin_kind ? `${mod.origin_kind}${mod.slot ? ` · ${mod.slot}` : ''}` : '—'}
+                    {mod.origin_kind
+                      ? `${originKindLabel(lang, mod.origin_kind)}${
+                          mod.slot ? ` · ${slotLabel(lang, mod.slot)}` : ''
+                        }`
+                      : '—'}
                   </td>
                 </tr>
               ))}

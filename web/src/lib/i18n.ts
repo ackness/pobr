@@ -265,6 +265,30 @@ const MOD_NAME_LABELS: Record<string, Entry> = {
   TotalEHP: { 'en-US': 'Effective HP', 'zh-TW': '有效生命', 'zh-CN': '有效生命' },
 };
 
+const ORIGIN_KIND_LABELS: Record<string, Entry> = {
+  CharacterBase: { 'en-US': 'Character', 'zh-TW': '角色基礎', 'zh-CN': '角色基础' },
+  Item: { 'en-US': 'Item base', 'zh-TW': '物品基底', 'zh-CN': '物品基底' },
+  ItemAffix: { 'en-US': 'Item affix', 'zh-TW': '物品詞綴', 'zh-CN': '物品词缀' },
+  ItemImplicit: { 'en-US': 'Implicit', 'zh-TW': '固有詞綴', 'zh-CN': '固有词缀' },
+  ItemEnchant: { 'en-US': 'Enchant', 'zh-TW': '附魔', 'zh-CN': '附魔' },
+  ItemQuality: { 'en-US': 'Quality', 'zh-TW': '品質', 'zh-CN': '品质' },
+  PassiveNode: { 'en-US': 'Passive', 'zh-TW': '天賦節點', 'zh-CN': '天赋节点' },
+  AscendancyNode: { 'en-US': 'Ascendancy', 'zh-TW': '升華節點', 'zh-CN': '升华节点' },
+  Jewel: { 'en-US': 'Jewel', 'zh-TW': '珠寶', 'zh-CN': '珠宝' },
+  SkillGem: { 'en-US': 'Skill gem', 'zh-TW': '技能寶石', 'zh-CN': '技能宝石' },
+  SupportGem: { 'en-US': 'Support gem', 'zh-TW': '輔助寶石', 'zh-CN': '辅助宝石' },
+  SkillLevel: { 'en-US': 'Skill level', 'zh-TW': '技能等級', 'zh-CN': '技能等级' },
+  GemQuality: { 'en-US': 'Gem quality', 'zh-TW': '寶石品質', 'zh-CN': '宝石品质' },
+  Config: { 'en-US': 'Config', 'zh-TW': '配置', 'zh-CN': '配置' },
+  Buff: { 'en-US': 'Buff', 'zh-TW': '增益', 'zh-CN': '增益' },
+  Derived: { 'en-US': 'Derived', 'zh-TW': '派生', 'zh-CN': '派生' },
+};
+
+/** 词条来源类别（SourceKind 名）→ 本地化。 */
+export function originKindLabel(lang: Lang, kind: string): string {
+  return ORIGIN_KIND_LABELS[kind]?.[lang] ?? kind;
+}
+
 /** 聚合属性名（breakdown 键 / 归因字段）→ 本地化。 */
 export function statNameLabel(lang: Lang, id: string): string {
   return MOD_NAME_LABELS[id]?.[lang] ?? id;
