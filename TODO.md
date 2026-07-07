@@ -73,10 +73,26 @@
 
 - [ ] 7.1 词条行中文解析：GGG stat descriptions 本地化模板（zh-TW / zh-CN）入库
       （`pobr-data-adapter` 新域 + overlay），wasm 侧「中文词条 → 反查模板 →
-      英文 canonical → 现有 parser」翻译层；物品文本粘贴即可用中文
-- [ ] 7.2 简中（zh-CN）游戏名词数据：国服（腾讯）市集/官方数据源接入——
-      现有数据包只有 zh-TW 边车（base_items/mods/skills 名称表），简中界面下
-      游戏名词暂回退繁中
+      英文 canonical → 现有 parser」翻译层；物品文本粘贴即可用中文。
+      **简中资源已调研定源（2026-07-07）**：[addohm/poe2-en-cn-dict](https://github.com/addohm/poe2-en-cn-dict)
+      —— 国服（WeGame）⇄ 国际服完整词典，成品 `dictionary/` 直接提交在仓库
+      （无需装客户端即可消费）：`lookup/stat_lines.json`（~15,800 条词条行模板，
+      en/zh 双语 + `{0}` 占位符 + increased/reduced 正负分形 + value_range，
+      6.3MB）、`stat_line_by_english.json`（英文词条行 → 简中，12MB）、
+      `trade_id_to_stat.json`（GGG trade stat hash 交叉表）、`lookup/en_to_cn.json`
+      （14.3 万字符串：物品/宝石/天赋/怪物/UI 名，9.5MB）、`tables/<表名>.json`
+      （192 张表逐行 en/zh）。活跃维护（2026-07-06 更新）；无 LICENSE 文件，
+      引用时注明来源。备选：poe2db.tw/cn（网页版简中库，可对照校验）
+- [ ] 7.2 简中（zh-CN）游戏名词数据：接入 7.1 同一词典的 `tables/BaseItemTypes.json`
+      / `GemEffects` / `PassiveSkills` 等表生成 `i18n/zh-CN/` 边车。
+      **已排除的路线**：国际服 CDN bundle 不含 `Data/Simplified Chinese`
+      （PoE1/PoE2 均无，见 pathofexile-dat `export-tables.ts` 语言表；Steam 语言
+      列表也无中文）——简中只存在于国服客户端，自采需装 WeGame 国服客户端跑
+      该词典的生成器（pathofexile-dat 本地模式读国服 bundle）
+- [ ] 7.2b ⚠️ 数据管线上游风险（顺手发现）：CDN 当前补丁 4.5.4.3 的 bundle
+      `pathofexile-dat@15.2.0`（最新版）解压失败（ooz "Failed to decode"，
+      索引完整性已校验排除下载损坏）——疑似 GGG 换了 oodle 版本；下次版本
+      升级前需确认上游修复，否则英文/繁中通道同样被阻塞
 - [ ] 7.3 技能/职业/天赋节点名的完整本地化边车覆盖面审计（现 base_items 覆盖
       宝石名、skills.json 覆盖主动技能名；天赋节点名/词条文本未覆盖）
 
