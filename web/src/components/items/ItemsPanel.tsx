@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
+import { previewDiff, type DiffEntry } from '../../lib/compare';
+import { DiffList } from '../shared/DiffList';
 import './items.css';
 
 interface Props {
@@ -134,9 +136,17 @@ export function ItemsPanel({ session, lang }: Props) {
                 </button>
               )}
               {selectedText && (
-                <button className="skill-remove" disabled={session.busy} onClick={removeItem}>
-                  {tt('items.remove')}
-                </button>
+                <>
+                  <button
+                    disabled={session.busy}
+                    onClick={() => session.saveLibraryItem('item', selectedText)}
+                  >
+                    {tt('lib.save')}
+                  </button>
+                  <button className="skill-remove" disabled={session.busy} onClick={removeItem}>
+                    {tt('items.remove')}
+                  </button>
+                </>
               )}
             </span>
           </header>
@@ -164,6 +174,9 @@ export function ItemsPanel({ session, lang }: Props) {
         </div>
       )}
 
+      <h3 className="panel-subheading">{tt('lib.title')}</h3>
+      <LibrarySection session={session} lang={lang} selectedSlot={selected} />
+
       {build && build.items.flasks.length > 0 && (
         <>
           <h3 className="panel-subheading">{tt('items.flasks')}</h3>
@@ -190,5 +203,82 @@ export function ItemsPanel({ session, lang }: Props) {
         </>
       )}
     </section>
+  );
+}
+
+/** 物品库：存起来的装备/珠宝，选中槽位后可对比差异并一键装备。 */
+function LibrarySection({
+  session,
+  lang,
+  selectedSlot,
+}: {
+  session: BuildSession;
+  lang: Lang;
+  selectedSlot: string | null;
+}) {
+  const tt = bindT(lang);
+  const [diffFor, setDiffFor] = useState<{ id: string; diffs: DiffEntry[] } | null>(null);
+  const items = session.library.items.filter((i) => i.kind === 'item');
+  if (items.length === 0) {
+    return <p className="items-hint">{tt('lib.empty')}</p>;
+  }
+
+  const compare = async (id: string, text: string) => {
+    const request = session.currentRequest();
+    if (!request || !selectedSlot || !session.calc) return;
+    const rest = (request.items ?? []).filter((it) => it.slot !== selectedSlot);
+    const diffs = await previewDiff(
+      { ...request, items: [...rest, { slot: selectedSlot, text }] },
+      session.calc,
+    );
+    setDiffFor({ id, diffs });
+  };
+
+  const equip = (text: string) => {
+    if (!selectedSlot) return;
+    const rest = session.items.filter((it) => it.slot !== selectedSlot);
+    session.setItems([...rest, { slot: selectedSlot, text }]);
+    setDiffFor(null);
+  };
+
+  return (
+    <div className="library-grid">
+      {items.map((entry) => (
+        <article key={entry.id} className={`item-card rarity-${rarityOf(entry.text)}`}>
+          <header className="item-slot">
+            {entry.name}
+            <span className="item-actions">
+              <button
+                disabled={session.busy || !selectedSlot}
+                title={selectedSlot ? '' : tt('lib.selectSlotFirst')}
+                onClick={() => compare(entry.id, entry.text)}
+              >
+                {tt('lib.compare')}
+              </button>
+              <button
+                disabled={session.busy || !selectedSlot}
+                title={selectedSlot ? '' : tt('lib.selectSlotFirst')}
+                onClick={() => equip(entry.text)}
+              >
+                {tt('lib.equip')}
+              </button>
+              <button
+                className="skill-remove"
+                title={tt('lib.delete')}
+                onClick={() => session.removeLibraryItem(entry.id)}
+              >
+                ×
+              </button>
+            </span>
+          </header>
+          <ItemText text={entry.text} />
+          {diffFor?.id === entry.id && (
+            <div className="library-diff">
+              <DiffList diffs={diffFor.diffs} lang={lang} />
+            </div>
+          )}
+        </article>
+      ))}
+    </div>
   );
 }

@@ -244,3 +244,38 @@
 .skill-group-picker {
   margin-top: var(--space-2);
 }
+
+/* 技能组套装 */
+.skill-sets {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: var(--space-3) 0;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+}
+
+.skill-sets-title {
+  color: var(--accent-gold-dim);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.skill-set-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.skill-set-chip button {
+  font-size: var(--text-xs);
+  padding: 0 var(--space-1);
+}

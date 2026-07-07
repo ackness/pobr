@@ -1,0 +1,21 @@
+.diff-list {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.diff-entry {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.diff-pos { color: var(--color-positive); }
+.diff-neg { color: var(--color-negative); }
+
+.diff-none,
+.diff-more {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}

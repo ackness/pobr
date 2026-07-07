@@ -65,6 +65,7 @@ export function SkillsPanel({ session, lang }: Props) {
         <span className="skills-hint">{tt('skills.hint')}</span>
       </div>
       {groups.length === 0 && <p className="skills-hint">{tt('skills.empty')}</p>}
+      <SkillSets session={session} lang={lang} />
       <div className="skill-groups">
         {groups.map((group, idx) => {
           const isMain = idx === mainIndex;
@@ -172,5 +173,42 @@ export function SkillsPanel({ session, lang }: Props) {
         })}
       </div>
     </section>
+  );
+}
+
+/** 技能组套装：整套保存/一键切换（切换后侧边栏即见差异）。 */
+function SkillSets({ session, lang }: { session: BuildSession; lang: Lang }) {
+  const tt = bindT(lang);
+  const [name, setName] = useState('');
+  return (
+    <div className="skill-sets" role="group" aria-label={tt('sets.title')}>
+      <span className="skill-sets-title">{tt('sets.title')}</span>
+      {session.library.skillSets.map((set) => (
+        <span key={set.id} className="skill-set-chip">
+          {set.name}（{set.groups.length}）
+          <button disabled={session.busy} onClick={() => session.applySkillSet(set.id)}>
+            {tt('sets.apply')}
+          </button>
+          <button className="skill-remove" onClick={() => session.removeSkillSet(set.id)}>
+            ×
+          </button>
+        </span>
+      ))}
+      <input
+        placeholder={tt('sets.namePlaceholder')}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        aria-label={tt('sets.namePlaceholder')}
+      />
+      <button
+        disabled={!name.trim() || session.socketGroups.length === 0}
+        onClick={() => {
+          session.saveSkillSet(name.trim());
+          setName('');
+        }}
+      >
+        {tt('sets.save')}
+      </button>
+    </div>
   );
 }

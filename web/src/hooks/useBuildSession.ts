@@ -83,6 +83,17 @@ export interface BuildSession {
   toggleNode: (skill: number, choice?: AttributeChoice) => void;
   /** 整表替换属性三选一（批量调配 / 快捷键改单点）。 */
   setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
+  /** 当前完整计算请求（对比预览用：克隆后改一处再算一次）。 */
+  currentRequest: () => CalculateBuildRequest | null;
+  /** 状态版本号（每次编辑 +1；hover 收益等缓存的失效键）。 */
+  stateVersion: number;
+  /** 物品/珠宝/技能组套装库（独立持久化，跨 build 复用）。 */
+  library: Library;
+  saveLibraryItem: (kind: 'item' | 'jewel', text: string) => void;
+  removeLibraryItem: (id: string) => void;
+  saveSkillSet: (name: string) => void;
+  applySkillSet: (id: string) => void;
+  removeSkillSet: (id: string) => void;
   /** 整份替换技能组（Skills 编辑器）。 */
   setSocketGroups: (groups: SocketGroupInput[]) => void;
   /** 整份替换装备（Items 编辑器）。 */
@@ -107,6 +118,43 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     enemy_tier: state.params.enemy_tier,
     config_inputs: state.params.config_inputs,
   };
+}
+
+/** 库条目：可复用的装备/珠宝（PoB 文本）。 */
+export interface LibraryItem {
+  id: string;
+  kind: 'item' | 'jewel';
+  /** 展示名（取文本第二行，即物品名）。 */
+  name: string;
+  text: string;
+}
+
+/** 技能组套装：整套 socket_groups 快照，可随时切换。 */
+export interface SkillSet {
+  id: string;
+  name: string;
+  groups: SocketGroupInput[];
+  main_socket_group?: number;
+}
+
+/** 库（独立于单个 build 持久化——换 build 仍可复用）。 */
+export interface Library {
+  items: LibraryItem[];
+  skillSets: SkillSet[];
+}
+
+const LIBRARY_KEY = 'pobr-library';
+
+function loadLibrary(): Library {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? '') as Library;
+    return {
+      items: Array.isArray(parsed.items) ? parsed.items : [],
+      skillSets: Array.isArray(parsed.skillSets) ? parsed.skillSets : [],
+    };
+  } catch {
+    return { items: [], skillSets: [] };
+  }
 }
 
 /** 本地存档信封（localStorage / 导出文件共用同一形状）。 */
@@ -208,6 +256,18 @@ export function useBuildSession(): BuildSession {
     localStorage.setItem('pobr-notes', text);
     if (stateRef.current) saveToStorage(stateRef.current, text);
   }, []);
+  const [library, setLibrary] = useState<Library>(loadLibrary);
+  const [stateVersion, setStateVersion] = useState(0);
+
+  const persistLibrary = useCallback((next: Library) => {
+    setLibrary(next);
+    try {
+      localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+    } catch {
+      // 配额失败静默。
+    }
+  }, []);
+
   // 重算请求序号：只应用最新一次的结果（快速连点加点时防乱序覆盖）。
   const seqRef = useRef(0);
 
@@ -233,6 +293,7 @@ export function useBuildSession(): BuildSession {
     (next: BuildState) => {
       setState(next);
       stateRef.current = next;
+      setStateVersion((v) => v + 1);
       saveToStorage(next, notesRef.current);
       recalc(next);
     },
@@ -445,6 +506,73 @@ export function useBuildSession(): BuildSession {
     [apply],
   );
 
+  const currentRequest = useCallback(
+    (): CalculateBuildRequest | null => (state ? toRequest(state) : null),
+    [state],
+  );
+
+  const saveLibraryItem = useCallback(
+    (kind: 'item' | 'jewel', text: string) => {
+      const name =
+        text
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l && !/^Rarity:/i.test(l))[0] ?? 'Item';
+      persistLibrary({
+        ...library,
+        items: [...library.items, { id: crypto.randomUUID(), kind, name, text }],
+      });
+    },
+    [library, persistLibrary],
+  );
+
+  const removeLibraryItem = useCallback(
+    (id: string) => {
+      persistLibrary({ ...library, items: library.items.filter((i) => i.id !== id) });
+    },
+    [library, persistLibrary],
+  );
+
+  const saveSkillSet = useCallback(
+    (name: string) => {
+      if (!state) return;
+      persistLibrary({
+        ...library,
+        skillSets: [
+          ...library.skillSets,
+          {
+            id: crypto.randomUUID(),
+            name,
+            groups: state.socketGroups,
+            main_socket_group: state.params.main_socket_group,
+          },
+        ],
+      });
+    },
+    [library, persistLibrary, state],
+  );
+
+  const applySkillSet = useCallback(
+    (id: string) => {
+      if (!state) return;
+      const set = library.skillSets.find((s) => s.id === id);
+      if (!set) return;
+      apply({
+        ...state,
+        socketGroups: set.groups,
+        params: { ...state.params, main_socket_group: set.main_socket_group },
+      });
+    },
+    [apply, library, state],
+  );
+
+  const removeSkillSet = useCallback(
+    (id: string) => {
+      persistLibrary({ ...library, skillSets: library.skillSets.filter((s) => s.id !== id) });
+    },
+    [library, persistLibrary],
+  );
+
   const runAttribution = useCallback(
     async (fields: string[]) => {
       if (!state) throw new Error('build not ready');
@@ -493,6 +621,14 @@ export function useBuildSession(): BuildSession {
     setSocketGroups,
     setItems,
     setJewels,
+    currentRequest,
+    stateVersion,
+    library,
+    saveLibraryItem,
+    removeLibraryItem,
+    saveSkillSet,
+    applySkillSet,
+    removeSkillSet,
     updateParams,
     setConfigInput,
     runAttribution,

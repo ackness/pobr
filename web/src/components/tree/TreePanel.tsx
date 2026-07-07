@@ -3,6 +3,8 @@ import { getBackend } from '../../api/backend';
 import type { AttributeChoice, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
+import { previewDiff, type DiffEntry } from '../../lib/compare';
+import { DiffList } from '../shared/DiffList';
 import './tree.css';
 
 interface Props {
@@ -40,6 +42,12 @@ export function TreePanel({ session, lang }: Props) {
   );
   /** 珠宝插槽编辑器（正在编辑的插槽节点 id + 草稿）。 */
   const [jewelEdit, setJewelEdit] = useState<{ socket: number; draft: string } | null>(null);
+  /** hover 节点的加点/取消收益（防抖重算；按 stateVersion 失效的缓存）。 */
+  const [hoverDiff, setHoverDiff] = useState<DiffEntry[] | null>(null);
+  const diffCacheRef = useRef<{ version: number; map: Map<number, DiffEntry[]> }>({
+    version: -1,
+    map: new Map(),
+  });
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
   const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -203,6 +211,40 @@ export function TreePanel({ session, lang }: Props) {
     if (ascExtent) setViewBox(ascExtent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentAscId]);
+
+  // hover 收益：把「该节点加点/取消后」的请求再算一次，差异进 tooltip。
+  // 300ms 防抖；结果按 stateVersion 缓存（编辑后全量失效）。
+  useEffect(() => {
+    setHoverDiff(null);
+    if (!hover || session.busy || !session.calc) return;
+    const cache = diffCacheRef.current;
+    if (cache.version !== session.stateVersion) {
+      cache.version = session.stateVersion;
+      cache.map.clear();
+    }
+    const cached = cache.map.get(hover.skill);
+    if (cached) {
+      setHoverDiff(cached);
+      return;
+    }
+    const request = session.currentRequest();
+    if (!request) return;
+    const skill = hover.skill;
+    const timer = setTimeout(() => {
+      const has = session.allocatedNodes.includes(skill);
+      const nodes = has
+        ? session.allocatedNodes.filter((n) => n !== skill)
+        : [...session.allocatedNodes, skill];
+      previewDiff({ ...request, allocated_nodes: nodes }, session.calc!)
+        .then((diffs) => {
+          cache.map.set(skill, diffs);
+          setHoverDiff((current) => (hover.skill === skill ? diffs : current));
+        })
+        .catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hover, session.stateVersion, session.busy]);
 
   // 快捷键 S/D/I（或 1/2/3）：弹窗打开时选择；hover 属性小点时直接加点或改选。
   useEffect(() => {
@@ -454,10 +496,31 @@ export function TreePanel({ session, lang }: Props) {
               >
                 {tt('tree.unallocSocket')}
               </button>
+              <button
+                disabled={session.busy}
+                onClick={() => session.saveLibraryItem('jewel', jewelEdit.draft)}
+              >
+                {tt('lib.save')}
+              </button>
               <button onClick={() => setJewelEdit(null)}>{tt('items.cancel')}</button>
             </span>
           </header>
           <p className="tree-hint">{tt('tree.jewelHint')}</p>
+          {session.library.items.filter((i) => i.kind === 'jewel').length > 0 && (
+            <div className="jewel-library">
+              {session.library.items
+                .filter((i) => i.kind === 'jewel')
+                .map((entry) => (
+                  <button
+                    key={entry.id}
+                    className="jewel-lib-chip"
+                    onClick={() => setJewelEdit({ ...jewelEdit, draft: entry.text })}
+                  >
+                    {tt('lib.useJewel')}: {entry.name}
+                  </button>
+                ))}
+            </div>
+          )}
           <textarea
             rows={7}
             value={jewelEdit.draft}
@@ -518,7 +581,22 @@ export function TreePanel({ session, lang }: Props) {
           </g>
         </svg>
         {hover && !attrPicker && (
-          <TreeTooltip node={hover} stats={hoverStats ?? []} pos={hoverPos} canvasRef={svgRef} />
+          <TreeTooltip
+            node={hover}
+            stats={hoverStats ?? []}
+            pos={hoverPos}
+            canvasRef={svgRef}
+            benefit={
+              hoverDiff && (
+                <div className="tooltip-benefit">
+                  <span className="tooltip-benefit-title">
+                    {allocated.has(hover.skill) ? tt('diff.ifDealloc') : tt('diff.ifAlloc')}
+                  </span>
+                  <DiffList diffs={hoverDiff} lang={lang} limit={5} />
+                </div>
+              )
+            }
+          />
         )}
         {attrPicker && (
           <div
@@ -563,11 +641,13 @@ function TreeTooltip({
   stats,
   pos,
   canvasRef,
+  benefit,
 }: {
   node: PassiveNode;
   stats: string[];
   pos: { x: number; y: number };
   canvasRef: React.RefObject<SVGSVGElement | null>;
+  benefit?: React.ReactNode;
 }) {
   const rect = canvasRef.current?.getBoundingClientRect();
   if (!rect) return null;
@@ -588,6 +668,7 @@ function TreeTooltip({
           {line}
         </div>
       ))}
+      {benefit}
     </div>
   );
 }
