@@ -45,18 +45,44 @@ export function TreePanel({ session, lang }: Props) {
 
   const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
 
-  const placed = useMemo(() => (nodes ?? []).filter((n) => n.x !== undefined && n.y !== undefined), [nodes]);
+  // 当前升华的稳定 id（如 `Warrior3`）——PoB2 语义：只渲染所选升华的节点簇，
+  // 其它升华整簇隐藏（它们与主树平面重叠，全显示会一团乱）。
+  const currentAscId = useMemo(() => {
+    const name = session.character?.ascendancy_name;
+    if (!name) return null;
+    for (const cls of session.treeMeta?.classes ?? []) {
+      const hit = (cls.ascendancies ?? []).find((a) => a.name === name);
+      if (hit) return hit.id;
+    }
+    return null;
+  }, [session.character?.ascendancy_name, session.treeMeta]);
+
+  const placed = useMemo(
+    () =>
+      (nodes ?? []).filter(
+        (n) =>
+          n.x !== undefined &&
+          n.y !== undefined &&
+          (!n.ascendancy_id || n.ascendancy_id === currentAscId),
+      ),
+    [nodes, currentAscId],
+  );
 
   const byId = useMemo(() => new Map(placed.map((n) => [n.skill, n])), [placed]);
 
   const edges = useMemo(() => {
     const out: { x1: number; y1: number; x2: number; y2: number; active: boolean }[] = [];
+    // GGG 的 `connections` 是**单向 out 边**（每条只出现一次，方向任意）——
+    // 不能按 id 大小去重（会丢一半边），用无向键 seen 集合。
+    const seen = new Set<string>();
     for (const node of placed) {
       for (const target of node.connections ?? []) {
-        // 无向边只画一次（小 id → 大 id）。
-        if (target <= node.skill) continue;
         const other = byId.get(target);
         if (!other) continue;
+        const key =
+          node.skill < target ? `${node.skill}:${target}` : `${target}:${node.skill}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
         // 飞升与主树分区渲染在同一平面；跨区连线跳过（坐标相距过远的伪边）。
         if ((node.ascendancy_id ?? null) !== (other.ascendancy_id ?? null)) continue;
         out.push({
