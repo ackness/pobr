@@ -305,6 +305,17 @@ pub fn calculate_with_data(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Result<OutputTable, BuildError> {
+    calculate_with_data_session(build, data, options).map(|session| session.output().clone())
+}
+
+/// 与 [`calculate_with_data`] 同管线，但返回完成 perform 的 [`CalculationSession`]
+/// 本体——供需要读 ModDb 逐来源贡献（breakdown / 归因面板）的调用方
+/// （如 `pobr-wasm` JSON 契约层）在输出之外继续查询，避免重算。
+pub fn calculate_with_data_session(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> Result<CalculationSession, BuildError> {
     // （M1-T2.3/T2.4）statmap 通道上下文：guard 作用域 = 本次计算；默认 Data
     // （T2.4 切换）。catalog 优先取编排选项显式注入，缺省回退 BuildData 随数据包
     // 加载的目录；Compare 纯观测（diff 记录由调用方 take 取出）。
@@ -922,7 +933,7 @@ pub fn calculate_with_data(
     // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等
     // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
     session.perform_minimal();
-    Ok(session.output().clone())
+    Ok(session)
 }
 
 // ---- calculate_with_data 注入阶段（主脉拆分：行为不变，纯分组）----

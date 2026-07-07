@@ -45,11 +45,11 @@ pub use calc_cache::CalcCache;
 pub use calc_orchestrator::{
     DataOrchestratorOptions, FullDpsReport, OrchestratorOptions, SkillDps, StatMapCompareRecord,
     StatMapMode, TreeVersionReport, calculate, calculate_full_dps, calculate_with_data,
-    diagnose_tree_version, take_stat_map_compare_records,
+    calculate_with_data_session, diagnose_tree_version, take_stat_map_compare_records,
 };
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};
 pub use import_detect::{ImportKind, ShareService, detect_import};
 pub use snapshot::BuildSnapshot;
-pub use xml_build::{parse_build, parse_build_from_code};
+pub use xml_build::{RawItemsView, parse_build, parse_build_from_code, parse_raw_items_view};
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

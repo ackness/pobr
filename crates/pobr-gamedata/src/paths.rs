@@ -17,7 +17,7 @@ impl GameData {
     /// [`crate::LoadError::Io`]（错误信息指向回退位置）。
     pub(crate) fn domain_path(&self, rel: &str) -> PathBuf {
         let layered = self.root().join("base").join(rel);
-        if layered.exists() {
+        if self.file_exists(&layered) {
             layered
         } else {
             self.root().join(rel)

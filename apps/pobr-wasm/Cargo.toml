@@ -9,6 +9,8 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 pobr-core.workspace = true
 pobr-build.workspace = true
+pobr-data.workspace = true
+pobr-gamedata.workspace = true
 pobr-i18n.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -722,6 +722,48 @@ fn parse_raw_item_texts(xml: &str) -> Result<std::collections::HashMap<u32, Stri
     Ok(result)
 }
 
+/// 装备/珠宝/药剂的**原始文本块**视图（Web 契约层展示用，不参与计算）。
+///
+/// 与 [`parse_build`] 的 [`Item`] 结构化路径互补：这里保留 PoB 原始文本
+/// （含 `Rarity:` / `Radius:` / 花括号标注行），供前端按 PoB2 习惯直出着色。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawItemsView {
+    /// 激活 ItemSet 的装备：`(槽位稳定 id, 原始文本块)`，按槽位 id 排序。
+    pub equipped: Vec<(String, String)>,
+    /// 树插槽珠宝原始文本（不按分配状态过滤——展示视图收全量）。
+    pub jewels: Vec<String>,
+    /// 激活 Flask/Charm：`(槽名, 原始文本块)`。
+    pub flasks: Vec<(String, String)>,
+}
+
+/// 解析 build XML 的原始物品文本视图（见 [`RawItemsView`]）。
+pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
+    let texts = parse_raw_item_texts(xml)?;
+    let (slot_assignments, jewel_ids, flask_charm_ids, _) = parse_active_item_set(xml)?;
+    let mut equipped: Vec<(String, String)> = slot_assignments
+        .into_iter()
+        .filter_map(|(slot, id)| Some((slot.id().to_string(), texts.get(&id)?.clone())))
+        .collect();
+    equipped.sort();
+    let mut jewel_item_ids: Vec<u32> = jewel_ids;
+    jewel_item_ids.extend(parse_socket_node_items(xml)?.into_iter().map(|(_, id)| id));
+    jewel_item_ids.sort_unstable();
+    jewel_item_ids.dedup();
+    let jewels = jewel_item_ids
+        .iter()
+        .filter_map(|id| texts.get(id).cloned())
+        .collect();
+    let flasks = flask_charm_ids
+        .into_iter()
+        .filter_map(|(slot, id)| Some((slot, texts.get(&id)?.clone())))
+        .collect();
+    Ok(RawItemsView {
+        equipped,
+        jewels,
+        flasks,
+    })
+}
+
 /// 解析范围珠宝：把树插槽珠宝（`<Socket nodeId itemId>`）含 `... in Radius also grant ...`
 /// 词条的，连同其 `Radius:` 档位一起收集为 [`RadiusJewel`]（几何展开输入）。
 ///
