@@ -14,6 +14,7 @@ use pobr_build::build::GemSkillRef;
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
     calculate_with_data_session, decode_pob_code, parse_build, parse_notes, parse_raw_items_view,
+    radius_jewel_from_text,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
@@ -68,9 +69,18 @@ struct SlotItemJson {
 }
 
 #[derive(Debug, Serialize)]
+struct SocketJewelJson {
+    /// 珠宝插槽的树节点 skill id。
+    socket_node: u32,
+    text: String,
+}
+
+#[derive(Debug, Serialize)]
 struct ItemsJson {
     equipped: Vec<SlotItemJson>,
     jewels: Vec<String>,
+    /// 树插槽珠宝（可编辑：天赋树页按插槽维护）。
+    socket_jewels: Vec<SocketJewelJson>,
     flasks: Vec<SlotItemJson>,
 }
 
@@ -137,6 +147,11 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                 .map(|(slot, text)| SlotItemJson { slot, text })
                 .collect(),
             jewels: raw_items.jewels,
+            socket_jewels: raw_items
+                .socket_jewels
+                .into_iter()
+                .map(|(socket_node, text)| SocketJewelJson { socket_node, text })
+                .collect(),
             flasks: raw_items
                 .flasks
                 .into_iter()
@@ -244,6 +259,14 @@ pub struct SlotItemInput {
     text: String,
 }
 
+/// 手动树插槽珠宝（整份替换；只有插槽已加点的才生效，与 XML 导入同门控）。
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct JewelInput {
+    socket_node: u32,
+    text: String,
+}
+
 /// 计算请求：`pob_code` 与 `character` 至少给一个——有 code 则解码为基线再套
 /// 覆盖项；无 code 时以 `character` 白手起一个空 build（PoB2 新建 build 语义）。
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -258,8 +281,10 @@ pub struct CalculateBuildRequest {
     attribute_choices: Option<BTreeMap<u32, String>>,
     /// 覆盖技能组（手动编辑：整份替换；`None` = 保持 code 解码结果）。
     socket_groups: Option<Vec<SocketGroupInput>>,
-    /// 覆盖装备（手动编辑：整份替换全部装备槽；珠宝/药剂不在此列，v1 只读）。
+    /// 覆盖装备（手动编辑：整份替换全部装备槽）。
     items: Option<Vec<SlotItemInput>>,
+    /// 覆盖树插槽珠宝（含范围珠宝：`in Radius also grant` 行经几何展开改天赋词条）。
+    jewels: Option<Vec<JewelInput>>,
     /// 覆盖主技能组（0-based，Skills 页切换主技能用）。
     main_socket_group: Option<usize>,
     /// 有效 DPS 口径（默认 true，与 PoB2 主面板同口径）。
@@ -391,6 +416,27 @@ fn apply_request_overrides(
                 .map_err(|e| format!("parse item in slot {}: {e:?}", item.slot))?;
             build.items.insert(slot, parsed);
         }
+    }
+    if let Some(jewels) = &req.jewels {
+        // 门控：只收插槽已加点的珠宝（与 XML 导入 parse_radius_jewels 同语义）。
+        let allocated: std::collections::HashSet<u32> =
+            build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+        let mut plain = Vec::new();
+        let mut radius = Vec::new();
+        for jewel in jewels {
+            if !allocated.contains(&jewel.socket_node) {
+                continue;
+            }
+            let text = localize_input_text(&jewel.text);
+            let parsed = parse_pob_xml_item(&text)
+                .map_err(|e| format!("parse jewel at node {}: {e:?}", jewel.socket_node))?;
+            plain.push(parsed);
+            if let Some(rj) = radius_jewel_from_text(jewel.socket_node, &text) {
+                radius.push(rj);
+            }
+        }
+        build.jewels = plain;
+        build.radius_jewels = radius;
     }
     if let Some(main) = req.main_socket_group {
         build.main_socket_group = Some(main);
@@ -624,6 +670,7 @@ pub struct AttributionRequest {
     attribute_choices: Option<BTreeMap<u32, String>>,
     socket_groups: Option<Vec<SocketGroupInput>>,
     items: Option<Vec<SlotItemInput>>,
+    jewels: Option<Vec<JewelInput>>,
     main_socket_group: Option<usize>,
     mode_effective: Option<bool>,
     enemy_tier: Option<String>,
@@ -681,6 +728,7 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
         attribute_choices: req.attribute_choices.clone(),
         socket_groups: req.socket_groups.clone(),
         items: req.items.clone(),
+        jewels: req.jewels.clone(),
         main_socket_group: req.main_socket_group,
         mode_effective: req.mode_effective,
         enemy_tier: req.enemy_tier.clone(),
@@ -1017,6 +1065,7 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
         items: ItemsJson {
             equipped,
             jewels: Vec::new(),
+            socket_jewels: Vec::new(),
             flasks: Vec::new(),
         },
         socket_groups,
@@ -1028,6 +1077,11 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
                 note.push_str(&format!(
                     "\n[import] skipped: {unknown_passives} unknown passives, {unknown_gems} unknown gems"
                 ));
+            }
+            if file.passives.iter().any(|p| p.id.starts_with("jewel_slot")) {
+                note.push_str(
+                    "\n[import] .build 不含珠宝本体（只有插槽加点）——请在天赋树页手动补珠宝",
+                );
             }
             note
         }),

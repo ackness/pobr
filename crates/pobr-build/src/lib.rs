@@ -53,5 +53,6 @@ pub use import_detect::{ImportKind, ShareService, detect_import};
 pub use snapshot::BuildSnapshot;
 pub use xml_build::{
     RawItemsView, parse_build, parse_build_from_code, parse_notes, parse_raw_items_view,
+    radius_jewel_from_text,
 };
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

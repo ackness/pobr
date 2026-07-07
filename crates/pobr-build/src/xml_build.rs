@@ -732,6 +732,8 @@ pub struct RawItemsView {
     pub equipped: Vec<(String, String)>,
     /// 树插槽珠宝原始文本（不按分配状态过滤——展示视图收全量）。
     pub jewels: Vec<String>,
+    /// 树插槽珠宝带插槽节点号（可编辑视图：`(socket 节点 skill id, 原始文本)`）。
+    pub socket_jewels: Vec<(u32, String)>,
     /// 激活 Flask/Charm：`(槽名, 原始文本块)`。
     pub flasks: Vec<(String, String)>,
 }
@@ -768,8 +770,14 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         .filter_map(|(slot, id)| Some((slot.id().to_string(), texts.get(&id)?.clone())))
         .collect();
     equipped.sort();
+    let socket_items = parse_socket_node_items(xml)?;
+    let mut socket_jewels: Vec<(u32, String)> = socket_items
+        .iter()
+        .filter_map(|&(node, id)| Some((node, texts.get(&id)?.clone())))
+        .collect();
+    socket_jewels.sort_by_key(|(node, _)| *node);
     let mut jewel_item_ids: Vec<u32> = jewel_ids;
-    jewel_item_ids.extend(parse_socket_node_items(xml)?.into_iter().map(|(_, id)| id));
+    jewel_item_ids.extend(socket_items.into_iter().map(|(_, id)| id));
     jewel_item_ids.sort_unstable();
     jewel_item_ids.dedup();
     let jewels = jewel_item_ids
@@ -783,7 +791,46 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
     Ok(RawItemsView {
         equipped,
         jewels,
+        socket_jewels,
         flasks,
+    })
+}
+
+/// 从一块珠宝原始文本提取范围珠宝信息（`... in Radius also grant ...` 行 +
+/// `Radius:` 档位 + Notable 增效行）；不含范围词条时返回 `None`。
+/// XML 导入与 Web 手动珠宝共用此逻辑。
+pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewel> {
+    let grant_lines: Vec<String> = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| l.contains("in Radius also grant"))
+        .map(strip_brace_tags)
+        .collect();
+    // `N% increased Effect of Notable Passive Skills in Radius`（vendor
+    // ModParser.lua:6847）：同珠宝多行取末行（vendor 后写覆盖语义）。
+    let notable_effect_inc: u32 = text
+        .lines()
+        .map(str::trim)
+        .map(strip_brace_tags)
+        .filter_map(|l| {
+            l.strip_suffix("% increased Effect of Notable Passive Skills in Radius")
+                .and_then(|n| n.trim().parse::<u32>().ok())
+        })
+        .next_back()
+        .unwrap_or(0);
+    if grant_lines.is_empty() && notable_effect_inc == 0 {
+        return None;
+    }
+    let radius_label = text
+        .lines()
+        .map(str::trim)
+        .find_map(|l| l.strip_prefix("Radius:").map(|r| r.trim().to_string()))
+        .filter(|s| !s.is_empty());
+    Some(RadiusJewel {
+        socket_node,
+        radius_label,
+        grant_lines,
+        notable_effect_inc,
     })
 }
 
@@ -807,38 +854,9 @@ fn parse_radius_jewels(
         let Some(text) = raw_texts.get(&item_id) else {
             continue;
         };
-        let grant_lines: Vec<String> = text
-            .lines()
-            .map(str::trim)
-            .filter(|l| l.contains("in Radius also grant"))
-            .map(strip_brace_tags)
-            .collect();
-        // `N% increased Effect of Notable Passive Skills in Radius`（vendor
-        // ModParser.lua:6847）：同珠宝多行取末行（vendor 后写覆盖语义）。
-        let notable_effect_inc: u32 = text
-            .lines()
-            .map(str::trim)
-            .map(strip_brace_tags)
-            .filter_map(|l| {
-                l.strip_suffix("% increased Effect of Notable Passive Skills in Radius")
-                    .and_then(|n| n.trim().parse::<u32>().ok())
-            })
-            .next_back()
-            .unwrap_or(0);
-        if grant_lines.is_empty() && notable_effect_inc == 0 {
-            continue;
+        if let Some(jewel) = radius_jewel_from_text(socket_node, text) {
+            out.push(jewel);
         }
-        let radius_label = text
-            .lines()
-            .map(str::trim)
-            .find_map(|l| l.strip_prefix("Radius:").map(|r| r.trim().to_string()))
-            .filter(|s| !s.is_empty());
-        out.push(RadiusJewel {
-            socket_node,
-            radius_label,
-            grant_lines,
-            notable_effect_inc,
-        });
     }
     // 确定性：按插槽节点、再按行排序。
     out.sort_by(|a, b| {

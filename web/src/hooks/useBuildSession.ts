@@ -17,6 +17,7 @@ import type {
   CalculateBuildResponse,
   ConfigInputValue,
   EnemyTier,
+  JewelInput,
   PassiveTreeMeta,
   SlotItemInput,
   SocketGroupInput,
@@ -43,8 +44,10 @@ interface BuildState {
   attributeChoices: Record<string, AttributeChoice>;
   /** 技能组（导入时物化，手动可增删改；始终以整份覆盖上行）。 */
   socketGroups: SocketGroupInput[];
-  /** 装备槽原始文本（同上；珠宝/药剂 v1 只读，仍由 pob_code 基线携带）。 */
+  /** 装备槽原始文本（同上；药剂仍由 pob_code 基线携带）。 */
   items: SlotItemInput[];
+  /** 树插槽珠宝（插槽号 + PoB 文本；插槽加点才生效）。 */
+  jewels: JewelInput[];
   params: CalcParams;
 }
 
@@ -61,6 +64,7 @@ export interface BuildSession {
   attributeChoices: Record<string, AttributeChoice>;
   socketGroups: SocketGroupInput[];
   items: SlotItemInput[];
+  jewels: JewelInput[];
   calc: CalculateBuildResponse | null;
   calcParams: CalcParams;
   busy: boolean;
@@ -83,6 +87,8 @@ export interface BuildSession {
   setSocketGroups: (groups: SocketGroupInput[]) => void;
   /** 整份替换装备（Items 编辑器）。 */
   setItems: (items: SlotItemInput[]) => void;
+  /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
+  setJewels: (jewels: JewelInput[]) => void;
   updateParams: (patch: Partial<CalcParams>) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
@@ -96,6 +102,7 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     attribute_choices: state.attributeChoices,
     socket_groups: state.socketGroups,
     items: state.items,
+    jewels: state.jewels,
     main_socket_group: state.params.main_socket_group,
     enemy_tier: state.params.enemy_tier,
     config_inputs: state.params.config_inputs,
@@ -146,6 +153,7 @@ function parseSaved(json: string): SavedSession | null {
         attributeChoices: state.attributeChoices ?? {},
         socketGroups: state.socketGroups,
         items: state.items,
+        jewels: state.jewels ?? [],
         params: state.params ?? { config_inputs: {} },
       },
       notes: typeof parsed.notes === 'string' ? parsed.notes : '',
@@ -156,7 +164,9 @@ function parseSaved(json: string): SavedSession | null {
 }
 
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
-function materialize(decoded: BuildJson): Pick<BuildState, 'socketGroups' | 'items'> {
+function materialize(
+  decoded: BuildJson,
+): Pick<BuildState, 'socketGroups' | 'items' | 'jewels'> {
   return {
     socketGroups: decoded.socket_groups.map((g) => ({
       slot: g.slot,
@@ -168,6 +178,10 @@ function materialize(decoded: BuildJson): Pick<BuildState, 'socketGroups' | 'ite
       })),
     })),
     items: decoded.items.equipped.map((item) => ({ slot: item.slot, text: item.text })),
+    jewels: (decoded.items.socket_jewels ?? []).map((j) => ({
+      socket_node: j.socket_node,
+      text: j.text,
+    })),
   };
 }
 
@@ -260,6 +274,7 @@ export function useBuildSession(): BuildSession {
           attributeChoices: {},
           socketGroups: [],
           items: [],
+          jewels: [],
           params: { config_inputs: {} },
         });
       })
@@ -316,6 +331,7 @@ export function useBuildSession(): BuildSession {
         attributeChoices: {},
         socketGroups: [],
         items: [],
+        jewels: [],
         params: { config_inputs: {} },
       });
     },
@@ -334,6 +350,14 @@ export function useBuildSession(): BuildSession {
     (items: SlotItemInput[]) => {
       if (!state) return;
       apply({ ...state, items });
+    },
+    [apply, state],
+  );
+
+  const setJewels = useCallback(
+    (jewels: JewelInput[]) => {
+      if (!state) return;
+      apply({ ...state, jewels });
     },
     [apply, state],
   );
@@ -432,6 +456,7 @@ export function useBuildSession(): BuildSession {
         attribute_choices: state.attributeChoices,
         socket_groups: state.socketGroups,
         items: state.items,
+        jewels: state.jewels,
         fields,
         main_socket_group: state.params.main_socket_group,
         enemy_tier: state.params.enemy_tier,
@@ -451,6 +476,7 @@ export function useBuildSession(): BuildSession {
     attributeChoices: state?.attributeChoices ?? {},
     socketGroups: state?.socketGroups ?? [],
     items: state?.items ?? [],
+    jewels: state?.jewels ?? [],
     calc,
     calcParams: state?.params ?? { config_inputs: {} },
     busy,
@@ -466,6 +492,7 @@ export function useBuildSession(): BuildSession {
     setAttributeChoices,
     setSocketGroups,
     setItems,
+    setJewels,
     updateParams,
     setConfigInput,
     runAttribution,

@@ -237,3 +237,25 @@
   border-left: 1px solid var(--border-subtle);
   padding-left: var(--space-3);
 }
+
+/* 珠宝插槽编辑 */
+.jewel-editor {
+  margin-top: var(--space-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.jewel-editor textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+  resize: vertical;
+}
+
+.node-jewel-filled {
+  fill: var(--rarity-gem);
+  stroke: var(--accent-gold-bright);
+}

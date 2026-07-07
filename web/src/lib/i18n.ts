@@ -84,7 +84,7 @@ const DICT = {
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
   'items.flasks': { 'en-US': 'Flasks / Charms (read-only, from import)', 'zh-TW': '藥劑 / 護符（只讀，來自匯入）', 'zh-CN': '药剂 / 护符（只读，来自导入）' },
-  'items.jewels': { 'en-US': 'Jewels (read-only, from import)', 'zh-TW': '珠寶（只讀，來自匯入）', 'zh-CN': '珠宝（只读，来自导入）' },
+  'items.jewels': { 'en-US': 'Jewels (edit on the Tree tab by clicking a socket)', 'zh-TW': '珠寶（在天賦樹頁點插槽編輯）', 'zh-CN': '珠宝（在天赋树页点插槽编辑）' },
 
   // Calcs 页
   'calcs.title': { 'en-US': 'Calculations', 'zh-TW': '計算明細', 'zh-CN': '计算明细' },
@@ -131,6 +131,13 @@ const DICT = {
   'tree.attr.int': { 'en-US': 'Intelligence', 'zh-TW': '智慧', 'zh-CN': '智慧' },
   'tree.attrDistribute': { 'en-US': 'Attribute points', 'zh-TW': '屬性點調配', 'zh-CN': '属性点调配' },
   'tree.attrUnassigned': { 'en-US': 'unassigned', 'zh-TW': '未分配', 'zh-CN': '未分配' },
+  'tree.jewel': { 'en-US': 'Jewel socket', 'zh-TW': '珠寶插槽', 'zh-CN': '珠宝插槽' },
+  'tree.unallocSocket': { 'en-US': 'Unallocate socket', 'zh-TW': '取消插槽加點', 'zh-CN': '取消插槽加点' },
+  'tree.jewelHint': {
+    'en-US': 'PoB jewel text (mods may be English or Simplified Chinese). Radius jewels ("... in Radius also grant ...") reshape nearby passives automatically.',
+    'zh-TW': 'PoB 珠寶文本（詞條可英文或簡中）。範圍珠寶（「範圍內…同時給予…」）會自動改寫半徑內天賦詞條。',
+    'zh-CN': 'PoB 珠宝文本（词条可英文或简中）。范围珠宝（"… in Radius also grant …"）会自动改写半径内天赋词条。',
+  },
   'tree.questAttr': { 'en-US': 'Quest rewards:', 'zh-TW': '劇情獎勵：', 'zh-CN': '剧情奖励：' },
   'tree.questAllAttr': { 'en-US': '+5 all', 'zh-TW': '+5 全屬性', 'zh-CN': '+5 全属性' },
   'tree.attrHotkeys': {

@@ -29,9 +29,17 @@ export interface SlotItemJson {
   text: string;
 }
 
+export interface SocketJewelJson {
+  /** 珠宝插槽的树节点 skill id。 */
+  socket_node: number;
+  text: string;
+}
+
 export interface ItemsJson {
   equipped: SlotItemJson[];
   jewels: string[];
+  /** 树插槽珠宝（天赋树页可编辑）。 */
+  socket_jewels: SocketJewelJson[];
   flasks: SlotItemJson[];
 }
 
@@ -95,6 +103,12 @@ export interface SlotItemInput {
   text: string;
 }
 
+/** 手动树插槽珠宝（插槽已加点才生效；范围珠宝 grant 行走几何展开）。 */
+export interface JewelInput {
+  socket_node: number;
+  text: string;
+}
+
 /** 宝石目录条目（gem_catalog_json）。 */
 export interface GemCatalogEntry {
   skill_id: string;
@@ -118,8 +132,10 @@ export interface CalculateBuildRequest {
   attribute_choices?: Record<string, AttributeChoice>;
   /** 整份替换技能组（手动编辑）。 */
   socket_groups?: SocketGroupInput[];
-  /** 整份替换装备槽（手动编辑；珠宝/药剂 v1 只读）。 */
+  /** 整份替换装备槽（手动编辑）。 */
   items?: SlotItemInput[];
+  /** 整份替换树插槽珠宝。 */
+  jewels?: JewelInput[];
   main_socket_group?: number;
   mode_effective?: boolean;
   enemy_tier?: EnemyTier;
@@ -190,6 +206,7 @@ export interface AttributionRequest {
   attribute_choices?: Record<string, AttributeChoice>;
   socket_groups?: SocketGroupInput[];
   items?: SlotItemInput[];
+  jewels?: JewelInput[];
   main_socket_group?: number;
   mode_effective?: boolean;
   enemy_tier?: EnemyTier;

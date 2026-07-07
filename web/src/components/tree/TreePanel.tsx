@@ -38,6 +38,8 @@ export function TreePanel({ session, lang }: Props) {
   const [attrPicker, setAttrPicker] = useState<{ node: PassiveNode; x: number; y: number } | null>(
     null,
   );
+  /** 珠宝插槽编辑器（正在编辑的插槽节点 id + 草稿）。 */
+  const [jewelEdit, setJewelEdit] = useState<{ socket: number; draft: string } | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
   const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -275,12 +277,21 @@ export function TreePanel({ session, lang }: Props) {
     }, 0);
   };
 
-  /** 点选加点/取消（拖拽平移不触发）；属性小点加点前先弹三选一。 */
+  const JEWEL_TEMPLATE =
+    'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
+
+  /** 点选加点/取消（拖拽平移不触发）；属性小点弹三选一；珠宝插槽开编辑器。 */
   const onNodeClick = (node: PassiveNode, e: React.MouseEvent) => {
     if (dragRef.current?.moved) return;
     if (!allocated.has(node.skill) && isAttrNode(node)) {
       const rect = svgRef.current!.getBoundingClientRect();
       setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
+      return;
+    }
+    if (node.kind === 'jewel_socket') {
+      if (!allocated.has(node.skill)) session.toggleNode(node.skill);
+      const existing = session.jewels.find((j) => j.socket_node === node.skill);
+      setJewelEdit({ socket: node.skill, draft: existing?.text ?? JEWEL_TEMPLATE });
       return;
     }
     setAttrPicker(null);
@@ -404,6 +415,58 @@ export function TreePanel({ session, lang }: Props) {
             </label>
           </span>
       </div>
+      {jewelEdit && (
+        <div className="jewel-editor" role="group" aria-label={tt('tree.jewel')}>
+          <header className="item-detail-header">
+            <span className="item-slot">
+              {tt('tree.jewel')} · #{jewelEdit.socket}
+            </span>
+            <span className="item-actions">
+              <button
+                disabled={session.busy}
+                onClick={() => {
+                  const rest = session.jewels.filter((j) => j.socket_node !== jewelEdit.socket);
+                  session.setJewels([...rest, { socket_node: jewelEdit.socket, text: jewelEdit.draft }]);
+                  setJewelEdit(null);
+                }}
+              >
+                {tt('items.apply')}
+              </button>
+              {session.jewels.some((j) => j.socket_node === jewelEdit.socket) && (
+                <button
+                  className="skill-remove"
+                  disabled={session.busy}
+                  onClick={() => {
+                    session.setJewels(session.jewels.filter((j) => j.socket_node !== jewelEdit.socket));
+                    setJewelEdit(null);
+                  }}
+                >
+                  {tt('items.remove')}
+                </button>
+              )}
+              <button
+                disabled={session.busy}
+                onClick={() => {
+                  if (allocated.has(jewelEdit.socket)) session.toggleNode(jewelEdit.socket);
+                  session.setJewels(session.jewels.filter((j) => j.socket_node !== jewelEdit.socket));
+                  setJewelEdit(null);
+                }}
+              >
+                {tt('tree.unallocSocket')}
+              </button>
+              <button onClick={() => setJewelEdit(null)}>{tt('items.cancel')}</button>
+            </span>
+          </header>
+          <p className="tree-hint">{tt('tree.jewelHint')}</p>
+          <textarea
+            rows={7}
+            value={jewelEdit.draft}
+            spellCheck={false}
+            aria-label={tt('tree.jewel')}
+            onChange={(e) => setJewelEdit({ ...jewelEdit, draft: e.target.value })}
+          />
+        </div>
+      )}
       <div className="tree-canvas">
         <svg
           ref={svgRef}
@@ -442,7 +505,7 @@ export function TreePanel({ session, lang }: Props) {
                 cx={node.x}
                 cy={node.y}
                 r={NODE_RADIUS[node.kind] ?? 40}
-                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}`}
+                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && session.jewels.some((j) => j.socket_node === node.skill) ? ' node-jewel-filled' : ''}`}
                 onPointerEnter={(e) => {
                   setHover(node);
                   setHoverPos({ x: e.clientX, y: e.clientY });

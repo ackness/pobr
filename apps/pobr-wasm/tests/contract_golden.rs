@@ -66,7 +66,11 @@ fn decode_build_json_shape() {
         &["allocated_nodes", "tree_version", "attribute_choices"],
         "tree",
     );
-    assert_keys(&json["items"], &["equipped", "jewels", "flasks"], "items");
+    assert_keys(
+        &json["items"],
+        &["equipped", "jewels", "socket_jewels", "flasks"],
+        "items",
+    );
 
     // 真实 build 的内容 sanity：有职业、有装备、有已加点、有技能组。
     assert!(!json["character"]["class_name"].as_str().unwrap().is_empty());
@@ -500,6 +504,42 @@ fn decode_cn_build_file_and_calculate() {
         stat("EnergyShield") > 0.0,
         "ES build 应有能量护盾（简中装备词条经翻译层生效），ES={}",
         stat("EnergyShield")
+    );
+}
+
+/// 手动树插槽珠宝：插槽加点才生效（与 XML 门控一致）；范围珠宝 grant 行
+/// 经几何展开改天赋词条（引擎既有链路）。
+#[test]
+fn manual_jewels_respect_socket_allocation() {
+    ensure_data();
+    // 节点 7960 = jewel_slot1969（珠宝插槽）。
+    let life = |allocated: bool| -> f64 {
+        let request = serde_json::json!({
+            "character": { "class_name": "Witch", "level": 1 },
+            "allocated_nodes": if allocated { vec![7960u32] } else { vec![] },
+            "jewels": [{
+                "socket_node": 7960,
+                "text": "Rarity: RARE\nTest Jewel\nEmerald\n+50 to maximum Life",
+            }],
+        })
+        .to_string();
+        let json: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("calc"))
+                .expect("valid json");
+        json["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == "Life")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let with = life(true);
+    let without = life(false);
+    assert!(
+        (with - without - 50.0).abs() < 0.5,
+        "已加点插槽的珠宝应 +50 Life（with={with} without={without}）"
     );
 }
 
