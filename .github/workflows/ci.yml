@@ -81,24 +81,25 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-pack
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
       - name: Install
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
-        run: npm run typecheck
+        run: pnpm typecheck
       - name: Unit tests
-        run: npm run test
+        run: pnpm test
       - name: Build wasm
-        run: npm run build-wasm
+        run: pnpm build-wasm
       - name: Sync game data
-        run: npm run sync-data
+        run: pnpm sync-data
       - name: Build
-        run: npm run build
+        run: pnpm build
       - name: Install Playwright
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: E2E smoke
-        run: npx playwright test
+        run: pnpm exec playwright test

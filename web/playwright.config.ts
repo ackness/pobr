@@ -8,8 +8,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    // preview 用已构建的 dist（含 wasm + public/data）；先 npm run build + sync-data。
-    command: 'npm run preview -- --port 4173 --strictPort',
+    // preview 用已构建的 dist（含 wasm + public/data）；先 pnpm build + sync-data。
+    command: 'pnpm preview --port 4173 --strictPort',
     url: 'http://localhost:4173',
     reuseExistingServer: true,
     timeout: 60_000,

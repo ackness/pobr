@@ -13,16 +13,16 @@ rustup target add wasm32-unknown-unknown
 cargo install wasm-pack
 
 cd web
-npm install
-npm run build-wasm    # wasm-pack 构建 pobr-wasm → src/wasm/pkg/（gitignored）
-npm run sync-data     # data/<version>/ JSON → public/data/（gitignored）
-npm run dev           # http://localhost:5173
+pnpm install
+pnpm build-wasm    # wasm-pack 构建 pobr-wasm → src/wasm/pkg/（gitignored）
+pnpm sync-data     # data/<version>/ JSON → public/data/（gitignored）
+pnpm dev           # http://localhost:5173
 ```
 
 无 wasm / 数据时可用 mock 后端独立开发 UI：
 
 ```bash
-VITE_POBR_BACKEND=mock npm run dev
+VITE_POBR_BACKEND=mock pnpm dev
 ```
 
 mock fixture 由真实契约生成（契约变更后重跑并提交）：
@@ -35,13 +35,13 @@ cargo test -p pobr-wasm --test gen_fixtures -- --ignored
 
 | 命令 | 说明 |
 |------|------|
-| `npm run dev` | Vite dev server |
-| `npm run build` | tsc + 生产构建（dist/） |
-| `npm run typecheck` | 仅类型检查 |
-| `npm run test` | vitest 单元测试 |
-| `npx playwright test` | E2E 冒烟（先 build-wasm + sync-data + build） |
-| `npm run build-wasm` | 重建 wasm 包 |
-| `npm run sync-data` | 重新同步游戏数据到 public/ |
+| `pnpm dev` | Vite dev server |
+| `pnpm build` | tsc + 生产构建（dist/） |
+| `pnpm typecheck` | 仅类型检查 |
+| `pnpm test` | vitest 单元测试 |
+| `pnpm exec playwright test` | E2E 冒烟（先 build-wasm + sync-data + build） |
+| `pnpm build-wasm` | 重建 wasm 包 |
+| `pnpm sync-data` | 重新同步游戏数据到 public/ |
 
 ## 结构
 
