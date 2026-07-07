@@ -761,3 +761,23 @@ pub fn gem_catalog_json() -> Result<String, String> {
     entries.sort_by(|a, b| a.name.cmp(&b.name).then(a.skill_id.cmp(&b.skill_id)));
     serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))
 }
+
+// ---------------------------------------------------------------------------
+// translate_lines_json（英文 → 简中显示翻译：树词条 tooltip / 配置选项等）
+// ---------------------------------------------------------------------------
+
+/// 批量把英文词条行翻译为简中显示文本（模板反查；不认识原样返回）。
+/// 入参/出参均为 JSON 字符串数组。数据包无 zh-CN 模板时原样全返。
+pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String> {
+    let lines: Vec<String> =
+        serde_json::from_str(lines_json).map_err(|e| format!("invalid lines json: {e}"))?;
+    let translator = state::en_to_zh_translator();
+    let out: Vec<String> = lines
+        .into_iter()
+        .map(|line| match &translator {
+            Some(t) => t.translate_line(&line).unwrap_or(line),
+            None => line,
+        })
+        .collect();
+    serde_json::to_string(&out).map_err(|e| format!("serialize: {e}"))
+}

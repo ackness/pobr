@@ -27,6 +27,7 @@ interface WasmModule {
   calculateBuildJson(requestJson: string): string;
   attributionJson(requestJson: string): string;
   gemCatalogJson(): string;
+  translateLinesToZhCn(linesJson: string): string;
   translate(lang: string, key: string): string;
 }
 
@@ -123,6 +124,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async gemCatalog() {
       return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
+    },
+    async translateLines(lines) {
+      return JSON.parse(wasm.translateLinesToZhCn(JSON.stringify(lines))) as string[];
     },
     async loadConfigOptions() {
       if (!manifest) {

@@ -25,6 +25,10 @@ thread_local! {
     /// 中文词条行翻译器（懒构建；`None` 未尝试，`Some(None)` = 数据包无 zh-CN 模板）。
     static ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
         const { RefCell::new(None) };
+    /// 反向（英文 → 简中）显示翻译器：同一份模板对换向构建（树词条 tooltip /
+    /// 配置 list 选项等展示面消费）。
+    static EN_TO_ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
+        const { RefCell::new(None) };
 }
 
 /// 注入一个数据文件（`path` = 版本目录内相对路径，正斜杠，如 `base/stats.json`）。
@@ -85,6 +89,32 @@ pub fn zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
     ZH_TRANSLATOR.with_borrow_mut(|slot| {
         if slot.is_none() {
             *slot = Some(build_zh_translator());
+        }
+        slot.as_ref().and_then(Clone::clone)
+    })
+}
+
+/// 取英文 → 简中显示翻译器（懒构建同上）。
+pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
+    EN_TO_ZH_TRANSLATOR.with_borrow_mut(|slot| {
+        if slot.is_none() {
+            let built = (|| {
+                let game = game_data().ok()?;
+                let templates = game.stat_line_templates("zh-CN").ok().flatten()?;
+                // 换向：src=英文模板、en 字段放简中模板 → translate_line 即 en→zh。
+                let swapped: Vec<pobr_data::catalog::StatLineTemplate> = templates
+                    .into_iter()
+                    .map(|t| pobr_data::catalog::StatLineTemplate {
+                        src: t.en,
+                        en: t.src,
+                    })
+                    .collect();
+                Some(Rc::new(crate::zh::LineTranslator::new(
+                    &swapped,
+                    std::collections::HashMap::new(),
+                )))
+            })();
+            *slot = Some(built);
         }
         slot.as_ref().and_then(Clone::clone)
     })

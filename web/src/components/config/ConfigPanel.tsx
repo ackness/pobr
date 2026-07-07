@@ -3,6 +3,7 @@ import { getBackend } from '../../api/backend';
 import type { ConfigInputValue, ConfigOption, EnemyTier } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, configSectionLabel, enemyTierLabel, type Lang } from '../../lib/i18n';
+import { CONFIG_LABEL_ZH, LIST_OPTION_ZH } from '../../lib/configLabels';
 import './config.css';
 
 interface Props {
@@ -22,6 +23,20 @@ const SECTION_ORDER = [
   'Enemy Stats',
 ];
 
+/** 剥 PoB 颜色码（`^xRRGGBB` / `^N`）。 */
+function stripColorCodes(text: string): string {
+  return text.replace(/\^x[0-9A-Fa-f]{6}|\^[0-9]/g, '');
+}
+
+/** 本地化配置标签：中文界面查汉化表（缺条目回退英文原文）。 */
+function optionLabel(lang: Lang, option: ConfigOption): string {
+  const en = stripColorCodes(option.label ?? option.var);
+  if (lang !== 'en-US') {
+    return CONFIG_LABEL_ZH[option.var] ?? en;
+  }
+  return en;
+}
+
 /** list 型 default（1-based index）→ 选项值。 */
 function listDefault(option: ConfigOption): string | undefined {
   const def = option.default;
@@ -36,6 +51,8 @@ function OptionRow({
   value,
   overridden,
   busy,
+  lang,
+  listLabels,
   onChange,
   onReset,
 }: {
@@ -43,10 +60,12 @@ function OptionRow({
   value: ConfigInputValue | undefined;
   overridden: boolean;
   busy: boolean;
+  lang: Lang;
+  listLabels: Record<string, string>;
   onChange: (value: ConfigInputValue) => void;
   onReset: () => void;
 }) {
-  const label = option.label ?? option.var;
+  const label = optionLabel(lang, option);
   return (
     <div className={`config-item${overridden ? ' is-overridden' : ''}`} title={option.var}>
       <span className="config-key">{label}</span>
@@ -65,18 +84,26 @@ function OptionRow({
           onChange={(e) => onChange(e.target.value)}
           aria-label={label}
         >
-          {(option.list_options ?? []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
+          {(option.list_options ?? []).map((opt) => {
+            const en = stripColorCodes(opt.label);
+            const zh = lang !== 'en-US' ? (LIST_OPTION_ZH[en] ?? listLabels[en] ?? en) : en;
+            return (
+              <option key={opt.value} value={opt.value}>
+                {zh}
+              </option>
+            );
+          })}
         </select>
       ) : (
         <input
           className="config-value"
           type={option.input_type === 'text' ? 'text' : 'number'}
           value={value === undefined ? '' : String(value)}
-          placeholder={option.default !== undefined ? String(option.default) : ''}
+          placeholder={
+            typeof option.default === 'number' || typeof option.default === 'string'
+              ? String(option.default)
+              : ''
+          }
           disabled={busy}
           aria-label={label}
           onChange={(e) => {
@@ -104,6 +131,8 @@ export function ConfigPanel({ session, lang }: Props) {
   const [options, setOptions] = useState<ConfigOption[]>([]);
   const [query, setQuery] = useState('');
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['General']));
+  // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
+  const [listLabels, setListLabels] = useState<Record<string, string>>({});
 
   useEffect(() => {
     getBackend()
@@ -111,6 +140,34 @@ export function ConfigPanel({ session, lang }: Props) {
       .then(setOptions)
       .catch(() => setOptions([]));
   }, []);
+
+  useEffect(() => {
+    if (lang === 'en-US' || options.length === 0) return;
+    const pending = [
+      ...new Set(
+        options
+          .flatMap((o) => o.list_options ?? [])
+          .map((o) => stripColorCodes(o.label))
+          .filter((l) => !(l in LIST_OPTION_ZH)),
+      ),
+    ];
+    if (pending.length === 0) return;
+    let cancelled = false;
+    getBackend()
+      .then((b) => b.translateLines(pending))
+      .then((translated) => {
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        pending.forEach((en, i) => {
+          if (translated[i] !== en) map[en] = translated[i];
+        });
+        setListLabels(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [lang, options]);
 
   const overrides = session.calcParams.config_inputs;
   const buildInputs = session.build?.config_inputs ?? {};
@@ -123,7 +180,8 @@ export function ConfigPanel({ session, lang }: Props) {
       (o) =>
         q === '' ||
         (o.label ?? '').toLowerCase().includes(q) ||
-        o.var.toLowerCase().includes(q),
+        o.var.toLowerCase().includes(q) ||
+        (CONFIG_LABEL_ZH[o.var] ?? '').includes(query.trim()),
     );
     const bySection = new Map<string, ConfigOption[]>();
     for (const option of filtered) {
@@ -214,6 +272,8 @@ export function ConfigPanel({ session, lang }: Props) {
                     value={effective(option.var)}
                     overridden={option.var in overrides}
                     busy={session.busy}
+                    lang={lang}
+                    listLabels={listLabels}
                     onChange={(value) => session.setConfigInput(option.var, value)}
                     onReset={() => session.setConfigInput(option.var, null)}
                   />

@@ -32,6 +32,8 @@ export function TreePanel({ session, lang }: Props) {
   const [nodes, setNodes] = useState<PassiveNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<PassiveNode | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [hoverStats, setHoverStats] = useState<string[] | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
   const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -108,6 +110,29 @@ export function TreePanel({ session, lang }: Props) {
     const pad = 400;
     return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
   }, [placed]);
+
+  // 中文界面下把 hover 节点词条经模板反查翻成简中（异步，结果晚到时校验仍是当前节点）。
+  useEffect(() => {
+    if (!hover) {
+      setHoverStats(null);
+      return;
+    }
+    const raw = (hover.stats ?? []).map((line) =>
+      line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1'),
+    );
+    if (lang === 'en-US' || raw.length === 0) {
+      setHoverStats(raw);
+      return;
+    }
+    let cancelled = false;
+    getBackend()
+      .then((b) => b.translateLines(raw))
+      .then((translated) => !cancelled && setHoverStats(translated))
+      .catch(() => !cancelled && setHoverStats(raw));
+    return () => {
+      cancelled = true;
+    };
+  }, [hover, lang]);
 
   const view = viewBox ?? fullExtent;
 
@@ -199,7 +224,11 @@ export function TreePanel({ session, lang }: Props) {
                 cy={node.y}
                 r={NODE_RADIUS[node.kind] ?? 40}
                 className={`node node-${node.kind}${allocated.has(node.skill) ? ' node-allocated' : ''}`}
-                onPointerEnter={() => setHover(node)}
+                onPointerEnter={(e) => {
+                  setHover(node);
+                  setHoverPos({ x: e.clientX, y: e.clientY });
+                }}
+                onPointerMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
                 onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
                 onClick={() => onNodeClick(node)}
               />
@@ -207,16 +236,44 @@ export function TreePanel({ session, lang }: Props) {
           </g>
         </svg>
         {hover && (
-          <div className="tree-tooltip" role="tooltip">
-            <strong className={`tooltip-name kind-${hover.kind}`}>{hover.name ?? hover.id}</strong>
-            {(hover.stats ?? []).map((line, i) => (
-              <div key={i} className="tooltip-stat">
-                {line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1')}
-              </div>
-            ))}
-          </div>
+          <TreeTooltip node={hover} stats={hoverStats ?? []} pos={hoverPos} canvasRef={svgRef} />
         )}
       </div>
     </section>
+  );
+}
+
+/** 跟随鼠标的节点 tooltip（贴右下角偏移，靠近画布右/下缘时翻转）。 */
+function TreeTooltip({
+  node,
+  stats,
+  pos,
+  canvasRef,
+}: {
+  node: PassiveNode;
+  stats: string[];
+  pos: { x: number; y: number };
+  canvasRef: React.RefObject<SVGSVGElement | null>;
+}) {
+  const rect = canvasRef.current?.getBoundingClientRect();
+  if (!rect) return null;
+  const OFFSET = 14;
+  const flipX = pos.x - rect.left > rect.width * 0.6;
+  const flipY = pos.y - rect.top > rect.height * 0.65;
+  const style: React.CSSProperties = {
+    left: flipX ? undefined : pos.x - rect.left + OFFSET,
+    right: flipX ? rect.width - (pos.x - rect.left) + OFFSET : undefined,
+    top: flipY ? undefined : pos.y - rect.top + OFFSET,
+    bottom: flipY ? rect.height - (pos.y - rect.top) + OFFSET : undefined,
+  };
+  return (
+    <div className="tree-tooltip" role="tooltip" style={style}>
+      <strong className={`tooltip-name kind-${node.kind}`}>{node.name ?? node.id}</strong>
+      {stats.map((line, i) => (
+        <div key={i} className="tooltip-stat">
+          {line}
+        </div>
+      ))}
+    </div>
   );
 }

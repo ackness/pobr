@@ -51,6 +51,9 @@ export function createMockBackend(): PobrBackend {
     async loadConfigOptions() {
       return configOptionsFixture as unknown as ConfigOption[];
     },
+    async translateLines(lines) {
+      return lines;
+    },
     translate(_lang, key) {
       return key;
     },
