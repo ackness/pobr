@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ConfigInputValue, EnemyTier } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import type { Lang } from '../../lib/statDisplay';
+import { bindT, type Lang } from '../../lib/i18n';
 import './config.css';
 
 interface Props {
@@ -13,7 +13,7 @@ const ENEMY_TIERS: EnemyTier[] = ['none', 'boss', 'pinnacle', 'uber'];
 
 /** Config 页：敌人档位 + build 自带 `<Input>` 键值的查看/覆盖 → 重算。 */
 export function ConfigPanel({ session, lang }: Props) {
-  const zh = lang === 'zh-TW';
+  const tt = bindT(lang);
   const overrides = session.calcParams.config_inputs;
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('true');
@@ -34,11 +34,11 @@ export function ConfigPanel({ session, lang }: Props) {
   return (
     <section aria-labelledby="config-heading">
       <h2 id="config-heading" className="panel-heading">
-        {zh ? '戰鬥配置' : 'Configuration'}
+        {tt('config.title')}
       </h2>
 
       <div className="config-row">
-        <label htmlFor="enemy-tier">{zh ? '敵人檔位' : 'Enemy tier'}</label>
+        <label htmlFor="enemy-tier">{tt('config.enemyTier')}</label>
         <select
           id="enemy-tier"
           value={session.calcParams.enemy_tier ?? 'pinnacle'}
@@ -53,11 +53,9 @@ export function ConfigPanel({ session, lang }: Props) {
         </select>
       </div>
 
-      <h3 className="panel-subheading">{zh ? 'Config 輸入（<Input> 鍵值）' : 'Config inputs'}</h3>
+      <h3 className="panel-subheading">{tt('config.inputs')}</h3>
       <p className="config-hint">
-        {zh
-          ? '來自 build 的原始配置；修改值即重算。鍵名與 PoB2 Config 頁一致（如 conditionEnemyChilled）。'
-          : 'Raw config inputs from the build; edits trigger recalculation. Keys match PoB2 config vars (e.g. conditionEnemyChilled).'}
+{tt('config.hint')}
       </p>
       <div className="config-grid">
         {keys.map((key) => {
@@ -89,7 +87,7 @@ export function ConfigPanel({ session, lang }: Props) {
               {overridden && (
                 <button
                   className="config-reset"
-                  title={zh ? '還原' : 'Reset'}
+                  title={tt('config.reset')}
                   onClick={() => session.setConfigInput(key, null)}
                 >
                   ↺
@@ -100,19 +98,19 @@ export function ConfigPanel({ session, lang }: Props) {
         })}
       </div>
 
-      <h3 className="panel-subheading">{zh ? '新增配置項' : 'Add config input'}</h3>
+      <h3 className="panel-subheading">{tt('config.addTitle')}</h3>
       <div className="config-add">
         <input
-          placeholder={zh ? '鍵名（如 enemyDistance）' : 'key (e.g. enemyDistance)'}
+          placeholder={tt('config.keyPlaceholder')}
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
-          aria-label={zh ? '配置鍵名' : 'Config key'}
+          aria-label={tt('config.key')}
         />
         <input
           placeholder="true / 40 / text"
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
-          aria-label={zh ? '配置值' : 'Config value'}
+          aria-label={tt('config.valueLabel')}
         />
         <button
           disabled={!newKey.trim() || session.busy}
@@ -121,7 +119,7 @@ export function ConfigPanel({ session, lang }: Props) {
             setNewKey('');
           }}
         >
-          {zh ? '加入並重算' : 'Add & recalc'}
+          {tt('config.addButton')}
         </button>
       </div>
     </section>

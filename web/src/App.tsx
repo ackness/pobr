@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useBuildSession } from './hooks/useBuildSession';
-import type { Lang } from './lib/statDisplay';
+import { bindT, type Lang } from './lib/i18n';
 import { TopBar, type TabId } from './components/shell/TopBar';
 import { BuildPanel } from './components/import/BuildPanel';
 import { StatSidebar } from './components/sidebar/StatSidebar';
@@ -15,6 +15,7 @@ export default function App() {
   const session = useBuildSession();
   const [tab, setTab] = useState<TabId>('build');
   const [lang, setLang] = useState<Lang>('en-US');
+  const tt = bindT(lang);
 
   if (session.bootError) {
     return (
@@ -57,13 +58,9 @@ export default function App() {
           {tab === 'items' && <ItemsPanel session={session} lang={lang} />}
           {tab === 'calcs' && <CalcsPanel session={session} lang={lang} />}
           {tab === 'config' && <ConfigPanel session={session} lang={lang} />}
-          {tab === 'notes' && <NotesPlaceholder lang={lang} />}
+          {tab === 'notes' && <div className="empty-hint">{tt('notes.placeholder')}</div>}
         </main>
       </div>
     </div>
   );
-}
-
-function NotesPlaceholder({ lang }: { lang: Lang }) {
-  return <div className="empty-hint">{lang === 'zh-TW' ? 'Notes（佔位）' : 'Notes (placeholder)'}</div>;
 }

@@ -1,17 +1,23 @@
 import type { CharacterState } from '../../hooks/useBuildSession';
-import type { Lang } from '../../lib/statDisplay';
+import { LANGS, bindT, type Lang, type UiKey } from '../../lib/i18n';
 
 export type TabId = 'build' | 'tree' | 'skills' | 'items' | 'calcs' | 'config' | 'notes';
 
-const TABS: { id: TabId; label: { 'en-US': string; 'zh-TW': string } }[] = [
-  { id: 'build', label: { 'en-US': 'Build', 'zh-TW': '構建' } },
-  { id: 'tree', label: { 'en-US': 'Tree', 'zh-TW': '天賦樹' } },
-  { id: 'skills', label: { 'en-US': 'Skills', 'zh-TW': '技能' } },
-  { id: 'items', label: { 'en-US': 'Items', 'zh-TW': '裝備' } },
-  { id: 'calcs', label: { 'en-US': 'Calcs', 'zh-TW': '計算' } },
-  { id: 'config', label: { 'en-US': 'Config', 'zh-TW': '配置' } },
-  { id: 'notes', label: { 'en-US': 'Notes', 'zh-TW': '筆記' } },
+const TABS: { id: TabId; key: UiKey }[] = [
+  { id: 'build', key: 'tab.build' },
+  { id: 'tree', key: 'tab.tree' },
+  { id: 'skills', key: 'tab.skills' },
+  { id: 'items', key: 'tab.items' },
+  { id: 'calcs', key: 'tab.calcs' },
+  { id: 'config', key: 'tab.config' },
+  { id: 'notes', key: 'tab.notes' },
 ];
+
+const LANG_LABEL: Record<Lang, string> = {
+  'en-US': 'EN',
+  'zh-TW': '繁',
+  'zh-CN': '简',
+};
 
 interface Props {
   tab: TabId;
@@ -23,18 +29,20 @@ interface Props {
 }
 
 export function TopBar({ tab, onTab, lang, onLang, character, busy }: Props) {
+  const tt = bindT(lang);
+  const nextLang = LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length];
   return (
     <header className="topbar">
       <span className="topbar-brand">PoBR</span>
       <nav className="topbar-tabs" aria-label="Main navigation">
-        {TABS.map((t) => (
+        {TABS.map((entry) => (
           <button
-            key={t.id}
-            className={`topbar-tab${tab === t.id ? ' is-active' : ''}`}
-            aria-current={tab === t.id ? 'page' : undefined}
-            onClick={() => onTab(t.id)}
+            key={entry.id}
+            className={`topbar-tab${tab === entry.id ? ' is-active' : ''}`}
+            aria-current={tab === entry.id ? 'page' : undefined}
+            onClick={() => onTab(entry.id)}
           >
-            {t.label[lang]}
+            {tt(entry.key)}
           </button>
         ))}
       </nav>
@@ -47,10 +55,11 @@ export function TopBar({ tab, onTab, lang, onLang, character, busy }: Props) {
         )}
         <button
           className="topbar-lang"
-          onClick={() => onLang(lang === 'en-US' ? 'zh-TW' : 'en-US')}
+          onClick={() => onLang(nextLang)}
           aria-label="Switch language"
+          title={`→ ${LANG_LABEL[nextLang]}`}
         >
-          {lang === 'en-US' ? '繁中' : 'EN'}
+          {LANG_LABEL[lang]}
         </button>
       </div>
     </header>

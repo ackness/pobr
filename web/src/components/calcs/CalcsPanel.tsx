@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { AttributionResponse, Breakdown } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { formatStatValue, statMap, type Lang } from '../../lib/statDisplay';
+import { formatStatValue, statMap } from '../../lib/statDisplay';
+import { bindT, type Lang } from '../../lib/i18n';
 import { prettySkillId } from '../skills/SkillsPanel';
 import './calcs.css';
 
@@ -12,25 +13,26 @@ interface Props {
 
 const MOD_TYPE_ORDER = ['BASE', 'INC', 'MORE', 'OVERRIDE', 'FLAG', 'LIST'];
 
-function BreakdownTable({ name, breakdown, zh }: { name: string; breakdown: Breakdown; zh: boolean }) {
+function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Breakdown; lang: Lang }) {
+  const tt = bindT(lang);
   return (
     <div className="breakdown-detail">
       <div className="breakdown-summary">
         <span>
-          {zh ? '基礎合計' : 'Base total'}: <strong>{breakdown.base_total}</strong>
+          {tt('calcs.baseTotal')}: <strong>{breakdown.base_total}</strong>
         </span>
         <span>
-          {zh ? '增加合計' : 'Increased total'}: <strong>{breakdown.inc_total}%</strong>
+          {tt('calcs.incTotal')}: <strong>{breakdown.inc_total}%</strong>
         </span>
       </div>
       <div className="breakdown-scroll">
         <table className="breakdown-table">
           <thead>
             <tr>
-              <th>{zh ? '類型' : 'Type'}</th>
-              <th>{zh ? '數值' : 'Value'}</th>
-              <th>{zh ? '詞條' : 'Modifier'}</th>
-              <th>{zh ? '來源' : 'Source'}</th>
+              <th>{tt('calcs.type')}</th>
+              <th>{tt('calcs.value')}</th>
+              <th>{tt('calcs.modifier')}</th>
+              <th>{tt('calcs.source')}</th>
             </tr>
           </thead>
           <tbody>
@@ -40,7 +42,7 @@ function BreakdownTable({ name, breakdown, zh }: { name: string; breakdown: Brea
                 <tr key={`${name}-${i}`}>
                   <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{mod.mod_type}</td>
                   <td className="mod-value">{mod.value ?? '—'}</td>
-                  <td className="mod-text">{mod.source_text ?? (zh ? '（基底/派生）' : '(base/derived)')}</td>
+                  <td className="mod-text">{mod.source_text ?? tt('calcs.baseDerived')}</td>
                   <td className="mod-origin">
                     {mod.origin_kind ? `${mod.origin_kind}${mod.slot ? ` · ${mod.slot}` : ''}` : '—'}
                   </td>
@@ -53,7 +55,8 @@ function BreakdownTable({ name, breakdown, zh }: { name: string; breakdown: Brea
   );
 }
 
-function AttributionView({ session, zh }: { session: BuildSession; zh: boolean }) {
+function AttributionView({ session, lang }: { session: BuildSession; lang: Lang }) {
+  const tt = bindT(lang);
   const [report, setReport] = useState<AttributionResponse | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,21 +78,19 @@ function AttributionView({ session, zh }: { session: BuildSession; zh: boolean }
     if (kind === 'socket_group') {
       const group = session.build?.socket_groups[Number(id)];
       const skill = group?.gems[0]?.skill_id;
-      return `${zh ? '技能組' : 'Group'} ${Number(id) + 1}${skill ? ` · ${prettySkillId(skill)}` : ''}`;
+      return `${tt('calcs.group')} ${Number(id) + 1}${skill ? ` · ${prettySkillId(skill)}` : ''}`;
     }
     return id;
   };
 
   return (
     <section className="attribution-view" aria-labelledby="attribution-heading">
-      <h3 id="attribution-heading">{zh ? '來源貢獻歸因' : 'Source Attribution'}</h3>
+      <h3 id="attribution-heading">{tt('calcs.attribution')}</h3>
       <p className="calcs-hint">
-        {zh
-          ? '對每個來源做「移除後重算」，報告其對關鍵字段的邊際貢獻（計算量大，點擊觸發）。'
-          : 'Recomputes the build without each source and reports marginal contributions (expensive; click to run).'}
+{tt('calcs.attributionHint')}
       </p>
       <button onClick={run} disabled={running || session.busy}>
-        {running ? (zh ? '歸因計算中…' : 'Running…') : zh ? '計算歸因' : 'Run attribution'}
+        {running ? tt('calcs.running') : tt('calcs.runAttribution')}
       </button>
       {error && <div className="calc-error">{error}</div>}
       {report && (
@@ -97,7 +98,7 @@ function AttributionView({ session, zh }: { session: BuildSession; zh: boolean }
           <table className="breakdown-table attribution-table">
             <thead>
               <tr>
-                <th>{zh ? '來源' : 'Source'}</th>
+                <th>{tt('calcs.source')}</th>
                 {fields.map((f) => (
                   <th key={f}>{f}</th>
                 ))}
@@ -105,7 +106,7 @@ function AttributionView({ session, zh }: { session: BuildSession; zh: boolean }
             </thead>
             <tbody>
               <tr className="attribution-baseline">
-                <td>{zh ? '基線（完整 build）' : 'Baseline (full build)'}</td>
+                <td>{tt('calcs.baseline')}</td>
                 {fields.map((f) => (
                   <td key={f}>{formatStatValue(report.baseline[f] ?? null, 'float2')}</td>
                 ))}
@@ -142,7 +143,7 @@ function AttributionView({ session, zh }: { session: BuildSession; zh: boolean }
 
 /** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
 export function CalcsPanel({ session, lang }: Props) {
-  const zh = lang === 'zh-TW';
+  const tt = bindT(lang);
   const calc = session.calc;
   const [open, setOpen] = useState<string | null>(null);
 
@@ -153,10 +154,10 @@ export function CalcsPanel({ session, lang }: Props) {
   return (
     <section aria-labelledby="calcs-heading">
       <h2 id="calcs-heading" className="panel-heading">
-        {zh ? '計算明細' : 'Calculations'}
+        {tt('calcs.title')}
       </h2>
       <p className="calcs-hint">
-        {zh ? '點擊字段展開 base/inc 分解與逐來源詞條。' : 'Click a stat to expand its base/inc decomposition and per-source modifiers.'}
+        {tt('calcs.hint')}
       </p>
       <div className="breakdown-list">
         {breakdownNames.map((name) => {
@@ -174,15 +175,15 @@ export function CalcsPanel({ session, lang }: Props) {
                   {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
                 </span>
                 <span className="breakdown-count">
-                  {breakdown.mods.length} {zh ? '條' : 'mods'}
+                  {breakdown.mods.length} {tt('calcs.mods')}
                 </span>
               </button>
-              {isOpen && <BreakdownTable name={name} breakdown={breakdown} zh={zh} />}
+              {isOpen && <BreakdownTable name={name} breakdown={breakdown} lang={lang} />}
             </div>
           );
         })}
       </div>
-      <AttributionView session={session} zh={zh} />
+      <AttributionView session={session} lang={lang} />
     </section>
   );
 }

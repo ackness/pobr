@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import type { Lang } from '../../lib/statDisplay';
+import { bindT, type Lang } from '../../lib/i18n';
 import './tree.css';
 
 interface Props {
@@ -28,7 +28,7 @@ interface ViewBox {
 
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
 export function TreePanel({ session, lang }: Props) {
-  const zh = lang === 'zh-TW';
+  const tt = bindT(lang);
   const [nodes, setNodes] = useState<PassiveNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<PassiveNode | null>(null);
@@ -86,7 +86,7 @@ export function TreePanel({ session, lang }: Props) {
   const view = viewBox ?? fullExtent;
 
   if (error) return <div className="calc-error">{error}</div>;
-  if (!nodes || !view) return <div className="empty-hint">{zh ? '載入樹資料…' : 'Loading tree…'}</div>;
+  if (!nodes || !view) return <div className="empty-hint">{tt('tree.loading')}</div>;
 
   const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
@@ -132,15 +132,15 @@ export function TreePanel({ session, lang }: Props) {
     <section className="tree-panel" aria-labelledby="tree-heading">
       <div className="tree-toolbar">
         <h2 id="tree-heading" className="panel-heading">
-          {zh ? '天賦樹' : 'Passive Tree'}
+          {tt('tree.title')}
         </h2>
         <span className="tree-count">
-          {session.allocatedNodes.length} {zh ? '已加點' : 'allocated'}
+          {session.allocatedNodes.length} {tt('tree.allocated')}
         </span>
         <span className="tree-hint">
-          {zh ? '點擊節點加點/取消，即時重算' : 'Click a node to allocate/deallocate (recalcs live)'}
+          {tt('tree.hint')}
         </span>
-        <button onClick={() => setViewBox(null)}>{zh ? '重置視圖' : 'Reset view'}</button>
+        <button onClick={() => setViewBox(null)}>{tt('tree.reset')}</button>
       </div>
       <div className="tree-canvas">
         <svg
@@ -151,7 +151,7 @@ export function TreePanel({ session, lang }: Props) {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           role="img"
-          aria-label={zh ? '天賦樹視圖' : 'Passive tree view'}
+          aria-label={tt('tree.title')}
         >
           <g className="tree-edges">
             {edges.map((e, i) => (

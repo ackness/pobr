@@ -93,6 +93,10 @@ export interface SlotItemInput {
 export interface GemCatalogEntry {
   skill_id: string;
   name: string;
+  /** 繁中名（数据包 i18n 边车；简中数据未入库，见 TODO）。 */
+  name_zh_tw: string | null;
+  /** 宝石颜色（红/绿/蓝 = str/dex/int；分类筛选用）。 */
+  colour: 'str' | 'dex' | 'int' | null;
   is_support: boolean;
 }
 

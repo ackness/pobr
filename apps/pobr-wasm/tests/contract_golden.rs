@@ -238,8 +238,18 @@ fn manual_skills_and_items_without_code() {
     assert!(entries.len() > 100, "catalog too small: {}", entries.len());
     assert_keys(
         &entries[0],
-        &["skill_id", "name", "is_support"],
+        &["skill_id", "name", "name_zh_tw", "colour", "is_support"],
         "gem catalog entry",
+    );
+    // 繁中名边车已接线：多数宝石应有中文名。
+    let zh_count = entries
+        .iter()
+        .filter(|e| e["name_zh_tw"].is_string())
+        .count();
+    assert!(
+        zh_count * 2 > entries.len(),
+        "most gems should have zh-TW names ({zh_count}/{})",
+        entries.len()
     );
     assert!(entries.iter().any(|e| e["is_support"] == false));
     assert!(entries.iter().any(|e| e["is_support"] == true));

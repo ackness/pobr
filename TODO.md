@@ -69,6 +69,17 @@
 - [x] 6.3 视觉走查：320/768/1024/1440 断点截图、键盘导航、reduced-motion (PR#56，Playwright 断点截图 + 无横向溢出断言 + 键盘焦点冒烟)
 - [x] 6.4 前端 CI：`web/` 独立 job（tsc + eslint + vitest + build），不阻塞 Rust gate (PR#56)
 
+## Phase 7 — 中文数据管线（简中/繁中游戏数据，待开工）
+
+- [ ] 7.1 词条行中文解析：GGG stat descriptions 本地化模板（zh-TW / zh-CN）入库
+      （`pobr-data-adapter` 新域 + overlay），wasm 侧「中文词条 → 反查模板 →
+      英文 canonical → 现有 parser」翻译层；物品文本粘贴即可用中文
+- [ ] 7.2 简中（zh-CN）游戏名词数据：国服（腾讯）市集/官方数据源接入——
+      现有数据包只有 zh-TW 边车（base_items/mods/skills 名称表），简中界面下
+      游戏名词暂回退繁中
+- [ ] 7.3 技能/职业/天赋节点名的完整本地化边车覆盖面审计（现 base_items 覆盖
+      宝石名、skills.json 覆盖主动技能名；天赋节点名/词条文本未覆盖）
+
 ## 明确不做（YAGNI，需要时再开新条目）
 
 - 后端 HTTP 服务（wasm 内嵌足够；Trade 联网等真需要时再说）

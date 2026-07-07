@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import type { Lang } from '../../lib/statDisplay';
+import { bindT, type Lang } from '../../lib/i18n';
 import './items.css';
 
 interface Props {
@@ -59,7 +59,7 @@ const ITEM_TEMPLATE = 'Rarity: RARE\nNew Item\nSapphire Ring\n+50 to maximum Lif
 
 /** 装备编辑器：每槽 PoB 文本块直编（与导入路径同一解析器），即改即算。 */
 export function ItemsPanel({ session, lang }: Props) {
-  const zh = lang === 'zh-TW';
+  const tt = bindT(lang);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const build = session.build;
@@ -84,12 +84,10 @@ export function ItemsPanel({ session, lang }: Props) {
   return (
     <section aria-labelledby="items-heading">
       <h2 id="items-heading" className="panel-heading">
-        {zh ? '裝備' : 'Items'}
+        {tt('items.title')}
       </h2>
       <p className="items-hint">
-        {zh
-          ? '每個槽位直接編輯 PoB 物品文本（Rarity 行 + 名稱 + 基底 + 詞條逐行），保存即重算；也可從遊戲/交易站複製物品文本貼入。'
-          : 'Edit each slot as PoB item text (Rarity line + name + base + one mod per line); apply recalcs. You can paste item text copied from the game/trade site.'}
+        {tt('items.hint')}
       </p>
       <div className="item-grid">
         {SLOT_ORDER.map((slot) => {
@@ -105,14 +103,14 @@ export function ItemsPanel({ session, lang }: Props) {
                 <span className="item-actions">
                   {!isEditing && (
                     <button disabled={session.busy} onClick={() => startEdit(slot)}>
-                      {text ? (zh ? '編輯' : 'Edit') : zh ? '添加' : 'Add'}
+                      {text ? tt('items.edit') : tt('items.add')}
                     </button>
                   )}
                   {text && !isEditing && (
                     <button
                       className="skill-remove"
                       disabled={session.busy}
-                      title={zh ? '移除' : 'Remove'}
+                      title={tt('items.remove')}
                       onClick={() => removeItem(slot)}
                     >
                       ×
@@ -131,15 +129,15 @@ export function ItemsPanel({ session, lang }: Props) {
                   />
                   <div className="item-editor-actions">
                     <button disabled={session.busy} onClick={applyEdit}>
-                      {zh ? '保存並重算' : 'Apply'}
+                      {tt('items.apply')}
                     </button>
-                    <button onClick={() => setEditing(null)}>{zh ? '取消' : 'Cancel'}</button>
+                    <button onClick={() => setEditing(null)}>{tt('items.cancel')}</button>
                   </div>
                 </div>
               ) : text ? (
                 <ItemText text={text} />
               ) : (
-                <p className="item-empty-hint">{zh ? '（空）' : '(empty)'}</p>
+                <p className="item-empty-hint">{tt('items.empty')}</p>
               )}
             </article>
           );
@@ -148,7 +146,7 @@ export function ItemsPanel({ session, lang }: Props) {
       {build && build.items.flasks.length > 0 && (
         <>
           <h3 className="panel-subheading">
-            {zh ? '藥劑 / 護符（只讀，來自匯入）' : 'Flasks / Charms (read-only, from import)'}
+            {tt('items.flasks')}
           </h3>
           <div className="item-grid">
             {build.items.flasks.map((item, i) => (
@@ -163,7 +161,7 @@ export function ItemsPanel({ session, lang }: Props) {
       {build && build.items.jewels.length > 0 && (
         <>
           <h3 className="panel-subheading">
-            {zh ? '珠寶（只讀，來自匯入）' : 'Jewels (read-only, from import)'}
+            {tt('items.jewels')}
           </h3>
           <div className="item-grid">
             {build.items.jewels.map((text, i) => (

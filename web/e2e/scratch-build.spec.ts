@@ -30,9 +30,12 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   await page.locator('.node').first().click({ force: true });
   await expect(page.locator('.tree-count')).toContainText('1 allocated', { timeout: 30_000 });
 
-  // 手动添加技能：搜索框选 Comet → 新组出现 → Total DPS 出数。
+  // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Total DPS 出数。
   await page.getByRole('button', { name: 'Skills' }).click();
-  await page.getByLabel(/Search an active gem/).fill('Comet');
+  const picker = page.getByLabel(/Search an active gem/);
+  await picker.fill('Comet');
+  await expect(page.locator('.gem-picker-item').first()).toBeVisible();
+  await picker.press('Enter');
   await expect(page.locator('.skill-group')).toHaveCount(1, { timeout: 30_000 });
   const dpsValue = sidebar.locator('.stat-row', { hasText: 'Total DPS' }).locator('dd').first();
   await expect(dpsValue).not.toHaveText('0', { timeout: 30_000 });
@@ -45,4 +48,12 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   await ringCard.getByRole('button', { name: 'Add' }).click();
   await ringCard.getByRole('button', { name: 'Apply' }).click();
   await expect(lifeValue).not.toHaveText(lifeBeforeItem!, { timeout: 30_000 });
+
+  // 三语切换：EN → 繁 → 简（页签文案跟随，简繁字形区分）。
+  await page.locator('.topbar-lang').click();
+  await expect(page.getByRole('button', { name: '天賦樹' })).toBeVisible();
+  await page.locator('.topbar-lang').click();
+  await expect(page.getByRole('button', { name: '天赋树' })).toBeVisible();
+  await page.locator('.topbar-lang').click();
+  await expect(page.getByRole('button', { name: 'Tree' })).toBeVisible();
 });

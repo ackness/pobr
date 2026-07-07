@@ -20,6 +20,8 @@ thread_local! {
     static STAGED: RefCell<BTreeMap<String, Vec<u8>>> = const { RefCell::new(BTreeMap::new()) };
     /// 已构建的 BuildData（`None` = 尚未初始化）。
     static BUILD_DATA: RefCell<Option<Rc<BuildData>>> = const { RefCell::new(None) };
+    /// 构建 BuildData 的 GameData 本体（i18n 名称边车等按需查询用）。
+    static GAME_DATA: RefCell<Option<Rc<GameData>>> = const { RefCell::new(None) };
 }
 
 /// 注入一个数据文件（`path` = 版本目录内相对路径，正斜杠，如 `base/stats.json`）。
@@ -40,6 +42,7 @@ pub fn init_staged_data() -> Result<(), String> {
     let data = GameData::from_memory(files);
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
+    GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
     Ok(())
 }
 
@@ -48,6 +51,7 @@ pub fn init_data_from_dir(version_dir: &str) -> Result<(), String> {
     let data = GameData::new(version_dir);
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
+    GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
     Ok(())
 }
 
@@ -59,6 +63,14 @@ pub fn is_data_ready() -> bool {
 /// 取已初始化的 BuildData；未初始化时报出可透传给前端的错误消息。
 pub fn build_data() -> Result<Rc<BuildData>, String> {
     BUILD_DATA.with_borrow(|slot| {
+        slot.clone()
+            .ok_or_else(|| "game data not initialized; call init first".to_string())
+    })
+}
+
+/// 取构建时的 GameData（i18n 名称边车查询）；未初始化时报错同上。
+pub fn game_data() -> Result<Rc<GameData>, String> {
+    GAME_DATA.with_borrow(|slot| {
         slot.clone()
             .ok_or_else(|| "game data not initialized; call init first".to_string())
     })

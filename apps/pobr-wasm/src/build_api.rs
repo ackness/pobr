@@ -682,11 +682,16 @@ struct GemCatalogEntry {
     skill_id: String,
     /// 展示名（base_items canonical 名；缺失回退 gem id）。
     name: String,
+    /// 繁中名（`i18n/zh-TW/base_items.json` 边车；缺条目为 null。简中数据
+    /// 未入库——需国服数据源接入，见 TODO.md）。
+    name_zh_tw: Option<String>,
+    /// 宝石颜色（`"str"` 红 / `"dex"` 绿 / `"int"` 蓝；未知为 null），分类筛选用。
+    colour: Option<&'static str>,
     is_support: bool,
 }
 
-/// 宝石目录：`{skill_id, name, is_support}` 按名称排序。只收带主效果连边的
-/// 玩家宝石（`gem_effects` overlay 即 vendor Gems.lua 的策展面）。
+/// 宝石目录：`{skill_id, name, name_zh_tw, colour, is_support}` 按名称排序。
+/// 只收带主效果连边的玩家宝石（`gem_effects` overlay 即 vendor Gems.lua 的策展面）。
 pub fn gem_catalog_json() -> Result<String, String> {
     let data = state::build_data()?;
     let name_by_gem_id: std::collections::HashMap<&str, &str> = data
@@ -694,6 +699,10 @@ pub fn gem_catalog_json() -> Result<String, String> {
         .iter()
         .map(|(name, def)| (def.id.as_str(), name.as_str()))
         .collect();
+    // 繁中名边车（gem 基底 id → 本地化名）；缺文件（数据包无 i18n）降级为空表。
+    let zh_names = state::game_data()?
+        .base_item_names("zh-TW")
+        .unwrap_or_default();
     let mut by_skill: BTreeMap<String, GemCatalogEntry> = BTreeMap::new();
     for gem in data.skill_gems.values() {
         let Some(skill_id) = gem.granted_effect_id.clone() else {
@@ -705,6 +714,13 @@ pub fn gem_catalog_json() -> Result<String, String> {
                 .get(gem.id.as_str())
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| gem.id.clone()),
+            name_zh_tw: zh_names.get(gem.id.as_str()).cloned(),
+            colour: match gem.gem_colour {
+                Some(1) => Some("str"),
+                Some(2) => Some("dex"),
+                Some(3) => Some("int"),
+                _ => None,
+            },
             is_support: gem.is_support,
         });
     }
