@@ -118,6 +118,8 @@ const DICT = {
   'tree.hint': { 'en-US': 'Click a node to allocate/deallocate (recalcs live)', 'zh-TW': '點擊節點加點/取消，即時重算', 'zh-CN': '点击节点加点/取消，即时重算' },
   'tree.reset': { 'en-US': 'Reset view', 'zh-TW': '重置視圖', 'zh-CN': '重置视图' },
   'tree.loading': { 'en-US': 'Loading tree…', 'zh-TW': '載入樹資料…', 'zh-CN': '加载树数据…' },
+  'tree.ascendancy': { 'en-US': 'Ascendancy', 'zh-TW': '升華', 'zh-CN': '升华' },
+  'tree.focusAsc': { 'en-US': 'Focus ascendancy', 'zh-TW': '定位升華盤', 'zh-CN': '定位升华盘' },
 
   // Config 页
   'config.title': { 'en-US': 'Configuration', 'zh-TW': '戰鬥配置', 'zh-CN': '战斗配置' },

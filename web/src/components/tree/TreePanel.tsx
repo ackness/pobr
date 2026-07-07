@@ -134,6 +134,27 @@ export function TreePanel({ session, lang }: Props) {
     };
   }, [hover, lang]);
 
+  // 当前升华簇的包围盒（背景圆盘 + 自动聚焦用）。
+  const ascExtent = useMemo((): ViewBox | null => {
+    const cluster = placed.filter((n) => n.ascendancy_id === currentAscId);
+    if (!currentAscId || cluster.length === 0) return null;
+    const xs = cluster.map((n) => n.x!);
+    const ys = cluster.map((n) => n.y!);
+    const pad = 700;
+    return {
+      x: Math.min(...xs) - pad,
+      y: Math.min(...ys) - pad,
+      w: Math.max(...xs) - Math.min(...xs) + pad * 2,
+      h: Math.max(...ys) - Math.min(...ys) + pad * 2,
+    };
+  }, [placed, currentAscId]);
+
+  // 切换升华 → 自动缩放定位到升华小盘（PoB2 语义：升华子树单独看）。
+  useEffect(() => {
+    if (ascExtent) setViewBox(ascExtent);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentAscId]);
+
   const view = viewBox ?? fullExtent;
 
   if (error) return <div className="calc-error">{error}</div>;
@@ -191,6 +212,26 @@ export function TreePanel({ session, lang }: Props) {
         <span className="tree-hint">
           {tt('tree.hint')}
         </span>
+        <label className="tree-asc-picker">
+          {tt('tree.ascendancy')}
+          <select
+            value={session.character?.ascendancy_name ?? ''}
+            disabled={session.busy}
+            onChange={(e) => session.setCharacter({ ascendancy_name: e.target.value })}
+          >
+            <option value="">{tt('build.none')}</option>
+            {(session.treeMeta?.classes ?? [])
+              .find((c) => c.name === session.character?.class_name)
+              ?.ascendancies?.map((a) => (
+                <option key={a.id} value={a.name}>
+                  {a.name}
+                </option>
+              ))}
+          </select>
+        </label>
+        {ascExtent && (
+          <button onClick={() => setViewBox(ascExtent)}>{tt('tree.focusAsc')}</button>
+        )}
         <button onClick={() => setViewBox(null)}>{tt('tree.reset')}</button>
       </div>
       <div className="tree-canvas">
@@ -204,6 +245,14 @@ export function TreePanel({ session, lang }: Props) {
           role="img"
           aria-label={tt('tree.title')}
         >
+          {ascExtent && (
+            <circle
+              className="asc-backdrop"
+              cx={ascExtent.x + ascExtent.w / 2}
+              cy={ascExtent.y + ascExtent.h / 2}
+              r={Math.max(ascExtent.w, ascExtent.h) / 2}
+            />
+          )}
           <g className="tree-edges">
             {edges.map((e, i) => (
               <line
@@ -223,7 +272,7 @@ export function TreePanel({ session, lang }: Props) {
                 cx={node.x}
                 cy={node.y}
                 r={NODE_RADIUS[node.kind] ?? 40}
-                className={`node node-${node.kind}${allocated.has(node.skill) ? ' node-allocated' : ''}`}
+                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}`}
                 onPointerEnter={(e) => {
                   setHover(node);
                   setHoverPos({ x: e.clientX, y: e.clientY });

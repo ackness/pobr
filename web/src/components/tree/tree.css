@@ -109,3 +109,29 @@
 .node {
   cursor: pointer;
 }
+
+/* 升华小盘 */
+.tree-asc-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.asc-backdrop {
+  fill: rgb(216 179 106 / 0.05);
+  stroke: var(--accent-gold-dim);
+  stroke-width: 16;
+  stroke-dasharray: 60 40;
+}
+
+.node-asc {
+  fill: #4d4436;
+  stroke: var(--accent-gold-dim);
+}
+
+.node-asc.node-allocated {
+  fill: var(--accent-gold);
+  stroke: var(--accent-gold-bright);
+}
