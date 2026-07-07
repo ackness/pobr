@@ -55,6 +55,7 @@ export default function App() {
         lang={lang}
         onLang={setLang}
         character={session.character}
+        classNames={session.classNames}
         busy={session.busy}
       />
       <div className="app-body">

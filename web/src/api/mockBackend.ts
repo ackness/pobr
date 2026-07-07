@@ -45,6 +45,9 @@ export function createMockBackend(): PobrBackend {
     async loadTreeMeta() {
       return treeMetaFixture as unknown as PassiveTreeMeta;
     },
+    async loadClassNames() {
+      return { classes: {}, ascendancies: {} };
+    },
     async gemCatalog() {
       return gemCatalogFixture as unknown as GemCatalogEntry[];
     },

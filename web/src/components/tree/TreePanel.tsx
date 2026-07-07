@@ -311,7 +311,9 @@ export function TreePanel({ session, lang }: Props) {
               .find((c) => c.name === session.character?.class_name)
               ?.ascendancies?.map((a) => (
                 <option key={a.id} value={a.name}>
-                  {a.name}
+                  {lang !== 'en-US'
+                    ? (session.classNames.ascendancies[a.name] ?? a.name)
+                    : a.name}
                 </option>
               ))}
           </select>

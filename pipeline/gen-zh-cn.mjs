@@ -15,7 +15,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const RAW = 'https://raw.githubusercontent.com/addohm/poe2-en-cn-dict/master/dictionary';
-const FILES = ['lookup/stat_lines.json', 'tables/BaseItemTypes.json', 'tables/ActiveSkills.json', 'meta.json'];
+const FILES = [
+  'lookup/stat_lines.json',
+  'tables/BaseItemTypes.json',
+  'tables/ActiveSkills.json',
+  'tables/Characters.json',
+  'tables/Ascendancy.json',
+  'meta.json',
+];
 
 const repoRoot = path.join(import.meta.dirname, '..');
 const version = fs.readFileSync(path.join(repoRoot, 'data/CURRENT'), 'utf8').split('\n')[0].trim();
@@ -74,6 +81,22 @@ const pairs = [...seen.entries()]
   .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
   .map(([src, en]) => ({ src, en }));
 
+// --- 职业/升华名：Characters 按英文名、Ascendancy 按英文名（前端 UI 用英文
+// canonical 名索引；泰坦等 23 个升华 + 全部可选职业）---
+function enToZh(table, column) {
+  const out = {};
+  for (const entry of table.entries) {
+    const cell = entry.columns[column]?.[0];
+    if (cell?.en && cell?.zh) out[cell.en] = cell.zh;
+  }
+  return Object.fromEntries(Object.entries(out).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+}
+
+const classNames = {
+  classes: enToZh(read('tables/Characters.json'), 'Name'),
+  ascendancies: enToZh(read('tables/Ascendancy.json'), 'Name'),
+};
+
 const upstreamMeta = read('meta.json');
 
 fs.mkdirSync(outDir, { recursive: true });
@@ -82,6 +105,7 @@ const write = (name, value) =>
 write('base_items.json', baseItems);
 write('skills.json', skills);
 write('stat_lines.json', pairs);
+write('classes.json', classNames);
 write('_meta.json', {
   source: 'https://github.com/addohm/poe2-en-cn-dict',
   source_generated_at: upstreamMeta.generatedAt ?? null,

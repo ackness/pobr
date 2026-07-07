@@ -12,6 +12,8 @@ interface Props {
 /** Build 页（PoB2 语义）：角色身份编辑 + 新建 + 一键导入 build code。 */
 export function BuildPanel({ session, lang, onImported }: Props) {
   const tt = bindT(lang);
+  const zhName = (map: Record<string, string>, name: string) =>
+    lang !== 'en-US' ? (map[name] ?? name) : name;
   const [code, setCode] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -58,7 +60,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           >
             {classes.map((c) => (
               <option key={c.name} value={c.name}>
-                {c.name}
+                {zhName(session.classNames.classes, c.name)}
               </option>
             ))}
           </select>
@@ -73,7 +75,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
             <option value="">{tt('build.none')}</option>
             {ascendancies.map((a) => (
               <option key={a.id} value={a.name}>
-                {a.name}
+                {zhName(session.classNames.ascendancies, a.name)}
               </option>
             ))}
           </select>
@@ -116,7 +118,13 @@ export function BuildPanel({ session, lang, onImported }: Props) {
         <p className="import-summary">
           {tt('build.imported')}
           Lv{session.build.character.level}{' '}
-          {session.build.character.ascendancy_name || session.build.character.class_name} ·{' '}
+          {zhName(
+            session.build.character.ascendancy_name
+              ? session.classNames.ascendancies
+              : session.classNames.classes,
+            session.build.character.ascendancy_name || session.build.character.class_name,
+          )}{' '}
+          ·{' '}
           {session.build.tree.allocated_nodes.length} {tt('build.passives')} ·{' '}
           {session.build.items.equipped.length} {tt('build.itemsCount')}
         </p>

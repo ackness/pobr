@@ -1,3 +1,4 @@
+import type { ClassNames } from '../../api/types';
 import type { CharacterState } from '../../hooks/useBuildSession';
 import { LANGS, bindT, type Lang, type UiKey } from '../../lib/i18n';
 
@@ -25,11 +26,18 @@ interface Props {
   lang: Lang;
   onLang: (lang: Lang) => void;
   character: CharacterState | null;
+  classNames: ClassNames;
   busy: boolean;
 }
 
-export function TopBar({ tab, onTab, lang, onLang, character, busy }: Props) {
+export function TopBar({ tab, onTab, lang, onLang, character, classNames, busy }: Props) {
   const tt = bindT(lang);
+  const displayName = (c: CharacterState) => {
+    const raw = c.ascendancy_name || c.class_name;
+    if (lang === 'en-US') return raw;
+    const map = c.ascendancy_name ? classNames.ascendancies : classNames.classes;
+    return map[raw] ?? raw;
+  };
   const nextLang = LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length];
   return (
     <header className="topbar">
@@ -50,7 +58,7 @@ export function TopBar({ tab, onTab, lang, onLang, character, busy }: Props) {
         {busy && <span className="topbar-busy" role="status">⟳</span>}
         {character && (
           <span className="topbar-character">
-            Lv{character.level} {character.ascendancy_name || character.class_name}
+            Lv{character.level} {displayName(character)}
           </span>
         )}
         <button

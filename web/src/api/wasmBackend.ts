@@ -7,6 +7,7 @@
 
 import type {
   AttributionRequest,
+  ClassNames,
   AttributionResponse,
   BuildJson,
   CalculateBuildRequest,
@@ -134,6 +135,17 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       }
       const text = await fetchText(`/data/${manifest.version}/overlay/config_options.json`);
       return (JSON.parse(text) as ConfigCatalogFile).options;
+    },
+    async loadClassNames() {
+      if (!manifest) {
+        manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+      }
+      try {
+        const text = await fetchText(`/data/${manifest.version}/i18n/zh-CN/classes.json`);
+        return JSON.parse(text) as ClassNames;
+      } catch {
+        return { classes: {}, ascendancies: {} };
+      }
     },
     async loadTreeMeta() {
       if (!manifest) {

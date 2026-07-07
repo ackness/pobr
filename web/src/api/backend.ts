@@ -7,6 +7,7 @@
 
 import type {
   AttributionRequest,
+  ClassNames,
   AttributionResponse,
   BuildJson,
   CalculateBuildRequest,
@@ -27,6 +28,8 @@ export interface PobrBackend {
   loadPassiveTree(): Promise<PassiveNode[]>;
   /** 职业/升华元数据（新建 build 选择器）。 */
   loadTreeMeta(): Promise<PassiveTreeMeta>;
+  /** 加载职业/升华名的简中对照表（数据包缺该文件时返回空表，界面显示英文原名）。 */
+  loadClassNames(): Promise<ClassNames>;
   /** 宝石目录（手动技能编辑选择器）。 */
   gemCatalog(): Promise<GemCatalogEntry[]>;
   /** 内置配置目录（Config 页分区开关）。 */

@@ -12,6 +12,7 @@ import type {
   AttributeChoice,
   AttributionResponse,
   BuildJson,
+  ClassNames,
   CalculateBuildRequest,
   CalculateBuildResponse,
   ConfigInputValue,
@@ -53,6 +54,8 @@ export interface BuildSession {
   /** 解码出的原始 build（珠宝/药剂等只读展示；白手 build 为 null）。 */
   build: BuildJson | null;
   treeMeta: PassiveTreeMeta | null;
+  /** 职业/升华名的简中对照表（英文名 → 简中名；空表时界面显示英文原名）。 */
+  classNames: ClassNames;
   character: CharacterState | null;
   allocatedNodes: number[];
   attributeChoices: Record<string, AttributeChoice>;
@@ -172,6 +175,7 @@ export function useBuildSession(): BuildSession {
   const [bootMessage, setBootMessage] = useState<string | null>('初始化…');
   const [bootError, setBootError] = useState<string | null>(null);
   const [treeMeta, setTreeMeta] = useState<PassiveTreeMeta | null>(null);
+  const [classNames, setClassNames] = useState<ClassNames>({ classes: {}, ascendancies: {} });
   const [build, setBuild] = useState<BuildJson | null>(null);
   const [state, setState] = useState<BuildState | null>(null);
   const [calc, setCalc] = useState<CalculateBuildResponse | null>(null);
@@ -228,6 +232,10 @@ export function useBuildSession(): BuildSession {
       .then(async (backend) => {
         await backend.init((msg) => !cancelled && setBootMessage(msg));
         const meta = await backend.loadTreeMeta();
+        backend
+          .loadClassNames()
+          .then((names) => !cancelled && setClassNames(names))
+          .catch(() => {});
         if (cancelled) return;
         setTreeMeta(meta);
         setBootMessage(null);
@@ -433,6 +441,7 @@ export function useBuildSession(): BuildSession {
     bootError,
     build,
     treeMeta,
+    classNames,
     character: state?.character ?? null,
     allocatedNodes: state?.allocatedNodes ?? [],
     attributeChoices: state?.attributeChoices ?? {},

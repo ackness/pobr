@@ -259,6 +259,12 @@ export interface PassiveTreeMeta {
   classes: PassiveClass[];
 }
 
+/** 职业/升华名的简中对照表（数据包 `i18n/zh-CN/classes.json`，英文名 → 简中名，如 `"Druid": "德鲁伊"`）。 */
+export interface ClassNames {
+  classes: Record<string, string>;
+  ascendancies: Record<string, string>;
+}
+
 // ---------------------------------------------------------------------------
 // 内置配置目录（overlay/config_options.json，静态资产直读——与计算侧
 // config_interpreter 消费同一份数据）
