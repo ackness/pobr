@@ -2,6 +2,7 @@
   "schema_version": 2,
   "poe_version": "4.5.0.3.4",
   "languages": [
+    "zh-CN",
     "zh-TW"
   ],
   "domains": {
@@ -28,7 +29,6 @@
       "base_item_overrides",
       "buff_definitions",
       "config_options",
-
       "catalysts",
       "gem_effects",
       "gem_quality_stats",

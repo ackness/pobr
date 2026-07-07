@@ -19,9 +19,10 @@ interface Props {
   onPick: (skillId: string) => void;
 }
 
-/** 宝石显示名（中文界面优先繁中边车名，缺失回退英文）。 */
+/** 宝石显示名：简中界面优先简中名、繁中界面优先繁中名，逐级回退到英文。 */
 export function gemDisplayName(entry: GemCatalogEntry, lang: Lang): string {
-  if (lang !== 'en-US' && entry.name_zh_tw) return entry.name_zh_tw;
+  if (lang === 'zh-CN') return entry.name_zh_cn ?? entry.name_zh_tw ?? entry.name;
+  if (lang === 'zh-TW') return entry.name_zh_tw ?? entry.name_zh_cn ?? entry.name;
   return entry.name;
 }
 
@@ -56,7 +57,8 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
         (e) =>
           q === '' ||
           e.name.toLowerCase().includes(q) ||
-          (e.name_zh_tw ?? '').includes(query.trim()),
+          (e.name_zh_tw ?? '').includes(query.trim()) ||
+          (e.name_zh_cn ?? '').includes(query.trim()),
       )
       .slice(0, 200);
   }, [entries, query, colour]);

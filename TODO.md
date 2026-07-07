@@ -71,7 +71,7 @@
 
 ## Phase 7 — 中文数据管线（简中/繁中游戏数据，待开工）
 
-- [ ] 7.1 词条行中文解析：GGG stat descriptions 本地化模板（zh-TW / zh-CN）入库
+- [x] 7.1 词条行中文解析：GGG stat descriptions 本地化模板（zh-TW / zh-CN）入库
       （`pobr-data-adapter` 新域 + overlay），wasm 侧「中文词条 → 反查模板 →
       英文 canonical → 现有 parser」翻译层；物品文本粘贴即可用中文。
       **简中资源已调研定源（2026-07-07）**：[addohm/poe2-en-cn-dict](https://github.com/addohm/poe2-en-cn-dict)
@@ -82,13 +82,19 @@
       `trade_id_to_stat.json`（GGG trade stat hash 交叉表）、`lookup/en_to_cn.json`
       （14.3 万字符串：物品/宝石/天赋/怪物/UI 名，9.5MB）、`tables/<表名>.json`
       （192 张表逐行 en/zh）。活跃维护（2026-07-06 更新）；无 LICENSE 文件，
-      引用时注明来源。备选：poe2db.tw/cn（网页版简中库，可对照校验）
-- [ ] 7.2 简中（zh-CN）游戏名词数据：接入 7.1 同一词典的 `tables/BaseItemTypes.json`
+      引用时注明来源。备选：poe2db.tw/cn（网页版简中库，可对照校验）。
+      **(PR#56 已落地)**：`pipeline/gen-zh-cn.mjs` 生成 `i18n/zh-CN/stat_lines.json`
+      （2.49 万模板对）；wasm 侧 `zh.rs` 骨架桶+分段匹配翻译层（零 regex 依赖），
+      items/extra_modifiers 输入行含 CJK 即翻译，简中物品文本与英文等价（golden 钉住）
+- [x] 7.2 简中（zh-CN）游戏名词数据：接入 7.1 同一词典的 `tables/BaseItemTypes.json`
       / `GemEffects` / `PassiveSkills` 等表生成 `i18n/zh-CN/` 边车。
       **已排除的路线**：国际服 CDN bundle 不含 `Data/Simplified Chinese`
       （PoE1/PoE2 均无，见 pathofexile-dat `export-tables.ts` 语言表；Steam 语言
       列表也无中文）——简中只存在于国服客户端，自采需装 WeGame 国服客户端跑
-      该词典的生成器（pathofexile-dat 本地模式读国服 bundle）
+      该词典的生成器（pathofexile-dat 本地模式读国服 bundle）。
+      **(PR#56 已落地)**：`i18n/zh-CN/{base_items,skills}.json` 边车（4902 基底名 +
+      854 技能名），宝石目录 `name_zh_cn` + 选择器简中搜索/显示，manifest languages
+      含 zh-CN
 - [ ] 7.2b ⚠️ 数据管线上游风险（顺手发现）：CDN 当前补丁 4.5.4.3 的 bundle
       `pathofexile-dat@15.2.0`（最新版）解压失败（ooz "Failed to decode"，
       索引完整性已校验排除下载损坏）——疑似 GGG 换了 oodle 版本；下次版本

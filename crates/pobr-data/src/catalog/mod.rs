@@ -44,6 +44,9 @@ pub mod stat_map;
 
 // ---- M6 E/F：StatDescriptions overlay schema（stat_id → canonical 文本第二通道）----
 pub mod stat_descriptions;
+// ---- Phase 7.1：词条行输入翻译模板（i18n/<lang>/stat_lines.json）----
+pub mod i18n_stat_lines;
+pub use i18n_stat_lines::StatLineTemplate;
 // ---- M6 E/F 段 B：StatId→Modifier 映射表（stat_descriptions 经引擎解析固化）----
 pub mod stat_id_map;
 

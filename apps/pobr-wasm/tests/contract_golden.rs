@@ -238,8 +238,25 @@ fn manual_skills_and_items_without_code() {
     assert!(entries.len() > 100, "catalog too small: {}", entries.len());
     assert_keys(
         &entries[0],
-        &["skill_id", "name", "name_zh_tw", "colour", "is_support"],
+        &[
+            "skill_id",
+            "name",
+            "name_zh_tw",
+            "name_zh_cn",
+            "colour",
+            "is_support",
+        ],
         "gem catalog entry",
+    );
+    // 简中名边车（Phase 7.2）已接线：多数宝石应有简中名。
+    let cn_count = entries
+        .iter()
+        .filter(|e| e["name_zh_cn"].is_string())
+        .count();
+    assert!(
+        cn_count * 2 > entries.len(),
+        "most gems should have zh-CN names ({cn_count}/{})",
+        entries.len()
     );
     // 繁中名边车已接线：多数宝石应有中文名。
     let zh_count = entries
@@ -313,6 +330,90 @@ fn manual_skills_and_items_without_code() {
     bad["items"] = serde_json::json!([{ "slot": "hat", "text": "Rarity: NORMAL\nIron Hat" }]);
     let err = pobr_wasm::calculate_build_json(&bad.to_string()).unwrap_err();
     assert!(err.contains("unknown equipment slot"), "unexpected: {err}");
+}
+
+/// Phase 7.1：中文词条行输入翻译——简中物品文本与英文等价，未知中文行落 unsupported。
+#[test]
+fn chinese_mod_lines_translate_to_english() {
+    ensure_data();
+    let base_req = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "allocated_nodes": [],
+    });
+    let life = |resp: &Value| -> f64 {
+        resp["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == "Life")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let calc = |req: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&req.to_string()).expect("calc"))
+            .unwrap()
+    };
+
+    // 简中物品（基底名 + 两条词条行）与英文等价物逐值一致。
+    let mut zh_req = base_req.clone();
+    zh_req["items"] = serde_json::json!([{
+        "slot": "ring1",
+        "text": "Rarity: MAGIC\n奇异戒指\n蓝玉戒指\n+50 生命上限\n生命上限提高 10%",
+    }]);
+    let mut en_req = base_req.clone();
+    en_req["items"] = serde_json::json!([{
+        "slot": "ring1",
+        "text": "Rarity: MAGIC\nStrange Ring\nSapphire Ring\n+50 to maximum Life\n10% increased maximum Life",
+    }]);
+    let baseline = calc(&base_req);
+    let zh = calc(&zh_req);
+    let en = calc(&en_req);
+    assert!(
+        (life(&zh) - life(&en)).abs() < f64::EPSILON,
+        "中文物品应与英文等价（zh={} en={}）",
+        life(&zh),
+        life(&en)
+    );
+    assert!(life(&zh) > life(&baseline), "中文词条应实际生效");
+
+    // 简中 extra_modifiers 同样翻译。
+    let mut extra_req = base_req.clone();
+    extra_req["extra_modifiers"] = serde_json::json!(["能量护盾上限提高 100%"]);
+    let es = |resp: &Value| -> f64 {
+        resp["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == "EnergyShield")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap_or(0.0)
+    };
+    // 白手 build 无 ES base，此断言只验证不报错且不落 unsupported。
+    let extra = calc(&extra_req);
+    assert!(
+        !extra["unsupported_modifiers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v.as_str().unwrap_or_default().contains("能量护盾")),
+        "已知中文词条不应落 unsupported"
+    );
+    let _ = es(&extra);
+
+    // 未知中文行：原样保留进物品文本 → 与英文未知行同语义（orchestrator 的
+    // filter_parseable 闸门静默跳过，不崩、不改变数值）。
+    let mut unknown_req = base_req.clone();
+    unknown_req["items"] = serde_json::json!([{
+        "slot": "ring1",
+        "text": "Rarity: MAGIC\n某戒指\n这是一条不存在的词条",
+    }]);
+    let unknown = calc(&unknown_req);
+    assert!(
+        (life(&unknown) - life(&baseline)).abs() < f64::EPSILON,
+        "未知中文行应静默跳过不影响数值"
+    );
 }
 
 #[test]

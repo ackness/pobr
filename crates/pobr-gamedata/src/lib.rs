@@ -371,6 +371,26 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/skills.json")))
     }
 
+    /// 加载某语言的**词条行输入翻译模板**（`i18n/<lang>/stat_lines.json`，
+    /// Phase 7.1：本地化词条 → 英文 canonical 的模板对）。文件缺失（该语言
+    /// 未入库）返回 `Ok(None)`——消费侧按「无该语言输入翻译」降级；其余
+    /// IO / 解析错误照常上抛。
+    pub fn stat_line_templates(
+        &self,
+        lang: &str,
+    ) -> Result<Option<Vec<pobr_data::catalog::StatLineTemplate>>, LoadError> {
+        let path = self.root.join(format!("i18n/{lang}/stat_lines.json"));
+        match self.load_json_at::<Vec<pobr_data::catalog::StatLineTemplate>>(path) {
+            Ok(v) => Ok(Some(v)),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// 加载被动天赋树节点（来自 GGG 官方树导出适配，按 `skill` id 排序）。
     pub fn passive_nodes(&self) -> Result<Vec<PassiveNodeDef>, LoadError> {
         self.load_domain("passive_tree.json")

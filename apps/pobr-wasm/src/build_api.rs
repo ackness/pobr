@@ -350,7 +350,8 @@ fn apply_request_overrides(
         build.items.clear();
         for item in items {
             let slot = slot_from_id(&item.slot)?;
-            let parsed = parse_pob_xml_item(&item.text)
+            let text = localize_input_text(&item.text);
+            let parsed = parse_pob_xml_item(&text)
                 .map_err(|e| format!("parse item in slot {}: {e:?}", item.slot))?;
             build.items.insert(slot, parsed);
         }
@@ -368,6 +369,29 @@ fn apply_request_overrides(
     Ok(())
 }
 
+/// 中文输入预处理（Phase 7.1）：含 CJK 的行尝试「模板反查 → 英文 canonical」
+/// 翻译；不认识 / 无 zh-CN 数据时原样保留（parser 记 unsupported，前端可见）。
+fn localize_input_text(text: &str) -> String {
+    if !crate::zh::has_cjk(text) {
+        return text.to_string();
+    }
+    let Some(translator) = state::zh_translator() else {
+        return text.to_string();
+    };
+    text.lines()
+        .map(|line| {
+            if crate::zh::has_cjk(line) {
+                translator
+                    .translate_line(line)
+                    .unwrap_or_else(|| line.to_string())
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn orchestrator_options(req: &CalculateBuildRequest) -> Result<DataOrchestratorOptions, String> {
     Ok(DataOrchestratorOptions {
         base_input: MinimalInput::default(),
@@ -379,7 +403,11 @@ fn orchestrator_options(req: &CalculateBuildRequest) -> Result<DataOrchestratorO
             .map(parse_enemy_tier)
             .transpose()?
             .unwrap_or_default(),
-        extra_modifier_texts: req.extra_modifiers.clone(),
+        extra_modifier_texts: req
+            .extra_modifiers
+            .iter()
+            .map(|line| localize_input_text(line))
+            .collect(),
         ..Default::default()
     })
 }
@@ -682,9 +710,10 @@ struct GemCatalogEntry {
     skill_id: String,
     /// 展示名（base_items canonical 名；缺失回退 gem id）。
     name: String,
-    /// 繁中名（`i18n/zh-TW/base_items.json` 边车；缺条目为 null。简中数据
-    /// 未入库——需国服数据源接入，见 TODO.md）。
+    /// 繁中名（`i18n/zh-TW/base_items.json` 边车；缺条目为 null）。
     name_zh_tw: Option<String>,
+    /// 简中名（`i18n/zh-CN/base_items.json` 边车，国服词典转录；缺条目为 null）。
+    name_zh_cn: Option<String>,
     /// 宝石颜色（`"str"` 红 / `"dex"` 绿 / `"int"` 蓝；未知为 null），分类筛选用。
     colour: Option<&'static str>,
     is_support: bool,
@@ -699,10 +728,10 @@ pub fn gem_catalog_json() -> Result<String, String> {
         .iter()
         .map(|(name, def)| (def.id.as_str(), name.as_str()))
         .collect();
-    // 繁中名边车（gem 基底 id → 本地化名）；缺文件（数据包无 i18n）降级为空表。
-    let zh_names = state::game_data()?
-        .base_item_names("zh-TW")
-        .unwrap_or_default();
+    // 中文名边车（gem 基底 id → 本地化名）；缺文件（数据包无该语言）降级为空表。
+    let game = state::game_data()?;
+    let zh_names = game.base_item_names("zh-TW").unwrap_or_default();
+    let cn_names = game.base_item_names("zh-CN").unwrap_or_default();
     let mut by_skill: BTreeMap<String, GemCatalogEntry> = BTreeMap::new();
     for gem in data.skill_gems.values() {
         let Some(skill_id) = gem.granted_effect_id.clone() else {
@@ -715,6 +744,7 @@ pub fn gem_catalog_json() -> Result<String, String> {
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| gem.id.clone()),
             name_zh_tw: zh_names.get(gem.id.as_str()).cloned(),
+            name_zh_cn: cn_names.get(gem.id.as_str()).cloned(),
             colour: match gem.gem_colour {
                 Some(1) => Some("str"),
                 Some(2) => Some("dex"),

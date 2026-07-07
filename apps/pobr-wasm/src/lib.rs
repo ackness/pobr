@@ -15,6 +15,7 @@ pub mod build_api;
 pub mod i18n;
 pub mod session;
 pub mod state;
+pub mod zh;
 
 pub use build_api::{attribution_json, calculate_build_json, decode_build_json, gem_catalog_json};
 pub use i18n::translate;

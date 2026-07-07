@@ -73,9 +73,9 @@ const DICT = {
   // Items 页
   'items.title': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
   'items.hint': {
-    'en-US': 'Edit each slot as PoB item text (Rarity line + name + base + one mod per line); apply recalcs. You can paste item text copied from the game/trade site. Mod lines must be in English for now (localized parsing needs GGG stat templates, see TODO).',
-    'zh-TW': '每個槽位直接編輯 PoB 物品文本（Rarity 行 + 名稱 + 基底 + 詞條逐行），保存即重算；可貼入遊戲/交易站複製的物品文本。詞條行目前僅支持英文（中文解析需 GGG 本地化模板入庫，見 TODO）。',
-    'zh-CN': '每个槽位直接编辑 PoB 物品文本（Rarity 行 + 名称 + 基底 + 词条逐行），保存即重算；可粘贴游戏/交易站复制的物品文本。词条行目前仅支持英文（中文解析需 GGG 本地化模板入库，见 TODO）。',
+    'en-US': 'Edit each slot as PoB item text (Rarity line + name + base + one mod per line); apply recalcs. Mod lines and base names may be in English or Simplified Chinese (CN-realm text); structural lines (Rarity:) stay PoB-style.',
+    'zh-TW': '每個槽位直接編輯 PoB 物品文本（Rarity 行 + 名稱 + 基底 + 詞條逐行），保存即重算。詞條行與基底名支持英文或簡中（國服文本）；結構行（Rarity:）保持 PoB 格式。',
+    'zh-CN': '每个槽位直接编辑 PoB 物品文本（Rarity 行 + 名称 + 基底 + 词条逐行），保存即重算。词条行与基底名支持英文或简中（国服文本）；结构行（Rarity:）保持 PoB 格式。',
   },
   'items.edit': { 'en-US': 'Edit', 'zh-TW': '編輯', 'zh-CN': '编辑' },
   'items.add': { 'en-US': 'Add', 'zh-TW': '添加', 'zh-CN': '添加' },

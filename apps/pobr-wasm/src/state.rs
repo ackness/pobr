@@ -22,6 +22,9 @@ thread_local! {
     static BUILD_DATA: RefCell<Option<Rc<BuildData>>> = const { RefCell::new(None) };
     /// 构建 BuildData 的 GameData 本体（i18n 名称边车等按需查询用）。
     static GAME_DATA: RefCell<Option<Rc<GameData>>> = const { RefCell::new(None) };
+    /// 中文词条行翻译器（懒构建；`None` 未尝试，`Some(None)` = 数据包无 zh-CN 模板）。
+    static ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
+        const { RefCell::new(None) };
 }
 
 /// 注入一个数据文件（`path` = 版本目录内相对路径，正斜杠，如 `base/stats.json`）。
@@ -74,4 +77,32 @@ pub fn game_data() -> Result<Rc<GameData>, String> {
         slot.clone()
             .ok_or_else(|| "game data not initialized; call init first".to_string())
     })
+}
+
+/// 取中文词条行翻译器（首次调用构建并缓存；数据包无 zh-CN 模板时为 `None`，
+/// 消费侧按「无输入翻译」降级——中文行原样进 parser 落 unsupported）。
+pub fn zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
+    ZH_TRANSLATOR.with_borrow_mut(|slot| {
+        if slot.is_none() {
+            *slot = Some(build_zh_translator());
+        }
+        slot.as_ref().and_then(Clone::clone)
+    })
+}
+
+fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
+    let game = game_data().ok()?;
+    let templates = game.stat_line_templates("zh-CN").ok().flatten()?;
+    // 基底名反查表：i18n（id → 简中名）× base（英文名 → def.id）join。
+    let mut base_names = std::collections::HashMap::new();
+    if let (Ok(zh_by_id), Ok(data)) = (game.base_item_names("zh-CN"), build_data()) {
+        for (en_name, def) in &data.base_items {
+            if let Some(zh) = zh_by_id.get(def.id.as_str()) {
+                base_names.insert(zh.clone(), en_name.clone());
+            }
+        }
+    }
+    Some(Rc::new(crate::zh::LineTranslator::new(
+        &templates, base_names,
+    )))
 }
