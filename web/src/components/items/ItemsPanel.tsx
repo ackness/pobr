@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, type Lang } from '../../lib/i18n';
+import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import './items.css';
 
 interface Props {
@@ -23,10 +23,15 @@ function cleanLine(line: string): string {
     .trim();
 }
 
+function itemLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map(cleanLine)
+    .filter((l) => l && !/^Rarity:/i.test(l));
+}
+
 function ItemText({ text }: { text: string }) {
-  const lines = text.split('\n').map(cleanLine).filter(Boolean);
-  const body = lines.filter((l) => !/^Rarity:/i.test(l));
-  const [name, ...rest] = body;
+  const [name, ...rest] = itemLines(text);
   return (
     <>
       <h4 className="item-name">{name}</h4>
@@ -41,113 +46,127 @@ function ItemText({ text }: { text: string }) {
   );
 }
 
-/** 装备槽位展示顺序（PoB2 习惯）。 */
-const SLOT_ORDER = [
-  'weapon1',
-  'weapon2',
-  'helmet',
-  'body_armour',
-  'gloves',
-  'boots',
-  'amulet',
-  'ring1',
-  'ring2',
-  'belt',
+/** 人形布局的槽位 → grid-area（与 items.css 的 template areas 对应）。 */
+const DOLL_SLOTS: { slot: string; area: string }[] = [
+  { slot: 'weapon1', area: 'weapon1' },
+  { slot: 'helmet', area: 'helmet' },
+  { slot: 'amulet', area: 'amulet' },
+  { slot: 'weapon2', area: 'weapon2' },
+  { slot: 'body_armour', area: 'body' },
+  { slot: 'ring1', area: 'ring1' },
+  { slot: 'ring2', area: 'ring2' },
+  { slot: 'gloves', area: 'gloves' },
+  { slot: 'belt', area: 'belt' },
+  { slot: 'boots', area: 'boots' },
 ];
 
 const ITEM_TEMPLATE = 'Rarity: RARE\nNew Item\nSapphire Ring\n+50 to maximum Life';
 
-/** 装备编辑器：每槽 PoB 文本块直编（与导入路径同一解析器），即改即算。 */
+/** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
 export function ItemsPanel({ session, lang }: Props) {
   const tt = bindT(lang);
-  const [editing, setEditing] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [editing, setEditing] = useState(false);
   const build = session.build;
   const items = session.items;
   const bySlot = new Map(items.map((item) => [item.slot, item.text]));
 
-  const startEdit = (slot: string) => {
-    setEditing(slot);
+  const select = (slot: string) => {
+    setSelected(slot);
     setDraft(bySlot.get(slot) ?? ITEM_TEMPLATE);
+    setEditing(!bySlot.has(slot));
   };
   const applyEdit = () => {
-    if (!editing) return;
-    const rest = items.filter((item) => item.slot !== editing);
-    session.setItems([...rest, { slot: editing, text: draft }]);
-    setEditing(null);
+    if (!selected) return;
+    const rest = items.filter((item) => item.slot !== selected);
+    session.setItems([...rest, { slot: selected, text: draft }]);
+    setEditing(false);
   };
-  const removeItem = (slot: string) => {
-    session.setItems(items.filter((item) => item.slot !== slot));
-    if (editing === slot) setEditing(null);
+  const removeItem = () => {
+    if (!selected) return;
+    session.setItems(items.filter((item) => item.slot !== selected));
+    setEditing(false);
   };
+
+  const selectedText = selected ? bySlot.get(selected) : undefined;
 
   return (
     <section aria-labelledby="items-heading">
       <h2 id="items-heading" className="panel-heading">
         {tt('items.title')}
       </h2>
-      <p className="items-hint">
-        {tt('items.hint')}
-      </p>
-      <div className="item-grid">
-        {SLOT_ORDER.map((slot) => {
+      <p className="items-hint">{tt('items.hint')}</p>
+
+      <div className="paper-doll" role="group" aria-label={tt('items.title')}>
+        {DOLL_SLOTS.map(({ slot, area }) => {
           const text = bySlot.get(slot);
-          const isEditing = editing === slot;
+          const name = text ? itemLines(text)[0] : null;
           return (
-            <article
+            <button
               key={slot}
-              className={`item-card${text ? ` rarity-${rarityOf(text)}` : ' item-card-empty'}`}
+              className={`doll-slot${text ? ` rarity-${rarityOf(text)}` : ' doll-slot-empty'}${
+                selected === slot ? ' is-selected' : ''
+              }`}
+              style={{ gridArea: area }}
+              onClick={() => select(slot)}
+              aria-label={slotLabel(lang, slot)}
             >
-              <header className="item-slot">
-                {slot}
-                <span className="item-actions">
-                  {!isEditing && (
-                    <button disabled={session.busy} onClick={() => startEdit(slot)}>
-                      {text ? tt('items.edit') : tt('items.add')}
-                    </button>
-                  )}
-                  {text && !isEditing && (
-                    <button
-                      className="skill-remove"
-                      disabled={session.busy}
-                      title={tt('items.remove')}
-                      onClick={() => removeItem(slot)}
-                    >
-                      ×
-                    </button>
-                  )}
-                </span>
-              </header>
-              {isEditing ? (
-                <div className="item-editor">
-                  <textarea
-                    rows={8}
-                    value={draft}
-                    spellCheck={false}
-                    aria-label={`${slot} item text`}
-                    onChange={(e) => setDraft(e.target.value)}
-                  />
-                  <div className="item-editor-actions">
-                    <button disabled={session.busy} onClick={applyEdit}>
-                      {tt('items.apply')}
-                    </button>
-                    <button onClick={() => setEditing(null)}>{tt('items.cancel')}</button>
-                  </div>
-                </div>
-              ) : text ? (
-                <ItemText text={text} />
+              <span className="doll-slot-label">{slotLabel(lang, slot)}</span>
+              {name ? (
+                <span className="doll-item-name item-name">{name}</span>
               ) : (
-                <p className="item-empty-hint">{tt('items.empty')}</p>
+                <span className="doll-empty">{tt('items.empty')}</span>
               )}
-            </article>
+            </button>
           );
         })}
       </div>
+
+      {selected && (
+        <div className={`item-detail${selectedText ? ` rarity-${rarityOf(selectedText)}` : ''}`}>
+          <header className="item-detail-header">
+            <span className="item-slot">{slotLabel(lang, selected)}</span>
+            <span className="item-actions">
+              {!editing && (
+                <button disabled={session.busy} onClick={() => setEditing(true)}>
+                  {selectedText ? tt('items.edit') : tt('items.add')}
+                </button>
+              )}
+              {selectedText && (
+                <button className="skill-remove" disabled={session.busy} onClick={removeItem}>
+                  {tt('items.remove')}
+                </button>
+              )}
+            </span>
+          </header>
+          {editing ? (
+            <div className="item-editor">
+              <textarea
+                rows={10}
+                value={draft}
+                spellCheck={false}
+                aria-label={`${selected} item text`}
+                onChange={(e) => setDraft(e.target.value)}
+              />
+              <div className="item-editor-actions">
+                <button disabled={session.busy} onClick={applyEdit}>
+                  {tt('items.apply')}
+                </button>
+                <button onClick={() => setEditing(false)}>{tt('items.cancel')}</button>
+              </div>
+            </div>
+          ) : selectedText ? (
+            <ItemText text={selectedText} />
+          ) : (
+            <p className="item-empty-hint">{tt('items.empty')}</p>
+          )}
+        </div>
+      )}
+
       {build && build.items.flasks.length > 0 && (
         <>
-          <h3 className="panel-subheading">
-            {tt('items.flasks')}
-          </h3>
+          <h3 className="panel-subheading">{tt('items.flasks')}</h3>
           <div className="item-grid">
             {build.items.flasks.map((item, i) => (
               <article key={`${item.slot}-${i}`} className={`item-card rarity-${rarityOf(item.text)}`}>
@@ -160,9 +179,7 @@ export function ItemsPanel({ session, lang }: Props) {
       )}
       {build && build.items.jewels.length > 0 && (
         <>
-          <h3 className="panel-subheading">
-            {tt('items.jewels')}
-          </h3>
+          <h3 className="panel-subheading">{tt('items.jewels')}</h3>
           <div className="item-grid">
             {build.items.jewels.map((text, i) => (
               <article key={i} className={`item-card rarity-${rarityOf(text)}`}>

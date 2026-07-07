@@ -166,3 +166,79 @@ export function t(lang: Lang, key: UiKey): string {
 export function bindT(lang: Lang): (key: UiKey) => string {
   return (key) => t(lang, key);
 }
+
+// ---------------------------------------------------------------------------
+// 动态键标签（槽位 / 配置分区 / 敌人档位 / 聚合属性名）——键来自数据，
+// 不进 DICT；查不到回退原键。
+// ---------------------------------------------------------------------------
+
+const SLOT_LABELS: Record<string, Entry> = {
+  weapon1: { 'en-US': 'Main Hand', 'zh-TW': '主手', 'zh-CN': '主手' },
+  weapon2: { 'en-US': 'Off Hand', 'zh-TW': '副手', 'zh-CN': '副手' },
+  helmet: { 'en-US': 'Helmet', 'zh-TW': '頭盔', 'zh-CN': '头盔' },
+  body_armour: { 'en-US': 'Body Armour', 'zh-TW': '胸甲', 'zh-CN': '胸甲' },
+  gloves: { 'en-US': 'Gloves', 'zh-TW': '手套', 'zh-CN': '手套' },
+  boots: { 'en-US': 'Boots', 'zh-TW': '鞋子', 'zh-CN': '鞋子' },
+  amulet: { 'en-US': 'Amulet', 'zh-TW': '項鍊', 'zh-CN': '项链' },
+  ring1: { 'en-US': 'Ring 1', 'zh-TW': '戒指 1', 'zh-CN': '戒指 1' },
+  ring2: { 'en-US': 'Ring 2', 'zh-TW': '戒指 2', 'zh-CN': '戒指 2' },
+  ring3: { 'en-US': 'Ring 3', 'zh-TW': '戒指 3', 'zh-CN': '戒指 3' },
+  belt: { 'en-US': 'Belt', 'zh-TW': '腰帶', 'zh-CN': '腰带' },
+};
+
+/** 装备槽稳定 id → 本地化槽位名。 */
+export function slotLabel(lang: Lang, slotId: string): string {
+  return SLOT_LABELS[slotId]?.[lang] ?? slotId;
+}
+
+const CONFIG_SECTION_LABELS: Record<string, Entry> = {
+  General: { 'en-US': 'General', 'zh-TW': '一般', 'zh-CN': '常规' },
+  'Quest Rewards': { 'en-US': 'Quest Rewards', 'zh-TW': '任務獎勵', 'zh-CN': '任务奖励' },
+  'Skill Options': { 'en-US': 'Skill Options', 'zh-TW': '技能選項', 'zh-CN': '技能选项' },
+  'When In Combat': { 'en-US': 'When In Combat', 'zh-TW': '戰鬥狀態', 'zh-CN': '战斗状态' },
+  'For Effective DPS': { 'en-US': 'For Effective DPS', 'zh-TW': '有效 DPS 條件', 'zh-CN': '有效 DPS 条件' },
+  'Enemy Stats': { 'en-US': 'Enemy Stats', 'zh-TW': '敵人屬性', 'zh-CN': '敌人属性' },
+  'Custom Modifiers': { 'en-US': 'Custom Modifiers', 'zh-TW': '自訂詞條', 'zh-CN': '自定义词条' },
+};
+
+/** Config 分区名（数据原名）→ 本地化。 */
+export function configSectionLabel(lang: Lang, section: string): string {
+  return CONFIG_SECTION_LABELS[section]?.[lang] ?? section;
+}
+
+const ENEMY_TIER_LABELS: Record<string, Entry> = {
+  none: { 'en-US': 'Normal enemy', 'zh-TW': '一般敵人', 'zh-CN': '普通敌人' },
+  boss: { 'en-US': 'Boss', 'zh-TW': '頭目', 'zh-CN': 'Boss' },
+  pinnacle: { 'en-US': 'Pinnacle Boss', 'zh-TW': '巔峰頭目', 'zh-CN': '巅峰 Boss' },
+  uber: { 'en-US': 'Uber Boss', 'zh-TW': '終極頭目', 'zh-CN': '终极 Boss' },
+};
+
+/** 敌人档位 → 本地化。 */
+export function enemyTierLabel(lang: Lang, tier: string): string {
+  return ENEMY_TIER_LABELS[tier]?.[lang] ?? tier;
+}
+
+const MOD_NAME_LABELS: Record<string, Entry> = {
+  Life: { 'en-US': 'Life', 'zh-TW': '生命', 'zh-CN': '生命' },
+  Mana: { 'en-US': 'Mana', 'zh-TW': '魔力', 'zh-CN': '魔力' },
+  EnergyShield: { 'en-US': 'Energy Shield', 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' },
+  Spirit: { 'en-US': 'Spirit', 'zh-TW': '精魂', 'zh-CN': '精魂' },
+  Armour: { 'en-US': 'Armour', 'zh-TW': '護甲', 'zh-CN': '护甲' },
+  Evasion: { 'en-US': 'Evasion', 'zh-TW': '閃避', 'zh-CN': '闪避' },
+  FireResist: { 'en-US': 'Fire Resistance', 'zh-TW': '火焰抗性', 'zh-CN': '火焰抗性' },
+  ColdResist: { 'en-US': 'Cold Resistance', 'zh-TW': '冰冷抗性', 'zh-CN': '冰冷抗性' },
+  LightningResist: { 'en-US': 'Lightning Resistance', 'zh-TW': '閃電抗性', 'zh-CN': '闪电抗性' },
+  ChaosResist: { 'en-US': 'Chaos Resistance', 'zh-TW': '混沌抗性', 'zh-CN': '混沌抗性' },
+  Speed: { 'en-US': 'Attack/Cast Speed', 'zh-TW': '攻擊/施放速度', 'zh-CN': '攻击/施放速度' },
+  CritChance: { 'en-US': 'Crit Chance', 'zh-TW': '暴擊率', 'zh-CN': '暴击率' },
+  CritMultiplier: { 'en-US': 'Crit Multiplier', 'zh-TW': '暴擊加成', 'zh-CN': '暴击加成' },
+  Accuracy: { 'en-US': 'Accuracy', 'zh-TW': '命中', 'zh-CN': '命中' },
+  MovementSpeed: { 'en-US': 'Movement Speed', 'zh-TW': '移動速度', 'zh-CN': '移动速度' },
+  TotalDPS: { 'en-US': 'Total DPS', 'zh-TW': '總 DPS', 'zh-CN': '总 DPS' },
+  TotalEHP: { 'en-US': 'Effective HP', 'zh-TW': '有效生命', 'zh-CN': '有效生命' },
+};
+
+/** 聚合属性名（breakdown 键 / 归因字段）→ 本地化。 */
+export function statNameLabel(lang: Lang, id: string): string {
+  return MOD_NAME_LABELS[id]?.[lang] ?? id;
+}

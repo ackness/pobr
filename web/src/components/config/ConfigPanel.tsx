@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { ConfigInputValue, ConfigOption, EnemyTier } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, type Lang } from '../../lib/i18n';
+import { bindT, configSectionLabel, enemyTierLabel, type Lang } from '../../lib/i18n';
 import './config.css';
 
 interface Props {
@@ -171,7 +171,7 @@ export function ConfigPanel({ session, lang }: Props) {
           >
             {ENEMY_TIERS.map((tier) => (
               <option key={tier} value={tier}>
-                {tier}
+                {enemyTierLabel(lang, tier)}
               </option>
             ))}
           </select>
@@ -202,7 +202,7 @@ export function ConfigPanel({ session, lang }: Props) {
                 setOpenSections(next);
               }}
             >
-              <span>{name}</span>
+              <span>{configSectionLabel(lang, name)}</span>
               <span className="config-section-count">{sectionOptions.length}</span>
             </button>
             {open && (

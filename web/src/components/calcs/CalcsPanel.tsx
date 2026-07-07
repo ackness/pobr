@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { AttributionResponse, Breakdown } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
-import { bindT, type Lang } from '../../lib/i18n';
+import { bindT, slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { prettySkillId } from '../skills/SkillsPanel';
 import './calcs.css';
 
@@ -80,6 +80,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
       const skill = group?.gems[0]?.skill_id;
       return `${tt('calcs.group')} ${Number(id) + 1}${skill ? ` · ${prettySkillId(skill)}` : ''}`;
     }
+    if (kind === 'item') return slotLabel(lang, id);
     return id;
   };
 
@@ -100,7 +101,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
               <tr>
                 <th>{tt('calcs.source')}</th>
                 {fields.map((f) => (
-                  <th key={f}>{f}</th>
+                  <th key={f}>{statNameLabel(lang, f)}</th>
                 ))}
               </tr>
             </thead>
@@ -170,7 +171,7 @@ export function CalcsPanel({ session, lang }: Props) {
                 aria-expanded={isOpen}
                 onClick={() => setOpen(isOpen ? null : name)}
               >
-                <span className="breakdown-name">{name}</span>
+                <span className="breakdown-name">{statNameLabel(lang, name)}</span>
                 <span className="breakdown-value">
                   {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
                 </span>

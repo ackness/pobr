@@ -41,12 +41,11 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   await expect(dpsValue).not.toHaveText('0', { timeout: 30_000 });
   await expect(dpsValue).not.toHaveText('—');
 
-  // 手动添加装备：ring1 加默认模板（+50 Life）→ Life 变化。
+  // 手动添加装备：人形布局点 Ring 1 槽位 → 编辑面板默认模板（+50 Life）→ Life 变化。
   const lifeBeforeItem = await lifeValue.textContent();
   await page.getByRole('button', { name: 'Items' }).click();
-  const ringCard = page.locator('.item-card', { hasText: 'ring1' });
-  await ringCard.getByRole('button', { name: 'Add' }).click();
-  await ringCard.getByRole('button', { name: 'Apply' }).click();
+  await page.locator('.paper-doll').getByRole('button', { name: 'Ring 1' }).click();
+  await page.locator('.item-detail').getByRole('button', { name: 'Apply' }).click();
   await expect(lifeValue).not.toHaveText(lifeBeforeItem!, { timeout: 30_000 });
 
   // 三语切换：EN → 繁 → 简（页签文案跟随，简繁字形区分）。
