@@ -30,10 +30,17 @@ export function BuildPanel({ session, lang, onImported }: Props) {
 
   const importFile = async (file: File) => {
     setFileError(null);
+    const text = await file.text();
     try {
-      session.importSession(await file.text());
-    } catch (err) {
-      setFileError(String(err));
+      // 优先按本地存档解析；不是存档信封（如国服 .build / PoB code 文本）则走导入通道。
+      session.importSession(text);
+    } catch {
+      try {
+        await session.importCode(text.trim());
+        onImported();
+      } catch (err) {
+        setFileError(String(err));
+      }
     }
   };
   const character = session.character!;
@@ -139,7 +146,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
         <input
           ref={fileRef}
           type="file"
-          accept=".json,application/json"
+          accept=".json,.build,application/json"
           hidden
           aria-label={tt('save.import')}
           onChange={(e) => {

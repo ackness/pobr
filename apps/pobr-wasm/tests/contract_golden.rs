@@ -448,6 +448,61 @@ fn attribute_choice_changes_derived_stats() {
     );
 }
 
+/// 国服 `.build` 文件导入：真实样例解码（天赋 slug 映射 / 宝石效果映射 /
+/// 简中装备词条）→ 可直接计算。
+#[test]
+fn decode_cn_build_file_and_calculate() {
+    ensure_data();
+    let path = repo_data_root().join("../examples/build-file/召唤奥黛丽黑本.build");
+    let content = std::fs::read_to_string(path).expect("read .build");
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_file_json(&content).expect("decode .build"))
+            .expect("valid json");
+    // 形状与 decode_build_json 同构。
+    assert_eq!(decoded["character"]["class_name"], "Sorceress");
+    assert_eq!(decoded["character"]["level"], 98);
+    assert!(decoded["tree"]["allocated_nodes"].as_array().unwrap().len() > 100);
+    let groups = decoded["socket_groups"].as_array().unwrap();
+    assert!(groups.len() >= 10, "groups={}", groups.len());
+    assert!(
+        groups
+            .iter()
+            .all(|g| !g["gems"].as_array().unwrap().is_empty())
+    );
+    let items = decoded["items"]["equipped"].as_array().unwrap();
+    assert!(items.len() >= 10, "items={}", items.len());
+
+    // 直接用解码产物计算（简中词条走翻译层）：Life/ES 应为正。
+    let request = serde_json::json!({
+        "character": decoded["character"],
+        "allocated_nodes": decoded["tree"]["allocated_nodes"],
+        "socket_groups": decoded["socket_groups"].as_array().unwrap().iter().map(|g| {
+            serde_json::json!({ "enabled": true, "gems": g["gems"] })
+        }).collect::<Vec<_>>(),
+        "items": decoded["items"]["equipped"],
+    })
+    .to_string();
+    let calc: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("calc"))
+            .expect("valid json");
+    let stat = |id: &str| -> f64 {
+        calc["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap_or(0.0)
+    };
+    assert!(stat("Life") > 0.0, "Life={}", stat("Life"));
+    assert!(
+        stat("EnergyShield") > 0.0,
+        "ES build 应有能量护盾（简中装备词条经翻译层生效），ES={}",
+        stat("EnergyShield")
+    );
+}
+
 #[test]
 fn attribution_json_shape() {
     ensure_data();

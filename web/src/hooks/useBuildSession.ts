@@ -277,13 +277,17 @@ export function useBuildSession(): BuildSession {
       setError(null);
       try {
         const backend = await getBackend();
-        const decoded = await backend.decodeBuild(code);
+        // 以 `{` 开头视为国服 .build 文件（JSON），否则按 PoB2 code 解码。
+        const isBuildFile = code.trimStart().startsWith('{');
+        const decoded = isBuildFile
+          ? await backend.decodeBuildFile(code)
+          : await backend.decodeBuild(code);
         setBuild(decoded);
         if (decoded.notes) {
           setNotes(decoded.notes);
         }
         apply({
-          pobCode: code,
+          pobCode: isBuildFile ? null : code,
           character: {
             level: decoded.character.level,
             class_name: decoded.character.class_name,

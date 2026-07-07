@@ -18,8 +18,8 @@ pub mod state;
 pub mod zh;
 
 pub use build_api::{
-    attribution_json, calculate_build_json, decode_build_json, gem_catalog_json,
-    translate_lines_to_zh_cn_json,
+    attribution_json, calculate_build_json, decode_build_file_json, decode_build_json,
+    gem_catalog_json, translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -82,6 +82,12 @@ pub mod wasm {
     #[wasm_bindgen(js_name = gemCatalogJson)]
     pub fn gem_catalog_json() -> Result<String, JsError> {
         crate::build_api::gem_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`decodeBuildFileJson(content) -> string`（国服 .build 文件 → 结构化 build）。
+    #[wasm_bindgen(js_name = decodeBuildFileJson)]
+    pub fn decode_build_file_json(content: &str) -> Result<String, JsError> {
+        crate::build_api::decode_build_file_json(content).map_err(|err| JsError::new(&err))
     }
 
     /// JS 入口：`translateLinesToZhCn(linesJson) -> string`（英文词条 → 简中显示）。

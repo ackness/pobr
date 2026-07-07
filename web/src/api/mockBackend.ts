@@ -33,6 +33,9 @@ export function createMockBackend(): PobrBackend {
       }
       return decodeFixture as unknown as BuildJson;
     },
+    async decodeBuildFile() {
+      return decodeFixture as unknown as BuildJson;
+    },
     async calculateBuild() {
       return calculateFixture as unknown as CalculateBuildResponse;
     },

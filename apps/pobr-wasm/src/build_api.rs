@@ -816,3 +816,221 @@ pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String>
         .collect();
     serde_json::to_string(&out).map_err(|e| format!("serialize: {e}"))
 }
+
+// ---------------------------------------------------------------------------
+// decode_build_file_json（国服导出 `.build` 文件 → BuildJson）
+// ---------------------------------------------------------------------------
+
+/// 国服 `.build` 文件形状（poe2 国服市集导出：JSON，天赋为字符串 slug、
+/// 装备只有简中词条行、宝石为基底 metadata id 且无等级/品质）。
+#[derive(Debug, Deserialize)]
+struct CnBuildFile {
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    ascendancy: Option<String>,
+    #[serde(default)]
+    passives: Vec<CnPassive>,
+    #[serde(default)]
+    items: Vec<CnItem>,
+    #[serde(default)]
+    skills: Vec<CnSkill>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CnPassive {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CnItem {
+    inventory_id: String,
+    #[serde(default)]
+    additional_text: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CnSkill {
+    id: String,
+    #[serde(default)]
+    support_skills: Vec<CnPassive>,
+}
+
+/// `.build` 槽位 → 我们的装备槽 id。`Weapon2`/`Offhand2` 是第二武器组，
+/// v1 不建模（与 XML 导入的 useSecondWeaponSet 同期欠账），跳过。
+fn cn_inventory_slot(inventory_id: &str) -> Option<&'static str> {
+    Some(match inventory_id {
+        "Weapon1" => "weapon1",
+        "Offhand1" => "weapon2",
+        "Helm1" => "helmet",
+        "BodyArmour1" => "bodyarmour",
+        "Gloves1" => "gloves",
+        "Boots1" => "boots",
+        "Amulet1" => "amulet",
+        "Ring1" => "ring1",
+        "Ring2" => "ring2",
+        "Belt1" => "belt",
+        _ => return None,
+    })
+}
+
+/// 宝石基底 metadata id → 主授予效果 id（`.build` 里 `Gem`/`Gems` 两种前缀混用，
+/// 归一化后查 skill_gems 表）。
+fn cn_gem_effect_id(data: &BuildData, gem_id: &str) -> Option<String> {
+    let lookup = |id: &str| {
+        data.skill_gems
+            .get(id)
+            .and_then(|g| g.granted_effect_id.clone())
+    };
+    lookup(gem_id)
+        .or_else(|| lookup(&gem_id.replace("/Gems/", "/Gem/")))
+        .or_else(|| lookup(&gem_id.replace("/Gem/", "/Gems/")))
+}
+
+/// 解析国服 `.build` 文件为 [`BuildJson`] 同构 JSON（需先初始化游戏数据：
+/// 天赋 slug → 数值 id、宝石基底 id → 效果 id 都要查表）。
+///
+/// 已知边界：装备无基底名/稀有度（按 RARE + 占位名构造，防御底值缺失）；
+/// 宝石无等级/品质（默认 20/0）；第二武器组跳过。
+pub fn decode_build_file_json(content: &str) -> Result<String, String> {
+    let file: CnBuildFile =
+        serde_json::from_str(content).map_err(|e| format!("invalid .build json: {e}"))?;
+    let data = state::build_data()?;
+    let game = state::game_data()?;
+
+    // 等级：build 名里的 `Lv.98`。
+    let level = file
+        .name
+        .split("Lv")
+        .nth(1)
+        .and_then(|rest| {
+            let digits: String = rest
+                .chars()
+                .skip_while(|c| !c.is_ascii_digit())
+                .take_while(char::is_ascii_digit)
+                .collect();
+            digits.parse::<u32>().ok()
+        })
+        .unwrap_or(1);
+
+    // 升华 id（如 `Sorceress3`）→ 职业名 + 升华名。
+    let mut class_name = String::new();
+    let mut ascendancy_name = String::new();
+    if let Some(asc_id) = &file.ascendancy {
+        let meta = game
+            .passive_tree_meta()
+            .map_err(|e| format!("load tree meta: {e}"))?;
+        for class in &meta.classes {
+            if let Some(asc) = class.ascendancies.iter().find(|a| &a.id == asc_id) {
+                class_name = class.name.clone();
+                ascendancy_name = asc.name.clone();
+                break;
+            }
+        }
+        if class_name.is_empty() {
+            return Err(format!("unknown ascendancy id: {asc_id}"));
+        }
+    }
+
+    // 天赋 slug → 数值 skill id。
+    let slug_to_skill: std::collections::HashMap<&str, u32> = data
+        .passive_nodes
+        .values()
+        .map(|n| (n.id.as_str(), n.skill))
+        .collect();
+    let mut allocated_nodes: Vec<u32> = Vec::new();
+    let mut unknown_passives = 0usize;
+    for p in &file.passives {
+        match slug_to_skill.get(p.id.as_str()) {
+            Some(&skill) => allocated_nodes.push(skill),
+            None => unknown_passives += 1,
+        }
+    }
+    allocated_nodes.sort_unstable();
+    allocated_nodes.dedup();
+
+    // 装备：只有词条行 → 构造 PoB 文本（RARE + 占位名；词条简中由计算侧翻译层处理）。
+    let equipped: Vec<SlotItemJson> = file
+        .items
+        .iter()
+        .filter_map(|item| {
+            let slot = cn_inventory_slot(&item.inventory_id)?;
+            let text = format!(
+                "Rarity: RARE\nImported Item\n{}",
+                item.additional_text.trim()
+            );
+            Some(SlotItemJson {
+                slot: slot.to_string(),
+                text,
+            })
+        })
+        .collect();
+
+    // 技能组：宝石基底 id → 效果 id（等级/品质缺省 20/0）。
+    let mut unknown_gems = 0usize;
+    let socket_groups: Vec<SocketGroupJson> = file
+        .skills
+        .iter()
+        .filter_map(|group| {
+            let active = match cn_gem_effect_id(&data, &group.id) {
+                Some(id) => id,
+                None => {
+                    unknown_gems += 1;
+                    return None;
+                }
+            };
+            let mut gems = vec![GemJson {
+                skill_id: active.clone(),
+                level: 20,
+                quality: 0,
+            }];
+            for support in &group.support_skills {
+                match cn_gem_effect_id(&data, &support.id) {
+                    Some(id) => gems.push(GemJson {
+                        skill_id: id,
+                        level: 20,
+                        quality: 0,
+                    }),
+                    None => unknown_gems += 1,
+                }
+            }
+            Some(SocketGroupJson {
+                slot: None,
+                enabled: true,
+                active_skill_id: Some(active),
+                gems,
+            })
+        })
+        .collect();
+
+    let json = BuildJson {
+        character: CharacterJson {
+            level,
+            class_name,
+            ascendancy_name,
+        },
+        tree: TreeJson {
+            allocated_nodes,
+            tree_version: None,
+            attribute_choices: BTreeMap::new(),
+        },
+        items: ItemsJson {
+            equipped,
+            jewels: Vec::new(),
+            flasks: Vec::new(),
+        },
+        socket_groups,
+        main_socket_group: None,
+        config_inputs: BTreeMap::new(),
+        notes: (!file.name.trim().is_empty()).then(|| {
+            let mut note = file.name.trim().to_string();
+            if unknown_passives + unknown_gems > 0 {
+                note.push_str(&format!(
+                    "\n[import] skipped: {unknown_passives} unknown passives, {unknown_gems} unknown gems"
+                ));
+            }
+            note
+        }),
+    };
+    serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))
+}

@@ -323,8 +323,9 @@ export function TreePanel({ session, lang }: Props) {
         )}
         <button onClick={() => setViewBox(null)}>{tt('tree.reset')}</button>
       </div>
-      {allocatedAttrNodes.length > 0 && (
-        <div className="attr-distribute" role="group" aria-label={tt('tree.attrDistribute')}>
+      <div className="attr-distribute" role="group" aria-label={tt('tree.attrDistribute')}>
+        {allocatedAttrNodes.length > 0 && (
+        <>
           <span className="attr-distribute-title">
             {tt('tree.attrDistribute')}（{allocatedAttrNodes.length}）
           </span>
@@ -358,8 +359,51 @@ export function TreePanel({ session, lang }: Props) {
             {tt('tree.attrUnassigned')}: {allocatedAttrNodes.length - attrCounts.str - attrCounts.dex - attrCounts.int}
           </span>
           <span className="tree-hint">{tt('tree.attrHotkeys')}</span>
-        </div>
-      )}
+        </>
+        )}
+          <span className="attr-quest" role="group" aria-label={tt('tree.questAttr')}>
+            {tt('tree.questAttr')}
+            {(
+              [
+                ['str', "questAct 4Halls Of The DeadNgamahu's Test", '+5 to Strength'],
+                ['int', "questAct 4Halls Of The DeadTasalio's Test", '+5 to Intelligence'],
+                ['dex', "questAct 4Halls Of The DeadTawhoa's Test", '+5 to Dexterity'],
+              ] as const
+            ).map(([key, cfgVar, value]) => {
+              const active = session.calcParams.config_inputs[cfgVar] === value;
+              return (
+                <label key={key} className={`attr-count attr-${key}`}>
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    disabled={session.busy}
+                    onChange={(e) =>
+                      session.setConfigInput(cfgVar, e.target.checked ? value : null)
+                    }
+                  />
+                  {tt(`tree.attr.${key}` as Parameters<typeof tt>[0])}
+                </label>
+              );
+            })}
+            <label className="attr-count">
+              <input
+                type="checkbox"
+                checked={
+                  session.calcParams.config_inputs['questInterlude 2QimahSeven Pillars'] ===
+                  '+5 to all Attributes'
+                }
+                disabled={session.busy}
+                onChange={(e) =>
+                  session.setConfigInput(
+                    'questInterlude 2QimahSeven Pillars',
+                    e.target.checked ? '+5 to all Attributes' : null,
+                  )
+                }
+              />
+              {tt('tree.questAllAttr')}
+            </label>
+          </span>
+      </div>
       <div className="tree-canvas">
         <svg
           ref={svgRef}

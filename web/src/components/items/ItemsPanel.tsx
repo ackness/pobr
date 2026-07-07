@@ -52,7 +52,7 @@ const DOLL_SLOTS: { slot: string; area: string }[] = [
   { slot: 'helmet', area: 'helmet' },
   { slot: 'amulet', area: 'amulet' },
   { slot: 'weapon2', area: 'weapon2' },
-  { slot: 'body_armour', area: 'body' },
+  { slot: 'bodyarmour', area: 'body' },
   { slot: 'ring1', area: 'ring1' },
   { slot: 'ring2', area: 'ring2' },
   { slot: 'gloves', area: 'gloves' },

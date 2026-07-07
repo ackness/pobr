@@ -131,6 +131,8 @@ const DICT = {
   'tree.attr.int': { 'en-US': 'Intelligence', 'zh-TW': '智慧', 'zh-CN': '智慧' },
   'tree.attrDistribute': { 'en-US': 'Attribute points', 'zh-TW': '屬性點調配', 'zh-CN': '属性点调配' },
   'tree.attrUnassigned': { 'en-US': 'unassigned', 'zh-TW': '未分配', 'zh-CN': '未分配' },
+  'tree.questAttr': { 'en-US': 'Quest rewards:', 'zh-TW': '劇情獎勵：', 'zh-CN': '剧情奖励：' },
+  'tree.questAllAttr': { 'en-US': '+5 all', 'zh-TW': '+5 全屬性', 'zh-CN': '+5 全属性' },
   'tree.attrHotkeys': {
     'en-US': 'Hotkeys: S/D/I (or 1/2/3) on a hovered attribute node',
     'zh-TW': '快捷鍵：懸停屬性小點按 S/D/I（或 1/2/3）',
@@ -194,7 +196,7 @@ const SLOT_LABELS: Record<string, Entry> = {
   weapon1: { 'en-US': 'Main Hand', 'zh-TW': '主手', 'zh-CN': '主手' },
   weapon2: { 'en-US': 'Off Hand', 'zh-TW': '副手', 'zh-CN': '副手' },
   helmet: { 'en-US': 'Helmet', 'zh-TW': '頭盔', 'zh-CN': '头盔' },
-  body_armour: { 'en-US': 'Body Armour', 'zh-TW': '胸甲', 'zh-CN': '胸甲' },
+  bodyarmour: { 'en-US': 'Body Armour', 'zh-TW': '胸甲', 'zh-CN': '胸甲' },
   gloves: { 'en-US': 'Gloves', 'zh-TW': '手套', 'zh-CN': '手套' },
   boots: { 'en-US': 'Boots', 'zh-TW': '鞋子', 'zh-CN': '鞋子' },
   amulet: { 'en-US': 'Amulet', 'zh-TW': '項鍊', 'zh-CN': '项链' },

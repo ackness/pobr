@@ -22,6 +22,8 @@ export interface PobrBackend {
   /** 初始化（wasm 模块加载 + 游戏数据注入）；幂等。 */
   init(onProgress?: (message: string) => void): Promise<void>;
   decodeBuild(pobCode: string): Promise<BuildJson>;
+  /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
+  decodeBuildFile(content: string): Promise<BuildJson>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
