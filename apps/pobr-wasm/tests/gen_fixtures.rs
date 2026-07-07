@@ -72,6 +72,29 @@ fn generate_web_fixtures() {
     let catalog = pobr_wasm::gem_catalog_json().expect("gem catalog");
     std::fs::write(out.join("gem_catalog.json"), pretty(&catalog)).unwrap();
 
+    // 内置配置目录（Config 页）：mock 只需子集——每个 section 取前 5 项。
+    let config: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("overlay/config_options.json")).unwrap(),
+    )
+    .unwrap();
+    let mut per_section: std::collections::BTreeMap<String, usize> = Default::default();
+    let slim: Vec<&serde_json::Value> = config["options"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|o| {
+            let section = o["section"].as_str().unwrap_or("General").to_string();
+            let count = per_section.entry(section).or_insert(0);
+            *count += 1;
+            *count <= 5
+        })
+        .collect();
+    std::fs::write(
+        out.join("config_options.json"),
+        serde_json::to_string_pretty(&slim).unwrap(),
+    )
+    .unwrap();
+
     // 职业/升华元数据（新建 build 选择器用）：直接镜像数据文件。
     std::fs::copy(
         dir.join("base/passive_tree_meta.json"),

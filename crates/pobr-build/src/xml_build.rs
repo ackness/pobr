@@ -736,6 +736,29 @@ pub struct RawItemsView {
     pub flasks: Vec<(String, String)>,
 }
 
+/// 解析 build XML 的 `<Notes>` 自由文本（PoB 笔记页；无该段返回 `None`）。
+pub fn parse_notes(xml: &str) -> Result<Option<String>, XmlError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(false);
+    let mut in_notes = false;
+    let mut text = String::new();
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) if element_name(&e) == "Notes" => in_notes = true,
+            Ok(Event::Text(t)) if in_notes => match t.unescape() {
+                Ok(chunk) => text.push_str(&chunk),
+                Err(_) => text.push_str(&String::from_utf8_lossy(&t)),
+            },
+            Ok(Event::End(e)) if element_name_end(&e) == "Notes" => break,
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(XmlError::Parse(e.to_string())),
+            _ => {}
+        }
+    }
+    let trimmed = text.trim();
+    Ok((!trimmed.is_empty()).then(|| trimmed.to_string()))
+}
+
 /// 解析 build XML 的原始物品文本视图（见 [`RawItemsView`]）。
 pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
     let texts = parse_raw_item_texts(xml)?;

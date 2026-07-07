@@ -51,5 +51,7 @@ pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};
 pub use import_detect::{ImportKind, ShareService, detect_import};
 pub use snapshot::BuildSnapshot;
-pub use xml_build::{RawItemsView, parse_build, parse_build_from_code, parse_raw_items_view};
+pub use xml_build::{
+    RawItemsView, parse_build, parse_build_from_code, parse_notes, parse_raw_items_view,
+};
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

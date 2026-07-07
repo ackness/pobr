@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use pobr_build::build::GemSkillRef;
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
-    calculate_with_data_session, decode_pob_code, parse_build, parse_raw_items_view,
+    calculate_with_data_session, decode_pob_code, parse_build, parse_notes, parse_raw_items_view,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
@@ -89,6 +89,8 @@ struct BuildJson {
     main_socket_group: Option<usize>,
     /// `<Config>` 原始输入键值（Config 页展示/编辑的初始状态）。
     config_inputs: BTreeMap<String, serde_json::Value>,
+    /// `<Notes>` 自由文本（PoB 笔记页；无该段为 null）。
+    notes: Option<String>,
 }
 
 fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
@@ -142,6 +144,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             .iter()
             .map(|(k, v)| (k.clone(), config_value_json(v)))
             .collect(),
+        notes: parse_notes(xml).map_err(|e| format!("parse notes: {e}"))?,
     })
 }
 

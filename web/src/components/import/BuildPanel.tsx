@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
 import './import.css';
@@ -13,6 +13,27 @@ interface Props {
 export function BuildPanel({ session, lang, onImported }: Props) {
   const tt = bindT(lang);
   const [code, setCode] = useState('');
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const exportFile = () => {
+    const blob = new Blob([session.exportSession()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pobr-build.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importFile = async (file: File) => {
+    setFileError(null);
+    try {
+      session.importSession(await file.text());
+    } catch (err) {
+      setFileError(String(err));
+    }
+  };
   const character = session.character!;
   const classes = session.treeMeta?.classes ?? [];
   const currentClass = classes.find((c) => c.name === character.class_name);
@@ -100,6 +121,28 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           {session.build.items.equipped.length} {tt('build.itemsCount')}
         </p>
       )}
+      <h2>{tt('save.title')}</h2>
+      <p className="import-hint">{tt('save.hint')}</p>
+      <div className="save-actions">
+        <button onClick={exportFile}>{tt('save.export')}</button>
+        <button onClick={() => fileRef.current?.click()} disabled={session.busy}>
+          {tt('save.import')}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          aria-label={tt('save.import')}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) importFile(file);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      {fileError && <div className="calc-error">{fileError}</div>}
+
       {session.calc && session.calc.unsupported_modifiers.length > 0 && (
         <details className="unsupported-block">
           <summary>

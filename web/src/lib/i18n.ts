@@ -134,6 +134,25 @@ const DICT = {
   'config.valueLabel': { 'en-US': 'Config value', 'zh-TW': '配置值', 'zh-CN': '配置值' },
   'config.addButton': { 'en-US': 'Add & recalc', 'zh-TW': '加入並重算', 'zh-CN': '加入并重算' },
   'config.reset': { 'en-US': 'Reset', 'zh-TW': '還原', 'zh-CN': '还原' },
+  'config.search': { 'en-US': 'Search config options…', 'zh-TW': '搜尋配置項…', 'zh-CN': '搜索配置项…' },
+
+  // Notes 页
+  'notes.hint': {
+    'en-US': 'Free-form notes. Saved locally in your browser; importing a build brings in its <Notes> section.',
+    'zh-TW': '自由筆記。本地保存在瀏覽器；匯入 build 會帶入其 <Notes> 內容。',
+    'zh-CN': '自由笔记。本地保存在浏览器；导入 build 会带入其 <Notes> 内容。',
+  },
+  'notes.placeholder2': { 'en-US': 'Write anything about this build…', 'zh-TW': '寫點關於這個 build 的東西…', 'zh-CN': '写点关于这个 build 的东西…' },
+
+  // 本地存档
+  'save.title': { 'en-US': 'Local Save', 'zh-TW': '本地存檔', 'zh-CN': '本地存档' },
+  'save.hint': {
+    'en-US': 'Every edit is saved to this browser automatically and restored on reload. Export/import a JSON file to back up or move between devices.',
+    'zh-TW': '每次編輯都會自動保存到瀏覽器，刷新後自動恢復；可導出/導入 JSON 文件備份或跨設備遷移。',
+    'zh-CN': '每次编辑都会自动保存到浏览器，刷新后自动恢复；可导出/导入 JSON 文件备份或跨设备迁移。',
+  },
+  'save.export': { 'en-US': 'Export JSON', 'zh-TW': '導出 JSON', 'zh-CN': '导出 JSON' },
+  'save.import': { 'en-US': 'Import JSON', 'zh-TW': '導入 JSON', 'zh-CN': '导入 JSON' },
 } as const satisfies Record<string, Entry>;
 
 export type UiKey = keyof typeof DICT;

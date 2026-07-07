@@ -1,0 +1,20 @@
+.notes-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+}
+
+.notes-hint {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.notes-editor {
+  flex: 1;
+  min-height: 420px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  resize: vertical;
+}

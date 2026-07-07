@@ -102,6 +102,7 @@
     ]
   },
   "main_socket_group": 5,
+  "notes": null,
   "socket_groups": [
     {
       "active_skill_id": "BlasphemyPlayer",

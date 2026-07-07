@@ -11,6 +11,7 @@ import type {
   BuildJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
+  ConfigCatalogFile,
   GemCatalogEntry,
   PassiveNode,
   PassiveTreeMeta,
@@ -122,6 +123,13 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async gemCatalog() {
       return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
+    },
+    async loadConfigOptions() {
+      if (!manifest) {
+        manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+      }
+      const text = await fetchText(`/data/${manifest.version}/overlay/config_options.json`);
+      return (JSON.parse(text) as ConfigCatalogFile).options;
     },
     async loadTreeMeta() {
       if (!manifest) {

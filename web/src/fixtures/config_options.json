@@ -1,0 +1,1035 @@
+[
+  {
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Multiplier:ConfigActiveBrands",
+        "target": "player",
+        "value": {
+          "kind": "input"
+        }
+      }
+    ],
+    "input_type": "count",
+    "label": "# of active Brands:",
+    "section": "Skill Options",
+    "var": "ActiveBrands",
+    "verified": true,
+    "visibility": {
+      "if_skill": [
+        "Armageddon Brand",
+        "Storm Brand",
+        "Arcanist Brand",
+        "Penance Brand",
+        "Wintertide Brand"
+      ]
+    }
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Multiplier:BlockedPast10Sec",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Combat"
+          }
+        ],
+        "target": "player",
+        "value": {
+          "kind": "input"
+        }
+      }
+    ],
+    "input_type": "count",
+    "label": "Number of times you've Blocked in the past 10s",
+    "section": "When In Combat",
+    "var": "BlockedPast10Sec",
+    "verified": true,
+    "visibility": {
+      "if_cond": [
+        "BlockedHitFromUniqueEnemyInPast10Sec"
+      ]
+    }
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Multiplier:ConfigBrandsAttachedToEnemy",
+        "target": "player",
+        "value": {
+          "kind": "input"
+        }
+      }
+    ],
+    "input_type": "count",
+    "label": "# of Brands attached to the enemy:",
+    "section": "Skill Options",
+    "var": "BrandsAttachedToEnemy",
+    "verified": true,
+    "visibility": {
+      "if_enemy_mult": [
+        "BrandsAttached"
+      ]
+    }
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "FLAG",
+        "name": "Condition:BrandLastHalf",
+        "target": "player",
+        "value_bool": true
+      }
+    ],
+    "input_type": "check",
+    "label": "Last 50% of attached duration?",
+    "section": "Skill Options",
+    "var": "BrandsInLastHalf",
+    "verified": true,
+    "visibility": {
+      "if_cond": [
+        "BrandLastHalf"
+      ]
+    }
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "FLAG",
+        "name": "Condition:BrandLastQuarter",
+        "target": "player",
+        "value_bool": true
+      },
+      {
+        "mod_type": "FLAG",
+        "name": "Condition:BrandLastHalf",
+        "target": "player",
+        "value_bool": true
+      }
+    ],
+    "input_type": "check",
+    "label": "Last 25% of attached duration?",
+    "section": "Skill Options",
+    "var": "BrandsInLastQuarter",
+    "verified": true,
+    "visibility": {
+      "if_cond": [
+        "BrandLastQuarter"
+      ]
+    }
+  },
+  {
+    "default": {
+      "index": 2
+    },
+    "input_type": "list",
+    "label": "Chance To Ignore PDR Mode:",
+    "list_options": [
+      {
+        "label": "Minimum",
+        "value": "MIN"
+      },
+      {
+        "label": "Average",
+        "value": "AVERAGE"
+      },
+      {
+        "label": "Max Effect",
+        "value": "MAX"
+      }
+    ],
+    "section": "When In Combat",
+    "var": "ChanceToIgnoreEnemyPhysicalDamageReductionMode",
+    "verified": true,
+    "visibility": {
+      "if_mod": [
+        "ChanceToIgnoreEnemyPhysicalDamageReduction"
+      ]
+    }
+  },
+  {
+    "default": {
+      "placeholder_number": 1.0
+    },
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Multiplier:ChillStacks",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Effective"
+          }
+        ],
+        "target": "enemy",
+        "value": {
+          "kind": "input"
+        }
+      }
+    ],
+    "input_type": "count",
+    "label": "^xADAA47Chill ^7Stacks",
+    "section": "For Effective DPS",
+    "var": "ChillStacks",
+    "verified": true,
+    "visibility": {
+      "if_flag": [
+        "ChillCanStack"
+      ]
+    }
+  },
+  {
+    "handler_id": "config:ColdSnapBypassCD",
+    "handler_reason": "tag 类型 SkillName 不在白名单",
+    "input_type": "check",
+    "label": "Bypass CD?",
+    "section": "Skill Options",
+    "var": "ColdSnapBypassCD",
+    "verified": false,
+    "visibility": {
+      "if_skill": [
+        "Cold Snap"
+      ]
+    }
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "FLAG",
+        "name": "Condition:DetonatedMinesRecently",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Combat"
+          }
+        ],
+        "target": "player",
+        "value_bool": true
+      }
+    ],
+    "input_type": "check",
+    "label": "Have you Detonated a Mine Recently",
+    "section": "When In Combat",
+    "var": "DetonatedMinesRecently",
+    "verified": true,
+    "visibility": {
+      "if_cond": [
+        "DetonatedMinesRecently"
+      ]
+    }
+  },
+  {
+    "input_type": "check",
+    "label": "Disable EHP gain on block/suppress:",
+    "section": "General",
+    "var": "DisableEHPGainOnBlock",
+    "verified": true,
+    "visibility": {
+      "if_mod": [
+        "LifeOnBlock",
+        "ManaOnBlock",
+        "EnergyShieldOnBlock",
+        "EnergyShieldOnSpellBlock",
+        "LifeOnSuppress",
+        "EnergyShieldOnSuppress"
+      ]
+    }
+  },
+  {
+    "input_type": "check",
+    "label": "Ignore Skill Hit Damage?",
+    "section": "For Effective DPS",
+    "var": "EEIgnoreHitDamage",
+    "verified": true,
+    "visibility": {
+      "if_flag": [
+        "ElementalEquilibrium"
+      ]
+    }
+  },
+  {
+    "input_type": "list",
+    "label": "EHP calc unlucky:",
+    "list_options": [
+      {
+        "label": "Average",
+        "number": 1.0,
+        "value": "1"
+      },
+      {
+        "label": "Unlucky",
+        "number": 2.0,
+        "value": "2"
+      },
+      {
+        "label": "Very Unlucky",
+        "number": 4.0,
+        "value": "4"
+      }
+    ],
+    "section": "General",
+    "var": "EHPUnluckyWorstOf",
+    "verified": true
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "FLAG",
+        "name": "Condition:EVBypass",
+        "target": "player",
+        "value_bool": true
+      }
+    ],
+    "input_type": "check",
+    "label": "Disable Emperor's Vigilance Bypass",
+    "section": "General",
+    "var": "EVBypass",
+    "verified": true,
+    "visibility": {
+      "if_cond": [
+        "EVBypass"
+      ]
+    }
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "ElementalResistMax",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Combat"
+          },
+          {
+            "type": "condition",
+            "var": "EverlastingSacrifice"
+          }
+        ],
+        "target": "player",
+        "value": {
+          "kind": "literal",
+          "value": 5.0
+        }
+      },
+      {
+        "mod_type": "BASE",
+        "name": "ChaosResistMax",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Combat"
+          },
+          {
+            "type": "condition",
+            "var": "EverlastingSacrifice"
+          }
+        ],
+        "target": "player",
+        "value": {
+          "kind": "literal",
+          "value": 5.0
+        }
+      }
+    ],
+    "input_type": "check",
+    "label": "Do you have Everlasting Sacrifice?",
+    "section": "When In Combat",
+    "var": "EverlastingSacrifice",
+    "verified": true,
+    "visibility": {
+      "if_flag": [
+        "Condition:EverlastingSacrifice"
+      ]
+    }
+  },
+  {
+    "default": {
+      "index": 3
+    },
+    "input_type": "list",
+    "label": "Gamblesprint Movement Speed",
+    "list_options": [
+      {
+        "label": "0%",
+        "number": 0.0,
+        "value": "0"
+      },
+      {
+        "label": "10%",
+        "number": 10.0,
+        "value": "10"
+      },
+      {
+        "label": "20%",
+        "number": 20.0,
+        "value": "20"
+      },
+      {
+        "label": "30%",
+        "number": 30.0,
+        "value": "30"
+      },
+      {
+        "label": "40%",
+        "number": 40.0,
+        "value": "40"
+      }
+    ],
+    "option_effects": {
+      "0": [
+        {
+          "mod_type": "INC",
+          "name": "MovementSpeed",
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Combat"
+            },
+            {
+              "type": "condition",
+              "var": "HaveGamblesprint"
+            }
+          ],
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 0.0
+          }
+        }
+      ],
+      "10": [
+        {
+          "mod_type": "INC",
+          "name": "MovementSpeed",
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Combat"
+            },
+            {
+              "type": "condition",
+              "var": "HaveGamblesprint"
+            }
+          ],
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 10.0
+          }
+        }
+      ],
+      "20": [
+        {
+          "mod_type": "INC",
+          "name": "MovementSpeed",
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Combat"
+            },
+            {
+              "type": "condition",
+              "var": "HaveGamblesprint"
+            }
+          ],
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 20.0
+          }
+        }
+      ],
+      "30": [
+        {
+          "mod_type": "INC",
+          "name": "MovementSpeed",
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Combat"
+            },
+            {
+              "type": "condition",
+              "var": "HaveGamblesprint"
+            }
+          ],
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 30.0
+          }
+        }
+      ],
+      "40": [
+        {
+          "mod_type": "INC",
+          "name": "MovementSpeed",
+          "tags": [
+            {
+              "type": "condition",
+              "var": "Combat"
+            },
+            {
+              "type": "condition",
+              "var": "HaveGamblesprint"
+            }
+          ],
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 40.0
+          }
+        }
+      ]
+    },
+    "section": "When In Combat",
+    "var": "GamblesprintMovementSpeed",
+    "verified": true,
+    "visibility": {
+      "if_flag": [
+        "Condition:HaveGamblesprint"
+      ]
+    }
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "INC",
+        "name": "HoarfrostFreezeDuration",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Effective"
+          }
+        ],
+        "target": "enemy",
+        "value": {
+          "kind": "input",
+          "mult": 20.0
+        }
+      }
+    ],
+    "input_type": "count",
+    "label": "^x3F6DB3Hoarfrost ^7Stacks",
+    "section": "For Effective DPS",
+    "var": "HoarfrostStacks",
+    "verified": true,
+    "visibility": {
+      "if_flag": [
+        "HitsCanInflictHoarfrost"
+      ]
+    }
+  },
+  {
+    "default": {
+      "placeholder_number": 1.0
+    },
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Multiplier:ScorchStacks",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Effective"
+          }
+        ],
+        "target": "enemy",
+        "value": {
+          "kind": "input"
+        }
+      }
+    ],
+    "input_type": "count_allow_zero",
+    "label": "^xB97123Scorch ^7Stacks",
+    "section": "For Effective DPS",
+    "var": "ScorchStacks",
+    "verified": true,
+    "visibility": {
+      "if_flag": [
+        "ScorchCanStack"
+      ]
+    }
+  },
+  {
+    "default": {
+      "placeholder_number": 1.0
+    },
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Multiplier:ShockStacks",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Effective"
+          }
+        ],
+        "target": "enemy",
+        "value": {
+          "kind": "input"
+        }
+      }
+    ],
+    "input_type": "count",
+    "label": "^xADAA47Shock ^7Stacks",
+    "section": "For Effective DPS",
+    "var": "ShockStacks",
+    "verified": true,
+    "visibility": {
+      "if_flag": [
+        "ShockCanStack"
+      ]
+    }
+  },
+  {
+    "input_type": "list",
+    "label": "Ailment calculation mode:",
+    "list_options": [
+      {
+        "label": "Average",
+        "value": "AVERAGE"
+      },
+      {
+        "label": "Crits Only",
+        "value": "CRIT"
+      }
+    ],
+    "section": "General",
+    "var": "ailmentMode",
+    "verified": true
+  },
+  {
+    "input_type": "list",
+    "label": "Armour calculation mode:",
+    "list_options": [
+      {
+        "label": "Minimum",
+        "value": "MIN"
+      },
+      {
+        "label": "Average",
+        "value": "AVERAGE"
+      },
+      {
+        "label": "Maximum",
+        "value": "MAX"
+      }
+    ],
+    "option_effects": {
+      "AVERAGE": [
+        {
+          "mod_type": "FLAG",
+          "name": "Condition:ArmourAvg",
+          "target": "player",
+          "value_bool": true
+        }
+      ],
+      "MAX": [
+        {
+          "mod_type": "FLAG",
+          "name": "Condition:ArmourMax",
+          "target": "player",
+          "value_bool": true
+        }
+      ],
+      "MIN": []
+    },
+    "section": "General",
+    "var": "armourCalculationMode",
+    "verified": true,
+    "visibility": {
+      "if_cond": [
+        "ArmourMax",
+        "ArmourAvg"
+      ]
+    }
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "FLAG",
+        "name": "Condition:RareOrUnique",
+        "tags": [
+          {
+            "type": "condition",
+            "var": "Effective"
+          }
+        ],
+        "target": "enemy",
+        "value_bool": true
+      }
+    ],
+    "input_type": "check",
+    "label": "Is the enemy Rare?",
+    "section": "Enemy Stats",
+    "var": "conditionEnemyRareOrUnique",
+    "verified": true,
+    "visibility": {
+      "if_flag": [
+        "CanCull",
+        "CritCanCull"
+      ]
+    }
+  },
+  {
+    "handler_id": "config:custom_mods",
+    "handler_reason": "text 型走消费侧专用行通道（StripEscapes + mod_parser）",
+    "input_type": "text",
+    "label": "",
+    "section": "Custom Modifiers",
+    "var": "customMods",
+    "verified": true
+  },
+  {
+    "input_type": "list",
+    "label": "Delirious Effect:",
+    "list_options": [
+      {
+        "label": "None",
+        "number": 0.0,
+        "value": "0"
+      },
+      {
+        "label": "20% Delirious",
+        "value": "20Percent"
+      },
+      {
+        "label": "40% Delirious",
+        "value": "40Percent"
+      },
+      {
+        "label": "60% Delirious",
+        "value": "60Percent"
+      },
+      {
+        "label": "80% Delirious",
+        "value": "80Percent"
+      },
+      {
+        "label": "100% Delirious",
+        "value": "100Percent"
+      }
+    ],
+    "option_effects": {
+      "0": [],
+      "100Percent": [
+        {
+          "mod_type": "MORE",
+          "name": "DamageTaken",
+          "source": "100% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": -80.0
+          }
+        },
+        {
+          "mod_type": "INC",
+          "name": "Damage",
+          "source": "100% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": 30.0
+          }
+        }
+      ],
+      "20Percent": [
+        {
+          "mod_type": "MORE",
+          "name": "DamageTaken",
+          "source": "20% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": -16.0
+          }
+        },
+        {
+          "mod_type": "INC",
+          "name": "Damage",
+          "source": "20% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": 6.0
+          }
+        }
+      ],
+      "40Percent": [
+        {
+          "mod_type": "MORE",
+          "name": "DamageTaken",
+          "source": "40% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": -32.0
+          }
+        },
+        {
+          "mod_type": "INC",
+          "name": "Damage",
+          "source": "40% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": 12.0
+          }
+        }
+      ],
+      "60Percent": [
+        {
+          "mod_type": "MORE",
+          "name": "DamageTaken",
+          "source": "60% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": -48.0
+          }
+        },
+        {
+          "mod_type": "INC",
+          "name": "Damage",
+          "source": "60% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": 18.0
+          }
+        }
+      ],
+      "80Percent": [
+        {
+          "mod_type": "MORE",
+          "name": "DamageTaken",
+          "source": "80% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": -64.0
+          }
+        },
+        {
+          "mod_type": "INC",
+          "name": "Damage",
+          "source": "80% Delirious",
+          "target": "enemy",
+          "value": {
+            "kind": "literal",
+            "value": 24.0
+          }
+        }
+      ]
+    },
+    "section": "Enemy Stats",
+    "var": "deliriousPercentage",
+    "verified": true
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Armour",
+        "target": "enemy",
+        "value": {
+          "kind": "input"
+        }
+      }
+    ],
+    "input_type": "count_allow_zero",
+    "label": "Enemy Base Armour:",
+    "section": "Enemy Stats",
+    "var": "enemyArmour",
+    "verified": true
+  },
+  {
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "BlockChance",
+        "target": "enemy",
+        "value": {
+          "kind": "input"
+        }
+      }
+    ],
+    "input_type": "count_allow_zero",
+    "label": "Enemy Block Chance:",
+    "section": "Enemy Stats",
+    "var": "enemyBlockChance",
+    "verified": true
+  },
+  {
+    "input_type": "count_allow_zero",
+    "label": "Enemy Skill ^xD02090Chaos Damage:",
+    "section": "Enemy Stats",
+    "var": "enemyChaosDamage",
+    "verified": true
+  },
+  {
+    "default": {
+      "state_bool": true
+    },
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "ColdResist",
+        "source": "Quest:Act 1: Clearfell",
+        "target": "player",
+        "value": {
+          "kind": "literal",
+          "value": 10.0
+        }
+      }
+    ],
+    "input_type": "check",
+    "label": "Act 1: Clearfell",
+    "section": "Quest Rewards",
+    "var": "questAct 1ClearfellBeira",
+    "verified": true
+  },
+  {
+    "default": {
+      "state_bool": true
+    },
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Spirit",
+        "source": "Quest:Act 1: Freythorn",
+        "target": "player",
+        "value": {
+          "kind": "literal",
+          "value": 30.0
+        }
+      }
+    ],
+    "input_type": "check",
+    "label": "Act 1: Freythorn",
+    "section": "Quest Rewards",
+    "var": "questAct 1FreythornKing In The Mists",
+    "verified": true
+  },
+  {
+    "default": {
+      "state_bool": true
+    },
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "Life",
+        "source": "Quest:Act 1: Ogham Manor",
+        "target": "player",
+        "value": {
+          "kind": "literal",
+          "value": 20.0
+        }
+      }
+    ],
+    "input_type": "check",
+    "label": "Act 1: Ogham Manor",
+    "section": "Quest Rewards",
+    "var": "questAct 1Ogham ManorCandlemass",
+    "verified": true
+  },
+  {
+    "default": {
+      "state_bool": true
+    },
+    "effects": [
+      {
+        "mod_type": "BASE",
+        "name": "LightningResist",
+        "source": "Quest:Act 2: Spires of Deshar",
+        "target": "player",
+        "value": {
+          "kind": "literal",
+          "value": 10.0
+        }
+      }
+    ],
+    "input_type": "check",
+    "label": "Act 2: Spires of Deshar",
+    "section": "Quest Rewards",
+    "var": "questAct 2Spires of DesharSisters of Garukhan Shrine",
+    "verified": true
+  },
+  {
+    "default": {
+      "index": 1
+    },
+    "input_type": "list",
+    "label": "Act 2: Valley of the Titans",
+    "list_options": [
+      {
+        "label": "^1Nothing^7",
+        "value": "None"
+      },
+      {
+        "label": "30% increased Charm Charges Gained\n\t+1 Charm Slot",
+        "value": "30% increased Charm Charges Gained\n\t+1 Charm Slot"
+      },
+      {
+        "label": "30% increased Charm Effect Duration\n\t+1 Charm Slot",
+        "value": "30% increased Charm Effect Duration\n\t+1 Charm Slot"
+      }
+    ],
+    "option_effects": {
+      "30% increased Charm Charges Gained\n\t+1 Charm Slot": [
+        {
+          "mod_type": "INC",
+          "name": "CharmChargesGained",
+          "source": "Quest:Act 2: Valley of the Titans",
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 30.0
+          }
+        },
+        {
+          "mod_type": "BASE",
+          "name": "CharmLimit",
+          "source": "Quest:Act 2: Valley of the Titans",
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 1.0
+          }
+        }
+      ],
+      "30% increased Charm Effect Duration\n\t+1 Charm Slot": [
+        {
+          "mod_type": "INC",
+          "name": "CharmDuration",
+          "source": "Quest:Act 2: Valley of the Titans",
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 30.0
+          }
+        },
+        {
+          "mod_type": "BASE",
+          "name": "CharmLimit",
+          "source": "Quest:Act 2: Valley of the Titans",
+          "target": "player",
+          "value": {
+            "kind": "literal",
+            "value": 1.0
+          }
+        }
+      ],
+      "None": []
+    },
+    "section": "Quest Rewards",
+    "var": "questAct 2Valley of the TitansMedallion",
+    "verified": true
+  }
+]

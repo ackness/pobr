@@ -54,6 +54,8 @@ export interface BuildJson {
   /** 0-based 主技能组下标；null = 未指定。 */
   main_socket_group: number | null;
   config_inputs: Record<string, ConfigInputValue>;
+  /** `<Notes>` 自由文本（PoB 笔记页）。 */
+  notes: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -248,4 +250,38 @@ export interface PassiveClass {
 export interface PassiveTreeMeta {
   tree: string;
   classes: PassiveClass[];
+}
+
+// ---------------------------------------------------------------------------
+// 内置配置目录（overlay/config_options.json，静态资产直读——与计算侧
+// config_interpreter 消费同一份数据）
+// ---------------------------------------------------------------------------
+
+export type ConfigInputType =
+  | 'check'
+  | 'count'
+  | 'count_allow_zero'
+  | 'integer'
+  | 'float'
+  | 'list'
+  | 'text';
+
+export interface ConfigListOption {
+  value: string;
+  label: string;
+}
+
+export interface ConfigOption {
+  var: string;
+  input_type: ConfigInputType;
+  /** PoB2 Config 页分区名（如 "When In Combat"）。 */
+  section?: string;
+  label?: string;
+  /** list 型的选项；default 的 {index} 是 1-based。 */
+  list_options?: ConfigListOption[];
+  default?: { index?: number } | number | boolean | string;
+}
+
+export interface ConfigCatalogFile {
+  options: ConfigOption[];
 }

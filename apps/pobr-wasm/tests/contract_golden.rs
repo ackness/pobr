@@ -52,6 +52,7 @@ fn decode_build_json_shape() {
             "socket_groups",
             "main_socket_group",
             "config_inputs",
+            "notes",
         ],
         "BuildJson",
     );

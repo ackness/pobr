@@ -58,6 +58,13 @@ export interface BuildSession {
   calcParams: CalcParams;
   busy: boolean;
   error: string | null;
+  /** 笔记（本地持久化；导入 build 时被其 <Notes> 覆盖）。 */
+  notes: string;
+  setNotes: (text: string) => void;
+  /** 导出完整会话（build 状态 + 笔记）为 JSON 文本。 */
+  exportSession: () => string;
+  /** 从导出的 JSON 恢复会话；非法输入抛错。 */
+  importSession: (json: string) => void;
   importCode: (code: string) => Promise<void>;
   newBuild: (className: string, ascendancyName: string) => void;
   setCharacter: (patch: Partial<CharacterState>) => void;
@@ -82,6 +89,58 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     enemy_tier: state.params.enemy_tier,
     config_inputs: state.params.config_inputs,
   };
+}
+
+/** 本地存档信封（localStorage / 导出文件共用同一形状）。 */
+export interface SavedSession {
+  /** 存档格式版本（前向兼容闸门）。 */
+  version: 1;
+  state: BuildState;
+  notes: string;
+}
+
+const STORAGE_KEY = 'pobr-build-state';
+
+function saveToStorage(state: BuildState, notes: string) {
+  try {
+    const saved: SavedSession = { version: 1, state, notes };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  } catch {
+    // 配额/隐私模式失败时静默——持久化是增强，不阻断编辑。
+  }
+}
+
+/** 解析并校验存档信封（导入文件 / localStorage 共用）；非法返回 null。 */
+function parseSaved(json: string): SavedSession | null {
+  try {
+    const parsed = JSON.parse(json) as SavedSession;
+    if (parsed.version !== 1 || typeof parsed.state !== 'object' || parsed.state === null) {
+      return null;
+    }
+    const state = parsed.state;
+    if (
+      typeof state.character?.class_name !== 'string' ||
+      !Array.isArray(state.allocatedNodes) ||
+      !Array.isArray(state.socketGroups) ||
+      !Array.isArray(state.items)
+    ) {
+      return null;
+    }
+    return {
+      version: 1,
+      state: {
+        pobCode: typeof state.pobCode === 'string' ? state.pobCode : null,
+        character: state.character,
+        allocatedNodes: state.allocatedNodes,
+        socketGroups: state.socketGroups,
+        items: state.items,
+        params: state.params ?? { config_inputs: {} },
+      },
+      notes: typeof parsed.notes === 'string' ? parsed.notes : '',
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
@@ -109,6 +168,19 @@ export function useBuildSession(): BuildSession {
   const [calc, setCalc] = useState<CalculateBuildResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notes, setNotesState] = useState<string>(
+    () => localStorage.getItem('pobr-notes') ?? '',
+  );
+
+  const notesRef = useRef('');
+  const stateRef = useRef<BuildState | null>(null);
+
+  const setNotes = useCallback((text: string) => {
+    setNotesState(text);
+    notesRef.current = text;
+    localStorage.setItem('pobr-notes', text);
+    if (stateRef.current) saveToStorage(stateRef.current, text);
+  }, []);
   // 重算请求序号：只应用最新一次的结果（快速连点加点时防乱序覆盖）。
   const seqRef = useRef(0);
 
@@ -129,10 +201,12 @@ export function useBuildSession(): BuildSession {
       });
   }, []);
 
-  /** 应用新状态并触发重算。 */
+  /** 应用新状态并触发重算 + 自动保存到浏览器。 */
   const apply = useCallback(
     (next: BuildState) => {
       setState(next);
+      stateRef.current = next;
+      saveToStorage(next, notesRef.current);
       recalc(next);
     },
     [recalc],
@@ -148,6 +222,19 @@ export function useBuildSession(): BuildSession {
         if (cancelled) return;
         setTreeMeta(meta);
         setBootMessage(null);
+        const saved = parseSaved(localStorage.getItem(STORAGE_KEY) ?? '');
+        if (saved) {
+          notesRef.current = saved.notes;
+          setNotesState(saved.notes);
+          if (saved.state.pobCode) {
+            backend
+              .decodeBuild(saved.state.pobCode)
+              .then((decoded) => !cancelled && setBuild(decoded))
+              .catch(() => {});
+          }
+          apply(saved.state);
+          return;
+        }
         const firstClass = meta.classes[0]?.name ?? 'Warrior';
         apply({
           pobCode: null,
@@ -174,6 +261,9 @@ export function useBuildSession(): BuildSession {
         const backend = await getBackend();
         const decoded = await backend.decodeBuild(code);
         setBuild(decoded);
+        if (decoded.notes) {
+          setNotes(decoded.notes);
+        }
         apply({
           pobCode: code,
           character: {
@@ -190,7 +280,7 @@ export function useBuildSession(): BuildSession {
         setBusy(false);
       }
     },
-    [apply],
+    [apply, setNotes],
   );
 
   const newBuild = useCallback(
@@ -266,6 +356,33 @@ export function useBuildSession(): BuildSession {
     [apply, state],
   );
 
+  const exportSession = useCallback((): string => {
+    if (!state) throw new Error('build not ready');
+    const saved: SavedSession = { version: 1, state, notes };
+    return JSON.stringify(saved, null, 2);
+  }, [state, notes]);
+
+  const importSession = useCallback(
+    (json: string) => {
+      const saved = parseSaved(json);
+      if (!saved) {
+        throw new Error('invalid session file');
+      }
+      setBuild(null);
+      notesRef.current = saved.notes;
+      setNotesState(saved.notes);
+      localStorage.setItem('pobr-notes', saved.notes);
+      if (saved.state.pobCode) {
+        getBackend()
+          .then((b) => b.decodeBuild(saved.state.pobCode!))
+          .then(setBuild)
+          .catch(() => {});
+      }
+      apply(saved.state);
+    },
+    [apply],
+  );
+
   const runAttribution = useCallback(
     async (fields: string[]) => {
       if (!state) throw new Error('build not ready');
@@ -297,6 +414,10 @@ export function useBuildSession(): BuildSession {
     calcParams: state?.params ?? { config_inputs: {} },
     busy,
     error,
+    notes,
+    setNotes,
+    exportSession,
+    importSession,
     importCode,
     newBuild,
     setCharacter,
