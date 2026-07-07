@@ -102,3 +102,12 @@
 .tooltip-stat {
   color: var(--color-mana);
 }
+
+.tree-hint {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.node {
+  cursor: pointer;
+}

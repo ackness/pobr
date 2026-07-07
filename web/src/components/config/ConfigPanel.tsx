@@ -14,12 +14,14 @@ const ENEMY_TIERS: EnemyTier[] = ['none', 'boss', 'pinnacle', 'uber'];
 /** Config 页：敌人档位 + build 自带 `<Input>` 键值的查看/覆盖 → 重算。 */
 export function ConfigPanel({ session, lang }: Props) {
   const zh = lang === 'zh-TW';
-  const build = session.build!;
   const overrides = session.calcParams.config_inputs;
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('true');
 
-  const effective: Record<string, ConfigInputValue> = { ...build.config_inputs, ...overrides };
+  const effective: Record<string, ConfigInputValue> = {
+    ...(session.build?.config_inputs ?? {}),
+    ...overrides,
+  };
   const keys = Object.keys(effective).sort();
 
   const parseValue = (raw: string): ConfigInputValue => {

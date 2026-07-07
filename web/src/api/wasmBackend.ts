@@ -12,6 +12,7 @@ import type {
   CalculateBuildRequest,
   CalculateBuildResponse,
   PassiveNode,
+  PassiveTreeMeta,
 } from './types';
 import type { PobrBackend } from './backend';
 
@@ -116,6 +117,13 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       }
       const text = await fetchText(`/data/${manifest.version}/base/passive_tree.json`);
       return JSON.parse(text) as PassiveNode[];
+    },
+    async loadTreeMeta() {
+      if (!manifest) {
+        manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+      }
+      const text = await fetchText(`/data/${manifest.version}/base/passive_tree_meta.json`);
+      return JSON.parse(text) as PassiveTreeMeta;
     },
     translate(lang, key) {
       return wasm.translate(lang, key);

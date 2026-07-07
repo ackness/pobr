@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
-import type { BuildJson, PassiveNode } from '../../api/types';
+import type { PassiveNode } from '../../api/types';
+import type { BuildSession } from '../../hooks/useBuildSession';
 import type { Lang } from '../../lib/statDisplay';
 import './tree.css';
 
 interface Props {
-  build: BuildJson;
+  session: BuildSession;
   lang: Lang;
 }
 
@@ -25,14 +26,14 @@ interface ViewBox {
   h: number;
 }
 
-/** 只读天赋树查看器：SVG 渲染 + 已加点高亮 + 滚轮缩放 / 拖拽平移 / hover 词条。 */
-export function TreePanel({ build, lang }: Props) {
+/** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
+export function TreePanel({ session, lang }: Props) {
   const zh = lang === 'zh-TW';
   const [nodes, setNodes] = useState<PassiveNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<PassiveNode | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
-  const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export function TreePanel({ build, lang }: Props) {
       .catch((err) => setError(String(err)));
   }, []);
 
-  const allocated = useMemo(() => new Set(build.tree.allocated_nodes), [build]);
+  const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
 
   const placed = useMemo(() => (nodes ?? []).filter((n) => n.x !== undefined && n.y !== undefined), [nodes]);
 
@@ -98,7 +99,7 @@ export function TreePanel({ build, lang }: Props) {
   };
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    dragRef.current = { x: e.clientX, y: e.clientY };
+    dragRef.current = { x: e.clientX, y: e.clientY, moved: false };
     (e.target as Element).setPointerCapture?.(e.pointerId);
   };
 
@@ -107,12 +108,24 @@ export function TreePanel({ build, lang }: Props) {
     const rect = svgRef.current!.getBoundingClientRect();
     const dx = ((e.clientX - dragRef.current.x) / rect.width) * view.w;
     const dy = ((e.clientY - dragRef.current.y) / rect.height) * view.h;
-    dragRef.current = { x: e.clientX, y: e.clientY };
+    if (Math.abs(e.clientX - dragRef.current.x) + Math.abs(e.clientY - dragRef.current.y) > 3) {
+      dragRef.current.moved = true;
+    }
+    dragRef.current = { ...dragRef.current, x: e.clientX, y: e.clientY };
     setViewBox({ ...view, x: view.x - dx, y: view.y - dy });
   };
 
   const onPointerUp = () => {
-    dragRef.current = null;
+    // 保留 moved 标记到 click 事件之后（click 在 pointerup 后触发）。
+    setTimeout(() => {
+      dragRef.current = null;
+    }, 0);
+  };
+
+  /** 点选加点/取消（拖拽平移不触发）。 */
+  const onNodeClick = (node: PassiveNode) => {
+    if (dragRef.current?.moved) return;
+    session.toggleNode(node.skill);
   };
 
   return (
@@ -122,7 +135,10 @@ export function TreePanel({ build, lang }: Props) {
           {zh ? '天賦樹' : 'Passive Tree'}
         </h2>
         <span className="tree-count">
-          {build.tree.allocated_nodes.length} {zh ? '已加點' : 'allocated'}
+          {session.allocatedNodes.length} {zh ? '已加點' : 'allocated'}
+        </span>
+        <span className="tree-hint">
+          {zh ? '點擊節點加點/取消，即時重算' : 'Click a node to allocate/deallocate (recalcs live)'}
         </span>
         <button onClick={() => setViewBox(null)}>{zh ? '重置視圖' : 'Reset view'}</button>
       </div>
@@ -159,6 +175,7 @@ export function TreePanel({ build, lang }: Props) {
                 className={`node node-${node.kind}${allocated.has(node.skill) ? ' node-allocated' : ''}`}
                 onPointerEnter={() => setHover(node)}
                 onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
+                onClick={() => onNodeClick(node)}
               />
             ))}
           </g>

@@ -68,6 +68,13 @@ fn generate_web_fixtures() {
     )
     .unwrap();
 
+    // 职业/升华元数据（新建 build 选择器用）：直接镜像数据文件。
+    std::fs::copy(
+        dir.join("base/passive_tree_meta.json"),
+        out.join("tree_meta.json"),
+    )
+    .expect("copy tree meta");
+
     eprintln!("fixtures written to {}", out.display());
 }
 

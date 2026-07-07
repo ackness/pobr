@@ -185,6 +185,47 @@ fn calculate_build_json_main_group_override_changes_output() {
     );
 }
 
+/// 白手起 build（无 pob_code，PoB2 新建语义）：character 即可计算，等级驱动基础量。
+#[test]
+fn calculate_scratch_build_without_code() {
+    ensure_data();
+    let life_at = |level: u32| -> f64 {
+        let request = serde_json::json!({
+            "character": { "class_name": "Warrior", "level": level },
+            "allocated_nodes": [],
+        })
+        .to_string();
+        let json: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("scratch"))
+                .expect("valid json");
+        json["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == "Life")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let level1 = life_at(1);
+    let level90 = life_at(90);
+    assert!(
+        level1 > 0.0,
+        "level 1 scratch build Life should be positive"
+    );
+    assert!(
+        level90 > level1,
+        "Life should scale with level (lv1={level1} lv90={level90})"
+    );
+
+    // 缺 code 又缺 character → 可读错误而非 panic。
+    let err = pobr_wasm::calculate_build_json("{}").unwrap_err();
+    assert!(
+        err.contains("pob_code or character"),
+        "unexpected error: {err}"
+    );
+}
+
 #[test]
 fn attribution_json_shape() {
     ensure_data();

@@ -55,6 +55,13 @@ web/src/
 └── styles/       # tokens.css（设计变量收口）+ global.css
 ```
 
+## 使用方式
+
+- **新建 build**（PoB2 语义）：启动即有默认角色——Build 页切职业/升华/等级，
+  Tree 页点选加点，全程实时重算，无需任何 code。
+- **一键导入**：Build 页粘贴 PoB2 code 整体替换（装备/技能/树/config 全带入）。
+- 手动装备/技能编辑器是后续独立切片（见 TODO.md「明确不做」注记）。
+
 ## 数据流
 
 1. 启动：JS fetch `public/data/manifest.json` 列出的全部 JSON → `stageDataFile`

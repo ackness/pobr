@@ -11,12 +11,13 @@
 use std::collections::BTreeMap;
 
 use pobr_build::{
-    Build, DataOrchestratorOptions, calculate_with_data_session, decode_pob_code, parse_build,
-    parse_raw_items_view,
+    Build, CharacterIdentity, DataOrchestratorOptions, calculate_with_data_session,
+    decode_pob_code, parse_build, parse_raw_items_view,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::monster::EnemyTier;
+use pobr_data::passive_tree::NodeId;
 use serde::{Deserialize, Serialize};
 
 use crate::state;
@@ -155,11 +156,25 @@ pub fn decode_build_json(code: &str) -> Result<String, String> {
 // 0.2 + 0.3 calculate_build_json（display_catalog 全量 + breakdown）
 // ---------------------------------------------------------------------------
 
-/// 计算请求：`pob_code` 必填，其余覆盖项可缺省。
+/// 角色身份覆盖（白手起 build 的必要面 / 导入后改等级职业）。
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct CharacterOverride {
+    level: Option<u32>,
+    class_name: Option<String>,
+    ascendancy_name: Option<String>,
+}
+
+/// 计算请求：`pob_code` 与 `character` 至少给一个——有 code 则解码为基线再套
+/// 覆盖项；无 code 时以 `character` 白手起一个空 build（PoB2 新建 build 语义）。
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CalculateBuildRequest {
     pob_code: String,
+    /// 角色身份覆盖（等级 / 职业 / 升华；逐字段可缺省）。
+    character: Option<CharacterOverride>,
+    /// 覆盖已加点集合（交互加点：整份替换 build 的 allocated_nodes）。
+    allocated_nodes: Option<Vec<u32>>,
     /// 覆盖主技能组（0-based，Skills 页切换主技能用）。
     main_socket_group: Option<usize>,
     /// 有效 DPS 口径（默认 true，与 PoB2 主面板同口径）。
@@ -191,8 +206,22 @@ fn json_to_config_value(v: &serde_json::Value) -> Result<ConfigInputValue, Strin
     }
 }
 
-/// 把请求应用到解码出的 build（主技能组 / config 覆盖）。
+/// 把请求应用到解码/新建的 build（角色 / 树 / 主技能组 / config 覆盖）。
 fn apply_request_overrides(build: &mut Build, req: &CalculateBuildRequest) -> Result<(), String> {
+    if let Some(ch) = &req.character {
+        if let Some(level) = ch.level {
+            build.character.level = level;
+        }
+        if let Some(class_name) = &ch.class_name {
+            build.character.class_name = class_name.clone();
+        }
+        if let Some(ascendancy_name) = &ch.ascendancy_name {
+            build.character.ascendancy_name = ascendancy_name.clone();
+        }
+    }
+    if let Some(nodes) = &req.allocated_nodes {
+        build.tree.allocated_nodes = nodes.iter().map(|&n| NodeId(n)).collect();
+    }
     if let Some(main) = req.main_socket_group {
         build.main_socket_group = Some(main);
     }
@@ -230,6 +259,23 @@ fn run_session(req: &CalculateBuildRequest) -> Result<CalculationSession, String
 }
 
 fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Build, String> {
+    if req.pob_code.trim().is_empty() {
+        // 白手起 build（PoB2 新建语义）：无装备/无技能组的空 build，
+        // 角色身份来自 character 覆盖（职业必填，等级缺省 1）。
+        let ch = req
+            .character
+            .as_ref()
+            .ok_or("either pob_code or character is required")?;
+        let class_name = ch
+            .class_name
+            .clone()
+            .ok_or("character.class_name is required for a scratch build")?;
+        return Ok(Build::new().with_character(CharacterIdentity {
+            level: ch.level.unwrap_or(1),
+            class_name,
+            ascendancy_name: ch.ascendancy_name.clone().unwrap_or_default(),
+        }));
+    }
     let xml = decode_pob_code(req.pob_code.trim()).map_err(|e| format!("decode: {e}"))?;
     parse_build(&xml).map_err(|e| format!("parse build: {e}"))
 }
@@ -375,6 +421,8 @@ pub struct AttributionRequest {
     pob_code: String,
     /// 归因目标展示字段（display_catalog id）；缺省 `TotalDPS`/`Life`/`TotalEHP`。
     fields: Vec<String>,
+    character: Option<CharacterOverride>,
+    allocated_nodes: Option<Vec<u32>>,
     main_socket_group: Option<usize>,
     mode_effective: Option<bool>,
     enemy_tier: Option<String>,
@@ -427,6 +475,8 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
     };
     let calc_req = CalculateBuildRequest {
         pob_code: req.pob_code.clone(),
+        character: req.character.clone(),
+        allocated_nodes: req.allocated_nodes.clone(),
         main_socket_group: req.main_socket_group,
         mode_effective: req.mode_effective,
         enemy_tier: req.enemy_tier.clone(),

@@ -3,7 +3,7 @@ import type { Lang } from '../../lib/statDisplay';
 import './items.css';
 
 interface Props {
-  build: BuildJson;
+  build: BuildJson | null;
   lang: Lang;
 }
 
@@ -60,6 +60,20 @@ const SLOT_ORDER = [
 
 export function ItemsPanel({ build, lang }: Props) {
   const zh = lang === 'zh-TW';
+  if (!build || build.items.equipped.length === 0) {
+    return (
+      <section aria-labelledby="items-heading">
+        <h2 id="items-heading" className="panel-heading">
+          {zh ? '裝備' : 'Items'}
+        </h2>
+        <p className="items-hint">
+          {zh
+            ? '目前沒有裝備。匯入 build code 可帶入全套裝備；手動裝備編輯是後續版本的功能。'
+            : 'No items yet. Import a build code to bring gear in; a manual item editor is planned for a later slice.'}
+        </p>
+      </section>
+    );
+  }
   const sorted = [...build.items.equipped].sort(
     (a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot),
   );

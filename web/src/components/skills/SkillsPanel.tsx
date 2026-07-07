@@ -17,7 +17,21 @@ export function prettySkillId(id: string): string {
 
 export function SkillsPanel({ session, lang }: Props) {
   const zh = lang === 'zh-TW';
-  const build = session.build!;
+  const build = session.build;
+  if (!build || build.socket_groups.length === 0) {
+    return (
+      <section aria-labelledby="skills-heading">
+        <h2 id="skills-heading" className="panel-heading">
+          {zh ? '技能組' : 'Socket Groups'}
+        </h2>
+        <p className="skills-hint">
+          {zh
+            ? '目前沒有技能組。匯入 build code 可帶入技能；手動添加技能是後續版本的編輯器功能。'
+            : 'No socket groups yet. Import a build code to bring skills in; a manual skill editor is planned for a later slice.'}
+        </p>
+      </section>
+    );
+  }
   const mainIndex = session.calcParams.main_socket_group ?? build.main_socket_group ?? 0;
 
   return (

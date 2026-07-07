@@ -1,10 +1,10 @@
-import type { CharacterJson } from '../../api/types';
+import type { CharacterState } from '../../hooks/useBuildSession';
 import type { Lang } from '../../lib/statDisplay';
 
-export type TabId = 'import' | 'tree' | 'skills' | 'items' | 'calcs' | 'config' | 'notes';
+export type TabId = 'build' | 'tree' | 'skills' | 'items' | 'calcs' | 'config' | 'notes';
 
 const TABS: { id: TabId; label: { 'en-US': string; 'zh-TW': string } }[] = [
-  { id: 'import', label: { 'en-US': 'Import', 'zh-TW': '匯入' } },
+  { id: 'build', label: { 'en-US': 'Build', 'zh-TW': '構建' } },
   { id: 'tree', label: { 'en-US': 'Tree', 'zh-TW': '天賦樹' } },
   { id: 'skills', label: { 'en-US': 'Skills', 'zh-TW': '技能' } },
   { id: 'items', label: { 'en-US': 'Items', 'zh-TW': '裝備' } },
@@ -18,7 +18,7 @@ interface Props {
   onTab: (tab: TabId) => void;
   lang: Lang;
   onLang: (lang: Lang) => void;
-  character: CharacterJson | null;
+  character: CharacterState | null;
   busy: boolean;
 }
 

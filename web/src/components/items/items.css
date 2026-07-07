@@ -45,3 +45,8 @@
 .item-line {
   padding: 1px 0;
 }
+
+.items-hint {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}

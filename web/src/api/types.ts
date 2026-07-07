@@ -62,8 +62,19 @@ export interface BuildJson {
 
 export type EnemyTier = 'none' | 'boss' | 'pinnacle' | 'uber';
 
+/** 角色身份覆盖（白手起 build 必填 class_name；导入后可改等级/升华）。 */
+export interface CharacterOverride {
+  level?: number;
+  class_name?: string;
+  ascendancy_name?: string;
+}
+
+/** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
 export interface CalculateBuildRequest {
-  pob_code: string;
+  pob_code?: string;
+  character?: CharacterOverride;
+  /** 整份替换已加点集合（交互加点）。 */
+  allocated_nodes?: number[];
   main_socket_group?: number;
   mode_effective?: boolean;
   enemy_tier?: EnemyTier;
@@ -126,9 +137,11 @@ export interface CalculateBuildResponse {
 // ---------------------------------------------------------------------------
 
 export interface AttributionRequest {
-  pob_code: string;
+  pob_code?: string;
   /** display_catalog 字段 id；缺省 TotalDPS / Life / TotalEHP。 */
   fields?: string[];
+  character?: CharacterOverride;
+  allocated_nodes?: number[];
   main_socket_group?: number;
   mode_effective?: boolean;
   enemy_tier?: EnemyTier;
@@ -174,4 +187,26 @@ export interface PassiveNode {
   y?: number;
   connections?: number[];
   ascendancy_id?: string;
+}
+
+// ---------------------------------------------------------------------------
+// 职业/升华元数据（passive_tree_meta.json，新建 build 选择器用）
+// ---------------------------------------------------------------------------
+
+export interface PassiveAscendancy {
+  id: string;
+  name: string;
+}
+
+export interface PassiveClass {
+  name: string;
+  base_str: number;
+  base_dex: number;
+  base_int: number;
+  ascendancies?: PassiveAscendancy[];
+}
+
+export interface PassiveTreeMeta {
+  tree: string;
+  classes: PassiveClass[];
 }

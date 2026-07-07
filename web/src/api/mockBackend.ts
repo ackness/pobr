@@ -5,11 +5,18 @@
  */
 
 import type { PobrBackend } from './backend';
-import type { BuildJson, CalculateBuildResponse, AttributionResponse, PassiveNode } from './types';
+import type {
+  BuildJson,
+  CalculateBuildResponse,
+  AttributionResponse,
+  PassiveNode,
+  PassiveTreeMeta,
+} from './types';
 import decodeFixture from '../fixtures/decode.json';
 import calculateFixture from '../fixtures/calculate.json';
 import attributionFixture from '../fixtures/attribution.json';
 import treeFixture from '../fixtures/tree.json';
+import treeMetaFixture from '../fixtures/tree_meta.json';
 
 export function createMockBackend(): PobrBackend {
   return {
@@ -30,6 +37,9 @@ export function createMockBackend(): PobrBackend {
     },
     async loadPassiveTree() {
       return treeFixture as unknown as PassiveNode[];
+    },
+    async loadTreeMeta() {
+      return treeMetaFixture as unknown as PassiveTreeMeta;
     },
     translate(_lang, key) {
       return key;

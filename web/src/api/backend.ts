@@ -12,6 +12,7 @@ import type {
   CalculateBuildRequest,
   CalculateBuildResponse,
   PassiveNode,
+  PassiveTreeMeta,
 } from './types';
 
 export interface PobrBackend {
@@ -22,6 +23,8 @@ export interface PobrBackend {
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
   loadPassiveTree(): Promise<PassiveNode[]>;
+  /** 职业/升华元数据（新建 build 选择器）。 */
+  loadTreeMeta(): Promise<PassiveTreeMeta>;
   translate(lang: string, key: string): string;
 }
 
