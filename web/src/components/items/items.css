@@ -1,0 +1,47 @@
+.panel-heading {
+  color: var(--accent-gold);
+  margin-top: 0;
+}
+
+.panel-subheading {
+  color: var(--accent-gold-dim);
+  margin-top: var(--space-6);
+}
+
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+
+.item-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.item-slot {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.item-name {
+  margin: var(--space-1) 0;
+}
+
+.rarity-normal .item-name { color: var(--rarity-normal); }
+.rarity-magic .item-name { color: var(--rarity-magic); }
+.rarity-rare .item-name { color: var(--rarity-rare); }
+.rarity-unique .item-name { color: var(--rarity-unique); }
+
+.item-lines {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.item-line {
+  padding: 1px 0;
+}

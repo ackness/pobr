@@ -1,0 +1,53 @@
+.config-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.config-hint {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-2);
+}
+
+.config-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.config-item.is-overridden {
+  border-color: var(--accent-gold-dim);
+}
+
+.config-key {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.config-value {
+  width: 110px;
+}
+
+.config-reset {
+  padding: 0 var(--space-1);
+}
+
+.config-add {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

@@ -1,0 +1,39 @@
+/**
+ * API 层唯一入口：组件层只 import 这里，看不到 wasm。
+ *
+ * - 默认 wasm 后端（真实计算）；
+ * - `VITE_POBR_BACKEND=mock` 时用 fixture mock（UI 独立开发 / vitest）。
+ */
+
+import type {
+  AttributionRequest,
+  AttributionResponse,
+  BuildJson,
+  CalculateBuildRequest,
+  CalculateBuildResponse,
+  PassiveNode,
+} from './types';
+
+export interface PobrBackend {
+  /** 初始化（wasm 模块加载 + 游戏数据注入）；幂等。 */
+  init(onProgress?: (message: string) => void): Promise<void>;
+  decodeBuild(pobCode: string): Promise<BuildJson>;
+  calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
+  attribution(request: AttributionRequest): Promise<AttributionResponse>;
+  /** 天赋树静态数据（静态资产，不经 wasm）。 */
+  loadPassiveTree(): Promise<PassiveNode[]>;
+  translate(lang: string, key: string): string;
+}
+
+let backendPromise: Promise<PobrBackend> | null = null;
+
+/** 取当前后端（懒加载单例）。 */
+export function getBackend(): Promise<PobrBackend> {
+  if (!backendPromise) {
+    backendPromise =
+      import.meta.env.VITE_POBR_BACKEND === 'mock'
+        ? import('./mockBackend').then((m) => m.createMockBackend())
+        : import('./wasmBackend').then((m) => m.createWasmBackend());
+  }
+  return backendPromise;
+}

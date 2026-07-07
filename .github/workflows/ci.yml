@@ -61,3 +61,44 @@ jobs:
       # nextest does not run doctests; cover them separately.
       - name: Doctests
         run: cargo test --workspace --doc
+
+  # Web frontend gate (TODO.md 6.4): independent job so it never blocks the
+  # Rust gate above. Builds the real wasm artifact (validates the wasm32
+  # compile of the whole pobr-build chain), then typecheck + unit + build +
+  # Playwright smoke against the built dist.
+  web:
+    name: web (tsc + vitest + build + e2e)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm run test
+      - name: Build wasm
+        run: npm run build-wasm
+      - name: Sync game data
+        run: npm run sync-data
+      - name: Build
+        run: npm run build
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      - name: E2E smoke
+        run: npx playwright test

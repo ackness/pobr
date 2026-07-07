@@ -1,0 +1,559 @@
+{
+  "character": {
+    "ascendancy_name": "Invoker",
+    "class_name": "Monk",
+    "level": 98
+  },
+  "config_inputs": {
+    "DisableEHPGainOnBlock": true,
+    "buffArcaneSurge": true,
+    "conditionBeenHitRecently": true,
+    "conditionCritRecently": true,
+    "conditionEnemyBleeding": true,
+    "conditionEnemyChilled": true,
+    "conditionEnemyColdExposure": true,
+    "conditionEnemyCriticalWeakness": true,
+    "conditionEnemyFireExposure": true,
+    "conditionEnemyIgnited": true,
+    "conditionEnemyLightningExposure": true,
+    "misc_buffMode": "EFFECTIVE",
+    "multiplierNearbyEnemies": 1.0,
+    "multiplierNearbyRareOrUniqueEnemies": 1.0,
+    "questAct 2Valley of the TitansMedallion": "30% increased Charm Effect Duration\n\t+1 Charm Slot",
+    "questAct 3Venom CryptsVenom Draught": "25% increased Mana Regeneration Rate",
+    "questAct 4Abandoned PrisonGoddess of Justice": "30% increased Mana Recovery from Flasks",
+    "questAct 4Eye of HinekoraTribal Medicine": "30% increased Global Armour, Evasion and Energy Shield",
+    "questAct 4Halls Of The DeadNgamahu's Test": "+5 to Strength",
+    "questAct 4Halls Of The DeadTasalio's Test": "+5 to Intelligence",
+    "questAct 4Halls Of The DeadTawhoa's Test": "+5 to Dexterity",
+    "questInterlude 2QimahSeven Pillars": "3% increased Movement Speed",
+    "skill_number": 5.0
+  },
+  "items": {
+    "equipped": [
+      {
+        "slot": "amulet",
+        "text": "\n\t\t\tRarity: RARE\nSpirit Choker\nStellar Amulet\nUnique ID: 31c74b5edc29d896c38fbd1caf741c072fac568acf1733a942590550e1338e9c\nItem Level: 81\nLevelReq: 24\nImplicits: 2\n{enchant}Allocates Ancestral Reach\n+5 to all Attributes\n{desecrated}58% increased Energy Shield from Equipped Body Armour\n33% increased maximum Energy Shield\n+48 to Spirit\n+3 to Level of all Spell Skills\n+22 to Strength\n52% increased Mana Regeneration Rate\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "belt",
+        "text": "\n\t\t\tRarity: RARE\nDragon Lock\nDouble Belt\nCharm Slots: 3\nUnique ID: a0456e44db03d6a78bc3bdef01d0a5484550a024a56ce54787728a2a629d7ec4\nItem Level: 82\nLevelReq: 44\nImplicits: 2\nHas 3 Charm Slots\n22% increased Charm Charges gained\n+77 to maximum Energy Shield\nSpells have 23% increased Cooldown Recovery Rate\n15% chance for Remnants you pick up to count as picking up an additional Remnant\n42% increased Spell Damage during any Flask Effect\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "bodyarmour",
+        "text": "\n\t\t\tRarity: RARE\nTempest Shroud\nVile Robe\nEnergy Shield: 760\nUnique ID: c12316adba4cd465b84add41fca038c4a9795e0d339c3eeca5ea00d78aa24706\nItem Level: 79\nQuality: 20\nSockets: S S\nRune: Perfect Iron Rune\nRune: Perfect Iron Rune\nLevelReq: 65\nImplicits: 3\n{enchant}{rune}40% increased Armour, Evasion and Energy Shield\n{enchant}{rune}Bonded: +40 to maximum Life\n{enchant}{rune}Bonded: +40 to maximum Mana\n{desecrated}12% increased Spirit Reservation Efficiency of Skills\n+95 to maximum Energy Shield\n98% increased Energy Shield\n+97 to maximum Life\n+40% to Lightning Resistance\n{crafted}+32% to Fire Resistance\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "boots",
+        "text": "\n\t\t\tRarity: RARE\nHonour Tread\nSekhema Sandals\nEnergy Shield: 195\nUnique ID: a821facb331d39b683391661aed99854a35595361360d75b6a6148d5fb3fd192\nItem Level: 82\nQuality: 20\nSockets: S\nRune: Farrul's Rune of the Chase\nLevelReq: 80\nImplicits: 2\n{enchant}{rune}5% increased Movement Speed\n{enchant}{rune}Bonded: 10% increased Cooldown Recovery Rate\n{fractured}96% increased Energy Shield\n{desecrated}+121 to maximum Mana\n35% increased Movement Speed\n+41% to Fire Resistance\n+42% to Cold Resistance\n+43% to Lightning Resistance\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "gloves",
+        "text": "\n\t\t\tRarity: RARE\nArmageddon Caress\nSirenscale Gloves\nEnergy Shield: 162\nUnique ID: 9964d3242114a8600a6fd79b4e65c97f40c302670786b64c66f7d2a32504cf4e\nItem Level: 82\nQuality: 20\nSockets: S\nRune: Thane Grannell's Rune of Mastery\nLevelReq: 80\nImplicits: 2\n{enchant}{rune}30% increased Magnitude of Non-Damaging Ailments you inflict\n{enchant}{rune}Bonded: 15% increased Duration of Elemental Ailments on Enemies\n+52 to maximum Energy Shield\n27% increased Energy Shield\n+30 to maximum Life\n+87 to maximum Mana\n+29 to Intelligence\n+42% to Cold Resistance\n+42% to Lightning Resistance\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "helmet",
+        "text": "\n\t\t\tRarity: RARE\nCarrion Horn\nAncestral Tiara\nEnergy Shield: 536\nUnique ID: 2ed4b910d6650c5f9f03fa7635247b38517f31b6015b8c76132d628fdb2c4d36\nItem Level: 82\nQuality: 20\nSockets: S\nRune: Perfect Iron Rune\nLevelReq: 80\nImplicits: 3\n{enchant}{rune}20% increased Armour, Evasion and Energy Shield\n{enchant}{rune}Bonded: +20 to maximum Life\n{enchant}{rune}Bonded: +20 to maximum Mana\n{fractured}33% increased Critical Hit Chance\n{desecrated}+71 to maximum Energy Shield\n128% increased Energy Shield\n+45 to maximum Life\n+43% to Fire Resistance\n+45% to Cold Resistance\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "ring1",
+        "text": "\n\t\t\tRarity: RARE\nVictory Coil\nGold Ring\nUnique ID: 1cb66b5484cf014dafdffa364301704d4f302caf88d1fa991a08816ae6453cac\nItem Level: 77\nLevelReq: 40\nImplicits: 1\n15% increased Rarity of Items found\n{desecrated}16% increased Spell Damage while on Full Energy Shield\n+205 to maximum Mana\n23% increased Cast Speed\nLeech 7.88% of Physical Attack Damage as Life\n26% increased Mana Regeneration Rate\n18% increased Light Radius\n{crafted}7% increased maximum Mana\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "ring2",
+        "text": "\n\t\t\tRarity: RARE\nSoul Circle\nPearl Ring\nUnique ID: 64f06a68283c2078c34f916ecee269962f50d2bd7379604be90bb13baac91ce9\nItem Level: 80\nLevelReq: 32\nImplicits: 1\n9% increased Cast Speed\nAdds 15 to 22 Cold damage to Attacks\n+214 to maximum Mana\n+16% to all Elemental Resistances\n+32% to Fire Resistance\nGain 27 Mana per enemy killed\n{crafted}6% increased maximum Mana\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "weapon1",
+        "text": "\n\t\t\tRarity: RARE\nStorm Bite\nAttuned Wand\nUnique ID: c3c3b93dfc3c3d03de4dd4e1d1a5869cc8e46f625aa2dd95ca6e568c55dc0192\nItem Level: 81\nQuality: 0\nSockets: S\nRune: Hedgewitch Assandra's Rune of Wisdom\nLevelReq: 78\nImplicits: 3\n{enchant}{rune}+1 to Level of all Spell Skills\n{enchant}{rune}Bonded: Archon recovery period expires 30% faster\nGrants Skill: Level 18 Mana Drain\n{desecrated}80% increased Elemental Damage\nGain 25% of Damage as Extra Fire Damage\nGain 22% of Damage as Extra Cold Damage\n+4 to Level of all Spell Skills\n72% increased Critical Hit Chance for Spells\n{crafted}46% increased Cast Speed\n{crafted}Gain 13% of Elemental Damage as Extra Cold Damage\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "weapon2",
+        "text": "\n\t\t\tRarity: RARE\nHorror Call\nOmen Sceptre\nSpirit: 195\nUnique ID: bc871c87e892da1af36a824e1a62d14cf9c6fc194fd276bcb1e0f7c628185199\nItem Level: 80\nQuality: 20\nSockets: S\nRune: Rabbit Idol\nLevelReq: 84\nImplicits: 3\n{enchant}{rune}15% increased Spirit\n{enchant}{rune}Bonded: Minions have 30% increased Cooldown Recovery Rate for Command Skills\nGrants Skill: Level 19 Malice\n{desecrated}54% increased Spirit\n26% increased Spirit\n+180 to maximum Mana\n+22 to Intelligence\n21% increased Mana Regeneration Rate\n54% increased Presence Area of Effect\n15% increased Light Radius\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      }
+    ],
+    "flasks": [
+      {
+        "slot": "Charm 1",
+        "text": "\n\t\t\tRarity: UNIQUE\nThe Fall of the Axe\nSilver Charm\nUnique ID: 9b09ac598d7dcc9fdebebb49efede10ed2626496abc07071b34c84a7700dcb18\nItem Level: 80\nQuality: 0\nLevelReq: 10\nImplicits: 1\nUsed when you are affected by a Slow\nGrants Onslaught during effect\n\t\t"
+      },
+      {
+        "slot": "Charm 2",
+        "text": "\n\t\t\tRarity: UNIQUE\nRite of Passage\nGolden Charm\nUnique ID: 3b36c21b99325c527d7c320b4ef25fefd24b39e8c2d6b6a0aaa76d15724fa8d8\nItem Level: 83\nQuality: 0\nLevelReq: 50\nImplicits: 1\nUsed when you kill a Rare or Unique enemy\nPossessed by Spirit Of The Stag for 19 seconds on use\n\t\t"
+      },
+      {
+        "slot": "Flask 2",
+        "text": "\n\t\t\tRarity: UNIQUE\nMelting Maelstrom\nUltimate Mana Flask\nUnique ID: 35efef103f52d8e2df78f0a6d46922834973a096b5d60feb5e66c1674d7c269a\nItem Level: 79\nQuality: 16\nLevelReq: 60\nImplicits: 0\nEffect is not removed when Unreserved Mana is Filled\n250% increased Duration\nEvery 3 seconds during Effect, deal 100% of Mana spent in those seconds as Chaos Damage to Enemies within 3 metres\nDeals 25% of current Mana as Chaos Damage to you when Effect ends\nCorrupted\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "Flask 1",
+        "text": "\n\t\t\tRarity: MAGIC\nOpaque Ultimate Life Flask of the Practitioner\nUnique ID: 4f5a1239bf0393b3a626b8f4b504ab42509441b9a56bb88343026cbbfaa1e52e\nItem Level: 60\nQuality: 9\nLevelReq: 60\nImplicits: 0\n42% increased Amount Recovered\n20% reduced Charges per use\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "slot": "Charm 3",
+        "text": "\n\t\t\tRarity: UNIQUE\nNascent Hope\nThawing Charm\nUnique ID: d52fcb37a48f81b7197dc5218afbab05c35dd41bd2da4c86aafffaca9de91306\nItem Level: 75\nQuality: 0\nLevelReq: 12\nImplicits: 1\nUsed when you become Frozen\n25% Chance to gain a Charge when you kill an enemy\nEnergy Shield Recharge starts on use\n\t\t"
+      }
+    ],
+    "jewels": [
+      "\n\t\t\tRarity: RARE\nRapture Spark\nSapphire\nUnique ID: c5bafa81349c5f688aec3c5795083297a37acb88d5af1c9791e31aac92a00f8d\nItem Level: 79\nLevelReq: 0\nImplicits: 0\n17% increased maximum Energy Shield\n13% increased Critical Hit Chance for Spells\n15% increased Elemental Damage\n3% increased Skill Speed while Shapeshifted\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t",
+      "\n\t\t\tRarity: RARE\nPandemonium Glisten\nSapphire\nUnique ID: 85399de2681c8ecbd382da4e26381a588ee856a7949fc6d09856628e7d148a77\nItem Level: 80\nLevelReq: 0\nImplicits: 0\n{desecrated}Gain additional Stun Threshold equal to 14% of maximum Energy Shield\n7% increased Cold Damage\n20% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t",
+      "\n\t\t\tRarity: RARE\nPhoenix Spark\nSapphire\nUnique ID: eee3a9c6de8fd887bb41ae0a0f5228f3418ce871e1abd2bcc2b2e04ea5559af5\nItem Level: 76\nLevelReq: 0\nImplicits: 0\n8% increased Chaos Damage\n14% increased Critical Hit Chance for Spells\n11% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t",
+      "\n\t\t\tRarity: RARE\nViper Ornament\nSapphire\nUnique ID: b232d531a9ab5c8669c0c338674a1fde0166979db2bf607d03273235088e58c5\nItem Level: 82\nLevelReq: 0\nImplicits: 0\n{desecrated}10% increased maximum Energy Shield\n{desecrated}6% increased Thorns damage\n9% increased Spell Damage\n13% increased Critical Hit Chance for Spells\n13% increased Critical Spell Damage Bonus\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+    ]
+  },
+  "main_socket_group": 5,
+  "socket_groups": [
+    {
+      "active_skill_id": "BlasphemyPlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 18,
+          "quality": 20,
+          "skill_id": "BlasphemyPlayer"
+        },
+        {
+          "level": 19,
+          "quality": 20,
+          "skill_id": "TemporalChainsPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportCurseEffectPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportMagnifiedAreaPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportMysticismPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportSlowPotencyPlayer"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "SummonMetaTotemSpellTotemPlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 19,
+          "quality": 20,
+          "skill_id": "SummonMetaTotemSpellTotemPlayer"
+        },
+        {
+          "level": 21,
+          "quality": 20,
+          "skill_id": "GrimPillarsPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportMagnifiedAreaPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportRapidCastingPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportUrgentTotemsPlayerThree"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportZenithPlayerTwo"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "ElementalWeaknessPlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 19,
+          "quality": 20,
+          "skill_id": "ElementalWeaknessPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportEfficiencyPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportCurseEffectPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportMagnifiedAreaPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportRapidCastingPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportHexBloomPlayer"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "EntanglePlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 2,
+          "quality": 20,
+          "skill_id": "EntanglePlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportBranchingFissuresPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportBitingFrostPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportMagnifiedAreaPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportRapidCastingPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportArcaneSurgePlayer"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "FrostBombPlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 19,
+          "quality": 20,
+          "skill_id": "FrostBombPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportPotentExposurePlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "ProlongedDurationSupportPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportMagnifiedAreaPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportEfficiencyPlayerTwo"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "ArchmagePlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 17,
+          "quality": 20,
+          "skill_id": "ArchmagePlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportCoolheadedPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportDiallasDesirePlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportClarityPlayerTwo"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "MeditatePlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 20,
+          "quality": 0,
+          "skill_id": "MeditatePlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportCooldownRecoveryPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportSteadfastPlayerTwo"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "PoweredByVerisiumPlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 10,
+          "quality": 0,
+          "skill_id": "PoweredByVerisiumPlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportEfficiencyPlayerTwo"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "SupportRapidCastingPlayerTwo"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "MalicePlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 19,
+          "quality": 0,
+          "skill_id": "MalicePlayer"
+        },
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "ProlongedDurationSupportPlayerTwo"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "ManaDrainPlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 18,
+          "quality": 0,
+          "skill_id": "ManaDrainPlayer"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "MeditatePlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 1,
+          "quality": 0,
+          "skill_id": "MeditatePlayer"
+        }
+      ],
+      "slot": null
+    },
+    {
+      "active_skill_id": "ManaDrainPlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 18,
+          "quality": 0,
+          "skill_id": "ManaDrainPlayer"
+        }
+      ],
+      "slot": "Weapon 1"
+    },
+    {
+      "active_skill_id": "MalicePlayer",
+      "enabled": true,
+      "gems": [
+        {
+          "level": 19,
+          "quality": 0,
+          "skill_id": "MalicePlayer"
+        }
+      ],
+      "slot": "Weapon 2"
+    }
+  ],
+  "tree": {
+    "allocated_nodes": [
+      61333,
+      6006,
+      32054,
+      10131,
+      21984,
+      61403,
+      13537,
+      34233,
+      11337,
+      42857,
+      13065,
+      23382,
+      21245,
+      47759,
+      56045,
+      34621,
+      61027,
+      517,
+      44455,
+      535,
+      9782,
+      57178,
+      61419,
+      61196,
+      20677,
+      62984,
+      45702,
+      12876,
+      50104,
+      8569,
+      28021,
+      38124,
+      14725,
+      15618,
+      23427,
+      44669,
+      42245,
+      46197,
+      45202,
+      21779,
+      8540,
+      32745,
+      44223,
+      13419,
+      17088,
+      38105,
+      31950,
+      39280,
+      11604,
+      57710,
+      14666,
+      15975,
+      3251,
+      56349,
+      59093,
+      31692,
+      41972,
+      48030,
+      11672,
+      6715,
+      62153,
+      58329,
+      27686,
+      14958,
+      32951,
+      10364,
+      62677,
+      5501,
+      14446,
+      37974,
+      7960,
+      44420,
+      63668,
+      5936,
+      46819,
+      51820,
+      19955,
+      23587,
+      8616,
+      63713,
+      39037,
+      61834,
+      9994,
+      48198,
+      20024,
+      41372,
+      3463,
+      9642,
+      61601,
+      61179,
+      60515,
+      40783,
+      17548,
+      4328,
+      55947,
+      25434,
+      41669,
+      5314,
+      21336,
+      49220,
+      62230,
+      48821,
+      42379,
+      57204,
+      29009,
+      44357,
+      47177,
+      22538,
+      55412,
+      14110,
+      116,
+      45885,
+      16705,
+      40760,
+      46554,
+      44683,
+      44299,
+      49455,
+      9069,
+      59362,
+      50816,
+      54521,
+      47168,
+      2254,
+      32545,
+      13823,
+      63236,
+      6355,
+      64659,
+      49512,
+      5284
+    ],
+    "tree_version": "0_5"
+  }
+}

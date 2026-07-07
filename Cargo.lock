@@ -497,6 +497,8 @@ version = "0.1.0"
 dependencies = [
  "pobr-build",
  "pobr-core",
+ "pobr-data",
+ "pobr-gamedata",
  "pobr-i18n",
  "serde",
  "serde_json",

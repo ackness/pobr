@@ -1,0 +1,38 @@
+/**
+ * Mock 后端：与 wasm 后端同签名，返回 fixture 数据。
+ * 供 UI 独立开发（无需构建 wasm / 同步数据）与 vitest 组件测试。
+ * 启用：`VITE_POBR_BACKEND=mock npm run dev`。
+ */
+
+import type { PobrBackend } from './backend';
+import type { BuildJson, CalculateBuildResponse, AttributionResponse, PassiveNode } from './types';
+import decodeFixture from '../fixtures/decode.json';
+import calculateFixture from '../fixtures/calculate.json';
+import attributionFixture from '../fixtures/attribution.json';
+import treeFixture from '../fixtures/tree.json';
+
+export function createMockBackend(): PobrBackend {
+  return {
+    async init(onProgress) {
+      onProgress?.('mock 后端就绪');
+    },
+    async decodeBuild(pobCode) {
+      if (!pobCode.trim()) {
+        throw new Error('empty build code');
+      }
+      return decodeFixture as unknown as BuildJson;
+    },
+    async calculateBuild() {
+      return calculateFixture as unknown as CalculateBuildResponse;
+    },
+    async attribution() {
+      return attributionFixture as unknown as AttributionResponse;
+    },
+    async loadPassiveTree() {
+      return treeFixture as unknown as PassiveNode[];
+    },
+    translate(_lang, key) {
+      return key;
+    },
+  };
+}
