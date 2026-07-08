@@ -1,0 +1,99 @@
+# PoBR — Path of Building in Rust
+
+把 [Path of Building](https://github.com/PathOfBuilding/PathOfBuilding-PoE2)（Lua）的核心计算引擎迁移到 Rust，目标有两个：
+
+1. **性能** — 解决大规模 Modifier 聚合、多技能并行计算的瓶颈；
+2. **可归因** — 在 PoB2 兼容的基础上额外提供 **source-level 归因**：每个输出都能回溯到是哪件装备 / 词条 / 天赋 / 宝石 / 配置贡献的。
+
+计算核心保持纯函数 + 确定性，PoB2 兼容是硬性回归基准。
+
+## 快速上手
+
+普通 cargo 即可（仓库在本地 APFS 盘，全局启用了 sccache）：
+
+```bash
+cargo nextest run --workspace          # 全部测试（稳态 ~6s）
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --check
+
+# CLI（二进制名 pobr）
+cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
+cargo run -p pobr-cli -- decode-code <pob_code>        # PoB Build Code → XML
+cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
+```
+
+Web 前端见 [`web/README.md`](web/README.md)（Vite + React + TS，通过 wasm JSON 契约与引擎解耦，不进 cargo workspace）。
+
+Rust **edition 2024**，workspace 版本统一 `0.1.0`。
+
+## 架构一览
+
+数据流：
+
+```
+GGG .dat 导出
+  └─(pobr-data-adapter 离线适配)→ data/<version>/*.json
+       └─(pobr-gamedata 运行时 loader)→ 上层计算
+```
+
+计算流水线（`pobr-core`）：
+
+```
+modifier 文本 → 解析 → ModDb → 聚合查询 → calc
+  → OutputTable + Breakdown + TraceGraph + AttributionReport
+```
+
+标准属性聚合公式：`(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`。
+
+I/O 收口在 `pobr-gamedata` 一处；`pobr-data` / `pobr-core` 维持零 I/O。依赖方向只能向下，`pobr-data` 是最底层。
+
+## Workspace 结构
+
+15 个 member，`crates/` 为库、`apps/` 为可执行、`tools/` 为数据/维护工具：
+
+| Crate | 职责 |
+|-------|------|
+| `crates/pobr-data` | 纯数据定义（catalog schema：BaseItem/Stat/Mod/SkillGem/PassiveNode…），零逻辑零 I/O，所有 crate 的底层依赖 |
+| `crates/pobr-core` | Modifier 解析 / 存储 / 聚合 + 计算引擎 + source-level 归因 + 来源接入（item/passive/gem/flask）。零 I/O |
+| `crates/pobr-gamedata` | 运行时数据 loader——数据系统里唯一持有文件 I/O 的层，按域懒加载 + i18n 边车 |
+| `crates/pobr-i18n` | 语言包加载 / fallback / 显示文本映射（`en-US` canonical + `zh-TW`） |
+| `crates/pobr-tree` | 天赋树拓扑、allocated node mod 收集、范围珠宝 |
+| `crates/pobr-build` | Build 状态、PoB Build Code 编解码、导入识别、`CalcOrchestrator`（带缓存）、Build 对比。**parity 测试主战场** |
+| `crates/pobr-item` | raw item 文本的全保真编辑态解析 + 逆向序列化（BuildRaw 往返） |
+| `crates/pobr-trade` | Trade 查询 / 价格抽象（`TradeBackend` trait + 离线 `MockBackend`） |
+| `apps/pobr-cli` | CLI：`calculate` / `parse-mod` / `decode-code` / `encode-code` |
+| `apps/pobr-wasm` | Web/WASM API：纯 Rust JSON 入出，`wasm` feature 下 wasm-bindgen 绑定 |
+| `apps/pobr-desktop` | 桌面入口最小骨架 |
+| `tools/pobr-data-adapter` | 数据管线适配器：GGG `.dat` 导出 → 反范式化为入库 JSON |
+| `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、parity 检查 / diff |
+| `tools/lint-i18n` | 语言包完整性检查 |
+| `tools/precompile-mods` | mod-parser 规则离线预编译 / 覆盖率报表 |
+
+（`tools/pob2-oracle` 是非 workspace 成员的纯 Lua wrapper，用于 dump PoB2 侧计算分解做逐分量对照。）
+
+## Parity 体系（回归基准）
+
+PoB2 兼容是硬回归门禁，三层校验互补：
+
+1. **`crates/pobr-build/tests/ninja_parity.rs`** — 遍历真实 PoB2 build + 黄金数值，零硬编码对比全部职业 / 技能；`parity_no_regression` 断言聚合命中率不低于基线。
+2. **golden / dual-run 套件** — 钉住中间值与配置语义。
+3. **`tools/pob2-oracle`** — 需要逐分量定位偏差时，从 vendored PoB2 直接 dump Lua 侧计算分解对照。
+
+```bash
+cargo test -p pobr-build --test parity -- --nocapture   # parity 仪表盘
+```
+
+`vendor/PathOfBuilding-PoE2/` 是完整检出，公式核对直接读本地 Lua，不必上网找。
+
+## 文档
+
+- [`CLAUDE.md`](CLAUDE.md) — 构建环境、验证分层、命令速查、关键约定（贡献前必读）。
+- [`devs/docs/architecture/`](devs/docs/architecture/)（00–15）— 目标架构与路线图。
+- [`agent-docs/`](agent-docs/) — PoE2（0.5.0）机制中文参考（伤害类型 / 抗性 / 护甲闪避 ES / 暴击 / 异常 / 计算顺序等）。
+- [`web/README.md`](web/README.md) — Web 前端。
+
+## 约定
+
+- **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本走 `pobr-i18n`。
+- **不可变 / 确定性**：calc 函数对 `Env` 的可变写入集中在 `perform`，并行化只在只读快照阶段展开。
+- 涉及计算 / Modifier / parser 的改动需补对应集成测试或 golden fixture；改变 crate 边界 / 聚合语义 / catalog / parity 规则时同步更新架构文档。
