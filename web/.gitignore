@@ -1,0 +1,5 @@
+node_modules/
+dist/
+src/wasm/pkg/
+public/data/
+e2e/screenshots/

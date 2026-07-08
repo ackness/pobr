@@ -1,0 +1,916 @@
+{
+  "breakdowns": {
+    "Accuracy": {
+      "base_total": 918.0,
+      "inc_total": 0.0,
+      "mods": [
+        {
+          "mod_type": "BASE",
+          "origin_id": "base.Accuracy",
+          "origin_kind": "CharacterBase",
+          "slot": null,
+          "source_text": null,
+          "value": 648.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": "base.attr_derived",
+          "origin_kind": "CharacterBase",
+          "slot": null,
+          "source_text": null,
+          "value": 270.0
+        }
+      ]
+    },
+    "EnergyShield": {
+      "base_total": 1730.0,
+      "inc_total": 457.0,
+      "mods": [
+        {
+          "mod_type": "BASE",
+          "origin_id": "base.EnergyShield",
+          "origin_kind": "Item",
+          "slot": null,
+          "source_text": null,
+          "value": 162.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": "base.EnergyShield",
+          "origin_kind": "Item",
+          "slot": null,
+          "source_text": null,
+          "value": 195.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": "base.EnergyShield",
+          "origin_kind": "Item",
+          "slot": null,
+          "source_text": null,
+          "value": 536.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": "base.EnergyShield",
+          "origin_kind": "Item",
+          "slot": null,
+          "source_text": null,
+          "value": 760.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": "item.belt.explicit",
+          "origin_kind": "ItemAffix",
+          "slot": "belt",
+          "source_text": "+77 to maximum Energy Shield",
+          "value": 77.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": null,
+          "origin_kind": null,
+          "slot": null,
+          "source_text": "10% increased maximum Energy Shield",
+          "value": 10.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": null,
+          "origin_kind": null,
+          "slot": null,
+          "source_text": "15% increased maximum Energy Shield",
+          "value": 15.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": null,
+          "origin_kind": null,
+          "slot": null,
+          "source_text": "15% increased maximum Energy Shield",
+          "value": 15.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": null,
+          "origin_kind": null,
+          "slot": null,
+          "source_text": "17% increased maximum Energy Shield",
+          "value": 17.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "item.amulet.explicit",
+          "origin_kind": "ItemAffix",
+          "slot": "amulet",
+          "source_text": "33% increased maximum Energy Shield",
+          "value": 33.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "item.amulet.implicit",
+          "origin_kind": "ItemImplicit",
+          "slot": "amulet",
+          "source_text": "58% increased Energy Shield from Equipped Body Armour",
+          "value": 58.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.116",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "18% increased maximum [EnergyShield|Energy Shield]",
+          "value": 18.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.13537",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+          "value": 15.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.15975",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "12% increased maximum [EnergyShield|Energy Shield]",
+          "value": 12.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.21336",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "12% increased maximum [EnergyShield|Energy Shield]",
+          "value": 12.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.2254",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "30% increased maximum [EnergyShield|Energy Shield]",
+          "value": 30.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.37974",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+          "value": 15.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.38105",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+          "value": 15.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.41372",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "10% increased maximum [EnergyShield|Energy Shield]",
+          "value": 10.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.44299",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "25% increased maximum [EnergyShield|Energy Shield]",
+          "value": 25.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.48030",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+          "value": 15.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.49455",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+          "value": 15.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.6006",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "15% increased maximum [EnergyShield|Energy Shield]",
+          "value": 15.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.62230",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "50% increased maximum [EnergyShield|Energy Shield]",
+          "value": 50.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.62984",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "24% increased maximum [EnergyShield|Energy Shield]",
+          "value": 24.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.6715",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "10% increased maximum [EnergyShield|Energy Shield]",
+          "value": 10.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.9642",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "28% increased maximum [EnergyShield|Energy Shield]",
+          "value": 28.0
+        }
+      ]
+    },
+    "Evasion": {
+      "base_total": 7.0,
+      "inc_total": 48.0,
+      "mods": [
+        {
+          "mod_type": "BASE",
+          "origin_id": "base.Evasion",
+          "origin_kind": "CharacterBase",
+          "slot": null,
+          "source_text": null,
+          "value": 7.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.15975",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "12% increased [Evasion|Evasion Rating]",
+          "value": 12.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.21336",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "12% increased [Evasion|Evasion Rating]",
+          "value": 12.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.62984",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "24% increased [Evasion|Evasion Rating]",
+          "value": 24.0
+        }
+      ]
+    },
+    "MovementSpeed": {
+      "base_total": 0.0,
+      "inc_total": 67.0,
+      "mods": [
+        {
+          "mod_type": "INC",
+          "origin_id": null,
+          "origin_kind": null,
+          "slot": null,
+          "source_text": "3% increased Movement Speed",
+          "value": 3.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "config.GamblesprintMovementSpeed",
+          "origin_kind": "Config",
+          "slot": null,
+          "source_text": "Config",
+          "value": 20.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "item.boots.explicit",
+          "origin_kind": "ItemAffix",
+          "slot": "boots",
+          "source_text": "35% increased Movement Speed",
+          "value": 35.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "item.boots.enchant",
+          "origin_kind": "ItemEnchant",
+          "slot": "boots",
+          "source_text": "5% increased Movement Speed",
+          "value": 5.0
+        },
+        {
+          "mod_type": "INC",
+          "origin_id": "node.48198",
+          "origin_kind": "PassiveNode",
+          "slot": null,
+          "source_text": "4% increased Movement Speed",
+          "value": 4.0
+        }
+      ]
+    },
+    "Spirit": {
+      "base_total": 343.0,
+      "inc_total": 0.0,
+      "mods": [
+        {
+          "mod_type": "BASE",
+          "origin_id": null,
+          "origin_kind": null,
+          "slot": null,
+          "source_text": "+30 to Spirit",
+          "value": 30.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": null,
+          "origin_kind": null,
+          "slot": null,
+          "source_text": "+30 to Spirit",
+          "value": 30.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": null,
+          "origin_kind": null,
+          "slot": null,
+          "source_text": "+40 to Spirit",
+          "value": 40.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": "base.Spirit",
+          "origin_kind": "Item",
+          "slot": null,
+          "source_text": null,
+          "value": 195.0
+        },
+        {
+          "mod_type": "BASE",
+          "origin_id": "item.amulet.explicit",
+          "origin_kind": "ItemAffix",
+          "slot": "amulet",
+          "source_text": "+48 to Spirit",
+          "value": 48.0
+        }
+      ]
+    }
+  },
+  "stats": [
+    {
+      "category": "Offence",
+      "id": "TotalDPS",
+      "value": 4143.747968815
+    },
+    {
+      "category": "HitDamage",
+      "id": "TotalHitAvg",
+      "value": 20466.757215
+    },
+    {
+      "category": "Offence",
+      "id": "HitChance",
+      "value": 1.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "ActionRate",
+      "value": 0.204750205
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "EffectiveActionRate",
+      "value": 0.204750205
+    },
+    {
+      "category": "Offence",
+      "id": "CritChance",
+      "value": 1.0
+    },
+    {
+      "category": "Offence",
+      "id": "CritMultiplier",
+      "value": 4.59
+    },
+    {
+      "category": "DotDamage",
+      "id": "BleedDPS",
+      "value": 0.0
+    },
+    {
+      "category": "DotDamage",
+      "id": "IgniteDPS",
+      "value": 3.988008926
+    },
+    {
+      "category": "DotDamage",
+      "id": "PoisonDPS",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "ShockEffect",
+      "value": 0.0
+    },
+    {
+      "category": "Resource",
+      "id": "Life",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "Mana",
+      "value": 2023.7
+    },
+    {
+      "category": "Resource",
+      "id": "EnergyShield",
+      "value": 10005.12
+    },
+    {
+      "category": "Resource",
+      "id": "LifeReserved",
+      "value": -0.0
+    },
+    {
+      "category": "Resource",
+      "id": "LifeUnreserved",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "ManaReserved",
+      "value": -0.0
+    },
+    {
+      "category": "Resource",
+      "id": "ManaUnreserved",
+      "value": 2023.7
+    },
+    {
+      "category": "Recovery",
+      "id": "LifeRegen",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "ManaRegen",
+      "value": -0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "EnergyShieldRegen",
+      "value": -0.0
+    },
+    {
+      "category": "Defence",
+      "id": "Armour",
+      "value": 0.0
+    },
+    {
+      "category": "Defence",
+      "id": "Evasion",
+      "value": 12.46
+    },
+    {
+      "category": "Resistance",
+      "id": "FireResist",
+      "value": 75.0
+    },
+    {
+      "category": "Resistance",
+      "id": "ColdResist",
+      "value": 75.0
+    },
+    {
+      "category": "Resistance",
+      "id": "LightningResist",
+      "value": 75.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "BlockChance",
+      "value": -0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "SpellBlockChance",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "TotalEHP",
+      "value": 23661.486537325
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalMaxHit",
+      "value": 10006.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "FireMaxHit",
+      "value": 35736.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ColdMaxHit",
+      "value": 35736.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "LightningMaxHit",
+      "value": 35736.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "ChaosMaxHit",
+      "value": null
+    },
+    {
+      "category": "Recovery",
+      "id": "EsRechargeRate",
+      "value": 0.125
+    },
+    {
+      "category": "Recovery",
+      "id": "EsRechargeDelay",
+      "value": 5.0
+    },
+    {
+      "category": "Recovery",
+      "id": "EsRechargePerSecond",
+      "value": 1250.64
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidAllDamageFromHits",
+      "value": -0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidProjectileDamage",
+      "value": -0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidStun",
+      "value": 50.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidIgnite",
+      "value": 0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidShock",
+      "value": -0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidChill",
+      "value": 0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidFreeze",
+      "value": 100.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidPoison",
+      "value": -0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "AvoidBleeding",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "TakenMultiPhysical",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "TakenMultiFire",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "TakenMultiCold",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "TakenMultiLightning",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "TakenMultiChaos",
+      "value": 1.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "CritExtraDamageReduction",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "EnemyCritEffect",
+      "value": 1.0
+    },
+    {
+      "category": "Utility",
+      "id": "ChargePowerCurrent",
+      "value": 0.0
+    },
+    {
+      "category": "Utility",
+      "id": "ChargePowerMaximum",
+      "value": 3.0
+    },
+    {
+      "category": "Utility",
+      "id": "ChargeFrenzyCurrent",
+      "value": 0.0
+    },
+    {
+      "category": "Utility",
+      "id": "ChargeFrenzyMaximum",
+      "value": 3.0
+    },
+    {
+      "category": "Utility",
+      "id": "ChargeEnduranceCurrent",
+      "value": 0.0
+    },
+    {
+      "category": "Utility",
+      "id": "ChargeEnduranceMaximum",
+      "value": 3.0
+    },
+    {
+      "category": "Recovery",
+      "id": "LifeLeechRate",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "ManaLeechRate",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "EsLeechRate",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "LifeRecoupRate",
+      "value": 0.0
+    },
+    {
+      "category": "Recovery",
+      "id": "EsRecoupRate",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "ChillEffect",
+      "value": 0.0
+    },
+    {
+      "category": "Ailment",
+      "id": "FreezeBuildupPct",
+      "value": 0.000147739
+    },
+    {
+      "category": "Ailment",
+      "id": "ElectrocuteBuildupPct",
+      "value": 0.0
+    },
+    {
+      "category": "DotDamage",
+      "id": "BleedStackedDPS",
+      "value": 0.0
+    },
+    {
+      "category": "DotDamage",
+      "id": "BleedActiveStacks",
+      "value": 0.0
+    },
+    {
+      "category": "DotDamage",
+      "id": "PoisonStackedDPS",
+      "value": 0.0
+    },
+    {
+      "category": "DotDamage",
+      "id": "PoisonActiveStacks",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "AoeRadius",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "AoeAreaMod",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "ProjectileCount",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "Cooldown",
+      "value": 4.884
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "CooldownStoredUses",
+      "value": 1.0
+    },
+    {
+      "category": "Cost",
+      "id": "ManaCost",
+      "value": 329.0
+    },
+    {
+      "category": "Cost",
+      "id": "LifeCost",
+      "value": 0.0
+    },
+    {
+      "category": "Cost",
+      "id": "SpiritReserved",
+      "value": 207.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "TriggerRateCap",
+      "value": 0.0
+    },
+    {
+      "category": "SkillMechanics",
+      "id": "SkillTriggerRate",
+      "value": 0.0
+    },
+    {
+      "category": "Resource",
+      "id": "Spirit",
+      "value": 343.0
+    },
+    {
+      "category": "Resource",
+      "id": "SpiritUnreserved",
+      "value": 136.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "BlockChanceMax",
+      "value": 50.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "SpellBlockChanceMax",
+      "value": 50.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "EffectiveBlockChance",
+      "value": -0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "EffectiveSpellBlockChance",
+      "value": -0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "BlockEffect",
+      "value": -0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "DeflectionRating",
+      "value": -0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "DeflectChance",
+      "value": 0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "EvadeChance",
+      "value": 0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "MeleeEvadeChance",
+      "value": 0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "ProjectileEvadeChance",
+      "value": 0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "SpellEvadeChance",
+      "value": 0.0
+    },
+    {
+      "category": "Avoidance",
+      "id": "SpellProjectileEvadeChance",
+      "value": 0.0
+    },
+    {
+      "category": "Defence",
+      "id": "StunThreshold",
+      "value": 4355.0
+    },
+    {
+      "category": "Defence",
+      "id": "SelfStunChance",
+      "value": 46.832136912
+    },
+    {
+      "category": "Defence",
+      "id": "StunDuration",
+      "value": 0.528
+    },
+    {
+      "category": "Resource",
+      "id": "Ward",
+      "value": 0.0
+    },
+    {
+      "category": "Resource",
+      "id": "LifeRecoverable",
+      "value": 1.0
+    },
+    {
+      "category": "Resource",
+      "id": "EnergyShieldRecoveryCap",
+      "value": 10005.12
+    },
+    {
+      "category": "Mitigation",
+      "id": "PhysicalDamageReduction",
+      "value": 0.0
+    },
+    {
+      "category": "Mitigation",
+      "id": "NumberOfDamagingHits",
+      "value": 5.572653447320929
+    },
+    {
+      "category": "Mitigation",
+      "id": "NumberOfMitigatedHits",
+      "value": 5.572653447320929
+    },
+    {
+      "category": "Mitigation",
+      "id": "TotalEHPLowestMaxHit",
+      "value": 10005.12
+    }
+  ],
+  "unsupported_modifiers": [
+    "Used when you are affected by a Slow",
+    "Grants Onslaught during effect",
+    "Used when you kill a Rare or Unique enemy",
+    "Possessed by Spirit Of The Stag for 19 seconds on use",
+    "Every 3 seconds during Effect, deal 100% of Mana spent in those seconds as Chaos Damage to Enemies within 3 metres",
+    "Deals 25% of current Mana as Chaos Damage to you when Effect ends",
+    "Used when you become Frozen",
+    "25% Chance to gain a Charge when you kill an enemy",
+    "Energy Shield Recharge starts on use"
+  ]
+}

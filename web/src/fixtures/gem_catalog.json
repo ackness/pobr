@@ -1,0 +1,7722 @@
+[
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Abiding Hex",
+    "name_zh_cn": "恒远魔蛊",
+    "name_zh_tw": "永久咒術",
+    "skill_id": "SupportAbidingHexPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Abyssal Apparition",
+    "name_zh_cn": "深渊幻象",
+    "name_zh_tw": "深淵幻象",
+    "skill_id": "TriggeredAbyssalApparitionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Accelerated Growth",
+    "name_zh_cn": "迅猛绽放",
+    "name_zh_tw": "飛速生長",
+    "skill_id": "SupportExplosiveGrowthPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Accelerated Growth II",
+    "name_zh_cn": "迅猛绽放II",
+    "name_zh_tw": "飛速生長II",
+    "skill_id": "SupportExplosiveGrowthPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Acidic Concoction",
+    "name_zh_cn": "酸性灵药",
+    "name_zh_tw": "酸性靈藥",
+    "skill_id": "AcidicConcoctionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Acrimony",
+    "name_zh_cn": "尖刻",
+    "name_zh_tw": "毒辣",
+    "skill_id": "SupportAcrimonyPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Adhesive Grenades I",
+    "name_zh_cn": "胶粘榴弹 I",
+    "name_zh_tw": "黏性擲彈 I",
+    "skill_id": "SupportAdhesiveGrenadesPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Adhesive Grenades II",
+    "name_zh_cn": "胶粘榴弹 II",
+    "name_zh_tw": "黏性擲彈 II",
+    "skill_id": "SupportAdhesiveGrenadesPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Admixture",
+    "name_zh_cn": "混合物",
+    "name_zh_tw": "混合劑",
+    "skill_id": "SupportAdmixturePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Advancing Storm",
+    "name_zh_cn": "风暴行军",
+    "name_zh_tw": "推進風暴",
+    "skill_id": "SupportAdvancingStormPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Aftershock I",
+    "name_zh_cn": "余震 I",
+    "name_zh_tw": "餘震 I",
+    "skill_id": "SupportAftershockChancePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Aftershock II",
+    "name_zh_cn": "余震 II",
+    "name_zh_tw": "餘震 II",
+    "skill_id": "SupportAftershockChancePlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Ahn's Citadel",
+    "name_zh_cn": "汉恩的城塞",
+    "name_zh_tw": "漢恩的城塞",
+    "skill_id": "SupportAhnsCitadelPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Ailith's Chimes",
+    "name_zh_cn": "艾利丝钟琴",
+    "name_zh_tw": "艾里絲的管鐘",
+    "skill_id": "SupportAilithLineagePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Alchemist's Boon",
+    "name_zh_cn": "炼金师的恩典",
+    "name_zh_tw": "煉金師恩惠",
+    "skill_id": "AlchemistsBoonPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Align Fate",
+    "name_zh_cn": "命运同调",
+    "name_zh_tw": "命運同調",
+    "skill_id": "AlignFatePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Alignment I",
+    "name_zh_cn": "相性 I",
+    "name_zh_tw": "聯合 I",
+    "skill_id": "SupportAlignmentPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Alignment II",
+    "name_zh_cn": "相性 II",
+    "name_zh_tw": "聯合 II",
+    "skill_id": "SupportAlignmentPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Alignment III",
+    "name_zh_cn": "相性 III",
+    "name_zh_tw": "聯合 III",
+    "skill_id": "SupportAlignmentPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Amanamu's Tithe",
+    "name_zh_cn": "阿曼娜姆的奉纳",
+    "name_zh_tw": "阿姆那姆的稅賦",
+    "skill_id": "SupportAmanamusTithePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Ambrosia",
+    "name_zh_cn": "仙馔",
+    "name_zh_tw": "仙饌蜜酒",
+    "skill_id": "SupportAmbrosiaPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Ambrosia II",
+    "name_zh_cn": "仙馔 II",
+    "name_zh_tw": "仙饌蜜酒 II",
+    "skill_id": "SupportAmbrosiaPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Ambush",
+    "name_zh_cn": "伏击",
+    "name_zh_tw": "伏擊",
+    "skill_id": "SupportAmbushPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Ammo Conservation I",
+    "name_zh_cn": "节省弹药 I",
+    "name_zh_tw": "彈藥保存 I",
+    "skill_id": "SupportAmmoConservationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Ammo Conservation II",
+    "name_zh_cn": "节省弹药 II",
+    "name_zh_tw": "彈藥保存 II",
+    "skill_id": "SupportAmmoConservationPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Ammo Conservation III",
+    "name_zh_cn": "节省弹药 III",
+    "name_zh_tw": "彈藥保存 III",
+    "skill_id": "SupportAmmoConservationPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Ancestral Aid",
+    "name_zh_cn": "先祖之助",
+    "name_zh_tw": "先祖援助",
+    "skill_id": "SupportAncestralAidPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Ancestral Call I",
+    "name_zh_cn": "先祖召唤 I",
+    "name_zh_tw": "先祖怒嚎 I",
+    "skill_id": "SupportAncestralCallPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Ancestral Call II",
+    "name_zh_cn": "先祖召唤 II",
+    "name_zh_tw": "先祖怒嚎 II",
+    "skill_id": "SupportAncestralCallPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Ancestral Cry",
+    "name_zh_cn": "先祖战吼",
+    "name_zh_tw": "先祖戰吼",
+    "skill_id": "AncestralCryPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Ancestral Spirits",
+    "name_zh_cn": "先祖之灵",
+    "name_zh_tw": "先祖之魂",
+    "skill_id": "AncestralSpiritsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Ancestral Warrior Totem",
+    "name_zh_cn": "先祖战士图腾",
+    "name_zh_tw": "先祖戰士圖騰",
+    "skill_id": "AncestralWarriorTotemPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Animus Exchange",
+    "name_zh_cn": "命源交换",
+    "name_zh_tw": "意志轉換",
+    "skill_id": "AnimusExchangePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Animus Splinters",
+    "name_zh_cn": "命源碎片",
+    "name_zh_tw": "意志斷片",
+    "skill_id": "MetaAnimusSplintersPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Apocalypse",
+    "name_zh_cn": "天灾",
+    "name_zh_tw": "壞滅災變",
+    "skill_id": "ApocalypsePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Arakaali's Lust",
+    "name_zh_cn": "阿拉卡力的欲望",
+    "name_zh_tw": "艾爾卡莉之慾",
+    "skill_id": "SupportArakaalisLustPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Arbiter's Ignition",
+    "name_zh_cn": "仲裁官的点燃",
+    "name_zh_tw": "仲裁者的燃灼",
+    "skill_id": "SupportArbitersIgnitionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Arbiter's Reach",
+    "name_zh_cn": "仲裁官之握",
+    "name_zh_tw": "仲裁者的延伸",
+    "skill_id": "ArbitersReachWardPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Arc",
+    "name_zh_cn": "电弧",
+    "name_zh_tw": "電弧",
+    "skill_id": "ArcPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Arcane Surge",
+    "name_zh_cn": "秘术增强",
+    "name_zh_tw": "秘能波動",
+    "skill_id": "SupportArcaneSurgePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Archmage",
+    "name_zh_cn": "大法师",
+    "name_zh_tw": "大法師",
+    "skill_id": "ArchmagePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Archon of Chayula",
+    "name_zh_cn": "夏乌拉执政官",
+    "name_zh_tw": "夏烏拉統治者",
+    "skill_id": "ArchonOfChayulaPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Arctic Armour",
+    "name_zh_cn": "极地装甲",
+    "name_zh_tw": "極地裝甲",
+    "skill_id": "ArcticArmourPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Arctic Howl",
+    "name_zh_cn": "极地战嚎",
+    "name_zh_tw": "極地狂嚎",
+    "skill_id": "WolfArcticHowlPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Arjun's Medal",
+    "name_zh_cn": "阿尔琼的勋章",
+    "name_zh_tw": "亞瓊的獎章",
+    "skill_id": "SupportAmmoConservationPlayerFour"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Armour Break I",
+    "name_zh_cn": "护甲破损 I",
+    "name_zh_tw": "護甲破壞 I",
+    "skill_id": "SupportArmourBreakPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Armour Break II",
+    "name_zh_cn": "护甲破损 II",
+    "name_zh_tw": "護甲破壞 II",
+    "skill_id": "SupportArmourBreakPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Armour Break III",
+    "name_zh_cn": "护甲破损 III",
+    "name_zh_tw": "護甲破壞 III",
+    "skill_id": "SupportArmourBreakPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Armour Breaker",
+    "name_zh_cn": "摧甲重击",
+    "name_zh_tw": "護甲碎擊",
+    "skill_id": "ArmourBreakerPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Armour Demolisher I",
+    "name_zh_cn": "护甲破坏者 I",
+    "name_zh_tw": "護甲破壞者 I",
+    "skill_id": "SupportArmourDemolisherPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Armour Demolisher II",
+    "name_zh_cn": "护甲破坏者 II",
+    "name_zh_tw": "護甲破壞者 II",
+    "skill_id": "SupportArmourDemolisherPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Armour Explosion",
+    "name_zh_cn": "护甲爆破",
+    "name_zh_tw": "護甲爆破",
+    "skill_id": "SupportArmourExplosionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Armour Piercing Rounds",
+    "name_zh_cn": "贯甲弹药",
+    "name_zh_tw": "穿甲彈藥",
+    "skill_id": "ArmourPiercingBoltsAmmoPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Arms Length",
+    "name_zh_cn": "一臂之隔",
+    "name_zh_tw": "伸手可及",
+    "skill_id": "SupportArmsLengthPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Artillery Ballista",
+    "name_zh_cn": "火力弩炮",
+    "name_zh_tw": "火砲砲塔",
+    "skill_id": "ArtilleryBallistaPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Astral Projection",
+    "name_zh_cn": "星界投射",
+    "name_zh_tw": "星空投影",
+    "skill_id": "SupportAstralProjectionPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Atalui's Bloodletting",
+    "name_zh_cn": "阿图鲁伊的放血术",
+    "name_zh_tw": "阿特路伊的出血",
+    "skill_id": "SupportAtaluiBloodlettingPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Attrition",
+    "name_zh_cn": "持久鏖战",
+    "name_zh_tw": "損耗",
+    "skill_id": "AttritionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Atziri's Allure",
+    "name_zh_cn": "阿兹里的魅惑",
+    "name_zh_tw": "阿茲里的魅惑",
+    "skill_id": "SupportAtzirisAllurePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Atziri's Impatience",
+    "name_zh_cn": "阿兹里的焦躁",
+    "name_zh_tw": "阿茲里的不耐",
+    "skill_id": "SupportAtzirisImpatiencePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Auto Reload",
+    "name_zh_cn": "自动装填",
+    "name_zh_tw": "自動裝填",
+    "skill_id": "SupportAutoReloadPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Azmerian Swarms",
+    "name_zh_cn": "阿兹莫里虫群",
+    "name_zh_tw": "阿茲莫里群落",
+    "skill_id": "AzmerianSwarmPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Azmerian Wolf",
+    "name_zh_cn": "阿兹莫里巨狼",
+    "name_zh_tw": "阿茲莫里巨狼",
+    "skill_id": "SummonAzmerianWolfPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Ball Lightning",
+    "name_zh_cn": "天雷之珠",
+    "name_zh_tw": "天雷之珠",
+    "skill_id": "BallLightningPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Barbs I",
+    "name_zh_cn": "荆棘倒刺 I",
+    "name_zh_tw": "倒刺 I",
+    "skill_id": "SupportBarbsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Barbs II",
+    "name_zh_cn": "荆棘倒刺 II",
+    "name_zh_tw": "倒刺 II",
+    "skill_id": "SupportBarbsPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Barbs III",
+    "name_zh_cn": "荆棘倒刺 III",
+    "name_zh_tw": "倒刺 III",
+    "skill_id": "SupportBarbsPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Barkskin",
+    "name_zh_cn": "树肤术",
+    "name_zh_tw": "木質外膚",
+    "skill_id": "BarkskinPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Barrage",
+    "name_zh_cn": "弹幕",
+    "name_zh_tw": "彈幕",
+    "skill_id": "BarragePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Barrier Invocation",
+    "name_zh_cn": "屏障咒言",
+    "name_zh_tw": "屏障祈願",
+    "skill_id": "MetaBarrierInvocationPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Battershout",
+    "name_zh_cn": "震撼战吼",
+    "name_zh_tw": "猛擊吶喊",
+    "skill_id": "SupportBattershoutPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Behead I",
+    "name_zh_cn": "斩首 I",
+    "name_zh_tw": "斬首 I",
+    "skill_id": "SupportBeheadPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Behead II",
+    "name_zh_cn": "斩首 II",
+    "name_zh_tw": "斬首 II",
+    "skill_id": "SupportBeheadPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Berserk",
+    "name_zh_cn": "盛怒",
+    "name_zh_tw": "狂戰",
+    "skill_id": "BerserkPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Bhatair's Vengeance",
+    "name_zh_cn": "巴蒂尔的复仇",
+    "name_zh_tw": "瓦特爾的復仇",
+    "skill_id": "SupportBhatairsVengeancePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Bidding I",
+    "name_zh_cn": "奉命 I",
+    "name_zh_tw": "出價 I",
+    "skill_id": "SupportBiddingPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Bidding II",
+    "name_zh_cn": "奉命 II",
+    "name_zh_tw": "出價 II",
+    "skill_id": "SupportBiddingPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Bidding III",
+    "name_zh_cn": "奉命 III",
+    "name_zh_tw": "出價 III",
+    "skill_id": "SupportBiddingPlayerThree"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Biting Frost I",
+    "name_zh_cn": "刺骨寒意 I",
+    "name_zh_tw": "刺骨冰霜I",
+    "skill_id": "SupportBitingFrostPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Biting Frost II",
+    "name_zh_cn": "刺骨寒意 II",
+    "name_zh_tw": "刺骨冰霜II",
+    "skill_id": "SupportBitingFrostPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Bitter Dead",
+    "name_zh_cn": "苦涩死亡",
+    "name_zh_tw": "苦澀衰亡",
+    "skill_id": "BitterDeadPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Black Powder Blitz",
+    "name_zh_cn": "黑火药闪击",
+    "name_zh_tw": "火藥疾行",
+    "skill_id": "BlackPowderBlitzReservationPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Blasphemy",
+    "name_zh_cn": "诅咒光环",
+    "name_zh_tw": "瀆神",
+    "skill_id": "BlasphemyPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Blazing Critical",
+    "name_zh_cn": "炽烈绝杀",
+    "name_zh_tw": "燃焰暴擊",
+    "skill_id": "SupportBlazingCriticalPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Bleed I",
+    "name_zh_cn": "流血 I",
+    "name_zh_tw": "流血 I",
+    "skill_id": "SupportBleedPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Bleed II",
+    "name_zh_cn": "流血 II",
+    "name_zh_tw": "流血 II",
+    "skill_id": "SupportBleedPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Bleed III",
+    "name_zh_cn": "流血 III",
+    "name_zh_tw": "流血 III",
+    "skill_id": "SupportBleedPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Bleed IV",
+    "name_zh_cn": "流血 IV",
+    "name_zh_tw": "流血 IV",
+    "skill_id": "SupportBleedPlayerFour"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Bleeding Concoction",
+    "name_zh_cn": "创伤灵药",
+    "name_zh_tw": "流血混合物",
+    "skill_id": "BleedingConcoctionPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Blind I",
+    "name_zh_cn": "致盲 I",
+    "name_zh_tw": "致盲 I",
+    "skill_id": "SupportBlindPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Blind II",
+    "name_zh_cn": "致盲 II",
+    "name_zh_tw": "致盲 II",
+    "skill_id": "SupportBlindPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Blindside",
+    "name_zh_cn": "盲点",
+    "name_zh_tw": "偷襲",
+    "skill_id": "SupportBlindsidePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Blood Boil",
+    "name_zh_cn": "血沸",
+    "name_zh_tw": "鮮血沸騰",
+    "skill_id": "BloodBoilPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Blood Hunt",
+    "name_zh_cn": "猎血寻腥",
+    "name_zh_tw": "鮮血狩獵",
+    "skill_id": "BloodHuntPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Bloodhound's Mark",
+    "name_zh_cn": "血犬印记",
+    "name_zh_tw": "鮮血獵犬印記",
+    "skill_id": "BloodhoundsMarkPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Bloodlust",
+    "name_zh_cn": "血怒",
+    "name_zh_tw": "嗜血",
+    "skill_id": "SupportBloodlustPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Bone Blast",
+    "name_zh_cn": "针刺爆发",
+    "name_zh_tw": "骨之爆破",
+    "skill_id": "BoneBlastPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Bone Cage",
+    "name_zh_cn": "画地为牢",
+    "name_zh_tw": "骨牢",
+    "skill_id": "BoneCagePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Bone Offering",
+    "name_zh_cn": "装甲奉献",
+    "name_zh_tw": "骸骨奉獻",
+    "skill_id": "BoneOfferingPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Bone Shrapnel",
+    "name_zh_cn": "钙质碎片",
+    "name_zh_tw": "骨片",
+    "skill_id": "SupportBoneShrapnelPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Boneshatter",
+    "name_zh_cn": "七伤破",
+    "name_zh_tw": "碎骨",
+    "skill_id": "BoneshatterPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Bonestorm",
+    "name_zh_cn": "尖刺风暴",
+    "name_zh_tw": "骸骨風暴",
+    "skill_id": "BonestormPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Boundless Energy I",
+    "name_zh_cn": "无边能量 I",
+    "name_zh_tw": "無盡能量 I",
+    "skill_id": "SupportBoundlessEnergyPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Boundless Energy II",
+    "name_zh_cn": "无边能量 II",
+    "name_zh_tw": "無盡能量 II",
+    "skill_id": "SupportBoundlessEnergyPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Bounty I",
+    "name_zh_cn": "丰饶 I",
+    "name_zh_tw": "寶物 I",
+    "skill_id": "SupportBountyPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Bounty II",
+    "name_zh_cn": "丰饶 II",
+    "name_zh_tw": "寶物 II",
+    "skill_id": "SupportBountyPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Bow Shot",
+    "name_zh_cn": "弓射击",
+    "name_zh_tw": "弓箭射擊",
+    "skill_id": "MeleeBowPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Brambleslam",
+    "name_zh_cn": "遍地荆棘",
+    "name_zh_tw": "荊棘猛擊",
+    "skill_id": "SupportBrambleslamPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Branching Fissures I",
+    "name_zh_cn": "分叉裂缝 I",
+    "name_zh_tw": "分岔裂縫 I",
+    "skill_id": "SupportBranchingFissuresPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Branching Fissures II",
+    "name_zh_cn": "分叉裂缝 II",
+    "name_zh_tw": "分岔裂縫 II",
+    "skill_id": "SupportBranchingFissuresPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Breachlord's Amalgam",
+    "name_zh_cn": "裂隙领主的融合体",
+    "name_zh_tw": "裂痕領主的融合",
+    "skill_id": "SupportBreachlordsAmalgam"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Breachlord's Rift",
+    "name_zh_cn": "裂隙领主的分歧",
+    "name_zh_tw": "裂痕領主的裂隙",
+    "skill_id": "SupportBreachlordsRift"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Briarpatch",
+    "name_zh_cn": "荆刺之缚",
+    "name_zh_tw": "荊棘叢",
+    "skill_id": "BriarpatchPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Brink I",
+    "name_zh_cn": "崩溃边缘 I",
+    "name_zh_tw": "邊緣 I",
+    "skill_id": "SupportBrinkPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Brink II",
+    "name_zh_cn": "崩溃边缘 II",
+    "name_zh_tw": "邊緣 II",
+    "skill_id": "SupportBrinkPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Brittle Armour",
+    "name_zh_cn": "脆弱护甲",
+    "name_zh_tw": "易碎鎧甲",
+    "skill_id": "SupportBrittleArmourPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Brutality I",
+    "name_zh_cn": "野性残暴 I",
+    "name_zh_tw": "野性殘暴 I",
+    "skill_id": "SupportBrutalityPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Brutality II",
+    "name_zh_cn": "野性残暴 II",
+    "name_zh_tw": "野性殘暴 II",
+    "skill_id": "SupportBrutalityPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Brutality III",
+    "name_zh_cn": "野性残暴 III",
+    "name_zh_tw": "野性殘暴 III",
+    "skill_id": "SupportBrutalityPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Brutus' Brain",
+    "name_zh_cn": "布鲁特斯之脑",
+    "name_zh_tw": "布魯特斯的腦",
+    "skill_id": "SupportBrutusBrainPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Burgeon I",
+    "name_zh_cn": "迅猛增幅 I",
+    "name_zh_tw": "萌發 I",
+    "skill_id": "SupportBurgeonPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Burgeon II",
+    "name_zh_cn": "迅猛增幅 II",
+    "name_zh_tw": "萌發 II",
+    "skill_id": "SupportBurgeonPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Burning Inscription",
+    "name_zh_cn": "燃烧铭文",
+    "name_zh_tw": "爆燃銘文",
+    "skill_id": "SupportBurningRunesPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Bursting Fen Toad",
+    "name_zh_cn": "爆裂沼蟾",
+    "name_zh_tw": "爆發沼地蟾蜍",
+    "skill_id": "ExplodingPoisonToadPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Bursting Plague",
+    "name_zh_cn": "迸发之疫",
+    "name_zh_tw": "爆裂瘟疫",
+    "skill_id": "SupportBurstingPlaguePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Cackling Companions",
+    "name_zh_cn": "鬣狗同伴",
+    "name_zh_tw": "奸笑鬣狗群",
+    "skill_id": "HyenaCacklePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Cadence",
+    "name_zh_cn": "节律",
+    "name_zh_tw": "終止",
+    "skill_id": "SupportCadencePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Called Shots",
+    "name_zh_cn": "言出箭随",
+    "name_zh_tw": "預告射擊",
+    "skill_id": "MetaDeadeyeMarksPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Caltrops",
+    "name_zh_cn": "铁蒺藜",
+    "name_zh_tw": "蒺藜",
+    "skill_id": "SupportCaltropsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Cannibalism I",
+    "name_zh_cn": "吞灵 I",
+    "name_zh_tw": "食人 I",
+    "skill_id": "SupportCannibalismPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Cannibalism II",
+    "name_zh_cn": "吞灵 II",
+    "name_zh_tw": "食人 II",
+    "skill_id": "SupportCannibalismPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Cast on Block",
+    "name_zh_cn": "格挡时施放",
+    "name_zh_tw": "格擋時施放",
+    "skill_id": "MetaCastOnBlockPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Cast on Charm Use",
+    "name_zh_cn": "使用咒符时施放",
+    "name_zh_tw": "使用護符時施放",
+    "skill_id": "MetaCastOnCharmUsePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Cast on Critical",
+    "name_zh_cn": "暴击时施放",
+    "name_zh_tw": "暴擊時施放",
+    "skill_id": "MetaCastOnCritPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Cast on Dodge",
+    "name_zh_cn": "躲闪时施放",
+    "name_zh_tw": "閃避時施放",
+    "skill_id": "MetaCastOnDodgePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Cast on Elemental Ailment",
+    "name_zh_cn": "元素异常状态时施放",
+    "name_zh_tw": "元素異常狀態時施放",
+    "skill_id": "MetaCastOnElementalAilmentPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Cast on Melee Kill",
+    "name_zh_cn": "近战击败时施放",
+    "name_zh_tw": "近戰擊殺時施放",
+    "skill_id": "MetaCastOnMeleeKillPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Cast on Melee Stun",
+    "name_zh_cn": "近战击晕时施放",
+    "name_zh_tw": "近戰擊暈時施放",
+    "skill_id": "MetaCastOnMeleeStunPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Cast on Minion Death",
+    "name_zh_cn": "召唤生物死亡时施放",
+    "name_zh_tw": "召喚物死亡時施放",
+    "skill_id": "MetaCastOnMinionDeathPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Catalysing Elements",
+    "name_zh_cn": "元素催化",
+    "name_zh_tw": "催化元素",
+    "skill_id": "SupportCatalysingElementsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Catha's Brilliance",
+    "name_zh_cn": "卡莎的光辉",
+    "name_zh_tw": "凱莎的輝煌",
+    "skill_id": "SupportCathasBrilliance"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Catharsis",
+    "name_zh_cn": "泄除",
+    "name_zh_tw": "宣洩",
+    "skill_id": "SupportCatharsisPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Chain I",
+    "name_zh_cn": "连锁 I",
+    "name_zh_tw": "連鎖 I",
+    "skill_id": "SupportChainPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Chain II",
+    "name_zh_cn": "连锁 II",
+    "name_zh_tw": "連鎖 II",
+    "skill_id": "SupportChainPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Chain III",
+    "name_zh_cn": "连锁 III",
+    "name_zh_tw": "連鎖 III",
+    "skill_id": "SupportChainPlayerThree"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Chaos Attunement",
+    "name_zh_cn": "混沌协调",
+    "name_zh_tw": "混沌同調",
+    "skill_id": "SupportAddedChaosDamagePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Chaos Bolt",
+    "name_zh_cn": "混沌箭",
+    "name_zh_tw": "混沌弩箭",
+    "skill_id": "WeaponGrantedChaosboltPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Chaos Mastery",
+    "name_zh_cn": "混沌专精",
+    "name_zh_tw": "混沌專精",
+    "skill_id": "SupportChaosMasteryPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Chaotic Freeze",
+    "name_zh_cn": "混沌冻结",
+    "name_zh_tw": "混沌冰凍",
+    "skill_id": "SupportChaoticFreezePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Chaotic Surge",
+    "name_zh_cn": "混沌涌动",
+    "name_zh_tw": "混沌波動",
+    "skill_id": "ChaosSpearTriggerChaosSurgePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Charge Profusion I",
+    "name_zh_cn": "能量球激增 I",
+    "name_zh_tw": "充能滿盈 I",
+    "skill_id": "SupportChargeProfusionPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Charge Profusion II",
+    "name_zh_cn": "能量球激增 II",
+    "name_zh_tw": "充能滿盈 II",
+    "skill_id": "SupportChargeProfusionPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Charge Regulation",
+    "name_zh_cn": "能量球调节",
+    "name_zh_tw": "充能調節",
+    "skill_id": "ChargeRegulationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Charged Mark",
+    "name_zh_cn": "充能印记",
+    "name_zh_tw": "蓄電印記",
+    "skill_id": "SupportChargedMarkPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Charged Shots I",
+    "name_zh_cn": "充能射击 I",
+    "name_zh_tw": "充能射擊 I",
+    "skill_id": "SupportChargedShotsPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Charged Shots II",
+    "name_zh_cn": "充能射击 II",
+    "name_zh_tw": "充能射擊 II",
+    "skill_id": "SupportChargedShotsPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Charged Staff",
+    "name_zh_cn": "充能杖",
+    "name_zh_tw": "充能長杖",
+    "skill_id": "ChargedStaffPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Charm Bounty",
+    "name_zh_cn": "咒符恩典",
+    "name_zh_tw": "護符恩惠",
+    "skill_id": "SupportCharmBountyPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Cirel's Cultivation",
+    "name_zh_cn": "西雷尔的教化",
+    "name_zh_tw": "西瑞爾的耕植",
+    "skill_id": "SupportCirelsCultivationPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Clarity I",
+    "name_zh_cn": "清晰 I",
+    "name_zh_tw": "清晰 I",
+    "skill_id": "SupportClarityPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Clarity II",
+    "name_zh_cn": "清晰 II",
+    "name_zh_tw": "清晰 II",
+    "skill_id": "SupportClarityPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Clash",
+    "name_zh_cn": "形势逆转",
+    "name_zh_tw": "交鋒",
+    "skill_id": "SupportClashPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Close Combat I",
+    "name_zh_cn": "近战 I",
+    "name_zh_tw": "近身戰 I",
+    "skill_id": "SupportCloseCombatPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Close Combat II",
+    "name_zh_cn": "近战 II",
+    "name_zh_tw": "近身戰 II",
+    "skill_id": "SupportCloseCombatPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Cluster Grenade",
+    "name_zh_cn": "集束榴弹",
+    "name_zh_tw": "集束擲彈",
+    "skill_id": "ClusterGrenadePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Coiling Bolts",
+    "name_zh_cn": "盘绕魔弹",
+    "name_zh_tw": "寂纏彈",
+    "skill_id": "CoilingBoltsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Cold Attunement",
+    "name_zh_cn": "冰霜协调",
+    "name_zh_tw": "冰冷同調",
+    "skill_id": "SupportAddedColdDamagePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Cold Exposure",
+    "name_zh_cn": "冰霜曝露",
+    "name_zh_tw": "冰冷曝曬",
+    "skill_id": "SupportColdExposurePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Cold Mastery",
+    "name_zh_cn": "冰霜专精",
+    "name_zh_tw": "冰冷專精",
+    "skill_id": "SupportColdMasteryPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Cold Penetration",
+    "name_zh_cn": "冰霜穿透",
+    "name_zh_tw": "冰冷穿透",
+    "skill_id": "SupportColdPenetrationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Combat Frenzy",
+    "name_zh_cn": "战斗狂怒",
+    "name_zh_tw": "戰鬥狂怒",
+    "skill_id": "CombatFrenzyPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Combo Finisher I",
+    "name_zh_cn": "连击终结 I",
+    "name_zh_tw": "連擊終結輔助 I",
+    "skill_id": "SupportComboFinisherPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Combo Finisher II",
+    "name_zh_cn": "连击终结 II",
+    "name_zh_tw": "連擊終結輔助 II",
+    "skill_id": "SupportComboFinisherPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Comet",
+    "name_zh_cn": "彗星落",
+    "name_zh_tw": "彗星",
+    "skill_id": "CometPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Commandment",
+    "name_zh_cn": "调遣",
+    "name_zh_tw": "誡命",
+    "skill_id": "SupportCommandment"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Commiserate",
+    "name_zh_cn": "以己度人",
+    "name_zh_tw": "憐憫",
+    "skill_id": "SupportCommiseratePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Companion: {0}",
+    "name_zh_cn": "伙伴：{0}",
+    "name_zh_tw": "盟友：{0}",
+    "skill_id": "SummonBeastPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Compressed Duration I",
+    "name_zh_cn": "持续时间压缩 I",
+    "name_zh_tw": "縮短持續時間 I",
+    "skill_id": "CompressedDurationSupportPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Compressed Duration II",
+    "name_zh_cn": "持续时间压缩 II",
+    "name_zh_tw": "縮短持續時間 II",
+    "skill_id": "CompressedDurationSupportPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Concentrated Area",
+    "name_zh_cn": "范围集中",
+    "name_zh_tw": "集中範圍",
+    "skill_id": "SupportConcentratedAreaPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Concoct I",
+    "name_zh_cn": "调和术 I",
+    "name_zh_tw": "調製 I",
+    "skill_id": "SupportConcoctPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Concoct II",
+    "name_zh_cn": "调和术 II",
+    "name_zh_tw": "調製 II",
+    "skill_id": "SupportConcoctPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Concussive Runes",
+    "name_zh_cn": "震荡符文",
+    "name_zh_tw": "震盪符文",
+    "skill_id": "SupportConcussiveRunesPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Concussive Spells",
+    "name_zh_cn": "冲击法术",
+    "name_zh_tw": "震盪法術",
+    "skill_id": "SupportConcussiveSpellsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Conductive Runes",
+    "name_zh_cn": "导电符文",
+    "name_zh_tw": "傳導符文",
+    "skill_id": "ConductiveRunesPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Consecrate",
+    "name_zh_cn": "奉献",
+    "name_zh_tw": "奉獻",
+    "skill_id": "StaffConsecratePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Considered Casting",
+    "name_zh_cn": "审慎施法",
+    "name_zh_tw": "細思施法",
+    "skill_id": "SupportConsideredCastingPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Contagion",
+    "name_zh_cn": "瘟疫",
+    "name_zh_tw": "瘟疫",
+    "skill_id": "ContagionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Controlled Destruction",
+    "name_zh_cn": "精准破坏",
+    "name_zh_tw": "精準破壞",
+    "skill_id": "SupportControlledDestructionPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Controlled Hazard",
+    "name_zh_cn": "受控危技",
+    "name_zh_tw": "危險抑制",
+    "skill_id": "SupportControlledHazardPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Convalescence",
+    "name_zh_cn": "康复",
+    "name_zh_tw": "恢復期",
+    "skill_id": "ConvalescencePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Cool Headed",
+    "name_zh_cn": "冷静头脑",
+    "name_zh_tw": "冷靜",
+    "skill_id": "SupportCoolheadedPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Cooldown Recovery I",
+    "name_zh_cn": "冷却回复 I",
+    "name_zh_tw": "冷卻時間恢復 I",
+    "skill_id": "SupportCooldownRecoveryPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Cooldown Recovery II",
+    "name_zh_cn": "冷却回复 II",
+    "name_zh_tw": "冷卻時間恢復 II",
+    "skill_id": "SupportCooldownRecoveryPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Corpse Conservation",
+    "name_zh_cn": "灵柩留存",
+    "name_zh_tw": "屍體保存",
+    "skill_id": "SupportCorpseConservationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Corrosion",
+    "name_zh_cn": "腐蚀",
+    "name_zh_tw": "衰敗",
+    "skill_id": "SupportCorrosionPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Corrupting Cry I",
+    "name_zh_cn": "腐化战吼 I",
+    "name_zh_tw": "汙染戰吼 I",
+    "skill_id": "SupportCorruptingCryPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Corrupting Cry II",
+    "name_zh_cn": "腐化战吼 II",
+    "name_zh_tw": "汙染戰吼 II",
+    "skill_id": "SupportCorruptingCryPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Coursing Current",
+    "name_zh_cn": "奔雷疾走",
+    "name_zh_tw": "雷鳴湍流",
+    "skill_id": "SupportDeadlyCurrentPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Crackling Barrier",
+    "name_zh_cn": "霹雳屏障",
+    "name_zh_tw": "電流屏障",
+    "skill_id": "SupportCracklingBarrierPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Crackling Palm",
+    "name_zh_cn": "霹雳掌",
+    "name_zh_tw": "閃光掌",
+    "skill_id": "CracklingPalmPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Crater",
+    "name_zh_cn": "陨坑",
+    "name_zh_tw": "隕石坑",
+    "skill_id": "SupportCraterPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Crazed Minions",
+    "name_zh_cn": "癫狂召唤生物",
+    "name_zh_tw": "發狂召喚物",
+    "skill_id": "SupportCrazedMinionsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Creeping Chill",
+    "name_zh_cn": "蔓延霜寒",
+    "name_zh_tw": "寒冰蔓延",
+    "skill_id": "SupportCreepingChillPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Crescendo I",
+    "name_zh_cn": "渐入佳境 I",
+    "name_zh_tw": "逐漸增強 I",
+    "skill_id": "SupportCrescendoPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Crescendo II",
+    "name_zh_cn": "渐入佳境 II",
+    "name_zh_tw": "逐漸增強 II",
+    "skill_id": "SupportCrescendoPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Crescendo III",
+    "name_zh_cn": "渐入佳境 III",
+    "name_zh_tw": "逐漸增強 III",
+    "skill_id": "SupportCrescendoPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Cross Slash",
+    "name_zh_cn": "双爪劈击",
+    "name_zh_tw": "縱橫劈斬",
+    "skill_id": "WolfCrossSlashPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Crossbow Shot",
+    "name_zh_cn": "战弩射击",
+    "name_zh_tw": "十字弓射擊",
+    "skill_id": "MeleeCrossbowPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Crushing Fear",
+    "name_zh_cn": "恐惧终结",
+    "name_zh_tw": "死懼碎擊",
+    "skill_id": "CrushingFearPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Crystalline Shards",
+    "name_zh_cn": "水晶碎片",
+    "name_zh_tw": "結晶碎片",
+    "skill_id": "SupportCrystallineShardsPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Cull The Weak",
+    "name_zh_cn": "终结弱者",
+    "name_zh_tw": "撲殺弱者",
+    "skill_id": "CullTheWeakPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Culling Strike I",
+    "name_zh_cn": "终结 I",
+    "name_zh_tw": "撲殺 I",
+    "skill_id": "SupportCullingStrikePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Culling Strike II",
+    "name_zh_cn": "终结 II",
+    "name_zh_tw": "撲殺 II",
+    "skill_id": "SupportCullingStrikePlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Culmination I",
+    "name_zh_cn": "登峰造极 I",
+    "name_zh_tw": "頂點 I",
+    "skill_id": "SupportCulminationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Culmination II",
+    "name_zh_cn": "登峰造极 II",
+    "name_zh_tw": "頂點 II",
+    "skill_id": "SupportCulminationPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Curse on Block",
+    "name_zh_cn": "格挡时施放诅咒",
+    "name_zh_tw": "格擋時詛咒",
+    "skill_id": "MetaCastCurseOnBlockPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Cursed Ground",
+    "name_zh_cn": "诅咒之地",
+    "name_zh_tw": "詛咒地面",
+    "skill_id": "SupportCursedGroundPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Danse Macabre",
+    "name_zh_cn": "死亡之舞",
+    "name_zh_tw": "骷髏之舞",
+    "skill_id": "SupportDanseMacabrePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Daresso's Passion",
+    "name_zh_cn": "德瑞索的热情",
+    "name_zh_tw": "德瑞索的熱情",
+    "skill_id": "SupportDaressosPassionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Dark Effigy",
+    "name_zh_cn": "黑暗塑像",
+    "name_zh_tw": "黑暗雕像",
+    "skill_id": "DarkEffigyPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Dauntless",
+    "name_zh_cn": "不动如山",
+    "name_zh_tw": "無畏",
+    "skill_id": "SupportDauntlessPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Daze",
+    "name_zh_cn": "恍惚",
+    "name_zh_tw": "目眩",
+    "skill_id": "SupportDazePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Deadly Herald",
+    "name_zh_cn": "致命之捷",
+    "name_zh_tw": "致命先驅",
+    "skill_id": "SupportDeadlyHeraldsPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Deadly Poison I",
+    "name_zh_cn": "致命毒素 I",
+    "name_zh_tw": "致命毒藥 I",
+    "skill_id": "SupportDeadlyPoisonPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Deadly Poison II",
+    "name_zh_cn": "致命毒素 II",
+    "name_zh_tw": "致命毒藥 II",
+    "skill_id": "SupportDeadlyPoisonPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Deadly Resolve",
+    "name_zh_cn": "致命决心",
+    "name_zh_tw": "致死決意",
+    "skill_id": "SupportDeadlyResolvePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Deathmarch",
+    "name_zh_cn": "终末行军",
+    "name_zh_tw": "死亡行進",
+    "skill_id": "SupportDeathmarchPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Decaying Hex",
+    "name_zh_cn": "衰颓魔蛊",
+    "name_zh_tw": "腐朽咒術",
+    "skill_id": "SupportDecayingHexPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Deep Cuts I",
+    "name_zh_cn": "凌迟 I",
+    "name_zh_tw": "深度切割 I",
+    "skill_id": "SupportDeepCutsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Deep Cuts II",
+    "name_zh_cn": "凌迟 II",
+    "name_zh_tw": "深度切割 II",
+    "skill_id": "SupportDeepCutsPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Deep Freeze",
+    "name_zh_cn": "深度冻结",
+    "name_zh_tw": "深度冰凍",
+    "skill_id": "SupportLastingFrostPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Defiance Banner",
+    "name_zh_cn": "抗争战旗",
+    "name_zh_tw": "反抗之旗",
+    "skill_id": "DefianceBannerReservationPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Defy I",
+    "name_zh_cn": "顽抗 I",
+    "name_zh_tw": "違抗 I",
+    "skill_id": "SupportDefyPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Defy II",
+    "name_zh_cn": "顽抗 II",
+    "name_zh_tw": "違抗 II",
+    "skill_id": "SupportDefyPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Delayed Gratification",
+    "name_zh_cn": "延迟满足",
+    "name_zh_tw": "延遲滿足感",
+    "skill_id": "SupportDelayedGratificationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Delayed Reaction",
+    "name_zh_cn": "延迟激活",
+    "name_zh_tw": "延遲反應",
+    "skill_id": "SupportDelayedReactionPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Deliberation",
+    "name_zh_cn": "从容不迫",
+    "name_zh_tw": "審慎",
+    "skill_id": "SupportDeliberationPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Demon Form",
+    "name_zh_cn": "走火入魔",
+    "name_zh_tw": "惡魔變身",
+    "skill_id": "DemonFormPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Derange",
+    "name_zh_cn": "错乱",
+    "name_zh_tw": "精神錯亂",
+    "skill_id": "SupportDerangePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Despair",
+    "name_zh_cn": "绝望",
+    "name_zh_tw": "絕望",
+    "skill_id": "DespairPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Detonate Dead",
+    "name_zh_cn": "爆灵术",
+    "name_zh_tw": "屍體爆破",
+    "skill_id": "DetonateDeadPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Detonate Living",
+    "name_zh_cn": "活体引爆",
+    "name_zh_tw": "活體引爆",
+    "skill_id": "DetonateLivingPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Detonate Minion",
+    "name_zh_cn": "引爆召唤生物",
+    "name_zh_tw": "引爆召喚物",
+    "skill_id": "DestructiveLinkSkeletonBombadierMinion"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Detonating Arrow",
+    "name_zh_cn": "爆破箭",
+    "name_zh_tw": "爆破箭矢",
+    "skill_id": "DetonatingArrowPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Devour",
+    "name_zh_cn": "吞噬",
+    "name_zh_tw": "吞噬",
+    "skill_id": "WyvernDevourPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Dialla's Desire",
+    "name_zh_cn": "达拉的渴望",
+    "name_zh_tw": "達拉的渴望",
+    "skill_id": "SupportDiallasDesirePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Direstrike I",
+    "name_zh_cn": "蛮勇打击 I",
+    "name_zh_tw": "極惡打擊 I",
+    "skill_id": "SupportDirestrikePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Direstrike II",
+    "name_zh_cn": "蛮勇打击 II",
+    "name_zh_tw": "極惡打擊 II",
+    "skill_id": "SupportDirestrikePlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Discipline",
+    "name_zh_cn": "纪律",
+    "name_zh_tw": "紀律",
+    "skill_id": "DisciplinePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Disengage",
+    "name_zh_cn": "退避三舍",
+    "name_zh_tw": "脫離戰鬥",
+    "skill_id": "DisengagePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Doedre's Undoing",
+    "name_zh_cn": "德瑞的毁灭",
+    "name_zh_tw": "德瑞的毀滅",
+    "skill_id": "SupportDoedresUndoingPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Dominus' Grasp",
+    "name_zh_cn": "神主之握",
+    "name_zh_tw": "神主的掌握",
+    "skill_id": "SupportPietysMercyPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Double Barrel I",
+    "name_zh_cn": "双管齐下 I",
+    "name_zh_tw": "雙管 I",
+    "skill_id": "SupportDoubleBarrelPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Double Barrel II",
+    "name_zh_cn": "双管齐下 II",
+    "name_zh_tw": "雙管 II",
+    "skill_id": "SupportDoubleBarrelPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Double Barrel III",
+    "name_zh_cn": "双管齐下 III",
+    "name_zh_tw": "雙管 III",
+    "skill_id": "SupportDoubleBarrelPlayerThree"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Drain Ailments",
+    "name_zh_cn": "异常状态吸收",
+    "name_zh_tw": "汲取異常狀態",
+    "skill_id": "SupportDrainedAilmentPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Dread Banner",
+    "name_zh_cn": "恐怖战旗",
+    "name_zh_tw": "恐懼之旗",
+    "skill_id": "DreadBannerReservationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Durability",
+    "name_zh_cn": "耐久度",
+    "name_zh_tw": "耐久",
+    "skill_id": "SupportDurabilityPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Earthquake",
+    "name_zh_cn": "震地",
+    "name_zh_tw": "震地",
+    "skill_id": "EarthquakePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Earthshatter",
+    "name_zh_cn": "尖刺战吼",
+    "name_zh_tw": "碎地重擊",
+    "skill_id": "EarthshatterPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Echoing Cry",
+    "name_zh_cn": "回荡战嚎",
+    "name_zh_tw": "迴響戰吼",
+    "skill_id": "SupportEchoingCryPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Efficiency I",
+    "name_zh_cn": "效能 I",
+    "name_zh_tw": "效率 I",
+    "skill_id": "SupportEfficiencyPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Efficiency II",
+    "name_zh_cn": "效能 II",
+    "name_zh_tw": "效率 II",
+    "skill_id": "SupportEfficiencyPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Einhar's Beastrite",
+    "name_zh_cn": "伊恩哈尔的魔物仪式",
+    "name_zh_tw": "埃哈的野獸儀式",
+    "skill_id": "SupportEinharsBeastritePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Electrocute",
+    "name_zh_cn": "触电",
+    "name_zh_tw": "電刑",
+    "skill_id": "SupportElectrocutePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Electrocuting Arrow",
+    "name_zh_cn": "电殛箭",
+    "name_zh_tw": "電極箭矢",
+    "skill_id": "ElectrocutingArrowPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Electromagnetism",
+    "name_zh_cn": "电磁力场",
+    "name_zh_tw": "磁化電極",
+    "skill_id": "SupportShockingRiftPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Elemental Armament I",
+    "name_zh_cn": "元素军械 I",
+    "name_zh_tw": "元素武裝 I",
+    "skill_id": "SupportElementalArmamentPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Elemental Armament II",
+    "name_zh_cn": "元素军械 II",
+    "name_zh_tw": "元素武裝 II",
+    "skill_id": "SupportElementalArmamentPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Elemental Armament III",
+    "name_zh_cn": "元素军械 III",
+    "name_zh_tw": "元素武裝 III",
+    "skill_id": "SupportElementalArmamentPlayerThree"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Elemental Army",
+    "name_zh_cn": "元素大军",
+    "name_zh_tw": "元素軍隊",
+    "skill_id": "SupportElementalArmyPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Elemental Conflux",
+    "name_zh_cn": "元素汇流",
+    "name_zh_tw": "元素匯流",
+    "skill_id": "ElementalConfluxPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Elemental Discharge",
+    "name_zh_cn": "元素解放",
+    "name_zh_tw": "元素解放",
+    "skill_id": "SupportElementalDischargePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Elemental Expression",
+    "name_zh_cn": "元素表现",
+    "name_zh_tw": "元素表現",
+    "skill_id": "ElementalExpressionTriggeredPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Elemental Focus",
+    "name_zh_cn": "元素集中",
+    "name_zh_tw": "元素專注",
+    "skill_id": "SupportElementalFocusPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Elemental Invocation",
+    "name_zh_cn": "元素祈求",
+    "name_zh_tw": "元素祈願",
+    "skill_id": "MetaElementalInvocationPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Elemental Storm",
+    "name_zh_cn": "元素风暴",
+    "name_zh_tw": "元素風暴",
+    "skill_id": "ElementalStormPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Elemental Sundering",
+    "name_zh_cn": "元素碎裂",
+    "name_zh_tw": "元素崩裂",
+    "skill_id": "ElementalSunderingPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Elemental Surge",
+    "name_zh_cn": "元素涌动",
+    "name_zh_tw": "元素波動",
+    "skill_id": "AmazonTriggerElementalSurgePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Elemental Weakness",
+    "name_zh_cn": "元素要害",
+    "name_zh_tw": "元素要害",
+    "skill_id": "ElementalWeaknessPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Ember Fusillade",
+    "name_zh_cn": "灰烬连射",
+    "name_zh_tw": "餘燼齊射",
+    "skill_id": "EmberFusilladePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Embitter",
+    "name_zh_cn": "苦寒之意",
+    "name_zh_tw": "激怒",
+    "skill_id": "SupportEmbitterPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Emergency Reload",
+    "name_zh_cn": "紧急装填",
+    "name_zh_tw": "緊急裝填",
+    "skill_id": "EmergencyReloadPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Empowered Sparks I",
+    "name_zh_cn": "强化火花 I",
+    "name_zh_tw": "強化電球I",
+    "skill_id": "SupportEmpoweredSparksPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Encase in Jade",
+    "name_zh_cn": "青玉囚笼",
+    "name_zh_tw": "包覆於翠玉中",
+    "skill_id": "EncaseInJadePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Encroaching Ground",
+    "name_zh_cn": "侵蚀地面",
+    "name_zh_tw": "進逼地面",
+    "skill_id": "SupportEncroachingGroundPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Enduring Impact I",
+    "name_zh_cn": "持续冲击 I",
+    "name_zh_tw": "堅忍衝擊 I",
+    "skill_id": "SupportHeavyStunEndurancePlayerOne"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Enduring Impact II",
+    "name_zh_cn": "持续冲击 II",
+    "name_zh_tw": "堅忍衝擊 II",
+    "skill_id": "SupportHeavyStunEndurancePlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Energy Capacitor",
+    "name_zh_cn": "能量电容",
+    "name_zh_tw": "儲能",
+    "skill_id": "SupportEnergyCapacitorPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Energy Retention",
+    "name_zh_cn": "能量保存",
+    "name_zh_tw": "能量保留",
+    "skill_id": "SupportEnergyRetentionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Enervating Nova",
+    "name_zh_cn": "衰颓新星",
+    "name_zh_tw": "超能新星",
+    "skill_id": "EnervatingNovaPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Enfeeble",
+    "name_zh_cn": "衰弱",
+    "name_zh_tw": "衰弱",
+    "skill_id": "EnfeeblePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Enraged Warcry I",
+    "name_zh_cn": "燃怒战吼 I",
+    "name_zh_tw": "激怒戰吼 I",
+    "skill_id": "SupportEnragedWarcryPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Enraged Warcry II",
+    "name_zh_cn": "燃怒战吼 II",
+    "name_zh_tw": "激怒戰吼 II",
+    "skill_id": "SupportEnragedWarcryPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Entangle",
+    "name_zh_cn": "纠缠",
+    "name_zh_tw": "纏繞",
+    "skill_id": "EntanglePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Eonyr's Thunder",
+    "name_zh_cn": "伊奥尼尔的雷霆",
+    "name_zh_tw": "伊歐涅的雷霆",
+    "skill_id": "SupportEonyrsThunderPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Escalating Poison",
+    "name_zh_cn": "毒性加剧",
+    "name_zh_tw": "遞增之毒",
+    "skill_id": "SupportEscalatingPoisonPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Escape Shot",
+    "name_zh_cn": "逃脱射击",
+    "name_zh_tw": "逃脫之矢",
+    "skill_id": "EscapeShotPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Esh's Prowess",
+    "name_zh_cn": "艾许的骁勇",
+    "name_zh_tw": "艾許的威能",
+    "skill_id": "SupportEshsProwess"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Esh's Radiance",
+    "name_zh_cn": "艾许的光辉",
+    "name_zh_tw": "艾許的光芒",
+    "skill_id": "SupportEshsRadiancePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Essence Drain",
+    "name_zh_cn": "精华吸取",
+    "name_zh_tw": "靈魂吸取",
+    "skill_id": "EssenceDrainPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Essence Harvest",
+    "name_zh_cn": "收割精华",
+    "name_zh_tw": "精髓收割",
+    "skill_id": "SupportEssenceHarvestPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Eternal Flame I",
+    "name_zh_cn": "长明烈焰 I",
+    "name_zh_tw": "永恆烈焰 I",
+    "skill_id": "SupportIgniteDurationPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Eternal Flame II",
+    "name_zh_cn": "长明烈焰 II",
+    "name_zh_tw": "永恆烈焰 II",
+    "skill_id": "SupportIgniteDurationPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Eternal Flame III",
+    "name_zh_cn": "长明烈焰 III",
+    "name_zh_tw": "永恆烈焰 III",
+    "skill_id": "SupportIgniteDurationPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Eternal March",
+    "name_zh_cn": "永恒行军",
+    "name_zh_tw": "永恆行軍",
+    "skill_id": "EternalMarchPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Eternal Mark",
+    "name_zh_cn": "永恒印记",
+    "name_zh_tw": "永恆印記",
+    "skill_id": "SupportEternalMarkPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Eternal Rage",
+    "name_zh_cn": "永恒狂怒",
+    "name_zh_tw": "無盡怒火",
+    "skill_id": "EternalRagePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Excise",
+    "name_zh_cn": "净除",
+    "name_zh_tw": "切除",
+    "skill_id": "SupportExcisePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Execrate",
+    "name_zh_cn": "怨恨",
+    "name_zh_tw": "咒怨",
+    "skill_id": "SupportExecratePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Execute I",
+    "name_zh_cn": "处决 I",
+    "name_zh_tw": "處刑 I",
+    "skill_id": "SupportExecutePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Execute II",
+    "name_zh_cn": "处决 II",
+    "name_zh_tw": "處刑 II",
+    "skill_id": "SupportExecutePlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Execute III",
+    "name_zh_cn": "处决 III",
+    "name_zh_tw": "處刑 III",
+    "skill_id": "SupportExecutePlayerThree"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Expand",
+    "name_zh_cn": "扩展",
+    "name_zh_tw": "擴展",
+    "skill_id": "SupportExpandPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Expanse",
+    "name_zh_cn": "开疆",
+    "name_zh_tw": "廣闊區域",
+    "skill_id": "SupportExpansePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Exploit Weakness",
+    "name_zh_cn": "开发要害",
+    "name_zh_tw": "攻其之弱",
+    "skill_id": "SupportExploitWeaknessPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Explosive Concoction",
+    "name_zh_cn": "爆破灵药",
+    "name_zh_tw": "爆裂物",
+    "skill_id": "ExplosiveConcoctionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Explosive Grenade",
+    "name_zh_cn": "高爆榴弹",
+    "name_zh_tw": "爆炸擲彈",
+    "skill_id": "ExplosiveGrenadePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Explosive Shot",
+    "name_zh_cn": "爆炸射击",
+    "name_zh_tw": "爆炸矢",
+    "skill_id": "ExplosiveShotAmmoPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Explosive Spear",
+    "name_zh_cn": "爆破战矛",
+    "name_zh_tw": "爆炸長矛",
+    "skill_id": "ExplosiveSpearPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Explosive Transmutation",
+    "name_zh_cn": "烈性转化",
+    "name_zh_tw": "爆炸轉化",
+    "skill_id": "ExplosiveTransmutationPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Exposing Cry",
+    "name_zh_cn": "洞悉战嚎",
+    "name_zh_tw": "暴露戰吼",
+    "skill_id": "SupportExposingCryPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Exsanguinate",
+    "name_zh_cn": "赤炼魔光",
+    "name_zh_tw": "抽血",
+    "skill_id": "ExsanguinatePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Extraction",
+    "name_zh_cn": "萃取",
+    "name_zh_tw": "提取",
+    "skill_id": "SupportExtractionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Eye of Winter",
+    "name_zh_cn": "凛冬之眼",
+    "name_zh_tw": "凜冬之眼",
+    "skill_id": "EyeOfWinterPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Falling Thunder",
+    "name_zh_cn": "霹雳闪",
+    "name_zh_tw": "崩雷鳴",
+    "skill_id": "FallingThunderPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fan The Flames",
+    "name_zh_cn": "煽风点火",
+    "name_zh_tw": "灼炎扇舞I",
+    "skill_id": "SupportFanTheFlamesPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fan The Flames II",
+    "name_zh_cn": "煽风点火II",
+    "name_zh_tw": "灼炎扇舞II",
+    "skill_id": "SupportFanTheFlamesPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Fangs of Frost",
+    "name_zh_cn": "刺骨寒冰",
+    "name_zh_tw": "刺骨寒冰",
+    "skill_id": "FangsOfFrostPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Feast of Flesh",
+    "name_zh_cn": "血肉盛宴",
+    "name_zh_tw": "血肉盛宴",
+    "skill_id": "FeastOfFleshPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Feeding Frenzy I",
+    "name_zh_cn": "狂噬 I",
+    "name_zh_tw": "豢養狂熱 I",
+    "skill_id": "SupportFeedingFrenzyPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Feeding Frenzy II",
+    "name_zh_cn": "狂噬 II",
+    "name_zh_tw": "豢養狂熱 II",
+    "skill_id": "SupportFeedingFrenzyPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Feral Invocation",
+    "name_zh_cn": "野性召唤",
+    "name_zh_tw": "野性祈求",
+    "skill_id": "MetaFeralInvocationPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Ferocious Roar",
+    "name_zh_cn": "凶蛮咆哮",
+    "name_zh_tw": "兇猛怒吼",
+    "skill_id": "FerociousRoarMetaPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Ferocity",
+    "name_zh_cn": "狂暴",
+    "name_zh_tw": "狂暴",
+    "skill_id": "SupportFerocityPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Fiery Death",
+    "name_zh_cn": "炽灭",
+    "name_zh_tw": "火熱死寂",
+    "skill_id": "SupportFieryDeathPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fire Attunement",
+    "name_zh_cn": "火焰协调",
+    "name_zh_tw": "火焰同調",
+    "skill_id": "SupportAddedFireDamagePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fire Exposure",
+    "name_zh_cn": "火焰曝露",
+    "name_zh_tw": "火焰曝曬",
+    "skill_id": "SupportFireExposurePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Fire Mastery",
+    "name_zh_cn": "火焰专精",
+    "name_zh_tw": "火焰專精",
+    "skill_id": "SupportFireMasteryPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fire Penetration I",
+    "name_zh_cn": "火焰穿透 I",
+    "name_zh_tw": "火焰穿透 I",
+    "skill_id": "SupportFirePenetrationPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fire Penetration II",
+    "name_zh_cn": "火焰穿透 II",
+    "name_zh_tw": "火焰穿透 II",
+    "skill_id": "SupportFirePenetrationPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Fire Spell on Hit",
+    "name_zh_cn": "击中时火焰法术",
+    "name_zh_tw": "擊中時火焰法術",
+    "skill_id": "MetaCastFireSpellOnHitPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Fireball",
+    "name_zh_cn": "火球",
+    "name_zh_tw": "火球",
+    "skill_id": "FireballPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Firebolt",
+    "name_zh_cn": "火焰弹",
+    "name_zh_tw": "火彈",
+    "skill_id": "FireboltPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Firestorm",
+    "name_zh_cn": "烈炎风暴",
+    "name_zh_tw": "烈炎風暴",
+    "skill_id": "FirestormPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Fist Of Kalguur",
+    "name_zh_cn": "卡古兰之拳",
+    "name_zh_tw": "卡爾葛之拳",
+    "skill_id": "SupportFistOfKalguurPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fist of War I",
+    "name_zh_cn": "战争铁拳 I",
+    "name_zh_tw": "拳霸 I",
+    "skill_id": "FistOfWarSupportPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fist of War II",
+    "name_zh_cn": "战争铁拳 II",
+    "name_zh_tw": "拳霸 II",
+    "skill_id": "FistOfWarSupportPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fist of War III",
+    "name_zh_cn": "战争铁拳 III",
+    "name_zh_tw": "拳霸 III",
+    "skill_id": "FistOfWarSupportPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Flame Breath",
+    "name_zh_cn": "龙炎吐息",
+    "name_zh_tw": "火焰吐息",
+    "skill_id": "WyvernFlameBreathPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Flame Pillar",
+    "name_zh_cn": "烈焰之柱",
+    "name_zh_tw": "火炎之柱",
+    "skill_id": "SupportFlamePillarPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Flame Wall",
+    "name_zh_cn": "烈焰之墙",
+    "name_zh_tw": "烈焰之牆",
+    "skill_id": "FlameWallPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Flameblast",
+    "name_zh_cn": "烈焰爆破",
+    "name_zh_tw": "烈焰爆破",
+    "skill_id": "FlameblastPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Flamepierce",
+    "name_zh_cn": "烈焰穿刺",
+    "name_zh_tw": "烈焰穿透",
+    "skill_id": "SupportFlamepiercePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Flash Grenade",
+    "name_zh_cn": "闪光榴弹",
+    "name_zh_tw": "閃光擲彈",
+    "skill_id": "FlashGrenadePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Flicker Strike",
+    "name_zh_cn": "闪现打击",
+    "name_zh_tw": "閃現打擊",
+    "skill_id": "FlickerStrikePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Fluke",
+    "name_zh_cn": "运势",
+    "name_zh_tw": "僥倖",
+    "skill_id": "SupportFlukePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Focused Curse",
+    "name_zh_cn": "聚焦诅咒",
+    "name_zh_tw": "專注詛咒",
+    "skill_id": "SupportFocusedCursePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Font of Blood",
+    "name_zh_cn": "血脉源泉",
+    "name_zh_tw": "鮮血器皿",
+    "skill_id": "SupportBloodFountainPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Font of Mana",
+    "name_zh_cn": "魔力源泉",
+    "name_zh_tw": "魔力器皿",
+    "skill_id": "SupportManaFountainPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Forge Hammer",
+    "name_zh_cn": "锻造之锤",
+    "name_zh_tw": "鍛造之錘",
+    "skill_id": "ForgeHammerPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Fork",
+    "name_zh_cn": "分叉",
+    "name_zh_tw": "分岔",
+    "skill_id": "SupportForkPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Fortifying Cry",
+    "name_zh_cn": "坚韧战吼",
+    "name_zh_tw": "堅韌之吼",
+    "skill_id": "FortifyingCryPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Fortress I",
+    "name_zh_cn": "坚城 I",
+    "name_zh_tw": "堡壘 I",
+    "skill_id": "SupportWallFortressPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Fortress II",
+    "name_zh_cn": "坚城 II",
+    "name_zh_tw": "堡壘 II",
+    "skill_id": "SupportWallFortressPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Fragmentation Rounds",
+    "name_zh_cn": "碎裂弹药",
+    "name_zh_tw": "分裂彈藥",
+    "skill_id": "FragmentationRoundsAmmoPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Fragments Of The Past",
+    "name_zh_cn": "往昔碎片",
+    "name_zh_tw": "往昔碎片",
+    "skill_id": "FragmentsOfThePastPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Freeze",
+    "name_zh_cn": "冻结",
+    "name_zh_tw": "冰凍",
+    "skill_id": "SupportFreezePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Freezefork",
+    "name_zh_cn": "冻结分叉",
+    "name_zh_tw": "冰凍之叉",
+    "skill_id": "SupportFreezeforkPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Freezing Mark",
+    "name_zh_cn": "冰冻印记",
+    "name_zh_tw": "冰凍印記",
+    "skill_id": "FreezingMarkPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Freezing Salvo",
+    "name_zh_cn": "冻结齐射",
+    "name_zh_tw": "凍結齊射",
+    "skill_id": "FreezingSalvoPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Freezing Shards",
+    "name_zh_cn": "急冻碎片",
+    "name_zh_tw": "冰凍裂片",
+    "skill_id": "FreezingShardsPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Frenzied Riposte",
+    "name_zh_cn": "狂怒反击",
+    "name_zh_tw": "狂亂反擊",
+    "skill_id": "SupportFrenziedRipostePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fresh Clip I",
+    "name_zh_cn": "新装箭匣 I",
+    "name_zh_tw": "全新彈夾 I",
+    "skill_id": "SupportFreshClipPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Fresh Clip II",
+    "name_zh_cn": "新装箭匣 II",
+    "name_zh_tw": "全新彈夾 II",
+    "skill_id": "SupportFreshClipPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Frost Bomb",
+    "name_zh_cn": "寒霜爆",
+    "name_zh_tw": "寒霜爆",
+    "skill_id": "FrostBombPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Frost Darts",
+    "name_zh_cn": "冰霜飞镖",
+    "name_zh_tw": "寒霜之鏢",
+    "skill_id": "FrostDartsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Frost Nexus",
+    "name_zh_cn": "封冻枢纽",
+    "name_zh_tw": "冰霜匯聚",
+    "skill_id": "SupportChillingIcePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Frost Wall",
+    "name_zh_cn": "冰墙",
+    "name_zh_tw": "冰牆",
+    "skill_id": "FrostWallPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Frostbolt",
+    "name_zh_cn": "寒冰弹",
+    "name_zh_tw": "寒冰彈",
+    "skill_id": "FrostboltPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Frostfire",
+    "name_zh_cn": "霜火",
+    "name_zh_tw": "霜火",
+    "skill_id": "SupportFrostfirePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Frostflame Nova",
+    "name_zh_cn": "霜焰新星",
+    "name_zh_tw": "霜火新星",
+    "skill_id": "FrostflameNovaPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Frozen Locus",
+    "name_zh_cn": "冰凌座",
+    "name_zh_tw": "寒冰軌跡",
+    "skill_id": "FrozenLocusPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Frozen Spite",
+    "name_zh_cn": "冰冻怨恨",
+    "name_zh_tw": "凍結怨恨",
+    "skill_id": "SupportFrozenSpitePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Fulminating Concoction",
+    "name_zh_cn": "雷鸣灵药",
+    "name_zh_tw": "烈性混合物",
+    "skill_id": "FulminatingConcoctionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Fulmination",
+    "name_zh_cn": "轰鸣烈焰",
+    "name_zh_tw": "劇烈爆發",
+    "skill_id": "FulminationPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Furious Slam",
+    "name_zh_cn": "狂怒猛击",
+    "name_zh_tw": "狂暴重擊",
+    "skill_id": "FuriousSlamPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Fury of the Mountain",
+    "name_zh_cn": "山岳之怒",
+    "name_zh_tw": "山嶺之怒",
+    "skill_id": "BearFuryOfTheMountainPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Future-Past",
+    "name_zh_cn": "未来的过去",
+    "name_zh_tw": "未來昔日",
+    "skill_id": "FuturePastPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Galvanic Field",
+    "name_zh_cn": "电流场",
+    "name_zh_tw": "電光領域",
+    "skill_id": "GalvanicFieldBuffPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Galvanic Shards",
+    "name_zh_cn": "电光散射",
+    "name_zh_tw": "電能碎片",
+    "skill_id": "GalvanicShardsAmmoPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Gambleshot",
+    "name_zh_cn": "投机射击",
+    "name_zh_tw": "博弈射擊",
+    "skill_id": "SupportGambleshotPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Garukhan's Resolve",
+    "name_zh_cn": "格鲁坎的决心",
+    "name_zh_tw": "卡洛翰的決心",
+    "skill_id": "SupportGarukhansResolvePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Gas Arrow",
+    "name_zh_cn": "瓦斯之箭",
+    "name_zh_tw": "毒氣箭矢",
+    "skill_id": "GasArrowPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Gas Grenade",
+    "name_zh_cn": "瓦斯榴弹",
+    "name_zh_tw": "毒氣擲彈",
+    "skill_id": "ToxicGrenadePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Gathering Storm",
+    "name_zh_cn": "聚风雨",
+    "name_zh_tw": "風暴凝聚",
+    "skill_id": "GatheringStormPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Gelid Palm",
+    "name_zh_cn": "寒冰掌",
+    "name_zh_tw": "冰冽掌",
+    "skill_id": "GelidPalmPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Gemini Surge",
+    "name_zh_cn": "双灵涌动",
+    "name_zh_tw": "雙靈波動",
+    "skill_id": "GeminiSurgePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Ghost Dance",
+    "name_zh_cn": "幽灵舞步",
+    "name_zh_tw": "鬼魂之舞",
+    "skill_id": "GhostDancePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Glacial Bolt",
+    "name_zh_cn": "冰川弩箭",
+    "name_zh_tw": "冰川弩箭",
+    "skill_id": "GlacialBoltAmmoPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Glacial Cascade",
+    "name_zh_cn": "冰川之刺",
+    "name_zh_tw": "冰川之刺",
+    "skill_id": "GlacialCascadePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Glacial Lance",
+    "name_zh_cn": "冰川长枪",
+    "name_zh_tw": "冰川之槍",
+    "skill_id": "GlacialLancePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Glacier",
+    "name_zh_cn": "冰川",
+    "name_zh_tw": "冰河",
+    "skill_id": "SupportGlacierPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Gorge",
+    "name_zh_cn": "狼吞虎咽",
+    "name_zh_tw": "峽谷",
+    "skill_id": "SupportGorgePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Grenade",
+    "name_zh_cn": "榴弹",
+    "name_zh_tw": "爆彈投擲",
+    "skill_id": "MeleeGrenadeLauncherPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Grim Feast",
+    "name_zh_cn": "饕餮飨宴",
+    "name_zh_tw": "冷酷之宴",
+    "skill_id": "GrimFeastPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Grim Pillars",
+    "name_zh_cn": "阴森之柱",
+    "name_zh_tw": "恐怖之柱",
+    "skill_id": "GrimPillarsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Guatelitzi's Ablation",
+    "name_zh_cn": "瓜铁雷兹的消融",
+    "name_zh_tw": "瓜特利斯的消融",
+    "skill_id": "SupportGuatelitzisAblationPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Haemocrystals",
+    "name_zh_cn": "赤炼水晶",
+    "name_zh_tw": "血晶",
+    "skill_id": "SupportHaemocrystalsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Hailstorm Rounds",
+    "name_zh_cn": "冰雹弹药",
+    "name_zh_tw": "冰雹彈藥",
+    "skill_id": "HailstormRoundsAmmoPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Hammer of the Gods",
+    "name_zh_cn": "诸天之锤",
+    "name_zh_tw": "眾神之錘",
+    "skill_id": "HammerOfTheGodsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Hand of Chayula",
+    "name_zh_cn": "夏乌拉之手",
+    "name_zh_tw": "夏烏拉之手",
+    "skill_id": "HandOfChayulaPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Harbinger of Madness",
+    "name_zh_cn": "疯魔先驱",
+    "name_zh_tw": "神諭之狂",
+    "skill_id": "HarbingerOfMadnessPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Hardy Totems I",
+    "name_zh_cn": "坚韧图腾 I",
+    "name_zh_tw": "堅韌圖騰 I",
+    "skill_id": "SupportHardyTotemsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Hardy Totems II",
+    "name_zh_cn": "坚韧图腾 II",
+    "name_zh_tw": "堅韌圖騰 II",
+    "skill_id": "SupportHardyTotemsPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Harmonic Remnants I",
+    "name_zh_cn": "和谐残迹 I",
+    "name_zh_tw": "和諧的痕跡 I",
+    "skill_id": "SupportFleetingRemnantsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Harmonic Remnants II",
+    "name_zh_cn": "和谐残迹 II",
+    "name_zh_tw": "和諧的痕跡 II",
+    "skill_id": "SupportFleetingRemnantsPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Hayoxi's Fulmination",
+    "name_zh_cn": "海幽夏的诛罚",
+    "name_zh_tw": "荷霖蔡的轟鳴",
+    "skill_id": "SupportHayoxisBindingPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Healing Runes",
+    "name_zh_cn": "治疗符文",
+    "name_zh_tw": "治癒符文",
+    "skill_id": "SupportHealingRunesPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Heart of Ice",
+    "name_zh_cn": "冰雪之心",
+    "name_zh_tw": "冰雪之心",
+    "skill_id": "HeartOfIcePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Heavy Swing",
+    "name_zh_cn": "沉重挥舞",
+    "name_zh_tw": "沉重揮擊",
+    "skill_id": "SupportMeleePhysicalDamagePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Heft",
+    "name_zh_cn": "势大力沉",
+    "name_zh_tw": "分量",
+    "skill_id": "SupportHeftPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Heightened Accuracy I",
+    "name_zh_cn": "精准增强 I",
+    "name_zh_tw": "強化命中 I",
+    "skill_id": "SupportHeightenedAccuracyPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Heightened Accuracy II",
+    "name_zh_cn": "精准增强 II",
+    "name_zh_tw": "強化命中 II",
+    "skill_id": "SupportHeightenedAccuracyPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Heightened Charges",
+    "name_zh_cn": "强化能量球",
+    "name_zh_tw": "能量球增強",
+    "skill_id": "SupportHeightenedChargesPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Heightened Curse",
+    "name_zh_cn": "强效诅咒",
+    "name_zh_tw": "增強詛咒",
+    "skill_id": "SupportCurseEffectPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Helbrym's Hide",
+    "name_zh_cn": "赫尔布林的隐瞒",
+    "name_zh_tw": "海爾賓姆的躲藏",
+    "skill_id": "SupportHelbrymsHidePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Her Declaration",
+    "name_zh_cn": "她的宣言",
+    "name_zh_tw": "她的宣告",
+    "skill_id": "SupportHerDeclarationPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Herald of Blood",
+    "name_zh_cn": "赤血之捷",
+    "name_zh_tw": "鮮血之捷",
+    "skill_id": "HeraldOfBloodPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Herald of Plague",
+    "name_zh_cn": "荒芜之捷",
+    "name_zh_tw": "瘟疫之捷",
+    "skill_id": "HeraldOfPlaguePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Herald of the Royal Queen",
+    "name_zh_cn": "皇后之捷",
+    "name_zh_tw": "女皇之捷",
+    "skill_id": "UniqueAtziriHeraldPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Herbalism I",
+    "name_zh_cn": "药草学 I",
+    "name_zh_tw": "藥草學 I",
+    "skill_id": "SupportHerbalismPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Herbalism II",
+    "name_zh_cn": "药草学 II",
+    "name_zh_tw": "藥草學 II",
+    "skill_id": "SupportHerbalismPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Hex Bloom",
+    "name_zh_cn": "魔蛊绽放",
+    "name_zh_tw": "咒術綻放",
+    "skill_id": "SupportHexBloomPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Hexblast",
+    "name_zh_cn": "魔蛊爆炸",
+    "name_zh_tw": "咒術枯萎",
+    "skill_id": "HexblastPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "High Velocity Rounds",
+    "name_zh_cn": "高速弹药",
+    "name_zh_tw": "高速彈藥",
+    "skill_id": "HighVelocityRoundsAmmoPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "His Foul Emergence",
+    "name_zh_cn": "邪恶涌现",
+    "name_zh_tw": "他的惡臭降臨",
+    "skill_id": "HisFoulEmergencePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "His Scattering Calamity",
+    "name_zh_cn": "撒播血祸",
+    "name_zh_tw": "他的散布災禍",
+    "skill_id": "ScatteringCalamityPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "His Vile Intrusion",
+    "name_zh_cn": "恶念侵染",
+    "name_zh_tw": "他的惡毒入侵",
+    "skill_id": "VileDisruptionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "His Winnowing Flame",
+    "name_zh_cn": "涤荡烈焰",
+    "name_zh_tw": "他的飛舞烈焰",
+    "skill_id": "HisWinnowingFlamePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Hit and Run",
+    "name_zh_cn": "连打带跑",
+    "name_zh_tw": "打帶跑",
+    "skill_id": "SupportHitAndRunPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Hollow Focus",
+    "name_zh_cn": "虚空钟灵",
+    "name_zh_tw": "空無專注",
+    "skill_id": "HollowFocusPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Hollow Form",
+    "name_zh_cn": "虚空魅影",
+    "name_zh_tw": "空無型態",
+    "skill_id": "MetaHollowFormPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Hollow Resonance",
+    "name_zh_cn": "虚空和鸣",
+    "name_zh_tw": "空無共鳴",
+    "skill_id": "HollowResonancePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Hollow Shell",
+    "name_zh_cn": "虚空之壳",
+    "name_zh_tw": "空無披甲",
+    "skill_id": "HollowShellPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Holy Descent",
+    "name_zh_cn": "神圣降临",
+    "name_zh_tw": "神聖血統",
+    "skill_id": "SupportHolyDescentPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Hourglass",
+    "name_zh_cn": "时之沙漏",
+    "name_zh_tw": "沙漏",
+    "skill_id": "SupportHourglassPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Hulking Minions",
+    "name_zh_cn": "魁梧仆从",
+    "name_zh_tw": "巨大召喚物",
+    "skill_id": "SupportHulkingMinionsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Ice Bite I",
+    "name_zh_cn": "霜咬 I",
+    "name_zh_tw": "霜咬 I",
+    "skill_id": "SupportIceBitePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Ice Bite II",
+    "name_zh_cn": "霜咬 II",
+    "name_zh_tw": "霜咬 II",
+    "skill_id": "SupportIceBitePlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Ice Fragments",
+    "name_zh_cn": "冰霜碎片",
+    "name_zh_tw": "寒冰碎片",
+    "skill_id": "IceFragmentsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Ice Nova",
+    "name_zh_cn": "冰霜新星",
+    "name_zh_tw": "冰霜新星",
+    "skill_id": "IceNovaPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Ice Shards",
+    "name_zh_cn": "冰屑",
+    "name_zh_tw": "寒冰碎片",
+    "skill_id": "IceShardsAmmoPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Ice Shot",
+    "name_zh_cn": "冰霜射击",
+    "name_zh_tw": "冰霜射擊",
+    "skill_id": "IceShotPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Ice Strike",
+    "name_zh_cn": "幽寒打",
+    "name_zh_tw": "霜星連擊",
+    "skill_id": "IceStrikePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Ice-Tipped Arrows",
+    "name_zh_cn": "冰尖箭矢",
+    "name_zh_tw": "冰鏃箭矢",
+    "skill_id": "IceTippedArrowsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Icestorm",
+    "name_zh_cn": "冰风暴",
+    "name_zh_tw": "冰風暴",
+    "skill_id": "IcestormPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Icicle",
+    "name_zh_cn": "冰刺",
+    "name_zh_tw": "冰柱",
+    "skill_id": "SupportIciclePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Ignite I",
+    "name_zh_cn": "点燃 I",
+    "name_zh_tw": "點燃 I",
+    "skill_id": "SupportIgnitePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Ignite II",
+    "name_zh_cn": "点燃 II",
+    "name_zh_tw": "點燃 II",
+    "skill_id": "SupportIgnitePlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Ignite III",
+    "name_zh_cn": "点燃 III",
+    "name_zh_tw": "點燃 III",
+    "skill_id": "SupportIgnitePlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Immolate",
+    "name_zh_cn": "献祭",
+    "name_zh_tw": "犧牲",
+    "skill_id": "SupportImmolatePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Impact Shockwave",
+    "name_zh_cn": "冲击震波",
+    "name_zh_tw": "衝擊震波",
+    "skill_id": "ImpactShockwaveSupportPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Impale",
+    "name_zh_cn": "穿刺",
+    "name_zh_tw": "穿刺",
+    "skill_id": "SupportImpalePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Impending Doom",
+    "name_zh_cn": "末日将至",
+    "name_zh_tw": "末日厄運",
+    "skill_id": "ViciousHexSupportPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Impurity",
+    "name_zh_cn": "不净",
+    "name_zh_tw": "不淨",
+    "skill_id": "ImpurityPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Incendiary Shot",
+    "name_zh_cn": "燃烧射击",
+    "name_zh_tw": "烈焰射擊",
+    "skill_id": "IncendiaryShotAmmoPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Incinerate",
+    "name_zh_cn": "烧毁",
+    "name_zh_tw": "燒毀",
+    "skill_id": "IncineratePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Incision",
+    "name_zh_cn": "创口",
+    "name_zh_tw": "切割",
+    "skill_id": "SupportIncisionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Inevitable Agony",
+    "name_zh_cn": "命定苦痛",
+    "name_zh_tw": "命定苦痛",
+    "skill_id": "InevitableAgonyPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Inexorable Critical I",
+    "name_zh_cn": "命定绝杀 I",
+    "name_zh_tw": "無情暴擊 I",
+    "skill_id": "SupportInevitableCriticalsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Inexorable Critical II",
+    "name_zh_cn": "命定绝杀 II",
+    "name_zh_tw": "無情暴擊 II",
+    "skill_id": "SupportInevitableCriticalsPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Infernal Cry",
+    "name_zh_cn": "炽焰战吼",
+    "name_zh_tw": "煉獄戰吼",
+    "skill_id": "InfernalCryPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Infernal Legion I",
+    "name_zh_cn": "炎军 I",
+    "name_zh_tw": "煉獄軍團 I",
+    "skill_id": "SupportInfernalLegionPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Infernal Legion II",
+    "name_zh_cn": "炎军 II",
+    "name_zh_tw": "煉獄軍團 II",
+    "skill_id": "SupportInfernalLegionPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Infernal Legion III",
+    "name_zh_cn": "炎军 III",
+    "name_zh_tw": "煉獄軍團 III",
+    "skill_id": "SupportInfernalLegionPlayerThree"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Inhibitor",
+    "name_zh_cn": "抑制器",
+    "name_zh_tw": "抑制劑",
+    "skill_id": "SupportChargeInhibitionPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Innervate",
+    "name_zh_cn": "闪电支配",
+    "name_zh_tw": "亢奮",
+    "skill_id": "SupportInnervatePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Intense Agony",
+    "name_zh_cn": "剧烈痛苦",
+    "name_zh_tw": "劇烈苦痛",
+    "skill_id": "SupportIntenseAgonyPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Into the Breach",
+    "name_zh_cn": "投身裂隙",
+    "name_zh_tw": "遁入裂痕",
+    "skill_id": "IntoTheBreachPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Iron Ward",
+    "name_zh_cn": "钢铁看守",
+    "name_zh_tw": "鋼鐵守護",
+    "skill_id": "IronWardPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Ixchel's Torment",
+    "name_zh_cn": "伊克切尔的折磨",
+    "name_zh_tw": "薩雷許的折磨",
+    "skill_id": "SupportFlukePlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Jagged Ground I",
+    "name_zh_cn": "崎岖之地 I",
+    "name_zh_tw": "碎裂地面 I",
+    "skill_id": "SupportJaggedGroundPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Jagged Ground II",
+    "name_zh_cn": "崎岖之地 II",
+    "name_zh_tw": "碎裂地面 II",
+    "skill_id": "SupportJaggedGroundPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Kalisa's Crescendo",
+    "name_zh_cn": "卡莉莎的强音",
+    "name_zh_tw": "卡莉莎的漸強",
+    "skill_id": "SupportKalisasCrescendoPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Kaom's Madness",
+    "name_zh_cn": "冈姆的疯狂",
+    "name_zh_tw": "岡姆的癲狂",
+    "skill_id": "SupportKaomsMadnessPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Kelari's Malediction",
+    "name_zh_cn": "凯拉里之诅咒",
+    "name_zh_tw": "克拉里的惡言",
+    "skill_id": "CorpseBeetlesPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Kelari, the Tainted Sands",
+    "name_zh_cn": "凯拉里，污秽沙暴",
+    "name_zh_tw": "黯染飛砂．克拉里",
+    "skill_id": "SummonSandDjinnPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Khatal's Rejuvenation",
+    "name_zh_cn": "卡哈塔的复苏",
+    "name_zh_tw": "卡塔爾的恢復",
+    "skill_id": "SupportKhatalsRejuvenationPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Killing Palm",
+    "name_zh_cn": "终结掌",
+    "name_zh_tw": "摧命之掌",
+    "skill_id": "KillingPalmPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Knockback",
+    "name_zh_cn": "击退",
+    "name_zh_tw": "擊退",
+    "skill_id": "SupportKnockbackPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Kulemak's Dominion",
+    "name_zh_cn": "库勒马克的统治",
+    "name_zh_tw": "骷髏馬克的支配",
+    "skill_id": "SupportKulemaksDominionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Kurgal's Leash",
+    "name_zh_cn": "古加尔的缰绳",
+    "name_zh_tw": "柯戈的繩索",
+    "skill_id": "SupportKurgalsLeashPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Last Gasp",
+    "name_zh_cn": "亡命之息",
+    "name_zh_tw": "臨終恐息",
+    "skill_id": "SupportLastGaspPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Lasting Ground",
+    "name_zh_cn": "持续地面",
+    "name_zh_tw": "持續性地面",
+    "skill_id": "SupportLastingGroundPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Lasting Shock",
+    "name_zh_cn": "持久感电",
+    "name_zh_tw": "持續感電",
+    "skill_id": "SupportLastingShockPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Leap Slam",
+    "name_zh_cn": "跃击",
+    "name_zh_tw": "躍擊",
+    "skill_id": "LeapSlamPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Leylines",
+    "name_zh_cn": "地脉",
+    "name_zh_tw": "地脈",
+    "skill_id": "LeylinesPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Life Bounty",
+    "name_zh_cn": "生命丰沛",
+    "name_zh_tw": "生命恩惠",
+    "skill_id": "SupportLifeFlaskPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Life Drain",
+    "name_zh_cn": "生命榨取",
+    "name_zh_tw": "生命吸取",
+    "skill_id": "SupportLifeOnCullPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Life Leech I",
+    "name_zh_cn": "生命偷取 I",
+    "name_zh_tw": "生命偷取 I",
+    "skill_id": "SupportLifeLeechPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Life Leech II",
+    "name_zh_cn": "生命偷取 II",
+    "name_zh_tw": "生命偷取 II",
+    "skill_id": "SupportLifeLeechPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Life Leech III",
+    "name_zh_cn": "生命偷取 III",
+    "name_zh_tw": "生命偷取 III",
+    "skill_id": "SupportLifeLeechPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Life Remnants",
+    "name_zh_cn": "生命残片",
+    "name_zh_tw": "生命痕跡",
+    "skill_id": "LifeRemnantsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Lifetap",
+    "name_zh_cn": "赤炼",
+    "name_zh_tw": "活栓",
+    "skill_id": "SupportBloodMagicPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Lightning Arrow",
+    "name_zh_cn": "闪电箭矢",
+    "name_zh_tw": "閃電箭矢",
+    "skill_id": "LightningArrowPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Lightning Attunement",
+    "name_zh_cn": "闪电协调",
+    "name_zh_tw": "閃電同調",
+    "skill_id": "SupportAddedLightningDamagePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Lightning Bolt",
+    "name_zh_cn": "闪电",
+    "name_zh_tw": "雷彈",
+    "skill_id": "LightningBoltPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Lightning Conduit",
+    "name_zh_cn": "闪电通道",
+    "name_zh_tw": "導雷",
+    "skill_id": "LightningConduitPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Lightning Exposure",
+    "name_zh_cn": "闪电曝露",
+    "name_zh_tw": "閃電曝曬",
+    "skill_id": "SupportLightningExposurePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Lightning Mastery",
+    "name_zh_cn": "闪电专精",
+    "name_zh_tw": "閃電專精",
+    "skill_id": "SupportLightningMasteryPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Lightning Penetration",
+    "name_zh_cn": "闪电穿透",
+    "name_zh_tw": "閃電穿透",
+    "skill_id": "SupportLightningPenetrationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Lightning Rod",
+    "name_zh_cn": "引雷针",
+    "name_zh_tw": "雷霆之杖",
+    "skill_id": "LightningRodPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Lightning Spear",
+    "name_zh_cn": "闪电战矛",
+    "name_zh_tw": "閃電長矛",
+    "skill_id": "LightningSpearPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Lightning Warp",
+    "name_zh_cn": "闪电传送",
+    "name_zh_tw": "閃電傳送",
+    "skill_id": "LightningWarpPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Lingering Illusion",
+    "name_zh_cn": "徘徊幻影",
+    "name_zh_tw": "殘留幻象",
+    "skill_id": "LingeringIllusionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Living Bomb",
+    "name_zh_cn": "活动炸弹",
+    "name_zh_tw": "活體炸彈",
+    "skill_id": "LivingBombPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Living Lightning",
+    "name_zh_cn": "活体闪电",
+    "name_zh_tw": "活躍閃電",
+    "skill_id": "SupportLivingLightningPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Living Lightning II",
+    "name_zh_cn": "活体闪电 II",
+    "name_zh_tw": "活躍閃電 II",
+    "skill_id": "SupportLivingLightningPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Lockdown",
+    "name_zh_cn": "封锁",
+    "name_zh_tw": "封鎖",
+    "skill_id": "SupportLockdownPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Long Fuse I",
+    "name_zh_cn": "加长引线 I",
+    "name_zh_tw": "長引線 I",
+    "skill_id": "SupportLongFusePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Long Fuse II",
+    "name_zh_cn": "加长引线 II",
+    "name_zh_tw": "長引線 II",
+    "skill_id": "SupportLongFusePlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Longshot I",
+    "name_zh_cn": "远射 I",
+    "name_zh_tw": "遠程射擊 I",
+    "skill_id": "SupportFarCombatPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Longshot II",
+    "name_zh_cn": "远射 II",
+    "name_zh_tw": "遠程射擊 II",
+    "skill_id": "SupportFarCombatPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Loyalty",
+    "name_zh_cn": "忠诚",
+    "name_zh_tw": "忠誠",
+    "skill_id": "SupportLoyaltyPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Lunar Assault",
+    "name_zh_cn": "月痕突袭",
+    "name_zh_tw": "月光突襲",
+    "skill_id": "LunarAssaultPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Lunar Blessing",
+    "name_zh_cn": "月神赐福",
+    "name_zh_tw": "月光賜福",
+    "skill_id": "WolfLunarBlessingPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Mace Strike",
+    "name_zh_cn": "锤打击",
+    "name_zh_tw": "錘之打擊",
+    "skill_id": "MeleeMaceMacePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Magma Barrier",
+    "name_zh_cn": "岩浆屏障",
+    "name_zh_tw": "熔岩屏障",
+    "skill_id": "MagmaBarrierPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Magnetic Remnants",
+    "name_zh_cn": "磁化残片",
+    "name_zh_tw": "磁性痕跡",
+    "skill_id": "SupportMagneticRemnantsPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Magnetic Salvo",
+    "name_zh_cn": "磁性齐射",
+    "name_zh_tw": "電磁齊射",
+    "skill_id": "MagneticSalvoPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Magnified Area I",
+    "name_zh_cn": "范围扩大 I",
+    "name_zh_tw": "增幅光環 I",
+    "skill_id": "SupportMagnifiedAreaPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Magnified Area II",
+    "name_zh_cn": "范围扩大 II",
+    "name_zh_tw": "增幅光環 II",
+    "skill_id": "SupportMagnifiedAreaPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Maim",
+    "name_zh_cn": "瘫痪",
+    "name_zh_tw": "癱瘓",
+    "skill_id": "SupportMaimPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Malady",
+    "name_zh_cn": "错乱病症",
+    "name_zh_tw": "疾病",
+    "skill_id": "SupportMaladyPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Malice",
+    "name_zh_cn": "怨毒",
+    "name_zh_tw": "絕滅恨惡",
+    "skill_id": "MalicePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Mana Bounty",
+    "name_zh_cn": "魔力丰沛",
+    "name_zh_tw": "魔力恩惠",
+    "skill_id": "SupportManaFlaskPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Mana Drain",
+    "name_zh_cn": "魔力吸取",
+    "name_zh_tw": "魔力吸取",
+    "skill_id": "ManaDrainPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Mana Flare",
+    "name_zh_cn": "魔力耀斑",
+    "name_zh_tw": "魔力閃焰",
+    "skill_id": "SupportManaFlarePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Mana Leech",
+    "name_zh_cn": "魔力偷取",
+    "name_zh_tw": "魔力偷取",
+    "skill_id": "SupportManaLeechPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Mana Remnants",
+    "name_zh_cn": "魔力残片",
+    "name_zh_tw": "魔力痕跡",
+    "skill_id": "ManaRemnantsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Mana Tempest",
+    "name_zh_cn": "魔力风暴",
+    "name_zh_tw": "魔力暴風",
+    "skill_id": "ManaTempestPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Manifest Weapon",
+    "name_zh_cn": "显化武器",
+    "name_zh_tw": "幻化武器",
+    "skill_id": "ManifestWeaponPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Mantra of Destruction",
+    "name_zh_cn": "毁灭之兆",
+    "name_zh_tw": "毀滅神咒",
+    "skill_id": "MantraOfDestructionPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Mark for Death",
+    "name_zh_cn": "死亡印记",
+    "name_zh_tw": "死亡標記",
+    "skill_id": "SupportMarkForDeathPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Mark for Death II",
+    "name_zh_cn": "死亡印记 II",
+    "name_zh_tw": "死亡標記 II",
+    "skill_id": "SupportMarkForDeathPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Mark of Siphoning",
+    "name_zh_cn": "虹吸印记",
+    "name_zh_tw": "汲取印記",
+    "skill_id": "SupportMarkOfSiphoningPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Mark of Siphoning II",
+    "name_zh_cn": "虹吸印记II",
+    "name_zh_tw": "汲取印記 II",
+    "skill_id": "SupportMarkOfSiphoningPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Maul",
+    "name_zh_cn": "重殴",
+    "name_zh_tw": "爪擊",
+    "skill_id": "BearMaulPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Meat Shield I",
+    "name_zh_cn": "肉盾 I",
+    "name_zh_tw": "肉盾 I",
+    "skill_id": "SupportMeatShieldPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Meat Shield II",
+    "name_zh_cn": "肉盾 II",
+    "name_zh_tw": "肉盾 II",
+    "skill_id": "SupportMeatShieldPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Meditate",
+    "name_zh_cn": "凝神思",
+    "name_zh_tw": "冥想",
+    "skill_id": "MeditatePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Medved's Felling",
+    "name_zh_cn": "梅德维德的砍伐",
+    "name_zh_tw": "梅德偉的殞落",
+    "skill_id": "SupportMedvedsFelling"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemBlink",
+    "name_zh_cn": "闪现",
+    "name_zh_tw": "閃現",
+    "skill_id": "BlinkReservationPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemPlayerDefault1HMace",
+    "name_zh_cn": "锤打击",
+    "name_zh_tw": "錘之打擊",
+    "skill_id": "Melee1HMacePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemPlayerDefault2HMace",
+    "name_zh_cn": "锤打击",
+    "name_zh_tw": "錘之打擊",
+    "skill_id": "Melee2HMacePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemPlayerDefaultSpear",
+    "name_zh_cn": "战矛突刺",
+    "name_zh_tw": "長矛刺擊",
+    "skill_id": "MeleeSpearPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemUniqueBreachLightningBolt",
+    "name_zh_cn": "闪电",
+    "name_zh_tw": "雷彈",
+    "skill_id": "UniqueBreachLightningBoltPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Metadata/Items/Gem/SkillGemWitheringPresence",
+    "name_zh_cn": "凋零姿态",
+    "name_zh_tw": "凋零光環",
+    "skill_id": "WitheringPresencePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemCorpseCloud",
+    "name_zh_cn": "降解",
+    "name_zh_tw": "分解",
+    "skill_id": "CorpseCloudPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemHeraldOfAsh",
+    "name_zh_cn": "灰烬之捷",
+    "name_zh_tw": "灰燼之捷",
+    "skill_id": "HeraldOfAshPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemHeraldOfIce",
+    "name_zh_cn": "寒冰之捷",
+    "name_zh_tw": "冰霜之捷",
+    "skill_id": "HeraldOfIcePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemHeraldOfThunder",
+    "name_zh_cn": "闪电之捷",
+    "name_zh_tw": "閃電之捷",
+    "skill_id": "HeraldOfThunderPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Metadata/Items/Gems/SkillGemSkeletalSniper",
+    "name_zh_cn": "魔侍神射手",
+    "name_zh_tw": "骷髏狙擊手",
+    "skill_id": "SummonSkeletalSnipersPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Metadata/Items/Gems/SupportGemUnleash",
+    "name_zh_cn": "释出",
+    "name_zh_tw": "釋放",
+    "skill_id": "SupportUnleashPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Midnight Zenith",
+    "name_zh_cn": "午夜天顶",
+    "name_zh_tw": "午夜天頂",
+    "skill_id": "MidnightStarPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Minion Instability",
+    "name_zh_cn": "复仇之灵",
+    "name_zh_tw": "復仇之靈",
+    "skill_id": "SupportMinionInstabilityPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Minion Mastery",
+    "name_zh_cn": "召唤生物专精",
+    "name_zh_tw": "召喚物專精",
+    "skill_id": "SupportMinionMasteryPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Minion Pact I",
+    "name_zh_cn": "召唤契约 I",
+    "name_zh_tw": "召喚物契約 I",
+    "skill_id": "SupportMinionPactPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Minion Pact II",
+    "name_zh_cn": "召唤契约 II",
+    "name_zh_tw": "召喚物契約 II",
+    "skill_id": "SupportMinionPactPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Minion Splash I",
+    "name_zh_cn": "召唤生物溅射伤害 I",
+    "name_zh_tw": "召喚物擴散I",
+    "skill_id": "SupportMinionMeleeSplashPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Minion Splash II",
+    "name_zh_cn": "召唤生物溅射伤害 II",
+    "name_zh_tw": "召喚物擴散II",
+    "skill_id": "SupportMinionMeleeSplashPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Mirage Archer",
+    "name_zh_cn": "幻影射手",
+    "name_zh_tw": "幻影射手",
+    "skill_id": "MetaMirageArcherPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Mirage Deadeye",
+    "name_zh_cn": "蜃影神射",
+    "name_zh_tw": "幻影銳眼",
+    "skill_id": "MetaMirageDeadeyePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Mirror of Refraction",
+    "name_zh_cn": "折射之镜",
+    "name_zh_tw": "鏡面折射",
+    "skill_id": "MirrorOfRefractionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Mist Raven",
+    "name_zh_cn": "雾鸦",
+    "name_zh_tw": "迷霧渡鴉",
+    "skill_id": "SummonMistRavenPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Mobility",
+    "name_zh_cn": "机动",
+    "name_zh_tw": "機動性",
+    "skill_id": "SupportMobilityPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Molten Blast",
+    "name_zh_cn": "熔岩爆裂",
+    "name_zh_tw": "熔火爆破",
+    "skill_id": "MoltenBlastPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Molten Crash",
+    "name_zh_cn": "熔岩冲击",
+    "name_zh_tw": "熔岩破滅",
+    "skill_id": "MoltenCrashPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Molten Shower",
+    "name_zh_cn": "熔岩骤雨",
+    "name_zh_tw": "熔火噴濺",
+    "skill_id": "TriggeredMoltenShowerPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Moment of Vulnerability",
+    "name_zh_cn": "脆弱瞬间",
+    "name_zh_tw": "可趁之刻",
+    "skill_id": "MomentOfVulnerabilityPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Momentum",
+    "name_zh_cn": "动量",
+    "name_zh_tw": "氣勢",
+    "skill_id": "SupportMomentumPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Morgana's Tempest",
+    "name_zh_cn": "莫甘娜的暴风",
+    "name_zh_tw": "魔甘娜的風暴",
+    "skill_id": "SupportMorganasTempestPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Mortar Cannon",
+    "name_zh_cn": "迫击大炮",
+    "name_zh_tw": "迫擊砲",
+    "skill_id": "MetaMortarCannonPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Multishot I",
+    "name_zh_cn": "多重射击 I",
+    "name_zh_tw": "多重射擊 I",
+    "skill_id": "SupportMultishotPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Multishot II",
+    "name_zh_cn": "多重射击 II",
+    "name_zh_tw": "多重射擊 II",
+    "skill_id": "SupportMultishotPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Murderous Intent",
+    "name_zh_cn": "坚韧磨砺",
+    "name_zh_tw": "殺人意圖",
+    "skill_id": "SupportEmpoweredCullPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Muster",
+    "name_zh_cn": "海纳百川",
+    "name_zh_tw": "召集",
+    "skill_id": "SupportMusterPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Mysticism I",
+    "name_zh_cn": "灵秘 I",
+    "name_zh_tw": "秘術 I",
+    "skill_id": "SupportMysticismPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Mysticism II",
+    "name_zh_cn": "灵秘 II",
+    "name_zh_tw": "秘術 II",
+    "skill_id": "SupportMysticismPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Mórrigan's Insight",
+    "name_zh_cn": "莫丽根的洞察",
+    "name_zh_tw": "莫里根的洞察",
+    "skill_id": "SupportMorrigansInsight"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Navira, the Last Mirage",
+    "name_zh_cn": "纳薇拉，终末幻影",
+    "name_zh_tw": "最終幻象．納維拉",
+    "skill_id": "SummonWaterDjinnPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Neural Overload",
+    "name_zh_cn": "神经超载",
+    "name_zh_tw": "神經超載",
+    "skill_id": "SupportNeuralOverloadPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Nimble Reload",
+    "name_zh_cn": "敏捷装填",
+    "name_zh_tw": "靈活裝填",
+    "skill_id": "SupportNimbleReloadPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Nova Projectiles I",
+    "name_zh_cn": "新星投射物 I",
+    "name_zh_tw": "新星投射物I",
+    "skill_id": "SupportNovaProjectilesPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Nova Projectiles II",
+    "name_zh_cn": "新星投射物 II",
+    "name_zh_tw": "新星投射物II",
+    "skill_id": "SupportNovaProjectilesTwoPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Oil Barrage",
+    "name_zh_cn": "黏油炮弹",
+    "name_zh_tw": "黏油轟擊",
+    "skill_id": "OilBarragePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Oil Grenade",
+    "name_zh_cn": "黏油榴弹",
+    "name_zh_tw": "燃油擲彈",
+    "skill_id": "OilGrenadePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Oisín's Oath",
+    "name_zh_cn": "奥辛之誓",
+    "name_zh_tw": "歐辛的誓言",
+    "skill_id": "SupportOisinsOathPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Olroth's Conviction",
+    "name_zh_cn": "欧罗什的信念",
+    "name_zh_tw": "奧爾羅斯的信念",
+    "skill_id": "SupportOlrothsConvictionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Olroth's Hubris",
+    "name_zh_cn": "欧罗什的傲慢",
+    "name_zh_tw": "奧爾羅斯的傲慢",
+    "skill_id": "SupportOlrothsHubrisPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Opening Move",
+    "name_zh_cn": "起手式",
+    "name_zh_tw": "先聲奪人",
+    "skill_id": "SupportOpeningMovePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Orb of Storms",
+    "name_zh_cn": "风暴漩涡",
+    "name_zh_tw": "風暴漩渦",
+    "skill_id": "OrbOfStormsPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Overabundance I",
+    "name_zh_cn": "冗余 I",
+    "name_zh_tw": "過剩 I",
+    "skill_id": "SupportIncreaseLimitPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Overabundance II",
+    "name_zh_cn": "冗余 II",
+    "name_zh_tw": "過剩 II",
+    "skill_id": "SupportIncreaseLimitPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Overcharge",
+    "name_zh_cn": "过载",
+    "name_zh_tw": "強化聚能",
+    "skill_id": "SupportOverchargePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Overextend",
+    "name_zh_cn": "竭力痛击",
+    "name_zh_tw": "過分擴張",
+    "skill_id": "SupportOverextendPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Overreach",
+    "name_zh_cn": "过度延伸",
+    "name_zh_tw": "無遠弗屆",
+    "skill_id": "SupportOverreachPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Overwhelming Presence",
+    "name_zh_cn": "压迫气场",
+    "name_zh_tw": "壓倒性的存在",
+    "skill_id": "OverwhelmingPresencePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Pain Offering",
+    "name_zh_cn": "苦痛奉献",
+    "name_zh_tw": "劇痛獻祭",
+    "skill_id": "PainOfferingPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Paquate's Pact",
+    "name_zh_cn": "帕夸特的契约",
+    "name_zh_tw": "帕科特的協議",
+    "skill_id": "SupportCorruptingCryPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Parry",
+    "name_zh_cn": "招架",
+    "name_zh_tw": "招架",
+    "skill_id": "ParryPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Payload",
+    "name_zh_cn": "子母弹",
+    "name_zh_tw": "承載",
+    "skill_id": "SupportPayloadPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Perfect Strike",
+    "name_zh_cn": "完美一击",
+    "name_zh_tw": "完美打擊",
+    "skill_id": "PerfectStrikePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Perfected Endurance",
+    "name_zh_cn": "完美耐力",
+    "name_zh_tw": "絕對堅毅",
+    "skill_id": "SupportPerfectEndurancePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Perfection",
+    "name_zh_cn": "完美",
+    "name_zh_tw": "完美",
+    "skill_id": "SupportPerfectionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Permafrost Bolts",
+    "name_zh_cn": "永冻弩箭",
+    "name_zh_tw": "永凍弩箭",
+    "skill_id": "PermafrostBoltsAmmoPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Perpetual Charge",
+    "name_zh_cn": "永续充能",
+    "name_zh_tw": "永恆充能",
+    "skill_id": "SupportPerpetualChargePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Persistent Ground I",
+    "name_zh_cn": "持久地面 I",
+    "name_zh_tw": "持續地面 I",
+    "skill_id": "SupportPersistentGroundPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Persistent Ground II",
+    "name_zh_cn": "持久地面 II",
+    "name_zh_tw": "持續地面 II",
+    "skill_id": "SupportPersistentGroundPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Persistent Ground III",
+    "name_zh_cn": "持久地面 III",
+    "name_zh_tw": "持續地面 III",
+    "skill_id": "SupportPersistentGroundPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Phantasmal Arrow",
+    "name_zh_cn": "幻灵箭",
+    "name_zh_tw": "幻影箭矢",
+    "skill_id": "PhantasmalArrowPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Physical Mastery",
+    "name_zh_cn": "物理专精",
+    "name_zh_tw": "物理專精",
+    "skill_id": "SupportPhysicalMasteryPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pierce I",
+    "name_zh_cn": "穿透 I",
+    "name_zh_tw": "穿透 I",
+    "skill_id": "SupportPiercePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pierce II",
+    "name_zh_cn": "穿透 II",
+    "name_zh_tw": "穿透 II",
+    "skill_id": "SupportPiercePlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pierce III",
+    "name_zh_cn": "穿透 III",
+    "name_zh_tw": "穿透 III",
+    "skill_id": "SupportPiercePlayerThree"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pin I",
+    "name_zh_cn": "定身 I",
+    "name_zh_tw": "釘身 I",
+    "skill_id": "SupportPinPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pin II",
+    "name_zh_cn": "定身 II",
+    "name_zh_tw": "釘身 II",
+    "skill_id": "SupportPinPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pin III",
+    "name_zh_cn": "定身 III",
+    "name_zh_tw": "釘身 III",
+    "skill_id": "SupportPinPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Pinnacle of Power",
+    "name_zh_cn": "力量巅峰",
+    "name_zh_tw": "力量巔峰",
+    "skill_id": "PinnacleOfPowerPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Pinpoint Critical",
+    "name_zh_cn": "精准暴击",
+    "name_zh_tw": "精確暴擊",
+    "skill_id": "SupportPinpointCriticalPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Plague Bearer",
+    "name_zh_cn": "瘟疫使者",
+    "name_zh_tw": "病疫之難",
+    "skill_id": "PlagueBearerPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Plasma Blast",
+    "name_zh_cn": "离子轰击",
+    "name_zh_tw": "電漿強擊矢",
+    "skill_id": "PlasmaBlastAmmoPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Poison I",
+    "name_zh_cn": "中毒 I",
+    "name_zh_tw": "中毒 I",
+    "skill_id": "SupportPoisonPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Poison II",
+    "name_zh_cn": "中毒 II",
+    "name_zh_tw": "中毒 II",
+    "skill_id": "SupportPoisonPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Poison III",
+    "name_zh_cn": "中毒 III",
+    "name_zh_tw": "中毒 III",
+    "skill_id": "SupportPoisonPlayerThree"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Poison Spores",
+    "name_zh_cn": "毒孢迸溅",
+    "name_zh_tw": "劇毒孢子",
+    "skill_id": "SupportPoisonSpores"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Poisonburst Arrow",
+    "name_zh_cn": "毒爆箭",
+    "name_zh_tw": "毒爆箭矢",
+    "skill_id": "PoisonBurstArrowPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Potent Exposure",
+    "name_zh_cn": "强力曝露",
+    "name_zh_tw": "強力曝曬",
+    "skill_id": "SupportPotentExposurePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Pounce",
+    "name_zh_cn": "巨狼猛扑",
+    "name_zh_tw": "猛撲",
+    "skill_id": "WolfPouncePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Power Siphon",
+    "name_zh_cn": "力量抽取",
+    "name_zh_tw": "力量抽取",
+    "skill_id": "PowerSiphonPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Powered by Verisium",
+    "name_zh_cn": "维金供能",
+    "name_zh_tw": "維里西姆強化",
+    "skill_id": "PoweredByVerisiumPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Practical Magic I",
+    "name_zh_cn": "实用魔法I",
+    "name_zh_tw": "實用魔法 I",
+    "skill_id": "SupportPracticalMagicPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Practical Magic II",
+    "name_zh_cn": "实用魔法II",
+    "name_zh_tw": "實用魔法 II",
+    "skill_id": "SupportPracticalMagicPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Practiced Combo",
+    "name_zh_cn": "娴熟连击",
+    "name_zh_tw": "熟練連擊",
+    "skill_id": "SupportPracticedComboPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Precision I",
+    "name_zh_cn": "精准 I",
+    "name_zh_tw": "精準 I",
+    "skill_id": "SupportPrecisionPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Precision II",
+    "name_zh_cn": "精准 II",
+    "name_zh_tw": "精準 II",
+    "skill_id": "SupportPrecisionPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Primal Bounty",
+    "name_zh_cn": "枭羽馈赠",
+    "name_zh_tw": "原始賞金",
+    "skill_id": "PrimalBountyPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Primal Strikes",
+    "name_zh_cn": "原始打击",
+    "name_zh_tw": "原始打擊",
+    "skill_id": "PrimalStrikesPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Profane Ritual",
+    "name_zh_cn": "不敬之礼",
+    "name_zh_tw": "瀆神祭祀",
+    "skill_id": "ProfaneRitualPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Profanity I",
+    "name_zh_cn": "不敬 I",
+    "name_zh_tw": "褻瀆 I",
+    "skill_id": "SupportProfanityPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Profanity II",
+    "name_zh_cn": "不敬 II",
+    "name_zh_tw": "褻瀆 II",
+    "skill_id": "SupportProfanityPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Projectile Acceleration I",
+    "name_zh_cn": "投射物加速 I",
+    "name_zh_tw": "投射物加速 I",
+    "skill_id": "SupportProjectileAccelerationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Projectile Acceleration II",
+    "name_zh_cn": "投射物加速 II",
+    "name_zh_tw": "投射物加速 II",
+    "skill_id": "SupportProjectileAccelerationPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Projectile Acceleration III",
+    "name_zh_cn": "投射物加速 III",
+    "name_zh_tw": "投射物加速 III",
+    "skill_id": "SupportProjectileAccelerationPlayerThree"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Projectile Deceleration I",
+    "name_zh_cn": "投射物减速 I",
+    "name_zh_tw": "投射物減速 I",
+    "skill_id": "SupportProjectileDecelerationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Projectile Deceleration II",
+    "name_zh_cn": "投射物减速 II",
+    "name_zh_tw": "投射物減速 II",
+    "skill_id": "SupportProjectileDecelerationPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Prolonged Duration I",
+    "name_zh_cn": "持续时间延长 I",
+    "name_zh_tw": "延長持續時間 I",
+    "skill_id": "ProlongedDurationSupportPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Prolonged Duration II",
+    "name_zh_cn": "持续时间延长 II",
+    "name_zh_tw": "延長持續時間 II",
+    "skill_id": "ProlongedDurationSupportPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Prototype Seventeen",
+    "name_zh_cn": "原型十七",
+    "name_zh_tw": "十七號原型機",
+    "skill_id": "SupportPrototypeSeventeenPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Punch Through",
+    "name_zh_cn": "击穿",
+    "name_zh_tw": "透勁拳",
+    "skill_id": "SupportPunchThroughPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Purity of Fire",
+    "name_zh_cn": "火焰净化",
+    "name_zh_tw": "火焰淨化",
+    "skill_id": "PurityOfFirePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Purity of Ice",
+    "name_zh_cn": "冰霜净化",
+    "name_zh_tw": "冰霜淨化",
+    "skill_id": "PurityOfIcePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Purity of Lightning",
+    "name_zh_cn": "闪电净化",
+    "name_zh_tw": "閃電淨化",
+    "skill_id": "PurityOfLightningPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pursuit I",
+    "name_zh_cn": "迫近追逐 I",
+    "name_zh_tw": "追擊 I",
+    "skill_id": "SupportPursuitPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pursuit II",
+    "name_zh_cn": "迫近追逐 II",
+    "name_zh_tw": "追擊 II",
+    "skill_id": "SupportPursuitPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Pursuit III",
+    "name_zh_cn": "迫近追逐 III",
+    "name_zh_tw": "追擊 III",
+    "skill_id": "SupportPursuitPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Quarterstaff Strike",
+    "name_zh_cn": "节杖打击",
+    "name_zh_tw": "細杖打擊",
+    "skill_id": "MeleeQuarterstaffPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Quill Burst",
+    "name_zh_cn": "棘刺爆发",
+    "name_zh_tw": "驟羽爆發",
+    "skill_id": "SupportQuillburstPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rage I",
+    "name_zh_cn": "狂怒 I",
+    "name_zh_tw": "盛怒 I",
+    "skill_id": "SupportRagePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rage II",
+    "name_zh_cn": "狂怒 II",
+    "name_zh_tw": "盛怒 II",
+    "skill_id": "SupportRagePlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rage III",
+    "name_zh_cn": "狂怒 III",
+    "name_zh_tw": "盛怒 III",
+    "skill_id": "SupportRagePlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rageforged I",
+    "name_zh_cn": "怒火锤炼 I",
+    "name_zh_tw": "盛怒鍛造 I",
+    "skill_id": "SupportRageforgedPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rageforged II",
+    "name_zh_cn": "怒火锤炼 II",
+    "name_zh_tw": "盛怒鍛造 II",
+    "skill_id": "SupportRageforgedPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Raging Cry",
+    "name_zh_cn": "愤怒战吼",
+    "name_zh_tw": "憤怒戰吼",
+    "skill_id": "SupportRagingCryPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Raging Spirits",
+    "name_zh_cn": "愤怒狂灵",
+    "name_zh_tw": "憤怒狂靈",
+    "skill_id": "RagingSpiritsPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Rain of Arrows",
+    "name_zh_cn": "箭雨",
+    "name_zh_tw": "箭雨",
+    "skill_id": "RainOfArrowsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Rain of Blades",
+    "name_zh_cn": "刀刃之雨",
+    "name_zh_tw": "刀刃之雨",
+    "skill_id": "RainOfBladesPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Raise Shield",
+    "name_zh_cn": "架盾",
+    "name_zh_tw": "展開護盾",
+    "skill_id": "ShieldBlockPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Raise Zombie",
+    "name_zh_cn": "魔卫复苏",
+    "name_zh_tw": "殭屍復甦",
+    "skill_id": "RaiseZombiePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Rake",
+    "name_zh_cn": "斜掠",
+    "name_zh_tw": "陰爪",
+    "skill_id": "RakePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Rakiata's Flow",
+    "name_zh_cn": "拉其塔之流",
+    "name_zh_tw": "萊基亞塔的流動",
+    "skill_id": "SupportRakiatasFlowPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Rampage",
+    "name_zh_cn": "横冲直撞",
+    "name_zh_tw": "暴怒",
+    "skill_id": "BearRampagePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Rapid Assault",
+    "name_zh_cn": "极速进攻",
+    "name_zh_tw": "極速進攻",
+    "skill_id": "RapidAssaultPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Rapid Attacks I",
+    "name_zh_cn": "快速攻击 I",
+    "name_zh_tw": "疾速攻擊 I",
+    "skill_id": "SupportRapidAttacksPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Rapid Attacks II",
+    "name_zh_cn": "快速攻击 II",
+    "name_zh_tw": "疾速攻擊 II",
+    "skill_id": "SupportRapidAttacksPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Rapid Attacks III",
+    "name_zh_cn": "快速攻击 III",
+    "name_zh_tw": "疾速攻擊 III",
+    "skill_id": "SupportRapidAttacksPlayerThree"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Rapid Casting I",
+    "name_zh_cn": "快速施法 I",
+    "name_zh_tw": "疾速施法 I",
+    "skill_id": "SupportRapidCastingPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Rapid Casting II",
+    "name_zh_cn": "快速施法 II",
+    "name_zh_tw": "疾速施法 II",
+    "skill_id": "SupportRapidCastingPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Rapid Casting III",
+    "name_zh_cn": "快速施法 III",
+    "name_zh_tw": "疾速施法 III",
+    "skill_id": "SupportRapidCastingPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Rapid Shot",
+    "name_zh_cn": "快速射击",
+    "name_zh_tw": "疾射",
+    "skill_id": "RapidShotAmmoPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Ratha's Assault",
+    "name_zh_cn": "拉莎的突袭",
+    "name_zh_tw": "菈妲的強襲",
+    "skill_id": "SupportCombatReloadPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Ravenous Swarm",
+    "name_zh_cn": "饕餮虫群",
+    "name_zh_tw": "貪婪蟲群",
+    "skill_id": "RavenousSwarmPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Reap",
+    "name_zh_cn": "赤炼收割",
+    "name_zh_tw": "收割",
+    "skill_id": "ReapPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Reaper's Invocation",
+    "name_zh_cn": "收割祈求",
+    "name_zh_tw": "收割者的祈願",
+    "skill_id": "MetaReapersInvocationPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Rearm I",
+    "name_zh_cn": "重新武装 I",
+    "name_zh_tw": "重新佈署 I",
+    "skill_id": "SupportRearmPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Rearm II",
+    "name_zh_cn": "重新武装 II",
+    "name_zh_tw": "重新佈署 II",
+    "skill_id": "SupportRearmPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Refraction I",
+    "name_zh_cn": "折射 I",
+    "name_zh_tw": "折射 I",
+    "skill_id": "SupportRefractionPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Refraction II",
+    "name_zh_cn": "折射 II",
+    "name_zh_tw": "折射 II",
+    "skill_id": "SupportRefractionPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Refraction III",
+    "name_zh_cn": "折射 III",
+    "name_zh_tw": "折射 III",
+    "skill_id": "SupportRefractionPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Refutation",
+    "name_zh_cn": "反制",
+    "name_zh_tw": "駁斥",
+    "skill_id": "RefutationPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Reinforced Totems I",
+    "name_zh_cn": "增强图腾 I",
+    "name_zh_tw": "強化圖騰 I",
+    "skill_id": "SupportReinforcedTotemsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Reinforced Totems II",
+    "name_zh_cn": "增强图腾 II",
+    "name_zh_tw": "強化圖騰 II",
+    "skill_id": "SupportReinforcedTotemsPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Relentless Rage",
+    "name_zh_cn": "无尽怒火",
+    "name_zh_tw": "無盡怒火",
+    "skill_id": "SupportRelentlessRagePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Remnant Potency I",
+    "name_zh_cn": "残片效能 I",
+    "name_zh_tw": "痕跡強度 I",
+    "skill_id": "SupportInterludePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Remnant Potency II",
+    "name_zh_cn": "残片效能 II",
+    "name_zh_tw": "痕跡強度 II",
+    "skill_id": "SupportInterludePlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Remnant Potency III",
+    "name_zh_cn": "残片效能 III",
+    "name_zh_tw": "痕跡強度 III",
+    "skill_id": "SupportInterludePlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Remnants of Kalguur",
+    "name_zh_cn": "卡古兰残片",
+    "name_zh_tw": "卡爾葛之痕",
+    "skill_id": "MetaRemnantsOfKalguurPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Rend",
+    "name_zh_cn": "龙爪撕裂",
+    "name_zh_tw": "撕扯",
+    "skill_id": "WyvernRendPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rending Apex",
+    "name_zh_cn": "撕裂巅峰",
+    "name_zh_tw": "撕裂頂點",
+    "skill_id": "SupportRendingApexPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Repulsion",
+    "name_zh_cn": "斥退",
+    "name_zh_tw": "排斥",
+    "skill_id": "CurseOfRepulsionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Requiem",
+    "name_zh_cn": "镇魂曲",
+    "name_zh_tw": "安魂曲",
+    "skill_id": "CrossbowRequiemAmmoPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Resonating Shield",
+    "name_zh_cn": "共振护盾",
+    "name_zh_tw": "共鳴之盾",
+    "skill_id": "ResonatingShieldPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Retaliate I",
+    "name_zh_cn": "反击 I",
+    "name_zh_tw": "報復 I",
+    "skill_id": "SupportRetaliatePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Retaliate II",
+    "name_zh_cn": "反击 II",
+    "name_zh_tw": "報復 II",
+    "skill_id": "SupportRetaliatePlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Retreat I",
+    "name_zh_cn": "撤退 I",
+    "name_zh_tw": "撤退 I",
+    "skill_id": "SupportRetreatPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Retreat II",
+    "name_zh_cn": "撤退 II",
+    "name_zh_tw": "撤退 II",
+    "skill_id": "SupportRetreatPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Retreat III",
+    "name_zh_cn": "撤退 III",
+    "name_zh_tw": "撤退 III",
+    "skill_id": "SupportRetreatPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Reverberate",
+    "name_zh_cn": "回荡",
+    "name_zh_tw": "回響",
+    "skill_id": "SupportReveberatePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Rhoa Mount",
+    "name_zh_cn": "恐喙鸟坐骑",
+    "name_zh_tw": "恐喙鳥坐騎",
+    "skill_id": "RhoaMountPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Ricochet I",
+    "name_zh_cn": "弹射 I",
+    "name_zh_tw": "彈射 I",
+    "skill_id": "SupportRicochetPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Ricochet II",
+    "name_zh_cn": "弹射 II",
+    "name_zh_tw": "彈射 II",
+    "skill_id": "SupportRicochetPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Righteous Descent",
+    "name_zh_cn": "正义天降",
+    "name_zh_tw": "神翼懲降",
+    "skill_id": "RighteousDescentPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Rigwald's Ferocity",
+    "name_zh_cn": "瑞佛的凶猛",
+    "name_zh_tw": "瑞佛的狂暴",
+    "skill_id": "SupportRigwaldsFerocityPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rip",
+    "name_zh_cn": "撕裂",
+    "name_zh_tw": "撕毀",
+    "skill_id": "SupportRipPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Rising Tempest",
+    "name_zh_cn": "风暴骤起",
+    "name_zh_tw": "崛起風暴",
+    "skill_id": "SupportTempestuousTempoPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Rite of Restoration",
+    "name_zh_cn": "恢复圣仪",
+    "name_zh_tw": "新生之儀",
+    "skill_id": "SacredGroundPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Ritual Sacrifice",
+    "name_zh_cn": "秘法奉献",
+    "name_zh_tw": "儀式獻祭",
+    "skill_id": "RitualSacrificePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Ritualistic Curse",
+    "name_zh_cn": "仪祭诅咒",
+    "name_zh_tw": "儀式詛咒",
+    "skill_id": "SupportRitualisticCursePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Rolling Magma",
+    "name_zh_cn": "熔岩奔涌",
+    "name_zh_tw": "熔岩翻騰",
+    "skill_id": "RollingMagmaPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Rolling Slam",
+    "name_zh_cn": "轰动猛击",
+    "name_zh_tw": "翻騰重擊",
+    "skill_id": "RollingSlamPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Romira's Requital",
+    "name_zh_cn": "罗米拉的报复",
+    "name_zh_tw": "羅米拉的報復",
+    "skill_id": "SupportRomirasRequitalPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Runeforged Blades",
+    "name_zh_cn": "符文之刃",
+    "name_zh_tw": "符鍛刀刃",
+    "skill_id": "SupportRuneforgedBladesPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Runic Extraction",
+    "name_zh_cn": "符文提取",
+    "name_zh_tw": "符文提取",
+    "skill_id": "SupportRunicExtractionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Runic Infusion",
+    "name_zh_cn": "符文灌注",
+    "name_zh_tw": "符文灌注",
+    "skill_id": "SupportRunicInfusionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Runic Reprieve",
+    "name_zh_cn": "符文援护",
+    "name_zh_tw": "符文喘息",
+    "skill_id": "RunicReprievePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Runic Tempering",
+    "name_zh_cn": "符文淬炼",
+    "name_zh_tw": "符文冶鍊",
+    "skill_id": "RunicTemperingPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rupture",
+    "name_zh_cn": "残破",
+    "name_zh_tw": "殘破",
+    "skill_id": "SupportRupturePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Rusted Spikes",
+    "name_zh_cn": "锈蚀尖刺",
+    "name_zh_tw": "銹蝕尖刺",
+    "skill_id": "SupportRustedSpikesPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Ruthless",
+    "name_zh_cn": "无情",
+    "name_zh_tw": "殘暴",
+    "skill_id": "RuthlessSupportPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Ruzhan, the Blazing Sword",
+    "name_zh_cn": "鲁詹，炽焰之剑",
+    "name_zh_tw": "赤炎利劍．魯兹安",
+    "skill_id": "SummonFireDjinnPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Sacrifice",
+    "name_zh_cn": "替代牺牲",
+    "name_zh_tw": "獻祭",
+    "skill_id": "SacrificePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Sacrificial Lamb I",
+    "name_zh_cn": "替罪羔羊 I",
+    "name_zh_tw": "獻祭羔羊 I",
+    "skill_id": "SupportSacrificialLambPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Sacrificial Lamb II",
+    "name_zh_cn": "替罪羔羊 II",
+    "name_zh_tw": "獻祭羔羊 II",
+    "skill_id": "SupportSacrificialLambPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Sacrificial Offering",
+    "name_zh_cn": "牺牲供奉",
+    "name_zh_tw": "犧牲奉獻",
+    "skill_id": "SupportSacrificalOfferingPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Salvo",
+    "name_zh_cn": "齐射",
+    "name_zh_tw": "齊射",
+    "skill_id": "SupportSalvoPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Sanguine Revelry",
+    "name_zh_cn": "嗜血狂宴",
+    "name_zh_tw": "腥紅狂歡",
+    "skill_id": "SanguineRevelryPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Savage Fury",
+    "name_zh_cn": "凶蛮怒火",
+    "name_zh_tw": "殘猛狂怒",
+    "skill_id": "SavageFuryPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Scavenged Plating",
+    "name_zh_cn": "装甲回收",
+    "name_zh_tw": "拾荒者護板",
+    "skill_id": "ScavengedPlatingPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Scouring Flame",
+    "name_zh_cn": "涤罪之火",
+    "name_zh_tw": "淨化烈焰",
+    "skill_id": "SupportScouringFlamePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Searing Flame I",
+    "name_zh_cn": "焚躯烈焰 I",
+    "name_zh_tw": "燒灼烈焰 I",
+    "skill_id": "SupportDeadlyIgnitesPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Searing Flame II",
+    "name_zh_cn": "焚躯烈焰 II",
+    "name_zh_tw": "燒灼烈焰 II",
+    "skill_id": "SupportDeadlyIgnitesPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Second Wind I",
+    "name_zh_cn": "助力之风 I",
+    "name_zh_tw": "恢復 I",
+    "skill_id": "SupportSecondWindPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Second Wind II",
+    "name_zh_cn": "助力之风 II",
+    "name_zh_tw": "恢復 II",
+    "skill_id": "SupportSecondWindPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Second Wind III",
+    "name_zh_cn": "助力之风 III",
+    "name_zh_tw": "恢復 III",
+    "skill_id": "SupportSecondWindPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Seismic Cry",
+    "name_zh_cn": "震地战吼",
+    "name_zh_tw": "裂地戰吼",
+    "skill_id": "SeismicCryPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Selfless Remnants",
+    "name_zh_cn": "无我残片",
+    "name_zh_tw": "無私痕跡",
+    "skill_id": "SupportSelflessRemnantsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Seraph's Heart",
+    "name_zh_cn": "炽天使之心",
+    "name_zh_tw": "神使之心",
+    "skill_id": "SupportSeraphsHeartPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Shard Scavenger",
+    "name_zh_cn": "碎片回收",
+    "name_zh_tw": "碎片清除者",
+    "skill_id": "ShardScavengerPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Shattering Concoction",
+    "name_zh_cn": "碎冰灵药",
+    "name_zh_tw": "粉碎混合物",
+    "skill_id": "ShatteringConcoctionPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Shattering Palm",
+    "name_zh_cn": "冰裂掌",
+    "name_zh_tw": "粉碎之掌",
+    "skill_id": "ShatteringPalmPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Shattering Spite",
+    "name_zh_cn": "碎裂恶意",
+    "name_zh_tw": "憎惡碎綻",
+    "skill_id": "ShatteringSpitePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Shield Charge",
+    "name_zh_cn": "重盾冲锋",
+    "name_zh_tw": "重盾衝鋒",
+    "skill_id": "ShieldChargePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Shield Wall",
+    "name_zh_cn": "盾墙",
+    "name_zh_tw": "盾牆",
+    "skill_id": "ShieldWallPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Shock",
+    "name_zh_cn": "感电",
+    "name_zh_tw": "感電",
+    "skill_id": "SupportShockPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Shock Conduction",
+    "name_zh_cn": "感电传导",
+    "name_zh_tw": "感電傳導",
+    "skill_id": "SupportShockConductionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Shock Conduction II",
+    "name_zh_cn": "感电传导 II",
+    "name_zh_tw": "感電傳導II",
+    "skill_id": "SupportShockConductionPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Shock Siphon",
+    "name_zh_cn": "感电虹吸",
+    "name_zh_tw": "電擊虹吸",
+    "skill_id": "SupportEnergyShieldOnShockKillPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Shockburst Rounds",
+    "name_zh_cn": "震爆弹药",
+    "name_zh_tw": "震爆彈藥",
+    "skill_id": "ShockburstRoundsAmmoPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Shockchain Arrow",
+    "name_zh_cn": "连环震击箭",
+    "name_zh_tw": "電鍊箭矢",
+    "skill_id": "ShockchainArrowPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Shocking Leap",
+    "name_zh_cn": "电震跃击",
+    "name_zh_tw": "震擊之躍",
+    "skill_id": "SupportShockingLeapPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Shockwave Totem",
+    "name_zh_cn": "震波图腾",
+    "name_zh_tw": "震波圖騰",
+    "skill_id": "ShockwaveTotemPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Short Fuse I",
+    "name_zh_cn": "短暂引信 I",
+    "name_zh_tw": "易怒 I",
+    "skill_id": "SupportShortFusePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Short Fuse II",
+    "name_zh_cn": "短暂引信 II",
+    "name_zh_tw": "易怒 II",
+    "skill_id": "SupportShortFusePlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Shred",
+    "name_zh_cn": "狼爪撕裂",
+    "name_zh_tw": "裂碎",
+    "skill_id": "WolfShredPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Siege Ballista",
+    "name_zh_cn": "攻城炮台",
+    "name_zh_tw": "攻城炮台",
+    "skill_id": "SiegeBallistaPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Siege Cascade",
+    "name_zh_cn": "摧城倾泻",
+    "name_zh_tw": "圍城爆發",
+    "skill_id": "SiegeCascadeAmmoPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Sigil of Power",
+    "name_zh_cn": "威能法印",
+    "name_zh_tw": "咒符之力",
+    "skill_id": "SigilOfPowerPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Sione's Temper",
+    "name_zh_cn": "西奥妮的怒火",
+    "name_zh_tw": "西奧妮的鍛鍊",
+    "skill_id": "SupportWildshardsPlayerThree"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Siphon Elements",
+    "name_zh_cn": "汲取元素",
+    "name_zh_tw": "虹吸元素",
+    "skill_id": "SiphonElementsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Siphoning Strike",
+    "name_zh_cn": "汲能击",
+    "name_zh_tw": "虹吸打擊",
+    "skill_id": "SiphoningStrikePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Skeletal Arsonist",
+    "name_zh_cn": "魔侍焚焰使",
+    "name_zh_tw": "骷髏縱火者",
+    "skill_id": "SummonSkeletalArsonistsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Skeletal Brute",
+    "name_zh_cn": "魔侍蛮兵",
+    "name_zh_tw": "骷髏巨獸",
+    "skill_id": "SummonSkeletalBrutesPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Skeletal Cleric",
+    "name_zh_cn": "魔侍祭司",
+    "name_zh_tw": "骷髏牧師",
+    "skill_id": "SummonSkeletalClericsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Skeletal Frost Mage",
+    "name_zh_cn": "魔侍冰霜法师",
+    "name_zh_tw": "骷髏霜寒法師",
+    "skill_id": "SummonSkeletalFrostMagesPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Skeletal Reaver",
+    "name_zh_cn": "魔侍掠夺者",
+    "name_zh_tw": "骷髏掠奪者",
+    "skill_id": "SummonSkeletalReaversPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Skeletal Storm Mage",
+    "name_zh_cn": "魔侍风暴法师",
+    "name_zh_tw": "骷髏風暴法師",
+    "skill_id": "SummonSkeletalStormMagesPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Skeletal Warrior",
+    "name_zh_cn": "魔侍武士",
+    "name_zh_tw": "骷髏戰士",
+    "skill_id": "SummonSkeletalWarriorsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Skittering Stone I",
+    "name_zh_cn": "飞掠石 I",
+    "name_zh_tw": "飛掠之石 I",
+    "skill_id": "SupportSkitteringStonePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Skittering Stone II",
+    "name_zh_cn": "飞掠石 II",
+    "name_zh_tw": "飛掠之石 II",
+    "skill_id": "SupportSkitteringStonePlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Skyfall",
+    "name_zh_cn": "天降杀机",
+    "name_zh_tw": "天墜",
+    "skill_id": "SkyfallPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Slow Potency",
+    "name_zh_cn": "减速效能",
+    "name_zh_tw": "緩速強度",
+    "skill_id": "SupportSlowPotencyPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Smash to Smithereens",
+    "name_zh_cn": "碎甲崩灭",
+    "name_zh_tw": null,
+    "skill_id": "SmashToSmithereensPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Snap",
+    "name_zh_cn": "激变",
+    "name_zh_tw": "迸裂",
+    "skill_id": "SnapPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Snipe",
+    "name_zh_cn": "狙击",
+    "name_zh_tw": "狙擊",
+    "skill_id": "SnipePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Sniper's Mark",
+    "name_zh_cn": "狙击印记",
+    "name_zh_tw": "狙擊者印記",
+    "skill_id": "SnipersMarkPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Soaring Midnight",
+    "name_zh_cn": "午夜翱翔",
+    "name_zh_tw": "午夜飛掠",
+    "skill_id": "NightfallSoaringMidnightPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Solar Orb",
+    "name_zh_cn": "日曜球",
+    "name_zh_tw": "日耀球",
+    "skill_id": "SolarOrbPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Sorcery Ward",
+    "name_zh_cn": "元素结界",
+    "name_zh_tw": "巫術護盾",
+    "skill_id": "SorceryWardPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Soul Drain",
+    "name_zh_cn": "魂魔榨取",
+    "name_zh_tw": "魂魄吸取",
+    "skill_id": "SupportManaOnCullPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Soul Offering",
+    "name_zh_cn": "灵之奉献",
+    "name_zh_tw": "靈魂獻祭",
+    "skill_id": "SoulOfferingPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Soulrend",
+    "name_zh_cn": "裂魂术",
+    "name_zh_tw": "靈體撕裂",
+    "skill_id": "SoulrendPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Spar",
+    "name_zh_cn": "角力",
+    "name_zh_tw": "打擊練習",
+    "skill_id": "SupportSparPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Spark",
+    "name_zh_cn": "电球",
+    "name_zh_tw": "電球",
+    "skill_id": "SparkPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Spear Stab",
+    "name_zh_cn": "战矛突刺",
+    "name_zh_tw": "長矛刺擊",
+    "skill_id": "MeleeSpearOffHandPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Spear Throw",
+    "name_zh_cn": "战矛飞掷",
+    "name_zh_tw": "長矛投擲",
+    "skill_id": "SpearThrowPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Spear of Solaris",
+    "name_zh_cn": "日耀之矛",
+    "name_zh_tw": "日耀長矛",
+    "skill_id": "SpearOfSolarisPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Spearfield",
+    "name_zh_cn": "枪林矛阵",
+    "name_zh_tw": "長矛之錐",
+    "skill_id": "SpearfieldPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Spectral Volley",
+    "name_zh_cn": "灵体齐射",
+    "name_zh_tw": "靈體齊射",
+    "skill_id": "SupportSpectralVolleyPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Spectre: {0}",
+    "name_zh_cn": "灵体：{0}",
+    "name_zh_tw": "幽魂：{0}",
+    "skill_id": "SummonSpectrePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Spell Cascade",
+    "name_zh_cn": "多重范围施法",
+    "name_zh_tw": "秘能爆發",
+    "skill_id": "SupportSpellCascadePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Spell Echo",
+    "name_zh_cn": "施法回响",
+    "name_zh_tw": "法術迴響",
+    "skill_id": "SupportSpellEchoPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Spell Totem",
+    "name_zh_cn": "法术图腾",
+    "name_zh_tw": "法術圖騰",
+    "skill_id": "SummonMetaTotemSpellTotemPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Spellslinger",
+    "name_zh_cn": "法术节魔",
+    "name_zh_tw": "拋法者",
+    "skill_id": "MetaSpellslingerPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Spiral Volley",
+    "name_zh_cn": "螺旋齐射",
+    "name_zh_tw": "螺旋之弦",
+    "skill_id": "SpiralVolleyPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Spiraling Conspiracy",
+    "name_zh_cn": "鸦群密谋",
+    "name_zh_tw": "邪鴉旋纏",
+    "skill_id": "SummonSpiralingConspiracyPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Spirit Vessel",
+    "name_zh_cn": "灵魂容器",
+    "name_zh_tw": "靈魂容器",
+    "skill_id": "SpiritVesselPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Splinter Totem I",
+    "name_zh_cn": "碎片图腾 I",
+    "name_zh_tw": "殘片圖騰 I",
+    "skill_id": "SupportSplinteringTotemPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Splinter Totem II",
+    "name_zh_cn": "碎片图腾 II",
+    "name_zh_tw": "殘片圖騰 II",
+    "skill_id": "SupportSplinteringTotemPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Staggering Palm",
+    "name_zh_cn": "惊风掌",
+    "name_zh_tw": "撼敵之掌",
+    "skill_id": "StaggeringPalmPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Stampede",
+    "name_zh_cn": "奔踏",
+    "name_zh_tw": "踐踏",
+    "skill_id": "StampedePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Starborn Onslaught",
+    "name_zh_cn": "星辰冲击",
+    "name_zh_tw": "星裔猛襲",
+    "skill_id": "StarbornOnslaughtPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Static Shocks",
+    "name_zh_cn": "静电脉冲",
+    "name_zh_tw": "靜電震盪",
+    "skill_id": "SupportStaticShocksPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Steadfast I",
+    "name_zh_cn": "坚定 I",
+    "name_zh_tw": "穩若泰山 I",
+    "skill_id": "SupportSteadfastPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Steadfast II",
+    "name_zh_cn": "坚定 II",
+    "name_zh_tw": "穩若泰山 II",
+    "skill_id": "SupportSteadfastPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Stoicism I",
+    "name_zh_cn": "坚忍 I",
+    "name_zh_tw": "堅忍 I",
+    "skill_id": "SupportStoicismPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Stoicism II",
+    "name_zh_cn": "坚忍 II",
+    "name_zh_tw": "堅忍 II",
+    "skill_id": "SupportStoicismPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Stomping Ground",
+    "name_zh_cn": "震撼大地",
+    "name_zh_tw": "重踏地面",
+    "skill_id": "SupportStompingGroundPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Storm Lance",
+    "name_zh_cn": "岚舞长枪",
+    "name_zh_tw": "風暴之槍",
+    "skill_id": "StormLancePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Storm Wave",
+    "name_zh_cn": "移风岚",
+    "name_zh_tw": "風暴浪湧",
+    "skill_id": "StormWavePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Stormblast Bolts",
+    "name_zh_cn": "轰雷弩箭",
+    "name_zh_tw": "雷暴彈藥",
+    "skill_id": "StormblastBoltsAmmoPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Stormcaller Arrow",
+    "name_zh_cn": "唤雷箭",
+    "name_zh_tw": "風暴呼喚箭矢",
+    "skill_id": "StormcallerArrowPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Stormchain",
+    "name_zh_cn": "风暴连锁",
+    "name_zh_tw": "風暴之鏈",
+    "skill_id": "SupportStormchainPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Stormfire",
+    "name_zh_cn": "风暴之炎",
+    "name_zh_tw": "烈風暴",
+    "skill_id": "SupportStormfirePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Streamlined Rounds",
+    "name_zh_cn": "流线弹药",
+    "name_zh_tw": "子彈如流",
+    "skill_id": "SupportStreamlinedRoundsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Strong Hearted",
+    "name_zh_cn": "强健心灵",
+    "name_zh_tw": "不屈之心",
+    "skill_id": "SupportStrongHeartedPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Stun I",
+    "name_zh_cn": "晕眩 I",
+    "name_zh_tw": "暈眩 I",
+    "skill_id": "SupportStunPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Stun II",
+    "name_zh_cn": "晕眩 II",
+    "name_zh_tw": "暈眩 II",
+    "skill_id": "SupportStunPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Stun III",
+    "name_zh_cn": "晕眩 III",
+    "name_zh_tw": "暈眩 III",
+    "skill_id": "SupportStunPlayerThree"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Styrn's Ferocity",
+    "name_zh_cn": "斯泰恩的凶残",
+    "name_zh_tw": "斯塔恩的暴行",
+    "skill_id": "SupportStyrnsFerocity"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Styrn's Mountain",
+    "name_zh_cn": "斯泰恩的山岳",
+    "name_zh_tw": "斯塔恩的山巔",
+    "skill_id": "SupportStyrnsMountain"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Summon Infernal Hound",
+    "name_zh_cn": "召唤炽焰猎犬",
+    "name_zh_tw": "召喚獄炎獵犬",
+    "skill_id": "SummonInfernalHoundPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Sunder",
+    "name_zh_cn": "大地震击",
+    "name_zh_tw": "大地震擊",
+    "skill_id": "SunderPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Supercharged Slam",
+    "name_zh_cn": "蓄威神锤",
+    "name_zh_tw": "超載重擊",
+    "skill_id": "SuperchargedSlamPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Supercritical",
+    "name_zh_cn": "特化暴击",
+    "name_zh_tw": "超暴擊",
+    "skill_id": "SupportIncreasedCriticalDamagePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Supporting Fire",
+    "name_zh_cn": "支援火力",
+    "name_zh_tw": "支援火力",
+    "skill_id": "SupportingFirePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Swift Affliction I",
+    "name_zh_cn": "极速腐化 I",
+    "name_zh_tw": "極速苦痛 I",
+    "skill_id": "SupportSwiftAfflictionPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Swift Affliction II",
+    "name_zh_cn": "极速腐化 II",
+    "name_zh_tw": "極速苦痛 II",
+    "skill_id": "SupportSwiftAfflictionPlayerTwo"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Swift Affliction III",
+    "name_zh_cn": "极速腐化 III",
+    "name_zh_tw": "極速苦痛 III",
+    "skill_id": "SupportSwiftAfflictionPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Syzygy",
+    "name_zh_cn": "朔望",
+    "name_zh_tw": "朔望",
+    "skill_id": "SupportSyzygyPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Tacati's Ire",
+    "name_zh_cn": "塔卡提之怒",
+    "name_zh_tw": "特卡蒂的憤怒",
+    "skill_id": "SupportTacatisIrePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Tame Beast",
+    "name_zh_cn": "驯服野兽",
+    "name_zh_tw": "馴獸",
+    "skill_id": "TameBeastPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Tangmazu's Thurible",
+    "name_zh_cn": "唐玛祖的香炉",
+    "name_zh_tw": "湯馬祖的提爐",
+    "skill_id": "SupportTangMazusThuriblePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Tasalio's Rhythm",
+    "name_zh_cn": "塔萨里奥的律动",
+    "name_zh_tw": "塔薩里奧的律動",
+    "skill_id": "SupportTasaliosRhythmPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Tawhoa's Tending",
+    "name_zh_cn": "塔赫亚的照料",
+    "name_zh_tw": "塔赫亞的照顧",
+    "skill_id": "SupportHardyTotemsPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Tear",
+    "name_zh_cn": "撕扯",
+    "name_zh_tw": "撕裂",
+    "skill_id": "SupportTearPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Tecrod's Revenge",
+    "name_zh_cn": "特克罗的复仇",
+    "name_zh_tw": "特克羅德的復仇",
+    "skill_id": "SupportTecrodsRevengePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Tectonic Slams",
+    "name_zh_cn": "破釜一击",
+    "name_zh_tw": "震波猛擊",
+    "skill_id": "SupportSlamAftershocksPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Temper Weapon",
+    "name_zh_cn": "淬炼武器",
+    "name_zh_tw": "鍛鍊武器",
+    "skill_id": "TemperWeaponPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Tempest Bell",
+    "name_zh_cn": "风雷钟",
+    "name_zh_tw": "風暴之鐘",
+    "skill_id": "TempestBellPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Tempest Flurry",
+    "name_zh_cn": "风暴乱舞",
+    "name_zh_tw": "暴風亂舞",
+    "skill_id": "TempestFlurryPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Temporal Chains",
+    "name_zh_cn": "时空锁链",
+    "name_zh_tw": "時空鎖鏈",
+    "skill_id": "TemporalChainsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Temporal Rift",
+    "name_zh_cn": "时空裂隙",
+    "name_zh_tw": "時空裂隙",
+    "skill_id": "TemporalRiftPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "The Stars Answer",
+    "name_zh_cn": "群星召唤",
+    "name_zh_tw": "群星回應",
+    "skill_id": "TheStarsAnswerPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Thornskin I",
+    "name_zh_cn": "荆棘皮肤 I",
+    "name_zh_tw": "荊棘之皮 I",
+    "skill_id": "SupportThornskinPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Thornskin II",
+    "name_zh_cn": "荆棘皮肤 II",
+    "name_zh_tw": "荊棘之皮 II",
+    "skill_id": "SupportThornskinPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Thrashing Vines",
+    "name_zh_cn": "鞭笞藤蔓",
+    "name_zh_tw": "藤蔓痛打",
+    "skill_id": "ThrashingVinesPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Thrill of the Kill",
+    "name_zh_cn": "杀戮快感",
+    "name_zh_tw": "殺戮渴望",
+    "skill_id": "SupportThrillOfTheKillPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Thrill of the Kill II",
+    "name_zh_cn": "杀戮快感II",
+    "name_zh_tw": "殺戮渴望II",
+    "skill_id": "SupportThrillOfTheKillPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Thundergod's Wrath",
+    "name_zh_cn": "雷霆神祇之怒",
+    "name_zh_tw": "雷神之怒",
+    "skill_id": "MetaCastLightningSpellOnHitPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Thunderous Leap",
+    "name_zh_cn": "雷鸣飞跃",
+    "name_zh_tw": "雷霆跳躍",
+    "skill_id": "ThunderousLeapPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Thunderstorm",
+    "name_zh_cn": "雷霆风暴",
+    "name_zh_tw": "閃電風暴",
+    "skill_id": "ThunderstormPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Time Freeze",
+    "name_zh_cn": "时间冻结",
+    "name_zh_tw": "時間凍結",
+    "skill_id": "TimeFreezePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Time Snap",
+    "name_zh_cn": "时间捕捉",
+    "name_zh_tw": "時間短縮",
+    "skill_id": "TimeSnapPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Time of Need",
+    "name_zh_cn": "紧急时刻",
+    "name_zh_tw": "緊急時刻",
+    "skill_id": "TimeOfNeedPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Tireless",
+    "name_zh_cn": "冷酷",
+    "name_zh_tw": "孜孜不倦",
+    "skill_id": "SupportTirelessPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Tornado",
+    "name_zh_cn": "龙卷旋风",
+    "name_zh_tw": "龍捲風",
+    "skill_id": "TornadoPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Tornado Shot",
+    "name_zh_cn": "龙卷射击",
+    "name_zh_tw": "龍捲射擊",
+    "skill_id": "TornadoShotPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Toxic Domain",
+    "name_zh_cn": "毒性领域",
+    "name_zh_tw": "毒素領域",
+    "skill_id": "ToxicDomainPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Toxic Growth",
+    "name_zh_cn": "剧毒增生",
+    "name_zh_tw": "毒素植栽",
+    "skill_id": "ToxicGrowthPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Trail of Caltrops",
+    "name_zh_cn": "铁蒺藜之路",
+    "name_zh_tw": "蒺藜之徑",
+    "skill_id": "TrailOfCaltropsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Trickster's Shard",
+    "name_zh_cn": "欺诈者碎片",
+    "name_zh_tw": "欺詐者的碎片",
+    "skill_id": "SupportTrickstersShardPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Trinity",
+    "name_zh_cn": "三位一体",
+    "name_zh_tw": "三相",
+    "skill_id": "TrinityPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Triskelion Cascade",
+    "name_zh_cn": "三耀辉轮",
+    "name_zh_tw": "三曲爆發",
+    "skill_id": "TriskelionCascadePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Tul's Avalanche",
+    "name_zh_cn": "托沃的雪崩",
+    "name_zh_tw": "托沃的雪崩",
+    "skill_id": "SupportTulsAvalanche"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Tul's Stillness",
+    "name_zh_cn": "托沃的寂静",
+    "name_zh_tw": "托沃的寧靜",
+    "skill_id": "SupportTulsStillnessPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Twister",
+    "name_zh_cn": "旋龙",
+    "name_zh_tw": "旋風",
+    "skill_id": "TwisterPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Uhtred's Augury",
+    "name_zh_cn": "乌崔德的占卜",
+    "name_zh_tw": "烏特雷的占卜術",
+    "skill_id": "SupportUhtredAuguryPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Uhtred's Constellation",
+    "name_zh_cn": "乌崔德的星图",
+    "name_zh_tw": "烏特雷的星座",
+    "skill_id": "SupportUhtredsConstellation"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Uhtred's Exodus",
+    "name_zh_cn": "乌崔德的出走",
+    "name_zh_tw": "烏特雷的出走",
+    "skill_id": "SupportUhtredExodusPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Uhtred's Omen",
+    "name_zh_cn": "乌崔德的预兆",
+    "name_zh_tw": "烏特雷的徵兆",
+    "skill_id": "SupportUhtredOmenPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Uhtred's Rite",
+    "name_zh_cn": "乌崔德仪式",
+    "name_zh_tw": "烏特雷的儀式",
+    "skill_id": "SupportUhtredsRitePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Unbound Avatar",
+    "name_zh_cn": "不羁化身",
+    "name_zh_tw": "無縛化身",
+    "skill_id": "UnboundAvatarPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Undermine",
+    "name_zh_cn": "暗中破坏",
+    "name_zh_tw": "破壞",
+    "skill_id": "SupportUnderminePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Unearth",
+    "name_zh_cn": "开掘",
+    "name_zh_tw": "屍術矢",
+    "skill_id": "UnearthPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Unerring Power",
+    "name_zh_cn": "精准之力",
+    "name_zh_tw": "精準力量",
+    "skill_id": "SupportUnerringPowerPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Unleash",
+    "name_zh_cn": "释出",
+    "name_zh_tw": "釋放",
+    "skill_id": "UnleashPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Untouchable",
+    "name_zh_cn": "不可触及",
+    "name_zh_tw": "無法觸碰",
+    "skill_id": "SupportUntouchablePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Upheaval I",
+    "name_zh_cn": "剧变 I",
+    "name_zh_tw": "動亂 I",
+    "skill_id": "SupportUpheavalPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Upheaval II",
+    "name_zh_cn": "剧变 II",
+    "name_zh_tw": "動亂 II",
+    "skill_id": "SupportUpheavalPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Upwelling I",
+    "name_zh_cn": "升流 I",
+    "name_zh_tw": "湧升流 I",
+    "skill_id": "SupportUpwellingPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Upwelling II",
+    "name_zh_cn": "升流 II",
+    "name_zh_tw": "湧升流 I",
+    "skill_id": "SupportUpwellingPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Urgent Totems I",
+    "name_zh_cn": "紧急图腾 I",
+    "name_zh_tw": "應急圖騰 I",
+    "skill_id": "SupportUrgentTotemsPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Urgent Totems II",
+    "name_zh_cn": "紧急图腾 II",
+    "name_zh_tw": "應急圖騰 II",
+    "skill_id": "SupportUrgentTotemsPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Urgent Totems III",
+    "name_zh_cn": "紧急图腾 III",
+    "name_zh_tw": "應急圖騰 III",
+    "skill_id": "SupportUrgentTotemsPlayerThree"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Uruk's Smelting",
+    "name_zh_cn": "厄罗克的熔炼术",
+    "name_zh_tw": "厄羅克的鍛鍊",
+    "skill_id": "SupportUruksSmeltingPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Uul-Netol's Embrace",
+    "name_zh_cn": "乌尔尼多的拥抱",
+    "name_zh_tw": "烏爾尼多的擁抱",
+    "skill_id": "SupportUulNetolsEmbracePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Valako's Charge",
+    "name_zh_cn": "瓦拉克怒冲",
+    "name_zh_tw": "瓦拉庫的衝鋒",
+    "skill_id": "ValakosChargePlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Vanguard I",
+    "name_zh_cn": "先锋 I",
+    "name_zh_tw": "無懼先鋒 I",
+    "skill_id": "SupportVanguardPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Vanguard II",
+    "name_zh_cn": "先锋 II",
+    "name_zh_tw": "無懼先鋒 II",
+    "skill_id": "SupportVanguardPlayerTwo"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Varashta's Blessing",
+    "name_zh_cn": "瓦拉煞的祝福",
+    "name_zh_tw": "瓦拉什塔的祝福",
+    "skill_id": "SupportVarashtasBlessingPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Vaulting Impact",
+    "name_zh_cn": "跳跃撞击",
+    "name_zh_tw": "跳躍衝擊",
+    "skill_id": "VaultingImpactPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Verglas",
+    "name_zh_cn": "雨淞",
+    "name_zh_tw": "冰淞",
+    "skill_id": "SupportVerglasPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Verisium Manifestations",
+    "name_zh_cn": "维金化形",
+    "name_zh_tw": "維里西姆顯化",
+    "skill_id": "VerisiumManifestationPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Vilenta's Propulsion",
+    "name_zh_cn": "薇伦塔之推进",
+    "name_zh_tw": "范尼達的奮進",
+    "skill_id": "SupportVilentasPropulsionPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Vine Arrow",
+    "name_zh_cn": "藤缠箭",
+    "name_zh_tw": "藤蔓箭矢",
+    "skill_id": "VineArrowPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Virtuous Barrier",
+    "name_zh_cn": "美德壁垒",
+    "name_zh_tw": "高尚禦盾",
+    "skill_id": "VirtuousBarrierPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Vitality I",
+    "name_zh_cn": "活力 I",
+    "name_zh_tw": "活力 I",
+    "skill_id": "SupportVitalityPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Vitality II",
+    "name_zh_cn": "活力 II",
+    "name_zh_tw": "活力 II",
+    "skill_id": "SupportVitalityPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Vivid Stampede",
+    "name_zh_cn": "雄鹿践踏",
+    "name_zh_tw": "靈現奔竄",
+    "skill_id": "VividStampedePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Void Illusion",
+    "name_zh_cn": "虚空幻影",
+    "name_zh_tw": "虛空幻影",
+    "skill_id": "VoidIllusionPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Volatile Dead",
+    "name_zh_cn": "灵体火球",
+    "name_zh_tw": "致命之息",
+    "skill_id": "VolatileDeadPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Volatility",
+    "name_zh_cn": "无常",
+    "name_zh_tw": "易爆",
+    "skill_id": "SupportVolatilityPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Volcanic Eruption",
+    "name_zh_cn": "熔火喷发",
+    "name_zh_tw": "火山迸發",
+    "skill_id": "SupportVolcanicEruptionPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": false,
+    "name": "Volcanic Fissure",
+    "name_zh_cn": "火山裂缝",
+    "name_zh_tw": "炎火脈動",
+    "skill_id": "VolcanicFissurePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Volcano",
+    "name_zh_cn": "火山",
+    "name_zh_tw": "火山",
+    "skill_id": "VolcanoPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Volt",
+    "name_zh_cn": "电伏积聚",
+    "name_zh_tw": "電壓",
+    "skill_id": "SupportVoltPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Voltaic Barrier",
+    "name_zh_cn": "电能屏障",
+    "name_zh_tw": "伏打電盾",
+    "skill_id": "VoltaicBarrierPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Voltaic Grenade",
+    "name_zh_cn": "电涌榴弹",
+    "name_zh_tw": "電流擲彈",
+    "skill_id": "ShockGrenadePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Voltaic Mark",
+    "name_zh_cn": "流电印记",
+    "name_zh_tw": "電流印記",
+    "skill_id": "VoltaicMarkPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Vorana's Siege",
+    "name_zh_cn": "沃拉娜的围城",
+    "name_zh_tw": "沃拉娜的圍攻",
+    "skill_id": "SupportVoranasSiege"
+  },
+  {
+    "colour": null,
+    "is_support": true,
+    "name": "Vruun's Aftermath",
+    "name_zh_cn": "弗伦的余波",
+    "name_zh_tw": "弗倫的餘波",
+    "skill_id": "SupportVruunsAftermath"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Vruun's Inevitability",
+    "name_zh_cn": "弗伦的必然",
+    "name_zh_tw": "弗倫的必然",
+    "skill_id": "SupportVruunsInevitability"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Vulnerability",
+    "name_zh_cn": "脆弱",
+    "name_zh_tw": "脆弱",
+    "skill_id": "VulnerabilityPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Walking Calamity",
+    "name_zh_cn": "灾厄行者",
+    "name_zh_tw": "行走災厄",
+    "skill_id": "WalkingCalamityPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "War Banner",
+    "name_zh_cn": "战旗",
+    "name_zh_tw": "戰爭之旗",
+    "skill_id": "WarBannerReservationPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Wardbound Minions",
+    "name_zh_cn": "结界仆从",
+    "name_zh_tw": "戰縛召喚物",
+    "skill_id": "WardboundMinionsPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Warm Blooded",
+    "name_zh_cn": "温热血脉",
+    "name_zh_tw": "滿腔熱血",
+    "skill_id": "SupportWarmbloodedPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Wave of Frost",
+    "name_zh_cn": "寒霜浪涌",
+    "name_zh_tw": "寒冰波",
+    "skill_id": "WaveOfFrostPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Whirling Assault",
+    "name_zh_cn": "旋风击",
+    "name_zh_tw": "迴旋擊",
+    "skill_id": "WhirlingAssaultPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Whirling Slash",
+    "name_zh_cn": "回旋挥斩",
+    "name_zh_tw": "迴旋斬",
+    "skill_id": "WhirlingSlashPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Whirlwind Lance",
+    "name_zh_cn": "旋风投枪",
+    "name_zh_tw": "旋風之槍",
+    "skill_id": "WhirlwindLancePlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Wild Protector",
+    "name_zh_cn": "野性守护",
+    "name_zh_tw": "荒野守護",
+    "skill_id": "WildProtectorPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Wildfire",
+    "name_zh_cn": "野火",
+    "name_zh_tw": "燐火",
+    "skill_id": "SupportWildfirePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Wildshards I",
+    "name_zh_cn": "狂野碎片 I",
+    "name_zh_tw": "野性碎片 I",
+    "skill_id": "SupportWildshardsPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Wildshards II",
+    "name_zh_cn": "狂野碎片 II",
+    "name_zh_tw": "野性碎片 II",
+    "skill_id": "SupportWildshardsPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Wildwood's Gifts",
+    "name_zh_cn": "荒林之赐",
+    "name_zh_tw": "荒林禮贈",
+    "skill_id": "AncientGiftsPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Wind Blast",
+    "name_zh_cn": "迅风爆",
+    "name_zh_tw": "破風爆裂",
+    "skill_id": "GaleStrikePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Wind Dancer",
+    "name_zh_cn": "风舞者",
+    "name_zh_tw": "風魔舞者",
+    "skill_id": "WindDancerPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": false,
+    "name": "Wind Serpent's Fury",
+    "name_zh_cn": "腾蛇之怒",
+    "name_zh_tw": "勁風蝮蛇之怒",
+    "skill_id": "WindSerpentsFuryPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Wind Wave",
+    "name_zh_cn": "劲风波",
+    "name_zh_tw": "疾風之波",
+    "skill_id": "SupportKnockbackWavePlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Window of Opportunity I",
+    "name_zh_cn": "大好时机 I",
+    "name_zh_tw": "機會之窗 I",
+    "skill_id": "SupportWindowOfOpportunityPlayer"
+  },
+  {
+    "colour": "dex",
+    "is_support": true,
+    "name": "Window of Opportunity II",
+    "name_zh_cn": "大好时机 II",
+    "name_zh_tw": "機會之窗 II",
+    "skill_id": "SupportWindowOfOpportunityPlayerTwo"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Wing Blast",
+    "name_zh_cn": "烈风吹袭",
+    "name_zh_tw": "翅翼猛襲",
+    "skill_id": "WingBlastPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": false,
+    "name": "Wither",
+    "name_zh_cn": "死亡凋零",
+    "name_zh_tw": "死亡凋零",
+    "skill_id": "WitherPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Withering Touch",
+    "name_zh_cn": "凋零之触",
+    "name_zh_tw": "凋零之觸",
+    "skill_id": "SupportWitheringTouchPlayer"
+  },
+  {
+    "colour": null,
+    "is_support": false,
+    "name": "Wolf Pack",
+    "name_zh_cn": "狼群",
+    "name_zh_tw": "召喚惡狼",
+    "skill_id": "WolfPackPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Xibaqua's Rending",
+    "name_zh_cn": "夏巴夸亚的撕裂",
+    "name_zh_tw": "賽巴昆的撕裂",
+    "skill_id": "SupportXibaquasRendingPlayer"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Xoph's Pyre",
+    "name_zh_cn": "索伏的葬火",
+    "name_zh_tw": "索伏的燃焰",
+    "skill_id": "SupportXophsPyrePlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Zarokh's Refrain",
+    "name_zh_cn": "扎洛卡的克制",
+    "name_zh_tw": "澤洛克的克制",
+    "skill_id": "SupportZarokhsRefrainPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Zarokh's Revolt",
+    "name_zh_cn": "扎洛卡的反叛",
+    "name_zh_tw": "澤洛克的反叛",
+    "skill_id": "SupportZarokhsRevoltPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Zenith I",
+    "name_zh_cn": "天顶 I",
+    "name_zh_tw": "極盛 I",
+    "skill_id": "SupportZenithPlayer"
+  },
+  {
+    "colour": "int",
+    "is_support": true,
+    "name": "Zenith II",
+    "name_zh_cn": "天顶 II",
+    "name_zh_tw": "極盛 II",
+    "skill_id": "SupportZenithPlayerTwo"
+  },
+  {
+    "colour": "str",
+    "is_support": true,
+    "name": "Zerphi's Infamy",
+    "name_zh_cn": "泽佛伊的恶名",
+    "name_zh_tw": "澤佛伊的惡名",
+    "skill_id": "SupportZerphisLegacyPlayer"
+  }
+]

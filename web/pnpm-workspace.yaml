@@ -1,0 +1,6 @@
+packages:
+  - .
+
+# esbuild 的 postinstall 下载平台二进制，vite 依赖它；显式放行。
+allowBuilds:
+  esbuild: true

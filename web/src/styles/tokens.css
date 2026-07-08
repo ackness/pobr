@@ -1,0 +1,66 @@
+/* PoBR 设计 tokens（参考 PoB2 配色：深底 / 金色高亮 / 职业色）。
+   全部颜色、间距、字号收口在此；组件层不写裸色值。 */
+:root {
+  /* 表面层级：页面底 → 面板 → 卡片 → 悬浮 */
+  --surface-page: #0c0d10;
+  --surface-panel: #16181d;
+  --surface-card: #1e2128;
+  --surface-raised: #262a33;
+  --border-subtle: #2c313b;
+  --border-strong: #3d4450;
+
+  /* 文本 */
+  --text-primary: #e8e6e0;
+  --text-secondary: #a9a696;
+  --text-muted: #6d6b60;
+
+  /* 品牌 / 强调：PoB2 金 */
+  --accent-gold: #d8b36a;
+  --accent-gold-bright: #f0cf8b;
+  --accent-gold-dim: #8a7440;
+
+  /* 语义色（数值/词条着色，对齐 PoB 习惯） */
+  --color-life: #e05030;
+  --color-mana: #4070e0;
+  --color-es: #8bb8e8;
+  --color-fire: #e06030;
+  --color-cold: #62a8e8;
+  --color-lightning: #e8d44d;
+  --color-chaos: #c05ac0;
+  --color-defence: #a8c0a0;
+  --color-positive: #7fbf5f;
+  --color-negative: #e05050;
+
+  /* 稀有度（物品文本着色） */
+  --rarity-normal: #c8c8c8;
+  --rarity-magic: #8888ff;
+  --rarity-rare: #ffff77;
+  --rarity-unique: #af6025;
+  --rarity-gem: #1ba29b;
+
+  /* 字体 */
+  --font-ui: 'Segoe UI', 'PingFang SC', 'Noto Sans', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  --text-xs: 0.72rem;
+  --text-sm: 0.82rem;
+  --text-base: 0.92rem;
+  --text-lg: 1.08rem;
+  --text-xl: 1.35rem;
+
+  /* 间距节奏 */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --duration-fast: 120ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 布局 */
+  --sidebar-width: 264px;
+  --topbar-height: 46px;
+}

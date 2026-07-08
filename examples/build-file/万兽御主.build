@@ -1,0 +1,669 @@
+{
+  "name": "万兽御主 Lv.97 ",
+  "author": null,
+  "ascendancy": "Huntress2",
+  "passives": [
+    {
+      "id": "dexterity46"
+    },
+    {
+      "id": "AscendancyHuntress2Notable4"
+    },
+    {
+      "id": "dexterity25"
+    },
+    {
+      "id": "companions55"
+    },
+    {
+      "id": "dexterity51"
+    },
+    {
+      "id": "attributes1"
+    },
+    {
+      "id": "mana38"
+    },
+    {
+      "id": "AscendancyHuntress2Small8"
+    },
+    {
+      "id": "companions56"
+    },
+    {
+      "id": "jewel_slot1969"
+    },
+    {
+      "id": "duelist_minions3_"
+    },
+    {
+      "id": "duelist_minions11"
+    },
+    {
+      "id": "minion_offence9"
+    },
+    {
+      "id": "intelligence60"
+    },
+    {
+      "id": "mana29"
+    },
+    {
+      "id": "companions1_"
+    },
+    {
+      "id": "dexterity12_"
+    },
+    {
+      "id": "evasion11"
+    },
+    {
+      "id": "dexterity48"
+    },
+    {
+      "id": "intelligence68"
+    },
+    {
+      "id": "dexterity24_"
+    },
+    {
+      "id": "dexterity47"
+    },
+    {
+      "id": "companions2"
+    },
+    {
+      "id": "duelist_minions4"
+    },
+    {
+      "id": "attributes47"
+    },
+    {
+      "id": "dexterity75"
+    },
+    {
+      "id": "dexterity64"
+    },
+    {
+      "id": "energy_shield_recovery6"
+    },
+    {
+      "id": "dexterity21"
+    },
+    {
+      "id": "AscendancyHuntress2Small4"
+    },
+    {
+      "id": "jewel_slot1979"
+    },
+    {
+      "id": "energy_shield_recovery8"
+    },
+    {
+      "id": "companions33"
+    },
+    {
+      "id": "dexterity82_"
+    },
+    {
+      "id": "dexterity81"
+    },
+    {
+      "id": "attributes19"
+    },
+    {
+      "id": "mana31"
+    },
+    {
+      "id": "attributes10"
+    },
+    {
+      "id": "dexterity20"
+    },
+    {
+      "id": "attributes61"
+    },
+    {
+      "id": "duelist_minions5_"
+    },
+    {
+      "id": "attributes9"
+    },
+    {
+      "id": "attributes11"
+    },
+    {
+      "id": "duelist_minions1"
+    },
+    {
+      "id": "attributes14"
+    },
+    {
+      "id": "dexterity7"
+    },
+    {
+      "id": "companions5"
+    },
+    {
+      "id": "mana34"
+    },
+    {
+      "id": "jewel_slot1976"
+    },
+    {
+      "id": "companions4"
+    },
+    {
+      "id": "companions19_"
+    },
+    {
+      "id": "minion_offence14"
+    },
+    {
+      "id": "minion_offence10_"
+    },
+    {
+      "id": "dexterity55"
+    },
+    {
+      "id": "attributes20-"
+    },
+    {
+      "id": "companions27"
+    },
+    {
+      "id": "dexterity34"
+    },
+    {
+      "id": "ranger_huntress_notable1"
+    },
+    {
+      "id": "energy_shield_recovery7"
+    },
+    {
+      "id": "mana32"
+    },
+    {
+      "id": "minion_offence7"
+    },
+    {
+      "id": "AscendancyHuntress2Small3"
+    },
+    {
+      "id": "dexterity80"
+    },
+    {
+      "id": "companions10"
+    },
+    {
+      "id": "AscendancyHuntress2Notable7"
+    },
+    {
+      "id": "companions9"
+    },
+    {
+      "id": "minion_offence11"
+    },
+    {
+      "id": "passive_keystone_two_companions"
+    },
+    {
+      "id": "companions15"
+    },
+    {
+      "id": "AscendancyHuntress2Small7"
+    },
+    {
+      "id": "intelligence54"
+    },
+    {
+      "id": "passive_keystone_mind_over_matter"
+    },
+    {
+      "id": "companions11"
+    },
+    {
+      "id": "intelligence59"
+    },
+    {
+      "id": "jewel_slot1970"
+    },
+    {
+      "id": "companions21"
+    },
+    {
+      "id": "intelligence52"
+    },
+    {
+      "id": "companions13"
+    },
+    {
+      "id": "attributes12"
+    },
+    {
+      "id": "dexterity52"
+    },
+    {
+      "id": "dexterity23_"
+    },
+    {
+      "id": "attributes13"
+    },
+    {
+      "id": "dexterity50"
+    },
+    {
+      "id": "intelligence51"
+    },
+    {
+      "id": "dexterity76"
+    },
+    {
+      "id": "intelligence25"
+    },
+    {
+      "id": "energy_shield_recovery13"
+    },
+    {
+      "id": "intelligence53_"
+    },
+    {
+      "id": "dexterity54"
+    },
+    {
+      "id": "companions12"
+    },
+    {
+      "id": "AscendancyHuntress2Notable8"
+    },
+    {
+      "id": "passive_keystone_eldritch_battery__"
+    },
+    {
+      "id": "dexterity9"
+    },
+    {
+      "id": "companions18"
+    },
+    {
+      "id": "attributes8_"
+    },
+    {
+      "id": "intelligence45"
+    },
+    {
+      "id": "intelligence67"
+    },
+    {
+      "id": "duelist_minions8"
+    },
+    {
+      "id": "jewel_slot1960"
+    },
+    {
+      "id": "dexterity22"
+    },
+    {
+      "id": "intelligence69"
+    },
+    {
+      "id": "jewel_slot1961"
+    },
+    {
+      "id": "minion_offence12_"
+    },
+    {
+      "id": "intelligence58"
+    },
+    {
+      "id": "AscendancyHuntress2Notable3"
+    },
+    {
+      "id": "companions25"
+    },
+    {
+      "id": "attributes29"
+    },
+    {
+      "id": "companions66",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions64",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions54",
+      "weapon_set": 1
+    },
+    {
+      "id": "cooldowns15",
+      "weapon_set": 1
+    },
+    {
+      "id": "cooldowns16",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions60",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions58",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions62__",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions65",
+      "weapon_set": 1
+    },
+    {
+      "id": "cooldowns14",
+      "weapon_set": 1
+    },
+    {
+      "id": "minion_offence36",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions53",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions68",
+      "weapon_set": 1
+    },
+    {
+      "id": "minion_offence37_",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions69",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions52",
+      "weapon_set": 1
+    },
+    {
+      "id": "minion_offence35",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions51",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions63",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions67",
+      "weapon_set": 1
+    },
+    {
+      "id": "companions61",
+      "weapon_set": 1
+    },
+    {
+      "id": "mana_flasks11",
+      "weapon_set": 2
+    },
+    {
+      "id": "dexterity58",
+      "weapon_set": 2
+    },
+    {
+      "id": "mana_flasks6",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks15",
+      "weapon_set": 2
+    },
+    {
+      "id": "mana_flasks2",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks29",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks28",
+      "weapon_set": 2
+    },
+    {
+      "id": "companions57__",
+      "weapon_set": 2
+    },
+    {
+      "id": "mana_flasks1",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks5_",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks32",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks9",
+      "weapon_set": 2
+    },
+    {
+      "id": "attributes74",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks30",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks17",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks13",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks27",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks16",
+      "weapon_set": 2
+    },
+    {
+      "id": "movement_speed3",
+      "weapon_set": 2
+    },
+    {
+      "id": "movement_speed1",
+      "weapon_set": 2
+    },
+    {
+      "id": "marks12",
+      "weapon_set": 2
+    }
+  ],
+  "items": [
+    {
+      "inventory_id": "BodyArmour1",
+      "additional_text": "护甲、闪避和能量护盾提高 330%\n每个镶嵌的插槽使混沌抗性 +13%\n每个镶嵌的插槽使对你的击中的暴击伤害加成降低 15%\n每个镶嵌的插槽使所有元素抗性 +10%"
+    },
+    {
+      "inventory_id": "Gloves1",
+      "additional_text": "+45 能量护盾上限\n能量护盾提高 69%\n+29 智慧\n闪电抗性 +39%"
+    },
+    {
+      "inventory_id": "Belt1",
+      "additional_text": "+81 生命上限\n+81 魔力上限\n闪电抗性 +29%\n召唤生物的生命上限提高 22%\n召唤生物的移动速度提高 13%"
+    },
+    {
+      "inventory_id": "Weapon1",
+      "additional_text": "物理伤害提高 200%\n攻击速度降低 11%\n+19 力量\n打击造成溅射伤害\n击中时击退敌人\n无法使用投射物攻击"
+    },
+    {
+      "inventory_id": "Helm1",
+      "additional_text": "能量护盾提高 32%\n+137 生命上限\n+60 魔力上限\n所有召唤生物技能等级 +2\n冰霜抗性 +27%"
+    },
+    {
+      "inventory_id": "Offhand1",
+      "additional_text": "该装备精魂提高 89%\n在场的友军每秒再生 52.8 点生命\n+9 全属性\n伙伴对你的印记目标造成的伤害提高 101%\n你可以拥有任意数量的不同类型的伙伴"
+    },
+    {
+      "inventory_id": "Boots1",
+      "additional_text": "+50 能量护盾上限\n火焰抗性 +33%\n冰霜抗性 +27%\n你被冰缓的持续时间降低 42%"
+    },
+    {
+      "inventory_id": "Amulet1",
+      "additional_text": "法术伤害提高 23%\n+66 能量护盾上限\n所有元素抗性 +18%"
+    },
+    {
+      "inventory_id": "Ring1",
+      "additional_text": "+78 生命上限\n召唤生物的生命上限提高 26%\n召唤生物的伤害提高 21%\n召唤生物的攻击和施法速度提高 8%\n召唤生物的暴击率提高 25%"
+    },
+    {
+      "inventory_id": "Weapon2",
+      "additional_text": "物理伤害提高 95%\n移动速度提高 5%\n+15 力量\n+15 智慧\n每个召唤生物使伤害提高 7%"
+    },
+    {
+      "inventory_id": "Ring2",
+      "additional_text": "火焰抗性 +29%\n召唤生物的生命上限提高 30%\n召唤生物的伤害提高 21%\n召唤生物有 +22% 元素抗性\n召唤生物的攻击和施法速度提高 10%"
+    }
+  ],
+  "skills": [
+    {
+      "id": "Metadata/Items/Gem/SkillGemWildProtector",
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gems/SupportGemRageThree"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemFeedingFrenzyTwo"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemRomirasRequital"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemEnormity"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemUruksSmelting"
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemDiscipline"
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemAzmerianWolf",
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gem/SupportGemMuster"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemEnormity"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemRageThree"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemCathasBrilliance"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemLoyalty"
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemHyenaCackle"
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemSkeletalCleric",
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gem/SupportGemTecrodsRevenge"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemMeatShieldTwo"
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gem/SkillGemManaRemnants",
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gem/SupportGemDissipateTwo"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemInterlude"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemKhatalsRejuvenation"
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemWolfPack",
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gem/SupportGemLoyalty"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemInfernalLegionTwo"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemMinionInstability"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemFeedingFrenzyTwo"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemAmanamusTithe"
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemRefutation",
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gems/SupportGemIngenuityTwo"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemPersistenceTwo"
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gems/SkillGemWolfPounce",
+      "support_skills": [
+        {
+          "id": "Metadata/Items/Gems/SupportGemMartialTempoThree"
+        },
+        {
+          "id": "Metadata/Items/Gem/SupportGemCullingStrikeTwo"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemMaim"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemBludgeon"
+        },
+        {
+          "id": "Metadata/Items/Gems/SupportGemBrutusBrain"
+        }
+      ]
+    },
+    {
+      "id": "Metadata/Items/Gem/SkillGemTameBeast"
+    }
+  ]
+}

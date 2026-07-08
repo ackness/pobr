@@ -59,9 +59,18 @@ impl fmt::Display for LoadError {
 impl std::error::Error for LoadError {}
 
 /// 指向某个 PoE2 版本数据目录（`data/<poe_version>/`）的加载器。
+///
+/// 两种后端：
+/// - **文件系统**（[`GameData::new`]）：`root` 指向磁盘版本目录，默认路径；
+/// - **内存**（[`GameData::from_memory`]）：所有文件由调用方以
+///   `相对路径 -> bytes` 一次性注入，之后零文件 I/O——供 wasm 等无文件系统
+///   环境使用（JS 侧 fetch 数据文件后传入）。
 #[derive(Debug, Clone)]
 pub struct GameData {
     root: PathBuf,
+    /// 内存文件表（`Some` = 内存后端）。键为版本目录内的相对路径，
+    /// 恒用正斜杠分隔（如 `base/stats.json`、`overlay/uniques.json`）。
+    files: Option<std::sync::Arc<std::collections::BTreeMap<String, Vec<u8>>>>,
 }
 
 impl GameData {
@@ -69,6 +78,42 @@ impl GameData {
     pub fn new(version_dir: impl Into<PathBuf>) -> Self {
         Self {
             root: version_dir.into(),
+            files: None,
+        }
+    }
+
+    /// 内存后端：`files` 为版本目录内 `相对路径（正斜杠）-> 文件内容` 的映射。
+    ///
+    /// 之后所有域加载都查此表，不触碰文件系统；表中缺文件与磁盘缺文件同语义
+    /// （[`LoadError::Io`] NotFound，消费侧的缺表降级照常生效）。
+    pub fn from_memory(files: std::collections::BTreeMap<String, Vec<u8>>) -> Self {
+        Self {
+            root: PathBuf::from("<memory>"),
+            files: Some(std::sync::Arc::new(files)),
+        }
+    }
+
+    /// 把一个（可能带 `root` 前缀的）路径规约为内存表键。
+    fn memory_key(&self, path: &Path) -> String {
+        let rel = path.strip_prefix(&self.root).unwrap_or(path);
+        rel.to_string_lossy().replace('\\', "/")
+    }
+
+    /// 读取一个数据文件的字节（按后端分派）。
+    pub(crate) fn read_bytes(&self, path: &Path) -> Result<Vec<u8>, std::io::Error> {
+        match &self.files {
+            Some(map) => map.get(&self.memory_key(path)).cloned().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::NotFound, "file not in memory data")
+            }),
+            None => fs::read(path),
+        }
+    }
+
+    /// 判断一个数据文件是否存在（按后端分派；供 `domain_path` / patch 层探测）。
+    pub(crate) fn file_exists(&self, path: &Path) -> bool {
+        match &self.files {
+            Some(map) => map.contains_key(&self.memory_key(path)),
+            None => path.is_file(),
         }
     }
 
@@ -88,7 +133,7 @@ impl GameData {
         &self,
         path: PathBuf,
     ) -> Result<T, LoadError> {
-        let bytes = fs::read(&path).map_err(|source| LoadError::Io {
+        let bytes = self.read_bytes(&path).map_err(|source| LoadError::Io {
             path: path.clone(),
             source,
         })?;
@@ -96,16 +141,18 @@ impl GameData {
         // （base/ 与 i18n/ 都有 base_items.json）。
         if let Ok(rel) = path.strip_prefix(&self.root) {
             let patch_path = self.root.join("patch").join(rel);
-            if patch_path.is_file() {
+            if self.file_exists(&patch_path) {
                 let base_val: serde_json::Value =
                     serde_json::from_slice(&bytes).map_err(|source| LoadError::Parse {
                         path: path.clone(),
                         source,
                     })?;
-                let patch_bytes = fs::read(&patch_path).map_err(|source| LoadError::Io {
-                    path: patch_path.clone(),
-                    source,
-                })?;
+                let patch_bytes = self
+                    .read_bytes(&patch_path)
+                    .map_err(|source| LoadError::Io {
+                        path: patch_path.clone(),
+                        source,
+                    })?;
                 let patch_val: serde_json::Value =
                     serde_json::from_slice(&patch_bytes).map_err(|source| LoadError::Parse {
                         path: patch_path.clone(),
@@ -324,6 +371,26 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/skills.json")))
     }
 
+    /// 加载某语言的**词条行输入翻译模板**（`i18n/<lang>/stat_lines.json`，
+    /// Phase 7.1：本地化词条 → 英文 canonical 的模板对）。文件缺失（该语言
+    /// 未入库）返回 `Ok(None)`——消费侧按「无该语言输入翻译」降级；其余
+    /// IO / 解析错误照常上抛。
+    pub fn stat_line_templates(
+        &self,
+        lang: &str,
+    ) -> Result<Option<Vec<pobr_data::catalog::StatLineTemplate>>, LoadError> {
+        let path = self.root.join(format!("i18n/{lang}/stat_lines.json"));
+        match self.load_json_at::<Vec<pobr_data::catalog::StatLineTemplate>>(path) {
+            Ok(v) => Ok(Some(v)),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// 加载被动天赋树节点（来自 GGG 官方树导出适配，按 `skill` id 排序）。
     pub fn passive_nodes(&self) -> Result<Vec<PassiveNodeDef>, LoadError> {
         self.load_domain("passive_tree.json")
@@ -369,6 +436,15 @@ impl GameData {
     /// 枚举已入库的历史树版本号（`base/passive_trees/*.json` 文件名）。目录
     /// 缺失 = 空表。
     pub fn available_tree_versions(&self) -> Vec<String> {
+        if let Some(map) = &self.files {
+            // 内存后端：枚举 `base/passive_trees/*.json` 键（BTreeMap 已有序）。
+            return map
+                .keys()
+                .filter_map(|k| k.strip_prefix("base/passive_trees/"))
+                .filter(|rest| !rest.contains('/'))
+                .filter_map(|name| name.strip_suffix(".json").map(str::to_string))
+                .collect();
+        }
         let dir = self.root().join("base/passive_trees");
         let Ok(rd) = std::fs::read_dir(dir) else {
             return Vec::new();

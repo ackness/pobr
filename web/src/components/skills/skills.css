@@ -1,0 +1,281 @@
+.skills-hint {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.skill-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.skill-group {
+  text-align: left;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.skill-group:hover {
+  border-color: var(--accent-gold-dim);
+}
+
+.skill-group.is-main {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 1px var(--accent-gold-dim);
+}
+
+.skill-group.is-disabled {
+  opacity: 0.55;
+}
+
+.skill-group-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.skill-group-name {
+  color: var(--rarity-gem);
+  font-weight: 600;
+}
+
+.skill-group-slot {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+}
+
+.skill-group-main {
+  color: var(--accent-gold-bright);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.skill-group-off {
+  color: var(--color-negative);
+  font-size: var(--text-xs);
+}
+
+.skill-gems {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  font-size: var(--text-sm);
+}
+
+.skill-gem {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  padding: 1px 0;
+}
+
+.skill-gem.is-active {
+  color: var(--text-primary);
+}
+
+.gem-level {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 编辑器控件 */
+.skills-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.skills-toolbar input[list] {
+  min-width: 280px;
+}
+
+.skill-group-title {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.skill-group-toggle {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.skill-remove {
+  padding: 0 var(--space-2);
+  color: var(--text-muted);
+}
+
+.skill-remove:hover {
+  color: var(--color-negative);
+  border-color: var(--color-negative);
+}
+
+.gem-name {
+  flex: 1;
+}
+
+.gem-controls {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.gem-controls input[type='number'] {
+  width: 56px;
+}
+
+.skill-group input[list] {
+  width: 100%;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+/* 自定义宝石选择器 */
+.gem-picker {
+  position: relative;
+  min-width: 280px;
+  flex: 1;
+  max-width: 420px;
+}
+
+.gem-picker input {
+  width: 100%;
+}
+
+.gem-picker-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+.gem-picker-chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gem-chip {
+  font-size: var(--text-xs);
+  padding: 0 var(--space-2);
+  background: transparent;
+}
+
+.gem-chip.is-active {
+  border-color: var(--accent-gold);
+  background: var(--surface-card);
+}
+
+.gem-picker-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.gem-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.gem-picker-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.gem-picker-item.is-highlight {
+  background: var(--surface-card);
+  outline: 1px solid var(--accent-gold-dim);
+}
+
+.gem-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  align-self: center;
+}
+
+.gem-primary {
+  color: var(--text-primary);
+}
+
+.gem-secondary {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.gem-picker-empty {
+  color: var(--text-muted);
+  padding: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.skill-group-picker {
+  margin-top: var(--space-2);
+}
+
+/* 技能组套装 */
+.skill-sets {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: var(--space-3) 0;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+}
+
+.skill-sets-title {
+  color: var(--accent-gold-dim);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.skill-set-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.skill-set-chip button {
+  font-size: var(--text-xs);
+  padding: 0 var(--space-1);
+}

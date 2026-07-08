@@ -1,0 +1,3766 @@
+[
+  {
+    "connections": [
+      44359
+    ],
+    "group": 881,
+    "id": "energy_shield34_",
+    "kind": "notable",
+    "name": "Insightfulness",
+    "orbit": 7,
+    "orbit_index": 13,
+    "skill": 116,
+    "stats": [
+      "18% increased maximum [EnergyShield|Energy Shield]",
+      "12% increased Mana Regeneration Rate",
+      "6% increased [Intelligence]"
+    ],
+    "x": 1358.75642,
+    "y": -3941.182618
+  },
+  {
+    "connections": [
+      39037,
+      61027
+    ],
+    "group": 816,
+    "id": "energy_shield11",
+    "kind": "normal",
+    "name": "Stun and Ailment Threshold from Energy Shield",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 517,
+    "stats": [
+      "Gain additional [AilmentThreshold|Ailment Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
+      "Gain additional [StunThreshold|Stun Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 419.3,
+    "y": -4284.19
+  },
+  {
+    "connections": [
+      34621
+    ],
+    "group": 1170,
+    "id": "criticals45",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 535,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 5193.02,
+    "y": -4742.69
+  },
+  {
+    "connections": [
+      13419
+    ],
+    "group": 1057,
+    "id": "criticals42",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 1,
+    "orbit_index": 4,
+    "skill": 630,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 3703.124083,
+    "y": -2940.28
+  },
+  {
+    "connections": [
+      39037
+    ],
+    "group": 874,
+    "id": "intelligence18",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 1826,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 1308.1,
+    "y": -3294.7
+  },
+  {
+    "connections": [
+      14666,
+      43736,
+      60685
+    ],
+    "group": 821,
+    "id": "witch_sorceress_notable2",
+    "kind": "notable",
+    "name": "Pure Energy",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 2254,
+    "stats": [
+      "30% increased maximum [EnergyShield|Energy Shield]",
+      "+10 to [Intelligence]"
+    ],
+    "x": 486.99,
+    "y": -3030.38
+  },
+  {
+    "connections": [
+      47168,
+      59425
+    ],
+    "group": 609,
+    "id": "life_recoup5",
+    "kind": "normal",
+    "name": "Life Recoup",
+    "orbit": 7,
+    "orbit_index": 18,
+    "skill": 2508,
+    "stats": [
+      "3% of Damage taken [Recoup|Recouped] as Life"
+    ],
+    "x": -2948.32,
+    "y": -10245.46
+  },
+  {
+    "connections": [
+      21984
+    ],
+    "group": 1129,
+    "id": "attributes1",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 3251,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 4693.79,
+    "y": -9892.16
+  },
+  {
+    "connections": [
+      4328,
+      26885,
+      28021
+    ],
+    "group": 1211,
+    "id": "attributes76",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 3463,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 5749.4,
+    "y": -5672.71
+  },
+  {
+    "connections": [
+      3251,
+      64474
+    ],
+    "group": 1153,
+    "id": "energy_shield_recovery26",
+    "kind": "normal",
+    "name": "Energy Shield Delay",
+    "orbit": 2,
+    "orbit_index": 19,
+    "skill": 3628,
+    "stats": [
+      "6% [FasterESRechargeStart|faster start of Energy Shield Recharge]"
+    ],
+    "x": 4340.189984,
+    "y": -9903.098685
+  },
+  {
+    "connections": [
+      296,
+      57273,
+      59093
+    ],
+    "group": 224,
+    "id": "attributes3",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 4140,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -8008.17,
+    "y": -7035.15
+  },
+  {
+    "connections": [
+      49220
+    ],
+    "group": 977,
+    "id": "criticals11",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 7,
+    "orbit_index": 18,
+    "skill": 4157,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 2443.54,
+    "y": -2103.71
+  },
+  {
+    "connections": [
+      21208,
+      44628
+    ],
+    "group": 1210,
+    "id": "intelligence64",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 4328,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 5749.4,
+    "y": -6287.76
+  },
+  {
+    "connections": [
+      45885
+    ],
+    "group": 701,
+    "id": "archon19",
+    "kind": "normal",
+    "name": "Minion Damage and Command Speed",
+    "orbit": 3,
+    "orbit_index": 9,
+    "skill": 4345,
+    "stats": [
+      "[Minion|Minions] deal 6% increased Damage",
+      "[Minion|Minions] have 8% increased [CooldownRecovery|Cooldown Recovery Rate] for [Command] Skills"
+    ],
+    "x": -1174.689228,
+    "y": -10608.949228
+  },
+  {
+    "connections": [
+      4519,
+      20677
+    ],
+    "group": 1131,
+    "id": "criticals13",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 4346,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 4705.26,
+    "y": -4974.35
+  },
+  {
+    "connections": [
+      4776,
+      57710
+    ],
+    "group": 730,
+    "id": "intelligence88",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 4456,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -949.03,
+    "y": -5546.35
+  },
+  {
+    "connections": [
+      2254
+    ],
+    "group": 819,
+    "id": "energy_shield_recovery24",
+    "kind": "normal",
+    "name": "Energy Shield Delay",
+    "orbit": 3,
+    "orbit_index": 6,
+    "skill": 4748,
+    "stats": [
+      "6% [FasterESRechargeStart|faster start of Energy Shield Recharge]"
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "name": "Minion Life",
+        "stats": [
+          "Minions have 10% increased maximum Life"
+        ],
+        "variant_skill": 48235
+      }
+    ],
+    "x": 815.3,
+    "y": -3752.19
+  },
+  {
+    "connections": [
+      32278
+    ],
+    "group": 512,
+    "id": "physical34",
+    "kind": "notable",
+    "name": "Shredding Force",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 5284,
+    "stats": [
+      "15% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+      "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]",
+      "15% increased [BuffMagnitude|Magnitude] of [DamagingAilments|Damaging Ailments] you inflict with [Critical|Critical Hits]"
+    ],
+    "x": -3905.87,
+    "y": -9191.64
+  },
+  {
+    "connections": [
+      29009
+    ],
+    "group": 774,
+    "id": "intelligence57",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 4,
+    "orbit_index": 36,
+    "skill": 5314,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -0.0,
+    "y": -9178.2
+  },
+  {
+    "connections": [
+      51820
+    ],
+    "group": 292,
+    "id": "totems31",
+    "kind": "normal",
+    "name": "Totem Cast Speed",
+    "orbit": 4,
+    "orbit_index": 34,
+    "skill": 5398,
+    "stats": [
+      "[Spell|Spells] Cast by [Totem|Totems] have 4% increased Cast Speed"
+    ],
+    "x": -6763.791448,
+    "y": -6970.079778
+  },
+  {
+    "connections": [
+      48821
+    ],
+    "group": 778,
+    "id": "spell_criticals14",
+    "kind": "notable",
+    "name": "Critical Overload",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 5501,
+    "stats": [
+      "15% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+      "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"
+    ],
+    "x": 0.0,
+    "y": -4439.9
+  },
+  {
+    "connections": [
+      32309,
+      50104
+    ],
+    "group": 550,
+    "id": "archon2_",
+    "kind": "normal",
+    "name": "Archon Duration",
+    "orbit": 7,
+    "orbit_index": 20,
+    "skill": 5695,
+    "stats": [
+      "15% increased [Archon] Buff duration"
+    ],
+    "x": -3697.582376,
+    "y": -9970.33
+  },
+  {
+    "connections": [
+      16705,
+      51416
+    ],
+    "group": 1231,
+    "id": "spells16",
+    "kind": "normal",
+    "name": "Spell Damage",
+    "orbit": 6,
+    "orbit_index": 60,
+    "skill": 5766,
+    "stats": [
+      "12% increased [Spell] Damage while wielding a [Melee] Weapon"
+    ],
+    "x": 5439.742508,
+    "y": -3986.57
+  },
+  {
+    "connections": [
+      65248
+    ],
+    "group": 739,
+    "id": "elemental53",
+    "kind": "normal",
+    "name": "Elemental Damage",
+    "orbit": 4,
+    "orbit_index": 36,
+    "skill": 5936,
+    "stats": [
+      "10% increased [ElementalDamage|Elemental Damage]"
+    ],
+    "x": -612.8,
+    "y": -8144.76
+  },
+  {
+    "connections": [
+      38105
+    ],
+    "group": 609,
+    "id": "energy_shield9",
+    "kind": "normal",
+    "name": "Energy Shield",
+    "orbit": 4,
+    "orbit_index": 62,
+    "skill": 6006,
+    "stats": [
+      "15% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": -3074.97991,
+    "y": -10562.354292
+  },
+  {
+    "connections": [
+      2254
+    ],
+    "group": 811,
+    "id": "mastery_energyshield105",
+    "kind": "mastery",
+    "name": "Energy Shield Mastery",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 6338,
+    "x": 371.9,
+    "y": -2574.13
+  },
+  {
+    "connections": [
+      14110,
+      38124
+    ],
+    "group": 292,
+    "id": "totems36",
+    "kind": "normal",
+    "name": "Totem Damage",
+    "orbit": 7,
+    "orbit_index": 2,
+    "skill": 6355,
+    "stats": [
+      "15% increased [Totem|Totem] Damage"
+    ],
+    "x": -6723.9,
+    "y": -7672.962376
+  },
+  {
+    "connections": [
+      116,
+      41372
+    ],
+    "group": 881,
+    "id": "energy_shield13",
+    "kind": "normal",
+    "name": "Energy Shield and Mana Regeneration",
+    "orbit": 7,
+    "orbit_index": 17,
+    "skill": 6715,
+    "stats": [
+      "10% increased maximum [EnergyShield|Energy Shield]",
+      "6% increased Mana Regeneration Rate"
+    ],
+    "x": 1181.272618,
+    "y": -4118.66642
+  },
+  {
+    "connections": [
+      17088,
+      21142,
+      47009
+    ],
+    "group": 1144,
+    "id": "area_attacks44",
+    "kind": "normal",
+    "name": "Attack Area Damage and Area",
+    "orbit": 7,
+    "orbit_index": 8,
+    "skill": 7054,
+    "stats": [
+      "6% increased [Attack] Area Damage",
+      "4% increased Area of Effect for [Attack|Attacks]"
+    ],
+    "x": 5066.682376,
+    "y": -3362.95
+  },
+  {
+    "group": 374,
+    "id": "jewel_slot1969",
+    "kind": "jewel_socket",
+    "name": "[Jewel] Socket",
+    "orbit": 1,
+    "orbit_index": 2,
+    "skill": 7960,
+    "x": -5526.835917,
+    "y": -9525.56
+  },
+  {
+    "connections": [
+      45230
+    ],
+    "group": 960,
+    "id": "curses8",
+    "kind": "normal",
+    "name": "Curse Area",
+    "orbit": 2,
+    "orbit_index": 10,
+    "skill": 8540,
+    "stats": [
+      "10% increased Area of Effect of [Curse|Curses]"
+    ],
+    "x": 2578.88,
+    "y": -4913.063885
+  },
+  {
+    "connections": [
+      8540,
+      46034,
+      47177,
+      55507
+    ],
+    "group": 948,
+    "id": "intelligence79",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 6,
+    "orbit_index": 6,
+    "skill": 8569,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 2715.18,
+    "y": -4702.827492
+  },
+  {
+    "connections": [
+      36746,
+      43576,
+      57710
+    ],
+    "group": 776,
+    "id": "intelligence6",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 8616,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 0.0,
+    "y": -5955.17
+  },
+  {
+    "connections": [
+      61196
+    ],
+    "group": 1004,
+    "id": "intelligence9",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 8975,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 2939.76,
+    "y": -2768.08
+  },
+  {
+    "connections": [
+      42245
+    ],
+    "group": 1172,
+    "id": "triggers25_",
+    "kind": "normal",
+    "name": "Triggered Spell Damage",
+    "orbit": 2,
+    "orbit_index": 4,
+    "skill": 9069,
+    "stats": [
+      "[Trigger|Triggered] [Spell|Spells] deal 14% increased [Spell] Damage"
+    ],
+    "x": 5390.756115,
+    "y": -6080.69
+  },
+  {
+    "connections": [
+      517,
+      14666
+    ],
+    "group": 819,
+    "id": "energy_shield37",
+    "kind": "notable",
+    "name": "Dampening Shield",
+    "orbit": 7,
+    "orbit_index": 21,
+    "skill": 9642,
+    "stats": [
+      "28% increased maximum [EnergyShield|Energy Shield]",
+      "Gain additional [AilmentThreshold|Ailment Threshold] equal to 12% of maximum [EnergyShield|Energy Shield]",
+      "Gain additional [StunThreshold|Stun Threshold] equal to 12% of maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 302.816198,
+    "y": -3929.673802
+  },
+  {
+    "connections": [
+      20677
+    ],
+    "group": 1169,
+    "id": "criticals44",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 9782,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 5193.02,
+    "y": -5200.3
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "connections": [
+      13065,
+      17268,
+      23415,
+      25434,
+      27686,
+      44357
+    ],
+    "group": 1505,
+    "id": "AscendancyMonk2Start",
+    "kind": "ascendancy_start",
+    "name": "Master of the Elements",
+    "orbit": 9,
+    "orbit_index": 24,
+    "skill": 9994,
+    "x": 14631.879804,
+    "y": -8394.243899
+  },
+  {
+    "connections": [
+      5314
+    ],
+    "group": 815,
+    "id": "energy_shield_recovery9_",
+    "kind": "normal",
+    "name": "Mana Regeneration",
+    "orbit": 2,
+    "orbit_index": 16,
+    "skill": 10079,
+    "stats": [
+      "10% increased Mana Regeneration Rate"
+    ],
+    "x": 278.223885,
+    "y": -9154.2
+  },
+  {
+    "connections": [
+      3251,
+      14127,
+      44669,
+      55947
+    ],
+    "group": 1067,
+    "id": "intelligence60",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 10131,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 3772.63,
+    "y": -10338.81
+  },
+  {
+    "connections": [
+      42857,
+      44683,
+      55342
+    ],
+    "group": 916,
+    "id": "attack_speed25",
+    "kind": "normal",
+    "name": "Skill Speed",
+    "orbit": 4,
+    "orbit_index": 48,
+    "skill": 10364,
+    "stats": [
+      "4% increased [SkillSpeed|Skill Speed]"
+    ],
+    "x": 1394.399476,
+    "y": -956.44
+  },
+  {
+    "connections": [
+      21984,
+      33979
+    ],
+    "group": 1160,
+    "id": "attributes24",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 10382,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 5026.31,
+    "y": -8702.96
+  },
+  {
+    "connections": [
+      30985,
+      31697,
+      50104
+    ],
+    "group": 442,
+    "id": "infusion10",
+    "kind": "normal",
+    "name": "Infusion Duration",
+    "orbit": 7,
+    "orbit_index": 7,
+    "skill": 11284,
+    "stats": [
+      "10% increased [ElementalInfusion|Elemental Infusion] duration"
+    ],
+    "x": -4472.762618,
+    "y": -10062.70642
+  },
+  {
+    "connections": [
+      23427,
+      44455
+    ],
+    "group": 783,
+    "id": "chill_and_freeze10",
+    "kind": "normal",
+    "name": "Chill Magnitude",
+    "orbit": 3,
+    "orbit_index": 16,
+    "skill": 11337,
+    "stats": [
+      "15% increased [BuffMagnitude|Magnitude] of [Chill] you inflict"
+    ],
+    "x": -289.67851,
+    "y": -11284.96
+  },
+  {
+    "connections": [
+      17088,
+      29408,
+      52765
+    ],
+    "group": 1127,
+    "id": "attributes28",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 11604,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 4671.13,
+    "y": -2696.8
+  },
+  {
+    "connections": [
+      47177,
+      48030
+    ],
+    "group": 890,
+    "id": "intelligence84",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 11672,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 1563.03,
+    "y": -4703.51
+  },
+  {
+    "connections": [
+      62677
+    ],
+    "group": 871,
+    "id": "lightning17",
+    "kind": "normal",
+    "name": "Lightning Damage",
+    "orbit": 4,
+    "orbit_index": 36,
+    "skill": 11736,
+    "stats": [
+      "12% increased [Lightning] Damage"
+    ],
+    "x": 1249.73,
+    "y": -11021.66
+  },
+  {
+    "connections": [
+      50150,
+      62677
+    ],
+    "group": 840,
+    "id": "lightning51",
+    "kind": "normal",
+    "name": "Elemental Damage and Mana Regeneration",
+    "orbit": 3,
+    "orbit_index": 9,
+    "skill": 11873,
+    "stats": [
+      "8% increased Mana Regeneration Rate",
+      "8% increased [ElementalDamage|Elemental Damage]"
+    ],
+    "x": 980.100772,
+    "y": -10580.789228
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "group": 1505,
+    "id": "AscendancyMonk2Notable8",
+    "kind": "notable",
+    "name": "Faith is a Choice",
+    "orbit": 6,
+    "orbit_index": 7,
+    "skill": 12876,
+    "stats": [
+      "Grants Skill: <underline>{Meditate}"
+    ],
+    "x": 13972.239886,
+    "y": -8426.246528
+  },
+  {
+    "connections": [
+      61196
+    ],
+    "group": 979,
+    "id": "lightning43",
+    "kind": "normal",
+    "name": "Shock Chance",
+    "orbit": 4,
+    "orbit_index": 2,
+    "skill": 12925,
+    "stats": [
+      "15% increased chance to [Shock]"
+    ],
+    "x": 2810.348552,
+    "y": -2543.920222
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "connections": [
+      63236
+    ],
+    "group": 1505,
+    "id": "AscendancyMonk2Small10_",
+    "kind": "normal",
+    "name": "Triggered Spell Damage",
+    "orbit": 8,
+    "orbit_index": 14,
+    "skill": 13065,
+    "stats": [
+      "[Trigger|Triggered] [Spell|Spells] deal 16% increased [Spell] Damage"
+    ],
+    "x": 14501.862251,
+    "y": -8102.625654
+  },
+  {
+    "connections": [
+      14958
+    ],
+    "group": 1057,
+    "id": "criticals43_",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 7,
+    "orbit_index": 14,
+    "skill": 13419,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 3506.61,
+    "y": -2763.907624
+  },
+  {
+    "connections": [
+      49455
+    ],
+    "group": 609,
+    "id": "energy_shield24",
+    "kind": "normal",
+    "name": "Energy Shield",
+    "orbit": 4,
+    "orbit_index": 10,
+    "skill": 13537,
+    "stats": [
+      "15% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": -2319.66009,
+    "y": -10562.354292
+  },
+  {
+    "connections": [
+      2254
+    ],
+    "group": 779,
+    "id": "mana_regeneration21",
+    "kind": "normal",
+    "name": "Mana Regeneration",
+    "orbit": 2,
+    "orbit_index": 8,
+    "skill": 13769,
+    "stats": [
+      "10% increased Mana Regeneration Rate"
+    ],
+    "x": 140.296115,
+    "y": -2950.45
+  },
+  {
+    "connections": [
+      32054,
+      63861
+    ],
+    "group": 1064,
+    "id": "spell_criticals15",
+    "kind": "notable",
+    "name": "Controlling Magic",
+    "orbit": 3,
+    "orbit_index": 13,
+    "skill": 13823,
+    "stats": [
+      "25% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+      "[HitDamage|Hits] have 25% reduced [Critical|Critical Hit] Chance against you"
+    ],
+    "x": 3602.74562,
+    "y": -9633.704848
+  },
+  {
+    "connections": [
+      22484,
+      35974
+    ],
+    "group": 292,
+    "id": "totems37",
+    "kind": "normal",
+    "name": "Totem Damage",
+    "orbit": 3,
+    "orbit_index": 22,
+    "skill": 14110,
+    "stats": [
+      "15% increased [Totem|Totem] Damage"
+    ],
+    "x": -7016.9,
+    "y": -7745.70851
+  },
+  {
+    "connections": [
+      22713,
+      45702,
+      58022,
+      61403
+    ],
+    "group": 1285,
+    "id": "intelligence68",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 14446,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 7123.27,
+    "y": -7914.57
+  },
+  {
+    "group": 819,
+    "id": "energy_shield10_",
+    "kind": "normal",
+    "name": "Stun and Ailment Threshold from Energy Shield",
+    "orbit": 3,
+    "orbit_index": 18,
+    "skill": 14666,
+    "stats": [
+      "Gain additional [AilmentThreshold|Ailment Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
+      "Gain additional [StunThreshold|Stun Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 145.3,
+    "y": -3752.19
+  },
+  {
+    "connections": [
+      34233,
+      49220
+    ],
+    "group": 983,
+    "id": "attack_speed46",
+    "kind": "normal",
+    "name": "Skill Speed",
+    "orbit": 2,
+    "orbit_index": 18,
+    "skill": 14725,
+    "stats": [
+      "3% increased [SkillSpeed|Skill Speed]"
+    ],
+    "x": 2591.29,
+    "y": -2001.95
+  },
+  {
+    "connections": [
+      17548
+    ],
+    "group": 1057,
+    "id": "criticals41",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 1,
+    "orbit_index": 10,
+    "skill": 14958,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 3561.095917,
+    "y": -3022.28
+  },
+  {
+    "connections": [
+      2254,
+      6338
+    ],
+    "group": 811,
+    "id": "energy_shield27",
+    "kind": "normal",
+    "name": "Energy Shield",
+    "orbit": 2,
+    "orbit_index": 23,
+    "skill": 15408,
+    "stats": [
+      "15% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 329.971315,
+    "y": -2730.609984
+  },
+  {
+    "connections": [
+      57710
+    ],
+    "group": 778,
+    "id": "spell_criticals4",
+    "kind": "normal",
+    "name": "Spell Critical Damage",
+    "orbit": 3,
+    "orbit_index": 0,
+    "skill": 15618,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"
+    ],
+    "x": 0.0,
+    "y": -4774.9
+  },
+  {
+    "connections": [
+      7947,
+      46554
+    ],
+    "group": 910,
+    "id": "cold23",
+    "kind": "normal",
+    "name": "Energy Shield as Freeze Threshold",
+    "orbit": 2,
+    "orbit_index": 10,
+    "skill": 15876,
+    "stats": [
+      "Gain 15% of maximum [EnergyShield|Energy Shield] as additional [FreezeThreshold|Freeze Threshold]"
+    ],
+    "x": 1857.09,
+    "y": -10539.823885
+  },
+  {
+    "connections": [
+      48198
+    ],
+    "group": 1003,
+    "id": "evasion_and_energy_shield27",
+    "kind": "normal",
+    "name": "Evasion and Energy Shield",
+    "orbit": 2,
+    "orbit_index": 13,
+    "skill": 15975,
+    "stats": [
+      "12% increased [Evasion|Evasion Rating]",
+      "12% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 2893.631315,
+    "y": -1538.360016
+  },
+  {
+    "connections": [
+      25851,
+      34621,
+      61834
+    ],
+    "group": 1231,
+    "id": "intelligence66",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 6,
+    "orbit_index": 66,
+    "skill": 16705,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 5749.4,
+    "y": -4296.227492
+  },
+  {
+    "connections": [
+      51416
+    ],
+    "group": 1231,
+    "id": "intelligence7",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 6,
+    "orbit_index": 48,
+    "skill": 17088,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 5439.742508,
+    "y": -3140.57
+  },
+  {
+    "connections": [
+      19955,
+      23427,
+      41972,
+      47270
+    ],
+    "group": 783,
+    "id": "mastery_cold58",
+    "kind": "mastery",
+    "name": "Cold Mastery",
+    "orbit": 1,
+    "orbit_index": 6,
+    "skill": 17380,
+    "x": 0.44,
+    "y": -11370.46
+  },
+  {
+    "connections": [
+      23382,
+      28774,
+      52106
+    ],
+    "group": 270,
+    "id": "cast_speed2",
+    "kind": "normal",
+    "name": "Cast Speed",
+    "orbit": 6,
+    "orbit_index": 30,
+    "skill": 17505,
+    "stats": [
+      "3% increased Cast Speed"
+    ],
+    "x": -6717.48,
+    "y": -9704.732508
+  },
+  {
+    "connections": [
+      630,
+      31039
+    ],
+    "group": 1057,
+    "id": "criticals38_",
+    "kind": "notable",
+    "name": "Moment of Truth",
+    "orbit": 7,
+    "orbit_index": 2,
+    "skill": 17548,
+    "stats": [
+      "25% increased [CriticalDamageBonus|Critical Damage Bonus] if you've dealt a [Critical|Non-Critical Hit] [Recently]",
+      "15% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 3757.61,
+    "y": -3198.652376
+  },
+  {
+    "group": 783,
+    "id": "cold38",
+    "kind": "notable",
+    "name": "Endless Blizzard",
+    "orbit": 4,
+    "orbit_index": 6,
+    "skill": 19955,
+    "stats": [
+      "+1 to Level of all [Cold] Skills"
+    ],
+    "x": 246.94,
+    "y": -11879.410524
+  },
+  {
+    "connections": [
+      44223
+    ],
+    "group": 916,
+    "id": "criticals14",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 7,
+    "orbit_index": 22,
+    "skill": 20024,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 1695.85,
+    "y": -1420.312376
+  },
+  {
+    "connections": [
+      535,
+      9586
+    ],
+    "group": 1161,
+    "id": "criticals29",
+    "kind": "notable",
+    "name": "For the Jugular",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 20677,
+    "stats": [
+      "25% increased [CriticalDamageBonus|Critical Damage Bonus]",
+      "+10 to [Intelligence]"
+    ],
+    "x": 5061.13,
+    "y": -4971.48
+  },
+  {
+    "group": 518,
+    "id": "physical15",
+    "kind": "normal",
+    "name": "Spell Critical Chance",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 21245,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]"
+    ],
+    "x": -3804.23,
+    "y": -9338.75
+  },
+  {
+    "connections": [
+      62984
+    ],
+    "group": 1003,
+    "id": "evasion_and_energy_shield26",
+    "kind": "normal",
+    "name": "Evasion and Energy Shield",
+    "orbit": 2,
+    "orbit_index": 19,
+    "skill": 21336,
+    "stats": [
+      "12% increased [Evasion|Evasion Rating]",
+      "12% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 2779.080016,
+    "y": -1736.768685
+  },
+  {
+    "connections": [
+      11604,
+      50588
+    ],
+    "group": 1154,
+    "id": "accuracy12",
+    "kind": "normal",
+    "name": "Accuracy",
+    "orbit": 2,
+    "orbit_index": 20,
+    "skill": 21713,
+    "stats": [
+      "8% increased [Accuracy] Rating"
+    ],
+    "x": 4804.683885,
+    "y": -2467.46
+  },
+  {
+    "connections": [
+      57204
+    ],
+    "group": 925,
+    "id": "criticals20",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 2,
+    "orbit_index": 19,
+    "skill": 21779,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 1822.320016,
+    "y": -4297.868685
+  },
+  {
+    "connections": [
+      61403
+    ],
+    "group": 1190,
+    "id": "jewel_slot1979",
+    "kind": "jewel_socket",
+    "name": "[Jewel] Socket",
+    "orbit": 1,
+    "orbit_index": 4,
+    "skill": 21984,
+    "x": 5516.294083,
+    "y": -9521.99
+  },
+  {
+    "connections": [
+      51797,
+      54521
+    ],
+    "group": 609,
+    "id": "life_recoup8",
+    "kind": "normal",
+    "name": "Life Recoup",
+    "orbit": 7,
+    "orbit_index": 6,
+    "skill": 22141,
+    "stats": [
+      "3% of Damage taken [Recoup|Recouped] as Life"
+    ],
+    "x": -2446.32,
+    "y": -10245.46
+  },
+  {
+    "connections": [
+      36302,
+      48821
+    ],
+    "group": 778,
+    "id": "spell_criticals10",
+    "kind": "normal",
+    "name": "Spell Critical Chance",
+    "orbit": 3,
+    "orbit_index": 12,
+    "skill": 22290,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]"
+    ],
+    "x": -0.0,
+    "y": -4104.9
+  },
+  {
+    "connections": [
+      5936
+    ],
+    "group": 739,
+    "id": "elemental21",
+    "kind": "normal",
+    "name": "Elemental Damage",
+    "orbit": 3,
+    "orbit_index": 12,
+    "skill": 22439,
+    "stats": [
+      "10% increased [ElementalDamage|Elemental Damage]"
+    ],
+    "x": -612.8,
+    "y": -8302.76
+  },
+  {
+    "connections": [
+      64659
+    ],
+    "group": 608,
+    "id": "slowed_enemies17",
+    "kind": "normal",
+    "name": "Slow Effect on You",
+    "orbit": 3,
+    "orbit_index": 18,
+    "skill": 22538,
+    "stats": [
+      "8% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You"
+    ],
+    "x": -3032.32,
+    "y": -11149.0
+  },
+  {
+    "connections": [
+      39037,
+      61027
+    ],
+    "group": 830,
+    "id": "energy_shield_recovery29",
+    "kind": "normal",
+    "name": "Energy Shield Delay",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 22691,
+    "stats": [
+      "6% [FasterESRechargeStart|faster start of Energy Shield Recharge]"
+    ],
+    "variants": [
+      {
+        "class": "Witch",
+        "name": "Minion Life",
+        "stats": [
+          "Minions have 10% increased maximum Life"
+        ],
+        "variant_skill": 19990
+      }
+    ],
+    "x": 552.41,
+    "y": -4284.19
+  },
+  {
+    "connections": [
+      39515,
+      45885
+    ],
+    "group": 718,
+    "id": "fire13",
+    "kind": "normal",
+    "name": "Fire Damage",
+    "orbit": 3,
+    "orbit_index": 10,
+    "skill": 23091,
+    "stats": [
+      "12% increased [Fire] Damage"
+    ],
+    "x": -1051.4,
+    "y": -11237.80149
+  },
+  {
+    "connections": [
+      7960,
+      8982,
+      9065,
+      26863,
+      54297,
+      59093
+    ],
+    "group": 324,
+    "id": "intelligence41__",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 23382,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -6208.88,
+    "y": -8867.25
+  },
+  {
+    "connections": [
+      62914
+    ],
+    "group": 783,
+    "id": "chill_and_freeze14",
+    "kind": "notable",
+    "name": "Chilled to the Bone",
+    "orbit": 4,
+    "orbit_index": 54,
+    "skill": 23427,
+    "stats": [
+      "20% increased [Chill|Chill] Duration on Enemies",
+      "30% increased [BuffMagnitude|Magnitude] of [Chill] you inflict"
+    ],
+    "x": -492.56,
+    "y": -11452.46
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "connections": [
+      25434,
+      29133
+    ],
+    "group": 1505,
+    "id": "AscendancyMonk2Notable4",
+    "kind": "notable",
+    "name": "I am the Blizzard...",
+    "orbit": 5,
+    "orbit_index": 9,
+    "skill": 23587,
+    "stats": [
+      "[Gain] 10% of Damage as Extra [Cold] Damage",
+      "On [Freeze|Freezing] Enemies create [ChilledGround|Chilled Ground]"
+    ],
+    "x": 13955.09891,
+    "y": -8201.348588
+  },
+  {
+    "connections": [
+      4328,
+      6079,
+      8908,
+      25557
+    ],
+    "group": 1189,
+    "id": "attributes56",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 24165,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 5409.48,
+    "y": -6761.17
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "group": 1505,
+    "id": "AscendancyMonk2Small4",
+    "kind": "normal",
+    "name": "Chill Effect",
+    "orbit": 6,
+    "orbit_index": 11,
+    "skill": 25434,
+    "stats": [
+      "15% increased [BuffMagnitude|Magnitude] of [Chill] you inflict"
+    ],
+    "x": 14179.99685,
+    "y": -8218.489564
+  },
+  {
+    "connections": [
+      46819,
+      56640
+    ],
+    "group": 734,
+    "id": "spell_criticals8",
+    "kind": "normal",
+    "name": "Spell Critical Damage",
+    "orbit": 7,
+    "orbit_index": 6,
+    "skill": 26682,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"
+    ],
+    "x": 472.14,
+    "y": -7336.21
+  },
+  {
+    "connections": [
+      48198
+    ],
+    "group": 1003,
+    "id": "life_on_kill2",
+    "kind": "normal",
+    "name": "Life on Kill",
+    "orbit": 3,
+    "orbit_index": 10,
+    "skill": 26931,
+    "stats": [
+      "Gain 3 Life per enemy killed"
+    ],
+    "x": 3103.06,
+    "y": -1404.72149
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "connections": [
+      12876
+    ],
+    "group": 1505,
+    "id": "AscendancyMonk2Small9",
+    "kind": "normal",
+    "name": "Energy Shield Recharge Rate",
+    "orbit": 8,
+    "orbit_index": 10,
+    "skill": 27686,
+    "stats": [
+      "20% increased [ESRechargeRate|Energy Shield Recharge Rate]"
+    ],
+    "x": 14314.322219,
+    "y": -8427.454517
+  },
+  {
+    "connections": [
+      9782
+    ],
+    "group": 1181,
+    "id": "criticals9",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 28021,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 5324.92,
+    "y": -5429.12
+  },
+  {
+    "connections": [
+      59362
+    ],
+    "group": 773,
+    "id": "intelligence56",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 29009,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 0.0,
+    "y": -9772.2
+  },
+  {
+    "connections": [
+      11337,
+      41669
+    ],
+    "group": 783,
+    "id": "chill_and_freeze11",
+    "kind": "normal",
+    "name": "Chill Magnitude",
+    "orbit": 4,
+    "orbit_index": 42,
+    "skill": 29369,
+    "stats": [
+      "15% increased [BuffMagnitude|Magnitude] of [Chill] you inflict"
+    ],
+    "x": -246.06,
+    "y": -11025.509476
+  },
+  {
+    "connections": [
+      5314,
+      29009,
+      29800,
+      50715,
+      61354
+    ],
+    "group": 753,
+    "id": "infusion19_",
+    "kind": "normal",
+    "name": "Infused Spell Damage",
+    "orbit": 2,
+    "orbit_index": 6,
+    "skill": 29391,
+    "stats": [
+      "12% increased [Spell] Damage if you have consumed an [ElementalInfusion|Elemental Infusion] [Recently]"
+    ],
+    "x": -267.99,
+    "y": -9489.3
+  },
+  {
+    "connections": [
+      46197
+    ],
+    "group": 1311,
+    "id": "criticals83",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 2,
+    "orbit_index": 3,
+    "skill": 31692,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 7760.221299,
+    "y": -7889.151299
+  },
+  {
+    "connections": [
+      7405,
+      8569,
+      21080,
+      58329
+    ],
+    "group": 948,
+    "id": "intelligence78",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 6,
+    "orbit_index": 12,
+    "skill": 31950,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 3024.837492,
+    "y": -4393.17
+  },
+  {
+    "connections": [
+      62153
+    ],
+    "group": 1064,
+    "id": "spell_criticals18",
+    "kind": "normal",
+    "name": "Spell Critical Damage",
+    "orbit": 3,
+    "orbit_index": 15,
+    "skill": 32054,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"
+    ],
+    "x": 3452.569228,
+    "y": -9720.409228
+  },
+  {
+    "connections": [
+      5501,
+      15618,
+      22290
+    ],
+    "group": 778,
+    "id": "spell_criticals9",
+    "kind": "normal",
+    "name": "Spell Critical Chance",
+    "orbit": 2,
+    "orbit_index": 18,
+    "skill": 32404,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]"
+    ],
+    "x": -162.0,
+    "y": -4439.9
+  },
+  {
+    "connections": [
+      61196
+    ],
+    "group": 983,
+    "id": "attack_speed47",
+    "kind": "normal",
+    "name": "Skill Speed",
+    "orbit": 2,
+    "orbit_index": 2,
+    "skill": 32545,
+    "stats": [
+      "3% increased [SkillSpeed|Skill Speed]"
+    ],
+    "x": 2834.29,
+    "y": -2142.246115
+  },
+  {
+    "connections": [
+      50104,
+      61179
+    ],
+    "group": 488,
+    "id": "physical14",
+    "kind": "normal",
+    "name": "Physical Damage",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 32745,
+    "stats": [
+      "10% increased [Physical] Damage"
+    ],
+    "x": -4116.33,
+    "y": -9838.01
+  },
+  {
+    "connections": [
+      39280,
+      41522
+    ],
+    "group": 1071,
+    "id": "duration6",
+    "kind": "notable",
+    "name": "Preservation",
+    "orbit": 3,
+    "orbit_index": 17,
+    "skill": 32951,
+    "stats": [
+      "25% increased Skill Effect Duration"
+    ],
+    "x": 3458.994848,
+    "y": -10758.53562
+  },
+  {
+    "connections": [
+      10131,
+      61923
+    ],
+    "group": 1002,
+    "id": "mana_regeneration32",
+    "kind": "normal",
+    "name": "Mana Regeneration",
+    "orbit": 4,
+    "orbit_index": 14,
+    "skill": 33345,
+    "stats": [
+      "10% increased Mana Regeneration Rate"
+    ],
+    "x": 3386.048462,
+    "y": -10142.365931
+  },
+  {
+    "connections": [
+      49220
+    ],
+    "group": 916,
+    "id": "attack_damage3",
+    "kind": "normal",
+    "name": "Attack Damage",
+    "orbit": 2,
+    "orbit_index": 4,
+    "skill": 33866,
+    "stats": [
+      "8% increased [Attack] Damage"
+    ],
+    "x": 1961.646115,
+    "y": -1283.94
+  },
+  {
+    "connections": [
+      16123,
+      32545
+    ],
+    "group": 983,
+    "id": "attack_speed37",
+    "kind": "notable",
+    "name": "Flow State",
+    "orbit": 2,
+    "orbit_index": 22,
+    "skill": 34233,
+    "stats": [
+      "5% increased [SkillSpeed|Skill Speed]",
+      "15% increased Mana Regeneration Rate"
+    ],
+    "x": 2672.29,
+    "y": -2142.246115
+  },
+  {
+    "connections": [
+      38541
+    ],
+    "group": 1182,
+    "id": "criticals10",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 34621,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 5324.92,
+    "y": -4513.87
+  },
+  {
+    "connections": [
+      23382,
+      24767
+    ],
+    "group": 331,
+    "id": "focus1",
+    "kind": "normal",
+    "name": "Focus Energy Shield",
+    "orbit": 2,
+    "orbit_index": 16,
+    "skill": 35408,
+    "stats": [
+      "40% increased [EnergyShield|Energy Shield] from Equipped [Focus]"
+    ],
+    "x": -6210.776115,
+    "y": -8612.42
+  },
+  {
+    "connections": [
+      32009,
+      62677
+    ],
+    "group": 856,
+    "id": "curses15",
+    "kind": "normal",
+    "name": "Curse Duration",
+    "orbit": 7,
+    "orbit_index": 22,
+    "skill": 36639,
+    "stats": [
+      "20% increased [Curse] Duration"
+    ],
+    "x": 950.3,
+    "y": -9886.372376
+  },
+  {
+    "connections": [
+      62230
+    ],
+    "group": 1001,
+    "id": "energy_shield46_",
+    "kind": "normal",
+    "name": "Energy Shield",
+    "orbit": 6,
+    "orbit_index": 68,
+    "skill": 37974,
+    "stats": [
+      "15% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 2633.430959,
+    "y": -10909.159957
+  },
+  {
+    "group": 609,
+    "id": "energy_shield22",
+    "kind": "normal",
+    "name": "Energy Shield",
+    "orbit": 4,
+    "orbit_index": 67,
+    "skill": 38105,
+    "stats": [
+      "15% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": -2905.670803,
+    "y": -10692.269739
+  },
+  {
+    "connections": [
+      51820
+    ],
+    "group": 292,
+    "id": "totems35",
+    "kind": "normal",
+    "name": "Totem Damage",
+    "orbit": 4,
+    "orbit_index": 26,
+    "skill": 38124,
+    "stats": [
+      "15% increased [Totem|Totem] Damage"
+    ],
+    "x": -6471.74009,
+    "y": -7138.695708
+  },
+  {
+    "connections": [
+      61601
+    ],
+    "group": 1193,
+    "id": "criticals17",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 38541,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 5457.07,
+    "y": -4742.78
+  },
+  {
+    "connections": [
+      27910,
+      56045
+    ],
+    "group": 1075,
+    "id": "attack41__",
+    "kind": "normal",
+    "name": "Attack Damage",
+    "orbit": 1,
+    "orbit_index": 6,
+    "skill": 38676,
+    "stats": [
+      "10% increased [Attack] Damage"
+    ],
+    "x": 3855.19,
+    "y": -2428.92
+  },
+  {
+    "connections": [
+      11672
+    ],
+    "group": 820,
+    "id": "intelligence17",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 39037,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 486.61,
+    "y": -4703.51
+  },
+  {
+    "connections": [
+      44669
+    ],
+    "group": 1071,
+    "id": "duration10",
+    "kind": "normal",
+    "name": "Increased Duration",
+    "orbit": 3,
+    "orbit_index": 1,
+    "skill": 39280,
+    "stats": [
+      "10% increased Skill Effect Duration"
+    ],
+    "x": 3869.28438,
+    "y": -11168.825152
+  },
+  {
+    "connections": [
+      5936,
+      38068
+    ],
+    "group": 739,
+    "id": "elemental50",
+    "kind": "normal",
+    "name": "Elemental Ailment Duration",
+    "orbit": 4,
+    "orbit_index": 48,
+    "skill": 39752,
+    "stats": [
+      "10% increased Duration of [Ignite], [Shock] and [Chill] on Enemies"
+    ],
+    "x": -1039.750524,
+    "y": -8391.26
+  },
+  {
+    "connections": [
+      48198
+    ],
+    "group": 923,
+    "id": "mana11",
+    "kind": "normal",
+    "name": "Mana Regeneration",
+    "orbit": 2,
+    "orbit_index": 4,
+    "skill": 39964,
+    "stats": [
+      "10% increased Mana Regeneration Rate"
+    ],
+    "x": 2099.146115,
+    "y": -1059.15
+  },
+  {
+    "connections": [
+      18913,
+      47177
+    ],
+    "group": 950,
+    "id": "chaos1",
+    "kind": "normal",
+    "name": "Chaos Damage and Duration",
+    "orbit": 3,
+    "orbit_index": 14,
+    "skill": 39987,
+    "stats": [
+      "5% increased [Chaos] Damage",
+      "5% increased Skill Effect Duration"
+    ],
+    "x": 2150.01,
+    "y": -5148.51149
+  },
+  {
+    "connections": [
+      32745,
+      60241
+    ],
+    "group": 490,
+    "id": "physical19",
+    "kind": "normal",
+    "name": "Bleed Chance",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 40276,
+    "stats": [
+      "5% chance to inflict [Bleeding|Bleeding] on [HitDamage|Hit]"
+    ],
+    "x": -4113.12,
+    "y": -9545.42
+  },
+  {
+    "connections": [
+      3251,
+      56844,
+      58363
+    ],
+    "group": 1102,
+    "id": "archon8",
+    "kind": "normal",
+    "name": "Archon Effect and Duration",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 40313,
+    "stats": [
+      "8% increased [Archon] Buff duration",
+      "5% increased effect of [Archon] [Buff|Buffs] on you"
+    ],
+    "x": 4405.42,
+    "y": -9374.35
+  },
+  {
+    "connections": [
+      9185,
+      21779,
+      47177
+    ],
+    "group": 925,
+    "id": "criticals22",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 2,
+    "orbit_index": 1,
+    "skill": 40760,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 2020.728685,
+    "y": -4412.419984
+  },
+  {
+    "connections": [
+      11672,
+      15358,
+      17711,
+      21540,
+      24035,
+      63009
+    ],
+    "group": 850,
+    "id": "intelligence86",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 40783,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 1061.08,
+    "y": -5546.35
+  },
+  {
+    "connections": [
+      48030
+    ],
+    "group": 881,
+    "id": "energy_shield7",
+    "kind": "normal",
+    "name": "Energy Shield and Mana Regeneration",
+    "orbit": 7,
+    "orbit_index": 21,
+    "skill": 41372,
+    "stats": [
+      "10% increased maximum [EnergyShield|Energy Shield]",
+      "6% increased Mana Regeneration Rate"
+    ],
+    "x": 1246.236198,
+    "y": -4361.113802
+  },
+  {
+    "group": 783,
+    "id": "cold7",
+    "kind": "normal",
+    "name": "Cold Damage",
+    "orbit": 3,
+    "orbit_index": 12,
+    "skill": 41669,
+    "stats": [
+      "12% increased [Cold] Damage"
+    ],
+    "x": 0.44,
+    "y": -11117.46
+  },
+  {
+    "connections": [
+      56649,
+      60515
+    ],
+    "group": 783,
+    "id": "cold_penetration26",
+    "kind": "notable",
+    "name": "Glaciation",
+    "orbit": 4,
+    "orbit_index": 18,
+    "skill": 41972,
+    "stats": [
+      "Damage [Penetration|Penetrates] 18% [Resistances|Cold Resistance]",
+      "[Gain] 6% of [ElementalDamage|Elemental Damage] as Extra [Cold] Damage"
+    ],
+    "x": 493.44,
+    "y": -11452.46
+  },
+  {
+    "connections": [
+      16024,
+      18167
+    ],
+    "group": 1172,
+    "id": "triggers26",
+    "kind": "notable",
+    "name": "Efficient Inscriptions",
+    "orbit": 1,
+    "orbit_index": 8,
+    "skill": 42245,
+    "stats": [
+      "[Meta] Skills have 20% increased [Reservation] [Efficiency]"
+    ],
+    "x": 5179.445917,
+    "y": -5958.69
+  },
+  {
+    "connections": [
+      3463,
+      4552,
+      16705,
+      25520
+    ],
+    "group": 1212,
+    "id": "attributes25",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 42379,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 5749.4,
+    "y": -4981.71
+  },
+  {
+    "connections": [
+      9050,
+      17088
+    ],
+    "group": 1231,
+    "id": "attack22",
+    "kind": "normal",
+    "name": "Attack Damage",
+    "orbit": 6,
+    "orbit_index": 42,
+    "skill": 42750,
+    "stats": [
+      "10% increased [Attack] Damage"
+    ],
+    "x": 5749.4,
+    "y": -2830.912508
+  },
+  {
+    "connections": [
+      7576,
+      20024
+    ],
+    "group": 916,
+    "id": "attack_speed27",
+    "kind": "normal",
+    "name": "Skill Speed",
+    "orbit": 7,
+    "orbit_index": 16,
+    "skill": 42857,
+    "stats": [
+      "4% increased [SkillSpeed|Skill Speed]"
+    ],
+    "x": 1603.977624,
+    "y": -1077.44
+  },
+  {
+    "group": 916,
+    "id": "criticals15",
+    "kind": "normal",
+    "name": "Critical Damage",
+    "orbit": 7,
+    "orbit_index": 1,
+    "skill": 44223,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Damage Bonus]"
+    ],
+    "x": 1886.31358,
+    "y": -1445.387382
+  },
+  {
+    "connections": [
+      857,
+      38105,
+      49455
+    ],
+    "group": 609,
+    "id": "energy_shield36",
+    "kind": "notable",
+    "name": "Enhanced Barrier",
+    "orbit": 4,
+    "orbit_index": 0,
+    "skill": 44299,
+    "stats": [
+      "25% increased maximum [EnergyShield|Energy Shield]",
+      "5% of Maximum Life [StatConversion|Converted] to [EnergyShield|Energy Shield]"
+    ],
+    "x": -2697.32,
+    "y": -10738.46
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "connections": [
+      63713
+    ],
+    "group": 1505,
+    "id": "AscendancyMonk2Small8",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 9,
+    "orbit_index": 34,
+    "skill": 44357,
+    "stats": [
+      "12% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 14803.963611,
+    "y": -7848.463791
+  },
+  {
+    "connections": [
+      28021
+    ],
+    "group": 1192,
+    "id": "criticals16",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 44420,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 5457.07,
+    "y": -5200.42
+  },
+  {
+    "connections": [
+      41669,
+      60515
+    ],
+    "group": 783,
+    "id": "cold13",
+    "kind": "normal",
+    "name": "Cold Damage",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 44455,
+    "stats": [
+      "12% increased [Cold] Damage"
+    ],
+    "x": 0.44,
+    "y": -11452.46
+  },
+  {
+    "group": 1071,
+    "id": "duration12",
+    "kind": "normal",
+    "name": "Increased Duration",
+    "orbit": 3,
+    "orbit_index": 9,
+    "skill": 44669,
+    "stats": [
+      "10% increased Skill Effect Duration"
+    ],
+    "x": 4019.460772,
+    "y": -10608.359228
+  },
+  {
+    "connections": [
+      74,
+      5162,
+      9994,
+      11495,
+      45406,
+      50198,
+      52980
+    ],
+    "group": 872,
+    "id": "six704",
+    "kind": "normal",
+    "name": "SIX",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 44683,
+    "x": 1270.43,
+    "y": -728.84
+  },
+  {
+    "connections": [
+      14446
+    ],
+    "group": 1267,
+    "id": "curses13",
+    "kind": "normal",
+    "name": "Curse Duration",
+    "orbit": 7,
+    "orbit_index": 2,
+    "skill": 45111,
+    "stats": [
+      "20% increased [Curse] Duration"
+    ],
+    "x": 6861.44,
+    "y": -7204.982376
+  },
+  {
+    "connections": [
+      59093
+    ],
+    "group": 259,
+    "id": "passive_keystone_ancestral_bond",
+    "kind": "keystone",
+    "name": "Ancestral Bond",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 45202,
+    "stats": [
+      "Your [Totem] [Limit] is doubled\nNo [Charges|Charge] requirement for placing [Totem|Totems]\n[Totem|Totems] reserve 75 [Spirit] each"
+    ],
+    "x": -7414.29,
+    "y": -8107.33
+  },
+  {
+    "connections": [
+      3251,
+      26135,
+      55041
+    ],
+    "group": 1191,
+    "id": "projectile_spells1",
+    "kind": "normal",
+    "name": "Spell Damage",
+    "orbit": 3,
+    "orbit_index": 16,
+    "skill": 45319,
+    "stats": [
+      "8% increased [Spell] Damage"
+    ],
+    "x": 5162.49149,
+    "y": -10080.91
+  },
+  {
+    "connections": [
+      29009,
+      43713
+    ],
+    "group": 817,
+    "id": "corpses13",
+    "kind": "normal",
+    "name": "Offering Area",
+    "orbit": 7,
+    "orbit_index": 18,
+    "skill": 45570,
+    "stats": [
+      "[Offering] Skills have 20% increased Area of Effect"
+    ],
+    "x": 201.02,
+    "y": -9772.2
+  },
+  {
+    "connections": [
+      31692,
+      61333
+    ],
+    "group": 1311,
+    "id": "criticals86",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 2,
+    "orbit_index": 19,
+    "skill": 45702,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 7489.190016,
+    "y": -7816.528685
+  },
+  {
+    "connections": [
+      13359,
+      45497,
+      54521,
+      59362
+    ],
+    "group": 726,
+    "id": "intelligence54",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 45885,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -1051.9,
+    "y": -10395.75
+  },
+  {
+    "connections": [
+      13823
+    ],
+    "group": 1064,
+    "id": "spell_criticals16",
+    "kind": "normal",
+    "name": "Spell Critical Chance",
+    "orbit": 3,
+    "orbit_index": 9,
+    "skill": 46088,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]"
+    ],
+    "x": 3926.330772,
+    "y": -9720.409228
+  },
+  {
+    "connections": [
+      39237
+    ],
+    "group": 1311,
+    "id": "criticals84",
+    "kind": "notable",
+    "name": "Careful Assassin",
+    "orbit": 2,
+    "orbit_index": 7,
+    "skill": 46197,
+    "stats": [
+      "20% reduced [CriticalDamageBonus|Critical Damage Bonus]",
+      "50% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 7802.149984,
+    "y": -7732.671315
+  },
+  {
+    "connections": [
+      10131,
+      36379,
+      42999,
+      62677
+    ],
+    "group": 933,
+    "id": "intelligence59",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 46554,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 2107.3,
+    "y": -10394.21
+  },
+  {
+    "connections": [
+      8616,
+      13909
+    ],
+    "group": 771,
+    "id": "attributes21",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 46819,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -0.88,
+    "y": -7031.82
+  },
+  {
+    "connections": [
+      6006,
+      25570,
+      54521,
+      55412
+    ],
+    "group": 569,
+    "id": "intelligence52",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 47168,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -3225.69,
+    "y": -10395.75
+  },
+  {
+    "group": 935,
+    "id": "intelligence85",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 47177,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 2110.13,
+    "y": -4703.51
+  },
+  {
+    "connections": [
+      2254
+    ],
+    "group": 779,
+    "id": "cast_speed15_",
+    "kind": "normal",
+    "name": "Cast Speed",
+    "orbit": 2,
+    "orbit_index": 4,
+    "skill": 47307,
+    "stats": [
+      "3% increased Cast Speed"
+    ],
+    "x": 140.296115,
+    "y": -3112.45
+  },
+  {
+    "connections": [
+      62677
+    ],
+    "group": 882,
+    "id": "passive_keystone_whispers_of_doom",
+    "kind": "keystone",
+    "name": "Whispers of Doom",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 47759,
+    "stats": [
+      "You can apply an additional [Curse]\nDouble Activation Delay of [Curse|Curses]"
+    ],
+    "x": 1436.89,
+    "y": -10147.25
+  },
+  {
+    "connections": [
+      14446,
+      37876
+    ],
+    "group": 1328,
+    "id": "attributes12",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 47976,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 7886.46,
+    "y": -7151.38
+  },
+  {
+    "connections": [
+      62436
+    ],
+    "group": 881,
+    "id": "energy_shield12",
+    "kind": "normal",
+    "name": "Energy Shield",
+    "orbit": 7,
+    "orbit_index": 1,
+    "skill": 48030,
+    "stats": [
+      "15% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 1488.68358,
+    "y": -4426.077382
+  },
+  {
+    "connections": [
+      1215,
+      13411,
+      29361,
+      40068,
+      65437
+    ],
+    "group": 923,
+    "id": "shadow_monk_notable2",
+    "kind": "notable",
+    "name": "Step Like Mist",
+    "orbit": 4,
+    "orbit_index": 12,
+    "skill": 48198,
+    "stats": [
+      "4% increased Movement Speed",
+      "15% increased Mana Regeneration Rate",
+      "+5 to [Dexterity|Dexterity] and [Intelligence|Intelligence]"
+    ],
+    "x": 2385.800524,
+    "y": -1224.65
+  },
+  {
+    "connections": [
+      7960,
+      23825,
+      43036
+    ],
+    "group": 432,
+    "id": "attributes13",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 48552,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -4902.61,
+    "y": -8434.54
+  },
+  {
+    "connections": [
+      4271,
+      46554
+    ],
+    "group": 934,
+    "id": "minion_defence28",
+    "kind": "normal",
+    "name": "Minion Resistances",
+    "orbit": 2,
+    "orbit_index": 0,
+    "skill": 48611,
+    "stats": [
+      "[Minion|Minions] have +8% to all Elemental [Resistances]"
+    ],
+    "x": 2107.3,
+    "y": -10093.58
+  },
+  {
+    "connections": [
+      15618
+    ],
+    "group": 778,
+    "id": "spell_criticals3",
+    "kind": "normal",
+    "name": "Spell Critical Damage",
+    "orbit": 2,
+    "orbit_index": 6,
+    "skill": 48821,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"
+    ],
+    "x": 162.0,
+    "y": -4439.9
+  },
+  {
+    "connections": [
+      51820
+    ],
+    "group": 292,
+    "id": "totems52_",
+    "kind": "normal",
+    "name": "Totem Life",
+    "orbit": 3,
+    "orbit_index": 10,
+    "skill": 48979,
+    "stats": [
+      "16% increased [Totem] Life"
+    ],
+    "x": -6681.9,
+    "y": -7165.47149
+  },
+  {
+    "connections": [
+      8569
+    ],
+    "group": 942,
+    "id": "attributes38",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 49046,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 2214.93,
+    "y": -3836.38
+  },
+  {
+    "connections": [
+      10429,
+      21336,
+      36778,
+      44223,
+      53960
+    ],
+    "group": 916,
+    "id": "shadow_monk_notable1",
+    "kind": "notable",
+    "name": "Flow Like Water",
+    "orbit": 4,
+    "orbit_index": 12,
+    "skill": 49220,
+    "stats": [
+      "8% increased [Attack] and Cast Speed",
+      "+5 to [Dexterity|Dexterity] and [Intelligence|Intelligence]"
+    ],
+    "x": 2248.300524,
+    "y": -1449.44
+  },
+  {
+    "group": 609,
+    "id": "energy_shield23",
+    "kind": "normal",
+    "name": "Energy Shield",
+    "orbit": 4,
+    "orbit_index": 5,
+    "skill": 49455,
+    "stats": [
+      "15% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": -2488.969197,
+    "y": -10692.269739
+  },
+  {
+    "connections": [
+      5936,
+      15885,
+      61419
+    ],
+    "group": 738,
+    "id": "intelligence46",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 49512,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -613.84,
+    "y": -7995.13
+  },
+  {
+    "connections": [
+      7960,
+      37594,
+      46742,
+      47168
+    ],
+    "group": 482,
+    "id": "intelligence51",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 50104,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -4185.36,
+    "y": -10001.8
+  },
+  {
+    "connections": [
+      10131,
+      19355,
+      39567
+    ],
+    "group": 1002,
+    "id": "intelligence103",
+    "kind": "normal",
+    "name": "Intelligence",
+    "orbit": 5,
+    "orbit_index": 5,
+    "skill": 50755,
+    "stats": [
+      "+8 to [Intelligence]"
+    ],
+    "x": 3202.553289,
+    "y": -10573.725755
+  },
+  {
+    "connections": [
+      37974,
+      39567,
+      46554
+    ],
+    "group": 1002,
+    "id": "intelligence102",
+    "kind": "normal",
+    "name": "Intelligence",
+    "orbit": 5,
+    "orbit_index": 67,
+    "skill": 50816,
+    "stats": [
+      "+8 to [Intelligence]"
+    ],
+    "x": 2643.006711,
+    "y": -10573.725755
+  },
+  {
+    "connections": [
+      18793,
+      24060,
+      49512
+    ],
+    "group": 740,
+    "id": "infusion11",
+    "kind": "normal",
+    "name": "Infusion Duration",
+    "orbit": 2,
+    "orbit_index": 0,
+    "skill": 51194,
+    "stats": [
+      "10% increased [ElementalInfusion|Elemental Infusion] duration"
+    ],
+    "x": -831.53,
+    "y": -7838.31
+  },
+  {
+    "connections": [
+      15424,
+      45798,
+      57230,
+      57821,
+      61834
+    ],
+    "group": 1231,
+    "id": "intelligence25",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 6,
+    "orbit_index": 12,
+    "skill": 51741,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 6905.057492,
+    "y": -3986.57
+  },
+  {
+    "connections": [
+      21127
+    ],
+    "group": 292,
+    "id": "totems33_",
+    "kind": "notable",
+    "name": "Ancestral Conduits",
+    "orbit": 6,
+    "orbit_index": 30,
+    "skill": 51820,
+    "stats": [
+      "12% increased [Attack] and Cast Speed if you've summoned a [Totem|Totem] [Recently|Recently]"
+    ],
+    "x": -6426.4,
+    "y": -6722.932508
+  },
+  {
+    "connections": [
+      19955,
+      44455,
+      47270
+    ],
+    "group": 783,
+    "id": "cold10",
+    "kind": "normal",
+    "name": "Freeze Buildup",
+    "orbit": 3,
+    "orbit_index": 0,
+    "skill": 52799,
+    "stats": [
+      "15% increased [Freeze|Freeze] Buildup"
+    ],
+    "x": 0.44,
+    "y": -11787.46
+  },
+  {
+    "connections": [
+      13537,
+      22185,
+      58789
+    ],
+    "group": 652,
+    "id": "intelligence53_",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 54521,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -2171.82,
+    "y": -10395.75
+  },
+  {
+    "connections": [
+      5314
+    ],
+    "group": 843,
+    "id": "Puppetmaster11",
+    "kind": "normal",
+    "name": "Puppet Master chance",
+    "orbit": 4,
+    "orbit_index": 55,
+    "skill": 54733,
+    "stats": [
+      "15% increased Effect of [PuppetMaster|Puppet Master]"
+    ],
+    "x": 334.806014,
+    "y": -8850.147781
+  },
+  {
+    "connections": [
+      61196
+    ],
+    "group": 977,
+    "id": "criticals12",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 7,
+    "orbit_index": 2,
+    "skill": 55088,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 2820.04,
+    "y": -2321.082376
+  },
+  {
+    "connections": [
+      41669,
+      56649
+    ],
+    "group": 783,
+    "id": "cold_penetration10",
+    "kind": "normal",
+    "name": "Cold Penetration",
+    "orbit": 4,
+    "orbit_index": 30,
+    "skill": 55250,
+    "stats": [
+      "Damage [Penetration|Penetrates] 6% [Resistances|Cold Resistance]"
+    ],
+    "x": 246.94,
+    "y": -11025.509476
+  },
+  {
+    "connections": [
+      17796,
+      22538
+    ],
+    "group": 608,
+    "id": "slowed_enemies16",
+    "kind": "normal",
+    "name": "Slow Effect on You",
+    "orbit": 3,
+    "orbit_index": 15,
+    "skill": 55412,
+    "stats": [
+      "8% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You"
+    ],
+    "x": -2934.200772,
+    "y": -10912.119228
+  },
+  {
+    "connections": [
+      46088
+    ],
+    "group": 1064,
+    "id": "spell_criticals12_",
+    "kind": "normal",
+    "name": "Spell Critical Chance",
+    "orbit": 2,
+    "orbit_index": 1,
+    "skill": 55947,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]"
+    ],
+    "x": 3731.378685,
+    "y": -10113.769984
+  },
+  {
+    "connections": [
+      11604,
+      24647
+    ],
+    "group": 1076,
+    "id": "dexterity6",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 56045,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 3856.59,
+    "y": -2226.59
+  },
+  {
+    "group": 1240,
+    "id": "passive_keystone_chaos_inoculation",
+    "kind": "keystone",
+    "name": "Chaos Inoculation",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 56349,
+    "stats": [
+      "Maximum Life is 1\nImmune to [Chaos] Damage and [Bleeding]"
+    ],
+    "x": 6372.73,
+    "y": -8307.67
+  },
+  {
+    "connections": [
+      44455
+    ],
+    "group": 783,
+    "id": "cold_penetration12__",
+    "kind": "normal",
+    "name": "Cold Penetration",
+    "orbit": 3,
+    "orbit_index": 8,
+    "skill": 56649,
+    "stats": [
+      "Damage [Penetration|Penetrates] 6% [Resistances|Cold Resistance]"
+    ],
+    "x": 290.55851,
+    "y": -11284.96
+  },
+  {
+    "connections": [
+      34058,
+      57710
+    ],
+    "group": 748,
+    "id": "intelligence15",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 56935,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -478.02,
+    "y": -4703.73
+  },
+  {
+    "connections": [
+      5284,
+      21245
+    ],
+    "group": 519,
+    "id": "physical17",
+    "kind": "normal",
+    "name": "Spell Critical Chance and Critical Ailment Effect",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 57178,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]",
+      "15% increased [BuffMagnitude|Magnitude] of [DamagingAilments|Damaging Ailments] you inflict with [Critical|Critical Hits]"
+    ],
+    "x": -3804.23,
+    "y": -8886.17
+  },
+  {
+    "connections": [
+      47833
+    ],
+    "group": 925,
+    "id": "criticals30",
+    "kind": "notable",
+    "name": "Critical Exploit",
+    "orbit": 2,
+    "orbit_index": 13,
+    "skill": 57204,
+    "stats": [
+      "25% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 1936.871315,
+    "y": -4099.460016
+  },
+  {
+    "connections": [
+      39037,
+      40783,
+      53975,
+      58090
+    ],
+    "group": 777,
+    "id": "intelligence16",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 6,
+    "orbit_index": 0,
+    "skill": 57710,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 0.0,
+    "y": -5546.35
+  },
+  {
+    "connections": [
+      11672,
+      52241
+    ],
+    "group": 907,
+    "id": "mana_regeneration48",
+    "kind": "normal",
+    "name": "Mana on Kill",
+    "orbit": 2,
+    "orbit_index": 12,
+    "skill": 58115,
+    "stats": [
+      "Recover 1% of maximum Mana on Kill"
+    ],
+    "x": 1746.18,
+    "y": -4873.12
+  },
+  {
+    "connections": [
+      49220
+    ],
+    "group": 1003,
+    "id": "life_on_kill1",
+    "kind": "normal",
+    "name": "Life on Kill",
+    "orbit": 3,
+    "orbit_index": 22,
+    "skill": 58182,
+    "stats": [
+      "Gain 3 Life per enemy killed"
+    ],
+    "x": 2768.06,
+    "y": -1984.95851
+  },
+  {
+    "connections": [
+      21245,
+      32278,
+      60241
+    ],
+    "group": 501,
+    "id": "physical35",
+    "kind": "notable",
+    "name": "Blood Tearing",
+    "orbit": 2,
+    "orbit_index": 11,
+    "skill": 58183,
+    "stats": [
+      "15% increased [BuffMagnitude|Magnitude] of [Bleeding|Bleeding] you inflict",
+      "25% increased [Physical] Damage"
+    ],
+    "x": -3988.691315,
+    "y": -9394.060016
+  },
+  {
+    "connections": [
+      56360,
+      56638,
+      61196
+    ],
+    "group": 948,
+    "id": "intelligence77",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 6,
+    "orbit_index": 18,
+    "skill": 58329,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 3138.18,
+    "y": -3970.17
+  },
+  {
+    "connections": [
+      4621,
+      5088,
+      14110,
+      53444
+    ],
+    "group": 276,
+    "id": "intelligence71",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 59093,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": -7050.15,
+    "y": -8009.76
+  },
+  {
+    "connections": [
+      41669,
+      50720,
+      62677
+    ],
+    "group": 772,
+    "id": "intelligence45",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 59362,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 0.0,
+    "y": -10395.75
+  },
+  {
+    "connections": [
+      57204
+    ],
+    "group": 925,
+    "id": "criticals24",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 2,
+    "orbit_index": 9,
+    "skill": 60107,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 2093.351299,
+    "y": -4141.388701
+  },
+  {
+    "connections": [
+      57178
+    ],
+    "group": 491,
+    "id": "physical16",
+    "kind": "normal",
+    "name": "Bleed Chance",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 60241,
+    "stats": [
+      "5% chance to inflict [Bleeding|Bleeding] on [HitDamage|Hit]"
+    ],
+    "x": -4113.12,
+    "y": -9254.29
+  },
+  {
+    "connections": [
+      19955
+    ],
+    "group": 783,
+    "id": "cold12",
+    "kind": "normal",
+    "name": "Cold Damage",
+    "orbit": 3,
+    "orbit_index": 4,
+    "skill": 60515,
+    "stats": [
+      "12% increased [Cold] Damage"
+    ],
+    "x": 290.55851,
+    "y": -11619.96
+  },
+  {
+    "group": 819,
+    "id": "mana18",
+    "kind": "notable",
+    "name": "Mana Blessing",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 61027,
+    "stats": [
+      "+20 to maximum Mana",
+      "20% increased Mana Regeneration Rate"
+    ],
+    "x": 480.3,
+    "y": -3752.19
+  },
+  {
+    "connections": [
+      21245
+    ],
+    "group": 506,
+    "id": "physical18",
+    "kind": "normal",
+    "name": "Spell Critical Chance",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 61179,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance] for [Spell|Spells]"
+    ],
+    "x": -3955.44,
+    "y": -9600.64
+  },
+  {
+    "connections": [
+      13419,
+      56045
+    ],
+    "group": 1093,
+    "id": "intelligence10",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 6,
+    "orbit_index": 54,
+    "skill": 61196,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 3291.88,
+    "y": -2406.01
+  },
+  {
+    "connections": [
+      46197
+    ],
+    "group": 1311,
+    "id": "criticals85",
+    "kind": "normal",
+    "name": "Critical Chance",
+    "orbit": 2,
+    "orbit_index": 11,
+    "skill": 61333,
+    "stats": [
+      "10% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 7687.598685,
+    "y": -7618.120016
+  },
+  {
+    "connections": [
+      14231,
+      17602,
+      24150,
+      56349
+    ],
+    "group": 1239,
+    "id": "intelligence69",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 61403,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 6372.73,
+    "y": -8685.67
+  },
+  {
+    "connections": [
+      3025,
+      5314,
+      46819
+    ],
+    "group": 775,
+    "id": "jewel_slot1972",
+    "kind": "jewel_socket",
+    "name": "[Jewel] Socket",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 61419,
+    "x": 0.0,
+    "y": -7995.13
+  },
+  {
+    "connections": [
+      9586,
+      44420
+    ],
+    "group": 1199,
+    "id": "criticals28",
+    "kind": "notable",
+    "name": "True Strike",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 61601,
+    "stats": [
+      "+10 to [Dexterity]",
+      "20% increased [Critical|Critical Hit Chance]"
+    ],
+    "x": 5579.63,
+    "y": -4981.71
+  },
+  {
+    "connections": [
+      17088,
+      24958
+    ],
+    "group": 1231,
+    "id": "jewel_slot1961",
+    "kind": "jewel_socket",
+    "name": "[Jewel] Socket",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 61834,
+    "x": 6172.4,
+    "y": -3563.57
+  },
+  {
+    "connections": [
+      3251,
+      8938,
+      12778
+    ],
+    "group": 1132,
+    "id": "physical_witch5_",
+    "kind": "normal",
+    "name": "Bleed Chance",
+    "orbit": 3,
+    "orbit_index": 12,
+    "skill": 61905,
+    "stats": [
+      "5% chance to inflict [Bleeding|Bleeding] on [HitDamage|Hit]"
+    ],
+    "x": 4748.75,
+    "y": -10390.21
+  },
+  {
+    "connections": [
+      55947
+    ],
+    "group": 1064,
+    "id": "spell_criticals17_",
+    "kind": "normal",
+    "name": "Spell Critical Damage",
+    "orbit": 3,
+    "orbit_index": 17,
+    "skill": 62153,
+    "stats": [
+      "15% increased [CriticalDamageBonus|Critical Spell Damage Bonus]"
+    ],
+    "x": 3365.864848,
+    "y": -9870.58562
+  },
+  {
+    "connections": [
+      19355
+    ],
+    "group": 1001,
+    "id": "energy_shield33_",
+    "kind": "notable",
+    "name": "Patient Barrier",
+    "orbit": 6,
+    "orbit_index": 0,
+    "skill": 62230,
+    "stats": [
+      "50% increased maximum [EnergyShield|Energy Shield]",
+      "20% [FasterESRechargeStart|slower start of Energy Shield Recharge]"
+    ],
+    "x": 2922.78,
+    "y": -10960.18
+  },
+  {
+    "group": 869,
+    "id": "intelligence58",
+    "kind": "normal",
+    "name": "Attribute",
+    "orbit": 0,
+    "orbit_index": 0,
+    "skill": 62677,
+    "stats": [
+      "+5 to any [Attributes|Attribute]"
+    ],
+    "x": 1235.03,
+    "y": -10395.55
+  },
+  {
+    "connections": [
+      17367,
+      53941,
+      56045
+    ],
+    "group": 1109,
+    "id": "evasion_and_energy_shield17",
+    "kind": "normal",
+    "name": "Evasion and Energy Shield",
+    "orbit": 3,
+    "orbit_index": 20,
+    "skill": 62841,
+    "stats": [
+      "12% increased [Evasion|Evasion Rating]",
+      "12% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 4145.26149,
+    "y": -2059.94
+  },
+  {
+    "connections": [
+      44455,
+      47270
+    ],
+    "group": 783,
+    "id": "cold5",
+    "kind": "normal",
+    "name": "Cold Damage",
+    "orbit": 3,
+    "orbit_index": 20,
+    "skill": 62914,
+    "stats": [
+      "12% increased [Cold] Damage"
+    ],
+    "x": -289.67851,
+    "y": -11619.96
+  },
+  {
+    "connections": [
+      15975
+    ],
+    "group": 1003,
+    "id": "evasion_and_energy_shield35_",
+    "kind": "notable",
+    "name": "Mindful Awareness",
+    "orbit": 2,
+    "orbit_index": 4,
+    "skill": 62984,
+    "stats": [
+      "24% increased [Evasion|Evasion Rating]",
+      "24% increased maximum [EnergyShield|Energy Shield]"
+    ],
+    "x": 3075.856115,
+    "y": -1775.84
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "group": 1505,
+    "id": "AscendancyMonk2Notable9",
+    "kind": "notable",
+    "name": "The Soul Springs Eternal",
+    "orbit": 6,
+    "orbit_index": 17,
+    "skill": 63236,
+    "stats": [
+      "[Meta] Skills gain 35% more [Energy]",
+      "[Meta] Skills have 50% increased [Reservation] [Efficiency]"
+    ],
+    "x": 14329.774935,
+    "y": -7806.977657
+  },
+  {
+    "connections": [
+      4328,
+      9069
+    ],
+    "group": 1172,
+    "id": "triggers24_",
+    "kind": "normal",
+    "name": "Triggered Spell Damage",
+    "orbit": 3,
+    "orbit_index": 4,
+    "skill": 63668,
+    "stats": [
+      "[Trigger|Triggered] [Spell|Spells] deal 14% increased [Spell] Damage"
+    ],
+    "x": 5540.57851,
+    "y": -6167.19
+  },
+  {
+    "ascendancy_id": "Monk2",
+    "connections": [
+      57181
+    ],
+    "group": 1505,
+    "id": "AscendancyMonk2Notable6",
+    "kind": "notable",
+    "name": "Sunder my Enemies...",
+    "orbit": 9,
+    "orbit_index": 43,
+    "skill": 63713,
+    "stats": [
+      "[Critical|Critical Hits] ignore non-negative Enemy Monster [Resistances|Elemental Resistances]"
+    ],
+    "x": 14747.808029,
+    "y": -7335.710832
+  },
+  {
+    "connections": [
+      3355
+    ],
+    "group": 608,
+    "id": "slowed_enemies18",
+    "kind": "notable",
+    "name": "Lasting Boons",
+    "orbit": 3,
+    "orbit_index": 21,
+    "skill": 64659,
+    "stats": [
+      "20% reduced [Slow|Slowing] Potency of [Debuff|Debuffs] on You",
+      "[Buff|Buffs] on you expire 10% slower"
+    ],
+    "x": -2934.200772,
+    "y": -11385.880772
+  },
+  {
+    "connections": [
+      2732,
+      11672
+    ],
+    "group": 907,
+    "id": "mana_regeneration46",
+    "kind": "normal",
+    "name": "Mana Cost Efficiency",
+    "orbit": 2,
+    "orbit_index": 16,
+    "skill": 65393,
+    "stats": [
+      "8% increased Mana Cost [Efficiency]"
+    ],
+    "x": 1605.883885,
+    "y": -4954.12
+  }
+]

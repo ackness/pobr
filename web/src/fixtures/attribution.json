@@ -1,0 +1,290 @@
+{
+  "baseline": {
+    "EnergyShield": 10005.12,
+    "Life": 1.0,
+    "TotalDPS": 4143.747968815,
+    "TotalEHP": 23661.486537325
+  },
+  "entries": [
+    {
+      "deltas": {
+        "EnergyShield": 1052.3200000000015,
+        "Life": 0.0,
+        "TotalDPS": 1365.2811226729996,
+        "TotalEHP": 2488.4226366420007
+      },
+      "id": "amulet",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 407.3299999999999,
+        "Life": 0.0,
+        "TotalDPS": 1256.5181661909996,
+        "TotalEHP": 963.2138442520009
+      },
+      "id": "belt",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 4487.650000000001,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 12117.667957882
+      },
+      "id": "bodyarmour",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 1031.550000000001,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 7044.972111846
+      },
+      "id": "boots",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 862.2700000000004,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 6512.626727428
+      },
+      "id": "gloves",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 2846.0200000000004,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 9035.21518859
+      },
+      "id": "helmet",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "ring1",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 1103.385382569999
+      },
+      "id": "ring2",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 3081.320854497,
+        "TotalEHP": 0.0
+      },
+      "id": "weapon1",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "weapon2",
+      "kind": "item"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "0",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "1",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 884.9393137339998,
+        "TotalEHP": 0.0
+      },
+      "id": "2",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "3",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "4",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "5",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "6",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "7",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "8",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "9",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "10",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "11",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "12",
+      "kind": "socket_group"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "Charm 1",
+      "kind": "flask"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "Charm 2",
+      "kind": "flask"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "Flask 2",
+      "kind": "flask"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "Flask 1",
+      "kind": "flask"
+    },
+    {
+      "deltas": {
+        "EnergyShield": 0.0,
+        "Life": 0.0,
+        "TotalDPS": 0.0,
+        "TotalEHP": 0.0
+      },
+      "id": "Charm 3",
+      "kind": "flask"
+    }
+  ]
+}

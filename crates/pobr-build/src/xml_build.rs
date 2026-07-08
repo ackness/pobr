@@ -722,6 +722,118 @@ fn parse_raw_item_texts(xml: &str) -> Result<std::collections::HashMap<u32, Stri
     Ok(result)
 }
 
+/// 装备/珠宝/药剂的**原始文本块**视图（Web 契约层展示用，不参与计算）。
+///
+/// 与 [`parse_build`] 的 [`Item`] 结构化路径互补：这里保留 PoB 原始文本
+/// （含 `Rarity:` / `Radius:` / 花括号标注行），供前端按 PoB2 习惯直出着色。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RawItemsView {
+    /// 激活 ItemSet 的装备：`(槽位稳定 id, 原始文本块)`，按槽位 id 排序。
+    pub equipped: Vec<(String, String)>,
+    /// 树插槽珠宝原始文本（不按分配状态过滤——展示视图收全量）。
+    pub jewels: Vec<String>,
+    /// 树插槽珠宝带插槽节点号（可编辑视图：`(socket 节点 skill id, 原始文本)`）。
+    pub socket_jewels: Vec<(u32, String)>,
+    /// 激活 Flask/Charm：`(槽名, 原始文本块)`。
+    pub flasks: Vec<(String, String)>,
+}
+
+/// 解析 build XML 的 `<Notes>` 自由文本（PoB 笔记页；无该段返回 `None`）。
+pub fn parse_notes(xml: &str) -> Result<Option<String>, XmlError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(false);
+    let mut in_notes = false;
+    let mut text = String::new();
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) if element_name(&e) == "Notes" => in_notes = true,
+            Ok(Event::Text(t)) if in_notes => match t.unescape() {
+                Ok(chunk) => text.push_str(&chunk),
+                Err(_) => text.push_str(&String::from_utf8_lossy(&t)),
+            },
+            Ok(Event::End(e)) if element_name_end(&e) == "Notes" => break,
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(XmlError::Parse(e.to_string())),
+            _ => {}
+        }
+    }
+    let trimmed = text.trim();
+    Ok((!trimmed.is_empty()).then(|| trimmed.to_string()))
+}
+
+/// 解析 build XML 的原始物品文本视图（见 [`RawItemsView`]）。
+pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
+    let texts = parse_raw_item_texts(xml)?;
+    let (slot_assignments, jewel_ids, flask_charm_ids, _) = parse_active_item_set(xml)?;
+    let mut equipped: Vec<(String, String)> = slot_assignments
+        .into_iter()
+        .filter_map(|(slot, id)| Some((slot.id().to_string(), texts.get(&id)?.clone())))
+        .collect();
+    equipped.sort();
+    let socket_items = parse_socket_node_items(xml)?;
+    let mut socket_jewels: Vec<(u32, String)> = socket_items
+        .iter()
+        .filter_map(|&(node, id)| Some((node, texts.get(&id)?.clone())))
+        .collect();
+    socket_jewels.sort_by_key(|(node, _)| *node);
+    let mut jewel_item_ids: Vec<u32> = jewel_ids;
+    jewel_item_ids.extend(socket_items.into_iter().map(|(_, id)| id));
+    jewel_item_ids.sort_unstable();
+    jewel_item_ids.dedup();
+    let jewels = jewel_item_ids
+        .iter()
+        .filter_map(|id| texts.get(id).cloned())
+        .collect();
+    let flasks = flask_charm_ids
+        .into_iter()
+        .filter_map(|(slot, id)| Some((slot, texts.get(&id)?.clone())))
+        .collect();
+    Ok(RawItemsView {
+        equipped,
+        jewels,
+        socket_jewels,
+        flasks,
+    })
+}
+
+/// 从一块珠宝原始文本提取范围珠宝信息（`... in Radius also grant ...` 行 +
+/// `Radius:` 档位 + Notable 增效行）；不含范围词条时返回 `None`。
+/// XML 导入与 Web 手动珠宝共用此逻辑。
+pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewel> {
+    let grant_lines: Vec<String> = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| l.contains("in Radius also grant"))
+        .map(strip_brace_tags)
+        .collect();
+    // `N% increased Effect of Notable Passive Skills in Radius`（vendor
+    // ModParser.lua:6847）：同珠宝多行取末行（vendor 后写覆盖语义）。
+    let notable_effect_inc: u32 = text
+        .lines()
+        .map(str::trim)
+        .map(strip_brace_tags)
+        .filter_map(|l| {
+            l.strip_suffix("% increased Effect of Notable Passive Skills in Radius")
+                .and_then(|n| n.trim().parse::<u32>().ok())
+        })
+        .next_back()
+        .unwrap_or(0);
+    if grant_lines.is_empty() && notable_effect_inc == 0 {
+        return None;
+    }
+    let radius_label = text
+        .lines()
+        .map(str::trim)
+        .find_map(|l| l.strip_prefix("Radius:").map(|r| r.trim().to_string()))
+        .filter(|s| !s.is_empty());
+    Some(RadiusJewel {
+        socket_node,
+        radius_label,
+        grant_lines,
+        notable_effect_inc,
+    })
+}
+
 /// 解析范围珠宝：把树插槽珠宝（`<Socket nodeId itemId>`）含 `... in Radius also grant ...`
 /// 词条的，连同其 `Radius:` 档位一起收集为 [`RadiusJewel`]（几何展开输入）。
 ///
@@ -742,38 +854,9 @@ fn parse_radius_jewels(
         let Some(text) = raw_texts.get(&item_id) else {
             continue;
         };
-        let grant_lines: Vec<String> = text
-            .lines()
-            .map(str::trim)
-            .filter(|l| l.contains("in Radius also grant"))
-            .map(strip_brace_tags)
-            .collect();
-        // `N% increased Effect of Notable Passive Skills in Radius`（vendor
-        // ModParser.lua:6847）：同珠宝多行取末行（vendor 后写覆盖语义）。
-        let notable_effect_inc: u32 = text
-            .lines()
-            .map(str::trim)
-            .map(strip_brace_tags)
-            .filter_map(|l| {
-                l.strip_suffix("% increased Effect of Notable Passive Skills in Radius")
-                    .and_then(|n| n.trim().parse::<u32>().ok())
-            })
-            .next_back()
-            .unwrap_or(0);
-        if grant_lines.is_empty() && notable_effect_inc == 0 {
-            continue;
+        if let Some(jewel) = radius_jewel_from_text(socket_node, text) {
+            out.push(jewel);
         }
-        let radius_label = text
-            .lines()
-            .map(str::trim)
-            .find_map(|l| l.strip_prefix("Radius:").map(|r| r.trim().to_string()))
-            .filter(|s| !s.is_empty());
-        out.push(RadiusJewel {
-            socket_node,
-            radius_label,
-            grant_lines,
-            notable_effect_inc,
-        });
     }
     // 确定性：按插槽节点、再按行排序。
     out.sort_by(|a, b| {
