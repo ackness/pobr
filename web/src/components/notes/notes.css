@@ -18,3 +18,26 @@
   line-height: 1.6;
   resize: vertical;
 }
+
+/* PoB 颜色码着色预览（仅笔记里出现 ^N / ^xRRGGBB 时显示） */
+.notes-preview {
+  margin-top: var(--space-2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.notes-preview-title {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.notes-preview-body {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

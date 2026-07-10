@@ -194,6 +194,7 @@ const DICT = {
     'zh-CN': '自由笔记。本地保存在浏览器；导入 build 会带入其 <Notes> 内容。',
   },
   'notes.placeholder2': { 'en-US': 'Write anything about this build…', 'zh-TW': '寫點關於這個 build 的東西…', 'zh-CN': '写点关于这个 build 的东西…' },
+  'notes.preview': { 'en-US': 'Colored preview', 'zh-TW': '著色預覽', 'zh-CN': '着色预览' },
 
   // 本地存档
   'save.title': { 'en-US': 'Local Save', 'zh-TW': '本地存檔', 'zh-CN': '本地存档' },
