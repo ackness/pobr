@@ -266,6 +266,9 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
         .chain(&item.modifier_texts)
         .chain(&item.enchant_texts)
     {
+        if is_trigger_or_status_line(text) {
+            continue;
+        }
         if let Some(value) = parse_local_effect_inc(text) {
             nested.push(
                 Modifier::number(LOCAL_UTILITY_EFFECT_NAME, ModType::Inc, value)
@@ -306,6 +309,19 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
         .with_origin(ModifierSource::new(source_id).with_slot(slot_key)),
     );
     ingest
+}
+
+/// flask/charm 的触发条件 / 状态描述行——基底固有描述而非数值词条：
+/// `Used when you become Frozen` / `Also grants 435 Guard` /
+/// `Possessed by Spirit Of The Cat for 17 seconds on use`。
+/// PoB2 ModParser 对这些行同样零 mod 产出（`run-parsemod.sh` 核实
+/// unsupported=true），计算侧双方一致为空；差异只在报表口径——这类行
+/// 是描述性固定文案，不是「待支持的词条缺口」，静默跳过不进 unsupported。
+fn is_trigger_or_status_line(text: &str) -> bool {
+    let lower = text.trim().to_lowercase();
+    lower.starts_with("used when ")
+        || lower.starts_with("possessed by ")
+        || lower.starts_with("also grants ")
 }
 
 /// `N% increased effect` / `N% reduced effect`（大小写不敏感）→ 本件局部 effect inc。

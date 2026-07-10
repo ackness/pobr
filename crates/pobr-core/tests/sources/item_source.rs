@@ -375,10 +375,9 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     assert_eq!(classify_utility_item(&charm), UtilityItemKind::Charm);
 
     let ingest = ingest_flask_charm("Charm 1", &charm);
-    assert_eq!(
-        ingest.unsupported,
-        vec!["Used when you take Cold damage from a Hit".to_string()],
-        "触发行不可解析 → unsupported 原行收集"
+    assert!(
+        ingest.unsupported.is_empty(),
+        "触发条件行是基底固有描述，不进 unsupported 报表"
     );
     assert_eq!(ingest.modifiers.len(), 1, "仅一个载荷 mod");
     let carrier = &ingest.modifiers[0];
@@ -496,5 +495,10 @@ fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
             .as_nested_mods()
             .is_some_and(<[_]>::is_empty)
     );
-    assert_eq!(ingest.unsupported.len(), 2);
+    // "Used when you become Frozen" 是触发描述行（静默跳过），
+    // "Energy Shield Recharge starts on use" 仍是待支持词条缺口。
+    assert_eq!(
+        ingest.unsupported,
+        vec!["Energy Shield Recharge starts on use".to_string()]
+    );
 }
