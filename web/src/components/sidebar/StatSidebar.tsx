@@ -5,10 +5,12 @@ import './sidebar.css';
 interface Props {
   calc: CalculateBuildResponse | null;
   lang: Lang;
+  /** 点击有 breakdown 的数值 → 跳 Calcs 页展开明细。 */
+  onStatClick?: (id: string) => void;
 }
 
 /** PoB2 式左侧常驻 stat 侧边栏：分组展示 display_catalog 字段。 */
-export function StatSidebar({ calc, lang }: Props) {
+export function StatSidebar({ calc, lang, onStatClick }: Props) {
   const values = calc ? statMap(calc.stats) : null;
 
   return (
@@ -25,14 +27,31 @@ export function StatSidebar({ calc, lang }: Props) {
           <section key={section.title['en-US']} className="stat-section">
             <h3>{section.title[lang]}</h3>
             <dl>
-              {rows.map((row) => (
-                <div className="stat-row" key={row.id}>
-                  <dt>{row.label[lang]}</dt>
-                  <dd style={row.colorVar ? { color: `var(--${row.colorVar})` } : undefined}>
-                    {values ? formatStatValue(values.get(row.id) ?? null, row.format) : '—'}
-                  </dd>
-                </div>
-              ))}
+              {rows.map((row) => {
+                const clickable = !!onStatClick && !!calc?.breakdowns[row.id];
+                const inner = (
+                  <>
+                    <dt>{row.label[lang]}</dt>
+                    <dd style={row.colorVar ? { color: `var(--${row.colorVar})` } : undefined}>
+                      {values ? formatStatValue(values.get(row.id) ?? null, row.format) : '—'}
+                    </dd>
+                  </>
+                );
+                return clickable ? (
+                  <button
+                    type="button"
+                    className="stat-row stat-row--link"
+                    key={row.id}
+                    onClick={() => onStatClick(row.id)}
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <div className="stat-row" key={row.id}>
+                    {inner}
+                  </div>
+                );
+              })}
             </dl>
           </section>
         );

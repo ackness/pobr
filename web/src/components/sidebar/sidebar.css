@@ -43,6 +43,26 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 有 breakdown 的数值可点击跳 Calcs（button 覆盖浏览器默认样式，与普通行同排版） */
+button.stat-row--link {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: inherit;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+button.stat-row--link:hover {
+  background: rgb(216 179 106 / 0.08);
+}
+
+button.stat-row--link:hover dt {
+  color: var(--accent-gold-bright);
+}
+
 @media (max-width: 768px) {
   .stat-sidebar {
     width: 100%;

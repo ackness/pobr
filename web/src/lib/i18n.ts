@@ -113,6 +113,7 @@ const DICT = {
   'calcs.running': { 'en-US': 'Running…', 'zh-TW': '歸因計算中…', 'zh-CN': '归因计算中…' },
   'calcs.baseline': { 'en-US': 'Baseline (full build)', 'zh-TW': '基線（完整 build）', 'zh-CN': '基线（完整 build）' },
   'calcs.group': { 'en-US': 'Group', 'zh-TW': '技能組', 'zh-CN': '技能组' },
+  'calcs.search': { 'en-US': 'Search aggregates…', 'zh-TW': '搜尋聚合量…', 'zh-CN': '搜索聚合量…' },
 
   // Tree 页
   'tree.title': { 'en-US': 'Passive Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
@@ -324,4 +325,29 @@ export function originKindLabel(lang: Lang, kind: string): string {
 /** 聚合属性名（breakdown 键 / 归因字段）→ 本地化。 */
 export function statNameLabel(lang: Lang, id: string): string {
   return MOD_NAME_LABELS[id]?.[lang] ?? id;
+}
+
+const STAT_CATEGORY_LABELS: Record<string, Entry> = {
+  Offence: { 'en-US': 'Offence', 'zh-TW': '攻擊', 'zh-CN': '攻击' },
+  HitDamage: { 'en-US': 'Hit Damage', 'zh-TW': '擊中傷害', 'zh-CN': '击中伤害' },
+  DotDamage: { 'en-US': 'Damage over Time', 'zh-TW': '持續傷害', 'zh-CN': '持续伤害' },
+  Ailment: { 'en-US': 'Ailments', 'zh-TW': '異常狀態', 'zh-CN': '异常状态' },
+  SkillMechanics: { 'en-US': 'Skill Mechanics', 'zh-TW': '技能機制', 'zh-CN': '技能机制' },
+  Defence: { 'en-US': 'Defence', 'zh-TW': '防禦', 'zh-CN': '防御' },
+  Resistance: { 'en-US': 'Resistances', 'zh-TW': '抗性', 'zh-CN': '抗性' },
+  Avoidance: { 'en-US': 'Avoidance', 'zh-TW': '迴避', 'zh-CN': '回避' },
+  Mitigation: { 'en-US': 'Mitigation', 'zh-TW': '減傷', 'zh-CN': '减伤' },
+  Resource: { 'en-US': 'Resources', 'zh-TW': '資源', 'zh-CN': '资源' },
+  Recovery: { 'en-US': 'Recovery', 'zh-TW': '恢復', 'zh-CN': '恢复' },
+  Degen: { 'en-US': 'Degeneration', 'zh-TW': '衰減', 'zh-CN': '衰减' },
+  Cost: { 'en-US': 'Costs', 'zh-TW': '消耗', 'zh-CN': '消耗' },
+  Requirement: { 'en-US': 'Requirements', 'zh-TW': '需求', 'zh-CN': '需求' },
+  Minion: { 'en-US': 'Minions', 'zh-TW': '召喚物', 'zh-CN': '召唤物' },
+  Utility: { 'en-US': 'Utility', 'zh-TW': '功用', 'zh-CN': '功用' },
+  Other: { 'en-US': 'Other Aggregates', 'zh-TW': '其他聚合量', 'zh-CN': '其他聚合量' },
+};
+
+/** display_catalog 分类名 → 本地化（Calcs 分节标题）。 */
+export function statCategoryLabel(lang: Lang, category: string): string {
+  return STAT_CATEGORY_LABELS[category]?.[lang] ?? category;
 }

@@ -1,8 +1,15 @@
-import { useState } from 'react';
-import type { AttributionResponse, Breakdown } from '../../api/types';
+import { useMemo, useState } from 'react';
+import type { AttributionResponse, Breakdown, DisplayStatCategory } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
-import { bindT, originKindLabel, slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
+import {
+  bindT,
+  originKindLabel,
+  slotLabel,
+  statCategoryLabel,
+  statNameLabel,
+  type Lang,
+} from '../../lib/i18n';
 import { getBackend } from '../../api/backend';
 import { useEffect } from 'react';
 import { prettySkillId } from '../skills/SkillsPanel';
@@ -11,6 +18,8 @@ import './calcs.css';
 interface Props {
   session: BuildSession;
   lang: Lang;
+  /** 侧边栏点击跳转：要展开的 breakdown（对象引用每次点击新建，作为 effect 触发键）。 */
+  focus?: { id: string } | null;
 }
 
 const MOD_TYPE_ORDER = ['BASE', 'INC', 'MORE', 'OVERRIDE', 'FLAG', 'LIST'];
@@ -196,14 +205,62 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
 }
 
 /** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
-export function CalcsPanel({ session, lang }: Props) {
+export function CalcsPanel({ session, lang, focus }: Props) {
   const tt = bindT(lang);
   const calc = session.calc;
   const [open, setOpen] = useState<string | null>(null);
 
+  // 侧边栏跳转：展开目标 breakdown 并滚动到可视区（渲染提交后再滚）。
+  useEffect(() => {
+    if (!focus) return;
+    setOpen(focus.id);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`breakdown-${focus.id}`)
+        ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, [focus]);
+
+  const [query, setQuery] = useState('');
+
+  // 分节：按 display_catalog 分类分组全部聚合量（不在目录里的进「其他聚合量」），
+  // 组内保持 stats 的目录顺序，目录外条目按名称排序垫底。
+  const sections = useMemo(() => {
+    if (!calc) return [];
+    const catOf = new Map<string, DisplayStatCategory>(calc.stats.map((s) => [s.id, s.category]));
+    const catalogOrder = new Map<string, number>(calc.stats.map((s, i) => [s.id, i]));
+    const q = query.trim().toLowerCase();
+    const names = Object.keys(calc.breakdowns)
+      .filter(
+        (name) =>
+          q === '' ||
+          name.toLowerCase().includes(q) ||
+          statNameLabel(lang, name).toLowerCase().includes(q),
+      )
+      .sort((a, b) => {
+        const ia = catalogOrder.get(a) ?? Number.MAX_SAFE_INTEGER;
+        const ib = catalogOrder.get(b) ?? Number.MAX_SAFE_INTEGER;
+        return ia !== ib ? ia - ib : a.localeCompare(b);
+      });
+    const byCat = new Map<string, string[]>();
+    for (const name of names) {
+      const cat = catOf.get(name) ?? 'Other';
+      if (!byCat.has(cat)) byCat.set(cat, []);
+      byCat.get(cat)!.push(name);
+    }
+    const CAT_ORDER: string[] = [
+      'Offence', 'HitDamage', 'DotDamage', 'Ailment', 'SkillMechanics',
+      'Defence', 'Resistance', 'Avoidance', 'Mitigation',
+      'Resource', 'Recovery', 'Degen', 'Cost', 'Requirement', 'Minion', 'Utility', 'Other',
+    ];
+    return CAT_ORDER.filter((c) => byCat.has(c)).map((category) => ({
+      category,
+      names: byCat.get(category)!,
+    }));
+  }, [calc, query, lang]);
+
   if (!calc) return null;
   const values = statMap(calc.stats);
-  const breakdownNames = Object.keys(calc.breakdowns);
 
   return (
     <section aria-labelledby="calcs-heading">
@@ -213,30 +270,47 @@ export function CalcsPanel({ session, lang }: Props) {
       <p className="calcs-hint">
         {tt('calcs.hint')}
       </p>
-      <div className="breakdown-list">
-        {breakdownNames.map((name) => {
-          const breakdown = calc.breakdowns[name];
-          const isOpen = open === name;
-          return (
-            <div key={name} className={`breakdown-item${isOpen ? ' is-open' : ''}`}>
-              <button
-                className="breakdown-toggle"
-                aria-expanded={isOpen}
-                onClick={() => setOpen(isOpen ? null : name)}
-              >
-                <span className="breakdown-name">{statNameLabel(lang, name)}</span>
-                <span className="breakdown-value">
-                  {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
-                </span>
-                <span className="breakdown-count">
-                  {breakdown.mods.length} {tt('calcs.mods')}
-                </span>
-              </button>
-              {isOpen && <BreakdownTable name={name} breakdown={breakdown} lang={lang} />}
-            </div>
-          );
-        })}
-      </div>
+      <input
+        className="calcs-search"
+        type="search"
+        placeholder={tt('calcs.search')}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label={tt('calcs.search')}
+      />
+      {sections.map(({ category, names }) => (
+        <section key={category} className="calcs-section">
+          <h3 className="calcs-section-title">{statCategoryLabel(lang, category)}</h3>
+          <div className="breakdown-list">
+            {names.map((name) => {
+              const breakdown = calc.breakdowns[name];
+              const isOpen = open === name;
+              return (
+                <div
+                  key={name}
+                  id={`breakdown-${name}`}
+                  className={`breakdown-item${isOpen ? ' is-open' : ''}`}
+                >
+                  <button
+                    className="breakdown-toggle"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpen(isOpen ? null : name)}
+                  >
+                    <span className="breakdown-name">{statNameLabel(lang, name)}</span>
+                    <span className="breakdown-value">
+                      {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
+                    </span>
+                    <span className="breakdown-count">
+                      {breakdown.mods.length} {tt('calcs.mods')}
+                    </span>
+                  </button>
+                  {isOpen && <BreakdownTable name={name} breakdown={breakdown} lang={lang} />}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
       <AttributionView session={session} lang={lang} />
     </section>
   );

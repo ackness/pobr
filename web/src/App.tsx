@@ -29,6 +29,12 @@ export default function App() {
     setLangState(next);
     localStorage.setItem('pobr-lang', next);
   };
+  // 侧边栏数值点击 → 跳 Calcs 并展开对应 breakdown（对象每次新建，重复点击同一项也触发）。
+  const [calcsFocus, setCalcsFocus] = useState<{ id: string } | null>(null);
+  const focusStat = (id: string) => {
+    setCalcsFocus({ id });
+    setTab('calcs');
+  };
 
   if (session.bootError) {
     return (
@@ -59,7 +65,7 @@ export default function App() {
         busy={session.busy}
       />
       <div className="app-body">
-        <StatSidebar calc={session.calc} lang={lang} />
+        <StatSidebar calc={session.calc} lang={lang} onStatClick={focusStat} />
         <main className="app-main">
           {session.error && (
             <div className="calc-error" role="alert">
@@ -70,7 +76,7 @@ export default function App() {
           {tab === 'tree' && <TreePanel session={session} lang={lang} />}
           {tab === 'skills' && <SkillsPanel session={session} lang={lang} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} />}
-          {tab === 'calcs' && <CalcsPanel session={session} lang={lang} />}
+          {tab === 'calcs' && <CalcsPanel session={session} lang={lang} focus={calcsFocus} />}
           {tab === 'config' && <ConfigPanel session={session} lang={lang} />}
           {tab === 'notes' && <NotesPanel session={session} lang={lang} />}
         </main>
