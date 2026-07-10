@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
@@ -33,13 +34,74 @@ function itemLines(text: string): string[] {
     .filter((l) => l && !/^Rarity:/i.test(l));
 }
 
-function ItemText({ text }: { text: string }) {
+/** PoB 结构标注行的键 → 本地化（词条模板翻译层不认识这些行）。 */
+const STRUCT_LINE_KEYS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
+  'Item Level': { 'zh-TW': '物品等級', 'zh-CN': '物品等级' },
+  'LevelReq': { 'zh-TW': '需求等級', 'zh-CN': '需求等级' },
+  'Requires Level': { 'zh-TW': '需求等級', 'zh-CN': '需求等级' },
+  'Implicits': { 'zh-TW': '固有詞綴', 'zh-CN': '固有词缀' },
+  'Unique ID': { 'zh-TW': '唯一 ID', 'zh-CN': '唯一 ID' },
+  'Quality': { 'zh-TW': '品質', 'zh-CN': '品质' },
+  'Armour': { 'zh-TW': '護甲', 'zh-CN': '护甲' },
+  'Evasion': { 'zh-TW': '閃避', 'zh-CN': '闪避' },
+  'Energy Shield': { 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' },
+  'Charm Slots': { 'zh-TW': '護符插槽', 'zh-CN': '护符插槽' },
+  'Radius': { 'zh-TW': '範圍', 'zh-CN': '范围' },
+  'Limited to': { 'zh-TW': '限裝', 'zh-CN': '限装' },
+};
+
+/** 结构行本地化：`Item Level: 83` → `物品等级: 83`；非结构行返回 null。 */
+function localizeStructLine(line: string, lang: Lang): string | null {
+  if (lang === 'en-US') return null;
+  const m = line.match(/^([A-Za-z' ]+):\s*(.*)$/);
+  if (!m) return null;
+  const entry = STRUCT_LINE_KEYS[m[1].trim()];
+  return entry ? `${entry[lang]}: ${m[2]}` : null;
+}
+
+/** 中文界面：词条行批量反查翻译（结构行走本地词典；翻译不中原样显示）。 */
+function useLocalizedLines(lines: string[], lang: Lang): string[] {
+  const key = lines.join('\n');
+  const [translated, setTranslated] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (lang === 'en-US' || lines.length === 0) return;
+    const pending = lines.filter((l) => !localizeStructLine(l, lang));
+    if (pending.length === 0) return;
+    let cancelled = false;
+    getBackend()
+      .then((b) => b.translateLines(pending))
+      .then((out) => {
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        pending.forEach((en, i) => {
+          if (out[i] !== en) map[en] = out[i];
+        });
+        setTranslated(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, lang]);
+  return useMemo(
+    () =>
+      lang === 'en-US'
+        ? lines
+        : lines.map((l) => localizeStructLine(l, lang) ?? translated[l] ?? l),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [key, lang, translated],
+  );
+}
+
+function ItemText({ text, lang }: { text: string; lang: Lang }) {
   const [name, ...rest] = itemLines(text);
+  const lines = useLocalizedLines(rest, lang);
   return (
     <>
       <h4 className="item-name">{name}</h4>
       <div className="item-lines">
-        {rest.map((line, i) => (
+        {lines.map((line, i) => (
           <div key={i} className="item-line">
             {line}
           </div>
@@ -214,7 +276,7 @@ export function ItemsPanel({ session, lang }: Props) {
               </div>
             </div>
           ) : selectedText ? (
-            <ItemText text={selectedText} />
+            <ItemText text={selectedText} lang={lang} />
           ) : (
             <p className="item-empty-hint">{tt('items.empty')}</p>
           )}
@@ -235,7 +297,7 @@ export function ItemsPanel({ session, lang }: Props) {
                     <CopyButton text={text} lang={lang} />
                   </span>
                 </header>
-                <ItemText text={text} />
+                <ItemText text={text} lang={lang} />
               </article>
             ))}
           </div>
@@ -311,7 +373,7 @@ function LibrarySection({
               </button>
             </span>
           </header>
-          <ItemText text={entry.text} />
+          <ItemText text={entry.text} lang={lang} />
           {diffFor?.id === entry.id && (
             <div className="library-diff">
               <DiffList diffs={diffFor.diffs} lang={lang} />
