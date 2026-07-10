@@ -127,6 +127,17 @@
   border-radius: var(--radius-md);
   padding: var(--space-2);
   min-width: 0;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.doll-slot:hover {
+  border-color: var(--accent-gold-dim);
+  box-shadow: 0 0 12px rgb(216 179 106 / 0.12);
+}
+
+.doll-slot:active {
+  transform: none;
 }
 
 .doll-slot-empty {

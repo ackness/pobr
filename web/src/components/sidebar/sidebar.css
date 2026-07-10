@@ -18,7 +18,8 @@
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--accent-gold-dim);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, var(--accent-gold-dim), var(--border-subtle) 70%) 1;
   padding-bottom: var(--space-1);
 }
 

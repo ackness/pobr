@@ -25,15 +25,18 @@
   margin-top: var(--space-3);
 }
 
+/* 主 CTA：金色实心（区别于普通操作按钮） */
 .import-submit {
-  border-color: var(--accent-gold-dim);
-  color: var(--accent-gold-bright);
+  background: linear-gradient(180deg, var(--accent-gold-bright), var(--accent-gold));
+  border-color: var(--accent-gold);
+  color: #1a150a;
+  font-weight: 600;
   padding: var(--space-2) var(--space-6);
 }
 
-.import-submit:disabled {
-  opacity: 0.5;
-  cursor: default;
+.import-submit:hover {
+  background: var(--accent-gold-bright);
+  border-color: var(--accent-gold-bright);
 }
 
 .import-summary {
