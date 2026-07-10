@@ -69,6 +69,7 @@
 .item-actions {
   display: flex;
   gap: var(--space-1);
+  flex-wrap: wrap;
 }
 
 .item-actions button {
@@ -107,8 +108,8 @@
   grid-template-columns: 1.2fr 1fr 1.2fr 1fr 1.2fr;
   grid-auto-rows: minmax(84px, auto);
   gap: var(--space-2);
-  max-width: 920px;
-  margin: 0 auto var(--space-4);
+  width: 100%;
+  margin: 0;
   padding: var(--space-3);
   background: radial-gradient(ellipse at center, #15171c 0%, var(--surface-page) 80%);
   border: 1px solid var(--border-subtle);
@@ -172,8 +173,8 @@
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: var(--space-2);
-  max-width: 920px;
-  margin: 0 auto var(--space-4);
+  width: 100%;
+  margin: var(--space-3) 0 0;
 }
 
 @media (max-width: 768px) {
@@ -183,19 +184,35 @@
 }
 
 .item-detail {
-  max-width: 920px;
-  margin: 0 auto var(--space-4);
+  margin: 0;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-3);
+  align-self: start;
+  position: sticky;
+  top: var(--space-3);
+  min-height: 180px;
 }
 
 .item-detail-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
   margin-bottom: var(--space-2);
+}
+
+.items-workspace {
+  display: grid;
+  grid-template-columns: minmax(440px, 1.2fr) minmax(300px, 0.8fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.items-slots {
+  min-width: 0;
 }
 
 @media (max-width: 768px) {
@@ -208,6 +225,17 @@
       'gloves  ring2'
       'belt    boots';
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 1000px) {
+  .items-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .item-detail {
+    position: static;
+    order: 2;
   }
 }
 

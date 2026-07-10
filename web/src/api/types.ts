@@ -118,8 +118,16 @@ export interface GemCatalogEntry {
   /** 简中名（国服词典转录边车，Phase 7.2）。 */
   name_zh_cn: string | null;
   /** 宝石颜色（红/绿/蓝 = str/dex/int；分类筛选用）。 */
-  colour: 'str' | 'dex' | 'int' | null;
+  colour: 'str' | 'dex' | 'int' | 'white' | null;
   is_support: boolean;
+  /** 宝石最低使用等级。 */
+  min_level_requirement: number;
+  /** 属性需求权重（倾向），不是实际属性点门槛。 */
+  requirement_weights: { str: number; dex: number; int: number };
+  /** 主动技能类型，或 support 的正向适用类型。 */
+  tags: string[];
+  /** 主动技能基础施放时间；攻击/即时/support 可能为空。 */
+  cast_time_ms: number | null;
 }
 
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */

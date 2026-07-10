@@ -254,6 +254,10 @@ fn manual_skills_and_items_without_code() {
             "name_zh_cn",
             "colour",
             "is_support",
+            "min_level_requirement",
+            "requirement_weights",
+            "tags",
+            "cast_time_ms",
         ],
         "gem catalog entry",
     );
@@ -285,6 +289,14 @@ fn manual_skills_and_items_without_code() {
         .find(|e| e["name"] == "Comet")
         .expect("Comet gem in catalog");
     let comet_id = comet["skill_id"].as_str().unwrap();
+    assert!(comet["min_level_requirement"].as_u64().unwrap() > 0);
+    assert!(
+        comet["tags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tag| tag == "Spell")
+    );
 
     let base_req = serde_json::json!({
         "character": { "class_name": "Sorceress", "level": 90 },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
@@ -125,7 +125,20 @@ const DOLL_SLOTS: { slot: string; area: string }[] = [
   { slot: 'boots', area: 'boots' },
 ];
 
-const ITEM_TEMPLATE = 'Rarity: RARE\nNew Item\nSapphire Ring\n+50 to maximum Life';
+const SLOT_BASES: Record<string, string> = {
+  weapon1: 'Shortsword',
+  weapon2: 'Ashen Staff',
+  helmet: 'Shabby Hood',
+  bodyarmour: 'Leather Vest',
+  gloves: 'Golden Bracers',
+  boots: 'Golden Caligae',
+  belt: 'Golden Obi',
+  amulet: 'Crimson Amulet',
+  ring1: 'Iron Ring',
+  ring2: 'Iron Ring',
+};
+const itemTemplate = (slot: string) =>
+  `Rarity: RARE\nNew ${slot}\n${SLOT_BASES[slot] ?? 'Iron Ring'}\n+50 to maximum Life`;
 const FLASK_TEMPLATE = 'Rarity: MAGIC\nUltimate Life Flask\nUltimate Life Flask';
 const CHARM_TEMPLATE = 'Rarity: MAGIC\nRuby Charm\nRuby Charm';
 
@@ -139,6 +152,7 @@ export function ItemsPanel({ session, lang }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState(false);
+  const detailRef = useRef<HTMLDivElement | null>(null);
   const build = session.build;
   const items = session.items;
   const bySlot = new Map(items.map((item) => [item.slot, item.text]));
@@ -147,12 +161,19 @@ export function ItemsPanel({ session, lang }: Props) {
   const textOf = (slot: string) =>
     isUtilitySlot(slot) ? utilityBySlot.get(slot) : bySlot.get(slot);
   const templateOf = (slot: string) =>
-    slot.startsWith('Charm') ? CHARM_TEMPLATE : slot.startsWith('Flask') ? FLASK_TEMPLATE : ITEM_TEMPLATE;
+    slot.startsWith('Charm')
+      ? CHARM_TEMPLATE
+      : slot.startsWith('Flask')
+        ? FLASK_TEMPLATE
+        : itemTemplate(slot);
 
   const select = (slot: string) => {
     setSelected(slot);
     setDraft(textOf(slot) ?? templateOf(slot));
     setEditing(textOf(slot) === undefined);
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: 'nearest' }));
+    }
   };
   const applyEdit = () => {
     if (!selected) return;
@@ -184,6 +205,8 @@ export function ItemsPanel({ session, lang }: Props) {
       </h2>
       <p className="items-hint">{tt('items.hint')}</p>
 
+      <div className="items-workspace">
+        <div className="items-slots">
       <div className="paper-doll" role="group" aria-label={tt('items.title')}>
         {DOLL_SLOTS.map(({ slot, area }) => {
           const text = bySlot.get(slot);
@@ -197,6 +220,8 @@ export function ItemsPanel({ session, lang }: Props) {
               style={{ gridArea: area }}
               onClick={() => select(slot)}
               aria-label={slotLabel(lang, slot)}
+              aria-pressed={selected === slot}
+              aria-controls="selected-item-detail"
             >
               <span className="doll-slot-label">{slotLabel(lang, slot)}</span>
               {name ? (
@@ -221,6 +246,8 @@ export function ItemsPanel({ session, lang }: Props) {
               }`}
               onClick={() => select(slot)}
               aria-label={slot}
+              aria-pressed={selected === slot}
+              aria-controls="selected-item-detail"
             >
               <span className="doll-slot-label">{slotLabel(lang, slot)}</span>
               {name ? (
@@ -233,8 +260,16 @@ export function ItemsPanel({ session, lang }: Props) {
         })}
       </div>
 
-      {selected && (
-        <div className={`item-detail${selectedText ? ` rarity-${rarityOf(selectedText)}` : ''}`}>
+        </div>
+
+      <div
+        ref={detailRef}
+        id="selected-item-detail"
+        className={`item-detail${selectedText ? ` rarity-${rarityOf(selectedText)}` : ''}`}
+        aria-live="polite"
+      >
+        {selected ? (
+        <>
           <header className="item-detail-header">
             <span className="item-slot">{slotLabel(lang, selected)}</span>
             <span className="item-actions">
@@ -280,8 +315,12 @@ export function ItemsPanel({ session, lang }: Props) {
           ) : (
             <p className="item-empty-hint">{tt('items.empty')}</p>
           )}
-        </div>
-      )}
+        </>
+        ) : (
+          <p className="item-empty-hint">{tt('items.selectSlot')}</p>
+        )}
+      </div>
+      </div>
 
       <h3 className="panel-subheading">{tt('lib.title')}</h3>
       <LibrarySection session={session} lang={lang} selectedSlot={selected} />

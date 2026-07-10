@@ -903,13 +903,9 @@
     }
   ],
   "unsupported_modifiers": [
-    "Used when you are affected by a Slow",
     "Grants Onslaught during effect",
-    "Used when you kill a Rare or Unique enemy",
-    "Possessed by Spirit Of The Stag for 19 seconds on use",
     "Every 3 seconds during Effect, deal 100% of Mana spent in those seconds as Chaos Damage to Enemies within 3 metres",
     "Deals 25% of current Mana as Chaos Damage to you when Effect ends",
-    "Used when you become Frozen",
     "25% Chance to gain a Charge when you kill an enemy",
     "Energy Shield Recharge starts on use"
   ]

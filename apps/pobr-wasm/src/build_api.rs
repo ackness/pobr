@@ -1006,9 +1006,24 @@ struct GemCatalogEntry {
     name_zh_tw: Option<String>,
     /// 简中名（`i18n/zh-CN/base_items.json` 边车，国服词典转录；缺条目为 null）。
     name_zh_cn: Option<String>,
-    /// 宝石颜色（`"str"` 红 / `"dex"` 绿 / `"int"` 蓝；未知为 null），分类筛选用。
+    /// 宝石颜色（`"str"` 红 / `"dex"` 绿 / `"int"` 蓝 / `"white"` 白）。
     colour: Option<&'static str>,
     is_support: bool,
+    /// 宝石最低使用等级（不是每个宝石等级对应的角色等级需求）。
+    min_level_requirement: u32,
+    /// 属性需求权重；用于向用户解释宝石的属性倾向，不是实际属性点门槛。
+    requirement_weights: GemRequirementWeights,
+    /// 主动技能类型，或 support 的正向适用类型。保留稳定英文机制词。
+    tags: Vec<String>,
+    /// 主动技能基础施放时间；攻击/即时/support 可能为空。
+    cast_time_ms: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+struct GemRequirementWeights {
+    str: u32,
+    dex: u32,
+    int: u32,
 }
 
 /// 宝石目录：`{skill_id, name, name_zh_tw, colour, is_support}` 按名称排序。
@@ -1029,6 +1044,23 @@ pub fn gem_catalog_json() -> Result<String, String> {
         let Some(skill_id) = gem.granted_effect_id.clone() else {
             continue;
         };
+        let effect = data.granted_effects.get(&skill_id);
+        let mut tags = effect
+            .map(|effect| {
+                if gem.is_support {
+                    effect
+                        .require_skill_types
+                        .iter()
+                        .filter(|tag| !matches!(tag.as_str(), "AND" | "OR" | "NOT"))
+                        .cloned()
+                        .collect::<Vec<_>>()
+                } else {
+                    effect.skill_types.clone()
+                }
+            })
+            .unwrap_or_default();
+        tags.sort();
+        tags.dedup();
         by_skill.entry(skill_id.clone()).or_insert(GemCatalogEntry {
             skill_id,
             name: name_by_gem_id
@@ -1041,9 +1073,18 @@ pub fn gem_catalog_json() -> Result<String, String> {
                 Some(1) => Some("str"),
                 Some(2) => Some("dex"),
                 Some(3) => Some("int"),
+                Some(4) => Some("white"),
                 _ => None,
             },
             is_support: gem.is_support,
+            min_level_requirement: gem.min_level_req,
+            requirement_weights: GemRequirementWeights {
+                str: gem.str_pct,
+                dex: gem.dex_pct,
+                int: gem.int_pct,
+            },
+            tags,
+            cast_time_ms: effect.and_then(|effect| effect.cast_time),
         });
     }
     let mut entries: Vec<GemCatalogEntry> = by_skill.into_values().collect();

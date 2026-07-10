@@ -70,8 +70,11 @@
 .skill-gem {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
   color: var(--text-secondary);
-  padding: 1px 0;
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .skill-gem.is-active {
@@ -127,12 +130,23 @@
 
 .gem-name {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .gem-controls {
   display: flex;
   gap: var(--space-1);
   align-items: center;
+}
+
+.gem-number-control {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 .gem-controls input[type='number'] {
@@ -205,12 +219,33 @@
 
 .gem-picker-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-sm);
+}
+
+.gem-picker-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gem-picker-name-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.gem-meta {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 1.35;
 }
 
 .gem-picker-item.is-highlight {
@@ -228,6 +263,21 @@
 
 .gem-primary {
   color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  .gem-picker {
+    min-width: 100%;
+    max-width: none;
+  }
+
+  .skill-gem {
+    flex-direction: column;
+  }
+
+  .gem-controls {
+    width: 100%;
+  }
 }
 
 .gem-secondary {

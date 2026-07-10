@@ -65,7 +65,12 @@ const DICT = {
   'skills.removeGem': { 'en-US': 'Remove gem', 'zh-TW': '移除寶石', 'zh-CN': '移除宝石' },
   'skills.level': { 'en-US': 'Level', 'zh-TW': '等級', 'zh-CN': '等级' },
   'skills.quality': { 'en-US': 'Quality', 'zh-TW': '品質', 'zh-CN': '品质' },
+  'skills.levelShort': { 'en-US': 'Lv', 'zh-TW': '等級', 'zh-CN': '等级' },
+  'skills.qualityShort': { 'en-US': 'Q', 'zh-TW': '品質', 'zh-CN': '品质' },
   'picker.all': { 'en-US': 'All', 'zh-TW': '全部', 'zh-CN': '全部' },
+  'picker.white': { 'en-US': 'White', 'zh-TW': '白', 'zh-CN': '白' },
+  'picker.requiresLevel': { 'en-US': 'Requires Lv', 'zh-TW': '需求等級', 'zh-CN': '需求等级' },
+  'picker.attributeTendency': { 'en-US': 'Tendency', 'zh-TW': '屬性傾向', 'zh-CN': '属性倾向' },
   'picker.noResults': { 'en-US': 'No matches', 'zh-TW': '無匹配', 'zh-CN': '无匹配' },
   'picker.active': { 'en-US': 'Active', 'zh-TW': '主動', 'zh-CN': '主动' },
   'picker.support': { 'en-US': 'Support', 'zh-TW': '輔助', 'zh-CN': '辅助' },
@@ -85,6 +90,7 @@ const DICT = {
   'items.apply': { 'en-US': 'Apply', 'zh-TW': '保存並重算', 'zh-CN': '保存并重算' },
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
+  'items.selectSlot': { 'en-US': 'Select a slot to inspect or edit it.', 'zh-TW': '選擇一個欄位以查看或編輯。', 'zh-CN': '选择一个栏位以查看或编辑。' },
   'items.flasks': { 'en-US': 'Flasks / Charms (read-only, from import)', 'zh-TW': '藥劑 / 護符（只讀，來自匯入）', 'zh-CN': '药剂 / 护符（只读，来自导入）' },
   'items.jewels': { 'en-US': 'Jewels (edit on the Tree tab by clicking a socket)', 'zh-TW': '珠寶（在天賦樹頁點插槽編輯）', 'zh-CN': '珠宝（在天赋树页点插槽编辑）' },
 
@@ -185,6 +191,8 @@ const DICT = {
   'tree.search': { 'en-US': 'Search nodes…', 'zh-TW': '搜尋節點…', 'zh-CN': '搜索节点…' },
   'tree.matches': { 'en-US': 'matches', 'zh-TW': '個命中', 'zh-CN': '个命中' },
   'tree.nextHit': { 'en-US': 'Next', 'zh-TW': '下一個', 'zh-CN': '下一个' },
+  'tree.pathPoints': { 'en-US': 'points on path', 'zh-TW': '點路徑', 'zh-CN': '点路径' },
+  'tree.calculateImpact': { 'en-US': 'Calculate exact impact', 'zh-TW': '計算精確收益', 'zh-CN': '计算精确收益' },
 
   // Config 页
   'config.title': { 'en-US': 'Configuration', 'zh-TW': '戰鬥配置', 'zh-CN': '战斗配置' },

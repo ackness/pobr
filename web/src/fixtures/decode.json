@@ -99,9 +99,27 @@
       "\n\t\t\tRarity: RARE\nPandemonium Glisten\nSapphire\nUnique ID: 85399de2681c8ecbd382da4e26381a588ee856a7949fc6d09856628e7d148a77\nItem Level: 80\nLevelReq: 0\nImplicits: 0\n{desecrated}Gain additional Stun Threshold equal to 14% of maximum Energy Shield\n7% increased Cold Damage\n20% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t",
       "\n\t\t\tRarity: RARE\nPhoenix Spark\nSapphire\nUnique ID: eee3a9c6de8fd887bb41ae0a0f5228f3418ce871e1abd2bcc2b2e04ea5559af5\nItem Level: 76\nLevelReq: 0\nImplicits: 0\n8% increased Chaos Damage\n14% increased Critical Hit Chance for Spells\n11% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t",
       "\n\t\t\tRarity: RARE\nViper Ornament\nSapphire\nUnique ID: b232d531a9ab5c8669c0c338674a1fde0166979db2bf607d03273235088e58c5\nItem Level: 82\nLevelReq: 0\nImplicits: 0\n{desecrated}10% increased maximum Energy Shield\n{desecrated}6% increased Thorns damage\n9% increased Spell Damage\n13% increased Critical Hit Chance for Spells\n13% increased Critical Spell Damage Bonus\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+    ],
+    "socket_jewels": [
+      {
+        "socket_node": 7960,
+        "text": "\n\t\t\tRarity: RARE\nViper Ornament\nSapphire\nUnique ID: b232d531a9ab5c8669c0c338674a1fde0166979db2bf607d03273235088e58c5\nItem Level: 82\nLevelReq: 0\nImplicits: 0\n{desecrated}10% increased maximum Energy Shield\n{desecrated}6% increased Thorns damage\n9% increased Spell Damage\n13% increased Critical Hit Chance for Spells\n13% increased Critical Spell Damage Bonus\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "socket_node": 21984,
+        "text": "\n\t\t\tRarity: RARE\nRapture Spark\nSapphire\nUnique ID: c5bafa81349c5f688aec3c5795083297a37acb88d5af1c9791e31aac92a00f8d\nItem Level: 79\nLevelReq: 0\nImplicits: 0\n17% increased maximum Energy Shield\n13% increased Critical Hit Chance for Spells\n15% increased Elemental Damage\n3% increased Skill Speed while Shapeshifted\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "socket_node": 61419,
+        "text": "\n\t\t\tRarity: RARE\nPhoenix Spark\nSapphire\nUnique ID: eee3a9c6de8fd887bb41ae0a0f5228f3418ce871e1abd2bcc2b2e04ea5559af5\nItem Level: 76\nLevelReq: 0\nImplicits: 0\n8% increased Chaos Damage\n14% increased Critical Hit Chance for Spells\n11% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      },
+      {
+        "socket_node": 61834,
+        "text": "\n\t\t\tRarity: RARE\nPandemonium Glisten\nSapphire\nUnique ID: 85399de2681c8ecbd382da4e26381a588ee856a7949fc6d09856628e7d148a77\nItem Level: 80\nLevelReq: 0\nImplicits: 0\n{desecrated}Gain additional Stun Threshold equal to 14% of maximum Energy Shield\n7% increased Cold Damage\n20% increased Critical Spell Damage Bonus\n{crafted}15% increased maximum Energy Shield\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t\t\n\t\t"
+      }
     ]
   },
-  "main_socket_group": 5,
+  "main_socket_group": 4,
   "notes": null,
   "socket_groups": [
     {
@@ -555,6 +573,42 @@
       49512,
       5284
     ],
+    "attribute_choices": {
+      "10131": "dex",
+      "11604": "dex",
+      "11672": "int",
+      "14446": "int",
+      "16705": "str",
+      "17088": "str",
+      "23382": "int",
+      "29009": "int",
+      "31950": "int",
+      "3251": "int",
+      "3463": "int",
+      "39037": "int",
+      "40783": "dex",
+      "42379": "str",
+      "4328": "str",
+      "45885": "int",
+      "46554": "str",
+      "46819": "int",
+      "47168": "int",
+      "47177": "int",
+      "49512": "int",
+      "50104": "int",
+      "5314": "int",
+      "54521": "int",
+      "56045": "str",
+      "57710": "int",
+      "58329": "str",
+      "59093": "int",
+      "59362": "int",
+      "61196": "str",
+      "61403": "int",
+      "62677": "str",
+      "8569": "int",
+      "8616": "int"
+    },
     "tree_version": "0_5"
   }
 }

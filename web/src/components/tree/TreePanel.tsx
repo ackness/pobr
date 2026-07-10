@@ -4,6 +4,12 @@ import type { AttributeChoice, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
+import {
+  buildPassiveGraph,
+  classStartSkill,
+  deallocateNode,
+  shortestAllocationPath,
+} from '../../lib/passiveGraph';
 import { DiffList } from '../shared/DiffList';
 import './tree.css';
 
@@ -28,6 +34,10 @@ interface ViewBox {
   h: number;
 }
 
+/** 剥 PoB `[内部词|显示词]` / `[词]` 标记，留显示形态。 */
+const stripMarkup = (text: string) =>
+  text.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1');
+
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
 export function TreePanel({ session, lang }: Props) {
   const tt = bindT(lang);
@@ -48,13 +58,21 @@ export function TreePanel({ session, lang }: Props) {
   const [jewelEdit, setJewelEdit] = useState<{ socket: number; draft: string } | null>(null);
   /** hover 节点的加点/取消收益（防抖重算；按 stateVersion 失效的缓存）。 */
   const [hoverDiff, setHoverDiff] = useState<DiffEntry[] | null>(null);
+  const [hoverDiffLoading, setHoverDiffLoading] = useState(false);
+  const [previewSkill, setPreviewSkill] = useState<number | null>(null);
   const diffCacheRef = useRef<{ version: number; map: Map<number, DiffEntry[]> }>({
     version: -1,
     map: new Map(),
   });
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
   const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
+  const pendingViewRef = useRef<ViewBox | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const hoverSkillRef = useRef<number | null>(null);
+  const hoverClearTimerRef = useRef<number | null>(null);
+  const previewGenerationRef = useRef(0);
+  const translationCacheRef = useRef(new Map<string, string[]>());
 
   useEffect(() => {
     getBackend()
@@ -89,6 +107,15 @@ export function TreePanel({ session, lang }: Props) {
   );
 
   const byId = useMemo(() => new Map(placed.map((n) => [n.skill, n])), [placed]);
+  const graph = useMemo(() => buildPassiveGraph(placed), [placed]);
+  const classRoot = useMemo(
+    () => classStartSkill(placed, session.character?.class_name),
+    [placed, session.character?.class_name],
+  );
+  const filledJewels = useMemo(
+    () => new Set(session.jewels.map((jewel) => jewel.socket_node)),
+    [session.jewels],
+  );
 
   /** 搜索命中集（名称 + 词条文本，剥 `[a|b]` 标记后不分大小写子串匹配）。 */
   const searchHits = useMemo(() => {
@@ -96,11 +123,7 @@ export function TreePanel({ session, lang }: Props) {
     if (q.length < 2) return null;
     const hits = new Set<number>();
     for (const node of placed) {
-      const haystack = [node.name ?? '', ...(node.stats ?? [])]
-        .join('\n')
-        .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
-        .replace(/\[([^\]]*)\]/g, '$1')
-        .toLowerCase();
+      const haystack = stripMarkup([node.name ?? '', ...(node.stats ?? [])].join('\n')).toLowerCase();
       if (haystack.includes(q)) hits.add(node.skill);
     }
     return hits;
@@ -110,6 +133,70 @@ export function TreePanel({ session, lang }: Props) {
   const isAttrNode = (node: PassiveNode) =>
     node.name === 'Attribute' &&
     (node.stats ?? []).some((line) => line.includes('any') && line.includes('Attribute'));
+
+  const rootForNode = (node: PassiveNode): number | null => {
+    if (!node.ascendancy_id) return classRoot;
+    return (
+      placed.find(
+        (candidate) =>
+          candidate.kind === 'ascendancy_start' &&
+          candidate.ascendancy_id === node.ascendancy_id,
+      )?.skill ?? null
+    );
+  };
+
+  /** 返回一次提交所需的节点、属性选择与新增路径。 */
+  const treeChangeFor = (node: PassiveNode, choice?: AttributeChoice) => {
+    const samePartition = new Set(
+      session.allocatedNodes.filter(
+        (skill) =>
+          (byId.get(skill)?.ascendancy_id ?? null) === (node.ascendancy_id ?? null),
+      ),
+    );
+    const otherPartition = session.allocatedNodes.filter(
+      (skill) => (byId.get(skill)?.ascendancy_id ?? null) !== (node.ascendancy_id ?? null),
+    );
+    let path: number[] = [];
+    let partition: Set<number>;
+    if (samePartition.has(node.skill)) {
+      partition = deallocateNode(graph, samePartition, rootForNode(node), node.skill);
+    } else {
+      path = shortestAllocationPath(graph, samePartition, rootForNode(node), node.skill);
+      partition = new Set([...samePartition, ...path]);
+    }
+    const allocatedNodes = [...otherPartition, ...partition].sort((a, b) => a - b);
+    const remaining = new Set(allocatedNodes);
+    const attributeChoices: Record<string, AttributeChoice> = {};
+    for (const [key, value] of Object.entries(session.attributeChoices)) {
+      if (remaining.has(Number(key))) attributeChoices[key] = value;
+    }
+    for (const skill of path) {
+      const pathNode = byId.get(skill);
+      if (pathNode && isAttrNode(pathNode)) {
+        attributeChoices[String(skill)] =
+          skill === node.skill && choice ? choice : attributeChoices[String(skill)] ?? 'str';
+      }
+    }
+    return { allocatedNodes, attributeChoices, path };
+  };
+
+  const applyTreeChange = (node: PassiveNode, choice?: AttributeChoice) => {
+    const next = treeChangeFor(node, choice);
+    session.setTreeAllocation(next.allocatedNodes, next.attributeChoices);
+  };
+
+  const hoverPath = useMemo(() => {
+    if (!hover || allocated.has(hover.skill)) return [];
+    const partition = new Set(
+      session.allocatedNodes.filter(
+        (skill) =>
+          (byId.get(skill)?.ascendancy_id ?? null) === (hover.ascendancy_id ?? null),
+      ),
+    );
+    return shortestAllocationPath(graph, partition, rootForNode(hover), hover.skill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hover, allocated, session.allocatedNodes, graph, byId, classRoot]);
+  const hoverPathSet = useMemo(() => new Set(hoverPath), [hoverPath]);
 
   /** 已加点的属性小点（升序，批量调配的确定性分配序）。 */
   const allocatedAttrNodes = useMemo(
@@ -194,17 +281,24 @@ export function TreePanel({ session, lang }: Props) {
     }
     const chosen = session.attributeChoices[String(hover.skill)];
     const chosenLine = chosen ? [`→ ${tt(`tree.attr.${chosen}` as Parameters<typeof tt>[0])}`] : [];
-    const raw = [...(hover.stats ?? []), ...chosenLine.map((l) => l)].map((line) =>
-      line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1'),
-    );
+    const raw = [...(hover.stats ?? []), ...chosenLine].map(stripMarkup);
     if (lang === 'en-US' || raw.length === 0) {
       setHoverStats(raw);
+      return;
+    }
+    const cacheKey = `${lang}:${hover.skill}:${chosen ?? ''}`;
+    const cached = translationCacheRef.current.get(cacheKey);
+    if (cached) {
+      setHoverStats(cached);
       return;
     }
     let cancelled = false;
     getBackend()
       .then((b) => b.translateLines(raw))
-      .then((translated) => !cancelled && setHoverStats(translated))
+      .then((translated) => {
+        translationCacheRef.current.set(cacheKey, translated);
+        if (!cancelled) setHoverStats(translated);
+      })
       .catch(() => !cancelled && setHoverStats(raw));
     return () => {
       cancelled = true;
@@ -232,10 +326,14 @@ export function TreePanel({ session, lang }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentAscId]);
 
-  // hover 收益：把「该节点加点/取消后」的请求再算一次，差异进 tooltip。
-  // 300ms 防抖；结果按 stateVersion 缓存（编辑后全量失效）。
+  hoverSkillRef.current = hover?.skill ?? null;
+
+  // 精确收益仍需一次完整 WASM 计算，改为显式触发并按 stateVersion 缓存。
+  // 这样浏览节点永不阻塞主线程；后续 Worker/批量 preview 契约可直接替换此边界。
   useEffect(() => {
     setHoverDiff(null);
+    setHoverDiffLoading(false);
+    const generation = ++previewGenerationRef.current;
     if (!hover || session.busy || !session.calc) return;
     const cache = diffCacheRef.current;
     if (cache.version !== session.stateVersion) {
@@ -247,24 +345,54 @@ export function TreePanel({ session, lang }: Props) {
       setHoverDiff(cached);
       return;
     }
+    if (previewSkill !== hover.skill) return;
     const request = session.currentRequest();
     if (!request) return;
     const skill = hover.skill;
-    const timer = setTimeout(() => {
-      const has = session.allocatedNodes.includes(skill);
-      const nodes = has
-        ? session.allocatedNodes.filter((n) => n !== skill)
-        : [...session.allocatedNodes, skill];
-      previewDiff({ ...request, allocated_nodes: nodes }, session.calc!)
-        .then((diffs) => {
-          cache.map.set(skill, diffs);
-          setHoverDiff((current) => (hover.skill === skill ? diffs : current));
-        })
-        .catch(() => {});
-    }, 300);
-    return () => clearTimeout(timer);
+    const next = treeChangeFor(hover);
+    setHoverDiffLoading(true);
+    previewDiff(
+      {
+        ...request,
+        allocated_nodes: next.allocatedNodes,
+        attribute_choices: next.attributeChoices,
+      },
+      session.calc,
+    )
+      .then((diffs) => {
+        if (
+          generation !== previewGenerationRef.current ||
+          hoverSkillRef.current !== skill ||
+          cache.version !== session.stateVersion
+        ) {
+          return;
+        }
+        cache.map.set(skill, diffs);
+        setHoverDiff(diffs);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (generation === previewGenerationRef.current && hoverSkillRef.current === skill) {
+          setHoverDiffLoading(false);
+        }
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hover, session.stateVersion, session.busy]);
+  }, [hover, previewSkill, session.stateVersion, session.busy]);
+
+  useEffect(() => setPreviewSkill(null), [session.stateVersion]);
+
+  // tooltip 可交互（含"计算精确收益"按钮），离开节点后延迟关闭，移入 tooltip 即取消。
+  const cancelHoverClear = () => {
+    if (hoverClearTimerRef.current !== null) {
+      window.clearTimeout(hoverClearTimerRef.current);
+      hoverClearTimerRef.current = null;
+    }
+  };
+  const scheduleHoverClear = () => {
+    cancelHoverClear();
+    hoverClearTimerRef.current = window.setTimeout(() => setHover(null), 150);
+  };
+  useEffect(() => cancelHoverClear, []);
 
   // 快捷键 S/D/I（或 1/2/3）：弹窗打开时选择；hover 属性小点时直接加点或改选。
   useEffect(() => {
@@ -274,10 +402,15 @@ export function TreePanel({ session, lang }: Props) {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      if (e.key === 'Escape') {
+        setHover(null);
+        setAttrPicker(null);
+        return;
+      }
       const choice = KEYMAP[e.key.toLowerCase()];
       if (!choice) return;
       if (attrPicker) {
-        session.toggleNode(attrPicker.node.skill, choice);
+        applyTreeChange(attrPicker.node, choice);
         setAttrPicker(null);
         e.preventDefault();
         return;
@@ -290,7 +423,7 @@ export function TreePanel({ session, lang }: Props) {
             [String(hover.skill)]: choice,
           });
         } else {
-          session.toggleNode(hover.skill, choice);
+          applyTreeChange(hover, choice);
         }
         e.preventDefault();
       }
@@ -329,7 +462,15 @@ export function TreePanel({ session, lang }: Props) {
       dragRef.current.moved = true;
     }
     dragRef.current = { ...dragRef.current, x: e.clientX, y: e.clientY };
-    setViewBox({ ...view, x: view.x - dx, y: view.y - dy });
+    const base = pendingViewRef.current ?? view;
+    pendingViewRef.current = { ...base, x: base.x - dx, y: base.y - dy };
+    if (dragFrameRef.current === null) {
+      dragFrameRef.current = requestAnimationFrame(() => {
+        if (pendingViewRef.current) setViewBox(pendingViewRef.current);
+        pendingViewRef.current = null;
+        dragFrameRef.current = null;
+      });
+    }
   };
 
   const onPointerUp = () => {
@@ -343,22 +484,25 @@ export function TreePanel({ session, lang }: Props) {
     'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
   /** 点选加点/取消（拖拽平移不触发）；属性小点弹三选一；珠宝插槽开编辑器。 */
-  const onNodeClick = (node: PassiveNode, e: React.MouseEvent) => {
+  const activateNode = (node: PassiveNode, clientX: number, clientY: number) => {
     if (dragRef.current?.moved) return;
     if (!allocated.has(node.skill) && isAttrNode(node)) {
       const rect = svgRef.current!.getBoundingClientRect();
-      setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
+      setAttrPicker({ node, x: clientX - rect.left, y: clientY - rect.top });
       return;
     }
     if (node.kind === 'jewel_socket') {
-      if (!allocated.has(node.skill)) session.toggleNode(node.skill);
+      if (!allocated.has(node.skill)) applyTreeChange(node);
       const existing = session.jewels.find((j) => j.socket_node === node.skill);
       setJewelEdit({ socket: node.skill, draft: existing?.text ?? JEWEL_TEMPLATE });
       return;
     }
     setAttrPicker(null);
-    session.toggleNode(node.skill);
+    applyTreeChange(node);
   };
+
+  const onNodeClick = (node: PassiveNode, e: React.MouseEvent) =>
+    activateNode(node, e.clientX, e.clientY);
 
   return (
     <section className="tree-panel" aria-labelledby="tree-heading">
@@ -542,7 +686,8 @@ export function TreePanel({ session, lang }: Props) {
               <button
                 disabled={session.busy}
                 onClick={() => {
-                  if (allocated.has(jewelEdit.socket)) session.toggleNode(jewelEdit.socket);
+                  const socket = byId.get(jewelEdit.socket);
+                  if (socket && allocated.has(jewelEdit.socket)) applyTreeChange(socket);
                   session.setJewels(session.jewels.filter((j) => j.socket_node !== jewelEdit.socket));
                   setJewelEdit(null);
                 }}
@@ -621,13 +766,29 @@ export function TreePanel({ session, lang }: Props) {
                 cx={node.x}
                 cy={node.y}
                 r={NODE_RADIUS[node.kind] ?? 40}
-                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && session.jewels.some((j) => j.socket_node === node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}`}
+                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewels.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${hoverPathSet.has(node.skill) ? ' node-path' : ''}`}
+                role="button"
+                tabIndex={allocated.has(node.skill) || searchHits?.has(node.skill) ? 0 : -1}
+                aria-label={stripMarkup(`${node.name ?? node.id}. ${(node.stats ?? []).join('. ')}`)}
+                aria-pressed={allocated.has(node.skill)}
                 onPointerEnter={(e) => {
+                  cancelHoverClear();
                   setHover(node);
                   setHoverPos({ x: e.clientX, y: e.clientY });
                 }}
-                onPointerMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
-                onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
+                onPointerLeave={scheduleHoverClear}
+                onFocus={() => {
+                  const rect = svgRef.current?.getBoundingClientRect();
+                  cancelHoverClear();
+                  setHover(node);
+                  if (rect) setHoverPos({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  const rect = svgRef.current?.getBoundingClientRect();
+                  if (rect) activateNode(node, rect.left + rect.width / 2, rect.top + rect.height / 2);
+                }}
                 onClick={(e) => onNodeClick(node, e)}
               />
             ))}
@@ -639,15 +800,31 @@ export function TreePanel({ session, lang }: Props) {
             stats={hoverStats ?? []}
             pos={hoverPos}
             canvasRef={svgRef}
+            onPointerEnter={cancelHoverClear}
+            onPointerLeave={scheduleHoverClear}
             benefit={
-              hoverDiff && (
-                <div className="tooltip-benefit">
-                  <span className="tooltip-benefit-title">
-                    {allocated.has(hover.skill) ? tt('diff.ifDealloc') : tt('diff.ifAlloc')}
+              <div className="tooltip-benefit">
+                <span className="tooltip-benefit-title">
+                  {allocated.has(hover.skill) ? tt('diff.ifDealloc') : tt('diff.ifAlloc')}
+                </span>
+                {!allocated.has(hover.skill) && hoverPath.length > 0 && (
+                  <span className="tooltip-path-count">
+                    {hoverPath.length} {tt('tree.pathPoints')}
                   </span>
+                )}
+                {hoverDiffLoading ? (
+                  <span className="tooltip-preview-status">{tt('build.calculating')}</span>
+                ) : hoverDiff ? (
                   <DiffList diffs={hoverDiff} lang={lang} limit={5} />
-                </div>
-              )
+                ) : (
+                  <button
+                    className="tooltip-preview-button"
+                    onClick={() => setPreviewSkill(hover.skill)}
+                  >
+                    {tt('tree.calculateImpact')}
+                  </button>
+                )}
+              </div>
             }
           />
         )}
@@ -664,7 +841,7 @@ export function TreePanel({ session, lang }: Props) {
                 role="menuitem"
                 className={`attr-choice attr-${choice}`}
                 onClick={() => {
-                  session.toggleNode(attrPicker.node.skill, choice);
+                  applyTreeChange(attrPicker.node, choice);
                   setAttrPicker(null);
                 }}
               >
@@ -695,12 +872,16 @@ function TreeTooltip({
   pos,
   canvasRef,
   benefit,
+  onPointerEnter,
+  onPointerLeave,
 }: {
   node: PassiveNode;
   stats: string[];
   pos: { x: number; y: number };
   canvasRef: React.RefObject<SVGSVGElement | null>;
   benefit?: React.ReactNode;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
 }) {
   const rect = canvasRef.current?.getBoundingClientRect();
   if (!rect) return null;
@@ -714,7 +895,13 @@ function TreeTooltip({
     bottom: flipY ? rect.height - (pos.y - rect.top) + OFFSET : undefined,
   };
   return (
-    <div className="tree-tooltip" role="tooltip" style={style}>
+    <div
+      className="tree-tooltip"
+      role="tooltip"
+      style={style}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+    >
       <strong className={`tooltip-name kind-${node.kind}`}>{node.name ?? node.id}</strong>
       {stats.map((line, i) => (
         <div key={i} className="tooltip-stat">

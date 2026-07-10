@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry } from '../../api/types';
 import { bindT, type Lang } from '../../lib/i18n';
+import { gemTagLabels, gemTagMatches } from '../../lib/gemTags';
 
 /** 宝石颜色 → 语义 CSS 变量（tokens.css）。 */
 const COLOUR_VAR: Record<string, string> = {
   str: 'color-life',
   dex: 'color-positive',
   int: 'color-mana',
+  white: 'text-primary',
 };
 
-type ColourFilter = 'all' | 'str' | 'dex' | 'int';
+type ColourFilter = 'all' | 'str' | 'dex' | 'int' | 'white';
 
 interface Props {
   entries: GemCatalogEntry[];
@@ -24,6 +26,32 @@ export function gemDisplayName(entry: GemCatalogEntry, lang: Lang): string {
   if (lang === 'zh-CN') return entry.name_zh_cn ?? entry.name_zh_tw ?? entry.name;
   if (lang === 'zh-TW') return entry.name_zh_tw ?? entry.name_zh_cn ?? entry.name;
   return entry.name;
+}
+
+/** 可验证的结构化技能摘要；避免用不完整 stat template 伪造自然语言说明。 */
+export function gemSummary(entry: GemCatalogEntry, lang: Lang): string {
+  const tt = bindT(lang);
+  const parts = [`${tt('picker.requiresLevel')} ${entry.min_level_requirement}`];
+  parts.push(...gemTagLabels(entry.tags, lang));
+  if (entry.cast_time_ms) parts.push(`${(entry.cast_time_ms / 1000).toFixed(2)}s`);
+
+  const weights = Object.entries(entry.requirement_weights) as [
+    keyof GemCatalogEntry['requirement_weights'],
+    number,
+  ][];
+  const max = Math.max(...weights.map(([, value]) => value));
+  if (max > 0) {
+    const tendency = weights
+      .filter(([, value]) => value === max)
+      .map(([key]) => key.toUpperCase())
+      .join('/');
+    parts.push(`${tt('picker.attributeTendency')} ${tendency}`);
+  }
+  return parts.join(' · ');
+}
+
+export function GemMeta({ entry, lang }: { entry: GemCatalogEntry; lang: Lang }) {
+  return <span className="gem-meta">{gemSummary(entry, lang)}</span>;
 }
 
 /**
@@ -58,9 +86,9 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
           q === '' ||
           e.name.toLowerCase().includes(q) ||
           (e.name_zh_tw ?? '').includes(query.trim()) ||
-          (e.name_zh_cn ?? '').includes(query.trim()),
-      )
-      .slice(0, 200);
+          (e.name_zh_cn ?? '').includes(query.trim()) ||
+          gemTagMatches(e.tags, q),
+      );
   }, [entries, query, colour]);
 
   useEffect(() => setHighlight(0), [query, colour, open]);
@@ -92,6 +120,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
     { id: 'str', label: 'STR', colorVar: COLOUR_VAR.str },
     { id: 'dex', label: 'DEX', colorVar: COLOUR_VAR.dex },
     { id: 'int', label: 'INT', colorVar: COLOUR_VAR.int },
+    { id: 'white', label: tt('picker.white'), colorVar: COLOUR_VAR.white },
   ];
 
   return (
@@ -144,8 +173,13 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                       background: entry.colour ? `var(--${COLOUR_VAR[entry.colour]})` : 'var(--text-muted)',
                     }}
                   />
-                  <span className="gem-primary">{primary}</span>
-                  {secondary && <span className="gem-secondary">{secondary}</span>}
+                  <span className="gem-picker-copy">
+                    <span className="gem-picker-name-row">
+                      <span className="gem-primary">{primary}</span>
+                      {secondary && <span className="gem-secondary">{secondary}</span>}
+                    </span>
+                    <GemMeta entry={entry} lang={lang} />
+                  </span>
                 </li>
               );
             })}

@@ -3,7 +3,7 @@ import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
-import { GemPicker, gemDisplayName } from './GemPicker';
+import { GemMeta, GemPicker, gemDisplayName } from './GemPicker';
 import './skills.css';
 
 interface Props {
@@ -109,8 +109,15 @@ export function SkillsPanel({ session, lang }: Props) {
               <ul className="skill-gems">
                 {group.gems.map((gem, gemIdx) => (
                   <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}`}>
-                    <span className="gem-name">{gemName(gem.skill_id)}</span>
+                    <span className="gem-name">
+                      <span>{gemName(gem.skill_id)}</span>
+                      {byId.get(gem.skill_id) && (
+                        <GemMeta entry={byId.get(gem.skill_id)!} lang={lang} />
+                      )}
+                    </span>
                     <span className="gem-controls">
+                      <label className="gem-number-control">
+                        <span>{tt('skills.levelShort')}</span>
                       <input
                         type="number"
                         min={1}
@@ -126,6 +133,9 @@ export function SkillsPanel({ session, lang }: Props) {
                           });
                         }}
                       />
+                      </label>
+                      <label className="gem-number-control">
+                        <span>{tt('skills.qualityShort')}</span>
                       <input
                         type="number"
                         min={0}
@@ -141,6 +151,7 @@ export function SkillsPanel({ session, lang }: Props) {
                           });
                         }}
                       />
+                      </label>
                       <button
                         className="skill-remove"
                         disabled={session.busy}

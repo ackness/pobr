@@ -89,6 +89,11 @@ export interface BuildSession {
   setCharacter: (patch: Partial<CharacterState>) => void;
   /** 点选加点/取消；属性小点加点时带三选一。 */
   toggleNode: (skill: number, choice?: AttributeChoice) => void;
+  /** 一次性提交整条路径/级联取消，确保只触发一次计算。 */
+  setTreeAllocation: (
+    allocatedNodes: number[],
+    attributeChoices?: Record<string, AttributeChoice>,
+  ) => void;
   /** 整表替换属性三选一（批量调配 / 快捷键改单点）。 */
   setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
   /** 当前完整计算请求（对比预览用：克隆后改一处再算一次）。 */
@@ -524,6 +529,14 @@ export function useBuildSession(): BuildSession {
     [apply, state],
   );
 
+  const setTreeAllocation = useCallback(
+    (allocatedNodes: number[], attributeChoices = state?.attributeChoices ?? {}) => {
+      if (!state) return;
+      apply({ ...state, allocatedNodes, attributeChoices });
+    },
+    [apply, state],
+  );
+
   const updateParams = useCallback(
     (patch: Partial<CalcParams>) => {
       if (!state) return;
@@ -696,6 +709,7 @@ export function useBuildSession(): BuildSession {
     newBuild,
     setCharacter,
     toggleNode,
+    setTreeAllocation,
     setAttributeChoices,
     setSocketGroups,
     setItems,

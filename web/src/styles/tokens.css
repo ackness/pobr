@@ -12,12 +12,12 @@
   /* 文本 */
   --text-primary: #e8e6e0;
   --text-secondary: #a9a696;
-  --text-muted: #6d6b60;
+  --text-muted: #9a978b;
 
   /* 品牌 / 强调：PoB2 金 */
   --accent-gold: #d8b36a;
   --accent-gold-bright: #f0cf8b;
-  --accent-gold-dim: #8a7440;
+  --accent-gold-dim: #b39a5d;
 
   /* 语义色（数值/词条着色，对齐 PoB 习惯） */
   --color-life: #e05030;
@@ -35,8 +35,8 @@
   --rarity-normal: #c8c8c8;
   --rarity-magic: #8888ff;
   --rarity-rare: #ffff77;
-  --rarity-unique: #af6025;
-  --rarity-gem: #1ba29b;
+  --rarity-unique: #d27b3d;
+  --rarity-gem: #38bdb5;
 
   /* 字体 */
   --font-ui: 'Segoe UI', 'PingFang SC', 'Noto Sans', system-ui, sans-serif;
