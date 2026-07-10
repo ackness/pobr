@@ -165,6 +165,16 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
     ("VigilantStrikeBypassCD", "VigilantStrikeBypassCD"),
 ];
 
+/// XML 省略时会被补默认（defaultState=true）的 `<Input>` key（quest Stat 奖励
+/// 与默认 true 条件）。encode 写出端对未显式设置的这些 key 写 `boolean="false"`，
+/// 钉住「请求直连路径无默认补注」的语义，保证 encode→decode 往返计算一致。
+pub fn default_on_config_keys() -> impl Iterator<Item = &'static str> {
+    DEFAULT_QUEST_STAT_REWARDS
+        .iter()
+        .map(|(k, _)| *k)
+        .chain(DEFAULT_TRUE_CONDITIONS.iter().map(|(k, _)| *k))
+}
+
 /// `<Config>` 解析产物：条件 / 倍率 / 全局词条 + 顶层标量配置项。
 ///
 /// **双跑期临时导出**（M3-T1 A5，蓝图 D3 点 1）：主路径已切换至

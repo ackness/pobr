@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
+import { CopyButton } from '../shared/CopyButton';
 import './import.css';
 
 interface Props {
@@ -17,6 +18,17 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   const [code, setCode] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const [shareCode, setShareCode] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+
+  const generateCode = async () => {
+    setShareError(null);
+    try {
+      setShareCode(await session.exportCode());
+    } catch (err) {
+      setShareError(String(err));
+    }
+  };
 
   const exportFile = () => {
     const blob = new Blob([session.exportSession()], { type: 'application/json' });
@@ -136,6 +148,27 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           {session.build.items.equipped.length} {tt('build.itemsCount')}
         </p>
       )}
+      <h2>{tt('share.title')}</h2>
+      <p className="import-hint">{tt('share.hint')}</p>
+      <div className="save-actions">
+        <button onClick={generateCode} disabled={session.busy}>
+          {tt('share.generate')}
+        </button>
+        {shareCode && <CopyButton text={shareCode} lang={lang} />}
+      </div>
+      {shareError && <div className="calc-error">{shareError}</div>}
+      {shareCode && (
+        <textarea
+          className="import-code"
+          rows={4}
+          readOnly
+          value={shareCode}
+          spellCheck={false}
+          aria-label={tt('share.title')}
+          onFocus={(e) => e.target.select()}
+        />
+      )}
+
       <h2>{tt('save.title')}</h2>
       <p className="import-hint">{tt('save.hint')}</p>
       <div className="save-actions">

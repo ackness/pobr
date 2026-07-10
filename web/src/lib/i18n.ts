@@ -204,6 +204,16 @@ const DICT = {
   'notes.placeholder2': { 'en-US': 'Write anything about this build…', 'zh-TW': '寫點關於這個 build 的東西…', 'zh-CN': '写点关于这个 build 的东西…' },
   'notes.preview': { 'en-US': 'Colored preview', 'zh-TW': '著色預覽', 'zh-CN': '着色预览' },
 
+  // 分享 code
+  'share.title': { 'en-US': 'Share Code', 'zh-TW': '分享 Code', 'zh-CN': '分享 Code' },
+  'share.generate': { 'en-US': 'Generate code', 'zh-TW': '生成 Code', 'zh-CN': '生成 Code' },
+  'share.hint': {
+    'en-US':
+      'Exports the current edited build (tree/items/skills/config/notes) as a PoB2-format share code.',
+    'zh-TW': '把當前編輯態（樹/裝備/技能/配置/筆記）導出為 PoB2 格式分享 code。',
+    'zh-CN': '把当前编辑态（树/装备/技能/配置/笔记）导出为 PoB2 格式分享 code。',
+  },
+
   // 本地存档
   'save.title': { 'en-US': 'Local Save', 'zh-TW': '本地存檔', 'zh-CN': '本地存档' },
   'save.hint': {

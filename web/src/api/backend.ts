@@ -25,6 +25,8 @@ export interface PobrBackend {
   /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
   decodeBuildFile(content: string): Promise<BuildJson>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
+  /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
+  encodeBuild(request: CalculateBuildRequest & { notes?: string }): Promise<string>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
   loadPassiveTree(): Promise<PassiveNode[]>;

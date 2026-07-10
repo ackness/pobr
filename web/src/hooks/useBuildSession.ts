@@ -79,6 +79,8 @@ export interface BuildSession {
   setNotes: (text: string) => void;
   /** 导出完整会话（build 状态 + 笔记）为 JSON 文本。 */
   exportSession: () => string;
+  /** 编辑态 → PoB2 分享 code（可粘回 PoB2 / 二次导入）。 */
+  exportCode: () => Promise<string>;
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
   importSession: (json: string) => void;
   importCode: (code: string) => Promise<void>;
@@ -547,6 +549,14 @@ export function useBuildSession(): BuildSession {
     return JSON.stringify(saved, null, 2);
   }, [state, notes]);
 
+  const exportCode = useCallback(async (): Promise<string> => {
+    if (!state) throw new Error('build not ready');
+    const backend = await getBackend();
+    // encode 走全量覆盖（不带 pob_code——分享内容 = 当前编辑态本身）。
+    const { pob_code: _omit, ...request } = toRequest(state);
+    return backend.encodeBuild({ ...request, notes });
+  }, [state, notes]);
+
   const importSession = useCallback(
     (json: string) => {
       const saved = parseSaved(json);
@@ -671,6 +681,7 @@ export function useBuildSession(): BuildSession {
     notes,
     setNotes,
     exportSession,
+    exportCode,
     importSession,
     importCode,
     newBuild,

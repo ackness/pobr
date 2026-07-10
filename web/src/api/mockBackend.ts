@@ -39,6 +39,9 @@ export function createMockBackend(): PobrBackend {
     async calculateBuild() {
       return calculateFixture as unknown as CalculateBuildResponse;
     },
+    async encodeBuild() {
+      return 'MOCK_POB_CODE';
+    },
     async attribution() {
       return attributionFixture as unknown as AttributionResponse;
     },

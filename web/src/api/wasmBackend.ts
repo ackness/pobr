@@ -27,6 +27,7 @@ interface WasmModule {
   decodeBuildJson(code: string): string;
   decodeBuildFileJson(content: string): string;
   calculateBuildJson(requestJson: string): string;
+  encodeBuildJson(requestJson: string): string;
   attributionJson(requestJson: string): string;
   gemCatalogJson(): string;
   translateLinesToZhCn(linesJson: string): string;
@@ -116,6 +117,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async calculateBuild(request: CalculateBuildRequest) {
       return JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;
+    },
+    async encodeBuild(request) {
+      return wasm.encodeBuildJson(JSON.stringify(request));
     },
     async attribution(request: AttributionRequest) {
       return JSON.parse(wasm.attributionJson(JSON.stringify(request))) as AttributionResponse;

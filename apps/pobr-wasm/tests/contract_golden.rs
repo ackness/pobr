@@ -416,6 +416,203 @@ fn manual_flasks_override_utility_slots() {
     assert!(has_flask_entry, "attribution should list the charm slot");
 }
 
+/// encode 往返契约：编辑态请求 → 分享 code → 重新解码计算，与直接按请求计算
+/// 的全部展示字段一致（树/装备/药剂/技能组/config/属性小点全覆盖）。
+#[test]
+fn encode_build_roundtrip_matches_direct_calculation() {
+    ensure_data();
+    // 取真实 demo build 的解码结果拼一个「全量覆盖」请求（含手动附加项）。
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&demo_code()).expect("decode")).unwrap();
+    let ch = &decoded["character"];
+    let items: Vec<Value> = decoded["items"]["equipped"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| serde_json::json!({ "slot": i["slot"], "text": i["text"] }))
+        .collect();
+    let socket_groups: Vec<Value> = decoded["socket_groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| {
+            serde_json::json!({
+                "slot": g["slot"],
+                "enabled": g["enabled"],
+                "gems": g["gems"],
+            })
+        })
+        .collect();
+    let request = serde_json::json!({
+        "character": {
+            "level": ch["level"],
+            "class_name": ch["class_name"],
+            "ascendancy_name": ch["ascendancy_name"],
+        },
+        "allocated_nodes": decoded["tree"]["allocated_nodes"],
+        "attribute_choices": decoded["tree"]["attribute_choices"],
+        "socket_groups": socket_groups,
+        "items": items,
+        "flasks": [{ "slot": "Charm 1", "text": "Rarity: MAGIC\nRuby Charm\nRuby Charm" }],
+        "main_socket_group": decoded["main_socket_group"],
+        "config_inputs": { "conditionEnemyChilled": true },
+        "notes": "roundtrip <check> & escape",
+    });
+
+    let direct: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&request.to_string()).expect("direct calc"),
+    )
+    .unwrap();
+
+    let code = pobr_wasm::encode_build_json(&request.to_string()).expect("encode");
+
+    // 结构往返：树/技能组/装备/药剂数量与输入一致（数值对比前先钉住形状）。
+    let redecoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("redecode")).unwrap();
+    assert_eq!(
+        redecoded["tree"]["allocated_nodes"]
+            .as_array()
+            .unwrap()
+            .len(),
+        decoded["tree"]["allocated_nodes"].as_array().unwrap().len(),
+        "allocated node count"
+    );
+    assert_eq!(
+        redecoded["socket_groups"].as_array().unwrap().len(),
+        socket_groups.len(),
+        "socket group count"
+    );
+    assert_eq!(
+        redecoded["items"]["equipped"].as_array().unwrap().len(),
+        items.len(),
+        "equipped item count"
+    );
+    assert_eq!(
+        redecoded["items"]["flasks"].as_array().unwrap().len(),
+        1,
+        "flask/charm count"
+    );
+    for (i, (orig, rt)) in decoded["socket_groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(redecoded["socket_groups"].as_array().unwrap())
+        .enumerate()
+    {
+        assert_eq!(
+            orig["gems"].as_array().unwrap().len(),
+            rt["gems"].as_array().unwrap().len(),
+            "group {i} gem count"
+        );
+        assert_eq!(
+            orig["active_skill_id"], rt["active_skill_id"],
+            "group {i} active skill"
+        );
+    }
+    assert_eq!(
+        redecoded["main_socket_group"], decoded["main_socket_group"],
+        "main socket group"
+    );
+    assert_eq!(
+        redecoded["tree"]["attribute_choices"], decoded["tree"]["attribute_choices"],
+        "attribute choices"
+    );
+    {
+        let norm = |v: &Value| -> Vec<(String, String)> {
+            let mut out: Vec<(String, String)> = v
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|i| {
+                    (
+                        i["slot"].as_str().unwrap_or_default().to_string(),
+                        i["text"].as_str().unwrap_or_default().trim().to_string(),
+                    )
+                })
+                .collect();
+            out.sort();
+            out
+        };
+        assert_eq!(
+            norm(&redecoded["items"]["equipped"]),
+            norm(&decoded["items"]["equipped"]),
+            "equipped item texts"
+        );
+    }
+    let roundtrip_req = serde_json::json!({ "pob_code": code });
+    let via_code: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&roundtrip_req.to_string()).expect("roundtrip calc"),
+    )
+    .unwrap();
+
+    // 全部展示字段逐一相等（数值容差 1e-6）。
+    let stats = |v: &Value| -> Vec<(String, Option<f64>)> {
+        v["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| (s["id"].as_str().unwrap().to_string(), s["value"].as_f64()))
+            .collect()
+    };
+    let a = stats(&direct);
+    let b = stats(&via_code);
+    assert_eq!(a.len(), b.len(), "stat count mismatch");
+    for ((id_a, va), (id_b, vb)) in a.iter().zip(&b) {
+        assert_eq!(id_a, id_b);
+        match (va, vb) {
+            (Some(x), Some(y)) => {
+                if (x - y).abs() >= 1e-6 {
+                    // 失败前 dump 两侧该字段的 breakdown 差异，便于定位来源。
+                    let dump = |v: &Value| -> Vec<String> {
+                        v["breakdowns"][id_a]["mods"]
+                            .as_array()
+                            .map(|mods| {
+                                mods.iter()
+                                    .map(|m| {
+                                        format!(
+                                            "{} {} {:?}",
+                                            m["mod_type"], m["value"], m["source_text"]
+                                        )
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default()
+                    };
+                    let da = dump(&direct);
+                    let db = dump(&via_code);
+                    let only_a: Vec<_> = da.iter().filter(|l| !db.contains(l)).collect();
+                    let only_b: Vec<_> = db.iter().filter(|l| !da.contains(l)).collect();
+                    let probe = |v: &Value| -> Vec<String> {
+                        v["stats"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .filter(|s| {
+                                let id = s["id"].as_str().unwrap_or_default();
+                                id.contains("Reserv")
+                                    || id.contains("Str")
+                                    || id.contains("Int")
+                                    || id.contains("Dex")
+                                    || id.contains("Spirit")
+                            })
+                            .map(|s| format!("{}={}", s["id"], s["value"]))
+                            .collect()
+                    };
+                    panic!(
+                        "{id_a}: direct={x} roundtrip={y}\nonly-direct: {only_a:#?}\nonly-roundtrip: {only_b:#?}\nprobe-direct: {:?}\nprobe-roundtrip: {:?}",
+                        probe(&direct),
+                        probe(&via_code)
+                    );
+                }
+            }
+            (x, y) => assert_eq!(x, y, "{id_a}: null-ness mismatch"),
+        }
+    }
+
+    // Notes 也往返（含转义字符）。
+    assert_eq!(redecoded["notes"], "roundtrip <check> & escape");
+}
+
 /// Phase 7.1：中文词条行输入翻译——简中物品文本与英文等价，未知中文行落 unsupported。
 #[test]
 fn chinese_mod_lines_translate_to_english() {
