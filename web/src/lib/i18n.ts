@@ -114,6 +114,21 @@ const DICT = {
   'calcs.baseline': { 'en-US': 'Baseline (full build)', 'zh-TW': '基線（完整 build）', 'zh-CN': '基线（完整 build）' },
   'calcs.group': { 'en-US': 'Group', 'zh-TW': '技能組', 'zh-CN': '技能组' },
   'calcs.search': { 'en-US': 'Search aggregates…', 'zh-TW': '搜尋聚合量…', 'zh-CN': '搜索聚合量…' },
+  'calcs.fullDps': { 'en-US': 'Skill DPS', 'zh-TW': '技能 DPS', 'zh-CN': '技能 DPS' },
+  'calcs.fullDpsHint': {
+    'en-US':
+      'Recomputes the full pipeline once per enabled damage skill group (quality, ascendancy and gear all apply). Item-granted skills are not modelled yet.',
+    'zh-TW': '每個啟用的傷害技能組各跑一次完整管線（品質/升華/裝備詞綴全部生效）；裝備授予的技能暫未建模。',
+    'zh-CN': '每个启用的伤害技能组各跑一次完整管线（品质/升华/装备词缀全部生效）；装备授予的技能暂未建模。',
+  },
+  'calcs.runFullDps': { 'en-US': 'Compute skill DPS', 'zh-TW': '計算技能 DPS', 'zh-CN': '计算技能 DPS' },
+  'calcs.fullDpsTotal': { 'en-US': 'Full DPS (sum)', 'zh-TW': 'Full DPS（合計）', 'zh-CN': 'Full DPS（合计）' },
+  'calcs.fullDpsEmpty': {
+    'en-US': 'No enabled damage skill groups.',
+    'zh-TW': '沒有啟用的傷害技能組。',
+    'zh-CN': '没有启用的伤害技能组。',
+  },
+  'calcs.skill': { 'en-US': 'Skill', 'zh-TW': '技能', 'zh-CN': '技能' },
 
   // Tree 页
   'tree.title': { 'en-US': 'Passive Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },

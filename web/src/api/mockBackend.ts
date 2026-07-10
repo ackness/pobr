@@ -42,6 +42,9 @@ export function createMockBackend(): PobrBackend {
     async encodeBuild() {
       return 'MOCK_POB_CODE';
     },
+    async fullDps() {
+      return { full_dps: 0, per_skill: [] };
+    },
     async attribution() {
       return attributionFixture as unknown as AttributionResponse;
     },

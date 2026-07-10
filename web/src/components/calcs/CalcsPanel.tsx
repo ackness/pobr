@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
-import type { AttributionResponse, Breakdown, DisplayStatCategory } from '../../api/types';
+import type {
+  AttributionResponse,
+  Breakdown,
+  DisplayStatCategory,
+  FullDpsResponse,
+} from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
 import {
@@ -13,7 +18,25 @@ import {
 import { getBackend } from '../../api/backend';
 import { useEffect } from 'react';
 import { prettySkillId } from '../skills/SkillsPanel';
+import { gemDisplayName } from '../skills/GemPicker';
+import type { GemCatalogEntry } from '../../api/types';
 import './calcs.css';
+
+/** 技能名本地化：宝石目录中文名 → 回退 id 美化。 */
+function useSkillName(lang: Lang): (skillId: string) => string {
+  const [catalog, setCatalog] = useState<GemCatalogEntry[]>([]);
+  useEffect(() => {
+    getBackend()
+      .then((b) => b.gemCatalog())
+      .then(setCatalog)
+      .catch(() => {});
+  }, []);
+  const byId = useMemo(() => new Map(catalog.map((e) => [e.skill_id, e])), [catalog]);
+  return (skillId: string) => {
+    const entry = byId.get(skillId);
+    return entry ? gemDisplayName(entry, lang) : prettySkillId(skillId);
+  };
+}
 
 interface Props {
   session: BuildSession;
@@ -117,6 +140,70 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
   );
 }
 
+/** 逐技能组 DPS（点击触发；每组走完整管线 scoped 重算，品质/升华/装备词条全生效）。 */
+function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
+  const tt = bindT(lang);
+  const [report, setReport] = useState<FullDpsResponse | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    setRunning(true);
+    setError(null);
+    try {
+      setReport(await session.runFullDps());
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const skillName = useSkillName(lang);
+  const groupLabel = (index: number, skillId: string) =>
+    `${tt('calcs.group')} ${index + 1} · ${skillName(skillId)}`;
+
+  return (
+    <section className="attribution-view" aria-labelledby="fulldps-heading">
+      <h3 id="fulldps-heading">{tt('calcs.fullDps')}</h3>
+      <p className="calcs-hint">{tt('calcs.fullDpsHint')}</p>
+      <button onClick={run} disabled={running || session.busy}>
+        {running ? tt('calcs.running') : tt('calcs.runFullDps')}
+      </button>
+      {error && <div className="calc-error">{error}</div>}
+      {report &&
+        (report.per_skill.length === 0 ? (
+          <p className="calcs-hint">{tt('calcs.fullDpsEmpty')}</p>
+        ) : (
+          <div className="breakdown-scroll">
+            <table className="breakdown-table">
+              <thead>
+                <tr>
+                  <th>{tt('calcs.skill')}</th>
+                  <th>DPS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...report.per_skill]
+                  .sort((a, b) => b.dps - a.dps)
+                  .map((entry) => (
+                    <tr key={entry.group_index}>
+                      <td>{groupLabel(entry.group_index, entry.skill_id)}</td>
+                      <td className="mod-value">{formatStatValue(entry.dps, 'float2')}</td>
+                    </tr>
+                  ))}
+                <tr className="attribution-baseline">
+                  <td>{tt('calcs.fullDpsTotal')}</td>
+                  <td className="mod-value">{formatStatValue(report.full_dps, 'float2')}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ))}
+    </section>
+  );
+}
+
 function AttributionView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
   const [report, setReport] = useState<AttributionResponse | null>(null);
@@ -136,13 +223,15 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
     }
   };
 
+  const skillName = useSkillName(lang);
   const label = (kind: string, id: string) => {
     if (kind === 'socket_group') {
       const group = session.build?.socket_groups[Number(id)];
       const skill = group?.gems[0]?.skill_id;
-      return `${tt('calcs.group')} ${Number(id) + 1}${skill ? ` · ${prettySkillId(skill)}` : ''}`;
+      return `${tt('calcs.group')} ${Number(id) + 1}${skill ? ` · ${skillName(skill)}` : ''}`;
     }
     if (kind === 'item') return slotLabel(lang, id);
+    if (kind === 'flask') return slotLabel(lang, id);
     return id;
   };
 
@@ -311,6 +400,7 @@ export function CalcsPanel({ session, lang, focus }: Props) {
           </div>
         </section>
       ))}
+      <FullDpsView session={session} lang={lang} />
       <AttributionView session={session} lang={lang} />
     </section>
   );

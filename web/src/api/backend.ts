@@ -13,6 +13,7 @@ import type {
   CalculateBuildRequest,
   CalculateBuildResponse,
   ConfigOption,
+  FullDpsResponse,
   GemCatalogEntry,
   PassiveNode,
   PassiveTreeMeta,
@@ -27,6 +28,8 @@ export interface PobrBackend {
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
   /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
   encodeBuild(request: CalculateBuildRequest & { notes?: string }): Promise<string>;
+  /** 逐技能组 DPS + FullDPS 汇总（点击触发；计算量 = 1 + 启用伤害组数）。 */
+  fullDps(request: CalculateBuildRequest): Promise<FullDpsResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
   loadPassiveTree(): Promise<PassiveNode[]>;

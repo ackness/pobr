@@ -17,6 +17,7 @@ import type {
   CalculateBuildResponse,
   ConfigInputValue,
   EnemyTier,
+  FullDpsResponse,
   JewelInput,
   PassiveTreeMeta,
   SlotItemInput,
@@ -112,6 +113,8 @@ export interface BuildSession {
   updateParams: (patch: Partial<CalcParams>) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
+  /** 逐技能组 DPS + FullDPS 汇总（点击触发，1 + 组数次完整计算）。 */
+  runFullDps: () => Promise<FullDpsResponse>;
 }
 
 function toRequest(state: BuildState): CalculateBuildRequest {
@@ -661,6 +664,12 @@ export function useBuildSession(): BuildSession {
     [state],
   );
 
+  const runFullDps = useCallback(async (): Promise<FullDpsResponse> => {
+    if (!state) throw new Error('build not ready');
+    const backend = await getBackend();
+    return backend.fullDps(toRequest(state));
+  }, [state]);
+
   return {
     bootMessage,
     bootError,
@@ -703,5 +712,6 @@ export function useBuildSession(): BuildSession {
     updateParams,
     setConfigInput,
     runAttribution,
+    runFullDps,
   };
 }

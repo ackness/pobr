@@ -318,3 +318,21 @@ export interface ConfigOption {
 export interface ConfigCatalogFile {
   options: ConfigOption[];
 }
+
+// ---------------------------------------------------------------------------
+// full_dps_json
+// ---------------------------------------------------------------------------
+
+export interface SkillDpsEntry {
+  /** 技能组下标（0-based，与 socket_groups 对齐）。 */
+  group_index: number;
+  /** 该组主动技能的授予效果 id。 */
+  skill_id: string;
+  dps: number;
+}
+
+export interface FullDpsResponse {
+  /** 全部启用伤害技能组的 CombinedDPS 之和。 */
+  full_dps: number;
+  per_skill: SkillDpsEntry[];
+}

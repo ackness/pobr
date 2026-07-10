@@ -20,7 +20,7 @@ pub mod zh;
 
 pub use build_api::{
     attribution_json, calculate_build_json, decode_build_file_json, decode_build_json,
-    encode_build_json, gem_catalog_json, translate_lines_to_zh_cn_json,
+    encode_build_json, full_dps_json, gem_catalog_json, translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -71,6 +71,12 @@ pub mod wasm {
     #[wasm_bindgen(js_name = calculateBuildJson)]
     pub fn calculate_build_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::calculate_build_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`fullDpsJson(requestJson) -> string`（逐技能组 DPS + FullDPS 汇总）。
+    #[wasm_bindgen(js_name = fullDpsJson)]
+    pub fn full_dps_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::full_dps_json(request_json).map_err(|err| JsError::new(&err))
     }
 
     /// JS 入口：`encodeBuildJson(requestJson) -> string`（编辑态 → PoB2 分享 code）。

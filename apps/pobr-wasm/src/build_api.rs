@@ -690,6 +690,54 @@ pub fn calculate_build_json(request_json: &str) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
+// full_dps_json（逐技能组 DPS + FullDPS 汇总）
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+struct SkillDpsJson {
+    /// 技能组下标（0-based，与 socket_groups 对齐）。
+    group_index: usize,
+    /// 该组主动技能的授予效果 id。
+    skill_id: String,
+    dps: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct FullDpsResponse {
+    /// 全部启用伤害技能组的 CombinedDPS 之和。
+    full_dps: f64,
+    per_skill: Vec<SkillDpsJson>,
+}
+
+/// 逐技能组 DPS（请求形状同 [`CalculateBuildRequest`]）。
+///
+/// 计算量 = `1 + 启用伤害组数` 次完整编排；供点击触发的技能 DPS 面板，
+/// 不在每次重算时调用（与归因同模式）。
+pub fn full_dps_json(request_json: &str) -> Result<String, String> {
+    let req: CalculateBuildRequest =
+        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
+    let data = state::build_data()?;
+    let mut build = parse_build_from_request(&req)?;
+    apply_request_overrides(&mut build, &req, &data)?;
+    let opts = orchestrator_options(&req)?;
+    let report = pobr_build::calculate_full_dps(&build, &data, &opts)
+        .map_err(|e| format!("calculate: {e}"))?;
+    let response = FullDpsResponse {
+        full_dps: report.full_dps,
+        per_skill: report
+            .per_skill
+            .into_iter()
+            .map(|s| SkillDpsJson {
+                group_index: s.group_index,
+                skill_id: s.skill_id,
+                dps: s.combined_dps,
+            })
+            .collect(),
+    };
+    serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))
+}
+
+// ---------------------------------------------------------------------------
 // encode_build_json（编辑态 → PoB2 Build XML → 分享 code）
 // ---------------------------------------------------------------------------
 

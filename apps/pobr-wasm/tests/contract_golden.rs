@@ -416,6 +416,30 @@ fn manual_flasks_override_utility_slots() {
     assert!(has_flask_entry, "attribution should list the charm slot");
 }
 
+/// 逐技能组 DPS：demo build 至少一个伤害组，分项和 = full_dps。
+#[test]
+fn full_dps_json_shape() {
+    ensure_data();
+    let request = serde_json::json!({ "pob_code": demo_code() }).to_string();
+    let json: Value = serde_json::from_str(&pobr_wasm::full_dps_json(&request).expect("full dps"))
+        .expect("valid json");
+    assert_keys(&json, &["full_dps", "per_skill"], "FullDpsResponse");
+    let per_skill = json["per_skill"].as_array().unwrap();
+    assert!(
+        !per_skill.is_empty(),
+        "demo build should have damage skills"
+    );
+    assert_keys(
+        &per_skill[0],
+        &["group_index", "skill_id", "dps"],
+        "per_skill[0]",
+    );
+    let sum: f64 = per_skill.iter().map(|s| s["dps"].as_f64().unwrap()).sum();
+    let full = json["full_dps"].as_f64().unwrap();
+    assert!(full > 0.0, "full_dps should be positive");
+    assert!((sum - full).abs() < 1e-6, "sum {sum} != full {full}");
+}
+
 /// encode 往返契约：编辑态请求 → 分享 code → 重新解码计算，与直接按请求计算
 /// 的全部展示字段一致（树/装备/药剂/技能组/config/属性小点全覆盖）。
 #[test]
