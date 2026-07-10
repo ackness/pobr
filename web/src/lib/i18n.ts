@@ -166,6 +166,9 @@ const DICT = {
     'zh-TW': '快捷鍵：懸停屬性小點按 S/D/I（或 1/2/3）',
     'zh-CN': '快捷键：悬停属性小点按 S/D/I（或 1/2/3）',
   },
+  'tree.search': { 'en-US': 'Search nodes…', 'zh-TW': '搜尋節點…', 'zh-CN': '搜索节点…' },
+  'tree.matches': { 'en-US': 'matches', 'zh-TW': '個命中', 'zh-CN': '个命中' },
+  'tree.nextHit': { 'en-US': 'Next', 'zh-TW': '下一個', 'zh-CN': '下一个' },
 
   // Config 页
   'config.title': { 'en-US': 'Configuration', 'zh-TW': '戰鬥配置', 'zh-CN': '战斗配置' },

@@ -36,6 +36,10 @@ export function TreePanel({ session, lang }: Props) {
   const [hover, setHover] = useState<PassiveNode | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoverStats, setHoverStats] = useState<string[] | null>(null);
+  /** 节点搜索串（名称/词条子串匹配，高亮命中节点）。 */
+  const [search, setSearch] = useState('');
+  /** 「下一个命中」轮转下标（搜索串变化时归零）。 */
+  const [hitIndex, setHitIndex] = useState(0);
   /** 属性小点三选一弹窗（node + 屏幕坐标）。 */
   const [attrPicker, setAttrPicker] = useState<{ node: PassiveNode; x: number; y: number } | null>(
     null,
@@ -85,6 +89,22 @@ export function TreePanel({ session, lang }: Props) {
   );
 
   const byId = useMemo(() => new Map(placed.map((n) => [n.skill, n])), [placed]);
+
+  /** 搜索命中集（名称 + 词条文本，剥 `[a|b]` 标记后不分大小写子串匹配）。 */
+  const searchHits = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (q.length < 2) return null;
+    const hits = new Set<number>();
+    for (const node of placed) {
+      const haystack = [node.name ?? '', ...(node.stats ?? [])]
+        .join('\n')
+        .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
+        .replace(/\[([^\]]*)\]/g, '$1')
+        .toLowerCase();
+      if (haystack.includes(q)) hits.add(node.skill);
+    }
+    return hits;
+  }, [placed, search]);
 
   /** 属性小点判定（`+5 to any Attribute`）。 */
   const isAttrNode = (node: PassiveNode) =>
@@ -352,6 +372,39 @@ export function TreePanel({ session, lang }: Props) {
         <span className="tree-hint">
           {tt('tree.hint')}
         </span>
+        <span className="tree-search">
+          <input
+            type="search"
+            placeholder={tt('tree.search')}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setHitIndex(0);
+            }}
+            aria-label={tt('tree.search')}
+          />
+          {searchHits && (
+            <span className="tree-search-count">
+              {searchHits.size} {tt('tree.matches')}
+            </span>
+          )}
+          {searchHits && searchHits.size > 0 && (
+            <button
+              onClick={() => {
+                const sorted = [...searchHits].sort((a, b) => a - b);
+                const node = byId.get(sorted[hitIndex % sorted.length]);
+                setHitIndex((i) => i + 1);
+                if (!node) return;
+                // 保持当前缩放（过远时收到能看清节点簇的档位）平移到命中节点。
+                const w = Math.min(view.w, 14000);
+                const h = (w / view.w) * view.h;
+                setViewBox({ x: node.x! - w / 2, y: node.y! - h / 2, w, h });
+              }}
+            >
+              {tt('tree.nextHit')}
+            </button>
+          )}
+        </span>
         <label className="tree-asc-picker">
           {tt('tree.ascendancy')}
           <select
@@ -568,7 +621,7 @@ export function TreePanel({ session, lang }: Props) {
                 cx={node.x}
                 cy={node.y}
                 r={NODE_RADIUS[node.kind] ?? 40}
-                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && session.jewels.some((j) => j.socket_node === node.skill) ? ' node-jewel-filled' : ''}`}
+                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && session.jewels.some((j) => j.socket_node === node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}`}
                 onPointerEnter={(e) => {
                   setHover(node);
                   setHoverPos({ x: e.clientX, y: e.clientY });

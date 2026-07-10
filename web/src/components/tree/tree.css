@@ -80,6 +80,28 @@
   stroke: var(--accent-gold-bright);
 }
 
+/* 搜索命中：亮青描边（未加点节点也醒目，且不与金色加点态混淆） */
+.node-search-hit {
+  stroke: #4fd8e0;
+  stroke-width: 24;
+}
+
+.tree-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tree-search input {
+  width: 160px;
+}
+
+.tree-search-count {
+  color: #4fd8e0;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
 .tree-tooltip {
   position: absolute;
   max-width: 320px;
