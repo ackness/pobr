@@ -469,7 +469,10 @@ pub(crate) fn spirit_reservation_modifiers(
         rows.iter().rfind(|r| r.level <= gem_level).or(rows.first())
     }
     let mut mods = Vec::new();
-    let mut seen: HashSet<&str> = HashSet::new();
+    // 去重键 = (是否附赠组, skill_id)：重复的**手动**插槽组只算一份预留（vendor 对
+    // meta gem 双组如此），而物品/树附赠组（`source="Item:…"`）是独立技能实例，与
+    // 同名手动组各算一份（oracle 实证：Soul Torc 附赠 Trinity 与插槽 Trinity 各留 100）。
+    let mut seen: HashSet<(bool, &str)> = HashSet::new();
     // Ancestral Bond（tree node 45202『Totems reserve N Spirit each』产
     // `AncestralBond` FLAG）：SummonsTotem 技能因它入选预留循环
     // （vendor CalcDefence.lua:197 `isTotemAndAncestralBond`）。flag 无 tag，
@@ -488,7 +491,7 @@ pub(crate) fn spirit_reservation_modifiers(
             if effect.is_support
                 || !(has("HasReservation") || totem_under_bond)
                 || has("ReservationBecomesCost")
-                || !seen.insert(gem.skill_id.as_str())
+                || !seen.insert((group.source.is_some(), gem.skill_id.as_str()))
             {
                 continue;
             }

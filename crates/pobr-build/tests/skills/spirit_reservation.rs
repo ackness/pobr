@@ -155,6 +155,22 @@ fn full_negative_multiplier_zeroes_reservation() {
     assert_eq!(calc(&build, &data), 0.0);
 }
 
+/// 物品/树附赠组（`source="Item:…"`）是独立技能实例：与同名**手动**组各算一份预留
+/// （vendor 逐 activeSkill 计数，oracle 实证 Soul Torc 附赠 Trinity 与插槽 Trinity
+/// 各留 100）；重复附赠组之间仍按 id 去重。
+#[test]
+fn item_granted_group_reserves_separately_from_manual_group() {
+    let data = synthetic_data(None, None, None);
+    let mut granted = SocketGroup::new().with_gem_skill("TestAura", 1);
+    granted.source = Some("Item:3:Soul Torc".into());
+    let build = build_with_group(SocketGroup::new().with_gem_skill("TestAura", 1))
+        .add_socket_group(granted.clone());
+    assert_eq!(calc(&build, &data), 120.0, "附赠实例与手动实例各留一份");
+
+    let build = build_with_group(granted.clone()).add_socket_group(granted);
+    assert_eq!(calc(&build, &data), 60.0, "重复附赠组之间仍去重");
+}
+
 /// 同一效果出现在多个组按 id 去重（只计一次）；禁用组不参与。
 #[test]
 fn dedupes_across_groups_and_skips_disabled() {

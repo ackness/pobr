@@ -165,14 +165,32 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
     ("VigilantStrikeBypassCD", "VigilantStrikeBypassCD"),
 ];
 
-/// XML 省略时会被补默认（defaultState=true）的 `<Input>` key（quest Stat 奖励
-/// 与默认 true 条件）。encode 写出端对未显式设置的这些 key 写 `boolean="false"`，
-/// 钉住「请求直连路径无默认补注」的语义，保证 encode→decode 往返计算一致。
-pub fn default_on_config_keys() -> impl Iterator<Item = &'static str> {
-    DEFAULT_QUEST_STAT_REWARDS
-        .iter()
-        .map(|(k, _)| *k)
-        .chain(DEFAULT_TRUE_CONDITIONS.iter().map(|(k, _)| *k))
+/// 对无 XML 的白手 build 应用 PoB2 `defaultState=true` 语义（与 XML 导入路径的
+/// 「省略即默认」口径一致）：未显式设置的 quest Stat 奖励视作已领取（注入奖励
+/// 词条），未显式设置的默认 true 条件补 true。显式设置以 `config.raw_inputs`
+/// 为准——请求给了 `false` 即「显式放弃」，不注入。
+pub fn apply_default_on_config(build: &mut Build) {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+    let explicit_off = |build: &Build, key: &str| {
+        matches!(
+            build.config.raw_inputs.values.get(key),
+            Some(ConfigInputValue::Bool(false))
+        )
+    };
+    for (key, stat) in DEFAULT_QUEST_STAT_REWARDS {
+        if !explicit_off(build, key) {
+            push_quest_lines(&mut build.config.global_modifier_texts, stat);
+        }
+    }
+    for (xml_name, cond_var) in DEFAULT_TRUE_CONDITIONS {
+        if !explicit_off(build, xml_name) {
+            build
+                .config
+                .conditions
+                .entry((*cond_var).to_string())
+                .or_insert(true);
+        }
+    }
 }
 
 /// `<Config>` 解析产物：条件 / 倍率 / 全局词条 + 顶层标量配置项。
@@ -1111,6 +1129,9 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                         if let Some(slot) = attr_value(&e, b"slot") {
                             group = group.with_slot(slot);
                         }
+                        // 物品/树附赠技能的自动生成组（`source="Item:…"`/`"Tree:…"`），
+                        // 预留计数按附赠实例与手动实例分开去重。
+                        group.source = attr_value(&e, b"source").filter(|s| !s.is_empty());
                         // PoB `mainActiveSkill`（1-based，索引该组非辅助技能列表）：标记多主动技能
                         // 组（如 Cast on Crit + Comet）里指定的主技能；真正的「跳过 support/meta、
                         // 按序号选」判定在 resolve_main_skill（那里有 granted_effect 数据）。

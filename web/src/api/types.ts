@@ -54,6 +54,8 @@ export interface SocketGroupJson {
   enabled: boolean;
   active_skill_id: string | null;
   gems: GemJson[];
+  /** 物品/树附赠技能的自动生成组标记（`"Item:…"`/`"Tree:…"`）；null = 手动组。 */
+  source: string | null;
 }
 
 export type ConfigInputValue = boolean | number | string;
@@ -95,6 +97,8 @@ export interface SocketGroupInput {
   slot?: string | null;
   enabled: boolean;
   gems: GemInput[];
+  /** 附赠组标记：decode 原样回传（预留按附赠/手动实例分开计）；手动新建组省略。 */
+  source?: string | null;
 }
 
 /** 手动装备（PoB 原始文本块；整份替换装备槽）。 */

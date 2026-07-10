@@ -63,6 +63,10 @@ pub struct SocketGroup {
     /// （meta/触发壳算入，support 不计入）。用于多主动技能组（如 Cast on Crit + Comet）里
     /// 选中正确的主技能；`None`=未指定（退化为该组首个伤害技能）。
     pub main_active_skill: Option<usize>,
+    /// PoB `<Skill source="Item:3:Soul Torc">`：物品/树附赠技能的自动生成组标记，
+    /// `None` = 玩家手动插槽组。预留计数用它区分附赠实例与手动实例
+    /// （vendor 对两者各算一份预留，而重复的手动组只算一份）。
+    pub source: Option<String>,
 }
 
 impl SocketGroup {
@@ -76,6 +80,7 @@ impl SocketGroup {
             active_gem_quality: None,
             gem_skills: Vec::new(),
             main_active_skill: None,
+            source: None,
         }
     }
 

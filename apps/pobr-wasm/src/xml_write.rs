@@ -13,6 +13,8 @@ use std::fmt::Write as _;
 pub(crate) struct XmlSkillGroup {
     pub slot: Option<String>,
     pub enabled: bool,
+    /// 物品/树附赠组标记（`source="Item:…"`），往返保真用；`None` 不写属性。
+    pub source: Option<String>,
     /// `(gem_id, skill_id, level, quality)`；gem_id 反查不到时为空串（省略属性）。
     pub gems: Vec<(String, String, u32, u32)>,
 }
@@ -157,6 +159,9 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
         write!(w, r#"      <Skill enabled="{}""#, group.enabled).unwrap();
         if let Some(slot) = &group.slot {
             write!(w, r#" slot="{}""#, esc_attr(slot)).unwrap();
+        }
+        if let Some(source) = &group.source {
+            write!(w, r#" source="{}""#, esc_attr(source)).unwrap();
         }
         writeln!(w, ">").unwrap();
         for (gem_id, skill_id, level, quality) in &group.gems {

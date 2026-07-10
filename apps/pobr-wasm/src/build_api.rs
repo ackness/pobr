@@ -97,6 +97,9 @@ struct SocketGroupJson {
     enabled: bool,
     active_skill_id: Option<String>,
     gems: Vec<GemJson>,
+    /// PoB `<Skill source="Item:…"/"Tree:…">`：物品/树附赠技能的自动生成组标记；
+    /// `null` = 手动插槽组。预留计数按附赠/手动实例分开去重，需原样回传。
+    source: Option<String>,
 }
 
 /// config `<Input>` 值的 JSON 形状（三型直出）。
@@ -165,6 +168,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                 slot: g.slot.clone(),
                 enabled: g.enabled,
                 active_skill_id: g.active_skill_id.clone(),
+                source: g.source.clone(),
                 gems: g
                     .gem_skills
                     .iter()
@@ -240,6 +244,8 @@ pub struct SocketGroupInput {
     slot: Option<String>,
     enabled: bool,
     gems: Vec<GemInput>,
+    /// 物品/树附赠组标记（decode 原样回传；手动新建组恒 `None`）。
+    source: Option<String>,
 }
 
 impl Default for SocketGroupInput {
@@ -248,6 +254,7 @@ impl Default for SocketGroupInput {
             slot: None,
             enabled: true,
             gems: Vec::new(),
+            source: None,
         }
     }
 }
@@ -365,6 +372,7 @@ fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> Socket
     let mut group = SocketGroup {
         slot: input.slot.clone(),
         enabled: input.enabled,
+        source: input.source.clone(),
         ..SocketGroup::default()
     };
     for gem in &input.gems {
@@ -535,6 +543,11 @@ fn run_session(req: &CalculateBuildRequest) -> Result<CalculationSession, String
     let data = state::build_data()?;
     let mut build = parse_build_from_request(req)?;
     apply_request_overrides(&mut build, req, &data)?;
+    if req.pob_code.trim().is_empty() {
+        // 白手 build 无 XML 解析路径的「省略即默认」补注，此处对齐 PoB2
+        // defaultState=true 语义（quest 奖励已领取 + 默认 true 条件）。
+        pobr_build::apply_default_on_config(&mut build);
+    }
     run_session_for_build(&build, req)
 }
 
@@ -823,19 +836,16 @@ pub fn encode_build_json(request_json: &str) -> Result<String, String> {
             crate::xml_write::XmlSkillGroup {
                 slot: g.slot.clone(),
                 enabled: g.enabled,
+                source: g.source.clone(),
                 gems,
             }
         })
         .collect();
 
-    // XML 路径对省略的 quest 奖励 / 默认 true 条件按 PoB2 defaultState=true 补注，
-    // 请求直连路径没有——对未显式设置的这些 key 写显式 false，两条路径语义收敛。
-    let mut config_inputs = req.config_inputs.clone();
-    for key in pobr_build::default_on_config_keys() {
-        config_inputs
-            .entry(key.to_string())
-            .or_insert(serde_json::Value::Bool(false));
-    }
+    // 与 PoB2 一致：encode 只写显式设置的 config 值——省略的 quest 奖励 /
+    // 默认 true 条件在 decode 侧按 defaultState=true 补注（白手直连路径经
+    // `apply_default_on_config` 同口径），显式 false 才是「放弃」。
+    let config_inputs = req.config_inputs.clone();
 
     let empty_choices = BTreeMap::new();
     let tree_version = current_tree_version();
@@ -1294,6 +1304,7 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
                 enabled: true,
                 active_skill_id: Some(active),
                 gems,
+                source: None,
             })
         })
         .collect();

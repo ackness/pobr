@@ -74,3 +74,37 @@ Issues found and fixed during verification:
 Known non-goals kept: exact hover preview stays click-triggered (Worker migration later);
 support-compat filtering still needs a backend endpoint; alternate starts / jewel paths
 remain deferred.
+
+## Follow-up (2026-07-11): negative Spirit Unreserved discrepancy
+
+The imported build showed `SpiritUnreserved = -205` while the current vendored PoB2
+computes **-305** (the ninja export's -197 comes from an older PoB2 version; negative is
+the build's true over-reserved state in every implementation). PoBR was missing one
+Trinity reservation (100): the amulet-granted skill (`<Skill source="Item:3:Soul Torc">`)
+was deduplicated against the manual socket group by the reservation loop's `seen` set.
+
+Fix: `SocketGroup` now carries the PoB `source` attribute, and the reservation dedup key
+is `(is_granted_group, skill_id)` — duplicate manual groups still count once (the
+coiling/gemling behaviour the dedup was added for), while item/tree-granted instances
+reserve separately, matching the vendor per-active-skill loop (oracle
+`spiritReservedBreakdown` shows both Trinity entries at 100).
+
+Verified: skills suite 41/41 (new `item_granted_group_reserves_separately_from_manual_group`),
+parity 58/58 (`parity_no_regression` green), dualrun green.
+
+Threading the fix to the web surfaced two more contract gaps, both fixed:
+
+- The decode/calculate contract dropped `source`, so the web's request path rebuilt all
+  groups as manual and re-deduplicated the granted Trinity. `source` now flows
+  decode JSON → web state → calculate request → `SocketGroup`, and share-code encode
+  writes the attribute back (round-trip fidelity).
+- Share-code export stamped explicit `boolean="false"` for every unset
+  `defaultState=true` config key, silently renouncing the quest rewards
+  (+100 Spirit, +20 Life, resistances…) on re-import — an exported build lost 100 Spirit.
+  Encode now writes only explicit values (PoB2 behaviour), and the scratch-build request
+  path applies the same defaults via `apply_default_on_config` (a fresh PoBR build now
+  starts with quest bonuses granted, like a fresh PoB2 build). Two contract tests updated
+  for the new baseline (+50 flat Life ring now yields 52.5 with the quest 5% inc).
+
+End-to-end (browser, real WASM): import `examples/poe-ninja/1.txt` → SpiritUnreserved
+-305; generate share code → re-import → still -305. Contract golden 14/14 green.

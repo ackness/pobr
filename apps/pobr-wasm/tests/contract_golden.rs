@@ -87,7 +87,7 @@ fn decode_build_json_shape() {
     assert!(!groups.is_empty());
     assert_keys(
         &groups[0],
-        &["slot", "enabled", "active_skill_id", "gems"],
+        &["slot", "enabled", "active_skill_id", "gems", "source"],
         "socket_groups[0]",
     );
     let gems = groups[0]["gems"].as_array().unwrap();
@@ -341,9 +341,10 @@ fn manual_skills_and_items_without_code() {
     )
     .unwrap();
     let delta = stat(&resp, "Life") - stat(&baseline, "Life");
+    // 白手 build 带 quest 默认奖励（含 5% increased maximum Life）→ 50 × 1.05。
     assert!(
-        (delta - 50.0).abs() < 0.5,
-        "manual +50 Life ring should add 50 Life, got {delta}"
+        (delta - 52.5).abs() < 0.5,
+        "manual +50 Life ring should add 52.5 Life (quest 5% inc), got {delta}"
     );
 
     // 非法槽位 → 可读错误。
@@ -845,9 +846,10 @@ fn manual_jewels_respect_socket_allocation() {
     };
     let with = life(true);
     let without = life(false);
+    // 白手 build 带 quest 默认奖励（含 5% increased maximum Life）→ 50 × 1.05。
     assert!(
-        (with - without - 50.0).abs() < 0.5,
-        "已加点插槽的珠宝应 +50 Life（with={with} without={without}）"
+        (with - without - 52.5).abs() < 0.5,
+        "已加点插槽的珠宝应 +52.5 Life（quest 5% inc；with={with} without={without}）"
     );
 }
 

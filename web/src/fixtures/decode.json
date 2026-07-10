@@ -157,7 +157,8 @@
           "skill_id": "SupportSlowPotencyPlayer"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "SummonMetaTotemSpellTotemPlayer",
@@ -194,7 +195,8 @@
           "skill_id": "SupportZenithPlayerTwo"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "ElementalWeaknessPlayer",
@@ -231,7 +233,8 @@
           "skill_id": "SupportHexBloomPlayer"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "EntanglePlayer",
@@ -268,7 +271,8 @@
           "skill_id": "SupportArcaneSurgePlayer"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "FrostBombPlayer",
@@ -300,7 +304,8 @@
           "skill_id": "SupportEfficiencyPlayerTwo"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "ArchmagePlayer",
@@ -327,7 +332,8 @@
           "skill_id": "SupportClarityPlayerTwo"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "MeditatePlayer",
@@ -349,7 +355,8 @@
           "skill_id": "SupportSteadfastPlayerTwo"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "PoweredByVerisiumPlayer",
@@ -371,7 +378,8 @@
           "skill_id": "SupportRapidCastingPlayerTwo"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "MalicePlayer",
@@ -388,7 +396,8 @@
           "skill_id": "ProlongedDurationSupportPlayerTwo"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "ManaDrainPlayer",
@@ -400,7 +409,8 @@
           "skill_id": "ManaDrainPlayer"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": null
     },
     {
       "active_skill_id": "MeditatePlayer",
@@ -412,7 +422,8 @@
           "skill_id": "MeditatePlayer"
         }
       ],
-      "slot": null
+      "slot": null,
+      "source": "Tree:12876"
     },
     {
       "active_skill_id": "ManaDrainPlayer",
@@ -424,7 +435,8 @@
           "skill_id": "ManaDrainPlayer"
         }
       ],
-      "slot": "Weapon 1"
+      "slot": "Weapon 1",
+      "source": "Item:9:Storm Bite, Attuned Wand"
     },
     {
       "active_skill_id": "MalicePlayer",
@@ -436,7 +448,8 @@
           "skill_id": "MalicePlayer"
         }
       ],
-      "slot": "Weapon 2"
+      "slot": "Weapon 2",
+      "source": "Item:10:Horror Call, Omen Sceptre"
     }
   ],
   "tree": {
