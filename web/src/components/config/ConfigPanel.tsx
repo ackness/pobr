@@ -290,7 +290,7 @@ export function ConfigPanel({ session, lang }: Props) {
         <div className="config-grid">
           {extraKeys.map((key) => (
             <div key={key} className={`config-item${key in overrides ? ' is-overridden' : ''}`}>
-              <span className="config-key">{key}</span>
+              <span className="config-key config-key--raw">{key}</span>
               <input
                 className="config-value"
                 defaultValue={String(effective(key) ?? '')}

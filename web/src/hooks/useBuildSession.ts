@@ -211,6 +211,16 @@ function parseSaved(json: string): SavedSession | null {
   }
 }
 
+/** 库展示名：取第一条非 Rarity 行（即物品名）。 */
+function itemName(text: string): string {
+  return (
+    text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !/^Rarity:/i.test(l))[0] ?? 'Item'
+  );
+}
+
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
 function materialize(
   decoded: BuildJson,
@@ -347,6 +357,36 @@ export function useBuildSession(): BuildSession {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** 导入时把装备/珠宝/技能组自动收进库（按文本/套装名去重，避免重复导入堆叠）。 */
+  const mergeImportedIntoLibrary = useCallback((decoded: BuildJson) => {
+    const imported: LibraryItem[] = [
+      ...decoded.items.equipped.map((it) => ({ kind: 'item' as const, text: it.text })),
+      ...(decoded.items.socket_jewels ?? []).map((j) => ({ kind: 'jewel' as const, text: j.text })),
+    ].map((e) => ({ id: crypto.randomUUID(), kind: e.kind, name: itemName(e.text), text: e.text }));
+
+    const setName = decoded.character.ascendancy_name || decoded.character.class_name;
+    const skillSet: SkillSet | null = decoded.socket_groups.length
+      ? { id: crypto.randomUUID(), name: setName, groups: materialize(decoded).socketGroups }
+      : null;
+
+    setLibrary((prev) => {
+      const seen = new Set(prev.items.map((i) => i.text));
+      const newItems = imported.filter((i) => !seen.has(i.text));
+      const skillSets =
+        skillSet && !prev.skillSets.some((s) => s.name === skillSet.name)
+          ? [...prev.skillSets, skillSet]
+          : prev.skillSets;
+      if (newItems.length === 0 && skillSets === prev.skillSets) return prev;
+      const next: Library = { items: [...prev.items, ...newItems], skillSets };
+      try {
+        localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
+      } catch {
+        // 配额失败静默。
+      }
+      return next;
+    });
+  }, []);
+
   const importCode = useCallback(
     async (code: string) => {
       setBusy(true);
@@ -359,6 +399,7 @@ export function useBuildSession(): BuildSession {
           ? await backend.decodeBuildFile(code)
           : await backend.decodeBuild(code);
         setBuild(decoded);
+        mergeImportedIntoLibrary(decoded);
         if (decoded.notes) {
           setNotes(decoded.notes);
         }
@@ -379,7 +420,7 @@ export function useBuildSession(): BuildSession {
         setBusy(false);
       }
     },
-    [apply, setNotes],
+    [apply, setNotes, mergeImportedIntoLibrary],
   );
 
   const newBuild = useCallback(
@@ -513,14 +554,9 @@ export function useBuildSession(): BuildSession {
 
   const saveLibraryItem = useCallback(
     (kind: 'item' | 'jewel', text: string) => {
-      const name =
-        text
-          .split('\n')
-          .map((l) => l.trim())
-          .filter((l) => l && !/^Rarity:/i.test(l))[0] ?? 'Item';
       persistLibrary({
         ...library,
-        items: [...library.items, { id: crypto.randomUUID(), kind, name, text }],
+        items: [...library.items, { id: crypto.randomUUID(), kind, name: itemName(text), text }],
       });
     },
     [library, persistLibrary],

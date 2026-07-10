@@ -71,6 +71,8 @@ const DICT = {
   'picker.support': { 'en-US': 'Support', 'zh-TW': '輔助', 'zh-CN': '辅助' },
 
   // Items 页
+  'common.copy': { 'en-US': 'Copy', 'zh-TW': '複製', 'zh-CN': '复制' },
+  'common.copied': { 'en-US': 'Copied', 'zh-TW': '已複製', 'zh-CN': '已复制' },
   'items.title': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
   'items.hint': {
     'en-US': 'Edit each slot as PoB item text (Rarity line + name + base + one mod per line); apply recalcs. Mod lines and base names may be in English or Simplified Chinese (CN-realm text); structural lines (Rarity:) stay PoB-style.',

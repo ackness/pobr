@@ -30,6 +30,7 @@
 
 .item-name {
   margin: var(--space-1) 0;
+  overflow-wrap: anywhere;
 }
 
 .rarity-normal .item-name { color: var(--rarity-normal); }
@@ -40,6 +41,7 @@
 .item-lines {
   font-size: var(--text-sm);
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .item-line {

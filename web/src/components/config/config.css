@@ -32,10 +32,15 @@
 
 .config-key {
   flex: 1;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   overflow-wrap: anywhere;
+}
+
+/* 自定义 modifier 的原始 key 是标识符，保留等宽以区别于人类可读的目录标签。 */
+.config-key--raw {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
 }
 
 .config-value {

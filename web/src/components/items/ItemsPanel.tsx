@@ -3,6 +3,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
+import { CopyButton } from '../shared/CopyButton';
 import './items.css';
 
 interface Props {
@@ -137,6 +138,7 @@ export function ItemsPanel({ session, lang }: Props) {
               )}
               {selectedText && (
                 <>
+                  <CopyButton text={selectedText} lang={lang} />
                   <button
                     disabled={session.busy}
                     onClick={() => session.saveLibraryItem('item', selectedText)}
@@ -196,6 +198,11 @@ export function ItemsPanel({ session, lang }: Props) {
           <div className="item-grid">
             {build.items.jewels.map((text, i) => (
               <article key={i} className={`item-card rarity-${rarityOf(text)}`}>
+                <header className="item-slot">
+                  <span className="item-actions">
+                    <CopyButton text={text} lang={lang} />
+                  </span>
+                </header>
                 <ItemText text={text} />
               </article>
             ))}
@@ -248,6 +255,7 @@ function LibrarySection({
           <header className="item-slot">
             {entry.name}
             <span className="item-actions">
+              <CopyButton text={entry.text} lang={lang} />
               <button
                 disabled={session.busy || !selectedSlot}
                 title={selectedSlot ? '' : tt('lib.selectSlotFirst')}
