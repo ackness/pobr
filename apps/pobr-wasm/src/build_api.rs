@@ -176,7 +176,8 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                     .collect(),
             })
             .collect(),
-        main_socket_group: build.main_socket_group,
+        // Build 内部 1-based（PoB XML 同）→ 契约 0-based（web 下标语义）。
+        main_socket_group: build.main_socket_group.map(|m| m.saturating_sub(1)),
         config_inputs: build
             .config
             .raw_inputs
@@ -439,7 +440,8 @@ fn apply_request_overrides(
         build.radius_jewels = radius;
     }
     if let Some(main) = req.main_socket_group {
-        build.main_socket_group = Some(main);
+        // 契约是 0-based（web 下标），Build 内部与 PoB XML 同为 1-based。
+        build.main_socket_group = Some(main + 1);
     }
     for (key, value) in &req.config_inputs {
         build
