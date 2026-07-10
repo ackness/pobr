@@ -244,6 +244,11 @@ const SLOT_LABELS: Record<string, Entry> = {
   ring2: { 'en-US': 'Ring 2', 'zh-TW': '戒指 2', 'zh-CN': '戒指 2' },
   ring3: { 'en-US': 'Ring 3', 'zh-TW': '戒指 3', 'zh-CN': '戒指 3' },
   belt: { 'en-US': 'Belt', 'zh-TW': '腰帶', 'zh-CN': '腰带' },
+  'Flask 1': { 'en-US': 'Flask 1', 'zh-TW': '藥劑 1', 'zh-CN': '药剂 1' },
+  'Flask 2': { 'en-US': 'Flask 2', 'zh-TW': '藥劑 2', 'zh-CN': '药剂 2' },
+  'Charm 1': { 'en-US': 'Charm 1', 'zh-TW': '護符 1', 'zh-CN': '护符 1' },
+  'Charm 2': { 'en-US': 'Charm 2', 'zh-TW': '護符 2', 'zh-CN': '护符 2' },
+  'Charm 3': { 'en-US': 'Charm 3', 'zh-TW': '護符 3', 'zh-CN': '护符 3' },
 };
 
 /** 装备槽稳定 id → 本地化槽位名。 */

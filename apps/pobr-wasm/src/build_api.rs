@@ -284,6 +284,8 @@ pub struct CalculateBuildRequest {
     socket_groups: Option<Vec<SocketGroupInput>>,
     /// 覆盖装备（手动编辑：整份替换全部装备槽）。
     items: Option<Vec<SlotItemInput>>,
+    /// 覆盖激活态药剂/护符（整份替换 `utility_slots`；槽名 `Flask 1/2`、`Charm 1..3`）。
+    flasks: Option<Vec<SlotItemInput>>,
     /// 覆盖树插槽珠宝（含范围珠宝：`in Radius also grant` 行经几何展开改天赋词条）。
     jewels: Option<Vec<JewelInput>>,
     /// 覆盖主技能组（0-based，Skills 页切换主技能用）。
@@ -416,6 +418,19 @@ fn apply_request_overrides(
             let parsed = parse_pob_xml_item(&text)
                 .map_err(|e| format!("parse item in slot {}: {e:?}", item.slot))?;
             build.items.insert(slot, parsed);
+        }
+    }
+    if let Some(flasks) = &req.flasks {
+        build.utility_slots.clear();
+        for flask in flasks {
+            // 与 XML 导入同语义：只有激活槽进列表；槽名限 PoB 的 Flask/Charm 系。
+            if !(flask.slot.starts_with("Flask ") || flask.slot.starts_with("Charm ")) {
+                return Err(format!("unknown flask/charm slot: {}", flask.slot));
+            }
+            let text = localize_input_text(&flask.text);
+            let parsed = parse_pob_xml_item(&text)
+                .map_err(|e| format!("parse item in slot {}: {e:?}", flask.slot))?;
+            build.utility_slots.push((flask.slot.clone(), parsed));
         }
     }
     if let Some(jewels) = &req.jewels {
@@ -672,6 +687,7 @@ pub struct AttributionRequest {
     attribute_choices: Option<BTreeMap<u32, String>>,
     socket_groups: Option<Vec<SocketGroupInput>>,
     items: Option<Vec<SlotItemInput>>,
+    flasks: Option<Vec<SlotItemInput>>,
     jewels: Option<Vec<JewelInput>>,
     main_socket_group: Option<usize>,
     mode_effective: Option<bool>,
@@ -730,6 +746,7 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
         attribute_choices: req.attribute_choices.clone(),
         socket_groups: req.socket_groups.clone(),
         items: req.items.clone(),
+        flasks: req.flasks.clone(),
         jewels: req.jewels.clone(),
         main_socket_group: req.main_socket_group,
         mode_effective: req.mode_effective,

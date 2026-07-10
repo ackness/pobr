@@ -134,6 +134,8 @@ export interface CalculateBuildRequest {
   socket_groups?: SocketGroupInput[];
   /** 整份替换装备槽（手动编辑）。 */
   items?: SlotItemInput[];
+  /** 整份替换激活态药剂/护符（槽名 `Flask 1/2`、`Charm 1..3`）。 */
+  flasks?: SlotItemInput[];
   /** 整份替换树插槽珠宝。 */
   jewels?: JewelInput[];
   main_socket_group?: number;
@@ -206,6 +208,7 @@ export interface AttributionRequest {
   attribute_choices?: Record<string, AttributeChoice>;
   socket_groups?: SocketGroupInput[];
   items?: SlotItemInput[];
+  flasks?: SlotItemInput[];
   jewels?: JewelInput[];
   main_socket_group?: number;
   mode_effective?: boolean;

@@ -64,6 +64,12 @@ const DOLL_SLOTS: { slot: string; area: string }[] = [
 ];
 
 const ITEM_TEMPLATE = 'Rarity: RARE\nNew Item\nSapphire Ring\n+50 to maximum Life';
+const FLASK_TEMPLATE = 'Rarity: MAGIC\nUltimate Life Flask\nUltimate Life Flask';
+const CHARM_TEMPLATE = 'Rarity: MAGIC\nRuby Charm\nRuby Charm';
+
+/** PoB 药剂/护符槽（激活态；与 wasm 契约的 utility 槽名一致）。 */
+const UTILITY_SLOTS = ['Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
+const isUtilitySlot = (slot: string) => slot.startsWith('Flask') || slot.startsWith('Charm');
 
 /** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
 export function ItemsPanel({ session, lang }: Props) {
@@ -74,25 +80,40 @@ export function ItemsPanel({ session, lang }: Props) {
   const build = session.build;
   const items = session.items;
   const bySlot = new Map(items.map((item) => [item.slot, item.text]));
+  const utilityBySlot = new Map(session.flasks.map((f) => [f.slot, f.text]));
+
+  const textOf = (slot: string) =>
+    isUtilitySlot(slot) ? utilityBySlot.get(slot) : bySlot.get(slot);
+  const templateOf = (slot: string) =>
+    slot.startsWith('Charm') ? CHARM_TEMPLATE : slot.startsWith('Flask') ? FLASK_TEMPLATE : ITEM_TEMPLATE;
 
   const select = (slot: string) => {
     setSelected(slot);
-    setDraft(bySlot.get(slot) ?? ITEM_TEMPLATE);
-    setEditing(!bySlot.has(slot));
+    setDraft(textOf(slot) ?? templateOf(slot));
+    setEditing(textOf(slot) === undefined);
   };
   const applyEdit = () => {
     if (!selected) return;
-    const rest = items.filter((item) => item.slot !== selected);
-    session.setItems([...rest, { slot: selected, text: draft }]);
+    if (isUtilitySlot(selected)) {
+      const rest = session.flasks.filter((f) => f.slot !== selected);
+      session.setFlasks([...rest, { slot: selected, text: draft }]);
+    } else {
+      const rest = items.filter((item) => item.slot !== selected);
+      session.setItems([...rest, { slot: selected, text: draft }]);
+    }
     setEditing(false);
   };
   const removeItem = () => {
     if (!selected) return;
-    session.setItems(items.filter((item) => item.slot !== selected));
+    if (isUtilitySlot(selected)) {
+      session.setFlasks(session.flasks.filter((f) => f.slot !== selected));
+    } else {
+      session.setItems(items.filter((item) => item.slot !== selected));
+    }
     setEditing(false);
   };
 
-  const selectedText = selected ? bySlot.get(selected) : undefined;
+  const selectedText = selected ? textOf(selected) : undefined;
 
   return (
     <section aria-labelledby="items-heading">
@@ -114,6 +135,30 @@ export function ItemsPanel({ session, lang }: Props) {
               style={{ gridArea: area }}
               onClick={() => select(slot)}
               aria-label={slotLabel(lang, slot)}
+            >
+              <span className="doll-slot-label">{slotLabel(lang, slot)}</span>
+              {name ? (
+                <span className="doll-item-name item-name">{name}</span>
+              ) : (
+                <span className="doll-empty">{tt('items.empty')}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="utility-row" role="group" aria-label={tt('items.flasks')}>
+        {UTILITY_SLOTS.map((slot) => {
+          const text = utilityBySlot.get(slot);
+          const name = text ? itemLines(text)[0] : null;
+          return (
+            <button
+              key={slot}
+              className={`doll-slot${text ? ` rarity-${rarityOf(text)}` : ' doll-slot-empty'}${
+                selected === slot ? ' is-selected' : ''
+              }`}
+              onClick={() => select(slot)}
+              aria-label={slot}
             >
               <span className="doll-slot-label">{slotLabel(lang, slot)}</span>
               {name ? (
@@ -179,19 +224,6 @@ export function ItemsPanel({ session, lang }: Props) {
       <h3 className="panel-subheading">{tt('lib.title')}</h3>
       <LibrarySection session={session} lang={lang} selectedSlot={selected} />
 
-      {build && build.items.flasks.length > 0 && (
-        <>
-          <h3 className="panel-subheading">{tt('items.flasks')}</h3>
-          <div className="item-grid">
-            {build.items.flasks.map((item, i) => (
-              <article key={`${item.slot}-${i}`} className={`item-card rarity-${rarityOf(item.text)}`}>
-                <header className="item-slot">{item.slot}</header>
-                <ItemText text={item.text} />
-              </article>
-            ))}
-          </div>
-        </>
-      )}
       {build && build.items.jewels.length > 0 && (
         <>
           <h3 className="panel-subheading">{tt('items.jewels')}</h3>

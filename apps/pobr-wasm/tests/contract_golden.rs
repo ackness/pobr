@@ -341,6 +341,81 @@ fn manual_skills_and_items_without_code() {
     assert!(err.contains("unknown equipment slot"), "unexpected: {err}");
 }
 
+/// 药剂/护符覆盖通道：`flasks` 整份替换 utility_slots——charm 基底 buff 生效、
+/// 非法槽名报错、归因视图出 `flask` 条目。
+#[test]
+fn manual_flasks_override_utility_slots() {
+    ensure_data();
+    let stat = |resp: &Value, id: &str| -> f64 {
+        resp["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap_or(0.0)
+    };
+    // 腰带提供 charm 槽预算（无 CharmLimit 来源时 charm 全不生效）。
+    let base_req = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "allocated_nodes": [],
+        "items": [{
+            "slot": "belt",
+            "text": "Rarity: MAGIC\nTest Belt\nHeavy Belt\nHas 1 Charm Slot",
+        }],
+    });
+    let baseline: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&base_req.to_string()).expect("baseline"),
+    )
+    .unwrap();
+
+    // Ruby Charm 基底 buff = +25% 火抗（inject_flasks_charms 从 base_items 并入）。
+    let mut with_charm = base_req.clone();
+    with_charm["flasks"] = serde_json::json!([{
+        "slot": "Charm 1",
+        "text": "Rarity: MAGIC\nRuby Charm\nRuby Charm",
+    }]);
+    let resp: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&with_charm.to_string()).expect("manual charm"),
+    )
+    .unwrap();
+    let delta = stat(&resp, "FireResist") - stat(&baseline, "FireResist");
+    assert!(
+        (delta - 25.0).abs() < 0.5,
+        "Ruby Charm base buff should add 25% fire res, got {delta}"
+    );
+
+    // 非法槽名 → 可读错误。
+    let mut bad = base_req.clone();
+    bad["flasks"] =
+        serde_json::json!([{ "slot": "Boot 1", "text": "Rarity: MAGIC\nRuby Charm\nRuby Charm" }]);
+    let err = pobr_wasm::calculate_build_json(&bad.to_string()).unwrap_err();
+    assert!(
+        err.contains("unknown flask/charm slot"),
+        "unexpected: {err}"
+    );
+
+    // 归因视图列出 flask 槽条目。
+    let attr_req = serde_json::json!({
+        "pob_code": "",
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "items": base_req["items"],
+        "flasks": with_charm["flasks"],
+        "fields": ["Life"],
+    });
+    let attr: Value = serde_json::from_str(
+        &pobr_wasm::attribution_json(&attr_req.to_string()).expect("attribution"),
+    )
+    .unwrap();
+    let has_flask_entry = attr["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["kind"] == "flask" && e["id"] == "Charm 1");
+    assert!(has_flask_entry, "attribution should list the charm slot");
+}
+
 /// Phase 7.1：中文词条行输入翻译——简中物品文本与英文等价，未知中文行落 unsupported。
 #[test]
 fn chinese_mod_lines_translate_to_english() {

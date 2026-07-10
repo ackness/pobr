@@ -46,8 +46,10 @@ interface BuildState {
   attributeChoices: Record<string, AttributeChoice>;
   /** 技能组（导入时物化，手动可增删改；始终以整份覆盖上行）。 */
   socketGroups: SocketGroupInput[];
-  /** 装备槽原始文本（同上；药剂仍由 pob_code 基线携带）。 */
+  /** 装备槽原始文本（同上）。 */
   items: SlotItemInput[];
+  /** 激活态药剂/护符（槽名 `Flask 1/2`、`Charm 1..3` + PoB 文本；整份覆盖上行）。 */
+  flasks: SlotItemInput[];
   /** 树插槽珠宝（插槽号 + PoB 文本；插槽加点才生效）。 */
   jewels: JewelInput[];
   params: CalcParams;
@@ -66,6 +68,7 @@ export interface BuildSession {
   attributeChoices: Record<string, AttributeChoice>;
   socketGroups: SocketGroupInput[];
   items: SlotItemInput[];
+  flasks: SlotItemInput[];
   jewels: JewelInput[];
   calc: CalculateBuildResponse | null;
   calcParams: CalcParams;
@@ -100,6 +103,8 @@ export interface BuildSession {
   setSocketGroups: (groups: SocketGroupInput[]) => void;
   /** 整份替换装备（Items 编辑器）。 */
   setItems: (items: SlotItemInput[]) => void;
+  /** 整份替换激活态药剂/护符（Items 编辑器）。 */
+  setFlasks: (flasks: SlotItemInput[]) => void;
   /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
   setJewels: (jewels: JewelInput[]) => void;
   updateParams: (patch: Partial<CalcParams>) => void;
@@ -115,6 +120,7 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     attribute_choices: state.attributeChoices,
     socket_groups: state.socketGroups,
     items: state.items,
+    flasks: state.flasks,
     jewels: state.jewels,
     main_socket_group: state.params.main_socket_group,
     enemy_tier: state.params.enemy_tier,
@@ -204,6 +210,7 @@ function parseSaved(json: string): SavedSession | null {
         attributeChoices: state.attributeChoices ?? {},
         socketGroups: state.socketGroups,
         items: state.items,
+        flasks: state.flasks ?? [],
         jewels: state.jewels ?? [],
         params: state.params ?? { config_inputs: {} },
       },
@@ -227,7 +234,7 @@ function itemName(text: string): string {
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
 function materialize(
   decoded: BuildJson,
-): Pick<BuildState, 'socketGroups' | 'items' | 'jewels'> {
+): Pick<BuildState, 'socketGroups' | 'items' | 'flasks' | 'jewels'> {
   return {
     socketGroups: decoded.socket_groups.map((g) => ({
       slot: g.slot,
@@ -239,6 +246,7 @@ function materialize(
       })),
     })),
     items: decoded.items.equipped.map((item) => ({ slot: item.slot, text: item.text })),
+    flasks: (decoded.items.flasks ?? []).map((f) => ({ slot: f.slot, text: f.text })),
     jewels: (decoded.items.socket_jewels ?? []).map((j) => ({
       socket_node: j.socket_node,
       text: j.text,
@@ -348,6 +356,7 @@ export function useBuildSession(): BuildSession {
           attributeChoices: {},
           socketGroups: [],
           items: [],
+          flasks: [],
           jewels: [],
           params: { config_inputs: {} },
         });
@@ -436,6 +445,7 @@ export function useBuildSession(): BuildSession {
         attributeChoices: {},
         socketGroups: [],
         items: [],
+        flasks: [],
         jewels: [],
         params: { config_inputs: {} },
       });
@@ -455,6 +465,14 @@ export function useBuildSession(): BuildSession {
     (items: SlotItemInput[]) => {
       if (!state) return;
       apply({ ...state, items });
+    },
+    [apply, state],
+  );
+
+  const setFlasks = useCallback(
+    (flasks: SlotItemInput[]) => {
+      if (!state) return;
+      apply({ ...state, flasks });
     },
     [apply, state],
   );
@@ -623,6 +641,7 @@ export function useBuildSession(): BuildSession {
         attribute_choices: state.attributeChoices,
         socket_groups: state.socketGroups,
         items: state.items,
+        flasks: state.flasks,
         jewels: state.jewels,
         fields,
         main_socket_group: state.params.main_socket_group,
@@ -643,6 +662,7 @@ export function useBuildSession(): BuildSession {
     attributeChoices: state?.attributeChoices ?? {},
     socketGroups: state?.socketGroups ?? [],
     items: state?.items ?? [],
+    flasks: state?.flasks ?? [],
     jewels: state?.jewels ?? [],
     calc,
     calcParams: state?.params ?? { config_inputs: {} },
@@ -659,6 +679,7 @@ export function useBuildSession(): BuildSession {
     setAttributeChoices,
     setSocketGroups,
     setItems,
+    setFlasks,
     setJewels,
     currentRequest,
     stateVersion,

@@ -156,6 +156,21 @@
   font-size: var(--text-xs);
 }
 
+/* 药剂/护符横排（人形布局下方，与 doll-slot 同风格） */
+.utility-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+  max-width: 920px;
+  margin: 0 auto var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .utility-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .item-detail {
   max-width: 920px;
   margin: 0 auto var(--space-4);
