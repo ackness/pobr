@@ -33,6 +33,8 @@ export interface CalcParams {
   main_socket_group?: number;
   enemy_tier?: EnemyTier;
   config_inputs: Record<string, ConfigInputValue>;
+  /** 额外全局 modifier 文本（Config 页自定义词缀，一行一条）。 */
+  extra_modifiers?: string[];
 }
 
 /** 会话完整可编辑状态（重算请求由此派生）。 */
@@ -116,6 +118,7 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     jewels: state.jewels,
     main_socket_group: state.params.main_socket_group,
     enemy_tier: state.params.enemy_tier,
+    extra_modifiers: state.params.extra_modifiers,
     config_inputs: state.params.config_inputs,
   };
 }

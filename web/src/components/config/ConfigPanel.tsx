@@ -284,6 +284,30 @@ export function ConfigPanel({ session, lang }: Props) {
         );
       })}
 
+      <h3 className="panel-subheading">{tt('config.extraMods')}</h3>
+      <p className="config-hint">{tt('config.extraModsHint')}</p>
+      <textarea
+        className="config-extra-mods"
+        // 应用后的值变化时重挂载刷新（blur 即应用，不会打断输入中的草稿）。
+        key={(session.calcParams.extra_modifiers ?? []).join('\n')}
+        rows={4}
+        spellCheck={false}
+        placeholder={'20% increased Fire Damage\n+50 to maximum Life'}
+        defaultValue={(session.calcParams.extra_modifiers ?? []).join('\n')}
+        disabled={session.busy}
+        aria-label={tt('config.extraMods')}
+        onBlur={(e) => {
+          const lines = e.target.value
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean);
+          const current = session.calcParams.extra_modifiers ?? [];
+          if (lines.join('\n') !== current.join('\n')) {
+            session.updateParams({ extra_modifiers: lines.length ? lines : undefined });
+          }
+        }}
+      />
+
       <h3 className="panel-subheading">{tt('config.addTitle')}</h3>
       <p className="config-hint">{tt('config.hint')}</p>
       {extraKeys.length > 0 && (

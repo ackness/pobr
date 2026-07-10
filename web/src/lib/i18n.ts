@@ -186,6 +186,13 @@ const DICT = {
   'config.addButton': { 'en-US': 'Add & recalc', 'zh-TW': '加入並重算', 'zh-CN': '加入并重算' },
   'config.reset': { 'en-US': 'Reset', 'zh-TW': '還原', 'zh-CN': '还原' },
   'config.search': { 'en-US': 'Search config options…', 'zh-TW': '搜尋配置項…', 'zh-CN': '搜索配置项…' },
+  'config.extraMods': { 'en-US': 'Custom modifiers', 'zh-TW': '自訂詞綴', 'zh-CN': '自定义词缀' },
+  'config.extraModsHint': {
+    'en-US':
+      'One modifier per line (PoB text, e.g. "20% increased Fire Damage"); applies globally on blur. Unparsable lines show up in the Build tab unsupported list.',
+    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），離開輸入框即全域生效；無法解析的行會出現在構建頁的不支援清單。',
+    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），离开输入框即全局生效；无法解析的行会出现在构建页的不支持列表。',
+  },
 
   // Notes 页
   'notes.hint': {

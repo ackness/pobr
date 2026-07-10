@@ -47,6 +47,14 @@
   width: 110px;
 }
 
+.config-extra-mods {
+  width: 100%;
+  max-width: 640px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  resize: vertical;
+}
+
 .config-reset {
   padding: 0 var(--space-1);
 }
