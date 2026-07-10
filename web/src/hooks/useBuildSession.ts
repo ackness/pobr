@@ -244,6 +244,7 @@ function materialize(
     socketGroups: decoded.socket_groups.map((g) => ({
       slot: g.slot,
       enabled: g.enabled,
+      source: g.source,
       gems: g.gems.map((gem) => ({
         skill_id: gem.skill_id,
         level: gem.level,

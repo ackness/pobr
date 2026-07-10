@@ -1108,6 +1108,9 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                     "Skill" if in_target_set => {
                         let enabled = attr_bool_default_true(&e, b"enabled");
                         let mut group = SocketGroup::new().with_enabled(enabled);
+                        if let Some(source) = attr_value(&e, b"source") {
+                            group = group.with_source(source);
+                        }
                         if let Some(slot) = attr_value(&e, b"slot") {
                             group = group.with_slot(slot);
                         }
@@ -1260,7 +1263,7 @@ mod tests {
     </Tree>
     <Skills activeSkillSet="1">
         <SkillSet id="1">
-            <Skill enabled="true">
+            <Skill enabled="true" source="Item:2:Dragon Wand" slot="Weapon 1">
                 <Gem gemId="Metadata/Items/Gem/Active" skillId="FireballPlayer" level="18" enabled="true"/>
                 <Gem gemId="Metadata/Items/Gems/Support" enabled="true"/>
                 <Gem gemId="Metadata/Items/Gems/Disabled" enabled="false"/>
@@ -1601,6 +1604,12 @@ Implicits: 0
             Some("FireballPlayer")
         );
         assert_eq!(enabled[0].active_gem_level, Some(18));
+        assert_eq!(
+            enabled[0].source.as_deref(),
+            Some("Item:2:Dragon Wand"),
+            "授予来源需保留，供装备技能组精确判重"
+        );
+        assert_eq!(enabled[0].slot.as_deref(), Some("Weapon 1"));
     }
 
     /// T5.4：`<Gem statSetIndex>` 解析——数字 → Some(n)；PoB2 缺省序列化字面量

@@ -87,7 +87,7 @@ fn decode_build_json_shape() {
     assert!(!groups.is_empty());
     assert_keys(
         &groups[0],
-        &["slot", "enabled", "active_skill_id", "gems"],
+        &["slot", "enabled", "source", "active_skill_id", "gems"],
         "socket_groups[0]",
     );
     let gems = groups[0]["gems"].as_array().unwrap();
@@ -416,6 +416,118 @@ fn manual_flasks_override_utility_slots() {
     assert!(has_flask_entry, "attribution should list the charm slot");
 }
 
+/// 装备授予技能：`Grants Skill: Level N X` 词条合成技能组——白手 build 仅凭
+/// 授予装备就有 DPS；full_dps 列出该组；手动同技能组仍保持独立。
+#[test]
+fn item_granted_skill_synthesizes_group() {
+    ensure_data();
+    // Comet 的 skill_id 从宝石目录反查（与引擎名字反查同源）。
+    let catalog: Value =
+        serde_json::from_str(&pobr_wasm::gem_catalog_json().expect("gem catalog")).unwrap();
+    let comet_id = catalog
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["name"] == "Comet")
+        .expect("Comet in catalog")["skill_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let base_req = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "allocated_nodes": [],
+        "items": [{
+            "slot": "ring1",
+            "text": "Rarity: UNIQUE\nTest Ring\nSapphire Ring\nGrants Skill: Level 20 Comet",
+        }],
+    });
+    let dps = |resp: &Value| -> f64 {
+        resp["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == "TotalDPS")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap_or(0.0)
+    };
+    let resp: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&base_req.to_string()).expect("granted calc"),
+    )
+    .unwrap();
+    assert!(
+        dps(&resp) > 0.0,
+        "granted Comet should produce DPS without any socket group"
+    );
+
+    // full_dps 列出合成组（skill_id = Comet 主效果）。
+    let full: Value =
+        serde_json::from_str(&pobr_wasm::full_dps_json(&base_req.to_string()).expect("full dps"))
+            .unwrap();
+    let per_skill = full["per_skill"].as_array().unwrap();
+    assert!(
+        per_skill.iter().any(|s| s["skill_id"] == comet_id.as_str()),
+        "full dps should list the granted skill, got {per_skill:?}"
+    );
+
+    // 手动组无装备 source，即使槽位、技能和等级相同也应与授予组独立存在。
+    let mut with_group = base_req.clone();
+    with_group["socket_groups"] = serde_json::json!([
+        { "gems": [{ "skill_id": comet_id, "level": 20, "quality": 0 }] }
+    ]);
+    let full2: Value = serde_json::from_str(
+        &pobr_wasm::full_dps_json(&with_group.to_string()).expect("full dps manual group"),
+    )
+    .unwrap();
+    let comet_groups = full2["per_skill"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| s["skill_id"] == comet_id.as_str())
+        .count();
+    assert_eq!(
+        comet_groups, 2,
+        "manual and item-granted skill groups must remain independent"
+    );
+}
+
+/// Ring 3 未解锁时，物品授予技能与物品词条一样不参与普通计算或 FullDPS。
+#[test]
+fn ring3_granted_skill_is_gated_from_full_dps() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "allocated_nodes": [],
+        "items": [{
+            "slot": "ring3",
+            "text": "Rarity: UNIQUE\nTest Ring\nSapphire Ring\nGrants Skill: Level 20 Comet",
+        }],
+    })
+    .to_string();
+
+    let regular: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("regular dps"))
+            .unwrap();
+    let total_dps = regular["stats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|stat| stat["id"] == "TotalDPS")
+        .unwrap()["value"]
+        .as_f64()
+        .unwrap_or(0.0);
+    assert_eq!(total_dps, 0.0, "locked Ring 3 must not grant regular DPS");
+
+    let full: Value =
+        serde_json::from_str(&pobr_wasm::full_dps_json(&request).expect("full dps")).unwrap();
+    assert_eq!(full["full_dps"].as_f64().unwrap_or(0.0), 0.0);
+    assert!(
+        full["per_skill"].as_array().unwrap().is_empty(),
+        "locked Ring 3 must not contribute FullDPS skills"
+    );
+}
+
 /// 逐技能组 DPS：demo build 至少一个伤害组，分项和 = full_dps。
 #[test]
 fn full_dps_json_shape() {
@@ -463,6 +575,7 @@ fn encode_build_roundtrip_matches_direct_calculation() {
             serde_json::json!({
                 "slot": g["slot"],
                 "enabled": g["enabled"],
+                "source": g["source"],
                 "gems": g["gems"],
             })
         })
@@ -532,6 +645,7 @@ fn encode_build_roundtrip_matches_direct_calculation() {
             orig["active_skill_id"], rt["active_skill_id"],
             "group {i} active skill"
         );
+        assert_eq!(orig["source"], rt["source"], "group {i} source");
     }
     assert_eq!(
         redecoded["main_socket_group"], decoded["main_socket_group"],

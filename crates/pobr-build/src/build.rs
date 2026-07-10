@@ -42,6 +42,9 @@ pub struct GemSkillRef {
 /// 一组同插槽的技能宝石（主动技能 + 其辅助）。简化等价物：用稳定 gem id 表示。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SocketGroup {
+    /// PoB `<Skill source>`（装备授予技能为 `Item:<id>:<name>`）。`None` 表示
+    /// 用户手动创建的普通技能组；编排层据此区分同槽同技能的手动组与授予组。
+    pub source: Option<String>,
     /// 装在哪个槽位（如 `"weapon1"`）。`None` 表示未指定 / 灵魂珠等无槽来源。
     pub slot: Option<String>,
     /// 该组是否参与计算（PoB 里每组可单独启停）。
@@ -68,6 +71,7 @@ pub struct SocketGroup {
 impl SocketGroup {
     pub fn new() -> Self {
         Self {
+            source: None,
             slot: None,
             enabled: true,
             gem_ids: Vec::new(),
@@ -81,6 +85,11 @@ impl SocketGroup {
 
     pub fn with_slot(mut self, slot: impl Into<String>) -> Self {
         self.slot = Some(slot.into());
+        self
+    }
+
+    pub fn with_source(mut self, source: impl Into<String>) -> Self {
+        self.source = Some(source.into());
         self
     }
 

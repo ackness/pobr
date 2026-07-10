@@ -54,8 +54,10 @@ use crate::build_data::{BuildData, ResolvedSkillLevel};
 use crate::error::BuildError;
 
 mod defence;
+mod granted_skills;
 mod skill_resolve;
 use defence::*;
+use granted_skills::*;
 use skill_resolve::*;
 mod conditions;
 use conditions::*;
@@ -247,6 +249,27 @@ pub fn calculate_full_dps(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Result<FullDpsReport, BuildError> {
+    // FullDPS 必须从与普通计算相同的装备视图合成授予技能，否则未解锁的
+    // Ring 3 物品会先生成技能组，再绕过 calculate_with_data 内的物品门控。
+    let ring3_gated;
+    let build = match gate_locked_ring3(build, data) {
+        Some(gated) => {
+            ring3_gated = gated;
+            &ring3_gated
+        }
+        None => build,
+    };
+
+    // 装备授予技能的合成组也进逐技能列表（scoped 重算内部会再合成一次，
+    // 判重键相同 → 幂等；这里先合成是为了让 per_skill 迭代能看到该组）。
+    let granted_augmented;
+    let build = match augment_item_granted_skills(build, data) {
+        Some(augmented) => {
+            granted_augmented = augmented;
+            &granted_augmented
+        }
+        None => build,
+    };
     let primary = calculate_with_data(build, data, options)?;
 
     let mut per_skill = Vec::new();
@@ -332,15 +355,24 @@ pub fn calculate_with_data_session(
     // 『Unfurled Finger』）时，Ring 3 物品整体忽略——一次性从 build 视图剔除，
     // 使后续全部消费点（注入/宝石等级扫描/文本收集）一致生效。
     let ring3_gated;
-    let build = if build.items.contains_key(&EquipmentSlot::Ring3)
-        && !additional_ring_slot_allocated(build, data)
-    {
-        let mut gated = build.clone();
-        gated.items.remove(&EquipmentSlot::Ring3);
-        ring3_gated = gated;
-        &ring3_gated
-    } else {
-        build
+    let build = match gate_locked_ring3(build, data) {
+        Some(gated) => {
+            ring3_gated = gated;
+            &ring3_gated
+        }
+        None => build,
+    };
+
+    // 装备授予技能（`Grants Skill: [Level N] X`）→ 合成技能组（vendor
+    // CalcSetup.lua:1414-1453 建独立 socket group；按来源、槽位、技能和等级判重，
+    // PoB2 XML 预展开组已存在时零行为变化）。
+    let granted_augmented;
+    let build = match augment_item_granted_skills(build, data) {
+        Some(augmented) => {
+            granted_augmented = augmented;
+            &granted_augmented
+        }
+        None => build,
     };
 
     // 宝石品质加成（M4-H）：「+N% to Quality of all <X> Skills」（树小点/装备）
@@ -936,6 +968,19 @@ pub fn calculate_with_data_session(
     Ok(session)
 }
 
+/// 返回移除未解锁 Ring 3 物品后的计算视图；无需门控时避免克隆 Build。
+fn gate_locked_ring3(build: &Build, data: &BuildData) -> Option<Build> {
+    if !build.items.contains_key(&EquipmentSlot::Ring3)
+        || additional_ring_slot_allocated(build, data)
+    {
+        return None;
+    }
+
+    let mut gated = build.clone();
+    gated.items.remove(&EquipmentSlot::Ring3);
+    Some(gated)
+}
+
 // ---- calculate_with_data 注入阶段（主脉拆分：行为不变，纯分组）----
 // 下列 `inject_*` 自由函数从 `calculate_with_data` 主脉逐段抽出，每个对应原主脉
 // 一个自包含注入阶段（仅依赖 session + build/data/options，无跨阶段中间状态），
@@ -1201,9 +1246,8 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     // 宝石按其必需属性（str/dex/int_pct>0）计——单属性 +2、多属性各 +1。仅
     // Virtuous Barrier 的 `<res> INC ×<Attr>MoteSkillCount` 消费（本仓库唯一来源），
     // 非该升华的 build 这三个 multiplier 无人引用 → 零行为。
-    // ponytail: 未按 vendor 排除 fromNode/fromItem 授予技能（PoBR SocketGroup 不带
-    // source）——现无授予技能带属性需求会污染计数；若将来某带 Virtuous Barrier 的
-    // build 又含带属性需求的授予技能，给 SocketGroup 加 source 字段再按 source 排除。
+    // ponytail: 当前未按 vendor 排除 fromNode/fromItem 授予技能；现无授予技能带属性
+    // 需求会污染计数。将来出现相关 build 时，可据 SocketGroup::source 精确排除。
     let (str_mote, dex_mote, int_mote) = virtuous_mote_counts(build, data);
     session.set_multiplier("StrengthMoteSkillCount", str_mote);
     session.set_multiplier("DexterityMoteSkillCount", dex_mote);

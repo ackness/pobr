@@ -95,6 +95,10 @@ struct GemJson {
 struct SocketGroupJson {
     slot: Option<String>,
     enabled: bool,
+    /// PoB `<Skill source>`（装备授予技能组 `Item:<id>:<name>`）；`None`=手动组。
+    /// 需全链透传（web 状态 → 请求 → encode），否则分享 code 往返后授予组会
+    /// 失去 source 标记，引擎按物品词条再合成一份 → 授予技能重复计数。
+    source: Option<String>,
     active_skill_id: Option<String>,
     gems: Vec<GemJson>,
 }
@@ -164,6 +168,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             .map(|g| SocketGroupJson {
                 slot: g.slot.clone(),
                 enabled: g.enabled,
+                source: g.source.clone(),
                 active_skill_id: g.active_skill_id.clone(),
                 gems: g
                     .gem_skills
@@ -239,6 +244,8 @@ impl Default for GemInput {
 pub struct SocketGroupInput {
     slot: Option<String>,
     enabled: bool,
+    /// 装备授予技能组的来源标记（decode 透传回来；手动组为 `None`）。
+    source: Option<String>,
     gems: Vec<GemInput>,
 }
 
@@ -247,6 +254,7 @@ impl Default for SocketGroupInput {
         Self {
             slot: None,
             enabled: true,
+            source: None,
             gems: Vec::new(),
         }
     }
@@ -365,6 +373,7 @@ fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> Socket
     let mut group = SocketGroup {
         slot: input.slot.clone(),
         enabled: input.enabled,
+        source: input.source.clone(),
         ..SocketGroup::default()
     };
     for gem in &input.gems {
@@ -823,6 +832,7 @@ pub fn encode_build_json(request_json: &str) -> Result<String, String> {
             crate::xml_write::XmlSkillGroup {
                 slot: g.slot.clone(),
                 enabled: g.enabled,
+                source: g.source.clone(),
                 gems,
             }
         })
@@ -1251,6 +1261,7 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
             Some(SocketGroupJson {
                 slot: None,
                 enabled: true,
+                source: None,
                 active_skill_id: Some(active),
                 gems,
             })

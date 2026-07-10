@@ -52,6 +52,8 @@ export interface GemJson {
 export interface SocketGroupJson {
   slot: string | null;
   enabled: boolean;
+  /** PoB 装备授予技能来源；手动组为 null。 */
+  source: string | null;
   active_skill_id: string | null;
   gems: GemJson[];
 }
@@ -94,6 +96,8 @@ export interface GemInput {
 export interface SocketGroupInput {
   slot?: string | null;
   enabled: boolean;
+  /** decode 后透传的装备授予技能来源；手动组省略。 */
+  source?: string | null;
   gems: GemInput[];
 }
 
