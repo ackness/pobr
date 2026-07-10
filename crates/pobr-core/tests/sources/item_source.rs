@@ -415,6 +415,31 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     );
 }
 
+/// Charm 的效果词条即使当前未建模，也必须进入 unsupported 报告。
+/// `Also grants N Guard` 是 ModCharm.lua 中的真实 explicit 前缀；`Possessed by ...`
+/// 同样来自真实 build，静默忽略会让调用方误以为效果已经生效。
+#[test]
+fn ingest_charm_reports_unmodeled_guard_and_possession_effects() {
+    let charm = utility_item(
+        "Thawing Charm",
+        &["Used when you become Frozen"],
+        &[
+            "Also grants 435 Guard",
+            "Possessed by Spirit Of The Cat for 17 seconds on use",
+        ],
+    );
+
+    let ingest = ingest_flask_charm("Charm 1", &charm);
+
+    assert_eq!(
+        ingest.unsupported,
+        vec![
+            "Also grants 435 Guard".to_string(),
+            "Possessed by Spirit Of The Cat for 17 seconds on use".to_string(),
+        ]
+    );
+}
+
 /// M4-m：全部行不可解析的激活 charm **仍产出空载荷**（vendor 对进预算的激活
 /// charm 无条件置 UsingCharm/Using<Base> 条件，CalcPerform.lua:1634-1643——
 /// 条件置位与 modList 无关；空 NestedMods 在 merge 缩放循环空转）。
