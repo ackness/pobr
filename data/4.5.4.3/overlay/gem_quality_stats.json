@@ -1,0 +1,3765 @@
+{
+  "_meta": {
+    "schema": "gem_quality_stats/v1",
+    "generator": "sync-pob-catalog extract-lua",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "29ab8262dd4a867eac56165afb8391a509e34a0e",
+    "vendor_commit_subject": "29ab826 Add support for Darkness Enthroned and Atziri's Splendour augment mods (#2343)",
+    "extracted_files": [
+      "Data/Skills/act_dex.lua",
+      "Data/Skills/act_int.lua",
+      "Data/Skills/act_str.lua",
+      "Data/Skills/minion.lua",
+      "Data/Skills/other.lua",
+      "Data/Skills/spectre.lua",
+      "Data/Skills/sup_dex.lua",
+      "Data/Skills/sup_int.lua",
+      "Data/Skills/sup_str.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what gem-quality --vendor-root vendor/PathOfBuilding-PoE2/src --files act_dex,act_int,act_str,minion,other,spectre,sup_dex,sup_int,sup_str --out data/4.5.4.3/overlay/gem_quality_stats.json"
+  },
+  "effects": [
+    {
+      "effect_id": "AcidicConcoctionPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "AlchemistsBoonPlayer",
+      "stats": [
+        {
+          "stat": "skill_alchemists_boon_generate_x_charges_for_any_flask_per_minute",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "AlignFatePlayer",
+      "stats": [
+        {
+          "stat": "spellflux_frequency_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "AmazonTriggerElementalSurgePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.15
+        }
+      ]
+    },
+    {
+      "effect_id": "AncestralCryPlayer",
+      "stats": [
+        {
+          "stat": "ancestral_cry_duration_+%_final_per_removable_endurance_charge",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "AncestralSpiritsPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_life_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "AncestralWarriorTotemPlayer",
+      "stats": [
+        {
+          "stat": "base_totem_duration",
+          "per_quality_rate": 100.0
+        }
+      ]
+    },
+    {
+      "effect_id": "AncientGiftsPlayer",
+      "stats": [
+        {
+          "stat": "remnant_effect_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "AnimusExchangePlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ApocalypsePlayer",
+      "stats": [
+        {
+          "stat": "unleash_the_elements_trigger_frequency_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "ArcPlayer",
+      "stats": [
+        {
+          "stat": "number_of_chains",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "ArchmagePlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ArchonOfChayulaPlayer",
+      "stats": [
+        {
+          "stat": "archon_of_chayula_physical_and_chaos_damage_+%_final",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "ArcticArmourPlayer",
+      "stats": [
+        {
+          "stat": "maximum_number_of_arctic_armour_stationary_stacks",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "ArmourBreakerPlayer",
+      "stats": [
+        {
+          "stat": "armour_break_amount_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ArmourPiercingBoltsPlayer",
+      "stats": [
+        {
+          "stat": "armour_break_amount_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ArtilleryBallistaPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ArtilleryBallistaProjectilePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_pins_as_though_dealt_damage_+%_final",
+          "per_quality_rate": 10.0
+        }
+      ]
+    },
+    {
+      "effect_id": "AttritionPlayer",
+      "stats": [
+        {
+          "stat": "skill_attrition_culling_strike_at_x_or_more_stacks",
+          "per_quality_rate": -0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "AzmerianSwarmPlayer",
+      "stats": [
+        {
+          "stat": "max_azmerian_swarms",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "BallLightningPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "BarkskinPlayer",
+      "stats": [
+        {
+          "stat": "barkskin_armour_to_gain_as_%_of_energy_shield_lost_to_enemy_hits",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "BarragePlayer",
+      "stats": [
+        {
+          "stat": "empower_barrage_damage_-%_final_with_repeated_projectiles",
+          "per_quality_rate": -0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "BearFuryOfTheMountainPlayer",
+      "stats": [
+        {
+          "stat": "gain_x_rage_on_attack_hit",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "BearMaulPlayer",
+      "stats": [
+        {
+          "stat": "gain_x_rage_on_attack_hit",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "BearRampagePlayer",
+      "stats": [
+        {
+          "stat": "channelled_skill_suppress_ongoing_rage_cost_for_first_X_ms",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "BerserkPlayer",
+      "stats": [
+        {
+          "stat": "skill_base_rage_effect_+%_to_apply",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "BitterDeadPlayer",
+      "stats": [
+        {
+          "stat": "volatile_dead_base_number_of_corpses_to_consume",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "BlackPowderBlitzPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "BlasphemyPlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "BleedingConcoctionPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "BlinkPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "BloodBoilPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 75.0
+        }
+      ]
+    },
+    {
+      "effect_id": "BloodHuntPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "BloodhoundsMarkExplosionPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "BloodhoundsMarkPlayer",
+      "stats": [
+        {
+          "stat": "hunters_mark_%_of_phys_damage_over_time_as_build_up",
+          "per_quality_rate": 2.5
+        }
+      ]
+    },
+    {
+      "effect_id": "BoneBlastPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "BoneCagePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_pins_as_though_dealt_damage_+%_final",
+          "per_quality_rate": 2.5
+        }
+      ]
+    },
+    {
+      "effect_id": "BoneOfferingPlayer",
+      "stats": [
+        {
+          "stat": "bone_offering_damage_taken_+%_final_after_shield_loss",
+          "per_quality_rate": -1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "BoneshatterPlayer",
+      "stats": [
+        {
+          "stat": "attack_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "BonestormPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_cast_speed_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "BriarpatchPlayer",
+      "stats": [
+        {
+          "stat": "spells_chance_to_hinder_on_hit_%",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "ChargeRegulationPlayer",
+      "stats": [
+        {
+          "stat": "consume_frenzy_power_and_endurance_charge_every_x_ms",
+          "per_quality_rate": 120.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ChargedStaffPlayer",
+      "stats": [
+        {
+          "stat": "skill_effect_duration_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ChilledGroundBurstWaterDjinn",
+      "stats": [
+        {
+          "stat": "active_skill_hit_damage_freeze_multiplier_+%_final",
+          "per_quality_rate": 2.0
+        },
+        {
+          "stat": "active_skill_chill_as_though_damage_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ChilledGroundOasisConvertWaterDjinn",
+      "stats": [
+        {
+          "stat": "oasis_x_charges_for_life_and_mana_flasks_per_minute",
+          "per_quality_rate": 0.6
+        }
+      ]
+    },
+    {
+      "effect_id": "ClusterGrenadePlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "CoilingBoltsPlayer",
+      "stats": [
+        {
+          "stat": "projectile_number_to_split",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "CombatFrenzyPlayer",
+      "stats": [
+        {
+          "stat": "chance_to_gain_1_more_charge_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "CometPlayer",
+      "stats": [
+        {
+          "stat": "base_spell_%_chance_to_echo",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ConductiveRunesPlayer",
+      "stats": [
+        {
+          "stat": "rune_hazard_arming_time_ms",
+          "per_quality_rate": -5.0
+        },
+        {
+          "stat": "rune_hazard_detonate_time_ms",
+          "per_quality_rate": -5.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ContagionPlayer",
+      "stats": [
+        {
+          "stat": "contagion_number_of_additional_targets",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "ConvalescenceActivePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 25.0
+        }
+      ]
+    },
+    {
+      "effect_id": "CorpseBeetlesPlayer",
+      "stats": [
+        {
+          "stat": "maximum_corpse_beetles_allowed",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "CorpseCloudPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        },
+        {
+          "stat": "base_secondary_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "CracklingPalmPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "CrossbowRequiemPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "CrushingFearPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_area_of_effect_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "CullTheWeakPlayer",
+      "stats": [
+        {
+          "stat": "chance_to_gain_1_more_charge_%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "CurseOfRepulsionShockwavePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_hit_damage_stun_multiplier_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "DarkEffigyPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.0
+        }
+      ]
+    },
+    {
+      "effect_id": "DarkEffigyProjectilePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_secondary_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "DefianceBannerReservationPlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "DemonFormPlayer",
+      "stats": [
+        {
+          "stat": "demon_form_grants_cast_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "DespairPlayer",
+      "stats": [
+        {
+          "stat": "curse_effect_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "DestructiveLinkSkeletonBombadierMinion",
+      "stats": [
+        {
+          "stat": "arsonist_destructive_link_%_of_life_as_fire_damage",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "DetonateDeadPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "DetonateLivingPlayer",
+      "stats": [
+        {
+          "stat": "corpse_explosion_monster_life_permillage_physical",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "DetonatingArrowPlayer",
+      "stats": [
+        {
+          "stat": "detonating_arrow_max_number_of_stages",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "DisciplinePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_buff_energy_shield_recharge_rate_+%_to_apply",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "DisengagePlayer",
+      "stats": [
+        {
+          "stat": "disengage_%_chance_for_additional_shockwave",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "DreadBannerReservationPlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ESRechargeForceRestartWaterDjinn",
+      "stats": [
+        {
+          "stat": "djinn_granted_energy_shield_recharge_rate_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "EarthquakePlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_earthquakes_allowed",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "EarthshatterPlayer",
+      "stats": [
+        {
+          "stat": "earthshatter_damage_+%_final_per_spike",
+          "per_quality_rate": 0.3
+        }
+      ]
+    },
+    {
+      "effect_id": "ElectrocutingArrowPlayer",
+      "stats": [
+        {
+          "stat": "electrocuting_arrow_%_damage_gained_as_extra_lightning_on_debuffed_target",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ElementalConfluxPlayer",
+      "stats": [
+        {
+          "stat": "skill_elemental_conflux_active_element_damage_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ElementalExpressionTriggeredPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ElementalStormPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ElementalSunderingPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "ElementalWeaknessPlayer",
+      "stats": [
+        {
+          "stat": "curse_effect_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "EmberFusilladePlayer",
+      "stats": [
+        {
+          "stat": "ember_fusillade_damage_+%_final_per_ember_fired",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "EmergencyReloadPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "EncaseInJadePlayer",
+      "stats": [
+        {
+          "stat": "maximum_life_%_damage_absorbed_per_jade_consumed",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "EnervatingNovaPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_electrocutes_as_though_dealt_damage_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "EnfeeblePlayer",
+      "stats": [
+        {
+          "stat": "curse_effect_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "EntanglePlayer",
+      "stats": [
+        {
+          "stat": "skill_additional_fissure_chance_%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "EscapeShotPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_hit_damage_freeze_multiplier_+%_final",
+          "per_quality_rate": 6.0
+        }
+      ]
+    },
+    {
+      "effect_id": "EssenceDrainPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "EternalMarchPlayer",
+      "stats": [
+        {
+          "stat": "skill_eternal_march_maximum_ward_cost",
+          "per_quality_rate": 10.0
+        }
+      ]
+    },
+    {
+      "effect_id": "EternalRagePlayer",
+      "stats": [
+        {
+          "stat": "ceaseless_rage_base_rage_regeneration_per_minute",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ExplodingPoisonToadPlayer",
+      "stats": [
+        {
+          "stat": "trigger_toad_spawn_chance_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ExplosiveConcoctionPlayer",
+      "stats": [
+        {
+          "stat": "explosive_concoction_number_of_secondary_projectiles",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "ExplosiveGrenadePlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ExplosiveShotAmmoPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "ExplosiveShotPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_ignite_effect_+%_final",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ExplosiveSpearPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "ExplosiveTeleportSandDjinn",
+      "stats": [
+        {
+          "stat": "djinn_damage_+%_final_per_teleport_in_sequence",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ExsanguinatePlayer",
+      "stats": [
+        {
+          "stat": "blood_tendrils_beam_count",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "EyeOfWinterPlayer",
+      "stats": [
+        {
+          "stat": "base_projectile_speed_+%",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "FallingThunderPlayer",
+      "stats": [
+        {
+          "stat": "lightning_strike_damage_+%_final_per_power_charge",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FangsOfFrostPlayer",
+      "stats": [
+        {
+          "stat": "chance_to_not_consume_parried_%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "FeastOfFleshPlayer",
+      "stats": [
+        {
+          "stat": "feast_of_flesh_number_of_corpses",
+          "per_quality_rate": 0.15
+        }
+      ]
+    },
+    {
+      "effect_id": "FerociousRoarMetaPlayer",
+      "stats": [
+        {
+          "stat": "bear_warcry_gain_X_centirage_per_enemy_power",
+          "per_quality_rate": 5.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FireRuneFireDjinn",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 100.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FireballPlayer",
+      "stats": [
+        {
+          "stat": "spell_skills_fire_2_additional_projectiles_final_chance_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "FireboltPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_ignite_chance_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FirestormPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "FlameSliceFireDjinn",
+      "stats": [
+        {
+          "stat": "melee_range_+",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "FlameWallPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_ignite_chance_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FlameblastPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_cast_speed_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FlashGrenadePlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FlickerStrikePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_critical_strike_chance_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ForgeHammerPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "FortifyingCryPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "FortifyingCryShockwavePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "FragmentationRoundsAmmoPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FragmentationRoundsPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "FragmentsOfThePastFragmentPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "FragmentsOfThePastPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "FreezingMarkPlayer",
+      "stats": [
+        {
+          "stat": "freezing_mark_hit_damage_freeze_multiplier_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FreezingSalvoPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_hit_damage_freeze_multiplier_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FreezingShardsPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "FrostBombPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_all_elemental_exposure_compounding_magnitude_cap",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "FrostDartsPlayer",
+      "stats": [
+        {
+          "stat": "spell_skills_fire_2_additional_projectiles_final_chance_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "FrostWallPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FrostboltPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_projectile_damage_+%_final_if_pierced_enemy",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FrostflameNovaPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "FrozenLocusPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_chill_effect_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FulminatingConcoctionPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_shock_chance_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FulminationPlayer",
+      "stats": [
+        {
+          "stat": "skill_wrath_aura_shared_damage_+%_to_other_shocked_enemies_in_presence",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "FuriousSlamPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_stun_threshold_+%_while_performing_action",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "FuturePastPlayer",
+      "stats": [
+        {
+          "stat": "base_secondary_skill_effect_duration",
+          "per_quality_rate": 15.0
+        }
+      ]
+    },
+    {
+      "effect_id": "GaleStrikePlayer",
+      "stats": [
+        {
+          "stat": "wind_blast_damage_+%_final_from_distance",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "GalvanicFieldBuffPlayer",
+      "stats": [
+        {
+          "stat": "number_of_chains",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "GalvanicShardsAmmoPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "GalvanicShardsPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "GasArrowPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "GasShotSkeletonSniperMinion",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "GatheringStormPlayer",
+      "stats": [
+        {
+          "stat": "perfect_timing_window_ms_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "GeminiSurgePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.15
+        }
+      ]
+    },
+    {
+      "effect_id": "GhostDancePlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "GlacialBoltAmmoPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_crossbow_bolts",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "GlacialBoltPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "GlacialCascadePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_physical_damage_%_to_gain_as_cold",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "GlacialLancePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "GrimFeastPlayer",
+      "stats": [
+        {
+          "stat": "grim_remnant_health_stored_in_globe_%",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "GrimPillarsPlayer",
+      "stats": [
+        {
+          "stat": "grim_pillars_number_of_pillars_to_create",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "HailstormRoundsAmmoPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_crossbow_bolts",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "HailstormRoundsPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "HammerOfTheGodsPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "HandSlamSandDjinn",
+      "stats": [
+        {
+          "stat": "apply_X_stacks_of_critical_weakness_on_hit",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "HeartOfIcePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_chill_effect_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "HeraldOfAshPlayer",
+      "stats": [
+        {
+          "stat": "herald_of_ash_burning_%_overkill_damage_per_minute",
+          "per_quality_rate": 15.0
+        }
+      ]
+    },
+    {
+      "effect_id": "HeraldOfBloodPlayer",
+      "stats": [
+        {
+          "stat": "skill_herald_bleeding_enemies_explode_for_%_blood_loss_as_unscalable_physical_damage",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "HeraldOfIcePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "HeraldOfPlaguePlayer",
+      "stats": [
+        {
+          "stat": "hinder_chance_%_on_spreading_poioson",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "HeraldOfThunderPlayer",
+      "stats": [
+        {
+          "stat": "herald_of_thunder_storm_max_hits",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "HexblastPlayer",
+      "stats": [
+        {
+          "stat": "hexblast_damage_+%_final_per_second_remaining_curse_duration",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "HighVelocityRoundsPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_projectile_damage_+%_final_if_pierced_enemy",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "HisFoulEmergencePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "HisWinnowingFlamePlayer",
+      "stats": [
+        {
+          "stat": "base_cast_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "HollowFocusPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_secondary_area_of_effect_radius",
+          "per_quality_rate": -0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "HollowResonancePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_hit_damage_stun_multiplier_+%_final",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "HollowShellPlayer",
+      "stats": [
+        {
+          "stat": "skill_hollow_shell_spent_ward_%_to_grant_as_guard",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "HyenaCacklePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_life_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "IceNovaPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_damage_+%_final_vs_chilled_enemies",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "IceShardsPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_chill_as_though_damage_+%_final",
+          "per_quality_rate": 5.0
+        }
+      ]
+    },
+    {
+      "effect_id": "IceShotPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_chill_effect_+%_final",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "IceStrikePlayer",
+      "stats": [
+        {
+          "stat": "attack_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "IceTippedArrowsPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "IcestormPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "ImpurityPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_buff_chaos_damage_resistance_%_to_apply",
+          "per_quality_rate": 0.3
+        }
+      ]
+    },
+    {
+      "effect_id": "IncendiaryShotPlayer",
+      "stats": [
+        {
+          "stat": "ignite_duration_+%_per_shotgun_pellet_hit",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "IncineratePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_ignite_duration_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "InevitableAgonyPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "InfernalCryPlayer",
+      "stats": [
+        {
+          "stat": "infernal_cry_exerted_attack_all_damage_%_to_gain_as_fire_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "IntoTheBreachPlayer",
+      "stats": [
+        {
+          "stat": "remnant_effect_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "IronWardNovaPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_hit_damage_stun_multiplier_+%_final",
+          "per_quality_rate": 2.5
+        }
+      ]
+    },
+    {
+      "effect_id": "KillingPalmPlayer",
+      "stats": [
+        {
+          "stat": "recover_%_maximum_mana_on_cull",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "KnifeThrowSandDjinn",
+      "stats": [
+        {
+          "stat": "djinn_knife_throw_number_of_knives_created",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "LeapSlamPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_damage_+%_final_vs_fully_broken_armour",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "LeylinesPlayer",
+      "stats": [
+        {
+          "stat": "skill_leylines_spell_damage_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "LifeRemnantsPlayer",
+      "stats": [
+        {
+          "stat": "life_remnants_chance_to_spawn_orb_on_killing_enemy_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "LightningArrowPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_shock_chance_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "LightningBoltPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_shock_chance_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "LightningConduitPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_lightning_damage_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "LightningRodPlayer",
+      "stats": [
+        {
+          "stat": "lightning_rod_%_chance_for_additional_burst_on_landing",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "LightningSpearPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "LightningWarpPlayer",
+      "stats": [
+        {
+          "stat": "shock_effect_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "LingeringIllusionPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "LingeringIllusionSpawnPlayer",
+      "stats": [
+        {
+          "stat": "chance_%_to_create_additional_remnant",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "LivingBombFireDjinn",
+      "stats": [
+        {
+          "stat": "active_skill_damage_+%_final_vs_burning_enemies",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "LivingBombPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_ignite_chance_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "LunarAssaultPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_physical_damage_%_to_gain_as_cold",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "MagmaBarrierPlayer",
+      "stats": [
+        {
+          "stat": "skill_igneous_shield_grants_block_chance_+%",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "MagneticSalvoPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "MalicePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ManaDrainPlayer",
+      "stats": [
+        {
+          "stat": "mana_drain_base_mana_leech_amount",
+          "per_quality_rate": 4.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ManaRemnantsPlayer",
+      "stats": [
+        {
+          "stat": "mana_remnants_mana_gain_per_globe",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ManaTempestPlayer",
+      "stats": [
+        {
+          "stat": "mana_tempest_effects_linger_X_ms",
+          "per_quality_rate": 100.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ManifestWeaponPlayer",
+      "stats": [
+        {
+          "stat": "minion_attack_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MantraOfDestructionPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_required_number_of_combo_stacks",
+          "per_quality_rate": -0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "MassFusilladeFireDjinn",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "MeditatePlayer",
+      "stats": [
+        {
+          "stat": "meditate_energy_shield_recharge_rate_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaAnimusSplintersPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_cost_efficiency_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaBarrierInvocationPlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaCastFireSpellOnHitPlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaCastLightningSpellOnHitPlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaCastOnBlockPlayer",
+      "stats": [
+        {
+          "stat": "cast_on_block_gain_X_centienergy_on_block",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaCastOnCharmUsePlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaCastOnCritPlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaCastOnDodgePlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaCastOnElementalAilmentPlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaCastOnMinionDeathPlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaDeadeyeMarksPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaElementalInvocationPlayer",
+      "stats": [
+        {
+          "stat": "generic_ongoing_trigger_maximum_energy",
+          "per_quality_rate": 5.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaFeralInvocationPlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaHollowFormPlayer",
+      "stats": [
+        {
+          "stat": "base_power_charge_skip_consume_chance_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaMirageArcherPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaMortarCannonPlayer",
+      "stats": [
+        {
+          "stat": "totem_skill_area_of_effect_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaReapersInvocationPlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaRemnantsOfKalguurPlayer",
+      "stats": [
+        {
+          "stat": "ward_remnants_chance_to_spawn_orb_on_killing_enemy_%",
+          "per_quality_rate": 0.25
+        },
+        {
+          "stat": "ward_remnants_chance_to_spawn_remnant_on_stun_%",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "MetaSpellslingerPlayer",
+      "stats": [
+        {
+          "stat": "energy_generated_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "MeteorFireDjinn",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "MidnightStarPlayer",
+      "stats": [
+        {
+          "stat": "midnight_star_max_ice_crystals",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "MirageArcherSpawnPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MirageDeadeyeSpawnPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MirrorOfRefractionPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "MoltenBlastPlayer",
+      "stats": [
+        {
+          "stat": "inflict_exposure_on_hit_%_chance",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "MoltenCrashPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 100.0
+        }
+      ]
+    },
+    {
+      "effect_id": "MomentOfVulnerabilityPlayer",
+      "stats": [
+        {
+          "stat": "time_rip_damage_share_%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "NightfallSoaringMidnightPlayer",
+      "stats": [
+        {
+          "stat": "projectile_base_number_of_targets_to_pierce",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "OilBarragePlayer",
+      "stats": [
+        {
+          "stat": "skill_base_oil_exposure_-_to_total_elemental_resistance",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "OilGrenadePlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "OrbOfStormsPlayer",
+      "stats": [
+        {
+          "stat": "number_of_chains",
+          "per_quality_rate": 0.15
+        }
+      ]
+    },
+    {
+      "effect_id": "OverwhelmingPresencePlayer",
+      "stats": [
+        {
+          "stat": "aura_effect_+%",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "PainOfferingPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 1.2
+        }
+      ]
+    },
+    {
+      "effect_id": "PassiveTriggeredManaWaveWaterDjinn",
+      "stats": [
+        {
+          "stat": "water_djinn_mana_wave_mana_regeneration_rate_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "PerfectStrikePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_ignite_chance_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "PermafrostBoltsAmmoPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.0
+        }
+      ]
+    },
+    {
+      "effect_id": "PermafrostBoltsPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "PhantasmalArrowPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_ignite_chance_+%_final",
+          "per_quality_rate": 5.0
+        }
+      ]
+    },
+    {
+      "effect_id": "PinnacleOfPowerPlayer",
+      "stats": [
+        {
+          "stat": "elemental_power_elemental_damage_+%_final_per_power_charge",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "PlagueBearerPlayer",
+      "stats": [
+        {
+          "stat": "plague_bearer_gains_%_of_damage_from_inflicted_poisons",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "PlasmaBlastPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_shock_duration_+%_final",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "PoisonBurstArrowPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_poison_effect_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "PowerSiphonPlayer",
+      "stats": [
+        {
+          "stat": "chance_to_gain_1_more_charge_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "PoweredByVerisiumPlayer",
+      "stats": [
+        {
+          "stat": "verisium_infusion_duration_+%",
+          "per_quality_rate": 2.5
+        }
+      ]
+    },
+    {
+      "effect_id": "PrimalBountyPlayer",
+      "stats": [
+        {
+          "stat": "multishot_empowered_projectile_speed_+%",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "PrimalStrikesPlayer",
+      "stats": [
+        {
+          "stat": "attack_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ProfaneRitualPlayer",
+      "stats": [
+        {
+          "stat": "base_chance_to_not_consume_corpse_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "PurityOfFirePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_buff_fire_damage_resistance_%_to_apply",
+          "per_quality_rate": 0.4
+        }
+      ]
+    },
+    {
+      "effect_id": "PurityOfIcePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_buff_cold_damage_resistance_%_to_apply",
+          "per_quality_rate": 0.4
+        }
+      ]
+    },
+    {
+      "effect_id": "PurityOfLightningPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_buff_lightning_damage_resistance_%_to_apply",
+          "per_quality_rate": 0.4
+        }
+      ]
+    },
+    {
+      "effect_id": "RagingSpiritsPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_raging_spirits_allowed",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "RainOfArrowsPlayer",
+      "stats": [
+        {
+          "stat": "rain_of_arrows_arrow_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RainOfBladesPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RainOfBladesTriggeredPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RaiseZombiePlayer",
+      "stats": [
+        {
+          "stat": "raise_zombie_empowerment_effect_+%",
+          "per_quality_rate": 1.25
+        }
+      ]
+    },
+    {
+      "effect_id": "RakePlayer",
+      "stats": [
+        {
+          "stat": "base_additional_damage_from_distance_+%_final",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "RapidAssaultPlayer",
+      "stats": [
+        {
+          "stat": "rapid_assault_%_chance_to_attach_additional_spear",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RapidShotPlayer",
+      "stats": [
+        {
+          "stat": "maximum_number_of_crossbow_heat_stacks",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "RavenousSwarmPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ReapPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 100.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RefutationPlayer",
+      "stats": [
+        {
+          "stat": "runic_fortress_stun_threshold_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ResonatingShieldPlayer",
+      "stats": [
+        {
+          "stat": "armour_break_amount_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RhoaMountPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_life_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RighteousDescentPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "RitualSacrificePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 1000.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RollingMagmaPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_damage_+%_final_per_time_chained",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "RollingSlamPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_stun_threshold_+%_while_performing_action",
+          "per_quality_rate": 5.0
+        }
+      ]
+    },
+    {
+      "effect_id": "RunicReprievePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_stun_threshold_+%_while_performing_action",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SacredGroundPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.4
+        }
+      ]
+    },
+    {
+      "effect_id": "SacrificePlayer",
+      "stats": [
+        {
+          "stat": "harvester_minion_resummon_speed_+%_final",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "SanguineRevelryPlayer",
+      "stats": [
+        {
+          "stat": "sanguine_revelry_rage_gain_per_pickup",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "SavageFuryActivePlayer",
+      "stats": [
+        {
+          "stat": "wild_beast_damage_+%_final",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "ScatteringCalamityPlayer",
+      "stats": [
+        {
+          "stat": "ember_fusillade_damage_+%_final_per_ember_fired",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "ScavengedPlatingPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 100.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SeismicCryPlayer",
+      "stats": [
+        {
+          "stat": "seismic_cry_slam_skill_aftershock_damage_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ShardScavengerPlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ShatteringConcoctionPlayer",
+      "stats": [
+        {
+          "stat": "freeze_duration_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ShatteringPalmExplosionPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_critical_strike_chance_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ShatteringPalmPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_critical_strike_chance_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ShatteringSpitePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "ShieldChargePlayer",
+      "stats": [
+        {
+          "stat": "base_additional_damage_from_distance_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ShieldWallPlayer",
+      "stats": [
+        {
+          "stat": "shield_wall_damage_+%_final_when_slammed",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ShockGrenadePlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ShockburstRoundsAmmoPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_crossbow_bolts",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "ShockburstRoundsPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "ShockchainArrowPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_lightning_damage_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ShockwaveTotemPlayer",
+      "stats": [
+        {
+          "stat": "base_totem_duration",
+          "per_quality_rate": 200.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SiegeBallistaPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "SiegeBallistaProjectilePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_area_of_effect_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SiegeCascadeAmmoPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "SiegeCascadePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_damage_+%_final_vs_immobilised_enemies",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SigilOfPowerPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.4
+        }
+      ]
+    },
+    {
+      "effect_id": "SiphonElementsPlayer",
+      "stats": [
+        {
+          "stat": "infusion_remnants_%_chance_to_spawn_cold_infusion_on_freezing_an_enemy",
+          "per_quality_rate": 0.1
+        },
+        {
+          "stat": "infusion_remnants_%_chance_to_spawn_fire_infusion_on_igniting_an_enemy",
+          "per_quality_rate": 0.1
+        },
+        {
+          "stat": "infusion_remnants_%_chance_to_spawn_lightning_infusion_on_shocking_an_enemy",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "SiphoningStrikePlayer",
+      "stats": [
+        {
+          "stat": "base_chance_to_daze_%",
+          "per_quality_rate": 2.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SkyfallPlayer",
+      "stats": [
+        {
+          "stat": "base_spell_%_chance_to_echo",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SnapPlayer",
+      "stats": [
+        {
+          "stat": "chance_%_to_spawn_another_infusion_remnant",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SnipePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "SnipersMarkPlayer",
+      "stats": [
+        {
+          "stat": "enemy_additional_critical_strike_multiplier_against_self",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "SolarOrbPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_damage_+%_final_vs_burning_enemies",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SorceryWardPlayer",
+      "stats": [
+        {
+          "stat": "aegis_unique_shield_max_value_from_%_armour_evasion",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "SoulOfferingPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SoulrendPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 5.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SparkPlayer",
+      "stats": [
+        {
+          "stat": "base_projectile_speed_+%",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SpearOfSolarisPlayer",
+      "stats": [
+        {
+          "stat": "chance_to_retain_40%_of_glory_on_use_%",
+          "per_quality_rate": 1.25
+        }
+      ]
+    },
+    {
+      "effect_id": "SpearfieldPlayer",
+      "stats": [
+        {
+          "stat": "hazard_rearm_%_chance",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SpiralVolleyPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "SpiritVesselPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_life_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "StaffConsecratePlayer",
+      "stats": [
+        {
+          "stat": "base_cast_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "StaggeringPalmProjectilePlayer",
+      "stats": [
+        {
+          "stat": "attacks_chance_to_blind_on_hit_%",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "StampedePlayer",
+      "stats": [
+        {
+          "stat": "slam_aftershock_chance_%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "StarbornOnslaughtPlayer",
+      "stats": [
+        {
+          "stat": "empyrean_descent_number_of_explosions",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "StormLancePlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_overcharged_spears_allowed",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "StormWavePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_secondary_area_of_effect_radius",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "StormblastBoltsAmmoPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "StormblastBoltsPlayer",
+      "stats": [
+        {
+          "stat": "base_reduce_enemy_lightning_resistance_%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "StormcallerArrowPlayer",
+      "stats": [
+        {
+          "stat": "shock_duration_+%",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonAzmerianWolfPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_life_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonBeastPlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonInfernalHoundPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_life_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonMetaTotemSpellTotemPlayer",
+      "stats": [
+        {
+          "stat": "base_totem_duration",
+          "per_quality_rate": 200.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonMistRavenPlayer",
+      "stats": [
+        {
+          "stat": "chance_to_gain_1_more_frenzy_charge_%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalArsonistsPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalBrutesPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_hit_damage_stun_multiplier_+%_final",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalClericsPlayer",
+      "stats": [
+        {
+          "stat": "skeletal_cleric_revived_skeletons_immune_for_X_ms",
+          "per_quality_rate": 150.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalFrostMagesPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_damage_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalReaversPlayer",
+      "stats": [
+        {
+          "stat": "minion_rage_effect_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalSnipersPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_damage_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalStormMagesPlayer",
+      "stats": [
+        {
+          "stat": "minion_maximum_life_%_to_gain_as_maximum_energy_shield",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalWarriorsPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_life_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSpectrePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_damage_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SummonSpiralingConspiracyPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_area_of_effect_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SunderPlayer",
+      "stats": [
+        {
+          "stat": "accuracy_range_penalty_+%",
+          "per_quality_rate": -2.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SuperchargedSlamPlayer",
+      "stats": [
+        {
+          "stat": "channelled_slam_max_stages",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "SupportBlasphemyPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "SupportFerociousRoarPlayer",
+      "stats": [
+        {
+          "stat": "warcry_grant_damage_+%_to_exerted_attacks",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SupportHandOfChayulaPlayer",
+      "stats": [
+        {
+          "stat": "base_curse_duration_+%",
+          "per_quality_rate": 1.0
+        },
+        {
+          "stat": "mark_effect_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "SupportMetaTotemSpellTotemPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.0
+        }
+      ]
+    },
+    {
+      "effect_id": "SupportingFirePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_damage_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "TameBeastPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 80.0
+        }
+      ]
+    },
+    {
+      "effect_id": "TemperWeaponPlayer",
+      "stats": [
+        {
+          "stat": "skill_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "TempestBellPlayer",
+      "stats": [
+        {
+          "stat": "tempest_bell_damage_+%_final_per_time_hit",
+          "per_quality_rate": 0.15
+        }
+      ]
+    },
+    {
+      "effect_id": "TempestFlurryPlayer",
+      "stats": [
+        {
+          "stat": "melee_range_+",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "TemporalChainsPlayer",
+      "stats": [
+        {
+          "stat": "curse_effect_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "TemporalRiftPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "TheStarsAnswerCometPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_area_of_effect_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ThrashingVinesPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "ThunderousLeapPlayer",
+      "stats": [
+        {
+          "stat": "thunderous_leap_%_chance_for_shocked_ground_when_detonating",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ThunderstormPlayer",
+      "stats": [
+        {
+          "stat": "thunderstorm_wet_debuff_shock_chance_on_+%_final",
+          "per_quality_rate": 0.5
+        },
+        {
+          "stat": "thunderstorm_wet_debuff_hit_damage_freeze_multiplier_+%_final",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "TimeFreezePlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "TimeOfNeedPlayer",
+      "stats": [
+        {
+          "stat": "skill_time_of_need_gain_x_life",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "TimeSnapPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "TornadoPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 100.0
+        }
+      ]
+    },
+    {
+      "effect_id": "TornadoShotPlayer",
+      "stats": [
+        {
+          "stat": "tornado_shot_projectile_damage_+%_final",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "ToxicDomainPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.15
+        }
+      ]
+    },
+    {
+      "effect_id": "ToxicGrenadePlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "ToxicGrowthPlayer",
+      "stats": [
+        {
+          "stat": "base_number_of_projectiles",
+          "per_quality_rate": 0.05
+        },
+        {
+          "stat": "number_of_poisonbloom_arrow_bloom_allowed",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "TriggeredExplosiveTransmutationExplosionPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "TriggeredManifestRunePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 100.0
+        }
+      ]
+    },
+    {
+      "effect_id": "TriggeredMoltenShowerPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "TriggeredTrailOfCaltropsPlayer",
+      "stats": [
+        {
+          "stat": "maximum_caltrops_allowed",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "TriggeredWindDancerPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "TrinityPlayer",
+      "stats": [
+        {
+          "stat": "trinity_skill_speed_+%_while_all_resonance_is_at_least_250_to_grant",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "TriskelionCascadePlayer",
+      "stats": [
+        {
+          "stat": "triskelion_cascade_next_skill_damage_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "TwisterPlayer",
+      "stats": [
+        {
+          "stat": "twister_%_chance_for_additional_twister",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "UnboundAvatarPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "UnearthPlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 250.0
+        },
+        {
+          "stat": "minion_movement_speed_+%",
+          "per_quality_rate": 2.5
+        }
+      ]
+    },
+    {
+      "effect_id": "UniqueAtziriHeraldPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_damage_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "UnleashPlayer",
+      "stats": [
+        {
+          "stat": "base_cooldown_speed_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "ValakosChargePlayer",
+      "stats": [
+        {
+          "stat": "number_of_chains",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "VaultingImpactPlayer",
+      "stats": [
+        {
+          "stat": "broken_stance_hit_limit",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "VileDisruptionPlayer",
+      "stats": [
+        {
+          "stat": "impale_magnitude_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "VineArrowPlayer",
+      "stats": [
+        {
+          "stat": "poison_vine_arrow_vine_stored_poison_damage_+%_final",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "VirtuousBarrierPlayer",
+      "stats": [
+        {
+          "stat": "gem_barrier_blue_grants_life_regeneration_rate_+%",
+          "per_quality_rate": 0.125
+        },
+        {
+          "stat": "gem_barrier_blue_grants_mana_regeneration_rate_+%",
+          "per_quality_rate": 0.125
+        }
+      ]
+    },
+    {
+      "effect_id": "VividStampedePlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "VoidIllusionSpawnPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "VolatileDeadPlayer",
+      "stats": [
+        {
+          "stat": "base_chance_to_not_consume_corpse_%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "VolcanicFissurePlayer",
+      "stats": [
+        {
+          "stat": "slam_aftershock_chance_%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "VolcanoPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_area_of_effect_radius",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "VoltaicBarrierPlayer",
+      "stats": [
+        {
+          "stat": "skill_effect_duration_+%",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "VoltaicBarrierTriggeredChainLightningPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.0
+        }
+      ]
+    },
+    {
+      "effect_id": "VoltaicMarkPlayer",
+      "stats": [
+        {
+          "stat": "thaumaturgist_mark_hit_damage_electrocute_multiplier_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "VulnerabilityPlayer",
+      "stats": [
+        {
+          "stat": "curse_effect_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "WalkingCalamityPlayer",
+      "stats": [
+        {
+          "stat": "walking_calamity_non_skill_base_all_damage_%_to_gain_as_fire",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "WarBannerReservationPlayer",
+      "stats": [
+        {
+          "stat": "base_reservation_efficiency_+%",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "WardboundMinionsPlayer",
+      "stats": [
+        {
+          "stat": "wardbound_minion_maximum_number_of_casts",
+          "per_quality_rate": 0.1
+        }
+      ]
+    },
+    {
+      "effect_id": "WaterBubbleWaterDjinn",
+      "stats": [
+        {
+          "stat": "water_djinn_water_bubble_absorb_damage_%_enemy_outside_bubble",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "WaveOfFrostPlayer",
+      "stats": [
+        {
+          "stat": "base_reduce_enemy_cold_resistance_%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WeaponGrantedChaosboltPlayer",
+      "stats": [
+        {
+          "stat": "base_projectile_speed_+%",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WhirlingAssaultPlayer",
+      "stats": [
+        {
+          "stat": "attack_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WhirlingSlashPlayer",
+      "stats": [
+        {
+          "stat": "sandstorm_swipe_storm_damage_+%_final_per_stage",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WhirlwindLancePlayer",
+      "stats": [
+        {
+          "stat": "sandstorm_swipe_storm_damage_+%_final_per_stage",
+          "per_quality_rate": 2.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WildProtectorPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_minion_damage_+%_final",
+          "per_quality_rate": 1.0
+        },
+        {
+          "stat": "active_skill_minion_life_+%_final",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WindSerpentsFuryPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_knockback_distance_+%_final",
+          "per_quality_rate": 1.5
+        }
+      ]
+    },
+    {
+      "effect_id": "WingBlastPlayer",
+      "stats": [
+        {
+          "stat": "wing_blast_chance_to_gain_power_charge_on_stun_%",
+          "per_quality_rate": 0.25
+        }
+      ]
+    },
+    {
+      "effect_id": "WitheringPresencePlayer",
+      "stats": [
+        {
+          "stat": "base_skill_effect_duration",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WolfArcticHowlPlayer",
+      "stats": [
+        {
+          "stat": "wolf_warcry_buff_freeze_buildup_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WolfCrossSlashPlayer",
+      "stats": [
+        {
+          "stat": "active_skill_base_secondary_area_of_effect_radius",
+          "per_quality_rate": 0.2
+        }
+      ]
+    },
+    {
+      "effect_id": "WolfLunarBlessingPlayer",
+      "stats": [
+        {
+          "stat": "wolf_lunar_blessing_all_damage_%_to_gain_as_cold_damage",
+          "per_quality_rate": 0.5
+        }
+      ]
+    },
+    {
+      "effect_id": "WolfPackPlayer",
+      "stats": [
+        {
+          "stat": "skill_wolf_pack_size",
+          "per_quality_rate": 0.05
+        }
+      ]
+    },
+    {
+      "effect_id": "WolfPounceMarkPlayer",
+      "stats": [
+        {
+          "stat": "skill_wolf_mark_damage_taken_+%_per_nearby_enemy",
+          "per_quality_rate": 0.05
+        },
+        {
+          "stat": "skill_wolf_mark_damage_taken_+%_cap",
+          "per_quality_rate": 0.75
+        }
+      ]
+    },
+    {
+      "effect_id": "WolfPounceSummonWolfPlayer",
+      "stats": [
+        {
+          "stat": "dummy_stat_display_nothing",
+          "per_quality_rate": 0.001
+        }
+      ]
+    },
+    {
+      "effect_id": "WolfShredPlayer",
+      "stats": [
+        {
+          "stat": "attack_speed_+%",
+          "per_quality_rate": 1.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WyvernDevourPlayer",
+      "stats": [
+        {
+          "stat": "wyvern_devour_flask_charm_charge_gain_chance_%",
+          "per_quality_rate": 2.5
+        }
+      ]
+    },
+    {
+      "effect_id": "WyvernFlameBreathPlayer",
+      "stats": [
+        {
+          "stat": "channelled_skill_suppress_ongoing_rage_cost_for_first_X_ms",
+          "per_quality_rate": 50.0
+        }
+      ]
+    },
+    {
+      "effect_id": "WyvernRendPlayer",
+      "stats": [
+        {
+          "stat": "wyvern_devour_base_all_damage_%_to_gain_as_lightning",
+          "per_quality_rate": 0.5
+        }
+      ]
+    }
+  ]
+}

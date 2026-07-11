@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "schema": "curse_priority/v1",
+    "generator": "sync-pob-catalog extract-lua --what curse-priority",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "29ab8262dd4a867eac56165afb8391a509e34a0e",
+    "vendor_commit_subject": "29ab826 Add support for Darkness Enthroned and Atziri's Splendour augment mods (#2343)",
+    "extracted_files": [
+      "Modules/Data.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src --what curse-priority --out data/4.5.4.3/overlay/curse_priority.json"
+  },
+  "curse_base": {
+    "Assassin's Mark": 11,
+    "Conductivity": 7,
+    "Despair": 8,
+    "Elemental Weakness": 4,
+    "Enfeeble": 2,
+    "Flammability": 5,
+    "Frostbite": 6,
+    "Poacher's Mark": 13,
+    "Punishment": 9,
+    "Sniper's Mark": 12,
+    "Temporal Chains": 1,
+    "Vulnerability": 3,
+    "Warlord's Mark": 10
+  },
+  "socket_priority_base": 100,
+  "slot_weights": {
+    "Amulet": 2000,
+    "Body Armour": 5000,
+    "Boots": 7000,
+    "Gloves": 6000,
+    "Helmet": 3000,
+    "Ring 1": 8000,
+    "Ring 2": 9000,
+    "Ring 3": 10000,
+    "Weapon 1": 1000,
+    "Weapon 2": 4000
+  },
+  "curse_from_equipment": 11000,
+  "curse_from_aura": 20000
+}

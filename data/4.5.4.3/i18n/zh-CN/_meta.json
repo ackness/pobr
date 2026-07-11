@@ -1,0 +1,11 @@
+{
+  "source": "https://github.com/addohm/poe2-en-cn-dict",
+  "source_generated_at": "2026-07-06T12:58:11.790959+00:00",
+  "regen_command": "node pipeline/gen-zh-cn.mjs",
+  "counts": {
+    "base_items": 4902,
+    "skills": 854,
+    "stat_lines": 24880,
+    "ambiguous_src_dropped": 1326
+  }
+}

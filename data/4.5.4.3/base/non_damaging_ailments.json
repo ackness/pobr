@@ -1,0 +1,83 @@
+{
+  "ailments": {
+    "Chill": {
+      "associated_type": "Cold",
+      "alt": false,
+      "default": 30.0,
+      "min": 30.0,
+      "max": 50.0,
+      "precision": 0,
+      "duration": 8.0
+    },
+    "Freeze": {
+      "associated_type": "Cold",
+      "alt": false,
+      "min": 0.3,
+      "max": 3.0,
+      "precision": 2,
+      "duration": 4.0
+    },
+    "Shock": {
+      "associated_type": "Lightning",
+      "alt": false,
+      "default": 20.0,
+      "min": 20.0,
+      "max": 100.0,
+      "precision": 0,
+      "duration": 8.0
+    }
+  },
+  "buildup_types": {
+    "Electrocute": {
+      "scales_from": []
+    },
+    "Freeze": {
+      "scales_from": [
+        "Cold"
+      ]
+    },
+    "HeavyStun": {
+      "scales_from": [
+        "Physical",
+        "Fire",
+        "Cold",
+        "Lightning",
+        "Chaos"
+      ]
+    },
+    "Pin": {
+      "scales_from": []
+    }
+  },
+  "default_ailment_damage_types": {
+    "Bleed": {
+      "scales_from": [
+        "Physical"
+      ],
+      "damage_type": "Physical"
+    },
+    "Chill": {
+      "scales_from": [
+        "Cold"
+      ]
+    },
+    "Ignite": {
+      "scales_from": [
+        "Fire"
+      ],
+      "damage_type": "Fire"
+    },
+    "Poison": {
+      "scales_from": [
+        "Physical",
+        "Chaos"
+      ],
+      "damage_type": "Chaos"
+    },
+    "Shock": {
+      "scales_from": [
+        "Lightning"
+      ]
+    }
+  }
+}

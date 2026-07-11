@@ -1,0 +1,79 @@
+{
+  "distance_multiplier": 1.2,
+  "tree_versions": {
+    "0_1": [
+      {
+        "label": "Small",
+        "inner": 0,
+        "outer": 1000,
+        "colour": "^xBB6600"
+      },
+      {
+        "label": "Medium",
+        "inner": 0,
+        "outer": 1150,
+        "colour": "^x66FFCC"
+      },
+      {
+        "label": "Large",
+        "inner": 0,
+        "outer": 1300,
+        "colour": "^x2222CC"
+      },
+      {
+        "label": "Very Large",
+        "inner": 0,
+        "outer": 1500,
+        "colour": "^xC100FF"
+      },
+      {
+        "label": "Variable",
+        "inner": 650,
+        "outer": 950,
+        "colour": "^xD35400"
+      },
+      {
+        "label": "Variable",
+        "inner": 800,
+        "outer": 1100,
+        "colour": "^x66FFCC"
+      },
+      {
+        "label": "Variable",
+        "inner": 950,
+        "outer": 1250,
+        "colour": "^x2222CC"
+      },
+      {
+        "label": "Variable",
+        "inner": 1100,
+        "outer": 1400,
+        "colour": "^xC100FF"
+      },
+      {
+        "label": "Variable",
+        "inner": 1250,
+        "outer": 1550,
+        "colour": "^x0B9300"
+      },
+      {
+        "label": "Variable",
+        "inner": 1400,
+        "outer": 1700,
+        "colour": "^xFFCC00"
+      },
+      {
+        "label": "Variable",
+        "inner": 1650,
+        "outer": 1950,
+        "colour": "^xFF6600"
+      },
+      {
+        "label": "Variable",
+        "inner": 1800,
+        "outer": 2100,
+        "colour": "^x0099FF"
+      }
+    ]
+  }
+}

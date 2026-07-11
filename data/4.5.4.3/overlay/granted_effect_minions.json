@@ -1,0 +1,216 @@
+{
+  "_meta": {
+    "schema": "granted_effect_minions/v1",
+    "generator": "sync-pob-catalog extract-lua",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "29ab8262dd4a867eac56165afb8391a509e34a0e",
+    "vendor_commit_subject": "29ab826 Add support for Darkness Enthroned and Atziri's Splendour augment mods (#2343)",
+    "extracted_files": [
+      "Data/Skills/act_dex.lua",
+      "Data/Skills/act_int.lua",
+      "Data/Skills/act_str.lua",
+      "Data/Skills/minion.lua",
+      "Data/Skills/other.lua",
+      "Data/Skills/spectre.lua",
+      "Data/Skills/sup_dex.lua",
+      "Data/Skills/sup_int.lua",
+      "Data/Skills/sup_str.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what minion-list --vendor-root vendor/PathOfBuilding-PoE2/src --out data/4.5.4.3/overlay/granted_effect_minions.json"
+  },
+  "entries": [
+    {
+      "effect_id": "AncestralSpiritsPlayer",
+      "minion_list": [
+        "AncestralSpiritTurtle",
+        "AncestralSpiritHulk",
+        "AncestralSpiritCaster",
+        "AncestralSpiritWarhorn"
+      ]
+    },
+    {
+      "effect_id": "AzmerianSwarmPlayer",
+      "minion_list": [
+        "AzmerianSwarm"
+      ]
+    },
+    {
+      "effect_id": "CorpseBeetlesPlayer",
+      "minion_list": [
+        "BeetleMinion"
+      ]
+    },
+    {
+      "effect_id": "HyenaCacklePlayer",
+      "minion_list": [
+        "HyenaMinion"
+      ]
+    },
+    {
+      "effect_id": "ManifestWeaponPlayer",
+      "minion_list": [
+        "ManifestWeapon"
+      ],
+      "minion_uses": [
+        "Weapon 1"
+      ],
+      "minion_has_item_set": true
+    },
+    {
+      "effect_id": "RagingSpiritsPlayer",
+      "minion_list": [
+        "SummonedRagingSpirit"
+      ]
+    },
+    {
+      "effect_id": "RaiseZombiePlayer",
+      "minion_list": [
+        "RaisedZombie"
+      ]
+    },
+    {
+      "effect_id": "RavenousSwarmPlayer",
+      "minion_list": [
+        "RavenousSwarm"
+      ]
+    },
+    {
+      "effect_id": "RhoaMountPlayer",
+      "minion_list": [
+        "SummonedRhoa"
+      ]
+    },
+    {
+      "effect_id": "SummonAzmerianWolfPlayer",
+      "minion_list": [
+        "AzmerianWolf"
+      ]
+    },
+    {
+      "effect_id": "SummonFireDjinnPlayer",
+      "minion_list": [
+        "FireDjinn"
+      ]
+    },
+    {
+      "effect_id": "SummonInfernalHoundPlayer",
+      "minion_list": [
+        "SummonedHellhound"
+      ]
+    },
+    {
+      "effect_id": "SummonSandDjinnPlayer",
+      "minion_list": [
+        "SandDjinn"
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalArsonistsPlayer",
+      "minion_list": [
+        "RaisedSkeletonArsonist"
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalBrutesPlayer",
+      "minion_list": [
+        "RaisedSkeletonBrute"
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalClericsPlayer",
+      "minion_list": [
+        "RaisedSkeletonCleric"
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalFrostMagesPlayer",
+      "minion_list": [
+        "RaisedSkeletonFrostMage"
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalReaversPlayer",
+      "minion_list": [
+        "RaisedSkeletonReaver"
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalSnipersPlayer",
+      "minion_list": [
+        "RaisedSkeletonSniper"
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalStormMagesPlayer",
+      "minion_list": [
+        "RaisedSkeletonStormMage"
+      ]
+    },
+    {
+      "effect_id": "SummonSkeletalWarriorsPlayer",
+      "minion_list": [
+        "RaisedSkeletonWarriors"
+      ]
+    },
+    {
+      "effect_id": "SummonSpiralingConspiracyPlayer",
+      "minion_list": [
+        "MistRaven"
+      ]
+    },
+    {
+      "effect_id": "SummonWaterDjinnPlayer",
+      "minion_list": [
+        "WaterDjinn"
+      ]
+    },
+    {
+      "effect_id": "SupportingFirePlayer",
+      "minion_list": [
+        "TacticianMinion"
+      ]
+    },
+    {
+      "effect_id": "TriggeredLivingLightningPlayer",
+      "minion_list": [
+        "LivingLightning"
+      ]
+    },
+    {
+      "effect_id": "TriggeredLivingLightningPlayerTwo",
+      "minion_list": [
+        "LivingLightning"
+      ]
+    },
+    {
+      "effect_id": "UnearthPlayer",
+      "minion_list": [
+        "UnearthBoneConstruct"
+      ]
+    },
+    {
+      "effect_id": "WardboundMinionsPlayer",
+      "minion_list": [
+        "Wardbound"
+      ]
+    },
+    {
+      "effect_id": "WildProtectorPlayer",
+      "minion_list": [
+        "BearCompanion"
+      ]
+    },
+    {
+      "effect_id": "WolfPackPlayer",
+      "minion_list": [
+        "WolfMinion"
+      ]
+    },
+    {
+      "effect_id": "WolfPounceSummonWolfPlayer",
+      "minion_list": [
+        "WolfMinion"
+      ]
+    }
+  ]
+}

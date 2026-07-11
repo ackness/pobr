@@ -1,0 +1,122 @@
+{
+  "_meta": {
+    "schema": "catalysts/v1",
+    "generator": "sync-pob-catalog extract-lua",
+    "vendor": "PathOfBuilding-PoE2",
+    "vendor_commit": "29ab8262dd4a867eac56165afb8391a509e34a0e",
+    "vendor_commit_subject": "29ab826 Add support for Darkness Enthroned and Atziri's Splendour augment mods (#2343)",
+    "extracted_files": [
+      "Classes/Item.lua"
+    ],
+    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what catalysts --vendor-root vendor/PathOfBuilding-PoE2/src --out data/4.5.4.3/overlay/catalysts.json"
+  },
+  "catalysts": [
+    {
+      "id": 1,
+      "name": "Flesh",
+      "descriptor": "Life",
+      "tags": [
+        "life"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Neural",
+      "descriptor": "Mana",
+      "tags": [
+        "mana"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Carapace",
+      "descriptor": "Defence",
+      "tags": [
+        "defences",
+        "armour",
+        "evasion",
+        "energyshield"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Uul-Netol's",
+      "descriptor": "Physical",
+      "tags": [
+        "physical"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Xoph's",
+      "descriptor": "Fire",
+      "tags": [
+        "fire"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Tul's",
+      "descriptor": "Cold",
+      "tags": [
+        "cold"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Esh's",
+      "descriptor": "Lightning",
+      "tags": [
+        "lightning"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Chayula's",
+      "descriptor": "Chaos",
+      "tags": [
+        "chaos"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Reaver",
+      "descriptor": "Attack",
+      "tags": [
+        "attack"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Sibilant",
+      "descriptor": "Caster",
+      "tags": [
+        "caster"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Skittering",
+      "descriptor": "Speed",
+      "tags": [
+        "speed"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Adaptive",
+      "descriptor": "Attribute",
+      "tags": [
+        "attribute"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Necrotic",
+      "descriptor": "Minion",
+      "tags": [
+        "minion"
+      ]
+    }
+  ]
+}

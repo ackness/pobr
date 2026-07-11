@@ -5,12 +5,11 @@
 /// `POBR_DATA_VERSION` 环境变量或写 `data/CURRENT` 标记文件即可（见
 /// [`data_version`] 与 `pobr_gamedata::current_data_dir`）。
 ///
-/// **当前内置默认 = golden 校验版本**（`4.5.0.3.4`）：仓库的 PoB2 黄金值（parity /
-/// 各 golden / gamedata 段计数·抽样钉值）都在此版本上录制。更新的数据版本同样入库
-/// （如 `4.5.2.1.3`）并由 `multi_version` smoke 验证 calc 在其上跑通；切到更新版本运行
-/// 只需 `export POBR_DATA_VERSION=<新版本>` 或写 `data/CURRENT`，**零代码改动**——把
-/// 内置默认推进到更新版本则需为该版本重录黄金值（见 [`GOLDEN_PARITY_DATA_VERSION`]）。
-pub const DATA_VERSION: &str = "4.5.0.3.4";
+/// **当前内置默认 = `4.5.4.3`（PoE2 0.5.4b）**，与 `data/CURRENT` 一致；golden
+/// 校验版本仍钉在 [`GOLDEN_PARITY_DATA_VERSION`]（`4.5.0.3.4`）——黄金值是版本
+/// 特定的，parity / golden 测试加载钉定版本而非活动默认，两者解耦（见下）。活动
+/// 默认在新版本上的可跑性由 `multi_version` smoke 覆盖。
+pub const DATA_VERSION: &str = "4.5.4.3";
 
 /// 仓库内 golden / parity 黄金值所对照的数据版本——**与活动版本 [`DATA_VERSION`]
 /// 解耦的单一真源**。

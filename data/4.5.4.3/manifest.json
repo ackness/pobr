@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "poe_version": "4.5.4.3",
+  "languages": [
+    "zh-CN",
+    "zh-TW"
+  ],
+  "domains": {
+    "base": [
+      "base_items",
+      "mods",
+      "stats",
+      "skill_gems",
+      "granted_effects",
+      "granted_effect_levels",
+      "granted_effect_stat_sets",
+      "cost_types",
+      "game_constants",
+      "character_constants",
+      "monster_scaling",
+      "non_damaging_ailments",
+      "weapon_types",
+      "unarmed_data",
+      "jewel_radii",
+      "base_player_mods",
+      "enemy_presets"
+    ],
+    "overlay": [
+      "base_item_overrides",
+      "buff_definitions",
+      "config_options",
+      "catalysts",
+      "gem_effects",
+      "gem_quality_stats",
+      "granted_effect_minions",
+      "high_precision_mods",
+      "local_mods",
+      "minions",
+      "mirage_configs",
+      "mod_parser_rules",
+      "mod_scalability",
+      "runes",
+      "skill_overrides",
+      "special_mods",
+      "spectres",
+      "stat_set_labels",
+      "uniques"
+    ],
+    "generated": []
+  }
+}
