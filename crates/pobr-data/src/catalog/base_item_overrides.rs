@@ -34,6 +34,12 @@ pub struct BaseItemOverrideEntry {
     /// [`super::BaseItemDef::charm_buff`]。GGG `.dat` 无此列，vendor 抽取兜底。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub charm_buff: Option<Vec<String>>,
+    /// 完整基底 tag 集（vendor `itemBases[name].tags`——GGG `.it` 元数据继承链
+    /// 的合并产物）。`.dat` 的 `BaseItemTypes.Tags` 只有末端 tag（如
+    /// `dex_int_armour`），缺 `body_armour`/`armour` 等类目 tag，而词缀
+    /// spawn weight 判定（tier 反查）需要全集。消费侧与 base tags **并集** merge。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
 /// `overlay/base_item_overrides.json` 顶层（消费侧视角：`_meta` 头部为生成溯源

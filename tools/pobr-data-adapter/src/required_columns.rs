@@ -35,8 +35,12 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "Stat3Value",
             "Stat4Value",
             "Tags",
+            "SpawnWeight_Tags",
+            "SpawnWeight_Values",
         ],
     ),
+    // 注：`ModType.json`（group 字段来源）不入必需清单——表缺失时 adapter 在
+    // `mod_type_lookup` 软降级（group 整列缺省 + 告警），与 F2 韧性口径一致。
     (
         "Stats.json",
         &["_index", "Id", "IsLocal", "Semantic", "Category"],

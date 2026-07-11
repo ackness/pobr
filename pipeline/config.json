@@ -1,11 +1,12 @@
 {
-  "patch": "4.5.2.1.3",
+  "patch": "4.5.4.3",
   "translations": ["English", "Traditional Chinese"],
   "tables": [
     { "name": "BaseItemTypes", "columns": ["Id","Name","ItemClass","DropLevel","Width","Height","Tags","Implicit_Mods","ModDomain"] },
     { "name": "ItemClasses", "columns": ["Id","Name"] },
     { "name": "Tags", "columns": ["Id","DisplayString"] },
-    { "name": "Mods", "columns": ["Id","Name","ModType","Domain","GenerationType","Level","Stat1","Stat2","Stat3","Stat4","Stat1Value","Stat2Value","Stat3Value","Stat4Value","Tags","SpawnWeight_Tags","Families"] },
+    { "name": "Mods", "columns": ["Id","Name","ModType","Domain","GenerationType","Level","Stat1","Stat2","Stat3","Stat4","Stat1Value","Stat2Value","Stat3Value","Stat4Value","Tags","SpawnWeight_Tags","SpawnWeight_Values","Families"] },
+    { "name": "ModType", "columns": ["Name"] },
     { "name": "Stats", "columns": ["Id","IsLocal","Semantic","Category"] },
     { "name": "SkillGems", "columns": ["BaseItemType","GemType","GemColour","MinLevelReq","StrengthRequirementPercent","DexterityRequirementPercent","IntelligenceRequirementPercent","GemEffects","ItemExperienceType"] },
     { "name": "GrantedEffects", "columns": ["Id","IsSupport","ActiveSkill","StatSet","CastTime","CostTypes","AllowedActiveSkillTypes","AddedActiveSkillTypes","ExcludedActiveSkillTypes","SupportsGemsOnly","CannotBeSupported","AdditionalStatSets"] },

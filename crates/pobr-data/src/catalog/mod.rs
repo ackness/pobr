@@ -80,7 +80,7 @@ pub use item_overlay::{
 };
 pub use items::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 pub use manifest::{CATALOG_SCHEMA_VERSION, DataManifest, DomainSections};
-pub use mods::{ModDef, ModStat, StatDef};
+pub use mods::{ModDef, ModStat, SpawnWeight, StatDef};
 pub use parser_rules::{
     FlagPhraseDef, FlagTypeDef, FlagTypeModDef, FormDef, MOD_PARSER_RULES_SCHEMA,
     ModParserRulesDoc, ModTemplateDef, NameMapDef, PhraseNamesDef, PhraseValueDef, PreFlagDef,

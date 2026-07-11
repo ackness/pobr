@@ -10,6 +10,10 @@
 --                    M4-T4 W-D2 弩装填；vendor 值为秒，毫秒整数入库）
 --   charm_buff     ← itemBases[name].charm.buff（charm 基底固有 buff 词条数组，
 --                    如 Ruby Charm "+25% to Fire Resistance"；空串占位过滤）
+--   tags           ← itemBases[name].tags（完整基底 tag 集：GGG `.it` 元数据继承链
+--                    合并产物，.dat 的 BaseItemTypes.Tags 只有末端 tag（如
+--                    dex_int_armour），缺 body_armour/armour 等类目 tag——词缀
+--                    spawn weight 判定必需；键排序保证确定性）
 --
 -- 确定性约定：本脚本只负责「忠实抽取 + 合法 JSON」；最终按 name 排序与整体
 -- 文档（_meta + overrides）的 byte-stable 序列化由 Rust 侧统一完成。
@@ -92,7 +96,24 @@ for name, base in pairs(itemBases) do
 				charmBuff = "[" .. table.concat(lines, ",") .. "]"
 			end
 		end
-		if blockChance or spirit or reloadMs or charmBuff then
+		-- 完整 tag 集（键排序去随机性；空表不输出）。
+		local tagsJson = nil
+		if type(base.tags) == "table" then
+			local keys = {}
+			for tag, enabled in pairs(base.tags) do
+				if enabled and type(tag) == "string" then
+					keys[#keys + 1] = tag
+				end
+			end
+			table.sort(keys)
+			if #keys > 0 then
+				for i, tag in ipairs(keys) do
+					keys[i] = '"' .. jsonEscape(tag) .. '"'
+				end
+				tagsJson = "[" .. table.concat(keys, ",") .. "]"
+			end
+		end
+		if blockChance or spirit or reloadMs or charmBuff or tagsJson then
 			local parts = { '"name":"' .. jsonEscape(name) .. '"' }
 			if blockChance then
 				parts[#parts + 1] = '"block_chance":' .. jsonNum(blockChance)
@@ -105,6 +126,9 @@ for name, base in pairs(itemBases) do
 			end
 			if charmBuff then
 				parts[#parts + 1] = '"charm_buff":' .. charmBuff
+			end
+			if tagsJson then
+				parts[#parts + 1] = '"tags":' .. tagsJson
 			end
 			print("{" .. table.concat(parts, ",") .. "}")
 		end

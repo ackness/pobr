@@ -205,6 +205,19 @@ impl GameData {
         self.load_domain("mods.json")
     }
 
+    /// 加载 StatDescriptions overlay（stat_id → canonical 英文模板行，
+    /// `overlay/stat_descriptions.json`）。overlay 缺失（旧数据包）返回
+    /// `Ok(None)`——消费侧（词缀 tier 推断等）按「无模板索引」降级。
+    pub fn stat_descriptions(
+        &self,
+    ) -> Result<Option<pobr_data::catalog::stat_descriptions::StatDescriptionsDef>, LoadError> {
+        let path = self.overlay_path("stat_descriptions.json");
+        if !self.file_exists(&path) {
+            return Ok(None);
+        }
+        self.load_json_at(path).map(Some)
+    }
+
     /// 加载某语言的词缀名称边车（`id -> 本地化名称`）。
     pub fn mod_names(
         &self,

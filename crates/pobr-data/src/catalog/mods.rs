@@ -22,6 +22,18 @@ pub struct StatDef {
     pub category: Option<u32>,
 }
 
+/// 词缀掷出权重条目（来自 `Mods.SpawnWeight_Tags` + `SpawnWeight_Values` 平行数组）。
+///
+/// 判定某基底能否掷到该词缀：按顺序找第一个命中基底 tag 集的条目，取其 weight；
+/// weight = 0 表示掷不到（PoB2 `Item:GetModSpawnWeight` 同语义）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpawnWeight {
+    /// 匹配的基底 tag（解析 `Tags.Id`，如 `ring` / `str_armour`；`default` 兜底）。
+    pub tag: String,
+    /// 权重值（0 = 该 tag 下不可掷出）。
+    pub weight: u32,
+}
+
 /// 词缀（mod）某个 stat 槽位的掷值区间（来自 `Mods.StatNValue`，形如 `[min, max]`）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModStat {
@@ -59,4 +71,13 @@ pub struct ModDef {
     pub stats: Vec<ModStat>,
     /// 标签（解析 `Tags.Id`）。
     pub tags: Vec<String>,
+    /// 词缀组（解析 `ModType` 外键 → `ModType.Name`，即 PoB2 导出的 `group`）。
+    /// 同一条强度线（如 Strength1..9）共享同组，是 tier 排名的分组键。
+    /// 旧版本数据无此字段（serde 缺省 None）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    /// 掷出权重表（tag → weight，顺序敏感：取第一个命中项）。
+    /// 旧版本数据无此字段（serde 缺省空）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub spawn_weights: Vec<SpawnWeight>,
 }

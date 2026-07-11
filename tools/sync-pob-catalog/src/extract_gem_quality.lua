@@ -32,8 +32,19 @@ end
 -- __index 自映射即可让数据文件顶层求值通过。
 ----------------------------------------------------------------------
 SkillType = setmetatable({}, { __index = function(_, k) return k end })
-ModFlag = setmetatable({}, { __index = function(_, k) return k end })
-KeywordFlag = setmetatable({}, { __index = function(_, k) return k end })
+-- 惰性数字位枚举：新 vendor 在技能数据顶层就调 bit.bor(ModFlag.X, ...)，
+-- 字符串 stub 会炸（number expected）；值只需互异、不进产物。
+local function flagEnum()
+	local nextBit = 1
+	return setmetatable({}, { __index = function(t, k)
+		local v = nextBit
+		nextBit = nextBit * 2
+		rawset(t, k, v)
+		return v
+	end })
+end
+ModFlag = flagEnum()
+KeywordFlag = flagEnum()
 
 -- 与 vendor Modules/Data.lua 的 makeSkillMod/makeFlagMod/makeSkillDataMod 同形：
 -- mod(...) 调用捕获为纯表（本脚本不消费 mods，仅保证文件可执行）。

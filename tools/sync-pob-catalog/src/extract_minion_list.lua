@@ -27,8 +27,19 @@ end
 
 -- 最小 stub 环境（同 extract_skill_overrides.lua）
 SkillType = setmetatable({}, { __index = function(_, k) return k end })
-ModFlag = setmetatable({}, { __index = function(_, k) return k end })
-KeywordFlag = setmetatable({}, { __index = function(_, k) return k end })
+-- 惰性数字位枚举：新 vendor 在技能数据顶层就调 bit.bor(ModFlag.X, ...)，
+-- 字符串 stub 会炸（number expected）；值只需互异、不进产物。
+local function flagEnum()
+	local nextBit = 1
+	return setmetatable({}, { __index = function(t, k)
+		local v = nextBit
+		nextBit = nextBit * 2
+		rawset(t, k, v)
+		return v
+	end })
+end
+ModFlag = flagEnum()
+KeywordFlag = flagEnum()
 
 local function makeSkillMod(modName, modType, modVal, flags, keywordFlags, ...)
 	return {

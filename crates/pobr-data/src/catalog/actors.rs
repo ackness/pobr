@@ -111,6 +111,18 @@ pub struct MinionEntryDef {
     pub spectre_reservation: f64,
     /// 伴侣保留量（`companionReservation`）。
     pub companion_reservation: f64,
+    /// 伴侣形态火抗覆盖（`companionFireResist`，PoB2 0.5.4 起；缺失 = 沿用本体）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub companion_fire_resist: Option<f64>,
+    /// 伴侣形态冰抗覆盖（`companionColdResist`）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub companion_cold_resist: Option<f64>,
+    /// 伴侣形态电抗覆盖（`companionLightningResist`）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub companion_lightning_resist: Option<f64>,
+    /// 伴侣形态混沌抗覆盖（`companionChaosResist`）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub companion_chaos_resist: Option<f64>,
     /// 怪物类别（`monsterCategory`，如 `Undead`/`Demon`）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub monster_category: Option<String>,

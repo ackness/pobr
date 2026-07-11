@@ -13,7 +13,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use pobr_data::catalog::{ModDef, ModStat, StatDef};
+use pobr_data::catalog::{ModDef, ModStat, SpawnWeight, StatDef};
 use serde::Deserialize;
 
 use crate::{RawNamed, read_json, resolve, write_pretty};
@@ -64,6 +64,10 @@ struct RawMod {
     stat4_value: [i64; 2],
     #[serde(rename = "Tags", default)]
     tags: Vec<usize>,
+    #[serde(rename = "SpawnWeight_Tags", default)]
+    spawn_weight_tags: Vec<usize>,
+    #[serde(rename = "SpawnWeight_Values", default)]
+    spawn_weight_values: Vec<i64>,
 }
 
 /// 适配 Stats + Mods 域，写出 `base/stats.json` / `base/mods.json` /
@@ -80,6 +84,30 @@ pub fn adapt(
     let stats = adapt_stats(en, base_dir)?;
     let (kept, filtered, zh) = adapt_mods(en, tw, stat_lookup, tags_lookup, base_dir, version_dir)?;
     Ok((stats, kept, filtered, zh))
+}
+
+/// `ModType.json`（`_index` + `Name`）→ 按位置索引的组名查表。
+/// 旧 tables 快照无此表时降级为空表（group 字段整列缺省，非致命）。
+fn mod_type_lookup(en: &Path) -> Vec<String> {
+    #[derive(Deserialize)]
+    struct RawModType {
+        #[serde(rename = "_index")]
+        index: usize,
+        #[serde(rename = "Name")]
+        name: Option<String>,
+    }
+    let Ok(rows) = read_json::<Vec<RawModType>>(&en.join("ModType.json")) else {
+        eprintln!("⚠ pobr-data-adapter：ModType.json 缺失/不可读——mods.json 的 group 字段整列缺省");
+        return Vec::new();
+    };
+    let max = rows.iter().map(|r| r.index).max().map_or(0, |m| m + 1);
+    let mut table = vec![String::new(); max];
+    for r in rows {
+        if let Some(n) = r.name {
+            table[r.index] = n;
+        }
+    }
+    table
 }
 
 fn adapt_stats(en: &Path, base_dir: &Path) -> Result<usize, String> {
@@ -108,6 +136,7 @@ fn adapt_mods(
     version_dir: &Path,
 ) -> Result<(usize, usize, usize), String> {
     let raw_mods = read_json::<Vec<RawMod>>(&en.join("Mods.json"))?;
+    let mod_types = mod_type_lookup(en);
     let tw_names = read_json::<Vec<RawNamed>>(&tw.join("Mods.json"))?;
     let tw_by_index: BTreeMap<usize, String> = tw_names
         .into_iter()
@@ -141,6 +170,19 @@ fn adapt_mods(
             .filter_map(|&i| resolve(tags_lookup, i))
             .collect();
 
+        // SpawnWeight_Tags/Values 是平行数组；顺序敏感（判定取第一个命中 tag）。
+        let spawn_weights: Vec<SpawnWeight> = raw
+            .spawn_weight_tags
+            .iter()
+            .zip(raw.spawn_weight_values.iter())
+            .filter_map(|(&tag_idx, &weight)| {
+                Some(SpawnWeight {
+                    tag: resolve(tags_lookup, tag_idx)?,
+                    weight: weight.max(0) as u32,
+                })
+            })
+            .collect();
+
         mods.push(ModDef {
             id: raw.id,
             name,
@@ -150,6 +192,8 @@ fn adapt_mods(
             level: raw.level.unwrap_or(0).max(0) as u32,
             stats,
             tags,
+            group: raw.mod_type.and_then(|i| resolve(&mod_types, i as usize)),
+            spawn_weights,
         });
     }
 

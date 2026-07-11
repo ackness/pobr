@@ -20,12 +20,40 @@ use crate::extract_lua::{ExtractLuaArgs, OverlayMeta, build_overlay_meta};
 /// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）
 const BOOTSTRAP_LUA: &str = include_str!("extract_base_overrides.lua");
 
-/// 默认抽取的 vendor 基底数据文件：盾（`armour.BlockChance`）、权杖（`spirit`）、
-/// 弩（`weapon.ReloadTimeBase`，M4-T4 W-D2）与药剂/护符（`flask.lua` 的
-/// `charm.buff`，charm 基底固有 buff 词条如 Ruby Charm 火抗）。vendor 全量
-/// Data/Bases 中携带目标字段者（`grep -l` 核实：block/spirit 2026-06-11、
-/// ReloadTimeBase 仅 crossbow.lua、charm.buff 仅 flask.lua 2026-07-01）。
-pub const DEFAULT_BASE_FILES: &[&str] = &["crossbow", "flask", "sceptre", "shield"];
+/// 默认抽取的 vendor 基底数据文件：自 `tags` 字段（完整基底 tag 集，词缀 tier
+/// 反查的 spawn weight 判定必需）加入后取 **Data/Bases 全量**——每个可装备基底
+/// 都需要 tag 全集；block/spirit/reload/charm_buff 各自只在个别文件出现，全量
+/// 抽取天然覆盖。
+pub const DEFAULT_BASE_FILES: &[&str] = &[
+    "amulet",
+    "axe",
+    "belt",
+    "body",
+    "boots",
+    "bow",
+    "claw",
+    "crossbow",
+    "dagger",
+    "fishing",
+    "flail",
+    "flask",
+    "focus",
+    "gloves",
+    "helmet",
+    "incursionlimb",
+    "jewel",
+    "mace",
+    "quiver",
+    "ring",
+    "sceptre",
+    "shield",
+    "spear",
+    "staff",
+    "sword",
+    "talisman",
+    "traptool",
+    "wand",
+];
 
 /// 当前 overlay 文档 schema 标识（字段演化时递增）
 pub const BASE_ITEM_OVERRIDES_SCHEMA: &str = "base_item_overrides/v1";
@@ -166,6 +194,7 @@ mod tests {
                 spirit: Some(100),
                 reload_time_ms: None,
                 charm_buff: None,
+                tags: None,
             },
             BaseItemOverrideEntry {
                 name: "Crude Tower Shield".to_string(),
@@ -173,6 +202,7 @@ mod tests {
                 spirit: None,
                 reload_time_ms: None,
                 charm_buff: None,
+                tags: None,
             },
             BaseItemOverrideEntry {
                 name: "Makeshift Crossbow".to_string(),
@@ -180,6 +210,7 @@ mod tests {
                 spirit: None,
                 reload_time_ms: Some(800),
                 charm_buff: None,
+                tags: None,
             },
             BaseItemOverrideEntry {
                 name: "Ruby Charm".to_string(),
@@ -187,6 +218,7 @@ mod tests {
                 spirit: None,
                 reload_time_ms: None,
                 charm_buff: Some(vec!["+25% to Fire Resistance".to_string()]),
+                tags: None,
             },
         ];
         let a = assemble_base_overrides_document(meta.clone(), entries.clone());

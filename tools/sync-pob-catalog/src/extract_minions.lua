@@ -172,6 +172,11 @@ local OPTIONAL_NUM = {
 	{ "armour", "armour" },
 	{ "evasion", "evasion" },
 	{ "energyShield", "energy_shield" },
+	-- PoB2 0.5.4 起：伴侣形态的分抗性覆盖（缺失 = 沿用本体抗性）。
+	{ "companionFireResist", "companion_fire_resist" },
+	{ "companionColdResist", "companion_cold_resist" },
+	{ "companionLightningResist", "companion_lightning_resist" },
+	{ "companionChaosResist", "companion_chaos_resist" },
 }
 local OPTIONAL_STR = {
 	{ "limit", "limit" },

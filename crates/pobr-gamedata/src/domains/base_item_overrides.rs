@@ -22,6 +22,9 @@
 //!    时补零值 [`WeaponBaseStats`] 再写，不丢值（与规则 2 同构）。
 //! 6. `charm_buff`（charm 基底固有 buff 词条，vendor `flask.lua` `charm.buff`）
 //!    覆盖写入 `BaseItemDef::charm_buff`（`Some` 时 clone 覆盖，`None` 不动）。
+//! 7. `tags`（完整基底 tag 集，vendor `.it` 继承链合并产物）与 base 侧 `.dat`
+//!    末端 tag **并集**写入 `BaseItemDef::tags`（排序去重；`None` 不动）——词缀
+//!    spawn weight 判定（tier 反查）需要 `body_armour`/`armour` 等类目 tag。
 
 use pobr_data::catalog::base_item_overrides::BaseItemOverridesDef;
 use pobr_data::catalog::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
@@ -92,6 +95,13 @@ pub fn apply_base_item_overrides(bases: &mut [BaseItemDef], overrides: &BaseItem
         if let Some(charm_buff) = entry.charm_buff.as_ref() {
             base.charm_buff = charm_buff.clone();
         }
+        if let Some(tags) = entry.tags.as_ref() {
+            // 规则 7：tag 并集（.dat 末端 tag + vendor 全集），排序去重保持确定性。
+            let mut merged: Vec<String> = base.tags.iter().chain(tags.iter()).cloned().collect();
+            merged.sort_unstable();
+            merged.dedup();
+            base.tags = merged;
+        }
     }
 }
 
@@ -144,6 +154,7 @@ mod tests {
                     spirit: None,
                     reload_time_ms: None,
                     charm_buff: None,
+                    tags: None,
                 },
                 BaseItemOverrideEntry {
                     name: "Omen Sceptre".to_string(),
@@ -151,6 +162,7 @@ mod tests {
                     spirit: Some(100),
                     reload_time_ms: None,
                     charm_buff: None,
+                    tags: None,
                 },
             ],
         };
@@ -176,6 +188,7 @@ mod tests {
                 spirit: None,
                 reload_time_ms: None,
                 charm_buff: None,
+                tags: None,
             }],
         };
         apply_base_item_overrides(&mut bases, &overrides);
@@ -195,6 +208,7 @@ mod tests {
                 spirit: None,
                 reload_time_ms: None,
                 charm_buff: None,
+                tags: None,
             }],
         };
         apply_base_item_overrides(&mut bases, &overrides);
@@ -224,6 +238,7 @@ mod tests {
                     spirit: None,
                     reload_time_ms: Some(800),
                     charm_buff: None,
+                    tags: None,
                 },
                 BaseItemOverrideEntry {
                     name: "Weaponless Oddity".to_string(),
@@ -231,6 +246,7 @@ mod tests {
                     spirit: None,
                     reload_time_ms: Some(750),
                     charm_buff: None,
+                    tags: None,
                 },
             ],
         };
@@ -267,6 +283,7 @@ mod tests {
                     spirit: None,
                     reload_time_ms: None,
                     charm_buff: Some(vec!["+25% to Fire Resistance".to_string()]),
+                    tags: None,
                 },
                 BaseItemOverrideEntry {
                     name: "Topaz Charm".to_string(),
@@ -274,6 +291,7 @@ mod tests {
                     spirit: None,
                     reload_time_ms: None,
                     charm_buff: Some(vec!["+25% to Lightning Resistance".to_string()]),
+                    tags: None,
                 },
                 // charm_buff None → 不动（保持空），且校验非 charm 基底不受扰动。
                 BaseItemOverrideEntry {
@@ -282,6 +300,7 @@ mod tests {
                     spirit: None,
                     reload_time_ms: None,
                     charm_buff: None,
+                    tags: None,
                 },
             ],
         };
