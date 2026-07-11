@@ -65,7 +65,7 @@ export default function App() {
         busy={session.busy}
       />
       <div className="app-body">
-        <StatSidebar calc={session.calc} lang={lang} onStatClick={focusStat} />
+        <StatSidebar session={session} lang={lang} onStatClick={focusStat} />
         <main className="app-main">
           {session.error && (
             <div className="calc-error" role="alert">

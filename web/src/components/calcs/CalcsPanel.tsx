@@ -17,26 +17,8 @@ import {
 } from '../../lib/i18n';
 import { getBackend } from '../../api/backend';
 import { useEffect } from 'react';
-import { prettySkillId } from '../skills/SkillsPanel';
-import { gemDisplayName } from '../skills/GemPicker';
-import type { GemCatalogEntry } from '../../api/types';
+import { useSkillName } from '../../hooks/useSkillName';
 import './calcs.css';
-
-/** 技能名本地化：宝石目录中文名 → 回退 id 美化。 */
-function useSkillName(lang: Lang): (skillId: string) => string {
-  const [catalog, setCatalog] = useState<GemCatalogEntry[]>([]);
-  useEffect(() => {
-    getBackend()
-      .then((b) => b.gemCatalog())
-      .then(setCatalog)
-      .catch(() => {});
-  }, []);
-  const byId = useMemo(() => new Map(catalog.map((e) => [e.skill_id, e])), [catalog]);
-  return (skillId: string) => {
-    const entry = byId.get(skillId);
-    return entry ? gemDisplayName(entry, lang) : prettySkillId(skillId);
-  };
-}
 
 interface Props {
   session: BuildSession;
@@ -140,36 +122,52 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
   );
 }
 
-/** 逐技能组 DPS（点击触发；每组走完整管线 scoped 重算，品质/升华/装备词条全生效）。 */
+/**
+ * 逐技能组 DPS（PoB2 侧栏技能列表的 Calcs 版）：每组走完整管线 scoped 重算
+ * （品质/升华/装备词条全生效）。挂载与 build 变动时自动刷新（轻度防抖合并
+ * 连续编辑）；点击某行把该组设为主技能。
+ */
 function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
   const [report, setReport] = useState<FullDpsResponse | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const run = async () => {
-    setRunning(true);
-    setError(null);
-    try {
-      setReport(await session.runFullDps());
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setRunning(false);
-    }
-  };
+  const { stateVersion, runFullDps } = session;
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setRunning(true);
+      setError(null);
+      runFullDps()
+        .then((result) => {
+          if (!cancelled) setReport(result);
+        })
+        .catch((err) => {
+          if (!cancelled) setError(String(err));
+        })
+        .finally(() => {
+          if (!cancelled) setRunning(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [stateVersion, runFullDps]);
 
   const skillName = useSkillName(lang);
+  const mainIndex = session.calc?.main_skill?.group_index;
   const groupLabel = (index: number, skillId: string) =>
     `${tt('calcs.group')} ${index + 1} · ${skillName(skillId)}`;
 
   return (
     <section className="attribution-view" aria-labelledby="fulldps-heading">
-      <h3 id="fulldps-heading">{tt('calcs.fullDps')}</h3>
+      <h3 id="fulldps-heading">
+        {tt('calcs.fullDps')}
+        {running && <span className="calcs-hint"> {tt('calcs.running')}</span>}
+      </h3>
       <p className="calcs-hint">{tt('calcs.fullDpsHint')}</p>
-      <button onClick={run} disabled={running || session.busy}>
-        {running ? tt('calcs.running') : tt('calcs.runFullDps')}
-      </button>
       {error && <div className="calc-error">{error}</div>}
       {report &&
         (report.per_skill.length === 0 ? (
@@ -187,15 +185,18 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
                 {[...report.per_skill]
                   .sort((a, b) => b.dps - a.dps)
                   .map((entry) => (
-                    <tr key={entry.group_index}>
+                    <tr
+                      key={entry.group_index}
+                      className={`fulldps-row${entry.group_index === mainIndex ? ' is-main' : ''}`}
+                      title={tt('skills.setMain')}
+                      onClick={() =>
+                        session.updateParams({ main_socket_group: entry.group_index })
+                      }
+                    >
                       <td>{groupLabel(entry.group_index, entry.skill_id)}</td>
                       <td className="mod-value">{formatStatValue(entry.dps, 'float2')}</td>
                     </tr>
                   ))}
-                <tr className="attribution-baseline">
-                  <td>{tt('calcs.fullDpsTotal')}</td>
-                  <td className="mod-value">{formatStatValue(report.full_dps, 'float2')}</td>
-                </tr>
               </tbody>
             </table>
           </div>

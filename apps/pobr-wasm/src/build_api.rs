@@ -624,14 +624,6 @@ fn orchestrator_options(req: &CalculateBuildRequest) -> Result<DataOrchestratorO
     })
 }
 
-/// 跑一次完整编排（decode → Build → calculate_with_data_session）。
-fn run_session(req: &CalculateBuildRequest) -> Result<CalculationSession, String> {
-    let data = state::build_data()?;
-    let mut build = parse_build_from_request(req)?;
-    apply_request_overrides(&mut build, req, &data)?;
-    run_session_for_build(&build, req)
-}
-
 fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Build, String> {
     if req.pob_code.trim().is_empty() {
         // 白手起 build（PoB2 新建语义）：无装备/无技能组的空 build，
@@ -753,6 +745,63 @@ fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJs
     })
 }
 
+/// 主技能击中伤害的单类型分量（非暴击腿，玩家侧、敌减伤前——PoB2 Calcs 页
+/// 伤害分解同口径；占比展示用 `avg`）。
+#[derive(Debug, Serialize)]
+struct HitDamagePartJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`。
+    damage_type: String,
+    min: f64,
+    max: f64,
+    /// `(min + max) / 2`。
+    avg: f64,
+}
+
+/// 主技能（引擎实际计算围绕的技能）身份 + 伤害分解（PoB2 左侧栏 Main Skill +
+/// Calcs 伤害分解区的对应物）。每次重算随响应返回——装备/天赋一变即时更新。
+#[derive(Debug, Serialize)]
+struct MainSkillJson {
+    /// 选中技能组（0-based，与请求的 `socket_groups` 对齐）。
+    group_index: usize,
+    /// 该组主技能的授予效果 id。
+    skill_id: String,
+    /// 按伤害类型拆分的击中分量。
+    hit_damage: Vec<HitDamagePartJson>,
+    /// 击中 DPS（`TotalDPS`）。
+    hit_dps: f64,
+    /// 全部持续伤害合计 DPS（`TotalDotDPS`）。
+    dot_dps: f64,
+    /// 综合 DPS（`CombinedDPS`）。
+    combined_dps: f64,
+}
+
+fn main_skill_json(
+    build: &Build,
+    data: &BuildData,
+    output: &pobr_core::calc::OutputTable,
+) -> Option<MainSkillJson> {
+    let (group_index, skill_id) = pobr_build::resolve_main_skill_selection(build, data)?;
+    let hit_damage = output
+        .damage_components
+        .iter()
+        .filter(|c| c.kind == pobr_data::prelude::DamageKind::Hit)
+        .map(|c| HitDamagePartJson {
+            damage_type: format!("{:?}", c.damage_type),
+            min: c.min,
+            max: c.max,
+            avg: (c.min + c.max) / 2.0,
+        })
+        .collect();
+    Some(MainSkillJson {
+        group_index,
+        skill_id,
+        hit_damage,
+        hit_dps: output.dps,
+        dot_dps: output.total_dot_dps,
+        combined_dps: output.combined_dps,
+    })
+}
+
 #[derive(Debug, Serialize)]
 struct CalculateBuildResponse {
     /// display_catalog 全量 Computed 字段（id/value/category）。
@@ -761,15 +810,20 @@ struct CalculateBuildResponse {
     unsupported_modifiers: Vec<String>,
     /// 聚合属性的词条分解（键 = ModName，见 [`BREAKDOWN_MOD_NAMES`]）。
     breakdowns: BTreeMap<String, BreakdownJson>,
+    /// 主技能身份 + 伤害分解（`null` = build 无可解析的伤害主技能）。
+    main_skill: Option<MainSkillJson>,
 }
 
-/// 0.2 + 0.3：完整 build 计算 → display_catalog 全量键值 + breakdown。
+/// 0.2 + 0.3：完整 build 计算 → display_catalog 全量键值 + breakdown + 主技能分解。
 ///
 /// 需先初始化游戏数据（`init` 系列入口）。
 pub fn calculate_build_json(request_json: &str) -> Result<String, String> {
     let req: CalculateBuildRequest =
         serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
-    let session = run_session(&req)?;
+    let data = state::build_data()?;
+    let mut build = parse_build_from_request(&req)?;
+    apply_request_overrides(&mut build, &req, &data)?;
+    let session = run_session_for_build(&build, &req)?;
     let stats = pobr_core::extract_display_values(session.output());
     let breakdowns = BREAKDOWN_MOD_NAMES
         .iter()
@@ -779,6 +833,7 @@ pub fn calculate_build_json(request_json: &str) -> Result<String, String> {
         stats,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
         breakdowns,
+        main_skill: main_skill_json(&build, &data, session.output()),
     };
     serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))
 }

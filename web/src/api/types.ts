@@ -218,11 +218,37 @@ export interface Breakdown {
   mods: BreakdownMod[];
 }
 
+/** 主技能击中伤害的单类型分量（非暴击腿、玩家侧敌减伤前；占比用 avg）。 */
+export interface HitDamagePart {
+  /** Physical / Fire / Cold / Lightning / Chaos。 */
+  damage_type: string;
+  min: number;
+  max: number;
+  avg: number;
+}
+
+/** 主技能身份 + 伤害分解（PoB2 左侧栏 Main Skill 的对应物；每次重算刷新）。 */
+export interface MainSkillInfo {
+  /** 选中技能组（0-based，与请求 socket_groups 对齐）。 */
+  group_index: number;
+  /** 该组主技能的授予效果 id。 */
+  skill_id: string;
+  hit_damage: HitDamagePart[];
+  /** 击中 DPS（TotalDPS）。 */
+  hit_dps: number;
+  /** 持续伤害合计 DPS（TotalDotDPS）。 */
+  dot_dps: number;
+  /** 综合 DPS（CombinedDPS）。 */
+  combined_dps: number;
+}
+
 export interface CalculateBuildResponse {
   stats: DisplayStatValue[];
   unsupported_modifiers: string[];
   /** 键 = 聚合 ModName（Life / EnergyShield / FireResist / ...）。 */
   breakdowns: Record<string, Breakdown>;
+  /** 主技能分解（null = 无可解析的伤害主技能）。 */
+  main_skill: MainSkillInfo | null;
 }
 
 // ---------------------------------------------------------------------------

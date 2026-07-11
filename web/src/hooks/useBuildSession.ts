@@ -113,7 +113,7 @@ export interface BuildSession {
   updateParams: (patch: Partial<CalcParams>) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
-  /** 逐技能组 DPS + FullDPS 汇总（点击触发，1 + 组数次完整计算）。 */
+  /** 逐技能组 DPS（Calcs 页技能列表消费；每组一次 scoped 完整计算）。 */
   runFullDps: () => Promise<FullDpsResponse>;
 }
 

@@ -117,18 +117,34 @@ const DICT = {
   'calcs.fullDps': { 'en-US': 'Skill DPS', 'zh-TW': '技能 DPS', 'zh-CN': '技能 DPS' },
   'calcs.fullDpsHint': {
     'en-US':
-      'Recomputes the full pipeline once per enabled damage skill group (quality, ascendancy and gear all apply). Item-granted skills are not modelled yet.',
-    'zh-TW': '每個啟用的傷害技能組各跑一次完整管線（品質/升華/裝備詞綴全部生效）；裝備授予的技能暫未建模。',
-    'zh-CN': '每个启用的伤害技能组各跑一次完整管线（品质/升华/装备词缀全部生效）；装备授予的技能暂未建模。',
+      'DPS of each enabled damage skill group in the full build context. Click a row to make it the main skill; the list refreshes as the build changes.',
+    'zh-TW': '每個啟用傷害技能組在完整 build 語境下的 DPS。點擊某行設為主技能；build 變動時列表自動刷新。',
+    'zh-CN': '每个启用伤害技能组在完整 build 语境下的 DPS。点击某行设为主技能；build 变动时列表自动刷新。',
   },
-  'calcs.runFullDps': { 'en-US': 'Compute skill DPS', 'zh-TW': '計算技能 DPS', 'zh-CN': '计算技能 DPS' },
-  'calcs.fullDpsTotal': { 'en-US': 'Full DPS (sum)', 'zh-TW': 'Full DPS（合計）', 'zh-CN': 'Full DPS（合计）' },
   'calcs.fullDpsEmpty': {
     'en-US': 'No enabled damage skill groups.',
     'zh-TW': '沒有啟用的傷害技能組。',
     'zh-CN': '没有启用的伤害技能组。',
   },
   'calcs.skill': { 'en-US': 'Skill', 'zh-TW': '技能', 'zh-CN': '技能' },
+
+  // 侧边栏主技能区
+  'sidebar.mainSkill': { 'en-US': 'Main Skill', 'zh-TW': '主技能', 'zh-CN': '主技能' },
+  'sidebar.noMainSkill': {
+    'en-US': 'No damage skill in this build.',
+    'zh-TW': '此 build 沒有可計算的傷害技能。',
+    'zh-CN': '此 build 没有可计算的伤害技能。',
+  },
+  'sidebar.disabledGroup': { 'en-US': '(disabled)', 'zh-TW': '（停用）', 'zh-CN': '（停用）' },
+  'sidebar.computedSkill': { 'en-US': 'Computing', 'zh-TW': '實際計算', 'zh-CN': '实际计算' },
+  'sidebar.hitDps': { 'en-US': 'Hit DPS', 'zh-TW': '擊中 DPS', 'zh-CN': '击中 DPS' },
+  'sidebar.dotDps': { 'en-US': 'DoT DPS', 'zh-TW': '持續傷害 DPS', 'zh-CN': '持续伤害 DPS' },
+  'sidebar.combinedDps': { 'en-US': 'Combined DPS', 'zh-TW': '綜合 DPS', 'zh-CN': '综合 DPS' },
+  'sidebar.damageShare': {
+    'en-US': 'Hit Damage by Type',
+    'zh-TW': '擊中傷害構成',
+    'zh-CN': '击中伤害构成',
+  },
 
   // Tree 页
   'tree.title': { 'en-US': 'Passive Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
@@ -355,6 +371,19 @@ export function originKindLabel(lang: Lang, kind: string): string {
 /** 聚合属性名（breakdown 键 / 归因字段）→ 本地化。 */
 export function statNameLabel(lang: Lang, id: string): string {
   return MOD_NAME_LABELS[id]?.[lang] ?? id;
+}
+
+const DAMAGE_TYPE_LABELS: Record<string, Entry> = {
+  Physical: { 'en-US': 'Physical', 'zh-TW': '物理', 'zh-CN': '物理' },
+  Fire: { 'en-US': 'Fire', 'zh-TW': '火焰', 'zh-CN': '火焰' },
+  Cold: { 'en-US': 'Cold', 'zh-TW': '冰冷', 'zh-CN': '冰冷' },
+  Lightning: { 'en-US': 'Lightning', 'zh-TW': '閃電', 'zh-CN': '闪电' },
+  Chaos: { 'en-US': 'Chaos', 'zh-TW': '混沌', 'zh-CN': '混沌' },
+};
+
+/** 伤害类型名（契约 `main_skill.hit_damage[].damage_type`）→ 本地化。 */
+export function damageTypeLabel(lang: Lang, damageType: string): string {
+  return DAMAGE_TYPE_LABELS[damageType]?.[lang] ?? damageType;
 }
 
 const STAT_CATEGORY_LABELS: Record<string, Entry> = {

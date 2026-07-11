@@ -912,5 +912,26 @@
     "Used when you become Frozen",
     "25% Chance to gain a Charge when you kill an enemy",
     "Energy Shield Recharge starts on use"
-  ]
+  ],
+  "main_skill": {
+    "group_index": 0,
+    "skill_id": "FireballPlayer",
+    "hit_damage": [
+      {
+        "damage_type": "Fire",
+        "min": 800.0,
+        "max": 1200.0,
+        "avg": 1000.0
+      },
+      {
+        "damage_type": "Physical",
+        "min": 100.0,
+        "max": 160.0,
+        "avg": 130.0
+      }
+    ],
+    "hit_dps": 2260.0,
+    "dot_dps": 340.0,
+    "combined_dps": 2600.0
+  }
 }

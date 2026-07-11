@@ -104,9 +104,33 @@ fn calculate_build_json_shape() {
             .expect("valid json");
     assert_keys(
         &json,
-        &["stats", "unsupported_modifiers", "breakdowns"],
+        &["stats", "unsupported_modifiers", "breakdowns", "main_skill"],
         "CalculateBuildResponse",
     );
+
+    // main_skill：真实伤害 build 必有主技能，含逐类型击中分量 + hit/dot/combined DPS。
+    let main_skill = &json["main_skill"];
+    assert_keys(
+        main_skill,
+        &[
+            "group_index",
+            "skill_id",
+            "hit_damage",
+            "hit_dps",
+            "dot_dps",
+            "combined_dps",
+        ],
+        "main_skill",
+    );
+    assert!(!main_skill["skill_id"].as_str().unwrap().is_empty());
+    let hit_damage = main_skill["hit_damage"].as_array().unwrap();
+    assert!(!hit_damage.is_empty(), "damage build should have hit parts");
+    assert_keys(
+        &hit_damage[0],
+        &["damage_type", "min", "max", "avg"],
+        "main_skill.hit_damage[0]",
+    );
+    assert!(main_skill["hit_dps"].as_f64().unwrap() > 0.0);
 
     let stats = json["stats"].as_array().unwrap();
     assert!(!stats.is_empty());
@@ -192,6 +216,47 @@ fn calculate_build_json_main_group_override_changes_output() {
         es(&base),
         es(&overridden)
     );
+}
+
+/// main_socket_group 覆盖（0-based）反映在 main_skill.group_index，且各组
+/// hit_dps 与逐组 full_dps 的 scoped 重算同源一致。
+#[test]
+fn main_skill_follows_main_group_override() {
+    ensure_data();
+    let full: Value = serde_json::from_str(
+        &pobr_wasm::full_dps_json(&serde_json::json!({ "pob_code": demo_code() }).to_string())
+            .expect("full dps"),
+    )
+    .unwrap();
+    let per_skill = full["per_skill"].as_array().unwrap();
+    assert!(
+        per_skill.len() >= 2,
+        "demo build has multiple damage groups"
+    );
+    for entry in per_skill {
+        let group_index = entry["group_index"].as_u64().unwrap();
+        let calc: Value = serde_json::from_str(
+            &pobr_wasm::calculate_build_json(
+                &serde_json::json!({
+                    "pob_code": demo_code(),
+                    "main_socket_group": group_index,
+                })
+                .to_string(),
+            )
+            .expect("calc"),
+        )
+        .unwrap();
+        let main_skill = &calc["main_skill"];
+        assert_eq!(main_skill["group_index"].as_u64().unwrap(), group_index);
+        assert_eq!(main_skill["skill_id"], entry["skill_id"]);
+        // 语义不变约束：主技能口径 CombinedDPS == 逐组 full_dps 的该组数值。
+        let combined = main_skill["combined_dps"].as_f64().unwrap();
+        let scoped = entry["dps"].as_f64().unwrap();
+        assert!(
+            (combined - scoped).abs() <= scoped.abs() * 1e-9 + 1e-9,
+            "group {group_index}: main-skill combined {combined} != full_dps scoped {scoped}"
+        );
+    }
 }
 
 /// 白手起 build（无 pob_code，PoB2 新建语义）：character 即可计算，等级驱动基础量。

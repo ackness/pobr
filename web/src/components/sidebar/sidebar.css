@@ -64,6 +64,67 @@ button.stat-row--link:hover dt {
   color: var(--accent-gold-bright);
 }
 
+/* 主技能选择 + 伤害分解（PoB2 Main Skill 下拉对应物） */
+.main-skill-select {
+  width: 100%;
+  margin: var(--space-1) 0 var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+  background: rgb(255 255 255 / 0.04);
+  color: inherit;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.main-skill-select:focus-visible {
+  outline: 2px solid var(--accent-gold);
+}
+
+.main-skill-empty {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.damage-share {
+  margin-top: var(--space-2);
+}
+
+.damage-share-title {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.damage-share-row + .damage-share-row {
+  margin-top: var(--space-1);
+}
+
+.damage-share-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.damage-share-value {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.damage-share-track {
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.07);
+  overflow: hidden;
+}
+
+.damage-share-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
 @media (max-width: 768px) {
   .stat-sidebar {
     width: 100%;

@@ -160,3 +160,16 @@
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
+
+/* 逐技能 DPS 行：可点击设为主技能 */
+.fulldps-row {
+  cursor: pointer;
+}
+
+.fulldps-row:hover td {
+  background: rgb(216 179 106 / 0.08);
+}
+
+.fulldps-row.is-main td {
+  color: var(--accent-gold-bright);
+}
