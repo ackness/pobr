@@ -120,7 +120,7 @@ fi
 # ---- [3] 已注册抽取全跑 → byte-diff ----
 step 3 "sync-pob-catalog 已注册抽取重放（overlay 域）"
 if [[ ! -d "$VENDOR" ]]; then
-    echo "SKIP: vendor 检出不存在（$VENDOR）"
+    echo "SKIP: vendor 检出不存在（${VENDOR}）"
     SKIPPED+=("vendor 缺失 → 全部 overlay 抽取跳过")
 elif ! command -v luajit >/dev/null 2>&1; then
     echo "SKIP: 未安装 luajit（extract-lua 依赖）"
@@ -180,7 +180,7 @@ fi
 step 3b "策展域对账：check-buff-refs（buff_definitions.json）"
 DEFS="$OVERLAY_DIR/buff_definitions.json"
 if [[ ! -d "$VENDOR" ]]; then
-    echo "SKIP: vendor 检出不存在（$VENDOR）"
+    echo "SKIP: vendor 检出不存在（${VENDOR}）"
     SKIPPED+=("vendor 缺失 → buff_definitions 对账跳过")
 elif [[ ! -f "$DEFS" ]]; then
     echo "SKIP: 无 $DEFS"
@@ -206,7 +206,7 @@ if [[ ! -f "$GEN_DIR/parsed_mods.json" ]]; then
     echo "SKIP: 无 $GEN_DIR/parsed_mods.json（precompile 产物未入库）"
     SKIPPED+=("generated/parsed_mods.json 缺失 → precompile 重放跳过")
 elif [[ ! -f "$SD" ]]; then
-    echo "SKIP: 无 $SD（precompile SD 语料输入缺失）"
+    echo "SKIP: 无 ${SD}（precompile SD 语料输入缺失）"
     SKIPPED+=("generated/special_derived.json 缺失 → precompile 重放跳过")
 else
     # 临时数据目录（符号链接输入，real generated 收输出）：examples_dir 取 data_dir
@@ -225,11 +225,11 @@ else
         for art in parsed_mods.json parse-coverage.json; do
             committed="$GEN_DIR/$art"
             if [[ ! -f "$committed" ]]; then
-                echo "SKIP $art（仓库无对应产物）"; SKIPPED+=("generated/$art 未入库")
+                echo "SKIP ${art}（仓库无对应产物）"; SKIPPED+=("generated/$art 未入库")
             elif cmp -s "$PC_DD/generated/$art" "$committed"; then
                 echo "OK   $art byte-diff=0"
             else
-                echo "DIFF $art（重放产物与已提交不一致）"; DIFFED+=("generated/$art"); FAIL=1
+                echo "DIFF ${art}（重放产物与已提交不一致）"; DIFFED+=("generated/$art"); FAIL=1
             fi
         done
     else

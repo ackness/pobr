@@ -48,7 +48,7 @@ cmd_vendor() {
      && [ "$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)" = "$sha" ]; then
     echo "vendor 已在钉定 commit $sha"; return 0
   fi
-  echo "克隆 PoB2 @ $sha（depth 1 fetch-by-sha）..."
+  echo "克隆 PoB2 @ ${sha}（depth 1 fetch-by-sha）..."
   mkdir -p "$VENDOR_DIR"
   git -C "$VENDOR_DIR" rev-parse --git-dir >/dev/null 2>&1 || git -C "$VENDOR_DIR" init -q
   git -C "$VENDOR_DIR" remote get-url origin >/dev/null 2>&1 \
@@ -107,7 +107,7 @@ cmd_lua() {
 cmd_versions() {
   say "已入库数据版本 + 多版本无关性 smoke"
   echo "data/ 版本目录："; ls -d data/[0-9]*/ 2>/dev/null | sed 's#data/##; s#/##' | sed 's/^/    /'
-  echo "活动默认（data/CURRENT / pobr_data::DATA_VERSION）：$DATA_VER（= golden 校验版本）"
+  echo "活动默认（data/CURRENT / pobr_data::DATA_VERSION）：${DATA_VER}（= golden 校验版本）"
   echo "切到更新版本运行（零代码改动）：export POBR_DATA_VERSION=<ver>  或  写 data/CURRENT"
   echo "→ multi_version smoke（对每个版本 BuildData::load + calc）："
   cargo test -p pobr-build --test parity multi_version -- --nocapture 2>&1 \
@@ -121,7 +121,7 @@ cmd_diff() {
     echo "已入库版本："; ls -d data/[0-9]*/ 2>/dev/null | sed 's#data/##; s#/##; s/^/    /'
     return 2
   fi
-  say "语义数据 diff: $a → $b（节点/技能/词条的增删改）"
+  say "语义数据 diff: $a → ${b}（节点/技能/词条的增删改）"
   python3 pipeline/diff-data.py "data/$a" "data/$b" --semantic "${@:4}"
 }
 
@@ -131,7 +131,7 @@ cmd_status() {
   local sha; sha="$(vendor_commit)"
   if [ -f "$VENDOR_DIR/src/Modules/ModParser.lua" ]; then
     local have; have="$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)"
-    [ "$have" = "$sha" ] && echo "✓ vendor: 钉定 commit $sha" || echo "~ vendor: 在 $have（钉定 $sha，driver.sh vendor 对齐）"
+    [ "$have" = "$sha" ] && echo "✓ vendor: 钉定 commit $sha" || echo "~ vendor: 在 ${have}（钉定 ${sha}，driver.sh vendor 对齐）"
   else echo "✗ vendor 未克隆（driver.sh vendor）"; fi
   [ -d "data/$DATA_VER" ] && echo "✓ data: $DATA_VER 已入库" || echo "✗ data: $DATA_VER 缺失"
   command -v cargo >/dev/null && echo "✓ cargo: $(cargo --version)" || echo "✗ cargo 缺失"

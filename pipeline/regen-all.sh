@@ -96,7 +96,8 @@ fi
 GEMFILES="act_dex,act_int,act_str,minion,other,spectre,sup_dex,sup_int,sup_str"
 SMFILES="act_dex,act_int,act_str,other,sup_dex,sup_int,sup_str"
 
-soft_step base_item_overrides "${SYNC[@]}" extract-bases --vendor-root "$VENDOR" --files crossbow,sceptre,shield --out "$OVL/base_item_overrides.json"
+# --files 缺省 = Data/Bases 全量（tags 全集抽取需要每个可装备基底文件）。
+soft_step base_item_overrides "${SYNC[@]}" extract-bases --vendor-root "$VENDOR" --out "$OVL/base_item_overrides.json"
 soft_step catalysts       "${SYNC[@]}" extract-lua --what catalysts       --vendor-root "$VENDOR" --out "$OVL/catalysts.json"
 soft_step config_options  "${SYNC[@]}" extract-lua --what config-options  --vendor-root "$VENDOR" --out "$OVL/config_options.json"
 soft_step curse_priority  "${SYNC[@]}" extract-lua --what curse-priority  --vendor-root "$VENDOR" --out "$OVL/curse_priority.json"
@@ -126,7 +127,7 @@ for f in buff_definitions high_precision_mods local_mods special_mods vendor_nam
         cp "$src" "$OVL/$f.json"
         echo "   carried over: $f.json（人工域，复核游戏平衡变更）"
     else
-        echo "   WARN: 缺 $src，跳过 $f.json" >&2
+        echo "   WARN: 缺 ${src}，跳过 $f.json" >&2
     fi
 done
 
@@ -136,6 +137,11 @@ done
 # unarmed_data）；adapter --raw / extract-lua 都不产出它们。
 echo "== [6b] 手工策展 base 文件从 $OLD_PATCH 沿用"
 mkdir -p "$OUT_DIR/base"
+# 历史树快照（0_1..0_4，冻结不变；旧 build 的 treeVersion 导入适配需要）整目录沿用。
+if [[ -d "data/$OLD_PATCH/base/passive_trees" && ! -d "$OUT_DIR/base/passive_trees" ]]; then
+    cp -R "data/$OLD_PATCH/base/passive_trees" "$OUT_DIR/base/"
+    echo "   carried over: base/passive_trees/（历史树快照）"
+fi
 for f in base_player_mods character_constants enemy_presets game_constants \
          jewel_radii monster_scaling non_damaging_ailments unarmed_data weapon_types; do
     src="data/$OLD_PATCH/base/$f.json"
@@ -154,7 +160,7 @@ if [[ ${#OVERLAY_FAILURES[@]} -gt 0 ]]; then
         new="$OVL/$label.json"; old="data/$OLD_PATCH/overlay/$label.json"
         if [[ ! -f "$new" && -f "$old" ]]; then
             cp "$old" "$new"
-            echo "   fallback: $label.json ← $OLD_PATCH（抽取失败，沿用旧值待复核）"
+            echo "   fallback: $label.json ← ${OLD_PATCH}（抽取失败，沿用旧值待复核）"
         fi
     done
 fi
