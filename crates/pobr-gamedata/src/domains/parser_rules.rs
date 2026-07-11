@@ -43,7 +43,8 @@ mod tests {
     }
 
     /// 仓库真实数据：各段条目数与钉定 vendor commit 的实测值一致
-    /// （蓝图 §1.9 计数自检的消费侧镜像；91/775/202/219/682 + 小查表）。
+    /// （蓝图 §1.9 计数自检的消费侧镜像；91/775/201/219/687 + 小查表。
+    /// 35b654d 起 flag_phrases 202→201、tag_phrases 682→687，本镜像同步）。
     #[test]
     fn real_data_section_counts() {
         let doc = real_data()
@@ -52,9 +53,9 @@ mod tests {
             .expect("仓库数据包应含 mod_parser_rules 域");
         assert_eq!(doc.forms.len(), 91, "forms");
         assert_eq!(doc.name_map.len(), 775, "name_map");
-        assert_eq!(doc.flag_phrases.len(), 202, "flag_phrases");
+        assert_eq!(doc.flag_phrases.len(), 201, "flag_phrases");
         assert_eq!(doc.pre_flags.len(), 219, "pre_flags");
-        assert_eq!(doc.tag_phrases.len(), 682, "tag_phrases");
+        assert_eq!(doc.tag_phrases.len(), 687, "tag_phrases");
         assert_eq!(doc.suffix_types.len(), 40, "suffix_types");
         assert_eq!(doc.damage_types.len(), 5, "damage_types");
         assert_eq!(doc.pen_types.len(), 6, "pen_types");
