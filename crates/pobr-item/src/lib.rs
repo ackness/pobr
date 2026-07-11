@@ -15,9 +15,11 @@
 pub mod annotations;
 pub mod build_raw;
 pub mod draft;
+pub mod tier;
 
 pub use annotations::{ModLineAnnotations, parse_mod_line, round_to};
 pub use draft::{
-    CatalystState, DraftError, DraftHeader, ItemDraft, ItemStates, LineBucket, ModLineDraft,
-    VariantState,
+    CatalystState, DisplayLine, DisplayLineKind, DraftError, DraftHeader, ItemDraft, ItemStates,
+    LineBucket, ModLineDraft, VariantState, classify_display_lines,
 };
+pub use tier::{TierIndex, TierInfo};

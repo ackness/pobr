@@ -269,6 +269,116 @@ impl ItemDraft {
     }
 }
 
+/// 展示用行类别（web Items 面板逐行上色）。对照 [`LineBucket`] 但额外区分
+/// 物品名 / 基底 / 结构行（等级/品质/防御等元数据行）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayLineKind {
+    /// 物品名（rare/unique 标题；normal/magic 取基底名）。
+    Name,
+    /// 基底类型行（有独立标题时）。
+    Base,
+    /// 结构元数据行（Item Level / Quality / Sockets / Corrupted 等）。
+    Struct,
+    Implicit,
+    Explicit,
+    Enchant,
+    Rune,
+    ClassReq,
+}
+
+/// 单条展示行：干净文本 + 类别。
+#[derive(Debug, Clone, PartialEq)]
+pub struct DisplayLine {
+    pub text: String,
+    pub kind: DisplayLineKind,
+}
+
+/// 把 PoB 物品文本块拆成**有序**展示行 + 类别，供前端逐行上色。
+///
+/// 复用 [`ItemDraft::parse`] 的桶分类结果（词条行 → rune/enchant/classReq/implicit/
+/// explicit）与 [`parse_mod_line`] 的标注剥离——分类规则单源，本函数只按原始行序
+/// 重新编排（名/基底/结构行 vs 词条行）。解析失败（空输入）返回空表，调用方回落到无
+/// 区分渲染。
+pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
+    let Ok(draft) = ItemDraft::parse(raw) else {
+        return Vec::new();
+    };
+    // 词条行队列（按原序）：其干净文本用于在原始行序里定位词条行。
+    let mut mods = draft.lines.iter();
+    let mut next_mod = mods.next();
+
+    let lines: Vec<&str> = raw
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    let mut out = Vec::new();
+    let mut idx = 0;
+
+    // Rarity 行不展示（前端亦丢弃）。
+    if lines.first().is_some_and(|l| l.starts_with("Rarity: ")) {
+        idx += 1;
+    }
+    let has_title = matches!(
+        draft.header.rarity.to_ascii_uppercase().as_str(),
+        "RARE" | "UNIQUE" | "RELIC"
+    );
+    let mut name_done = false;
+    if has_title && idx < lines.len() {
+        out.push(DisplayLine {
+            text: lines[idx].to_string(),
+            kind: DisplayLineKind::Name,
+        });
+        name_done = true;
+        idx += 1;
+    }
+    if idx < lines.len()
+        && !draft.header.base_name.is_empty()
+        && lines[idx] == draft.header.base_name
+    {
+        out.push(DisplayLine {
+            text: lines[idx].to_string(),
+            kind: if name_done {
+                DisplayLineKind::Base
+            } else {
+                DisplayLineKind::Name
+            },
+        });
+        idx += 1;
+    }
+
+    for &line in &lines[idx..] {
+        let (_, clean) = parse_mod_line(line);
+        // 词条行：按队列顺序匹配干净文本（draft.lines 即 parse 判定的词条行，权威）。
+        if let Some(m) = next_mod
+            && m.text == clean
+        {
+            out.push(DisplayLine {
+                text: clean,
+                kind: bucket_to_display_kind(m.bucket),
+            });
+            next_mod = mods.next();
+            continue;
+        }
+        // 其余 = 结构/状态行，原样展示。
+        out.push(DisplayLine {
+            text: line.to_string(),
+            kind: DisplayLineKind::Struct,
+        });
+    }
+    out
+}
+
+fn bucket_to_display_kind(bucket: LineBucket) -> DisplayLineKind {
+    match bucket {
+        LineBucket::Rune => DisplayLineKind::Rune,
+        LineBucket::Enchant => DisplayLineKind::Enchant,
+        LineBucket::ClassRequirement => DisplayLineKind::ClassReq,
+        LineBucket::Implicit => DisplayLineKind::Implicit,
+        LineBucket::Explicit => DisplayLineKind::Explicit,
+    }
+}
+
 /// 元数据 `Spec: Value` 行 → 写入 draft 字段；返回 true 表示已消费。
 fn apply_spec(
     draft: &mut ItemDraft,
@@ -576,6 +686,69 @@ Corrupted";
     #[test]
     fn empty_input_errors() {
         assert_eq!(ItemDraft::parse("   \n  \n"), Err(DraftError::Empty));
+    }
+
+    #[test]
+    fn classify_display_lines_labels_each_line() {
+        let raw = "\
+Rarity: RARE
+Apocalypse Pelt
+Falconer's Jacket
+Evasion: 1292
+Item Level: 81
+Sockets: S
+Rune: Perfect Iron Rune
+LevelReq: 75
+Implicits: 2
+{enchant}60% increased Armour
+{rune}Bonded: +60 to maximum Life
++190 to maximum Life
++34% to Cold Resistance";
+        let out = classify_display_lines(raw);
+        let kinds: Vec<DisplayLineKind> = out.iter().map(|l| l.kind).collect();
+        use DisplayLineKind::*;
+        assert_eq!(
+            kinds,
+            vec![
+                Name,     // Apocalypse Pelt
+                Base,     // Falconer's Jacket
+                Struct,   // Evasion: 1292
+                Struct,   // Item Level: 81
+                Struct,   // Sockets: S
+                Struct,   // Rune: Perfect Iron Rune
+                Struct,   // LevelReq: 75
+                Struct,   // Implicits: 2
+                Enchant,  // 60% increased Armour
+                Rune,     // Bonded: +60 to maximum Life
+                Explicit, // +190 to maximum Life
+                Explicit, // +34% to Cold Resistance
+            ]
+        );
+        // mod 行文本已剥标注。
+        assert_eq!(out[8].text, "60% increased Armour");
+        assert_eq!(out[9].text, "Bonded: +60 to maximum Life");
+    }
+
+    #[test]
+    fn classify_display_lines_normal_item_name_only() {
+        let raw = "\
+Rarity: NORMAL
+Sapphire Ring
+Item Level: 50
+Implicits: 1
++30% to Cold Resistance";
+        let out = classify_display_lines(raw);
+        use DisplayLineKind::*;
+        assert_eq!(
+            out.iter().map(|l| l.kind).collect::<Vec<_>>(),
+            vec![Name, Struct, Struct, Implicit],
+        );
+        assert_eq!(out[0].text, "Sapphire Ring");
+    }
+
+    #[test]
+    fn classify_display_lines_empty_input() {
+        assert!(classify_display_lines("   \n").is_empty());
     }
 
     #[test]
