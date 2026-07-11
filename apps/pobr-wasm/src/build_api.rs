@@ -205,6 +205,91 @@ pub fn decode_build_json(code: &str) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
+// classify_item_lines_json（物品文本 → 逐行类别，供 Items 面板上色）
+// ---------------------------------------------------------------------------
+
+/// 单条展示行（`text` 已剥标注，`kind` 用于前端上色）。
+#[derive(Debug, Serialize)]
+struct ItemLineJson {
+    text: String,
+    /// `name` / `base` / `struct` / `implicit` / `explicit` / `enchant` / `rune` / `class_req`。
+    kind: &'static str,
+    /// 词缀档位（1 = 同池最强；仅 rare/magic/normal 的 explicit 行且反查命中时给出）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tier: Option<u32>,
+    /// 该基底可掷的同池总档数（与 `tier` 成对出现）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tier_total: Option<u32>,
+    /// 词缀性质：`prefix` / `suffix`（与 `tier` 成对出现）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    affix: Option<&'static str>,
+}
+
+fn display_line_kind_str(kind: pobr_item::DisplayLineKind) -> &'static str {
+    use pobr_item::DisplayLineKind::*;
+    match kind {
+        Name => "name",
+        Base => "base",
+        Struct => "struct",
+        Implicit => "implicit",
+        Explicit => "explicit",
+        Enchant => "enchant",
+        Rune => "rune",
+        ClassReq => "class_req",
+    }
+}
+
+/// 把一段 PoB 物品文本块拆成有序展示行 + 类别（解析本身不需游戏数据）。
+///
+/// 复用 `pobr_item::classify_display_lines`（与编辑态解析同一套桶分类规则）；空/无法
+/// 解析的文本返回 `[]`，前端回落到无区分渲染。
+///
+/// 词缀 tier（best-effort）：rare/magic/normal 物品的 explicit 行经
+/// [`crate::state::tier_index`] 反查（数据未初始化 / 旧数据包缺池数据 / 反查
+/// 未命中时静默省略 tier 字段——展示增强，不作为硬依赖）。
+pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
+    let tier_ctx = tier_context(text);
+    let lines: Vec<ItemLineJson> = pobr_item::classify_display_lines(text)
+        .into_iter()
+        .map(|l| {
+            let tier = match (&tier_ctx, l.kind) {
+                (Some((index, tags, domain)), pobr_item::DisplayLineKind::Explicit) => {
+                    index.lookup(&l.text, tags, *domain)
+                }
+                _ => None,
+            };
+            ItemLineJson {
+                text: l.text,
+                kind: display_line_kind_str(l.kind),
+                tier: tier.as_ref().map(|t| t.tier),
+                tier_total: tier.as_ref().map(|t| t.total),
+                affix: tier
+                    .as_ref()
+                    .map(|t| if t.is_prefix { "prefix" } else { "suffix" }),
+            }
+        })
+        .collect();
+    serde_json::to_string(&lines).map_err(|e| format!("serialize: {e}"))
+}
+
+/// tier 反查所需上下文：(索引, 基底 tags, 基底 mod_domain)。
+///
+/// 独占（unique/relic）掷值固定无档位概念；基底未识别（自定义基底名）时同样
+/// 省略——宁缺勿错。
+fn tier_context(text: &str) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<String>, u32)> {
+    let draft = pobr_item::ItemDraft::parse(text).ok()?;
+    if matches!(
+        draft.header.rarity.to_ascii_uppercase().as_str(),
+        "UNIQUE" | "RELIC"
+    ) {
+        return None;
+    }
+    let index = state::tier_index()?;
+    let (tags, domain) = state::base_item_tags(&draft.header.base_name)?;
+    Some((index, tags, domain))
+}
+
+// ---------------------------------------------------------------------------
 // 0.2 + 0.3 calculate_build_json（display_catalog 全量 + breakdown）
 // ---------------------------------------------------------------------------
 
@@ -1304,4 +1389,42 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
         }),
     };
     serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_item_lines_json_kind_sequence() {
+        let text = "\
+Rarity: RARE
+Apocalypse Pelt
+Falconer's Jacket
+Item Level: 81
+Sockets: S
+Implicits: 2
+{enchant}60% increased Armour
+{rune}Bonded: +60 to maximum Life
++190 to maximum Life
++34% to Cold Resistance";
+        let json = classify_item_lines_json(text).expect("classify");
+        let lines: Vec<serde_json::Value> = serde_json::from_str(&json).unwrap();
+        let kinds: Vec<&str> = lines.iter().map(|l| l["kind"].as_str().unwrap()).collect();
+        assert_eq!(
+            kinds,
+            vec![
+                "name", "base", "struct", "struct", "struct", "enchant", "rune", "explicit",
+                "explicit",
+            ]
+        );
+        // 词条行文本已剥标注前缀。
+        assert_eq!(lines[5]["text"], "60% increased Armour");
+        assert_eq!(lines[6]["text"], "Bonded: +60 to maximum Life");
+    }
+
+    #[test]
+    fn classify_item_lines_json_empty_on_blank() {
+        assert_eq!(classify_item_lines_json("  \n").unwrap(), "[]");
+    }
 }

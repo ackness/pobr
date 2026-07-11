@@ -48,6 +48,38 @@
   padding: 1px 0;
 }
 
+/* 词条行按类别上色（PoE 惯例：explicit 魔法蓝，enchant 工艺蓝，rune 浅青）。
+   base/struct/class_req 保持默认灰，不与词条抢视觉。 */
+.item-line--explicit { color: var(--rarity-magic); }
+.item-line--implicit { color: #7f8fd0; }
+.item-line--enchant { color: #b4b4ff; }
+.item-line--rune { color: #88ccff; }
+.item-line--base { color: var(--text-secondary); }
+
+/* 词缀档位徽标（T1 = 同池最强，金色高亮；其余灰色低调）。 */
+.item-tier {
+  margin-left: var(--space-1);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 0.72em;
+  vertical-align: 1px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.item-tier--top {
+  color: #e7b45a;
+  border-color: #e7b45a66;
+}
+
+/* implicit 块 / explicit 块之间的细分隔线。 */
+.item-line-sep {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border-subtle);
+}
+
 .items-hint {
   color: var(--text-secondary);
   font-size: var(--text-sm);

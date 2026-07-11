@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
+import type { ItemLineJson } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
@@ -94,17 +95,70 @@ function useLocalizedLines(lines: string[], lang: Lang): string[] {
   );
 }
 
+/** 词条系类别（与 explicit 之间画分隔线的左侧块）。 */
+const IMPLICIT_KINDS = ['implicit', 'enchant', 'rune', 'class_req'];
+
+/** 物品文本 → 结构化展示行（后端按桶分类；空/异常返回 null 走无区分渲染）。 */
+function useClassifiedLines(text: string): ItemLineJson[] | null {
+  const [lines, setLines] = useState<ItemLineJson[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setLines(null);
+    getBackend()
+      .then((b) => b.classifyItemLines(text))
+      .then((out) => {
+        if (!cancelled) setLines(out.length > 0 ? out : null);
+      })
+      .catch(() => {
+        if (!cancelled) setLines(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [text]);
+  return lines;
+}
+
 function ItemText({ text, lang }: { text: string; lang: Lang }) {
-  const [name, ...rest] = itemLines(text);
-  const lines = useLocalizedLines(rest, lang);
+  const classified = useClassifiedLines(text);
+  // 回落：后端未分类（mock / 旧缓存 / 异常）时，沿用原无区分拆行（首行=名，其余=普通行）。
+  const fallback = useMemo<ItemLineJson[]>(() => {
+    const [name, ...rest] = itemLines(text);
+    return [
+      ...(name ? [{ text: name, kind: 'name' as const }] : []),
+      ...rest.map((t) => ({ text: t, kind: 'struct' as const })),
+    ];
+  }, [text]);
+  const all = classified ?? fallback;
+  const name = all.find((l) => l.kind === 'name')?.text ?? '';
+  const body = all.filter((l) => l.kind !== 'name');
+  const translated = useLocalizedLines(
+    body.map((l) => l.text),
+    lang,
+  );
+  // implicit 系词条块与 explicit 块之间插一条分隔线（PoB2/游戏内惯例）。
+  const firstExplicit = body.findIndex((l) => l.kind === 'explicit');
+  const dividerAt =
+    firstExplicit > 0 && body.some((l) => IMPLICIT_KINDS.includes(l.kind)) ? firstExplicit : -1;
   return (
     <>
       <h4 className="item-name">{name}</h4>
       <div className="item-lines">
-        {lines.map((line, i) => (
-          <div key={i} className="item-line">
-            {line}
-          </div>
+        {body.map((line, i) => (
+          <Fragment key={i}>
+            {i === dividerAt && <div className="item-line-sep" role="separator" />}
+            <div className={`item-line item-line--${line.kind}`}>
+              {translated[i]}
+              {line.tier != null && (
+                <span
+                  className={`item-tier item-tier--${line.tier === 1 ? 'top' : 'rest'}`}
+                  title={`${line.affix === 'prefix' ? '前缀' : '后缀'} · 该基底共 ${line.tier_total} 档`}
+                >
+                  T{line.tier}
+                </span>
+              )}
+            </div>
+          </Fragment>
         ))}
       </div>
     </>

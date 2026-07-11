@@ -29,6 +29,32 @@ export interface SlotItemJson {
   text: string;
 }
 
+// ---------------------------------------------------------------------------
+// classify_item_lines_json（物品文本 → 逐行类别，Items 面板上色）
+// ---------------------------------------------------------------------------
+
+export type ItemLineKind =
+  | 'name'
+  | 'base'
+  | 'struct'
+  | 'implicit'
+  | 'explicit'
+  | 'enchant'
+  | 'rune'
+  | 'class_req';
+
+/** 单条物品展示行：`text` 已剥标注，`kind` 决定前端上色。 */
+export interface ItemLineJson {
+  text: string;
+  kind: ItemLineKind;
+  /** 词缀档位（1 = 同池最强；仅 explicit 行且后端反查命中时给出）。 */
+  tier?: number;
+  /** 该基底可掷的同池总档数（与 tier 成对出现）。 */
+  tier_total?: number;
+  /** 词缀性质（与 tier 成对出现）。 */
+  affix?: 'prefix' | 'suffix';
+}
+
 export interface SocketJewelJson {
   /** 珠宝插槽的树节点 skill id。 */
   socket_node: number;

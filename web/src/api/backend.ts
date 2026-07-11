@@ -15,6 +15,7 @@ import type {
   ConfigOption,
   FullDpsResponse,
   GemCatalogEntry,
+  ItemLineJson,
   PassiveNode,
   PassiveTreeMeta,
 } from './types';
@@ -43,6 +44,8 @@ export interface PobrBackend {
   loadConfigOptions(): Promise<ConfigOption[]>;
   /** 英文词条行 → 简中显示（模板反查；不认识原样返回）。 */
   translateLines(lines: string[]): Promise<string[]>;
+  /** 物品文本 → 逐行类别（Items 面板上色；空/异常返回 []，调用方回落无区分渲染）。 */
+  classifyItemLines(text: string): Promise<ItemLineJson[]>;
   translate(lang: string, key: string): string;
 }
 

@@ -29,6 +29,9 @@ thread_local! {
     /// 配置 list 选项等展示面消费）。
     static EN_TO_ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
         const { RefCell::new(None) };
+    /// 词缀 tier 反查索引（懒构建；`Some(None)` = 数据包缺池数据/模板，降级不标）。
+    static TIER_INDEX: RefCell<Option<Option<Rc<pobr_item::TierIndex>>>> =
+        const { RefCell::new(None) };
 }
 
 /// 注入一个数据文件（`path` = 版本目录内相对路径，正斜杠，如 `base/stats.json`）。
@@ -118,6 +121,31 @@ pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
         }
         slot.as_ref().and_then(Clone::clone)
     })
+}
+
+/// 取词缀 tier 反查索引（首次调用构建并缓存；mods 缺 group/spawn_weights 或
+/// 无 StatDescriptions overlay 的旧数据包返回 `None`——消费侧不标 tier）。
+pub fn tier_index() -> Option<Rc<pobr_item::TierIndex>> {
+    TIER_INDEX.with_borrow_mut(|slot| {
+        if slot.is_none() {
+            let built = (|| {
+                let game = game_data().ok()?;
+                let mods = game.mods().ok()?;
+                let descriptions = game.stat_descriptions().ok().flatten()?;
+                let index = pobr_item::TierIndex::build(&mods, &descriptions);
+                (!index.is_empty()).then(|| Rc::new(index))
+            })();
+            *slot = Some(built);
+        }
+        slot.as_ref().and_then(Clone::clone)
+    })
+}
+
+/// 按英文基底名查 (tags, mod_domain)（tier 反查的适用性输入）。
+pub fn base_item_tags(base_name: &str) -> Option<(Vec<String>, u32)> {
+    let data = build_data().ok()?;
+    let def = data.base_items.get(base_name)?;
+    Some((def.tags.clone(), def.mod_domain))
 }
 
 fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {

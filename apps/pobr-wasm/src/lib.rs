@@ -19,8 +19,9 @@ mod xml_write;
 pub mod zh;
 
 pub use build_api::{
-    attribution_json, calculate_build_json, decode_build_file_json, decode_build_json,
-    encode_build_json, full_dps_json, gem_catalog_json, translate_lines_to_zh_cn_json,
+    attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
+    decode_build_json, encode_build_json, full_dps_json, gem_catalog_json,
+    translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -108,5 +109,11 @@ pub mod wasm {
     pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, JsError> {
         crate::build_api::translate_lines_to_zh_cn_json(lines_json)
             .map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`classifyItemLinesJson(text) -> string`（物品文本 → 逐行类别，Items 面板上色）。
+    #[wasm_bindgen(js_name = classifyItemLinesJson)]
+    pub fn classify_item_lines_json(text: &str) -> Result<String, JsError> {
+        crate::build_api::classify_item_lines_json(text).map_err(|err| JsError::new(&err))
     }
 }

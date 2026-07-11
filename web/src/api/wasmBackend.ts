@@ -15,6 +15,7 @@ import type {
   ConfigCatalogFile,
   FullDpsResponse,
   GemCatalogEntry,
+  ItemLineJson,
   PassiveNode,
   PassiveTreeMeta,
 } from './types';
@@ -33,6 +34,7 @@ interface WasmModule {
   attributionJson(requestJson: string): string;
   gemCatalogJson(): string;
   translateLinesToZhCn(linesJson: string): string;
+  classifyItemLinesJson(text: string): string;
   translate(lang: string, key: string): string;
 }
 
@@ -141,6 +143,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async translateLines(lines) {
       return JSON.parse(wasm.translateLinesToZhCn(JSON.stringify(lines))) as string[];
+    },
+    async classifyItemLines(text) {
+      return JSON.parse(wasm.classifyItemLinesJson(text)) as ItemLineJson[];
     },
     async loadConfigOptions() {
       if (!manifest) {

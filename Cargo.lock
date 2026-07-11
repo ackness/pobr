@@ -500,6 +500,7 @@ dependencies = [
  "pobr-data",
  "pobr-gamedata",
  "pobr-i18n",
+ "pobr-item",
  "serde",
  "serde_json",
  "wasm-bindgen",
