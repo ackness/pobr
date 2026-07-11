@@ -45,7 +45,8 @@ pub use calc_cache::CalcCache;
 pub use calc_orchestrator::{
     DataOrchestratorOptions, FullDpsReport, OrchestratorOptions, SkillDps, StatMapCompareRecord,
     StatMapMode, TreeVersionReport, calculate, calculate_full_dps, calculate_with_data,
-    calculate_with_data_session, diagnose_tree_version, take_stat_map_compare_records,
+    calculate_with_data_session, diagnose_tree_version, resolve_main_skill_selection,
+    take_stat_map_compare_records,
 };
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};

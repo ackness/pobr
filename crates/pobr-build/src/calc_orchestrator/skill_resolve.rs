@@ -275,6 +275,31 @@ pub(crate) fn resolve_main_skill<'b>(
     None
 }
 
+/// 主技能选择结果（UI 展示用）：计算实际会围绕哪个技能组/技能进行。
+///
+/// 与 [`resolve_main_skill`] 同一选择语义（`mainSocketGroup` 优先 + 启用组回退
+/// 扫描），但只返回身份不做计算——供 wasm/web 的主技能下拉显示「引擎选中了谁」
+/// （含 `mainSocketGroup` 指向无伤害技能组时的回退结果）。
+pub fn resolve_main_skill_selection(build: &Build, data: &BuildData) -> Option<(usize, String)> {
+    if let Some(n) = build.main_socket_group
+        && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
+        && let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
+        && resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index).is_some()
+    {
+        return Some((n.saturating_sub(1), skill_id.to_string()));
+    }
+    build
+        .socket_groups
+        .iter()
+        .enumerate()
+        .filter(|(_, g)| g.enabled)
+        .find_map(|(i, group)| {
+            let (skill_id, level, set_index) = pick_group_main_skill(data, group)?;
+            resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)?;
+            Some((i, skill_id.to_string()))
+        })
+}
+
 /// 在基础宝石等级上叠加来自装备的「`+N to Level of all <X> Skills`」加成后解析分等级参数。
 ///
 /// PoE2 宝石等级加成（通用、高价值）：装备 implicit/explicit/enchant 文本中的

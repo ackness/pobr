@@ -58,6 +58,7 @@ mod granted_skills;
 mod skill_resolve;
 use defence::*;
 use granted_skills::*;
+pub use skill_resolve::resolve_main_skill_selection;
 use skill_resolve::*;
 mod conditions;
 use conditions::*;
