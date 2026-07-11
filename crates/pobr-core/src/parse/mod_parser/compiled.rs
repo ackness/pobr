@@ -308,6 +308,37 @@ pub struct CompiledParserRules {
     pub special: SpecialModRules,
     /// special 通道 handler 注册表（template-less 条目走 Rust 侧逻辑）。
     pub special_handlers: HandlerRegistry,
+    /// 运行时解析 memo（text → outcome）。解析对（text, 规则集）纯函数，同一
+    /// 行文本（装备逐次重算重新 ingest / 树 stat / per-gem GemProperty 扫描等
+    /// 热路径的大量重复行）直接命中缓存，跳过 scan 引擎——这是 M6 预编译语料
+    /// 「运行时 text→mods 缓存」的在线实现（覆盖任意用户文本，不限语料）。
+    pub memo: ParseMemo,
+}
+
+/// [`CompiledParserRules`] 的运行时解析 memo（见字段文档）。
+///
+/// RwLock 保守取线程安全（native 测试可跨线程共享 `Arc<CompiledParserRules>`；
+/// wasm 单线程零竞争）。只增不减——键空间 = build 里出现过的词条行，天然有界。
+#[derive(Default)]
+pub struct ParseMemo(std::sync::RwLock<std::collections::HashMap<String, super::ParseOutcome>>);
+
+impl ParseMemo {
+    pub(crate) fn get(&self, text: &str) -> Option<super::ParseOutcome> {
+        self.0.read().ok()?.get(text).cloned()
+    }
+
+    pub(crate) fn insert(&self, text: &str, outcome: &super::ParseOutcome) {
+        if let Ok(mut map) = self.0.write() {
+            map.insert(text.to_string(), outcome.clone());
+        }
+    }
+}
+
+impl std::fmt::Debug for ParseMemo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let len = self.0.read().map(|m| m.len()).unwrap_or(0);
+        write!(f, "ParseMemo({len} entries)")
+    }
 }
 
 /// name_map 载荷。
@@ -393,6 +424,7 @@ impl CompiledParserRules {
                 .collect(),
             special,
             special_handlers,
+            memo: ParseMemo::default(),
         })
     }
 }

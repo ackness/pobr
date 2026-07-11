@@ -43,8 +43,17 @@ pub struct EngineDiag {
 
 /// 数据驱动解析一行词条。永不报错（与 legacy `Unsupported` 同款收口；空输入
 /// 返回 Unsupported 空表）。
+///
+/// 结果经 [`CompiledParserRules::memo`] 记忆化——解析对（text, 规则集）纯函数，
+/// 重复行（重算 ingest / per-gem 扫描）直接命中缓存。诊断路径
+/// [`parse_mod_engine_diag`] 不走缓存（需逐次 diag 计数）。
 pub fn parse_mod_engine(text: &str, rules: &CompiledParserRules) -> ParseOutcome {
-    parse_mod_engine_diag(text, rules).0
+    if let Some(cached) = rules.memo.get(text) {
+        return cached;
+    }
+    let outcome = parse_mod_engine_diag(text, rules).0;
+    rules.memo.insert(text, &outcome);
+    outcome
 }
 
 /// [`parse_mod_engine`] 的诊断版：额外返回静默降级计数（A2 报表用；两者共享
