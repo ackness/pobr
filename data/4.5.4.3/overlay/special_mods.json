@@ -1903,37 +1903,66 @@
       "id": "recover_mana_when_used",
       "pattern": "recovers? (\\d+) mana when used",
       "vendor_pattern": null,
-      "mods": [],
+      "mods": [
+        {
+          "name": "ManaOnFlaskUse",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
       "verified": false,
       "batch": "S0",
-      "source_note": "纯识别条目：药剂即时恢复走 flask 使用系统，vendor ModParser 无匹配、不产 mod"
+      "source_note": "药剂/护符使用时瞬时回魔：解析为 ManaOnFlaskUse BASE（归因/Calcs 可见；稳态面板无消费——瞬时恢复不属于稳态模型，flask 恢复面板落地时接线）。vendor 走 flaskData 本地系统不产 mod"
     },
     {
       "id": "flask_mana_recovery_overflow",
       "pattern": "mana recovery from flasks can overflow maximum mana( during effect)?",
       "vendor_pattern": null,
-      "mods": [],
+      "mods": [
+        {
+          "name": "FlaskManaRecoveryOverflow",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
       "verified": false,
       "batch": "S0",
-      "source_note": "纯识别条目（Melting Maelstrom）：魔力溢出机制未建模，vendor ModParser 无匹配"
+      "source_note": "Melting Maelstrom：效果期间药剂魔力恢复可溢出上限 → FLAG 进 ModDb（归因可见；溢出魔力稳态无消费者，vendor 亦未建模）"
     },
     {
       "id": "possessed_by_spirit_on_use",
       "pattern": "possessed by [a-z' ]+ for (\\d+) seconds on use",
       "vendor_pattern": null,
-      "mods": [],
+      "mods": [
+        {
+          "name": "SpiritPossessionOnUse",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
       "verified": false,
       "batch": "S0",
-      "source_note": "纯识别条目（金护符附身 buff，如 Spirit Of The Stag）：vendor ModParser 无匹配"
+      "source_note": "金护符阿兹莫里之灵附身（Stag/Wolf/Bear…）：玩家侧 buff 数值无可验证一手来源（poe2db/wiki 仅载敌方附身效果，BuffDefinitions 未入库）→ 暂解析为 FLAG 登记，数据可得后升级 handler 接具体 buff"
     },
     {
       "id": "also_grants_guard",
       "pattern": "also grants (\\d+) guard",
       "vendor_pattern": null,
-      "mods": [],
+      "mods": [
+        {
+          "name": "GuardAbsorbRate",
+          "type": "BASE",
+          "value": 100
+        },
+        {
+          "name": "GuardAbsorbLimit",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
       "verified": false,
       "batch": "S0",
-      "source_note": "纯识别条目：Guard 临时护体池未建模，vendor ModParser 无匹配"
+      "source_note": "药剂/护符使用效果：PoE2 Guard buff=生命/ES 前全额吸收击中的缓冲池（agent-docs/active-defences.md §2；poe2db Guard 定义）→ rate 100 + limit $1，消费端 pool_setup.rs:132 现成（EHP/MaxHit 承受层）。vendor ModParser 未接此词条（比 PoB2 多建模一层）"
     }
   ]
 }
