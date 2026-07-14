@@ -1538,10 +1538,26 @@ struct RuneCatalogEntry {
     /// 简中名（同上）。
     name_zh_cn: Option<String>,
     is_soul_core: bool,
+    /// 对 `item_text` 基底适用的效果词条行（无物品上下文或不适用为空）。
+    lines: Vec<String>,
+}
+
+/// 符文对某基底槽类的适用词条行（broad 与 specific 两键都命中则都收，PoB2 同口径）。
+fn applicable_rune_lines(
+    def: &pobr_data::catalog::RuneDef,
+    broad: &str,
+    specific: &str,
+) -> Vec<String> {
+    def.slots
+        .iter()
+        .filter(|(slot, _)| *slot == broad || *slot == specific)
+        .flat_map(|(_, s)| s.lines.iter().cloned())
+        .collect()
 }
 
 /// 符文/魂核目录：`overlay/runes.json` 全量，按名称排序（数据已有序）。
-pub fn rune_catalog_json() -> Result<String, String> {
+/// `item_text` 非空且基底可识别时，逐符文附上对该物品适用的效果词条行。
+pub fn rune_catalog_json(item_text: &str) -> Result<String, String> {
     let game = state::game_data()?;
     let runes = game
         .runes()
@@ -1550,6 +1566,11 @@ pub fn rune_catalog_json() -> Result<String, String> {
     let data = state::build_data()?;
     let zh_tw = game.base_item_names("zh-TW").unwrap_or_default();
     let zh_cn = game.base_item_names("zh-CN").unwrap_or_default();
+    // 目标槽类：物品文本解析失败/基底未知时保持 None（lines 全空，不报错）。
+    let slot_types = pobr_item::ItemDraft::parse(item_text)
+        .ok()
+        .and_then(|d| data.base_items.get(&d.header.base_name))
+        .map(|base| rune_slot_types(&base.item_class));
     let entries: Vec<RuneCatalogEntry> = runes
         .runes
         .iter()
@@ -1560,6 +1581,10 @@ pub fn rune_catalog_json() -> Result<String, String> {
                 name_zh_tw: id.and_then(|i| zh_tw.get(i).cloned()),
                 name_zh_cn: id.and_then(|i| zh_cn.get(i).cloned()),
                 is_soul_core: r.slots.values().any(|s| s.kind == "SoulCore"),
+                lines: slot_types
+                    .as_ref()
+                    .map(|(broad, specific)| applicable_rune_lines(r, broad, specific))
+                    .unwrap_or_default(),
             }
         })
         .collect();
@@ -1630,12 +1655,7 @@ pub fn reforge_runes_json(request_json: &str) -> Result<String, String> {
             .iter()
             .find(|r| &r.name == name)
             .ok_or_else(|| format!("unknown rune: {name}"))?;
-        let mut lines: Vec<String> = Vec::new();
-        for (slot, slot_def) in &def.slots {
-            if slot == &broad || slot == &specific {
-                lines.extend(slot_def.lines.iter().cloned());
-            }
-        }
+        let lines = applicable_rune_lines(def, &broad, &specific);
         if lines.is_empty() {
             return Err(format!("{name} 不适用于 {}", base.item_class));
         }

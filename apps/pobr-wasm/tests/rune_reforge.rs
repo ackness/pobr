@@ -27,7 +27,7 @@ Implicits: 1
 #[test]
 fn rune_catalog_has_names_and_zh() {
     ensure_data();
-    let json = pobr_wasm::rune_catalog_json().expect("catalog");
+    let json = pobr_wasm::rune_catalog_json(ARMOUR_WITH_RUNES).expect("catalog");
     let entries: Vec<Value> = serde_json::from_str(&json).expect("parse");
     assert!(
         entries.len() > 200,
@@ -42,6 +42,24 @@ fn rune_catalog_has_names_and_zh() {
         iron["name_zh_cn"].as_str().is_some_and(|s| !s.is_empty()),
         "Iron Rune 应有简中名，实得 {:?}",
         iron["name_zh_cn"]
+    );
+    // 给定物品上下文时应附对该基底（armour）适用的效果行。
+    assert!(
+        iron["lines"][0]
+            .as_str()
+            .is_some_and(|s| s.contains("Armour")),
+        "Iron Rune 对护甲应有 Armour 效果行，实得 {:?}",
+        iron["lines"]
+    );
+
+    // 无物品上下文：目录仍可用，lines 全空。
+    let json = pobr_wasm::rune_catalog_json("").expect("catalog no item");
+    let entries: Vec<Value> = serde_json::from_str(&json).expect("parse");
+    assert!(
+        entries
+            .iter()
+            .all(|e| e["lines"].as_array().is_some_and(|a| a.is_empty())),
+        "无物品上下文时 lines 应全空"
     );
 }
 

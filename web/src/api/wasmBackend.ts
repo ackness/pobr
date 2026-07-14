@@ -38,7 +38,7 @@ interface WasmModule {
   gemCatalogJson(): string;
   translateLinesToZhCn(linesJson: string): string;
   classifyItemLinesJson(text: string): string;
-  runeCatalogJson(): string;
+  runeCatalogJson(itemText: string): string;
   reforgeRunesJson(requestJson: string): string;
   nodePowerJson(requestJson: string): string;
   optimizeVariantsJson(requestJson: string): string;
@@ -166,8 +166,8 @@ export async function createWasmBackend(): Promise<PobrBackend> {
         wasm.optimizeVariantsJson(JSON.stringify(request)),
       ) as OptimizeVariantsResponse;
     },
-    async runeCatalog() {
-      return JSON.parse(wasm.runeCatalogJson()) as RuneCatalogEntry[];
+    async runeCatalog(itemText) {
+      return JSON.parse(wasm.runeCatalogJson(itemText ?? '')) as RuneCatalogEntry[];
     },
     async reforgeRunes(text, runes, sockets) {
       const out = JSON.parse(

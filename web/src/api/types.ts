@@ -241,6 +241,8 @@ export interface RuneCatalogEntry {
   name_zh_tw: string | null;
   name_zh_cn: string | null;
   is_soul_core: boolean;
+  /** 对请求物品基底适用的效果词条行（无物品上下文或不适用为空）。 */
+  lines: string[];
 }
 
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */

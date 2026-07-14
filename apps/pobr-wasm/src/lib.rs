@@ -117,10 +117,11 @@ pub mod wasm {
         crate::build_api::classify_item_lines_json(text).map_err(|err| JsError::new(&err))
     }
 
-    /// JS 入口：`runeCatalogJson() -> string`（符文/魂核选择器目录）。
+    /// JS 入口：`runeCatalogJson(itemText) -> string`（符文/魂核选择器目录；
+    /// itemText 非空时逐符文附对该物品适用的效果行）。
     #[wasm_bindgen(js_name = runeCatalogJson)]
-    pub fn rune_catalog_json() -> Result<String, JsError> {
-        crate::build_api::rune_catalog_json().map_err(|err| JsError::new(&err))
+    pub fn rune_catalog_json(item_text: &str) -> Result<String, JsError> {
+        crate::build_api::rune_catalog_json(item_text).map_err(|err| JsError::new(&err))
     }
 
     /// JS 入口：`reforgeRunesJson(requestJson) -> string`（重插符文 → 重写物品文本）。

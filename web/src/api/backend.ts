@@ -58,8 +58,8 @@ export interface PobrBackend {
   ): Promise<NodePowerResponse>;
   /** 通用变体评估（寻优框架计算面：变体 → 全量重算 → 属性值；打分在前端）。 */
   optimizeVariants(request: OptimizeVariantsRequest): Promise<OptimizeVariantsResponse>;
-  /** 符文/魂核目录（符文槽选择器）。 */
-  runeCatalog(): Promise<RuneCatalogEntry[]>;
+  /** 符文/魂核目录（符文槽选择器）；`itemText` 给定时逐符文附对该物品适用的效果行。 */
+  runeCatalog(itemText?: string): Promise<RuneCatalogEntry[]>;
   /** 重插符文：重写物品文本的 Rune 命名行 + {rune} 词条行；`sockets` 给定时
    *  同步加减孔（重写/新增/移除 `Sockets:` 行）。非法输入抛错。 */
   reforgeRunes(text: string, runes: string[], sockets?: number): Promise<string>;
