@@ -84,9 +84,26 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     let mut nodes: Vec<PassiveNodeDef> = serde_json::from_slice(&bytes)
         .map_err(|e| format!("解析 {} 失败：{e}", tree_path.display()))?;
 
+    // 图外节点（油涂池 DeliriumAnoint / voices 等：无连线且无人引用）不参与树
+    // 拓扑，即使 tree.lua 携带名义 orbit 槽位也不写坐标——否则前端会把它们
+    // 渲染成悬浮孤点，且破坏「off-graph 节点无坐标」的数据不变量。
+    let mut referenced: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    for node in &nodes {
+        referenced.extend(node.connections.iter().copied());
+    }
+    let on_graph =
+        |node: &PassiveNodeDef| !node.connections.is_empty() || referenced.contains(&node.skill);
+
     let mut filled = 0usize;
     let mut missing = 0usize;
+    let mut off_graph = 0usize;
     for node in &mut nodes {
+        if !on_graph(node) {
+            node.x = None;
+            node.y = None;
+            off_graph += 1;
+            continue;
+        }
         match layout.position(node.skill) {
             Some((x, y)) => {
                 node.x = Some(round6(x));
@@ -104,8 +121,8 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     write_pretty(&tree_path, &nodes)?;
 
     Ok(format!(
-        "节点坐标回填完成：{filled}/{} 节点写入 x/y（{missing} 个在 tree.lua 无 orbit 数据）；\
-         groups {} 组，orbit 档 {} 个，tree.lua nodes {} 条 → {}",
+        "节点坐标回填完成：{filled}/{} 节点写入 x/y（{missing} 个在 tree.lua 无 orbit 数据，\
+         {off_graph} 个图外节点跳过）；groups {} 组，orbit 档 {} 个，tree.lua nodes {} 条 → {}",
         nodes.len(),
         layout.groups.len(),
         layout.orbit_radii.len(),

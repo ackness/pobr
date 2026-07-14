@@ -120,11 +120,12 @@ fn anoint_pool_notables_backfilled_off_graph() {
         .expect("油涂池节点 Paragon(20686) 应在库");
     assert_eq!(paragon.kind, PassiveNodeKind::Notable);
     assert_eq!(paragon.name.as_deref(), Some("Paragon"));
+    // 新数据的词条带 `[Quality]` 内部标注，匹配放宽为两段子串。
     assert!(
         paragon
             .stats
             .iter()
-            .any(|s| s.contains("Quality of all Skills")),
+            .any(|s| s.contains("Quality") && s.contains("of all Skills")),
         "Paragon 应携带品质词条，实得 {:?}",
         paragon.stats
     );

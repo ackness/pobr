@@ -60,8 +60,10 @@ die_on_fail "${ADAPTER[@]}" --raw pipeline/tables --out data --patch "$PATCH"
 echo "== [2/8] adapter --tree"
 die_on_fail "${ADAPTER[@]}" --tree pipeline/tree/data.json --out data --patch "$PATCH"
 
-echo "== [3/8] adapter --tree-variants / --tree-anoints（vendor tree.lua 回填）"
+echo "== [3/8] adapter --tree-variants / --tree-coords / --tree-anoints（vendor tree.lua 回填）"
 die_on_fail "${ADAPTER[@]}" --tree-variants "$VENDOR/TreeData/0_5/tree.lua" --out data --patch "$PATCH"
+# 节点平面坐标（web 树渲染依赖 x/y；漏跑则前端树永远空白）。
+die_on_fail "${ADAPTER[@]}" --tree-coords "$VENDOR/TreeData/0_5/tree.lua" --out data --patch "$PATCH"
 # tree-anoints 在“无缺失 notable 需回填”时硬报错退出（tree_anoints.rs:111）。新版 GGG
 # 树导出 data.json 已自带油涂专属 notable（如 Paragon），回填成 no-op 属正常——
 # 仅当报错信息是该 no-op 时告警放行；其他错误（真解析失败等）仍致命。
