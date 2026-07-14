@@ -4,12 +4,12 @@
     "purpose": "M6-T7 解析覆盖率棘轮基线（蓝图 §6.3）。PR 不得降低 coverage_ratio；升高时同 PR 更新本文件。",
     "regen": "cargo run -p precompile-mods -- --data data/4.5.0.3.4 --report，取 generated/parse-coverage.json::summary",
     "parser_engine": "mod_parser+special_rules",
-    "note": "「if you have/haven't been Hit Recently」条件后缀（BeenHitRecently 正/负形）落地，parsed +11（0.403079→0.405645）。"
+    "note": "special_mods 收编（使用效果 Guard/ManaOnFlaskUse 等）+ 近期 parser 增量后重跑，parsed +20（0.405645→0.41031）。"
   },
   "patch": "4.5.0.3.4",
   "total": 4287,
-  "parsed": 1739,
+  "parsed": 1759,
   "unsupported": 5,
-  "err": 2543,
-  "coverage_ratio": 0.405645
+  "err": 2523,
+  "coverage_ratio": 0.41031
 }

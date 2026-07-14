@@ -6,10 +6,10 @@
   },
   "summary": {
     "total": 4287,
-    "parsed": 1739,
+    "parsed": 1759,
     "unsupported": 5,
-    "err": 2543,
-    "coverage_ratio": 0.405645
+    "err": 2523,
+    "coverage_ratio": 0.41031
   },
   "by_source": [
     {
@@ -20,9 +20,9 @@
     },
     {
       "source": "C2_tree",
-      "parsed": 812,
+      "parsed": 832,
       "unsupported": 4,
-      "err": 1734
+      "err": 1714
     },
     {
       "source": "SD_derived",

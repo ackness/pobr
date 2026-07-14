@@ -1983,7 +1983,17 @@
     },
     {
       "text": "+2 to [Limit] for [ElementalDamage|Elemental] Skills",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AdditionalCooldownUses",
+          "type": "Base",
+          "value": 2.0,
+          "tags": [
+            "SkillTypes(SkillTypes(939524096))"
+          ]
+        }
+      ]
     },
     {
       "text": "+2% to Maximum Fire Resistance",
@@ -17850,11 +17860,31 @@
     },
     {
       "text": "5% increased Maximum Life if you have at least 10 Red [SupportGem|Support Gems] Socketed",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Life",
+          "type": "Inc",
+          "value": 5.0,
+          "tags": [
+            "MultiplierThreshold { var: \"RedSupportGems\", threshold: 10.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "5% increased Maximum Mana if you have at least 10 Blue [SupportGem|Support Gems] Socketed",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Mana",
+          "type": "Inc",
+          "value": 5.0,
+          "tags": [
+            "MultiplierThreshold { var: \"BlueSupportGems\", threshold: 10.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "5% increased Movement Speed",
@@ -17869,7 +17899,17 @@
     },
     {
       "text": "5% increased Movement Speed if you have at least 10 Green [SupportGem|Support Gems] Socketed",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MovementSpeed",
+          "type": "Inc",
+          "value": 5.0,
+          "tags": [
+            "MultiplierThreshold { var: \"GreenSupportGems\", threshold: 10.0, upper: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "5% increased Movement Speed if you've [Pinned] an Enemy [Recently]",
@@ -23589,11 +23629,35 @@
     },
     {
       "text": "Body Armour grants [HitDamage|Hits] against you have 100% reduced [CriticalDamageBonus|Critical Damage Bonus]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReduceCritExtraDamage",
+          "type": "Base",
+          "value": 100.0
+        }
+      ]
     },
     {
       "text": "Body Armour grants [Unaffected] by [DamagingAilments|Damaging Ailments]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfBleedEffect",
+          "type": "More",
+          "value": -100.0
+        },
+        {
+          "name": "SelfIgniteEffect",
+          "type": "More",
+          "value": -100.0
+        },
+        {
+          "name": "SelfPoisonEffect",
+          "type": "More",
+          "value": -100.0
+        }
+      ]
     },
     {
       "text": "Body Armour grants regenerate 3% of maximum Life per second",
@@ -26362,35 +26426,115 @@
     },
     {
       "text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 12% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(12.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 15% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(15.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 20% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(20.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 30% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(30.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(8.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [StunThreshold|Stun Threshold] equal to 12% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(12.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [StunThreshold|Stun Threshold] equal to 15% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(15.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [StunThreshold|Stun Threshold] equal to 20% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(20.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [StunThreshold|Stun Threshold] equal to 30% of [ItemArmour|Item Armour] on [EquipArmour|Equipped Armour Items]",
@@ -26398,11 +26542,31 @@
     },
     {
       "text": "Gain additional [StunThreshold|Stun Threshold] equal to 30% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(30.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [StunThreshold|Stun Threshold] equal to 8% of maximum [EnergyShield|Energy Shield]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(8.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional maximum Life equal to 100% of the [ItemEnergyShield|Item Energy Shield] on [Equipped] Body Armour",
@@ -28292,7 +28456,17 @@
     },
     {
       "text": "Regenerate Mana equal to 6% of maximum Life per second",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaRegen",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"Life\", percent: Some(6.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Remnants can be collected from 20% further away",
@@ -29657,11 +29831,31 @@
     },
     {
       "text": "[ArmourBreak|Break] [Armour] on [Critical|Critical Hit] with [Spell|Spells] equal to 10% of [Physical|Physical] Damage dealt",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanArmourBreak",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"NeverCrit\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Break] [Armour] on [Critical|Critical Hit] with [Spell|Spells] equal to 5% of [Physical|Physical] Damage dealt",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanArmourBreak",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"NeverCrit\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Fully Broken Armour] you inflict also increases [Fire] Damage Taken from [HitDamage|Hits]",
@@ -30383,7 +30577,17 @@
     },
     {
       "text": "[Gain] 100% of [Evasion|Evasion Rating] as extra [AilmentThreshold|Ailment Threshold]",
-      "status": "err"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"Evasion\", percent: Some(100.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Gain] 11% of Damage as Extra [Chaos] Damage",
