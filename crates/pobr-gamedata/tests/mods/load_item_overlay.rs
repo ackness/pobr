@@ -49,16 +49,16 @@ fn mod_scalability_samples() {
     assert!(!unscalable.slots[0].is_scalable);
 }
 
-/// catalysts：12 条平行数组合并（Classes/Item.lua:14-29），第 3 条 =
-/// Carapace / Defence / {defences, armour, evasion, energyshield}
-/// （M5c 蓝图 WI-B1 指定抽样）。
+/// catalysts：13 条平行数组合并（Classes/Item.lua:14-29，0.5.4 新增
+/// Necrotic/Minion），第 3 条 = Carapace / Defence /
+/// {defences, armour, evasion, energyshield}（M5c 蓝图 WI-B1 指定抽样）。
 #[test]
-fn catalysts_twelve_entries() {
+fn catalysts_thirteen_entries() {
     let def = game_data()
         .catalysts()
         .unwrap()
         .expect("catalysts.json 在库");
-    assert_eq!(def.catalysts.len(), 12);
+    assert_eq!(def.catalysts.len(), 13);
     for (i, c) in def.catalysts.iter().enumerate() {
         assert_eq!(c.id as usize, i + 1, "id 1-based 连续");
     }
@@ -72,8 +72,8 @@ fn catalysts_twelve_entries() {
     // 首尾抽查（Item.lua:14-15）
     assert_eq!(def.catalysts[0].name, "Flesh");
     assert_eq!(def.catalysts[0].descriptor, "Life");
-    assert_eq!(def.catalysts[11].name, "Adaptive");
-    assert_eq!(def.catalysts[11].descriptor, "Attribute");
+    assert_eq!(def.catalysts[12].name, "Necrotic");
+    assert_eq!(def.catalysts[12].descriptor, "Minion");
 }
 
 /// runes：Hayoxi's Soul Core helmet 行（ModRunes.lua:5-13）与
@@ -103,7 +103,8 @@ fn runes_samples() {
             "Bonded: 30% increased Ignite Magnitude"
         ]
     );
-    assert_eq!(weapon.stat_order, [831.0, 1076.0]);
+    // vendor 0.5.4（ModRunes.lua:737-746）statOrder = {832, 1077}
+    assert_eq!(weapon.stat_order, [832.0, 1077.0]);
 }
 
 /// uniques：P15 双层——The Anvil（Data/Uniques/amulet.lua:5-15）的 raw 块

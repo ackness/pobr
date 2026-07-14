@@ -54,14 +54,16 @@ fn merged_levels_match_historical_coverage() {
     let count = |f: fn(&pobr_data::catalog::SkillLevelDef) -> bool| {
         levels.values().flatten().filter(|r| f(r)).count()
     };
-    assert_eq!(count(|r| r.crit_chance.is_some()), 6091);
+    // 4.5.4.3（0.5.4b）数据升级后 crit/base_multiplier/stored_uses 随新增
+    // 技能等级行增长（6091→6294 / 6821→6850 / 6721→6734），其余覆盖数不变。
+    assert_eq!(count(|r| r.crit_chance.is_some()), 6294);
     assert_eq!(count(|r| r.attack_speed_multiplier.is_some()), 4256);
-    assert_eq!(count(|r| r.base_multiplier.is_some()), 6821);
+    assert_eq!(count(|r| r.base_multiplier.is_some()), 6850);
     // M1-T4.2 等级字段族（adapter 直读，平凡值归一化为 None）。
     assert_eq!(count(|r| r.mana_multiplier.is_some()), 542);
     assert_eq!(count(|r| r.spirit_reservation_flat.is_some()), 3166);
     assert_eq!(count(|r| r.reservation_multiplier.is_some()), 169);
-    assert_eq!(count(|r| r.stored_uses.is_some()), 6721);
+    assert_eq!(count(|r| r.stored_uses.is_some()), 6734);
     // level_requirement：PoE2 `.dat` 无列（真源表不可下载），M1 恒 None、M5a 落库。
     assert_eq!(count(|r| r.level_requirement.is_some()), 0);
 }

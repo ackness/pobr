@@ -98,9 +98,16 @@
 - [ ] 7.2b ⚠️ 数据管线上游风险（顺手发现）：CDN 当前补丁 4.5.4.3 的 bundle
       `pathofexile-dat@15.2.0`（最新版）解压失败（ooz "Failed to decode"，
       索引完整性已校验排除下载损坏）——疑似 GGG 换了 oodle 版本；下次版本
-      升级前需确认上游修复，否则英文/繁中通道同样被阻塞
-- [ ] 7.3 技能/职业/天赋节点名的完整本地化边车覆盖面审计（现 base_items 覆盖
-      宝石名、skills.json 覆盖主动技能名；天赋节点名/词条文本未覆盖）
+      升级前需确认上游修复，否则英文/繁中通道同样被阻塞。
+      2026-07-14 复查：npm 上 15.2.0 仍为最新版，上游未动，继续等待
+- [x] 7.3 技能/职业/天赋节点名的完整本地化边车覆盖面审计。
+      审计工具 = `apps/pobr-wasm/tests/zh_gap_probe.rs`（#[ignore]，树全节点
+      stats + demo builds 物品行过翻译层 dump 未命中）；边车已覆盖：
+      `passive_names.json`（天赋节点名 3040 条）/ `words.json`（唯一物品名
+      3143 条 + ActiveSkills 显示名）/ `mods.json`（词缀名）/ `skills.json` /
+      `base_items.json`。miss 基线 344 → 187（efa7d77），剩余=已知边界：
+      RARE 双词随机名（词表无来源）+ 多行词条拆行碎片（中英语序颠倒
+      无法逐行对齐），无新增边车可解，审计闭环
 
 ## 明确不做（YAGNI，需要时再开新条目）
 

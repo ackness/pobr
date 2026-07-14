@@ -164,20 +164,18 @@ fn raging_spirit_mod_list_full_args() {
     assert!(m.tags.is_empty());
 }
 
-/// spectres.json：591 条 distinct。
+/// spectres.json：617 条 distinct（vendor 0.5.4）。
 ///
-/// 注：vendor Data/Spectres.lua 有 593 个赋值块，其中 2 个 key 重复
-/// （`Metadata/Monsters/Cenobite/CenobiteBloater/CenobiteBloater` /
-/// `Metadata/Monsters/GoreCharger/GoreCharger`）——Lua 表语义后写覆盖，
-/// PoB2 运行时同样只见 591 条；本表忠实于运行时语义。
+/// 注：vendor Data/Spectres.lua 有 619 个赋值块，其中 2 个 key 重复——
+/// Lua 表语义后写覆盖，PoB2 运行时同样只见 617 条；本表忠实于运行时语义。
 #[test]
 fn spectres_count() {
     let def = game_data().spectres().unwrap().expect("spectres.json 在库");
-    assert_eq!(def.minions.len(), 591);
+    assert_eq!(def.minions.len(), 617);
 }
 
 /// Lightless Abomination 抽查（vendor Spectres.lua:10-30 + :49 modList）：
-/// life=3 / armour=0.4 / fireResist=75 / StunDuration OVERRIDE 3。
+/// life=2.2（0.5.4 下调）/ armour=0.4 / fireResist=75 / StunDuration OVERRIDE 3。
 #[test]
 fn spectre_lightless_abomination() {
     let def = game_data().spectres().unwrap().unwrap();
@@ -186,10 +184,10 @@ fn spectre_lightless_abomination() {
         "Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre",
     );
     assert_eq!(c.name, "Lightless Abomination");
-    assert_eq!(c.life, 3.0);
+    assert_eq!(c.life, 2.2);
     assert_eq!(c.armour, Some(0.4));
     assert_eq!(c.fire_resist, 75.0);
-    assert_eq!(c.spectre_reservation, 99.0);
+    assert_eq!(c.spectre_reservation, 90.0);
     assert_eq!(c.monster_category.as_deref(), Some("Demon"));
     let m = &c.mod_list[0];
     assert_eq!(

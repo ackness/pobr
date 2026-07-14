@@ -99,6 +99,7 @@ fn traditional_chinese_mod_names_available() {
         "应有数千条本地化词缀名，实得 {}",
         names.len()
     );
-    // Strength1 = "of the Brute" → "之野蠻"
-    assert_eq!(names.get("Strength1").map(String::as_str), Some("之野蠻"));
+    // Strength1 = "of the Brute" → "野蠻之"（0.5.4 繁中导出整体从
+    // 「之X」改为「X之」形式，管线忠实转录 Mods 表 Name 列）
+    assert_eq!(names.get("Strength1").map(String::as_str), Some("野蠻之"));
 }
