@@ -4,12 +4,24 @@
 
 **在线版：<https://pobr-web.pages.dev>** —— 每次 `v0.x` 版本 tag 通过 CI 后自动部署。
 
-把 [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（Lua）的核心计算引擎迁移到 Rust，目标有两个：
+> **⚠️ 测试版。** PoBR 仍在活跃开发中：计算结果、游戏数据、wasm/JSON API 与
+> CLI 都在迭代，可能随时变动或不稳定——暂时不要把重要工作依赖在这些 API 上。
 
-1. **性能** — 解决大规模 Modifier 聚合、多技能并行计算的瓶颈；
-2. **可归因** — 在 PoB2 兼容的基础上额外提供 **source-level 归因**：每个输出都能回溯到是哪件装备 / 词条 / 天赋 / 宝石 / 配置贡献的。
+PoBR 是把 [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
+核心计算引擎从 Lua **重写**为 Rust 的项目。PoB2 兼容始终是硬性回归基准；重写要解决的是移植解决不了的问题：
 
-计算核心保持纯函数 + 确定性，PoB2 兼容是硬性回归基准。
+- **性能** — 消除大规模 Modifier 聚合、多技能计算的瓶颈；计算核心纯函数 +
+  确定性，重负载路径在只读快照上并行展开，词条解析热路径离线预编译、运行时零解析。
+- **source-level 归因** — 在 PoB2 对齐之外，每个输出都能回溯到是哪件装备 /
+  词条 / 天赋 / 宝石 / 配置贡献的（`TraceGraph` + `AttributionReport`）。
+- **原生 i18n** — 计算内部只用稳定 ID，显示文本全部走语言包（`en-US` 基准 +
+  `zh-TW`，Web 侧另有 zh-CN 边车），Web 前端甚至支持直接粘贴简中物品文本。
+  加一门语言是加数据，不是改代码。
+- **WASM 到处跑** — 引擎编译为 WebAssembly、以 JSON 契约暴露，Web 版完全在
+  浏览器内计算、无需服务器；同一个核心同时驱动 CLI 与桌面入口。
+- **为扩展而设计** — 分层 workspace（data → core → build → apps）+ 数据驱动
+  管线：游戏数据是从 GGG `.dat` 导出生成的版本化 JSON，大部分词条/属性行为
+  是数据而非硬编码规则。
 
 ## 快速上手
 
@@ -92,7 +104,6 @@ cargo test -p pobr-build --test parity -- --nocapture   # parity 仪表盘
 ## 文档
 
 - [`CLAUDE.md`](CLAUDE.md) — 验证分层、命令速查、关键约定（贡献前必读）。
-- [`devs/docs/architecture/`](devs/docs/architecture/)（00–15）— 目标架构与路线图。
 - [`agent-docs/`](agent-docs/) — PoE2（0.5.0）机制中文参考（伤害类型 / 抗性 / 护甲闪避 ES / 暴击 / 异常 / 计算顺序等）。
 - [`web/README.md`](web/README.md) — Web 前端。
 

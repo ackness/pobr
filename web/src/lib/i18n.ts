@@ -15,6 +15,15 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  // Beta 提示
+  'beta.notice': {
+    'en-US':
+      'Beta preview — calculation results, game data and the wasm/JSON API are still evolving and may change or break without notice.',
+    'zh-TW': '測試版預覽——計算結果、遊戲資料與 wasm/JSON API 仍在迭代中，可能隨時變動或不穩定。',
+    'zh-CN': '测试版预览——计算结果、游戏数据与 wasm/JSON API 仍在迭代中，可能随时变动或不稳定。',
+  },
+  'beta.dismiss': { 'en-US': 'Got it', 'zh-TW': '知道了', 'zh-CN': '知道了' },
+
   // 页签
   'tab.build': { 'en-US': 'Build', 'zh-TW': '構建', 'zh-CN': '构建' },
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },

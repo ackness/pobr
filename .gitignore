@@ -18,8 +18,15 @@
 # 其他 agent 框架的本地配置
 /.agents/
 
-# ── 临时审计输出（一次性工作产物；历史审计 audits/<主题>-<日期>/ 仍入库）──
-/audits/current-*/
+# ── 本地 agent 辅助资料（保留在本地盘，不入库）──
+# 审计工作产物 / 架构参考文档 / 旧 oracle shim
+# （devs/ci、devs/fixtures、devs/scripts 被测试与 skill 引用，仍入库）
+/audits/
+/devs/docs/
+/devs/tools/
+# 无测试引用的示例 build 文件（召唤奥黛丽黑本.build 被 contract_golden 引用，仍入库）
+/examples/build-file/万兽御主.build
+/examples/build-file/重生之古灵高手.build
 
 # ── 本地资料（不纳入版本控制）──
 # PoB 参考仓库（本地临时 clone，仅用于数据勘察 / 对照）

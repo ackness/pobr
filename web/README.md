@@ -2,6 +2,9 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+> **⚠️ Beta.** The app and the underlying wasm/JSON API are still evolving
+> and may change or break without notice.
+
 A PoB2-style web frontend for PoBR. **Fully decoupled from the calculation
 engine**: it only consumes the JSON contract of `apps/pobr-wasm`
 (`web/src/api/types.ts` ↔ `apps/pobr-wasm/src/build_api.rs`, shapes pinned by

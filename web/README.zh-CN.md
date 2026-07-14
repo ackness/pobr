@@ -2,6 +2,8 @@
 
 [English](README.md) | **简体中文**
 
+> **⚠️ 测试版。** 应用与底层 wasm/JSON API 仍在迭代中，可能随时变动或不稳定。
+
 PoB2 风格的 PoBR Web 前端。**与计算引擎完全解耦**：只消费 `apps/pobr-wasm`
 的 JSON 契约（`web/src/api/types.ts` ↔ `apps/pobr-wasm/src/build_api.rs`，
 形状由 Rust 侧 `tests/contract_golden.rs` 钉住），不 import Rust 类型、

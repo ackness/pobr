@@ -5,17 +5,33 @@
 **Live web app: <https://pobr-web.pages.dev>** — deployed automatically from
 `v0.x` release tags once CI passes.
 
-A port of the [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
-core calculation engine (Lua) to Rust, with two goals:
+> **⚠️ Beta.** PoBR is under active development. Calculation results, game
+> data, the wasm/JSON API and the CLI are all still evolving and may change
+> or break without notice — don't build anything load-bearing on the API yet.
 
-1. **Performance** — remove the bottlenecks in large-scale modifier aggregation
-   and parallel multi-skill calculation;
-2. **Attribution** — on top of PoB2 compatibility, add **source-level
-   attribution**: every output can be traced back to the item / mod line /
-   passive / gem / config that contributed it.
+PoBR is a ground-up rewrite of the
+[Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
+core calculation engine, from Lua to Rust. PoB2 compatibility stays the hard
+regression baseline; the rewrite exists to fix what a port can't:
 
-The calculation core stays pure-functional and deterministic; PoB2
-compatibility is the hard regression baseline.
+- **Performance** — removes the bottlenecks in large-scale modifier
+  aggregation and multi-skill calculation; the core is pure-functional and
+  deterministic, so heavy paths parallelize over read-only snapshots and the
+  hot mod-parsing path is precompiled offline to zero-parse at runtime.
+- **Source-level attribution** — beyond PoB2 parity, every output can be
+  traced back to the item / mod line / passive / gem / config that
+  contributed it (`TraceGraph` + `AttributionReport`).
+- **Native i18n** — the calculation uses only stable IDs; all display text
+  goes through language packs (`en-US` canonical + `zh-TW`, with zh-CN
+  sidecars on the web). The web frontend even accepts item text pasted in
+  Simplified Chinese. Adding a language means adding data, not code.
+- **Runs anywhere via WASM** — the engine compiles to WebAssembly behind a
+  JSON contract, so the web app runs fully in-browser with no server; the
+  same core also powers the CLI and a desktop entry point.
+- **Built to extend** — a layered workspace (data → core → build → apps)
+  with a data-driven pipeline: game data ships as versioned JSON generated
+  from GGG `.dat` exports, and most modifier/stat behaviour is data, not
+  hard-coded rules.
 
 ## Getting started
 
@@ -111,8 +127,6 @@ the local Lua directly instead of searching online.
 
 - [`CLAUDE.md`](CLAUDE.md) — verification tiers, command cheat-sheet, key
   conventions (read before contributing).
-- [`devs/docs/architecture/`](devs/docs/architecture/) (00–15) — target
-  architecture and roadmap.
 - [`agent-docs/`](agent-docs/) — PoE2 (0.5.0) game-mechanics reference in
   Chinese (damage types / resistances / armour, evasion, ES / crit / ailments /
   damage-defence order, …).

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useBuildSession } from './hooks/useBuildSession';
-import type { Lang } from './lib/i18n';
+import { t, type Lang } from './lib/i18n';
 import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
 import { BuildPanel } from './components/import/BuildPanel';
 import { StatSidebar } from './components/sidebar/StatSidebar';
@@ -32,6 +32,14 @@ export default function App() {
   const setLang = (next: Lang) => {
     setLangState(next);
     localStorage.setItem('pobr-lang', next);
+  };
+  // Beta 提示横幅：关闭后持久化，不再打扰。
+  const [betaDismissed, setBetaDismissed] = useState(
+    () => localStorage.getItem('pobr-beta-dismissed') === '1',
+  );
+  const dismissBeta = () => {
+    setBetaDismissed(true);
+    localStorage.setItem('pobr-beta-dismissed', '1');
   };
   // 侧边栏数值点击 → 跳 Calcs 并展开对应 breakdown（对象每次新建，重复点击同一项也触发）。
   const [calcsFocus, setCalcsFocus] = useState<{ id: string } | null>(null);
@@ -68,6 +76,14 @@ export default function App() {
         classNames={session.classNames}
         busy={session.busy}
       />
+      {!betaDismissed && (
+        <div className="beta-banner" role="note">
+          <span>{t(lang, 'beta.notice')}</span>
+          <button className="beta-banner-dismiss" onClick={dismissBeta}>
+            {t(lang, 'beta.dismiss')}
+          </button>
+        </div>
+      )}
       <div className="app-body">
         <StatSidebar session={session} lang={lang} onStatClick={focusStat} />
         <main className="app-main">

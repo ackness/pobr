@@ -44,6 +44,7 @@ export function TopBar({ tab, onTab, lang, onLang, character, classNames, busy }
   return (
     <header className="topbar">
       <span className="topbar-brand">PoBR</span>
+      <span className="topbar-beta">BETA</span>
       <nav className="topbar-tabs" aria-label="Main navigation">
         {TABS.map((entry) => (
           <button

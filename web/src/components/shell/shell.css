@@ -68,6 +68,43 @@
   color: transparent;
 }
 
+.topbar-beta {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-1);
+  line-height: 1.5;
+  user-select: none;
+}
+
+.beta-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--accent-gold-bright);
+  background: color-mix(in srgb, var(--accent-gold) 10%, transparent);
+  border-bottom: 1px solid var(--accent-gold-dim);
+  padding: var(--space-1) var(--space-4);
+}
+
+.beta-banner span {
+  flex: 1;
+  min-width: 0;
+}
+
+.beta-banner-dismiss {
+  background: transparent;
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius-sm);
+  color: var(--accent-gold);
+  padding: 0 var(--space-2);
+  white-space: nowrap;
+}
+
 .topbar-tabs {
   display: flex;
   gap: var(--space-1);
