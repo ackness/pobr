@@ -195,6 +195,57 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/base_items.json")))
     }
 
+    /// 加载某语言的名词直译边车（`i18n/<lang>/<file>`，英文名 → 本地化名）。
+    /// 文件缺失（旧数据包）返回空表——消费侧按「无名词翻译」降级。
+    fn name_sidecar(
+        &self,
+        lang: &str,
+        file: &str,
+    ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        let path = self.root.join(format!("i18n/{lang}/{file}"));
+        match self.load_json_at(path) {
+            Ok(map) => Ok(map),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                Ok(Default::default())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// 名词直译表（GGG Words 表转录：唯一物品名等专有名词）。
+    pub fn word_names(
+        &self,
+        lang: &str,
+    ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        self.name_sidecar(lang, "words.json")
+    }
+
+    /// 天赋节点名直译表（GGG PassiveSkills 表 Name 列转录）。
+    pub fn passive_node_names(
+        &self,
+        lang: &str,
+    ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        self.name_sidecar(lang, "passive_names.json")
+    }
+
+    /// 词缀名直译表（GGG Mods 表 Name 列转录；魔法物品名前后缀组合翻译用）。
+    pub fn affix_names(
+        &self,
+        lang: &str,
+    ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        self.name_sidecar(lang, "mods.json")
+    }
+
+    /// RARE 随机名组成词表（前缀词/后缀词 → 短中文名词；双词组合翻译用）。
+    pub fn rare_name_words(
+        &self,
+        lang: &str,
+    ) -> Result<std::collections::BTreeMap<String, String>, LoadError> {
+        self.name_sidecar(lang, "rare_words.json")
+    }
+
     /// 加载 stat 注册表（id / is_local / semantic / category）。
     pub fn stats(&self) -> Result<Vec<StatDef>, LoadError> {
         self.load_domain("stats.json")

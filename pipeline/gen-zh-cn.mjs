@@ -17,10 +17,14 @@ import path from 'node:path';
 const RAW = 'https://raw.githubusercontent.com/addohm/poe2-en-cn-dict/master/dictionary';
 const FILES = [
   'lookup/stat_lines.json',
+  'lookup/en_to_cn.json',
   'tables/BaseItemTypes.json',
   'tables/ActiveSkills.json',
   'tables/Characters.json',
   'tables/Ascendancy.json',
+  'tables/Words.json',
+  'tables/PassiveSkills.json',
+  'tables/Mods.json',
   'meta.json',
 ];
 
@@ -61,25 +65,99 @@ function nameSidecar(table, column) {
 const baseItems = nameSidecar(read('tables/BaseItemTypes.json'), 'Name');
 const skills = nameSidecar(read('tables/ActiveSkills.json'), 'DisplayedName');
 
-// --- 词条行模板对：forms[{en,zh}] → [{src, en}]，src 去重（首个胜出），按 src 排序 ---
+// --- 名词直译表（GGG Words 表：唯一物品名等专有名词，英文名 → 简中名；
+// 合入 ActiveSkills 显示名，供 `Grants Skill: …` 行的技能名捕获二次翻译）---
+const words = {
+  ...enToZh(read('tables/ActiveSkills.json'), 'DisplayedName'),
+  ...enToZh(read('tables/Words.json'), 'Text2'),
+};
+
+// --- 天赋节点名（PassiveSkills 表 Name 列，英文名 → 简中名；树 tooltip 用）---
+const passiveNames = enToZh(read('tables/PassiveSkills.json'), 'Name');
+
+// --- 词缀名（Mods 表 Name 列，英文名 → 简中名；魔法物品名「后缀之+前缀的+基底」
+// 组合翻译用，中文缀名自带「…的/…之」格式）---
+const affixNames = enToZh(read('tables/Mods.json'), 'Name');
+
+// --- RARE 随机名组成词：通用词典的单词条目（首字母大写单词 → 短中文名词）。
+// RARE 名 = 前缀词 + 后缀词，国服按中文连写组合（Storm Bite → 风暴慧齿）；
+// Words 表只收录了前缀词，后缀词从通用词典补齐。---
+const rareWords = {};
+for (const [en, zh] of Object.entries(read('lookup/en_to_cn.json'))) {
+  if (
+    /^[A-Z][a-zA-Z']*$/.test(en) &&
+    typeof zh === 'string' &&
+    zh.length <= 8 &&
+    /^[一-鿿]+$/.test(zh)
+  ) {
+    rareWords[en] = zh;
+  }
+}
+// 通用词典漏收的组成词补丁（措辞取自官方文本同词根，如「消融漩涡」）。
+rareWords.Maelstrom ??= '漩涡';
+const rareWordsSorted = Object.fromEntries(
+  Object.entries(rareWords).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+);
+
+// --- 本地补丁模板对（上游词典缺失；措辞参考国服客户端同族词条 / poe2db）---
+// 表双向使用：src=zh 供输入翻译（zh→en），运行时换向后 en 侧供显示翻译（en→zh）。
+const EXTRA_PAIRS = [
+  // 树专属文本（非 stat description，上游词典不收录）。
+  { src: '获得 {0} 个天赋技能点', en: 'Grants {0} Passive Skill Point' },
+  { src: '获得 {0} 个天赋技能点', en: 'Grants {0} Passive Skill Points' },
+  {
+    src: '100 个天赋技能点转变为武器组技能点',
+    en: '100 Passive Skill Points become Weapon Set Skill Points',
+  },
+  // Time-Lost 珠宝单行变体（上游只有带 containing 从句的多行版）。
+  {
+    src: '珠宝插槽天赋效果提高 {0}%',
+    en: '{0}% increased Effect of Jewel Socket Passive Skills',
+  },
+  // 符文纽带行前缀（内层词条经字符串占位符捕获二次翻译）。
+  { src: '纽带：{0}', en: 'Bonded: {0}' },
+  // 物品附赠技能行（措辞对齐 poe2db「获得技能」；技能名经名词表二次翻译）。
+  { src: '获得技能：{0} 级 {1}', en: 'Grants Skill: Level {0} {1}' },
+  { src: '获得技能：{0}', en: 'Grants Skill: {0}' },
+  // 范围珠宝行：grant 后接任意词条（上游只有具体词条版），嵌套词条二次翻译。
+  {
+    src: '范围内的核心天赋还会获得：{0}',
+    en: 'Notable Passive Skills in Radius also grant {0}',
+  },
+  {
+    src: '范围内的小型天赋还会获得：{0}',
+    en: 'Small Passive Skills in Radius also grant {0}',
+  },
+  // 范围珠宝 keystone 行（上游为多行合并模板，物品文本按行拆开送翻）。
+  { src: '{0}范围内的天赋可以配置', en: 'Passives in Radius of {0} can be Allocated' },
+  { src: '而无需连结至你的天赋树', en: 'without being connected to your tree' },
+];
+
+// --- 词条行模板对：forms[{en,zh}] → [{src, en}]，按 (src, en) 对去重后排序。
+// 同一中文对应的全部英文变体（单复数/大小写措辞）都保留——en→zh 显示方向按
+// 英文字面量匹配，丢变体=丢翻译；zh→en 方向同 src 多候选按序首中胜出，行为不变。
 const statLines = read('lookup/stat_lines.json');
-const seen = new Map();
-let dupes = 0;
+const seen = new Set();
+const pairs = [];
 for (const block of statLines) {
   for (const form of block.forms) {
     if (!form.zh || !form.en) continue;
     const src = form.zh.trim();
     const en = form.en.trim();
-    if (seen.has(src)) {
-      if (seen.get(src) !== en) dupes += 1;
-      continue;
-    }
-    seen.set(src, en);
+    const key = `${src}\x00${en}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pairs.push({ src, en });
   }
 }
-const pairs = [...seen.entries()]
-  .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-  .map(([src, en]) => ({ src, en }));
+for (const pair of EXTRA_PAIRS) {
+  const key = `${pair.src}\x00${pair.en}`;
+  if (!seen.has(key)) {
+    seen.add(key);
+    pairs.push(pair);
+  }
+}
+pairs.sort((a, b) => (a.src < b.src ? -1 : a.src > b.src ? 1 : a.en < b.en ? -1 : 1));
 
 // --- 职业/升华名：Characters 按英文名、Ascendancy 按英文名（前端 UI 用英文
 // canonical 名索引；泰坦等 23 个升华 + 全部可选职业）---
@@ -106,6 +184,10 @@ write('base_items.json', baseItems);
 write('skills.json', skills);
 write('stat_lines.json', pairs);
 write('classes.json', classNames);
+write('words.json', words);
+write('passive_names.json', passiveNames);
+write('mods.json', affixNames);
+write('rare_words.json', rareWordsSorted);
 write('_meta.json', {
   source: 'https://github.com/addohm/poe2-en-cn-dict',
   source_generated_at: upstreamMeta.generatedAt ?? null,
@@ -114,7 +196,11 @@ write('_meta.json', {
     base_items: Object.keys(baseItems).length,
     skills: Object.keys(skills).length,
     stat_lines: pairs.length,
-    ambiguous_src_dropped: dupes,
+    words: Object.keys(words).length,
+    passive_names: Object.keys(passiveNames).length,
+    mods: Object.keys(affixNames).length,
+    rare_words: Object.keys(rareWordsSorted).length,
+    extra_pairs: EXTRA_PAIRS.length,
   },
 });
 
@@ -128,5 +214,5 @@ if (!manifest.languages.includes('zh-CN')) {
 }
 
 console.log(
-  `zh-CN 生成完成：base_items ${Object.keys(baseItems).length} / skills ${Object.keys(skills).length} / stat_lines ${pairs.length}（同文异译丢弃 ${dupes}）→ ${outDir}`,
+  `zh-CN 生成完成：base_items ${Object.keys(baseItems).length} / skills ${Object.keys(skills).length} / stat_lines ${pairs.length}（含补丁 ${EXTRA_PAIRS.length}）→ ${outDir}`,
 );

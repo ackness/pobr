@@ -112,10 +112,32 @@ pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
                         en: t.src,
                     })
                     .collect();
-                Some(Rc::new(crate::zh::LineTranslator::new(
-                    &swapped,
-                    std::collections::HashMap::new(),
-                )))
+                // 名词直译表（英文 → 简中）：基底名（i18n id→zh × base 英名→id join）
+                // + Words 名词（唯一物品名等）。物品名/基底行靠这张表整行命中。
+                let mut names = std::collections::HashMap::new();
+                if let (Ok(zh_by_id), Ok(data)) = (game.base_item_names("zh-CN"), build_data()) {
+                    for (en_name, def) in &data.base_items {
+                        if let Some(zh) = zh_by_id.get(def.id.as_str()) {
+                            names.insert(en_name.clone(), zh.clone());
+                        }
+                    }
+                }
+                if let Ok(words) = game.word_names("zh-CN") {
+                    names.extend(words);
+                }
+                if let Ok(passives) = game.passive_node_names("zh-CN") {
+                    names.extend(passives);
+                }
+                let mut translator = crate::zh::LineTranslator::new(&swapped, names);
+                // 词缀名表（Mods 表）：启用魔法物品名「后缀+前缀+基底」组合翻译。
+                if let Ok(affixes) = game.affix_names("zh-CN") {
+                    translator.set_affix_names(affixes.into_iter().collect());
+                }
+                // RARE 随机名组成词表：启用双词连写组合翻译。
+                if let Ok(words) = game.rare_name_words("zh-CN") {
+                    translator.set_rare_words(words.into_iter().collect());
+                }
+                Some(Rc::new(translator))
             })();
             *slot = Some(built);
         }
@@ -158,6 +180,12 @@ fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
             if let Some(zh) = zh_by_id.get(def.id.as_str()) {
                 base_names.insert(zh.clone(), en_name.clone());
             }
+        }
+    }
+    // Words 名词反查（简中唯一物品名 → 英文），国服物品文本的名称行走这里。
+    if let Ok(words) = game.word_names("zh-CN") {
+        for (en, zh) in words {
+            base_names.entry(zh).or_insert(en);
         }
     }
     Some(Rc::new(crate::zh::LineTranslator::new(

@@ -24,15 +24,22 @@ enum Segment {
 fn parse_template(text: &str) -> Option<Vec<Segment>> {
     let mut segments = Vec::new();
     let mut literal = String::new();
+    let mut auto_index = 0usize;
     let bytes = text.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'{' {
             let end = text[i..].find('}')? + i;
             let inner = &text[i + 1..end];
-            // `{0}` / `{0:+d}`：冒号前是数值下标。
+            // `{0}` / `{0:+d}`：冒号前是数值下标；`{:+d}`（无下标，上游词典
+            // 存在此形）按占位符出现顺序自动编号。
             let index_part = inner.split(':').next()?;
-            let index: usize = index_part.parse().ok()?;
+            let index: usize = if index_part.is_empty() {
+                auto_index
+            } else {
+                index_part.parse().ok()?
+            };
+            auto_index += 1;
             if !literal.is_empty() {
                 segments.push(Segment::Literal(std::mem::take(&mut literal)));
             }
@@ -52,11 +59,14 @@ fn parse_template(text: &str) -> Option<Vec<Segment>> {
 
 /// 骨架：剔除数值形字符与空白（模板侧同时剔除占位符），作为候选桶键。
 /// 字面量里的数字（如「每 15 点闪避」）在输入与模板两侧同规则剔除，仍可对齐。
+/// ASCII 统一小写：上游词典英文模板存在大小写变体（`increased damage`），
+/// en→zh 显示方向按小写骨架桶对齐；中文字符不受影响。
 fn skeleton(text: &str) -> String {
     text.chars()
         .filter(|c| {
             !c.is_ascii_digit() && !matches!(c, '+' | '-' | '.' | ',') && !c.is_whitespace()
         })
+        .map(|c| c.to_ascii_lowercase())
         .collect()
 }
 
@@ -144,6 +154,10 @@ pub struct LineTranslator {
     suffix_index: HashMap<String, Vec<usize>>,
     /// 本地化基底名 → 英文 canonical 名（物品文本的基底行直译）。
     base_names: HashMap<String, String>,
+    /// 词缀名直译表（魔法物品名组合翻译；仅 en→zh 显示方向注入，缺省为空）。
+    affix_names: HashMap<String, String>,
+    /// RARE 随机名组成词表（前缀词/后缀词 → 中文；仅 en→zh 显示方向注入）。
+    rare_words: HashMap<String, String>,
 }
 
 impl LineTranslator {
@@ -191,7 +205,19 @@ impl LineTranslator {
             prefix_index,
             suffix_index,
             base_names,
+            affix_names: HashMap::new(),
+            rare_words: HashMap::new(),
         }
+    }
+
+    /// 注入词缀名直译表（en→zh 显示方向启用魔法物品名组合翻译）。
+    pub fn set_affix_names(&mut self, affix_names: HashMap<String, String>) {
+        self.affix_names = affix_names;
+    }
+
+    /// 注入 RARE 随机名组成词表（en→zh 显示方向启用双词组合翻译）。
+    pub fn set_rare_words(&mut self, rare_words: HashMap<String, String>) {
+        self.rare_words = rare_words;
     }
 
     /// 尝试翻译一行：基底名直译优先，其次数值型模板精确匹配，最后字符串占位符
@@ -214,7 +240,72 @@ impl LineTranslator {
         }
         // 回退：字符串占位符模板。骨架桶查不到（捕获含名字字符，骨架不再对齐），
         // 改用强前/后缀锚点选候选。
-        self.translate_string_line(line, &line_skel)
+        if let Some(out) = self.translate_string_line(line, &line_skel) {
+            return Some(out);
+        }
+        // 末位回退：魔法物品名（前缀 基底 of 后缀）→ RARE 随机名（前缀词 后缀词）。
+        if let Some(out) = self.translate_magic_name(line) {
+            return Some(out);
+        }
+        self.translate_rare_name(line)
+    }
+
+    /// RARE 随机名组合翻译：恰好两个单词、都命中组成词表时按国服惯例连写
+    /// 拼接（Storm Bite → 风暴慧齿）。词条行含空格数远超两词，不会误入。
+    fn translate_rare_name(&self, line: &str) -> Option<String> {
+        if self.rare_words.is_empty() {
+            return None;
+        }
+        let mut parts = line.split(' ');
+        let (first, second) = (parts.next()?, parts.next()?);
+        if parts.next().is_some() {
+            return None;
+        }
+        Some(format!(
+            "{}{}",
+            self.rare_words.get(first)?,
+            self.rare_words.get(second)?
+        ))
+    }
+
+    /// 魔法物品名组合翻译：`[前缀 ]基底[ of 后缀]` → 「后缀+前缀+基底」（国服
+    /// 魔法名顺序；中文缀名自带「…的/…之」结尾）。前后缀须整体命中词缀名表、
+    /// 基底须整体命中基底名表才算，防词条行误报。
+    fn translate_magic_name(&self, line: &str) -> Option<String> {
+        if self.affix_names.is_empty() {
+            return None;
+        }
+        let (head, suffix_zh) = match line.find(" of ") {
+            Some(i) => (
+                line[..i].trim_end(),
+                Some(self.affix_names.get(&line[i + 1..])?.as_str()),
+            ),
+            None => (line, None),
+        };
+        let (prefix_zh, base_zh) = if let Some(zh) = self.base_names.get(head) {
+            (None, zh.as_str())
+        } else {
+            head.match_indices(' ').find_map(|(i, _)| {
+                // 前缀：词缀名表优先，组成词表兜底（Exceptional/Expert 等基底
+                // 品级前缀不在 Mods 表）；基底整体命中是强约束，压误报。
+                let prefix = self
+                    .affix_names
+                    .get(&head[..i])
+                    .or_else(|| self.rare_words.get(&head[..i]))?;
+                let base = self.base_names.get(&head[i + 1..])?;
+                Some((Some(prefix.as_str()), base.as_str()))
+            })?
+        };
+        // 无任何缀词=纯基底名，该行本应由名词表整行命中，不在此报。
+        if prefix_zh.is_none() && suffix_zh.is_none() {
+            return None;
+        }
+        Some(format!(
+            "{}{}{}",
+            suffix_zh.unwrap_or(""),
+            prefix_zh.unwrap_or(""),
+            base_zh
+        ))
     }
 
     /// 字符串占位符模板回退：按强前/后缀锚点选候选，允许字符串捕获，命中后
@@ -282,6 +373,22 @@ impl LineTranslator {
     }
 }
 
+/// ASCII 大小写不敏感子串查找（词典英文模板存在大小写变体）。字节级窗口比较：
+/// 非 ASCII 字节要求逐字节相等，且 UTF-8 连续字节不会与首字节混淆，命中位置
+/// 必落在字符边界上。
+fn find_ignore_ascii_case(haystack: &str, needle: &str) -> Option<usize> {
+    if needle.is_empty() {
+        return Some(0);
+    }
+    if needle.len() > haystack.len() {
+        return None;
+    }
+    haystack
+        .as_bytes()
+        .windows(needle.len())
+        .position(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
+}
+
 /// 逐段匹配：字面量顺序对齐，占位符之间的文本作为捕获值。`allow_string=false`
 /// 时捕获须数值形（主通道）；`true` 时额外允许非空、无换行的字符串（回退通道，
 /// 候选已由强锚点门控）。成功返回 `占位符下标 → 捕获文本`。
@@ -303,7 +410,7 @@ fn match_segments(
                 pending = Some(*index);
             }
             Segment::Literal(lit) => {
-                let found = line[pos..].find(lit.as_str())?;
+                let found = find_ignore_ascii_case(&line[pos..], lit)?;
                 if let Some(index) = pending.take() {
                     let value = accept_capture(&line[pos..pos + found], allow_string)?;
                     values.insert(index, value);

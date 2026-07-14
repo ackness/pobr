@@ -5,7 +5,11 @@
   "counts": {
     "base_items": 4902,
     "skills": 854,
-    "stat_lines": 24880,
-    "ambiguous_src_dropped": 1326
+    "stat_lines": 26074,
+    "words": 3914,
+    "passive_names": 3040,
+    "mods": 2536,
+    "rare_words": 4805,
+    "extra_pairs": 11
   }
 }
