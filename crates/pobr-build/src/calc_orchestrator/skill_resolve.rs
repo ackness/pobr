@@ -790,10 +790,11 @@ pub(crate) fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     let value: u32 = num.trim().parse().ok()?;
     let (kind, rest) = if let Some(r) = rest.strip_prefix("level of all") {
         (GemPropertyKind::Level, r)
-    } else if let Some(r) = rest.strip_prefix("quality of all") {
-        (GemPropertyKind::Quality, r)
     } else {
-        return None;
+        (
+            GemPropertyKind::Quality,
+            rest.strip_prefix("quality of all")?,
+        )
     };
     let mut rest = rest.trim();
     // 属性需求尾缀（vendor gemRequirements 构造分支）。

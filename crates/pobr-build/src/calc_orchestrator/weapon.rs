@@ -187,10 +187,11 @@ pub(crate) fn per_shield_defence_scale(
     let rest = stat.strip_prefix("off_hand_")?;
     let (is_max, rest) = if let Some(r) = rest.strip_prefix("maximum_added_physical_damage_per_") {
         (true, r)
-    } else if let Some(r) = rest.strip_prefix("minimum_added_physical_damage_per_") {
-        (false, r)
     } else {
-        return None;
+        (
+            false,
+            rest.strip_prefix("minimum_added_physical_damage_per_")?,
+        )
     };
     // rest = "<N>_shield_<defence>"
     let (n_str, defence) = rest.split_once("_shield_")?;
