@@ -10,10 +10,16 @@
 /.cargo/config.toml
 
 # ── 工具 / 编辑器 ──
+.DS_Store
 # 本地 agent 设置不入库，但 .claude/skills/（可复现的 run skill）入库。
 .claude/*
 !.claude/skills/
 !.claude/skills/**
+# 其他 agent 框架的本地配置
+/.agents/
+
+# ── 临时审计输出（一次性工作产物；历史审计 audits/<主题>-<日期>/ 仍入库）──
+/audits/current-*/
 
 # ── 本地资料（不纳入版本控制）──
 # PoB 参考仓库（本地临时 clone，仅用于数据勘察 / 对照）

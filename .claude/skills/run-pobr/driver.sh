@@ -88,7 +88,7 @@ cmd_data() {
   4) precompile 缓存  : cargo run -p precompile-mods -- --data data/<ver> --report
 云端约束（本会话实测）：
   - GGG patch CDN 对旧 pin 版本（4.5.0.3.4）返回 404 → .dat 下载步不可跑；
-  - extract-lua（步骤 3）当前与 vendor commit 2df5a74 不兼容（modLib.parseMod 非全局）；
+  - extract-lua（步骤 3）与旧版 4.5.0.3.4 的 vendor commit（2df5a74）不兼容（modLib.parseMod 非全局）；
   - 故云端只用"已入库 data + precompile（步骤 4，可跑且 byte-diff=0，见 drill 步骤 4）"。
 EOF
 }
@@ -135,7 +135,7 @@ cmd_status() {
   else echo "✗ vendor 未克隆（driver.sh vendor）"; fi
   [ -d "data/$DATA_VER" ] && echo "✓ data: $DATA_VER 已入库" || echo "✗ data: $DATA_VER 缺失"
   command -v cargo >/dev/null && echo "✓ cargo: $(cargo --version)" || echo "✗ cargo 缺失"
-  echo "注：oracle（tools/pob2-oracle）+ extract-lua 与 vendor 2df5a74 不兼容（见 SKILL.md Gotchas）。"
+  echo "注：oracle（tools/pob2-oracle）+ extract-lua 与旧版 4.5.0.3.4 的 vendor（2df5a74）不兼容（见 SKILL.md Gotchas）。"
 }
 
 case "${1:-smoke}" in

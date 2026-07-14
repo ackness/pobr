@@ -97,3 +97,11 @@ cargo test -p pobr-build --test parity -- --nocapture   # parity 仪表盘
 - **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本走 `pobr-i18n`。
 - **不可变 / 确定性**：calc 函数对 `Env` 的可变写入集中在 `perform`，并行化只在只读快照阶段展开。
 - 涉及计算 / Modifier / parser 的改动需补对应集成测试或 golden fixture；改变 crate 边界 / 聚合语义 / catalog / parity 规则时同步更新架构文档。
+
+## License
+
+代码以 [MIT](LICENSE) 协议发布。
+
+本项目与 Grinding Gear Games 无任何关联，亦未获其背书。`data/` 下的游戏数据
+派生自 Path of Exile 2 客户端资源，版权归 Grinding Gear Games 所有，仅用于
+构建计算的互操作目的（与 Path of Building 社区惯例一致）。

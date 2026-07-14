@@ -11,7 +11,7 @@ node = "26"
 
 [env]
 # 当前钉定的 PoE2 补丁版本（须与 pipeline/config.json 的 "patch" 一致）。
-POE2_PATCH = "4.5.0.3.4"
+POE2_PATCH = "4.5.4.3"
 
 [tasks."data:version"]
 description = "查询 GGG 当前 PoE2 patch 版本号（CDN 版本）"
@@ -35,9 +35,9 @@ run = ["node download-index.mjs", "npx -y pathofexile-dat@15"]
 
 [tasks."data:adapt"]
 description = "适配原始 JSON 为 PoBR 最小 JSON（→ data/<version>/，入库）。需 pobr-data-adapter（建设中）"
-run = "cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.0.3.4"
+run = "cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.4.3"
 
 [tasks."data"]
 description = "完整一键：取数 + 适配"
 dir = "pipeline"
-run = ["node download-index.mjs", "npx -y pathofexile-dat@15", "cd .. && cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.0.3.4"]
+run = ["node download-index.mjs", "npx -y pathofexile-dat@15", "cd .. && cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.4.3"]

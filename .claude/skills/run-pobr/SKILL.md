@@ -51,9 +51,9 @@ Other subcommands: `deps` (luajit only), `vendor` (clone/align PoB2 to the pinne
 
 ## Data & versions (data/calc are decoupled)
 
-The game data is **committed** under `data/<version>/` (`base`/`overlay`/`generated`/`i18n`) — **testing needs no download**. Multiple versions live side by side (currently `4.5.0.3.4` + `4.5.2.1.3`).
+The game data is **committed** under `data/<version>/` (`base`/`overlay`/`generated`/`i18n`) — **testing needs no download**. Multiple versions live side by side (currently `4.5.0.3.4`, `4.5.2.1.3`, `4.5.4.3`).
 
-The calc is **version-agnostic**: `pobr_gamedata::data_version()` resolves `POBR_DATA_VERSION` env → `data/CURRENT` → `pobr_data::DATA_VERSION` const. Switching the active version is **zero-code** — `export POBR_DATA_VERSION=4.5.2.1.3` or write `data/CURRENT`.
+The calc is **version-agnostic**: `pobr_gamedata::data_version()` resolves `POBR_DATA_VERSION` env → `data/CURRENT` → `pobr_data::DATA_VERSION` const. Switching the active version is **zero-code** — `export POBR_DATA_VERSION=4.5.0.3.4` or write `data/CURRENT`.
 
 Prove it runs on every committed version (the `multi_version` smoke — `BuildData::load` + full calc per version):
 
@@ -61,7 +61,7 @@ Prove it runs on every committed version (the `multi_version` smoke — `BuildDa
 bash .claude/skills/run-pobr/driver.sh versions
 ```
 
-The active default stays at the **golden-validated** version (`pobr_data::DATA_VERSION` = `4.5.0.3.4`), because PoB2 golden/parity values are version-specific. Golden tests pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` (decoupled from the active default), so advancing the default doesn't false-red parity; advancing it for real requires **re-recording golden** for the new version. `driver.sh data` prints the regen pipeline — but in this cloud env **data regen is NOT reproducible** (see Gotchas); the committed data is the source of truth.
+The active default is the latest committed version (`pobr_data::DATA_VERSION` = `4.5.4.3`, matching `data/CURRENT`). PoB2 golden/parity values are version-specific, so golden tests pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` (= `4.5.0.3.4`, decoupled from the active default) — advancing the default doesn't false-red parity; re-pinning golden to a newer version requires **re-recording** it. `driver.sh data` prints the regen pipeline; the committed data is the source of truth.
 
 To see *what actually changed* between two committed versions (the iteration input PoB2 gets from export+CHANGELOG — added/removed/renumbered nodes, skill stat deltas, mod-pool removals, overlay drift):
 
@@ -74,9 +74,9 @@ The full data-versioning + iteration model (PoB2's two regimes vs pobr's snapsho
 
 ## Gotchas
 
-- **vendor commit is per-data-version, and the drill defaults to the wrong one.** `data/CURRENT` = `4.5.0.3.4` → vendor `2df5a74`; but `pipeline/config.json` `patch` = `4.5.2.1.3` → a *different* vendor commit (`a82a33b4`). `version-bump-drill.sh` defaults `VERSION` to the config patch, so it byte-diffs the wrong version's overlays. The driver reads the commit from `data/<CURRENT>` and clones that; pass `--version 4.5.0.3.4` if you run the drill by hand.
-- **`extract-lua` and `pob2-oracle` do NOT work with vendor `2df5a74`.** The extractor asserts a global `modLib.parseMod`, but this commit loads the parser into *local* scope (`modLib` is `nil`; re-`LoadModule("Modules/ModParser")` then dies on local `SkillType`). `pob2-oracle/run.sh` hangs >120 s in headless bootstrap. So **data regen is not reproducible here** — only the `precompile` step byte-reproduces (drill step 4 = `byte-diff=0`). **Reading vendor Lua works fine** (the `lua` subcommand) — that's the main use.
-- **`driver.sh drill` FAILS when vendor is present** (step-3 extract-lua drifts/fails per above), and **PASSES when vendor is absent** (step 3 SKIPs). Use `smoke` for the green signal; `drill` is the niche version-bump-reproducibility check.
+- **vendor commit is per-data-version.** Each `data/<version>/` pins its own PoB2 vendor commit in `overlay/mod_parser_rules.json::_meta.vendor_commit` (e.g. `4.5.4.3` → `29ab8262`, `4.5.0.3.4` → `2df5a74`). The driver reads the commit for `data/CURRENT` and clones that; pass `--version <ver>` to `version-bump-drill.sh` to drill a non-current version.
+- **`extract-lua` and `pob2-oracle` do NOT work with the old `4.5.0.3.4` vendor commit (`2df5a74`).** That commit loads the parser into *local* scope (`modLib` is `nil`), and `pob2-oracle/run.sh` hangs >120 s in headless bootstrap — so regen for that pinned version is not reproducible; only the `precompile` step byte-reproduces. Current-version extraction works. **Reading vendor Lua always works** (the `lua` subcommand) — that's the main use.
+- Use `smoke` for the green signal; `drill` is the niche version-bump-reproducibility check (older pinned versions fail its extract step per above).
 - **extract-lua needs an *absolute* `--vendor-root`.** A relative path + the tool's `cd vendor/src` doubles the `LUA_PATH` and the bundled `runtime/lua/xml.lua` isn't found (`no file '.../xml.lua'`).
 - **GGG patch CDN 404s for old pinned versions** (`4.5.0.3.4`), so the `.dat` download step isn't runnable; the in-tree data is authoritative.
 
