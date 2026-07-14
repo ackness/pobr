@@ -16,8 +16,7 @@ test('edits persist across reload; builtin config toggles recalc', async ({ page
   await expect(lifeValue).not.toHaveText('—', { timeout: 30_000 });
   const lifeAt90 = await lifeValue.textContent();
 
-  // 笔记逐键保存。
-  await page.getByRole('button', { name: 'Notes' }).click();
+  // 笔记逐键保存（总览笔记卡片就在 Build 页）。
   await page.getByRole('textbox', { name: 'Notes' }).fill('my build notes 我的笔记');
 
   // 内置配置：搜索定位 + 勾选一个开关 → 触发重算（busy 出现后消退，无错误）。
@@ -36,12 +35,10 @@ test('edits persist across reload; builtin config toggles recalc', async ({ page
   await page.getByLabel('Search config options…').fill('Onslaught');
   await expect(page.locator('.config-item.is-overridden input[type="checkbox"]').first()).toBeChecked();
 
-  await page.getByRole('button', { name: 'Notes' }).click();
+  await page.getByRole('button', { name: 'Build' }).click();
   await expect(page.getByRole('textbox', { name: 'Notes' })).toHaveValue(
     'my build notes 我的笔记',
   );
-
-  await page.getByRole('button', { name: 'Build' }).click();
   await expect(page.getByLabel('Level')).toHaveValue('90');
   await expect(lifeValue).toHaveText(lifeAt90!, { timeout: 30_000 });
 });
