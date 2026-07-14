@@ -40,7 +40,7 @@ cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 
 Web 前端见 [`web/README.md`](web/README.md)（Vite + React + TS，通过 wasm JSON 契约与引擎解耦，不进 cargo workspace）。
 
-Rust **edition 2024**，workspace 版本统一 `0.1.0`。
+Rust **edition 2024**，全部 crate 共享一个 workspace 版本，与 `v0.x` 发布 tag 保持同步。
 
 ## 架构一览
 

@@ -49,7 +49,7 @@ cargo run -p lint-i18n                                  # 语言包完整性检�
 tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle：dump Lua 侧完整计算分解为 JSON（需 luajit；非 workspace 成员）
 ```
 
-- Rust **edition 2024**；workspace 版本统一 `0.1.0`。
+- Rust **edition 2024**；workspace 版本统一（根 Cargo.toml，与 v0.x tag 同步）。
 - 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以加速 ~100 个测试二进制的链接（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`（会触发全量重编译）。
 - CI gate（见 `devs/docs/architecture/06-development-workflow.md`）= fmt + clippy + test。涉及计算/Modifier/parser 的改动需补对应的集成测试或 golden fixture。
 

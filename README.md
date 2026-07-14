@@ -53,7 +53,8 @@ For the web frontend see [`web/README.md`](web/README.md) (Vite + React + TS,
 decoupled from the engine through a wasm JSON contract; not part of the cargo
 workspace).
 
-Rust **edition 2024**; workspace version unified at `0.1.0`.
+Rust **edition 2024**; all crates share one workspace version, kept in sync
+with the `v0.x` release tags.
 
 ## Architecture at a glance
 
