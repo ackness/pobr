@@ -1,115 +1,147 @@
 # PoBR — Path of Building in Rust
 
-把 [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（Lua）的核心计算引擎迁移到 Rust，目标有两个：
+**English** | [简体中文](README.zh-CN.md)
 
-1. **性能** — 解决大规模 Modifier 聚合、多技能并行计算的瓶颈；
-2. **可归因** — 在 PoB2 兼容的基础上额外提供 **source-level 归因**：每个输出都能回溯到是哪件装备 / 词条 / 天赋 / 宝石 / 配置贡献的。
+A port of the [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
+core calculation engine (Lua) to Rust, with two goals:
 
-计算核心保持纯函数 + 确定性，PoB2 兼容是硬性回归基准。
+1. **Performance** — remove the bottlenecks in large-scale modifier aggregation
+   and parallel multi-skill calculation;
+2. **Attribution** — on top of PoB2 compatibility, add **source-level
+   attribution**: every output can be traced back to the item / mod line /
+   passive / gem / config that contributed it.
 
-## 快速上手
+The calculation core stays pure-functional and deterministic; PoB2
+compatibility is the hard regression baseline.
 
-标准 cargo 工作流（推荐安装 [`cargo-nextest`](https://nexte.st/) 跑测试）：
+## Getting started
+
+Standard cargo workflow ([`cargo-nextest`](https://nexte.st/) recommended for
+running tests):
 
 ```bash
-cargo nextest run --workspace          # 全部测试
+cargo nextest run --workspace          # all tests
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 
-# CLI（二进制名 pobr）
+# CLI (binary name: pobr)
 cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
-cargo run -p pobr-cli -- decode-code <pob_code>        # PoB Build Code → XML
+cargo run -p pobr-cli -- decode-code <pob_code>        # PoB build code → XML
 cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 ```
 
-Web 前端见 [`web/README.md`](web/README.md)（Vite + React + TS，通过 wasm JSON 契约与引擎解耦，不进 cargo workspace）。
+For the web frontend see [`web/README.md`](web/README.md) (Vite + React + TS,
+decoupled from the engine through a wasm JSON contract; not part of the cargo
+workspace).
 
-Rust **edition 2024**，workspace 版本统一 `0.1.0`。
+Rust **edition 2024**; workspace version unified at `0.1.0`.
 
-## 架构一览
+## Architecture at a glance
 
-数据流：
-
-```
-GGG .dat 导出
-  └─(pobr-data-adapter 离线适配)→ data/<version>/*.json
-       └─(pobr-gamedata 运行时 loader)→ 上层计算
-```
-
-计算流水线（`pobr-core`）：
+Data flow:
 
 ```
-modifier 文本 → 解析 → ModDb → 聚合查询 → calc
+GGG .dat export
+  └─(pobr-data-adapter, offline)→ data/<version>/*.json
+       └─(pobr-gamedata, runtime loader)→ calculation layers
+```
+
+Calculation pipeline (`pobr-core`):
+
+```
+modifier text → parse → ModDb → aggregation queries → calc
   → OutputTable + Breakdown + TraceGraph + AttributionReport
 ```
 
-标准属性聚合公式：`(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`。
+Standard stat aggregation: `(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`.
 
-I/O 收口在 `pobr-gamedata` 一处；`pobr-data` / `pobr-core` 维持零 I/O。依赖方向只能向下，`pobr-data` 是最底层。
+All file I/O is confined to `pobr-gamedata`; `pobr-data` / `pobr-core` stay
+zero-I/O. Dependencies only point downward, with `pobr-data` at the bottom.
 
-## Workspace 结构
+## Workspace layout
 
-15 个 member，`crates/` 为库、`apps/` 为可执行、`tools/` 为数据/维护工具：
+15 members — `crates/` are libraries, `apps/` are executables, `tools/` are
+data/maintenance tooling:
 
-| Crate | 职责 |
-|-------|------|
-| `crates/pobr-data` | 纯数据定义（catalog schema：BaseItem/Stat/Mod/SkillGem/PassiveNode…），零逻辑零 I/O，所有 crate 的底层依赖 |
-| `crates/pobr-core` | Modifier 解析 / 存储 / 聚合 + 计算引擎 + source-level 归因 + 来源接入（item/passive/gem/flask）。零 I/O |
-| `crates/pobr-gamedata` | 运行时数据 loader——数据系统里唯一持有文件 I/O 的层，按域懒加载 + i18n 边车 |
-| `crates/pobr-i18n` | 语言包加载 / fallback / 显示文本映射（`en-US` canonical + `zh-TW`） |
-| `crates/pobr-tree` | 天赋树拓扑、allocated node mod 收集、范围珠宝 |
-| `crates/pobr-build` | Build 状态、PoB Build Code 编解码、导入识别、`CalcOrchestrator`（带缓存）、Build 对比。**parity 测试主战场** |
-| `crates/pobr-item` | raw item 文本的全保真编辑态解析 + 逆向序列化（BuildRaw 往返） |
-| `crates/pobr-trade` | Trade 查询 / 价格抽象（`TradeBackend` trait + 离线 `MockBackend`） |
-| `apps/pobr-cli` | CLI：`calculate` / `parse-mod` / `decode-code` / `encode-code` |
-| `apps/pobr-wasm` | Web/WASM API：纯 Rust JSON 入出，`wasm` feature 下 wasm-bindgen 绑定 |
-| `apps/pobr-desktop` | 桌面入口最小骨架 |
-| `tools/pobr-data-adapter` | 数据管线适配器：GGG `.dat` 导出 → 反范式化为入库 JSON |
-| `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、parity 检查 / diff |
-| `tools/lint-i18n` | 语言包完整性检查 |
-| `tools/precompile-mods` | mod-parser 规则离线预编译 / 覆盖率报表 |
+| Crate | Responsibility |
+|-------|----------------|
+| `crates/pobr-data` | Pure data definitions (catalog schema: BaseItem/Stat/Mod/SkillGem/PassiveNode…); zero logic, zero I/O; bottom dependency of every crate |
+| `crates/pobr-core` | Modifier parsing / storage / aggregation + calculation engine + source-level attribution + source ingestion (item/passive/gem/flask). Zero I/O |
+| `crates/pobr-gamedata` | Runtime data loader — the only layer in the data system that touches files; lazy per-domain loading + i18n sidecars |
+| `crates/pobr-i18n` | Language pack loading / fallback / display-text mapping (`en-US` canonical + `zh-TW`) |
+| `crates/pobr-tree` | Passive tree topology, allocated-node mod collection, radius jewels |
+| `crates/pobr-build` | Build state, PoB build code encode/decode, import recognition, `CalcOrchestrator` (cached), build comparison. **Home of the parity tests** |
+| `crates/pobr-item` | Full-fidelity edit-mode parsing of raw item text + reverse serialization (BuildRaw round-trip) |
+| `crates/pobr-trade` | Trade query / pricing abstraction (`TradeBackend` trait + offline `MockBackend`) |
+| `apps/pobr-cli` | CLI: `calculate` / `parse-mod` / `decode-code` / `encode-code` |
+| `apps/pobr-wasm` | Web/WASM API: pure-Rust JSON in/out; wasm-bindgen bindings behind the `wasm` feature |
+| `apps/pobr-desktop` | Minimal desktop entry-point skeleton |
+| `tools/pobr-data-adapter` | Data pipeline adapter: GGG `.dat` export → denormalized committed JSON |
+| `tools/sync-pob-catalog` | Extracts the stat catalog from PoB core Lua; parity check / diff |
+| `tools/lint-i18n` | Language pack completeness check |
+| `tools/precompile-mods` | Offline pre-compilation of mod-parser rules / coverage report |
 
-（`tools/pob2-oracle` 是非 workspace 成员的纯 Lua wrapper，用于 dump PoB2 侧计算分解做逐分量对照。）
+(`tools/pob2-oracle` is a non-workspace pure-Lua wrapper that dumps PoB2-side
+calculation breakdowns for per-component comparison.)
 
-## Parity 体系（回归基准）
+## Parity system (regression baseline)
 
-PoB2 兼容是硬回归门禁，三层校验互补：
+PoB2 compatibility is a hard regression gate, guarded by three complementary
+layers:
 
-1. **`crates/pobr-build/tests/ninja_parity.rs`** — 遍历真实 PoB2 build + 黄金数值，零硬编码对比全部职业 / 技能；`parity_no_regression` 断言聚合命中率不低于基线。
-2. **golden / dual-run 套件** — 钉住中间值与配置语义。
-3. **`tools/pob2-oracle`** — 需要逐分量定位偏差时，从 vendored PoB2 直接 dump Lua 侧计算分解对照。
+1. **`crates/pobr-build/tests/ninja_parity.rs`** — walks real PoB2 builds with
+   golden stat values, comparing all classes / skills with zero hard-coding;
+   `parity_no_regression` asserts the aggregate hit rate never drops below the
+   recorded baseline.
+2. **golden / dual-run suites** — pin intermediate values and config semantics.
+3. **`tools/pob2-oracle`** — when a divergence needs per-component diagnosis,
+   dumps the Lua-side calculation breakdown straight from the vendored PoB2.
 
 ```bash
-cargo test -p pobr-build --test parity -- --nocapture   # parity 仪表盘
+cargo test -p pobr-build --test parity -- --nocapture   # parity dashboard
 ```
 
-`vendor/PathOfBuilding-PoE2/` 是完整检出，公式核对直接读本地 Lua，不必上网找。
+`vendor/PathOfBuilding-PoE2/` is a full checkout; verify formulas by reading
+the local Lua directly instead of searching online.
 
-## 文档
+## Documentation
 
-- [`CLAUDE.md`](CLAUDE.md) — 验证分层、命令速查、关键约定（贡献前必读）。
-- [`devs/docs/architecture/`](devs/docs/architecture/)（00–15）— 目标架构与路线图。
-- [`agent-docs/`](agent-docs/) — PoE2（0.5.0）机制中文参考（伤害类型 / 抗性 / 护甲闪避 ES / 暴击 / 异常 / 计算顺序等）。
-- [`web/README.md`](web/README.md) — Web 前端。
+- [`CLAUDE.md`](CLAUDE.md) — verification tiers, command cheat-sheet, key
+  conventions (read before contributing).
+- [`devs/docs/architecture/`](devs/docs/architecture/) (00–15) — target
+  architecture and roadmap.
+- [`agent-docs/`](agent-docs/) — PoE2 (0.5.0) game-mechanics reference in
+  Chinese (damage types / resistances / armour, evasion, ES / crit / ailments /
+  damage-defence order, …).
+- [`web/README.md`](web/README.md) — web frontend.
 
-## 约定
+## Conventions
 
-- **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本走 `pobr-i18n`。
-- **不可变 / 确定性**：calc 函数对 `Env` 的可变写入集中在 `perform`，并行化只在只读快照阶段展开。
-- 涉及计算 / Modifier / parser 的改动需补对应集成测试或 golden fixture；改变 crate 边界 / 聚合语义 / catalog / parity 规则时同步更新架构文档。
+- **Only stable IDs inside the calculation** (`StatId` / `ModName` /
+  `SourceId`); display text goes through `pobr-i18n`.
+- **Immutable / deterministic**: mutable writes to `Env` are concentrated in
+  `perform`; parallelism only fans out over read-only snapshots.
+- Changes touching calculation / modifiers / the parser need matching
+  integration tests or golden fixtures; changes to crate boundaries,
+  aggregation semantics, catalog or parity rules must update the architecture
+  docs in the same change.
 
-## 参考与致谢
+## References & acknowledgements
 
-- [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（MIT）——
-  本项目的参考实现与 parity 回归基准：计算公式、Modifier 语义、specialModList
-  解析规则均以其 Lua 实现为准源逐一核对（本地检出到 `vendor/`，不入库；
-  钉定 commit 记录在 `data/<version>/overlay/mod_parser_rules.json::_meta`）。
-- [poe2db.tw](https://poe2db.tw/) 与 PoE2 Wiki——游戏机制与文本翻译的查证来源。
+- [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
+  (MIT) — the reference implementation and parity baseline of this project:
+  calculation formulas, modifier semantics and specialModList parsing rules are
+  verified one-by-one against its Lua implementation (checked out locally under
+  `vendor/`, not committed; the pinned commit is recorded in
+  `data/<version>/overlay/mod_parser_rules.json::_meta`).
+- [poe2db.tw](https://poe2db.tw/) and the PoE2 Wiki — sources for game
+  mechanics and text translations.
 
 ## License
 
-代码以 [MIT](LICENSE) 协议发布。
+The code is released under the [MIT](LICENSE) license.
 
-本项目与 Grinding Gear Games 无任何关联，亦未获其背书。`data/` 下的游戏数据
-派生自 Path of Exile 2 客户端资源，版权归 Grinding Gear Games 所有，仅用于
-构建计算的互操作目的（与 Path of Building 社区惯例一致）。
+This project is not affiliated with or endorsed by Grinding Gear Games. The
+game data under `data/` is derived from Path of Exile 2 client assets and is
+copyrighted by Grinding Gear Games; it is included solely for build-calculation
+interoperability, in line with Path of Building community practice.
