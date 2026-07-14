@@ -508,26 +508,40 @@ fn run(args: Args) -> Result<String, String> {
     let cost_types = skills::adapt_cost_types(&en)?;
     write_pretty(&base_dir.join("cost_types.json"), &cost_types)?;
 
-    let manifest = DataManifest {
-        schema_version: CATALOG_SCHEMA_VERSION,
-        poe_version: args.patch.clone(),
-        languages: vec!["zh-TW".into()],
-        domains: DomainSections {
-            base: vec![
-                "base_items".into(),
-                "mods".into(),
-                "stats".into(),
-                "skill_gems".into(),
-                "granted_effects".into(),
-                "granted_effect_levels".into(),
-                "granted_effect_stat_sets".into(),
-                "cost_types".into(),
-            ],
-            overlay: Vec::new(),
-            generated: Vec::new(),
-        },
-    };
-    write_pretty(&version_dir.join("manifest.json"), &manifest)?;
+    // manifest：与磁盘现有 manifest **合并**——本步只负责登记自己产出的 base 域
+    // 与 zh-TW 语言；overlay/generated/zh-CN 等由 regen 管线其余步骤维护，单步
+    // 重跑（如 `mise run data:adapt`）不得抹除既有记录。
+    let manifest_path = version_dir.join("manifest.json");
+    let mut manifest = fs::read_to_string(&manifest_path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<DataManifest>(&s).ok())
+        .unwrap_or_else(|| DataManifest {
+            schema_version: CATALOG_SCHEMA_VERSION,
+            poe_version: args.patch.clone(),
+            languages: Vec::new(),
+            domains: DomainSections::default(),
+        });
+    manifest.schema_version = CATALOG_SCHEMA_VERSION;
+    manifest.poe_version = args.patch.clone();
+    if !manifest.languages.iter().any(|l| l == "zh-TW") {
+        manifest.languages.push("zh-TW".into());
+        manifest.languages.sort();
+    }
+    for domain in [
+        "base_items",
+        "mods",
+        "stats",
+        "skill_gems",
+        "granted_effects",
+        "granted_effect_levels",
+        "granted_effect_stat_sets",
+        "cost_types",
+    ] {
+        if !manifest.domains.base.iter().any(|d| d == domain) {
+            manifest.domains.base.push(domain.into());
+        }
+    }
+    write_pretty(&manifest_path, &manifest)?;
 
     Ok(format!(
         "适配完成：base_items {}/{} 条（过滤 {} 个占位），zh-TW 名称 {} 条；\
