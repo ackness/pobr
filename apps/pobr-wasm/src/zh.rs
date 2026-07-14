@@ -250,8 +250,10 @@ impl LineTranslator {
         self.translate_rare_name(line)
     }
 
-    /// RARE 随机名组合翻译：恰好两个单词、都命中组成词表时按国服惯例连写
-    /// 拼接（Storm Bite → 风暴慧齿）。词条行含空格数远超两词，不会误入。
+    /// RARE 随机名组合翻译：恰好两个单词、至少一词命中组成词表时按国服惯例
+    /// 空格分隔、保持前后词序（Storm Bite → 风暴 慧齿）；词表缺口的词保留
+    /// 英文原词（Storm Wibble → 风暴 Wibble）。词条行含空格数远超两词，
+    /// 不会误入；本函数在末位回退，名词表整名/词条模板已先行筛过。
     fn translate_rare_name(&self, line: &str) -> Option<String> {
         if self.rare_words.is_empty() {
             return None;
@@ -261,10 +263,14 @@ impl LineTranslator {
         if parts.next().is_some() {
             return None;
         }
+        let (a, b) = (self.rare_words.get(first), self.rare_words.get(second));
+        if a.is_none() && b.is_none() {
+            return None;
+        }
         Some(format!(
-            "{}{}",
-            self.rare_words.get(first)?,
-            self.rare_words.get(second)?
+            "{} {}",
+            a.map_or(first, String::as_str),
+            b.map_or(second, String::as_str)
         ))
     }
 
@@ -561,5 +567,21 @@ mod tests {
     fn string_fallback_rejects_unanchored_line() {
         // 与任何强前/后缀锚点都不沾边——原样落空（消费侧回退英文原文）。
         assert_eq!(translator().translate_line("Zzz Qqq Wibble"), None);
+    }
+
+    #[test]
+    fn rare_name_joins_with_space_keeping_word_order() {
+        let mut t = translator();
+        t.set_rare_words(HashMap::from([
+            ("Storm".to_string(), "风暴".to_string()),
+            ("Bite".to_string(), "慧齿".to_string()),
+        ]));
+        assert_eq!(t.translate_line("Storm Bite").as_deref(), Some("风暴 慧齿"));
+        // 词表缺口的词保留英文原词；两词全缺失才整行落空回退。
+        assert_eq!(
+            t.translate_line("Storm Wibble").as_deref(),
+            Some("风暴 Wibble")
+        );
+        assert_eq!(t.translate_line("Zzz Wibble"), None);
     }
 }
