@@ -1868,6 +1868,72 @@
       "verified": false,
       "batch": "a2-real-gaps",
       "source_note": "ModParser.lua:3374（mod(AdditionalCooldownUses, BASE, num, SkillType{skillTypeList={Cold,Fire,Lightning}})；skillTypeList → SkillTypes 位集并集（intersects 即 OR，与 vendor ModStore SkillType 任一命中同语义）。消费方 skill_mechanics.rs stored uses 已存在）"
+    },
+    {
+      "id": "immune_to_ignite",
+      "pattern": "immun[ei]t?y? to ignite",
+      "vendor_pattern": "immun[ei]t?y? to ignite",
+      "mods": [
+        {
+          "name": "IgniteImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5172 flag(IgniteImmune)；charm『Immune to Ignite』词条走此行"
+    },
+    {
+      "id": "immune_to_freeze",
+      "pattern": "immun[ei]t?y? to freeze",
+      "vendor_pattern": "immun[ei]t?y? to freeze",
+      "mods": [
+        {
+          "name": "FreezeImmune",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "S2",
+      "source_note": "ModParser.lua:5168 flag(FreezeImmune)；Thawing Charm『Immune to Freeze』词条走此行"
+    },
+    {
+      "id": "recover_mana_when_used",
+      "pattern": "recovers? (\\d+) mana when used",
+      "vendor_pattern": null,
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "纯识别条目：药剂即时恢复走 flask 使用系统，vendor ModParser 无匹配、不产 mod"
+    },
+    {
+      "id": "flask_mana_recovery_overflow",
+      "pattern": "mana recovery from flasks can overflow maximum mana( during effect)?",
+      "vendor_pattern": null,
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "纯识别条目（Melting Maelstrom）：魔力溢出机制未建模，vendor ModParser 无匹配"
+    },
+    {
+      "id": "possessed_by_spirit_on_use",
+      "pattern": "possessed by [a-z' ]+ for (\\d+) seconds on use",
+      "vendor_pattern": null,
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "纯识别条目（金护符附身 buff，如 Spirit Of The Stag）：vendor ModParser 无匹配"
+    },
+    {
+      "id": "also_grants_guard",
+      "pattern": "also grants (\\d+) guard",
+      "vendor_pattern": null,
+      "mods": [],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "纯识别条目：Guard 临时护体池未建模，vendor ModParser 无匹配"
     }
   ]
 }
