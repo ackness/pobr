@@ -103,7 +103,38 @@ jobs:
         run: pnpm sync-data
       - name: Build
         run: pnpm build
+      # Hand the built site to the deploy job (path is workspace-relative,
+      # unaffected by the job-level working-directory).
+      - name: Upload dist for deploy
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+          retention-days: 3
       - name: Install Playwright
         run: pnpm exec playwright install --with-deps chromium
       - name: E2E smoke
         run: pnpm exec playwright test
+
+  # Auto-deploy to Cloudflare Pages on v0.x release tags, only after BOTH the
+  # Rust gate and the web gate pass. Reuses the dist built by the web job —
+  # no rebuild. One-time setup: create the Pages project and add the
+  # CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID repo secrets (see PR/commit).
+  deploy:
+    name: deploy to Cloudflare Pages
+    needs: [ci, web]
+    if: startsWith(github.ref, 'refs/tags/v0.')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # --branch=master marks this as a production deployment (must match
+          # the Pages project's production branch); tag checkouts are detached
+          # so wrangler cannot infer it.
+          command: pages deploy dist --project-name=pobr-web --branch=master
