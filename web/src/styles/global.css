@@ -168,6 +168,13 @@ pre {
   text-overflow: ellipsis;
 }
 
+.app-select-hint {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  white-space: normal;
+}
+
 .app-select-option.is-highlight {
   background: var(--surface-card);
   outline: 1px solid var(--accent-gold-dim);

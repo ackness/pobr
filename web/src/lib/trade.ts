@@ -81,12 +81,22 @@ export const REALM_DEFAULT_LEAGUE: Record<TradeRealm, string> = {
   cn: REALM_LEAGUES.cn[0],
 };
 
+/**
+ * 预算上限（trade2 Buyout Price 过滤器）。currency 取官方过滤器 id：
+ * 缺省（undefined）= Exalted Orb Equivalent（崇高石等价，站方自动换算）。
+ */
+export interface TradePriceCap {
+  max: number;
+  currency?: 'divine' | 'exalted' | 'chaos';
+}
+
 /** trade2 加权查询 JSON + 直开 URL（min = 当前加权和 × threshold）。 */
 export function buildTradeUrl(
   league: string,
   weighted: WeightedStat[],
   threshold = 0.7,
   realm: TradeRealm = 'intl',
+  price?: TradePriceCap,
 ): string {
   const sum = weighted.reduce((acc, w) => acc + w.weight * w.value, 0);
   const query = {
@@ -104,6 +114,15 @@ export function buildTradeUrl(
       ],
       filters: {
         type_filters: { filters: { rarity: { option: 'nonunique' } } },
+        ...(price && price.max > 0
+          ? {
+              trade_filters: {
+                filters: {
+                  price: { max: price.max, ...(price.currency ? { option: price.currency } : {}) },
+                },
+              },
+            }
+          : {}),
       },
     },
     sort: { 'statgroup.0': 'desc' },

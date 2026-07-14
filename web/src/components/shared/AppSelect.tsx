@@ -5,6 +5,8 @@ export interface AppSelectOption {
   label: string;
   /** 可选分组标题（相邻同组只渲染一次，对应原生 optgroup）。 */
   group?: string;
+  /** 可选副行说明（面板选项内 label 下方的弱化小字；触发按钮不显示）。 */
+  hint?: string;
 }
 
 interface Props {
@@ -110,6 +112,7 @@ export function AppSelect({ value, options, onChange, disabled, ariaLabel, place
                 onClick={() => pick(option)}
               >
                 {option.label}
+                {option.hint && <span className="app-select-hint">{option.hint}</span>}
               </li>
             </Fragment>
           ))}

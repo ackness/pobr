@@ -1,0 +1,66 @@
+/* 市集页：槽位行列表（PoB2 Trader 的行式布局，融入本站暗金风格）。 */
+
+.trade-controls {
+  align-items: flex-end;
+}
+
+.trade-budget {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.trade-budget input {
+  width: 6em;
+}
+
+.trade-slots {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.trade-slot-row {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--surface-card);
+}
+
+.trade-slot-row:hover {
+  background: var(--surface-card);
+}
+
+.trade-slot-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.trade-slot-name {
+  flex: 0 0 6.5em;
+  color: var(--accent-gold-dim);
+  font-size: var(--text-sm);
+}
+
+.trade-slot-item {
+  flex: 1 1 14em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trade-slot-item.is-empty {
+  color: var(--text-muted);
+}
+
+.trade-details {
+  margin-top: var(--space-2);
+}
+
+.trade-details summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}

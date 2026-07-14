@@ -117,6 +117,7 @@ export function ItemOptimizer({
       </button>
       {expanded && (
         <div className="gem-optimizer-body">
+          <p className="skills-hint">{tt('opt.itemHint')}</p>
           {variantDefs.length === 0 ? (
             <p className="skills-hint">{tt('opt.needLibrary')}</p>
           ) : (

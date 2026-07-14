@@ -5,6 +5,7 @@ import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
 import { BuildPanel } from './components/import/BuildPanel';
 import { StatSidebar } from './components/sidebar/StatSidebar';
 import { ItemsPanel } from './components/items/ItemsPanel';
+import { TradePanel } from './components/trade/TradePanel';
 import { SkillsPanel } from './components/skills/SkillsPanel';
 import { CalcsPanel } from './components/calcs/CalcsPanel';
 import { TreePanel } from './components/tree/TreePanel';
@@ -79,6 +80,7 @@ export default function App() {
           {tab === 'tree' && <TreePanel session={session} lang={lang} />}
           {tab === 'skills' && <SkillsPanel session={session} lang={lang} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} />}
+          {tab === 'trade' && <TradePanel session={session} lang={lang} />}
           {tab === 'calcs' && (
             <CalcsPanel
               session={session}

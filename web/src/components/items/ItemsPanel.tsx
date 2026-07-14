@@ -3,6 +3,7 @@ import { getBackend } from '../../api/backend';
 import type { ItemLineJson, RuneCatalogEntry } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import {
+  cleanLine,
   itemLines,
   rarityOf,
   useItemDisplayNames,
@@ -15,7 +16,6 @@ import { CopyButton } from '../shared/CopyButton';
 import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
 import { ItemOptimizer } from './ItemOptimizer';
-import { TradeSearch } from './TradeSearch';
 import './items.css';
 
 interface Props {
@@ -233,14 +233,20 @@ export function ItemsPanel({ session, lang }: Props) {
   const noteKey = (slot: string) => `${isUtilitySlot(slot) ? 'flask' : 'item'}:${slot}`;
   const hasNote = (slot: string) => Boolean(session.annotations[noteKey(slot)]?.trim());
 
-  // 符文目录（一次加载；mock/加载失败为空 → 隐藏符文编辑器）。
+  // 符文目录（按选中物品重取：效果行随基底槽类变化；mock/加载失败为空 → 隐藏符文编辑器）。
   const [runeCatalog, setRuneCatalog] = useState<RuneCatalogEntry[]>([]);
   useEffect(() => {
+    let cancelled = false;
     getBackend()
-      .then((b) => b.runeCatalog())
-      .then(setRuneCatalog)
+      .then((b) => b.runeCatalog(selectedText))
+      .then((entries) => {
+        if (!cancelled) setRuneCatalog(entries);
+      })
       .catch(() => {});
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedText]);
   const [runeError, setRuneError] = useState<string | null>(null);
   useEffect(() => setRuneError(null), [selected]);
 
@@ -261,24 +267,40 @@ export function ItemsPanel({ session, lang }: Props) {
     (lang === 'zh-CN' ? entry.name_zh_cn : lang === 'zh-TW' ? entry.name_zh_tw : null) ??
     entry.name;
 
-  // 符文槽下拉选项（各槽共用一份）：空槽 + 符文组 + 魂核组。
-  const runeOptions = useMemo<AppSelectOption[]>(
-    () => [
-      { value: '', label: tt('items.emptySocket') },
-      ...runeCatalog
-        .filter((r) => !r.is_soul_core)
-        .map((r) => ({ value: r.name, label: runeDisplayName(r), group: tt('items.runeGroup') })),
-      ...runeCatalog
-        .filter((r) => r.is_soul_core)
-        .map((r) => ({
-          value: r.name,
-          label: runeDisplayName(r),
-          group: tt('items.soulCoreGroup'),
-        })),
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [runeCatalog, lang],
+  // 效果行本地化（flat 展开 → 按条目行数切回；en 直接原样）。
+  const runeEffectLines = useLocalizedLines(
+    runeCatalog.flatMap((r) => r.lines.map(cleanLine)),
+    lang,
   );
+  const runeHints = useMemo(() => {
+    const map = new Map<string, string>();
+    let offset = 0;
+    for (const r of runeCatalog) {
+      map.set(r.name, runeEffectLines.slice(offset, offset + r.lines.length).join(', '));
+      offset += r.lines.length;
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runeCatalog, runeEffectLines]);
+
+  // 符文槽下拉选项（各槽共用一份）：空槽 + 符文组 + 魂核组，选项带效果副行。
+  // 有物品上下文（任一条目带效果行）时滤掉对该基底不适用的符文。
+  const runeOptions = useMemo<AppSelectOption[]>(() => {
+    const hasContext = runeCatalog.some((r) => r.lines.length > 0);
+    const visible = hasContext ? runeCatalog.filter((r) => r.lines.length > 0) : runeCatalog;
+    const toOption = (r: RuneCatalogEntry, group: string): AppSelectOption => ({
+      value: r.name,
+      label: runeDisplayName(r),
+      group,
+      hint: runeHints.get(r.name) || undefined,
+    });
+    return [
+      { value: '', label: tt('items.emptySocket') },
+      ...visible.filter((r) => !r.is_soul_core).map((r) => toOption(r, tt('items.runeGroup'))),
+      ...visible.filter((r) => r.is_soul_core).map((r) => toOption(r, tt('items.soulCoreGroup'))),
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runeCatalog, runeHints, lang]);
 
   /** 调用后端重写符文/孔数并整件重算。 */
   const reforge = async (runes: string[], sockets?: number) => {
@@ -516,9 +538,6 @@ export function ItemsPanel({ session, lang }: Props) {
               currentText={selectedText}
               onApply={(text) => (text === null ? removeItem() : switchTo(text))}
             />
-          )}
-          {!isUtilitySlot(selected) && selectedText && (
-            <TradeSearch session={session} lang={lang} slot={selected} itemText={selectedText} />
           )}
         </div>
       )}

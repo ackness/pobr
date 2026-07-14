@@ -20,6 +20,7 @@ const DICT = {
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },
   'tab.items': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
+  'tab.trade': { 'en-US': 'Trade', 'zh-TW': '市集', 'zh-CN': '市集' },
   'tab.calcs': { 'en-US': 'Calcs', 'zh-TW': '計算', 'zh-CN': '计算' },
   'tab.config': { 'en-US': 'Config', 'zh-TW': '配置', 'zh-CN': '配置' },
   'tab.notes': { 'en-US': 'Notes', 'zh-TW': '筆記', 'zh-CN': '笔记' },
@@ -115,7 +116,19 @@ const DICT = {
     'zh-CN': '先添加候选辅助宝石。',
   },
   'opt.baseline': { 'en-US': 'Baseline (no change)', 'zh-TW': '基線（不變）', 'zh-CN': '基线（不变）' },
-  'opt.openItem': { 'en-US': 'Slot optimizer', 'zh-TW': '槽位裝備尋優', 'zh-CN': '槽位装备寻优' },
+  'opt.openItem': {
+    'en-US': 'Try on items from my library',
+    'zh-TW': '試穿物品庫的同槽裝備',
+    'zh-CN': '试穿物品库的同槽装备',
+  },
+  'opt.itemHint': {
+    'en-US':
+      'Tries every same-slot item in your library on this slot (plus "unequip"), recalculates the build for each, and ranks them by the chosen goal — apply the best with one click.',
+    'zh-TW':
+      '把物品庫裡能裝進這個槽位的裝備逐件試穿（含「卸下」），每件完整重算，按所選目標排名——點「應用」直接換上。',
+    'zh-CN':
+      '把物品库里能装进这个槽位的装备逐件试穿（含「卸下」），每件完整重算，按所选目标排名——点「应用」直接换上。',
+  },
   'opt.needLibrary': {
     'en-US': 'No candidates for this slot — save a few items to the library first.',
     'zh-TW': '物品庫沒有該槽位的候選——先把幾件裝備存進庫。',
@@ -138,13 +151,15 @@ const DICT = {
   'opt.apply': { 'en-US': 'Apply', 'zh-TW': '應用', 'zh-CN': '应用' },
   'opt.infeasible': { 'en-US': 'constraint not met', 'zh-TW': '不滿足約束', 'zh-CN': '不满足约束' },
 
-  // Trade 市集加权搜索
-  'trade.open': { 'en-US': 'Trade search', 'zh-TW': '市集搜尋', 'zh-CN': '市集搜索' },
+  // Trade 市集页（独立 Tab，PoB2 Trader 的对应物）
+  'trade.title': { 'en-US': 'Find upgrades on trade', 'zh-TW': '市集找升級', 'zh-CN': '市集找升级' },
   'trade.hint': {
     'en-US':
-      'Weights each mapped mod by its marginal contribution (full recalc per line), then opens the official trade site with a weighted-sum search for better items.',
-    'zh-TW': '逐條詞條摘除重算得邊際權重，拼加權搜尋直開官方市集找更好的同類裝備。',
-    'zh-CN': '逐条词条摘除重算得边际权重，拼加权搜索直开官方市集找更好的同类装备。',
+      'Pick a goal and a budget, then hit "Find better" on a slot. PoBR measures how much each mod on your current item really contributes, and opens the official trade site sorted by that gain — the top results are the biggest upgrades you can actually buy.',
+    'zh-TW':
+      '選好目標和預算，點某個槽位的「找更好的」。PoBR 會先算出這件裝備每條詞條對你的實際提升，再打開官方市集、按「對你的提升」排序——排最前面的就是預算內能買到的最大升級。',
+    'zh-CN':
+      '选好目标和预算，点某个槽位的「找更好的」。PoBR 会先算出这件装备每条词条对你的实际提升，再打开官方市集、按「对你的提升」排序——排最前面的就是预算内能买到的最大升级。',
   },
   'trade.realm': { 'en-US': 'Server', 'zh-TW': '伺服器', 'zh-CN': '服务器' },
   'trade.realmIntl': { 'en-US': 'International', 'zh-TW': '國際服', 'zh-CN': '国际服' },
@@ -152,18 +167,40 @@ const DICT = {
   'trade.league': { 'en-US': 'League', 'zh-TW': '聯盟', 'zh-CN': '赛季/联盟' },
   'trade.leagueSeason': { 'en-US': 'current season', 'zh-TW': '賽季服', 'zh-CN': '赛季服' },
   'trade.leagueCustom': { 'en-US': 'Custom…', 'zh-TW': '自定義…', 'zh-CN': '自定义…' },
-  'trade.generate': { 'en-US': 'Generate search', 'zh-TW': '生成加權搜尋', 'zh-CN': '生成加权搜索' },
-  'trade.lines': { 'en-US': 'mods', 'zh-TW': '條詞條', 'zh-CN': '条词条' },
+  'trade.budget': { 'en-US': 'Max price', 'zh-TW': '預算上限', 'zh-CN': '预算上限' },
+  'trade.budgetAny': { 'en-US': 'no limit', 'zh-TW': '不限', 'zh-CN': '不限' },
+  'trade.curExalted': { 'en-US': 'Exalted', 'zh-TW': '崇高石', 'zh-CN': '崇高石' },
+  'trade.curDivine': { 'en-US': 'Divine', 'zh-TW': '神聖石', 'zh-CN': '神圣石' },
+  'trade.curChaos': { 'en-US': 'Chaos', 'zh-TW': '混沌石', 'zh-CN': '混沌石' },
+  'trade.findBetter': { 'en-US': 'Find better', 'zh-TW': '找更好的', 'zh-CN': '找更好的' },
   'trade.openSite': { 'en-US': 'Open trade site', 'zh-TW': '打開市集', 'zh-CN': '打开市集' },
+  'trade.details': { 'en-US': 'mod values', 'zh-TW': '詞條價值明細', 'zh-CN': '词条价值明细' },
+  'trade.colLine': { 'en-US': 'Mod', 'zh-TW': '詞條', 'zh-CN': '词条' },
+  'trade.colWeight': {
+    'en-US': 'Gain per point',
+    'zh-TW': '每 1 點的提升',
+    'zh-CN': '每 1 点的提升',
+  },
+  'trade.slotEmpty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
+  'trade.emptyHint': {
+    'en-US': 'Equip something first — search weights come from the current item’s mods.',
+    'zh-TW': '先隨便裝上一件——搜尋權重來自當前裝備的詞條。',
+    'zh-CN': '先随便装上一件——搜索权重来自当前装备的词条。',
+  },
+  'trade.unavailable': {
+    'en-US': 'Trade search needs the mod→trade-stat map, which this data pack does not include.',
+    'zh-TW': '市集搜尋需要詞條→市集屬性映射表，當前資料包沒有帶。',
+    'zh-CN': '市集搜索需要词条→市集属性映射表，当前数据包没有带。',
+  },
   'trade.noMapped': {
-    'en-US': 'No mods on this item map to trade site stats.',
-    'zh-TW': '這件裝備沒有詞條能映射到市集可搜屬性。',
-    'zh-CN': '这件装备没有词条能映射到市集可搜属性。',
+    'en-US': 'No mods on this item can be searched on the trade site.',
+    'zh-TW': '這件裝備沒有詞條能在市集上搜尋。',
+    'zh-CN': '这件装备没有词条能在市集上搜索。',
   },
   'trade.noWeights': {
-    'en-US': 'No mod contributes to the chosen objective — try another objective.',
-    'zh-TW': '沒有詞條對所選目標有貢獻——換個目標試試。',
-    'zh-CN': '没有词条对所选目标有贡献——换个目标试试。',
+    'en-US': 'No mod on this item helps the chosen goal — try another goal.',
+    'zh-TW': '這件裝備沒有詞條對所選目標有幫助——換個目標試試。',
+    'zh-CN': '这件装备没有词条对所选目标有帮助——换个目标试试。',
   },
 
   // Items 页
