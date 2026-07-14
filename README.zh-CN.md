@@ -2,6 +2,8 @@
 
 [English](README.md) | **简体中文**
 
+**在线版：<https://pobr-web.pages.dev>** —— 每次 `v0.x` 版本 tag 通过 CI 后自动部署。
+
 把 [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（Lua）的核心计算引擎迁移到 Rust，目标有两个：
 
 1. **性能** — 解决大规模 Modifier 聚合、多技能并行计算的瓶颈；

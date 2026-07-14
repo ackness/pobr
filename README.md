@@ -2,6 +2,9 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+**Live web app: <https://pobr-web.pages.dev>** — deployed automatically from
+`v0.x` release tags once CI passes.
+
 A port of the [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
 core calculation engine (Lua) to Rust, with two goals:
 
