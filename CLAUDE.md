@@ -106,7 +106,7 @@ PoB2 兼容是硬回归基准，三层校验互补：
 2. **golden / dual-run 套件** — `golden_regression.rs`、`statmap_dual_run.rs`、`config_dualrun.rs`、`defence_panels_golden.rs`、`pob2_parity.rs` 等钉住中间值与配置语义。
 3. **`tools/pob2-oracle`** — 需要逐分量定位偏差时，从 vendored PoB2 直接 dump Lua 侧计算分解对照。
 
-`vendor/PathOfBuilding-PoE2/` 是完整检出（版本见 `vendor/.pob2-version.txt`），公式核对直接读本地 Lua（`CalcOffence.lua`/`CalcDefence.lua`/`CalcPerform.lua` 等），不要去网上找。
+`vendor/PathOfBuilding-PoE2/` 是 [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2) 的完整检出（版本见 `vendor/.pob2-version.txt`；gitignore 不入库，`bash .claude/skills/run-pobr/driver.sh vendor` 可按钉定 commit 重新克隆），公式核对直接读本地 Lua（`CalcOffence.lua`/`CalcDefence.lua`/`CalcPerform.lua` 等），不要去网上找。
 
 ## 游戏机制资料库（agent-docs/）
 

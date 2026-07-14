@@ -1,6 +1,6 @@
 # PoBR — Path of Building in Rust
 
-把 [Path of Building](https://github.com/PathOfBuilding/PathOfBuilding-PoE2)（Lua）的核心计算引擎迁移到 Rust，目标有两个：
+把 [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（Lua）的核心计算引擎迁移到 Rust，目标有两个：
 
 1. **性能** — 解决大规模 Modifier 聚合、多技能并行计算的瓶颈；
 2. **可归因** — 在 PoB2 兼容的基础上额外提供 **source-level 归因**：每个输出都能回溯到是哪件装备 / 词条 / 天赋 / 宝石 / 配置贡献的。
@@ -97,6 +97,14 @@ cargo test -p pobr-build --test parity -- --nocapture   # parity 仪表盘
 - **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本走 `pobr-i18n`。
 - **不可变 / 确定性**：calc 函数对 `Env` 的可变写入集中在 `perform`，并行化只在只读快照阶段展开。
 - 涉及计算 / Modifier / parser 的改动需补对应集成测试或 golden fixture；改变 crate 边界 / 聚合语义 / catalog / parity 规则时同步更新架构文档。
+
+## 参考与致谢
+
+- [PathOfBuildingCommunity/PathOfBuilding-PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)（MIT）——
+  本项目的参考实现与 parity 回归基准：计算公式、Modifier 语义、specialModList
+  解析规则均以其 Lua 实现为准源逐一核对（本地检出到 `vendor/`，不入库；
+  钉定 commit 记录在 `data/<version>/overlay/mod_parser_rules.json::_meta`）。
+- [poe2db.tw](https://poe2db.tw/) 与 PoE2 Wiki——游戏机制与文本翻译的查证来源。
 
 ## License
 
