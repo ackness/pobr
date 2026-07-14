@@ -9,10 +9,10 @@
 
 ## 快速上手
 
-普通 cargo 即可（仓库在本地 APFS 盘，全局启用了 sccache）：
+标准 cargo 工作流（推荐安装 [`cargo-nextest`](https://nexte.st/) 跑测试）：
 
 ```bash
-cargo nextest run --workspace          # 全部测试（稳态 ~6s）
+cargo nextest run --workspace          # 全部测试
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 
@@ -87,7 +87,7 @@ cargo test -p pobr-build --test parity -- --nocapture   # parity 仪表盘
 
 ## 文档
 
-- [`CLAUDE.md`](CLAUDE.md) — 构建环境、验证分层、命令速查、关键约定（贡献前必读）。
+- [`CLAUDE.md`](CLAUDE.md) — 验证分层、命令速查、关键约定（贡献前必读）。
 - [`devs/docs/architecture/`](devs/docs/architecture/)（00–15）— 目标架构与路线图。
 - [`agent-docs/`](agent-docs/) — PoE2（0.5.0）机制中文参考（伤害类型 / 抗性 / 护甲闪避 ES / 暴击 / 异常 / 计算顺序等）。
 - [`web/README.md`](web/README.md) — Web 前端。

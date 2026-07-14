@@ -6,26 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 构建环境
 
-本仓库位于本地 APFS 盘（`origin` = `git@github.com:ackness/pobr.git`），**直接使用普通 cargo 命令**，无需 `CARGO_INCREMENTAL=0`。
+直接使用普通 cargo 命令，无特殊环境要求（推荐安装 `cargo-nextest` 跑测试）。
 
-- 全局已启用 sccache（`~/.cargo/config.toml` 的 `rustc-wrapper = "sccache"`）：第三方依赖的编译产物跨 target 目录复用，新 worktree 冷编译代价很低；workspace 自身 crate 走增量编译不受影响。
-- 每个 worktree / 并行会话使用**自己的 `./target`**。**禁止**设置共享 `CARGO_TARGET_DIR`——并发 cargo 会在构建目录锁上串行排队，单条命令可被阻塞数分钟到数十分钟（症状：CPU ~10% 长时间无输出；stderr 的 `Blocking waiting for file lock` 提示不要用 `| tail` 等管道吞掉）。
+- 每个 worktree / 并行会话使用**自己的 `./target`**。**禁止**设置共享 `CARGO_TARGET_DIR`——并发 cargo 会在构建目录锁上串行排队（症状：长时间无输出；stderr 的 `Blocking waiting for file lock` 提示不要用 `| tail` 等管道吞掉）。
 - 同一 target 目录下 cargo 命令**一次一条、前台执行**，禁止后台叠加。
-- worktree 用完即删其 `target/`（重建有 sccache 兜底）；主 target 膨胀时（deps 内旧指纹产物累积）做一次 `cargo clean` 重建。
 
 ## 验证分层（重要：避免无谓的全量测试）
 
 | 阶段 | 命令 | 说明 |
 |------|------|------|
-| 编辑循环中 | `cargo check -p <crate>` | 只查类型/借用错误，热态 <1s |
+| 编辑循环中 | `cargo check -p <crate>` | 只查类型/借用错误，最快反馈 |
 | 完成一个完整任务后 | `cargo nextest run -p <crate> --test <suite>`（或 `-E 'test(...)'`） | 只跑改动相关的定向测试，**不要跑全量** |
-| 提交/合并门禁前 | `cargo nextest run --workspace` + clippy + fmt | 全量只在这一刻跑（稳态 ~6s，慢则在等锁） |
+| 提交/合并门禁前 | `cargo nextest run --workspace` + clippy + fmt | 全量只在这一刻跑 |
 
 ## 常用命令
 
 ```bash
-cargo nextest run --workspace                          # 全部测试（本地推荐，稳态 ~6s；不含 doctest）
-cargo test --workspace                                 # 全部测试（CI gate；本地慢约 20 倍，仅在无 nextest 时用）
+cargo nextest run --workspace                          # 全部测试（推荐；不含 doctest）
+cargo test --workspace                                 # 全部测试（CI gate；仅在无 nextest 时用）
 cargo clippy --workspace --all-targets -- -D warnings  # lint（CI gate，warning 即失败）
 cargo fmt --check                                      # 格式检查（CI gate）
 

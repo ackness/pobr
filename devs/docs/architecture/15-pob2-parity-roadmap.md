@@ -175,13 +175,13 @@ defence 池模型 (defence.rs) — 内部串行:
 ---
 
 ### 关键文件索引（绝对路径）
-- `/Users/wuyong/codes/game/pobr/crates/pobr-core/src/item.rs` — `ingest_section`（武器基底注入点，#1）
-- `/Users/wuyong/codes/game/pobr/crates/pobr-core/src/calc/session.rs:63` — `add_item`（weapon path）
-- `/Users/wuyong/codes/game/pobr/crates/pobr-data/src/catalog.rs:62` — `WeaponBaseStats`（schema 已存在，**零调用**）
-- `/Users/wuyong/codes/game/pobr/crates/pobr-build/src/skill_stat_map.rs:46` — `map_skill_stat`（速度/AoE/时长扩展点，#2；测试断言在第168行）
-- `/Users/wuyong/codes/game/pobr/crates/pobr-core/src/calc/perform.rs` — condition flags / buff / exposure 编排根（A5）
-- `/Users/wuyong/codes/game/pobr/crates/pobr-core/src/calc/env.rs` — buff/aura/curse 集合（B3）
-- `/Users/wuyong/codes/game/pobr/crates/pobr-core/src/calc/defence.rs:84` — `DefenceOutput`（Ward/Aegis/Guard/MoM 池模型，Phase 4）
-- `/Users/wuyong/codes/game/pobr/pipeline/config.json:2` — patch 版本（`4.5.0.3.4`→`4.5.1.1.3`，#3，外部阻塞）
+- `crates/pobr-core/src/item.rs` — `ingest_section`（武器基底注入点，#1）
+- `crates/pobr-core/src/calc/session.rs:63` — `add_item`（weapon path）
+- `crates/pobr-data/src/catalog.rs:62` — `WeaponBaseStats`（schema 已存在，**零调用**）
+- `crates/pobr-build/src/skill_stat_map.rs:46` — `map_skill_stat`（速度/AoE/时长扩展点，#2；测试断言在第168行）
+- `crates/pobr-core/src/calc/perform.rs` — condition flags / buff / exposure 编排根（A5）
+- `crates/pobr-core/src/calc/env.rs` — buff/aura/curse 集合（B3）
+- `crates/pobr-core/src/calc/defence.rs:84` — `DefenceOutput`（Ward/Aegis/Guard/MoM 池模型，Phase 4）
+- `pipeline/config.json:2` — patch 版本（`4.5.0.3.4`→`4.5.1.1.3`，#3，外部阻塞）
 
-> 注：评估 JSON 的 `offence-parity` 维度因 vendor 路径笔误（`posebuilding-poe2`）无法评估——实际 vendor 在 `/Users/wuyong/codes/game/pobr/vendor/PathOfBuilding-PoE2/`，offence 参考实现 `src/Modules/CalcOffence.lua` 可访问，该维度应重跑。
+> 注：评估 JSON 的 `offence-parity` 维度因 vendor 路径笔误（`posebuilding-poe2`）无法评估——实际 vendor 在仓库 `vendor/PathOfBuilding-PoE2/`，offence 参考实现 `src/Modules/CalcOffence.lua` 可访问，该维度应重跑。

@@ -91,7 +91,7 @@ WhirlwindStages per-stage MORE）在 PoBR statmap 引擎的 tag 翻译白名单�
   证伪——**vendor 对这些 stat 根本不消费**；伤害量级差的大头反复落在三条全局线：
   ① crit 条件/幸运抬升；② added damage / gain-as 大档来源；③ effective 减伤乘区。
   后续波次建议先做这三条线，再回头看单技能。
-- oracle 用法：`/Users/…/pobr/tools/pob2-oracle/run.sh <decoded.xml> out.json`
+- oracle 用法：`tools/pob2-oracle/run.sh <decoded.xml> out.json`
   （worktree 无 vendor 检出时用主仓的 run.sh，路径自解析）；`summedBase` 直接
   暴露 base 段缺口（如 DD 的 Physical 4548 = 32956×0.138 一眼钉死）。
 
