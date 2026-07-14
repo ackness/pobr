@@ -152,6 +152,31 @@ export interface GemCatalogEntry {
   is_support: boolean;
 }
 
+/** 节点威力条目（node_power_json；PoB2 热力图语义）。 */
+export interface NodePowerEntry {
+  /** 节点 skill id。 */
+  skill: number;
+  /** 单点试加后目标属性的增量（可为负）。 */
+  delta: number;
+  /** 距已加点前沿的 BFS 步数（1 = 相邻）。 */
+  distance: number;
+}
+
+export interface NodePowerResponse {
+  /** 基线属性值。 */
+  base: number;
+  entries: NodePowerEntry[];
+}
+
+/** 符文/魂核目录条目（rune_catalog_json）。 */
+export interface RuneCatalogEntry {
+  /** canonical 英文名（`Rune:` 行与 reforge 请求的键）。 */
+  name: string;
+  name_zh_tw: string | null;
+  name_zh_cn: string | null;
+  is_soul_core: boolean;
+}
+
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
 export interface CalculateBuildRequest {
   pob_code?: string;

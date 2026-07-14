@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useBuildSession } from './hooks/useBuildSession';
 import type { Lang } from './lib/i18n';
-import { TopBar, type TabId } from './components/shell/TopBar';
+import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
 import { BuildPanel } from './components/import/BuildPanel';
 import { StatSidebar } from './components/sidebar/StatSidebar';
 import { ItemsPanel } from './components/items/ItemsPanel';
@@ -9,21 +9,24 @@ import { SkillsPanel } from './components/skills/SkillsPanel';
 import { CalcsPanel } from './components/calcs/CalcsPanel';
 import { TreePanel } from './components/tree/TreePanel';
 import { ConfigPanel } from './components/config/ConfigPanel';
-import { NotesPanel } from './components/notes/NotesPanel';
 import './components/shell/shell.css';
 
 export default function App() {
   const session = useBuildSession();
   // 界面偏好（页签/语言）实时持久化到浏览器。
-  const [tab, setTabState] = useState<TabId>(
-    () => (localStorage.getItem('pobr-tab') as TabId) || 'build',
-  );
+  const [tab, setTabState] = useState<TabId>(() => {
+    // 兜底：历史存的页签可能已下线（如原独立笔记页）。
+    const saved = localStorage.getItem('pobr-tab') as TabId | null;
+    return saved && TAB_IDS.includes(saved) ? saved : 'build';
+  });
   const [lang, setLangState] = useState<Lang>(
     () => (localStorage.getItem('pobr-lang') as Lang) || 'en-US',
   );
   const setTab = (next: TabId) => {
     setTabState(next);
     localStorage.setItem('pobr-tab', next);
+    // 各页签内容高度差异大，沿用上一页的滚动位置会露出页底黑区。
+    window.scrollTo(0, 0);
   };
   const setLang = (next: Lang) => {
     setLangState(next);
@@ -76,9 +79,15 @@ export default function App() {
           {tab === 'tree' && <TreePanel session={session} lang={lang} />}
           {tab === 'skills' && <SkillsPanel session={session} lang={lang} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} />}
-          {tab === 'calcs' && <CalcsPanel session={session} lang={lang} focus={calcsFocus} />}
+          {tab === 'calcs' && (
+            <CalcsPanel
+              session={session}
+              lang={lang}
+              focus={calcsFocus}
+              onFocusConsumed={() => setCalcsFocus(null)}
+            />
+          )}
           {tab === 'config' && <ConfigPanel session={session} lang={lang} />}
-          {tab === 'notes' && <NotesPanel session={session} lang={lang} />}
         </main>
       </div>
     </div>

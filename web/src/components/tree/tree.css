@@ -37,6 +37,13 @@
   display: block;
   cursor: grab;
   touch-action: none;
+  /* 拖动走 CSS transform（合成器），提示浏览器提层。 */
+  will-change: transform;
+}
+
+/* 拖动确立后：整树只做合成器平移，关闭节点命中测试（省每帧 hover 命中）。 */
+.tree-canvas svg.is-dragging .tree-nodes circle {
+  pointer-events: none;
 }
 
 .tree-canvas svg:active {
@@ -94,6 +101,25 @@
 
 .tree-search input {
   width: 160px;
+}
+
+/* 热力图控件（属性选择 + 深度） */
+.tree-heat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.tree-heat-depth {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tree-heat-depth input {
+  width: 3.5em;
 }
 
 .tree-search-count {

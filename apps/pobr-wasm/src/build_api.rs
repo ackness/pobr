@@ -887,6 +887,131 @@ pub fn full_dps_json(request_json: &str) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
+// node_power_json（树节点威力热力图：PoB2 CalcsTab:PowerBuilder 的移植面）
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+struct NodePowerRequest {
+    /// 完整计算请求（基线）。
+    request: CalculateBuildRequest,
+    /// 目标展示属性 id（如 `TotalDPS` / `Life` / `TotalEHP`）。
+    power_stat: String,
+    /// 距已加点前沿的最大 BFS 深度（PoB2 nodePowerMaxDepth；缺省 5）。
+    max_depth: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+struct NodePowerEntry {
+    /// 节点 skill id。
+    skill: u32,
+    /// 单点试加后目标属性的增量（可为负）。
+    delta: f64,
+    /// 距前沿的步数（1 = 与已加点相邻）。
+    distance: u32,
+}
+
+#[derive(Debug, Serialize)]
+struct NodePowerResponse {
+    /// 基线属性值。
+    base: f64,
+    entries: Vec<NodePowerEntry>,
+}
+
+/// 从完整输出提取展示属性值（缺失按 0）。
+fn display_stat_value(session: &CalculationSession, stat_id: &str) -> f64 {
+    pobr_core::extract_display_values(session.output())
+        .into_iter()
+        .find(|s| s.id.as_str() == stat_id)
+        .map(|s| s.value)
+        .unwrap_or(0.0)
+}
+
+/// 树节点威力（PoB2 热力图语义）：以已加点集合为前沿做 BFS，深度内每个
+/// 未加点、带词条的节点单点试加做完整重算，产出目标属性增量。相同词条
+/// 组合共享一次计算（PoB2 modKey 缓存同口径）；属性小点（需三选一）跳过。
+pub fn node_power_json(request_json: &str) -> Result<String, String> {
+    let req: NodePowerRequest =
+        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
+    let max_depth = req.max_depth.unwrap_or(5);
+    let data = state::build_data()?;
+
+    let mut base_build = parse_build_from_request(&req.request)?;
+    apply_request_overrides(&mut base_build, &req.request, &data)?;
+    let base_session = run_session_for_build(&base_build, &req.request)?;
+    let base = display_stat_value(&base_session, &req.power_stat);
+
+    // 拓扑：skill id → 节点定义 + 无向邻接。
+    let mut by_skill: BTreeMap<u32, &pobr_data::catalog::PassiveNodeDef> = BTreeMap::new();
+    let mut adjacency: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+    for node in data.passive_nodes.values() {
+        by_skill.insert(node.skill, node);
+        for &target in &node.connections {
+            adjacency.entry(node.skill).or_default().push(target);
+            adjacency.entry(target).or_default().push(node.skill);
+        }
+    }
+
+    let allocated: std::collections::HashSet<u32> = base_build
+        .tree
+        .allocated_nodes
+        .iter()
+        .map(|n| n.0)
+        .collect();
+
+    // BFS：前沿 = 已加点集合（深度 0），逐层向未加点节点扩展。
+    let mut distance: BTreeMap<u32, u32> = BTreeMap::new();
+    let mut frontier: Vec<u32> = allocated.iter().copied().collect();
+    for depth in 1..=max_depth {
+        let mut next = Vec::new();
+        for &skill in &frontier {
+            for &neighbor in adjacency.get(&skill).map(Vec::as_slice).unwrap_or(&[]) {
+                if allocated.contains(&neighbor) || distance.contains_key(&neighbor) {
+                    continue;
+                }
+                distance.insert(neighbor, depth);
+                next.push(neighbor);
+            }
+        }
+        if next.is_empty() {
+            break;
+        }
+        frontier = next;
+    }
+
+    // 单点试加：相同词条组合共享一次完整重算。
+    let mut cache: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    let mut entries: Vec<NodePowerEntry> = Vec::new();
+    for (&skill, &dist) in &distance {
+        let Some(node) = by_skill.get(&skill) else {
+            continue;
+        };
+        if node.stats.is_empty() || node.name.as_deref() == Some("Attribute") {
+            continue;
+        }
+        let key = node.stats.join("\n");
+        let delta = match cache.get(&key) {
+            Some(&d) => d,
+            None => {
+                let mut variant = base_build.clone();
+                variant.tree.allocated_nodes.push(NodeId(skill));
+                let session = run_session_for_build(&variant, &req.request)?;
+                let d = display_stat_value(&session, &req.power_stat) - base;
+                cache.insert(key, d);
+                d
+            }
+        };
+        entries.push(NodePowerEntry {
+            skill,
+            delta,
+            distance: dist,
+        });
+    }
+
+    serde_json::to_string(&NodePowerResponse { base, entries })
+        .map_err(|e| format!("serialize: {e}"))
+}
+
+// ---------------------------------------------------------------------------
 // encode_build_json（编辑态 → PoB2 Build XML → 分享 code）
 // ---------------------------------------------------------------------------
 
@@ -1199,6 +1324,238 @@ pub fn gem_catalog_json() -> Result<String, String> {
     let mut entries: Vec<GemCatalogEntry> = by_skill.into_values().collect();
     entries.sort_by(|a, b| a.name.cmp(&b.name).then(a.skill_id.cmp(&b.skill_id)));
     serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))
+}
+
+// ---------------------------------------------------------------------------
+// rune_catalog_json / reforge_runes_json（符文槽编辑：目录 + 重插重写文本）
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+struct RuneCatalogEntry {
+    /// 符文名（canonical 英文，`Rune:` 行与 reforge 请求用的键）。
+    name: String,
+    /// 繁中名（基底名边车；缺条目为 null）。
+    name_zh_tw: Option<String>,
+    /// 简中名（同上）。
+    name_zh_cn: Option<String>,
+    is_soul_core: bool,
+}
+
+/// 符文/魂核目录：`overlay/runes.json` 全量，按名称排序（数据已有序）。
+pub fn rune_catalog_json() -> Result<String, String> {
+    let game = state::game_data()?;
+    let runes = game
+        .runes()
+        .map_err(|e| format!("load runes: {e}"))?
+        .ok_or("runes overlay missing")?;
+    let data = state::build_data()?;
+    let zh_tw = game.base_item_names("zh-TW").unwrap_or_default();
+    let zh_cn = game.base_item_names("zh-CN").unwrap_or_default();
+    let entries: Vec<RuneCatalogEntry> = runes
+        .runes
+        .iter()
+        .map(|r| {
+            let id = data.base_items.get(&r.name).map(|d| d.id.as_str());
+            RuneCatalogEntry {
+                name: r.name.clone(),
+                name_zh_tw: id.and_then(|i| zh_tw.get(i).cloned()),
+                name_zh_cn: id.and_then(|i| zh_cn.get(i).cloned()),
+                is_soul_core: r.slots.values().any(|s| s.kind == "SoulCore"),
+            }
+        })
+        .collect();
+    serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))
+}
+
+/// 基底 item_class → 符文槽类 (broad, specific)。对齐 PoB2
+/// `Item.lua:GetSocketedAugmentTypes`：caster = 无武器数据的 wand/staff/sceptre；
+/// specific = 类名小写（Warstaff → quarterstaff，PoE2 战杖即武僧棍）。
+fn rune_slot_types(item_class: &str) -> (String, String) {
+    let specific = match item_class {
+        "Warstaff" => "quarterstaff".to_string(),
+        other => other.to_ascii_lowercase(),
+    };
+    let broad = match item_class {
+        "Wand" | "Staff" | "Sceptre" => "caster",
+        "Bow" | "Claw" | "Crossbow" | "Dagger" | "Flail" | "Spear" | "Warstaff"
+        | "One Hand Axe" | "One Hand Mace" | "One Hand Sword" | "Two Hand Axe"
+        | "Two Hand Mace" | "Two Hand Sword" | "FishingRod" => "weapon",
+        _ => "armour",
+    };
+    (broad.to_string(), specific)
+}
+
+#[derive(Debug, Deserialize)]
+struct ReforgeRunesRequest {
+    /// 物品 PoB 原始文本。
+    text: String,
+    /// 目标镶嵌（按槽位顺序的符文名；数量 ≤ Sockets 容量）。
+    runes: Vec<String>,
+    /// 目标孔数（直接加减孔，不模拟通货）：给定则重写/新增/移除 `Sockets:` 行；
+    /// 缺省沿用文本现有容量。
+    #[serde(default)]
+    sockets: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+struct ReforgeRunesResponse {
+    text: String,
+}
+
+/// 重插符文：把物品文本的 `Rune:`/`Soul Core:` 命名行与 `{rune}` 词条行整体
+/// 替换为目标符文集（词条按基底 broad/specific 槽类取自 runes 表，PoB2
+/// `Item.lua:1169-1205` 同规则），`Implicits: N` 计数同步修正；`sockets`
+/// 给定时同步重写孔数（`Sockets:` 行新增/重写/移除）。
+pub fn reforge_runes_json(request_json: &str) -> Result<String, String> {
+    let req: ReforgeRunesRequest =
+        serde_json::from_str(request_json).map_err(|e| format!("invalid request: {e}"))?;
+    let game = state::game_data()?;
+    let runes_def = game
+        .runes()
+        .map_err(|e| format!("load runes: {e}"))?
+        .ok_or("runes overlay missing")?;
+    let data = state::build_data()?;
+
+    let draft = pobr_item::ItemDraft::parse(&req.text).map_err(|e| format!("parse item: {e}"))?;
+    let base = data
+        .base_items
+        .get(&draft.header.base_name)
+        .ok_or_else(|| format!("unknown base item: {}", draft.header.base_name))?;
+    let (broad, specific) = rune_slot_types(&base.item_class);
+
+    // 逐符文取适用词条行（broad 与 specific 两键都命中则都收，PoB2 同口径）。
+    let mut new_stat_lines: Vec<String> = Vec::new();
+    for name in &req.runes {
+        let def = runes_def
+            .runes
+            .iter()
+            .find(|r| &r.name == name)
+            .ok_or_else(|| format!("unknown rune: {name}"))?;
+        let mut lines: Vec<String> = Vec::new();
+        for (slot, slot_def) in &def.slots {
+            if slot == &broad || slot == &specific {
+                lines.extend(slot_def.lines.iter().cloned());
+            }
+        }
+        if lines.is_empty() {
+            return Err(format!("{name} 不适用于 {}", base.item_class));
+        }
+        new_stat_lines.extend(lines);
+    }
+
+    // 文本重写：剔除旧 Rune 命名行与 {rune} 词条行；记录 Sockets / Implicits 位置。
+    let mut out: Vec<String> = Vec::new();
+    let mut sockets_idx: Option<usize> = None;
+    let mut socket_capacity = 0usize;
+    let mut implicits_idx: Option<usize> = None;
+    let mut implicit_n = 0usize;
+    // Implicits 窗口余量（PoB 导出中 Implicits 行之后紧跟 N 条 implicit/enchant
+    // 区词条；被剔除的 {rune} 行若在窗口内需从计数扣除）。
+    let mut window_remaining = 0usize;
+    let mut removed_in_window = 0usize;
+    for line in req.text.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("Rune:") || trimmed.starts_with("Soul Core:") {
+            continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix("Sockets:") {
+            sockets_idx = Some(out.len());
+            socket_capacity = rest.split_whitespace().filter(|t| *t == "S").count();
+            out.push(line.to_string());
+            continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix("Implicits:") {
+            implicit_n = rest.trim().parse().unwrap_or(0);
+            window_remaining = implicit_n;
+            implicits_idx = Some(out.len());
+            out.push(line.to_string());
+            continue;
+        }
+        let in_window = window_remaining > 0;
+        if in_window {
+            window_remaining -= 1;
+        }
+        if trimmed.contains("{rune}") {
+            if in_window {
+                removed_in_window += 1;
+            }
+            continue;
+        }
+        out.push(line.to_string());
+    }
+
+    // 孔数归一：请求给定目标孔数则重写/新增/移除 `Sockets:` 行。
+    let capacity = req.sockets.unwrap_or(socket_capacity);
+    let sockets_line = format!("Sockets: {}", vec!["S"; capacity].join(" "));
+    let sockets_idx = match (sockets_idx, capacity) {
+        (Some(idx), 0) => {
+            // 减到 0 孔：整行移除（后续无命名行可插）。
+            out.remove(idx);
+            if let Some(imp) = implicits_idx.as_mut()
+                && *imp > idx
+            {
+                *imp -= 1;
+            }
+            None
+        }
+        (Some(idx), _) => {
+            out[idx] = sockets_line;
+            Some(idx)
+        }
+        (None, 0) => None,
+        (None, _) => {
+            // 无 Sockets 行的物品加孔：插在 Implicits 之前；无 Implicits 则插在
+            // `Item Level:` 行后（PoB 导出必有）；再退化插到基底行（第 3 行）后。
+            let idx = implicits_idx.unwrap_or_else(|| {
+                out.iter()
+                    .position(|l| l.trim().starts_with("Item Level:"))
+                    .map(|i| i + 1)
+                    .unwrap_or(3.min(out.len()))
+            });
+            out.insert(idx, sockets_line);
+            if let Some(imp) = implicits_idx.as_mut()
+                && *imp >= idx
+            {
+                *imp += 1;
+            }
+            Some(idx)
+        }
+    };
+    if req.runes.len() > capacity {
+        return Err(format!(
+            "too many runes: {} > socket capacity {capacity}",
+            req.runes.len()
+        ));
+    }
+    if !req.runes.is_empty() && sockets_idx.is_none() {
+        return Err("item has no rune sockets".to_string());
+    }
+
+    // 先插后段（Implicits 之后的词条行），再插前段（Sockets 之后的命名行），
+    // 避免下标位移。
+    if let Some(idx) = implicits_idx {
+        out[idx] = format!(
+            "Implicits: {}",
+            implicit_n - removed_in_window + new_stat_lines.len()
+        );
+        for (i, line) in new_stat_lines.iter().enumerate() {
+            out.insert(idx + 1 + i, format!("{{rune}}{line}"));
+        }
+    } else if let Some(idx) = sockets_idx {
+        for (i, line) in new_stat_lines.iter().enumerate() {
+            out.insert(idx + 1 + i, format!("{{rune}}{line}"));
+        }
+    }
+    if let Some(idx) = sockets_idx {
+        for (i, name) in req.runes.iter().enumerate() {
+            out.insert(idx + 1 + i, format!("Rune: {name}"));
+        }
+    }
+
+    serde_json::to_string(&ReforgeRunesResponse {
+        text: out.join("\n"),
+    })
+    .map_err(|e| format!("serialize: {e}"))
 }
 
 // ---------------------------------------------------------------------------

@@ -70,6 +70,16 @@ export function createMockBackend(): PobrBackend {
       // mock 不分类；返回 [] 让面板回落到无区分渲染。
       return [];
     },
+    async nodePower() {
+      return { base: 0, entries: [] };
+    },
+    async runeCatalog() {
+      // mock 无符文目录；面板隐藏符文编辑器。
+      return [];
+    },
+    async reforgeRunes(text) {
+      return text;
+    },
     translate(_lang, key) {
       return key;
     },

@@ -16,8 +16,10 @@ import type {
   FullDpsResponse,
   GemCatalogEntry,
   ItemLineJson,
+  NodePowerResponse,
   PassiveNode,
   PassiveTreeMeta,
+  RuneCatalogEntry,
 } from './types';
 
 export interface PobrBackend {
@@ -46,6 +48,17 @@ export interface PobrBackend {
   translateLines(lines: string[]): Promise<string[]>;
   /** 物品文本 → 逐行类别（Items 面板上色；空/异常返回 []，调用方回落无区分渲染）。 */
   classifyItemLines(text: string): Promise<ItemLineJson[]>;
+  /** 树节点威力热力图（PoB2 PowerBuilder 语义：深度内单点试加求目标属性增量）。 */
+  nodePower(
+    request: CalculateBuildRequest,
+    powerStat: string,
+    maxDepth: number,
+  ): Promise<NodePowerResponse>;
+  /** 符文/魂核目录（符文槽选择器）。 */
+  runeCatalog(): Promise<RuneCatalogEntry[]>;
+  /** 重插符文：重写物品文本的 Rune 命名行 + {rune} 词条行；`sockets` 给定时
+   *  同步加减孔（重写/新增/移除 `Sockets:` 行）。非法输入抛错。 */
+  reforgeRunes(text: string, runes: string[], sockets?: number): Promise<string>;
   translate(lang: string, key: string): string;
 }
 

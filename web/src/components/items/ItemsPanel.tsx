@@ -1,11 +1,14 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
-import type { ItemLineJson } from '../../api/types';
+import type { ItemLineJson, RuneCatalogEntry } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
+import { useLocalizedLines } from '../../hooks/useLocalizedLines';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
 import { CopyButton } from '../shared/CopyButton';
+import { NoteEditor } from '../shared/NoteEditor';
+import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
 import './items.css';
 
 interface Props {
@@ -13,9 +16,9 @@ interface Props {
   lang: Lang;
 }
 
-/** 从 PoB 原始文本块提取稀有度（`Rarity: RARE` 行）。 */
+/** 从 PoB 原始文本块提取稀有度（`Rarity: RARE` 行；XML 导入的该行带缩进）。 */
 function rarityOf(text: string): string {
-  const m = text.match(/^Rarity:\s*(\w+)/im);
+  const m = text.match(/^\s*Rarity:\s*(\w+)/im);
   return (m?.[1] ?? 'normal').toLowerCase();
 }
 
@@ -35,65 +38,7 @@ function itemLines(text: string): string[] {
     .filter((l) => l && !/^Rarity:/i.test(l));
 }
 
-/** PoB 结构标注行的键 → 本地化（词条模板翻译层不认识这些行）。 */
-const STRUCT_LINE_KEYS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
-  'Item Level': { 'zh-TW': '物品等級', 'zh-CN': '物品等级' },
-  'LevelReq': { 'zh-TW': '需求等級', 'zh-CN': '需求等级' },
-  'Requires Level': { 'zh-TW': '需求等級', 'zh-CN': '需求等级' },
-  'Implicits': { 'zh-TW': '固有詞綴', 'zh-CN': '固有词缀' },
-  'Unique ID': { 'zh-TW': '唯一 ID', 'zh-CN': '唯一 ID' },
-  'Quality': { 'zh-TW': '品質', 'zh-CN': '品质' },
-  'Armour': { 'zh-TW': '護甲', 'zh-CN': '护甲' },
-  'Evasion': { 'zh-TW': '閃避', 'zh-CN': '闪避' },
-  'Energy Shield': { 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' },
-  'Charm Slots': { 'zh-TW': '護符插槽', 'zh-CN': '护符插槽' },
-  'Radius': { 'zh-TW': '範圍', 'zh-CN': '范围' },
-  'Limited to': { 'zh-TW': '限裝', 'zh-CN': '限装' },
-};
-
-/** 结构行本地化：`Item Level: 83` → `物品等级: 83`；非结构行返回 null。 */
-function localizeStructLine(line: string, lang: Lang): string | null {
-  if (lang === 'en-US') return null;
-  const m = line.match(/^([A-Za-z' ]+):\s*(.*)$/);
-  if (!m) return null;
-  const entry = STRUCT_LINE_KEYS[m[1].trim()];
-  return entry ? `${entry[lang]}: ${m[2]}` : null;
-}
-
-/** 中文界面：词条行批量反查翻译（结构行走本地词典；翻译不中原样显示）。 */
-function useLocalizedLines(lines: string[], lang: Lang): string[] {
-  const key = lines.join('\n');
-  const [translated, setTranslated] = useState<Record<string, string>>({});
-  useEffect(() => {
-    if (lang === 'en-US' || lines.length === 0) return;
-    const pending = lines.filter((l) => !localizeStructLine(l, lang));
-    if (pending.length === 0) return;
-    let cancelled = false;
-    getBackend()
-      .then((b) => b.translateLines(pending))
-      .then((out) => {
-        if (cancelled) return;
-        const map: Record<string, string> = {};
-        pending.forEach((en, i) => {
-          if (out[i] !== en) map[en] = out[i];
-        });
-        setTranslated(map);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, lang]);
-  return useMemo(
-    () =>
-      lang === 'en-US'
-        ? lines
-        : lines.map((l) => localizeStructLine(l, lang) ?? translated[l] ?? l),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [key, lang, translated],
-  );
-}
+// 行翻译 hook 已抽到 hooks/useLocalizedLines（树页珠宝选择器共用）。
 
 /** 词条系类别（与 explicit 之间画分隔线的左侧块）。 */
 const IMPLICIT_KINDS = ['implicit', 'enchant', 'rune', 'class_req'];
@@ -130,12 +75,18 @@ function ItemText({ text, lang }: { text: string; lang: Lang }) {
     ];
   }, [text]);
   const all = classified ?? fallback;
-  const name = all.find((l) => l.kind === 'name')?.text ?? '';
-  const body = all.filter((l) => l.kind !== 'name');
-  const translated = useLocalizedLines(
-    body.map((l) => l.text),
+  const nameIdx = all.findIndex((l) => l.kind === 'name');
+  // 名称行（唯一物品名/基底名）一并送翻译——命中名词直译表才能出中文名。
+  const allTranslated = useLocalizedLines(
+    all.map((l) => l.text),
     lang,
   );
+  const name = nameIdx >= 0 ? allTranslated[nameIdx] : '';
+  // 唯一 ID 行是纯技术标识（对比/往返用），展示视图默认隐藏；编辑态原文仍保留。
+  const body = all
+    .map((line, i) => ({ ...line, text: allTranslated[i] }))
+    .filter((_, i) => i !== nameIdx && !/^Unique ID:/i.test(all[i].text));
+  const translated = body.map((l) => l.text);
   // implicit 系词条块与 explicit 块之间插一条分隔线（PoB2/游戏内惯例）。
   const firstExplicit = body.findIndex((l) => l.kind === 'explicit');
   const dividerAt =
@@ -162,6 +113,48 @@ function ItemText({ text, lang }: { text: string; lang: Lang }) {
         ))}
       </div>
     </>
+  );
+}
+
+/** 紧凑物品行（物品库/珠宝列表共用）：一行名称+槽位+操作，点击行头展开完整词条。 */
+function ItemRow({
+  text,
+  name,
+  lang,
+  slotTag,
+  open,
+  onToggle,
+  actions,
+  children,
+}: {
+  text: string;
+  name: string;
+  lang: Lang;
+  slotTag?: string;
+  open: boolean;
+  onToggle: () => void;
+  actions?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <article className={`library-row rarity-${rarityOf(text)}`}>
+      <header className="library-row-head">
+        <button className="library-row-toggle" aria-expanded={open} onClick={onToggle}>
+          <span className="row-caret" aria-hidden>
+            ▸
+          </span>
+          <span className="item-name">{name}</span>
+          {slotTag && <span className="library-row-slot">{slotTag}</span>}
+        </button>
+        <span className="item-actions">{actions}</span>
+      </header>
+      {open && (
+        <div className="library-row-body">
+          <ItemText text={text} lang={lang} />
+          {children}
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -200,6 +193,13 @@ export function ItemsPanel({ session, lang }: Props) {
 
   const textOf = (slot: string) =>
     isUtilitySlot(slot) ? utilityBySlot.get(slot) : bySlot.get(slot);
+  // 槽位按钮上的物品名（一批送翻译；中文界面显示本地化名）。
+  const slotNamesRaw = [...DOLL_SLOTS.map(({ slot }) => slot), ...UTILITY_SLOTS].map((slot) => {
+    const text = textOf(slot);
+    return text ? (itemLines(text)[0] ?? '') : '';
+  });
+  const slotNames = useLocalizedLines(slotNamesRaw, lang);
+  const slotName = (index: number) => slotNames[index] || null;
   const templateOf = (slot: string) =>
     slot.startsWith('Charm') ? CHARM_TEMPLATE : slot.startsWith('Flask') ? FLASK_TEMPLATE : ITEM_TEMPLATE;
 
@@ -229,7 +229,117 @@ export function ItemsPanel({ session, lang }: Props) {
     setEditing(false);
   };
 
+  /** 把库中某件物品直接装进当前选中槽位（PoB2 式下拉切换）。 */
+  const switchTo = (text: string) => {
+    if (!selected) return;
+    if (isUtilitySlot(selected)) {
+      const rest = session.flasks.filter((f) => f.slot !== selected);
+      session.setFlasks([...rest, { slot: selected, text }]);
+    } else {
+      const rest = items.filter((item) => item.slot !== selected);
+      session.setItems([...rest, { slot: selected, text }]);
+    }
+    setDraft(text);
+    setEditing(false);
+  };
+
   const selectedText = selected ? textOf(selected) : undefined;
+
+  /** 槽位 → 注释键（药剂/护符与装备分域，避免槽名撞车）。 */
+  const noteKey = (slot: string) => `${isUtilitySlot(slot) ? 'flask' : 'item'}:${slot}`;
+  const hasNote = (slot: string) => Boolean(session.annotations[noteKey(slot)]?.trim());
+
+  // 符文目录（一次加载；mock/加载失败为空 → 隐藏符文编辑器）。
+  const [runeCatalog, setRuneCatalog] = useState<RuneCatalogEntry[]>([]);
+  useEffect(() => {
+    getBackend()
+      .then((b) => b.runeCatalog())
+      .then(setRuneCatalog)
+      .catch(() => {});
+  }, []);
+  const [runeError, setRuneError] = useState<string | null>(null);
+  useEffect(() => setRuneError(null), [selected]);
+
+  // 选中物品的符文位：`Sockets: S S` 容量 + 当前 `Rune:`/`Soul Core:` 命名行。
+  const socketInfo = useMemo(() => {
+    if (!selectedText) return null;
+    const m = selectedText.match(/^Sockets:\s*(.+)$/m);
+    if (!m) return null;
+    const capacity = m[1].split(/\s+/).filter((t) => t === 'S').length;
+    if (capacity === 0) return null;
+    const runes = [...selectedText.matchAll(/^(?:Rune|Soul Core):\s*(.+)$/gm)].map((x) =>
+      x[1].trim(),
+    );
+    return { capacity, runes };
+  }, [selectedText]);
+
+  const runeDisplayName = (entry: RuneCatalogEntry) =>
+    (lang === 'zh-CN' ? entry.name_zh_cn : lang === 'zh-TW' ? entry.name_zh_tw : null) ??
+    entry.name;
+
+  // 符文槽下拉选项（各槽共用一份）：空槽 + 符文组 + 魂核组。
+  const runeOptions = useMemo<AppSelectOption[]>(
+    () => [
+      { value: '', label: tt('items.emptySocket') },
+      ...runeCatalog
+        .filter((r) => !r.is_soul_core)
+        .map((r) => ({ value: r.name, label: runeDisplayName(r), group: tt('items.runeGroup') })),
+      ...runeCatalog
+        .filter((r) => r.is_soul_core)
+        .map((r) => ({
+          value: r.name,
+          label: runeDisplayName(r),
+          group: tt('items.soulCoreGroup'),
+        })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [runeCatalog, lang],
+  );
+
+  /** 调用后端重写符文/孔数并整件重算。 */
+  const reforge = async (runes: string[], sockets?: number) => {
+    if (!selectedText) return;
+    try {
+      const backend = await getBackend();
+      const text = await backend.reforgeRunes(selectedText, runes, sockets);
+      setRuneError(null);
+      switchTo(text);
+    } catch (err) {
+      setRuneError(String(err));
+    }
+  };
+
+  /** 重插符文（第 i 槽换为 name；空串=拔除该槽）。 */
+  const resocketRune = (index: number, name: string) => {
+    if (!socketInfo) return;
+    const next = [...socketInfo.runes];
+    if (name === '') {
+      next.splice(index, 1);
+    } else {
+      next[index] = name;
+    }
+    void reforge(next.filter(Boolean).slice(0, socketInfo.capacity));
+  };
+
+  /** 直接加减孔（不模拟通货）；减孔时裁掉超出的符文。 */
+  const setSocketCount = (capacity: number) => {
+    const clamped = Math.max(0, Math.min(6, capacity));
+    void reforge((socketInfo?.runes ?? []).slice(0, clamped), clamped);
+  };
+
+  // 槽位切换候选：只收库中槽位明确匹配（族归一，ring1/2 互通）的装备。
+  // 未记录槽位的旧库条目不进候选（防止项链装进主手）；重新导入 build 会回填 slot。
+  const candidates = selected
+    ? session.library.items.filter(
+        (i) => i.kind === 'item' && i.slot != null && slotFamily(i.slot) === slotFamily(selected),
+      )
+    : [];
+  const candidateNames = useLocalizedLines(
+    candidates.map((c) => c.name),
+    lang,
+  );
+  const switcherValue =
+    candidates.find((c) => c.text === selectedText)?.id ?? (selectedText ? '__current' : '');
 
   return (
     <section aria-labelledby="items-heading">
@@ -239,9 +349,9 @@ export function ItemsPanel({ session, lang }: Props) {
       <p className="items-hint">{tt('items.hint')}</p>
 
       <div className="paper-doll" role="group" aria-label={tt('items.title')}>
-        {DOLL_SLOTS.map(({ slot, area }) => {
+        {DOLL_SLOTS.map(({ slot, area }, slotIdx) => {
           const text = bySlot.get(slot);
-          const name = text ? itemLines(text)[0] : null;
+          const name = text ? slotName(slotIdx) : null;
           return (
             <button
               key={slot}
@@ -252,7 +362,10 @@ export function ItemsPanel({ session, lang }: Props) {
               onClick={() => select(slot)}
               aria-label={slotLabel(lang, slot)}
             >
-              <span className="doll-slot-label">{slotLabel(lang, slot)}</span>
+              <span className="doll-slot-label">
+                {slotLabel(lang, slot)}
+                {hasNote(slot) && <span className="note-dot" aria-hidden />}
+              </span>
               {name ? (
                 <span className="doll-item-name item-name">{name}</span>
               ) : (
@@ -264,9 +377,9 @@ export function ItemsPanel({ session, lang }: Props) {
       </div>
 
       <div className="utility-row" role="group" aria-label={tt('items.flasks')}>
-        {UTILITY_SLOTS.map((slot) => {
+        {UTILITY_SLOTS.map((slot, utilIdx) => {
           const text = utilityBySlot.get(slot);
-          const name = text ? itemLines(text)[0] : null;
+          const name = text ? slotName(DOLL_SLOTS.length + utilIdx) : null;
           return (
             <button
               key={slot}
@@ -276,7 +389,10 @@ export function ItemsPanel({ session, lang }: Props) {
               onClick={() => select(slot)}
               aria-label={slot}
             >
-              <span className="doll-slot-label">{slotLabel(lang, slot)}</span>
+              <span className="doll-slot-label">
+                {slotLabel(lang, slot)}
+                {hasNote(slot) && <span className="note-dot" aria-hidden />}
+              </span>
               {name ? (
                 <span className="doll-item-name item-name">{name}</span>
               ) : (
@@ -291,6 +407,29 @@ export function ItemsPanel({ session, lang }: Props) {
         <div className={`item-detail${selectedText ? ` rarity-${rarityOf(selectedText)}` : ''}`}>
           <header className="item-detail-header">
             <span className="item-slot">{slotLabel(lang, selected)}</span>
+            {candidates.length > 0 && (
+              <AppSelect
+                ariaLabel={tt('items.switcher')}
+                value={switcherValue}
+                disabled={session.busy}
+                options={[
+                  ...(selectedText && !candidates.some((c) => c.text === selectedText)
+                    ? [{ value: '__current', label: tt('items.currentItem') }]
+                    : []),
+                  { value: '', label: tt('items.unequip') },
+                  ...candidates.map((c, i) => ({ value: c.id, label: candidateNames[i] || c.name })),
+                ]}
+                onChange={(v) => {
+                  if (v === '__current') return;
+                  if (v === '') {
+                    removeItem();
+                    return;
+                  }
+                  const entry = candidates.find((c) => c.id === v);
+                  if (entry) switchTo(entry.text);
+                }}
+              />
+            )}
             <span className="item-actions">
               {!editing && (
                 <button disabled={session.busy} onClick={() => setEditing(true)}>
@@ -302,7 +441,7 @@ export function ItemsPanel({ session, lang }: Props) {
                   <CopyButton text={selectedText} lang={lang} />
                   <button
                     disabled={session.busy}
-                    onClick={() => session.saveLibraryItem('item', selectedText)}
+                    onClick={() => session.saveLibraryItem('item', selectedText, selected)}
                   >
                     {tt('lib.save')}
                   </button>
@@ -330,7 +469,56 @@ export function ItemsPanel({ session, lang }: Props) {
               </div>
             </div>
           ) : selectedText ? (
-            <ItemText text={selectedText} lang={lang} />
+            <>
+              {!socketInfo && runeCatalog.length > 0 && !isUtilitySlot(selected) && (
+                <div className="rune-editor" role="group" aria-label={tt('items.runes')}>
+                  <button disabled={session.busy} onClick={() => setSocketCount(1)}>
+                    {tt('items.addSockets')}
+                  </button>
+                  {runeError && <span className="calc-error">{runeError}</span>}
+                </div>
+              )}
+              {socketInfo && runeCatalog.length > 0 && (
+                <div className="rune-editor" role="group" aria-label={tt('items.runes')}>
+                  <span className="rune-editor-title">{tt('items.runes')}</span>
+                  {Array.from({ length: socketInfo.capacity }, (_, i) => (
+                    <AppSelect
+                      key={i}
+                      ariaLabel={`${tt('items.runes')} ${i + 1}`}
+                      value={socketInfo.runes[i] ?? ''}
+                      disabled={session.busy}
+                      options={runeOptions}
+                      onChange={(v) => resocketRune(i, v)}
+                    />
+                  ))}
+                  <span className="socket-count-controls">
+                    <button
+                      disabled={session.busy || socketInfo.capacity <= 0}
+                      title={tt('items.socketRemove')}
+                      aria-label={tt('items.socketRemove')}
+                      onClick={() => setSocketCount(socketInfo.capacity - 1)}
+                    >
+                      −
+                    </button>
+                    <button
+                      disabled={session.busy || socketInfo.capacity >= 6}
+                      title={tt('items.socketAdd')}
+                      aria-label={tt('items.socketAdd')}
+                      onClick={() => setSocketCount(socketInfo.capacity + 1)}
+                    >
+                      +
+                    </button>
+                  </span>
+                  {runeError && <span className="calc-error">{runeError}</span>}
+                </div>
+              )}
+              <ItemText text={selectedText} lang={lang} />
+              <NoteEditor
+                value={session.annotations[noteKey(selected)] ?? ''}
+                onCommit={(text) => session.setAnnotation(noteKey(selected), text)}
+                lang={lang}
+              />
+            </>
           ) : (
             <p className="item-empty-hint">{tt('items.empty')}</p>
           )}
@@ -343,25 +531,43 @@ export function ItemsPanel({ session, lang }: Props) {
       {build && build.items.jewels.length > 0 && (
         <>
           <h3 className="panel-subheading">{tt('items.jewels')}</h3>
-          <div className="item-grid">
-            {build.items.jewels.map((text, i) => (
-              <article key={i} className={`item-card rarity-${rarityOf(text)}`}>
-                <header className="item-slot">
-                  <span className="item-actions">
-                    <CopyButton text={text} lang={lang} />
-                  </span>
-                </header>
-                <ItemText text={text} lang={lang} />
-              </article>
-            ))}
-          </div>
+          <JewelList texts={build.items.jewels} lang={lang} />
         </>
       )}
     </section>
   );
 }
 
-/** 物品库：存起来的装备/珠宝，选中槽位后可对比差异并一键装备。 */
+/** 珠宝列表（来自导入 build，只读；编辑走天赋树页插槽）。 */
+function JewelList({ texts, lang }: { texts: string[]; lang: Lang }) {
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const names = useLocalizedLines(
+    texts.map((t) => itemLines(t)[0] ?? ''),
+    lang,
+  );
+  return (
+    <div className="library-list">
+      {texts.map((text, i) => (
+        <ItemRow
+          key={i}
+          text={text}
+          name={names[i] || itemLines(text)[0] || ''}
+          lang={lang}
+          open={openIdx === i}
+          onToggle={() => setOpenIdx(openIdx === i ? null : i)}
+          actions={<CopyButton text={text} lang={lang} />}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** 槽位归一化（`ring1`/`ring2` → `ring`）：库条目槽位与选中槽位的互换匹配键。 */
+function slotFamily(slot: string): string {
+  return slot.replace(/\s*\d+$/, '').toLowerCase();
+}
+
+/** 物品库：存起来的装备/珠宝，可搜索/按选中槽位过滤，对比差异并一键装备。 */
 function LibrarySection({
   session,
   lang,
@@ -373,8 +579,31 @@ function LibrarySection({
 }) {
   const tt = bindT(lang);
   const [diffFor, setDiffFor] = useState<{ id: string; diffs: DiffEntry[] } | null>(null);
-  const items = session.library.items.filter((i) => i.kind === 'item');
-  if (items.length === 0) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [slotOnly, setSlotOnly] = useState(true);
+  const all = session.library.items.filter((i) => i.kind === 'item');
+  // 名称一批送翻译（中文界面搜索可同时命中中英文名）。
+  const names = useLocalizedLines(
+    all.map((i) => i.name),
+    lang,
+  );
+  const q = query.trim().toLowerCase();
+  const items = all.filter((entry, i) => {
+    // 勾选「只看当前槽位」时，未记录槽位的旧库条目一并隐藏（槽位未知≠槽位匹配）。
+    if (
+      slotOnly &&
+      selectedSlot &&
+      (!entry.slot || slotFamily(entry.slot) !== slotFamily(selectedSlot))
+    ) {
+      return false;
+    }
+    if (!q) return true;
+    return (
+      entry.text.toLowerCase().includes(q) || (names[i] ?? '').toLowerCase().includes(q)
+    );
+  });
+  if (all.length === 0) {
     return <p className="items-hint">{tt('lib.empty')}</p>;
   }
 
@@ -397,17 +626,48 @@ function LibrarySection({
   };
 
   return (
-    <div className="library-grid">
+    <>
+      <div className="library-toolbar" role="group" aria-label={tt('lib.title')}>
+        <input
+          type="search"
+          className="library-search"
+          placeholder={tt('lib.search')}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label={tt('lib.search')}
+        />
+        {selectedSlot && (
+          <label className="library-slot-filter">
+            <input
+              type="checkbox"
+              checked={slotOnly}
+              onChange={(e) => setSlotOnly(e.target.checked)}
+            />
+            {tt('lib.filterSlot')}（{slotLabel(lang, selectedSlot)}）
+          </label>
+        )}
+      </div>
+      {items.length === 0 && <p className="items-hint">{tt('lib.noMatch')}</p>}
+    <div className="library-list">
       {items.map((entry) => (
-        <article key={entry.id} className={`item-card rarity-${rarityOf(entry.text)}`}>
-          <header className="item-slot">
-            {entry.name}
-            <span className="item-actions">
+        <ItemRow
+          key={entry.id}
+          text={entry.text}
+          name={names[all.indexOf(entry)] ?? entry.name}
+          lang={lang}
+          slotTag={entry.slot ? slotLabel(lang, entry.slot) : undefined}
+          open={expandedId === entry.id}
+          onToggle={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
+          actions={
+            <>
               <CopyButton text={entry.text} lang={lang} />
               <button
                 disabled={session.busy || !selectedSlot}
                 title={selectedSlot ? '' : tt('lib.selectSlotFirst')}
-                onClick={() => compare(entry.id, entry.text)}
+                onClick={() => {
+                  setExpandedId(entry.id);
+                  void compare(entry.id, entry.text);
+                }}
               >
                 {tt('lib.compare')}
               </button>
@@ -425,16 +685,17 @@ function LibrarySection({
               >
                 ×
               </button>
-            </span>
-          </header>
-          <ItemText text={entry.text} lang={lang} />
+            </>
+          }
+        >
           {diffFor?.id === entry.id && (
             <div className="library-diff">
               <DiffList diffs={diffFor.diffs} lang={lang} />
             </div>
           )}
-        </article>
+        </ItemRow>
       ))}
     </div>
+    </>
   );
 }

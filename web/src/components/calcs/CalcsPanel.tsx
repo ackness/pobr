@@ -9,6 +9,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
 import {
   bindT,
+  grantedSourceLabel,
   originKindLabel,
   slotLabel,
   statCategoryLabel,
@@ -25,6 +26,8 @@ interface Props {
   lang: Lang;
   /** 侧边栏点击跳转：要展开的 breakdown（对象引用每次点击新建，作为 effect 触发键）。 */
   focus?: { id: string } | null;
+  /** 跳转消费完毕的回调（父级清空 focus，防止页签切回时重复触发滚动）。 */
+  onFocusConsumed?: () => void;
 }
 
 const MOD_TYPE_ORDER = ['BASE', 'INC', 'MORE', 'OVERRIDE', 'FLAG', 'LIST'];
@@ -160,6 +163,15 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const mainIndex = session.calc?.main_skill?.group_index;
   const groupLabel = (index: number, skillId: string) =>
     `${tt('calcs.group')} ${index + 1} · ${skillName(skillId)}`;
+  // 同名技能可合法出现多次（玩家备用组 + 装备/天赋附赠组）；徽标标出附赠来源，
+  // tooltip 列出整组宝石链帮助区分玩家自己的重复组。
+  const groupMeta = (index: number) => {
+    const group = session.socketGroups[index];
+    return {
+      granted: grantedSourceLabel(lang, group?.source),
+      gems: (group?.gems ?? []).map((g) => skillName(g.skill_id)).join(' + '),
+    };
+  };
 
   return (
     <section className="attribution-view" aria-labelledby="fulldps-heading">
@@ -184,19 +196,27 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
               <tbody>
                 {[...report.per_skill]
                   .sort((a, b) => b.dps - a.dps)
-                  .map((entry) => (
-                    <tr
-                      key={entry.group_index}
-                      className={`fulldps-row${entry.group_index === mainIndex ? ' is-main' : ''}`}
-                      title={tt('skills.setMain')}
-                      onClick={() =>
-                        session.updateParams({ main_socket_group: entry.group_index })
-                      }
-                    >
-                      <td>{groupLabel(entry.group_index, entry.skill_id)}</td>
-                      <td className="mod-value">{formatStatValue(entry.dps, 'float2')}</td>
-                    </tr>
-                  ))}
+                  .map((entry) => {
+                    const meta = groupMeta(entry.group_index);
+                    return (
+                      <tr
+                        key={entry.group_index}
+                        className={`fulldps-row${entry.group_index === mainIndex ? ' is-main' : ''}${meta.granted ? ' is-granted' : ''}`}
+                        title={meta.gems || tt('skills.setMain')}
+                        onClick={() =>
+                          session.updateParams({ main_socket_group: entry.group_index })
+                        }
+                      >
+                        <td>
+                          {groupLabel(entry.group_index, entry.skill_id)}
+                          {meta.granted && (
+                            <span className="granted-badge">{meta.granted}</span>
+                          )}
+                        </td>
+                        <td className="mod-value">{formatStatValue(entry.dps, 'float2')}</td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
@@ -295,12 +315,14 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
 }
 
 /** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
-export function CalcsPanel({ session, lang, focus }: Props) {
+export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const tt = bindT(lang);
   const calc = session.calc;
   const [open, setOpen] = useState<string | null>(null);
 
   // 侧边栏跳转：展开目标 breakdown 并滚动到可视区（渲染提交后再滚）。
+  // 消费后立即让父级清空 focus——否则切走再切回本页签会带着旧 focus 重新
+  // 挂载，scrollIntoView 再次触发，页面整体错位。
   useEffect(() => {
     if (!focus) return;
     setOpen(focus.id);
@@ -309,6 +331,8 @@ export function CalcsPanel({ session, lang, focus }: Props) {
         .getElementById(`breakdown-${focus.id}`)
         ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     });
+    onFocusConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus]);
 
   const [query, setQuery] = useState('');

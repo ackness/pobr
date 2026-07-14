@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, type Lang } from '../../lib/i18n';
+import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
 import { GemPicker, gemDisplayName } from './GemPicker';
+import { NoteEditor } from '../shared/NoteEditor';
 import './skills.css';
 
 interface Props {
@@ -39,6 +40,8 @@ export function SkillsPanel({ session, lang }: Props) {
 
   const groups = session.socketGroups;
   const mainIndex = session.calcParams.main_socket_group ?? session.build?.main_socket_group ?? 0;
+  // 手风琴：同一时刻只展开一个组编辑，其余收成单行摘要。
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   const updateGroup = (idx: number, patch: Partial<SocketGroupInput>) => {
     session.setSocketGroups(groups.map((g, i) => (i === idx ? { ...g, ...patch } : g)));
@@ -55,12 +58,13 @@ export function SkillsPanel({ session, lang }: Props) {
           placeholder={tt('skills.addPlaceholder')}
           disabled={session.busy || catalog.length === 0}
           lang={lang}
-          onPick={(skillId) =>
+          onPick={(skillId) => {
             session.setSocketGroups([
               ...groups,
               { enabled: true, gems: [{ skill_id: skillId, level: 20, quality: 0 }] },
-            ])
-          }
+            ]);
+            setOpenIdx(groups.length);
+          }}
         />
         <span className="skills-hint">{tt('skills.hint')}</span>
       </div>
@@ -69,7 +73,8 @@ export function SkillsPanel({ session, lang }: Props) {
       <div className="skill-groups">
         {groups.map((group, idx) => {
           const isMain = idx === mainIndex;
-          const [active] = group.gems;
+          const isOpen = idx === openIdx;
+          const [active, ...supportGems] = group.gems;
           return (
             <div
               key={idx}
@@ -77,16 +82,39 @@ export function SkillsPanel({ session, lang }: Props) {
             >
               <div className="skill-group-header">
                 <button
-                  className="skill-group-title"
+                  className={`skill-main-toggle${isMain ? ' is-on' : ''}`}
                   aria-pressed={isMain}
                   disabled={session.busy}
                   title={tt('skills.setMain')}
                   onClick={() => session.updateParams({ main_socket_group: idx })}
                 >
+                  ★
+                </button>
+                <button
+                  className="skill-group-title"
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenIdx(isOpen ? null : idx)}
+                >
+                  <span className="row-caret" aria-hidden>
+                    ▸
+                  </span>
                   <span className="skill-group-name">
                     {active ? gemName(active.skill_id) : tt('skills.emptyGroup')}
+                    {Boolean(session.annotations[`skill:${idx}`]?.trim()) && (
+                      <span className="note-dot" aria-hidden />
+                    )}
                   </span>
                   {isMain && <span className="skill-group-main">{tt('skills.main')}</span>}
+                  {grantedSourceLabel(lang, group.source) && (
+                    <span className="granted-badge">
+                      {grantedSourceLabel(lang, group.source)}
+                    </span>
+                  )}
+                  {!isOpen && supportGems.length > 0 && (
+                    <span className="skill-group-supports">
+                      {supportGems.map((g) => gemName(g.skill_id)).join(' · ')}
+                    </span>
+                  )}
                 </button>
                 <label className="skill-group-toggle">
                   <input
@@ -101,11 +129,15 @@ export function SkillsPanel({ session, lang }: Props) {
                   className="skill-remove"
                   disabled={session.busy}
                   title={tt('skills.removeGroup')}
-                  onClick={() => session.setSocketGroups(groups.filter((_, i) => i !== idx))}
+                  onClick={() => {
+                    session.removeSocketGroup(idx);
+                    setOpenIdx(null);
+                  }}
                 >
                   ×
                 </button>
               </div>
+              {isOpen && (
               <ul className="skill-gems">
                 {group.gems.map((gem, gemIdx) => (
                   <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}`}>
@@ -155,19 +187,31 @@ export function SkillsPanel({ session, lang }: Props) {
                   </li>
                 ))}
               </ul>
-              <div className="skill-group-picker">
-                <GemPicker
-                  entries={supports}
-                  placeholder={tt('skills.addSupport')}
-                  disabled={session.busy || catalog.length === 0}
-                  lang={lang}
-                  onPick={(skillId) =>
-                    updateGroup(idx, {
-                      gems: [...group.gems, { skill_id: skillId, level: 20, quality: 0 }],
-                    })
-                  }
-                />
-              </div>
+              )}
+              {isOpen && (
+                <div className="skill-group-picker">
+                  <GemPicker
+                    entries={supports}
+                    placeholder={tt('skills.addSupport')}
+                    disabled={session.busy || catalog.length === 0}
+                    lang={lang}
+                    onPick={(skillId) =>
+                      updateGroup(idx, {
+                        gems: [...group.gems, { skill_id: skillId, level: 20, quality: 0 }],
+                      })
+                    }
+                  />
+                </div>
+              )}
+              {isOpen && (
+                <div className="skill-group-note">
+                  <NoteEditor
+                    value={session.annotations[`skill:${idx}`] ?? ''}
+                    onCommit={(text) => session.setAnnotation(`skill:${idx}`, text)}
+                    lang={lang}
+                  />
+                </div>
+              )}
             </div>
           );
         })}

@@ -3,18 +3,21 @@
   font-size: var(--text-sm);
 }
 
+/* 技能组：单列手风琴列表（收起=单行摘要，展开=宝石编辑器）。 */
 .skill-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 920px;
 }
 
 .skill-group {
   text-align: left;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
 }
 
 .skill-group:hover {
@@ -22,8 +25,7 @@
 }
 
 .skill-group.is-main {
-  border-color: var(--accent-gold);
-  box-shadow: 0 0 0 1px var(--accent-gold-dim);
+  border-left-color: var(--accent-gold);
 }
 
 .skill-group.is-disabled {
@@ -32,14 +34,33 @@
 
 .skill-group-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
-  flex-wrap: wrap;
+}
+
+/* 设主技能的星标按钮（点亮=当前主技能组）。 */
+.skill-main-toggle {
+  flex: none;
+  background: none;
+  border: none;
+  padding: 0 2px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.skill-main-toggle:hover {
+  background: none;
+  color: var(--accent-gold-bright);
+}
+
+.skill-main-toggle.is-on {
+  color: var(--accent-gold);
 }
 
 .skill-group-name {
   color: var(--rarity-gem);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .skill-group-slot {
@@ -97,13 +118,30 @@
 }
 
 .skill-group-title {
+  flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   padding: 0;
   text-align: left;
   display: flex;
   gap: var(--space-2);
-  align-items: baseline;
+  align-items: center;
+  cursor: pointer;
+}
+
+.skill-group-title:hover {
+  background: transparent;
+}
+
+/* 收起态的辅助宝石内联摘要（溢出省略）。 */
+.skill-group-supports {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .skill-group-toggle {

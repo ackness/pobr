@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { AttributeChoice, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, type Lang } from '../../lib/i18n';
+import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
+import { AppSelect } from '../shared/AppSelect';
+import { NoteEditor } from '../shared/NoteEditor';
 import './tree.css';
 
 interface Props {
@@ -28,6 +31,16 @@ interface ViewBox {
   h: number;
 }
 
+/** 属性小点判定（`+5 to any Attribute`）。 */
+function isAttrNode(node: PassiveNode): boolean {
+  return (
+    node.name === 'Attribute' &&
+    (node.stats ?? []).some((line) => line.includes('any') && line.includes('Attribute'))
+  );
+}
+
+const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
+
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
 export function TreePanel({ session, lang }: Props) {
   const tt = bindT(lang);
@@ -36,6 +49,8 @@ export function TreePanel({ session, lang }: Props) {
   const [hover, setHover] = useState<PassiveNode | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoverStats, setHoverStats] = useState<string[] | null>(null);
+  /** hover 节点名的中文翻译（词典命中才有；null = 显示英文原名）。 */
+  const [hoverName, setHoverName] = useState<string | null>(null);
   /** 节点搜索串（名称/词条子串匹配，高亮命中节点）。 */
   const [search, setSearch] = useState('');
   /** 「下一个命中」轮转下标（搜索串变化时归零）。 */
@@ -53,8 +68,28 @@ export function TreePanel({ session, lang }: Props) {
     map: new Map(),
   });
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
-  const dragRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const dragRef = useRef<{
+    x: number;
+    y: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  /** 滚轮缩放的 rAF 合帧暂存（一帧最多提交一次 viewBox）。 */
+  const wheelPendingRef = useRef<ViewBox | null>(null);
+  const wheelRafRef = useRef<number | null>(null);
+  /** 拖动提交后待复位 CSS transform（与新 viewBox 同帧清除，防闪跳）。 */
+  const transformResetRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!transformResetRef.current) return;
+    transformResetRef.current = false;
+    const svg = svgRef.current;
+    if (svg) {
+      svg.style.transform = '';
+      svg.classList.remove('is-dragging');
+    }
+  }, [viewBox]);
 
   useEffect(() => {
     getBackend()
@@ -64,6 +99,56 @@ export function TreePanel({ session, lang }: Props) {
   }, []);
 
   const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
+
+  // 珠宝库（插槽编辑器的切换下拉）；名称批量送翻译。
+  // ⚠️hook 必须在下方 early return 之前（React #310）。
+  const jewelLib = session.library.items.filter((i) => i.kind === 'jewel');
+  const jewelNames = useLocalizedLines(
+    jewelLib.map((e) => e.name),
+    lang,
+  );
+
+  // 热力图（PoB2 节点威力）：选定属性 + 深度，**点「计算」按钮才跑**——
+  // 计算量大（深度内逐词条组合完整重算），不随加点/编辑自动刷新。
+  const [heatStat, setHeatStat] = useState('');
+  const [heatDepth, setHeatDepth] = useState(5);
+  const [heatData, setHeatData] = useState<Map<number, number> | null>(null);
+  const [heatBusy, setHeatBusy] = useState(false);
+  /** 上次计算时的 stateVersion（build 变动后提示「已过期」而非自动重算）。 */
+  const [heatVersion, setHeatVersion] = useState(-1);
+  const runHeat = () => {
+    if (!heatStat || heatBusy) return;
+    const request = session.currentRequest();
+    if (!request) return;
+    const version = session.stateVersion;
+    setHeatBusy(true);
+    getBackend()
+      .then((b) => b.nodePower(request, heatStat, heatDepth))
+      .then((res) => {
+        setHeatData(new Map(res.entries.map((e) => [e.skill, e.delta])));
+        setHeatVersion(version);
+      })
+      .catch(() => setHeatData(null))
+      .finally(() => setHeatBusy(false));
+  };
+
+  const heatMax = useMemo(() => {
+    let max = 0;
+    heatData?.forEach((d) => {
+      if (d > max) max = d;
+    });
+    return max;
+  }, [heatData]);
+
+  /** 热力图可选属性（按当前计算结果里实际存在的展示量过滤）。 */
+  const heatStatOptions = useMemo(() => {
+    const CANDIDATES = [
+      'TotalDPS', 'Life', 'EnergyShield', 'TotalEHP', 'Mana',
+      'Armour', 'Evasion', 'Spirit',
+    ];
+    const present = new Set((session.calc?.stats ?? []).map((s) => s.id));
+    return CANDIDATES.filter((id) => present.has(id));
+  }, [session.calc]);
 
   // 当前升华的稳定 id（如 `Warrior3`）——PoB2 语义：只渲染所选升华的节点簇，
   // 其它升华整簇隐藏（它们与主树平面重叠，全显示会一团乱）。
@@ -105,11 +190,6 @@ export function TreePanel({ session, lang }: Props) {
     }
     return hits;
   }, [placed, search]);
-
-  /** 属性小点判定（`+5 to any Attribute`）。 */
-  const isAttrNode = (node: PassiveNode) =>
-    node.name === 'Attribute' &&
-    (node.stats ?? []).some((line) => line.includes('any') && line.includes('Attribute'));
 
   /** 已加点的属性小点（升序，批量调配的确定性分配序）。 */
   const allocatedAttrNodes = useMemo(
@@ -174,6 +254,89 @@ export function TreePanel({ session, lang }: Props) {
     return out;
   }, [placed, byId, allocated]);
 
+  // ── 渲染性能：节点/连线子树 memo 化 ─────────────────────────────────────
+  // 拖拽/缩放/悬停每帧都 setState；若子树不 memo，React 每帧要 diff 近万个
+  // SVG 元素（拖动卡顿的根因）。memo 后这些帧只更新 svg viewBox 与 tooltip。
+  // 点击回调经 sessionRef 取最新会话，避免 memo 闭包捕获过期 state。
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+
+  /** 点选加点/取消（拖拽平移不触发）；属性小点弹三选一；珠宝插槽开编辑器。 */
+  const handleNodeClick = useCallback((node: PassiveNode, e: React.MouseEvent) => {
+    if (dragRef.current?.moved) return;
+    const s = sessionRef.current;
+    const isAlloc = s.allocatedNodes.includes(node.skill);
+    if (!isAlloc && isAttrNode(node)) {
+      const rect = svgRef.current!.getBoundingClientRect();
+      setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
+      return;
+    }
+    if (node.kind === 'jewel_socket') {
+      if (!isAlloc) s.toggleNode(node.skill);
+      const existing = s.jewels.find((j) => j.socket_node === node.skill);
+      setJewelEdit({ socket: node.skill, draft: existing?.text ?? JEWEL_TEMPLATE });
+      return;
+    }
+    setAttrPicker(null);
+    s.toggleNode(node.skill);
+  }, []);
+
+  const edgesEl = useMemo(
+    () => (
+      <g className="tree-edges">
+        {edges.map((e, i) => (
+          <line
+            key={i}
+            x1={e.x1}
+            y1={e.y1}
+            x2={e.x2}
+            y2={e.y2}
+            className={e.active ? 'edge-active' : 'edge'}
+          />
+        ))}
+      </g>
+    ),
+    [edges],
+  );
+
+  const filledJewelSockets = useMemo(
+    () => new Set(session.jewels.map((j) => j.socket_node)),
+    [session.jewels],
+  );
+
+  const nodesEl = useMemo(() => {
+    /** 热力上色：正增量 暗红→亮金（√ 拉开低值区分度）；负增量冷蓝；无数据不覆盖。 */
+    const heatFill = (skill: number): string | undefined => {
+      if (!heatStat || !heatData || allocated.has(skill)) return undefined;
+      const delta = heatData.get(skill);
+      if (delta === undefined || delta === 0 || heatMax <= 0) return undefined;
+      if (delta < 0) return 'hsl(210 55% 32%)';
+      const t = Math.sqrt(Math.min(1, delta / heatMax));
+      return `hsl(${Math.round(20 + t * 25)} ${Math.round(70 + t * 30)}% ${Math.round(28 + t * 32)}%)`;
+    };
+    return (
+      <g className="tree-nodes">
+        {placed.map((node) => (
+          <circle
+            key={node.skill}
+            cx={node.x}
+            cy={node.y}
+            r={NODE_RADIUS[node.kind] ?? 40}
+            style={heatFill(node.skill) ? { fill: heatFill(node.skill) } : undefined}
+            className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}`}
+            onPointerEnter={(e) => {
+              setHover(node);
+              setHoverPos({ x: e.clientX, y: e.clientY });
+            }}
+            onPointerMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+            onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
+            onClick={(e) => handleNodeClick(node, e)}
+          />
+        ))}
+      </g>
+    );
+  }, [placed, allocated, filledJewelSockets, searchHits, heatStat, heatData, heatMax, handleNodeClick]);
+
   const fullExtent = useMemo((): ViewBox | null => {
     if (placed.length === 0) return null;
     const xs = placed.map((n) => n.x!);
@@ -186,10 +349,12 @@ export function TreePanel({ session, lang }: Props) {
     return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
   }, [placed]);
 
-  // 中文界面下把 hover 节点词条经模板反查翻成简中（异步，结果晚到时校验仍是当前节点）。
+  // 中文界面下把 hover 节点名 + 词条经词典/模板反查翻成简中（异步，结果晚到时
+  // 校验仍是当前节点）。
   useEffect(() => {
     if (!hover) {
       setHoverStats(null);
+      setHoverName(null);
       return;
     }
     const chosen = session.attributeChoices[String(hover.skill)];
@@ -197,15 +362,25 @@ export function TreePanel({ session, lang }: Props) {
     const raw = [...(hover.stats ?? []), ...chosenLine.map((l) => l)].map((line) =>
       line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1'),
     );
-    if (lang === 'en-US' || raw.length === 0) {
+    if (lang === 'en-US') {
       setHoverStats(raw);
+      setHoverName(null);
       return;
     }
+    const name = hover.name ?? hover.id;
     let cancelled = false;
     getBackend()
-      .then((b) => b.translateLines(raw))
-      .then((translated) => !cancelled && setHoverStats(translated))
-      .catch(() => !cancelled && setHoverStats(raw));
+      .then((b) => b.translateLines([name, ...raw]))
+      .then((translated) => {
+        if (cancelled) return;
+        setHoverName(translated[0] !== name ? translated[0] : null);
+        setHoverStats(translated.slice(1));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setHoverStats(raw);
+        setHoverName(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -305,59 +480,76 @@ export function TreePanel({ session, lang }: Props) {
   if (error) return <div className="calc-error">{error}</div>;
   if (!nodes || !view) return <div className="empty-hint">{tt('tree.loading')}</div>;
 
+  // ── 平移/缩放的高性能路径 ────────────────────────────────────────────────
+  // viewBox 每帧改动会强制整树（~1 万 SVG 元素）重新栅格化；拖动期间只写
+  // CSS transform（GPU 合成器，与元素数量无关），pointerup 一次性提交
+  // viewBox（transform 复位在 useLayoutEffect 里与新 viewBox 同帧，防闪跳）。
+  // 滚轮缩放本就需要重绘内容，走 rAF 合帧（一帧最多一次栅格化）。
+
   const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
     const rect = svgRef.current!.getBoundingClientRect();
-    const px = view.x + ((e.clientX - rect.left) / rect.width) * view.w;
-    const py = view.y + ((e.clientY - rect.top) / rect.height) * view.h;
-    const w = Math.min(Math.max(view.w * factor, 800), (fullExtent?.w ?? 1) * 2);
-    const h = (w / view.w) * view.h;
-    setViewBox({ x: px - ((px - view.x) / view.w) * w, y: py - ((py - view.y) / view.h) * h, w, h });
+    const base = wheelPendingRef.current ?? view;
+    const px = base.x + ((e.clientX - rect.left) / rect.width) * base.w;
+    const py = base.y + ((e.clientY - rect.top) / rect.height) * base.h;
+    const w = Math.min(Math.max(base.w * factor, 800), (fullExtent?.w ?? 1) * 2);
+    const h = (w / base.w) * base.h;
+    wheelPendingRef.current = {
+      x: px - ((px - base.x) / base.w) * w,
+      y: py - ((py - base.y) / base.h) * h,
+      w,
+      h,
+    };
+    if (wheelRafRef.current === null) {
+      wheelRafRef.current = requestAnimationFrame(() => {
+        wheelRafRef.current = null;
+        if (wheelPendingRef.current) {
+          setViewBox(wheelPendingRef.current);
+          wheelPendingRef.current = null;
+        }
+      });
+    }
   };
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    dragRef.current = { x: e.clientX, y: e.clientY, moved: false };
+    dragRef.current = { x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, moved: false };
     (e.target as Element).setPointerCapture?.(e.pointerId);
   };
 
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!dragRef.current) return;
-    const rect = svgRef.current!.getBoundingClientRect();
-    const dx = ((e.clientX - dragRef.current.x) / rect.width) * view.w;
-    const dy = ((e.clientY - dragRef.current.y) / rect.height) * view.h;
-    if (Math.abs(e.clientX - dragRef.current.x) + Math.abs(e.clientY - dragRef.current.y) > 3) {
-      dragRef.current.moved = true;
+    const drag = dragRef.current;
+    const svg = svgRef.current;
+    if (!drag || !svg) return;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 3) {
+      drag.moved = true;
+      // 拖动确立后关闭节点命中测试（省掉每帧对 ~4900 个圆的 hover 命中）；
+      // pointer-events 关闭后 leave 不再触发，主动清掉悬停 tooltip。
+      svg.classList.add('is-dragging');
+      setHover(null);
     }
-    dragRef.current = { ...dragRef.current, x: e.clientX, y: e.clientY };
-    setViewBox({ ...view, x: view.x - dx, y: view.y - dy });
+    if (drag.moved) {
+      svg.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+    }
   };
 
   const onPointerUp = () => {
+    const drag = dragRef.current;
+    const svg = svgRef.current;
+    if (drag?.moved && svg) {
+      const rect = svg.getBoundingClientRect();
+      const dxUnits = ((drag.x - drag.startX) / rect.width) * view.w;
+      const dyUnits = ((drag.y - drag.startY) / rect.height) * view.h;
+      setViewBox({ ...view, x: view.x - dxUnits, y: view.y - dyUnits });
+      transformResetRef.current = true;
+    }
     // 保留 moved 标记到 click 事件之后（click 在 pointerup 后触发）。
     setTimeout(() => {
       dragRef.current = null;
     }, 0);
-  };
-
-  const JEWEL_TEMPLATE =
-    'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
-
-  /** 点选加点/取消（拖拽平移不触发）；属性小点弹三选一；珠宝插槽开编辑器。 */
-  const onNodeClick = (node: PassiveNode, e: React.MouseEvent) => {
-    if (dragRef.current?.moved) return;
-    if (!allocated.has(node.skill) && isAttrNode(node)) {
-      const rect = svgRef.current!.getBoundingClientRect();
-      setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
-      return;
-    }
-    if (node.kind === 'jewel_socket') {
-      if (!allocated.has(node.skill)) session.toggleNode(node.skill);
-      const existing = session.jewels.find((j) => j.socket_node === node.skill);
-      setJewelEdit({ socket: node.skill, draft: existing?.text ?? JEWEL_TEMPLATE });
-      return;
-    }
-    setAttrPicker(null);
-    session.toggleNode(node.skill);
   };
 
   return (
@@ -403,6 +595,47 @@ export function TreePanel({ session, lang }: Props) {
             >
               {tt('tree.nextHit')}
             </button>
+          )}
+        </span>
+        <span className="tree-heat" title={tt('tree.heatHint')}>
+          {tt('tree.heat')}
+          <select
+            value={heatStat}
+            aria-label={tt('tree.heat')}
+            onChange={(e) => {
+              setHeatStat(e.target.value);
+              if (!e.target.value) setHeatData(null);
+            }}
+          >
+            <option value="">{tt('tree.heatOff')}</option>
+            {heatStatOptions.map((id) => (
+              <option key={id} value={id}>
+                {statNameLabel(lang, id)}
+              </option>
+            ))}
+          </select>
+          {heatStat && (
+            <>
+              <label className="tree-heat-depth">
+                {tt('tree.heatDepth')}
+                <input
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={heatDepth}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isInteger(v) && v >= 1 && v <= 12) setHeatDepth(v);
+                  }}
+                />
+              </label>
+              <button disabled={heatBusy || session.busy} onClick={runHeat}>
+                {heatBusy ? tt('tree.heatComputing') : tt('tree.heatRun')}
+              </button>
+              {heatData && heatVersion !== session.stateVersion && (
+                <span className="tree-hint">{tt('tree.heatStale')}</span>
+              )}
+            </>
           )}
         </span>
         <label className="tree-asc-picker">
@@ -559,19 +792,55 @@ export function TreePanel({ session, lang }: Props) {
             </span>
           </header>
           <p className="tree-hint">{tt('tree.jewelHint')}</p>
-          {session.library.items.filter((i) => i.kind === 'jewel').length > 0 && (
+          <NoteEditor
+            value={session.annotations[`jewel:${jewelEdit.socket}`] ?? ''}
+            onCommit={(text) => session.setAnnotation(`jewel:${jewelEdit.socket}`, text)}
+            lang={lang}
+          />
+          {jewelLib.length > 0 && (
             <div className="jewel-library">
-              {session.library.items
-                .filter((i) => i.kind === 'jewel')
-                .map((entry) => (
-                  <button
-                    key={entry.id}
-                    className="jewel-lib-chip"
-                    onClick={() => setJewelEdit({ ...jewelEdit, draft: entry.text })}
-                  >
-                    {tt('lib.useJewel')}: {entry.name}
-                  </button>
-                ))}
+              {(() => {
+                const current = session.jewels.find(
+                  (j) => j.socket_node === jewelEdit.socket,
+                )?.text;
+                const value =
+                  jewelLib.find((e) => e.text === current)?.id ?? (current ? '__current' : '');
+                return (
+                  <AppSelect
+                    ariaLabel={tt('items.switcher')}
+                    value={value}
+                    disabled={session.busy}
+                    options={[
+                      ...(current && !jewelLib.some((e) => e.text === current)
+                        ? [{ value: '__current', label: tt('items.currentItem') }]
+                        : []),
+                      { value: '', label: tt('items.unequip') },
+                      ...jewelLib.map((entry, i) => ({
+                        value: entry.id,
+                        label: jewelNames[i] || entry.name,
+                      })),
+                    ]}
+                    onChange={(v) => {
+                      if (v === '__current') return;
+                      const rest = session.jewels.filter(
+                        (j) => j.socket_node !== jewelEdit.socket,
+                      );
+                      if (v === '') {
+                        session.setJewels(rest);
+                        setJewelEdit({ ...jewelEdit, draft: JEWEL_TEMPLATE });
+                        return;
+                      }
+                      const entry = jewelLib.find((x) => x.id === v);
+                      if (!entry) return;
+                      session.setJewels([
+                        ...rest,
+                        { socket_node: jewelEdit.socket, text: entry.text },
+                      ]);
+                      setJewelEdit({ ...jewelEdit, draft: entry.text });
+                    }}
+                  />
+                );
+              })()}
             </div>
           )}
           <textarea
@@ -602,40 +871,13 @@ export function TreePanel({ session, lang }: Props) {
               r={Math.max(ascExtent.w, ascExtent.h) / 2}
             />
           )}
-          <g className="tree-edges">
-            {edges.map((e, i) => (
-              <line
-                key={i}
-                x1={e.x1}
-                y1={e.y1}
-                x2={e.x2}
-                y2={e.y2}
-                className={e.active ? 'edge-active' : 'edge'}
-              />
-            ))}
-          </g>
-          <g className="tree-nodes">
-            {placed.map((node) => (
-              <circle
-                key={node.skill}
-                cx={node.x}
-                cy={node.y}
-                r={NODE_RADIUS[node.kind] ?? 40}
-                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && session.jewels.some((j) => j.socket_node === node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}`}
-                onPointerEnter={(e) => {
-                  setHover(node);
-                  setHoverPos({ x: e.clientX, y: e.clientY });
-                }}
-                onPointerMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
-                onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
-                onClick={(e) => onNodeClick(node, e)}
-              />
-            ))}
-          </g>
+          {edgesEl}
+          {nodesEl}
         </svg>
         {hover && !attrPicker && (
           <TreeTooltip
             node={hover}
+            name={hoverName}
             stats={hoverStats ?? []}
             pos={hoverPos}
             canvasRef={svgRef}
@@ -691,12 +933,15 @@ export function TreePanel({ session, lang }: Props) {
 /** 跟随鼠标的节点 tooltip（贴右下角偏移，靠近画布右/下缘时翻转）。 */
 function TreeTooltip({
   node,
+  name,
   stats,
   pos,
   canvasRef,
   benefit,
 }: {
   node: PassiveNode;
+  /** 本地化节点名（词典命中才给；null = 显示英文原名）。 */
+  name: string | null;
   stats: string[];
   pos: { x: number; y: number };
   canvasRef: React.RefObject<SVGSVGElement | null>;
@@ -715,7 +960,7 @@ function TreeTooltip({
   };
   return (
     <div className="tree-tooltip" role="tooltip" style={style}>
-      <strong className={`tooltip-name kind-${node.kind}`}>{node.name ?? node.id}</strong>
+      <strong className={`tooltip-name kind-${node.kind}`}>{name ?? node.name ?? node.id}</strong>
       {stats.map((line, i) => (
         <div key={i} className="tooltip-stat">
           {line}

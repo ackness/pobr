@@ -2,7 +2,9 @@ import type { ClassNames } from '../../api/types';
 import type { CharacterState } from '../../hooks/useBuildSession';
 import { LANGS, bindT, type Lang, type UiKey } from '../../lib/i18n';
 
-export type TabId = 'build' | 'tree' | 'skills' | 'items' | 'calcs' | 'config' | 'notes';
+export type TabId = 'build' | 'tree' | 'skills' | 'items' | 'calcs' | 'config';
+
+export const TAB_IDS: TabId[] = ['build', 'tree', 'skills', 'items', 'calcs', 'config'];
 
 const TABS: { id: TabId; key: UiKey }[] = [
   { id: 'build', key: 'tab.build' },
@@ -11,7 +13,6 @@ const TABS: { id: TabId; key: UiKey }[] = [
   { id: 'items', key: 'tab.items' },
   { id: 'calcs', key: 'tab.calcs' },
   { id: 'config', key: 'tab.config' },
-  { id: 'notes', key: 'tab.notes' },
 ];
 
 const LANG_LABEL: Record<Lang, string> = {

@@ -16,8 +16,10 @@ import type {
   FullDpsResponse,
   GemCatalogEntry,
   ItemLineJson,
+  NodePowerResponse,
   PassiveNode,
   PassiveTreeMeta,
+  RuneCatalogEntry,
 } from './types';
 import type { PobrBackend } from './backend';
 
@@ -35,6 +37,9 @@ interface WasmModule {
   gemCatalogJson(): string;
   translateLinesToZhCn(linesJson: string): string;
   classifyItemLinesJson(text: string): string;
+  runeCatalogJson(): string;
+  reforgeRunesJson(requestJson: string): string;
+  nodePowerJson(requestJson: string): string;
   translate(lang: string, key: string): string;
 }
 
@@ -146,6 +151,22 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async classifyItemLines(text) {
       return JSON.parse(wasm.classifyItemLinesJson(text)) as ItemLineJson[];
+    },
+    async nodePower(request, powerStat, maxDepth) {
+      return JSON.parse(
+        wasm.nodePowerJson(
+          JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth }),
+        ),
+      ) as NodePowerResponse;
+    },
+    async runeCatalog() {
+      return JSON.parse(wasm.runeCatalogJson()) as RuneCatalogEntry[];
+    },
+    async reforgeRunes(text, runes, sockets) {
+      const out = JSON.parse(
+        wasm.reforgeRunesJson(JSON.stringify({ text, runes, sockets })),
+      ) as { text: string };
+      return out.text;
     },
     async loadConfigOptions() {
       if (!manifest) {

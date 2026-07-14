@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
+import { hasPobColorCodes, parsePobColorText } from '../../lib/pobColors';
 import { CopyButton } from '../shared/CopyButton';
 import './import.css';
 
@@ -10,7 +11,7 @@ interface Props {
   onImported: () => void;
 }
 
-/** Build 页（PoB2 语义）：角色身份编辑 + 新建 + 一键导入 build code。 */
+/** Build 页（PoB2 语义）：角色身份 + 总览笔记 + 导入/分享/存档，卡片式布局。 */
 export function BuildPanel({ session, lang, onImported }: Props) {
   const tt = bindT(lang);
   const zhName = (map: Record<string, string>, name: string) =>
@@ -66,130 +67,170 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     onImported();
   };
 
+  const notesColored = hasPobColorCodes(session.notes);
+
   return (
-    <section className="import-panel" aria-labelledby="build-heading">
-      <h2 id="build-heading">{tt('build.character')}</h2>
-      <div className="character-form">
-        <label>
-          {tt('build.class')}
-          <select
-            value={character.class_name}
-            disabled={session.busy}
-            onChange={(e) => session.newBuild(e.target.value, '')}
-          >
-            {classes.map((c) => (
-              <option key={c.name} value={c.name}>
-                {zhName(session.classNames.classes, c.name)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {tt('build.ascendancy')}
-          <select
-            value={character.ascendancy_name}
-            disabled={session.busy || ascendancies.length === 0}
-            onChange={(e) => session.setCharacter({ ascendancy_name: e.target.value })}
-          >
-            <option value="">{tt('build.none')}</option>
-            {ascendancies.map((a) => (
-              <option key={a.id} value={a.name}>
-                {zhName(session.classNames.ascendancies, a.name)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {tt('build.level')}
-          <input
-            type="number"
-            min={1}
-            max={100}
-            value={character.level}
-            disabled={session.busy}
-            onChange={(e) => {
-              const level = Number(e.target.value);
-              if (Number.isInteger(level) && level >= 1 && level <= 100) {
-                session.setCharacter({ level });
-              }
-            }}
+    <section className="build-page" aria-labelledby="build-heading">
+      <div className="build-grid">
+        <article className="build-card">
+          <h2 id="build-heading">{tt('build.character')}</h2>
+          <div className="character-form">
+            <label>
+              {tt('build.class')}
+              <select
+                value={character.class_name}
+                disabled={session.busy}
+                onChange={(e) => session.newBuild(e.target.value, '')}
+              >
+                {classes.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {zhName(session.classNames.classes, c.name)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {tt('build.ascendancy')}
+              <select
+                value={character.ascendancy_name}
+                disabled={session.busy || ascendancies.length === 0}
+                onChange={(e) => session.setCharacter({ ascendancy_name: e.target.value })}
+              >
+                <option value="">{tt('build.none')}</option>
+                {ascendancies.map((a) => (
+                  <option key={a.id} value={a.name}>
+                    {zhName(session.classNames.ascendancies, a.name)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="character-level">
+              {tt('build.level')}
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={character.level}
+                disabled={session.busy}
+                onChange={(e) => {
+                  const level = Number(e.target.value);
+                  if (Number.isInteger(level) && level >= 1 && level <= 100) {
+                    session.setCharacter({ level });
+                  }
+                }}
+              />
+            </label>
+          </div>
+          <p className="build-card-hint">{tt('build.newHint')}</p>
+          {session.build && (
+            <p className="import-summary">
+              {tt('build.imported')}
+              Lv{session.build.character.level}{' '}
+              {zhName(
+                session.build.character.ascendancy_name
+                  ? session.classNames.ascendancies
+                  : session.classNames.classes,
+                session.build.character.ascendancy_name || session.build.character.class_name,
+              )}{' '}
+              ·{' '}
+              {session.build.tree.allocated_nodes.length} {tt('build.passives')} ·{' '}
+              {session.build.items.equipped.length} {tt('build.itemsCount')}
+            </p>
+          )}
+        </article>
+
+        <article className="build-card build-card--notes">
+          <h2>{tt('tab.notes')}</h2>
+          <p className="build-card-hint">{tt('notes.hint')}</p>
+          <textarea
+            className="notes-editor"
+            value={session.notes}
+            placeholder={tt('notes.placeholder2')}
+            spellCheck={false}
+            aria-label={tt('tab.notes')}
+            onChange={(e) => session.setNotes(e.target.value)}
           />
-        </label>
-      </div>
-      <p className="import-hint">{tt('build.newHint')}</p>
+          {notesColored && (
+            <div className="notes-preview" aria-label={tt('notes.preview')}>
+              <span className="notes-preview-title">{tt('notes.preview')}</span>
+              <pre className="notes-preview-body">
+                {parsePobColorText(session.notes).map((seg, i) => (
+                  <span key={i} style={seg.color ? { color: seg.color } : undefined}>
+                    {seg.text}
+                  </span>
+                ))}
+              </pre>
+            </div>
+          )}
+        </article>
 
-      <h2>{tt('build.import')}</h2>
-      <textarea
-        className="import-code"
-        rows={6}
-        placeholder={tt('build.importPlaceholder')}
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        spellCheck={false}
-        aria-label="Build code"
-      />
-      <div className="import-actions">
-        <button className="import-submit" onClick={doImport} disabled={session.busy || !code.trim()}>
-          {session.busy ? tt('build.calculating') : tt('build.importButton')}
-        </button>
-      </div>
-      {session.build && (
-        <p className="import-summary">
-          {tt('build.imported')}
-          Lv{session.build.character.level}{' '}
-          {zhName(
-            session.build.character.ascendancy_name
-              ? session.classNames.ascendancies
-              : session.classNames.classes,
-            session.build.character.ascendancy_name || session.build.character.class_name,
-          )}{' '}
-          ·{' '}
-          {session.build.tree.allocated_nodes.length} {tt('build.passives')} ·{' '}
-          {session.build.items.equipped.length} {tt('build.itemsCount')}
-        </p>
-      )}
-      <h2>{tt('share.title')}</h2>
-      <p className="import-hint">{tt('share.hint')}</p>
-      <div className="save-actions">
-        <button onClick={generateCode} disabled={session.busy}>
-          {tt('share.generate')}
-        </button>
-        {shareCode && <CopyButton text={shareCode} lang={lang} />}
-      </div>
-      {shareError && <div className="calc-error">{shareError}</div>}
-      {shareCode && (
-        <textarea
-          className="import-code"
-          rows={4}
-          readOnly
-          value={shareCode}
-          spellCheck={false}
-          aria-label={tt('share.title')}
-          onFocus={(e) => e.target.select()}
-        />
-      )}
+        <article className="build-card">
+          <h2>{tt('build.import')}</h2>
+          <textarea
+            className="import-code"
+            rows={5}
+            placeholder={tt('build.importPlaceholder')}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            spellCheck={false}
+            aria-label="Build code"
+          />
+          <div className="build-card-actions">
+            <button
+              className="import-submit"
+              onClick={doImport}
+              disabled={session.busy || !code.trim()}
+            >
+              {session.busy ? tt('build.calculating') : tt('build.importButton')}
+            </button>
+          </div>
+        </article>
 
-      <h2>{tt('save.title')}</h2>
-      <p className="import-hint">{tt('save.hint')}</p>
-      <div className="save-actions">
-        <button onClick={exportFile}>{tt('save.export')}</button>
-        <button onClick={() => fileRef.current?.click()} disabled={session.busy}>
-          {tt('save.import')}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json,.build,application/json"
-          hidden
-          aria-label={tt('save.import')}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) importFile(file);
-            e.target.value = '';
-          }}
-        />
+        <article className="build-card">
+          <h2>{tt('share.title')}</h2>
+          <p className="build-card-hint">{tt('share.hint')}</p>
+          <div className="build-card-actions">
+            <button onClick={generateCode} disabled={session.busy}>
+              {tt('share.generate')}
+            </button>
+            {shareCode && <CopyButton text={shareCode} lang={lang} />}
+          </div>
+          {shareError && <div className="calc-error">{shareError}</div>}
+          {shareCode && (
+            <textarea
+              className="import-code"
+              rows={3}
+              readOnly
+              value={shareCode}
+              spellCheck={false}
+              aria-label={tt('share.title')}
+              onFocus={(e) => e.target.select()}
+            />
+          )}
+
+          <h2 className="build-card-divide">{tt('save.title')}</h2>
+          <p className="build-card-hint">{tt('save.hint')}</p>
+          <div className="build-card-actions">
+            <button onClick={exportFile}>{tt('save.export')}</button>
+            <button onClick={() => fileRef.current?.click()} disabled={session.busy}>
+              {tt('save.import')}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json,.build,application/json"
+              hidden
+              aria-label={tt('save.import')}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) importFile(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          {fileError && <div className="calc-error">{fileError}</div>}
+        </article>
       </div>
-      {fileError && <div className="calc-error">{fileError}</div>}
 
       {session.calc && session.calc.unsupported_modifiers.length > 0 && (
         <details className="unsupported-block">

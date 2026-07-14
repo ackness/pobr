@@ -6,6 +6,8 @@
  * 下的游戏名词回退繁中。
  */
 
+import { STAT_SECTIONS } from './statDisplay';
+
 export type Lang = 'en-US' | 'zh-TW' | 'zh-CN';
 
 export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
@@ -21,7 +23,16 @@ const DICT = {
   'tab.calcs': { 'en-US': 'Calcs', 'zh-TW': '計算', 'zh-CN': '计算' },
   'tab.config': { 'en-US': 'Config', 'zh-TW': '配置', 'zh-CN': '配置' },
   'tab.notes': { 'en-US': 'Notes', 'zh-TW': '筆記', 'zh-CN': '笔记' },
-  'notes.placeholder': { 'en-US': 'Notes (placeholder)', 'zh-TW': 'Notes（佔位）', 'zh-CN': 'Notes（占位）' },
+
+  // 局部注释（装备/技能组/珠宝旁）
+  'note.label': { 'en-US': 'Note', 'zh-TW': '備註', 'zh-CN': '备注' },
+  'note.add': { 'en-US': 'Add note', 'zh-TW': '加備註', 'zh-CN': '加备注' },
+  'note.placeholder': {
+    'en-US': 'Why this choice? Key mods, alternatives…',
+    'zh-TW': '為什麼選它？核心詞條、替代方案…',
+    'zh-CN': '为什么选它？核心词条、替代方案…',
+  },
+  'note.editHint': { 'en-US': 'Click to edit', 'zh-TW': '點擊編輯', 'zh-CN': '点击编辑' },
 
   // Build 页
   'build.character': { 'en-US': 'Character', 'zh-TW': '角色', 'zh-CN': '角色' },
@@ -86,6 +97,16 @@ const DICT = {
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
   'items.flasks': { 'en-US': 'Flasks / Charms (read-only, from import)', 'zh-TW': '藥劑 / 護符（只讀，來自匯入）', 'zh-CN': '药剂 / 护符（只读，来自导入）' },
+  'items.switcher': { 'en-US': 'Switch item', 'zh-TW': '切換裝備', 'zh-CN': '切换装备' },
+  'items.runes': { 'en-US': 'Rune sockets', 'zh-TW': '符文插槽', 'zh-CN': '符文插槽' },
+  'items.socketAdd': { 'en-US': 'Add socket', 'zh-TW': '加孔', 'zh-CN': '加孔' },
+  'items.socketRemove': { 'en-US': 'Remove socket', 'zh-TW': '減孔', 'zh-CN': '减孔' },
+  'items.addSockets': { 'en-US': 'Add rune socket', 'zh-TW': '添加符文插槽', 'zh-CN': '添加符文插槽' },
+  'items.emptySocket': { 'en-US': '(empty socket)', 'zh-TW': '（空槽）', 'zh-CN': '（空槽）' },
+  'items.runeGroup': { 'en-US': 'Runes', 'zh-TW': '符文', 'zh-CN': '符文' },
+  'items.soulCoreGroup': { 'en-US': 'Soul Cores', 'zh-TW': '魂核', 'zh-CN': '魂核' },
+  'items.unequip': { 'en-US': '(unequip)', 'zh-TW': '（卸下）', 'zh-CN': '（卸下）' },
+  'items.currentItem': { 'en-US': '(current item)', 'zh-TW': '（當前物品）', 'zh-CN': '（当前物品）' },
   'items.jewels': { 'en-US': 'Jewels (edit on the Tree tab by clicking a socket)', 'zh-TW': '珠寶（在天賦樹頁點插槽編輯）', 'zh-CN': '珠宝（在天赋树页点插槽编辑）' },
 
   // Calcs 页
@@ -186,11 +207,25 @@ const DICT = {
     'zh-CN': '库是空的——把装备/珠宝存进来即可随意切换对比。',
   },
   'lib.selectSlotFirst': { 'en-US': 'Select a slot above first', 'zh-TW': '先在上方選中槽位', 'zh-CN': '先在上方选中槽位' },
+  'lib.search': { 'en-US': 'Search items…', 'zh-TW': '搜尋物品…', 'zh-CN': '搜索物品…' },
+  'lib.filterSlot': { 'en-US': 'Current slot only', 'zh-TW': '只看當前槽位', 'zh-CN': '只看当前槽位' },
+  'lib.noMatch': { 'en-US': 'No matching items', 'zh-TW': '無符合物品', 'zh-CN': '没有匹配的物品' },
   'lib.useJewel': { 'en-US': 'Use', 'zh-TW': '使用', 'zh-CN': '使用' },
   'sets.title': { 'en-US': 'Skill sets', 'zh-TW': '技能組套裝', 'zh-CN': '技能组套装' },
   'sets.save': { 'en-US': 'Save current as set', 'zh-TW': '保存當前為套裝', 'zh-CN': '保存当前为套装' },
   'sets.namePlaceholder': { 'en-US': 'Set name…', 'zh-TW': '套裝名稱…', 'zh-CN': '套装名称…' },
   'sets.apply': { 'en-US': 'Apply', 'zh-TW': '套用', 'zh-CN': '套用' },
+  'tree.heat': { 'en-US': 'Heat map', 'zh-TW': '熱力圖', 'zh-CN': '热力图' },
+  'tree.heatOff': { 'en-US': 'Off', 'zh-TW': '關', 'zh-CN': '关' },
+  'tree.heatDepth': { 'en-US': 'Depth', 'zh-TW': '深度', 'zh-CN': '深度' },
+  'tree.heatComputing': { 'en-US': 'computing…', 'zh-TW': '計算中…', 'zh-CN': '计算中…' },
+  'tree.heatRun': { 'en-US': 'Compute', 'zh-TW': '計算', 'zh-CN': '计算' },
+  'tree.heatStale': { 'en-US': 'stale — recompute', 'zh-TW': '已過期，點「計算」刷新', 'zh-CN': '已过期，点「计算」刷新' },
+  'tree.heatHint': {
+    'en-US': 'Nodes glow by how much allocating them improves the chosen stat (within depth of your tree)',
+    'zh-TW': '節點按「加點後對所選屬性的提升幅度」發亮（僅計算距已加點前沿指定深度內的節點）',
+    'zh-CN': '节点按「加点后对所选属性的提升幅度」发亮（仅计算距已加点前沿指定深度内的节点）',
+  },
   'tree.questAttr': { 'en-US': 'Quest rewards:', 'zh-TW': '劇情獎勵：', 'zh-CN': '剧情奖励：' },
   'tree.questAllAttr': { 'en-US': '+5 all', 'zh-TW': '+5 全屬性', 'zh-CN': '+5 全属性' },
   'tree.attrHotkeys': {
@@ -297,6 +332,29 @@ export function slotLabel(lang: Lang, slotId: string): string {
   return SLOT_LABELS[slotId]?.[lang] ?? slotId;
 }
 
+/**
+ * 附赠技能组来源标注（PoB2 自动生成的组：`source="Item:14:Plague Edge, Akoyan Spear"`
+ * 或 `"Tree:11641"`）→ 简短徽标文本；玩家手动组（无 source）返回 null。
+ * 同一技能多次出现多半来自这类附赠组——标注让重复行可解释。
+ */
+export function grantedSourceLabel(
+  lang: Lang,
+  source: string | null | undefined,
+): string | null {
+  if (!source) return null;
+  const [kind, , detail] = source.split(':');
+  if (kind === 'Item') {
+    const prefix =
+      lang === 'en-US' ? 'from item' : lang === 'zh-TW' ? '裝備附贈' : '装备附赠';
+    const name = detail?.split(',')[0]?.trim();
+    return name ? `${prefix} · ${name}` : prefix;
+  }
+  if (kind === 'Tree') {
+    return lang === 'en-US' ? 'from tree' : lang === 'zh-TW' ? '天賦附贈' : '天赋附赠';
+  }
+  return source;
+}
+
 const CONFIG_SECTION_LABELS: Record<string, Entry> = {
   General: { 'en-US': 'General', 'zh-TW': '一般', 'zh-CN': '常规' },
   'Quest Rewards': { 'en-US': 'Quest Rewards', 'zh-TW': '任務獎勵', 'zh-CN': '任务奖励' },
@@ -368,9 +426,101 @@ export function originKindLabel(lang: Lang, kind: string): string {
   return ORIGIN_KIND_LABELS[kind]?.[lang] ?? kind;
 }
 
-/** 聚合属性名（breakdown 键 / 归因字段）→ 本地化。 */
+/** 侧栏目录之外的展示量补充译名（diff 列表 / Calcs 分节里出现的长尾字段）。 */
+const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
+  EffectiveActionRate: { 'zh-TW': '有效攻速/施速', 'zh-CN': '有效攻速/施速' },
+  ShockEffect: { 'zh-TW': '感電效果', 'zh-CN': '感电效果' },
+  LifeReserved: { 'zh-TW': '已保留生命', 'zh-CN': '已保留生命' },
+  LifeUnreserved: { 'zh-TW': '未保留生命', 'zh-CN': '未保留生命' },
+  ManaReserved: { 'zh-TW': '已保留魔力', 'zh-CN': '已保留魔力' },
+  ManaUnreserved: { 'zh-TW': '未保留魔力', 'zh-CN': '未保留魔力' },
+  LifeRegen: { 'zh-TW': '生命再生', 'zh-CN': '生命再生' },
+  ManaRegen: { 'zh-TW': '魔力再生', 'zh-CN': '魔力再生' },
+  EnergyShieldRegen: { 'zh-TW': '能量護盾再生', 'zh-CN': '能量护盾再生' },
+  SpellBlockChance: { 'zh-TW': '法術格擋率', 'zh-CN': '法术格挡率' },
+  EsRechargeRate: { 'zh-TW': '護盾充能速率', 'zh-CN': '护盾充能速率' },
+  EsRechargeDelay: { 'zh-TW': '護盾充能延遲', 'zh-CN': '护盾充能延迟' },
+  EsRechargePerSecond: { 'zh-TW': '每秒護盾充能', 'zh-CN': '每秒护盾充能' },
+  AvoidAllDamageFromHits: { 'zh-TW': '迴避所有擊中', 'zh-CN': '回避所有击中' },
+  AvoidProjectileDamage: { 'zh-TW': '迴避投射物傷害', 'zh-CN': '回避投射物伤害' },
+  AvoidStun: { 'zh-TW': '迴避暈眩', 'zh-CN': '回避晕眩' },
+  AvoidIgnite: { 'zh-TW': '迴避點燃', 'zh-CN': '回避点燃' },
+  AvoidShock: { 'zh-TW': '迴避感電', 'zh-CN': '回避感电' },
+  AvoidChill: { 'zh-TW': '迴避冰緩', 'zh-CN': '回避冰缓' },
+  AvoidFreeze: { 'zh-TW': '迴避凍結', 'zh-CN': '回避冻结' },
+  AvoidPoison: { 'zh-TW': '迴避中毒', 'zh-CN': '回避中毒' },
+  AvoidBleeding: { 'zh-TW': '迴避流血', 'zh-CN': '回避流血' },
+  TakenMultiPhysical: { 'zh-TW': '物理承傷乘區', 'zh-CN': '物理承伤乘区' },
+  TakenMultiFire: { 'zh-TW': '火焰承傷乘區', 'zh-CN': '火焰承伤乘区' },
+  TakenMultiCold: { 'zh-TW': '冰冷承傷乘區', 'zh-CN': '冰冷承伤乘区' },
+  TakenMultiLightning: { 'zh-TW': '閃電承傷乘區', 'zh-CN': '闪电承伤乘区' },
+  TakenMultiChaos: { 'zh-TW': '混沌承傷乘區', 'zh-CN': '混沌承伤乘区' },
+  CritExtraDamageReduction: { 'zh-TW': '暴擊額外傷害減免', 'zh-CN': '暴击额外伤害减免' },
+  EnemyCritEffect: { 'zh-TW': '敵人暴擊效果', 'zh-CN': '敌人暴击效果' },
+  ChargePowerCurrent: { 'zh-TW': '暴擊球（當前）', 'zh-CN': '暴击球（当前）' },
+  ChargePowerMaximum: { 'zh-TW': '暴擊球上限', 'zh-CN': '暴击球上限' },
+  ChargeFrenzyCurrent: { 'zh-TW': '狂怒球（當前）', 'zh-CN': '狂怒球（当前）' },
+  ChargeFrenzyMaximum: { 'zh-TW': '狂怒球上限', 'zh-CN': '狂怒球上限' },
+  ChargeEnduranceCurrent: { 'zh-TW': '堅忍球（當前）', 'zh-CN': '坚忍球（当前）' },
+  ChargeEnduranceMaximum: { 'zh-TW': '堅忍球上限', 'zh-CN': '坚忍球上限' },
+  LifeLeechRate: { 'zh-TW': '生命偷取速率', 'zh-CN': '生命偷取速率' },
+  ManaLeechRate: { 'zh-TW': '魔力偷取速率', 'zh-CN': '魔力偷取速率' },
+  EsLeechRate: { 'zh-TW': '護盾偷取速率', 'zh-CN': '护盾偷取速率' },
+  LifeRecoupRate: { 'zh-TW': '生命回得速率', 'zh-CN': '生命回得速率' },
+  EsRecoupRate: { 'zh-TW': '護盾回得速率', 'zh-CN': '护盾回得速率' },
+  ChillEffect: { 'zh-TW': '冰緩效果', 'zh-CN': '冰缓效果' },
+  FreezeBuildupPct: { 'zh-TW': '凍結積累 %', 'zh-CN': '冻结积累 %' },
+  ElectrocuteBuildupPct: { 'zh-TW': '感電麻痺積累 %', 'zh-CN': '感电麻痹积累 %' },
+  BleedStackedDPS: { 'zh-TW': '流血疊層 DPS', 'zh-CN': '流血叠层 DPS' },
+  BleedActiveStacks: { 'zh-TW': '流血生效層數', 'zh-CN': '流血生效层数' },
+  PoisonStackedDPS: { 'zh-TW': '中毒疊層 DPS', 'zh-CN': '中毒叠层 DPS' },
+  PoisonActiveStacks: { 'zh-TW': '中毒生效層數', 'zh-CN': '中毒生效层数' },
+  AoeRadius: { 'zh-TW': '範圍半徑', 'zh-CN': '范围半径' },
+  AoeAreaMod: { 'zh-TW': '範圍面積乘區', 'zh-CN': '范围面积乘区' },
+  ProjectileCount: { 'zh-TW': '投射物數量', 'zh-CN': '投射物数量' },
+  Cooldown: { 'zh-TW': '冷卻時間', 'zh-CN': '冷却时间' },
+  CooldownStoredUses: { 'zh-TW': '冷卻儲存次數', 'zh-CN': '冷却储存次数' },
+  LifeCost: { 'zh-TW': '生命消耗', 'zh-CN': '生命消耗' },
+  SpiritReserved: { 'zh-TW': '已保留精魂', 'zh-CN': '已保留精魂' },
+  TriggerRateCap: { 'zh-TW': '觸發速率上限', 'zh-CN': '触发速率上限' },
+  SkillTriggerRate: { 'zh-TW': '技能觸發速率', 'zh-CN': '技能触发速率' },
+  BlockChanceMax: { 'zh-TW': '格擋率上限', 'zh-CN': '格挡率上限' },
+  SpellBlockChanceMax: { 'zh-TW': '法術格擋率上限', 'zh-CN': '法术格挡率上限' },
+  EffectiveBlockChance: { 'zh-TW': '有效格擋率', 'zh-CN': '有效格挡率' },
+  EffectiveSpellBlockChance: { 'zh-TW': '有效法術格擋率', 'zh-CN': '有效法术格挡率' },
+  BlockEffect: { 'zh-TW': '格擋效果', 'zh-CN': '格挡效果' },
+  DeflectionRating: { 'zh-TW': '偏轉值', 'zh-CN': '偏转值' },
+  DeflectChance: { 'zh-TW': '偏轉率', 'zh-CN': '偏转率' },
+  EvadeChance: { 'zh-TW': '閃避率', 'zh-CN': '闪避率' },
+  MeleeEvadeChance: { 'zh-TW': '近戰閃避率', 'zh-CN': '近战闪避率' },
+  ProjectileEvadeChance: { 'zh-TW': '投射物閃避率', 'zh-CN': '投射物闪避率' },
+  SpellEvadeChance: { 'zh-TW': '法術閃避率', 'zh-CN': '法术闪避率' },
+  SpellProjectileEvadeChance: { 'zh-TW': '法術投射物閃避率', 'zh-CN': '法术投射物闪避率' },
+  SelfStunChance: { 'zh-TW': '自身被暈眩機率', 'zh-CN': '自身被晕眩几率' },
+  StunDuration: { 'zh-TW': '暈眩持續時間', 'zh-CN': '晕眩持续时间' },
+  LifeRecoverable: { 'zh-TW': '可恢復生命', 'zh-CN': '可恢复生命' },
+  EnergyShieldRecoveryCap: { 'zh-TW': '護盾恢復上限', 'zh-CN': '护盾恢复上限' },
+  NumberOfDamagingHits: { 'zh-TW': '致傷擊中次數', 'zh-CN': '致伤击中次数' },
+  NumberOfMitigatedHits: { 'zh-TW': '減免後承受次數', 'zh-CN': '减免后承受次数' },
+  TotalEHPLowestMaxHit: { 'zh-TW': '有效生命（最弱抗）', 'zh-CN': '有效生命（最弱抗）' },
+  TotalHitAvg: { 'zh-TW': '平均擊中', 'zh-CN': '平均击中' },
+  IgniteDPS: { 'zh-TW': '點燃 DPS', 'zh-CN': '点燃 DPS' },
+};
+
+/** 聚合属性名（breakdown 键 / 归因字段 / diff 列表）→ 本地化。
+ * 回退链：breakdown 名表 → 侧栏展示目录标签 → 补充译名表 → 原 id。 */
 export function statNameLabel(lang: Lang, id: string): string {
-  return MOD_NAME_LABELS[id]?.[lang] ?? id;
+  const fromMods = MOD_NAME_LABELS[id]?.[lang];
+  if (fromMods) return fromMods;
+  for (const section of STAT_SECTIONS) {
+    const row = section.rows.find((r) => r.id === id);
+    if (row) return row.label[lang];
+  }
+  if (lang !== 'en-US') {
+    const extra = STAT_EXTRA_LABELS[id]?.[lang];
+    if (extra) return extra;
+  }
+  return id;
 }
 
 const DAMAGE_TYPE_LABELS: Record<string, Entry> = {

@@ -1,16 +1,56 @@
-.import-panel {
-  max-width: 720px;
+/* Build 页：2×2 卡片网格（角色 / 笔记 / 导入 / 分享+存档），窄屏退化单列。 */
+.build-page {
+  max-width: 1040px;
   margin: 0 auto;
 }
 
-.import-panel h2 {
-  color: var(--accent-gold);
-  margin-top: 0;
+.build-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  align-items: stretch;
 }
 
-.import-hint {
+@media (max-width: 900px) {
+  .build-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.build-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.build-card h2 {
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--accent-gold);
+  font-size: var(--text-lg);
+  letter-spacing: 0.02em;
+}
+
+/* 同卡片内的第二段标题（分享 code 下面接本地存档） */
+.build-card-divide {
+  margin-top: var(--space-6) !important;
+}
+
+.build-card-hint {
+  margin-top: 0;
   color: var(--text-secondary);
   font-size: var(--text-sm);
+}
+
+.build-card-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .import-code {
@@ -19,10 +59,6 @@
   font-size: var(--text-xs);
   word-break: break-all;
   resize: vertical;
-}
-
-.import-actions {
-  margin-top: var(--space-3);
 }
 
 /* 主 CTA：金色实心（区别于普通操作按钮） */
@@ -40,6 +76,7 @@
 }
 
 .import-summary {
+  margin-bottom: 0;
   color: var(--color-positive);
 }
 
@@ -65,24 +102,59 @@
 
 .character-form {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .character-form label {
   display: flex;
+  flex: 1 1 9em;
   flex-direction: column;
   gap: var(--space-1);
   color: var(--text-secondary);
   font-size: var(--text-sm);
 }
 
-.character-form select,
-.character-form input {
-  min-width: 140px;
+.character-form .character-level {
+  flex: 0 1 6em;
 }
 
-.save-actions {
-  display: flex;
-  gap: var(--space-2);
+.character-form select,
+.character-form input {
+  min-width: 0;
+}
+
+/* 总览笔记（原 Notes 页并入；着色预览沿用 PoB 颜色码） */
+.build-card--notes .notes-editor {
+  flex: 1;
+  min-height: 10em;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.notes-preview {
+  margin-top: var(--space-3);
+  background: var(--surface-page);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+
+.notes-preview-title {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-1);
+}
+
+.notes-preview-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--text-sm);
+  line-height: 1.55;
 }

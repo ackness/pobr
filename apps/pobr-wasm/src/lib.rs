@@ -20,8 +20,8 @@ pub mod zh;
 
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
-    decode_build_json, encode_build_json, full_dps_json, gem_catalog_json,
-    translate_lines_to_zh_cn_json,
+    decode_build_json, encode_build_json, full_dps_json, gem_catalog_json, node_power_json,
+    reforge_runes_json, rune_catalog_json, translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -115,5 +115,23 @@ pub mod wasm {
     #[wasm_bindgen(js_name = classifyItemLinesJson)]
     pub fn classify_item_lines_json(text: &str) -> Result<String, JsError> {
         crate::build_api::classify_item_lines_json(text).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`runeCatalogJson() -> string`（符文/魂核选择器目录）。
+    #[wasm_bindgen(js_name = runeCatalogJson)]
+    pub fn rune_catalog_json() -> Result<String, JsError> {
+        crate::build_api::rune_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`reforgeRunesJson(requestJson) -> string`（重插符文 → 重写物品文本）。
+    #[wasm_bindgen(js_name = reforgeRunesJson)]
+    pub fn reforge_runes_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::reforge_runes_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`nodePowerJson(requestJson) -> string`（树节点威力热力图）。
+    #[wasm_bindgen(js_name = nodePowerJson)]
+    pub fn node_power_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::node_power_json(request_json).map_err(|err| JsError::new(&err))
     }
 }

@@ -8,19 +8,6 @@
   margin-top: var(--space-6);
 }
 
-.item-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-3);
-}
-
-.item-card {
-  background: var(--surface-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-}
-
 .item-slot {
   font-size: var(--text-xs);
   text-transform: uppercase;
@@ -33,10 +20,15 @@
   overflow-wrap: anywhere;
 }
 
-.rarity-normal .item-name { color: var(--rarity-normal); }
-.rarity-magic .item-name { color: var(--rarity-magic); }
-.rarity-rare .item-name { color: var(--rarity-rare); }
-.rarity-unique .item-name { color: var(--rarity-unique); }
+/* 稀有度颜色系统：rarity-* 类只定义 --rarity-c，名称/边框/底色统一从它派生。 */
+.rarity-normal { --rarity-c: var(--rarity-normal); }
+.rarity-magic { --rarity-c: var(--rarity-magic); }
+.rarity-rare { --rarity-c: var(--rarity-rare); }
+.rarity-unique { --rarity-c: var(--rarity-unique); }
+
+.item-name {
+  color: var(--rarity-c, var(--text-primary));
+}
 
 .item-lines {
   font-size: var(--text-sm);
@@ -83,12 +75,6 @@
 .items-hint {
   color: var(--text-secondary);
   font-size: var(--text-sm);
-}
-
-/* 编辑器 */
-.item-card-empty {
-  border-style: dashed;
-  opacity: 0.75;
 }
 
 .item-slot {
@@ -163,6 +149,16 @@
     box-shadow var(--duration-fast) var(--ease-out);
 }
 
+/* 已装备槽位按稀有度着色（边框 + 顶部微光底色） */
+.doll-slot:not(.doll-slot-empty) {
+  border-color: color-mix(in srgb, var(--rarity-c, var(--border-strong)) 45%, var(--border-strong));
+  background: linear-gradient(
+    170deg,
+    color-mix(in srgb, var(--rarity-c, var(--surface-card)) 9%, var(--surface-card)),
+    var(--surface-card) 65%
+  );
+}
+
 .doll-slot:hover {
   border-color: var(--accent-gold-dim);
   box-shadow: 0 0 12px rgb(216 179 106 / 0.12);
@@ -219,6 +215,7 @@
   margin: 0 auto var(--space-4);
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--rarity-c, var(--border-subtle));
   border-radius: var(--radius-md);
   padding: var(--space-3);
 }
@@ -243,11 +240,125 @@
   }
 }
 
+/* 符文插槽编辑器（物品详情内，一槽一下拉） */
+.rune-editor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.rune-editor-title {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.socket-count-controls {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.socket-count-controls button {
+  min-width: 1.8em;
+  padding: 0.1em 0.4em;
+}
+
 /* 物品库 */
-.library-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+.library-toolbar {
+  display: flex;
+  align-items: center;
   gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.library-search {
+  min-width: 220px;
+}
+
+.library-slot-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+/* 物品库/珠宝：紧凑行列表，点击行头展开完整词条（收起行不渲染词条）。 */
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 920px;
+}
+
+.library-row {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--rarity-c, var(--border-subtle));
+  border-radius: var(--radius-sm);
+}
+
+.library-row:hover {
+  border-color: var(--accent-gold-dim);
+  border-left-color: var(--rarity-c, var(--accent-gold-dim));
+}
+
+.library-row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+}
+
+.library-row-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.library-row-toggle:hover {
+  background: none;
+}
+
+.library-row-toggle .item-name {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.library-row-slot {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.library-row-body {
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* 行头已显示名称，展开体内不再重复。 */
+.library-row-body > .item-name {
+  display: none;
 }
 
 .library-diff {

@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
+import { composeNotes, splitNotes, type Annotations } from '../lib/annotations';
 import type {
   AttributeChoice,
   AttributionResponse,
@@ -53,6 +54,8 @@ interface BuildState {
   flasks: SlotItemInput[];
   /** 树插槽珠宝（插槽号 + PoB 文本；插槽加点才生效）。 */
   jewels: JewelInput[];
+  /** 局部注释（key 约定见 lib/annotations）；不参与计算，分享时嵌入 <Notes>。 */
+  annotations: Annotations;
   params: CalcParams;
 }
 
@@ -78,6 +81,12 @@ export interface BuildSession {
   /** 笔记（本地持久化；导入 build 时被其 <Notes> 覆盖）。 */
   notes: string;
   setNotes: (text: string) => void;
+  /** 局部注释（装备/技能组/珠宝旁的说明；随分享 code 与存档往返）。 */
+  annotations: Annotations;
+  /** 写/清一条局部注释（空文本 = 删除；不触发重算）。 */
+  setAnnotation: (key: string, text: string) => void;
+  /** 删技能组并顺移 `skill:<index>` 注释键（Skills 页删除入口）。 */
+  removeSocketGroup: (index: number) => void;
   /** 导出完整会话（build 状态 + 笔记）为 JSON 文本。 */
   exportSession: () => string;
   /** 编辑态 → PoB2 分享 code（可粘回 PoB2 / 二次导入）。 */
@@ -97,7 +106,7 @@ export interface BuildSession {
   stateVersion: number;
   /** 物品/珠宝/技能组套装库（独立持久化，跨 build 复用）。 */
   library: Library;
-  saveLibraryItem: (kind: 'item' | 'jewel', text: string) => void;
+  saveLibraryItem: (kind: 'item' | 'jewel', text: string, slot?: string) => void;
   removeLibraryItem: (id: string) => void;
   saveSkillSet: (name: string) => void;
   applySkillSet: (id: string) => void;
@@ -141,6 +150,8 @@ export interface LibraryItem {
   /** 展示名（取文本第二行，即物品名）。 */
   name: string;
   text: string;
+  /** 来源装备槽（导入/保存时记录；旧条目缺失 → 不参与槽位过滤）。 */
+  slot?: string;
 }
 
 /** 技能组套装：整套 socket_groups 快照，可随时切换。 */
@@ -217,6 +228,7 @@ function parseSaved(json: string): SavedSession | null {
         items: state.items,
         flasks: state.flasks ?? [],
         jewels: state.jewels ?? [],
+        annotations: state.annotations ?? {},
         params: state.params ?? { config_inputs: {} },
       },
       notes: typeof parsed.notes === 'string' ? parsed.notes : '',
@@ -364,6 +376,7 @@ export function useBuildSession(): BuildSession {
           items: [],
           flasks: [],
           jewels: [],
+          annotations: {},
           params: { config_inputs: {} },
         });
       })
@@ -378,9 +391,23 @@ export function useBuildSession(): BuildSession {
   /** 导入时把装备/珠宝/技能组自动收进库（按文本/套装名去重，避免重复导入堆叠）。 */
   const mergeImportedIntoLibrary = useCallback((decoded: BuildJson) => {
     const imported: LibraryItem[] = [
-      ...decoded.items.equipped.map((it) => ({ kind: 'item' as const, text: it.text })),
-      ...(decoded.items.socket_jewels ?? []).map((j) => ({ kind: 'jewel' as const, text: j.text })),
-    ].map((e) => ({ id: crypto.randomUUID(), kind: e.kind, name: itemName(e.text), text: e.text }));
+      ...decoded.items.equipped.map((it) => ({
+        kind: 'item' as const,
+        text: it.text,
+        slot: it.slot as string | undefined,
+      })),
+      ...(decoded.items.socket_jewels ?? []).map((j) => ({
+        kind: 'jewel' as const,
+        text: j.text,
+        slot: undefined,
+      })),
+    ].map((e) => ({
+      id: crypto.randomUUID(),
+      kind: e.kind,
+      name: itemName(e.text),
+      text: e.text,
+      slot: e.slot,
+    }));
 
     const setName = decoded.character.ascendancy_name || decoded.character.class_name;
     const skillSet: SkillSet | null = decoded.socket_groups.length
@@ -388,14 +415,26 @@ export function useBuildSession(): BuildSession {
       : null;
 
     setLibrary((prev) => {
-      const seen = new Set(prev.items.map((i) => i.text));
+      // 同文本的旧条目若缺 slot（记 slot 功能之前存的），借本次导入回填——
+      // 否则永远进不了槽位切换候选。
+      const slotByText = new Map(imported.filter((i) => i.slot).map((i) => [i.text, i.slot]));
+      let backfilled = false;
+      const existing = prev.items.map((i) => {
+        const slot = !i.slot ? slotByText.get(i.text) : undefined;
+        if (slot) {
+          backfilled = true;
+          return { ...i, slot };
+        }
+        return i;
+      });
+      const seen = new Set(existing.map((i) => i.text));
       const newItems = imported.filter((i) => !seen.has(i.text));
       const skillSets =
         skillSet && !prev.skillSets.some((s) => s.name === skillSet.name)
           ? [...prev.skillSets, skillSet]
           : prev.skillSets;
-      if (newItems.length === 0 && skillSets === prev.skillSets) return prev;
-      const next: Library = { items: [...prev.items, ...newItems], skillSets };
+      if (newItems.length === 0 && !backfilled && skillSets === prev.skillSets) return prev;
+      const next: Library = { items: [...existing, ...newItems], skillSets };
       try {
         localStorage.setItem(LIBRARY_KEY, JSON.stringify(next));
       } catch {
@@ -418,8 +457,10 @@ export function useBuildSession(): BuildSession {
           : await backend.decodeBuild(code);
         setBuild(decoded);
         mergeImportedIntoLibrary(decoded);
+        // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
+        const { overview, annotations } = splitNotes(decoded.notes ?? '');
         if (decoded.notes) {
-          setNotes(decoded.notes);
+          setNotes(overview);
         }
         apply({
           pobCode: isBuildFile ? null : code,
@@ -431,6 +472,7 @@ export function useBuildSession(): BuildSession {
           allocatedNodes: decoded.tree.allocated_nodes,
           attributeChoices: decoded.tree.attribute_choices ?? {},
           ...materialize(decoded),
+          annotations,
           params: { config_inputs: {} },
         });
       } catch (err) {
@@ -453,6 +495,7 @@ export function useBuildSession(): BuildSession {
         items: [],
         flasks: [],
         jewels: [],
+        annotations: {},
         params: { config_inputs: {} },
       });
     },
@@ -547,6 +590,45 @@ export function useBuildSession(): BuildSession {
     [apply, state],
   );
 
+  const setAnnotation = useCallback(
+    (key: string, text: string) => {
+      if (!state) return;
+      const annotations = { ...state.annotations };
+      if (text.trim()) {
+        annotations[key] = text;
+      } else {
+        delete annotations[key];
+      }
+      // 注释不影响计算：只落状态与存档，不触发重算。
+      const next = { ...state, annotations };
+      setState(next);
+      stateRef.current = next;
+      saveToStorage(next, notesRef.current);
+    },
+    [state],
+  );
+
+  const removeSocketGroup = useCallback(
+    (index: number) => {
+      if (!state) return;
+      const socketGroups = state.socketGroups.filter((_, i) => i !== index);
+      // `skill:<index>` 注释键跟随组序号：删除组的注释一并删，后续组的键前移。
+      const annotations: Annotations = {};
+      for (const [key, text] of Object.entries(state.annotations)) {
+        const m = key.match(/^skill:(\d+)$/);
+        if (!m) {
+          annotations[key] = text;
+          continue;
+        }
+        const i = Number(m[1]);
+        if (i === index) continue;
+        annotations[i > index ? `skill:${i - 1}` : key] = text;
+      }
+      apply({ ...state, socketGroups, annotations });
+    },
+    [apply, state],
+  );
+
   const exportSession = useCallback((): string => {
     if (!state) throw new Error('build not ready');
     const saved: SavedSession = { version: 1, state, notes };
@@ -556,9 +638,10 @@ export function useBuildSession(): BuildSession {
   const exportCode = useCallback(async (): Promise<string> => {
     if (!state) throw new Error('build not ready');
     const backend = await getBackend();
-    // encode 走全量覆盖（不带 pob_code——分享内容 = 当前编辑态本身）。
+    // encode 走全量覆盖（不带 pob_code——分享内容 = 当前编辑态本身）；
+    // 局部注释嵌入 <Notes> 标记段随 code 往返（PoB2 里显示为普通笔记）。
     const { pob_code: _omit, ...request } = toRequest(state);
-    return backend.encodeBuild({ ...request, notes });
+    return backend.encodeBuild({ ...request, notes: composeNotes(notes, state.annotations) });
   }, [state, notes]);
 
   const importSession = useCallback(
@@ -588,10 +671,13 @@ export function useBuildSession(): BuildSession {
   );
 
   const saveLibraryItem = useCallback(
-    (kind: 'item' | 'jewel', text: string) => {
+    (kind: 'item' | 'jewel', text: string, slot?: string) => {
       persistLibrary({
         ...library,
-        items: [...library.items, { id: crypto.randomUUID(), kind, name: itemName(text), text }],
+        items: [
+          ...library.items,
+          { id: crypto.randomUUID(), kind, name: itemName(text), text, slot },
+        ],
       });
     },
     [library, persistLibrary],
@@ -628,9 +714,14 @@ export function useBuildSession(): BuildSession {
       if (!state) return;
       const set = library.skillSets.find((s) => s.id === id);
       if (!set) return;
+      // 整套换组后旧的 `skill:<index>` 注释指向已不存在的组——一并清掉。
+      const annotations = Object.fromEntries(
+        Object.entries(state.annotations).filter(([key]) => !key.startsWith('skill:')),
+      );
       apply({
         ...state,
         socketGroups: set.groups,
+        annotations,
         params: { ...state.params, main_socket_group: set.main_socket_group },
       });
     },
@@ -690,6 +781,9 @@ export function useBuildSession(): BuildSession {
     error,
     notes,
     setNotes,
+    annotations: state?.annotations ?? {},
+    setAnnotation,
+    removeSocketGroup,
     exportSession,
     exportCode,
     importSession,
