@@ -81,7 +81,11 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-pack
+      # pnpm version comes from web/package.json "packageManager" — the action
+      # only auto-reads the repo-root package.json (which does not exist here).
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22

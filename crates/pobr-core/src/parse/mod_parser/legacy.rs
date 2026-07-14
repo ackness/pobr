@@ -777,10 +777,8 @@ fn parse_conversion_or_gain(rest: &str, source: &str) -> Option<Vec<Modifier>> {
         ("ConvertTo", t)
     } else if let Some(t) = tail.strip_prefix("as extra ") {
         ("GainAs", t)
-    } else if let Some(t) = tail.strip_prefix("gained as extra ") {
-        ("GainAs", t)
     } else {
-        return None;
+        ("GainAs", tail.strip_prefix("gained as extra ")?)
     };
 
     let with_tag = |m: Modifier| match &mult_tag {
@@ -1435,17 +1433,16 @@ fn parse_reservation_efficiency(rest: &str, source: &str) -> Option<Vec<Modifier
     let tail = tail.strip_prefix("% ")?;
     let (positive, tail) = if let Some(t) = tail.strip_prefix("increased ") {
         (true, t)
-    } else if let Some(t) = tail.strip_prefix("reduced ") {
-        (false, t)
     } else {
-        return None;
+        (false, tail.strip_prefix("reduced ")?)
     };
     let (name, tail) = if let Some(t) = tail.strip_prefix("spirit reservation efficiency of ") {
         ("SpiritReservationEfficiency", t)
-    } else if let Some(t) = tail.strip_prefix("reservation efficiency of ") {
-        ("ReservationEfficiency", t)
     } else {
-        return None;
+        (
+            "ReservationEfficiency",
+            tail.strip_prefix("reservation efficiency of ")?,
+        )
     };
     let value = if positive { num } else { -num };
     if tail == "skills" {
