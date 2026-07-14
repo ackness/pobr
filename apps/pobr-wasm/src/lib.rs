@@ -21,7 +21,7 @@ pub mod zh;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, encode_build_json, full_dps_json, gem_catalog_json, node_power_json,
-    reforge_runes_json, rune_catalog_json, translate_lines_to_zh_cn_json,
+    optimize_variants_json, reforge_runes_json, rune_catalog_json, translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -133,5 +133,11 @@ pub mod wasm {
     #[wasm_bindgen(js_name = nodePowerJson)]
     pub fn node_power_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::node_power_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`optimizeVariantsJson(requestJson) -> string`（通用变体评估：寻优框架计算面）。
+    #[wasm_bindgen(js_name = optimizeVariantsJson)]
+    pub fn optimize_variants_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::optimize_variants_json(request_json).map_err(|err| JsError::new(&err))
     }
 }

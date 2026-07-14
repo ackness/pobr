@@ -1012,6 +1012,202 @@ pub fn node_power_json(request_json: &str) -> Result<String, String> {
 }
 
 // ---------------------------------------------------------------------------
+// optimize_variants_json（通用变体评估：寻优框架的计算面）
+// ---------------------------------------------------------------------------
+//
+// 分工契约：Rust 只做贵的部分——每个变体在基线 build 上叠一组增量修改后完整
+// 重算，返回展示属性值；打分/约束/排序在前端 `web/src/lib/optimize.ts` 做，
+// 切换目标即时重排零重算。宝石/装备/天赋/任意词条文本共用这一条通道。
+
+/// 向技能组追加宝石（宝石组合寻优通道）。
+#[derive(Debug, Deserialize)]
+struct AddGemsInput {
+    /// 目标技能组（0-based，与请求 socket_groups 对齐）。
+    group_index: usize,
+    gems: Vec<GemInput>,
+}
+
+/// 单个变体：各通道可任意叠加；全空 = 基线复算。
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct VariantInput {
+    /// 回显标签（前端结果行展示用，计算不消费）。
+    label: Option<String>,
+    add_gems: Option<AddGemsInput>,
+    /// 覆盖装备槽（`text` 为空 = 摘下该槽）。
+    set_items: Vec<SlotItemInput>,
+    /// 追加加点（不验证连通性——假设性试算，寻路由用户负责）。
+    allocate_nodes: Vec<u32>,
+    deallocate_nodes: Vec<u32>,
+    /// 任意词条文本（「只要有词条就能算」的兜底通道；中文行自动反查英文）。
+    extra_modifiers: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OptimizeVariantsRequest {
+    /// 完整计算请求（基线；各覆盖项照常生效）。
+    request: CalculateBuildRequest,
+    /// 要收集的展示属性 id（display_catalog；未知 id 记 0）。
+    stats: Vec<String>,
+    variants: Vec<VariantInput>,
+    /// 缺省 true；前端分批调用时后续批关掉省一次基线计算。
+    include_baseline: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+struct VariantStatsJson {
+    /// 请求内下标（前端对回变体定义）。
+    index: usize,
+    label: Option<String>,
+    /// 计算失败时为空表并给出 error（单变体失败不拖垮整批）。
+    stats: BTreeMap<String, f64>,
+    error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct OptimizeVariantsResponse {
+    baseline: Option<BTreeMap<String, f64>>,
+    variants: Vec<VariantStatsJson>,
+}
+
+/// 单次调用变体数上限。wasm 单线程同步执行，一批太大 UI 会失去响应——
+/// 前端按小批多次调用并在批间让出主线程（进度 + 可取消）。
+const VARIANT_CAP: usize = 512;
+
+/// 从会话取一批展示属性值。
+fn collect_stats(session: &CalculationSession, stat_ids: &[String]) -> BTreeMap<String, f64> {
+    stat_ids
+        .iter()
+        .map(|id| (id.clone(), display_stat_value(session, id)))
+        .collect()
+}
+
+/// 把变体的增量修改套到 build/编排选项副本上。
+fn apply_variant(
+    build: &mut Build,
+    opts: &mut DataOrchestratorOptions,
+    variant: &VariantInput,
+    data: &BuildData,
+) -> Result<(), String> {
+    if let Some(add) = &variant.add_gems {
+        let group_count = build.socket_groups.len();
+        let group = build
+            .socket_groups
+            .get_mut(add.group_index)
+            .ok_or_else(|| {
+                format!(
+                    "group_index {} out of range (build has {group_count} socket groups)",
+                    add.group_index
+                )
+            })?;
+        for gem in &add.gems {
+            if gem.skill_id.is_empty() {
+                continue;
+            }
+            group.gem_skills.push(GemSkillRef {
+                skill_id: gem.skill_id.clone(),
+                gem_level: gem.level,
+                quality: gem.quality,
+                stat_set_index: None,
+            });
+            if let Some(effect) = data.gem_effects.get(&gem.skill_id) {
+                group.gem_ids.push(effect.gem_id.clone());
+            }
+        }
+    }
+    for item in &variant.set_items {
+        let slot = slot_from_id(&item.slot)?;
+        if item.text.trim().is_empty() {
+            build.items.remove(&slot);
+        } else {
+            let text = localize_input_text(&item.text);
+            let parsed = parse_pob_xml_item(&text)
+                .map_err(|e| format!("parse item in slot {}: {e:?}", item.slot))?;
+            build.items.insert(slot, parsed);
+        }
+    }
+    if !variant.allocate_nodes.is_empty() {
+        let existing: std::collections::HashSet<u32> =
+            build.tree.allocated_nodes.iter().map(|n| n.0).collect();
+        build.tree.allocated_nodes.extend(
+            variant
+                .allocate_nodes
+                .iter()
+                .filter(|n| !existing.contains(n))
+                .map(|&n| NodeId(n)),
+        );
+    }
+    if !variant.deallocate_nodes.is_empty() {
+        build
+            .tree
+            .allocated_nodes
+            .retain(|n| !variant.deallocate_nodes.contains(&n.0));
+    }
+    opts.extra_modifier_texts.extend(
+        variant
+            .extra_modifiers
+            .iter()
+            .map(|line| localize_input_text(line)),
+    );
+    Ok(())
+}
+
+/// 通用变体评估：基线 build 只解码/装配一次，每个变体克隆后叠增量修改做
+/// 完整重算（与 node_power 同一「试算 = 完整编排」口径），返回属性值矩阵。
+pub fn optimize_variants_json(request_json: &str) -> Result<String, String> {
+    let req: OptimizeVariantsRequest =
+        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
+    if req.stats.is_empty() {
+        return Err("stats must not be empty".into());
+    }
+    if req.variants.len() > VARIANT_CAP {
+        return Err(format!(
+            "{} variants exceed cap {VARIANT_CAP}; split into batches",
+            req.variants.len()
+        ));
+    }
+    let data = state::build_data()?;
+
+    let mut base_build = parse_build_from_request(&req.request)?;
+    apply_request_overrides(&mut base_build, &req.request, &data)?;
+    let base_opts = orchestrator_options(&req.request)?;
+
+    let baseline = if req.include_baseline.unwrap_or(true) {
+        let session = calculate_with_data_session(&base_build, &data, &base_opts)
+            .map_err(|e| format!("calculate baseline: {e}"))?;
+        Some(collect_stats(&session, &req.stats))
+    } else {
+        None
+    };
+
+    let mut variants = Vec::with_capacity(req.variants.len());
+    for (index, variant) in req.variants.iter().enumerate() {
+        let mut build = base_build.clone();
+        let mut opts = base_opts.clone();
+        let session = apply_variant(&mut build, &mut opts, variant, &data).and_then(|()| {
+            calculate_with_data_session(&build, &data, &opts).map_err(|e| format!("calculate: {e}"))
+        });
+        variants.push(match session {
+            Ok(session) => VariantStatsJson {
+                index,
+                label: variant.label.clone(),
+                stats: collect_stats(&session, &req.stats),
+                error: None,
+            },
+            Err(error) => VariantStatsJson {
+                index,
+                label: variant.label.clone(),
+                stats: BTreeMap::new(),
+                error: Some(error),
+            },
+        });
+    }
+
+    serde_json::to_string(&OptimizeVariantsResponse { baseline, variants })
+        .map_err(|e| format!("serialize: {e}"))
+}
+
+// ---------------------------------------------------------------------------
 // encode_build_json（编辑态 → PoB2 Build XML → 分享 code）
 // ---------------------------------------------------------------------------
 
@@ -1284,6 +1480,8 @@ struct GemCatalogEntry {
     /// 宝石颜色（`"str"` 红 / `"dex"` 绿 / `"int"` 蓝；未知为 null），分类筛选用。
     colour: Option<&'static str>,
     is_support: bool,
+    /// 血脉（Lineage）特殊辅助宝石（gem 基底 id 判定；前端徽标 + 优化器候选筛选）。
+    is_lineage: bool,
 }
 
 /// 宝石目录：`{skill_id, name, name_zh_tw, colour, is_support}` 按名称排序。
@@ -1319,6 +1517,7 @@ pub fn gem_catalog_json() -> Result<String, String> {
                 _ => None,
             },
             is_support: gem.is_support,
+            is_lineage: gem.id.contains("Lineage"),
         });
     }
     let mut entries: Vec<GemCatalogEntry> = by_skill.into_values().collect();

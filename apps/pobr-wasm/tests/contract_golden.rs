@@ -319,6 +319,7 @@ fn manual_skills_and_items_without_code() {
             "name_zh_cn",
             "colour",
             "is_support",
+            "is_lineage",
         ],
         "gem catalog entry",
     );
