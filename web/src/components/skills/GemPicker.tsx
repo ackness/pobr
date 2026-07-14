@@ -145,6 +145,9 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                     }}
                   />
                   <span className="gem-primary">{primary}</span>
+                  {entry.is_lineage && (
+                    <span className="gem-lineage-badge">{tt('picker.lineage')}</span>
+                  )}
                   {secondary && <span className="gem-secondary">{secondary}</span>}
                 </li>
               );

@@ -116,6 +116,7 @@ soft_step spectres        "${SYNC[@]}" extract-lua --what spectres        --vend
 soft_step stat_descriptions "${SYNC[@]}" extract-lua --what stat-descriptions --vendor-root "$VENDOR" --out "$OVL/stat_descriptions.json"
 soft_step stat_set_labels "${SYNC[@]}" extract-lua --what stat-set-labels --vendor-root "$VENDOR" --files "$GEMFILES" --out "$OVL/stat_set_labels.json"
 soft_step uniques         "${SYNC[@]}" extract-lua --what uniques         --vendor-root "$VENDOR" --out "$OVL/uniques.json"
+soft_step trade_stat_map  luajit pipeline/extract-trade-map.lua "$VENDOR" "$OVL/trade_stat_map.json"
 soft_step mirage_configs  "${SYNC[@]}" gen-mirage-configs  --vendor-root "$VENDOR" --out "$OVL/mirage_configs.json"
 soft_step trigger_configs "${SYNC[@]}" gen-trigger-configs --vendor-root "$VENDOR" --out "$OVL/trigger_configs.json"
 # stat_id_map（M6 E/F 段 B）须在 stat_descriptions + mod_parser_rules 之后——消费两者跑引擎派生。

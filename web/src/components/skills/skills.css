@@ -317,3 +317,155 @@
   font-size: var(--text-xs);
   padding: 0 var(--space-1);
 }
+
+/* 血脉（Lineage）辅助宝石徽标 */
+.gem-lineage-badge {
+  color: var(--accent-gold-bright, var(--accent-gold-dim));
+  border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  padding: 0 var(--space-1);
+  flex: none;
+}
+
+/* 辅助宝石寻优 */
+.gem-optimizer {
+  margin-top: var(--space-2);
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: var(--space-2);
+}
+
+.gem-optimizer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  color: var(--accent-gold-dim);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: 0;
+}
+
+.gem-optimizer-toggle[aria-expanded='true'] .row-caret {
+  transform: rotate(90deg);
+}
+
+.gem-optimizer-body {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.opt-candidates {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.opt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.opt-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.opt-row label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.opt-row input[type='number'] {
+  width: 5.5rem;
+}
+
+.opt-error {
+  color: var(--color-negative, var(--color-life));
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+.opt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.opt-table td {
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.opt-table .opt-score {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.opt-table .opt-delta {
+  text-align: right;
+  color: var(--color-positive);
+  font-variant-numeric: tabular-nums;
+}
+
+.opt-baseline td {
+  color: var(--text-muted);
+}
+
+.opt-table .is-infeasible td {
+  opacity: 0.55;
+}
+
+.opt-infeasible {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.opt-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.opt-progress progress {
+  flex: 1;
+  max-width: 20rem;
+}
+
+.opt-error-cell {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+/* 树寻优的候选勾选项 */
+.opt-node-choice {
+  cursor: pointer;
+  gap: var(--space-1);
+}
+
+.opt-node-delta {
+  color: var(--color-positive);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.tree-optimizer {
+  margin: var(--space-2) 0;
+}

@@ -8,6 +8,7 @@ import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
 import { AppSelect } from '../shared/AppSelect';
 import { NoteEditor } from '../shared/NoteEditor';
+import { TreeOptimizer } from './TreeOptimizer';
 import './tree.css';
 
 interface Props {
@@ -743,6 +744,14 @@ export function TreePanel({ session, lang }: Props) {
             </label>
           </span>
       </div>
+      {heatData && (
+        <TreeOptimizer
+          session={session}
+          lang={lang}
+          heatData={heatData}
+          nodeLabel={(skill) => byId.get(skill)?.name ?? `#${skill}`}
+        />
+      )}
       {jewelEdit && (
         <div className="jewel-editor" role="group" aria-label={tt('tree.jewel')}>
           <header className="item-detail-header">

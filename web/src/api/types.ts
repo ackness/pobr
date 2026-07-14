@@ -150,6 +150,8 @@ export interface GemCatalogEntry {
   /** 宝石颜色（红/绿/蓝 = str/dex/int；分类筛选用）。 */
   colour: 'str' | 'dex' | 'int' | null;
   is_support: boolean;
+  /** 血脉（Lineage）特殊辅助宝石（徽标 + 优化器候选筛选）。 */
+  is_lineage: boolean;
 }
 
 /** 节点威力条目（node_power_json；PoB2 热力图语义）。 */
@@ -166,6 +168,70 @@ export interface NodePowerResponse {
   /** 基线属性值。 */
   base: number;
   entries: NodePowerEntry[];
+}
+
+// ---------------------------------------------------------------------------
+// optimize_variants_json（通用变体评估：寻优框架的计算面）
+//
+// 分工契约：Rust 只算变体 → 属性值；打分/约束/排序在 `lib/optimize.ts`。
+// ---------------------------------------------------------------------------
+
+/** 属性约束（display_catalog 字段 id + 上下界，逐字段可缺省）。 */
+export interface StatConstraint {
+  stat: string;
+  min?: number;
+  max?: number;
+}
+
+/** 向技能组追加宝石（宝石组合寻优通道）。 */
+export interface AddGemsInput {
+  group_index: number;
+  gems: GemInput[];
+}
+
+/** 单个变体：各通道可任意叠加；全空 = 基线复算。 */
+export interface VariantInput {
+  /** 回显标签（结果行展示用）。 */
+  label?: string;
+  add_gems?: AddGemsInput;
+  /** 覆盖装备槽（text 为空 = 摘下该槽）。 */
+  set_items?: SlotItemInput[];
+  /** 追加加点（不验证连通性——假设性试算）。 */
+  allocate_nodes?: number[];
+  deallocate_nodes?: number[];
+  /** 任意词条文本（「只要有词条就能算」的兜底通道）。 */
+  extra_modifiers?: string[];
+}
+
+export interface OptimizeVariantsRequest {
+  request: CalculateBuildRequest;
+  /** 要收集的展示属性 id（未知 id 记 0）。 */
+  stats: string[];
+  variants: VariantInput[];
+  /** 缺省 true；分批调用时后续批关掉省一次基线计算。 */
+  include_baseline?: boolean;
+}
+
+export interface VariantStats {
+  /** 请求内下标（对回变体定义）。 */
+  index: number;
+  label: string | null;
+  /** 计算失败时为空表并给出 error。 */
+  stats: Record<string, number>;
+  error: string | null;
+}
+
+export interface OptimizeVariantsResponse {
+  baseline: Record<string, number> | null;
+  variants: VariantStats[];
+}
+
+/** 词条 → 官方 trade2 stat 映射条目（overlay/trade_stat_map.json，静态资产直读）。 */
+export interface TradeStatEntry {
+  /** 官方 stat id（如 `explicit.stat_3372524247`）。 */
+  id: string;
+  /** 官方展示文案。 */
+  text: string;
 }
 
 /** 符文/魂核目录条目（rune_catalog_json）。 */

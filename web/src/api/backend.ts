@@ -17,6 +17,8 @@ import type {
   GemCatalogEntry,
   ItemLineJson,
   NodePowerResponse,
+  OptimizeVariantsRequest,
+  OptimizeVariantsResponse,
   PassiveNode,
   PassiveTreeMeta,
   RuneCatalogEntry,
@@ -54,6 +56,8 @@ export interface PobrBackend {
     powerStat: string,
     maxDepth: number,
   ): Promise<NodePowerResponse>;
+  /** 通用变体评估（寻优框架计算面：变体 → 全量重算 → 属性值；打分在前端）。 */
+  optimizeVariants(request: OptimizeVariantsRequest): Promise<OptimizeVariantsResponse>;
   /** 符文/魂核目录（符文槽选择器）。 */
   runeCatalog(): Promise<RuneCatalogEntry[]>;
   /** 重插符文：重写物品文本的 Rune 命名行 + {rune} 词条行；`sockets` 给定时

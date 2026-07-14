@@ -80,6 +80,86 @@ const DICT = {
   'picker.noResults': { 'en-US': 'No matches', 'zh-TW': '無匹配', 'zh-CN': '无匹配' },
   'picker.active': { 'en-US': 'Active', 'zh-TW': '主動', 'zh-CN': '主动' },
   'picker.support': { 'en-US': 'Support', 'zh-TW': '輔助', 'zh-CN': '辅助' },
+  'picker.lineage': { 'en-US': 'Lineage', 'zh-TW': '血脈', 'zh-CN': '血脉' },
+
+  // 技能组辅助宝石寻优
+  'opt.open': { 'en-US': 'Support optimizer', 'zh-TW': '輔助寶石尋優', 'zh-CN': '辅助宝石寻优' },
+  'opt.hint': {
+    'en-US': 'Pick candidate supports; every combination is fully recalculated and ranked.',
+    'zh-TW': '選一批候選輔助寶石，逐個組合完整重算後按目標排名。',
+    'zh-CN': '选一批候选辅助宝石，逐个组合完整重算后按目标排名。',
+  },
+  'opt.addCandidate': { 'en-US': 'Add a candidate support…', 'zh-TW': '添加候選輔助寶石…', 'zh-CN': '添加候选辅助宝石…' },
+  'opt.freeSlots': { 'en-US': 'Free sockets', 'zh-TW': '空槽數', 'zh-CN': '空槽数' },
+  'opt.objective': { 'en-US': 'Objective', 'zh-TW': '目標', 'zh-CN': '目标' },
+  'opt.objDps': { 'en-US': 'Max total DPS', 'zh-TW': '總 DPS 最高', 'zh-CN': '总 DPS 最高' },
+  'opt.objDpsPerMana': { 'en-US': 'Max DPS / mana cost', 'zh-TW': 'DPS÷魔耗最高（效率）', 'zh-CN': 'DPS÷魔耗最高（效率）' },
+  'opt.objLife': { 'en-US': 'Max Life', 'zh-TW': '生命最高', 'zh-CN': '生命最高' },
+  'opt.objEhp': { 'en-US': 'Max total EHP', 'zh-TW': '總 EHP 最高', 'zh-CN': '总 EHP 最高' },
+  'opt.constraint': { 'en-US': 'Constraint', 'zh-TW': '約束', 'zh-CN': '约束' },
+  'opt.constraintNone': { 'en-US': '(none)', 'zh-TW': '（無）', 'zh-CN': '（无）' },
+  'opt.min': { 'en-US': 'min', 'zh-TW': '下限', 'zh-CN': '下限' },
+  'opt.max': { 'en-US': 'max', 'zh-TW': '上限', 'zh-CN': '上限' },
+  'opt.run': { 'en-US': 'Optimize', 'zh-TW': '開始尋優', 'zh-CN': '开始寻优' },
+  'opt.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
+  'opt.running': { 'en-US': 'Optimizing…', 'zh-TW': '尋優中…', 'zh-CN': '寻优中…' },
+  'opt.combos': { 'en-US': 'combos', 'zh-TW': '個組合', 'zh-CN': '个组合' },
+  'opt.tooMany': {
+    'en-US': 'Too many combinations — remove candidates or lower free sockets.',
+    'zh-TW': '組合數過多——減少候選或調低空槽數。',
+    'zh-CN': '组合数过多——减少候选或调低空槽数。',
+  },
+  'opt.needCandidates': {
+    'en-US': 'Add candidate support gems first.',
+    'zh-TW': '先添加候選輔助寶石。',
+    'zh-CN': '先添加候选辅助宝石。',
+  },
+  'opt.baseline': { 'en-US': 'Baseline (no change)', 'zh-TW': '基線（不變）', 'zh-CN': '基线（不变）' },
+  'opt.openItem': { 'en-US': 'Slot optimizer', 'zh-TW': '槽位裝備尋優', 'zh-CN': '槽位装备寻优' },
+  'opt.needLibrary': {
+    'en-US': 'No candidates for this slot — save a few items to the library first.',
+    'zh-TW': '物品庫沒有該槽位的候選——先把幾件裝備存進庫。',
+    'zh-CN': '物品库没有该槽位的候选——先把几件装备存进库。',
+  },
+  'opt.openTree': { 'en-US': 'Node optimizer', 'zh-TW': '天賦節點尋優', 'zh-CN': '天赋节点寻优' },
+  'opt.points': { 'en-US': 'Points to spend', 'zh-TW': '可用點數', 'zh-CN': '可用点数' },
+  'opt.treeNeedsHeat': {
+    'en-US': 'Run the node power heatmap above first to build the candidate list.',
+    'zh-TW': '先在上方跑一次節點威力熱力圖，生成候選榜。',
+    'zh-CN': '先在上方跑一次节点威力热力图，生成候选榜。',
+  },
+  'opt.treeHint': {
+    'en-US':
+      'Tick candidate nodes from the power list; combinations are recalculated in full. Connectivity is NOT validated — pathing is up to you.',
+    'zh-TW': '從威力榜勾選候選節點，逐組合完整重算。不驗證連通性——路徑自己負責。',
+    'zh-CN': '从威力榜勾选候选节点，逐组合完整重算。不验证连通性——路径自己负责。',
+  },
+  'opt.score': { 'en-US': 'Score', 'zh-TW': '得分', 'zh-CN': '得分' },
+  'opt.apply': { 'en-US': 'Apply', 'zh-TW': '應用', 'zh-CN': '应用' },
+  'opt.infeasible': { 'en-US': 'constraint not met', 'zh-TW': '不滿足約束', 'zh-CN': '不满足约束' },
+
+  // Trade 市集加权搜索
+  'trade.open': { 'en-US': 'Trade search', 'zh-TW': '市集搜尋', 'zh-CN': '市集搜索' },
+  'trade.hint': {
+    'en-US':
+      'Weights each mapped mod by its marginal contribution (full recalc per line), then opens the official trade site with a weighted-sum search for better items.',
+    'zh-TW': '逐條詞條摘除重算得邊際權重，拼加權搜尋直開官方市集找更好的同類裝備。',
+    'zh-CN': '逐条词条摘除重算得边际权重，拼加权搜索直开官方市集找更好的同类装备。',
+  },
+  'trade.league': { 'en-US': 'League', 'zh-TW': '賽季', 'zh-CN': '赛季' },
+  'trade.generate': { 'en-US': 'Generate search', 'zh-TW': '生成加權搜尋', 'zh-CN': '生成加权搜索' },
+  'trade.lines': { 'en-US': 'mods', 'zh-TW': '條詞條', 'zh-CN': '条词条' },
+  'trade.openSite': { 'en-US': 'Open trade site', 'zh-TW': '打開市集', 'zh-CN': '打开市集' },
+  'trade.noMapped': {
+    'en-US': 'No mods on this item map to trade site stats.',
+    'zh-TW': '這件裝備沒有詞條能映射到市集可搜屬性。',
+    'zh-CN': '这件装备没有词条能映射到市集可搜属性。',
+  },
+  'trade.noWeights': {
+    'en-US': 'No mod contributes to the chosen objective — try another objective.',
+    'zh-TW': '沒有詞條對所選目標有貢獻——換個目標試試。',
+    'zh-CN': '没有词条对所选目标有贡献——换个目标试试。',
+  },
 
   // Items 页
   'common.copy': { 'en-US': 'Copy', 'zh-TW': '複製', 'zh-CN': '复制' },

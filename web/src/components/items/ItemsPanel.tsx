@@ -14,6 +14,8 @@ import { DiffList } from '../shared/DiffList';
 import { CopyButton } from '../shared/CopyButton';
 import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
+import { ItemOptimizer } from './ItemOptimizer';
+import { TradeSearch } from './TradeSearch';
 import './items.css';
 
 interface Props {
@@ -503,6 +505,20 @@ export function ItemsPanel({ session, lang }: Props) {
             </>
           ) : (
             <p className="item-empty-hint">{tt('items.empty')}</p>
+          )}
+          {!isUtilitySlot(selected) && (
+            <ItemOptimizer
+              session={session}
+              lang={lang}
+              slot={selected}
+              candidates={candidates}
+              candidateNames={candidateNames}
+              currentText={selectedText}
+              onApply={(text) => (text === null ? removeItem() : switchTo(text))}
+            />
+          )}
+          {!isUtilitySlot(selected) && selectedText && (
+            <TradeSearch session={session} lang={lang} slot={selected} itemText={selectedText} />
           )}
         </div>
       )}

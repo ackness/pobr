@@ -73,6 +73,17 @@ export function createMockBackend(): PobrBackend {
     async nodePower() {
       return { base: 0, entries: [] };
     },
+    async optimizeVariants(request) {
+      return {
+        baseline: {},
+        variants: request.variants.map((v, index) => ({
+          index,
+          label: v.label ?? null,
+          stats: {},
+          error: null,
+        })),
+      };
+    },
     async runeCatalog() {
       // mock 无符文目录；面板隐藏符文编辑器。
       return [];

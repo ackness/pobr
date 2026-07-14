@@ -4,6 +4,7 @@ import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
 import { GemPicker, gemDisplayName } from './GemPicker';
+import { GemOptimizer } from './GemOptimizer';
 import { NoteEditor } from '../shared/NoteEditor';
 import './skills.css';
 
@@ -202,6 +203,15 @@ export function SkillsPanel({ session, lang }: Props) {
                     }
                   />
                 </div>
+              )}
+              {isOpen && (
+                <GemOptimizer
+                  session={session}
+                  lang={lang}
+                  groupIndex={idx}
+                  supports={supports}
+                  gemName={gemName}
+                />
               )}
               {isOpen && (
                 <div className="skill-group-note">

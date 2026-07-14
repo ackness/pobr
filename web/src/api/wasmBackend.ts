@@ -17,6 +17,7 @@ import type {
   GemCatalogEntry,
   ItemLineJson,
   NodePowerResponse,
+  OptimizeVariantsResponse,
   PassiveNode,
   PassiveTreeMeta,
   RuneCatalogEntry,
@@ -40,6 +41,7 @@ interface WasmModule {
   runeCatalogJson(): string;
   reforgeRunesJson(requestJson: string): string;
   nodePowerJson(requestJson: string): string;
+  optimizeVariantsJson(requestJson: string): string;
   translate(lang: string, key: string): string;
 }
 
@@ -158,6 +160,11 @@ export async function createWasmBackend(): Promise<PobrBackend> {
           JSON.stringify({ request, power_stat: powerStat, max_depth: maxDepth }),
         ),
       ) as NodePowerResponse;
+    },
+    async optimizeVariants(request) {
+      return JSON.parse(
+        wasm.optimizeVariantsJson(JSON.stringify(request)),
+      ) as OptimizeVariantsResponse;
     },
     async runeCatalog() {
       return JSON.parse(wasm.runeCatalogJson()) as RuneCatalogEntry[];
