@@ -58,11 +58,35 @@ export interface WeightedStat {
   value: number;
 }
 
+/** 服务器：国际服 / 国服（腾讯）。路径结构相同，仅主机名不同；stat id 通用。 */
+export type TradeRealm = 'intl' | 'cn';
+
+const REALM_HOSTS: Record<TradeRealm, string> = {
+  intl: 'https://www.pathofexile.com',
+  cn: 'https://poe.game.qq.com',
+};
+
+/**
+ * 各服的赛季预设（首项 = 当前挑战赛季，次项 = 常驻标准服）。
+ * 赛季名每个版本会变（0.5 = Runes of Aldur / 奥杜尔秘符），随数据版本升级
+ * 一并更新；过期期间用户可走「自定义」手填，功能不至于坏。
+ */
+export const REALM_LEAGUES: Record<TradeRealm, string[]> = {
+  intl: ['Runes of Aldur', 'Standard'],
+  cn: ['奥杜尔秘符', '标准'],
+};
+
+export const REALM_DEFAULT_LEAGUE: Record<TradeRealm, string> = {
+  intl: REALM_LEAGUES.intl[0],
+  cn: REALM_LEAGUES.cn[0],
+};
+
 /** trade2 加权查询 JSON + 直开 URL（min = 当前加权和 × threshold）。 */
 export function buildTradeUrl(
   league: string,
   weighted: WeightedStat[],
   threshold = 0.7,
+  realm: TradeRealm = 'intl',
 ): string {
   const sum = weighted.reduce((acc, w) => acc + w.weight * w.value, 0);
   const query = {
@@ -85,7 +109,7 @@ export function buildTradeUrl(
     sort: { 'statgroup.0': 'desc' },
     engine: 'new',
   };
-  return `https://www.pathofexile.com/trade2/search/poe2/${encodeURIComponent(
+  return `${REALM_HOSTS[realm]}/trade2/search/poe2/${encodeURIComponent(
     league,
   )}?q=${encodeURIComponent(JSON.stringify(query))}`;
 }

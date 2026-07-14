@@ -35,4 +35,18 @@ describe('buildTradeUrl', () => {
     expect(q.query.stats[0].filters).toHaveLength(2);
     expect(q.sort['statgroup.0']).toBe('desc');
   });
+
+  test('cn realm uses the Tencent host with a Chinese league name', () => {
+    const url = buildTradeUrl(
+      '深渊崛起',
+      [{ id: 'explicit.stat_1', weight: 1, line: 'x', value: 1 }],
+      0.7,
+      'cn',
+    );
+    expect(
+      url.startsWith(
+        `https://poe.game.qq.com/trade2/search/poe2/${encodeURIComponent('深渊崛起')}?q=`,
+      ),
+    ).toBe(true);
+  });
 });

@@ -5,10 +5,13 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang, type UiKey } from '../../lib/i18n';
 import { OBJECTIVE_PRESETS, evaluateVariants, scoreOf } from '../../lib/optimize';
 import {
+  REALM_DEFAULT_LEAGUE,
+  REALM_LEAGUES,
   buildTradeUrl,
   lineValue,
   loadTradeMap,
   normalizeTradeLine,
+  type TradeRealm,
   type WeightedStat,
 } from '../../lib/trade';
 import { AppSelect } from '../shared/AppSelect';
@@ -22,7 +25,9 @@ interface Props {
   itemText: string;
 }
 
-const LEAGUE_KEY = 'pobr-trade-league';
+const REALM_KEY = 'pobr-trade-realm';
+/** 赛季名按服记忆（两边赛季名不同：Standard vs 标准/深渊崛起）。 */
+const leagueKey = (realm: TradeRealm) => `pobr-trade-league-${realm}`;
 
 /**
  * 市集加权搜索（PoB2 式「找更好的同类」）：当前物品的可映射词条逐条摘除重算
@@ -32,7 +37,12 @@ export function TradeSearch({ session, lang, slot, itemText }: Props) {
   const tt = bindT(lang);
   const [expanded, setExpanded] = useState(false);
   const [tradeMap, setTradeMap] = useState<Record<string, TradeStatEntry> | null>(null);
-  const [league, setLeague] = useState(() => localStorage.getItem(LEAGUE_KEY) ?? 'Standard');
+  const [realm, setRealm] = useState<TradeRealm>(
+    () => (localStorage.getItem(REALM_KEY) as TradeRealm) ?? 'intl',
+  );
+  const [league, setLeague] = useState(
+    () => localStorage.getItem(leagueKey(realm)) ?? REALM_DEFAULT_LEAGUE[realm],
+  );
   const [preset, setPreset] = useState('dps');
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +120,7 @@ export function TradeSearch({ session, lang, slot, itemText }: Props) {
         setError(tt('trade.noWeights'));
         return;
       }
-      setResult({ weighted, url: buildTradeUrl(league, weighted) });
+      setResult({ weighted, url: buildTradeUrl(league, weighted, 0.7, realm) });
     } catch (err: unknown) {
       setResult(null);
       setError(err instanceof Error ? err.message : String(err));
@@ -139,15 +149,57 @@ export function TradeSearch({ session, lang, slot, itemText }: Props) {
           ) : (
             <div className="opt-row">
               <label>
-                {tt('trade.league')}
-                <input
-                  value={league}
-                  onChange={(e) => {
-                    setLeague(e.target.value);
-                    localStorage.setItem(LEAGUE_KEY, e.target.value);
+                {tt('trade.realm')}
+                <AppSelect
+                  value={realm}
+                  options={[
+                    { value: 'intl', label: tt('trade.realmIntl') },
+                    { value: 'cn', label: tt('trade.realmCn') },
+                  ]}
+                  onChange={(v) => {
+                    const next = v as TradeRealm;
+                    setRealm(next);
+                    localStorage.setItem(REALM_KEY, next);
+                    setLeague(localStorage.getItem(leagueKey(next)) ?? REALM_DEFAULT_LEAGUE[next]);
+                    setResult(null);
                   }}
+                  ariaLabel={tt('trade.realm')}
                 />
               </label>
+              <label>
+                {tt('trade.league')}
+                <AppSelect
+                  value={REALM_LEAGUES[realm].includes(league) ? league : '__custom'}
+                  options={[
+                    // 首项 = 当前挑战赛季（赛季服），次项 = 常驻标准服。
+                    ...REALM_LEAGUES[realm].map((name, i) => ({
+                      value: name,
+                      label: i === 0 ? `${name}（${tt('trade.leagueSeason')}）` : name,
+                    })),
+                    { value: '__custom', label: tt('trade.leagueCustom') },
+                  ]}
+                  onChange={(v) => {
+                    const next = v === '__custom' ? '' : v;
+                    setLeague(next);
+                    localStorage.setItem(leagueKey(realm), next);
+                    setResult(null);
+                  }}
+                  ariaLabel={tt('trade.league')}
+                />
+              </label>
+              {!REALM_LEAGUES[realm].includes(league) && (
+                <label>
+                  {tt('trade.leagueCustom')}
+                  <input
+                    value={league}
+                    placeholder={REALM_DEFAULT_LEAGUE[realm]}
+                    onChange={(e) => {
+                      setLeague(e.target.value);
+                      localStorage.setItem(leagueKey(realm), e.target.value);
+                    }}
+                  />
+                </label>
+              )}
               <label>
                 {tt('opt.objective')}
                 <AppSelect
@@ -162,7 +214,7 @@ export function TradeSearch({ session, lang, slot, itemText }: Props) {
               </label>
               <button
                 className="opt-run"
-                disabled={session.busy || progress !== null}
+                disabled={session.busy || progress !== null || league.trim() === ''}
                 onClick={run}
               >
                 {progress
