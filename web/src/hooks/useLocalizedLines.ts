@@ -36,6 +36,56 @@ function runeLineParts(line: string): { prefix: string; name: string } | null {
   return m ? { prefix: m[1], name: m[2].trim() } : null;
 }
 
+/** 从 PoB 原始文本块提取稀有度（`Rarity: RARE` 行；XML 导入的该行带缩进）。 */
+export function rarityOf(text: string): string {
+  const m = text.match(/^\s*Rarity:\s*(\w+)/im);
+  return (m?.[1] ?? 'normal').toLowerCase();
+}
+
+/** 展示用：剥掉行内 `{tags}` 与 `[A|B]` 标注（PoB 词条内部标注语法）。 */
+export function cleanLine(line: string): string {
+  return line
+    .replace(/\{[^}]*\}/g, '')
+    .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
+    .replace(/\[([^\]]*)\]/g, '$1')
+    .trim();
+}
+
+/** 物品文本 → 展示行（剥标注、滤 Rarity 行）。 */
+export function itemLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map(cleanLine)
+    .filter((l) => l && !/^Rarity:/i.test(l));
+}
+
+/** 展示名行对：RARE/UNIQUE 物品 = [随机名, 基底]（玩家光看随机名不知道是什么装备）；
+ * MAGIC/NORMAL 名称行本身含基底，只取首行。 */
+export function nameParts(text: string): string[] {
+  const lines = itemLines(text);
+  const rarity = rarityOf(text);
+  if ((rarity === 'rare' || rarity === 'unique') && lines[1]) {
+    return [lines[0], lines[1]];
+  }
+  return lines[0] ? [lines[0]] : [];
+}
+
+/** 批量物品显示名「名称·基底」（已本地化；空文本 → 空串）。
+ * 库行/槽位按钮/切换下拉等所有名称展示点共用。 */
+export function useItemDisplayNames(texts: (string | undefined)[], lang: Lang): string[] {
+  const parts = texts.map((t) => (t ? nameParts(t) : []));
+  const translated = useLocalizedLines(
+    parts.flatMap((p) => p),
+    lang,
+  );
+  let offset = 0;
+  return parts.map((p) => {
+    const segment = translated.slice(offset, offset + p.length);
+    offset += p.length;
+    return segment.join('·');
+  });
+}
+
 /** 结构行本地化：`Item Level: 83` → `物品等级: 83`；非结构行返回 null。 */
 export function localizeStructLine(line: string, lang: Lang): string | null {
   if (lang === 'en-US') return null;

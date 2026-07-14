@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { getBackend } from '../../api/backend';
 import type { AttributeChoice, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { useItemDisplayNames } from '../../hooks/useLocalizedLines';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
@@ -100,11 +100,11 @@ export function TreePanel({ session, lang }: Props) {
 
   const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
 
-  // 珠宝库（插槽编辑器的切换下拉）；名称批量送翻译。
+  // 珠宝库（插槽编辑器的切换下拉）；显示名「名称·基底」批量送翻译。
   // ⚠️hook 必须在下方 early return 之前（React #310）。
   const jewelLib = session.library.items.filter((i) => i.kind === 'jewel');
-  const jewelNames = useLocalizedLines(
-    jewelLib.map((e) => e.name),
+  const jewelNames = useItemDisplayNames(
+    jewelLib.map((e) => e.text),
     lang,
   );
 

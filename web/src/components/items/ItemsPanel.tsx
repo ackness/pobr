@@ -2,7 +2,12 @@ import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
 import type { ItemLineJson, RuneCatalogEntry } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import {
+  itemLines,
+  rarityOf,
+  useItemDisplayNames,
+  useLocalizedLines,
+} from '../../hooks/useLocalizedLines';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
@@ -16,29 +21,7 @@ interface Props {
   lang: Lang;
 }
 
-/** 从 PoB 原始文本块提取稀有度（`Rarity: RARE` 行；XML 导入的该行带缩进）。 */
-function rarityOf(text: string): string {
-  const m = text.match(/^\s*Rarity:\s*(\w+)/im);
-  return (m?.[1] ?? 'normal').toLowerCase();
-}
-
-/** 展示用：剥掉行内 `{tags}` 与 `[A|B]` 标注（PoB 词条内部标注语法）。 */
-function cleanLine(line: string): string {
-  return line
-    .replace(/\{[^}]*\}/g, '')
-    .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
-    .replace(/\[([^\]]*)\]/g, '$1')
-    .trim();
-}
-
-function itemLines(text: string): string[] {
-  return text
-    .split('\n')
-    .map(cleanLine)
-    .filter((l) => l && !/^Rarity:/i.test(l));
-}
-
-// 行翻译 hook 已抽到 hooks/useLocalizedLines（树页珠宝选择器共用）。
+// 行提取/翻译工具已收口在 hooks/useLocalizedLines（树页珠宝选择器共用）。
 
 /** 词条系类别（与 explicit 之间画分隔线的左侧块）。 */
 const IMPLICIT_KINDS = ['implicit', 'enchant', 'rune', 'class_req'];
@@ -193,12 +176,11 @@ export function ItemsPanel({ session, lang }: Props) {
 
   const textOf = (slot: string) =>
     isUtilitySlot(slot) ? utilityBySlot.get(slot) : bySlot.get(slot);
-  // 槽位按钮上的物品名（一批送翻译；中文界面显示本地化名）。
-  const slotNamesRaw = [...DOLL_SLOTS.map(({ slot }) => slot), ...UTILITY_SLOTS].map((slot) => {
-    const text = textOf(slot);
-    return text ? (itemLines(text)[0] ?? '') : '';
-  });
-  const slotNames = useLocalizedLines(slotNamesRaw, lang);
+  // 槽位按钮上的物品显示名「名称·基底」（一批送翻译；中文界面显示本地化名）。
+  const slotNames = useItemDisplayNames(
+    [...DOLL_SLOTS.map(({ slot }) => slot), ...UTILITY_SLOTS].map((slot) => textOf(slot)),
+    lang,
+  );
   const slotName = (index: number) => slotNames[index] || null;
   const templateOf = (slot: string) =>
     slot.startsWith('Charm') ? CHARM_TEMPLATE : slot.startsWith('Flask') ? FLASK_TEMPLATE : ITEM_TEMPLATE;
@@ -334,8 +316,8 @@ export function ItemsPanel({ session, lang }: Props) {
         (i) => i.kind === 'item' && i.slot != null && slotFamily(i.slot) === slotFamily(selected),
       )
     : [];
-  const candidateNames = useLocalizedLines(
-    candidates.map((c) => c.name),
+  const candidateNames = useItemDisplayNames(
+    candidates.map((c) => c.text),
     lang,
   );
   const switcherValue =
@@ -541,10 +523,7 @@ export function ItemsPanel({ session, lang }: Props) {
 /** 珠宝列表（来自导入 build，只读；编辑走天赋树页插槽）。 */
 function JewelList({ texts, lang }: { texts: string[]; lang: Lang }) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
-  const names = useLocalizedLines(
-    texts.map((t) => itemLines(t)[0] ?? ''),
-    lang,
-  );
+  const names = useItemDisplayNames(texts, lang);
   return (
     <div className="library-list">
       {texts.map((text, i) => (
@@ -583,9 +562,9 @@ function LibrarySection({
   const [query, setQuery] = useState('');
   const [slotOnly, setSlotOnly] = useState(true);
   const all = session.library.items.filter((i) => i.kind === 'item');
-  // 名称一批送翻译（中文界面搜索可同时命中中英文名）。
-  const names = useLocalizedLines(
-    all.map((i) => i.name),
+  // 显示名「名称·基底」一批送翻译（中文界面搜索可同时命中中英文名与基底名）。
+  const names = useItemDisplayNames(
+    all.map((i) => i.text),
     lang,
   );
   const q = query.trim().toLowerCase();
