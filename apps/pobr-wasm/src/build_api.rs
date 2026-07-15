@@ -578,6 +578,33 @@ fn apply_request_overrides(
             .values
             .insert(key.clone(), json_to_config_value(value)?);
     }
+
+    // 任务奖励在合并后的 config 输入上整份重建（PoB2 defaultState=true 语义）：
+    // 有效值 = XML `<Input>` 捕获（raw_inputs）被请求 config_inputs 覆盖的结果；
+    // Stat 型省略 = 已领取、显式 false = 放弃，Options 型（string 值）注入所选
+    // 词条文本。这让导入 build 后在 Config 页切任务奖励也能生效（解码时 XML 路径
+    // 注入的行在此被覆盖）。global_modifier_texts 只承载 quest 行——config_resolve
+    // 的解释器通道显式排除 quest 防双计——整份替换是安全的。
+    let values = &build.config.raw_inputs.values;
+    let mut quest_texts = pobr_build::default_quest_stat_reward_texts(|key| {
+        values.get(key).and_then(|v| match v {
+            ConfigInputValue::Bool(b) => Some(*b),
+            _ => None,
+        })
+    });
+    for (key, value) in values {
+        if key.starts_with("quest")
+            && let ConfigInputValue::Text(s) = value
+        {
+            quest_texts.extend(
+                s.lines()
+                    .map(str::trim)
+                    .filter(|l| !l.is_empty())
+                    .map(String::from),
+            );
+        }
+    }
+    build.config.global_modifier_texts = quest_texts;
     Ok(())
 }
 
@@ -636,6 +663,8 @@ fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Build, String
             .class_name
             .clone()
             .ok_or("character.class_name is required for a scratch build")?;
+        // 任务奖励不在此注入：统一由 apply_request_overrides 按合并后的
+        // config 输入重建（XML 与直连两路径同一口径，导入后可在 Config 页改）。
         return Ok(Build::new().with_character(CharacterIdentity {
             level: ch.level.unwrap_or(1),
             class_name,
@@ -1299,10 +1328,11 @@ pub fn encode_build_json(request_json: &str) -> Result<String, String> {
         })
         .collect();
 
-    // XML 路径对省略的 quest 奖励 / 默认 true 条件按 PoB2 defaultState=true 补注，
-    // 请求直连路径没有——对未显式设置的这些 key 写显式 false，两条路径语义收敛。
+    // 默认 true **条件**在请求直连路径尚未补注——对未显式设置的 key 写显式 false，
+    // 两条路径语义收敛。quest Stat 奖励两侧都已按 defaultState=true 补注
+    // （XML 路径 parse_config、直连路径 parse_build_from_request），省略即一致。
     let mut config_inputs = req.config_inputs.clone();
-    for key in pobr_build::default_on_config_keys() {
+    for key in pobr_build::default_true_condition_keys() {
         config_inputs
             .entry(key.to_string())
             .or_insert(serde_json::Value::Bool(false));

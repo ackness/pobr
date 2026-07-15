@@ -165,14 +165,29 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
     ("VigilantStrikeBypassCD", "VigilantStrikeBypassCD"),
 ];
 
-/// XML 省略时会被补默认（defaultState=true）的 `<Input>` key（quest Stat 奖励
-/// 与默认 true 条件）。encode 写出端对未显式设置的这些 key 写 `boolean="false"`，
-/// 钉住「请求直连路径无默认补注」的语义，保证 encode→decode 往返计算一致。
-pub fn default_on_config_keys() -> impl Iterator<Item = &'static str> {
-    DEFAULT_QUEST_STAT_REWARDS
-        .iter()
-        .map(|(k, _)| *k)
-        .chain(DEFAULT_TRUE_CONDITIONS.iter().map(|(k, _)| *k))
+/// XML 省略时会被补默认 true 的**条件型** `<Input>` key。请求直连路径尚未实现
+/// 这些条件的默认注入，encode 写出端对未显式设置的 key 写 `boolean="false"` 钉住
+/// 该语义，保证 encode→decode 往返计算一致。quest Stat 奖励不在此列——直连路径
+/// 已经 [`default_quest_stat_reward_texts`] 实现同一 defaultState=true 语义，
+/// 省略即两侧一致，无须钉 false。
+pub fn default_true_condition_keys() -> impl Iterator<Item = &'static str> {
+    DEFAULT_TRUE_CONDITIONS.iter().map(|(k, _)| *k)
+}
+
+/// 请求直连路径（无 XML）的 Stat 型任务奖励注入，与 XML 路径同一
+/// PoB2 defaultState=true 语义：`explicit(key)` 取请求里该 quest 键的显式勾选值，
+/// `None`（省略）视作已领取，`Some(false)` 为显式放弃。返回应全局注入的词条行。
+/// 后续版本新增奖励只需扩充 [`DEFAULT_QUEST_STAT_REWARDS`]，两条路径同时生效。
+pub fn default_quest_stat_reward_texts(
+    mut explicit: impl FnMut(&str) -> Option<bool>,
+) -> Vec<String> {
+    let mut out = Vec::new();
+    for (key, stat) in DEFAULT_QUEST_STAT_REWARDS {
+        if explicit(key).unwrap_or(true) {
+            push_quest_lines(&mut out, stat);
+        }
+    }
+    out
 }
 
 /// `<Config>` 解析产物：条件 / 倍率 / 全局词条 + 顶层标量配置项。

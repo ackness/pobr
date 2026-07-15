@@ -263,24 +263,28 @@ fn main_skill_follows_main_group_override() {
 #[test]
 fn calculate_scratch_build_without_code() {
     ensure_data();
-    let life_at = |level: u32| -> f64 {
-        let request = serde_json::json!({
+    let stat_at = |level: u32, extra: Value, id: &str| -> f64 {
+        let mut request = serde_json::json!({
             "character": { "class_name": "Warrior", "level": level },
             "allocated_nodes": [],
-        })
-        .to_string();
-        let json: Value =
-            serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("scratch"))
-                .expect("valid json");
+        });
+        if let Some(obj) = extra.as_object() {
+            request["config_inputs"] = Value::Object(obj.clone());
+        }
+        let json: Value = serde_json::from_str(
+            &pobr_wasm::calculate_build_json(&request.to_string()).expect("scratch"),
+        )
+        .expect("valid json");
         json["stats"]
             .as_array()
             .unwrap()
             .iter()
-            .find(|s| s["id"] == "Life")
+            .find(|s| s["id"] == id)
             .unwrap()["value"]
             .as_f64()
             .unwrap()
     };
+    let life_at = |level: u32| stat_at(level, Value::Null, "Life");
     let level1 = life_at(1);
     let level90 = life_at(90);
     assert!(
@@ -291,6 +295,29 @@ fn calculate_scratch_build_without_code() {
         level90 > level1,
         "Life should scale with level (lv1={level1} lv90={level90})"
     );
+
+    // 任务奖励 defaultState=true（PoB2 新建语义）：省略 = 已领取。
+    // Spirit = +30 +30 +40，火抗 = -60（默认惩罚）+10（Blackjaw 奖励）。
+    assert_eq!(stat_at(1, Value::Null, "Spirit"), 100.0, "default Spirit");
+    assert_eq!(
+        stat_at(1, Value::Null, "FireResist"),
+        -50.0,
+        "default FireResist"
+    );
+    // 显式 false = 放弃对应奖励（前端 Config 勾选通道）。
+    let no_spirit = serde_json::json!({
+        "questAct 1FreythornKing In The Mists": false,
+        "questAct 3Azak BogIgnagduk": false,
+        "questInterlude 3Kriar VillageLythara": false,
+    });
+    assert_eq!(
+        stat_at(1, no_spirit, "Spirit"),
+        1.0,
+        "opted-out Spirit falls back to pool floor"
+    );
+
+    // HitChance 展示口径为百分制：空 build 无敌方闪避 → 100（而非 fraction 1.0）。
+    assert_eq!(stat_at(1, Value::Null, "HitChance"), 100.0, "HitChance %");
 
     // 缺 code 又缺 character → 可读错误而非 panic。
     let err = pobr_wasm::calculate_build_json("{}").unwrap_err();
@@ -355,6 +382,8 @@ fn manual_skills_and_items_without_code() {
     let base_req = serde_json::json!({
         "character": { "class_name": "Sorceress", "level": 90 },
         "allocated_nodes": [],
+        // 放弃默认任务奖励里的 5% inc life，保持下方 flat delta 断言的纯增量口径。
+        "config_inputs": { "questInterlude 2Khari CrossingMolten Shrine": false },
     });
     let stat = |resp: &Value, id: &str| -> f64 {
         resp["stats"]
@@ -405,6 +434,42 @@ fn manual_skills_and_items_without_code() {
     bad["items"] = serde_json::json!([{ "slot": "hat", "text": "Rarity: NORMAL\nIron Hat" }]);
     let err = pobr_wasm::calculate_build_json(&bad.to_string()).unwrap_err();
     assert!(err.contains("unknown equipment slot"), "unexpected: {err}");
+}
+
+/// 导入 build（pob_code）后 Config 页切任务奖励生效：quest 覆盖在计算前按
+/// 合并输入整份重建（旧行为 = 解码时固定，请求覆盖无效）。
+#[test]
+fn quest_reward_override_applies_to_imported_build() {
+    ensure_data();
+    let spirit_with = |config_inputs: Value| -> f64 {
+        let mut request = serde_json::json!({ "pob_code": demo_code() });
+        if !config_inputs.is_null() {
+            request["config_inputs"] = config_inputs;
+        }
+        let json: Value = serde_json::from_str(
+            &pobr_wasm::calculate_build_json(&request.to_string()).expect("calc"),
+        )
+        .expect("valid json");
+        json["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == "Spirit")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let granted = spirit_with(Value::Null);
+    let opted_out = spirit_with(serde_json::json!({
+        "questAct 1FreythornKing In The Mists": false,
+        "questAct 3Azak BogIgnagduk": false,
+        "questInterlude 3Kriar VillageLythara": false,
+    }));
+    // 三个 Spirit 任务共 +100 base（inc 乘区 ≥ 0 时差值不小于 100）。
+    assert!(
+        granted - opted_out >= 99.0,
+        "quest opt-out should drop Spirit (granted={granted} opted_out={opted_out})"
+    );
 }
 
 /// 药剂/护符覆盖通道：`flasks` 整份替换 utility_slots——charm 基底 buff 生效、
@@ -997,6 +1062,8 @@ fn manual_jewels_respect_socket_allocation() {
                 "socket_node": 7960,
                 "text": "Rarity: RARE\nTest Jewel\nEmerald\n+50 to maximum Life",
             }],
+            // 放弃默认任务奖励里的 5% inc life，保持 flat delta 断言的纯增量口径。
+            "config_inputs": { "questInterlude 2Khari CrossingMolten Shrine": false },
         })
         .to_string();
         let json: Value =
