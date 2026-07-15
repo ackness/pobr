@@ -27,10 +27,22 @@ pub use i18n::translate;
 pub use session::calculate_json;
 pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_file};
 
+/// JSON 契约版本。**任何**响应形状 / 请求形状的破坏性变更都要 +1，
+/// 并同步 `web/src/api/types.ts` 的 `EXPECTED_SCHEMA_VERSION`。
+/// 前端 boot 时比对（见 [`wasm::schema_version`]），错配即提示强刷——
+/// 关掉「旧前端缓存 + 新 wasm 资产」静默崩的口子。
+pub const SCHEMA_VERSION: u32 = 1;
+
 /// wasm-bindgen 绑定：仅在 `wasm` feature 下编译，向 JS 暴露与宿主 API 同名的函数。
 #[cfg(feature = "wasm")]
 pub mod wasm {
     use wasm_bindgen::prelude::*;
+
+    /// JS 入口：`schemaVersion() -> number`（JSON 契约版本，boot 握手用）。
+    #[wasm_bindgen(js_name = schemaVersion)]
+    pub fn schema_version() -> u32 {
+        crate::SCHEMA_VERSION
+    }
 
     /// JS 入口：`calculateJson(inputJson) -> string`（最小标量输入 + modifier 文本）。
     #[wasm_bindgen(js_name = calculateJson)]

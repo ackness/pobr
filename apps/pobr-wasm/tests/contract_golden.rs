@@ -8,6 +8,13 @@
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
 
+/// 契约版本钉子：本文件里任何键集合断言更新（= 形状变更）时，Rust 侧
+/// `SCHEMA_VERSION` 与 `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` 同时 +1。
+#[test]
+fn schema_version_pinned() {
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 1);
+}
+
 /// 真实 demo build（与 ninja_parity 同源）。
 fn demo_code() -> String {
     let path =
