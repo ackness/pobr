@@ -249,12 +249,13 @@ fn strips_pob_bracket_markup() {
     assert_eq!(o.mods[0].name, ModName::from("ElementalDamage"));
 
     // `any attribute`（属性小点三选一）不展开——玩家选择经 AttributeOverride 在树
-    // 收集阶段改写为具体属性后再解析。引擎对原文有残留（unparsed 非空 → 生产闸门
-    // 整行丢弃），且绝不产出任何具体属性 mod。
+    // 收集阶段改写为具体属性后再解析。4.5.4.3 vendor specialModList 起，原文
+    // `to any attribute` 被 vendor 规则整行识别为「无贡献」（空 mods），与旧引擎
+    // 「留残 → 生产闸门整行丢弃」净效果一致：未选中节点绝不产出任何具体属性 mod。
     let o = parse_mod("+5 to any [Attributes|Attribute]").unwrap();
     assert!(
-        o.unparsed.is_some(),
-        "any attribute 原文应留残（生产闸门整行丢弃）"
+        o.mods.is_empty(),
+        "any attribute 原文不产出任何 mod（选择在树收集阶段改写）"
     );
     for attr in ["Strength", "Dexterity", "Intelligence"] {
         assert!(
