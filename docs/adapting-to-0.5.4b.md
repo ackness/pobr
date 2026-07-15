@@ -51,13 +51,24 @@ tracking notes. Repo green on 4.5.4.3; every Phase 1 fix ratchets these up and
 un-ignores its canary.
 
 **Phase 1+ — close gaps mechanic by mechanic**, each against the vendored 0.5.4b
-Lua (`vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua` etc.) with the
-oracle's `intermediates` breakdown to pinpoint divergence:
-1. Armour scaling (Titan + general) — highest single-build gap.
-2. Evasion rework — most builds affected.
-3. DeflectionRating.
-4. Offence per-build DPS clusters.
-5. Ailment magnitude.
+Lua with the oracle's `defenceModList` / `intermediates` to pinpoint the exact
+missing source.
+
+**#1 target — Mageblood (common root cause, highest leverage).** Diagnosed via
+`defenceModList`: the armour gap on `warrior-titan-shield-wall` (`Mageblood` INC
++219 Armour) and the evasion gap on `ranger-pathfinder-ice-shot` (`Mageblood`
+BASE +2000, INC +150 Evasion) are the *same* mechanic. Every poe.ninja endgame
+fixture wears Mageblood, which keeps all equipped **magic utility flasks**
+permanently active (granite→armour, jade→evasion, ruby/sapphire/topaz→res, …).
+PoBR explicitly does not model this (`env_finalize.rs:214-218`: Mageblood
+`CalcPerform.lua:1387-1403` + the `MagicUtilityFlaskEffect` rarity channel are
+declared unimplemented). Implementing it closes a large slice of the armour /
+evasion / resistance gaps across multiple builds at once — do this first.
+
+Remaining after Mageblood, re-triage against fresh `defenceModList` dumps:
+DeflectionRating scaling, offence per-build DPS clusters, ailment magnitude.
+Each is its own oracle-guided investigation; not all are single formula
+constants (several are unmodeled unique/flask interactions).
 
 ## Tooling
 
