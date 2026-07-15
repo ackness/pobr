@@ -529,10 +529,11 @@ fn manual_flasks_override_utility_slots() {
 
     // 归因视图列出 flask 槽条目。
     let attr_req = serde_json::json!({
-        "pob_code": "",
-        "character": { "class_name": "Sorceress", "level": 90 },
-        "items": base_req["items"],
-        "flasks": with_charm["flasks"],
+        "request": {
+            "character": { "class_name": "Sorceress", "level": 90 },
+            "items": base_req["items"],
+            "flasks": with_charm["flasks"],
+        },
         "fields": ["Life"],
     });
     let attr: Value = serde_json::from_str(
@@ -1091,7 +1092,7 @@ fn attribution_json_shape() {
     ensure_data();
     let fields = ["Life", "EnergyShield", "Evasion", "TotalDPS"];
     let request = serde_json::json!({
-        "pob_code": demo_code(),
+        "request": { "pob_code": demo_code() },
         "fields": fields,
     })
     .to_string();

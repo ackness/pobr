@@ -1364,22 +1364,14 @@ pub fn encode_build_json(request_json: &str) -> Result<String, String> {
 
 /// 归因请求：对每个来源（装备槽 / 技能组 / 药剂）做「移除后重算」，报告其对
 /// 指定展示字段的边际贡献（marginal via recompute——复用完整管线，零新计算逻辑）。
+/// 形状与 node_power / optimize_variants 同构：内嵌完整计算请求做基线。
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct AttributionRequest {
-    pob_code: String,
+    /// 完整计算请求（基线；各覆盖项照常生效）。
+    request: CalculateBuildRequest,
     /// 归因目标展示字段（display_catalog id）；缺省 `TotalDPS`/`Life`/`TotalEHP`。
     fields: Vec<String>,
-    character: Option<CharacterOverride>,
-    allocated_nodes: Option<Vec<u32>>,
-    attribute_choices: Option<BTreeMap<u32, String>>,
-    socket_groups: Option<Vec<SocketGroupInput>>,
-    items: Option<Vec<SlotItemInput>>,
-    flasks: Option<Vec<SlotItemInput>>,
-    jewels: Option<Vec<JewelInput>>,
-    main_socket_group: Option<usize>,
-    mode_effective: Option<bool>,
-    enemy_tier: Option<String>,
 }
 
 const DEFAULT_ATTRIBUTION_FIELDS: &[&str] = &["TotalDPS", "Life", "TotalEHP"];
@@ -1427,25 +1419,12 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
     } else {
         req.fields.clone()
     };
-    let calc_req = CalculateBuildRequest {
-        pob_code: req.pob_code.clone(),
-        character: req.character.clone(),
-        allocated_nodes: req.allocated_nodes.clone(),
-        attribute_choices: req.attribute_choices.clone(),
-        socket_groups: req.socket_groups.clone(),
-        items: req.items.clone(),
-        flasks: req.flasks.clone(),
-        jewels: req.jewels.clone(),
-        main_socket_group: req.main_socket_group,
-        mode_effective: req.mode_effective,
-        enemy_tier: req.enemy_tier.clone(),
-        ..Default::default()
-    };
+    let calc_req = &req.request;
     let data = state::build_data()?;
-    let mut build = parse_build_from_request(&calc_req)?;
-    apply_request_overrides(&mut build, &calc_req, &data)?;
+    let mut build = parse_build_from_request(calc_req)?;
+    apply_request_overrides(&mut build, calc_req, &data)?;
 
-    let baseline_session = run_session_for_build(&build, &calc_req)?;
+    let baseline_session = run_session_for_build(&build, calc_req)?;
     let baseline = display_values_map(&baseline_session, &fields);
 
     // 变体清单：装备槽（移除物品）/ 启用技能组（禁用）/ 药剂槽（移除）。
@@ -1475,7 +1454,7 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
     let entries = variants
         .into_iter()
         .map(|(kind, id, variant)| {
-            let session = run_session_for_build(&variant, &calc_req)?;
+            let session = run_session_for_build(&variant, calc_req)?;
             let without = display_values_map(&session, &fields);
             let deltas = fields
                 .iter()

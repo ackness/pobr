@@ -739,19 +739,7 @@ export function useBuildSession(): BuildSession {
     async (fields: string[]) => {
       if (!state) throw new Error('build not ready');
       const backend = await getBackend();
-      return backend.attribution({
-        pob_code: state.pobCode ?? undefined,
-        character: state.character,
-        allocated_nodes: state.allocatedNodes,
-        attribute_choices: state.attributeChoices,
-        socket_groups: state.socketGroups,
-        items: state.items,
-        flasks: state.flasks,
-        jewels: state.jewels,
-        fields,
-        main_socket_group: state.params.main_socket_group,
-        enemy_tier: state.params.enemy_tier,
-      });
+      return backend.attribution({ request: toRequest(state), fields });
     },
     [state],
   );

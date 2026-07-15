@@ -349,19 +349,10 @@ export interface CalculateBuildResponse {
 // ---------------------------------------------------------------------------
 
 export interface AttributionRequest {
-  pob_code?: string;
+  /** 完整计算请求（基线；与 node_power / optimize_variants 同形状）。 */
+  request: CalculateBuildRequest;
   /** display_catalog 字段 id；缺省 TotalDPS / Life / TotalEHP。 */
   fields?: string[];
-  character?: CharacterOverride;
-  allocated_nodes?: number[];
-  attribute_choices?: Record<string, AttributeChoice>;
-  socket_groups?: SocketGroupInput[];
-  items?: SlotItemInput[];
-  flasks?: SlotItemInput[];
-  jewels?: JewelInput[];
-  main_socket_group?: number;
-  mode_effective?: boolean;
-  enemy_tier?: EnemyTier;
 }
 
 export type AttributionSourceKind = 'item' | 'socket_group' | 'flask';
