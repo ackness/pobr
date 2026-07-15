@@ -57,6 +57,7 @@ const EXPOSURE_CONDITION_BRIDGE: &[(&str, &str)] = &[
 ];
 
 /// `calculate_with_data` 的 config 消费视图（来源 = 主路径解释 or 旧路径回退）。
+#[derive(Default)]
 pub(crate) struct ResolvedConfig {
     /// conditions / multipliers / campaign_progress / enemy_tier 已按主路径
     /// 解析的 [`BuildConfig`] 副本（含程序化直填字段的原样保留——主路径只
