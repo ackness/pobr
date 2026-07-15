@@ -41,13 +41,14 @@ mechanic change requiring its own fix against the current vendor Lua.
 
 ## Plan
 
-**Phase 0 — adopt 4.5.4.3 as the parity target (baseline flip).**
-Re-capture goldens (`recapture_golden.py`), flip `GOLDEN_PARITY_DATA_VERSION`,
-re-pin the mechanical count mirrors (`parser_rules` section counts, precompile
-PATCH), re-baseline `parity_no_regression` / `panel_mode_no_regression` to the
-honest lower numbers, and `#[ignore]` (with tracking notes) the wide-tolerance
-canaries that fail only on the formula gaps below. Repo goes green at the new
-baseline; every later fix ratchets it up and un-ignores its canary.
+**Phase 0 — adopt 4.5.4.3 as the parity target (baseline flip). ✅ DONE (4f02854).**
+Re-captured all 18 fixture goldens via the 0.5.4b oracle, flipped
+`GOLDEN_PARITY_DATA_VERSION`, re-pinned the mechanical mirrors, re-baselined
+`parity_no_regression` / `panel_mode_no_regression` to the honest migration
+numbers (def core-8 @5% 139→118, off 71→39, dot 26→9, panel 44→27, etc.), and
+`#[ignore]`'d the armour/evasion/deflection/DPS canaries with per-mechanic
+tracking notes. Repo green on 4.5.4.3; every Phase 1 fix ratchets these up and
+un-ignores its canary.
 
 **Phase 1+ — close gaps mechanic by mechanic**, each against the vendored 0.5.4b
 Lua (`vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua` etc.) with the
