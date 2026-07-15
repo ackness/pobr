@@ -1963,6 +1963,275 @@
       "verified": false,
       "batch": "S0",
       "source_note": "药剂/护符使用效果：PoE2 Guard buff=生命/ES 前全额吸收击中的缓冲池（agent-docs/active-defences.md §2；poe2db Guard 定义）→ rate 100 + limit $1，消费端 pool_setup.rs:132 现成（EHP/MaxHit 承受层）。vendor ModParser 未接此词条（比 PoB2 多建模一层）"
+    },
+    {
+      "id": "armour_applies_to_fcl_instead_of_physical",
+      "pattern": "armour applies to fire, cold and lightning damage taken from hits instead of physical damage",
+      "vendor_pattern": "armour applies to fire, cold and lightning damage taken from hits instead of physical damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToFireDamageTaken",
+          "type": "BASE",
+          "value": 100
+        },
+        {
+          "name": "ArmourAppliesToColdDamageTaken",
+          "type": "BASE",
+          "value": 100
+        },
+        {
+          "name": "ArmourAppliesToLightningDamageTaken",
+          "type": "BASE",
+          "value": 100
+        },
+        {
+          "name": "ArmourDoesNotApplyToPhysicalDamageTaken",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:2545-2550（三元素 ArmourAppliesTo<X>DamageTaken BASE 100 + instead 变体专属 flag）。消费端 taken.rs armour_applies_pct（flag 时物理份额归 0）。legacy-only 测试掩盖的 engine 缺口（原 mod_parser_m2_defence.rs:182）"
+    },
+    {
+      "id": "pct_of_armour_applies_to_fcl",
+      "pattern": "(\\d+)% of armour applies to fire, cold and lightning damage taken from hits",
+      "vendor_pattern": "(%d+)%% of armour applies to fire, cold and lightning damage taken from hits",
+      "mods": [
+        {
+          "name": "ArmourAppliesToFireDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ArmourAppliesToColdDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ArmourAppliesToLightningDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:2551-2555（function(num)→三元素 BASE num）。消费端 taken.rs armour_applies_pct。原 mod_parser_m2_defence.rs:192"
+    },
+    {
+      "id": "armour_applies_to_elemental_damage",
+      "pattern": "armour applies to elemental damage",
+      "vendor_pattern": "armour applies to elemental damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToFireDamageTaken",
+          "type": "BASE",
+          "value": 100
+        },
+        {
+          "name": "ArmourAppliesToColdDamageTaken",
+          "type": "BASE",
+          "value": 100
+        },
+        {
+          "name": "ArmourAppliesToLightningDamageTaken",
+          "type": "BASE",
+          "value": 100
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:2556-2560（三元素 BASE 100，无 instead flag）。原 mod_parser_m2_defence.rs:201"
+    },
+    {
+      "id": "pct_of_armour_applies_to_elemental_damage",
+      "pattern": "\\+?(\\d+)% of armour (?:also )?applies to elemental damage",
+      "vendor_pattern": "%+?(%d+)%% of armour (a?l?s?o? ?)applies to elemental damage",
+      "mods": [
+        {
+          "name": "ArmourAppliesToFireDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ArmourAppliesToColdDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ArmourAppliesToLightningDamageTaken",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:2561-2565（function(num)→三元素 BASE num；vendor 第二捕获 also 为可选填充词，此处转非捕获组保持 $1 语义）"
+    },
+    {
+      "id": "energy_shield_protects_mana_instead_of_life",
+      "pattern": "energy shield protects mana instead of life",
+      "vendor_pattern": "energy shield protects mana instead of life",
+      "mods": [
+        {
+          "name": "EnergyShieldProtectsMana",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:2465（Eldritch Battery 类）。消费端 keystone_registry.rs DefenceKeystones.energy_shield_protects_mana → pool_damage.rs/ehp.rs/defence.rs。原 mod_parser_m2_defence.rs:99"
+    },
+    {
+      "id": "converts_all_evasion_rating_to_armour",
+      "pattern": "converts all evasion rating to armour",
+      "vendor_pattern": "converts all evasion rating to armour",
+      "mods": [
+        {
+          "name": "IronReflexes",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "EvasionConvertToArmour",
+          "type": "BASE",
+          "value": 100
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:2369（Iron Reflexes 类：flag + EvasionConvertToArmour BASE 100）。消费端 defence.rs calc_defence_resources 五元 ConvertTo 矩阵 + keystone_registry.rs iron_reflexes（Unbreakable 联动）。原 mod_parser_m2_defence.rs:265"
+    },
+    {
+      "id": "chance_to_deflect_is_lucky",
+      "pattern": "chance to deflect is lucky",
+      "vendor_pattern": "chance to deflect is lucky",
+      "mods": [
+        {
+          "name": "DeflectIsLucky",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:4202。消费端 defence_panels.rs:298 偏斜几率 lucky 幂（1−(1−p)²）。原 mod_parser_m2_defence.rs:397"
+    },
+    {
+      "id": "chance_to_block_damage_is_lucky",
+      "pattern": "chance to block damage is lucky",
+      "vendor_pattern": "chance to block damage is lucky",
+      "mods": [
+        {
+          "name": "BlockChanceIsLucky",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:4371。消费端 defence_panels.rs:174 effective(BlockChance) luck_transform"
+    },
+    {
+      "id": "chance_to_block_is_lucky",
+      "pattern": "(?:your )?chance to block is lucky",
+      "vendor_pattern": "y?o?u?r? ?chance to block is lucky",
+      "mods": [
+        {
+          "name": "BlockChanceIsLucky",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "ProjectileBlockChanceIsLucky",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "SpellBlockChanceIsLucky",
+          "type": "FLAG",
+          "value": true
+        },
+        {
+          "name": "SpellProjectileBlockChanceIsLucky",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "wave2-defence",
+      "source_note": "ModParser.lua:4372（四 flag 全套）。消费端 defence_panels.rs:174 消费 BlockChance/SpellBlockChance 两口径；Projectile/SpellProjectile 两 flag 目前无消费端（pobr 未算 projectile block 有效值），形态先对齐 vendor"
+    },
+    {
+      "id": "bonded_modifiers_enabler",
+      "pattern": "gain the benefits of bonded modifiers on runes and idols",
+      "vendor_pattern": "gain the benefits of bonded modifiers on runes and idols",
+      "mods": [
+        {
+          "name": "Condition:CanUseBondedModifiers",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "M6-3b",
+      "source_note": "ModParser.lua:3418-3419（Druid Oracle specialModList 整行；flag(Condition:CanUseBondedModifiers) 解锁 'Bonded:' 前缀词条，vendor :1437）"
+    },
+    {
+      "id": "bonded_meta_res_eff_inc",
+      "pattern": "bonded: meta skills have (\\d+)% increased reservation efficiency",
+      "vendor_pattern": "（Bonded 前缀 + 域限定效率；见 source_note 口径说明）",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CanUseBondedModifiers"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Meta"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "Bonded rune 变体（语料 C1 双跑对齐：legacy 的 bonded 递归会命中 parse_reservation_efficiency，引擎须同产出；Condition:CanUseBondedModifiers 默认不激活）。vendor 对前缀域形 Bonded 变体 unsupported（special 表不在前缀剥离后重查）——此处取 legacy 超集方向（条件门控恒 false 时零行为）"
+    },
+    {
+      "id": "bonded_herald_res_eff_inc",
+      "pattern": "bonded: (\\d+)% increased reservation efficiency of herald skills",
+      "vendor_pattern": "（Bonded 前缀 + 域限定效率；见 source_note 口径说明）",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "INC",
+          "value": {
+            "ref": "$1"
+          },
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "CanUseBondedModifiers"
+            },
+            {
+              "type": "SkillType",
+              "skillType": "Herald"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "source_note": "Bonded rune 变体（语料 C1 双跑对齐：legacy 的 bonded 递归会命中 parse_reservation_efficiency，引擎须同产出；Condition:CanUseBondedModifiers 默认不激活）。vendor 对前缀域形 Bonded 变体 unsupported（special 表不在前缀剥离后重查）——此处取 legacy 超集方向（条件门控恒 false 时零行为）"
     }
   ]
 }

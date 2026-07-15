@@ -37,6 +37,7 @@ static RULES: LazyLock<std::sync::Arc<CompiledParserRules>> = LazyLock::new(|| {
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("反序列化规则表");
     let mut special = load_special("overlay/special_mods.json");
     special.extend(load_special("generated/special_derived.json"));
+    special.extend(load_special("generated/special_vendor.json"));
     std::sync::Arc::new(
         CompiledParserRules::compile_with_special(&doc, &special).expect("编译规则表"),
     )
