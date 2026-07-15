@@ -8,4 +8,5 @@ pobr-data.workspace = true
 pobr-core.workspace = true
 pobr-gamedata.workspace = true
 serde.workspace = true
+serde_ignored = "0.1"
 serde_json.workspace = true
