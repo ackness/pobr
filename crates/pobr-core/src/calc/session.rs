@@ -180,16 +180,14 @@ impl CalculationSession {
             }
         }
         for (outcome, original) in outcomes {
+            // Parsed（含带残留的部分解析）注入，Unsupported 收集。曾对「Parsed+残留」
+            // 整行降级以防 converted-to 族误出 `A Base X` 错值，但那会连合法的 tag 后缀
+            // 从句一并丢弃（`... if you have at least N Red Support Gems Socketed` 的
+            // MultiplierThreshold 阈值行残留 `Max`）；且危险的 converted-to 变体已由
+            // special_mods 数据修复成**干净解析（无残留）**，闸门遂冗余，还原直注。
             match outcome.status {
-                // 与生产闸门（calc_orchestrator::collect）同口径：Parsed 且**无残留**
-                // 才注入。部分解析（如 `X% of A converted to B` 误出 `A Base X` +
-                // 残留）注入的是错值，比整行不识别更危险——整行降级为 unsupported。
-                ParseStatus::Parsed if outcome.unparsed.is_none() => {
-                    self.env.player.mod_db.add_list(outcome.mods)
-                }
-                ParseStatus::Parsed | ParseStatus::Unsupported => {
-                    self.unsupported_modifier_texts.push(original);
-                }
+                ParseStatus::Parsed => self.env.player.mod_db.add_list(outcome.mods),
+                ParseStatus::Unsupported => self.unsupported_modifier_texts.push(original),
             }
         }
 

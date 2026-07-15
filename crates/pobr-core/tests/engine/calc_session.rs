@@ -114,25 +114,21 @@ fn session_preserves_unsupported_modifier_texts() {
     assert_eq!(session.unsupported_modifier_texts(), ["Mirrored"]);
 }
 
+/// tag 后缀从句（阈值/条件）合法地消费尾巴并给 mod 挂 tag，即使留装饰性残留，
+/// mod 仍须注入——不得被「Parsed+残留」一刀切降级（曾致 RedSupportGems 阈值失效）。
 #[test]
-fn session_gates_partial_parse_leftover_as_unsupported() {
-    // 与生产闸门（calc_orchestrator::collect）同口径：Parsed 但有**残留**（部分
-    // 解析）不得注入——注入的是错值，比整行不识别更危险。整行进 unsupported。
+fn session_injects_tag_suffixed_mod_despite_leftover() {
     let mut session = session(MinimalInput::default());
-    let line = "10% increased Fire Damage some trailing gibberish";
-
     session
-        .add_modifier_texts([line])
+        .add_modifier_texts([
+            "5% increased maximum Life if you have at least 10 Red Support Gems Socketed",
+        ])
         .expect("engine never errors");
 
-    assert_eq!(
-        session.unsupported_modifier_texts(),
-        [line],
-        "partially-parsed line must be collected whole, not injected"
-    );
+    // 阈值 mod 已注入（带 MultiplierThreshold tag，非空聚合）；残留碎片不阻断注入。
     assert!(
-        session.mods_named("FireDamage").is_empty(),
-        "no partial mods may leak into the mod db"
+        !session.mods_named("Life").is_empty() || !session.mods_named("MaximumLife").is_empty(),
+        "tag-suffixed threshold mod must be injected"
     );
 }
 
