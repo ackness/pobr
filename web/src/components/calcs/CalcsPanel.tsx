@@ -1,3 +1,4 @@
+import { formatApiError } from '../../api/error';
 import { useMemo, useState } from 'react';
 import type {
   AttributionResponse,
@@ -147,7 +148,7 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
           if (!cancelled) setReport(result);
         })
         .catch((err) => {
-          if (!cancelled) setError(String(err));
+          if (!cancelled) setError(formatApiError(err));
         })
         .finally(() => {
           if (!cancelled) setRunning(false);
@@ -238,7 +239,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
     try {
       setReport(await session.runAttribution(fields));
     } catch (err) {
-      setError(String(err));
+      setError(formatApiError(err));
     } finally {
       setRunning(false);
     }

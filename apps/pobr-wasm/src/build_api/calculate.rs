@@ -174,17 +174,24 @@ struct CalculateBuildResponse {
     breakdowns: BTreeMap<String, BreakdownJson>,
     /// 主技能身份 + 伤害分解（`null` = build 无可解析的伤害主技能）。
     main_skill: Option<MainSkillJson>,
+    /// 单件装备/药剂/珠宝文本解析失败的降级记录（该件被跳过，其余照算；
+    /// 前端据 slot 标红）。空数组 = 全部解析成功。
+    item_errors: Vec<super::request::SlotIssue>,
 }
 
 /// 0.2 + 0.3：完整 build 计算 → display_catalog 全量键值 + breakdown + 主技能分解。
 ///
 /// 需先初始化游戏数据（`init` 系列入口）。
 pub fn calculate_build_json(request_json: &str) -> Result<String, String> {
-    let req: CalculateBuildRequest =
-        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
-    let data = state::build_data()?;
+    calculate_build_impl(request_json).map_err(super::ApiError::into_json)
+}
+
+fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: CalculateBuildRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let mut build = parse_build_from_request(&req)?;
-    apply_request_overrides(&mut build, &req, &data)?;
+    let item_errors = apply_request_overrides(&mut build, &req, &data)?;
     let session = run_session_for_build(&build, &req)?;
     let stats = pobr_core::extract_display_values(session.output());
     let breakdowns = BREAKDOWN_MOD_NAMES
@@ -196,8 +203,9 @@ pub fn calculate_build_json(request_json: &str) -> Result<String, String> {
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
         breakdowns,
         main_skill: main_skill_json(&build, &data, session.output()),
+        item_errors,
     };
-    serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
 }
 
 // ---------------------------------------------------------------------------
@@ -225,11 +233,16 @@ struct FullDpsResponse {
 /// 计算量 = `1 + 启用伤害组数` 次完整编排；供点击触发的技能 DPS 面板，
 /// 不在每次重算时调用（与归因同模式）。
 pub fn full_dps_json(request_json: &str) -> Result<String, String> {
-    let req: CalculateBuildRequest =
-        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
-    let data = state::build_data()?;
+    full_dps_impl(request_json).map_err(super::ApiError::into_json)
+}
+
+fn full_dps_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: CalculateBuildRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let mut build = parse_build_from_request(&req)?;
-    apply_request_overrides(&mut build, &req, &data)?;
+    // 降级记录不进本响应——主面板的 calculate 已报告同一份 item_errors。
+    let _ = apply_request_overrides(&mut build, &req, &data)?;
     let opts = orchestrator_options(&req)?;
     let report = pobr_build::calculate_full_dps(&build, &data, &opts)
         .map_err(|e| format!("calculate: {e}"))?;
@@ -245,5 +258,5 @@ pub fn full_dps_json(request_json: &str) -> Result<String, String> {
             })
             .collect(),
     };
-    serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
 }

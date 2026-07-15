@@ -6,6 +6,7 @@
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
+import { formatApiError } from '../api/error';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
 import { composeNotes, splitNotes, type Annotations } from '../lib/annotations';
@@ -337,7 +338,7 @@ export function useBuildSession(): BuildSession {
         if (seqRef.current === seq) setCalc(result);
       })
       .catch((err) => {
-        if (seqRef.current === seq) setError(String(err));
+        if (seqRef.current === seq) setError(formatApiError(err));
       })
       .finally(() => {
         if (seqRef.current === seq) setBusy(false);
@@ -504,7 +505,7 @@ export function useBuildSession(): BuildSession {
           },
         });
       } catch (err) {
-        setError(String(err));
+        setError(formatApiError(err));
         setBusy(false);
       }
     },

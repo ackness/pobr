@@ -175,10 +175,16 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
 ///
 /// 纯解码，不需要游戏数据初始化。
 pub fn decode_build_json(code: &str) -> Result<String, String> {
-    let xml = decode_pob_code(code.trim()).map_err(|e| format!("decode build code: {e}"))?;
-    let build = parse_build(&xml).map_err(|e| format!("parse build xml: {e}"))?;
+    decode_build_impl(code).map_err(super::ApiError::into_json)
+}
+
+fn decode_build_impl(code: &str) -> Result<String, super::ApiError> {
+    let xml = decode_pob_code(code.trim())
+        .map_err(|e| super::ApiError::decode_error(format!("decode build code: {e}")))?;
+    let build = parse_build(&xml)
+        .map_err(|e| super::ApiError::decode_error(format!("parse build xml: {e}")))?;
     let json = build_to_json(&build, &xml)?;
-    serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))?)
 }
 
 // ---------------------------------------------------------------------------
@@ -257,10 +263,14 @@ fn cn_gem_effect_id(data: &BuildData, gem_id: &str) -> Option<String> {
 /// 已知边界：装备无基底名/稀有度（按 RARE + 占位名构造，防御底值缺失）；
 /// 宝石无等级/品质（默认 20/0）；第二武器组跳过。
 pub fn decode_build_file_json(content: &str) -> Result<String, String> {
-    let file: CnBuildFile =
-        serde_json::from_str(content).map_err(|e| format!("invalid .build json: {e}"))?;
-    let data = state::build_data()?;
-    let game = state::game_data()?;
+    decode_build_file_impl(content).map_err(super::ApiError::into_json)
+}
+
+fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
+    let file: CnBuildFile = serde_json::from_str(content)
+        .map_err(|e| super::ApiError::decode_error(format!("invalid .build json: {e}")))?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
+    let game = state::game_data().map_err(super::ApiError::not_initialized)?;
 
     // 等级：build 名里的 `Lv.98`。
     let level = file
@@ -292,7 +302,9 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
             }
         }
         if class_name.is_empty() {
-            return Err(format!("unknown ascendancy id: {asc_id}"));
+            return Err(super::ApiError::decode_error(format!(
+                "unknown ascendancy id: {asc_id}"
+            )));
         }
     }
 
@@ -403,5 +415,5 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
             note
         }),
     };
-    serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))?)
 }

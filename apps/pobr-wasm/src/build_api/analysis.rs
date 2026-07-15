@@ -62,13 +62,18 @@ fn display_stat_value(session: &CalculationSession, stat_id: &str) -> f64 {
 /// 未加点、带词条的节点单点试加做完整重算，产出目标属性增量。相同词条
 /// 组合共享一次计算（PoB2 modKey 缓存同口径）；属性小点（需三选一）跳过。
 pub fn node_power_json(request_json: &str) -> Result<String, String> {
-    let req: NodePowerRequest =
-        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
+    node_power_impl(request_json).map_err(super::ApiError::into_json)
+}
+
+fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: NodePowerRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
     let max_depth = req.max_depth.unwrap_or(5);
-    let data = state::build_data()?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
 
     let mut base_build = parse_build_from_request(&req.request)?;
-    apply_request_overrides(&mut base_build, &req.request, &data)?;
+    // 降级记录不进本响应——主面板的 calculate 已报告同一份 item_errors。
+    let _ = apply_request_overrides(&mut base_build, &req.request, &data)?;
     let base_session = run_session_for_build(&base_build, &req.request)?;
     let base = display_stat_value(&base_session, &req.power_stat);
 
@@ -139,8 +144,8 @@ pub fn node_power_json(request_json: &str) -> Result<String, String> {
         });
     }
 
-    serde_json::to_string(&NodePowerResponse { base, entries })
-        .map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&NodePowerResponse { base, entries })
+        .map_err(|e| format!("serialize: {e}"))?)
 }
 
 // ---------------------------------------------------------------------------
@@ -287,21 +292,26 @@ fn apply_variant(
 /// 通用变体评估：基线 build 只解码/装配一次，每个变体克隆后叠增量修改做
 /// 完整重算（与 node_power 同一「试算 = 完整编排」口径），返回属性值矩阵。
 pub fn optimize_variants_json(request_json: &str) -> Result<String, String> {
-    let req: OptimizeVariantsRequest =
-        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
+    optimize_variants_impl(request_json).map_err(super::ApiError::into_json)
+}
+
+fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: OptimizeVariantsRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
     if req.stats.is_empty() {
-        return Err("stats must not be empty".into());
+        return Err(super::ApiError::bad_request("stats must not be empty"));
     }
     if req.variants.len() > VARIANT_CAP {
-        return Err(format!(
+        return Err(super::ApiError::bad_request(format!(
             "{} variants exceed cap {VARIANT_CAP}; split into batches",
             req.variants.len()
-        ));
+        )));
     }
-    let data = state::build_data()?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
 
     let mut base_build = parse_build_from_request(&req.request)?;
-    apply_request_overrides(&mut base_build, &req.request, &data)?;
+    // 降级记录不进本响应——主面板的 calculate 已报告同一份 item_errors。
+    let _ = apply_request_overrides(&mut base_build, &req.request, &data)?;
     let base_opts = orchestrator_options(&req.request)?;
 
     let baseline = if req.include_baseline.unwrap_or(true) {
@@ -335,8 +345,10 @@ pub fn optimize_variants_json(request_json: &str) -> Result<String, String> {
         });
     }
 
-    serde_json::to_string(&OptimizeVariantsResponse { baseline, variants })
-        .map_err(|e| format!("serialize: {e}"))
+    Ok(
+        serde_json::to_string(&OptimizeVariantsResponse { baseline, variants })
+            .map_err(|e| format!("serialize: {e}"))?,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -390,8 +402,12 @@ fn display_values_map(session: &CalculationSession, fields: &[String]) -> BTreeM
 ///
 /// 计算量 = `1 + 来源数` 次完整编排；供点击触发的归因面板，不在每次重算时调用。
 pub fn attribution_json(request_json: &str) -> Result<String, String> {
-    let req: AttributionRequest =
-        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
+    attribution_impl(request_json).map_err(super::ApiError::into_json)
+}
+
+fn attribution_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: AttributionRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
     let fields: Vec<String> = if req.fields.is_empty() {
         DEFAULT_ATTRIBUTION_FIELDS
             .iter()
@@ -401,9 +417,10 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
         req.fields.clone()
     };
     let calc_req = &req.request;
-    let data = state::build_data()?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let mut build = parse_build_from_request(calc_req)?;
-    apply_request_overrides(&mut build, calc_req, &data)?;
+    // 降级记录不进本响应——主面板的 calculate 已报告同一份 item_errors。
+    let _ = apply_request_overrides(&mut build, calc_req, &data)?;
 
     let baseline_session = run_session_for_build(&build, calc_req)?;
     let baseline = display_values_map(&baseline_session, &fields);
@@ -447,8 +464,8 @@ pub fn attribution_json(request_json: &str) -> Result<String, String> {
                 .collect();
             Ok(AttributionEntryJson { kind, id, deltas })
         })
-        .collect::<Result<Vec<_>, String>>()?;
+        .collect::<Result<Vec<_>, super::ApiError>>()?;
 
     let response = AttributionResponse { baseline, entries };
-    serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
 }

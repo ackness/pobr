@@ -12,7 +12,8 @@ use serde_json::Value;
 /// `SCHEMA_VERSION` 与 `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` 同时 +1。
 #[test]
 fn schema_version_pinned() {
-    assert_eq!(pobr_wasm::SCHEMA_VERSION, 1);
+    // v2：Err 侧结构化 {code, message, slot?} + calculate 响应新增 item_errors。
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 2);
 }
 
 /// 真实 demo build（与 ninja_parity 同源）。
@@ -111,7 +112,13 @@ fn calculate_build_json_shape() {
             .expect("valid json");
     assert_keys(
         &json,
-        &["stats", "unsupported_modifiers", "breakdowns", "main_skill"],
+        &[
+            "stats",
+            "unsupported_modifiers",
+            "breakdowns",
+            "main_skill",
+            "item_errors",
+        ],
         "CalculateBuildResponse",
     );
 
@@ -1266,4 +1273,58 @@ fn materialized_request_matches_pob_code_calculation() {
             _ => assert_eq!(va, vb, "{id_a}: null-ness mismatch"),
         }
     }
+}
+
+/// v2 错误契约：Err 侧是 `{code, message, slot?}` JSON；单件物品文本解析失败
+/// 降级为响应 `item_errors`（跳过该件，其余照算），不再整次报错。
+#[test]
+fn structured_errors_and_item_degrade() {
+    ensure_data();
+
+    // bad_request：请求 JSON 非法。
+    let err = pobr_wasm::calculate_build_json("not json").unwrap_err();
+    let parsed: Value = serde_json::from_str(&err).expect("error is JSON");
+    assert_eq!(parsed["code"], "bad_request", "err: {err}");
+    assert!(parsed["message"].is_string());
+
+    // decode_error：非法 build code。
+    let err = pobr_wasm::decode_build_json("!!not-a-code!!").unwrap_err();
+    let parsed: Value = serde_json::from_str(&err).expect("error is JSON");
+    assert_eq!(parsed["code"], "decode_error", "err: {err}");
+
+    // bad_request + slot：未知装备槽名（客户端 bug，硬错误）。
+    let req = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 1 },
+        "items": [{ "slot": "NoSuchSlot", "text": "Rarity: RARE\nX\nTopaz Ring" }],
+    });
+    let err = pobr_wasm::calculate_build_json(&req.to_string()).unwrap_err();
+    let parsed: Value = serde_json::from_str(&err).expect("error is JSON");
+    assert_eq!(parsed["code"], "bad_request");
+    assert_eq!(parsed["slot"], "NoSuchSlot");
+
+    // 降级：一件文本非法的装备 → 计算成功 + item_errors 记录该槽，其余照算。
+    let req = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 1 },
+        "items": [
+            { "slot": "ring1", "text": "Rarity: RARE\nGood Ring\nTopaz Ring\n+50 to maximum Life" },
+            { "slot": "ring2", "text": "???' garbage that cannot parse" },
+        ],
+    });
+    let json: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&req.to_string()).expect("degraded calc succeeds"),
+    )
+    .unwrap();
+    let issues = json["item_errors"].as_array().unwrap();
+    assert_eq!(issues.len(), 1, "one degraded slot: {issues:?}");
+    assert_eq!(issues[0]["slot"], "ring2");
+    // 好的那件照常生效（+50 Life 进聚合）。
+    let life = json["stats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["id"] == "Life")
+        .unwrap()["value"]
+        .as_f64()
+        .unwrap();
+    assert!(life > 50.0, "good ring still applies: Life={life}");
 }

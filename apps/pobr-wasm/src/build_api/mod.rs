@@ -5,8 +5,9 @@
 //! `tests/contract_golden.rs` 钉住，`web/src/api/types.ts` 手写同构 TS 类型；
 //! 改形状必须同时动两处 + golden。
 //!
-//! 全部入口为 `&str -> Result<String, String>`（JSON 入出），错误消息人类可读，
-//! wasm 边界直接透传为 JS 异常。
+//! 全部入口为 `&str -> Result<String, String>`（JSON 入出）。**Err 侧也是 JSON**：
+//! [`ApiError`] 的 `{code, message, slot?}` 编码（wasm JsError 只能携带字符串），
+//! web 侧 `wasmBackend` 解析回类型化错误后按 code 分流处理。
 //!
 //! 按域拆子模块：[`decode`]（build code / .build 文件解码）、[`request`]（计算
 //! 请求 DTO + 共享装配）、[`calculate`]（完整计算 / full DPS）、[`analysis`]
@@ -33,8 +34,74 @@ pub use request::{
 };
 
 use pobr_data::item::EquipmentSlot;
+use serde::Serialize;
 
 use crate::state;
+
+/// 对外错误契约：`{code, message, slot?}`，入口 Err 侧序列化为 JSON 字符串。
+///
+/// code 取值（web/src/api/types.ts 同步）：
+/// - `not_initialized` — 游戏数据未初始化，应先跑 init 流程
+/// - `bad_request` — 请求 JSON 非法 / 字段值非法（客户端 bug）
+/// - `decode_error` — PoB code / .build 文件解码失败（用户输入）
+/// - `internal` — 其余计算/序列化错误（兜底，`From<String>` 自动归入）
+///
+/// 注意：单件装备/珠宝/药剂**文本**解析失败不走 Err——降级为响应里的
+/// `item_errors`（跳过该件继续算），见 [`request::apply_request_overrides`]。
+#[derive(Debug, Serialize)]
+pub(crate) struct ApiError {
+    code: &'static str,
+    message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    slot: Option<String>,
+}
+
+impl ApiError {
+    pub(crate) fn bad_request(message: impl Into<String>) -> Self {
+        Self {
+            code: "bad_request",
+            message: message.into(),
+            slot: None,
+        }
+    }
+
+    pub(crate) fn not_initialized(message: String) -> Self {
+        Self {
+            code: "not_initialized",
+            message,
+            slot: None,
+        }
+    }
+
+    pub(crate) fn decode_error(message: impl Into<String>) -> Self {
+        Self {
+            code: "decode_error",
+            message: message.into(),
+            slot: None,
+        }
+    }
+
+    pub(crate) fn with_slot(mut self, slot: impl Into<String>) -> Self {
+        self.slot = Some(slot.into());
+        self
+    }
+
+    /// Err 边界序列化（序列化自身失败时退化为裸 message，前端有非 JSON 兜底）。
+    pub(crate) fn into_json(self) -> String {
+        serde_json::to_string(&self).unwrap_or(self.message)
+    }
+}
+
+/// 未显式分类的字符串错误一律归入 `internal`——既有内部代码的 `?` 零改动。
+impl From<String> for ApiError {
+    fn from(message: String) -> Self {
+        Self {
+            code: "internal",
+            message,
+            slot: None,
+        }
+    }
+}
 
 /// 装备槽稳定 id → [`EquipmentSlot`]（与 `EquipmentSlot::id()` 互逆）。
 fn slot_from_id(id: &str) -> Result<EquipmentSlot, String> {

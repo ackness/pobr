@@ -44,17 +44,20 @@ fn current_tree_version() -> String {
 /// `notes`）；`character.class_name` 必填。往返契约：产出的 code 重新解码计算
 /// 与直接按请求计算结果一致（`contract_golden::encode_build_roundtrip`）。
 pub fn encode_build_json(request_json: &str) -> Result<String, String> {
-    let req: CalculateBuildRequest =
-        serde_json::from_str(request_json).map_err(|e| format!("invalid request json: {e}"))?;
-    let data = state::build_data()?;
+    encode_build_impl(request_json).map_err(super::ApiError::into_json)
+}
+
+fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: CalculateBuildRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let ch = req
         .character
         .as_ref()
-        .ok_or("character is required to encode")?;
-    let class_name = ch
-        .class_name
-        .clone()
-        .ok_or("character.class_name is required to encode")?;
+        .ok_or_else(|| super::ApiError::bad_request("character is required to encode"))?;
+    let class_name = ch.class_name.clone().ok_or_else(|| {
+        super::ApiError::bad_request("character.class_name is required to encode")
+    })?;
 
     let mut items: Vec<(String, String)> = Vec::new();
     for item in req.items.as_deref().unwrap_or_default() {
@@ -64,7 +67,11 @@ pub fn encode_build_json(request_json: &str) -> Result<String, String> {
     let mut flasks: Vec<(String, String)> = Vec::new();
     for flask in req.flasks.as_deref().unwrap_or_default() {
         if !(flask.slot.starts_with("Flask ") || flask.slot.starts_with("Charm ")) {
-            return Err(format!("unknown flask/charm slot: {}", flask.slot));
+            return Err(super::ApiError::bad_request(format!(
+                "unknown flask/charm slot: {}",
+                flask.slot
+            ))
+            .with_slot(flask.slot.as_str()));
         }
         flasks.push((flask.slot.clone(), flask.text.clone()));
     }
@@ -141,5 +148,5 @@ pub fn encode_build_json(request_json: &str) -> Result<String, String> {
         config_inputs: &config_inputs,
         notes: req.notes.as_deref(),
     });
-    encode_pob_code(&xml).map_err(|e| format!("encode: {e}"))
+    Ok(encode_pob_code(&xml).map_err(|e| format!("encode: {e}"))?)
 }

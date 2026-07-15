@@ -1,3 +1,4 @@
+import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { AttributeChoice, PassiveNode } from '../../api/types';
@@ -96,7 +97,7 @@ export function TreePanel({ session, lang }: Props) {
     getBackend()
       .then((b) => b.loadPassiveTree())
       .then(setNodes)
-      .catch((err) => setError(String(err)));
+      .catch((err) => setError(formatApiError(err)));
   }, []);
 
   const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);

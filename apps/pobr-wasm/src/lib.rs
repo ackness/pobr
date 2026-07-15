@@ -31,7 +31,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// 并同步 `web/src/api/types.ts` 的 `EXPECTED_SCHEMA_VERSION`。
 /// 前端 boot 时比对（见 [`wasm::schema_version`]），错配即提示强刷——
 /// 关掉「旧前端缓存 + 新 wasm 资产」静默崩的口子。
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 /// wasm-bindgen 绑定：仅在 `wasm` feature 下编译，向 JS 暴露与宿主 API 同名的函数。
 #[cfg(feature = "wasm")]

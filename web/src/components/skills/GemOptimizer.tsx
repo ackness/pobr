@@ -1,3 +1,4 @@
+import { formatApiError } from '../../api/error';
 import { useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry, GemInput, VariantInput, VariantStats } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -86,7 +87,7 @@ export function GemOptimizer({ session, lang, groupIndex, supports, gemName }: P
       setEvaluated({ baseline, results, variants });
     } catch (err: unknown) {
       setEvaluated(null);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatApiError(err));
     } finally {
       setProgress(null);
       abortRef.current = null;

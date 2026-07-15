@@ -117,7 +117,11 @@ struct GemCatalogEntry {
 /// 宝石目录：`{skill_id, name, name_zh_tw, colour, is_support}` 按名称排序。
 /// 只收带主效果连边的玩家宝石（`gem_effects` overlay 即 vendor Gems.lua 的策展面）。
 pub fn gem_catalog_json() -> Result<String, String> {
-    let data = state::build_data()?;
+    gem_catalog_impl().map_err(super::ApiError::into_json)
+}
+
+fn gem_catalog_impl() -> Result<String, super::ApiError> {
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let name_by_gem_id: std::collections::HashMap<&str, &str> = data
         .base_items
         .iter()
@@ -152,7 +156,7 @@ pub fn gem_catalog_json() -> Result<String, String> {
     }
     let mut entries: Vec<GemCatalogEntry> = by_skill.into_values().collect();
     entries.sort_by(|a, b| a.name.cmp(&b.name).then(a.skill_id.cmp(&b.skill_id)));
-    serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
 }
 
 // ---------------------------------------------------------------------------
@@ -188,12 +192,16 @@ fn applicable_rune_lines(
 /// 符文/魂核目录：`overlay/runes.json` 全量，按名称排序（数据已有序）。
 /// `item_text` 非空且基底可识别时，逐符文附上对该物品适用的效果词条行。
 pub fn rune_catalog_json(item_text: &str) -> Result<String, String> {
-    let game = state::game_data()?;
+    rune_catalog_impl(item_text).map_err(super::ApiError::into_json)
+}
+
+fn rune_catalog_impl(item_text: &str) -> Result<String, super::ApiError> {
+    let game = state::game_data().map_err(super::ApiError::not_initialized)?;
     let runes = game
         .runes()
         .map_err(|e| format!("load runes: {e}"))?
-        .ok_or("runes overlay missing")?;
-    let data = state::build_data()?;
+        .ok_or_else(|| String::from("runes overlay missing"))?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let zh_tw = game.base_item_names("zh-TW").unwrap_or_default();
     let zh_cn = game.base_item_names("zh-CN").unwrap_or_default();
     // 目标槽类：物品文本解析失败/基底未知时保持 None（lines 全空，不报错）。
@@ -218,7 +226,7 @@ pub fn rune_catalog_json(item_text: &str) -> Result<String, String> {
             }
         })
         .collect();
-    serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
 }
 
 /// 基底 item_class → 符文槽类 (broad, specific)。对齐 PoB2
@@ -261,14 +269,18 @@ struct ReforgeRunesResponse {
 /// `Item.lua:1169-1205` 同规则），`Implicits: N` 计数同步修正；`sockets`
 /// 给定时同步重写孔数（`Sockets:` 行新增/重写/移除）。
 pub fn reforge_runes_json(request_json: &str) -> Result<String, String> {
-    let req: ReforgeRunesRequest =
-        serde_json::from_str(request_json).map_err(|e| format!("invalid request: {e}"))?;
-    let game = state::game_data()?;
+    reforge_runes_impl(request_json).map_err(super::ApiError::into_json)
+}
+
+fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: ReforgeRunesRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("invalid request: {e}")))?;
+    let game = state::game_data().map_err(super::ApiError::not_initialized)?;
     let runes_def = game
         .runes()
         .map_err(|e| format!("load runes: {e}"))?
-        .ok_or("runes overlay missing")?;
-    let data = state::build_data()?;
+        .ok_or_else(|| String::from("runes overlay missing"))?;
+    let data = state::build_data().map_err(super::ApiError::not_initialized)?;
 
     let draft = pobr_item::ItemDraft::parse(&req.text).map_err(|e| format!("parse item: {e}"))?;
     let base = data
@@ -287,7 +299,10 @@ pub fn reforge_runes_json(request_json: &str) -> Result<String, String> {
             .ok_or_else(|| format!("unknown rune: {name}"))?;
         let lines = applicable_rune_lines(def, &broad, &specific);
         if lines.is_empty() {
-            return Err(format!("{name} 不适用于 {}", base.item_class));
+            return Err(super::ApiError::bad_request(format!(
+                "{name} 不适用于 {}",
+                base.item_class
+            )));
         }
         new_stat_lines.extend(lines);
     }
@@ -371,13 +386,13 @@ pub fn reforge_runes_json(request_json: &str) -> Result<String, String> {
         }
     };
     if req.runes.len() > capacity {
-        return Err(format!(
+        return Err(super::ApiError::bad_request(format!(
             "too many runes: {} > socket capacity {capacity}",
             req.runes.len()
-        ));
+        )));
     }
     if !req.runes.is_empty() && sockets_idx.is_none() {
-        return Err("item has no rune sockets".to_string());
+        return Err(super::ApiError::bad_request("item has no rune sockets"));
     }
 
     // 先插后段（Implicits 之后的词条行），再插前段（Sockets 之后的命名行），
@@ -401,10 +416,10 @@ pub fn reforge_runes_json(request_json: &str) -> Result<String, String> {
         }
     }
 
-    serde_json::to_string(&ReforgeRunesResponse {
+    Ok(serde_json::to_string(&ReforgeRunesResponse {
         text: out.join("\n"),
     })
-    .map_err(|e| format!("serialize: {e}"))
+    .map_err(|e| format!("serialize: {e}"))?)
 }
 
 // ---------------------------------------------------------------------------
@@ -414,8 +429,12 @@ pub fn reforge_runes_json(request_json: &str) -> Result<String, String> {
 /// 批量把英文词条行翻译为简中显示文本（模板反查；不认识原样返回）。
 /// 入参/出参均为 JSON 字符串数组。数据包无 zh-CN 模板时原样全返。
 pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String> {
-    let lines: Vec<String> =
-        serde_json::from_str(lines_json).map_err(|e| format!("invalid lines json: {e}"))?;
+    translate_lines_impl(lines_json).map_err(super::ApiError::into_json)
+}
+
+fn translate_lines_impl(lines_json: &str) -> Result<String, super::ApiError> {
+    let lines: Vec<String> = serde_json::from_str(lines_json)
+        .map_err(|e| super::ApiError::bad_request(format!("invalid lines json: {e}")))?;
     let translator = state::en_to_zh_translator();
     let out: Vec<String> = lines
         .into_iter()
@@ -424,7 +443,7 @@ pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String>
             None => line,
         })
         .collect();
-    serde_json::to_string(&out).map_err(|e| format!("serialize: {e}"))
+    Ok(serde_json::to_string(&out).map_err(|e| format!("serialize: {e}"))?)
 }
 
 #[cfg(test)]

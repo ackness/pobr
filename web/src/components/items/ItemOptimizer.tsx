@@ -1,3 +1,4 @@
+import { formatApiError } from '../../api/error';
 import { useMemo, useRef, useState } from 'react';
 import type { VariantInput, VariantStats } from '../../api/types';
 import type { BuildSession, LibraryItem } from '../../hooks/useBuildSession';
@@ -89,7 +90,7 @@ export function ItemOptimizer({
       setEvaluated({ baseline, results, variants: variantDefs });
     } catch (err: unknown) {
       setEvaluated(null);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatApiError(err));
     } finally {
       setProgress(null);
       abortRef.current = null;

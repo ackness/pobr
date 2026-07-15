@@ -15,10 +15,20 @@ use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use super::{localize_input_text, slot_from_id};
+use super::{ApiError, localize_input_text, slot_from_id};
 use crate::state;
+
+/// 单件来源**文本**解析失败的降级记录：跳过该件继续算，进响应 `item_errors`，
+/// 前端据此标红该槽而不中断整次计算。结构性错误（未知槽名等客户端 bug）
+/// 仍走硬错误 [`ApiError::bad_request`]。
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct SlotIssue {
+    /// 装备槽 id / `Flask N`·`Charm N` 槽名 / `Jewel@<socket_node>`。
+    pub(crate) slot: String,
+    pub(crate) message: String,
+}
 
 pub(crate) fn parse_attribute_choice(s: &str) -> Result<AttributeChoice, String> {
     match s {
@@ -195,7 +205,8 @@ pub(crate) fn apply_request_overrides(
     build: &mut Build,
     req: &CalculateBuildRequest,
     data: &BuildData,
-) -> Result<(), String> {
+) -> Result<Vec<SlotIssue>, ApiError> {
+    let mut issues = Vec::new();
     if let Some(ch) = &req.character {
         if let Some(level) = ch.level {
             build.character.level = level;
@@ -214,7 +225,8 @@ pub(crate) fn apply_request_overrides(
         build.tree.attribute_overrides = choices
             .iter()
             .map(|(&node, choice)| Ok((NodeId(node), parse_attribute_choice(choice)?)))
-            .collect::<Result<_, String>>()?;
+            .collect::<Result<_, String>>()
+            .map_err(ApiError::bad_request)?;
     }
     if let Some(groups) = &req.socket_groups {
         build.socket_groups = groups
@@ -225,11 +237,19 @@ pub(crate) fn apply_request_overrides(
     if let Some(items) = &req.items {
         build.items.clear();
         for item in items {
-            let slot = slot_from_id(&item.slot)?;
+            let slot = slot_from_id(&item.slot)
+                .map_err(|e| ApiError::bad_request(e).with_slot(item.slot.as_str()))?;
             let text = localize_input_text(&item.text);
-            let parsed = parse_pob_xml_item(&text)
-                .map_err(|e| format!("parse item in slot {}: {e:?}", item.slot))?;
-            build.items.insert(slot, parsed);
+            // 文本解析失败降级：跳过该件继续算，槽位与原因进 issues。
+            match parse_pob_xml_item(&text) {
+                Ok(parsed) => {
+                    build.items.insert(slot, parsed);
+                }
+                Err(e) => issues.push(SlotIssue {
+                    slot: item.slot.clone(),
+                    message: format!("{e:?}"),
+                }),
+            }
         }
     }
     if let Some(flasks) = &req.flasks {
@@ -237,12 +257,20 @@ pub(crate) fn apply_request_overrides(
         for flask in flasks {
             // 与 XML 导入同语义：只有激活槽进列表；槽名限 PoB 的 Flask/Charm 系。
             if !(flask.slot.starts_with("Flask ") || flask.slot.starts_with("Charm ")) {
-                return Err(format!("unknown flask/charm slot: {}", flask.slot));
+                return Err(ApiError::bad_request(format!(
+                    "unknown flask/charm slot: {}",
+                    flask.slot
+                ))
+                .with_slot(flask.slot.as_str()));
             }
             let text = localize_input_text(&flask.text);
-            let parsed = parse_pob_xml_item(&text)
-                .map_err(|e| format!("parse item in slot {}: {e:?}", flask.slot))?;
-            build.utility_slots.push((flask.slot.clone(), parsed));
+            match parse_pob_xml_item(&text) {
+                Ok(parsed) => build.utility_slots.push((flask.slot.clone(), parsed)),
+                Err(e) => issues.push(SlotIssue {
+                    slot: flask.slot.clone(),
+                    message: format!("{e:?}"),
+                }),
+            }
         }
     }
     if let Some(jewels) = &req.jewels {
@@ -256,8 +284,16 @@ pub(crate) fn apply_request_overrides(
                 continue;
             }
             let text = localize_input_text(&jewel.text);
-            let parsed = parse_pob_xml_item(&text)
-                .map_err(|e| format!("parse jewel at node {}: {e:?}", jewel.socket_node))?;
+            let parsed = match parse_pob_xml_item(&text) {
+                Ok(p) => p,
+                Err(e) => {
+                    issues.push(SlotIssue {
+                        slot: format!("Jewel@{}", jewel.socket_node),
+                        message: format!("{e:?}"),
+                    });
+                    continue;
+                }
+            };
             plain.push(parsed);
             if let Some(rj) = radius_jewel_from_text(jewel.socket_node, &text) {
                 radius.push(rj);
@@ -271,11 +307,10 @@ pub(crate) fn apply_request_overrides(
         build.main_socket_group = Some(main + 1);
     }
     for (key, value) in &req.config_inputs {
-        build
-            .config
-            .raw_inputs
-            .values
-            .insert(key.clone(), json_to_config_value(value)?);
+        build.config.raw_inputs.values.insert(
+            key.clone(),
+            json_to_config_value(value).map_err(ApiError::bad_request)?,
+        );
     }
 
     // 任务奖励在合并后的 config 输入上整份重建（PoB2 defaultState=true 语义）：
@@ -304,12 +339,12 @@ pub(crate) fn apply_request_overrides(
         }
     }
     build.config.global_modifier_texts = quest_texts;
-    Ok(())
+    Ok(issues)
 }
 
 pub(crate) fn orchestrator_options(
     req: &CalculateBuildRequest,
-) -> Result<DataOrchestratorOptions, String> {
+) -> Result<DataOrchestratorOptions, ApiError> {
     Ok(DataOrchestratorOptions {
         base_input: MinimalInput::default(),
         inject_character_base: true,
@@ -318,7 +353,8 @@ pub(crate) fn orchestrator_options(
             .enemy_tier
             .as_deref()
             .map(parse_enemy_tier)
-            .transpose()?
+            .transpose()
+            .map_err(ApiError::bad_request)?
             .unwrap_or_default(),
         extra_modifier_texts: req
             .extra_modifiers
@@ -329,18 +365,17 @@ pub(crate) fn orchestrator_options(
     })
 }
 
-pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Build, String> {
+pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Build, ApiError> {
     if req.pob_code.trim().is_empty() {
         // 白手起 build（PoB2 新建语义）：无装备/无技能组的空 build，
         // 角色身份来自 character 覆盖（职业必填，等级缺省 1）。
         let ch = req
             .character
             .as_ref()
-            .ok_or("either pob_code or character is required")?;
-        let class_name = ch
-            .class_name
-            .clone()
-            .ok_or("character.class_name is required for a scratch build")?;
+            .ok_or_else(|| ApiError::bad_request("either pob_code or character is required"))?;
+        let class_name = ch.class_name.clone().ok_or_else(|| {
+            ApiError::bad_request("character.class_name is required for a scratch build")
+        })?;
         // 任务奖励不在此注入：统一由 apply_request_overrides 按合并后的
         // config 输入重建（XML 与直连两路径同一口径，导入后可在 Config 页改）。
         return Ok(Build::new().with_character(CharacterIdentity {
@@ -349,15 +384,16 @@ pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Bu
             ascendancy_name: ch.ascendancy_name.clone().unwrap_or_default(),
         }));
     }
-    let xml = decode_pob_code(req.pob_code.trim()).map_err(|e| format!("decode: {e}"))?;
-    parse_build(&xml).map_err(|e| format!("parse build: {e}"))
+    let xml = decode_pob_code(req.pob_code.trim())
+        .map_err(|e| ApiError::decode_error(format!("decode: {e}")))?;
+    parse_build(&xml).map_err(|e| ApiError::decode_error(format!("parse build: {e}")))
 }
 
 pub(crate) fn run_session_for_build(
     build: &Build,
     req: &CalculateBuildRequest,
-) -> Result<CalculationSession, String> {
-    let data = state::build_data()?;
+) -> Result<CalculationSession, ApiError> {
+    let data = state::build_data().map_err(ApiError::not_initialized)?;
     let opts = orchestrator_options(req)?;
-    calculate_with_data_session(build, &data, &opts).map_err(|e| format!("calculate: {e}"))
+    Ok(calculate_with_data_session(build, &data, &opts).map_err(|e| format!("calculate: {e}"))?)
 }

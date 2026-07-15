@@ -9,7 +9,28 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 1;
+export const EXPECTED_SCHEMA_VERSION = 2;
+
+// ---------------------------------------------------------------------------
+// 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
+// ---------------------------------------------------------------------------
+
+export type ApiErrorCode = 'not_initialized' | 'bad_request' | 'decode_error' | 'internal';
+
+/** wasm Err 侧 JSON：`{code, message, slot?}`。 */
+export interface ApiErrorJson {
+  code: ApiErrorCode;
+  message: string;
+  /** 出错槽位（装备槽 id / Flask·Charm 槽名），供局部提示。 */
+  slot?: string;
+}
+
+/** 单件来源文本解析失败的降级记录（该件被跳过，其余照算）。 */
+export interface SlotIssue {
+  /** 装备槽 id / `Flask N`·`Charm N` / `Jewel@<socket_node>`。 */
+  slot: string;
+  message: string;
+}
 
 // ---------------------------------------------------------------------------
 // decode_build_json
@@ -348,6 +369,8 @@ export interface CalculateBuildResponse {
   breakdowns: Record<string, Breakdown>;
   /** 主技能分解（null = 无可解析的伤害主技能）。 */
   main_skill: MainSkillInfo | null;
+  /** 单件装备/药剂/珠宝文本解析失败的降级记录（据 slot 标红；空 = 全部成功）。 */
+  item_errors: SlotIssue[];
 }
 
 // ---------------------------------------------------------------------------
