@@ -44,18 +44,16 @@ fn calculate_collects_unsupported_modifier_texts() {
 }
 
 #[test]
-fn calculate_errors_on_unparseable_modifier_text() {
+fn calculate_collects_unparseable_modifier_text_as_unsupported() {
+    // 引擎对无法识别的文本不报错——整行进 unsupported 收集面。
     let req = CalculateRequest {
         input: base_input(),
         modifier_texts: vec!["garbage zzz".to_string()],
     };
 
-    let err = calculate(&req).expect_err("garbage modifier text errors");
-    let msg = format!("{err}");
-    assert!(
-        msg.contains("garbage zzz"),
-        "error should mention input: {msg}"
-    );
+    let result = calculate(&req).expect("engine never errors on unknown text");
+    assert_eq!(result.output.life, 1000.0);
+    assert_eq!(result.unsupported, vec!["garbage zzz".to_string()]);
 }
 
 #[test]
@@ -95,9 +93,11 @@ fn parse_mod_returns_unsupported_for_mirrored() {
 }
 
 #[test]
-fn parse_mod_errors_on_unparseable() {
-    let err = parse_mod("garbage zzz").expect_err("unparseable text errors");
-    assert!(format!("{err}").contains("garbage zzz"));
+fn parse_mod_reports_unsupported_for_unparseable() {
+    // 引擎对无法识别的文本不报错——Unsupported + 原文进 unparsed。
+    let report = parse_mod("garbage zzz").expect("engine never errors on unknown text");
+    assert_eq!(report.status, "Unsupported");
+    assert_eq!(report.unparsed.as_deref(), Some("garbage zzz"));
 }
 
 #[test]

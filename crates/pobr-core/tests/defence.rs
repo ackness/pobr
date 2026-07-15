@@ -4,6 +4,9 @@
 //! 各子模块即 `tests/defence/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
+#[path = "support/parse.rs"]
+mod support;
+
 #[path = "defence/defence_ext.rs"]
 mod defence_ext;
 #[path = "defence/defence_panels.rs"]

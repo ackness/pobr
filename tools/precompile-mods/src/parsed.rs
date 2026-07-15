@@ -5,8 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use pobr_core::mod_parser::{ParseStatus, parse_mod_with_rules};
-use pobr_core::rules::{HandlerRegistry, SpecialModRules, register_special_handlers};
+use pobr_core::mod_parser::{CompiledParserRules, ParseStatus, parse_mod_engine};
 use pobr_gamedata::GameData;
 
 use crate::canonical::CanonMod;
@@ -77,18 +76,18 @@ pub struct PrecompileOutcome {
 
 const SCHEMA: &str = "parsed_mods/v2";
 const GENERATOR: &str = "precompile-mods --data";
-// M6-A2：数据驱动穿线——预解析走注入 special 规则的 `parse_mod_with_rules`。
-const ENGINE: &str = "mod_parser+special_rules";
+// M6 收尾（删 legacy）：预解析走数据驱动 scan 引擎（special 通道编译在内），
+// 与运行时（orchestrator / session）同一解析器。
+const ENGINE: &str = "scan_engine+special";
 const NOTE: &str =
     "M6-T7 离线预解析；运行时（D-T8）作 text→Vec<Modifier> 缓存兜底，cache miss 回退在线 parse";
 
 /// 收集语料 → 逐行过数据驱动 parser 引擎 → 写 `parsed_mods.json`（byte-stable）。
 ///
-/// special 规则从 `data_dir` 的游戏数据编译一次、全语料复用（M6-A2 数据驱动穿线）。
+/// 引擎规则从 `data_dir` 的游戏数据编译一次、全语料复用（与运行时同一解析器）。
 pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome, String> {
-    // 启动期编译一次 parser 规则（special 表 + handler 注册表），全语料复用。
-    let (special_rules, registry) = compile_parser_rules(data_dir)?;
-    let special = special_rules.as_ref();
+    // 启动期编译一次 parser 引擎规则（解析规则六表 + special 通道），全语料复用。
+    let rules = compile_parser_rules(data_dir)?;
 
     let mut entries = Vec::with_capacity(corpus.lines.len());
     let mut cov = Coverage {
@@ -105,37 +104,26 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
         let label = sources.primary_label();
         let slot = cov.by_source.entry(label).or_insert([0, 0, 0]);
 
-        let (status, mods): (&'static str, Vec<CanonMod>) =
-            match parse_mod_with_rules(text, special, Some(&registry)) {
-                Ok(outcome) => match outcome.status {
-                    ParseStatus::Parsed => {
-                        cov.parsed += 1;
-                        slot[0] += 1;
-                        let mods = outcome.mods.iter().map(CanonMod::from_mod).collect();
-                        ("parsed", mods)
-                    }
-                    ParseStatus::Unsupported => {
-                        cov.unsupported += 1;
-                        slot[1] += 1;
-                        cov.gaps.push(GapEntry {
-                            text: text.clone(),
-                            status: "unsupported".to_string(),
-                            source: label,
-                        });
-                        ("unsupported", Vec::new())
-                    }
-                },
-                Err(_) => {
-                    cov.err += 1;
-                    slot[2] += 1;
-                    cov.gaps.push(GapEntry {
-                        text: text.clone(),
-                        status: "err".to_string(),
-                        source: label,
-                    });
-                    ("err", Vec::new())
-                }
-            };
+        // 引擎永不返回硬错误——`err` 计数保留在 schema 里（恒 0），报表形状不变。
+        let outcome = parse_mod_engine(text, &rules);
+        let (status, mods): (&'static str, Vec<CanonMod>) = match outcome.status {
+            ParseStatus::Parsed => {
+                cov.parsed += 1;
+                slot[0] += 1;
+                let mods = outcome.mods.iter().map(CanonMod::from_mod).collect();
+                ("parsed", mods)
+            }
+            ParseStatus::Unsupported => {
+                cov.unsupported += 1;
+                slot[1] += 1;
+                cov.gaps.push(GapEntry {
+                    text: text.clone(),
+                    status: "unsupported".to_string(),
+                    source: label,
+                });
+                ("unsupported", Vec::new())
+            }
+        };
 
         entries.push(Entry {
             text: text.clone(),
@@ -170,32 +158,31 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
     })
 }
 
-/// 从 `data_dir` 的游戏数据编译 parser 规则（special 表 + handler 注册表），
-/// 启动期一次、全语料复用（M6-A2）。
+/// 从 `data_dir` 的游戏数据编译引擎规则（解析规则六表 + special 通道拼接），
+/// 启动期一次、全语料复用（与 `BuildData::load` 同一编译路径）。
 ///
-/// `overlay/special_mods.json` 缺失 → special 规则 `None`（解析退回历史无规则
-/// 路径，逐值不变）；编译失败（pattern 非法 / id 重复）上抛 `Err`。
-fn compile_parser_rules(
-    data_dir: &Path,
-) -> Result<(Option<SpecialModRules>, HandlerRegistry), String> {
+/// `overlay/mod_parser_rules.json` 缺失（旧数据包）→ 硬错误：删除 legacy
+/// 解析器后没有回退路径，预编译对无规则数据包无意义（fail-fast 优于产出
+/// 全 unsupported 的产物）。
+fn compile_parser_rules(data_dir: &Path) -> Result<CompiledParserRules, String> {
     let data = GameData::new(data_dir);
 
-    let mut registry = HandlerRegistry::new();
-    register_special_handlers(&mut registry)
-        .map_err(|e| format!("special handler 注册失败：{e}"))?;
-
-    let special_def = data
-        .special_mods()
-        .map_err(|e| format!("加载 special_mods.json 失败：{e}"))?;
-    let special_rules = match special_def {
-        Some(def) if !def.entries.is_empty() => Some(
-            SpecialModRules::compile(&def.entries, &registry)
-                .map_err(|e| format!("special 规则编译失败：{e}"))?,
-        ),
-        _ => None,
-    };
-
-    Ok((special_rules, registry))
+    let doc = data
+        .mod_parser_rules()
+        .map_err(|e| format!("加载 mod_parser_rules.json 失败：{e}"))?
+        .ok_or_else(|| {
+            format!(
+                "{} 缺 overlay/mod_parser_rules.json——无解析规则无法预编译",
+                data_dir.display()
+            )
+        })?;
+    let special_entries = data
+        .load_ruleset()
+        .map_err(|e| format!("加载 ruleset（special 条目）失败：{e}"))?
+        .special_mods
+        .unwrap_or_default();
+    CompiledParserRules::compile_with_special(&doc, &special_entries)
+        .map_err(|e| format!("parser 规则编译失败：{e:?}"))
 }
 
 /// 两空格缩进 + 末尾换行的稳定 pretty JSON（与仓库既有 generated 产物风格一致）。

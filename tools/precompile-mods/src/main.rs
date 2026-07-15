@@ -1,7 +1,7 @@
 //! `precompile-mods`：M6-T7 离线预编译工具。
 //!
 //! 把四层语料（§5.1：C1 build XML / C2 passive_tree / special_derived 展开
-//! / `--corpus-extra` 外挂）去重收集后，逐行过 `pobr-core` 的 `parse_mod`
+//! / `--corpus-extra` 外挂）去重收集后，逐行过 `pobr-core` 数据驱动 scan 引擎
 //! 预解析，产出两份 `data/<version>/generated/` 产物 + 一份覆盖率报表：
 //!
 //! - `generated/parsed_mods.json`：`{ _meta, entries: [{ text, status, mods }] }`
@@ -9,9 +9,6 @@
 //!   `text → Vec<Modifier>` 缓存，热路径零解析（蓝图 §6.2）。
 //! - 覆盖率报表（`--report` 时打印 + 写 `parse-coverage.json`）：parsed /
 //!   unsupported / err 三态计数 + 按命中频率排序的缺口 top-N（蓝图 §6.3）。
-//!
-//! **当前用现有 `parse_mod`（旧引擎）预解析全语料**——B 引擎切换（T3/T4/T5）
-//! 后改 `parse_mod(text, &CompiledParserRules)`，覆盖率自动改善（蓝图 §6.1）。
 //!
 //! 用法（蓝图 §6.1）：
 //! ```text

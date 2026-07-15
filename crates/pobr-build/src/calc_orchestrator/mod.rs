@@ -34,7 +34,7 @@ use std::borrow::Cow;
 
 use pobr_core::calc::minion::AttributeInfusion;
 use pobr_core::calc::{BuffKind, BuffSpec, CalculationSession, MinimalInput, OutputTable};
-use pobr_core::mod_parser::{ParseCtx, parse_mod};
+use pobr_core::mod_parser::ParseCtx;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::rules::stat_map_engine::{self, StatMapCatalog};
 use pobr_core::skill_source::GemModSource;
@@ -150,13 +150,46 @@ pub enum StatMapMode {
     Compare,
 }
 
+/// text-only 路径（[`calculate`]）的默认解析规则：仓库数据目录
+/// （`pobr_gamedata::current_data_dir()`）加载 + 编译一次、进程内缓存。
+///
+/// 删除 legacy 解析器后没有内建回退解析器——数据目录缺失/编译失败时返回错误
+/// （fail-fast，不静默把全部词条当 Unsupported）。带数据的主路径
+/// （[`calculate_with_data`]）不经过此函数（规则随 [`BuildData::load`] 编译）。
+fn default_parser_rules()
+-> Result<std::sync::Arc<pobr_core::mod_parser::CompiledParserRules>, BuildError> {
+    use std::sync::{Arc, OnceLock};
+    static RULES: OnceLock<Result<Arc<pobr_core::mod_parser::CompiledParserRules>, String>> =
+        OnceLock::new();
+    RULES
+        .get_or_init(|| {
+            let data = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
+            let doc = data
+                .mod_parser_rules()
+                .map_err(|e| format!("加载 mod_parser_rules.json 失败：{e}"))?
+                .ok_or_else(|| "数据目录缺 overlay/mod_parser_rules.json".to_string())?;
+            let special = data
+                .load_ruleset()
+                .map_err(|e| format!("加载 ruleset 失败：{e}"))?
+                .special_mods
+                .unwrap_or_default();
+            pobr_core::mod_parser::CompiledParserRules::compile_with_special(&doc, &special)
+                .map(Arc::new)
+                .map_err(|e| format!("parser 规则编译失败：{e:?}"))
+        })
+        .clone()
+        .map_err(BuildError::Parse)
+}
+
 /// 对一个 [`Build`] 执行 minimal 计算，返回标量 [`OutputTable`]。
 ///
 /// **text-only 路径**（向后兼容）：装备词条作为文本灌入，丢失归因；天赋 / 宝石 /
-/// 角色基础 / 敌人均不解析。需要端到端归因请用 [`calculate_with_data`]。
+/// 角色基础 / 敌人均不解析。词条解析走 [`default_parser_rules`]（默认数据目录，
+/// 缺失即报错）。需要端到端归因请用 [`calculate_with_data`]。
 pub fn calculate(build: &Build, options: &OrchestratorOptions) -> Result<OutputTable, BuildError> {
     let cfg = build.config.to_calc_config();
     let mut session = CalculationSession::new(options.base_input).with_config(cfg);
+    session.set_parser_rules(default_parser_rules()?);
 
     // 装备词条：enchant → implicit → explicit 顺序注入（与 PoB 来源分层一致）。
     let item_texts = collect_item_texts(build);
@@ -881,18 +914,10 @@ fn stage_create_session(ctx: &mut StageCtx<'_>) -> CalculationSession {
     // M0-W3 注入管道：把 GameData 加载的运行时常量包注入 calc（必须在 with_config
     // 之后——with_config 整体覆盖 cfg）。数据与 Default fallback 逐值相等，零行为变化。
     session.set_constants(data.constants.clone());
-    // M5b B-4 消费激活：special 词条规则集注入，item/passive/gem ingest 词条解析
-    // 走 special 整行查表（命中即产 mod，对照 PoB2 specialModList 锚定全行优先级）。
-    // 须在下方 add_item/add_passive_nodes/add_gem 之前。缺表（旧数据包）= 不注入
-    // （ingest 行为与历史 parse_mod 逐值相等，R7 缺表容忍）。
-    if let Some(special_rules) = &data.special_rules {
-        session.set_special_rules(special_rules.clone(), Some(data.special_registry.clone()));
-    }
-    // M6 D-T8 A2 切换：数据驱动 ModParser 引擎规则注入。
-    // 须在下方 add_item/add_passive_nodes/add_gem 之前——注入后 `parse_ctx` 优先走
-    // 数据驱动 scan 引擎（终局路径），优先于 legacy special。缺 parser_rules
-    // （旧数据包）= 不注入（ingest 回退 legacy/special，逐值不变；C1 DIFF=0 gate
-    // 证引擎与 legacy 逐字节等价）。
+    // 数据驱动 ModParser 引擎规则注入（唯一解析器，special 通道已编译在内）。
+    // 须在下方 add_item/add_passive_nodes/add_gem 之前。缺 parser_rules
+    // （旧数据包）= 不注入——此时全部词条按整行 Unsupported 收集（不生效、
+    // 可见于 unsupported 报表），不再有 legacy 回退。
     if let Some(parser_rules) = &data.parser_rules {
         session.set_parser_rules(parser_rules.clone());
     }
@@ -1788,7 +1813,7 @@ fn inject_items(
             .iter()
             .find(|(s, scale)| *s == slot && *scale != 0.0)
         {
-            let ingest = pobr_core::ingest_item(slot, &filtered)
+            let ingest = pobr_core::ingest_item_with_ctx(slot, &filtered, engine_ctx(data))
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
             let scaled: Vec<Modifier> = ingest
                 .modifiers
@@ -1842,6 +1867,16 @@ fn inject_self_buff_exposure_spirit(
 // 安装/复位确定性，不构成共享可变状态。
 
 #[cfg(test)]
+/// 测试共享引擎规则（真实数据目录，一次编译进程内复用）。
+pub(crate) fn test_parser_rules() -> std::sync::Arc<pobr_core::mod_parser::CompiledParserRules> {
+    static RULES: std::sync::LazyLock<std::sync::Arc<pobr_core::mod_parser::CompiledParserRules>> =
+        std::sync::LazyLock::new(|| {
+            std::sync::Arc::new(pobr_core::mod_parser::test_compiled_rules())
+        });
+    RULES.clone()
+}
+
+#[cfg(test)]
 mod ring3_tests {
     use super::{DataOrchestratorOptions, calculate_with_data};
     use crate::build::Build;
@@ -1885,6 +1920,7 @@ mod ring3_tests {
         passive_nodes.insert(34785u32, node);
         BuildData {
             passive_nodes,
+            parser_rules: Some(super::test_parser_rules()),
             ..BuildData::empty()
         }
     }
@@ -1935,6 +1971,14 @@ mod tests {
     use pobr_gamedata::{GameData, repo_data_root};
     use std::collections::HashMap;
 
+    /// 测试用引擎解析上下文（真实规则，进程内共享一次编译）。
+    fn test_ctx() -> ParseCtx<'static> {
+        use std::sync::LazyLock;
+        static RULES: LazyLock<std::sync::Arc<pobr_core::mod_parser::CompiledParserRules>> =
+            LazyLock::new(super::test_parser_rules);
+        ParseCtx::with_engine(&RULES)
+    }
+
     /// 树折行词条合并（M4-H；vendor PassiveTree.lua:445-462）：单行 parse 失败
     /// → 与后续行拼接重试；全部失败 → 丢弃该行、后续行独立继续。
     #[test]
@@ -1945,7 +1989,7 @@ mod tests {
                 "Gain 4% of Damage as Extra Fire Damage for".into(),
                 "every different Grenade fired in the past 8 seconds".into(),
             ],
-            ParseCtx::none(),
+            test_ctx(),
         );
         assert_eq!(
             joined,
@@ -1962,7 +2006,7 @@ mod tests {
                 "this line is not a known modifier".into(),
                 "+50 to maximum Life".into(),
             ],
-            ParseCtx::none(),
+            test_ctx(),
         );
         assert_eq!(
             mixed,
@@ -2092,7 +2136,10 @@ mod tests {
     fn data_path_item_life_matches_text_path() {
         // 装备走 add_item 归因路径，数值应与 text-only 路径一致。
         let build = Build::new().set_item(EquipmentSlot::Ring1, life_item("50"));
-        let data = BuildData::empty();
+        let data = BuildData {
+            parser_rules: Some(super::test_parser_rules()),
+            ..BuildData::empty()
+        };
         let opts = DataOrchestratorOptions {
             base_input: MinimalInput {
                 base_life: 100.0,
@@ -2167,6 +2214,7 @@ mod tests {
         passive_nodes.insert(12345u32, node);
         let data = BuildData {
             passive_nodes,
+            parser_rules: Some(super::test_parser_rules()),
             ..BuildData::empty()
         };
 

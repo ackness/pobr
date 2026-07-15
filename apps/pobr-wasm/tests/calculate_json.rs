@@ -7,6 +7,12 @@ use serde_json::Value;
 
 use pobr_wasm::calculate_json;
 
+/// 初始化游戏数据（modifier 解析需要引擎规则；进程内幂等）。
+fn init_data() {
+    pobr_wasm::init_data_from_dir(&pobr_gamedata::current_data_dir().to_string_lossy())
+        .expect("init game data from repo data dir");
+}
+
 /// 解析 `calculate_json` 的输出为 JSON 值，断言成功并返回。
 fn run(input: &str) -> Value {
     let json = calculate_json(input).expect("calculate_json should succeed");
@@ -15,6 +21,7 @@ fn run(input: &str) -> Value {
 
 #[test]
 fn computes_life_with_base_and_increased_modifiers() {
+    init_data();
     // Arrange: base 100 +50 flat, +20% increased.
     let input = r#"{
         "base_life": 100,
@@ -45,6 +52,7 @@ fn passes_base_life_through_when_no_modifiers() {
 
 #[test]
 fn applies_more_multiplier_on_top_of_increased() {
+    init_data();
     // Arrange: (100 + 0) * 1.10 * 1.10 = 121.
     let input = r#"{
         "base_life": 100,
@@ -96,6 +104,7 @@ fn defaults_to_zero_for_empty_object() {
 
 #[test]
 fn collects_unsupported_modifiers_without_failing() {
+    init_data();
     // Arrange: "mirrored" is recognized as a non-error unsupported modifier.
     let input = r#"{
         "base_life": 100,
@@ -138,17 +147,32 @@ fn errors_on_unknown_field() {
 }
 
 #[test]
-fn errors_on_unparseable_modifier() {
-    // Arrange: a modifier form the parser rejects (hard ParseError, not Unsupported).
+fn collects_unparseable_modifier_as_unsupported() {
+    // 引擎对无法识别的文本不报错——整行进 unsupported_modifiers。
+    init_data();
     let input = r#"{
         "base_life": 100,
         "modifiers": ["this is not a real modifier"]
     }"#;
 
     // Act
-    let result = calculate_json(input);
+    let out = run(input);
 
     // Assert
+    assert_eq!(out["life"].as_f64().unwrap(), 100.0);
+    let unsupported = out["unsupported_modifiers"].as_array().unwrap();
+    assert_eq!(unsupported.len(), 1);
+}
+
+#[test]
+fn errors_on_modifiers_without_initialized_data() {
+    // modifiers 非空且数据未初始化 → 显式报错（fail-fast，不静默丢词条）。
+    // 注意：本用例依赖 nextest 每测试独立进程（同进程内其他用例可能已 init）。
+    let input = r#"{ "base_life": 100, "modifiers": ["+10 to maximum life"] }"#;
+    if pobr_wasm::is_data_ready() {
+        return; // 共享进程已初始化——跳过（cargo test 单进程模式）。
+    }
+    let result = calculate_json(input);
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("failed to parse modifier"));
+    assert!(result.unwrap_err().contains("game data"));
 }

@@ -1,5 +1,12 @@
-use pobr_core::calc::{CalculationSession, MinimalInput};
-use pobr_core::passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes};
+use pobr_core::calc::MinimalInput;
+use pobr_core::passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes_with_ctx};
+
+/// engine 版 passive ingest（签名对齐历史 `ingest_passive_nodes`）。
+fn ingest_passive_nodes(
+    nodes: &[AllocatedNode],
+) -> Result<PassiveIngest, pobr_core::mod_parser::ParseError> {
+    ingest_passive_nodes_with_ctx(nodes, crate::support::ctx())
+}
 use pobr_core::{CalcConfig, ModDb};
 use pobr_data::prelude::*;
 
@@ -100,7 +107,7 @@ fn session_add_passive_nodes_feeds_minimal_calc() {
         base_life: 100.0,
         ..MinimalInput::default()
     };
-    let mut session = CalculationSession::new(input);
+    let mut session = crate::support::session(input);
 
     let nodes = vec![
         node(1, &["+40 to maximum Life", "mirrored"]),

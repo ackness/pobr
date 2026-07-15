@@ -4,9 +4,9 @@
 //! 子命令：
 //! - [`calculate`]：从基础 [`MinimalInput`] + modifier 文本构造 [`CalculationSession`]，
 //!   `perform_minimal` 后返回关键字段 + 未支持文本。
-//! - [`parse_mod`]：包装 [`pobr_core::mod_parser::parse_mod`]，返回可序列化的解析报告。
+//! - [`parse_mod`]：数据驱动引擎解析单行 modifier，返回可序列化的解析报告。
 //! - [`parse_item`]：调用 [`pobr_core::item_text::parse_item_text`] +
-//!   [`pobr_core::item::ingest_item`] 真正解析 raw item 文本，输出 JSON（解析出的
+//!   [`pobr_core::item::ingest_item_with_ctx`] 真正解析 raw item 文本，输出 JSON（解析出的
 //!   modifier / section / unsupported）。
 //! - [`encode_code`] / [`decode_code`]：包装 PoB Build Code 编解码。
 
@@ -17,10 +17,9 @@ use pobr_build::{
     parse_build_from_code,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput, OutputTable};
-use pobr_core::item::ingest_item;
+use pobr_core::item::ingest_item_with_ctx;
 use pobr_core::item_text::{ItemTextError, parse_item_text};
-use pobr_core::mod_parser::{ParseStatus, parse_mod_with_rules};
-use pobr_core::rules::{HandlerRegistry, SpecialModRules, register_special_handlers};
+use pobr_core::mod_parser::{CompiledParserRules, ParseCtx, ParseStatus, parse_mod_engine};
 use pobr_core::{ActorRef, ModTag, ModValue, Modifier};
 use pobr_data::item::EquipmentSlot;
 use pobr_data::modifier::{KeywordFlags, ModFlags, ModType};
@@ -109,12 +108,16 @@ pub struct CalculateResult {
     pub unsupported: Vec<String>,
 }
 
-/// 执行最小计算：构造 [`CalculationSession`]，应用 modifier 文本，`perform_minimal`。
+/// 执行最小计算：构造 [`CalculationSession`]（注入默认数据目录的引擎规则），
+/// 应用 modifier 文本，`perform_minimal`。
 ///
-/// 不可解析的文本会让本函数返回 [`CliError::ModParse`]；可识别但 `Unsupported`
-/// 的文本被收集到 `unsupported`，不阻断计算。
+/// 引擎对无法识别的文本**不报错**——收集到 `unsupported`，不阻断计算；仅
+/// 默认数据目录缺失/规则编译失败时返回 [`CliError::ModParse`]。
 pub fn calculate(req: &CalculateRequest) -> Result<CalculateResult, CliError> {
     let mut session = CalculationSession::new(req.input);
+    // 引擎规则注入（唯一解析器）——缺默认数据目录时 fail-fast 报错，
+    // 不静默把全部词条当 Unsupported。
+    session.set_parser_rules(default_rules()?.rules.clone());
     session
         .add_modifier_texts(&req.modifier_texts)
         .map_err(|e| CliError::ModParse(e.to_string()))?;
@@ -162,60 +165,66 @@ pub struct ParseModReport {
     pub unparsed: Option<String>,
 }
 
-/// 启动期编译一次、复用的 parser 规则上下文（M6-A2 数据驱动穿线）。
+/// 启动期编译一次、复用的 parser 规则上下文（数据驱动引擎，唯一解析器）。
 ///
-/// special 词条规则集 + handler 注册表从 [`GameData`] 构造。规则缺失（缺
-/// `overlay/special_mods.json`）时 `rules == None`，[`parse_mod`] 退回历史
-/// 无规则路径（逐值不变）。
+/// `overlay/mod_parser_rules.json` + special 条目（[`RuleSet`] 三源拼接）从
+/// [`GameData`] 构造，经 [`CompiledParserRules::compile_with_special`] 编译。
+///
+/// [`RuleSet`]: pobr_gamedata::ruleset::RuleSet
 pub struct ParseModRules {
-    rules: Option<SpecialModRules>,
-    registry: HandlerRegistry,
+    rules: std::sync::Arc<CompiledParserRules>,
 }
 
 impl ParseModRules {
-    /// 从游戏数据编译 parser 规则（special 表 + handler 注册表）。
+    /// 从游戏数据编译 parser 规则（解析规则六表 + special 通道）。
     ///
-    /// `overlay/special_mods.json` 缺失 → `rules = None`（解析行为退回历史
-    /// 无规则路径）；编译失败（pattern 非法 / id 重复）上抛 [`CliError::ModParse`]。
+    /// `overlay/mod_parser_rules.json` 缺失（旧数据包）或编译失败（pattern
+    /// 非法 / id 重复）上抛 [`CliError::ModParse`]——删除 legacy 解析器后没有
+    /// 回退路径，fail-fast 优于静默全 Unsupported。
     pub fn from_game_data(data: &GameData) -> Result<Self, CliError> {
-        let mut registry = HandlerRegistry::new();
-        register_special_handlers(&mut registry)
-            .map_err(|e| CliError::ModParse(format!("special handler 注册失败: {e}")))?;
+        let doc = data.mod_parser_rules()?.ok_or_else(|| {
+            CliError::ModParse("数据目录缺 overlay/mod_parser_rules.json（解析规则表）".into())
+        })?;
+        let special_entries = data.load_ruleset()?.special_mods.unwrap_or_default();
+        let rules = CompiledParserRules::compile_with_special(&doc, &special_entries)
+            .map_err(|e| CliError::ModParse(format!("parser 规则编译失败: {e:?}")))?;
+        Ok(Self {
+            rules: std::sync::Arc::new(rules),
+        })
+    }
 
-        let rules = match data.special_mods()? {
-            Some(def) if !def.entries.is_empty() => Some(
-                SpecialModRules::compile(&def.entries, &registry)
-                    .map_err(|e| CliError::ModParse(format!("special 规则编译失败: {e}")))?,
-            ),
-            _ => None,
-        };
-
-        Ok(Self { rules, registry })
+    /// 引擎解析上下文（[`ingest_item_with_ctx`] 等消费）。
+    fn ctx(&self) -> ParseCtx<'_> {
+        ParseCtx::with_engine(&self.rules)
     }
 }
 
-/// 解析单条 modifier 文本（无规则路径——保留供测试 / 无数据目录场景）。
+/// 进程内缓存的默认规则（仓库数据目录 `pobr_gamedata::current_data_dir()`）。
 ///
-/// 完全无法识别的文本返回 [`CliError::ModParse`]；可识别但被拒绝的（如 `mirrored`）
-/// 返回 `status == "Unsupported"`。等价 `parse_mod_with_data(text, None)`，逐值不变。
-pub fn parse_mod(text: &str) -> Result<ParseModReport, CliError> {
-    parse_mod_with_data(text, None)
+/// [`parse_mod`] / [`calculate`] / [`parse_item`] 等无 `data_dir` 参数的入口
+/// 使用；加载/编译失败的错误缓存后逐次返回（fail-fast，不静默）。
+fn default_rules() -> Result<&'static ParseModRules, CliError> {
+    use std::sync::LazyLock;
+    static RULES: LazyLock<Result<ParseModRules, String>> = LazyLock::new(|| {
+        let data = GameData::new(pobr_gamedata::current_data_dir());
+        ParseModRules::from_game_data(&data).map_err(|e| e.to_string())
+    });
+    RULES
+        .as_ref()
+        .map_err(|e| CliError::ModParse(format!("默认解析规则加载失败：{e}")))
 }
 
-/// 解析单条 modifier 文本，可注入数据驱动 special 规则（M6-A2 生产路径）。
+/// 解析单条 modifier 文本（默认数据目录规则）。
 ///
-/// `rules = Some` 时走 special 规则增强路径；`None` 时等价历史 [`parse_mod`]，
-/// 逐值不变。
-pub fn parse_mod_with_data(
-    text: &str,
-    rules: Option<&ParseModRules>,
-) -> Result<ParseModReport, CliError> {
-    let (special, registry) = match rules {
-        Some(r) => (r.rules.as_ref(), Some(&r.registry)),
-        None => (None, None),
-    };
-    let outcome = parse_mod_with_rules(text, special, registry)
-        .map_err(|e| CliError::ModParse(e.to_string()))?;
+/// 引擎对无法识别的文本**不报错**——返回 `status == "Unsupported"` 并把原文放进
+/// `unparsed`。仅数据目录缺失/规则编译失败时返回 [`CliError::ModParse`]。
+pub fn parse_mod(text: &str) -> Result<ParseModReport, CliError> {
+    parse_mod_with_data(text, default_rules()?)
+}
+
+/// 解析单条 modifier 文本（显式规则，生产路径）。
+pub fn parse_mod_with_data(text: &str, rules: &ParseModRules) -> Result<ParseModReport, CliError> {
+    let outcome = parse_mod_engine(text, &rules.rules);
 
     let status = match outcome.status {
         ParseStatus::Parsed => "Parsed",
@@ -247,12 +256,11 @@ pub fn parse_mod_with_data(
 
 /// 把 [`ParseModReport`] 渲染为美化的 JSON 字符串。
 ///
-/// `data_dir` 指向版本数据目录；从中编译 parser 规则一次（M6-A2 数据驱动穿线）。
-/// special 表缺失时退回历史无规则解析。
+/// `data_dir` 指向版本数据目录；从中编译 parser 规则一次。
 pub fn parse_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
-    let report = parse_mod_with_data(text, Some(&rules))?;
+    let report = parse_mod_with_data(text, &rules)?;
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
@@ -312,17 +320,9 @@ pub struct ExplainModReport {
 }
 
 /// 解剖单条 modifier 文本：解析后摊开每条 [`Modifier`] 的全部字段（含 flags / tags），
-/// 附人话解释。`rules` 同 [`parse_mod_with_data`]（`None` = 无 special 规则路径）。
-pub fn explain_mod(
-    text: &str,
-    rules: Option<&ParseModRules>,
-) -> Result<ExplainModReport, CliError> {
-    let (special, registry) = match rules {
-        Some(r) => (r.rules.as_ref(), Some(&r.registry)),
-        None => (None, None),
-    };
-    let outcome = parse_mod_with_rules(text, special, registry)
-        .map_err(|e| CliError::ModParse(e.to_string()))?;
+/// 附人话解释。`rules` 同 [`parse_mod_with_data`]。
+pub fn explain_mod(text: &str, rules: &ParseModRules) -> Result<ExplainModReport, CliError> {
+    let outcome = parse_mod_engine(text, &rules.rules);
 
     let status = match outcome.status {
         ParseStatus::Parsed => "Parsed",
@@ -688,7 +688,7 @@ pub fn render_explain(report: &ExplainModReport) -> String {
 pub fn explain_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
-    let report = explain_mod(text, Some(&rules))?;
+    let report = explain_mod(text, &rules)?;
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
@@ -696,7 +696,7 @@ pub fn explain_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String
 pub fn explain_mod_text(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
-    let report = explain_mod(text, Some(&rules))?;
+    let report = explain_mod(text, &rules)?;
     Ok(render_explain(&report))
 }
 
@@ -745,7 +745,8 @@ pub struct ParseItemReport {
 ///
 /// 内部调用：
 /// 1. [`pobr_core::item_text::parse_item_text`] — 文本分段（rarity / sections / annotations 剥离）→ `Item`；
-/// 2. [`pobr_core::item::ingest_item`] — `Item` 词条 → 带归因 `Modifier` 列表。
+/// 2. [`pobr_core::item::ingest_item_with_ctx`] — `Item` 词条 → 带归因 `Modifier` 列表
+///    （默认数据目录的引擎规则）。
 ///
 /// 槽位默认为 [`EquipmentSlot::Ring1`]（CLI parse-item 不关联具体槽位，归因 ID 仅供
 /// 调试显示，不影响伤害计算）。
@@ -757,7 +758,8 @@ pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
 
     // CLI parse-item 不关联具体装备槽；使用 Ring1 作为占位槽（归因 ID 供调试）。
     let slot = EquipmentSlot::Ring1;
-    let ingest = ingest_item(slot, &item).map_err(|e| CliError::ModParse(e.to_string()))?;
+    let ingest = ingest_item_with_ctx(slot, &item, default_rules()?.ctx())
+        .map_err(|e| CliError::ModParse(e.to_string()))?;
 
     let modifiers = ingest
         .modifiers
@@ -1191,7 +1193,7 @@ pub fn explain_mod_with_marginal_text(
 ) -> Result<String, CliError> {
     let data = GameData::new(req.data_dir.clone());
     let rules = ParseModRules::from_game_data(&data)?;
-    let explain = explain_mod(text, Some(&rules))?;
+    let explain = explain_mod(text, &rules)?;
     let marginal = marginal_contribution(req)?;
     let mut s = render_explain(&explain);
     s.push_str(&render_marginal(&marginal));
@@ -1205,7 +1207,7 @@ pub fn explain_mod_with_marginal_json(
 ) -> Result<String, CliError> {
     let data = GameData::new(req.data_dir.clone());
     let rules = ParseModRules::from_game_data(&data)?;
-    let explain = explain_mod(text, Some(&rules))?;
+    let explain = explain_mod(text, &rules)?;
     let marginal = marginal_contribution(req)?;
     Ok(serde_json::to_string_pretty(&ExplainWithMarginal {
         explain,
@@ -1220,7 +1222,7 @@ mod explain_tests {
     /// 无条件 / 无缩放的平凡词条：无 tags，值与桶正确。
     #[test]
     fn flat_modifier_has_no_tags() {
-        let report = explain_mod("+50 to maximum Life", None).unwrap();
+        let report = explain_mod("+50 to maximum Life", default_rules().unwrap()).unwrap();
         assert_eq!(report.status, "Parsed");
         assert_eq!(report.mods.len(), 1);
         let m = &report.mods[0];
@@ -1234,7 +1236,11 @@ mod explain_tests {
     /// 带条件 + 伤害类型的词条：摊开 Condition 与 DamageType tag（parse-mod 会丢掉这些）。
     #[test]
     fn conditional_modifier_surfaces_condition_and_damage_type_tags() {
-        let report = explain_mod("25% increased Fire Damage while on Full Life", None).unwrap();
+        let report = explain_mod(
+            "25% increased Fire Damage while on Full Life",
+            default_rules().unwrap(),
+        )
+        .unwrap();
         assert_eq!(report.status, "Parsed");
         let m = report
             .mods
@@ -1260,7 +1266,11 @@ mod explain_tests {
     /// 带「per N 资源」缩放的词条：摊开 Multiplier tag。
     #[test]
     fn per_stat_modifier_surfaces_multiplier_tag() {
-        let report = explain_mod("1% increased Attack Damage per 10 Strength", None).unwrap();
+        let report = explain_mod(
+            "1% increased Attack Damage per 10 Strength",
+            default_rules().unwrap(),
+        )
+        .unwrap();
         assert_eq!(report.status, "Parsed");
         let m = report
             .mods
@@ -1289,7 +1299,11 @@ mod explain_tests {
     /// 文本渲染器冒烟：含原文、状态、tag 段。
     #[test]
     fn render_explain_smoke() {
-        let report = explain_mod("25% increased Fire Damage while on Full Life", None).unwrap();
+        let report = explain_mod(
+            "25% increased Fire Damage while on Full Life",
+            default_rules().unwrap(),
+        )
+        .unwrap();
         let text = render_explain(&report);
         assert!(text.contains("词条原文:"));
         assert!(text.contains("Parsed"));

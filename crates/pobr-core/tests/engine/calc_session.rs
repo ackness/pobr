@@ -1,4 +1,6 @@
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::MinimalInput;
+
+use crate::support::session;
 
 #[test]
 fn session_parses_modifier_texts_and_calculates_minimal_output() {
@@ -15,7 +17,7 @@ fn session_parses_modifier_texts_and_calculates_minimal_output() {
         base_action_rate: 2.0,
     };
 
-    let mut session = CalculationSession::new(input);
+    let mut session = session(input);
     session
         .add_modifier_texts([
             "+50 to maximum Life",
@@ -50,7 +52,7 @@ fn session_preserves_accuracy_inputs_for_hit_chance_and_dps() {
         base_hit_max: 100.0,
         base_action_rate: 1.0,
     };
-    let mut session = CalculationSession::new(input);
+    let mut session = session(input);
     session
         .add_modifier_texts(["+200 to Accuracy Rating"])
         .unwrap();
@@ -69,7 +71,7 @@ fn session_preserves_accuracy_inputs_for_hit_chance_and_dps() {
 #[test]
 fn attribute_total_applies_increased_attribute_modifiers() {
     // Arrange
-    let mut session = CalculationSession::new(MinimalInput::default());
+    let mut session = session(MinimalInput::default());
     session
         .add_modifier_texts(["+100 to Dexterity", "8% increased Dexterity"])
         .unwrap();
@@ -90,7 +92,7 @@ fn pool_total_applies_full_pool_pipeline() {
         base_mana: 100.0,
         ..MinimalInput::default()
     };
-    let mut session = CalculationSession::new(input);
+    let mut session = session(input);
     session
         .add_modifier_texts(["+200 to maximum Mana", "50% increased maximum Mana"])
         .unwrap();
@@ -106,21 +108,25 @@ fn pool_total_applies_full_pool_pipeline() {
 
 #[test]
 fn session_preserves_unsupported_modifier_texts() {
-    let mut session = CalculationSession::new(MinimalInput::default());
+    let mut session = session(MinimalInput::default());
     session.add_modifier_texts(["Mirrored"]).unwrap();
 
     assert_eq!(session.unsupported_modifier_texts(), ["Mirrored"]);
 }
 
 #[test]
-fn session_returns_parse_error_for_unknown_modifier_text() {
-    let mut session = CalculationSession::new(MinimalInput::default());
+fn session_collects_unknown_modifier_text_as_unsupported() {
+    // 引擎对无法识别的文本永不报错——整行进 unsupported 收集面。
+    let mut session = session(MinimalInput::default());
 
-    let error = session
+    session
         .add_modifier_texts(["not a real modifier"])
-        .unwrap_err();
+        .expect("engine never errors on unknown text");
 
-    assert_eq!(error.input, "not a real modifier");
+    assert_eq!(
+        session.unsupported_modifier_texts(),
+        ["not a real modifier"]
+    );
 }
 
 /// 投射物速度 → 投射物伤害转换（vendor CalcOffence.lua:840-845）：
@@ -141,7 +147,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
         CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT);
 
     // 无 flag：ProjectileSpeed 无消费方，零行为。
-    let mut without = CalculationSession::new(input).with_config(cfg.clone());
+    let mut without = session(input).with_config(cfg.clone());
     without
         .add_modifier_texts(["8% increased Projectile Speed"])
         .unwrap();
@@ -149,7 +155,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     assert_eq!(base.total_hit_avg, 100.0);
 
     // flag 激活：8% Projectile Speed → 8% increased Damage (Projectile)。
-    let mut with = CalculationSession::new(input).with_config(cfg);
+    let mut with = session(input).with_config(cfg);
     with.add_modifier_texts(["8% increased Projectile Speed"])
         .unwrap();
     with.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToProjectileDamage")]);
@@ -157,7 +163,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     assert_eq!(converted.total_hit_avg, 108.0);
 
     // 带 flags 限定的源 mod（如 for Spell Skills）不参与转换（vendor Tabulate 空 cfg 口径）。
-    let mut scoped = CalculationSession::new(MinimalInput {
+    let mut scoped = session(MinimalInput {
         base_hit_min: 100.0,
         base_hit_max: 100.0,
         base_action_rate: 1.0,
@@ -193,7 +199,7 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
         .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT | ModFlags::BOW);
 
     // 解析链端到端：notable 原文 → flag → 转换生效（46% 投速 → +46% Damage）。
-    let mut with = CalculationSession::new(input).with_config(bow_cfg.clone());
+    let mut with = session(input).with_config(bow_cfg.clone());
     with.add_modifier_texts([
         "46% increased Projectile Speed",
         "Increases and Reductions to [Projectile|Projectile] Speed also apply to Damage with [Bow|Bows]",
@@ -203,7 +209,7 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
     assert_eq!(converted.total_hit_avg, 146.0);
 
     // 非弓技能 cfg（无 BOW 位）：副本 flags=Bow|Hit 不是 cfg 子集 → 不命中。
-    let mut non_bow = CalculationSession::new(input).with_config(
+    let mut non_bow = session(input).with_config(
         CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT),
     );
     non_bow
