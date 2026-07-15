@@ -33942,7 +33942,18 @@
     },
     {
       "text": "Bonded: Meta Skills have 15% increased Reservation Efficiency",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ReservationEfficiency",
+          "type": "Inc",
+          "value": 15.0,
+          "tags": [
+            "Condition { var: \"CanUseBondedModifiers\", negated: false, actor: None }",
+            "SkillTypes(SkillTypes([0, 144115188075855872, 0, 0, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "Bonded: Minions have 30% increased Cooldown Recovery Rate for Command Skills",
@@ -36807,7 +36818,14 @@
     },
     {
       "text": "Gain the benefits of [ShamanOnlyMods|Bonded] modifiers on [Rune|Runes] and [Idol|Idols]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanUseBondedModifiers",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Gains 0.15 Charges per Second",
@@ -44901,7 +44919,19 @@
     },
     {
       "text": "[StatConversion|Converts] all [Evasion|Evasion Rating] to [Armour]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IronReflexes",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "EvasionConvertToArmour",
+          "type": "Base",
+          "value": 100.0
+        }
+      ]
     },
     {
       "text": "[Storm|Storm] and [Plant|Plant] [Spell|Spells]:\n• deal 50% more damage\n• cost 50% less\n• have 75% less duration",

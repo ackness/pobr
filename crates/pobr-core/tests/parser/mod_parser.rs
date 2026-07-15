@@ -662,10 +662,21 @@ fn bonded_prefix_gates_mod_behind_condition() {
     );
 }
 
-// （已删）`Gain the benefits of Bonded modifiers on Runes and Idols` →
-// `Condition:CanUseBondedModifiers` FLAG 是 legacy 解析器专属能力；引擎规则
-// 尚未覆盖该文本（Unsupported）——编排层消费点（session.has_flag →
-// set_condition）仍在，待引擎规则/overlay 补齐该行后恢复端到端测试。
+/// Bonded 激活行（Druid Oracle 升华，ModParser.lua:3423-3424）→
+/// `Condition:CanUseBondedModifiers` FLAG（special `bonded_modifiers_enabler`）。
+/// 编排层消费点 calc_orchestrator 6d：session.has_flag → set_condition，
+/// 解锁上面测试的 `Bonded:` 前缀词条。
+#[test]
+fn bonded_enabler_line_grants_condition_flag() {
+    let o = parse_mod("Gain the benefits of Bonded modifiers on Runes and Idols").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(
+        o.mods[0].name,
+        ModName::from("Condition:CanUseBondedModifiers")
+    );
+    assert_eq!(o.mods[0].value, ModValue::Bool(true));
+}
 
 /// 腰带 implicit「Has N Charm Slot(s)」/ 天赋「+N Charm Slot」→ `CharmLimit` BASE N
 /// （vendor ModParser.lua:5453 `h?a?s? ?+?(%d+) charm slots?`）。无 CharmLimit 来源
@@ -991,4 +1002,140 @@ fn non_minion_text_yields_no_entries() {
 #[test]
 fn minion_unparsable_remainder_yields_no_entries() {
     assert!(minion_entries("Minions wibble wobble zorp").is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// wave2-defence：防御向特殊词条（special_mods `wave2-defence` 批；原 legacy-only
+// 覆盖 mod_parser_m2_defence.rs 删除后回填的 engine 形态钉，产出对齐 vendor
+// ModParser.lua specialModList）
+// ---------------------------------------------------------------------------
+
+/// 断言 outcome 恰为一组 FLAG mods（顺序一致）。
+fn assert_flags(text: &str, names: &[&str]) {
+    let o = parse_mod(text).unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed, "{text}");
+    assert_eq!(o.mods.len(), names.len(), "{text}: {:?}", o.mods);
+    for (m, name) in o.mods.iter().zip(names) {
+        assert_eq!(m.name, ModName::from(*name), "{text}");
+        assert_eq!(m.mod_type, ModType::Flag, "{text}");
+        assert_eq!(m.value, ModValue::Bool(true), "{text}");
+    }
+}
+
+/// `Armour applies to Fire, Cold and Lightning Damage taken from Hits instead
+/// of Physical Damage`（ModParser.lua:2545-2550）→ 三元素
+/// `ArmourAppliesTo<X>DamageTaken` BASE 100 + `ArmourDoesNotApplyToPhysicalDamageTaken`
+/// flag。消费端 taken.rs armour_applies_pct。
+#[test]
+fn parses_armour_applies_to_fcl_instead_of_physical() {
+    let o = parse_mod(
+        "Armour applies to Fire, Cold and Lightning Damage taken from Hits instead of Physical Damage",
+    )
+    .unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 4, "{:?}", o.mods);
+    for (m, el) in o.mods.iter().zip(["Fire", "Cold", "Lightning"]) {
+        assert_eq!(
+            m.name,
+            ModName::from(format!("ArmourAppliesTo{el}DamageTaken"))
+        );
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value, ModValue::Number(100.0));
+    }
+    assert_eq!(
+        o.mods[3].name,
+        ModName::from("ArmourDoesNotApplyToPhysicalDamageTaken")
+    );
+    assert_eq!(o.mods[3].mod_type, ModType::Flag);
+}
+
+/// `N% of Armour applies to Fire, Cold and Lightning Damage taken from Hits`
+/// （ModParser.lua:2551-2555）→ 三元素 BASE N（无 instead flag）。
+#[test]
+fn parses_pct_of_armour_applies_to_fcl() {
+    let o = parse_mod("50% of Armour applies to Fire, Cold and Lightning Damage taken from Hits")
+        .unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 3, "{:?}", o.mods);
+    for (m, el) in o.mods.iter().zip(["Fire", "Cold", "Lightning"]) {
+        assert_eq!(
+            m.name,
+            ModName::from(format!("ArmourAppliesTo{el}DamageTaken"))
+        );
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value, ModValue::Number(50.0));
+    }
+}
+
+/// `Armour applies to Elemental Damage`（ModParser.lua:2556-2560）与
+/// `+N% of Armour also applies to Elemental Damage`（:2561-2565）→ 三元素 BASE。
+#[test]
+fn parses_armour_applies_to_elemental_damage_variants() {
+    for (text, expect) in [
+        ("Armour applies to Elemental Damage", 100.0),
+        ("+30% of Armour also applies to Elemental Damage", 30.0),
+        ("25% of Armour applies to Elemental Damage", 25.0),
+    ] {
+        let o = parse_mod(text).unwrap();
+        assert_eq!(o.status, ParseStatus::Parsed, "{text}");
+        assert_eq!(o.mods.len(), 3, "{text}: {:?}", o.mods);
+        for (m, el) in o.mods.iter().zip(["Fire", "Cold", "Lightning"]) {
+            assert_eq!(
+                m.name,
+                ModName::from(format!("ArmourAppliesTo{el}DamageTaken")),
+                "{text}"
+            );
+            assert_eq!(m.value, ModValue::Number(expect), "{text}");
+        }
+    }
+}
+
+/// `Energy Shield protects Mana instead of Life`（Eldritch Battery 类，
+/// ModParser.lua:2465）→ `EnergyShieldProtectsMana` FLAG。消费端
+/// keystone_registry.rs DefenceKeystones → pool_damage/ehp/defence。
+#[test]
+fn parses_energy_shield_protects_mana() {
+    assert_flags(
+        "Energy Shield protects Mana instead of Life",
+        &["EnergyShieldProtectsMana"],
+    );
+}
+
+/// `Converts all Evasion Rating to Armour`（Iron Reflexes 类，ModParser.lua:2369）
+/// → `IronReflexes` FLAG + `EvasionConvertToArmour` BASE 100。消费端
+/// defence.rs 五元 ConvertTo 矩阵 + keystone_registry（Unbreakable 联动）。
+#[test]
+fn parses_converts_all_evasion_rating_to_armour() {
+    let o = parse_mod("Converts all Evasion Rating to Armour").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert_eq!(o.mods.len(), 2, "{:?}", o.mods);
+    assert_eq!(o.mods[0].name, ModName::from("IronReflexes"));
+    assert_eq!(o.mods[0].mod_type, ModType::Flag);
+    assert_eq!(o.mods[1].name, ModName::from("EvasionConvertToArmour"));
+    assert_eq!(o.mods[1].mod_type, ModType::Base);
+    assert_eq!(o.mods[1].value, ModValue::Number(100.0));
+}
+
+/// `Chance to Deflect is Lucky`（ModParser.lua:4202）→ `DeflectIsLucky` FLAG。
+/// 消费端 defence_panels.rs 偏斜几率 lucky 幂。
+#[test]
+fn parses_chance_to_deflect_is_lucky() {
+    assert_flags("Chance to Deflect is Lucky", &["DeflectIsLucky"]);
+}
+
+/// `Chance to Block Damage is Lucky`（ModParser.lua:4371）单 flag；
+/// `(Your )?Chance to Block is Lucky`（:4372）四 flag 全套。消费端
+/// defence_panels.rs effective(BlockChance/SpellBlockChance)；
+/// Projectile/SpellProjectile 两 flag 暂无消费端（形态对齐 vendor）。
+#[test]
+fn parses_chance_to_block_is_lucky_variants() {
+    assert_flags("Chance to Block Damage is Lucky", &["BlockChanceIsLucky"]);
+    let all_four = [
+        "BlockChanceIsLucky",
+        "ProjectileBlockChanceIsLucky",
+        "SpellBlockChanceIsLucky",
+        "SpellProjectileBlockChanceIsLucky",
+    ];
+    assert_flags("Your Chance to Block is Lucky", &all_four);
+    assert_flags("Chance to Block is Lucky", &all_four);
 }
