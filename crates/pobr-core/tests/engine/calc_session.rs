@@ -115,6 +115,28 @@ fn session_preserves_unsupported_modifier_texts() {
 }
 
 #[test]
+fn session_gates_partial_parse_leftover_as_unsupported() {
+    // 与生产闸门（calc_orchestrator::collect）同口径：Parsed 但有**残留**（部分
+    // 解析）不得注入——注入的是错值，比整行不识别更危险。整行进 unsupported。
+    let mut session = session(MinimalInput::default());
+    let line = "10% increased Fire Damage some trailing gibberish";
+
+    session
+        .add_modifier_texts([line])
+        .expect("engine never errors");
+
+    assert_eq!(
+        session.unsupported_modifier_texts(),
+        [line],
+        "partially-parsed line must be collected whole, not injected"
+    );
+    assert!(
+        session.mods_named("FireDamage").is_empty(),
+        "no partial mods may leak into the mod db"
+    );
+}
+
+#[test]
 fn session_collects_unknown_modifier_text_as_unsupported() {
     // 引擎对无法识别的文本永不报错——整行进 unsupported 收集面。
     let mut session = session(MinimalInput::default());

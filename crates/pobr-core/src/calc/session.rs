@@ -175,16 +175,20 @@ impl CalculationSession {
         {
             let ctx = self.parse_ctx();
             for text in texts {
-                outcomes.push(ctx.parse(text.as_ref())?);
+                let text = text.as_ref();
+                outcomes.push((ctx.parse(text)?, text.to_string()));
             }
         }
-        for outcome in outcomes {
+        for (outcome, original) in outcomes {
             match outcome.status {
-                ParseStatus::Parsed => self.env.player.mod_db.add_list(outcome.mods),
-                ParseStatus::Unsupported => {
-                    if let Some(unparsed) = outcome.unparsed {
-                        self.unsupported_modifier_texts.push(unparsed);
-                    }
+                // 与生产闸门（calc_orchestrator::collect）同口径：Parsed 且**无残留**
+                // 才注入。部分解析（如 `X% of A converted to B` 误出 `A Base X` +
+                // 残留）注入的是错值，比整行不识别更危险——整行降级为 unsupported。
+                ParseStatus::Parsed if outcome.unparsed.is_none() => {
+                    self.env.player.mod_db.add_list(outcome.mods)
+                }
+                ParseStatus::Parsed | ParseStatus::Unsupported => {
+                    self.unsupported_modifier_texts.push(original);
                 }
             }
         }
