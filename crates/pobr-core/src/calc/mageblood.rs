@@ -36,7 +36,13 @@ const LEGACIES: &[LegacyDef] = &[
         "LegacyOfBismuth",
         &[("ElementalResist", ModType::Base, 45.0)],
     ),
-    ("LegacyOfDiamond", &[("CritChance", ModType::Inc, 75.0)]),
+    // vendor stat `CritChance` → PoBR 消费名 `CriticalStrikeChance`（calc::crit 读后者；
+    // 与 special_mod::translate_vendor_name 同口径。裸注入不过 parser 翻译，故表内直用
+    // PoBR 规范名，否则落死桶——同 Virtuous Barrier Life→MaximumLife 教训）。
+    (
+        "LegacyOfDiamond",
+        &[("CriticalStrikeChance", ModType::Inc, 75.0)],
+    ),
     ("LegacyOfGold", &[("LootRarity", ModType::Inc, 45.0)]),
     ("LegacyOfGranite", &[("Armour", ModType::Base, 2000.0)]),
     ("LegacyOfJade", &[("Evasion", ModType::Base, 2000.0)]),

@@ -650,8 +650,14 @@ const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425�
 // `parse_passive_nodes` 单独回传被剔除的非激活组节点，`radius_jewel_expansions` 在几何里
 // 并回完整已分配集（节点自身 mod 仍 masking，行为不变）。gemling CritChance→1.00x、
 // AvgDamage/TotalDPS 0.96x→1.03x。其余 build 零回归（off 70/73 → 71/74）。
-const BASELINE_OFF_HIT5: usize = 39; // 4.5.4.3 迁移基线 39/80（0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 47; // 4.5.4.3 迁移基线 47/80（0.5.0=74）
+// **Mageblood Diamond crit 名归一重记（+2 @5% 39→41 / +3 @10% 47→50）**：Mageblood
+// LegacyOfDiamond 注入 vendor 名 `CritChance` INC，但 calc::crit 读 `CriticalStrikeChance`
+// （PoBR 规范名）——裸注入不过 parser 的 translate_vendor_name，落死桶（同 Virtuous
+// Barrier Life→MaximumLife 类）。表内改用 `CriticalStrikeChance` 后 blood-mage CritChance
+// 0.79x→0.96x、ember CritChance+CritMultiplier→1.00x（InevitableCrit 的 crit-mult 惩罚随
+// pre-eff crit 修复一并解决），三 Diamond build 的 crit/DPS 抬升。见 calc/mageblood.rs。
+const BASELINE_OFF_HIT5: usize = 41; // Diamond-crit 后 41/80（迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 50; // Diamond-crit 后 50/80（迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
