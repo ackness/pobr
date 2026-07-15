@@ -266,7 +266,9 @@ cargo run -p precompile-mods -- --data data/4.5.0.3.4 --check
 ```
 
 This deserializes `mod_parser_rules.json` + `special_mods.json` (+
-`generated/special_derived.json`), reports **unknown/misspelled fields**
+`generated/special_derived.json`; `generated/special_vendor.json` is
+**required** — a missing file is an error, regenerate it via
+`extract-lua --what special-mods`), reports **unknown/misspelled fields**
 (via `serde_ignored`) and **type/syntax errors**, then compiles the rules —
 catching **bad regex/Lua patterns, duplicate special `id`s, and `handler_id`s
 with no registered handler**. Any problem → non-zero exit with every error

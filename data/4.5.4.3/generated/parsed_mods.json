@@ -65,7 +65,14 @@
     },
     {
       "text": "+1 Ring Slot",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AdditionalRingSlot",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "+1 Suffix Modifier allowed",
@@ -2884,7 +2891,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "SurpassingProjectileChance",
           "type": "Base",
           "value": 24.0
         }
@@ -3084,7 +3091,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Accuracy",
+          "name": "AccuracyVsEnemy",
           "type": "Base",
           "value": 250.0,
           "tags": [
@@ -4902,14 +4909,7 @@
     },
     {
       "text": "+5 to any [Attributes|Attribute]",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "Tribute",
-          "type": "Base",
-          "value": 5.0
-        }
-      ]
+      "status": "parsed"
     },
     {
       "text": "+5 to maximum [EnergyShield|Energy Shield]",
@@ -5769,7 +5769,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "SurpassingProjectileChance",
           "type": "Base",
           "value": 8.0
         }
@@ -6661,7 +6661,14 @@
     },
     {
       "text": "10% chance for [Attack] [HitDamage|Hits] to apply ten [Incision]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanInflictIncision",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "10% chance for [Flask|Flasks] you use to not consume Charges",
@@ -7742,9 +7749,15 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
-          "type": "Inc",
-          "value": 10.0
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "BlindEffect",
+              "type": "Inc",
+              "value": 10.0
+            }
+          ]
         }
       ]
     },
@@ -8967,9 +8980,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MovementSpeed",
+          "name": "MovementSpeedPenalty",
           "type": "Inc",
-          "value": -10.0
+          "value": -10.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 0, 0, 32]))"
+          ]
         }
       ]
     },
@@ -9102,7 +9118,14 @@
     },
     {
       "text": "100 Passive Skill Points become [WeaponSetPassiveSkillPoints|Weapon Set Skill Points]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PassivePointsToWeaponSetPoints",
+          "type": "Base",
+          "value": 100.0
+        }
+      ]
     },
     {
       "text": "100% [SurpassChance|Surpassing] chance per enemy [Power] to gain [MountainsTeachings|Mountain's Teachings] on [Immobilised|Immobilising] an enemy, up to a maximum of 30\nLose a [MountainsTeachings|Mountain's Teaching] when you are [HitDamage|Hit], or when you use or [Sustained|Sustain] an [Attack] that benefits from [MountainsTeachings|Mountain's Teachings]",
@@ -9700,7 +9723,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "TwoAdditionalProjectilesChance",
           "type": "Base",
           "value": 12.0,
           "flags": 2
@@ -13466,7 +13489,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Accuracy",
+          "name": "AccuracyVsEnemy",
           "type": "Inc",
           "value": 16.0,
           "tags": [
@@ -14366,11 +14389,21 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaximumLife",
+          "name": "LifeOnKill",
           "type": "Base",
           "value": 2.0,
           "tags": [
-            "Condition { var: \"KilledRecently\", negated: false, actor: None }"
+            "PercentStat { stat: \"Life\", percent: Some(1.0) }",
+            "Condition { var: \"AverageResourceGain\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "LifeOnKill",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"Life\", percent: Some(100.0) }",
+            "Condition { var: \"MaxResourceGain\", negated: false, actor: None }"
           ]
         }
       ]
@@ -14601,7 +14634,14 @@
     },
     {
       "text": "20% chance for [Attack] [HitDamage|Hits] to apply [Incision]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanInflictIncision",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "20% chance for [Bleeding] to be [Aggravate|Aggravated] when Inflicted against Enemies on [JaggedGround|Jagged Ground]",
@@ -15513,9 +15553,15 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
-          "type": "Inc",
-          "value": 20.0
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "BlindEffect",
+              "type": "Inc",
+              "value": 20.0
+            }
+          ]
         }
       ]
     },
@@ -16826,10 +16872,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Damage",
+          "name": "TakenFromTotemsBeforeYou",
           "type": "Base",
           "value": 20.0,
-          "kw": 16384
+          "tags": [
+            "Condition { var: \"HaveTotem\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -17910,7 +17958,17 @@
     },
     {
       "text": "25% chance on [Shock|Shocking] Enemies to created [ShockedGround|Shocked Ground]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ShockBase",
+          "type": "Base",
+          "value": 20.0,
+          "tags": [
+            "Condition { var: \"EnemyOnShockedGround\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "25% chance that when [Volatility] on you explodes, you regain an equivalent amount of [Volatility]",
@@ -19343,11 +19401,27 @@
           "name": "SkillSpeed",
           "type": "More",
           "value": 25.0,
-          "flags": 8192,
           "tags": [
-            "Condition { var: \"OffHandIsEmpty\", negated: false, actor: None }",
-            "Condition { var: \"MainHandAttack\", negated: false, actor: None }",
-            "SkillTypes(SkillTypes(1))"
+            "Condition { var: \"UsingOneHandedWeapon\", negated: false, actor: None }",
+            "Condition { var: \"OffHandIsEmpty\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "More",
+          "value": 25.0,
+          "tags": [
+            "Condition { var: \"UsingOneHandedWeapon\", negated: false, actor: None }",
+            "Condition { var: \"OffHandIsEmpty\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "More",
+          "value": 25.0,
+          "tags": [
+            "Condition { var: \"UsingOneHandedWeapon\", negated: false, actor: None }",
+            "Condition { var: \"OffHandIsEmpty\", negated: false, actor: None }"
           ]
         }
       ]
@@ -19361,7 +19435,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaximumLife",
+          "name": "LifeLossPrevented",
           "type": "Base",
           "value": 25.0
         }
@@ -19736,7 +19810,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "FlaskLifeRecoveryLowLife",
+          "name": "FlaskInstantRecovery",
           "type": "Base",
           "value": 27.0
         }
@@ -19873,7 +19947,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "FlaskLifeRecoveryLowLife",
+          "name": "FlaskInstantRecovery",
           "type": "Base",
           "value": 28.0
         }
@@ -20511,7 +20585,17 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MaximumLife",
+          "name": "Life",
+          "type": "Inc",
+          "value": 3.0
+        },
+        {
+          "name": "Mana",
+          "type": "Inc",
+          "value": 3.0
+        },
+        {
+          "name": "EnergyShield",
           "type": "Inc",
           "value": 3.0
         }
@@ -20727,9 +20811,10 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "AreaOfEffect",
+          "name": "AncestralBoostAreaOfEffect",
           "type": "Inc",
-          "value": 30.0
+          "value": 30.0,
+          "flags": 1
         }
       ]
     },
@@ -21141,7 +21226,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Accuracy",
+          "name": "AccuracyVsEnemy",
           "type": "Inc",
           "value": 30.0,
           "tags": [
@@ -22190,7 +22275,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "FlaskLifeRecoveryLowLife",
+          "name": "FlaskInstantRecovery",
           "type": "Base",
           "value": 30.0
         }
@@ -23038,7 +23123,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "TwoAdditionalProjectilesChance",
           "type": "Base",
           "value": 4.0,
           "flags": 2
@@ -23097,9 +23182,10 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "AreaOfEffect",
+          "name": "AncestralBoostAreaOfEffect",
           "type": "Inc",
-          "value": 4.0
+          "value": 4.0,
+          "flags": 1
         }
       ]
     },
@@ -23415,7 +23501,14 @@
     },
     {
       "text": "40% chance for [Attack] [HitDamage|Hits] to apply [Incision]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanInflictIncision",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "40% chance to Daze on Hit",
@@ -25611,7 +25704,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Damage",
+          "name": "TakenFromCompanionBeforeYou",
           "type": "Base",
           "value": 5.0
         }
@@ -25818,9 +25911,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "MovementSpeed",
+          "name": "MovementSpeedPenalty",
           "type": "Inc",
-          "value": -5.0
+          "value": -5.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 0, 0, 32]))"
+          ]
         }
       ]
     },
@@ -26156,9 +26252,15 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "LocalEffect",
-          "type": "Inc",
-          "value": 50.0
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "BlindEffect",
+              "type": "Inc",
+              "value": 50.0
+            }
+          ]
         }
       ]
     },
@@ -26568,7 +26670,17 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Evasion",
+          "name": "EvasionAppliesToFireDamageTaken",
+          "type": "Base",
+          "value": 50.0
+        },
+        {
+          "name": "EvasionAppliesToColdDamageTaken",
+          "type": "Base",
+          "value": 50.0
+        },
+        {
+          "name": "EvasionAppliesToLightningDamageTaken",
           "type": "Base",
           "value": 50.0
         }
@@ -26692,7 +26804,14 @@
     },
     {
       "text": "50% reduced bonuses gained from Equipped [Focus]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EffectOfBonusesFromFocus",
+          "type": "Inc",
+          "value": -50.0
+        }
+      ]
     },
     {
       "text": "50% reduced effect of Curses on you",
@@ -26961,7 +27080,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "TwoAdditionalProjectilesChance",
           "type": "Base",
           "value": 6.0,
           "flags": 2
@@ -27942,7 +28061,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "EnergyShield",
+          "name": "EnergyShieldAppliesToPhysicalDamageTaken",
           "type": "Base",
           "value": 60.0
         }
@@ -31837,7 +31956,53 @@
     },
     {
       "text": "All Damage from you and [Allies|Allies] in your [Presence|Presence]\n[Contributes|contributes] to [Flammability] and [Ignite] [BuffMagnitude|Magnitudes]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "List",
+          "value": [
+            {
+              "name": "ColdCanIgnite",
+              "type": "Flag",
+              "value": true
+            }
+          ]
+        },
+        {
+          "name": "ExtraAura",
+          "type": "List",
+          "value": [
+            {
+              "name": "LightningCanIgnite",
+              "type": "Flag",
+              "value": true
+            }
+          ]
+        },
+        {
+          "name": "ExtraAura",
+          "type": "List",
+          "value": [
+            {
+              "name": "ChaosCanIgnite",
+              "type": "Flag",
+              "value": true
+            }
+          ]
+        },
+        {
+          "name": "ExtraAura",
+          "type": "List",
+          "value": [
+            {
+              "name": "PhysicalCanIgnite",
+              "type": "Flag",
+              "value": true
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "All Damage taken from Hits Contributes to Magnitude of Chill inflicted on you",
@@ -31881,19 +32046,40 @@
     },
     {
       "text": "All [FlamesOfChayula|Flames of Chayula] that you manifest are [BlueFlamesOfChayula|Blue]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BreachFlameOnlyBlue",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "All [FlamesOfChayula|Flames of Chayula] that you manifest are [PurpleFlamesOfChayula|Purple]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BreachFlameOnlyPurple",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "All [FlamesOfChayula|Flames of Chayula] that you manifest are [RedFlamesOfChayula|Red]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BreachFlameOnlyRed",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "All bonuses from [Equipped] Amulet apply to your [Minion|Minions] instead of you",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Allies in your Presence Gain 25% of Damage as Extra Chaos Damage",
@@ -32929,7 +33115,14 @@
     },
     {
       "text": "Apply 10 [CriticalWeakness|Critical Weakness] to Enemies when [Consume|Consuming] a [Mark] on them",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ApplyCriticalWeakness",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Apply [Debilitate] to Enemies 30 Metres in front of you while your [Shield] is raised",
@@ -33197,7 +33390,14 @@
     },
     {
       "text": "Bleeding you inflict deals Damage 10% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BleedFaster",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "Blood Barrier",
@@ -33228,9 +33428,12 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Armour",
+          "name": "ArmourAppliesToChaosDamageTaken",
           "type": "Base",
-          "value": 100.0
+          "value": 100.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -34054,7 +34257,7 @@
     },
     {
       "text": "Can Socket a [ItemRarity|non-Unique] [BasicJewel|Basic Jewel] into the Phylactery",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Can [Attack] as though using a [Quarterstaff] while both of your hand slots are empty\n[UnarmedAttack|Unarmed Attacks] that would use an [Equipped] [Quarterstaff]'s damage have:\n• Base [UnarmedDamage|Unarmed] [Physical] damage replaced with damage based on their Skill Level\n• 1% more [Attack] Speed per 75 [ItemEvasion|Item Evasion] on [EquipArmour|Equipped Armour Items]\n• +0.1% to [Critical|Critical Hit Chance] per 10 [ItemEnergyShield|Item Energy Shield] on [EquipArmour|Equipped Armour Items]",
@@ -34123,7 +34326,19 @@
     },
     {
       "text": "Cannot be [Blind|Blinded]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CannotBeBlinded",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "BlindImmune",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Cannot be [Blind|Blinded] while on Full Life",
@@ -34167,7 +34382,14 @@
     },
     {
       "text": "Cannot gain [Spirit] from [Equipment]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CannotGainSpiritFromEquipment",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Cannot use [Charm|Charms]\n30% more Recovery from [Flask|Flasks]",
@@ -34191,7 +34413,7 @@
     },
     {
       "text": "Carry a Chest which adds 20 Inventory Slots",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Cataclysm Shard",
@@ -34748,7 +34970,14 @@
     },
     {
       "text": "Demonflame has no maximum",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Multiplier:DemonFlameMaximum",
+          "type": "Base",
+          "value": 999.0
+        }
+      ]
     },
     {
       "text": "Destroys all Augment Sockets on the item to create a Jewel Socket",
@@ -34799,7 +35028,19 @@
     },
     {
       "text": "Double the number of your [Poison|Poisons] that targets can be affected by at the same time",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PoisonCanStack",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "PoisonStacks",
+          "type": "More",
+          "value": 100.0
+        }
+      ]
     },
     {
       "text": "Dousing Charm",
@@ -34839,7 +35080,23 @@
     },
     {
       "text": "Each [Totem] applies 2% increased Damage taken to Enemies in their [Presence]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "DamageTaken",
+              "type": "Inc",
+              "value": 2.0,
+              "tags": [
+                "Multiplier { var: \"TotemsSummoned\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "Eagle Carapace",
@@ -34855,7 +35112,14 @@
     },
     {
       "text": "Effect is not removed when Unreserved Mana is Filled",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaFlaskEffectNotRemoved",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Effervescent Ultimate Life Flask of the Distiller",
@@ -35057,7 +35321,14 @@
     },
     {
       "text": "Enemies have an [Accuracy|Accuracy] Penalty against you based on Distance",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyAccuracyDistancePenalty",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Enemies in [JaggedGround|Jagged Ground] you create take 10% increased Damage",
@@ -35095,12 +35366,11 @@
             {
               "name": "Condition:Hindered",
               "type": "Flag",
-              "value": true,
-              "tags": [
-                "Condition { var: \"EnemyInPresence\", negated: false, actor: None }",
-                "Condition { var: \"Effective\", negated: false, actor: None }"
-              ]
+              "value": true
             }
+          ],
+          "tags": [
+            "Condition { var: \"EnemyInPresence\", negated: false, actor: None }"
           ]
         }
       ]
@@ -35149,7 +35419,23 @@
     },
     {
       "text": "Enemies in your [Presence|Presence] are [Slow|Slowed] by 20%",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "ActionSpeed",
+              "type": "Inc",
+              "value": -20.0
+            }
+          ],
+          "tags": [
+            "Condition { var: \"EnemyInPresence\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Enemies in your [Presence|Presence] have 10% reduced Cooldown Recovery Rate",
@@ -35174,7 +35460,51 @@
     },
     {
       "text": "Enemies in your [Presence|Presence] have [Exposure]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "FireExposure",
+              "type": "Base",
+              "value": 20.0
+            }
+          ],
+          "tags": [
+            "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "ColdExposure",
+              "type": "Base",
+              "value": 20.0
+            }
+          ],
+          "tags": [
+            "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "LightningExposure",
+              "type": "Base",
+              "value": 20.0
+            }
+          ],
+          "tags": [
+            "Condition { var: \"EnemyEnemyInPresence\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Enemies near Enemies you [Mark] are [Blind|Blinded]",
@@ -35294,7 +35624,37 @@
     },
     {
       "text": "Enemies you [Mark] cannot deal [Critical|Critical Hits]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "NeverCrit",
+              "type": "Flag",
+              "value": true,
+              "tags": [
+                "Condition { var: \"Marked\", negated: false, actor: None }"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "Condition:NeverCrit",
+              "type": "Flag",
+              "value": true,
+              "tags": [
+                "Condition { var: \"Marked\", negated: false, actor: None }"
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "Enemies you [Mark] have 10% reduced [Accuracy|Accuracy Rating]",
@@ -35307,23 +35667,54 @@
             {
               "name": "Accuracy",
               "type": "Inc",
-              "value": -10.0,
-              "tags": [
-                "Condition { var: \"EnemyMark\", negated: false, actor: None }",
-                "Condition { var: \"Effective\", negated: false, actor: None }"
-              ]
+              "value": -10.0
             }
+          ],
+          "tags": [
+            "Condition { var: \"EnemyMarked\", negated: false, actor: None }"
           ]
         }
       ]
     },
     {
       "text": "Enemies you [Mark] take 10% increased Damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "DamageTaken",
+              "type": "Inc",
+              "value": 10.0
+            }
+          ],
+          "tags": [
+            "Condition { var: \"EnemyMarked\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Enemies you apply [Incision] to take 2% increased [Physical] Damage per [Incision]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "PhysicalDamageTaken",
+              "type": "Inc",
+              "value": 2.0,
+              "tags": [
+                "Multiplier { var: \"IncisionStack\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "Enemies you inflict [Bleeding] on cannot Regenerate Life",
@@ -35496,7 +35887,25 @@
     },
     {
       "text": "Every second [Slam] Skill you use yourself is [AncestralBoost|Ancestrally Boosted]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AncestralEmpowerment",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 268435456, 0, 0, 0]))"
+          ]
+        },
+        {
+          "name": "Condition:AncestrallyBoosted",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 268435456, 0, 0, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "Exceptional Ornate Plate",
@@ -35640,7 +36049,14 @@
     },
     {
       "text": "Gain 1 [Rage|Rage] on [Melee|Melee] [Axe|Axe] [HitDamage|Hit]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Gain 1 [Volatility] on inflicting an [ElementalAilments|Elemental Ailment]",
@@ -35938,11 +36354,25 @@
     },
     {
       "text": "Gain 2 [Rage] when [HitDamage|Hit] by an Enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Gain 2 [Rage|Rage] on [Melee|Melee] [Axe|Axe] [HitDamage|Hit]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Gain 2% of Damage as Extra [Fire] Damage per [Charges|Endurance Charge] consumed [Recently]",
@@ -36092,7 +36522,14 @@
     },
     {
       "text": "Gain 3 [Rage] when [HitDamage|Hit] by an Enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Gain 3 [Volatility] when an [Allies|Allied] [Persistent] [Reviving] [Minion] is [MinionDeath|Killed]",
@@ -36147,11 +36584,10 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "BlockChance",
-          "type": "Base",
+          "name": "ReplaceShieldBlock",
+          "type": "Override",
           "value": 35.0,
           "tags": [
-            "SlotName(\"weapon2\")",
             "Condition { var: \"UsingShield\", negated: false, actor: None }"
           ]
         }
@@ -36218,7 +36654,14 @@
     },
     {
       "text": "Gain 5 [Rage] when [HitDamage|Hit] by an Enemy",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanGainRage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Gain 5% of Damage as Extra Damage of all Elements",
@@ -36364,7 +36807,17 @@
     },
     {
       "text": "Gain Accuracy Rating equal to your [Intelligence]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Accuracy",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PerStat { stat: \"Intelligence\", div: 1.0, limit: None, limit_var: None, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain Deflection Rating equal to 20% of Evasion Rating",
@@ -36463,11 +36916,31 @@
     },
     {
       "text": "Gain [Accuracy] Rating equal to your [Strength]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Accuracy",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PerStat { stat: \"Strength\", div: 1.0, limit: None, limit_var: None, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain [AilmentThreshold|Ailment Threshold] equal to the lowest of [Evasion|Evasion] and [Armour|Armour] on your Boots",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AilmentThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PerStat { stat: \"LowestOfArmourAndEvasionOnboots\", div: 1.0, limit: None, limit_var: None, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain [ArcaneSurgeDuration|Arcane Surge] when you [Shapeshift] to Human form after\nbeing [Shapeshift|Shapeshifted] for at least 8 seconds",
@@ -36482,7 +36955,33 @@
     },
     {
       "text": "Gain [Armour] equal to 150% of total [Strength] Requirements of Equipped Boots, Gloves and Helmet",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Armour",
+          "type": "Base",
+          "value": 150.0,
+          "tags": [
+            "PercentStat { stat: \"StrRequirementsOnboots\", percent: Some(1.0) }"
+          ]
+        },
+        {
+          "name": "Armour",
+          "type": "Base",
+          "value": 150.0,
+          "tags": [
+            "PercentStat { stat: \"StrRequirementsOngloves\", percent: Some(1.0) }"
+          ]
+        },
+        {
+          "name": "Armour",
+          "type": "Base",
+          "value": 150.0,
+          "tags": [
+            "PercentStat { stat: \"StrRequirementsOnhelmet\", percent: Some(1.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain [Charges|Power Charges] instead of [Charges|Frenzy Charges]\nGain [Charges|Frenzy Charges] instead of [Charges|Endurance Charges]\nGain [Charges|Endurance Charges] instead of [Charges|Power Charges]",
@@ -36633,7 +37132,17 @@
     },
     {
       "text": "Gain [StunThreshold|Stun Threshold] equal to the lowest of [Evasion|Evasion] and [Armour|Armour] on your Helmet",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PerStat { stat: \"LowestOfArmourAndEvasionOnhelmet\", div: 1.0, limit: None, limit_var: None, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain [Tailwind] on Skill use",
@@ -36788,7 +37297,41 @@
     },
     {
       "text": "Gain additional [StunThreshold|Stun Threshold] equal to 30% of [ItemArmour|Item Armour] on [EquipArmour|Equipped Armour Items]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 30.0,
+          "tags": [
+            "PercentStat { stat: \"ArmourOnhelmet\", percent: Some(1.0) }"
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 30.0,
+          "tags": [
+            "PercentStat { stat: \"ArmourOngloves\", percent: Some(1.0) }"
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 30.0,
+          "tags": [
+            "PercentStat { stat: \"ArmourOnboots\", percent: Some(1.0) }"
+          ]
+        },
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 30.0,
+          "tags": [
+            "PercentStat { stat: \"ArmourOnbodyarmour\", percent: Some(1.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [StunThreshold|Stun Threshold] equal to 30% of maximum [EnergyShield|Energy Shield]",
@@ -36820,7 +37363,17 @@
     },
     {
       "text": "Gain additional maximum Life equal to 100% of the [ItemEnergyShield|Item Energy Shield] on [Equipped] Body Armour",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MaximumLife",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "Multiplier { var: \"EnergyShieldOnbodyarmour\", div: 1.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain an [Charges|Endurance Charge] when you [HeavyStun|Heavy Stun] a [Rarity|Rare or Unique] Enemy",
@@ -36892,7 +37445,14 @@
     },
     {
       "text": "Gem [Quality] grants Socketed Skills an additional effect",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "GemlingQuality",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Ghoul Beam",
@@ -37352,7 +37912,14 @@
     },
     {
       "text": "Grants [UnravellingBuff|Unravelling]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Unravelling",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Grants effect of Dreaming Gloom Shrine",
@@ -37492,7 +38059,17 @@
     },
     {
       "text": "Hits that [HeavyStun|Heavy Stun] Enemies have [CullingStrike|Culling Strike]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanCull",
+          "type": "Flag",
+          "value": 1.0,
+          "tags": [
+            "Condition { var: \"AlwaysHeavyStunning\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Honour Charm",
@@ -37560,7 +38137,17 @@
     },
     {
       "text": "Ignore [Warcry] Cooldowns",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CooldownRecovery",
+          "type": "Override",
+          "value": 0.0,
+          "tags": [
+            "SkillTypes(SkillTypes(4611686018427387904))"
+          ]
+        }
+      ]
     },
     {
       "text": "Ignore all [ArmourPenalties|Movement Penalties] from [EquipArmour|Armour]",
@@ -37575,7 +38162,17 @@
     },
     {
       "text": "Immune to [Bleeding] if Equipped Helmet has higher [Armour] than [Evasion] Rating",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BleedImmune",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"HelmetArmourHigherThanEvasion\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Immune to [Bleeding] while [Shapeshift|Shapeshifted]",
@@ -37630,7 +38227,17 @@
     },
     {
       "text": "Immune to [Poison] if Equipped Helmet has higher [Evasion] Rating than [Armour]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PoisonImmune",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"HelmetEvasionHigherThanArmour\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Immune to [Shock] if a majority of your Socketed [SupportGem|Support Gems] are Green",
@@ -37642,11 +38249,25 @@
     },
     {
       "text": "Increases and Reductions to Mana Regeneration Rate also apply to [Rage] Regeneration Rate",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaRegenAppliesToRageRegen",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Increases and Reductions to [Companion] Damage also apply to you",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CompanionDamageAppliesToPlayer",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Increases and Reductions to [Projectile|Projectile] Speed also apply to Damage with [Bow|Bows]",
@@ -37661,34 +38282,69 @@
     },
     {
       "text": "Inherent [Rage|Rage] loss starts 1 second later",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "InherentRageLossDelay",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "Inherent bonuses gained from [Attributes] are doubled",
       "status": "parsed",
       "mods": [
         {
-          "name": "Strength",
-          "type": "More",
-          "value": 100.0
+          "name": "DoubledInherentAttributeBonuses",
+          "type": "Flag",
+          "value": true
         }
       ]
     },
     {
       "text": "Inherent loss of [Rage|Rage] is 15% slower",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "InherentRageLoss",
+          "type": "Inc",
+          "value": -15.0
+        }
+      ]
     },
     {
       "text": "Inherent loss of [Rage|Rage] is 20% slower",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "InherentRageLoss",
+          "type": "Inc",
+          "value": -20.0
+        }
+      ]
     },
     {
       "text": "Inherent loss of [Rage|Rage] is 25% slower",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "InherentRageLoss",
+          "type": "Inc",
+          "value": -25.0
+        }
+      ]
     },
     {
       "text": "Instant Recovery",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FlaskInstantRecovery",
+          "type": "Base",
+          "value": 100.0
+        }
+      ]
     },
     {
       "text": "Investigator&apos;s Thawing Charm",
@@ -37879,11 +38535,25 @@
     },
     {
       "text": "Life [Flask|Flasks] gain 0.1 charges per Second",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeFlaskChargesGenerated",
+          "type": "Base",
+          "value": 0.1
+        }
+      ]
     },
     {
       "text": "Life [Flask|Flasks] gain 0.15 charges per Second",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeFlaskChargesGenerated",
+          "type": "Base",
+          "value": 0.15
+        }
+      ]
     },
     {
       "text": "Life [LifeRecharge|Recharges] instead of [ESRecharge|Energy Shield]\n50% less Life Recovery from [Flask|Flasks]",
@@ -37981,7 +38651,14 @@
     },
     {
       "text": "Mana [Flask|Flasks] gain 0.1 charges per Second",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaFlaskChargesGenerated",
+          "type": "Base",
+          "value": 0.1
+        }
+      ]
     },
     {
       "text": "Maximum Chance to [Evasion|Evade] is 50%",
@@ -38256,11 +38933,18 @@
     },
     {
       "text": "No Inherent loss of [Rage]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "InherentRageLossIsPrevented",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "No Physical Damage",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "No inherent Mana Regeneration",
@@ -38371,7 +39055,17 @@
     },
     {
       "text": "On [Freeze|Freezing] Enemies create [ChilledGround|Chilled Ground]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ChillBase",
+          "type": "Base",
+          "value": 30.0,
+          "tags": [
+            "Condition { var: \"EnemyOnChilledGround\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "On [HitDamage|Hitting] an Enemy while a Life [Flask] is at full Charges, 40% of its Charges are consumed\n[Gain] 1% of damage as [Physical] damage for 5 seconds per Charge consumed this way",
@@ -38379,15 +39073,22 @@
     },
     {
       "text": "Only Soul Cores can be Socketed in this item",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SocketedSoulCoresOnly",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Only affects Passives in Medium Ring",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Only affects Passives in Medium-Large Ring",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Opaque Ultimate Life Flask of the Practitioner",
@@ -38499,7 +39200,14 @@
     },
     {
       "text": "Physical Damage Reduction from [Armour] is based on your combined [Armour] and [Evasion] Rating",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EvasionAppliesToPhysicalDamageTaken",
+          "type": "Base",
+          "value": 100.0
+        }
+      ]
     },
     {
       "text": "Plague Wrap",
@@ -38657,11 +39365,25 @@
     },
     {
       "text": "Prevent +3% of Damage from [Deflect|Deflected] [HitDamage|Hits]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "DeflectEffect",
+          "type": "Base",
+          "value": 3.0
+        }
+      ]
     },
     {
       "text": "Prevent +6% of Damage from [Deflect|Deflected] [HitDamage|Hits]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "DeflectEffect",
+          "type": "Base",
+          "value": 6.0
+        }
+      ]
     },
     {
       "text": "Prism of Belief",
@@ -38749,7 +39471,17 @@
     },
     {
       "text": "Recover 1% of maximum Life on Kill",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"Life\", percent: Some(1.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Recover 1% of maximum Life per [Glory] consumed",
@@ -38757,11 +39489,28 @@
     },
     {
       "text": "Recover 1% of maximum Mana on Kill",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"Mana\", percent: Some(1.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Recover 10 Life when you [Block]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeOnBlock",
+          "type": "Base",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "Recover 2% of maximum Life and Mana when you use a [Warcry]",
@@ -38773,7 +39522,17 @@
     },
     {
       "text": "Recover 2% of maximum Life on Kill",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "Base",
+          "value": 2.0,
+          "tags": [
+            "PercentStat { stat: \"Life\", percent: Some(1.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Recover 2% of maximum Life on Killing a [Poison|Poisoned] Enemy",
@@ -38789,7 +39548,17 @@
     },
     {
       "text": "Recover 2% of maximum Mana on Kill",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ManaOnKill",
+          "type": "Base",
+          "value": 2.0,
+          "tags": [
+            "PercentStat { stat: \"Mana\", percent: Some(1.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Recover 2% of maximum Mana when you consume a [Charges|Power Charge]",
@@ -38797,7 +39566,14 @@
     },
     {
       "text": "Recover 20 Life when you [Block]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeOnBlock",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "Recover 202 Mana when Used",
@@ -38835,7 +39611,17 @@
     },
     {
       "text": "Recover 3% of maximum Life on Kill",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeOnKill",
+          "type": "Base",
+          "value": 3.0,
+          "tags": [
+            "PercentStat { stat: \"Life\", percent: Some(1.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Recover 3% of maximum Life when you create an [Offering]",
@@ -38858,7 +39644,14 @@
     },
     {
       "text": "Recover 5 Life when you [Block]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeOnBlock",
+          "type": "Base",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "Recover 5% of maximum Mana when a [Charm|Charm] is used",
@@ -38911,7 +39704,7 @@
     },
     {
       "text": "Reflects opposite Ring",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Regenerate 0.1% of maximum Life per second",
@@ -39116,7 +39909,14 @@
     },
     {
       "text": "Remnants you create have 10% increased effect",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "RemnantEffect",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "Remove [Ignite] when you [Warcry]",
@@ -39319,8 +40119,8 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Damage",
-          "type": "Inc",
+          "name": "SkillDamageIncreasedPerRedSupport",
+          "type": "Flag",
           "value": 20.0
         }
       ]
@@ -39342,7 +40142,14 @@
     },
     {
       "text": "Skills fire an additional [Projectile|Projectile]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "Skills gain 1 [Glory] every 2 seconds for each [Rarity|Rare or Unique] monster in your [Presence]",
@@ -39350,11 +40157,30 @@
     },
     {
       "text": "Skills gain a Base Life Cost equal to Base Mana Cost",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BaseManaCostAsLifeCost",
+          "type": "Base",
+          "value": 100.0
+        }
+      ]
     },
     {
       "text": "Skills have +5 to [Rage] cost",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "RageCostBase",
+          "type": "Base",
+          "value": 5.0
+        },
+        {
+          "name": "Condition:CanGainRage",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Skills have 10% chance to not remove [Charges|Charges] but still count as consuming them",
@@ -39376,8 +40202,8 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "CriticalStrikeChance",
-          "type": "Inc",
+          "name": "SkillCritChanceIncreasedPerBlueSupport",
+          "type": "Flag",
           "value": 20.0
         }
       ]
@@ -39391,8 +40217,8 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "SkillSpeed",
-          "type": "Inc",
+          "name": "SkillSpeedIncreasedPerGreenSupport",
+          "type": "Flag",
           "value": 6.0
         }
       ]
@@ -39495,7 +40321,14 @@
     },
     {
       "text": "Sorcery Ward's Barrier can also take [Physical] and [Chaos] Damage from [HitDamage|Hits]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CeremonialAblution",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Sorrow Breaker",
@@ -39806,7 +40639,23 @@
     },
     {
       "text": "Targets [Curse|Cursed] by you have at least 15% of Life [Reservation|Reserved]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "LifeReservationPercent",
+              "type": "Base",
+              "value": 15.0,
+              "tags": [
+                "Condition { var: \"Cursed\", negated: false, actor: None }"
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "Targets can be affected by +1 of your Poisons at the same time",
@@ -39842,11 +40691,35 @@
     },
     {
       "text": "Targets can be affected by two of your [Chill]s at the same time",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ChillCanStack",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "ChillStacksMax",
+          "type": "Override",
+          "value": 2.0
+        }
+      ]
     },
     {
       "text": "Targets can be affected by two of your [Shock]s at the same time",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ShockCanStack",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "ShockStacksMax",
+          "type": "Override",
+          "value": 2.0
+        }
+      ]
     },
     {
       "text": "Tasalian Focus",
@@ -39886,7 +40759,14 @@
     },
     {
       "text": "The Effect of Chill on you is reversed",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfChillEffectIsReversed",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "The Fall of the Axe",
@@ -39926,11 +40806,11 @@
     },
     {
       "text": "This item gains bonuses from Socketed Items as though it was Gloves",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "This item gains bonuses from Socketed Soul Cores as though it was also a Helmet",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Tidebound Silver Charm of the Abundant",
@@ -39962,7 +40842,7 @@
     },
     {
       "text": "Trigger Ancestral Spirits when you Summon a [Totem]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Trigger Elemental Expression on [Melee] [Critical|Critical Hit]",
@@ -40054,15 +40934,22 @@
     },
     {
       "text": "Unwithered enemies are [Withered] for 8 seconds when they enter your [Presence]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanWither",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Upgrades Radius to Large",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Upgrades Radius to Very Large",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Used when you are affected by a Slow",
@@ -40186,11 +41073,18 @@
     },
     {
       "text": "Walk the [OraclePaths|Paths Not Taken]",
-      "status": "unsupported"
+      "status": "parsed"
     },
     {
       "text": "Warcries have a minimum of 10 Power",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinimumWarcryPower",
+          "type": "Base",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "Warmonger Bow",
@@ -40230,7 +41124,23 @@
     },
     {
       "text": "While you are not on [LowMana|Low Mana], you and [Allies] in your [Presence] have [UnholyMight|Unholy Might]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraAura",
+          "type": "List",
+          "value": [
+            {
+              "name": "Condition:UnholyMight",
+              "type": "Flag",
+              "value": true
+            }
+          ],
+          "tags": [
+            "Condition { var: \"LowMana\", negated: true, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Wind Skills which can be boosted by Elemental Ground Surfaces can be boosted by multiple Elemental Ground Surfaces",
@@ -40254,11 +41164,25 @@
     },
     {
       "text": "You can apply an additional Curse",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyCurseLimit",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "You can apply an additional [Curse]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyCurseLimit",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "You can apply an additional [Curse]\nDouble Activation Delay of [Curse|Curses]",
@@ -40266,7 +41190,14 @@
     },
     {
       "text": "You can equip a [Focus] while wielding a [Staff]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "InstrumentsOfPower",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "You can equip a non-[ItemRarity|Unique] [Sceptre] while wielding a [Talisman]\n50% less [Spirit]\nNon-[Minion] Skills have 50% less [Reservation] [Efficiency]",
@@ -40282,7 +41213,14 @@
     },
     {
       "text": "You cannot be Hindered",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "HinderImmune",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "You cannot be [Electrocute|Electrocuted]",
@@ -40313,7 +41251,14 @@
     },
     {
       "text": "You take 20% of damage from [Block|Blocked] [HitDamage|Hits]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "BlockEffect",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "Your Critical Damage Bonus is 250%",
@@ -40332,23 +41277,67 @@
     },
     {
       "text": "Your Hits cannot be [Evasion|Evaded] by [Pinned] Enemies",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CannotBeEvaded",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"EnemyPinned\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Your Life cannot change while you have [EnergyShield|Energy Shield]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EternalLife",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Your Minions are [Gigantic]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "Gigantic",
+              "type": "Flag",
+              "value": true
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "Your [Aura] [Buff|Buffs] do not affect [Allies]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfAurasCannotAffectAllies",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Your [Chill|Chills] can [Slow] targets by up to a maximum of 35%",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ChillMax",
+          "type": "Override",
+          "value": 35.0
+        }
+      ]
     },
     {
       "text": "Your [Curse|Curses] have 20% increased [BuffMagnitude|Magnitudes] if 50% of [Curse] Duration expired",
@@ -40368,7 +41357,17 @@
     },
     {
       "text": "Your [HitDamage|Hits] cannot be [Evasion|Evaded] by [HeavyStun|Heavy Stunned] Enemies",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CannotBeEvaded",
+          "type": "Flag",
+          "value": true,
+          "tags": [
+            "Condition { var: \"EnemyHeavyStunned\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "Your [Totem] [Limit] is doubled\nNo [Charges|Charge] requirement for placing [Totem|Totems]\n[Totem|Totems] reserve 75 [Spirit] each",
@@ -40384,7 +41383,14 @@
     },
     {
       "text": "Your speed is unaffected by [Slow|Slows]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "UnaffectedBySlows",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Accuracy] Rating is Doubled\nNever deal [Critical|Critical Hits]",
@@ -40602,19 +41608,50 @@
     },
     {
       "text": "[AncestralBoost|Ancestrally Boosted] [Attack|Attacks] deal 16% increased Damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AncestralBoostDamage",
+          "type": "Inc",
+          "value": 16.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "[AncestralBoost|Ancestrally Boosted] [Attack|Attacks] deal 30% increased Damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AncestralBoostDamage",
+          "type": "Inc",
+          "value": 30.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "[AncestralBoost|Ancestrally Boosted] [Attack|Attacks] deal 8% increased Damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AncestralBoostDamage",
+          "type": "Inc",
+          "value": 8.0,
+          "flags": 1
+        }
+      ]
     },
     {
       "text": "[ArcaneSurge|Arcane Surge] grants more Life Regeneration Rate instead of Mana Regeneration Rate",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArcaneSurgeLifeRegen",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Archon] Buffs also grant +20% to all [ElementalDamage|Elemental] [Resistances]",
@@ -40756,11 +41793,30 @@
     },
     {
       "text": "[ArmourBreak|Fully Broken Armour] you inflict also increases [Cold] and [Lightning] Damage Taken from [HitDamage|Hits]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakColdDamageTaken",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "ArmourBreakLightningDamageTaken",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Fully Broken Armour] you inflict also increases [Fire] Damage Taken from [HitDamage|Hits]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ArmourBreakFireDamageTaken",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[ArmourBreak|Fully Broken Armour] you inflict increases all Damage Taken from [HitDamage|Hits] instead",
@@ -40982,7 +42038,14 @@
     },
     {
       "text": "[Attributes|Attribute] Requirements of Gems can be satisified by your highest Attribute",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "GemAttributeRequirementsSatisfiedByHighestAttribute",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Aura] Skills have 10% increased [BuffMagnitude|Magnitudes]",
@@ -41166,11 +42229,43 @@
     },
     {
       "text": "[Bleeding] you inflict on [Pinned] Enemies is [Aggravate|Aggravated]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "Condition:BleedAggravated",
+              "type": "Flag",
+              "value": true,
+              "tags": [
+                "Condition { var: \"Pinned\", negated: false, actor: None }"
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "[Bleeding|Bleeding] you inflict on [Curse|Cursed] targets is [Aggravate|Aggravated]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "Condition:BleedAggravated",
+              "type": "Flag",
+              "value": true,
+              "tags": [
+                "Condition { var: \"Cursed\", negated: false, actor: None }"
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "[Blind] Enemies 3 metres in front of you every 0.25 seconds while your [Shield] is raised",
@@ -41182,7 +42277,15 @@
     },
     {
       "text": "[Bow|Bow] [Attack|Attacks] have [CullingStrike|Culling Strike]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanCull",
+          "type": "Flag",
+          "value": 1.0,
+          "flags": 131073
+        }
+      ]
     },
     {
       "text": "[Buff|Buffs] on you expire 10% slower",
@@ -41301,7 +42404,14 @@
     },
     {
       "text": "[Charm|Charms] gain 0.15 charges per Second",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CharmChargesGenerated",
+          "type": "Base",
+          "value": 0.15
+        }
+      ]
     },
     {
       "text": "[Companion|Companions] deal 10% increased Damage",
@@ -41491,11 +42601,39 @@
     },
     {
       "text": "[Companion|Companions] gain added [Attack] damage equal to 60% of your main hand Weapon's damage",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "GainMainHandDmgFromParent",
+              "type": "Flag",
+              "value": true
+            }
+          ],
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 0, 67108864, 0]))"
+          ]
+        },
+        {
+          "name": "Multiplier:MainHandDamageToAllies",
+          "type": "Base",
+          "value": 60.0
+        }
+      ]
     },
     {
       "text": "[Companion|Companions] gain your [Strength]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StrengthAddedToCompanions",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Companion|Companions] have +12% to all Elemental [Resistances]",
@@ -41856,7 +42994,18 @@
     },
     {
       "text": "[Critical|Critical Hits] with [Dagger|Daggers] have a 25% chance to [Poison] the Enemy",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PoisonChance",
+          "type": "Base",
+          "value": 25.0,
+          "flags": 524288,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[CullingStrike|Culling Strike]",
@@ -41868,7 +43017,17 @@
     },
     {
       "text": "[CullingStrike|Culling Strike] against Enemies you [Mark]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanCull",
+          "type": "Flag",
+          "value": 1.0,
+          "tags": [
+            "Condition { var: \"EnemyMarked\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Curse|Cursed] Enemies killed by you, or by [Allies] in your [Presence], have a 33% chance to explode, dealing a quarter of their maximum Life as [Chaos] damage",
@@ -41891,7 +43050,29 @@
     },
     {
       "text": "[DamageTypes|All Damage] from [HitDamage|Hits] [Contributes|Contributes] to [Shock] Chance",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PhysicalCanShock",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "FireCanShock",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "ColdCanShock",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "ChaosCanShock",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[DamagingAilments|Damaging Ailments] Cannot Be inflicted on you while you already have one",
@@ -41899,11 +43080,45 @@
     },
     {
       "text": "[DamagingAilments|Damaging Ailments] deal damage 12% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgniteFaster",
+          "type": "Inc",
+          "value": 12.0
+        },
+        {
+          "name": "BleedFaster",
+          "type": "Inc",
+          "value": 12.0
+        },
+        {
+          "name": "PoisonFaster",
+          "type": "Inc",
+          "value": 12.0
+        }
+      ]
     },
     {
       "text": "[DamagingAilments|Damaging Ailments] deal damage 5% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgniteFaster",
+          "type": "Inc",
+          "value": 5.0
+        },
+        {
+          "name": "BleedFaster",
+          "type": "Inc",
+          "value": 5.0
+        },
+        {
+          "name": "PoisonFaster",
+          "type": "Inc",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] inflicted by [Hazard|Hazards] have 30% increased [SlowMagnitudeModifier|Slow Magnitude]",
@@ -41911,19 +43126,47 @@
     },
     {
       "text": "[Debuff|Debuffs] on you expire 10% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfDebuffExpirationRate",
+          "type": "Base",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] on you expire 20% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfDebuffExpirationRate",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] on you expire 25% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfDebuffExpirationRate",
+          "type": "Base",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] on you expire 3% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfDebuffExpirationRate",
+          "type": "Base",
+          "value": 3.0
+        }
+      ]
     },
     {
       "text": "[Debuff|Debuffs] you inflict have 10% increased [SlowMagnitudeModifier|Slow Magnitude]",
@@ -42005,7 +43248,24 @@
     },
     {
       "text": "[ElementalDamage|Elemental Damage] also [Contributes] to [Bleeding|Bleeding] [BuffMagnitude|Magnitude]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "FireCanBleed",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "ColdCanBleed",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "LightningCanBleed",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Empowered] [Attack|Attacks] [Gain] 15% of [Physical] Damage as Extra [Fire] damage",
@@ -42708,11 +43968,31 @@
     },
     {
       "text": "[Hazard|Hazards] have 15% chance to rearm after they are triggered",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "HazardRearmChance",
+          "type": "Base",
+          "value": 15.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 0, 1024, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Hazard|Hazards] have 5% chance to rearm after they are triggered",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "HazardRearmChance",
+          "type": "Base",
+          "value": 5.0,
+          "tags": [
+            "SkillTypes(SkillTypes([0, 0, 0, 1024, 0]))"
+          ]
+        }
+      ]
     },
     {
       "text": "[Herald] Skills deal 20% increased Damage",
@@ -42758,11 +44038,31 @@
     },
     {
       "text": "[HitDamage|Damage with Hits] is [Lucky|Lucky] against Enemies that are on [LowLife|Low Life]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LuckyHitsChance",
+          "type": "Base",
+          "value": 100.0,
+          "tags": [
+            "Condition { var: \"EnemyLowLife\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[HitDamage|Damage with Hits] is [Lucky|Lucky] against [HeavyStun|Heavy Stunned] Enemies",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LuckyHitsChance",
+          "type": "Base",
+          "value": 100.0,
+          "tags": [
+            "Condition { var: \"EnemyHeavyStunned\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[HitDamage|Hit] damage is taken from Mana before Life if your current Mana is higher than your current Life",
@@ -42916,19 +44216,47 @@
     },
     {
       "text": "[Ignite|Ignites] you inflict deal Damage 10% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgniteFaster",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[Ignite|Ignites] you inflict deal Damage 15% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgniteFaster",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "[Ignite|Ignites] you inflict deal Damage 18% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgniteFaster",
+          "type": "Inc",
+          "value": 18.0
+        }
+      ]
     },
     {
       "text": "[Ignite|Ignites] you inflict deal Damage 4% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "IgniteFaster",
+          "type": "Inc",
+          "value": 4.0
+        }
+      ]
     },
     {
       "text": "[InevitableCriticalHits|Inevitable Critical Hits]",
@@ -43007,7 +44335,18 @@
     },
     {
       "text": "[Knockback|Knocks Back] Enemies if you get a [Critical|Critical Hit] with a [Quarterstaff|Quarterstaff]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyKnockbackChance",
+          "type": "Base",
+          "value": 100.0,
+          "flags": 2097152,
+          "tags": [
+            "Condition { var: \"CriticalStrike\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Leech] recovers based on [Chaos] Damage as well as [Physical] Damage",
@@ -43015,23 +44354,58 @@
     },
     {
       "text": "[LifeLeech|Leech] Life 15% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeLeechRate",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "[LifeLeech|Leech] Life 20% slower",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeLeechRate",
+          "type": "Inc",
+          "value": -20.0
+        }
+      ]
     },
     {
       "text": "[LifeLeech|Leech] Life 5% slower",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeLeechRate",
+          "type": "Inc",
+          "value": -5.0
+        }
+      ]
     },
     {
       "text": "[LifeLeech|Leech] Life 8% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeLeechRate",
+          "type": "Inc",
+          "value": 8.0
+        }
+      ]
     },
     {
       "text": "[LifeLeech|Leech] Life 8% slower",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LifeLeechRate",
+          "type": "Inc",
+          "value": -8.0
+        }
+      ]
     },
     {
       "text": "[LifeLeech|Leeching Life] from your [HitDamage|Hits] causes your [Companion] to also Leech the [LeechSameAmount|same amount] of Life",
@@ -43195,19 +44569,59 @@
     },
     {
       "text": "[Minion|Minions] [Recoup] 15% of Damage taken as Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "LifeRecoup",
+              "type": "Base",
+              "value": 15.0
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "[Minion|Minions] [Recoup] 30% of Damage taken as Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinionModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "LifeRecoup",
+              "type": "Base",
+              "value": 30.0
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "[Minion|Minions] [Reviving|Revive] 15% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinionRevivalSpeed",
+          "type": "Inc",
+          "value": 15.0
+        }
+      ]
     },
     {
       "text": "[Minion|Minions] [Reviving|Revive] 25% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinionRevivalSpeed",
+          "type": "Inc",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "[Minion|Minions] [Reviving|Revive] 35% faster if all your [Minion|Minions] are [Companion|Companions]",
@@ -43215,11 +44629,25 @@
     },
     {
       "text": "[Minion|Minions] [Reviving|Revive] 5% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinionRevivalSpeed",
+          "type": "Inc",
+          "value": 5.0
+        }
+      ]
     },
     {
       "text": "[Minion|Minions] [Reviving|Revive] 8% faster",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "MinionRevivalSpeed",
+          "type": "Inc",
+          "value": 8.0
+        }
+      ]
     },
     {
       "text": "[Minion|Minions] cause 15% increased [Stun] Buildup",
@@ -43501,9 +44929,12 @@
           "type": "List",
           "value": [
             {
-              "name": "LifeGainAsEnergyShield",
+              "name": "EnergyShield",
               "type": "Base",
-              "value": 15.0
+              "value": 15.0,
+              "tags": [
+                "PercentStat { stat: \"Life\", percent: Some(1.0) }"
+              ]
             }
           ]
         }
@@ -43815,7 +45246,14 @@
     },
     {
       "text": "[Minion|Minions] have 10% chance to inflict [Withered] on [HitDamage|Hit]",
-      "status": "parsed"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:CanWither",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Minion|Minions] have 10% increased Movement Speed",
@@ -44437,7 +45875,37 @@
     },
     {
       "text": "[Pinned] Enemies cannot deal [Critical|Critical Hits]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "NeverCrit",
+              "type": "Flag",
+              "value": true,
+              "tags": [
+                "Condition { var: \"Pinned\", negated: false, actor: None }"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "EnemyModifier",
+          "type": "List",
+          "value": [
+            {
+              "name": "Condition:NeverCrit",
+              "type": "Flag",
+              "value": true,
+              "tags": [
+                "Condition { var: \"Pinned\", negated: false, actor: None }"
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "text": "[Pinned] enemies cannot perform actions",
@@ -44453,7 +45921,15 @@
     },
     {
       "text": "[Projectile] Damage builds [Pinned|Pin]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "CanPin",
+          "type": "Flag",
+          "value": true,
+          "flags": 1024
+        }
+      ]
     },
     {
       "text": "[Projectile] [Attack|Attacks] have a 12% chance to fire two additional [Projectile|Projectiles] while moving",
@@ -44461,7 +45937,17 @@
     },
     {
       "text": "[Projectile|Projectiles] [Pierce] enemies with [ArmourBreak|Fully Broken Armour]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PierceCount",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "Condition { var: \"ArmourFullyBroken\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Projectile|Projectiles] deal 0% more [HitDamage|Hit] damage to targets in the first 3.5 metres of their movement, scaling up with distance travelled to reach 20% after 7 metres",
@@ -44676,7 +46162,18 @@
     },
     {
       "text": "[Quarterstaff|Quarterstaff] Skills that consume [Charges|Power Charges] count as consuming an additional Power Charge",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Multiplier:ExtraConsumablePowerCharges",
+          "type": "Base",
+          "value": 1.0,
+          "flags": 1,
+          "tags": [
+            "Condition { var: \"UsingStaff\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Rarity|Unique] Tamed Beasts are [SpiritPossessed|Possessed] by random [AzmeriSpirit|Azmeri Spirits], changing every 20 seconds",
@@ -44708,11 +46205,25 @@
     },
     {
       "text": "[Remnant|Remnants] you create have 10% increased effect",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "RemnantEffect",
+          "type": "Inc",
+          "value": 10.0
+        }
+      ]
     },
     {
       "text": "[Remnant|Remnants] you create have 50% increased effect",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "RemnantEffect",
+          "type": "Inc",
+          "value": 50.0
+        }
+      ]
     },
     {
       "text": "[Remnant|Remnants] you create reappear once, 3 seconds after being collected",
@@ -44724,7 +46235,14 @@
     },
     {
       "text": "[Reservation|Reserves] 25% of Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraLifeReserved",
+          "type": "Base",
+          "value": 25.0
+        }
+      ]
     },
     {
       "text": "[RevealWeakness|Reveal Weaknesses] against [Rarity|Rare and Unique] enemies",
@@ -44957,7 +46475,19 @@
     },
     {
       "text": "[StunThreshold|Stun Threshold] is based on 30% of your [EnergyShield|Energy Shield] instead of Life",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThresholdBasedOnEnergyShieldInsteadOfLife",
+          "type": "Flag",
+          "value": true
+        },
+        {
+          "name": "StunThresholdEnergyShieldPercent",
+          "type": "Base",
+          "value": 30.0
+        }
+      ]
     },
     {
       "text": "[TemporaryMinion|Temporary Minion] Skills have +2 to [Limit] of [Minion|Minions] summoned",
@@ -44997,23 +46527,58 @@
     },
     {
       "text": "[Totem|Totems] gain +1% to all [MaximumResistances|Maximum Elemental Resistances]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TotemElementalResistMax",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "[Totem|Totems] gain +12% to all Elemental [Resistances]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TotemElementalResist",
+          "type": "Base",
+          "value": 12.0
+        }
+      ]
     },
     {
       "text": "[Totem|Totems] gain +2% to all [MaximumResistances|Maximum Elemental Resistances]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TotemElementalResistMax",
+          "type": "Base",
+          "value": 2.0
+        }
+      ]
     },
     {
       "text": "[Totem|Totems] gain +20% to all Elemental [Resistances]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TotemElementalResist",
+          "type": "Base",
+          "value": 20.0
+        }
+      ]
     },
     {
       "text": "[Totem|Totems] gain +3% to all [MaximumResistances|Maximum Elemental Resistances]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "TotemElementalResistMax",
+          "type": "Base",
+          "value": 3.0
+        }
+      ]
     },
     {
       "text": "[Totem|Totems] have 12% additional [Physical] Damage Reduction",
@@ -45045,7 +46610,14 @@
     },
     {
       "text": "[Totem|Totems] you place grant [TacticianTotemBuff|Embankment Auras]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "Condition:StrategicEmbankments",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "[Trigger|Triggered] [Spell|Spells] deal 14% increased [Spell] Damage",
@@ -45098,7 +46670,17 @@
     },
     {
       "text": "[Unaffected] by [Chill] while [ManaLeech|Leeching] Mana",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "SelfChillEffect",
+          "type": "More",
+          "value": -100.0,
+          "tags": [
+            "Condition { var: \"LeechingMana\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "[Volatility|Volatile Power] also grants 1% increased [Critical|Critical Hit chance] per [Volatility] exploded",
@@ -45110,11 +46692,25 @@
     },
     {
       "text": "[Warcry|Warcries] [Debilitate] Enemies",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "DebilitateChance",
+          "type": "Base",
+          "value": 100.0
+        }
+      ]
     },
     {
       "text": "[Warcry|Warcries] [Empowered|Empower] an additional [Attack]",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "ExtraEmpoweredAttacks",
+          "type": "Base",
+          "value": 1.0
+        }
+      ]
     },
     {
       "text": "[Warcry|Warcries] have 15% chance to [Empowered|Empower] 3 additional [Attack|Attacks]",

@@ -6,22 +6,22 @@
   },
   "summary": {
     "total": 4280,
-    "parsed": 3281,
-    "unsupported": 999,
+    "parsed": 3429,
+    "unsupported": 851,
     "err": 0,
-    "coverage_ratio": 0.766589
+    "coverage_ratio": 0.801168
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 1169,
-      "unsupported": 537,
+      "parsed": 1184,
+      "unsupported": 522,
       "err": 0
     },
     {
       "source": "C2_tree",
-      "parsed": 2079,
-      "unsupported": 462,
+      "parsed": 2212,
+      "unsupported": 329,
       "err": 0
     },
     {
@@ -138,11 +138,6 @@
       "source": "C1_build"
     },
     {
-      "text": "All Damage from you and [Allies|Allies] in your [Presence|Presence]\n[Contributes|contributes] to [Flammability] and [Ignite] [BuffMagnitude|Magnitudes]",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
       "text": "All Damage taken from Hits Contributes to Magnitude of Chill inflicted on you",
       "status": "unsupported",
       "source": "C1_build"
@@ -193,26 +188,6 @@
       "source": "C2_tree"
     },
     {
-      "text": "All [FlamesOfChayula|Flames of Chayula] that you manifest are [BlueFlamesOfChayula|Blue]",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "All [FlamesOfChayula|Flames of Chayula] that you manifest are [PurpleFlamesOfChayula|Purple]",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "All [FlamesOfChayula|Flames of Chayula] that you manifest are [RedFlamesOfChayula|Red]",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "All bonuses from [Equipped] Amulet apply to your [Minion|Minions] instead of you",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
       "text": "Alpha&apos;s Howl",
       "status": "unsupported",
       "source": "C1_build"
@@ -229,6 +204,31 @@
     },
     {
       "text": "Amor Mandragora",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Analyst&apos;s Stone Charm of the Perpetual",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Ancestral Tiara",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Apocalypse Desire",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Apocalypse Hope",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Apocalypse Pelt",
       "status": "unsupported",
       "source": "C1_build"
     }

@@ -47,13 +47,24 @@ pub fn check(data_dir: &Path) -> Result<(), String> {
     };
 
     // 2) special_mods.json (hand-curated) + generated/special_derived.json —
-    //    both optional; concatenated for the compile step below.
+    //    both optional; generated/special_vendor.json — required (the 4.5.4.3
+    //    upgrade shipped without it because regen-all.sh lacked the step and
+    //    nothing failed; a missing file must be loud, not a silent skip).
+    //    All three are concatenated for the compile step below.
     let mut special_entries = Vec::new();
-    for path in [
-        overlay.join("special_mods.json"),
-        generated.join("special_derived.json"),
+    for (path, required) in [
+        (overlay.join("special_mods.json"), false),
+        (generated.join("special_derived.json"), false),
+        (generated.join("special_vendor.json"), true),
     ] {
         if !path.is_file() {
+            if required {
+                errors.push(format!(
+                    "{}: missing (required; regenerate with `cargo run -p sync-pob-catalog -- \
+                     extract-lua --what special-mods ...`, see pipeline/regen-all.sh)",
+                    path.display()
+                ));
+            }
             continue;
         }
         if let Some(def) = load_strict::<SpecialModsDef>(&path, &mut errors) {
@@ -117,15 +128,21 @@ fn load_strict<T: DeserializeOwned>(path: &Path, errors: &mut Vec<String>) -> Op
 mod tests {
     use super::*;
 
-    /// The committed repo data passes `--check` (deserialize + compile clean).
+    /// The committed repo data passes `--check` (deserialize + compile clean),
+    /// for both the parity-golden version and CURRENT.
     #[test]
     fn repo_overlay_passes_check() {
-        let data_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/4.5.0.3.4");
-        if !data_dir.join("overlay/mod_parser_rules.json").is_file() {
-            eprintln!("SKIP: repo data dir not present");
-            return;
+        for version in ["4.5.0.3.4", "4.5.4.3"] {
+            let data_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../data")
+                .join(version);
+            if !data_dir.join("overlay/mod_parser_rules.json").is_file() {
+                eprintln!("SKIP: repo data dir {version} not present");
+                continue;
+            }
+            check(&data_dir)
+                .unwrap_or_else(|e| panic!("committed {version} JSON should pass --check: {e}"));
         }
-        check(&data_dir).expect("committed overlay JSON should pass --check");
     }
 
     /// A type error, an unknown field, and a bad Lua pattern are each reported;
@@ -134,14 +151,29 @@ mod tests {
     fn detects_type_unknown_and_pattern_errors() {
         let tmp = std::env::temp_dir().join(format!("pobr-check-test-{}", std::process::id()));
         let overlay = tmp.join("overlay");
+        let generated = tmp.join("generated");
         std::fs::create_dir_all(&overlay).unwrap();
+        std::fs::create_dir_all(&generated).unwrap();
         let rules = overlay.join("mod_parser_rules.json");
 
-        // Clean minimal doc passes (real forms pattern compiles).
+        // Clean minimal doc, but no generated/special_vendor.json yet: the
+        // missing required file must be reported, not silently skipped.
         std::fs::write(
             &rules,
             r#"{"_meta":{"schema":"x"},"forms":[{"pattern":"^(%d+)%% increased","form":"INC"}],
                "name_map":[],"flag_phrases":[],"pre_flags":[],"tag_phrases":[]}"#,
+        )
+        .unwrap();
+        let err = check(&tmp).unwrap_err();
+        assert!(
+            err.contains("special_vendor.json") && err.contains("missing"),
+            "missing special_vendor.json should be flagged: {err}"
+        );
+
+        // With an (empty-entries) special_vendor.json present, the doc passes.
+        std::fs::write(
+            generated.join("special_vendor.json"),
+            r#"{"_meta":{"schema":"special_mods/v1"},"entries":[]}"#,
         )
         .unwrap();
         assert!(check(&tmp).is_ok(), "clean doc should pass");
