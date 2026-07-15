@@ -60,10 +60,12 @@ pub fn load_bundle(language: &LanguageId) -> Result<Bundle, I18nError> {
 /// Parse one TOML document and flatten its `[section] key = value` structure
 /// into `section.key` entries, accumulating into `out`.
 fn flatten_into(toml_src: &str, out: &mut Bundle) -> Result<(), I18nError> {
-    let value: Value = toml_src
-        .parse::<Value>()
-        .map_err(|e| I18nError::Parse(e.to_string()))?;
-    flatten_value(None, &value, out);
+    // toml 1.x: `Value::from_str` only parses a single value; whole documents
+    // parse as `Table`.
+    let table: toml::Table = toml_src
+        .parse()
+        .map_err(|e: toml::de::Error| I18nError::Parse(e.to_string()))?;
+    flatten_value(None, &Value::Table(table), out);
     Ok(())
 }
 
