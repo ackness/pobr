@@ -54,16 +54,32 @@ un-ignores its canary.
 Lua with the oracle's `defenceModList` / `intermediates` to pinpoint the exact
 missing source.
 
-**#1 target — Mageblood (common root cause, highest leverage).** Diagnosed via
-`defenceModList`: the armour gap on `warrior-titan-shield-wall` (`Mageblood` INC
-+219 Armour) and the evasion gap on `ranger-pathfinder-ice-shot` (`Mageblood`
-BASE +2000, INC +150 Evasion) are the *same* mechanic. Every poe.ninja endgame
-fixture wears Mageblood, which keeps all equipped **magic utility flasks**
-permanently active (granite→armour, jade→evasion, ruby/sapphire/topaz→res, …).
-PoBR explicitly does not model this (`env_finalize.rs:214-218`: Mageblood
-`CalcPerform.lua:1387-1403` + the `MagicUtilityFlaskEffect` rarity channel are
-declared unimplemented). Implementing it closes a large slice of the armour /
-evasion / resistance gaps across multiple builds at once — do this first.
+**#1 target — Mageblood (common root cause, highest leverage). ✅ DONE.**
+Diagnosed via `defenceModList`: the armour gap on `warrior-titan-shield-wall`
+(`Mageblood` INC +219 Armour) and the evasion gap on `ranger-pathfinder-ice-shot`
+(`Mageblood` BASE +2000, INC +150 Evasion) are the *same* mechanic. 9 of the 18
+endgame fixtures wear Mageblood. PoB2 models it not as a flask channel but via the
+belt's selected **variant lines** — each `Legacy of <X>` line and the
+`All Mage's Legacies have N% increased effect per duplicate…` implicit.
+
+Implemented to match vendor exactly:
+- **Parse** (`rules/handlers/mageblood.rs`, `special:mageblood_legacy`): each
+  `Legacy of <X>` → `LegacyOf<X>` BASE 1 + `MagebloodEquipped` FLAG (vendor
+  `ModParser.lua:5554-5557`; captured mod name → handler like `granted_passive`).
+  The `MagesLegacyEffect` implicit was already covered by the auto-extracted
+  `special_vendor` batch.
+- **Apply** (`calc/mageblood.rs`, env_finalize stage 2.5, vendor
+  `CalcPerform.lua:66-142` table + `:1502-1528`): sum each `LegacyOf<X>` BASE =
+  stacks; `totalDuplicates = Σ max(stacks-1,0)`;
+  `globalEffect = 1 + totalDuplicates × MagesLegacyEffect/100`; each present
+  legacy applies its effects **once**, `floor(globalEffect × base)`,
+  source "Mageblood".
+
+Result: def core-8 @5% 118→135, def 25-col @5% 343→393 / @10% 361→417; three
+canaries (`physical_armour_block`/`cold_projectile_evasion_es`/`evasion_melee`)
+un-ignored; `ranger-deadeye` Evasion 0.99x vs 0.5.4b golden 29774. The stale
+`ninja-bd-deadeye.txt` embedded PlayerStats predate PoB2's Mageblood modeling
+(res/evasion assertions on that old sample relaxed accordingly).
 
 Remaining after Mageblood, re-triage against fresh `defenceModList` dumps:
 DeflectionRating scaling, offence per-build DPS clusters, ailment magnitude.

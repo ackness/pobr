@@ -511,7 +511,15 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 118; // 4.5.4.3/0.5.4b 迁移基线 118/144（0.5.0=139；防御公式适配待补，见 docs/adapting-to-0.5.4b.md）
+// **Mageblood legacies 重记（Phase 1 #1，+17 @5% core-8 118→135）**：9/18 fixture 全戴
+// Mageblood，但 `LegacyOf*` BASE + `MagebloodEquipped` flag 从未展开成护甲/闪避/抗性
+// （env_finalize.rs 声明未建）。实现 vendor CalcPerform.lua:66-142 legacies 表 +
+// :1502-1528 应用逻辑（stacks × duplicate 放大 globalEffect × floor）+ `legacy of (%w+)`
+// handler（动态 mod 名）+ MagesLegacyEffect implicit（已在 special_vendor 批）。titan
+// Armour（Basalt INC 219 = floor(1.46×150)）/ ice-shot Evasion（Jade BASE 2000 + Stibnite
+// INC 150）等多 build 的护甲/闪避/抗性缺口一次收敛，三 canary（physical_armour_block/
+// cold_projectile_evasion_es/evasion_melee）un-ignore。
+const BASELINE_DEF_CORE_HIT5: usize = 135; // Mageblood 后 135/144（迁移基线 118；0.5.0=139）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -595,8 +603,10 @@ const BASELINE_DEF_CORE_HIT5: usize = 118; // 4.5.4.3/0.5.4b 迁移基线 118/14
 // mod_parser_rules 数据通道生效（B3 commit 的 core-8 138→139 即此格），wolf-pack
 // Evasion 在 #40 合并前即 1.00x ✓。合并 #40 行为零变化（18 build 逐格 diff 为空），
 // 416 是双重计数；当前实测 415（@10% 432 与 core-8 139 恰与现实吻合，保留）。
-const BASELINE_DEF_HIT5: usize = 343; // 4.5.4.3 迁移基线 343/450（0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 361; // 4.5.4.3 迁移基线 361/450（0.5.0=432）
+// **Mageblood legacies 重记（Phase 1 #1，+50 @5% 343→393 / +56 @10% 361→417）**：见
+// BASELINE_DEF_CORE_HIT5 上的说明；护甲/闪避/抗性列跨多 build 收敛。
+const BASELINE_DEF_HIT5: usize = 393; // Mageblood 后 393/450（迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 417; // Mageblood 后 417/450（迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs

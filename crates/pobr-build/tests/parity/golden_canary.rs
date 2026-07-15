@@ -80,7 +80,6 @@ const DPS: f64 = 0.40;
 
 /// 物理近战 / 护甲 + 格挡层。
 #[test]
-#[ignore = "0.5.4b armour 公式适配缺口（Titan ~0.54x）；见 docs/adapting-to-0.5.4b.md Phase 1"]
 fn canary_physical_armour_block() {
     let d = load_data();
     let n = "warrior-titan-shield-wall";
@@ -99,7 +98,6 @@ fn canary_physical_armour_block() {
 
 /// 冰冷投射 / 闪避 + ES 层。
 #[test]
-#[ignore = "0.5.4b evasion 公式适配缺口（~0.32x）；见 docs/adapting-to-0.5.4b.md Phase 1"]
 fn canary_cold_projectile_evasion_es() {
     let d = load_data();
     let n = "ranger-pathfinder-ice-shot";
@@ -134,7 +132,6 @@ fn canary_cold_spell_es() {
 
 /// 闪避近战层。
 #[test]
-#[ignore = "0.5.4b evasion 公式适配缺口（~0.60x）；见 docs/adapting-to-0.5.4b.md Phase 1"]
 fn canary_evasion_melee() {
     let d = load_data();
     let n = "monk-martial-artist-twister";

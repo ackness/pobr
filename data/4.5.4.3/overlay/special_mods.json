@@ -1154,6 +1154,18 @@
       "source_note": "ModParser.lua:175（life regeneration→LifeRegen BASE 平直每秒回复）"
     },
     {
+      "id": "mageblood_legacy",
+      "pattern": "legacy of (\\w+)",
+      "vendor_pattern": "legacy of (%w+)",
+      "verified": false,
+      "batch": "S3",
+      "source_note": "ModParser.lua:5554-5557（Mageblood 腰带变体行 → LegacyOf<X> BASE 1 + MagebloodEquipped FLAG；捕获驱动的动态 mod 名走 handler，聚合应用见 calc/mageblood.rs）",
+      "handler_id": "special:mageblood_legacy",
+      "handler_args": [
+        "$1"
+      ]
+    },
+    {
       "id": "magnitudes_of_curses_you_inflict_are_zero",
       "pattern": "magnitudes of curses you inflict are zero",
       "vendor_pattern": "magnitudes of curses you inflict are zero",

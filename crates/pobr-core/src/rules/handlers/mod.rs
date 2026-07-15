@@ -18,6 +18,7 @@ use crate::rules::{DuplicateHandlerError, HandlerRegistry};
 
 mod explode;
 mod granted_passive;
+mod mageblood;
 
 /// 注册全部 special handler（启动期一次，零 I/O）。
 ///
@@ -28,6 +29,7 @@ pub fn register_special_handlers(
 ) -> Result<(), DuplicateHandlerError> {
     explode::register(registry)?;
     granted_passive::register(registry)?;
+    mageblood::register(registry)?;
     Ok(())
 }
 

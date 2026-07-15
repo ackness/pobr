@@ -31,6 +31,10 @@ pub fn env_finalize(env: &mut Env) {
     merge_keystones(env);
     // 阶段 2（T3）：player(+minion) db 的 EnemyModifier LIST → enemy db。
     forward_enemy_modifiers(env);
+    // 阶段 2.5：Mageblood legacies 展开（vendor CalcPerform.lua:1502-1528，位于
+    // flask effect 段 :1531 之前）。把 `LegacyOf*` BASE + `MagebloodEquipped` flag
+    // 标记词条聚合成护甲/闪避/抗性等真实 mod；无 Mageblood 时空转。
+    super::mageblood::apply_mageblood_legacies(env);
     // 阶段 3（T4）：flask/charm 词条按激活配置合入（mode_combat 门控）。
     merge_flasks_charms(env);
     // 阶段 4（T3）：buff 九类分发（aura 乘区 / curse priority+limit / debuff→enemy）。

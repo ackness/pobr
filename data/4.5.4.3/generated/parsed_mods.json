@@ -38464,47 +38464,179 @@
     },
     {
       "text": "Legacy of Basalt",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfBasalt",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Bismuth",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfBismuth",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Diamond",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfDiamond",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Gold",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfGold",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Granite",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfGranite",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Jade",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfJade",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Quicksilver",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfQuicksilver",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Sapphire",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfSapphire",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Silver",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfSilver",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Stibnite",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfStibnite",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Legacy of Sulphur",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "LegacyOfSulphur",
+          "type": "Base",
+          "value": 1.0
+        },
+        {
+          "name": "MagebloodEquipped",
+          "type": "Flag",
+          "value": true
+        }
+      ]
     },
     {
       "text": "Life Leech recovers based on your Lightning damage as well as Physical damage",
