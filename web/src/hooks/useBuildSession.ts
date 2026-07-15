@@ -126,9 +126,11 @@ export interface BuildSession {
   runFullDps: () => Promise<FullDpsResponse>;
 }
 
+// 计算请求不带 pob_code：导入时 XML 内容已全量物化进 state（materialize +
+// config_inputs/main_socket_group），再带 code 只是让 Rust 每次重算都白解码
+// 一遍然后立刻被覆盖项冲掉。state.pobCode 仅存档用（恢复会话时重建 build 视图）。
 function toRequest(state: BuildState): CalculateBuildRequest {
   return {
-    pob_code: state.pobCode ?? undefined,
     character: state.character,
     allocated_nodes: state.allocatedNodes,
     attribute_choices: state.attributeChoices,
@@ -248,6 +250,21 @@ function itemName(text: string): string {
   );
 }
 
+/**
+ * 旧会话迁移：calc 请求已不带 pob_code（见 toRequest），此前靠 code 在 Rust 侧
+ * 兜底的 XML config / 主技能组，恢复会话时从解码结果回填（已保存的显式值优先）。
+ */
+function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
+  return {
+    ...state,
+    params: {
+      ...state.params,
+      main_socket_group: state.params.main_socket_group ?? decoded.main_socket_group ?? undefined,
+      config_inputs: { ...decoded.config_inputs, ...state.params.config_inputs },
+    },
+  };
+}
+
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
 function materialize(
   decoded: BuildJson,
@@ -358,10 +375,16 @@ export function useBuildSession(): BuildSession {
           notesRef.current = saved.notes;
           setNotesState(saved.notes);
           if (saved.state.pobCode) {
+            // 等解码完成再 apply：旧会话的 XML config 需要回填后才能进首次计算。
             backend
               .decodeBuild(saved.state.pobCode)
-              .then((decoded) => !cancelled && setBuild(decoded))
-              .catch(() => {});
+              .then((decoded) => {
+                if (cancelled) return;
+                setBuild(decoded);
+                apply(backfillFromDecoded(saved.state, decoded));
+              })
+              .catch(() => !cancelled && apply(saved.state));
+            return;
           }
           apply(saved.state);
           return;
@@ -473,7 +496,12 @@ export function useBuildSession(): BuildSession {
           attributeChoices: decoded.tree.attribute_choices ?? {},
           ...materialize(decoded),
           annotations,
-          params: { config_inputs: {} },
+          // XML 的 <Config> 与主技能组一并物化——calc 请求不再回传 pob_code，
+          // 这里就是它们唯一的入口（Config 页也因此能直接显示导入值）。
+          params: {
+            config_inputs: decoded.config_inputs ?? {},
+            main_socket_group: decoded.main_socket_group ?? undefined,
+          },
         });
       } catch (err) {
         setError(String(err));
@@ -638,9 +666,9 @@ export function useBuildSession(): BuildSession {
   const exportCode = useCallback(async (): Promise<string> => {
     if (!state) throw new Error('build not ready');
     const backend = await getBackend();
-    // encode 走全量覆盖（不带 pob_code——分享内容 = 当前编辑态本身）；
+    // encode 走全量覆盖（toRequest 本就不带 pob_code——分享内容 = 当前编辑态本身）；
     // 局部注释嵌入 <Notes> 标记段随 code 往返（PoB2 里显示为普通笔记）。
-    const { pob_code: _omit, ...request } = toRequest(state);
+    const request = toRequest(state);
     return backend.encodeBuild({ ...request, notes: composeNotes(notes, state.annotations) });
   }, [state, notes]);
 
@@ -657,10 +685,14 @@ export function useBuildSession(): BuildSession {
       if (saved.state.pobCode) {
         getBackend()
           .then((b) => b.decodeBuild(saved.state.pobCode!))
-          .then(setBuild)
-          .catch(() => {});
+          .then((decoded) => {
+            setBuild(decoded);
+            apply(backfillFromDecoded(saved.state, decoded));
+          })
+          .catch(() => apply(saved.state));
+      } else {
+        apply(saved.state);
       }
-      apply(saved.state);
     },
     [apply],
   );

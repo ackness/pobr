@@ -1171,3 +1171,99 @@ fn walk_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     }
     out
 }
+
+/// web 侧 calc 请求不再携带 pob_code（useBuildSession::toRequest）：导入时把
+/// 解码结果全量物化成覆盖项（materialize + config_inputs / main_socket_group）。
+/// 钉住两条路径数值等价：code 直算 == 物化请求直算。物化映射一旦变化（新增
+/// 可编辑域），这里必须同步补——否则 web 端导入后该域会静默丢失。
+#[test]
+fn materialized_request_matches_pob_code_calculation() {
+    ensure_data();
+    let code = demo_code();
+    let via_code: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&serde_json::json!({ "pob_code": code }).to_string())
+            .expect("calc via code"),
+    )
+    .unwrap();
+
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("decode")).unwrap();
+    let map_slot_text = |v: &Value| -> Vec<Value> {
+        v.as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|i| serde_json::json!({ "slot": i["slot"], "text": i["text"] }))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let socket_groups: Vec<Value> = decoded["socket_groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| {
+            serde_json::json!({
+                "slot": g["slot"],
+                "enabled": g["enabled"],
+                "source": g["source"],
+                // 与 web materialize 同口径：只保留 skill_id/level/quality。
+                "gems": g["gems"].as_array().unwrap().iter().map(|gem| serde_json::json!({
+                    "skill_id": gem["skill_id"],
+                    "level": gem["level"],
+                    "quality": gem["quality"],
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let jewels: Vec<Value> = decoded["items"]["socket_jewels"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .map(|j| serde_json::json!({ "socket_node": j["socket_node"], "text": j["text"] }))
+                .collect()
+        })
+        .unwrap_or_default();
+    let request = serde_json::json!({
+        "character": {
+            "level": decoded["character"]["level"],
+            "class_name": decoded["character"]["class_name"],
+            "ascendancy_name": decoded["character"]["ascendancy_name"],
+        },
+        "allocated_nodes": decoded["tree"]["allocated_nodes"],
+        "attribute_choices": decoded["tree"]["attribute_choices"],
+        "socket_groups": socket_groups,
+        "items": map_slot_text(&decoded["items"]["equipped"]),
+        "flasks": map_slot_text(&decoded["items"]["flasks"]),
+        "jewels": jewels,
+        "main_socket_group": decoded["main_socket_group"],
+        "config_inputs": decoded["config_inputs"],
+    });
+    let materialized: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&request.to_string()).expect("calc materialized"),
+    )
+    .unwrap();
+
+    let stats = |v: &Value| -> Vec<(String, Option<f64>)> {
+        v["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| (s["id"].as_str().unwrap().to_string(), s["value"].as_f64()))
+            .collect()
+    };
+    let a = stats(&materialized);
+    let b = stats(&via_code);
+    assert_eq!(a.len(), b.len(), "stat count mismatch");
+    for ((id_a, va), (id_b, vb)) in a.iter().zip(&b) {
+        assert_eq!(id_a, id_b);
+        match (va, vb) {
+            (Some(x), Some(y)) => {
+                assert!(
+                    (x - y).abs() < 1e-6,
+                    "{id_a}: materialized={x} via_code={y}"
+                );
+            }
+            _ => assert_eq!(va, vb, "{id_a}: null-ness mismatch"),
+        }
+    }
+}
