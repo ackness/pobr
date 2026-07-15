@@ -524,7 +524,11 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 // 此前经 stat_map_engine 映射到 vendor 名 `Life`，落进死桶——PoBR 生命池聚合名是
 // `MaximumLife`（Armour/Evasion/EnergyShield 因规范名与 vendor 同名无此问题）。归一
 // `Life`→`MaximumLife` 后 gemling Life 0.79x→0.96x，连带 TotalEHP/5×MaxHit/LifeUnres 共 8 列翻正。
-const BASELINE_DEF_CORE_HIT5: usize = 136; // Barrier-Life 后 136/144（Mageblood 135；迁移基线 118；0.5.0=139）
+// **Item ES 重算重记（+2 @5% core-8 136→138）**：per-slot 物品 ES 从「信物品文本
+// 展示行」改为 PoB2 口径「基底 DB 重算 (esBase+flat)×(1+localInc/100)×(1+quality/100)」
+// （Item.lua:1994-1996；展示行跨数据版本会滞后）——titan ES 41→55、stormweaver ES
+// 986→1120，各连带 ESRecoveryCap。见 calc_orchestrator/defence.rs::item_rolled_defence。
+const BASELINE_DEF_CORE_HIT5: usize = 138; // ItemES 后 138/144（Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -612,8 +616,10 @@ const BASELINE_DEF_CORE_HIT5: usize = 136; // Barrier-Life 后 136/144（Mageblo
 // BASELINE_DEF_CORE_HIT5 上的说明；护甲/闪避/抗性列跨多 build 收敛。
 // **Virtuous Barrier Life 名归一重记（+8 @5% 393→401 / +8 @10% 417→425）**：见
 // BASELINE_DEF_CORE_HIT5 上的说明；gemling 8 列（Life/TotalEHP/5×MaxHit/LifeUnres）翻正。
-const BASELINE_DEF_HIT5: usize = 401; // Barrier-Life 后 401/450（Mageblood 393；迁移基线 343；0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 425; // Barrier-Life 后 425/450（Mageblood 417；迁移基线 361；0.5.0=432）
+// **Item ES 重算重记（+4 @5% 401→405 / +3 @10% 425→428）**：titan+stormweaver 各
+// ES+ESRecoveryCap 翻正；见 BASELINE_DEF_CORE_HIT5 上说明。
+const BASELINE_DEF_HIT5: usize = 405; // ItemES 后 405/450（Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
