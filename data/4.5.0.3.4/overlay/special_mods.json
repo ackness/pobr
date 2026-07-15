@@ -73,8 +73,14 @@
           "type": "INC",
           "value": "$1",
           "tags": [
-            { "type": "Condition", "var": "AffectedByHeraldofAsh" },
-            { "type": "DamageType", "damageType": "Fire" }
+            {
+              "type": "Condition",
+              "var": "AffectedByHeraldofAsh"
+            },
+            {
+              "type": "DamageType",
+              "damageType": "Fire"
+            }
           ]
         }
       ],
@@ -92,8 +98,14 @@
           "type": "INC",
           "value": "$1",
           "tags": [
-            { "type": "Condition", "var": "AffectedByHeraldofIce" },
-            { "type": "DamageType", "damageType": "Cold" }
+            {
+              "type": "Condition",
+              "var": "AffectedByHeraldofIce"
+            },
+            {
+              "type": "DamageType",
+              "damageType": "Cold"
+            }
           ]
         }
       ],
@@ -111,8 +123,14 @@
           "type": "INC",
           "value": "$1",
           "tags": [
-            { "type": "Condition", "var": "AffectedByHeraldofThunder" },
-            { "type": "DamageType", "damageType": "Lightning" }
+            {
+              "type": "Condition",
+              "var": "AffectedByHeraldofThunder"
+            },
+            {
+              "type": "DamageType",
+              "damageType": "Lightning"
+            }
           ]
         }
       ],
@@ -130,7 +148,10 @@
           "type": "BASE",
           "value": "$1",
           "tags": [
-            { "type": "Condition", "var": "NormalBodyArmourEquipped" }
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
           ]
         }
       ],
@@ -2464,6 +2485,164 @@
       "verified": false,
       "batch": "a2-real-gaps",
       "source_note": "ModParser.lua:3374（mod(AdditionalCooldownUses, BASE, num, SkillType{skillTypeList={Cold,Fire,Lightning}})；skillTypeList → SkillTypes 位集并集（intersects 即 OR，与 vendor ModStore SkillType 任一命中同语义）。消费方 skill_mechanics.rs stored uses 已存在）"
+    },
+    {
+      "id": "all_elemental_damage_converted_to_chaos",
+      "pattern": "all elemental damage converted to chaos damage",
+      "vendor_pattern": "all elemental damage converted to chaos damage",
+      "mods": [
+        {
+          "name": "ColdDamageConvertToChaos",
+          "type": "BASE",
+          "value": 100.0
+        },
+        {
+          "name": "FireDamageConvertToChaos",
+          "type": "BASE",
+          "value": 100.0
+        },
+        {
+          "name": "LightningDamageConvertToChaos",
+          "type": "BASE",
+          "value": 100.0
+        }
+      ],
+      "verified": false,
+      "batch": "conv-taken-as",
+      "source_note": "ModParser.lua:2410-2414（all elemental → chaos 100，整行特例；通用后缀路径整行不识别）"
+    },
+    {
+      "id": "cold_damage_taken_as_lightning",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of cold damage taken as lightning",
+      "vendor_pattern": "(%d+)%% of cold damage taken as lightning",
+      "mods": [
+        {
+          "name": "ColdDamageTakenAsLightning",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "conv-taken-as",
+      "source_note": "ModParser.lua:5655（裸目标 taken-as：suffixTypes 无 bare `as lightning`，通用路径残留 `as lightning` 并误产 ColdDamageTaken BASE）"
+    },
+    {
+      "id": "fire_and_lightning_from_hits_taken_as_cold_during_effect",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of fire and lightning damage from hits taken as cold damage during effect",
+      "vendor_pattern": "(%d+)%% of fire and lightning damage from hits taken as cold damage during effect",
+      "mods": [
+        {
+          "name": "FireDamageFromHitsTakenAsCold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        },
+        {
+          "name": "LightningDamageFromHitsTakenAsCold",
+          "type": "BASE",
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "UsingFlask"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "conv-taken-as",
+      "source_note": "ModParser.lua:5657-5660（flask 词条；通用路径只吃 lightning 分支、残留 `Fire and`）"
+    },
+    {
+      "id": "fire_damage_taken_as_lightning",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of fire damage taken as lightning",
+      "vendor_pattern": "(%d+)%% of fire damage taken as lightning",
+      "mods": [
+        {
+          "name": "FireDamageTakenAsLightning",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "conv-taken-as",
+      "source_note": "ModParser.lua:5656（同 cold_damage_taken_as_lightning，裸目标 taken-as）"
+    },
+    {
+      "id": "phys_cold_lightning_converted_to_fire",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of physical, cold and lightning damage converted to fire damage",
+      "vendor_pattern": "(%d+)%% of physical, cold and lightning damage converted to fire damage",
+      "mods": [
+        {
+          "name": "PhysicalDamageConvertToFire",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "LightningDamageConvertToFire",
+          "type": "BASE",
+          "value": "$1"
+        },
+        {
+          "name": "ColdDamageConvertToFire",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "conv-taken-as",
+      "source_note": "ModParser.lua:2405-2409（多源合写 converted to：通用路径只吃 lightning 分支、残留 `Physical, Cold and`）"
+    },
+    {
+      "id": "phys_from_hits_taken_as_random_element",
+      "pattern": "(\\d+(?:\\.\\d+)?)% of physical damage from hits taken as damage of a random element",
+      "vendor_pattern": "(%d+)%% of physical damage from hits taken as damage of a random element",
+      "mods": [
+        {
+          "name": "PhysicalDamageFromHitsTakenAsFire",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 3.0
+              }
+            ]
+          }
+        },
+        {
+          "name": "PhysicalDamageFromHitsTakenAsCold",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 3.0
+              }
+            ]
+          }
+        },
+        {
+          "name": "PhysicalDamageFromHitsTakenAsLightning",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "div": 3.0
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "conv-taken-as",
+      "source_note": "ModParser.lua:5661-5665（AVERAGE 三分口径 num/3；真实语料词条，legacy 删除后回归恢复）"
     }
   ]
 }

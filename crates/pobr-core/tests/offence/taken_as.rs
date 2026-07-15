@@ -58,14 +58,10 @@ fn shift_table_defaults_to_identity() {
 /// （:2184 BASE 求和、:2189 源保留 max(100−total,0)）。
 #[test]
 fn shift_table_single_conversion() {
-    // 「30% of Cold Damage taken as Lightning」不在当前引擎规则内（引擎留残
-    // `as Lightning`，生产闸门整行丢弃）——按其数据展开直接注入。
+    // 裸目标 taken-as 经 special_mods `cold_damage_taken_as_lightning`
+    // （vendor ModParser.lua:5655）整行解析——端到端走文本通道。
     let mut db = ModDb::new();
-    db.add_mod(Modifier::number(
-        "ColdDamageTakenAsLightning",
-        ModType::Base,
-        30.0,
-    ));
+    add_text(&mut db, "30% of Cold Damage taken as Lightning");
     let shift = damage_shift_table(&db, &CalcConfig::attack());
     assert_eq!(shift[COLD][LIGHT], 0.3);
     assert_eq!(shift[COLD][COLD], 0.7);
