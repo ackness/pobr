@@ -25689,9 +25689,19 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "PhysicalDamageFromHitsTaken",
+          "name": "PhysicalDamageFromHitsTakenAsFire",
           "type": "Base",
-          "value": 5.0
+          "value": 1.6666666666666667
+        },
+        {
+          "name": "PhysicalDamageFromHitsTakenAsCold",
+          "type": "Base",
+          "value": 1.6666666666666667
+        },
+        {
+          "name": "PhysicalDamageFromHitsTakenAsLightning",
+          "type": "Base",
+          "value": 1.6666666666666667
         }
       ]
     },

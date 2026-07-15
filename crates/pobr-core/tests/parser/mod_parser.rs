@@ -282,6 +282,131 @@ fn parses_conversion_and_gain_as_extra() {
     assert_eq!(o.mods.len(), 3, "all elements → fire/cold/lightning");
 }
 
+/// 多源合写 converted-to（vendor ModParser.lua:2405-2409 specialModList）。
+/// 通用后缀路径只会吃掉 lightning 分支并留残 `Physical, Cold and`——special
+/// 通道必须整行吃净、三源各产一条 ConvertToFire BASE。
+#[test]
+fn parses_multi_source_converted_to_fire() {
+    let o =
+        parse_mod("30% of Physical, Cold and Lightning Damage Converted to Fire Damage").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert!(o.unparsed.is_none(), "整行须被吃净，不得留残");
+    assert_eq!(o.mods.len(), 3);
+    for src in ["Physical", "Lightning", "Cold"] {
+        let m = o
+            .mods
+            .iter()
+            .find(|m| m.name == ModName::from(format!("{src}DamageConvertToFire")))
+            .unwrap_or_else(|| panic!("缺 {src}DamageConvertToFire"));
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value, ModValue::Number(30.0));
+    }
+}
+
+/// 无数值整行 converted-to（vendor ModParser.lua:2410-2414）：三元素各 100。
+#[test]
+fn parses_all_elemental_converted_to_chaos() {
+    let o = parse_mod("All Elemental Damage Converted to Chaos Damage").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert!(o.unparsed.is_none());
+    assert_eq!(o.mods.len(), 3);
+    for src in ["Cold", "Fire", "Lightning"] {
+        let m = o
+            .mods
+            .iter()
+            .find(|m| m.name == ModName::from(format!("{src}DamageConvertToChaos")))
+            .unwrap_or_else(|| panic!("缺 {src}DamageConvertToChaos"));
+        assert_eq!(m.value, ModValue::Number(100.0));
+    }
+}
+
+/// 承伤转换通用形（modNameList `<src> damage taken` + suffixTypes `as <dst>
+/// damage`，消费侧 calc/taken.rs `<Src>DamageTakenAs<Dst>`）。钉住整行吃净。
+#[test]
+fn parses_generic_damage_taken_as() {
+    let o = parse_mod("5% of Physical Damage taken as Fire Damage").unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert!(o.unparsed.is_none());
+    assert_eq!(o.mods.len(), 1);
+    assert_eq!(o.mods[0].name, ModName::from("PhysicalDamageTakenAsFire"));
+    assert_eq!(o.mods[0].mod_type, ModType::Base);
+    assert_eq!(o.mods[0].value, ModValue::Number(5.0));
+
+    let o = parse_mod("10% of Physical Damage from Hits taken as Cold Damage").unwrap();
+    assert!(o.unparsed.is_none());
+    assert_eq!(
+        o.mods[0].name,
+        ModName::from("PhysicalDamageFromHitsTakenAsCold")
+    );
+}
+
+/// 裸目标 taken-as（vendor ModParser.lua:5655-5656 specialModList）：suffixTypes
+/// 无 bare `as lightning`，通用路径会误产 `<Src>DamageTaken BASE` + 残留
+/// `as Lightning`——special 通道必须接管。
+#[test]
+fn parses_bare_target_taken_as_lightning() {
+    for (src, text) in [
+        ("Cold", "30% of Cold Damage taken as Lightning"),
+        ("Fire", "30% of Fire Damage taken as Lightning"),
+    ] {
+        let o = parse_mod(text).unwrap();
+        assert_eq!(o.status, ParseStatus::Parsed);
+        assert!(o.unparsed.is_none(), "{text}: 整行须被吃净");
+        assert_eq!(o.mods.len(), 1);
+        assert_eq!(
+            o.mods[0].name,
+            ModName::from(format!("{src}DamageTakenAsLightning"))
+        );
+        assert_eq!(o.mods[0].value, ModValue::Number(30.0));
+    }
+}
+
+/// flask 双源 taken-as（vendor ModParser.lua:5657-5660）：fire+lightning 各产
+/// 一条 FromHitsTakenAsCold，带 `Condition: UsingFlask`。
+#[test]
+fn parses_flask_fire_lightning_from_hits_taken_as_cold() {
+    let o =
+        parse_mod("20% of Fire and Lightning Damage from Hits taken as Cold Damage during Effect")
+            .unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert!(o.unparsed.is_none());
+    assert_eq!(o.mods.len(), 2);
+    for src in ["Fire", "Lightning"] {
+        let m = o
+            .mods
+            .iter()
+            .find(|m| m.name == ModName::from(format!("{src}DamageFromHitsTakenAsCold")))
+            .unwrap_or_else(|| panic!("缺 {src}DamageFromHitsTakenAsCold"));
+        assert_eq!(m.value, ModValue::Number(20.0));
+        assert!(
+            m.tags.contains(&ModTag::condition("UsingFlask", false)),
+            "{src}: 缺 UsingFlask 条件"
+        );
+    }
+}
+
+/// random element 承伤（vendor ModParser.lua:5661-5665）：AVERAGE 三分 num/3。
+/// 真实语料词条（`5% of Physical Damage from Hits taken as Damage of a Random
+/// Element`），legacy 删除后曾回归为 `PhysicalDamageFromHitsTaken BASE 5` + 残留。
+#[test]
+fn parses_phys_from_hits_taken_as_random_element() {
+    let o = parse_mod(
+        "5% of [Physical] Damage from [HitDamage|Hits] taken as Damage of a Random [ElementalDamage|Element]",
+    )
+    .unwrap();
+    assert_eq!(o.status, ParseStatus::Parsed);
+    assert!(o.unparsed.is_none());
+    assert_eq!(o.mods.len(), 3);
+    for dst in ["Fire", "Cold", "Lightning"] {
+        let m = o
+            .mods
+            .iter()
+            .find(|m| m.name == ModName::from(format!("PhysicalDamageFromHitsTakenAs{dst}")))
+            .unwrap_or_else(|| panic!("缺 PhysicalDamageFromHitsTakenAs{dst}"));
+        assert_eq!(m.value, ModValue::Number(5.0 / 3.0));
+    }
+}
+
 /// 聚合源 gain-as（M4-H；vendor ModParser.lua:702 `["elemental damage"] =
 /// "ElementalDamage"` + 后缀表 `:6173` → `ElementalDamageGainAsCold`，ModCache
 /// 实证 `Gain 10% of Elemental Damage as Extra Cold Damage`；druid-oracle
