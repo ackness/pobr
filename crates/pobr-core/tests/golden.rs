@@ -4,6 +4,9 @@
 //! 各子模块即 `tests/golden/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
+#[path = "support/parse.rs"]
+mod support;
+
 #[path = "golden/display_catalog.rs"]
 mod display_catalog;
 #[path = "golden/pob2_golden.rs"]

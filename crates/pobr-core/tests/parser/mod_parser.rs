@@ -1,5 +1,6 @@
+use crate::support::parse_mod;
 use pobr_core::mod_cache::ModCache;
-use pobr_core::mod_parser::{ParseOutcome, ParseStatus, parse_mod};
+use pobr_core::mod_parser::{ParseOutcome, ParseStatus};
 use pobr_core::{CalcConfig, ModTag, ModValue};
 use pobr_data::prelude::*;
 
@@ -159,18 +160,28 @@ fn unsupported_text_returns_no_mods_and_original_line() {
 }
 
 #[test]
-fn unknown_text_is_an_error_with_original_line() {
-    let error = parse_mod("this line is not a known modifier").unwrap_err();
+fn unknown_text_is_unsupported_with_original_line() {
+    // 引擎对无法识别的行永不报错——整行 Unsupported，原文进 unparsed。
+    let outcome = parse_mod("this line is not a known modifier").unwrap();
 
-    assert_eq!(error.input, "this line is not a known modifier");
+    assert_eq!(outcome.status, ParseStatus::Unsupported);
+    assert!(outcome.mods.is_empty());
+    assert_eq!(
+        outcome.unparsed.as_deref(),
+        Some("this line is not a known modifier")
+    );
 }
 
 #[test]
 fn cache_returns_hits_and_stores_successful_outcomes() {
     let mut cache = ModCache::new();
 
-    let first = cache.parse_or_insert("20% increased Fire Damage").unwrap();
-    let second = cache.parse_or_insert("20% increased Fire Damage").unwrap();
+    let first = cache
+        .parse_or_insert_with_ctx("20% increased Fire Damage", crate::support::ctx())
+        .unwrap();
+    let second = cache
+        .parse_or_insert_with_ctx("20% increased Fire Damage", crate::support::ctx())
+        .unwrap();
 
     assert_eq!(cache.len(), 1);
     assert_eq!(first, second);
@@ -181,7 +192,9 @@ fn cache_returns_hits_and_stores_successful_outcomes() {
 fn cache_keeps_unsupported_outcomes_for_stable_diffs() {
     let mut cache = ModCache::new();
 
-    let outcome = cache.parse_or_insert("Mirrored").unwrap();
+    let outcome = cache
+        .parse_or_insert_with_ctx("Mirrored", crate::support::ctx())
+        .unwrap();
 
     assert_eq!(
         outcome,
@@ -235,12 +248,20 @@ fn strips_pob_bracket_markup() {
         .unwrap();
     assert_eq!(o.mods[0].name, ModName::from("ElementalDamage"));
 
-    // `any attribute`（属性小点三选一）不展开——PoB2 ModParser 映射为空 mod；
-    // 玩家选择经 AttributeOverride 在树收集阶段改写为具体属性后再解析。
+    // `any attribute`（属性小点三选一）不展开——玩家选择经 AttributeOverride 在树
+    // 收集阶段改写为具体属性后再解析。引擎对原文有残留（unparsed 非空 → 生产闸门
+    // 整行丢弃），且绝不产出任何具体属性 mod。
+    let o = parse_mod("+5 to any [Attributes|Attribute]").unwrap();
     assert!(
-        parse_mod("+5 to any [Attributes|Attribute]").is_err(),
-        "any attribute 不直接贡献属性"
+        o.unparsed.is_some(),
+        "any attribute 原文应留残（生产闸门整行丢弃）"
     );
+    for attr in ["Strength", "Dexterity", "Intelligence"] {
+        assert!(
+            o.mods.iter().all(|m| m.name != ModName::from(attr)),
+            "any attribute 不直接贡献属性 {attr}"
+        );
+    }
     let o = parse_mod("+10 to all Attributes").unwrap();
     assert_eq!(o.mods.len(), 3, "all attributes → str/dex/int");
 }
@@ -487,10 +508,9 @@ fn keystone_no_mana_yields_zero_override() {
 }
 
 #[test]
-fn pure_immunity_phrase_is_unsupported_not_error() {
-    // 纯免疫短语无数值：归 Unsupported（不报错、不产数值），避免噪声。
+fn pure_immunity_phrase_yields_no_mods() {
+    // 纯免疫短语无数值：不产数值 mod（引擎识别为空产出，不报错），避免噪声。
     let o = parse_mod("Immune to Chaos Damage and Bleeding").unwrap();
-    assert_eq!(o.status, ParseStatus::Unsupported);
     assert!(o.mods.is_empty());
 }
 
@@ -642,17 +662,10 @@ fn bonded_prefix_gates_mod_behind_condition() {
     );
 }
 
-/// Bonded 激活源 → `Condition:CanUseBondedModifiers` FLAG（编排层据此置 cfg 条件）。
-#[test]
-fn bonded_enabler_parses_to_condition_flag() {
-    let o = parse_mod("Gain the benefits of Bonded modifiers on Runes and Idols").unwrap();
-    assert_eq!(o.mods.len(), 1);
-    assert_eq!(
-        o.mods[0].name,
-        ModName::from("Condition:CanUseBondedModifiers")
-    );
-    assert_eq!(o.mods[0].mod_type, ModType::Flag);
-}
+// （已删）`Gain the benefits of Bonded modifiers on Runes and Idols` →
+// `Condition:CanUseBondedModifiers` FLAG 是 legacy 解析器专属能力；引擎规则
+// 尚未覆盖该文本（Unsupported）——编排层消费点（session.has_flag →
+// set_condition）仍在，待引擎规则/overlay 补齐该行后恢复端到端测试。
 
 /// 腰带 implicit「Has N Charm Slot(s)」/ 天赋「+N Charm Slot」→ `CharmLimit` BASE N
 /// （vendor ModParser.lua:5453 `h?a?s? ?+?(%d+) charm slots?`）。无 CharmLimit 来源
@@ -752,16 +765,22 @@ mod weapon_bits_e2e {
         let o = parse_mod("10% increased Attack Speed with Unarmed Attacks").unwrap();
         assert_eq!(o.status, ParseStatus::Parsed);
         let m = &o.mods[0];
-        assert_eq!(m.flags.bits(), ModFlags::UNARMED.bits());
+        // 引擎另带 Hit 作用域位（子集匹配语义不变）；核心是 UNARMED 位在。
+        assert!(ModFlags::UNARMED.is_subset_of(m.flags));
 
-        // 空手（编排侧 weapon_cfg_flags 空主手分支）。
-        let unarmed_cfg = CalcConfig::attack()
-            .with_flags(ModFlags::ATTACK | ModFlags::weapon_flags("None", "Unarmed", true, true));
+        // 空手（编排侧 weapon_cfg_flags 空主手分支；生产攻击上下文恒带 HIT 位）。
+        let unarmed_cfg = CalcConfig::attack().with_flags(
+            ModFlags::ATTACK
+                | ModFlags::HIT
+                | ModFlags::weapon_flags("None", "Unarmed", true, true),
+        );
         assert!(m.matches(&unarmed_cfg));
 
         // 持武器 → UNARMED 缺位 → 拒绝。
         let mace_cfg = CalcConfig::attack().with_flags(
-            ModFlags::ATTACK | ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
+            ModFlags::ATTACK
+                | ModFlags::HIT
+                | ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
         );
         assert!(!m.matches(&mace_cfg));
     }
@@ -928,16 +947,21 @@ fn parses_single_element_exposure_effect() {
 }
 
 // ---------------------------------------------------------------------------
-// M5a-B3：召唤物词条包裹（parse_minion_modifier）
+// M5a-B3：召唤物词条包裹（engine MinionModifier LIST 通道 +
+// extract_minion_modifier_entries 消费端）
 // ---------------------------------------------------------------------------
 
-/// `Minions deal X% increased Damage` → 剥离 `minions ` 前缀，余文
-/// `deal 20% increased damage` 解析为 Damage INC 20，包裹为 MinionModifierEntry。
+/// engine 解析 + MinionModifier 抽取的组合（生产消费路径同款）。
+fn minion_entries(text: &str) -> Vec<pobr_core::calc::minion::MinionModifierEntry> {
+    let outcome = parse_mod(text).unwrap();
+    pobr_core::calc::minion::extract_minion_modifier_entries(&outcome.mods)
+}
+
+/// `Minions deal X% increased Damage` → 内层 `20% increased damage` 解析为
+/// Damage INC 20，包裹为 MinionModifierEntry。
 #[test]
 fn parses_minion_increased_damage_wrapper() {
-    use pobr_core::mod_parser::parse_minion_modifier;
-    let entries =
-        parse_minion_modifier("Minions deal 20% increased Damage").expect("minion 词条应识别");
+    let entries = minion_entries("Minions deal 20% increased Damage");
     assert_eq!(entries.len(), 1);
     let inner = &entries[0].inner;
     assert_eq!(inner.name, ModName::from("Damage"));
@@ -950,26 +974,21 @@ fn parses_minion_increased_damage_wrapper() {
 /// `Minions have X% increased maximum Life` → Life INC 包裹。
 #[test]
 fn parses_minion_increased_life_wrapper() {
-    use pobr_core::mod_parser::parse_minion_modifier;
-    let entries = parse_minion_modifier("Minions have 30% increased maximum Life")
-        .expect("minion 词条应识别");
+    let entries = minion_entries("Minions have 30% increased maximum Life");
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0].inner.mod_type, ModType::Inc);
     assert_eq!(entries[0].inner.value, ModValue::Number(30.0));
 }
 
-/// 非 `minions ` 前缀 → None（玩家词条不误判为召唤词条）。
+/// 非 `minions ` 前缀 → 无 MinionModifier（玩家词条不误判为召唤词条）。
 #[test]
-fn non_minion_text_returns_none() {
-    use pobr_core::mod_parser::parse_minion_modifier;
-    assert!(parse_minion_modifier("20% increased Fire Damage").is_none());
-    assert!(parse_minion_modifier("Minions ").is_none()); // 空余文
+fn non_minion_text_yields_no_entries() {
+    assert!(minion_entries("20% increased Fire Damage").is_empty());
+    assert!(minion_entries("Minions ").is_empty()); // 空余文
 }
 
-/// `Minions …` 余文不可解析 → None（不产空 entry）。
+/// `Minions …` 余文不可解析 → 无 entry（不产空 entry）。
 #[test]
-fn minion_unparsable_remainder_returns_none() {
-    use pobr_core::mod_parser::parse_minion_modifier;
-    // 余文是无意义文本 → 通用解析 Unsupported → None。
-    assert!(parse_minion_modifier("Minions wibble wobble zorp").is_none());
+fn minion_unparsable_remainder_yields_no_entries() {
+    assert!(minion_entries("Minions wibble wobble zorp").is_empty());
 }

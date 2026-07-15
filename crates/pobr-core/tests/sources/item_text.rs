@@ -4,7 +4,15 @@
 //! implicit / explicit / enchant），并验证产物喂给 `ingest_item` 后能得到
 //! 带正确 [`SourceKind`] 的 modifier。
 
-use pobr_core::item::ingest_item;
+use pobr_core::item::{ItemIngest, ingest_item_with_ctx};
+
+/// engine 版 ingest（签名对齐历史 `ingest_item`，注入真实规则）。
+fn ingest_item(
+    slot: EquipmentSlot,
+    item: &Item,
+) -> Result<ItemIngest, pobr_core::mod_parser::ParseError> {
+    ingest_item_with_ctx(slot, item, crate::support::ctx())
+}
 use pobr_core::item_text::{
     ItemTextError, parse_item_text, parse_pob_xml_item, strip_pob_annotations,
 };

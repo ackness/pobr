@@ -1,10 +1,27 @@
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::MinimalInput;
 use pobr_core::skill_source::{
     ActiveSkillJudgeInput, ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError,
-    SupportGemSpec, SupportJudgeInput, can_support, ingest_active_gem, ingest_gem,
-    ingest_gem_leveled, ingest_support_gem, judge_support,
+    SupportGemSpec, SupportIngestError, SupportJudgeInput, can_support, ingest_active_gem_with_ctx,
+    ingest_gem_leveled, ingest_gem_with_ctx, ingest_support_gem_with_ctx, judge_support,
 };
 use std::collections::HashSet;
+
+/// engine 版 ingest（签名对齐历史无 ctx 入口，注入真实规则）。
+fn ingest_gem(gem: &GemModSource) -> Result<GemIngest, pobr_core::mod_parser::ParseError> {
+    ingest_gem_with_ctx(gem, crate::support::ctx())
+}
+#[allow(dead_code)]
+fn ingest_active_gem(
+    spec: &ActiveSkillSpec,
+) -> Result<GemIngest, pobr_core::mod_parser::ParseError> {
+    ingest_active_gem_with_ctx(spec, crate::support::ctx())
+}
+fn ingest_support_gem(
+    spec: &SupportGemSpec,
+    active_skill_types: &HashSet<String>,
+) -> Result<GemIngest, SupportIngestError> {
+    ingest_support_gem_with_ctx(spec, active_skill_types, crate::support::ctx())
+}
 
 /// 构造主动技能类型集合（测试便捷）。
 fn type_set(types: &[&str]) -> HashSet<String> {
@@ -96,7 +113,7 @@ fn session_add_skill_gem_feeds_minimal_calc() {
         base_life: 100.0,
         ..MinimalInput::default()
     };
-    let mut session = CalculationSession::new(input);
+    let mut session = crate::support::session(input);
 
     let active = GemModSource::active(
         "fireball",
@@ -121,7 +138,7 @@ fn session_add_support_gem_feeds_minimal_calc() {
         base_life: 100.0,
         ..MinimalInput::default()
     };
-    let mut session = CalculationSession::new(input);
+    let mut session = crate::support::session(input);
 
     let support =
         GemModSource::support("added_fire", ["+50 to maximum Life"]).supporting("fireball");

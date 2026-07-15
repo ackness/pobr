@@ -85,16 +85,26 @@ impl CalculateResponse {
 /// 解析 `input_json` 为最小输入 + modifier 文本列表，跑一次最小计算，返回
 /// [`MinimalOutput`] 关键字段的 JSON 字符串。
 ///
-/// 错误（JSON 解析失败 / modifier 文本无法解析）以人类可读的字符串返回，
-/// 调用方（含 wasm 包装）可直接当作错误消息透传。无法解析但「不报错」的
-/// modifier（`ParseStatus::Unsupported`）不会让本函数失败，而是收集进
-/// 输出的 `unsupported_modifiers`。
+/// modifier 解析走已初始化数据（[`crate::state`]）里的引擎规则（唯一解析器，
+/// legacy 已删）。`modifiers` 非空但数据未初始化 → 显式报错（fail-fast，不把
+/// 词条静默当 Unsupported）；无 modifier 的纯 base 计算不需要数据。无法识别的
+/// modifier（`ParseStatus::Unsupported`）不会让本函数失败，而是收集进输出的
+/// `unsupported_modifiers`。
 pub fn calculate_json(input_json: &str) -> Result<String, String> {
     let request: CalculateRequest =
         serde_json::from_str(input_json).map_err(|err| format!("invalid input json: {err}"))?;
 
     let input = MinimalInput::from(&request);
     let mut session = CalculationSession::new(input);
+    if !request.modifiers.is_empty() {
+        let data = crate::state::build_data()
+            .map_err(|e| format!("cannot parse modifiers without game data: {e}"))?;
+        let rules = data
+            .parser_rules
+            .clone()
+            .ok_or("game data has no parser rules (overlay/mod_parser_rules.json)")?;
+        session.set_parser_rules(rules);
+    }
     session
         .add_modifier_texts(&request.modifiers)
         .map_err(|err| format!("failed to parse modifier: {err}"))?;

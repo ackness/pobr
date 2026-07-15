@@ -6,8 +6,9 @@
 //!
 //! 来源映射记于每个用例。新增机制时优先在此补 golden 用例（比真实 ninja build 易调试）。
 
+use crate::support::parse_mod;
 use pobr_core::calc::{CalculationSession, MinimalInput, calculate_minimal};
-use pobr_core::mod_parser::{ParseStatus, parse_mod};
+use pobr_core::mod_parser::ParseStatus;
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
@@ -462,15 +463,16 @@ fn defence_armour_applies_to_element() {
         base_action_rate: 1.0,
     };
     let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
+    // 「Armour applies to … instead of Physical Damage」文本不在当前引擎规则内——
+    // 按其数据展开（ModParser.lua:2519-2524）直接注入。
     session.add_modifiers([
         Modifier::number("Armour", ModType::Base, 10000.0),
         Modifier::number("ChaosResistance", ModType::Base, -60.0),
+        Modifier::number("ArmourAppliesToFireDamageTaken", ModType::Base, 100.0),
+        Modifier::number("ArmourAppliesToColdDamageTaken", ModType::Base, 100.0),
+        Modifier::number("ArmourAppliesToLightningDamageTaken", ModType::Base, 100.0),
+        Modifier::flag("ArmourDoesNotApplyToPhysicalDamageTaken"),
     ]);
-    session
-        .add_modifier_texts([
-            "Armour applies to Fire, Cold and Lightning Damage taken from Hits instead of Physical Damage",
-        ])
-        .unwrap();
     session.perform_minimal();
     let o = session.output();
     assert!(

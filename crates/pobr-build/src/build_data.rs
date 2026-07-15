@@ -14,7 +14,6 @@ use std::sync::Arc;
 
 use pobr_core::HighPrecisionRules;
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
-use pobr_core::rules::{HandlerRegistry, SpecialModRules};
 use pobr_data::catalog::buffs::BuffDef;
 use pobr_data::catalog::curse_priority::CursePriorityDef;
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
@@ -210,24 +209,12 @@ pub struct BuildData {
     /// 文件（旧数据包）= 空表（无召唤物，向后兼容）。消费侧只经
     /// [`Self::minion_def`] 查询。
     pub minions: HashMap<String, MinionDef>,
-    /// special 词条规则集（`overlay/special_mods.json` + `generated/special_derived.json`
-    /// 经 [`RuleSet`] 拼接，载入期 [`SpecialModRules::compile`] 一次，M5b B-4）。
-    /// `calculate_with_data` 经 [`CalculationSession::set_special_rules`] 注入，
-    /// item/passive/gem ingest 词条解析走 special 整行查表。缺表（旧数据包）=
-    /// `None`（ingest 行为与历史 `parse_mod` 逐值相等，R7 缺表容忍）。
-    ///
-    /// [`RuleSet`]: pobr_gamedata::ruleset::RuleSet
-    /// [`CalculationSession::set_special_rules`]: pobr_core::calc::CalculationSession::set_special_rules
-    pub special_rules: Option<Arc<SpecialModRules>>,
-    /// special handler 注册表（handler_id 条目路由，M5b C-3）。与 `special_rules`
-    /// 同生命周期；无 special handler 时为空注册表。
-    pub special_registry: Arc<HandlerRegistry>,
-    /// 数据驱动 ModParser 引擎规则（M6 D-T8 A2 切换）：`overlay/mod_parser_rules.json`
+    /// 数据驱动 ModParser 引擎规则（唯一解析器）：`overlay/mod_parser_rules.json`
     /// 经 [`CompiledParserRules::compile_with_special`] 编译（special 通道复用
-    /// `special_mods` 条目）。`calculate_with_data` 经
+    /// `special_mods` + `special_derived` 拼接条目）。`calculate_with_data` 经
     /// [`CalculationSession::set_parser_rules`] 注入，全部 ingest 词条解析走数据驱动
-    /// scan 引擎。缺 `mod_parser_rules` 域（旧数据包）= `None`（ingest 回退 legacy /
-    /// special，逐值不变）。
+    /// scan 引擎。缺 `mod_parser_rules` 域（旧数据包）= `None`（无解析器：全部
+    /// 词条按整行 Unsupported 收集）。
     ///
     /// [`CompiledParserRules::compile_with_special`]: pobr_core::mod_parser::CompiledParserRules::compile_with_special
     /// [`CalculationSession::set_parser_rules`]: pobr_core::calc::CalculationSession::set_parser_rules
@@ -423,30 +410,13 @@ impl BuildData {
                 minions.insert(entry.id.clone(), MinionDef::from_entry(entry));
             }
         }
-        // special 词条规则集（M5b B-4）：RuleSet 拼接后的条目载入期编译一次。
-        // handler 注册表先建（C-3 落地后填实 special handler）。缺表 = None
-        // （ingest 走历史 parse_mod，逐值不变）；编译失败（pattern 非法 / id 重复
-        // 等）照常上抛——数据面已由闸门测试 special_mods_gate.rs 守，运行期 fail-fast。
-        let special_registry = Arc::new(crate::handlers::build_special_registry());
-        // 条目数组一次取出：legacy special 通道与 M6 引擎 special 通道共用。
+        // special 条目数组（RuleSet 三源拼接）——编译进引擎 special 通道。
         let special_entries = ruleset.special_mods.unwrap_or_default();
-        let special_rules = if special_entries.is_empty() {
-            None
-        } else {
-            Some(Arc::new(
-                SpecialModRules::compile(&special_entries, &special_registry).map_err(|e| {
-                    LoadError::Overlay {
-                        path: "overlay/special_mods.json".into(),
-                        message: format!("special 规则编译失败：{e}"),
-                    }
-                })?,
-            ))
-        };
 
-        // M6 D-T8 A2：数据驱动 ModParser 引擎规则编译。
-        // gamedata 只 load `mod_parser_rules.json` doc，编译在 core（P9 边界）；
-        // special 通道复用上面同一组 `special_entries`。缺 doc（旧数据包）= None
-        // （ingest 回退 legacy/special，逐值不变）；编译失败照常上抛。
+        // 数据驱动 ModParser 引擎规则编译（唯一解析器）。
+        // gamedata 只 load `mod_parser_rules.json` doc，编译在 core（P9 边界）。
+        // 缺 doc（旧数据包）= None（无解析器：词条按整行 Unsupported 收集）；
+        // 编译失败照常上抛。
         let parser_rules = match data.mod_parser_rules()? {
             Some(doc) => Some(Arc::new(
                 pobr_core::mod_parser::CompiledParserRules::compile_with_special(
@@ -483,8 +453,6 @@ impl BuildData {
             trigger_configs,
             high_precision,
             minions,
-            special_rules,
-            special_registry,
             parser_rules,
         })
     }
@@ -515,8 +483,6 @@ impl BuildData {
             trigger_configs: HashMap::new(),
             high_precision: HighPrecisionRules::default(),
             minions: HashMap::new(),
-            special_rules: None,
-            special_registry: Arc::new(crate::handlers::build_special_registry()),
             parser_rules: None,
         }
     }

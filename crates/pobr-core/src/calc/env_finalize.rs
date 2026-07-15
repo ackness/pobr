@@ -645,12 +645,14 @@ mod forward_enemy_modifiers_tests {
             base_action_rate: 1.0,
             ..Default::default()
         };
+        let rules = std::sync::Arc::new(crate::mod_parser::test_compiled_rules());
         let dps = |enemy_cursed: bool| {
             let cfg = CalcConfig::attack()
                 .with_damage_type(DamageType::Physical)
                 .with_mode_effective(true)
                 .with_condition("EnemyCursed", enemy_cursed);
             let mut session = CalculationSession::new(input).with_config(cfg);
+            session.set_parser_rules(rules.clone());
             session
                 .add_modifier_texts(["Enemies you Curse take 6% increased Damage"])
                 .expect("parses");

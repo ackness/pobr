@@ -1,5 +1,13 @@
-use pobr_core::calc::{CalculationSession, MinimalInput};
-use pobr_core::item::{ItemIngest, ingest_item};
+use pobr_core::calc::MinimalInput;
+use pobr_core::item::{ItemIngest, ingest_item_with_ctx};
+
+/// engine 版 ingest（签名对齐历史 `ingest_item`，注入真实规则）。
+fn ingest_item(
+    slot: EquipmentSlot,
+    item: &Item,
+) -> Result<ItemIngest, pobr_core::mod_parser::ParseError> {
+    ingest_item_with_ctx(slot, item, crate::support::ctx())
+}
 use pobr_core::{CalcConfig, ModDb, ModTag};
 use pobr_data::prelude::*;
 
@@ -228,7 +236,7 @@ fn session_add_item_feeds_minimal_calc() {
         base_life: 100.0,
         ..MinimalInput::default()
     };
-    let mut session = CalculationSession::new(input);
+    let mut session = crate::support::session(input);
 
     let body = Item {
         base: ItemBaseId::from("Plate Vest"),
@@ -347,8 +355,13 @@ fn catalyst_scaling_is_deferred_no_field_in_model() {
 
 use pobr_core::item::{
     CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, LOCAL_UTILITY_EFFECT_NAME, UtilityItemKind,
-    classify_utility_item, ingest_flask_charm,
+    classify_utility_item, ingest_flask_charm_with_ctx,
 };
+
+/// engine 版 flask/charm ingest（签名对齐历史 `ingest_flask_charm`）。
+fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
+    ingest_flask_charm_with_ctx(slot_name, item, crate::support::ctx())
+}
 
 fn utility_item(base: &str, implicits: &[&str], explicits: &[&str]) -> Item {
     Item {
@@ -419,7 +432,9 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
 /// `Also grants N Guard` 是 ModCharm.lua 中的真实 explicit 前缀；`Possessed by ...`
 /// 同样来自真实 build，静默忽略会让调用方误以为效果已经生效。
 #[test]
-fn ingest_charm_reports_unmodeled_guard_and_possession_effects() {
+fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
+    // 引擎 special 通道已建模这两行（GuardAbsorb* / SpiritPossessionOnUse）——
+    // legacy 时代它们是 unmodeled unsupported，现应正常产 mod、不进 unsupported。
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
@@ -431,12 +446,10 @@ fn ingest_charm_reports_unmodeled_guard_and_possession_effects() {
 
     let ingest = ingest_flask_charm("Charm 1", &charm);
 
-    assert_eq!(
-        ingest.unsupported,
-        vec![
-            "Also grants 435 Guard".to_string(),
-            "Possessed by Spirit Of The Cat for 17 seconds on use".to_string(),
-        ]
+    assert!(
+        ingest.unsupported.is_empty(),
+        "guard/possession 行应由引擎解析，实际 unsupported: {:?}",
+        ingest.unsupported
     );
 }
 

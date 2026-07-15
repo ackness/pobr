@@ -519,39 +519,26 @@ pub(crate) fn radius_jewel_notable_effect_copies(
     Ok(out)
 }
 
-/// 可解析性闸门单点（B3 杀双 parser）：engine 注入时判定 = vendor `list and not
-/// extra`（PassiveTree.lua:447 `if not list or extra` 触发折行重试）——即
-/// `status == Parsed && unparsed == None`。ingest 侧本就走 engine，闸门与 ingest
-/// 自此同一 parser；新词条缺口一律修数据表（mod_parser_rules.json / overlay），
-/// **禁止再写 legacy 函数**。engine 未注入（旧数据包）保持 legacy 历史口径
-/// （`parse_mod` 不硬失败即保留，含 Unsupported）逐值不变。
+/// 可解析性闸门单点（B3 杀双 parser）：判定 = vendor `list and not extra`
+/// （PassiveTree.lua:447 `if not list or extra` 触发折行重试）——即
+/// `status == Parsed && unparsed == None`。ingest 侧同走 engine，闸门与 ingest
+/// 同一 parser；新词条缺口一律修数据表（mod_parser_rules.json / overlay）。
+/// engine 未注入（旧数据包）时无解析器：一切按 Unsupported → 全部丢弃。
 pub(crate) fn gate_parses(ctx: ParseCtx<'_>, t: &str) -> bool {
-    match ctx.engine {
-        Some(_) => {
-            // 诊断：POBR_GATE_DENY=子串1,子串2 强制丢弃匹配行（parity 二分定位用）。
-            if let Ok(deny) = std::env::var("POBR_GATE_DENY")
-                && deny.split(',').any(|p| !p.is_empty() && t.contains(p))
-            {
-                return false;
-            }
-            let pass = ctx.parse(t).is_ok_and(|o| {
-                matches!(o.status, pobr_core::mod_parser::ParseStatus::Parsed)
-                    && o.unparsed.is_none()
-            });
-            // 诊断：POBR_DBG_GATE=1 时 dump 与 legacy 历史闸门的裁决分歧行。
-            if std::env::var("POBR_DBG_GATE").is_ok() && pass != parse_mod(t).is_ok() {
-                let dir = if pass { "NEW_PASS" } else { "NEW_DROP" };
-                let mods = if pass {
-                    format!("{:?}", ctx.parse(t).map(|o| o.mods).unwrap_or_default())
-                } else {
-                    String::new()
-                };
-                eprintln!("[GATE_{dir}] {t} => {mods}");
-            }
-            pass
-        }
-        None => parse_mod(t).is_ok(),
+    // 诊断：POBR_GATE_DENY=子串1,子串2 强制丢弃匹配行（parity 二分定位用）。
+    if let Ok(deny) = std::env::var("POBR_GATE_DENY")
+        && deny.split(',').any(|p| !p.is_empty() && t.contains(p))
+    {
+        return false;
     }
+    let pass = ctx.parse(t).is_ok_and(|o| {
+        matches!(o.status, pobr_core::mod_parser::ParseStatus::Parsed) && o.unparsed.is_none()
+    });
+    // 诊断：POBR_DBG_GATE=1 时 dump 被闸门丢弃的行。
+    if !pass && std::env::var("POBR_DBG_GATE").is_ok() {
+        eprintln!("[GATE_DROP] {t}");
+    }
+    pass
 }
 
 /// 保留通过 [`gate_parses`] 闸门的词条文本，丢弃解析失败/残留的词条。

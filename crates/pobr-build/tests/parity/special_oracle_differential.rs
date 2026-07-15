@@ -2,8 +2,8 @@
 //!
 //! 对 `overlay/special_mods.json` 的每条模板条目，用样本数值/enum 值实例化其
 //! pattern 为具体词条行，同一行喂两侧——PoB2 headless `parseMod`
-//! （`tools/pob2-oracle/run-parsemod.sh`，JSONL 输出）与 pobr
-//! `parse_mod_with_rules`（special 规则集），规范化后比对 name / type /
+//! （`tools/pob2-oracle/run-parsemod.sh`，JSONL 输出）与 pobr 数据驱动引擎
+//! `parse_mod_engine`（special 通道编译在内），规范化后比对 name / type /
 //! value（容差 1e-9）/ flags / keywordFlags 集合。
 //!
 //! **门禁外**（`#[ignore]`）：依赖 vendor PoB2 + luajit，不进默认 CI。本地/CI
@@ -18,8 +18,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::Command;
 
-use pobr_core::mod_parser::parse_mod_with_rules;
-use pobr_core::rules::SpecialModRules;
+use pobr_core::mod_parser::{parse_mod_engine, test_compiled_rules};
 use pobr_data::catalog::parser_rules::{SpecialModsDef, SpecialTemplateDef};
 
 fn repo_root() -> PathBuf {
@@ -113,8 +112,8 @@ fn special_parsemod_differential() {
     }
 
     let entries = load_entries();
-    let rules = SpecialModRules::compile(&entries, &pobr_build::handlers::build_special_registry())
-        .expect("special 规则编译");
+    // 引擎规则（special 通道编译在内）——special 整行命中优先，与生产同路径。
+    let rules = test_compiled_rules();
 
     // 收集可实例化的样本行 + 对应 entry_id。
     let mut samples: Vec<(String, String)> = Vec::new();
@@ -190,10 +189,12 @@ fn special_parsemod_differential() {
     let mut total = 0usize;
     let mut mismatches: Vec<String> = Vec::new();
     for (id, line) in &samples {
-        let pobr = parse_mod_with_rules(line, Some(&rules), None).ok();
+        let pobr = parse_mod_engine(line, &rules);
         let pobr_names: Vec<String> = pobr
-            .map(|o| o.mods.iter().map(|m| m.name.as_str().to_string()).collect())
-            .unwrap_or_default();
+            .mods
+            .iter()
+            .map(|m| m.name.as_str().to_string())
+            .collect();
         let Some(oracle) = oracle_names.get(line) else {
             continue;
         };

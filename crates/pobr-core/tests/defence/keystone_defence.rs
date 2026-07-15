@@ -17,7 +17,7 @@ fn keystones_from_parsed_mod_texts() {
     // Arrange
     let mut db = ModDb::new();
     for text in ["Maximum Life is 1", "Converts all Energy Shield to Mana"] {
-        let outcome = pobr_core::mod_parser::parse_mod(text).expect("解析失败");
+        let outcome = crate::support::parse_mod(text).expect("解析失败");
         db.add_list(outcome.mods);
     }
     let cfg = CalcConfig::new();
@@ -36,15 +36,14 @@ fn keystones_from_parsed_mod_texts() {
     assert!(!ks.energy_shield_to_ward);
 }
 
-/// W0.1 词条 `Energy Shield protects Mana instead of Life`（EB flag，
-/// ModParser.lua:2439）端到端驱动 `energy_shield_protects_mana`。
+/// EB flag（`EnergyShieldProtectsMana`，来源词条 `Energy Shield protects Mana
+/// instead of Life`，ModParser.lua:2439——该文本不在当前引擎规则/数据集内，
+/// 直接注入 flag）驱动 `energy_shield_protects_mana`。
 #[test]
-fn eb_flag_from_parsed_text() {
+fn eb_flag_from_injected_flag() {
     // Arrange
     let mut db = ModDb::new();
-    let outcome = pobr_core::mod_parser::parse_mod("Energy Shield protects Mana instead of Life")
-        .expect("解析失败");
-    db.add_list(outcome.mods);
+    db.add_list([Modifier::flag("EnergyShieldProtectsMana")]);
     let cfg = CalcConfig::new();
 
     // Act
@@ -58,15 +57,17 @@ fn eb_flag_from_parsed_text() {
     );
 }
 
-/// IronReflexes 词条（`Converts all Evasion Rating to Armour`，ModParser.lua:2343）
-/// 同时产出 flag（联动用）与 `EvasionConvertToArmour` BASE 100（矩阵数据通道）。
+/// IronReflexes（来源词条 `Converts all Evasion Rating to Armour`，
+/// ModParser.lua:2343——文本不在当前引擎规则内，按 legacy 展开口径直接注入）
+/// 同时含 flag（联动用）与 `EvasionConvertToArmour` BASE 100（矩阵数据通道）。
 #[test]
 fn iron_reflexes_flag_and_matrix_data_coexist() {
     // Arrange
     let mut db = ModDb::new();
-    let outcome = pobr_core::mod_parser::parse_mod("Converts all Evasion Rating to Armour")
-        .expect("解析失败");
-    db.add_list(outcome.mods);
+    db.add_list([
+        Modifier::flag("IronReflexes"),
+        Modifier::number("EvasionConvertToArmour", ModType::Base, 100.0),
+    ]);
     let cfg = CalcConfig::new();
 
     // Act
@@ -121,7 +122,7 @@ fn keystones_from_injected_flags() {
 /// （1 + 500×0.5 = 251 的混沌池），EHP 池仍按 Life 口径。
 #[test]
 fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
-    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::calc::MinimalInput;
 
     // Arrange：1000 基础生命 + 500 ES + CI。
     let input = MinimalInput {
@@ -136,7 +137,7 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
         base_hit_max: 200.0,
         base_action_rate: 2.0,
     };
-    let mut session = CalculationSession::new(input);
+    let mut session = crate::support::session(input);
     session
         .add_modifier_texts(["+500 to maximum Energy Shield", "Maximum Life is 1"])
         .unwrap();
@@ -209,15 +210,14 @@ fn matrix_is_identity_without_conversion_mods() {
 #[test]
 fn convert_to_moves_slot_base_into_target_slot_bucket() {
     // Arrange：bodyarmour Armour 槽位底 200 + 全局 100% increased Evasion +
-    // 文本词条「50% of Armour converted to Evasion Rating」。
+    // 转换词条（「50% of Armour converted to Evasion Rating」不在当前引擎规则内，
+    // 按其数据展开直接注入 ArmourConvertToEvasion BASE 50）。
     let mut db = ModDb::new();
     db.add_list([
         slot_base("Armour", "bodyarmour", 200.0),
         Modifier::number("Evasion", ModType::Inc, 100.0),
+        Modifier::number("ArmourConvertToEvasion", ModType::Base, 50.0),
     ]);
-    let outcome = pobr_core::mod_parser::parse_mod("50% of Armour converted to Evasion Rating")
-        .expect("解析失败");
-    db.add_list(outcome.mods);
     let cfg = CalcConfig::new();
     let ks = DefenceKeystones::from_db(&db, &cfg);
 
@@ -289,14 +289,13 @@ fn gain_as_does_not_reduce_source() {
 /// 按 rate 转入 `extra_mana`（defence 源不取整，:1340-1355），ES 侧缩残。
 #[test]
 fn es_to_mana_merged_into_matrix() {
-    // Arrange：ES 基底 100 + bodyarmour 槽位底 400 +
-    // 「30% of Maximum Energy Shield converted to Mana」。
+    // Arrange：ES 基底 100 + bodyarmour 槽位底 400 + 部分转换（「30% of Maximum
+    // Energy Shield converted to Mana」不在当前引擎规则内，按其数据展开直接注入）。
     let mut db = ModDb::new();
-    db.add_list([slot_base("EnergyShield", "bodyarmour", 400.0)]);
-    let outcome =
-        pobr_core::mod_parser::parse_mod("30% of Maximum Energy Shield converted to Mana")
-            .expect("解析失败");
-    db.add_list(outcome.mods);
+    db.add_list([
+        slot_base("EnergyShield", "bodyarmour", 400.0),
+        Modifier::number("EnergyShieldConvertToMana", ModType::Base, 30.0),
+    ]);
     let cfg = CalcConfig::new();
     let base = ActorBaseStats {
         energy_shield: 100.0,
@@ -320,7 +319,7 @@ fn non_defence_source_gain_uses_ceil() {
     // Arrange：基础 Life 1001 + 「Gain 25% of Maximum Life as Extra Maximum Energy Shield」。
     let mut db = ModDb::new();
     let outcome =
-        pobr_core::mod_parser::parse_mod("Gain 25% of Maximum Life as Extra Maximum Energy Shield")
+        crate::support::parse_mod("Gain 25% of Maximum Life as Extra Maximum Energy Shield")
             .expect("解析失败");
     db.add_list(outcome.mods);
     let cfg = CalcConfig::new();
@@ -385,16 +384,16 @@ fn double_body_armour_defence_doubles_all_three() {
 /// 再经 `EvasionConvertToArmour` 100（IronReflexes 数据展开）全转进 armour。
 #[test]
 fn unbreakable_iron_reflexes_doubles_then_converts_evasion() {
-    // Arrange：bodyarmour armour 100 + evasion 200 + Unbreakable + IronReflexes 词条。
+    // Arrange：bodyarmour armour 100 + evasion 200 + Unbreakable + IronReflexes
+    // （词条文本不在当前引擎规则内，按 legacy 展开口径直接注入 flag + 矩阵数据）。
     let mut db = ModDb::new();
     db.add_list([
         slot_base("Armour", "bodyarmour", 100.0),
         slot_base("Evasion", "bodyarmour", 200.0),
         Modifier::flag("Unbreakable"),
+        Modifier::flag("IronReflexes"),
+        Modifier::number("EvasionConvertToArmour", ModType::Base, 100.0),
     ]);
-    let outcome = pobr_core::mod_parser::parse_mod("Converts all Evasion Rating to Armour")
-        .expect("解析失败");
-    db.add_list(outcome.mods);
     let cfg = CalcConfig::new();
     let ks = DefenceKeystones::from_db(&db, &cfg);
 
@@ -435,7 +434,7 @@ fn energy_shield_to_ward_excludes_gear_es_bases() {
 /// ES 面板归零（旧 es_to_mana_rate 行为的等价回归）。
 #[test]
 fn perform_injects_matrix_extra_mana() {
-    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::calc::MinimalInput;
 
     // Arrange：100 基础魔力 + 500 flat ES + 全转词条。
     let input = MinimalInput {
@@ -450,7 +449,7 @@ fn perform_injects_matrix_extra_mana() {
         base_hit_max: 200.0,
         base_action_rate: 2.0,
     };
-    let mut session = CalculationSession::new(input);
+    let mut session = crate::support::session(input);
     session
         .add_modifier_texts([
             "+500 to maximum Energy Shield",

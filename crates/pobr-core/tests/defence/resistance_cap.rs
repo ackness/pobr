@@ -1,5 +1,5 @@
+use crate::support::parse_mod;
 use pobr_core::calc::{MinimalInput, calculate_minimal};
-use pobr_core::mod_parser::parse_mod;
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 

@@ -1,6 +1,6 @@
 //! ModCache golden differential（M6 蓝图 §5.3 / T6 / §11.3 契约 5）。
 //!
-//! 把当前 `pobr_core::mod_parser::parse_mod`（**旧引擎**）的输出，对照从 vendor
+//! 把数据驱动引擎（`parse_mod_engine` + 真实规则）的输出，对照从 vendor
 //! PoB2 `Data/ModCache.lua` 离线落盘的 golden（`tests/fixtures/modcache_golden.json`，
 //! 由 `tools/pob2-oracle/oracle.lua --mode modcache-dump` 生成）逐词条对拍，产出
 //! **五态报告**。这是 Track B 引擎重写的正确性基座：B 切换后复用同一 golden +
@@ -28,14 +28,14 @@
 //! 供 B 参考，但不触发 DIFF。B 引擎落地后可在同一 fixture 上收紧到 tag 全等。
 //!
 //! 这一取舍使本基座**稳定**（不因 tag 表示差异产生海量假 DIFF），同时仍精确捕捉
-//! name/type/value/flag 级的真实偏差——这正是旧引擎正确性的核心信号面。
+//! name/type/value/flag 级的真实偏差——这正是引擎正确性的核心信号面。
 //!
 //! # 产物
 //!
 //! 报告写 `target/parser-modcache-diff-report.json`（schema 见模块内 `DiffReport`
 //! 文档，契约 5），CI 与 B 的 diff 修复循环共同消费。本测试**不**对命中率设硬阈值
-//! （旧引擎对全 ModCache 语料的覆盖本就部分——硬门禁是 Track B 的 C1 18-build
-//! diff=0，见 `parser_dual_run.rs`）；仅断言 fixture 可加载、报告可生成、且
+//! （引擎对全 ModCache 语料的覆盖本就部分——硬门禁是 parity 套件）；
+//! 仅断言 fixture 可加载、报告可生成、且
 //! 五态计数自洽（守住基座可运行性）。
 //!
 //! 实现注：pobr-core dev-deps 只有 `serde_json`（无 `serde` derive），故 golden
@@ -46,7 +46,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use pobr_core::mod_parser::{ParseStatus, parse_mod};
+use crate::support::parse_mod;
+use pobr_core::mod_parser::ParseStatus;
 use pobr_core::{ModValue, Modifier};
 use pobr_data::modifier::ModType;
 use serde_json::{Map, Value, json};
@@ -423,7 +424,7 @@ impl DiffDetail {
 /// ```jsonc
 /// {
 ///   "schema": "parser-modcache-diff/v1",
-///   "engine": "legacy",          // legacy | engine（B 切换后改 engine 字段）
+///   "engine": "engine",
 ///   "golden": { "source", "total", "parsed", "unsupported" },
 ///   "counts": { "eq", "diff", "miss", "extra", "unsup" },
 ///   "hit_rate": 0.0..1.0,         // eq / golden.parsed
@@ -446,7 +447,7 @@ impl DiffReport {
     fn to_json(&self) -> Value {
         json!({
             "schema": "parser-modcache-diff/v1",
-            "engine": "legacy",
+            "engine": "engine",
             "golden": {
                 "source": "vendor Data/ModCache.lua",
                 "total": self.golden_total,
@@ -570,13 +571,13 @@ fn golden_fixture_is_self_consistent() {
     );
 }
 
-/// 旧引擎对 golden 的五态对拍 + 报告落盘 + 计数自洽。
+/// 引擎对 golden 的五态对拍 + 报告落盘 + 计数自洽。
 ///
-/// **不设命中率硬阈值**——旧引擎对全 ModCache 语料覆盖本就部分，硬门禁由
-/// `parser_dual_run.rs`（C1 18-build diff=0）承担。本测试守住基座可运行性
-/// 并把命中率打到 stderr（`--nocapture` 可见），供 B 跟踪收敛。
+/// **不设命中率硬阈值**——引擎对全 ModCache 语料覆盖本就部分，硬门禁由
+/// parity 套件承担。本测试守住基座可运行性并把命中率打到 stderr
+/// （`--nocapture` 可见），供缺口收敛跟踪。
 #[test]
-fn legacy_engine_modcache_differential() {
+fn engine_modcache_differential() {
     let doc = load_golden();
     let report = run_differential(&doc);
 
@@ -589,7 +590,7 @@ fn legacy_engine_modcache_differential() {
     let path = write_report(&report);
 
     let c = &report.counts;
-    eprintln!("\n=== ModCache golden differential (engine=legacy) ===");
+    eprintln!("\n=== ModCache golden differential (engine) ===");
     eprintln!(
         "golden: {} entries ({} parsed / {} unsupported)",
         report.golden_total, report.golden_parsed, report.golden_unsupported

@@ -16,7 +16,7 @@
 //! 回归无感知。切换依据与逐 build 归因：
 //! `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`。
 
-use pobr_build::corpus::{CorpusLine, LineSource, build_report};
+use pobr_build::corpus::{CorpusLine, LineSource};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
@@ -908,9 +908,7 @@ fn corpus_unsupported_report() {
     for dir in &builds {
         all_lines.extend(collect_corpus_lines(dir, &data));
     }
-    let report = build_report(&all_lines);
-
-    // A2：engine 生产口径段（B3 后闸门/ingest 同一 parser——本段数字即生产行为）。
+    // engine 生产口径段（闸门/ingest 同一 parser——本段数字即生产行为）。
     // Partial = 引擎识别一半但整行被闸门丢弃（迁移候选）；dropped-tags = pre_flag
     // 静默丢 tag（作用域放大 over-apply 风险面，此前完全不可见）。
     if let Some(rules) = data.parser_rules.as_deref() {
@@ -1090,79 +1088,9 @@ fn corpus_unsupported_report() {
         assert!(er.total_lines > 0, "engine 语料为空");
     }
 
-    eprintln!("\n============ CORPUS UNSUPPORTED REPORT ============");
-    eprintln!(
-        "[plain parse_mod] lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%",
-        report.total_lines,
-        report.parsed,
-        report.parsed_rate() * 100.0,
-        report.unsupported,
-        report.err,
-        report.gap_rate() * 100.0,
-    );
-
-    // M5b A-2 曲线：special 规则激活后（B-4）的缺口率——special 整行命中把缺口
-    // 语料从 Err/Unsupported 转 Parsed。经 `load_ruleset` 取三源拼接条目
-    //（overlay + derived + vendor V0），与生产编排器同一加载路径。
-    {
-        use pobr_build::corpus::build_report_with_rules;
-        use pobr_core::rules::SpecialModRules;
-        let data_dir = repo_data_root().join(pobr_gamedata::data_version());
-        let ruleset = pobr_gamedata::GameData::new(&data_dir)
-            .load_ruleset()
-            .expect("load_ruleset");
-        if let Some(entries) = ruleset.special_mods {
-            let reg = pobr_build::handlers::build_special_registry();
-            let rules = SpecialModRules::compile(&entries, &reg).expect("compile special");
-            let sp = build_report_with_rules(&all_lines, &rules, &reg);
-            eprintln!(
-                "[special-aware]  lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%  (special entries: {})",
-                sp.total_lines,
-                sp.parsed,
-                sp.parsed_rate() * 100.0,
-                sp.unsupported,
-                sp.err,
-                sp.gap_rate() * 100.0,
-                rules.len(),
-            );
-            // 生产视角的缺口模板（plain 视角见下——两榜对照能看出 special
-            // 通道消化了哪些头部模板）。
-            eprintln!("--- Top-20 gap templates (special-aware) ---");
-            for (i, t) in sp.gap_templates.iter().take(20).enumerate() {
-                eprintln!(
-                    "{:>2}. [{:?}] hit={} cnt={} (item={} jewel={}) | {}",
-                    i + 1,
-                    t.class,
-                    t.builds_hit,
-                    t.total_count,
-                    t.item_count,
-                    t.jewel_count,
-                    t.template,
-                );
-            }
-        }
-    }
-    eprintln!("--- Top-20 gap templates (builds_hit desc, count desc) ---");
-    for (i, t) in report.gap_templates.iter().take(20).enumerate() {
-        eprintln!(
-            "{:>2}. [{:?}] hit={} cnt={} (item={} jewel={}) | {}",
-            i + 1,
-            t.class,
-            t.builds_hit,
-            t.total_count,
-            t.item_count,
-            t.jewel_count,
-            t.template,
-        );
-    }
-    eprintln!(
-        "total distinct gap templates: {}",
-        report.gap_templates.len()
-    );
-
     // 弱断言：语料非空（防 fixture/收集链断裂静默归零）。
     assert!(
-        report.total_lines > 0,
+        !all_lines.is_empty(),
         "corpus 收集为空——检查 build 装备词条收集链"
     );
 }
