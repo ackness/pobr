@@ -2,14 +2,14 @@
   "_meta": {
     "schema": "parse-coverage-baseline/v1",
     "purpose": "M6-T7 解析覆盖率棘轮基线（蓝图 §6.3）。PR 不得降低 coverage_ratio；升高时同 PR 更新本文件。",
-    "regen": "cargo run -p precompile-mods -- --data data/4.5.0.3.4 --report，取 generated/parse-coverage.json::summary",
+    "regen": "cargo run -p precompile-mods -- --data data/4.5.4.3 --report，取 generated/parse-coverage.json::summary",
     "parser_engine": "scan_engine+special",
-    "note": "M6 收尾删 legacy 解析器：precompile 改走数据驱动 scan 引擎（与运行时同一解析器），err 态消失（引擎永不硬错），parsed 1759→3408（0.41031→0.794962）。"
+    "note": "golden 4.5.4.3（vendor ce8bffab）：special_vendor 全量抽取 + 策展移植后覆盖率 0.794962→0.801168。"
   },
-  "patch": "4.5.0.3.4",
-  "total": 4287,
-  "parsed": 3408,
-  "unsupported": 879,
+  "patch": "4.5.4.3",
+  "total": 4280,
+  "parsed": 3429,
+  "unsupported": 851,
   "err": 0,
-  "coverage_ratio": 0.794962
+  "coverage_ratio": 0.801168
 }

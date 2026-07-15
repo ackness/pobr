@@ -45,12 +45,15 @@ fn current_data_annotates_explicit_tiers() {
     }
 }
 
+/// 优雅降级：无 tier 池字段（group/spawn_weights）的数据包不标 tier。
+/// 显式钉 4.5.0.3.4——它早于 tier 数据通道，缺池字段；golden 版（4.5.4.3 起）
+/// 已含池数据会标 tier，故此降级用例不能再借 `GOLDEN_PARITY_DATA_VERSION`。
 #[test]
 fn golden_data_without_pool_fields_omits_tiers() {
-    let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
+    let dir = repo_data_root().join("4.5.0.3.4");
     let lines = classify(dir.to_str().unwrap());
     assert!(
         lines.iter().all(|l| l.get("tier").is_none()),
-        "旧数据包（无 group/spawn_weights）不应标 tier"
+        "无池字段的数据包不应标 tier"
     );
 }

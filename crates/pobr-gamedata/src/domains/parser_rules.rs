@@ -43,19 +43,20 @@ mod tests {
     }
 
     /// 仓库真实数据：各段条目数与钉定 vendor commit 的实测值一致
-    /// （蓝图 §1.9 计数自检的消费侧镜像；91/775/201/219/687 + 小查表。
-    /// 35b654d 起 flag_phrases 202→201、tag_phrases 682→687，本镜像同步）。
+    /// （蓝图 §1.9 计数自检的消费侧镜像。golden 4.5.4.3（vendor ce8bffab）实测：
+    /// forms 91→95、name_map 775→789、flag_phrases 201→205、tag_phrases 687→691、
+    /// flag_types 25→26、distinct forms 28→29）。
     #[test]
     fn real_data_section_counts() {
         let doc = real_data()
             .mod_parser_rules()
             .expect("加载 mod_parser_rules.json 不应失败")
             .expect("仓库数据包应含 mod_parser_rules 域");
-        assert_eq!(doc.forms.len(), 91, "forms");
-        assert_eq!(doc.name_map.len(), 775, "name_map");
-        assert_eq!(doc.flag_phrases.len(), 201, "flag_phrases");
+        assert_eq!(doc.forms.len(), 95, "forms");
+        assert_eq!(doc.name_map.len(), 789, "name_map");
+        assert_eq!(doc.flag_phrases.len(), 205, "flag_phrases");
         assert_eq!(doc.pre_flags.len(), 219, "pre_flags");
-        assert_eq!(doc.tag_phrases.len(), 687, "tag_phrases");
+        assert_eq!(doc.tag_phrases.len(), 691, "tag_phrases");
         assert_eq!(doc.suffix_types.len(), 40, "suffix_types");
         assert_eq!(doc.damage_types.len(), 5, "damage_types");
         assert_eq!(doc.pen_types.len(), 6, "pen_types");
@@ -63,20 +64,21 @@ mod tests {
         assert_eq!(doc.degen_types.len(), 32, "degen_types");
         assert_eq!(doc.cost_types_map.len(), 32, "cost_types_map");
         assert_eq!(doc.base_cost_types.len(), 32, "base_cost_types");
-        // 25 = vendor 24 + pobr `hindered`→`Condition:Hindered`（M6-conv2：legacy
-        // `parse_enemy_inner` 对 `are hindered` 的特例搬迁，使 `Enemies in your
-        // Presence are Hindered` 走 EnemyModifier 包装收敛，见 m6-dualrun-report §2.5）。
-        assert_eq!(doc.flag_types.len(), 25, "flag_types");
+        // 26 = vendor 25（4.5.4.3 ce8bffab 新增一条）+ pobr `hindered`→
+        // `Condition:Hindered`（M6-conv2：legacy `parse_enemy_inner` 对 `are hindered`
+        // 的特例搬迁，使 `Enemies in your Presence are Hindered` 走 EnemyModifier
+        // 包装收敛，见 m6-dualrun-report §2.5）。
+        assert_eq!(doc.flag_types.len(), 26, "flag_types");
         assert_eq!(doc.unsupported, vec!["mirrored"], "unsupported");
         assert_eq!(
             doc.unsupported_pobr_extra,
             vec!["split"],
             "unsupported_pobr_extra"
         );
-        // form id 集 28 种（蓝图 §1.1）
+        // form id 集 29 种（蓝图 §1.1 记 28；4.5.4.3 vendor 新增 1 种）
         let forms: std::collections::BTreeSet<&str> =
             doc.forms.iter().map(|f| f.form.as_str()).collect();
-        assert_eq!(forms.len(), 28, "distinct form ids");
+        assert_eq!(forms.len(), 29, "distinct form ids");
         for id in [
             "INC", "RED", "MORE", "LESS", "BASE", "PEN", "DMG", "DOUBLED",
         ] {

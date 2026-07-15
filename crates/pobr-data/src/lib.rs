@@ -6,9 +6,9 @@
 /// [`data_version`] 与 `pobr_gamedata::current_data_dir`）。
 ///
 /// **当前内置默认 = `4.5.4.3`（PoE2 0.5.4b）**，与 `data/CURRENT` 一致；golden
-/// 校验版本仍钉在 [`GOLDEN_PARITY_DATA_VERSION`]（`4.5.0.3.4`）——黄金值是版本
-/// 特定的，parity / golden 测试加载钉定版本而非活动默认，两者解耦（见下）。活动
-/// 默认在新版本上的可跑性由 `multi_version` smoke 覆盖。
+/// 校验版本同为 [`GOLDEN_PARITY_DATA_VERSION`]（`4.5.4.3`，fixture 已用 0.5.4b
+/// oracle 重录）。黄金值版本特定，parity / golden 测试加载钉定版本而非活动默认，
+/// 两者解耦（见下）；活动默认在新版本上的可跑性由 `multi_version` smoke 覆盖。
 pub const DATA_VERSION: &str = "4.5.4.3";
 
 /// 仓库内 golden / parity 黄金值所对照的数据版本——**与活动版本 [`DATA_VERSION`]
@@ -19,7 +19,7 @@ pub const DATA_VERSION: &str = "4.5.4.3";
 /// 被校验的版本，使 [`DATA_VERSION`] 可独立前进到更新的数据而不误红 parity。重录
 /// golden 后同步更新此常量。多版本**无关性**由 `multi_version` smoke 覆盖（对每个
 /// `data/<ver>/` 跑 calc，断言量纲合理而不比对黄金值）。
-pub const GOLDEN_PARITY_DATA_VERSION: &str = "4.5.0.3.4";
+pub const GOLDEN_PARITY_DATA_VERSION: &str = "4.5.4.3";
 
 /// 运行时数据版本：`POBR_DATA_VERSION` 环境变量优先，否则回退 [`DATA_VERSION`]
 /// 常量。

@@ -20,7 +20,9 @@ fn repo_root() -> PathBuf {
         .expect("canonicalize repo root")
 }
 
-const PATCH: &str = "4.5.0.3.4";
+// 钉 golden 校验版本（随 golden 切换自动跟进；byte-stable / 覆盖率 golden 均
+// 对这一版数据断言）。
+const PATCH: &str = pobr_data::GOLDEN_PARITY_DATA_VERSION;
 
 fn data_dir() -> PathBuf {
     repo_root().join("data").join(PATCH)

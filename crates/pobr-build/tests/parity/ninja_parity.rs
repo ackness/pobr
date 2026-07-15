@@ -511,7 +511,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 139; // 实测 139/144 = 96.5%（BeenHitRecently 条件 +1）
+const BASELINE_DEF_CORE_HIT5: usize = 118; // 4.5.4.3/0.5.4b 迁移基线 118/144（0.5.0=139；防御公式适配待补，见 docs/adapting-to-0.5.4b.md）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -595,8 +595,8 @@ const BASELINE_DEF_CORE_HIT5: usize = 139; // 实测 139/144 = 96.5%（BeenHitRe
 // mod_parser_rules 数据通道生效（B3 commit 的 core-8 138→139 即此格），wolf-pack
 // Evasion 在 #40 合并前即 1.00x ✓。合并 #40 行为零变化（18 build 逐格 diff 为空），
 // 416 是双重计数；当前实测 415（@10% 432 与 core-8 139 恰与现实吻合，保留）。
-const BASELINE_DEF_HIT5: usize = 415; // 实测 415/450 = 92.2%（#40 过时基线回记）
-const BASELINE_DEF_HIT10: usize = 432; // 实测 432/450 = 96.0%（BeenHitRecently +1）
+const BASELINE_DEF_HIT5: usize = 343; // 4.5.4.3 迁移基线 343/450（0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 361; // 4.5.4.3 迁移基线 361/450（0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
@@ -627,8 +627,8 @@ const BASELINE_DEF_HIT10: usize = 432; // 实测 432/450 = 96.0%（BeenHitRecent
 // `parse_passive_nodes` 单独回传被剔除的非激活组节点，`radius_jewel_expansions` 在几何里
 // 并回完整已分配集（节点自身 mod 仍 masking，行为不变）。gemling CritChance→1.00x、
 // AvgDamage/TotalDPS 0.96x→1.03x。其余 build 零回归（off 70/73 → 71/74）。
-const BASELINE_OFF_HIT5: usize = 71; // 实测 71/80 = 88.8%（radius-jewel weapon-set 修复 +1）
-const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
+const BASELINE_OFF_HIT5: usize = 39; // 4.5.4.3 迁移基线 39/80（0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 47; // 4.5.4.3 迁移基线 47/80（0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -687,8 +687,8 @@ const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
 // 0.73x→0.84x、dot 0.54x→0.70x 收敛但未回带；剩余 ~16% per-hit 低估是
 // blood-mage 自身根因（deadeye/gemling 同型剧本）,修复后基线回记。
 // 18 build 逐格 diff 仅 blood-mage 三格变动。冻结榜只剩 legacy `split`。
-const BASELINE_DOT_HIT5: usize = 26; // 实测 26/37 = 70.3%（诚实显形 -1）
-const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（-1）
+const BASELINE_DOT_HIT5: usize = 9; // 4.5.4.3 迁移基线 9/37（0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 11; // 4.5.4.3 迁移基线 11/37（0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -706,8 +706,8 @@ const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（-1）
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 44; // 实测 44/80 = 55.0%（SkillType 全量化 +8）
-const PANEL_OFF_HIT10: usize = 46; // 实测 46/80 = 57.5%（SkillType 全量化 +6）
+const PANEL_OFF_HIT5: usize = 27; // 4.5.4.3 迁移基线 27/80（0.5.0=44）
+const PANEL_OFF_HIT10: usize = 30; // 4.5.4.3 迁移基线 30/80（0.5.0=46）
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
