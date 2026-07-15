@@ -62,7 +62,9 @@ fn display_stat_value(session: &CalculationSession, stat_id: &str) -> f64 {
 /// 未加点、带词条的节点单点试加做完整重算，产出目标属性增量。相同词条
 /// 组合共享一次计算（PoB2 modKey 缓存同口径）；属性小点（需三选一）跳过。
 pub fn node_power_json(request_json: &str) -> Result<String, String> {
-    node_power_impl(request_json).map_err(super::ApiError::into_json)
+    state::cached_response("node_power", request_json, || {
+        node_power_impl(request_json).map_err(super::ApiError::into_json)
+    })
 }
 
 fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
@@ -292,7 +294,9 @@ fn apply_variant(
 /// 通用变体评估：基线 build 只解码/装配一次，每个变体克隆后叠增量修改做
 /// 完整重算（与 node_power 同一「试算 = 完整编排」口径），返回属性值矩阵。
 pub fn optimize_variants_json(request_json: &str) -> Result<String, String> {
-    optimize_variants_impl(request_json).map_err(super::ApiError::into_json)
+    state::cached_response("optimize_variants", request_json, || {
+        optimize_variants_impl(request_json).map_err(super::ApiError::into_json)
+    })
 }
 
 fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError> {
@@ -402,7 +406,9 @@ fn display_values_map(session: &CalculationSession, fields: &[String]) -> BTreeM
 ///
 /// 计算量 = `1 + 来源数` 次完整编排；供点击触发的归因面板，不在每次重算时调用。
 pub fn attribution_json(request_json: &str) -> Result<String, String> {
-    attribution_impl(request_json).map_err(super::ApiError::into_json)
+    state::cached_response("attribution", request_json, || {
+        attribution_impl(request_json).map_err(super::ApiError::into_json)
+    })
 }
 
 fn attribution_impl(request_json: &str) -> Result<String, super::ApiError> {

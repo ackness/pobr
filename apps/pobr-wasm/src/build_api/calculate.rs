@@ -183,7 +183,9 @@ struct CalculateBuildResponse {
 ///
 /// 需先初始化游戏数据（`init` 系列入口）。
 pub fn calculate_build_json(request_json: &str) -> Result<String, String> {
-    calculate_build_impl(request_json).map_err(super::ApiError::into_json)
+    state::cached_response("calculate_build", request_json, || {
+        calculate_build_impl(request_json).map_err(super::ApiError::into_json)
+    })
 }
 
 fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
@@ -233,7 +235,9 @@ struct FullDpsResponse {
 /// 计算量 = `1 + 启用伤害组数` 次完整编排；供点击触发的技能 DPS 面板，
 /// 不在每次重算时调用（与归因同模式）。
 pub fn full_dps_json(request_json: &str) -> Result<String, String> {
-    full_dps_impl(request_json).map_err(super::ApiError::into_json)
+    state::cached_response("full_dps", request_json, || {
+        full_dps_impl(request_json).map_err(super::ApiError::into_json)
+    })
 }
 
 fn full_dps_impl(request_json: &str) -> Result<String, super::ApiError> {

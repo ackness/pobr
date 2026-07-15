@@ -32,6 +32,75 @@ thread_local! {
     /// 词缀 tier 反查索引（懒构建；`Some(None)` = 数据包缺池数据/模板，降级不标）。
     static TIER_INDEX: RefCell<Option<Option<Rc<pobr_item::TierIndex>>>> =
         const { RefCell::new(None) };
+    /// 入口级响应缓存（见 [`cached_response`]）。
+    static RESPONSE_CACHE: RefCell<ResponseCache> = RefCell::new(ResponseCache::default());
+}
+
+/// 入口级 `(端点, 请求 JSON 字符串) → 响应字符串` 缓存。
+///
+/// 键是原始请求字符串：同字符串进必同结果出（计算确定性 + 数据初始化后不变），
+/// 请求形状加字段自动改变键——不存在「缓存键漏字段返回陈旧结果」的漂移风险
+/// （`BuildSnapshot` 文档明确警告其 content_hash 不足以作 data 路径缓存键，
+/// 故不采用）。命中场景：面板切换 / 对比视图来回 / 点击触发的重复
+/// full-dps·归因请求。FIFO 逐出，Err 不缓存。
+#[derive(Default)]
+struct ResponseCache {
+    entries: std::collections::HashMap<(&'static str, String), String>,
+    order: std::collections::VecDeque<(&'static str, String)>,
+    hits: u64,
+}
+
+/// 缓存条目数上限。响应可达数百 KB（breakdown 全量），16 条足够覆盖
+/// 「对比两个 build 来回切 + 各面板重复请求」且内存有界。
+const RESPONSE_CACHE_CAP: usize = 16;
+
+/// 以 `(endpoint, request_json)` 为键缓存 `compute` 的成功结果。
+pub(crate) fn cached_response(
+    endpoint: &'static str,
+    request_json: &str,
+    compute: impl FnOnce() -> Result<String, String>,
+) -> Result<String, String> {
+    let hit = RESPONSE_CACHE.with_borrow_mut(|cache| {
+        let got = cache.entries.get(&(endpoint, request_json.to_string()));
+        if got.is_some() {
+            cache.hits += 1;
+        }
+        got.cloned()
+    });
+    if let Some(response) = hit {
+        return Ok(response);
+    }
+    let response = compute()?;
+    RESPONSE_CACHE.with_borrow_mut(|cache| {
+        if cache.order.len() >= RESPONSE_CACHE_CAP
+            && let Some(oldest) = cache.order.pop_front()
+        {
+            cache.entries.remove(&oldest);
+        }
+        let key = (endpoint, request_json.to_string());
+        if cache
+            .entries
+            .insert(key.clone(), response.clone())
+            .is_none()
+        {
+            cache.order.push_back(key);
+        }
+    });
+    Ok(response)
+}
+
+/// 缓存命中计数（测试断言用）。
+pub fn response_cache_hits() -> u64 {
+    RESPONSE_CACHE.with_borrow(|c| c.hits)
+}
+
+/// 数据（重新）初始化时清空响应缓存——结果对数据版本敏感。
+fn clear_response_cache() {
+    RESPONSE_CACHE.with_borrow_mut(|c| {
+        c.entries.clear();
+        c.order.clear();
+        c.hits = 0;
+    });
 }
 
 /// 注入一个数据文件（`path` = 版本目录内相对路径，正斜杠，如 `base/stats.json`）。
@@ -53,6 +122,7 @@ pub fn init_staged_data() -> Result<(), String> {
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
+    clear_response_cache();
     Ok(())
 }
 
@@ -62,6 +132,7 @@ pub fn init_data_from_dir(version_dir: &str) -> Result<(), String> {
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
+    clear_response_cache();
     Ok(())
 }
 

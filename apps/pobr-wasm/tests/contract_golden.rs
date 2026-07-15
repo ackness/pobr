@@ -1328,3 +1328,22 @@ fn structured_errors_and_item_degrade() {
         .unwrap();
     assert!(life > 50.0, "good ring still applies: Life={life}");
 }
+
+/// 入口级响应缓存：同一请求字符串二次调用命中缓存且响应逐字节一致。
+#[test]
+fn response_cache_hits_on_repeat_request() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 10 },
+        "allocated_nodes": [],
+    })
+    .to_string();
+    let hits_before = pobr_wasm::state::response_cache_hits();
+    let first = pobr_wasm::calculate_build_json(&request).expect("first calc");
+    let second = pobr_wasm::calculate_build_json(&request).expect("second calc");
+    assert_eq!(first, second, "cached response must be byte-identical");
+    assert!(
+        pobr_wasm::state::response_cache_hits() > hits_before,
+        "second call should hit the response cache"
+    );
+}
