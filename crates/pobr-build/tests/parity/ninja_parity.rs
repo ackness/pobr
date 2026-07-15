@@ -660,8 +660,13 @@ const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425�
 // 类——LegacyOfSilver 注入 vendor 裸 `Speed` INC，但 PoBR 速度桶名是 `SkillSpeed`
 // （SPEED_BUCKET，攻/施法通吃）。改后 ember/monk-twister/smith/titan 的 Speed 列翻正、
 // DPS 抬升（ember 0.68x→0.77x、monk-twister→0.88x）。见 calc/mageblood.rs LegacyOfSilver。
-const BASELINE_OFF_HIT5: usize = 45; // Silver-speed 后 45/80（Diamond-crit 41；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 54; // Silver-speed 后 54/80（Diamond-crit 50；迁移基线 47；0.5.0=74）
+// **bloodmage 池转换后 Mana multiplier 刷新重记（off +1 @5% 45→46 / @10% 54→55；dot +2
+// @5% 9→11 / @10% 11→13）**：perform 防御资源转换（Eldritch Battery ES→Mana）后重算了
+// mana_pool 并回填 cfg.stats["Mana"]，但漏刷 cfg.multipliers["Mana"]（per-100-max-Mana
+// 类词条如 Arcane Intensity 读它）→ 池转换 build 的 mana 缩放用了转换前的旧值。补刷后
+// blood-mage SpellDamage INC 39→105、TotalDPS 0.74x→0.87x，其 DoT 基底随之抬升。见 perform.rs。
+const BASELINE_OFF_HIT5: usize = 46; // mana-mult 后 46/80（Silver-speed 45；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 55; // mana-mult 后 55/80（Silver-speed 54；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -720,8 +725,10 @@ const BASELINE_OFF_HIT10: usize = 54; // Silver-speed 后 54/80（Diamond-crit 5
 // 0.73x→0.84x、dot 0.54x→0.70x 收敛但未回带；剩余 ~16% per-hit 低估是
 // blood-mage 自身根因（deadeye/gemling 同型剧本）,修复后基线回记。
 // 18 build 逐格 diff 仅 blood-mage 三格变动。冻结榜只剩 legacy `split`。
-const BASELINE_DOT_HIT5: usize = 9; // 4.5.4.3 迁移基线 9/37（0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 11; // 4.5.4.3 迁移基线 11/37（0.5.0=28）
+// **bloodmage mana-mult 重记（dot +2 @5% 9→11 / @10% 11→13）**：见 BASELINE_OFF_HIT5 上
+// 说明——mana 缩放抬 blood-mage 的 spell DoT 基底，其 TotalDotDPS/CombinedDPS 翻正。
+const BASELINE_DOT_HIT5: usize = 11; // mana-mult 后 11/37（迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 13; // mana-mult 后 13/37（迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
