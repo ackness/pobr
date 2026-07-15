@@ -109,7 +109,10 @@ fn apply_build_attrs(
 }
 
 fn decode_attr(attr: &quick_xml::events::attributes::Attribute<'_>) -> Result<String, XmlError> {
-    attr.unescape_value()
+    // 不走 normalized_value：属性值空白归一化会把字面换行压成空格，
+    // 而 PoB 在属性里存多行词条（<Input string="a\nb">），换行是行分隔符。
+    let raw = String::from_utf8_lossy(&attr.value).into_owned();
+    quick_xml::escape::unescape(&raw)
         .map(|v| v.into_owned())
         .map_err(|e| XmlError::Parse(e.to_string()))
 }
