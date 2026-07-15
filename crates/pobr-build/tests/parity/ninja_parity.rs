@@ -656,8 +656,12 @@ const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425�
 // Barrier Life→MaximumLife 类）。表内改用 `CriticalStrikeChance` 后 blood-mage CritChance
 // 0.79x→0.96x、ember CritChance+CritMultiplier→1.00x（InevitableCrit 的 crit-mult 惩罚随
 // pre-eff crit 修复一并解决），三 Diamond build 的 crit/DPS 抬升。见 calc/mageblood.rs。
-const BASELINE_OFF_HIT5: usize = 41; // Diamond-crit 后 41/80（迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 50; // Diamond-crit 后 50/80（迁移基线 47；0.5.0=74）
+// **Mageblood Silver Speed 名归一重记（+4 @5% 41→45 / +4 @10% 50→54）**：同 crit 死桶
+// 类——LegacyOfSilver 注入 vendor 裸 `Speed` INC，但 PoBR 速度桶名是 `SkillSpeed`
+// （SPEED_BUCKET，攻/施法通吃）。改后 ember/monk-twister/smith/titan 的 Speed 列翻正、
+// DPS 抬升（ember 0.68x→0.77x、monk-twister→0.88x）。见 calc/mageblood.rs LegacyOfSilver。
+const BASELINE_OFF_HIT5: usize = 45; // Silver-speed 后 45/80（Diamond-crit 41；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 54; // Silver-speed 后 54/80（Diamond-crit 50；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中

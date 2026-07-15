@@ -67,7 +67,9 @@ const LEGACIES: &[LegacyDef] = &[
     (
         "LegacyOfSilver",
         &[
-            ("Speed", ModType::Inc, 30.0),
+            // vendor 裸 `Speed`（通用行动速度）→ PoBR 速度桶名 `SkillSpeed`（攻/施法通吃，
+            // SPEED_BUCKET；同 CritChance 死桶类，translate_vendor_name 裸 Speed→SkillSpeed）。
+            ("SkillSpeed", ModType::Inc, 30.0),
             ("WarcrySpeed", ModType::Inc, 30.0),
             ("TotemPlacementSpeed", ModType::Inc, 30.0),
         ],
@@ -206,7 +208,7 @@ mod tests {
         assert_eq!(inc(&env, "Armour"), 219.0); // floor(1.46 × 150)
         assert_eq!(inc(&env, "MovementSpeed"), (1.46 * 30.0f64).floor()); // 43
         // Silver 只应用一次（duplicate 只放大 globalEffect，不叠份数）。
-        assert_eq!(inc(&env, "Speed"), (1.46 * 30.0f64).floor()); // 43, 非 86
+        assert_eq!(inc(&env, "SkillSpeed"), (1.46 * 30.0f64).floor()); // 43, 非 86
     }
 
     /// 幂等：重复 perform 不重复注入。
