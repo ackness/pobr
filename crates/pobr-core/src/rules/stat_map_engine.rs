@@ -717,7 +717,11 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         "Armour" => Ok(vec!["Armour"]),
         "Evasion" => Ok(vec!["Evasion"]),
         "EnergyShield" => Ok(vec!["EnergyShield"]),
-        "Life" => Ok(vec!["Life"]),
+        // PoBR 生命池聚合名是 `MaximumLife`（parser name_map 把「maximum Life」归一到此，
+        // scaled_pool 也查此名）——vendor 名 `Life` 必须归一到 `MaximumLife`，否则 barrier
+        // 的 per-Mote Life INC 落进死桶 `Life`、生命池读不到（Armour/Evasion/EnergyShield
+        // 因规范名与 vendor 同名而无此问题）。gemling Virtuous Barrier 24% Life INC 根因。
+        "Life" => Ok(vec!["MaximumLife"]),
         // （M4-n）伤害向量族（Sigil of Power `circle_of_power_spell_damage_+%
         // _final_per_stage` → Damage MORE Spell；Elemental Conflux
         // `skill_elemental_conflux_active_element_damage_+%_final` →
