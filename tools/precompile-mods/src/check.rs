@@ -46,13 +46,21 @@ pub fn check(data_dir: &Path) -> Result<(), String> {
         None
     };
 
-    // 2) special_mods.json (hand-curated) + generated/special_derived.json —
-    //    both optional; generated/special_vendor.json — required (the 4.5.4.3
-    //    upgrade shipped without it because regen-all.sh lacked the step and
-    //    nothing failed; a missing file must be loud, not a silent skip).
-    //    All three are concatenated for the compile step below.
+    // 2) special_mods entries come from three sources, all concatenated for the
+    //    compile step below (matches the runtime `GameData::load_ruleset` set):
+    //    - overlay-common/special_mods.json (version-independent curated, P1-3) +
+    //      overlay/special_mods.json (version-specific) — both optional;
+    //    - generated/special_derived.json — optional;
+    //    - generated/special_vendor.json — required (the 4.5.4.3 upgrade shipped
+    //      without it because regen-all.sh lacked the step and nothing failed;
+    //      a missing file must be loud, not a silent skip).
+    let overlay_common = data_dir
+        .parent()
+        .map(|p| p.join("overlay-common"))
+        .unwrap_or_else(|| data_dir.join("overlay-common"));
     let mut special_entries = Vec::new();
     for (path, required) in [
+        (overlay_common.join("special_mods.json"), false),
         (overlay.join("special_mods.json"), false),
         (generated.join("special_derived.json"), false),
         (generated.join("special_vendor.json"), true),

@@ -35,7 +35,16 @@ static RULES: LazyLock<std::sync::Arc<CompiledParserRules>> = LazyLock::new(|| {
     let path = data_root().join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("读取 mod_parser_rules.json");
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("反序列化规则表");
-    let mut special = load_special("overlay/special_mods.json");
+    // special_mods 两层（与 pobr-gamedata `load_ruleset` 同序）：版本无关策展层
+    // `data/overlay-common/`（相对版本目录是 `../overlay-common/`）打底，版本层按 id
+    // 覆盖 / 追加，再拼 derived / vendor。
+    let mut special = load_special("../overlay-common/special_mods.json");
+    for v in load_special("overlay/special_mods.json") {
+        match special.iter_mut().find(|e| e.id == v.id) {
+            Some(slot) => *slot = v,
+            None => special.push(v),
+        }
+    }
     special.extend(load_special("generated/special_derived.json"));
     special.extend(load_special("generated/special_vendor.json"));
     std::sync::Arc::new(

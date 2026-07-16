@@ -8,20 +8,46 @@ use std::path::Path;
 
 use regex::Regex;
 
-/// 仓库 data 根（tools/sync-pob-catalog/ → 上两级）。
-fn special_mods_path() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/4.5.0.3.4/overlay/special_mods.json")
+/// special_mods 两层文件（tools/sync-pob-catalog/ → 上两级到仓库根）：版本无关策展层
+/// `data/overlay-common/`（P1-3，133 条大头）+ 版本层 `data/<ver>/overlay/`。两者并集
+/// 覆盖全部策展 pattern。
+fn special_mods_paths() -> Vec<std::path::PathBuf> {
+    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
+    vec![
+        data.join("overlay-common/special_mods.json"),
+        data.join(pobr_data::data_version())
+            .join("overlay/special_mods.json"),
+    ]
+}
+
+/// 两层 entries 并集（缺文件跳过；至少一层须存在）。
+fn load_entries() -> Vec<serde_json::Value> {
+    let mut entries = Vec::new();
+    for path in special_mods_paths() {
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => panic!("{}: {e}", path.display()),
+        };
+        let doc: serde_json::Value = serde_json::from_str(&text).unwrap();
+        entries.extend(
+            doc["entries"]
+                .as_array()
+                .expect("entries 数组")
+                .iter()
+                .cloned(),
+        );
+    }
+    entries
 }
 
 /// 全部 pattern 可被 regex crate 编译（整行锚定由引擎统一加 `^...$`，
 /// 此处按同口径编译）；捕获组数 ≥ mods 内引用的最大 `$n`。
 #[test]
 fn all_patterns_compile_and_captures_cover_refs() {
-    let text = std::fs::read_to_string(special_mods_path()).expect("special_mods.json 在库");
-    let doc: serde_json::Value = serde_json::from_str(&text).unwrap();
-    let entries = doc["entries"].as_array().expect("entries 数组");
+    let entries = load_entries();
     assert!(!entries.is_empty());
-    for entry in entries {
+    for entry in &entries {
         let id = entry["id"].as_str().unwrap();
         let pattern = entry["pattern"].as_str().unwrap();
         let re = Regex::new(&format!("^{pattern}$"))
@@ -46,10 +72,8 @@ fn all_patterns_compile_and_captures_cover_refs() {
 /// 之外的捕获必须是显式闭集（不含 `\d`）——DSL 硬边界的「禁开放捕获」。
 #[test]
 fn captures_are_numeric_or_closed_sets() {
-    let text = std::fs::read_to_string(special_mods_path()).unwrap();
-    let doc: serde_json::Value = serde_json::from_str(&text).unwrap();
     const NUMERIC_FORMS: [&str; 4] = [r"(\d+)", r"(\d+(?:\.\d+)?)", r"([+-]\d+)", r"(\+?\d+)"];
-    for entry in doc["entries"].as_array().unwrap() {
+    for entry in &load_entries() {
         let id = entry["id"].as_str().unwrap();
         let pattern = entry["pattern"].as_str().unwrap();
         // 逐捕获组扫描（顶层括号，忽略 (?: 非捕获组）

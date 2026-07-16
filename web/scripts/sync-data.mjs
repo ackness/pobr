@@ -39,6 +39,19 @@ for (const path of walkJson(src)) {
   cpSync(path, join(dest, rel));
   files.push(rel);
 }
+
+// 版本无关策展层 data/overlay-common/（P1-3）：版本目录的同级兄弟，gamedata 加载期
+// merge 到版本 overlay 之下。放到 dest/overlay-common/ 并以 `overlay-common/<name>`
+// 相对键登记——wasm 内存后端按该键注入，GameData 恰好从此键读取（root 父目录 +
+// overlay-common）。缺目录（旧数据包）则跳过。
+const commonSrc = join(dataRoot, 'overlay-common');
+if (statSync(commonSrc, { throwIfNoEntry: false })?.isDirectory()) {
+  for (const path of walkJson(commonSrc)) {
+    const rel = join('overlay-common', relative(commonSrc, path)).split('\\').join('/');
+    cpSync(path, join(dest, rel));
+    files.push(rel);
+  }
+}
 files.sort();
 
 writeFileSync(join(destRoot, 'manifest.json'), JSON.stringify({ version, files }, null, 2));

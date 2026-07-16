@@ -46,6 +46,23 @@ top of the machine-generated `.dat` import. The two files this guide is about:
 | `special_mods.json` | **hand** | Rust regex + value DSL | add/fix a whole-line special modifier (uniques, keystones, unusual phrasings) |
 | `mod_parser_rules.json` | **extracted from vendor Lua** | Lua pattern | (rarely) extend the generic grammar — but see the warning in §3 |
 
+> **Where to add a curated `special_mods` entry — use `data/overlay-common/`.**
+> `special_mods.json` is loaded in **two layers** and merged by `pobr-gamedata`:
+>
+> 1. `data/overlay-common/special_mods.json` — **version-independent** curated
+>    layer. Vendor-semantics fixes that do not change with the game patch live
+>    here; a new data version directory inherits them for free (no manual copy).
+>    **This is where new curated entries almost always go.**
+> 2. `data/<version>/overlay/special_mods.json` — **version-specific** layer,
+>    merged on top. Only entries that genuinely differ for one game version
+>    belong here; a same-`id` entry here overrides the common layer, and new ids
+>    are appended.
+>
+> Practically: add your entry to `data/overlay-common/special_mods.json` unless
+> it is a correction that only applies to a single game version. `regen-all.sh`
+> no longer carries `special_mods.json` forward between versions — the common
+> layer replaces that manual step (see `docs/version-bump-architecture.md` P1-3).
+
 The remaining overlay files are separate domains (base-item overrides, uniques,
 gem effects, buff/curse definitions, stat descriptions, …). They follow their
 own schemas in `crates/pobr-data` and are out of scope here; the same
@@ -102,7 +119,9 @@ write them by hand — the extractor fills them.
 
 ## 4. `special_mods.json` — where you add a modifier
 
-Each entry is a `SpecialTemplateDef` (schema in `parser_rules.rs`). The parser
+Add the entry to `data/overlay-common/special_mods.json` (the version-independent
+layer — see §2) unless it is a correction specific to one game version. Each entry
+is a `SpecialTemplateDef` (schema in `parser_rules.rs`). The parser
 matches the **whole line** (case-insensitive, auto-anchored `^…$`) against
 `pattern` (**Rust regex** — `(\d+)`, alternation, *no* look-around/back-refs),
 and instantiates the `mods` template using the captures.

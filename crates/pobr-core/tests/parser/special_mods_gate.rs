@@ -1,7 +1,7 @@
 //! special_mods 闸门测试（M5b 蓝图 C-4，§0.3 监控线落成 CI 原生门禁）。
 //!
-//! 读仓库 `data/4.5.0.3.4/{overlay/special_mods.json, generated/special_derived.json}`，
-//! 断言：
+//! 读仓库 `data/overlay-common/special_mods.json`（版本无关策展层，P1-3）+
+//! `data/<ver>/{overlay/special_mods.json, generated/special_derived.json}`，断言：
 //! 1. [`SpecialModRules::compile`] 全量成功（pattern 合法 / mod_type 已知 /
 //!    enums 引用不越界 / id 唯一）；
 //! 2. 所有 `handler_id` 均已注册（未注册 = 测试失败 + 打印未映射清单，
@@ -18,6 +18,11 @@ use std::collections::BTreeMap;
 use pobr_core::rules::{HandlerRegistry, SpecialModRules};
 use pobr_data::catalog::parser_rules::{SpecialModsDef, SpecialTemplateDef};
 
+fn overlay_common_special_mods_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data")
+        .join("overlay-common/special_mods.json")
+}
 fn special_mods_path() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../data")
@@ -37,12 +42,24 @@ fn special_vendor_path() -> std::path::PathBuf {
         .join("generated/special_vendor.json")
 }
 
-/// 加载仓库 special 条目（overlay + 可选 generated 派生/vendor 批量，拼接——与
-/// pobr-gamedata `load_ruleset` 三源同序）。
+/// 加载仓库 special 条目（overlay-common 版本无关层 + 版本 overlay + 可选 generated
+/// 派生/vendor 批量，拼接——与 pobr-gamedata `load_ruleset` 同序）。overlay-common 层
+/// （P1-3）按 id 打底，版本层覆盖 / 追加。
 fn load_entries() -> Vec<SpecialTemplateDef> {
+    let mut entries: Vec<SpecialTemplateDef> = Vec::new();
+    if let Ok(raw) = std::fs::read_to_string(overlay_common_special_mods_path()) {
+        let doc: SpecialModsDef =
+            serde_json::from_str(&raw).expect("overlay-common/special_mods.json 可解析");
+        entries = doc.entries;
+    }
     let raw = std::fs::read_to_string(special_mods_path()).expect("special_mods.json 可读");
     let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
-    let mut entries = doc.entries;
+    for v in doc.entries {
+        match entries.iter_mut().find(|e| e.id == v.id) {
+            Some(slot) => *slot = v,
+            None => entries.push(v),
+        }
+    }
     if let Ok(raw) = std::fs::read_to_string(special_derived_path()) {
         let derived: SpecialModsDef =
             serde_json::from_str(&raw).expect("special_derived.json 可解析");
