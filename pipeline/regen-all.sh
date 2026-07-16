@@ -179,14 +179,27 @@ mkdir -p "$OUT_DIR/generated"
 soft_step special_vendor "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$OUT_DIR/generated/special_vendor.json"
 
 # ---- 7) generated/（precompile-mods）----
-echo "== [7/8] precompile-mods（generated/）"
+echo "== [7/9] precompile-mods（generated/）"
 soft_step precompile_mods cargo run --quiet -p precompile-mods -- --data "$OUT_DIR" --report
 
 # ---- 8) manifest.json：以 OLD_PATCH 结构为模板，仅换版本号 ----
-echo "== [8/8] manifest.json"
+echo "== [8/9] manifest.json"
 if [[ -f "data/$OLD_PATCH/manifest.json" ]]; then
-    sed "s/\"$OLD_PATCH\"/\"$PATCH\"/g" "data/$OLD_PATCH/manifest.json" > "$OUT_DIR/manifest.json"
+    sed "s/\"${OLD_PATCH}\"/\"${PATCH}\"/g" "data/${OLD_PATCH}/manifest.json" > "${OUT_DIR}/manifest.json"
 fi
+
+# ---- 9) test-pin 快照 bless（generated/test_pins.json，v0.0.3 P0-1）----
+# 数据内容计数钉（parser 规则段计数 / minion 系数等）不再手写在测试里，而是存
+# 每版本一份的 generated/test_pins.json；这里以 POBR_BLESS_PINS=1 重跑对应定向
+# 测试把实际值写回快照（与 regen 同一提交）。注意：
+#   - 快照落在各测试**实际加载**的版本目录（golden 测试 =
+#     pobr_data::GOLDEN_PARITY_DATA_VERSION）——升级 drill 中 golden 尚未切换时，
+#     刷新的是旧 golden 目录，属预期；
+#   - 必须用 cargo test（单进程多线程，写回有进程内锁），勿换 nextest
+#     （进程/测试并发写同一快照会互相覆盖）。
+echo "== [9/9] test-pin bless（generated/test_pins.json）"
+soft_step pin_parser_rules env POBR_BLESS_PINS=1 cargo test --quiet -p pobr-gamedata --lib parser_rules
+soft_step pin_minions env POBR_BLESS_PINS=1 cargo test --quiet -p pobr-build --test skills minions::build_data_minion_def
 
 # ---- 汇总 ----
 echo "regen-all: 完成 → $OUT_DIR"
