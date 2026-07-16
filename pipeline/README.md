@@ -42,6 +42,29 @@ cargo run -p pobr-data-adapter -- --raw ./tables --out ../data --patch <version>
 `./.cache/`（~113MB bundle 索引）、`./tables/`、`./files/` 均为中间物，**已 gitignore，不入库**。
 仓库只保存 `config.json`、脚本、本 README，以及第 3 步产出的 `data/<version>/*.json`（最小适配数据）。
 
+## Vendor calc-delta 报告（`diff-vendor-calcs.sh`）
+
+版本升级后，用它把「这次补丁改了哪些计算公式 / 数据」变成一份 triage 清单，
+取代「翻黄金 → 看 parity 暴跌 → 逐 build 考古」的发现流程。
+
+```bash
+pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
+# 默认输出：devs/docs/audits/vendor-delta-<new-sha[:8]>.md
+```
+
+- 两个 vendor pin 各做一次 shallow git checkout 到 `.cache/vendor-delta/<sha>/`
+  （gitignore，命中缓存即跳过；用 git checkout 而非 codeload tarball——headless
+  抽取的 `HeadlessWrapper.lua` 引导需要完整工作树，tarball 缺文件会导致
+  `modLib.parseMod missing`）。
+- 报告三节：**Calc 模块 diff**（`Modules/Calc*.lua` + `ModParser.lua` 的 diffstat +
+  折叠 hunks）、**数据模块 diff**（`Data/` + `Modules/Data*.lua` 只给按改动量排名的
+  diffstat）、**抽取产物 diff**（对两个 pin 跑 `extract-lua --what
+  special-mods|parser-rules|uniques`，对生成 JSON 做条目级 add/remove/change 汇总）。
+- 软降级（沿用 `regen-all.sh` 的 `soft_step` 精神）：某个 `--what` 在旧 pin 上因
+  结构不兼容跑失败时，报告注明缺失原因，脚本不中止。
+- 旋钮：`MAX_HUNK_LINES`（单文件 hunk 超此行数只留 diffstat，默认 800）、
+  `DATA_TOP`（数据文件排名条数，默认 40）。
+
 ## 扩展 / 升版
 
 - 新 PoE2 版本：**`pipeline/bump-version.sh` 一条命令**（查补丁号 → 下载 → 树/vendor 对齐 →
