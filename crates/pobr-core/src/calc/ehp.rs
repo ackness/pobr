@@ -1142,9 +1142,24 @@ pub fn fill_ehp_pob2(
         } else {
             1.0
         };
-        // PoE2 无法术抑制（suppression=1）；specificTypeAvoidance 无来源（avoid 层
-        // 全部折入 not-hit）→ averageAvoidChance = 0。
-        let configured_damage_chance = 100.0 * block_effect_mult * deflect_mult;
+        // 分类型击中规避（vendor CalcDefence.lua:3262/:3277-3300）：有 `Avoid<Type>
+        // DamageChance` 来源时，averageAvoidChance = 五类型规避均值，折入
+        // configured_damage_chance；每类型另享 "Average" damageCategory 的
+        // ExtraAvoidChance = 投射物规避/2（:3262），再 clamp 75。无分类型规避时
+        // averageAvoidChance = 0，与旧值逐位一致（其余 build 零行为）。
+        let specific_type_avoidance = avoidance.avoid_typed_damage.iter().any(|&a| a > 0.0);
+        let extra_avoid = avoidance.avoid_projectile_damage / 2.0;
+        let avoid_cap = crate::calc::defence::AVOID_HIT_CAP;
+        let avoid: [f64; 5] = avoidance.avoid_typed_damage.map(|base| {
+            if specific_type_avoidance {
+                (base + extra_avoid).min(avoid_cap)
+            } else {
+                0.0
+            }
+        });
+        let average_avoid_chance = avoid.iter().sum::<f64>() / 5.0;
+        let configured_damage_chance =
+            100.0 * block_effect_mult * deflect_mult * (1.0 - average_avoid_chance / 100.0);
         // F-4：anyRecoup 改读词条本体（vendor :1795-1812 `Σ <Resource>Recoup` BASE；
         // recoup 速率字段此时尚未写入——其基数正来自本段的 mitigated 循环累计）。
         let any_recoup = ["LifeRecoup", "ManaRecoup", "EnergyShieldRecoup"]
@@ -1155,7 +1170,17 @@ pub fn fill_ehp_pob2(
             || any_recoup
             || prevented_total
         {
-            let mitigated_in = scale_damage(&taken_hit, block_effect_mult * deflect_mult);
+            // 逐类型缩减（vendor :3277-3300 DamageIn[type] × (1 - avoid_type/100)）——
+            // 分类型规避不能走 scale_damage 的统一因子（那条在 hits_to_die 迭代里另有
+            // 复用，须保持 uniform）。无分类型规避时 avoid 全 0，与旧 uniform 缩逐位一致。
+            let base_mult = block_effect_mult * deflect_mult;
+            let mitigated_in = super::pool_damage::TypedDamage {
+                physical: taken_hit.physical * base_mult * (1.0 - avoid[0] / 100.0),
+                fire: taken_hit.fire * base_mult * (1.0 - avoid[1] / 100.0),
+                cold: taken_hit.cold * base_mult * (1.0 - avoid[2] / 100.0),
+                lightning: taken_hit.lightning * base_mult * (1.0 - avoid[3] / 100.0),
+                chaos: taken_hit.chaos * base_mult * (1.0 - avoid[4] / 100.0),
+            };
             let m_params =
                 EhpLoopParams::from_constants(&cfg.constants, any_recoup || prevented_total);
             // F-4（13-G15 部分）：mitigated 循环同步累计 recoupable（vendor

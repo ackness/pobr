@@ -22,6 +22,7 @@ cd web
 pnpm install
 pnpm build-wasm    # wasm-pack builds pobr-wasm → src/wasm/pkg/ (gitignored)
 pnpm sync-data     # data/<version>/ JSON → public/data/ (gitignored)
+pnpm build-tree-art # optional: PoB2 tree node art → public/tree-art/ (needs vendor + zstd + magick)
 pnpm dev           # http://localhost:5173
 ```
 
@@ -50,6 +51,7 @@ cargo test -p pobr-wasm --test gen_fixtures -- --ignored
 | `pnpm exec playwright test` | E2E smoke (run build-wasm + sync-data + build first) |
 | `pnpm build-wasm` | rebuild the wasm package |
 | `pnpm sync-data` | re-sync game data into public/ |
+| `pnpm build-tree-art` | decode PoB2 tree node icons/frames from vendor DDS → public/tree-art/ (needs zstd + ImageMagick; tree falls back to plain circles without it) |
 
 ## Layout
 

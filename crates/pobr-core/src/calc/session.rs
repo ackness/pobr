@@ -7,7 +7,7 @@ use pobr_data::prelude::*;
 use crate::item::ingest_item_with_ctx;
 use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
 use crate::passive::{AllocatedNode, ingest_passive_nodes_with_ctx};
-use crate::rules::{HandlerRegistry, SpecialModRules};
+use crate::rules::HandlerRegistry;
 use crate::skill_source::{GemModSource, ingest_gem_with_ctx};
 use crate::{CalcConfig, Modifier};
 
@@ -62,24 +62,16 @@ pub struct BuffSpec {
 pub struct CalculationSession {
     env: Env,
     unsupported_modifier_texts: Vec<String>,
-    /// special 词条规则集（M5b B-4）：注入后 item/passive/gem ingest 走
-    /// [`parse_mod_with_rules`]，整行命中的 special 条目产出 mod。`None` =
-    /// 历史行为（逐值不变）。
-    ///
-    /// [`parse_mod_with_rules`]: crate::mod_parser::parse_mod_with_rules
-    special_rules: Option<Arc<SpecialModRules>>,
-    /// special handler_id 路由用注册表（M5b C-3）。
-    special_registry: Option<Arc<HandlerRegistry>>,
-    /// 数据驱动 parser 引擎规则（M6 D-T8 A2 全量穿线）：注入后全部 ingest
-    /// （item/passive/gem/flask/`add_modifier_texts`）解析改走
-    /// [`parse_mod_engine`]（数据驱动终局路径），优先于 legacy special 路径。
-    /// `None` = 历史 legacy 行为（逐值不变）。引擎对语料 + fixture 与 legacy 逐
-    /// 字节一致（C1 DIFF=0 gate），故注入与否 parity 零变动。
+    /// 数据驱动 parser 引擎规则：注入后全部 ingest（item/passive/gem/flask/
+    /// `add_modifier_texts`）解析走 [`parse_mod_engine`]（唯一解析器，M6 收尾
+    /// 已删 legacy）。`None` = 未注入规则，所有词条文本按整行 Unsupported 处理
+    /// （进入 [`unsupported_modifier_texts`] 收集面，不生效也不静默丢失）。
     ///
     /// 由编排层（pobr-build orchestrator）经 [`set_parser_rules`] 恒注入。
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`set_parser_rules`]: CalculationSession::set_parser_rules
+    /// [`unsupported_modifier_texts`]: CalculationSession::unsupported_modifier_texts
     parser_rules: Option<Arc<crate::mod_parser::CompiledParserRules>>,
 }
 
@@ -92,39 +84,21 @@ impl CalculationSession {
         Self {
             env,
             unsupported_modifier_texts: Vec::new(),
-            special_rules: None,
-            special_registry: None,
             parser_rules: None,
         }
     }
 
-    /// 注入 special 词条规则集（M5b B-4 消费激活）：之后的 [`add_item`](Self::add_item)
-    /// / [`add_passive_nodes`](Self::add_passive_nodes) / [`add_gem`](Self::add_gem)
-    /// 词条解析走 special 查表（整行命中优先）。须在这些 ingest 调用**之前**注入；
-    /// 不调用时 ingest 行为与历史 `parse_mod` 逐值相等。
-    pub fn set_special_rules(
-        &mut self,
-        rules: Arc<SpecialModRules>,
-        registry: Option<Arc<HandlerRegistry>>,
-    ) {
-        self.special_rules = Some(rules);
-        self.special_registry = registry;
-    }
-
-    /// 注入数据驱动 parser 引擎规则（M6 D-T8 A2 全量穿线契约面）：之后全部
-    /// ingest（[`add_item`](Self::add_item) / [`add_passive_nodes`](Self::add_passive_nodes)
+    /// 注入数据驱动 parser 引擎规则（编排层注入契约面）：之后全部 ingest
+    /// （[`add_item`](Self::add_item) / [`add_passive_nodes`](Self::add_passive_nodes)
     /// / [`add_gem`](Self::add_gem) / [`add_flask_charm`](Self::add_flask_charm) /
-    /// [`add_modifier_texts`](Self::add_modifier_texts)）的词条解析改走
-    /// [`parse_mod_engine`]（数据驱动终局路径），**优先于** legacy special 路径
-    /// （special 通道已编译进 [`CompiledParserRules::special`]）。须在 ingest 调用
-    /// **之前**注入。
+    /// [`add_modifier_texts`](Self::add_modifier_texts)）的词条解析走
+    /// [`parse_mod_engine`]（special 通道已编译进
+    /// [`CompiledParserRules::special`]）。须在 ingest 调用**之前**注入。
     ///
-    /// 这是编排层（Agent B / pobr-build orchestrator）的注入契约面：orchestrator
-    /// 经 pobr-gamedata 恒 load `mod_parser_rules.json` 编译 `CompiledParserRules`
-    /// 后调用本 setter；session/ingest 链由此恒取到 `&CompiledParserRules`。
-    ///
-    /// 不调用时 ingest 行为与历史 `parse_mod` 逐值相等（引擎 == legacy，C1 DIFF=0
-    /// gate）。
+    /// orchestrator 经 pobr-gamedata 恒 load `mod_parser_rules.json` 编译
+    /// `CompiledParserRules` 后调用本 setter。**不调用时**没有回退解析器：全部
+    /// 词条文本按整行 Unsupported 收集（见 [`ParseCtx::parse`]），不生效也不
+    /// 静默丢失。
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`CompiledParserRules::special`]: crate::mod_parser::CompiledParserRules
@@ -132,16 +106,11 @@ impl CalculationSession {
         self.parser_rules = Some(rules);
     }
 
-    /// 当前 ingest 用的解析上下文。优先级：
-    /// 1. 数据驱动 parser 引擎规则（A2，编排层恒注入）→ engine 路径；
-    /// 2. legacy special 规则（M5b）→ legacy special 路径；
-    /// 3. 皆未注入 → 空上下文（历史 `parse_mod` 行为，逐值不变）。
+    /// 当前 ingest 用的解析上下文：注入了引擎规则 → engine 路径；未注入 →
+    /// 空上下文（一切按 Unsupported 收集）。
     fn parse_ctx(&self) -> ParseCtx<'_> {
-        if let Some(rules) = &self.parser_rules {
-            return ParseCtx::with_engine(rules);
-        }
-        match &self.special_rules {
-            Some(rules) => ParseCtx::with_rules(rules, self.special_registry.as_deref()),
+        match &self.parser_rules {
+            Some(rules) => ParseCtx::with_engine(rules),
             None => ParseCtx::none(),
         }
     }
@@ -206,17 +175,19 @@ impl CalculationSession {
         {
             let ctx = self.parse_ctx();
             for text in texts {
-                outcomes.push(ctx.parse(text.as_ref())?);
+                let text = text.as_ref();
+                outcomes.push((ctx.parse(text)?, text.to_string()));
             }
         }
-        for outcome in outcomes {
+        for (outcome, original) in outcomes {
+            // Parsed（含带残留的部分解析）注入，Unsupported 收集。曾对「Parsed+残留」
+            // 整行降级以防 converted-to 族误出 `A Base X` 错值，但那会连合法的 tag 后缀
+            // 从句一并丢弃（`... if you have at least N Red Support Gems Socketed` 的
+            // MultiplierThreshold 阈值行残留 `Max`）；且危险的 converted-to 变体已由
+            // special_mods 数据修复成**干净解析（无残留）**，闸门遂冗余，还原直注。
             match outcome.status {
                 ParseStatus::Parsed => self.env.player.mod_db.add_list(outcome.mods),
-                ParseStatus::Unsupported => {
-                    if let Some(unparsed) = outcome.unparsed {
-                        self.unsupported_modifier_texts.push(unparsed);
-                    }
-                }
+                ParseStatus::Unsupported => self.unsupported_modifier_texts.push(original),
             }
         }
 

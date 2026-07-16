@@ -87,12 +87,9 @@ pub struct ItemIngest {
 ///
 /// 品质（quality）**不在此处**转为 modifier——其逐属性 base 缩放由编排层处理，
 /// 见模块级文档「品质」一节。
-pub fn ingest_item(slot: EquipmentSlot, item: &Item) -> Result<ItemIngest, ParseError> {
-    ingest_item_with_ctx(slot, item, ParseCtx::none())
-}
-
-/// [`ingest_item`] 的 special 规则增强版（M5b B-4）：词条解析走 `ctx`
-/// （`ctx.rules = None` 时逐值等价 [`ingest_item`]）。
+///
+/// 词条解析走 `ctx`（未注入引擎规则的 `ctx` 会把全部词条按 Unsupported 收集，
+/// 见 [`ParseCtx::parse`]）。
 pub fn ingest_item_with_ctx(
     slot: EquipmentSlot,
     item: &Item,
@@ -239,12 +236,6 @@ pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
 ///   按编排层 skip-and-collect 容错口径）收集进 [`ItemIngest::unsupported`]。
 /// - 全部行不可解析时**仍产出空载荷**（M4-m：vendor 条件置位与 modList 无关，
 ///   CalcPerform.lua:1634-1643——`UsingCharm`/`UsingFlask` 按激活槽位置真）。
-pub fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
-    ingest_flask_charm_with_ctx(slot_name, item, ParseCtx::none())
-}
-
-/// [`ingest_flask_charm`] 的解析上下文穿线版（M6 D-T8 A2）：剩余行解析走 `ctx`
-/// （注入引擎规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_flask_charm`]）。
 pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'_>) -> ItemIngest {
     let slot_key: String = slot_name
         .to_lowercase()

@@ -56,14 +56,13 @@ pub use attribute::trace::{
 pub use display_catalog::{display_catalog, extract_display_values};
 pub use ingest::campaign::{CampaignProgress, CampaignReward, CampaignState};
 pub use ingest::character::CharacterBase;
-pub use ingest::item::{ItemIngest, ItemModSection, ingest_item};
+pub use ingest::item::{ItemIngest, ItemModSection, ingest_item_with_ctx};
 pub use ingest::item_text::{ItemTextError, parse_item_text, parse_pob_xml_item};
-pub use ingest::passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes};
+pub use ingest::passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes_with_ctx};
 pub use ingest::skill_source::{
     ActiveSkillJudgeInput, ActiveSkillSpec, GemIngest, GemModSource, SkillGatingError,
-    SupportGemSpec, SupportIngestError, SupportJudgeInput, can_support, ingest_active_gem,
-    ingest_active_gem_with_ctx, ingest_gem, ingest_gem_leveled, ingest_support_gem,
-    ingest_support_gem_with_ctx, judge_support,
+    SupportGemSpec, SupportIngestError, SupportJudgeInput, can_support, ingest_active_gem_with_ctx,
+    ingest_gem_leveled, ingest_gem_with_ctx, ingest_support_gem_with_ctx, judge_support,
 };
 pub use model::config::{CalcConfig, EvalContext, StatLookup};
 pub use model::modifier::{ActorRef, ModTag, ModValue, Modifier};

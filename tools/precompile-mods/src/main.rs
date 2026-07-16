@@ -1,7 +1,7 @@
 //! `precompile-mods`：M6-T7 离线预编译工具。
 //!
 //! 把四层语料（§5.1：C1 build XML / C2 passive_tree / special_derived 展开
-//! / `--corpus-extra` 外挂）去重收集后，逐行过 `pobr-core` 的 `parse_mod`
+//! / `--corpus-extra` 外挂）去重收集后，逐行过 `pobr-core` 数据驱动 scan 引擎
 //! 预解析，产出两份 `data/<version>/generated/` 产物 + 一份覆盖率报表：
 //!
 //! - `generated/parsed_mods.json`：`{ _meta, entries: [{ text, status, mods }] }`
@@ -9,9 +9,6 @@
 //!   `text → Vec<Modifier>` 缓存，热路径零解析（蓝图 §6.2）。
 //! - 覆盖率报表（`--report` 时打印 + 写 `parse-coverage.json`）：parsed /
 //!   unsupported / err 三态计数 + 按命中频率排序的缺口 top-N（蓝图 §6.3）。
-//!
-//! **当前用现有 `parse_mod`（旧引擎）预解析全语料**——B 引擎切换（T3/T4/T5）
-//! 后改 `parse_mod(text, &CompiledParserRules)`，覆盖率自动改善（蓝图 §6.1）。
 //!
 //! 用法（蓝图 §6.1）：
 //! ```text
@@ -21,7 +18,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use precompile_mods::{corpus, parsed, report};
+use precompile_mods::{check, corpus, parsed, report};
 
 /// 解析后的命令行参数。
 struct Args {
@@ -33,6 +30,8 @@ struct Args {
     report: bool,
     /// 覆盖率缺口 top-N 条数（默认 40）。
     top_n: usize,
+    /// 仅校验 overlay JSON 合法性（不预编译产物），非法即非零退出。
+    check_only: bool,
 }
 
 const DEFAULT_TOP_N: usize = 40;
@@ -42,6 +41,7 @@ fn parse_args() -> Result<Args, String> {
     let mut corpus_extra: Option<PathBuf> = None;
     let mut report = false;
     let mut top_n = DEFAULT_TOP_N;
+    let mut check_only = false;
 
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
@@ -53,6 +53,7 @@ fn parse_args() -> Result<Args, String> {
                 corpus_extra = Some(PathBuf::from(it.next().ok_or("--corpus-extra 缺少参数值")?));
             }
             "--report" => report = true,
+            "--check" => check_only = true,
             "--top-n" => {
                 top_n = it
                     .next()
@@ -73,6 +74,7 @@ fn parse_args() -> Result<Args, String> {
         corpus_extra,
         report,
         top_n,
+        check_only,
     })
 }
 
@@ -87,6 +89,8 @@ fn usage() {
          --data <dir>          版本数据目录（如 data/4.5.0.3.4），必需\n  \
          --corpus-extra <file> 外挂语料文件（每行一条 mod 文本）\n  \
          --report              打印覆盖率报表 + 写 generated/parse-coverage.json\n  \
+         --check               仅校验 overlay JSON 合法性（反序列化 + 未知字段 + 编译），\n                        \
+                               非法即非零退出；不写任何产物\n  \
          --top-n N             覆盖率缺口 top-N 条数（默认 {DEFAULT_TOP_N}）\n\
          \n\
          产物：\n  \
@@ -110,6 +114,16 @@ fn run() -> Result<(), String> {
         .unwrap_or_else(|_| args.data_dir.clone());
     if !data_dir.is_dir() {
         return Err(format!("--data 目录不存在：{}", data_dir.display()));
+    }
+
+    // --check：仅校验 overlay JSON 合法性，非法即非零退出，不写产物。
+    if args.check_only {
+        check::check(&data_dir)?;
+        eprintln!(
+            "precompile-mods: overlay JSON 校验通过（{}）",
+            data_dir.display()
+        );
+        return Ok(());
     }
 
     // 1) 语料收集（四层去重，字典序）。

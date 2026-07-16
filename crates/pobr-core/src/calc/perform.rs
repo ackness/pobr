@@ -115,6 +115,13 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         );
         env.cfg.stats.insert("Life".into(), life_pool);
         env.cfg.stats.insert("Mana".into(), mana_pool);
+        // 「per 100 maximum Mana/Life」类 mod（`ModTag::Multiplier{var:"Mana"/"Life"}`，
+        // 如 Arcane Intensity）读 cfg.multipliers，编排层 6c 在上面的防御资源转换
+        // （Eldritch Battery ES→Mana / MoM extra pool）**之前**填入，值是转换前的池。
+        // 刷新为转换后的池，使其按 output.Mana/Life 缩放（vendor PerStat 读 actor 转换后
+        // 终值）。无池转换的 build：mana_pool/life_pool == 6c 值，multiplier 逐位不变（安全）。
+        env.cfg.multipliers.insert("Mana".into(), mana_pool);
+        env.cfg.multipliers.insert("Life".into(), life_pool);
     }
 
     let mut input = MinimalInput::from(env.player.base);

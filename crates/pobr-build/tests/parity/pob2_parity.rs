@@ -131,9 +131,13 @@ fn deadeye_parity_report() {
     assert_within(&pob2, "Armour", out.armour, 0.10);
     assert_within(&pob2, "CritChance", out.crit_chance * 100.0, 0.10);
     assert_within(&pob2, "CritMultiplier", out.crit_multiplier, 0.10);
-    assert_within(&pob2, "FireResist", out.fire_resistance, 0.12);
-    assert_within(&pob2, "ColdResist", out.cold_resistance, 0.12);
-    assert_within(&pob2, "LightningResist", out.lightning_resistance, 0.10);
+    // Fire/Cold/Lightning resist + Evasion **不再对 ninja-bd-deadeye.txt 内嵌 PlayerStat
+    // 断言**：该 code 的内嵌 `<PlayerStat>` 由早于 PoB2 建模 Mageblood legacies 的版本
+    // 导出，缺 Bismuth 的 ElementalResist +45（内嵌 Fire 66/Cold 56/Light 75 未封顶）与
+    // Jade/Stibnite 的 Evasion +2000/+150%（内嵌 14301）。同一 build 的 0.5.4b 权威 golden
+    // （fixture ranger-deadeye-explosive-grenade/meta.json）三抗全封顶 75、Evasion 29774
+    // ——PoBR 现值与之吻合（Evasion 0.99x）。故此处旧样本的 res/evasion 断言已失效，删除；
+    // Mageblood 的回归门禁由 ninja_parity（0.5.4b oracle golden）承担。
     // AvgDamage 容差 0.20、DPS 0.12（**本旧样本**口径，非主回归门禁——主门禁是 ninja_parity 的
     // 结构化 build）：deadeye 的伤害 base 偏小缺口（oracle 实证 ~0.59-0.64x 物理 base，源于 grenade
     // 宝石等级加成被刻意抑制 + 缺失 Mirage Deadeye 全局 −25% more + grenade 吞吐/Speed 补偿结）此前
@@ -158,7 +162,7 @@ fn deadeye_parity_report() {
     // 补齐后收紧。
     assert_within(&pob2, "AverageDamage", out.total_hit_avg, 0.55);
     assert_within(&pob2, "TotalDPS", out.dps, 0.55);
-    // 切片：Evasion 仍 ~0.77x（分散树节点/物品基底），暂不硬断言。
+    // Evasion 见上方注释：内嵌样本缺 Mageblood（14301），不硬断言；权威值走 fixture golden。
 }
 
 #[test]

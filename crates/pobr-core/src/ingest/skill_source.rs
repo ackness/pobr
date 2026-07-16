@@ -491,19 +491,13 @@ pub fn can_support(support: &SupportJudgeInput<'_>, active: &ActiveSkillJudgeInp
 }
 
 // ────────────────────────────────────────────────────
-// ingest_gem — 向后兼容入口（GemModSource）
+// ingest_gem_with_ctx — 宝石词条接入（GemModSource）
 // ────────────────────────────────────────────────────
 
-/// 把一颗宝石的词条文本解析为带宝石归因的 modifier（向后兼容接口）。
+/// 把一颗宝石的词条文本解析为带宝石归因的 modifier。
 ///
 /// 解析失败（结构性错误）向上抛 [`ParseError`]；无法识别的词条不报错，收集进
 /// [`GemIngest::unsupported`]，与 `CalculationSession` 的语义一致。
-pub fn ingest_gem(gem: &GemModSource) -> Result<GemIngest, ParseError> {
-    ingest_gem_with_ctx(gem, crate::mod_parser::ParseCtx::none())
-}
-
-/// [`ingest_gem`] 的 special 规则增强版（M5b B-4）：词条解析走 `ctx`
-/// （`ctx.rules = None` 时逐值等价 [`ingest_gem`]）。
 pub fn ingest_gem_with_ctx(
     gem: &GemModSource,
     ctx: crate::mod_parser::ParseCtx<'_>,
@@ -541,12 +535,7 @@ pub fn ingest_gem_with_ctx(
 // ────────────────────────────────────────────────────
 
 /// 把一颗主动技能宝石接入计算，产出带 `SourceKind::SkillGem` 归因的 modifier。
-pub fn ingest_active_gem(spec: &ActiveSkillSpec) -> Result<GemIngest, ParseError> {
-    ingest_active_gem_with_ctx(spec, crate::mod_parser::ParseCtx::none())
-}
-
-/// [`ingest_active_gem`] 的解析上下文穿线版（M6 D-T8 A2）：词条解析走 `ctx`
-/// （注入引擎规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_active_gem`]）。
+/// 词条解析走 `ctx`。
 pub fn ingest_active_gem_with_ctx(
     spec: &ActiveSkillSpec,
     ctx: crate::mod_parser::ParseCtx<'_>,
@@ -628,19 +617,6 @@ impl std::error::Error for SupportIngestError {
 ///    的 `judge_group_supports`（契约 C2）。
 /// 4. **level/quality 归因**：把 `spec.level_mods` / `spec.quality_mods` 注入为
 ///    `SourceKind::SkillLevel` / `SourceKind::GemQuality` 归因的 modifier。
-pub fn ingest_support_gem(
-    spec: &SupportGemSpec,
-    active_skill_types: &HashSet<String>,
-) -> Result<GemIngest, SupportIngestError> {
-    ingest_support_gem_with_ctx(
-        spec,
-        active_skill_types,
-        crate::mod_parser::ParseCtx::none(),
-    )
-}
-
-/// [`ingest_support_gem`] 的解析上下文穿线版（M6 D-T8 A2）：词条解析走 `ctx`
-/// （注入引擎规则时走数据驱动引擎，`ctx` 空时逐值等价 [`ingest_support_gem`]）。
 pub fn ingest_support_gem_with_ctx(
     spec: &SupportGemSpec,
     active_skill_types: &HashSet<String>,

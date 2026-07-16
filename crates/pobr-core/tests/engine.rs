@@ -4,6 +4,9 @@
 //! 各子模块即 `tests/engine/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
+#[path = "support/parse.rs"]
+mod support;
+
 #[path = "engine/attribution.rs"]
 mod attribution;
 #[path = "engine/attribution_passes.rs"]

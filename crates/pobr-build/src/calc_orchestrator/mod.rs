@@ -30,13 +30,16 @@
 //! 已知切片：武器伤害（attack 技能依赖未接的武器基底）、DoT per-minute、area/speed/crit
 //! 等非伤害族的 SkillStatMap 映射（[`map_skill_stat`] 待逐步补全）。
 
+use std::borrow::Cow;
+
 use pobr_core::calc::minion::AttributeInfusion;
 use pobr_core::calc::{BuffKind, BuffSpec, CalculationSession, MinimalInput, OutputTable};
-use pobr_core::mod_parser::{ParseCtx, parse_mod};
+use pobr_core::mod_parser::ParseCtx;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::rules::stat_map_engine::{self, StatMapCatalog};
 use pobr_core::skill_source::GemModSource;
-use pobr_core::{CampaignProgress, CharacterBase, ModTag, Modifier};
+use pobr_core::{CalcConfig, CampaignProgress, CharacterBase, ModTag, Modifier};
+use pobr_data::catalog::GrantedEffectDef;
 use pobr_data::catalog::local_mods::WeaponLocalModsDef;
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
@@ -147,13 +150,46 @@ pub enum StatMapMode {
     Compare,
 }
 
+/// text-only 路径（[`calculate`]）的默认解析规则：仓库数据目录
+/// （`pobr_gamedata::current_data_dir()`）加载 + 编译一次、进程内缓存。
+///
+/// 删除 legacy 解析器后没有内建回退解析器——数据目录缺失/编译失败时返回错误
+/// （fail-fast，不静默把全部词条当 Unsupported）。带数据的主路径
+/// （[`calculate_with_data`]）不经过此函数（规则随 [`BuildData::load`] 编译）。
+fn default_parser_rules()
+-> Result<std::sync::Arc<pobr_core::mod_parser::CompiledParserRules>, BuildError> {
+    use std::sync::{Arc, OnceLock};
+    static RULES: OnceLock<Result<Arc<pobr_core::mod_parser::CompiledParserRules>, String>> =
+        OnceLock::new();
+    RULES
+        .get_or_init(|| {
+            let data = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
+            let doc = data
+                .mod_parser_rules()
+                .map_err(|e| format!("加载 mod_parser_rules.json 失败：{e}"))?
+                .ok_or_else(|| "数据目录缺 overlay/mod_parser_rules.json".to_string())?;
+            let special = data
+                .load_ruleset()
+                .map_err(|e| format!("加载 ruleset 失败：{e}"))?
+                .special_mods
+                .unwrap_or_default();
+            pobr_core::mod_parser::CompiledParserRules::compile_with_special(&doc, &special)
+                .map(Arc::new)
+                .map_err(|e| format!("parser 规则编译失败：{e:?}"))
+        })
+        .clone()
+        .map_err(BuildError::Parse)
+}
+
 /// 对一个 [`Build`] 执行 minimal 计算，返回标量 [`OutputTable`]。
 ///
 /// **text-only 路径**（向后兼容）：装备词条作为文本灌入，丢失归因；天赋 / 宝石 /
-/// 角色基础 / 敌人均不解析。需要端到端归因请用 [`calculate_with_data`]。
+/// 角色基础 / 敌人均不解析。词条解析走 [`default_parser_rules`]（默认数据目录，
+/// 缺失即报错）。需要端到端归因请用 [`calculate_with_data`]。
 pub fn calculate(build: &Build, options: &OrchestratorOptions) -> Result<OutputTable, BuildError> {
     let cfg = build.config.to_calc_config();
     let mut session = CalculationSession::new(options.base_input).with_config(cfg);
+    session.set_parser_rules(default_parser_rules()?);
 
     // 装备词条：enchant → implicit → explicit 顺序注入（与 PoB 来源分层一致）。
     let item_texts = collect_item_texts(build);
@@ -351,52 +387,230 @@ pub fn calculate_with_data_session(
             .or_else(|| data.stat_map_catalog.clone()),
     );
 
+    // ---- 阶段 0：build 视图变换（Ring3 门控 → 装备授予技能合成 → 品质折算）----
+    let build = stage_build_view(build, data);
+    let build: &Build = &build;
+
+    // ---- 阶段 1-4：session 前解析（顺序即依赖：主技能 → config → cfg → 武器基底）----
+    let mut ctx = StageCtx::new(build, data, options);
+    stage_resolve_main_skill(&mut ctx);
+    stage_resolve_config(&mut ctx);
+    stage_build_cfg(&mut ctx);
+    stage_weapon_bases(&mut ctx);
+
+    // ---- 阶段 5+：session 装配 + 来源注入（编号沿用既有装配顺序文档）----
+    let mut session = stage_create_session(&mut ctx);
+    stage_hand_sources(&mut session, &ctx);
+    stage_cooldown_bypass(&mut session, &ctx);
+
+    // 1. 角色基础（等级 + 职业派生属性）+ 元素抗性惩罚（战役进度档位）。
+    inject_character_base(&mut session, build, data, options, &ctx.resolved_config);
+
+    // 1b/1b-ii/1c. 主技能 base/品质/未选set/DoT/尸爆/弩/support/trigger + 伤害倍率 + 武器暴击。
+    inject_main_skill_mods(
+        &mut session,
+        build,
+        data,
+        options,
+        &ctx.main_skill,
+        ctx.weapon.as_ref(),
+        ctx.dmg_mult,
+    );
+
+    // 1d. 装备基底防御 / 盾基底格挡 / 件级 Spirit / Ward → BASE 词条。
+    inject_defence_base(&mut session, build, data);
+
+    // 2. 装备：归因路径注入（逐件 filter / Kalandra 镜射 / 局部词条剔除 / 槽位加成数值副本）。
+    inject_items(&mut session, build, data, ctx.off_weapon.is_some())?;
+
+    // 2b. 珠宝（天赋树/深渊槽）：词条按全局注入。
+    stage_inject_jewels(&mut session, &ctx)?;
+
+    // 2b''. 激活态药剂/护符载荷注入（env_finalize 阶段 3 合并消费）。
+    inject_flasks_charms(&mut session, build, data);
+
+    // 2b'. 范围珠宝授予词条展开为全局 modifier text 注入。
+    stage_inject_radius_jewels(&mut session, &ctx)?;
+
+    // 2c/2d/2e. 任务奖励全局文本 + config 解释器玩家 mod + customMods 行通道。
+    stage_inject_config_mods(&mut session, &ctx)?;
+
+    // 3/3a'/3b/3b'/3c. 天赋树节点 + 油涂授予 + 小点/Notable 效果缩放 + keystone 映射。
+    stage_inject_passives(&mut session, &ctx)?;
+
+    // 4. 技能宝石：按 active/support 分类，经各自归因入口注入。
+    inject_skill_gems(&mut session, build, data)?;
+
+    // 4b/4b'/4b''. 光环·诅咒 BuffSpec + support 授予 buff + herald 在场计数/条件。
+    inject_buffs_and_heralds(&mut session, build, data);
+
+    // 4c/4c'/4d. Mark 自身进攻 buff + 非主组曝光 support + Spirit 预留聚合。
+    inject_self_buff_exposure_spirit(
+        &mut session,
+        build,
+        data,
+        ctx.main_skill.as_ref().map(|(_, g, _)| *g),
+    );
+
+    // 5/5a/5b. 敌人配置（setup_enemy）+ config enemy 桶 + 玩家施加的元素曝光。
+    inject_enemy(
+        &mut session,
+        build,
+        options,
+        ctx.enemy_tier,
+        &ctx.resolved_config,
+    );
+
+    // 6. 额外全局文本（战役奖励 / 调试覆盖）。
+    stage_inject_extra_texts(&mut session, &ctx)?;
+
+    // 6b. PoE2 属性派生（最终 Str/Dex/Int → Life/Mana/Accuracy 增量）。
+    inject_attribute_derivation(&mut session, build, data, options);
+
+    // 6c. per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量）。
+    inject_per_x_multipliers(&mut session, build, data);
+
+    // 6c2. 已装辅助宝石按颜色计数（PoB2 CalcSetup.lua:2015-2044）→
+    //      Red/Green/BlueSupportGems multipliers（MultiplierThreshold 钉值条目
+    //      「if you have at least 10 <color> Support Gems Socketed」的分母）。
+    inject_support_gem_counts(&mut session, build, data);
+
+    // 6d. 来源授予的条件 flag → cfg 条件桥接（Bonded modifiers / Arcane Surge）。
+    inject_condition_bridges(&mut session);
+
+    // 诊断 dump（POBR_DBG_UNSUPPORTED / ALLMODS / STAT，parity 排查用）。
+    stage_debug_dumps(&session);
+
+    // 召唤物接线（M5a-B2）：在全部玩家来源注入后、perform 前，识别召唤宝石
+    // （`effect_minion_list` 非空）并接入 `Env.minions`。perform 末尾 `perform_minions`
+    // 对每个召唤物跑同一套 offence/defence，结果落 `OutputTable.minions`。
+    // gate：仅当某主动技能解析出非空 minion_list 才接入——非召唤 build 永不触发，
+    // 对既有 18-build 零行为影响。
+    spawn_minions(&mut session, build, data, &options.extra_modifier_texts);
+
+    // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等
+    // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
+    session.perform_minimal();
+    Ok(session)
+}
+
+/// [`calculate_with_data_session`] 的阶段间上下文：session 前各解析阶段
+/// （[`stage_resolve_main_skill`] → [`stage_resolve_config`] → [`stage_build_cfg`]
+/// → [`stage_weapon_bases`]）依次填充字段，session 阶段只读消费。
+/// 各字段注释标注产出阶段；阶段间的顺序约束见各 stage fn 的 doc comment。
+struct StageCtx<'a> {
+    build: &'a Build,
+    data: &'a BuildData,
+    options: &'a DataOrchestratorOptions,
+    /// 主技能分等级参数 + 所在组 + 真实技能 id（stage_resolve_main_skill）。
+    main_skill: Option<(ResolvedSkillLevel, &'a SocketGroup, &'a str)>,
+    /// 主技能授予效果定义（stage_resolve_main_skill；已跳过 meta/触发壳）。
+    main_effect: Option<&'a GrantedEffectDef>,
+    /// 主技能**终态**类型集合（stage_resolve_main_skill；addSkillTypes 不动点）。
+    main_skill_types: Vec<String>,
+    /// 主技能类型 → cfg 伤害 flag（stage_resolve_main_skill）。
+    skill_flags: ModFlags,
+    /// 主技能类型 → `cfg.skill_types` 判别位（stage_resolve_main_skill）。
+    skill_type_bits: SkillTypes,
+    /// 主技能关键词 + 主武器类别 → 额外伤害缩放 ModName（stage_resolve_main_skill；
+    /// stage_build_cfg 取走折进 cfg）。
+    dmg_keywords: Vec<String>,
+    /// config 消费视图（stage_resolve_config）。
+    resolved_config: crate::config_resolve::ResolvedConfig,
+    /// 计算上下文（stage_resolve_config 产 base，stage_build_cfg 叠加技能派生；
+    /// stage_create_session 取走后为默认值）。
+    cfg: CalcConfig,
+    /// 敌人档位（stage_build_cfg：build XML 显式值优先，缺省回退编排选项）。
+    enemy_tier: EnemyTier,
+    /// 计算基础输入（new 取编排选项，stage_weapon_bases 回填行动速率）。
+    base_input: MinimalInput,
+    /// 技能伤害倍率（stage_weapon_bases）。
+    dmg_mult: f64,
+    /// 主手武器基底贡献（stage_weapon_bases；仅攻击技能）。
+    weapon: Option<WeaponContribution>,
+    /// 双持副手武器基底贡献（stage_weapon_bases）。
+    off_weapon: Option<WeaponContribution>,
+    /// 主手 HandSource 折算值（stage_weapon_bases）。
+    hand_weapon: Option<pobr_core::calc::WeaponBase>,
+    /// 副手 HandSource 折算值（stage_weapon_bases）。
+    off_hand_weapon: Option<pobr_core::calc::WeaponBase>,
+    /// 主技能是否绕过冷却（stage_weapon_bases；消耗充能即用，如 Flicker）。
+    bypasses_cooldown: bool,
+}
+
+impl<'a> StageCtx<'a> {
+    fn new(build: &'a Build, data: &'a BuildData, options: &'a DataOrchestratorOptions) -> Self {
+        Self {
+            build,
+            data,
+            options,
+            main_skill: None,
+            main_effect: None,
+            main_skill_types: Vec::new(),
+            skill_flags: ModFlags::NONE,
+            skill_type_bits: SkillTypes::NONE,
+            dmg_keywords: Vec::new(),
+            resolved_config: crate::config_resolve::ResolvedConfig::default(),
+            cfg: CalcConfig::default(),
+            enemy_tier: options.enemy_tier,
+            base_input: options.base_input,
+            dmg_mult: 1.0,
+            weapon: None,
+            off_weapon: None,
+            hand_weapon: None,
+            off_hand_weapon: None,
+            bypasses_cooldown: false,
+        }
+    }
+}
+
+/// 阶段 0：build 视图变换（原 shadow 变量链的收编形态）——每步仅在生效时克隆
+/// （Cow），与原地 build 逐值等价。三步顺序即 vendor CalcSetup 的装备预处理顺序：
+/// 先剔除不生效物品，再从剩余物品合成授予技能组，最后折算宝石品质。
+fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
+    let mut build = Cow::Borrowed(build);
+
     // Ring 3 门控（PoB2 CalcSetup.lua:821）：树上未分配『+1 Ring Slot』
     // （vendor flag `AdditionalRingSlot`，ModParser.lua:3128；Ritualist
     // 『Unfurled Finger』）时，Ring 3 物品整体忽略——一次性从 build 视图剔除，
     // 使后续全部消费点（注入/宝石等级扫描/文本收集）一致生效。
-    let ring3_gated;
-    let build = match gate_locked_ring3(build, data) {
-        Some(gated) => {
-            ring3_gated = gated;
-            &ring3_gated
-        }
-        None => build,
-    };
+    if let Some(gated) = gate_locked_ring3(&build, data) {
+        build = Cow::Owned(gated);
+    }
 
     // 装备授予技能（`Grants Skill: [Level N] X`）→ 合成技能组（vendor
     // CalcSetup.lua:1414-1453 建独立 socket group；按来源、槽位、技能和等级判重，
     // PoB2 XML 预展开组已存在时零行为变化）。
-    let granted_augmented;
-    let build = match augment_item_granted_skills(build, data) {
-        Some(augmented) => {
-            granted_augmented = augmented;
-            &granted_augmented
-        }
-        None => build,
-    };
+    if let Some(augmented) = augment_item_granted_skills(&build, data) {
+        build = Cow::Owned(augmented);
+    }
 
     // 宝石品质加成（M4-H）：「+N% to Quality of all <X> Skills」（树小点/装备）
     // 预先折进每个宝石的 quality（vendor applyGemMods 对每个 gem effect 叠加
     // effect.quality，CalcSetup.lua:410-435），使下游全部品质消费点一致生效。
-    let quality_adjusted;
-    let build = match apply_gem_quality_bonuses(build, data) {
-        Some(adjusted) => {
-            quality_adjusted = adjusted;
-            &quality_adjusted
-        }
-        None => build,
-    };
+    if let Some(adjusted) = apply_gem_quality_bonuses(&build, data) {
+        build = Cow::Owned(adjusted);
+    }
 
+    build
+}
+
+/// 阶段 1：主技能解析——分等级参数、终态 skillTypes 不动点（vendor
+/// CalcActiveSkill.lua:179-214）、伤害 flag / 判别位 / 伤害关键词。必须最先
+/// 运行：行动速率要进 base_input（stage_weapon_bases）、类型 flag / 战斗条件
+/// 要进 cfg（stage_build_cfg），两者均消费本阶段产物。
+fn stage_resolve_main_skill(ctx: &mut StageCtx<'_>) {
+    let (build, data) = (ctx.build, ctx.data);
     // 主技能分等级参数（cast/attack 时间 → 行动速率；cost / cooldown 经 BASE 词条注入）。
     // 在建 session 前先解析，以便把行动速率写入 base_input + 据其类型设 cfg 伤害 flag。
-    let main_skill = resolve_main_skill(build, data);
+    ctx.main_skill = resolve_main_skill(build, data);
 
     // 主技能类型 → cfg 伤害 flag（Attack/Spell/Projectile/Area/Melee），使
     // `increased <Projectile|Area|Spell|Melee> Damage` 对该技能生效（damage 聚合按 flag 取名）。
     // 主技能效果定义：用 resolve_main_skill 解析出的**真实主技能 id**（已跳过 meta/触发壳），
     // 而非组首个 gem 的 active_skill_id（多主动技能组里那是 meta 壳，会导致 flag/伤害类型错配）。
-    let main_effect = main_skill
+    ctx.main_effect = ctx
+        .main_skill
         .as_ref()
         .and_then(|(_, _, skill_id)| data.granted_effects.get(*skill_id));
     // （M4-m）主技能**终态**类型集合 = 自身 skill_types + 兼容 support 的
@@ -404,7 +618,8 @@ pub fn calculate_with_data_session(
     // 并进 activeSkill.skillTypes，后续 flag/条件派生均以终态为准——如 Cast on
     // Critical 给被触发法术加 `Triggered`，使「Triggered Spells deal …」族词条
     // 命中 + 战斗条件触发豁免按 vendor :248 生效）。排序保证确定性。
-    let main_skill_types: Vec<String> = main_skill
+    ctx.main_skill_types = ctx
+        .main_skill
         .as_ref()
         .map(|(_, group, skill_id)| {
             let mut types: Vec<String> = judge_group_supports(group, data, skill_id)
@@ -425,27 +640,34 @@ pub fn calculate_with_data_session(
             types
         })
         .unwrap_or_default();
-    let skill_flags = main_effect
-        .map(|_| skill_type_flags(&main_skill_types))
+    ctx.skill_flags = ctx
+        .main_effect
+        .map(|_| skill_type_flags(&ctx.main_skill_types))
         .unwrap_or(ModFlags::NONE);
     // （M3-W5 修复）主技能类型 → `cfg.skill_types` 判别位：`is_attack()` 驱动命中
     // 检定（攻击才做精准/闪避检定，vendor CalcOffence.lua:2611）；见 skill_type_bits doc。
-    let skill_type_bits = main_effect
-        .map(|_| skill_type_bits(&main_skill_types))
+    ctx.skill_type_bits = ctx
+        .main_effect
+        .map(|_| skill_type_bits(&ctx.main_skill_types))
         .unwrap_or(SkillTypes::NONE);
-    let dmg_keywords = damage_keywords(
+    ctx.dmg_keywords = damage_keywords(
         build,
         data,
-        main_effect
-            .map(|_| main_skill_types.as_slice())
+        ctx.main_effect
+            .map(|_| ctx.main_skill_types.as_slice())
             .unwrap_or(&[]),
     );
-    // config 消费收口（M3-T1 A5 主路径切换）：ConfigCatalog 可用时走
-    // `config_interpreter::interpret`（raw_inputs → conditions/multipliers/标量
-    // 包装/Config 归因 modifier）；缺 catalog 回退旧 parse_config 产出（R7）。
-    let resolved_config =
-        crate::config_resolve::resolve_config(build, data.config_catalog.as_deref());
-    let mut base_cfg = resolved_config.config.to_calc_config();
+}
+
+/// 阶段 2：config 消费收口（M3-T1 A5 主路径切换）——ConfigCatalog 可用时走
+/// `config_interpreter::interpret`（raw_inputs → conditions/multipliers/标量
+/// 包装/Config 归因 modifier）；缺 catalog 回退旧 parse_config 产出（R7）。
+/// 产出 base cfg（含 Effective 门控的 config 乘数桥回填），stage_build_cfg
+/// 在其上叠加技能派生。
+fn stage_resolve_config(ctx: &mut StageCtx<'_>) {
+    ctx.resolved_config =
+        crate::config_resolve::resolve_config(ctx.build, ctx.data.config_catalog.as_deref());
+    let mut base_cfg = ctx.resolved_config.config.to_calc_config();
     // Effective 门控的 config 乘数桥（M4-H）：interpreter 的 Condition 裸效果桥
     // 只收"无 tag"条目，`Multiplier:<X>` 带 `Condition:Effective` tag 的 count 型
     // placeholder（vendor ConfigOptions.lua:1642 `multiplierDifferentGrenadeFired`
@@ -453,8 +675,8 @@ pub fn calculate_with_data_session(
     // `GetMultiplier` 直查 modDB（tag 按 cfg 求值，EFFECTIVE 模式 Effective 恒真，
     // CalcSetup.lua:583-588）；PoBR multiplier 走 cfg 快照 → 在此按 mode_effective
     // 评估后回填（仅 Effective 单 tag 形态；其余 tag 形态维持 mod 通道）。
-    if options.mode_effective {
-        for m in &resolved_config.player_mods {
+    if ctx.options.mode_effective {
+        for m in &ctx.resolved_config.player_mods {
             // 仅收「带 tag 且全为 Effective」的形态——**空 tag 条目必须排除**：
             // 裸 `Multiplier:` 效果已由 interpreter 裸效果回填进 cfg.multipliers
             // （config_interpreter.rs:362-377），此处再加即双计（M4-n 实查：
@@ -476,19 +698,29 @@ pub fn calculate_with_data_session(
             }
         }
     }
-    let base_cfg = base_cfg;
+    ctx.cfg = base_cfg;
+}
+
+/// 阶段 3：cfg 装配——base cfg 叠加主技能伤害 flag / 判别位 / 显示名 / 关键词 /
+/// 模式开关（vendor CalcSetup.lua:583-597 buffMode "EFFECTIVE" 口径），再补
+/// 战斗条件、敌人档位条件、PoB2 条件蕴含链与 build-state 装备/武器条件。
+/// 依赖阶段 1/2 产物（skill_flags / base cfg），必须先于 session 创建
+/// （with_config 整体覆盖 cfg）。
+fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
+    let (build, data, options) = (ctx.build, ctx.data, ctx.options);
+    let base_cfg = std::mem::take(&mut ctx.cfg);
+    let base_flags = base_cfg.flags;
     let mut cfg = base_cfg
-        .clone()
-        .with_flags(base_cfg.flags | skill_flags)
-        .with_skill_types(skill_type_bits)
+        .with_flags(base_flags | ctx.skill_flags)
+        .with_skill_types(ctx.skill_type_bits)
         // 主技能显示名（vendor `skillCfg.skillName`）：special 通道 `SkillName` tag
         // 的匹配口径。与 gem_level_category_matches 同源（skill_name_from_id，小写）。
         .with_skill_name(
-            main_skill
+            ctx.main_skill
                 .as_ref()
                 .map(|(_, _, skill_id)| skill_resolve::skill_name_from_id(skill_id)),
         )
-        .with_damage_keywords(dmg_keywords)
+        .with_damage_keywords(std::mem::take(&mut ctx.dmg_keywords))
         .with_mode_effective(options.mode_effective)
         // （M3-T3 C5-2 切换，D5 MAIN 口径）：vendor 非 CALCS 模式 buffMode 恒
         // "EFFECTIVE"（CalcSetup.lua:583-597 → env.mode_buffs = true），编排入口
@@ -526,21 +758,22 @@ pub fn calculate_with_data_session(
     // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免（M4-m：
     // 用**终态**类型集合——meta support 的 addSkillTypes `Triggered` 使豁免
     // 按 vendor :248 生效）。
-    if main_effect.is_some() {
-        for cond in combat_conditions(&main_skill_types, skill_flags) {
+    if ctx.main_effect.is_some() {
+        for cond in combat_conditions(&ctx.main_skill_types, ctx.skill_flags) {
             cfg = cfg.with_condition(cond, true);
         }
     }
     // 敌人档位（19-G3 接线）：build XML Config 显式保存的 `enemyIsBoss` 优先；
     // 省略时回退调用方编排选项（PoB2 defaultIndex=3 = Pinnacle，与既有调用方一致）。
-    let enemy_tier = resolved_config
+    ctx.enemy_tier = ctx
+        .resolved_config
         .config
         .enemy_tier
         .unwrap_or(options.enemy_tier);
     // 敌人稀有度条件：DPS 默认 vs Boss/Pinnacle/Uber（= Unique）→ 置真，使
     // `... against Rare or Unique Enemies` 这类条件型增伤生效（PoB 的 boss DPS 口径）。
     if matches!(
-        enemy_tier,
+        ctx.enemy_tier,
         EnemyTier::Boss | EnemyTier::Pinnacle | EnemyTier::Uber
     ) {
         cfg = cfg
@@ -581,14 +814,6 @@ pub fn calculate_with_data_session(
     // M4-J：冷却限速主技能（grenade）不再例外——旧「攻速补偿吞吐」近似已删除，
     // 速度链末端统一 `min(rate, repeats/effective_cooldown)`（vendor 同序），武器类
     // 攻速词条不会再错误放大 grenade rate，按 vendor 全量启用武器类条件 / 武器位 flags。
-    // 主技能是否绕过冷却（消耗充能即用，如 Flicker）→ `CooldownBypass` 注入（单一来源）。
-    let bypasses_cooldown = main_effect
-        .map(|e| {
-            e.skill_types
-                .iter()
-                .any(|t| t == "SkillConsumesPowerChargesOnUse")
-        })
-        .unwrap_or(false);
     for var in weapon_type_conditions(build, data) {
         cfg = cfg.with_condition(var, true);
     }
@@ -599,16 +824,25 @@ pub fn calculate_with_data_session(
     if !weapon_bits.is_empty() {
         cfg.flags |= weapon_bits;
     }
-    let mut base_input = options.base_input;
-    if let Some((skill, _, _)) = &main_skill
+    ctx.cfg = cfg;
+}
+
+/// 阶段 4：武器基底装配——主技能 use_time → 行动速率、技能伤害倍率、主/副手
+/// 武器基底贡献折算为 HandSource 用 [`pobr_core::calc::WeaponBase`]、冷却绕过
+/// 判定。依赖阶段 1 主技能产物；必须先于 session 创建（base_input 进
+/// `CalculationSession::new`）。
+fn stage_weapon_bases(ctx: &mut StageCtx<'_>) {
+    let (build, data) = (ctx.build, ctx.data);
+    if let Some((skill, _, _)) = &ctx.main_skill
         && let Some(use_time) = skill.use_time_s
         && use_time > 0.0
     {
-        base_input.base_action_rate = 1.0 / use_time;
+        ctx.base_input.base_action_rate = 1.0 / use_time;
     }
 
     // 技能伤害倍率（PoB baseMultiplier，如 grenade 7.57）：放大武器击中 + 附加伤害。
-    let dmg_mult = main_skill
+    ctx.dmg_mult = ctx
+        .main_skill
         .as_ref()
         .map(|(s, _, _)| s.damage_multiplier)
         .filter(|m| *m > 0.0)
@@ -622,18 +856,22 @@ pub fn calculate_with_data_session(
     // `perform` 内 `run_hand_passes` 把同一组值注入 per-hand `MinimalInput` 副本——
     // 单 HandSource 与旧折算逐值等价（OR 直通，等价性测试钉死）。折算口径不变：
     // phys × dmg_mult、attack_rate × attackSpeedMultiplier（CalcOffence L2721-2723）。
-    let weapon = main_skill
+    ctx.weapon = ctx
+        .main_skill
         .as_ref()
         .and_then(|(skill, _, skill_id)| weapon_contribution(build, data, skill_id, skill));
     // 双持副手（W-B2）：主手是单手真武器且 Weapon2 也是武器基底时，装配第二个
     // off-hand 武器源（vendor weapon2Attack pass，CalcOffence.lua:2369-2449）。
-    let off_weapon = weapon
+    ctx.off_weapon = ctx
+        .weapon
         .as_ref()
-        .and_then(|_| dual_wield_off_hand_contribution(build, data, main_effect));
-    let asm = main_skill
+        .and_then(|_| dual_wield_off_hand_contribution(build, data, ctx.main_effect));
+    let asm = ctx
+        .main_skill
         .as_ref()
         .and_then(|(s, _, _)| s.attack_speed_multiplier)
         .map_or(1.0, |m| 1.0 + m / 100.0);
+    let dmg_mult = ctx.dmg_mult;
     let to_hand_base = |w: &WeaponContribution| pobr_core::calc::WeaponBase {
         hit_min: w.phys_min * dmg_mult,
         hit_max: w.phys_max * dmg_mult,
@@ -641,9 +879,8 @@ pub fn calculate_with_data_session(
         crit_chance: w.crit_chance,
         flags: w.flags,
     };
-    let hand_weapon: Option<pobr_core::calc::WeaponBase> = weapon.as_ref().map(to_hand_base);
-    let off_hand_weapon: Option<pobr_core::calc::WeaponBase> =
-        off_weapon.as_ref().map(to_hand_base);
+    ctx.hand_weapon = ctx.weapon.as_ref().map(to_hand_base);
+    ctx.off_hand_weapon = ctx.off_weapon.as_ref().map(to_hand_base);
 
     // 冷却限速：PoB 顺序——先把速度全部 inc/more 算完，再 `min(rate, 1/effective_cooldown)`
     // （effective_cooldown 经 `CooldownRecovery` 缩短）。该 min 下沉到 offence.rs
@@ -655,23 +892,32 @@ pub fn calculate_with_data_session(
     //
     // 例外（绕过冷却）：消耗充能重置冷却的技能（如 Flicker Strike，
     // `SkillConsumesPowerChargesOnUse`）→ PoB2 Cooldown=nil，按攻速出手不限速 → `CooldownBypass`。
+    //
+    // 主技能是否绕过冷却（消耗充能即用，如 Flicker）→ `CooldownBypass` 注入（单一来源）。
+    ctx.bypasses_cooldown = ctx
+        .main_effect
+        .map(|e| {
+            e.skill_types
+                .iter()
+                .any(|t| t == "SkillConsumesPowerChargesOnUse")
+        })
+        .unwrap_or(false);
+}
 
-    let mut session = CalculationSession::new(base_input).with_config(cfg);
+/// 阶段 5：session 创建 + 运行时规则包注入（constants / special / parser 规则、
+/// buff 定义 / handler、curse 优先级、取整精度）。规则注入必须在后续任何
+/// `add_item` / `add_passive_nodes` / `add_gem` 之前（各注入点注释注明依据）。
+fn stage_create_session(ctx: &mut StageCtx<'_>) -> CalculationSession {
+    let data = ctx.data;
+    let mut session =
+        CalculationSession::new(ctx.base_input).with_config(std::mem::take(&mut ctx.cfg));
     // M0-W3 注入管道：把 GameData 加载的运行时常量包注入 calc（必须在 with_config
     // 之后——with_config 整体覆盖 cfg）。数据与 Default fallback 逐值相等，零行为变化。
     session.set_constants(data.constants.clone());
-    // M5b B-4 消费激活：special 词条规则集注入，item/passive/gem ingest 词条解析
-    // 走 special 整行查表（命中即产 mod，对照 PoB2 specialModList 锚定全行优先级）。
-    // 须在下方 add_item/add_passive_nodes/add_gem 之前。缺表（旧数据包）= 不注入
-    // （ingest 行为与历史 parse_mod 逐值相等，R7 缺表容忍）。
-    if let Some(special_rules) = &data.special_rules {
-        session.set_special_rules(special_rules.clone(), Some(data.special_registry.clone()));
-    }
-    // M6 D-T8 A2 切换：数据驱动 ModParser 引擎规则注入。
-    // 须在下方 add_item/add_passive_nodes/add_gem 之前——注入后 `parse_ctx` 优先走
-    // 数据驱动 scan 引擎（终局路径），优先于 legacy special。缺 parser_rules
-    // （旧数据包）= 不注入（ingest 回退 legacy/special，逐值不变；C1 DIFF=0 gate
-    // 证引擎与 legacy 逐字节等价）。
+    // 数据驱动 ModParser 引擎规则注入（唯一解析器，special 通道已编译在内）。
+    // 须在下方 add_item/add_passive_nodes/add_gem 之前。缺 parser_rules
+    // （旧数据包）= 不注入——此时全部词条按整行 Unsupported 收集（不生效、
+    // 可见于 unsupported 报表），不再有 legacy 回退。
     if let Some(parser_rules) = &data.parser_rules {
         session.set_parser_rules(parser_rules.clone());
     }
@@ -691,18 +937,25 @@ pub fn calculate_with_data_session(
     // ScaleAddMod 缩放消费，T1 写原语同一份规则；overlay 数据与先期硬编码命名族
     // 镜像在全部入库条目上逐值相等，ninja_parity 逐值验证）。
     session.set_high_precision_rules(data.high_precision.clone());
-    // M4-T2 W-B2：武器基底经 HandSource 注入（单 pass 直通——OR 模式逐值等价于
-    // 旧 base_input 折算）。双持（Weapon2 为武器基底）装配第二个 off-hand
-    // HandSource，per-hand 武器位随 WeaponBase::flags 进 hand pass；
-    // doubleHitsWhenDualWielding 等 W-D1 数据通道（恒 false）。
-    // 非武器攻击（Shield Wall 类）的 source 是 off-hand（PoB2 CalcOffence L2418-2431）。
-    if let Some(wb) = hand_weapon {
-        let is_off_hand_source = main_effect
+    session
+}
+
+/// 阶段 6：武器基底经 HandSource 注入——依赖阶段 4 折算的 WeaponBase。
+///
+/// M4-T2 W-B2：武器基底经 HandSource 注入（单 pass 直通——OR 模式逐值等价于
+/// 旧 base_input 折算）。双持（Weapon2 为武器基底）装配第二个 off-hand
+/// HandSource，per-hand 武器位随 WeaponBase::flags 进 hand pass；
+/// doubleHitsWhenDualWielding 等 W-D1 数据通道（恒 false）。
+/// 非武器攻击（Shield Wall 类）的 source 是 off-hand（PoB2 CalcOffence L2418-2431）。
+fn stage_hand_sources(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
+    if let Some(wb) = ctx.hand_weapon {
+        let is_off_hand_source = ctx
+            .main_effect
             .map(|e| e.is_attack() && e.is_non_weapon_attack())
             .unwrap_or(false);
         let sources = if is_off_hand_source {
             vec![pobr_core::calc::HandSource::off_hand(wb)]
-        } else if let Some(ohb) = off_hand_weapon {
+        } else if let Some(ohb) = ctx.off_hand_weapon {
             vec![
                 pobr_core::calc::HandSource::main_hand(wb),
                 pobr_core::calc::HandSource::off_hand(ohb),
@@ -712,38 +965,26 @@ pub fn calculate_with_data_session(
         };
         session.set_hand_sources(sources, false);
     }
+}
 
-    if bypasses_cooldown {
+/// 阶段 7：冷却绕过 flag 注入（阶段 4 判定；`CooldownBypass` 单一来源）。
+fn stage_cooldown_bypass(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
+    if ctx.bypasses_cooldown {
         let origin =
             ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.cooldownBypass"))
                 .with_raw_text("skill bypasses cooldown (consumes charges on use)");
         session.add_modifiers(vec![Modifier::flag("CooldownBypass").with_origin(origin)]);
     }
+}
 
-    // 1. 角色基础（等级 + 职业派生属性）+ 元素抗性惩罚（战役进度档位）。
-    inject_character_base(&mut session, build, data, options, &resolved_config);
-
-    // 1b/1b-ii/1c. 主技能 base/品质/未选set/DoT/尸爆/弩/support/trigger + 伤害倍率 + 武器暴击。
-    inject_main_skill_mods(
-        &mut session,
-        build,
-        data,
-        options,
-        &main_skill,
-        weapon.as_ref(),
-        dmg_mult,
-    );
-
-    // 1d. 装备基底防御 / 盾基底格挡 / 件级 Spirit / Ward → BASE 词条。
-    inject_defence_base(&mut session, build, data);
-
-    // 2. 装备：归因路径注入（逐件 filter / Kalandra 镜射 / 局部词条剔除 / 槽位加成数值副本）。
-    inject_items(&mut session, build, data, off_weapon.is_some())?;
-
-    // 2b. 珠宝（天赋树/深渊槽）：词条按**全局**注入（多数珠宝为全局 mod；radius 珠宝
-    //     当前近似为全局）。沿用 add_item 的 skip-and-collect 容错。
-    for jewel in &build.jewels {
-        let filtered = filter_item_parseable(jewel, engine_ctx(data));
+/// 2b. 珠宝（天赋树/深渊槽）：词条按**全局**注入（多数珠宝为全局 mod；radius 珠宝
+///     当前近似为全局）。沿用 add_item 的 skip-and-collect 容错。
+fn stage_inject_jewels(
+    session: &mut CalculationSession,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    for jewel in &ctx.build.jewels {
+        let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data));
         let texts: Vec<&str> = filtered
             .implicit_texts
             .iter()
@@ -755,13 +996,17 @@ pub fn calculate_with_data_session(
             .add_modifier_texts(texts)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
+    Ok(())
+}
 
-    // 2b''. 激活态药剂/护符载荷注入（env_finalize 阶段 3 合并消费）。
-    inject_flasks_charms(&mut session, build, data);
-
-    // 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
-    //      已分配**对应种类节点数 × 授予，展开为全局 modifier text 注入（PoB2 几何口径）。
-    //      与装备/天赋路径一致，先 skip-and-collect 过滤硬失败词条，避免单条中止整批。
+/// 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
+///      已分配**对应种类节点数 × 授予，展开为全局 modifier text 注入（PoB2 几何口径）。
+///      与装备/天赋路径一致，先 skip-and-collect 过滤硬失败词条，避免单条中止整批。
+fn stage_inject_radius_jewels(
+    session: &mut CalculationSession,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    let (build, data) = (ctx.build, ctx.data);
     let radius_texts = filter_parseable(radius_jewel_grant_texts(build, data), engine_ctx(data));
     if !radius_texts.is_empty() {
         let refs: Vec<&str> = radius_texts.iter().map(String::as_str).collect();
@@ -769,7 +1014,17 @@ pub fn calculate_with_data_session(
             .add_modifier_texts(&refs)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
+    Ok(())
+}
 
+/// 2c/2d/2e. config 派生词条注入：任务奖励全局文本、config 解释器玩家 mod、
+/// customMods 行通道——三者共享 [`ResolvedConfig`](crate::config_resolve::ResolvedConfig)
+/// 产物，按既有装配顺序相邻注入。
+fn stage_inject_config_mods(
+    session: &mut CalculationSession,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    let (data, resolved_config) = (ctx.data, &ctx.resolved_config);
     // 2c. 任务奖励 / 全局配置词条（PoB2 `questRewards`）：按**全局** modifier text 注入
     //     （属性 / 抗性 / 防御 inc 等永久全局加成）。沿用 add_modifier_texts 的容错。
     //     quest 仍走旧 text 通道（dualrun 报告 §3-⑤：vendor/parser 命名口径统一前
@@ -809,7 +1064,17 @@ pub fn calculate_with_data_session(
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
         }
     }
+    Ok(())
+}
 
+/// 3/3a'/3b/3b'/3c. 天赋树注入：节点 mod（节点级归因）→ 油涂授予 notable →
+/// 小点效果缩放差额 → 范围珠宝 Notable 效果缩放差额 → 词条授予 keystone 映射。
+/// 位置沿既有装配顺序：装备与 config 注入之后、技能宝石之前。
+fn stage_inject_passives(
+    session: &mut CalculationSession,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    let (build, data) = (ctx.build, ctx.data);
     // 3. 天赋树：NodeId → 节点 mod 文本（节点级归因）。
     let mut passive_nodes = resolve_passive_nodes(build, data);
     // 3a'. 油涂授予 notable（M4-H，vendor `Allocates <name>` enchant →
@@ -887,45 +1152,24 @@ pub fn calculate_with_data_session(
     //     add_passive_nodes 注入，从 map 排除即 PoB2 `env.keystonesAdded` 去重的
     //     pobr 等价（CalcPerform.lua:66-76；树路径模型差异见 keystone_merge.rs 模块注释）。
     session.set_keystone_mods(keystone_mod_map(data, &passive_nodes));
+    Ok(())
+}
 
-    // 4. 技能宝石：按 active/support 分类，经各自归因入口注入。
-    inject_skill_gems(&mut session, build, data)?;
-
-    // 4b/4b'/4b''. 光环·诅咒 BuffSpec + support 授予 buff + herald 在场计数/条件。
-    inject_buffs_and_heralds(&mut session, build, data);
-
-    // 4c/4c'/4d. Mark 自身进攻 buff + 非主组曝光 support + Spirit 预留聚合。
-    inject_self_buff_exposure_spirit(
-        &mut session,
-        build,
-        data,
-        main_skill.as_ref().map(|(_, g, _)| *g),
-    );
-
-    // 5/5a/5b. 敌人配置（setup_enemy）+ config enemy 桶 + 玩家施加的元素曝光。
-    inject_enemy(&mut session, build, options, enemy_tier, &resolved_config);
-
-    // 6. 额外全局文本（战役奖励 / 调试覆盖）。
-    if !options.extra_modifier_texts.is_empty() {
+/// 6. 额外全局文本（战役奖励 / 调试覆盖）注入。
+fn stage_inject_extra_texts(
+    session: &mut CalculationSession,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    if !ctx.options.extra_modifier_texts.is_empty() {
         session
-            .add_modifier_texts(options.extra_modifier_texts.iter())
+            .add_modifier_texts(ctx.options.extra_modifier_texts.iter())
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
+    Ok(())
+}
 
-    // 6b. PoE2 属性派生（最终 Str/Dex/Int → Life/Mana/Accuracy 增量）。
-    inject_attribute_derivation(&mut session, build, data, options);
-
-    // 6c. per-X 资源/属性缩放量回填（PoB2 PerStat 分母变量）。
-    inject_per_x_multipliers(&mut session, build, data);
-
-    // 6c2. 已装辅助宝石按颜色计数（PoB2 CalcSetup.lua:2015-2044）→
-    //      Red/Green/BlueSupportGems multipliers（MultiplierThreshold 钉值条目
-    //      「if you have at least 10 <color> Support Gems Socketed」的分母）。
-    inject_support_gem_counts(&mut session, build, data);
-
-    // 6d. 来源授予的条件 flag → cfg 条件桥接（Bonded modifiers / Arcane Surge）。
-    inject_condition_bridges(&mut session);
-
+/// 诊断 dump（环境变量门控，parity 排查用；只读不改 session）。
+fn stage_debug_dumps(session: &CalculationSession) {
     // 诊断：POBR_DBG_UNSUPPORTED=1 时 dump 全部未解析词条文本（parity 排查用）。
     if std::env::var("POBR_DBG_UNSUPPORTED").is_ok() {
         for t in session.unsupported_modifier_texts() {
@@ -955,18 +1199,6 @@ pub fn calculate_with_data_session(
             );
         }
     }
-
-    // 召唤物接线（M5a-B2）：在全部玩家来源注入后、perform 前，识别召唤宝石
-    // （`effect_minion_list` 非空）并接入 `Env.minions`。perform 末尾 `perform_minions`
-    // 对每个召唤物跑同一套 offence/defence，结果落 `OutputTable.minions`。
-    // gate：仅当某主动技能解析出非空 minion_list 才接入——非召唤 build 永不触发，
-    // 对既有 18-build 零行为影响。
-    spawn_minions(&mut session, build, data, &options.extra_modifier_texts);
-
-    // perform 填满 env.player.output（含 calc_defence 的 armour/evasion/ES、异常、EHP 等
-    // 全部 fill 阶段字段）；取完整 OutputTable，而非 MinimalOutput 子集（后者丢失防御等）。
-    session.perform_minimal();
-    Ok(session)
 }
 
 /// 返回移除未解锁 Ring 3 物品后的计算视图；无需门控时避免克隆 Build。
@@ -1581,7 +1813,7 @@ fn inject_items(
             .iter()
             .find(|(s, scale)| *s == slot && *scale != 0.0)
         {
-            let ingest = pobr_core::ingest_item(slot, &filtered)
+            let ingest = pobr_core::ingest_item_with_ctx(slot, &filtered, engine_ctx(data))
                 .map_err(|e| BuildError::Parse(e.to_string()))?;
             let scaled: Vec<Modifier> = ingest
                 .modifiers
@@ -1635,6 +1867,16 @@ fn inject_self_buff_exposure_spirit(
 // 安装/复位确定性，不构成共享可变状态。
 
 #[cfg(test)]
+/// 测试共享引擎规则（真实数据目录，一次编译进程内复用）。
+pub(crate) fn test_parser_rules() -> std::sync::Arc<pobr_core::mod_parser::CompiledParserRules> {
+    static RULES: std::sync::LazyLock<std::sync::Arc<pobr_core::mod_parser::CompiledParserRules>> =
+        std::sync::LazyLock::new(|| {
+            std::sync::Arc::new(pobr_core::mod_parser::test_compiled_rules())
+        });
+    RULES.clone()
+}
+
+#[cfg(test)]
 mod ring3_tests {
     use super::{DataOrchestratorOptions, calculate_with_data};
     use crate::build::Build;
@@ -1678,6 +1920,7 @@ mod ring3_tests {
         passive_nodes.insert(34785u32, node);
         BuildData {
             passive_nodes,
+            parser_rules: Some(super::test_parser_rules()),
             ..BuildData::empty()
         }
     }
@@ -1728,6 +1971,14 @@ mod tests {
     use pobr_gamedata::{GameData, repo_data_root};
     use std::collections::HashMap;
 
+    /// 测试用引擎解析上下文（真实规则，进程内共享一次编译）。
+    fn test_ctx() -> ParseCtx<'static> {
+        use std::sync::LazyLock;
+        static RULES: LazyLock<std::sync::Arc<pobr_core::mod_parser::CompiledParserRules>> =
+            LazyLock::new(super::test_parser_rules);
+        ParseCtx::with_engine(&RULES)
+    }
+
     /// 树折行词条合并（M4-H；vendor PassiveTree.lua:445-462）：单行 parse 失败
     /// → 与后续行拼接重试；全部失败 → 丢弃该行、后续行独立继续。
     #[test]
@@ -1738,7 +1989,7 @@ mod tests {
                 "Gain 4% of Damage as Extra Fire Damage for".into(),
                 "every different Grenade fired in the past 8 seconds".into(),
             ],
-            ParseCtx::none(),
+            test_ctx(),
         );
         assert_eq!(
             joined,
@@ -1755,7 +2006,7 @@ mod tests {
                 "this line is not a known modifier".into(),
                 "+50 to maximum Life".into(),
             ],
-            ParseCtx::none(),
+            test_ctx(),
         );
         assert_eq!(
             mixed,
@@ -1885,7 +2136,10 @@ mod tests {
     fn data_path_item_life_matches_text_path() {
         // 装备走 add_item 归因路径，数值应与 text-only 路径一致。
         let build = Build::new().set_item(EquipmentSlot::Ring1, life_item("50"));
-        let data = BuildData::empty();
+        let data = BuildData {
+            parser_rules: Some(super::test_parser_rules()),
+            ..BuildData::empty()
+        };
         let opts = DataOrchestratorOptions {
             base_input: MinimalInput {
                 base_life: 100.0,
@@ -1960,6 +2214,7 @@ mod tests {
         passive_nodes.insert(12345u32, node);
         let data = BuildData {
             passive_nodes,
+            parser_rules: Some(super::test_parser_rules()),
             ..BuildData::empty()
         };
 

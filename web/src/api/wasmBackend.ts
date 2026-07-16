@@ -5,6 +5,7 @@
  * 数据路径 `/data/`（`npm run sync-data` 从仓库 data/ 同步，gitignored）。
  */
 
+import { EXPECTED_SCHEMA_VERSION } from './types';
 import type {
   AttributionRequest,
   ClassNames,
@@ -19,6 +20,7 @@ import type {
   NodePowerResponse,
   OptimizeVariantsResponse,
   PassiveNode,
+  TreeArt,
   PassiveTreeMeta,
   RuneCatalogEntry,
 } from './types';
@@ -26,6 +28,8 @@ import type { PobrBackend } from './backend';
 
 interface WasmModule {
   default: () => Promise<unknown>;
+  /** 可选：旧构建产物没有该导出，按版本 0 处理（同样判为错配）。 */
+  schemaVersion?(): number;
   stageDataFile(path: string, content: string): void;
   initStagedData(): void;
   isDataReady(): boolean;
@@ -86,6 +90,16 @@ export async function createWasmBackend(): Promise<PobrBackend> {
   }
   await wasm.default();
 
+  // 契约版本握手：wasm 与前端同仓同发，错配只出现在「旧前端缓存 + 新 wasm 资产」。
+  // boot 时校验一次即可（会话中这对组合不会变），不往每个响应里塞版本字段。
+  const actualSchema = wasm.schemaVersion?.() ?? 0;
+  if (actualSchema !== EXPECTED_SCHEMA_VERSION) {
+    throw new Error(
+      `前端与 wasm 契约版本不匹配（前端 ${EXPECTED_SCHEMA_VERSION}，wasm ${actualSchema}）：` +
+        '请强制刷新页面（Cmd/Ctrl+Shift+R）清除旧缓存。',
+    );
+  }
+
   let manifest: DataManifest | null = null;
   // 单飞：init 可能被并发调用（React dev StrictMode 会把挂载 effect 跑两遍）。
   // 若两次 init 并行 stage 文件，先完成的 initStagedData() 会清空 wasm 侧暂存区，
@@ -144,6 +158,34 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       }
       const text = await fetchText(`/data/${manifest.version}/base/passive_tree.json`);
       return JSON.parse(text) as PassiveNode[];
+    },
+    async loadTreeArt(): Promise<TreeArt | null> {
+      if (!manifest) {
+        manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+      }
+      const base = `/tree-art/${manifest.version}/`;
+      try {
+        // manifest 里是相对路径，统一前缀成绝对 URL，渲染层直接用。
+        const raw = JSON.parse(await fetchText(`${base}manifest.json`)) as TreeArt;
+        const nodeIcons: Record<string, string> = {};
+        for (const [skill, rel] of Object.entries(raw.nodeIcons)) {
+          nodeIcons[skill] = base + rel;
+        }
+        const frames: TreeArt['frames'] = {};
+        for (const [kind, states] of Object.entries(raw.frames)) {
+          frames[kind] = {
+            unalloc: states.unalloc ? base + states.unalloc : undefined,
+            alloc: states.alloc ? base + states.alloc : undefined,
+          };
+        }
+        return {
+          nodeIcons,
+          frames,
+          masteryIcon: raw.masteryIcon ? base + raw.masteryIcon : undefined,
+        };
+      } catch {
+        return null; // 美术未生成（未跑 build-tree-art）→ 回退纯圆点。
+      }
     },
     async gemCatalog() {
       return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];

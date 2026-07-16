@@ -39,7 +39,8 @@ fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
 /// 通道拼接），供下游集成测试穿线 A2 引擎路径。
 ///
 /// 读 `overlay/mod_parser_rules.json` + `overlay/special_mods.json` +
-/// `generated/special_derived.json`（缺 special 文件按空拼接，id 冲突在
+/// `generated/special_derived.json` + `generated/special_vendor.json`
+/// （三源同序对齐 pobr-gamedata `load_ruleset`；缺 special 文件按空拼接，id 冲突在
 /// [`CompiledParserRules::compile_with_special`] fail-fast）。文件缺失/不可解析
 /// 直接 panic（测试环境，仓库数据包恒在）。
 pub fn test_compiled_rules() -> CompiledParserRules {
@@ -48,5 +49,6 @@ pub fn test_compiled_rules() -> CompiledParserRules {
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("反序列化规则表");
     let mut special = load_special("overlay/special_mods.json");
     special.extend(load_special("generated/special_derived.json"));
+    special.extend(load_special("generated/special_vendor.json"));
     CompiledParserRules::compile_with_special(&doc, &special).expect("编译规则表")
 }

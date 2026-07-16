@@ -10,8 +10,13 @@
 //! player db，输出逐值不变。
 
 use pobr_core::calc::env_finalize::merge_flasks_charms;
-use pobr_core::calc::{Actor, ActorBaseStats, CalculationSession, Env, MinimalInput};
-use pobr_core::item::ingest_flask_charm;
+use pobr_core::calc::{Actor, ActorBaseStats, Env, MinimalInput};
+use pobr_core::item::{ItemIngest, ingest_flask_charm_with_ctx};
+
+/// engine 版 flask/charm ingest（签名对齐历史 `ingest_flask_charm`）。
+fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
+    ingest_flask_charm_with_ctx(slot_name, item, crate::support::ctx())
+}
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
@@ -272,7 +277,7 @@ fn end_to_end_charm_resistance_reaches_output_under_mode_combat() {
         let cfg = CalcConfig::attack()
             .with_damage_type(DamageType::Physical)
             .with_mode_combat(mode_combat);
-        let mut session = CalculationSession::new(input).with_config(cfg);
+        let mut session = crate::support::session(input).with_config(cfg);
         if with_charm {
             let mut mods = carrier_for(
                 "Charm 1",
@@ -311,7 +316,7 @@ fn end_to_end_belt_charm_slots_text_unlocks_charm_budget() {
         let cfg = CalcConfig::attack()
             .with_damage_type(DamageType::Physical)
             .with_mode_combat(true);
-        let mut session = CalculationSession::new(input).with_config(cfg);
+        let mut session = crate::support::session(input).with_config(cfg);
         if with_belt_line {
             session
                 .add_modifier_texts(["Has 1 Charm Slot"])

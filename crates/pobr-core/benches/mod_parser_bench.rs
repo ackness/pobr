@@ -1,10 +1,7 @@
-//! M6-B parser 引擎 vs legacy 中位耗时 bench（蓝图 §9）。
+//! parser 引擎中位耗时 bench。
 //!
-//! 门禁口径：`engine ≤ 1.10 × legacy` 中位耗时（roadmap「parse bench 退化 ≤10%」
-//! 操作化）。引擎已无条件编译，本 bench 无需任何 feature。
-//!
-//! 三组：
-//! 1. `parse_corpus_legacy` vs `parse_corpus_engine`：同一固定语料逐行解析吞吐；
+//! 两组：
+//! 1. `parse_corpus_engine`：固定语料逐行解析吞吐（唯一解析器，legacy 已删）；
 //! 2. `compile_rules`：ParserRules → CompiledParserRules（含 aho-corasick 构建）
 //!    一次性成本（载入期、非热路径）。
 //!
@@ -13,7 +10,7 @@
 use std::path::PathBuf;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use pobr_core::mod_parser::{CompiledParserRules, parse_mod, parse_mod_engine};
+use pobr_core::mod_parser::{CompiledParserRules, parse_mod_engine};
 use pobr_data::catalog::parser_rules::ModParserRulesDoc;
 
 fn repo_root() -> PathBuf {
@@ -81,13 +78,6 @@ fn bench_parse(c: &mut Criterion) {
     assert!(!lines.is_empty(), "bench 语料不应为空");
 
     let mut group = c.benchmark_group("mod_parser");
-    group.bench_function("parse_corpus_legacy", |b| {
-        b.iter(|| {
-            for line in &lines {
-                let _ = std::hint::black_box(parse_mod(std::hint::black_box(line)));
-            }
-        })
-    });
     group.bench_function("parse_corpus_engine", |b| {
         b.iter(|| {
             for line in &lines {

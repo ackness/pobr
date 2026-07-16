@@ -20,7 +20,9 @@ fn repo_root() -> PathBuf {
         .expect("canonicalize repo root")
 }
 
-const PATCH: &str = "4.5.0.3.4";
+// 钉 golden 校验版本（随 golden 切换自动跟进；byte-stable / 覆盖率 golden 均
+// 对这一版数据断言）。
+const PATCH: &str = pobr_data::GOLDEN_PARITY_DATA_VERSION;
 
 fn data_dir() -> PathBuf {
     repo_root().join("data").join(PATCH)
@@ -167,17 +169,29 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
     if manifest.is_file() {
         std::fs::copy(&manifest, tmp_data.join("manifest.json")).unwrap();
     }
-    // generated/special_derived.json（SD）。
-    let sd = src_data.join("generated/special_derived.json");
-    if sd.is_file() {
-        std::fs::copy(&sd, tmp_data.join("generated/special_derived.json")).unwrap();
+    // generated/special_derived.json（SD）+ generated/special_vendor.json（V0 批量）
+    // ——ruleset 三源拼接进引擎 special 通道，缺任一源 fresh 重跑覆盖率会低于
+    // 已提交产物。存在即拷。
+    for name in ["special_derived.json", "special_vendor.json"] {
+        let src = src_data.join("generated").join(name);
+        if src.is_file() {
+            std::fs::copy(&src, tmp_data.join("generated").join(name)).unwrap();
+        }
     }
-    // overlay/special_mods.json（M6-A2：parser 引擎注入的 special 规则输入；
-    // 缺它则 fresh 重跑解析退回历史无规则路径，golden 对照会与含规则的已提交
-    // 产物漂移）。存在即拷。
+    // overlay/special_mods.json（parser 引擎 special 通道输入）。存在即拷。
     let special_mods = src_data.join("overlay/special_mods.json");
     if special_mods.is_file() {
         std::fs::copy(&special_mods, tmp_data.join("overlay/special_mods.json")).unwrap();
+    }
+    // overlay/mod_parser_rules.json（引擎解析规则六表——删 legacy 后是唯一
+    // 解析器，缺它 precompile 直接报错）。存在即拷。
+    let parser_rules = src_data.join("overlay/mod_parser_rules.json");
+    if parser_rules.is_file() {
+        std::fs::copy(
+            &parser_rules,
+            tmp_data.join("overlay/mod_parser_rules.json"),
+        )
+        .unwrap();
     }
 
     // examples/demo-bd-test/builds（C1）：软链到临时根，使 grandparent 定位可达。

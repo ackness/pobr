@@ -8,6 +8,14 @@
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
 
+/// 契约版本钉子：本文件里任何键集合断言更新（= 形状变更）时，Rust 侧
+/// `SCHEMA_VERSION` 与 `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` 同时 +1。
+#[test]
+fn schema_version_pinned() {
+    // v2：Err 侧结构化 {code, message, slot?} + calculate 响应新增 item_errors。
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 2);
+}
+
 /// 真实 demo build（与 ninja_parity 同源）。
 fn demo_code() -> String {
     let path =
@@ -104,7 +112,13 @@ fn calculate_build_json_shape() {
             .expect("valid json");
     assert_keys(
         &json,
-        &["stats", "unsupported_modifiers", "breakdowns", "main_skill"],
+        &[
+            "stats",
+            "unsupported_modifiers",
+            "breakdowns",
+            "main_skill",
+            "item_errors",
+        ],
         "CalculateBuildResponse",
     );
 
@@ -263,24 +277,28 @@ fn main_skill_follows_main_group_override() {
 #[test]
 fn calculate_scratch_build_without_code() {
     ensure_data();
-    let life_at = |level: u32| -> f64 {
-        let request = serde_json::json!({
+    let stat_at = |level: u32, extra: Value, id: &str| -> f64 {
+        let mut request = serde_json::json!({
             "character": { "class_name": "Warrior", "level": level },
             "allocated_nodes": [],
-        })
-        .to_string();
-        let json: Value =
-            serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("scratch"))
-                .expect("valid json");
+        });
+        if let Some(obj) = extra.as_object() {
+            request["config_inputs"] = Value::Object(obj.clone());
+        }
+        let json: Value = serde_json::from_str(
+            &pobr_wasm::calculate_build_json(&request.to_string()).expect("scratch"),
+        )
+        .expect("valid json");
         json["stats"]
             .as_array()
             .unwrap()
             .iter()
-            .find(|s| s["id"] == "Life")
+            .find(|s| s["id"] == id)
             .unwrap()["value"]
             .as_f64()
             .unwrap()
     };
+    let life_at = |level: u32| stat_at(level, Value::Null, "Life");
     let level1 = life_at(1);
     let level90 = life_at(90);
     assert!(
@@ -291,6 +309,29 @@ fn calculate_scratch_build_without_code() {
         level90 > level1,
         "Life should scale with level (lv1={level1} lv90={level90})"
     );
+
+    // 任务奖励 defaultState=true（PoB2 新建语义）：省略 = 已领取。
+    // Spirit = +30 +30 +40，火抗 = -60（默认惩罚）+10（Blackjaw 奖励）。
+    assert_eq!(stat_at(1, Value::Null, "Spirit"), 100.0, "default Spirit");
+    assert_eq!(
+        stat_at(1, Value::Null, "FireResist"),
+        -50.0,
+        "default FireResist"
+    );
+    // 显式 false = 放弃对应奖励（前端 Config 勾选通道）。
+    let no_spirit = serde_json::json!({
+        "questAct 1FreythornKing In The Mists": false,
+        "questAct 3Azak BogIgnagduk": false,
+        "questInterlude 3Kriar VillageLythara": false,
+    });
+    assert_eq!(
+        stat_at(1, no_spirit, "Spirit"),
+        1.0,
+        "opted-out Spirit falls back to pool floor"
+    );
+
+    // HitChance 展示口径为百分制：空 build 无敌方闪避 → 100（而非 fraction 1.0）。
+    assert_eq!(stat_at(1, Value::Null, "HitChance"), 100.0, "HitChance %");
 
     // 缺 code 又缺 character → 可读错误而非 panic。
     let err = pobr_wasm::calculate_build_json("{}").unwrap_err();
@@ -355,6 +396,8 @@ fn manual_skills_and_items_without_code() {
     let base_req = serde_json::json!({
         "character": { "class_name": "Sorceress", "level": 90 },
         "allocated_nodes": [],
+        // 放弃默认任务奖励里的 5% inc life，保持下方 flat delta 断言的纯增量口径。
+        "config_inputs": { "questInterlude 2Khari CrossingMolten Shrine": false },
     });
     let stat = |resp: &Value, id: &str| -> f64 {
         resp["stats"]
@@ -405,6 +448,42 @@ fn manual_skills_and_items_without_code() {
     bad["items"] = serde_json::json!([{ "slot": "hat", "text": "Rarity: NORMAL\nIron Hat" }]);
     let err = pobr_wasm::calculate_build_json(&bad.to_string()).unwrap_err();
     assert!(err.contains("unknown equipment slot"), "unexpected: {err}");
+}
+
+/// 导入 build（pob_code）后 Config 页切任务奖励生效：quest 覆盖在计算前按
+/// 合并输入整份重建（旧行为 = 解码时固定，请求覆盖无效）。
+#[test]
+fn quest_reward_override_applies_to_imported_build() {
+    ensure_data();
+    let spirit_with = |config_inputs: Value| -> f64 {
+        let mut request = serde_json::json!({ "pob_code": demo_code() });
+        if !config_inputs.is_null() {
+            request["config_inputs"] = config_inputs;
+        }
+        let json: Value = serde_json::from_str(
+            &pobr_wasm::calculate_build_json(&request.to_string()).expect("calc"),
+        )
+        .expect("valid json");
+        json["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == "Spirit")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let granted = spirit_with(Value::Null);
+    let opted_out = spirit_with(serde_json::json!({
+        "questAct 1FreythornKing In The Mists": false,
+        "questAct 3Azak BogIgnagduk": false,
+        "questInterlude 3Kriar VillageLythara": false,
+    }));
+    // 三个 Spirit 任务共 +100 base（inc 乘区 ≥ 0 时差值不小于 100）。
+    assert!(
+        granted - opted_out >= 99.0,
+        "quest opt-out should drop Spirit (granted={granted} opted_out={opted_out})"
+    );
 }
 
 /// 药剂/护符覆盖通道：`flasks` 整份替换 utility_slots——charm 基底 buff 生效、
@@ -464,10 +543,11 @@ fn manual_flasks_override_utility_slots() {
 
     // 归因视图列出 flask 槽条目。
     let attr_req = serde_json::json!({
-        "pob_code": "",
-        "character": { "class_name": "Sorceress", "level": 90 },
-        "items": base_req["items"],
-        "flasks": with_charm["flasks"],
+        "request": {
+            "character": { "class_name": "Sorceress", "level": 90 },
+            "items": base_req["items"],
+            "flasks": with_charm["flasks"],
+        },
         "fields": ["Life"],
     });
     let attr: Value = serde_json::from_str(
@@ -997,6 +1077,8 @@ fn manual_jewels_respect_socket_allocation() {
                 "socket_node": 7960,
                 "text": "Rarity: RARE\nTest Jewel\nEmerald\n+50 to maximum Life",
             }],
+            // 放弃默认任务奖励里的 5% inc life，保持 flat delta 断言的纯增量口径。
+            "config_inputs": { "questInterlude 2Khari CrossingMolten Shrine": false },
         })
         .to_string();
         let json: Value =
@@ -1024,7 +1106,7 @@ fn attribution_json_shape() {
     ensure_data();
     let fields = ["Life", "EnergyShield", "Evasion", "TotalDPS"];
     let request = serde_json::json!({
-        "pob_code": demo_code(),
+        "request": { "pob_code": demo_code() },
         "fields": fields,
     })
     .to_string();
@@ -1095,4 +1177,173 @@ fn walk_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
         }
     }
     out
+}
+
+/// web 侧 calc 请求不再携带 pob_code（useBuildSession::toRequest）：导入时把
+/// 解码结果全量物化成覆盖项（materialize + config_inputs / main_socket_group）。
+/// 钉住两条路径数值等价：code 直算 == 物化请求直算。物化映射一旦变化（新增
+/// 可编辑域），这里必须同步补——否则 web 端导入后该域会静默丢失。
+#[test]
+fn materialized_request_matches_pob_code_calculation() {
+    ensure_data();
+    let code = demo_code();
+    let via_code: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&serde_json::json!({ "pob_code": code }).to_string())
+            .expect("calc via code"),
+    )
+    .unwrap();
+
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("decode")).unwrap();
+    let map_slot_text = |v: &Value| -> Vec<Value> {
+        v.as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|i| serde_json::json!({ "slot": i["slot"], "text": i["text"] }))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let socket_groups: Vec<Value> = decoded["socket_groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| {
+            serde_json::json!({
+                "slot": g["slot"],
+                "enabled": g["enabled"],
+                "source": g["source"],
+                // 与 web materialize 同口径：只保留 skill_id/level/quality。
+                "gems": g["gems"].as_array().unwrap().iter().map(|gem| serde_json::json!({
+                    "skill_id": gem["skill_id"],
+                    "level": gem["level"],
+                    "quality": gem["quality"],
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let jewels: Vec<Value> = decoded["items"]["socket_jewels"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .map(|j| serde_json::json!({ "socket_node": j["socket_node"], "text": j["text"] }))
+                .collect()
+        })
+        .unwrap_or_default();
+    let request = serde_json::json!({
+        "character": {
+            "level": decoded["character"]["level"],
+            "class_name": decoded["character"]["class_name"],
+            "ascendancy_name": decoded["character"]["ascendancy_name"],
+        },
+        "allocated_nodes": decoded["tree"]["allocated_nodes"],
+        "attribute_choices": decoded["tree"]["attribute_choices"],
+        "socket_groups": socket_groups,
+        "items": map_slot_text(&decoded["items"]["equipped"]),
+        "flasks": map_slot_text(&decoded["items"]["flasks"]),
+        "jewels": jewels,
+        "main_socket_group": decoded["main_socket_group"],
+        "config_inputs": decoded["config_inputs"],
+    });
+    let materialized: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&request.to_string()).expect("calc materialized"),
+    )
+    .unwrap();
+
+    let stats = |v: &Value| -> Vec<(String, Option<f64>)> {
+        v["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| (s["id"].as_str().unwrap().to_string(), s["value"].as_f64()))
+            .collect()
+    };
+    let a = stats(&materialized);
+    let b = stats(&via_code);
+    assert_eq!(a.len(), b.len(), "stat count mismatch");
+    for ((id_a, va), (id_b, vb)) in a.iter().zip(&b) {
+        assert_eq!(id_a, id_b);
+        match (va, vb) {
+            (Some(x), Some(y)) => {
+                assert!(
+                    (x - y).abs() < 1e-6,
+                    "{id_a}: materialized={x} via_code={y}"
+                );
+            }
+            _ => assert_eq!(va, vb, "{id_a}: null-ness mismatch"),
+        }
+    }
+}
+
+/// v2 错误契约：Err 侧是 `{code, message, slot?}` JSON；单件物品文本解析失败
+/// 降级为响应 `item_errors`（跳过该件，其余照算），不再整次报错。
+#[test]
+fn structured_errors_and_item_degrade() {
+    ensure_data();
+
+    // bad_request：请求 JSON 非法。
+    let err = pobr_wasm::calculate_build_json("not json").unwrap_err();
+    let parsed: Value = serde_json::from_str(&err).expect("error is JSON");
+    assert_eq!(parsed["code"], "bad_request", "err: {err}");
+    assert!(parsed["message"].is_string());
+
+    // decode_error：非法 build code。
+    let err = pobr_wasm::decode_build_json("!!not-a-code!!").unwrap_err();
+    let parsed: Value = serde_json::from_str(&err).expect("error is JSON");
+    assert_eq!(parsed["code"], "decode_error", "err: {err}");
+
+    // bad_request + slot：未知装备槽名（客户端 bug，硬错误）。
+    let req = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 1 },
+        "items": [{ "slot": "NoSuchSlot", "text": "Rarity: RARE\nX\nTopaz Ring" }],
+    });
+    let err = pobr_wasm::calculate_build_json(&req.to_string()).unwrap_err();
+    let parsed: Value = serde_json::from_str(&err).expect("error is JSON");
+    assert_eq!(parsed["code"], "bad_request");
+    assert_eq!(parsed["slot"], "NoSuchSlot");
+
+    // 降级：一件文本非法的装备 → 计算成功 + item_errors 记录该槽，其余照算。
+    let req = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 1 },
+        "items": [
+            { "slot": "ring1", "text": "Rarity: RARE\nGood Ring\nTopaz Ring\n+50 to maximum Life" },
+            { "slot": "ring2", "text": "???' garbage that cannot parse" },
+        ],
+    });
+    let json: Value = serde_json::from_str(
+        &pobr_wasm::calculate_build_json(&req.to_string()).expect("degraded calc succeeds"),
+    )
+    .unwrap();
+    let issues = json["item_errors"].as_array().unwrap();
+    assert_eq!(issues.len(), 1, "one degraded slot: {issues:?}");
+    assert_eq!(issues[0]["slot"], "ring2");
+    // 好的那件照常生效（+50 Life 进聚合）。
+    let life = json["stats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["id"] == "Life")
+        .unwrap()["value"]
+        .as_f64()
+        .unwrap();
+    assert!(life > 50.0, "good ring still applies: Life={life}");
+}
+
+/// 入口级响应缓存：同一请求字符串二次调用命中缓存且响应逐字节一致。
+#[test]
+fn response_cache_hits_on_repeat_request() {
+    ensure_data();
+    let request = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 10 },
+        "allocated_nodes": [],
+    })
+    .to_string();
+    let hits_before = pobr_wasm::state::response_cache_hits();
+    let first = pobr_wasm::calculate_build_json(&request).expect("first calc");
+    let second = pobr_wasm::calculate_build_json(&request).expect("second calc");
+    assert_eq!(first, second, "cached response must be byte-identical");
+    assert!(
+        pobr_wasm::state::response_cache_hits() > hits_before,
+        "second call should hit the response cache"
+    );
 }

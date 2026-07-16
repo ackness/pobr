@@ -1,3 +1,4 @@
+import { formatApiError } from '../../api/error';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
 import type { ItemLineJson, RuneCatalogEntry } from '../../api/types';
@@ -311,7 +312,7 @@ export function ItemsPanel({ session, lang }: Props) {
       setRuneError(null);
       switchTo(text);
     } catch (err) {
-      setRuneError(String(err));
+      setRuneError(formatApiError(err));
     }
   };
 

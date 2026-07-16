@@ -27,6 +27,10 @@ pub struct AvoidanceResult {
     pub avoid_all_damage_from_hits: f64,
     /// N% 几率规避投射物伤害（上限 75%）。
     pub avoid_projectile_damage: f64,
+    /// 分类型「几率规避 <Type> 击中伤害」（`Avoid<Type>DamageChance` BASE，上限 75%）——
+    /// vendor CalcDefence.lua:3277-3300 逐类型 `(1 - avoid/100)` 缩 DamageIn。
+    /// 顺序 = [Physical, Fire, Cold, Lightning, Chaos]（`DamageType as usize`）。
+    pub avoid_typed_damage: [f64; 5],
     /// N% 几率避免眩晕（含 ES 隐式 +50%，上限 100%）。
     pub avoid_stun: f64,
     /// N% 几率避免点燃（上限 100%）。
@@ -618,6 +622,19 @@ pub fn calc_avoidance(
     );
     let avoid_projectile_damage = round(avoid_proj_raw.clamp(0.0, AVOID_HIT_CAP));
 
+    // 分类型击中规避（`Avoid<Type>DamageChance` BASE，如 Perfidy 身甲的「chance to Avoid
+    // <Type> Damage from Hits」）——解析正确但此前无聚合方（死桶）。上限 75%（AVOID_HIT_CAP）。
+    let avoid_typed_names = ["Physical", "Fire", "Cold", "Lightning", "Chaos"];
+    let mut avoid_typed = [0.0; 5];
+    for (i, t) in avoid_typed_names.iter().enumerate() {
+        let raw = db.sum(
+            ModType::Base,
+            cfg,
+            &[ModName::from(format!("Avoid{t}DamageChance").as_str())],
+        );
+        avoid_typed[i] = round(raw.clamp(0.0, AVOID_HIT_CAP));
+    }
+
     // --- 异常规避（上限 100%，Immune 旗标直接置 100）---
 
     // Stormshroud：感电规避也作用于全元素异常
@@ -710,6 +727,7 @@ pub fn calc_avoidance(
     AvoidanceResult {
         avoid_all_damage_from_hits,
         avoid_projectile_damage,
+        avoid_typed_damage: avoid_typed,
         avoid_stun,
         avoid_ignite,
         avoid_shock,

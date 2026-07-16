@@ -51,11 +51,9 @@ fn first_batch_shape() {
             "{}: batch provenance 标签不得为空",
             e.id
         );
-        assert!(
-            !e.verified,
-            "{}: 首批必须 verified:false（oracle 对拍后才置 true）",
-            e.id
-        );
+        // verified 不再断言恒 false：策展纪律（docs/contributing-mods.md §7）允许
+        // oracle 对拍确认后置 true（4.5.4.3 移植的 hand-curated 条目如
+        // take_pct_less_damage 等即为已对拍 verified:true）。
         if let Some(id) = &e.handler_id {
             assert!(
                 id.starts_with("special:"),

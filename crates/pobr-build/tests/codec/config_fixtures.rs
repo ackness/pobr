@@ -12,7 +12,7 @@
 use pobr_build::handlers::{build_registry, campaign_progress_from_config, enemy_tier_from_config};
 use pobr_build::xml_build::parse_config_inputs;
 use pobr_core::CampaignProgress;
-use pobr_core::mod_parser::{ParseStatus, parse_mod};
+use pobr_core::mod_parser::ParseStatus;
 use pobr_core::modifier::Modifier;
 use pobr_core::rules::config_interpreter::{ConfigInputValue, ConfigOutcome, interpret};
 use pobr_data::modifier::ModType;
@@ -20,6 +20,16 @@ use pobr_data::monster::EnemyTier;
 use pobr_gamedata::ruleset::ConfigCatalog;
 use pobr_gamedata::{GameData, repo_data_root};
 use std::path::{Path, PathBuf};
+
+/// engine 版单行解析（真实规则，签名对齐历史 `parse_mod`；引擎永不 `Err`）。
+fn parse_mod(
+    text: &str,
+) -> Result<pobr_core::mod_parser::ParseOutcome, pobr_core::mod_parser::ParseError> {
+    use std::sync::LazyLock;
+    static RULES: LazyLock<pobr_core::mod_parser::CompiledParserRules> =
+        LazyLock::new(pobr_core::mod_parser::test_compiled_rules);
+    Ok(pobr_core::mod_parser::parse_mod_engine(text, &RULES))
+}
 
 fn fixtures_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")

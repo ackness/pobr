@@ -11,12 +11,14 @@ pobr-item.workspace = true
 pobr-gamedata.workspace = true
 base64 = "0.22"
 flate2 = "1"
-quick-xml = "0.36"
+quick-xml = "0.41"
 thiserror = "2"
 
 [dev-dependencies]
 serde_json = { workspace = true }
-criterion = { version = "0.5", default-features = false }
+criterion = { version = "0.8", default-features = false }
+# 测试取真实 CompiledParserRules（读仓库数据目录）；仅测试构建启用。
+pobr-core = { workspace = true, features = ["test-rules"] }
 
 [[bench]]
 name = "perform_bench"

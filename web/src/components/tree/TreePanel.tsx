@@ -1,6 +1,7 @@
+import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
-import type { AttributeChoice, PassiveNode } from '../../api/types';
+import type { AttributeChoice, PassiveNode, TreeArt } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames } from '../../hooks/useLocalizedLines';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
@@ -25,11 +26,45 @@ const NODE_RADIUS: Record<string, number> = {
   ascendancy_start: 60,
 };
 
+/** 节点内技能图标半径 = 圆半径 × 此系数。 */
+const ICON_SCALE = 1.05;
+/** 精通徽记是自带外框的整盘，铺满节点。 */
+const MASTERY_ICON_SCALE = 1.5;
+/** 外框半径 = 圆半径 × 此系数（外框美术含透明留白，放大到可见环对齐圆点；逐类型微调）。 */
+const FRAME_SCALE: Record<string, number> = {
+  normal: 1.95,
+  notable: 1.55,
+  keystone: 1.45,
+  mastery: 1.6,
+  jewel_socket: 1.7,
+  ascendancy_start: 1.6,
+};
+
 interface ViewBox {
   x: number;
   y: number;
   w: number;
   h: number;
+}
+
+/**
+ * 钳制视口，防止把树平移到视野外露出大片空白。天赋树近似圆形，故约束视口中心到
+ * 树中心的距离 ≤ 内切圆半径 −半视口（缩得比树大→锁中心；放大后可到边缘看边缘节点）。
+ * 用圆形而非矩形，避免拖到（本就是空的）包围盒四角。
+ */
+function clampView(v: ViewBox, extent: ViewBox): ViewBox {
+  const tcx = extent.x + extent.w / 2;
+  const tcy = extent.y + extent.h / 2;
+  const radius = Math.min(extent.w, extent.h) / 2;
+  const half = Math.max(v.w, v.h) / 2;
+  const maxOff = Math.max(0, radius - half * 0.5); // 允许边缘节点接近视口中心
+  const dx = v.x + v.w / 2 - tcx;
+  const dy = v.y + v.h / 2 - tcy;
+  const dist = Math.hypot(dx, dy);
+  if (dist <= maxOff || dist === 0) return v;
+  const cx = tcx + (dx / dist) * maxOff;
+  const cy = tcy + (dy / dist) * maxOff;
+  return { ...v, x: cx - v.w / 2, y: cy - v.h / 2 };
 }
 
 /** 属性小点判定（`+5 to any Attribute`）。 */
@@ -46,6 +81,7 @@ const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 export function TreePanel({ session, lang }: Props) {
   const tt = bindT(lang);
   const [nodes, setNodes] = useState<PassiveNode[] | null>(null);
+  const [art, setArt] = useState<TreeArt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<PassiveNode | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -94,9 +130,12 @@ export function TreePanel({ session, lang }: Props) {
 
   useEffect(() => {
     getBackend()
-      .then((b) => b.loadPassiveTree())
-      .then(setNodes)
-      .catch((err) => setError(String(err)));
+      .then((b) => Promise.all([b.loadPassiveTree(), b.loadTreeArt()]))
+      .then(([n, a]) => {
+        setNodes(n);
+        setArt(a); // null = 美术未生成，回退纯圆点渲染。
+      })
+      .catch((err) => setError(formatApiError(err)));
   }, []);
 
   const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
@@ -316,27 +355,67 @@ export function TreePanel({ session, lang }: Props) {
       return `hsl(${Math.round(20 + t * 25)} ${Math.round(70 + t * 30)}% ${Math.round(28 + t * 32)}%)`;
     };
     return (
-      <g className="tree-nodes">
-        {placed.map((node) => (
-          <circle
-            key={node.skill}
-            cx={node.x}
-            cy={node.y}
-            r={NODE_RADIUS[node.kind] ?? 40}
-            style={heatFill(node.skill) ? { fill: heatFill(node.skill) } : undefined}
-            className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${allocated.has(node.skill) ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}`}
-            onPointerEnter={(e) => {
-              setHover(node);
-              setHoverPos({ x: e.clientX, y: e.clientY });
-            }}
-            onPointerMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
-            onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
-            onClick={(e) => handleNodeClick(node, e)}
-          />
-        ))}
+      <g className={`tree-nodes${art ? ' has-art' : ''}`}>
+        {placed.map((node) => {
+          const r = NODE_RADIUS[node.kind] ?? 40;
+          const isAlloc = allocated.has(node.skill);
+          const isMastery = node.kind === 'mastery';
+          // 精通节点用通用徽记（自带外框，不叠外框、不压暗）；其余用各自技能图标。
+          const icon = isMastery
+            ? art?.masteryIcon
+            : art?.nodeIcons[String(node.skill)];
+          const frameSet = isMastery ? undefined : art?.frames[node.kind];
+          const frame = frameSet
+            ? isAlloc
+              ? frameSet.alloc ?? frameSet.unalloc
+              : frameSet.unalloc ?? frameSet.alloc
+            : undefined;
+          const iconR = r * (isMastery ? MASTERY_ICON_SCALE : ICON_SCALE);
+          const frameR = r * (FRAME_SCALE[node.kind] ?? 1.7);
+          const heat = heatFill(node.skill);
+          return (
+            <g key={node.skill}>
+              {icon && (
+                <image
+                  href={icon}
+                  x={node.x! - iconR}
+                  y={node.y! - iconR}
+                  width={iconR * 2}
+                  height={iconR * 2}
+                  clipPath="url(#tree-icon-clip)"
+                  className={`node-icon${!isMastery && !isAlloc ? ' node-icon-dim' : ''}`}
+                />
+              )}
+              {frame && (
+                <image
+                  href={frame}
+                  x={node.x! - frameR}
+                  y={node.y! - frameR}
+                  width={frameR * 2}
+                  height={frameR * 2}
+                  className="node-frame"
+                />
+              )}
+              <circle
+                cx={node.x}
+                cy={node.y}
+                r={r}
+                style={heat ? { fill: heat } : undefined}
+                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}`}
+                onPointerEnter={(e) => {
+                  setHover(node);
+                  setHoverPos({ x: e.clientX, y: e.clientY });
+                }}
+                onPointerMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+                onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
+                onClick={(e) => handleNodeClick(node, e)}
+              />
+            </g>
+          );
+        })}
       </g>
     );
-  }, [placed, allocated, filledJewelSockets, searchHits, heatStat, heatData, heatMax, handleNodeClick]);
+  }, [placed, allocated, filledJewelSockets, searchHits, heatStat, heatData, heatMax, handleNodeClick, art]);
 
   const fullExtent = useMemo((): ViewBox | null => {
     if (placed.length === 0) return null;
@@ -505,7 +584,7 @@ export function TreePanel({ session, lang }: Props) {
       wheelRafRef.current = requestAnimationFrame(() => {
         wheelRafRef.current = null;
         if (wheelPendingRef.current) {
-          setViewBox(wheelPendingRef.current);
+          setViewBox(fullExtent ? clampView(wheelPendingRef.current, fullExtent) : wheelPendingRef.current);
           wheelPendingRef.current = null;
         }
       });
@@ -544,7 +623,8 @@ export function TreePanel({ session, lang }: Props) {
       const rect = svg.getBoundingClientRect();
       const dxUnits = ((drag.x - drag.startX) / rect.width) * view.w;
       const dyUnits = ((drag.y - drag.startY) / rect.height) * view.h;
-      setViewBox({ ...view, x: view.x - dxUnits, y: view.y - dyUnits });
+      const panned = { ...view, x: view.x - dxUnits, y: view.y - dyUnits };
+      setViewBox(fullExtent ? clampView(panned, fullExtent) : panned);
       transformResetRef.current = true;
     }
     // 保留 moved 标记到 click 事件之后（click 在 pointerup 后触发）。
@@ -639,6 +719,20 @@ export function TreePanel({ session, lang }: Props) {
             </>
           )}
         </span>
+        <label className="tree-asc-picker">
+          {tt('build.class')}
+          <select
+            value={session.character?.class_name ?? ''}
+            disabled={session.busy}
+            onChange={(e) => session.newBuild(e.target.value, '')}
+          >
+            {(session.treeMeta?.classes ?? []).map((c) => (
+              <option key={c.name} value={c.name}>
+                {lang !== 'en-US' ? (session.classNames.classes[c.name] ?? c.name) : c.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="tree-asc-picker">
           {tt('tree.ascendancy')}
           <select
@@ -872,6 +966,12 @@ export function TreePanel({ session, lang }: Props) {
           role="img"
           aria-label={tt('tree.title')}
         >
+          <defs>
+            {/* 技能图标裁成圆形（美术是方图，避免方角戳出外框） */}
+            <clipPath id="tree-icon-clip" clipPathUnits="objectBoundingBox">
+              <circle cx="0.5" cy="0.5" r="0.5" />
+            </clipPath>
+          </defs>
           {ascExtent && (
             <circle
               className="asc-backdrop"

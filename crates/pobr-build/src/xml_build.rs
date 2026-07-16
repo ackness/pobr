@@ -24,7 +24,7 @@
 use quick_xml::Reader;
 use std::collections::HashMap;
 
-use quick_xml::events::{BytesStart, Event};
+use quick_xml::events::{BytesRef, BytesStart, Event};
 
 use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
@@ -165,14 +165,29 @@ const DEFAULT_TRUE_CONDITIONS: &[(&str, &str)] = &[
     ("VigilantStrikeBypassCD", "VigilantStrikeBypassCD"),
 ];
 
-/// XML 省略时会被补默认（defaultState=true）的 `<Input>` key（quest Stat 奖励
-/// 与默认 true 条件）。encode 写出端对未显式设置的这些 key 写 `boolean="false"`，
-/// 钉住「请求直连路径无默认补注」的语义，保证 encode→decode 往返计算一致。
-pub fn default_on_config_keys() -> impl Iterator<Item = &'static str> {
-    DEFAULT_QUEST_STAT_REWARDS
-        .iter()
-        .map(|(k, _)| *k)
-        .chain(DEFAULT_TRUE_CONDITIONS.iter().map(|(k, _)| *k))
+/// XML 省略时会被补默认 true 的**条件型** `<Input>` key。请求直连路径尚未实现
+/// 这些条件的默认注入，encode 写出端对未显式设置的 key 写 `boolean="false"` 钉住
+/// 该语义，保证 encode→decode 往返计算一致。quest Stat 奖励不在此列——直连路径
+/// 已经 [`default_quest_stat_reward_texts`] 实现同一 defaultState=true 语义，
+/// 省略即两侧一致，无须钉 false。
+pub fn default_true_condition_keys() -> impl Iterator<Item = &'static str> {
+    DEFAULT_TRUE_CONDITIONS.iter().map(|(k, _)| *k)
+}
+
+/// 请求直连路径（无 XML）的 Stat 型任务奖励注入，与 XML 路径同一
+/// PoB2 defaultState=true 语义：`explicit(key)` 取请求里该 quest 键的显式勾选值，
+/// `None`（省略）视作已领取，`Some(false)` 为显式放弃。返回应全局注入的词条行。
+/// 后续版本新增奖励只需扩充 [`DEFAULT_QUEST_STAT_REWARDS`]，两条路径同时生效。
+pub fn default_quest_stat_reward_texts(
+    mut explicit: impl FnMut(&str) -> Option<bool>,
+) -> Vec<String> {
+    let mut out = Vec::new();
+    for (key, stat) in DEFAULT_QUEST_STAT_REWARDS {
+        if explicit(key).unwrap_or(true) {
+            push_quest_lines(&mut out, stat);
+        }
+    }
+    out
 }
 
 /// `<Config>` 解析产物：条件 / 倍率 / 全局词条 + 顶层标量配置项。
@@ -712,12 +727,13 @@ fn parse_raw_item_texts(xml: &str) -> Result<std::collections::HashMap<u32, Stri
                     .and_then(|v| v.parse::<u32>().ok())
                     .unwrap_or(0);
             }
-            Ok(Event::Text(t)) if in_item => match t.unescape() {
+            Ok(Event::Text(t)) if in_item => match t.decode() {
                 Ok(text) => current_text.push_str(&text),
-                // entity-decode 失败时退化为原始字节的有损解码，而非整段丢弃——
+                // 解码失败时退化为原始字节的有损解码，而非整段丢弃——
                 // 否则会静默截断一行词条（PoB raw item 文本以行为单位解析）。
                 Err(_) => current_text.push_str(&String::from_utf8_lossy(&t)),
             },
+            Ok(Event::GeneralRef(r)) if in_item => append_general_ref(&mut current_text, &r),
             Ok(Event::End(e)) if element_name_end(&e) == "Item" && in_item => {
                 in_item = false;
                 if current_id > 0 {
@@ -757,10 +773,11 @@ pub fn parse_notes(xml: &str) -> Result<Option<String>, XmlError> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) if element_name(&e) == "Notes" => in_notes = true,
-            Ok(Event::Text(t)) if in_notes => match t.unescape() {
+            Ok(Event::Text(t)) if in_notes => match t.decode() {
                 Ok(chunk) => text.push_str(&chunk),
                 Err(_) => text.push_str(&String::from_utf8_lossy(&t)),
             },
+            Ok(Event::GeneralRef(r)) if in_notes => append_general_ref(&mut text, &r),
             Ok(Event::End(e)) if element_name_end(&e) == "Notes" => break,
             Ok(Event::Eof) => break,
             Err(e) => return Err(XmlError::Parse(e.to_string())),
@@ -915,12 +932,13 @@ fn parse_item_blocks(xml: &str) -> Result<std::collections::HashMap<u32, Item>, 
                     .and_then(|v| v.parse::<u32>().ok())
                     .unwrap_or(0);
             }
-            Ok(Event::Text(t)) if in_item => match t.unescape() {
+            Ok(Event::Text(t)) if in_item => match t.decode() {
                 Ok(text) => current_text.push_str(&text),
-                // entity-decode 失败时退化为原始字节的有损解码，而非整段丢弃——
+                // 解码失败时退化为原始字节的有损解码，而非整段丢弃——
                 // 否则会静默截断一行词条，使该件物品计算出错。
                 Err(_) => current_text.push_str(&String::from_utf8_lossy(&t)),
             },
+            Ok(Event::GeneralRef(r)) if in_item => append_general_ref(&mut current_text, &r),
             Ok(Event::End(e)) if element_name_end(&e) == "Item" && in_item => {
                 in_item = false;
                 if current_id > 0 {
@@ -1238,7 +1256,41 @@ fn attr_value(e: &BytesStart<'_>, key: &[u8]) -> Option<String> {
     e.attributes()
         .flatten()
         .find(|a| a.key.as_ref() == key)
-        .and_then(|a| a.unescape_value().ok().map(|v| v.into_owned()))
+        .and_then(|a| {
+            // 不走 normalized_value：属性值空白归一化会把字面换行压成空格，
+            // 而 PoB 在属性里存多行词条（<Input string="a\nb">），换行是行分隔符。
+            let raw = String::from_utf8_lossy(&a.value).into_owned();
+            quick_xml::escape::unescape(&raw)
+                .ok()
+                .map(|v| v.into_owned())
+        })
+}
+
+/// quick-xml 0.38+ 把 `&ref;` 从 `Text` 事件拆成独立的 `GeneralRef` 事件；
+/// 此处还原旧 `unescape` 行为：字符引用与预定义实体解码进文本，未知实体
+/// 按原样保留（而非丢弃——item 文本以行为单位解析，丢字符即静默截断词条）。
+fn append_general_ref(buf: &mut String, r: &BytesRef<'_>) {
+    if let Ok(Some(ch)) = r.resolve_char_ref() {
+        buf.push(ch);
+        return;
+    }
+    match r.decode().as_deref() {
+        Ok("amp") => buf.push('&'),
+        Ok("lt") => buf.push('<'),
+        Ok("gt") => buf.push('>'),
+        Ok("apos") => buf.push('\''),
+        Ok("quot") => buf.push('"'),
+        Ok(name) => {
+            buf.push('&');
+            buf.push_str(name);
+            buf.push(';');
+        }
+        Err(_) => {
+            buf.push('&');
+            buf.push_str(&String::from_utf8_lossy(r));
+            buf.push(';');
+        }
+    }
 }
 
 /// 布尔属性：缺失或非 `"true"` 视为 `false`。
@@ -1299,6 +1351,52 @@ Adds 47 to 86 Physical Damage
         </ItemSet>
     </Items>
 </PathOfBuilding2>"#;
+
+    /// quick-xml 0.38+ 把实体引用拆成 GeneralRef 事件；钉住文本收集路径
+    /// 对预定义实体 / 字符引用 / 未知实体的还原行为（丢字符 = 静默截断词条）。
+    #[test]
+    fn text_collection_resolves_entity_references() {
+        let xml = r#"<PathOfBuilding2>
+    <Items activeItemSet="1">
+        <Item id="1">
+Rarity: UNIQUE
+Fury &amp; Wrath
+Item Level: 80
++1 to &#65; &unknown; marker
+        </Item>
+    </Items>
+    <Notes>DPS &gt; EHP &amp; life</Notes>
+</PathOfBuilding2>"#;
+        let texts = parse_raw_item_texts(xml).expect("parse items");
+        let item = &texts[&1];
+        assert!(item.contains("Fury & Wrath"), "amp entity: {item}");
+        assert!(
+            item.contains("+1 to A &unknown; marker"),
+            "char ref + unknown entity kept verbatim: {item}"
+        );
+        let notes = parse_notes(xml).expect("parse notes").expect("has notes");
+        assert_eq!(notes, "DPS > EHP & life");
+    }
+
+    /// PoB 在属性值里用字面换行分隔多行词条（custom mods / timeless 珠宝行）；
+    /// 属性解码必须保空白原样（XML 规范的属性归一化会把换行压成空格 = 词条串行）。
+    #[test]
+    fn attr_value_preserves_literal_newlines() {
+        let mut reader = Reader::from_str("<X v=\"line one\nline two &amp; more\"/>");
+        loop {
+            match reader.read_event() {
+                Ok(Event::Empty(e)) => {
+                    assert_eq!(
+                        attr_value(&e, b"v").as_deref(),
+                        Some("line one\nline two & more")
+                    );
+                    return;
+                }
+                Ok(Event::Eof) => panic!("no element parsed"),
+                _ => {}
+            }
+        }
+    }
 
     #[test]
     fn parses_full_build_identity() {

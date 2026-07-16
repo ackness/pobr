@@ -6,23 +6,23 @@
   },
   "summary": {
     "total": 4280,
-    "parsed": 1756,
-    "unsupported": 5,
-    "err": 2519,
-    "coverage_ratio": 0.41028
+    "parsed": 3440,
+    "unsupported": 840,
+    "err": 0,
+    "coverage_ratio": 0.803738
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 896,
-      "unsupported": 1,
-      "err": 809
+      "parsed": 1195,
+      "unsupported": 511,
+      "err": 0
     },
     {
       "source": "C2_tree",
-      "parsed": 827,
-      "unsupported": 4,
-      "err": 1710
+      "parsed": 2212,
+      "unsupported": 329,
+      "err": 0
     },
     {
       "source": "SD_derived",
@@ -33,203 +33,203 @@
   ],
   "gaps_top_n": [
     {
-      "text": "+0.2 metres to [Melee] [Strike] Range",
-      "status": "err",
+      "text": "10% chance to gain [Volatility] on Kill",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+0.4 metres to [Melee] [Strike] Range if you've dealt a [Projectile] [Attack] [HitDamage|Hit] in the past eight seconds",
-      "status": "err",
+      "text": "12% increased [Spell] Damage with [Spell|Spells] that cost Life",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+0.5 metres to Dodge Roll distance while [Surrounded]",
-      "status": "err",
+      "text": "15% chance to gain [UndeadArchon|Archon of Undeath] when you use a [Command|Command] skill",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 Ring Slot",
-      "status": "err",
+      "text": "2% increased [Attack] Damage per 75 [ItemArmour|Item Armour] and [ItemEvasion|Evasion] on Equipped Shield",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 Suffix Modifier allowed",
-      "status": "err",
+      "text": "20% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
       "source": "C1_build"
     },
     {
-      "text": "+1 maximum stacks of [PuppetMaster|Puppet Master]",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+1 to Level of all Corrupted Skill Gems",
-      "status": "err",
+      "text": "21% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
       "source": "C1_build"
     },
     {
-      "text": "+1 to Level of all Projectile Skills",
-      "status": "err",
+      "text": "22% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
       "source": "C1_build"
     },
     {
-      "text": "+1 to Level of all Spell Skills",
-      "status": "err",
+      "text": "23% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
       "source": "C1_build"
     },
     {
-      "text": "+1 to Level of all [Chaos] Skills",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+1 to Level of all [Cold] Skills",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+1 to Maximum Power Charges",
-      "status": "err",
+      "text": "24% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
       "source": "C1_build"
     },
     {
-      "text": "+1 to Maximum [Charges|Endurance Charges]",
-      "status": "err",
+      "text": "25% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "28% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "3% chance to gain [Volatility] on Kill",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 to Maximum [Charges|Frenzy Charges]",
-      "status": "err",
+      "text": "4% increased [Attack] Damage per 75 [ItemArmour|Item Armour] and [ItemEvasion|Evasion] on Equipped Shield",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 to Maximum [Charges|Power Charges]",
-      "status": "err",
+      "text": "40% increased [Spell] Damage with [Spell|Spells] that cost Life",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 to Maximum [EnergyShield|Energy Shield] per 12 [ItemEvasion|Item Evasion] on Equipped Body Armour",
-      "status": "err",
+      "text": "5% chance to gain [Volatility] on Kill",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 to Maximum [Spirit] per 25 Maximum Life",
-      "status": "err",
+      "text": "50% chance to gain [Volatility] when you are [Stun|Stunned]",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 to [Spirit] for every 20 [Evasion|Evasion Rating] on Equipped Body Armour",
-      "status": "err",
+      "text": "6% increased [Spell] Damage with [Spell|Spells] that cost Life",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 to [Spirit] for every 8 [ItemEnergyShield|Item Energy Shield] on Equipped Body Armour",
-      "status": "err",
+      "text": "Absent Amulet",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Abundant Ultimate Mana Flask of the Endless",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Adonia&apos;s Ego",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Against the Darkness",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Damage taken from Hits Contributes to Magnitude of Chill inflicted on you",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 25% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 27% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 28% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 35% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 36% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 40% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 43% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 46% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All [DamageTypes|Damage] is taken from Mana before Life\n50% less Mana Recovery Rate",
+      "status": "unsupported",
       "source": "C2_tree"
     },
     {
-      "text": "+1 to maximum [ElementalInfusion|Cold Infusions]",
-      "status": "err",
-      "source": "C2_tree"
+      "text": "Alpha&apos;s Howl",
+      "status": "unsupported",
+      "source": "C1_build"
     },
     {
-      "text": "+1 to maximum [ElementalInfusion|Fire Infusions]",
-      "status": "err",
-      "source": "C2_tree"
+      "text": "Amber Amulet",
+      "status": "unsupported",
+      "source": "C1_build"
     },
     {
-      "text": "+1 to maximum [ElementalInfusion|Lightning Infusions]",
-      "status": "err",
-      "source": "C2_tree"
+      "text": "Amethyst Ring",
+      "status": "unsupported",
+      "source": "C1_build"
     },
     {
-      "text": "+1 to maximum number of Summoned [Totem|Totems]",
-      "status": "err",
-      "source": "C2_tree"
+      "text": "Amor Mandragora",
+      "status": "unsupported",
+      "source": "C1_build"
     },
     {
-      "text": "+1 to maximum number of [ElementalInfusion|Elemental Infusions]",
-      "status": "err",
-      "source": "C2_tree"
+      "text": "Analyst&apos;s Stone Charm of the Perpetual",
+      "status": "unsupported",
+      "source": "C1_build"
     },
     {
-      "text": "+1 to maximum number of placed [Banner|Banners]",
-      "status": "err",
-      "source": "C2_tree"
+      "text": "Ancestral Tiara",
+      "status": "unsupported",
+      "source": "C1_build"
     },
     {
-      "text": "+1% to [MaximumResistances|Maximum Cold Resistance] per 3 Blue [SupportGem|Support Gems] Socketed",
-      "status": "err",
-      "source": "C2_tree"
+      "text": "Apocalypse Desire",
+      "status": "unsupported",
+      "source": "C1_build"
     },
     {
-      "text": "+1% to [MaximumResistances|Maximum Cold Resistance] while [Shapeshift|Shapeshifted]",
-      "status": "err",
-      "source": "C2_tree"
+      "text": "Apocalypse Hope",
+      "status": "unsupported",
+      "source": "C1_build"
     },
     {
-      "text": "+1% to [MaximumResistances|Maximum Fire Resistance] per 3 Red [SupportGem|Support Gems] Socketed",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+1% to [MaximumResistances|Maximum Fire Resistance] while [Shapeshift|Shapeshifted]",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+1% to [MaximumResistances|Maximum Lightning Resistance] per 3 Green [SupportGem|Support Gems] Socketed",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+1% to [MaximumResistances|Maximum Lightning Resistance] while [Shapeshift|Shapeshifted]",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+1% to [MaximumResistances|Maximum Resistances] of each [ElementalDamage|Elemental] Damage Type you have been [HitDamage|Hit] with [Recently]",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+1% to all [MaximumResistances|Maximum Elemental Resistances] if you have at\nleast 5 Red, Green and Blue [SupportGem|Support Gems] Socketed",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+10 to Maximum Darkness per Level",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+10 to Maximum [Rage|Rage] while wielding an [Axe|Axe]",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+10% [SurpassChance|Surpassing] chance to fire an additional Arrow",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+12 to maximum [Rage] while [Shapeshift|Shapeshifted]",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+15 maximum [Rage] if you've used a Skill that Requires [Glory] in the past 20 seconds",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+15 to Maximum [Rage]",
-      "status": "err",
-      "source": "C2_tree"
-    },
-    {
-      "text": "+197% Surpassing chance to fire an additional Arrow",
-      "status": "err",
+      "text": "Apocalypse Pelt",
+      "status": "unsupported",
       "source": "C1_build"
     }
   ]

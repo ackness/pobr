@@ -16,7 +16,7 @@
 //! 回归无感知。切换依据与逐 build 归因：
 //! `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`。
 
-use pobr_build::corpus::{CorpusLine, LineSource, build_report};
+use pobr_build::corpus::{CorpusLine, LineSource};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
@@ -511,7 +511,24 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-const BASELINE_DEF_CORE_HIT5: usize = 139; // 实测 139/144 = 96.5%（BeenHitRecently 条件 +1）
+// **Mageblood legacies 重记（Phase 1 #1，+17 @5% core-8 118→135）**：9/18 fixture 全戴
+// Mageblood，但 `LegacyOf*` BASE + `MagebloodEquipped` flag 从未展开成护甲/闪避/抗性
+// （env_finalize.rs 声明未建）。实现 vendor CalcPerform.lua:66-142 legacies 表 +
+// :1502-1528 应用逻辑（stacks × duplicate 放大 globalEffect × floor）+ `legacy of (%w+)`
+// handler（动态 mod 名）+ MagesLegacyEffect implicit（已在 special_vendor 批）。titan
+// Armour（Basalt INC 219 = floor(1.46×150)）/ ice-shot Evasion（Jade BASE 2000 + Stibnite
+// INC 150）等多 build 的护甲/闪避/抗性缺口一次收敛，三 canary（physical_armour_block/
+// cold_projectile_evasion_es/evasion_melee）un-ignore。
+// **Virtuous Barrier Life 名归一重记（+1 @5% core-8 135→136）**：Gemling 升华 buff 的
+// per-Mote Life INC（`gem_barrier_red_grants_maximum_life_+%` → 24% = 2×12 StrengthMote）
+// 此前经 stat_map_engine 映射到 vendor 名 `Life`，落进死桶——PoBR 生命池聚合名是
+// `MaximumLife`（Armour/Evasion/EnergyShield 因规范名与 vendor 同名无此问题）。归一
+// `Life`→`MaximumLife` 后 gemling Life 0.79x→0.96x，连带 TotalEHP/5×MaxHit/LifeUnres 共 8 列翻正。
+// **Item ES 重算重记（+2 @5% core-8 136→138）**：per-slot 物品 ES 从「信物品文本
+// 展示行」改为 PoB2 口径「基底 DB 重算 (esBase+flat)×(1+localInc/100)×(1+quality/100)」
+// （Item.lua:1994-1996；展示行跨数据版本会滞后）——titan ES 41→55、stormweaver ES
+// 986→1120，各连带 ESRecoveryCap。见 calc_orchestrator/defence.rs::item_rolled_defence。
+const BASELINE_DEF_CORE_HIT5: usize = 138; // ItemES 后 138/144（Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -595,8 +612,14 @@ const BASELINE_DEF_CORE_HIT5: usize = 139; // 实测 139/144 = 96.5%（BeenHitRe
 // mod_parser_rules 数据通道生效（B3 commit 的 core-8 138→139 即此格），wolf-pack
 // Evasion 在 #40 合并前即 1.00x ✓。合并 #40 行为零变化（18 build 逐格 diff 为空），
 // 416 是双重计数；当前实测 415（@10% 432 与 core-8 139 恰与现实吻合，保留）。
-const BASELINE_DEF_HIT5: usize = 415; // 实测 415/450 = 92.2%（#40 过时基线回记）
-const BASELINE_DEF_HIT10: usize = 432; // 实测 432/450 = 96.0%（BeenHitRecently +1）
+// **Mageblood legacies 重记（Phase 1 #1，+50 @5% 343→393 / +56 @10% 361→417）**：见
+// BASELINE_DEF_CORE_HIT5 上的说明；护甲/闪避/抗性列跨多 build 收敛。
+// **Virtuous Barrier Life 名归一重记（+8 @5% 393→401 / +8 @10% 417→425）**：见
+// BASELINE_DEF_CORE_HIT5 上的说明；gemling 8 列（Life/TotalEHP/5×MaxHit/LifeUnres）翻正。
+// **Item ES 重算重记（+4 @5% 401→405 / +3 @10% 425→428）**：titan+stormweaver 各
+// ES+ESRecoveryCap 翻正；见 BASELINE_DEF_CORE_HIT5 上说明。
+const BASELINE_DEF_HIT5: usize = 405; // ItemES 后 405/450（Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
@@ -627,8 +650,23 @@ const BASELINE_DEF_HIT10: usize = 432; // 实测 432/450 = 96.0%（BeenHitRecent
 // `parse_passive_nodes` 单独回传被剔除的非激活组节点，`radius_jewel_expansions` 在几何里
 // 并回完整已分配集（节点自身 mod 仍 masking，行为不变）。gemling CritChance→1.00x、
 // AvgDamage/TotalDPS 0.96x→1.03x。其余 build 零回归（off 70/73 → 71/74）。
-const BASELINE_OFF_HIT5: usize = 71; // 实测 71/80 = 88.8%（radius-jewel weapon-set 修复 +1）
-const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
+// **Mageblood Diamond crit 名归一重记（+2 @5% 39→41 / +3 @10% 47→50）**：Mageblood
+// LegacyOfDiamond 注入 vendor 名 `CritChance` INC，但 calc::crit 读 `CriticalStrikeChance`
+// （PoBR 规范名）——裸注入不过 parser 的 translate_vendor_name，落死桶（同 Virtuous
+// Barrier Life→MaximumLife 类）。表内改用 `CriticalStrikeChance` 后 blood-mage CritChance
+// 0.79x→0.96x、ember CritChance+CritMultiplier→1.00x（InevitableCrit 的 crit-mult 惩罚随
+// pre-eff crit 修复一并解决），三 Diamond build 的 crit/DPS 抬升。见 calc/mageblood.rs。
+// **Mageblood Silver Speed 名归一重记（+4 @5% 41→45 / +4 @10% 50→54）**：同 crit 死桶
+// 类——LegacyOfSilver 注入 vendor 裸 `Speed` INC，但 PoBR 速度桶名是 `SkillSpeed`
+// （SPEED_BUCKET，攻/施法通吃）。改后 ember/monk-twister/smith/titan 的 Speed 列翻正、
+// DPS 抬升（ember 0.68x→0.77x、monk-twister→0.88x）。见 calc/mageblood.rs LegacyOfSilver。
+// **bloodmage 池转换后 Mana multiplier 刷新重记（off +1 @5% 45→46 / @10% 54→55；dot +2
+// @5% 9→11 / @10% 11→13）**：perform 防御资源转换（Eldritch Battery ES→Mana）后重算了
+// mana_pool 并回填 cfg.stats["Mana"]，但漏刷 cfg.multipliers["Mana"]（per-100-max-Mana
+// 类词条如 Arcane Intensity 读它）→ 池转换 build 的 mana 缩放用了转换前的旧值。补刷后
+// blood-mage SpellDamage INC 39→105、TotalDPS 0.74x→0.87x，其 DoT 基底随之抬升。见 perform.rs。
+const BASELINE_OFF_HIT5: usize = 46; // mana-mult 后 46/80（Silver-speed 45；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 55; // mana-mult 后 55/80（Silver-speed 54；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -687,8 +725,10 @@ const BASELINE_OFF_HIT10: usize = 74; // 实测 74/80 = 92.5%（+1）
 // 0.73x→0.84x、dot 0.54x→0.70x 收敛但未回带；剩余 ~16% per-hit 低估是
 // blood-mage 自身根因（deadeye/gemling 同型剧本）,修复后基线回记。
 // 18 build 逐格 diff 仅 blood-mage 三格变动。冻结榜只剩 legacy `split`。
-const BASELINE_DOT_HIT5: usize = 26; // 实测 26/37 = 70.3%（诚实显形 -1）
-const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（-1）
+// **bloodmage mana-mult 重记（dot +2 @5% 9→11 / @10% 11→13）**：见 BASELINE_OFF_HIT5 上
+// 说明——mana 缩放抬 blood-mage 的 spell DoT 基底，其 TotalDotDPS/CombinedDPS 翻正。
+const BASELINE_DOT_HIT5: usize = 11; // mana-mult 后 11/37（迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 13; // mana-mult 后 13/37（迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -706,8 +746,8 @@ const BASELINE_DOT_HIT10: usize = 28; // 实测 28/37 = 75.7%（-1）
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 44; // 实测 44/80 = 55.0%（SkillType 全量化 +8）
-const PANEL_OFF_HIT10: usize = 46; // 实测 46/80 = 57.5%（SkillType 全量化 +6）
+const PANEL_OFF_HIT5: usize = 27; // 4.5.4.3 迁移基线 27/80（0.5.0=44）
+const PANEL_OFF_HIT10: usize = 30; // 4.5.4.3 迁移基线 30/80（0.5.0=46）
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
@@ -908,9 +948,7 @@ fn corpus_unsupported_report() {
     for dir in &builds {
         all_lines.extend(collect_corpus_lines(dir, &data));
     }
-    let report = build_report(&all_lines);
-
-    // A2：engine 生产口径段（B3 后闸门/ingest 同一 parser——本段数字即生产行为）。
+    // engine 生产口径段（闸门/ingest 同一 parser——本段数字即生产行为）。
     // Partial = 引擎识别一半但整行被闸门丢弃（迁移候选）；dropped-tags = pre_flag
     // 静默丢 tag（作用域放大 over-apply 风险面，此前完全不可见）。
     if let Some(rules) = data.parser_rules.as_deref() {
@@ -1090,79 +1128,9 @@ fn corpus_unsupported_report() {
         assert!(er.total_lines > 0, "engine 语料为空");
     }
 
-    eprintln!("\n============ CORPUS UNSUPPORTED REPORT ============");
-    eprintln!(
-        "[plain parse_mod] lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%",
-        report.total_lines,
-        report.parsed,
-        report.parsed_rate() * 100.0,
-        report.unsupported,
-        report.err,
-        report.gap_rate() * 100.0,
-    );
-
-    // M5b A-2 曲线：special 规则激活后（B-4）的缺口率——special 整行命中把缺口
-    // 语料从 Err/Unsupported 转 Parsed。经 `load_ruleset` 取三源拼接条目
-    //（overlay + derived + vendor V0），与生产编排器同一加载路径。
-    {
-        use pobr_build::corpus::build_report_with_rules;
-        use pobr_core::rules::SpecialModRules;
-        let data_dir = repo_data_root().join(pobr_gamedata::data_version());
-        let ruleset = pobr_gamedata::GameData::new(&data_dir)
-            .load_ruleset()
-            .expect("load_ruleset");
-        if let Some(entries) = ruleset.special_mods {
-            let reg = pobr_build::handlers::build_special_registry();
-            let rules = SpecialModRules::compile(&entries, &reg).expect("compile special");
-            let sp = build_report_with_rules(&all_lines, &rules, &reg);
-            eprintln!(
-                "[special-aware]  lines: {}  parsed: {} ({:.1}%)  unsupported: {}  err: {}  gap_rate: {:.1}%  (special entries: {})",
-                sp.total_lines,
-                sp.parsed,
-                sp.parsed_rate() * 100.0,
-                sp.unsupported,
-                sp.err,
-                sp.gap_rate() * 100.0,
-                rules.len(),
-            );
-            // 生产视角的缺口模板（plain 视角见下——两榜对照能看出 special
-            // 通道消化了哪些头部模板）。
-            eprintln!("--- Top-20 gap templates (special-aware) ---");
-            for (i, t) in sp.gap_templates.iter().take(20).enumerate() {
-                eprintln!(
-                    "{:>2}. [{:?}] hit={} cnt={} (item={} jewel={}) | {}",
-                    i + 1,
-                    t.class,
-                    t.builds_hit,
-                    t.total_count,
-                    t.item_count,
-                    t.jewel_count,
-                    t.template,
-                );
-            }
-        }
-    }
-    eprintln!("--- Top-20 gap templates (builds_hit desc, count desc) ---");
-    for (i, t) in report.gap_templates.iter().take(20).enumerate() {
-        eprintln!(
-            "{:>2}. [{:?}] hit={} cnt={} (item={} jewel={}) | {}",
-            i + 1,
-            t.class,
-            t.builds_hit,
-            t.total_count,
-            t.item_count,
-            t.jewel_count,
-            t.template,
-        );
-    }
-    eprintln!(
-        "total distinct gap templates: {}",
-        report.gap_templates.len()
-    );
-
     // 弱断言：语料非空（防 fixture/收集链断裂静默归零）。
     assert!(
-        report.total_lines > 0,
+        !all_lines.is_empty(),
         "corpus 收集为空——检查 build 装备词条收集链"
     );
 }

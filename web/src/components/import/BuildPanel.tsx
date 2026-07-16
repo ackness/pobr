@@ -1,3 +1,4 @@
+import { formatApiError } from '../../api/error';
 import { useRef, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
@@ -27,7 +28,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     try {
       setShareCode(await session.exportCode());
     } catch (err) {
-      setShareError(String(err));
+      setShareError(formatApiError(err));
     }
   };
 
@@ -52,7 +53,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
         await session.importCode(text.trim());
         onImported();
       } catch (err) {
-        setFileError(String(err));
+        setFileError(formatApiError(err));
       }
     }
   };
@@ -232,6 +233,15 @@ export function BuildPanel({ session, lang, onImported }: Props) {
         </article>
       </div>
 
+      {session.calc && session.calc.item_errors.length > 0 && (
+        <div className="calc-error">
+          {session.calc.item_errors.map((e) => (
+            <div key={e.slot}>
+              [{e.slot}] 解析失败，已跳过该件继续计算：{e.message}
+            </div>
+          ))}
+        </div>
+      )}
       {session.calc && session.calc.unsupported_modifiers.length > 0 && (
         <details className="unsupported-block">
           <summary>

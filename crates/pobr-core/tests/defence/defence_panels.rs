@@ -10,8 +10,8 @@ use pobr_data::prelude::*;
 fn db_from_texts(texts: &[&str]) -> ModDb {
     let mut db = ModDb::new();
     for text in texts {
-        let outcome = pobr_core::mod_parser::parse_mod(text)
-            .unwrap_or_else(|e| panic!("解析 `{text}` 失败：{e:?}"));
+        let outcome =
+            crate::support::parse_mod(text).unwrap_or_else(|e| panic!("解析 `{text}` 失败：{e:?}"));
         assert!(
             !outcome.mods.is_empty(),
             "`{text}` 应解析出词条（Unsupported 会静默丢失覆盖）"
@@ -93,9 +93,10 @@ fn spell_block_independent_and_flag_unified() {
     assert_eq!(block.spell_block_chance, 20.0);
     assert_eq!(block.block_chance, 0.0);
 
-    // flag 路径：法术格挡 = 攻击格挡。
-    let mut db =
-        db_from_texts(&["Chance to Block Spell Damage is equal to Chance to Block Attack Damage"]);
+    // flag 路径：法术格挡 = 攻击格挡。词条文本（ModParser.lua:3027）不在当前
+    // 数据集/引擎规则内——直接注入 flag（该 flag 的生产来源是引擎规则数据）。
+    let mut db = ModDb::new();
+    db.add_list([pobr_core::Modifier::flag("SpellBlockChanceIsBlockChance")]);
     add_base(&mut db, "ShieldBlockChance", 26.0);
     let block = calc::calc_block(&db, &cfg);
     assert_eq!(block.spell_block_chance, block.block_chance);
@@ -106,7 +107,10 @@ fn spell_block_independent_and_flag_unified() {
 /// Blocked Hits` → 承伤份额 30%。
 #[test]
 fn block_effect_taken_share() {
-    let db = db_from_texts(&["You take 30% of Damage from Blocked Hits"]);
+    // `You take 30% of Damage from Blocked Hits`（ModParser.lua:2479）不在当前
+    // 引擎规则内——直接注入 BlockEffect BASE（calc 消费口径不变）。
+    let mut db = ModDb::new();
+    add_base(&mut db, "BlockEffect", 30.0);
     let cfg = CalcConfig::new();
 
     let block = calc::calc_block(&db, &cfg);
@@ -242,8 +246,10 @@ fn deflection_zero_and_lucky() {
         0.0
     );
 
-    // lucky：35% → (1−0.65²)×100 = 57.75。
-    let mut db = db_from_texts(&["Chance to Deflect is Lucky"]);
+    // lucky：35% → (1−0.65²)×100 = 57.75。`Chance to Deflect is Lucky` 文本不在
+    // 当前引擎规则内——直接注入 DeflectIsLucky flag。
+    let mut db = ModDb::new();
+    db.add_list([pobr_core::Modifier::flag("DeflectIsLucky")]);
     add_base(&mut db, "DeflectionRating", 5000.0);
     let d = calc::calc_deflection(&db, &cfg, 0.0, 0.0, 2000.0);
     assert!((d.chance - 57.75).abs() < 1e-9, "got {}", d.chance);

@@ -5,6 +5,33 @@
  * 改这里必须同步改 Rust DTO 与 golden，反之亦然。
  */
 
+/**
+ * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
+ * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
+ */
+export const EXPECTED_SCHEMA_VERSION = 2;
+
+// ---------------------------------------------------------------------------
+// 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
+// ---------------------------------------------------------------------------
+
+export type ApiErrorCode = 'not_initialized' | 'bad_request' | 'decode_error' | 'internal';
+
+/** wasm Err 侧 JSON：`{code, message, slot?}`。 */
+export interface ApiErrorJson {
+  code: ApiErrorCode;
+  message: string;
+  /** 出错槽位（装备槽 id / Flask·Charm 槽名），供局部提示。 */
+  slot?: string;
+}
+
+/** 单件来源文本解析失败的降级记录（该件被跳过，其余照算）。 */
+export interface SlotIssue {
+  /** 装备槽 id / `Flask N`·`Charm N` / `Jewel@<socket_node>`。 */
+  slot: string;
+  message: string;
+}
+
 // ---------------------------------------------------------------------------
 // decode_build_json
 // ---------------------------------------------------------------------------
@@ -342,6 +369,8 @@ export interface CalculateBuildResponse {
   breakdowns: Record<string, Breakdown>;
   /** 主技能分解（null = 无可解析的伤害主技能）。 */
   main_skill: MainSkillInfo | null;
+  /** 单件装备/药剂/珠宝文本解析失败的降级记录（据 slot 标红；空 = 全部成功）。 */
+  item_errors: SlotIssue[];
 }
 
 // ---------------------------------------------------------------------------
@@ -349,19 +378,10 @@ export interface CalculateBuildResponse {
 // ---------------------------------------------------------------------------
 
 export interface AttributionRequest {
-  pob_code?: string;
+  /** 完整计算请求（基线；与 node_power / optimize_variants 同形状）。 */
+  request: CalculateBuildRequest;
   /** display_catalog 字段 id；缺省 TotalDPS / Life / TotalEHP。 */
   fields?: string[];
-  character?: CharacterOverride;
-  allocated_nodes?: number[];
-  attribute_choices?: Record<string, AttributeChoice>;
-  socket_groups?: SocketGroupInput[];
-  items?: SlotItemInput[];
-  flasks?: SlotItemInput[];
-  jewels?: JewelInput[];
-  main_socket_group?: number;
-  mode_effective?: boolean;
-  enemy_tier?: EnemyTier;
 }
 
 export type AttributionSourceKind = 'item' | 'socket_group' | 'flask';
@@ -426,6 +446,26 @@ export interface PassiveClass {
 export interface PassiveTreeMeta {
   tree: string;
   classes: PassiveClass[];
+}
+
+// ---------------------------------------------------------------------------
+// 天赋树美术边车（public/tree-art/<version>/manifest.json，由 build-tree-art.py
+// 从 vendor PoB2 DDS 图集解码生成）。URL 已由 backend 解析为绝对路径。
+// ---------------------------------------------------------------------------
+
+/** 每种节点的外框图 URL（已点/未点两态；缺省则该态回退到另一态）。 */
+export interface TreeArtFrame {
+  unalloc?: string;
+  alloc?: string;
+}
+
+export interface TreeArt {
+  /** skill id（字符串）→ 节点内技能图标 URL。 */
+  nodeIcons: Record<string, string>;
+  /** 节点 kind → 外框图 URL 两态。 */
+  frames: Record<string, TreeArtFrame>;
+  /** 精通节点通用徽记 URL（专属图标在游戏客户端里，vendor 只有这个空白徽记）。 */
+  masteryIcon?: string;
 }
 
 /** 职业/升华名的简中对照表（数据包 `i18n/zh-CN/classes.json`，英文名 → 简中名，如 `"Druid": "德鲁伊"`）。 */

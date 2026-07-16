@@ -4,6 +4,9 @@
 //! 各子模块即 `tests/offence/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
+#[path = "support/parse.rs"]
+mod support;
+
 #[path = "offence/crit.rs"]
 mod crit;
 #[path = "offence/crit_pass.rs"]

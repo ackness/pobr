@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "sync-data": "node scripts/sync-data.mjs",
+    "build-tree-art": "python3 scripts/build-tree-art.py",
     "build-wasm": "wasm-pack build ../apps/pobr-wasm --target web --out-dir ../../web/src/wasm/pkg --out-name pobr_wasm -- --features wasm"
   },
   "dependencies": {

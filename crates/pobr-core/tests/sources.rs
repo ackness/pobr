@@ -4,6 +4,9 @@
 //! 各子模块即 `tests/sources/<name>.rs`，测试用例与断言逐一保留。
 #![allow(clippy::all)]
 
+#[path = "support/parse.rs"]
+mod support;
+
 #[path = "sources/env_finalize_buffs.rs"]
 mod env_finalize_buffs;
 #[path = "sources/env_finalize_flasks.rs"]

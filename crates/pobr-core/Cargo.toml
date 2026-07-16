@@ -20,7 +20,7 @@ aho-corasick.workspace = true
 serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
-criterion = { version = "0.5", default-features = false }
+criterion = { version = "0.8", default-features = false }
 # 仅测试侧反序列化 statmap 条目 fixture（lib 本体维持零 I/O / 零 serde_json）。
 serde_json.workspace = true
 

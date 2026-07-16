@@ -14,6 +14,7 @@ pub mod env_finalize;
 pub mod error;
 pub mod hand_pass;
 pub mod keystone_merge;
+pub mod mageblood;
 pub mod minion;
 pub mod offence;
 pub mod output;

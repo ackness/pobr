@@ -46,13 +46,7 @@ pub struct PassiveIngest {
 ///
 /// 归因约定：`SourceId.kind` = [`SourceKind::PassiveNode`] / [`SourceKind::AscendancyNode`]，
 /// `SourceId.id` = `node.<NodeId>`，`raw_text` 保留原始词条行；`stat_id` / `mod_type`
-/// 由 [`Modifier::with_origin`] 从 modifier 回填。
-pub fn ingest_passive_nodes(nodes: &[AllocatedNode]) -> Result<PassiveIngest, ParseError> {
-    ingest_passive_nodes_with_ctx(nodes, crate::mod_parser::ParseCtx::none())
-}
-
-/// [`ingest_passive_nodes`] 的 special 规则增强版（M5b B-4）：词条解析走 `ctx`
-/// （`ctx.rules = None` 时逐值等价 [`ingest_passive_nodes`]）。
+/// 由 [`Modifier::with_origin`] 从 modifier 回填。词条解析走 `ctx`。
 pub fn ingest_passive_nodes_with_ctx(
     nodes: &[AllocatedNode],
     ctx: crate::mod_parser::ParseCtx<'_>,

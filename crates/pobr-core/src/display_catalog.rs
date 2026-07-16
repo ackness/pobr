@@ -511,10 +511,12 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
     match id {
         "TotalDPS" => output.dps,
         "TotalHitAvg" => output.total_hit_avg,
-        "HitChance" => output.hit_chance,
+        // hit_chance / crit_chance 计算侧是 fraction（0..1），展示契约是
+        // Vt::Percent（0..100，与其余 Percent 字段同口径），在抽取处转换。
+        "HitChance" => output.hit_chance * 100.0,
         "ActionRate" => output.action_rate,
         "EffectiveActionRate" => output.effective_action_rate,
-        "CritChance" => output.crit_chance,
+        "CritChance" => output.crit_chance * 100.0,
         "CritMultiplier" => output.crit_multiplier,
         "BleedDPS" => output.bleed_dps,
         "IgniteDPS" => output.ignite_dps,

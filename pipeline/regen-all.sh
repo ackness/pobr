@@ -168,6 +168,16 @@ if [[ ${#OVERLAY_FAILURES[@]} -gt 0 ]]; then
     done
 fi
 
+# ---- 6c) vendor specialModList 批量抽取 (generated/special_vendor.json) ----
+# 必须在 special_derived (步骤 4) 与 special_mods 沿用 (步骤 6) 之后：抽取器对这
+# 两个文件做 key 去重。注意去重读的是 pobr_data::data_version() 指向的数据目录，
+# 不是 $PATCH——升级 drill 中先把 DATA_VERSION 常量推进到 $PATCH 再跑本脚本。
+# 4.5.4.3 升级曾漏掉这一步 (special_vendor 为 0 条)；precompile-mods --check 现在
+# 会对缺失报错。
+echo "== [6c] extract-lua --what special-mods (generated/special_vendor.json)"
+mkdir -p "$OUT_DIR/generated"
+soft_step special_vendor "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$OUT_DIR/generated/special_vendor.json"
+
 # ---- 7) generated/（precompile-mods）----
 echo "== [7/8] precompile-mods（generated/）"
 soft_step precompile_mods cargo run --quiet -p precompile-mods -- --data "$OUT_DIR" --report

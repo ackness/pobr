@@ -68,7 +68,7 @@ fn build_data_minion_def_spectre_falls_back() {
     let c = data
         .minion_def("Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre")
         .expect("Lightless Abomination 在库（落 spectres）");
-    assert_eq!(c.life, 3.0); // Spectres.lua
+    assert_eq!(c.life, 2.2); // Spectres.lua（4.5.4.3/0.5.4b：3.0→2.2）
     assert_eq!(c.armour, 0.4);
 }
 

@@ -4,11 +4,12 @@
 //! （蓝图 m2-defence §4.1 第 6 条惯例）。词条文本走 mod_parser（W0.1 覆盖表契约），
 //! 无解析来源的中间量（如 ArmourDefense）直接注入 Modifier。
 
+use crate::support::parse_mod;
 use pobr_core::calc::{
     MitigationCtx, MitigationInputs, armour_applies_pct, build_mitigation_ctx, damage_shift_table,
     effective_applied_armour, taken_hit_from_damage,
 };
-use pobr_core::mod_parser::{ParseStatus, parse_mod};
+use pobr_core::mod_parser::ParseStatus;
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
@@ -57,6 +58,8 @@ fn shift_table_defaults_to_identity() {
 /// （:2184 BASE 求和、:2189 源保留 max(100−total,0)）。
 #[test]
 fn shift_table_single_conversion() {
+    // 裸目标 taken-as 经 special_mods `cold_damage_taken_as_lightning`
+    // （vendor ModParser.lua:5655）整行解析——端到端走文本通道。
     let mut db = ModDb::new();
     add_text(&mut db, "30% of Cold Damage taken as Lightning");
     let shift = damage_shift_table(&db, &CalcConfig::attack());
@@ -119,11 +122,15 @@ fn effective_armour_physical_implicit_100() {
 /// 元素吃 50% 护甲，物理**保留全额**（区别于 instead 变体）。
 #[test]
 fn effective_armour_partial_pct_keeps_physical() {
+    // 词条文本不在当前引擎规则内——按其数据展开（ModParser.lua:2525-2529）直接注入。
     let mut db = ModDb::new();
-    add_text(
-        &mut db,
-        "50% of Armour applies to Fire, Cold and Lightning Damage taken from Hits",
-    );
+    for name in [
+        "ArmourAppliesToFireDamageTaken",
+        "ArmourAppliesToColdDamageTaken",
+        "ArmourAppliesToLightningDamageTaken",
+    ] {
+        db.add_mod(Modifier::number(name, ModType::Base, 50.0));
+    }
     let cfg = CalcConfig::attack();
     for dt in [DamageType::Fire, DamageType::Cold, DamageType::Lightning] {
         assert_eq!(
@@ -143,11 +150,16 @@ fn effective_armour_partial_pct_keeps_physical() {
 /// `ArmourDoesNotApplyToPhysicalDamageTaken` flag 把物理清零——物理清零**仅此变体**。
 #[test]
 fn effective_armour_instead_zeroes_physical() {
+    // 词条文本不在当前引擎规则内——按其数据展开（ModParser.lua:2519-2524）直接注入。
     let mut db = ModDb::new();
-    add_text(
-        &mut db,
-        "Armour applies to Fire, Cold and Lightning Damage taken from Hits instead of Physical Damage",
-    );
+    for name in [
+        "ArmourAppliesToFireDamageTaken",
+        "ArmourAppliesToColdDamageTaken",
+        "ArmourAppliesToLightningDamageTaken",
+    ] {
+        db.add_mod(Modifier::number(name, ModType::Base, 100.0));
+    }
+    db.add_mod(Modifier::flag("ArmourDoesNotApplyToPhysicalDamageTaken"));
     let cfg = CalcConfig::attack();
     assert_eq!(
         effective_applied_armour(&db, &cfg, 1000.0, 0.0, 0.0, DamageType::Physical),
@@ -290,11 +302,15 @@ fn taken_hit_lightning_coil_end_to_end() {
 /// 物理同口径仍吃全额护甲（2000）→ round(1000 × (1−1/6)) = 833。
 #[test]
 fn builder_partial_armour_applies_to_fire() {
+    // 词条文本不在当前引擎规则内——按其数据展开直接注入（同上）。
     let mut db = ModDb::new();
-    add_text(
-        &mut db,
-        "50% of Armour applies to Fire, Cold and Lightning Damage taken from Hits",
-    );
+    for name in [
+        "ArmourAppliesToFireDamageTaken",
+        "ArmourAppliesToColdDamageTaken",
+        "ArmourAppliesToLightningDamageTaken",
+    ] {
+        db.add_mod(Modifier::number(name, ModType::Base, 50.0));
+    }
     let cfg = CalcConfig::attack();
     let inputs = MitigationInputs {
         armour: 2000.0,
@@ -314,11 +330,16 @@ fn builder_partial_armour_applies_to_fire() {
 /// 1000，火承受改吃全额护甲 833。
 #[test]
 fn builder_instead_of_physical_flag() {
+    // 词条文本不在当前引擎规则内——按其数据展开直接注入（同上）。
     let mut db = ModDb::new();
-    add_text(
-        &mut db,
-        "Armour applies to Fire, Cold and Lightning Damage taken from Hits instead of Physical Damage",
-    );
+    for name in [
+        "ArmourAppliesToFireDamageTaken",
+        "ArmourAppliesToColdDamageTaken",
+        "ArmourAppliesToLightningDamageTaken",
+    ] {
+        db.add_mod(Modifier::number(name, ModType::Base, 100.0));
+    }
+    db.add_mod(Modifier::flag("ArmourDoesNotApplyToPhysicalDamageTaken"));
     let cfg = CalcConfig::attack();
     let inputs = MitigationInputs {
         armour: 2000.0,
