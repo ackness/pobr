@@ -1,0 +1,7 @@
+# Tool-generated artifacts: keep them committed (runtime/deploy needs them),
+# but collapse them in diffs/PR review and language stats.
+data/**/generated/** linguist-generated -diff
+data/**/overlay/** linguist-generated
+# Hand-curated overlay entries must stay reviewable.
+data/**/overlay/special_mods.json -linguist-generated diff
+examples/demo-bd-test/builds/*/meta.json linguist-generated -diff
