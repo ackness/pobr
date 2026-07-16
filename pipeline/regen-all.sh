@@ -16,8 +16,11 @@
 #   OLD_PATCH=4.5.0.3.4 pipeline/regen-all.sh    # 手工域从指定旧版本沿用（跨版本升级）
 #
 # 手工策展 overlay（无 vendor/官方自动通道）：buff_definitions / high_precision_mods /
-# local_mods / special_mods / vendor_name_aliases —— 跨版本升级时从 OLD_PATCH 沿用，
-# 并需人工复核（游戏平衡变更可能使其过时）。
+# local_mods / vendor_name_aliases —— 跨版本升级时从 OLD_PATCH 沿用，并需人工复核
+# （游戏平衡变更可能使其过时）。
+# special_mods 不在此列：已迁到版本无关的 data/overlay-common/special_mods.json，
+# 新版本目录由 gamedata 加载期自动合并继承，无需逐版本沿用（P1-3）。真正版本特有的
+# special_mods 修正才留在 data/<patch>/overlay/special_mods.json。
 
 # 韧性化：不用 -e 全局中止。前置步骤（adapter base/tree）失败仍立即退出（无 base
 # 数据则后续无意义）；overlay 单步失败只记录、续跑其余，末尾汇总。
@@ -124,7 +127,9 @@ soft_step stat_id_map     "${SYNC[@]}" gen-stat-id-map --overlay-dir "$OVL" --ou
 
 # ---- 6) 手工策展 overlay：从 OLD_PATCH 沿用（需人工复核）----
 echo "== [6/8] 手工策展 overlay 从 $OLD_PATCH 沿用"
-for f in buff_definitions high_precision_mods local_mods special_mods vendor_name_aliases; do
+# special_mods 已移出：策展条目在 data/overlay-common/，加载期合并继承（P1-3），
+# 不再逐版本沿用。
+for f in buff_definitions high_precision_mods local_mods vendor_name_aliases; do
     src="data/$OLD_PATCH/overlay/$f.json"
     if [[ -f "$src" ]]; then
         cp "$src" "$OVL/$f.json"
@@ -169,9 +174,10 @@ if [[ ${#OVERLAY_FAILURES[@]} -gt 0 ]]; then
 fi
 
 # ---- 6c) vendor specialModList 批量抽取 (generated/special_vendor.json) ----
-# 必须在 special_derived (步骤 4) 与 special_mods 沿用 (步骤 6) 之后：抽取器对这
-# 两个文件做 key 去重。注意去重读的是 pobr_data::data_version() 指向的数据目录，
-# 不是 $PATCH——升级 drill 中先把 DATA_VERSION 常量推进到 $PATCH 再跑本脚本。
+# 必须在 special_derived (步骤 4) 之后：抽取器对 special_mods（overlay-common +
+# 版本 overlay 两层）/ special_derived 做 key 去重。注意去重读的是
+# pobr_data::data_version() 指向的数据目录（含其同级 overlay-common），不是 $PATCH——
+# 升级 drill 中先把 DATA_VERSION 常量推进到 $PATCH 再跑本脚本。
 # 4.5.4.3 升级曾漏掉这一步 (special_vendor 为 0 条)；precompile-mods --check 现在
 # 会对缺失报错。
 echo "== [6c] extract-lua --what special-mods (generated/special_vendor.json)"

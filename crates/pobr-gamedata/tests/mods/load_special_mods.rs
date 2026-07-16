@@ -168,3 +168,90 @@ fn no_open_captures_in_patterns() {
         );
     }
 }
+
+// ===== 版本无关策展层（data/overlay-common/）两层合并行为（P1-3）=====
+//
+// 在临时目录里手搭两层，精确验证合并语义（repo 真数据两层 id 互斥，无 override 样本）：
+//   <tmp>/overlay-common/special_mods.json  ← 版本无关基底
+//   <tmp>/<ver>/overlay/special_mods.json   ← 版本特有覆盖
+
+/// 建唯一临时 data 根，返回 (根, 版本目录)。
+fn temp_data_root(tag: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+    let root = std::env::temp_dir().join(format!(
+        "pobr-gamedata-special-merge-{tag}-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    let ver_dir = root.join("4.5.4.3");
+    std::fs::create_dir_all(ver_dir.join("overlay")).unwrap();
+    (root, ver_dir)
+}
+
+/// 写一个只含给定 id 条目的 special_mods.json（最小合法形状）。
+fn write_special(path: &std::path::Path, entries: &[(&str, &str)]) {
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let body: Vec<String> = entries
+        .iter()
+        .map(|(id, pattern)| format!(r#"{{"id":"{id}","pattern":"{pattern}","batch":"T"}}"#))
+        .collect();
+    std::fs::write(path, format!(r#"{{"entries":[{}]}}"#, body.join(","))).unwrap();
+}
+
+fn ids(def: &SpecialModsDef) -> Vec<String> {
+    def.entries.iter().map(|e| e.id.clone()).collect()
+}
+
+/// common 层被继承，且 version-only 条目追加在后（common 顺序在前）。
+#[test]
+fn overlay_common_is_inherited() {
+    let (root, ver_dir) = temp_data_root("inherit");
+    write_special(
+        &root.join("overlay-common/special_mods.json"),
+        &[("common_a", "aaa"), ("common_b", "bbb")],
+    );
+    write_special(
+        &ver_dir.join("overlay/special_mods.json"),
+        &[("ver_c", "ccc")],
+    );
+    let def = GameData::new(&ver_dir).special_mods().unwrap().unwrap();
+    assert_eq!(ids(&def), ["common_a", "common_b", "ver_c"]);
+}
+
+/// version 层同 id 整条覆盖 common 层（不产生重复 id）。
+#[test]
+fn version_layer_overrides_common_by_id() {
+    let (root, ver_dir) = temp_data_root("override");
+    write_special(
+        &root.join("overlay-common/special_mods.json"),
+        &[("shared", "old_pattern"), ("common_only", "keep")],
+    );
+    write_special(
+        &ver_dir.join("overlay/special_mods.json"),
+        &[("shared", "new_pattern")],
+    );
+    let def = GameData::new(&ver_dir).special_mods().unwrap().unwrap();
+    // 覆盖后仍只有一条 shared，取 version 的 pattern；common_only 保留。
+    assert_eq!(ids(&def), ["shared", "common_only"]);
+    let shared = def.entries.iter().find(|e| e.id == "shared").unwrap();
+    assert_eq!(shared.pattern, "new_pattern");
+}
+
+/// 仅 common 存在（版本目录无 overlay/special_mods.json）→ 直接继承 common。
+#[test]
+fn common_only_when_version_absent() {
+    let (root, ver_dir) = temp_data_root("common-only");
+    write_special(
+        &root.join("overlay-common/special_mods.json"),
+        &[("common_x", "xxx")],
+    );
+    // 版本层文件缺失。
+    let def = GameData::new(&ver_dir).special_mods().unwrap().unwrap();
+    assert_eq!(ids(&def), ["common_x"]);
+}
+
+/// 两层皆缺 → None（保留 RuleSet 域缺表软降级语义）。
+#[test]
+fn both_layers_absent_yields_none() {
+    let (_root, ver_dir) = temp_data_root("none");
+    assert!(GameData::new(&ver_dir).special_mods().unwrap().is_none());
+}

@@ -39,6 +39,21 @@ impl GameData {
     pub(crate) fn generated_path(&self, rel: &str) -> PathBuf {
         self.root().join("generated").join(rel)
     }
+
+    /// 定位 **版本无关策展层** overlay 文件：`data/overlay-common/<rel>`——版本目录的
+    /// **同级** `overlay-common/` 兄弟目录（`<root>/../overlay-common/<rel>`）。
+    ///
+    /// 人工策展、随游戏版本不变的 vendor-语义修正放这里，新数据版本目录自动继承，免去
+    /// 逐版本手迁（见 `docs/version-bump-architecture.md` P1-3）。加载侧把它 merge 到
+    /// 版本层 `overlay/<rel>` **之下**（版本层按条目 key 覆盖，其余追加）。
+    ///
+    /// 返回 `None` 仅当版本根无父目录（如 root 为文件系统根）——正常磁盘/内存后端恒
+    /// `Some`：内存后端 root=`<memory>`，父为空 → 键规约为 `overlay-common/<rel>`。
+    pub(crate) fn overlay_common_path(&self, rel: &str) -> Option<PathBuf> {
+        self.root()
+            .parent()
+            .map(|parent| parent.join("overlay-common").join(rel))
+    }
 }
 
 #[cfg(test)]

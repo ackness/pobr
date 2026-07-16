@@ -186,10 +186,23 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
             std::fs::copy(&src, tmp_data.join("generated").join(name)).unwrap();
         }
     }
-    // overlay/special_mods.json（parser 引擎 special 通道输入）。存在即拷。
+    // overlay/special_mods.json（parser 引擎 special 通道输入，版本特有条目）。存在即拷。
     let special_mods = src_data.join("overlay/special_mods.json");
     if special_mods.is_file() {
         std::fs::copy(&special_mods, tmp_data.join("overlay/special_mods.json")).unwrap();
+    }
+    // overlay-common/special_mods.json（版本无关策展层，P1-3）：gamedata 加载期把它
+    // merge 到版本 overlay 之下，是引擎 special 规则的大头（133 条）。它是版本目录的
+    // **同级**兄弟，隔离镜像里也必须复刻到 <tmp>/data/overlay-common/，否则 fresh 重跑
+    // 只见版本层零头、覆盖率跌破已提交产物。存在即拷。
+    if let Some(src_common) = src_data
+        .parent()
+        .map(|p| p.join("overlay-common/special_mods.json"))
+        && src_common.is_file()
+    {
+        let dst_common = tmp.join("data/overlay-common");
+        std::fs::create_dir_all(&dst_common).unwrap();
+        std::fs::copy(&src_common, dst_common.join("special_mods.json")).unwrap();
     }
     // overlay/mod_parser_rules.json（引擎解析规则六表——删 legacy 后是唯一
     // 解析器，缺它 precompile 直接报错）。存在即拷。
