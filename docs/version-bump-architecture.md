@@ -1,7 +1,14 @@
 # Why version bumps look like 100k-line changes, and the v0.0.3 plan to fix it
 
-Status: **v0.0.3-dev milestone plan** (2026-07-16). Companion to
+Status: **all five items delivered on v0.0.3-dev** (2026-07-17). Companion to
 `adapting-to-0.5.4b.md` (which tracks the remaining 0.5.4b engine gaps).
+Delivery map: P0-1 → `pobr_gamedata::test_pins` + `data/<ver>/generated/test_pins.json`
+(bless: `POBR_BLESS_PINS=1`, wired as regen-all's final step); P0-2 →
+`pipeline/diff-vendor-calcs.sh` (sample report: `devs/docs/audits/vendor-delta-ce8bffab.md`,
+which retro-identifies Mageblood without parity archaeology); P1-3 →
+`data/overlay-common/special_mods.json` (133 entries) with id-override merge in
+`GameData::special_mods`; P1-4 → `pipeline/bump-version.sh`; P2-5 → `.gitattributes`.
+The acceptance test remains the next real GGG patch (§5).
 
 ## 1. Anatomy of the v0.0.1 → v0.0.2 diff (the evidence)
 
