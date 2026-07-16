@@ -93,6 +93,33 @@
   stroke-width: 24;
 }
 
+/* ── PoB2 节点美术（图标 + 外框）───────────────────────────────────────── */
+/* 图标/外框只作展示，命中测试仍走下方的 .node 圆（方形贴图会误扩大命中区）。 */
+.node-icon,
+.node-frame {
+  pointer-events: none;
+}
+
+/* 未加点节点图标压暗，突出已加点（对齐 PoB2 观感）。 */
+.node-icon-dim {
+  opacity: 0.55;
+}
+
+/* 有美术时，命中圆隐身（保留 fill 以接收指针；热力图/搜索/hover 仍能覆盖）。 */
+.node-art {
+  fill: transparent;
+  stroke: transparent;
+}
+/* 有美术时不再用金色实心表示已点——外框的 alloc 态已表达；仅热力图内联 fill 覆盖。 */
+.node-art.node-allocated {
+  fill: transparent;
+  stroke: transparent;
+}
+.node-art.node-search-hit {
+  stroke: #4fd8e0;
+  stroke-width: 24;
+}
+
 .tree-search {
   display: flex;
   align-items: center;

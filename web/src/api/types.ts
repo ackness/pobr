@@ -448,6 +448,26 @@ export interface PassiveTreeMeta {
   classes: PassiveClass[];
 }
 
+// ---------------------------------------------------------------------------
+// 天赋树美术边车（public/tree-art/<version>/manifest.json，由 build-tree-art.py
+// 从 vendor PoB2 DDS 图集解码生成）。URL 已由 backend 解析为绝对路径。
+// ---------------------------------------------------------------------------
+
+/** 每种节点的外框图 URL（已点/未点两态；缺省则该态回退到另一态）。 */
+export interface TreeArtFrame {
+  unalloc?: string;
+  alloc?: string;
+}
+
+export interface TreeArt {
+  /** skill id（字符串）→ 节点内技能图标 URL。 */
+  nodeIcons: Record<string, string>;
+  /** 节点 kind → 外框图 URL 两态。 */
+  frames: Record<string, TreeArtFrame>;
+  /** 精通节点通用徽记 URL（专属图标在游戏客户端里，vendor 只有这个空白徽记）。 */
+  masteryIcon?: string;
+}
+
 /** 职业/升华名的简中对照表（数据包 `i18n/zh-CN/classes.json`，英文名 → 简中名，如 `"Druid": "德鲁伊"`）。 */
 export interface ClassNames {
   classes: Record<string, string>;

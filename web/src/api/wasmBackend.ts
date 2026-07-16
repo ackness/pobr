@@ -20,6 +20,7 @@ import type {
   NodePowerResponse,
   OptimizeVariantsResponse,
   PassiveNode,
+  TreeArt,
   PassiveTreeMeta,
   RuneCatalogEntry,
 } from './types';
@@ -157,6 +158,34 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       }
       const text = await fetchText(`/data/${manifest.version}/base/passive_tree.json`);
       return JSON.parse(text) as PassiveNode[];
+    },
+    async loadTreeArt(): Promise<TreeArt | null> {
+      if (!manifest) {
+        manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+      }
+      const base = `/tree-art/${manifest.version}/`;
+      try {
+        // manifest 里是相对路径，统一前缀成绝对 URL，渲染层直接用。
+        const raw = JSON.parse(await fetchText(`${base}manifest.json`)) as TreeArt;
+        const nodeIcons: Record<string, string> = {};
+        for (const [skill, rel] of Object.entries(raw.nodeIcons)) {
+          nodeIcons[skill] = base + rel;
+        }
+        const frames: TreeArt['frames'] = {};
+        for (const [kind, states] of Object.entries(raw.frames)) {
+          frames[kind] = {
+            unalloc: states.unalloc ? base + states.unalloc : undefined,
+            alloc: states.alloc ? base + states.alloc : undefined,
+          };
+        }
+        return {
+          nodeIcons,
+          frames,
+          masteryIcon: raw.masteryIcon ? base + raw.masteryIcon : undefined,
+        };
+      } catch {
+        return null; // 美术未生成（未跑 build-tree-art）→ 回退纯圆点。
+      }
     },
     async gemCatalog() {
       return JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
