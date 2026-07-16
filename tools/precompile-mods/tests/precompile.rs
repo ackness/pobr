@@ -125,14 +125,22 @@ fn committed_coverage_matches_fresh_run() {
          请重跑 cargo run -p precompile-mods -- --data data/{PATCH} --report 并提交"
     );
 
-    // 棘轮基线应与已提交产物的 coverage_ratio 一致。
+    // 覆盖率棘轮：已提交产物不得低于基线（与 devs/scripts/regen-check.sh 同语义）。
+    // 基线是人工决策闸门（同 parity_no_regression），不随 regen 自动刷新；覆盖率
+    // 提升后抬高基线是可选的 deliberate 动作，故这里断言方向而非相等——数据 regen
+    // 抬升覆盖率不再机械打碎本测试。
     let baseline_path = repo_root().join("devs/ci/parse-coverage-baseline.json");
     if baseline_path.is_file() {
         let baseline: serde_json::Value =
             serde_json::from_slice(&std::fs::read(&baseline_path).unwrap()).unwrap();
-        assert_eq!(
-            baseline["coverage_ratio"], committed_summary["coverage_ratio"],
-            "baseline coverage_ratio 与已提交报表不一致——更新 devs/ci/parse-coverage-baseline.json"
+        let base = baseline["coverage_ratio"].as_f64().expect("baseline ratio");
+        let cur = committed_summary["coverage_ratio"]
+            .as_f64()
+            .expect("committed ratio");
+        assert!(
+            cur + 5e-7 >= base,
+            "覆盖率棘轮失败：已提交 {cur} < 基线 {base}——解析覆盖率不得降低；\
+             若属预期（语料扩面）请同 PR 更新 devs/ci/parse-coverage-baseline.json"
         );
     }
 

@@ -128,11 +128,18 @@ fn load_strict<T: DeserializeOwned>(path: &Path, errors: &mut Vec<String>) -> Op
 mod tests {
     use super::*;
 
-    /// The committed repo data passes `--check` (deserialize + compile clean),
-    /// for both the parity-golden version and CURRENT.
+    /// The committed repo data passes `--check` (deserialize + compile clean)
+    /// for the active and parity-golden versions. Versions come from the
+    /// `pobr_data` constants (auto-advance on data bumps, no literal to
+    /// re-pin); stale/experimental dirs under `data/` are out of contract.
     #[test]
     fn repo_overlay_passes_check() {
-        for version in ["4.5.0.3.4", "4.5.4.3"] {
+        let mut versions = vec![
+            pobr_data::DATA_VERSION,
+            pobr_data::GOLDEN_PARITY_DATA_VERSION,
+        ];
+        versions.dedup();
+        for version in versions {
             let data_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../data")
                 .join(version);
