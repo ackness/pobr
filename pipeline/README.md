@@ -44,7 +44,9 @@ cargo run -p pobr-data-adapter -- --raw ./tables --out ../data --patch <version>
 
 ## 扩展 / 升版
 
-- 新 PoE2 版本：更新 `config.json` 的 `patch`，重跑三步，`data/` 下生成新版本目录，`diff` 审查。
+- 新 PoE2 版本：**`pipeline/bump-version.sh` 一条命令**（查补丁号 → 下载 → 树/vendor 对齐 →
+  regen-all（含 test-pin bless）→ 推进 CURRENT/DATA_VERSION → zh-CN/web 同步 → 定向验证），
+  末尾打印剩余人工决策（golden 翻转、引擎 delta triage）。分步等价操作见脚本头注释。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
 - **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本（M1-W0 时 4.5.0.3.4 已 404）。`.cache/`
   里已缓存的 bundle 可继续离线导出**既有表的全部列**（整张 `.datc64` 在同一 bundle 里）；
