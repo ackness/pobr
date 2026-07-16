@@ -12,11 +12,35 @@ use pobr_data::catalog::parser_rules::SpecialModsDef;
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载 special 词条模板表（恒走 `overlay/` 定位）。文件缺失返回
-    /// `Ok(None)`（M5b B-4 约定：缺表 → RuleSet 域 None，解析行为退回
-    /// 既有硬编码路径）；其余错误照常上抛。
+    /// 加载 special 词条模板表，**两层合并**：先读版本无关策展层
+    /// `data/overlay-common/special_mods.json`（不存在则跳过），再叠版本层
+    /// `<root>/overlay/special_mods.json`。合并语义简单明确：**版本层条目按 `id`
+    /// 覆盖 common 层同 id 条目，其余按出现序追加**（common 顺序保持，version-only
+    /// 追加在后）。人工策展的 vendor-语义修正放 common 层，新数据版本目录自动继承，
+    /// 免去逐版本手迁（`docs/version-bump-architecture.md` P1-3）。
+    ///
+    /// 两层皆缺 → `Ok(None)`（M5b B-4 约定：缺表 → RuleSet 域 None，解析退回硬编码
+    /// 路径）。任一层坏 JSON 照常上抛；common 层文件缺失是常态（软降级，非错误）。
     pub fn special_mods(&self) -> Result<Option<SpecialModsDef>, LoadError> {
-        match self.load_json_at::<SpecialModsDef>(self.overlay_path("special_mods.json")) {
+        let common = match self.overlay_common_path("special_mods.json") {
+            Some(path) => self.load_special_mods_at(path)?,
+            None => None,
+        };
+        let version = self.load_special_mods_at(self.overlay_path("special_mods.json"))?;
+        Ok(match (common, version) {
+            (None, None) => None,
+            (Some(def), None) | (None, Some(def)) => Some(def),
+            (Some(common), Some(version)) => Some(merge_special_layers(common, version)),
+        })
+    }
+
+    /// 读一个 `special_mods` schema 文件为 `Option`：NotFound → `None`（软降级），
+    /// 其余错误上抛。`load_json_at` 仍叠加用户 patch 层。
+    fn load_special_mods_at(
+        &self,
+        path: std::path::PathBuf,
+    ) -> Result<Option<SpecialModsDef>, LoadError> {
+        match self.load_json_at::<SpecialModsDef>(path) {
             Ok(def) => Ok(Some(def)),
             Err(LoadError::Io { ref source, .. })
                 if source.kind() == std::io::ErrorKind::NotFound =>
@@ -56,4 +80,18 @@ impl GameData {
             Err(e) => Err(e),
         }
     }
+}
+
+/// 合并策展两层：`common`（版本无关基底）叠 `version`（版本特有覆盖）。version 的每条
+/// 按 `id` 覆盖 common 同 id 条目（整条替换，保持 common 原位）；common 无此 id 的
+/// version 条目按 version 出现序追加在末尾。同输入恒同输出（确定性）。
+fn merge_special_layers(common: SpecialModsDef, version: SpecialModsDef) -> SpecialModsDef {
+    let mut entries = common.entries;
+    for v in version.entries {
+        match entries.iter_mut().find(|e| e.id == v.id) {
+            Some(slot) => *slot = v,
+            None => entries.push(v),
+        }
+    }
+    SpecialModsDef { entries }
 }
