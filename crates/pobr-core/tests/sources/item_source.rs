@@ -433,8 +433,11 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
 /// 同样来自真实 build，静默忽略会让调用方误以为效果已经生效。
 #[test]
 fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
-    // 引擎 special 通道已建模这两行（GuardAbsorb* / SpiritPossessionOnUse）——
-    // legacy 时代它们是 unmodeled unsupported，现应正常产 mod、不进 unsupported。
+    // possession 行由引擎 special 通道建模（SpiritPossessionOnUse），正常产 mod。
+    // guard 行（`Also grants N Guard`）曾被策展条目 also_grants_guard 建模，但
+    // vendor ModParser 根本不解析它——对 PoB2 golden 是幻影 Guard 池（存量 #7
+    // 已摘除，ritualist EHP 1.10x→1.00x）。与 PoB2 对齐后它回到「未建模 →
+    // 必须响亮进 unsupported 报告」的口径，静默忽略才是失败。
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
@@ -446,9 +449,10 @@ fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
 
     let ingest = ingest_flask_charm("Charm 1", &charm);
 
-    assert!(
-        ingest.unsupported.is_empty(),
-        "guard/possession 行应由引擎解析，实际 unsupported: {:?}",
+    assert_eq!(
+        ingest.unsupported,
+        vec!["Also grants 435 Guard".to_string()],
+        "guard 行未建模应上报（与 PoB2 口径一致）、possession 行应解析，实际 unsupported: {:?}",
         ingest.unsupported
     );
 }
