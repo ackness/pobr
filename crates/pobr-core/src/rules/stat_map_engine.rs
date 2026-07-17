@@ -430,6 +430,57 @@ pub fn has_curse_payload(
         .is_some_and(|entry| entry.mods.iter().any(is_curse_effect))
 }
 
+/// （存量 #7-1）curse 技能的**技能局部效果乘区**取数：stat 若映射为
+/// **无 GlobalEffect tag** 的 `CurseEffect` INC/MORE（留在 skillModList 的
+/// 技能局部 mod——vendor curse 乘区 CalcPerform.lua:2423/:2427 读
+/// `skillModList:Sum/More(skillCfg, "CurseEffect")`），返回其
+/// `(inc 增量, more 因子)`。典型来源 = curse 宝石自身品质 `curse_effect_+%`
+/// （EW 0.5/q）、组内 Heightened Curse support（constantStats +25）、
+/// Atziri's Allure lineage（`support_atziri_curse_effect_+%_final` MORE -20）。
+///
+/// 保守口径：仅 kind=="mod"、无 tag、无 flag 的裸 `CurseEffect` 计入
+/// （Mark 门控变体带 SkillType tag，不计——mark 域另行建模时再放开）；
+/// 其余 stat / 形态返回 `(0.0, 1.0)`（零贡献，不误算）。
+pub fn curse_local_effect(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> (f64, f64) {
+    let (mut inc, mut more) = (0.0, 1.0);
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return (inc, more);
+    };
+    if entry.unextractable {
+        return (inc, more);
+    }
+    let params = MergeParams {
+        div: entry.div,
+        mult: entry.mult,
+        base: entry.base,
+        value: entry.value,
+    };
+    for element in &entry.mods {
+        if element.kind != "mod"
+            || element.name.as_deref() != Some("CurseEffect")
+            || !element.tags.is_empty()
+            || !element.flags.is_empty()
+            || !element.keyword_flags.is_empty()
+            || element.scalar.is_some()
+        {
+            continue;
+        }
+        let merged = params.merge(stat_value);
+        match element.mod_type.as_deref() {
+            Some("INC") => inc += merged,
+            Some("MORE") => more *= 1.0 + merged / 100.0,
+            _ => {}
+        }
+    }
+    (inc, more)
+}
+
 /// 元素是否为**曝光施加能力**载荷（M4-m，宿主探测用、非取数）：vendor
 /// `flag("InflictExposure", …)`（SkillStatMap.lua:1692-1715 各 on_shock /
 /// on_cold_crit / on_ignite / on_hit 形）或 `<El>ExposureChance BASE`
@@ -758,6 +809,14 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // 矩阵（buildGainTable，`DamageGainAs<To>` BASE 查询）；点燃火源随之
         // 平方级放大（chance ∝ fire/threshold，magnitude ∝ fire）。
         "DamageGainAsFire" => Ok(vec!["DamageGainAsFire"]),
+        // （存量 #7-1）Archmage（act_int.lua:229-231）：`archmage_all_damage_%_to_
+        // gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana`
+        // → `DamageGainAsLightning` BASE 4（GlobalEffect/Buff + SkillType
+        // Channel neg + SkillType Spell + PerStat Mana div 100）。消费方与
+        // DamageGainAsFire 同 = `calc::damage` gain-as 矩阵；Mana 分母由编排层
+        // `inject_per_x_multipliers` 预灌（cfg.multipliers["Mana"] = 全管线池值）。
+        // monk-invoker-frost-bomb TotalDPS 0.66x 根因（缺 80% 闪电 gain-as）。
+        "DamageGainAsLightning" => Ok(vec!["DamageGainAsLightning"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -1865,29 +1924,32 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             };
             Ok(ModTag::multiplier(var, number("div").unwrap_or(1.0), None))
         }
-        // 技能类型限定（vendor `{ type = "SkillType", skillType = SkillType.X }`，
-        // 如 Garukhan `attacks_roll_crits_twice` 的 Attack 限定）→
-        // [`ModTag::SkillTypes`]（`Modifier::matches` 按 `cfg.skill_types`
-        // intersects 判定）。第一批仅 Attack/Spell（编排层 `skill_type_bits`
-        // 当前只填这两个判别位——其余类型位未注入 cfg，盲翻会让 mod 恒不生效，
-        // 维持 Unsupported 整条跳过）。`neg` 变体同样不支持。
+        // 技能类型限定（vendor `{ type = "SkillType", skillType = SkillType.X,
+        // [neg = true] }`，如 Garukhan `attacks_roll_crits_twice` 的 Attack 限定、
+        // Archmage buff 的「non-channelling Spells」= Channel neg + Spell）→
+        // [`ModTag::SkillTypes`] / [`ModTag::SkillTypesNeg`]（`Modifier::matches`
+        // 按 `cfg.skill_types` intersects / 反选判定）。类型名走单源
+        // `SkillTypes::from_pob2_name`（A1 全量 290 枚举表）——编排层
+        // `skill_type_bits` 已全量置位（conditions.rs），限 Attack/Spell 的
+        // 旧白名单口径已过时。枚举外名维持 Unsupported。
         "SkillType" => {
-            if !keys_subset_of(&["type", "skillType"]) {
+            if !keys_subset_of(&["type", "skillType", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "SkillType 含约定外键：{:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
-            let bits = match text("skillType").as_deref() {
-                Some("Attack") => SkillTypes::ATTACK,
-                Some("Spell") => SkillTypes::SPELL,
-                other => {
-                    return Err(UnsupportedReason::UnsupportedTag(format!(
-                        "SkillType 未支持类型：{other:?}"
-                    )));
-                }
+            let name = text("skillType");
+            let Some(bits) = name.as_deref().and_then(SkillTypes::from_pob2_name) else {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "SkillType 未支持类型：{name:?}"
+                )));
             };
-            Ok(ModTag::SkillTypes(bits))
+            if matches!(tag.get("neg"), Some(StatMapValue::Bool(true))) {
+                Ok(ModTag::SkillTypesNeg(bits))
+            } else {
+                Ok(ModTag::SkillTypes(bits))
+            }
         }
         // 距离插值（vendor `{ type = "DistanceRamp", ramp = {{d,m},...} }`，如 Close
         // Combat `support_close_combat_attack_damage_+%_final_from_distance`）→
@@ -2077,7 +2139,8 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(1.0), "div=100 → 分数");
     }
 
-    /// 白名单外 flag 维持未知名上报；SkillType 未支持类型整条跳过。
+    /// 白名单外 flag 维持未知名上报；SkillType 枚举外类型名整条跳过
+    /// （枚举内类型经 `SkillTypes::from_pob2_name` 全量准入——存量 #7-1）。
     #[test]
     fn flag_kind_outside_whitelist_or_unknown_skill_type_unsupported() {
         let entry = entry_json(
@@ -2090,12 +2153,33 @@ mod tests {
 
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "flag", "name": "BifurcateCrit", "mod_type": "FLAG",
-                 "tags": [ { "type": "SkillType", "skillType": "Minion" } ] } ] }"#,
+                 "tags": [ { "type": "SkillType", "skillType": "NotARealSkillType" } ] } ] }"#,
         );
         assert!(matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
         ));
+    }
+
+    /// （存量 #7-1）SkillType tag：枚举内类型名全量准入（单源
+    /// `SkillTypes::from_pob2_name`）；`neg = true` → [`ModTag::SkillTypesNeg`]
+    /// （vendor ModStore.lua:829-833 反选，如 Archmage 的 non-channelling 限定）。
+    #[test]
+    fn skill_type_tag_full_enum_and_neg_translate() {
+        use pobr_data::skill::SkillTypes;
+        let mut tag = BTreeMap::new();
+        tag.insert("type".into(), StatMapValue::Text("SkillType".into()));
+        tag.insert("skillType".into(), StatMapValue::Text("Minion".into()));
+        assert_eq!(
+            translate_tag(&tag).unwrap(),
+            ModTag::SkillTypes(SkillTypes::MINION)
+        );
+        tag.insert("skillType".into(), StatMapValue::Text("Channel".into()));
+        tag.insert("neg".into(), StatMapValue::Bool(true));
+        assert_eq!(
+            translate_tag(&tag).unwrap(),
+            ModTag::SkillTypesNeg(SkillTypes::CHANNEL)
+        );
     }
 
     /// CritChanceCap 直通（Garukhan constant stat 50 → OVERRIDE）。
@@ -2697,6 +2781,47 @@ mod tests {
         assert_eq!(
             map_stat(&catalog, "Other", None, "nonexistent_stat", 1.0),
             MappedOutcome::Unknown
+        );
+    }
+
+    /// （存量 #7-1）curse 技能局部效果乘区取数：裸 `CurseEffect` INC/MORE 计入，
+    /// 带 GlobalEffect / 其他 tag 的元素与无关 stat 归零贡献。
+    #[test]
+    fn curse_local_effect_collects_bare_curse_effect_only() {
+        let catalog = catalog_json(
+            r#"{
+              "global": {
+                "curse_effect_+%": { "mods": [ { "kind": "mod", "name": "CurseEffect", "mod_type": "INC" } ] },
+                "support_atziri_curse_effect_+%_final": { "mods": [ { "kind": "mod", "name": "CurseEffect", "mod_type": "MORE" } ] },
+                "mark_effect_+%": { "mods": [ { "kind": "mod", "name": "CurseEffect", "mod_type": "INC",
+                    "tags": [ { "type": "SkillType", "skillType": "Mark" } ] } ] }
+              },
+              "per_stat_set": {}
+            }"#,
+        );
+        assert_eq!(
+            curse_local_effect(&catalog, "X", None, "curse_effect_+%", 25.0),
+            (25.0, 1.0)
+        );
+        assert_eq!(
+            curse_local_effect(
+                &catalog,
+                "X",
+                None,
+                "support_atziri_curse_effect_+%_final",
+                -20.0
+            ),
+            (0.0, 0.8)
+        );
+        // 带 tag（Mark 门控）的变体保守不计。
+        assert_eq!(
+            curse_local_effect(&catalog, "X", None, "mark_effect_+%", 30.0),
+            (0.0, 1.0)
+        );
+        // 无关 stat / 无条目 → 零贡献。
+        assert_eq!(
+            curse_local_effect(&catalog, "X", None, "nope", 1.0),
+            (0.0, 1.0)
         );
     }
 

@@ -183,6 +183,8 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
+                            local_effect_inc: 0.0,
+                            local_effect_more: 1.0,
                             skill_types: pobr_data::skill::SkillTypes::NONE,
                         });
                     }
@@ -197,6 +199,8 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
+                            local_effect_inc: 0.0,
+                            local_effect_more: 1.0,
                             skill_types: pobr_data::skill::SkillTypes::NONE,
                         });
                     }
@@ -256,6 +260,8 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         socket_index,
                         is_mark: false,
                         ignore_curse_limit: false,
+                        local_effect_inc: 0.0,
+                        local_effect_more: 1.0,
                         // vendor per-skill skillCfg（buff_pass 乘区对域限定词条——
                         // 「Banner Skills have N% increased Aura Magnitudes」的
                         // SkillTypes(Banner) tag——按本效果类型位匹配）。
@@ -265,8 +271,12 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     // curse 效果词条（M3-W4）：statset stat 经 statmap curse 域映射
                     // 为敌侧 modifier（Despair→ChaosResist 减抗、Enfeeble→Damage MORE…），
                     // buff_pass 施 CurseEffect 乘区 + Condition:Effective 后入 enemy db。
+                    // （存量 #7-1）取数等级 = 宝石等级 + 适用的 `+N to Level of all
+                    // <X> Skills`（vendor applyGemMods 对每个 gem effect 生效，
+                    // CalcSetup.lua:410-435——EW 19+8→27，载荷 -58→-66）。
+                    let curse_level = gem.gem_level + additional_gem_levels(build, data, skill_id);
                     let es =
-                        data.effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                        data.effect_stats(skill_id, curse_level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     // vendor 注册前置（M4-l）：buffList 仅由 GlobalEffect 载荷构成
                     // （CalcActiveSkill.lua:976-1041），curse 表项只从 buffList 构造
@@ -290,6 +300,14 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         continue;
                     }
                     let mods = curse_stat_modifiers(data, &es, skill_id, set_key.as_deref());
+                    // （存量 #7-1）技能局部 CurseEffect 段（vendor curse 乘区
+                    // CalcPerform.lua:2423/:2427 读 skillModList）：curse 宝石
+                    // 自身品质段（EW `curse_effect_+%` 0.5/q）+ 组内**兼容**
+                    // support（Heightened Curse constantStats +25、Atziri's
+                    // Allure MORE -20）payload，经 statmap global 段
+                    // `curse_local_effect` 折算预汇入 spec。
+                    let (local_effect_inc, local_effect_more) =
+                        curse_local_effect_scale(group, data, gem, skill_id, curse_level);
                     specs.push(BuffSpec {
                         name: buff_skill_name(data, skill_id),
                         kind: BuffKind::Curse,
@@ -300,6 +318,8 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         socket_index,
                         is_mark,
                         ignore_curse_limit: false,
+                        local_effect_inc,
+                        local_effect_more,
                         skill_types: pobr_data::skill::SkillTypes::NONE,
                     });
                 }
@@ -307,6 +327,59 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
         }
     }
     specs
+}
+
+/// （存量 #7-1）一个 curse 技能的**技能局部** CurseEffect 乘区段
+/// （vendor CalcPerform.lua:2423 `skillModList:Sum("INC", skillCfg,
+/// "CurseEffect")` + :2427 `More(...)`）：
+/// - curse 宝石自身 effect stats（品质段携带 `curse_effect_+%`，如 EW 0.5/q）；
+/// - 组内**兼容** support（[`judge_group_supports`] 四段裁决，与主技能支援
+///   判定同源）的 effect stats（Heightened Curse constantStats `curse_effect_+%`
+///   +25、Atziri's Allure `support_atziri_curse_effect_+%_final` MORE -20）。
+///
+/// stat → (INC, MORE) 折算走 statmap 数据（[`stat_map_engine::curse_local_effect`]，
+/// global 段 `curse_effect_+%` → 裸 `CurseEffect INC`）。无 catalog → (0, 1)。
+fn curse_local_effect_scale(
+    group: &crate::build::SocketGroup,
+    data: &BuildData,
+    gem: &crate::build::GemSkillRef,
+    skill_id: &str,
+    curse_level: u32,
+) -> (f64, f64) {
+    let Some(catalog) = resolve_stat_map_catalog(data) else {
+        return (0.0, 1.0);
+    };
+    let (mut inc, mut more) = (0.0, 1.0);
+    let mut absorb = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
+        let es = data.effect_stats(effect_id, level, quality, set_index);
+        let set_key = data.selected_set_key(effect_id, set_index);
+        for ds in es.all() {
+            if ds.value == 0.0 {
+                continue;
+            }
+            let (di, dm) = stat_map_engine::curse_local_effect(
+                &catalog,
+                effect_id,
+                set_key.as_deref(),
+                &ds.stat,
+                ds.value,
+            );
+            inc += di;
+            more *= dm;
+        }
+    };
+    absorb(skill_id, curse_level, gem.quality, gem.stat_set_index);
+    let judgement = super::triggers::judge_group_supports(group, data, skill_id);
+    for &i in &judgement.compatible {
+        let sup = &group.gem_skills[i];
+        absorb(
+            &sup.skill_id,
+            sup.gem_level,
+            sup.quality,
+            sup.stat_set_index,
+        );
+    }
+    (inc, more)
 }
 
 /// （M4-G）support 授予的**玩家侧 buff** → [`BuffSpec`]（kind = [`BuffKind::Buff`]，
@@ -385,6 +458,8 @@ pub(crate) fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpe
                 socket_index: (idx + 1) as u32,
                 is_mark: false,
                 ignore_curse_limit: false,
+                local_effect_inc: 0.0,
+                local_effect_more: 1.0,
                 skill_types: pobr_data::skill::SkillTypes::NONE,
             });
         }

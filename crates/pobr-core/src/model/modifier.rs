@@ -213,6 +213,12 @@ pub enum ModTag {
     },
     DamageType(DamageType),
     SkillTypes(SkillTypes),
+    /// 反选技能类型限定（vendor `SkillType` tag 的 `neg = true` 形态，
+    /// ModStore.lua:829-833：`match = skillTypes[tag.skillType]; if tag.neg then
+    /// match = not match`）：任一位命中即**不**生效。独立变体而非在
+    /// [`ModTag::SkillTypes`] 上加字段——后者的 Debug 形被预编译缓存
+    /// （`parsed_mods.json`）逐字节钉定，改形状会伪失效全部既有条目。
+    SkillTypesNeg(SkillTypes),
     /// 具名技能限定（PoB2 `SkillName` tag，ModStore.lua:752-780）：mod 仅在
     /// 主技能名命中列表任一项时生效。vendor `skillName` 单名与 `skillNameList`
     /// 列表统一收编为 `names`；两侧均按小写等值比较（vendor `:lower()` 双向）。
@@ -417,6 +423,9 @@ impl Modifier {
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
             }
+            // 反选：位集命中 cfg 即失配（vendor neg 反转；空位集 → 恒生效，
+            // 与 vendor `skillTypes[nil]=false → not false` 一致）。
+            ModTag::SkillTypesNeg(skill_types) => !skill_types.intersects(cfg.skill_types),
             // 具名技能限定（vendor ModStore.lua:752-780）：主技能名任一命中；
             // cfg 无主技能名 → 不匹配（保守）。
             ModTag::SkillName { names } => cfg
@@ -556,6 +565,7 @@ impl Modifier {
                 | ModTag::GlobalLimit { .. }
                 | ModTag::DamageType(_)
                 | ModTag::SkillTypes(_)
+                | ModTag::SkillTypesNeg(_)
                 | ModTag::SkillName { .. }
                 | ModTag::SlotName(_) => {}
             }

@@ -715,8 +715,13 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // monk-twister AverageDamage/TotalDPS 0.60x→0.96x 双列翻正；flicker
 // TotalDPS 0.76x→0.84x、spirit-walker 0.78x→0.89x 收敛未入列（残余 =
 // 攻击 AvgDamage 族存量缺口的平方传导）。
-const BASELINE_OFF_HIT5: usize = 58; // Blazing Critical 后 58/80（grenade 短语解禁 56；Communion+Voices 52；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 64; // Blazing Critical 后 64/80（grenade 短语解禁 62；Communion+Voices 59；迁移基线 47；0.5.0=74）
+// （存量 #7-1）frost-bomb TotalDPS 0.66x→1.00x 翻正（off @5/@10 各 +1）：
+// Archmage buff `DamageGainAsLightning`（BASE 4/100 Mana → 80% gain-as，
+// act_int.lua:229-231）+ curse 链两缺口（EW 取数等级未吃 +8 spell skill
+// levels：-58→-66；技能局部 CurseEffect 段缺失：Heightened Curse +25 +
+// EW 品质 +10 → 敌抗 9→-7，oracle enemyMitigation 逐源钉值）。
+const BASELINE_OFF_HIT5: usize = 59; // frost-bomb 后 59/80（Blazing Critical 58；grenade 短语解禁 56；Communion+Voices 52；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 65; // frost-bomb 后 65/80（Blazing Critical 64；grenade 短语解禁 62；Communion+Voices 59；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -794,8 +799,13 @@ const BASELINE_OFF_HIT10: usize = 64; // Blazing Critical 后 64/80（grenade �
 // 存量缺口非 0.5.4b 项）；frost-bomb 0.87x / essence-drain WithDotDPS 1.36x
 // golden 两版未动（存量）；gemling dot 1.10x 高估 = fire/crit 小幅 hit 侧
 // 高估的下游传导（oracle 逐分量：fire 1.03x × stacks 1.05x × crit 混叠）。
+// （存量 #7-1）frost-bomb 修复的 dot 列迁移：CombinedDPS 0.66x→1.00x 入列
+// （@5/@10 各 +1）、TotalDotDPS 0.87x→1.07x 入 @10%；druid-oracle-comet
+// TotalDotDPS 1.04x→1.06x 出 @5%（EW 变强的下游——vendor 侧 druid 的 EW
+// 根本未入 enemy resistMods（curse 槽位/优先级差异，oracle 钉值），PoBR
+// 施加了它，存量高估被放大 2%，另行追）。@5 净 0、@10 净 +2。
 const BASELINE_DOT_HIT5: usize = 16; // Blazing Critical 后 16/37（grenade 短语解禁 14；Communion+Voices 13；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 21; // Blazing Critical 后 21/37（grenade 短语解禁 19；Communion+Voices 18；迁移基线 11；0.5.0=28）
+const BASELINE_DOT_HIT10: usize = 23; // frost-bomb 后 23/37（Blazing Critical 21；grenade 短语解禁 19；Communion+Voices 18；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

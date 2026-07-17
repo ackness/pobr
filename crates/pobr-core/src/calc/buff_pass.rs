@@ -384,12 +384,17 @@ pub fn buff_pass(env: &mut Env) {
                 // （:2296-2298）不实现（简化 (g)：无 aura 源建模）。
                 let curse_effect = [ModName::from("CurseEffect")];
                 let curse_effect_on_self = [ModName::from("CurseEffectOnSelf")];
+                // spec.local_effect_inc/more = vendor skillModList 的技能局部
+                // CurseEffect 段（宝石品质 / 组内 support，编排层预折）。
                 let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &curse_effect)
+                    + spec.local_effect_inc
                     + env
                         .enemy
                         .mod_db
                         .sum(ModType::Inc, &env.cfg, &curse_effect_on_self);
-                let mut more = env.player.mod_db.more(&env.cfg, &curse_effect) * spec.magnitude;
+                let mut more = env.player.mod_db.more(&env.cfg, &curse_effect)
+                    * spec.local_effect_more
+                    * spec.magnitude;
                 if !spec.is_mark {
                     // vendor :2303-2305：非 mark 再乘敌侧 CurseEffectOnSelf MORE。
                     more *= env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self);
@@ -659,6 +664,8 @@ mod tests {
             socket_index,
             is_mark,
             ignore_curse_limit,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         }
     }
@@ -674,6 +681,8 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         }
     }
@@ -1075,6 +1084,8 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         });
 
@@ -1107,6 +1118,8 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         });
 

@@ -52,6 +52,14 @@ pub struct BuffSpec {
     pub socket_index: u32,
     pub is_mark: bool,
     pub ignore_curse_limit: bool,
+    /// （存量 #7-1）技能局部效果乘区 INC 增量（vendor curse 分支
+    /// CalcPerform.lua:2423 `skillModList:Sum("INC", skillCfg, "CurseEffect")`
+    /// 的 PoBR 对位——curse 宝石自身品质 `curse_effect_+%` + 组内兼容 support
+    /// （Heightened Curse +25）payload；编排层构造，默认 0）。
+    pub local_effect_inc: f64,
+    /// 同上 MORE 因子（:2427 `skillModList:More(skillCfg, "CurseEffect")`，
+    /// 如 Atziri's Allure -20% final；默认 1）。
+    pub local_effect_more: f64,
     /// 来源效果的技能类型位（vendor per-skill `skillCfg`——buff_pass 乘区对
     /// 域限定词条（「Banner Skills have N% increased Aura Magnitudes」的
     /// SkillTypes tag）按此匹配；默认 NONE = 旧行为，域词条不命中）。
