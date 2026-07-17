@@ -864,7 +864,15 @@ const BASELINE_OFF_HIT10: usize = 76; // #8 后 76/80（#6+#7 合并 75；#6 单
 // 0.996→1.02）经点燃 ∝ 火源² 放大——命中侧存量项，非 warcry 机制。titan 随动：
 // TotalDotDPS 0.98→1.01、TotalDPS 0.98→1.05（同为被遮蔽的原有高估暴露，
 // 仍在 @5% 带内）。其余 16 build 无 warcry，逐值不变。
-const BASELINE_DOT_HIT5: usize = 31; // #8+#9 合并实测 31/37（#8 单独 31；#9 单独 27；迁移基线 9；0.5.0=26）
+// **存量 #11 Blasphemy support 半身接入（dot +2 @5% 31→33）**：support 裁决
+// 扩到宝石附加授予效果（gem_effects 外键），Blasphemy 的 SupportBlasphemyPlayer
+// （`support_blasphemy_curse_effect_+%_final` → `CurseEffect MORE -41`@L19）进入
+// curse 局部乘区——Temporal Chains 施加值 -13→-8（vendor 逐位：mult 0.55→0.3245，
+// (1+10%)×0.59×0.5boss），点燃 debuffDurationMult 1/0.87→1/0.92 跟正：druid
+// TotalDotDPS 1.06x→1.00x（182.40 vs 182.60）、monk frost-bomb 1.07x→0.99x
+// （4.53 vs 4.58）；witch-lich 带内微降（21659→21621，仍 1.00x）。curse 槽位
+// 归属逐 build 不变（druid 单槽仍 Temporal Chains 胜出，EW 依旧不入槽）。
+const BASELINE_DOT_HIT5: usize = 33; // 存量 #11 后 33/37（#8+#9 合并 31；#8 单独 31；#9 单独 27；迁移基线 9；0.5.0=26）
 const BASELINE_DOT_HIT10: usize = 34; // #8+#9 合并实测 34/37（#8 单独 33；#9 单独 32；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与

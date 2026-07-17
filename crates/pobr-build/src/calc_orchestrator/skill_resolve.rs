@@ -350,13 +350,13 @@ pub(crate) fn support_granted_gem_levels(build: &Build, data: &BuildData, skill_
         }
         let judgement = super::triggers::judge_group_supports(group, data, skill_id);
         let mut total = 0u32;
-        for &idx in &judgement.compatible {
-            let sup = &group.gem_skills[idx];
+        for sup in &judgement.compatible {
+            let host = &group.gem_skills[sup.gem_index];
             let stats = data.effect_stats(
-                &sup.skill_id,
-                sup.gem_level,
-                sup.quality,
-                sup.stat_set_index,
+                &sup.effect_id,
+                host.gem_level,
+                host.quality,
+                sup.stat_set_index(group),
             );
             for s in &stats.base {
                 let Some(rest) = s.stat.strip_prefix("supported_") else {

@@ -370,13 +370,13 @@ fn curse_local_effect_scale(
     };
     absorb(skill_id, curse_level, gem.quality, gem.stat_set_index);
     let judgement = super::triggers::judge_group_supports(group, data, skill_id);
-    for &i in &judgement.compatible {
-        let sup = &group.gem_skills[i];
+    for sup in &judgement.compatible {
+        let host = &group.gem_skills[sup.gem_index];
         absorb(
-            &sup.skill_id,
-            sup.gem_level,
-            sup.quality,
-            sup.stat_set_index,
+            &sup.effect_id,
+            host.gem_level,
+            host.quality,
+            sup.stat_set_index(group),
         );
     }
     (inc, more)
@@ -400,7 +400,7 @@ fn curse_local_effect_scale(
 pub(crate) fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
-    let mut seen: HashSet<&str> = HashSet::new();
+    let mut seen: HashSet<String> = HashSet::new();
     for group in build.enabled_socket_groups() {
         // 组内已启用主动技能（效果已知且非 support）。含附加授予效果
         // （overlay/gem_effects.json 外键；vendor 对 additionalGrantedEffectId1..N
@@ -424,34 +424,33 @@ pub(crate) fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpe
             continue;
         }
         // 任一主动技能裁决兼容即纳入（vendor：support 对组内逐主动技能各自判定）。
-        let mut compatible: HashSet<usize> = HashSet::new();
+        let mut compatible: HashSet<(usize, String)> = HashSet::new();
         for active_id in &active_ids {
-            for idx in judge_group_supports(group, data, active_id).compatible {
-                compatible.insert(idx);
+            for sup in judge_group_supports(group, data, active_id).compatible {
+                compatible.insert((sup.gem_index, sup.effect_id));
             }
         }
-        let mut indices: Vec<usize> = compatible.into_iter().collect();
-        indices.sort_unstable();
-        for idx in indices {
+        let mut entries: Vec<(usize, String)> = compatible.into_iter().collect();
+        entries.sort_unstable();
+        for (idx, effect_id) in entries {
             let gem = &group.gem_skills[idx];
-            if !seen.insert(gem.skill_id.as_str()) {
+            if !seen.insert(effect_id.clone()) {
                 continue;
             }
-            let es = data.effect_stats(
-                &gem.skill_id,
-                gem.gem_level,
-                gem.quality,
-                gem.stat_set_index,
-            );
-            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-            let mods = player_buff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+            // 附加授予的 support 半身不沿用宝石实例 statSetIndex（只对主效果有意义）。
+            let set_index = (gem.skill_id == effect_id)
+                .then_some(gem.stat_set_index)
+                .flatten();
+            let es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
+            let set_key = data.selected_set_key(&effect_id, set_index);
+            let mods = player_buff_stat_modifiers(data, &es, &effect_id, set_key.as_deref());
             if mods.is_empty() {
                 continue;
             }
             specs.push(BuffSpec {
-                name: buff_skill_name(data, &gem.skill_id),
+                name: buff_skill_name(data, &effect_id),
                 kind: BuffKind::Buff,
-                skill_id: gem.skill_id.clone(),
+                skill_id: effect_id.clone(),
                 mods,
                 magnitude: 1.0,
                 slot: group.slot.clone(),

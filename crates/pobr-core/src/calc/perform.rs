@@ -1045,12 +1045,29 @@ fn damaging_ailment_for_pass(
         ctx.speed,
     );
     let sp = stack_potential(&stack);
+    if std::env::var("POBR_DBG_AILMENT").is_ok() {
+        eprintln!(
+            "[POBR_AILMENT] {name}: hit50={hit50:.2} crit50={crit50:.2} probe_chance={:.4} duration={:.4} speed={:.4} hit_chance={:.4} active={:.4} max={} sp={sp:.4}",
+            probe_out.chance,
+            ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+            ctx.speed,
+            ctx.hit_chance,
+            stack.active_stacks,
+            stack.max_stacks,
+        );
+    }
     let ailment_crit = ailment_crit_chance(ctx.crit_chance, sp);
     let roll = roll_average(&stack);
     // Pass 2：高 roll 来源 + over-stacking 暴击 → 最终 magnitude。
     let (hit_rolled, crit_rolled) = stored_source_at_roll(kind, &ctx.ranges, player, cfg, roll);
     let source = make_source(hit_rolled, crit_rolled, ailment_crit);
     let (out, _) = run(&source, trace);
+    if std::env::var("POBR_DBG_AILMENT").is_ok() {
+        eprintln!(
+            "[POBR_AILMENT] {name}: roll={roll:.2} hit_rolled={hit_rolled:.2} crit_rolled={crit_rolled:.2} ailment_crit={ailment_crit:.4} chance={:.4} eff_mult={:.4} magnitude_dps={:.4} duration={:.4}",
+            out.chance, out.eff_mult, out.magnitude_dps, out.duration_secs,
+        );
+    }
 
     if stack.active_stacks > 0.0 {
         // vendor uptime 口径（`:5189-5193`）：activeAilments = min(stacks, max)。

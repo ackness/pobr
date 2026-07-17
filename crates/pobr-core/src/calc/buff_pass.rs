@@ -400,6 +400,19 @@ pub fn buff_pass(env: &mut Env) {
                     more *= env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self);
                 }
                 let mult = (1.0 + inc / 100.0) * more;
+                if std::env::var("POBR_DBG_CURSE").is_ok() {
+                    eprintln!(
+                        "[POBR_CURSE] entry name={} inc={inc:.2} (local_inc={:.2}) more={more:.4} (local_more={:.4} magnitude={:.4}) mult={mult:.4} mods={:?}",
+                        spec.name,
+                        spec.local_effect_inc,
+                        spec.local_effect_more,
+                        spec.magnitude,
+                        spec.mods
+                            .iter()
+                            .map(|m| (&m.name, &m.value))
+                            .collect::<Vec<_>>(),
+                    );
+                }
                 let source_id = format!("curse.{}", spec.skill_id);
                 let mods = spec
                     .mods

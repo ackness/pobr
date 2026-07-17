@@ -418,7 +418,7 @@ pub(crate) fn exposure_support_modifiers(
         }
         // 曝光源宿主：组内主动技能自身产 debuff 曝光载荷，或（M4-m）自身/兼容
         // support 含曝光施加能力载荷 → 其兼容 support 名单。
-        let mut support_indices: BTreeSet<usize> = BTreeSet::new();
+        let mut support_entries: BTreeSet<(usize, String)> = BTreeSet::new();
         for gem in &group.gem_skills {
             let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
                 continue;
@@ -436,32 +436,35 @@ pub(crate) fn exposure_support_modifiers(
             let judgement = judge_group_supports(group, data, &gem.skill_id);
             let is_host = has_debuff_payload(data, &es, &gem.skill_id, set_key.as_deref())
                 || has_exposure_inflict_stats(data, &es, &gem.skill_id, set_key.as_deref())
-                || judgement.compatible.iter().any(|&idx| {
-                    let sup = &group.gem_skills[idx];
+                || judgement.compatible.iter().any(|sup| {
+                    let host = &group.gem_skills[sup.gem_index];
                     // quality 传 0 与 support_modifiers 同口径。
-                    let sup_stats =
-                        data.effect_stats(&sup.skill_id, sup.gem_level, 0, sup.stat_set_index);
-                    let sup_key = data.selected_set_key(&sup.skill_id, sup.stat_set_index);
-                    has_exposure_inflict_stats(data, &sup_stats, &sup.skill_id, sup_key.as_deref())
+                    let set_index = sup.stat_set_index(group);
+                    let sup_stats = data.effect_stats(&sup.effect_id, host.gem_level, 0, set_index);
+                    let sup_key = data.selected_set_key(&sup.effect_id, set_index);
+                    has_exposure_inflict_stats(data, &sup_stats, &sup.effect_id, sup_key.as_deref())
                 });
             if !is_host {
                 continue;
             }
-            for idx in judgement.compatible {
-                support_indices.insert(idx);
+            for sup in judgement.compatible {
+                support_entries.insert((sup.gem_index, sup.effect_id));
             }
         }
-        for idx in support_indices {
+        for (idx, effect_id) in support_entries {
             let gem = &group.gem_skills[idx];
+            let set_index = (gem.skill_id == effect_id)
+                .then_some(gem.stat_set_index)
+                .flatten();
             // quality 传 0 与 support_modifiers 同口径（support 品质表条目不存在）。
-            let stats = data.effect_stats(&gem.skill_id, gem.gem_level, 0, gem.stat_set_index);
-            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+            let stats = data.effect_stats(&effect_id, gem.gem_level, 0, set_index);
+            let set_key = data.selected_set_key(&effect_id, set_index);
             mods.extend(
                 mapped_stat_modifiers(
                     &stats.base,
                     SourceKind::SupportGem,
-                    &gem.skill_id,
-                    &gem.skill_id,
+                    &effect_id,
+                    &effect_id,
                     set_key.as_deref(),
                 )
                 .into_iter()
