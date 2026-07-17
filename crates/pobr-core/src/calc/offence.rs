@@ -942,6 +942,22 @@ fn enemy_damage_multiplier(
             }
         }
         let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
+        // 诊断：POBR_DBG_ENEMYMIT=1 时逐类型 dump 敌方减伤分解（与 oracle
+        // enemyMitigation 对照：resistBase/pen/takenInc/takenMore）。
+        if std::env::var("POBR_DBG_ENEMYMIT").is_ok() {
+            eprintln!(
+                "[POBR_ENEMYMIT] {type_prefix}: resist={resist:.2} eff_resist={effective_resist:.2} taken_inc={taken_inc:.2} taken_more={taken_more:.4}"
+            );
+            for m in enemy_db.iter_mods() {
+                let n = m.name.as_str();
+                if n == format!("{type_prefix}Resist") || n == "ElementalResist" {
+                    eprintln!(
+                        "[POBR_ENEMYMIT]   {n} {:?} {:?} origin={:?} tags={:?}",
+                        m.mod_type, m.value, m.origin, m.tags
+                    );
+                }
+            }
+        }
         1.0 - effective_resist / 100.0
     };
 

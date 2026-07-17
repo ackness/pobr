@@ -584,6 +584,10 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
             kind: "SkillTypes".to_string(),
             detail: format!("限技能类型 {st:?}"),
         },
+        ModTag::SkillTypesNeg(st) => TagExplain {
+            kind: "SkillTypesNeg".to_string(),
+            detail: format!("排除技能类型 {st:?}"),
+        },
         ModTag::SkillName { names } => TagExplain {
             kind: "SkillName".to_string(),
             detail: format!("仅当主技能是 `{}` 时生效", names.join("` / `")),

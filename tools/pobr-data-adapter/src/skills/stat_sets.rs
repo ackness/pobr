@@ -41,6 +41,14 @@ struct RawStatSet {
     constant_stats: Vec<usize>,
     #[serde(rename = "ConstantStatsValues", default)]
     constant_stats_values: Vec<i64>,
+    /// （存量 #7-2）本 set 要**移除**的 stat（`Stats` 行索引）——社区 schema 列名
+    /// `IgnoredStats` = vendor `Export/spec.lua` 的 `RemoveStats`。vendor 导出
+    /// （`Export/Scripts/skills.lua:572-597`）把合并行里这些 stat 的值置 0（只置
+    /// **首次出现**，即 base-merge 拼入的主 set 副本）。典型 = Essence Drain 的
+    /// DoT set 移除主 set 的 `spell_min/max_base_chaos_damage`（纯 DoT 无击中）。
+    /// 列缺失（旧表下载）→ 空 = 不移除（韧性降级，与既有缺列口径一致）。
+    #[serde(rename = "IgnoredStats", default)]
+    ignored_stats: Vec<usize>,
 }
 
 #[derive(Deserialize)]
@@ -250,6 +258,21 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
     let raw_multiplier = |row: &RawStatSetPerLevel| {
         1.0 + f64::from(row.base_multiplier.unwrap_or(0) as i32) / 10000.0
     };
+    // （存量 #7-2）RemoveStats/IgnoredStats 置零（vendor skills.lua:589-596）：
+    // 对 set 声明移除的每个 stat，把行内**首次出现**的值置 0（合并行中先出现的
+    // 是 base-merge 拼入的主 set 副本），其余出现保留。
+    // ponytail: 同一 stat 在 IgnoredStats 重复出现时 vendor 会置零多个占位——
+    // 当前数据无此形态，重复项按单次处理。
+    let apply_ignored = |stats: &mut Vec<SkillDamageStat>, ignored: &[usize]| {
+        for &idx in ignored {
+            let Some(sid) = stat_id.get(idx).filter(|s| !s.is_empty()) else {
+                continue;
+            };
+            if let Some(slot) = stats.iter_mut().find(|s| &s.stat == sid) {
+                slot.value = 0.0;
+            }
+        }
+    };
 
     let mut out = Vec::new();
     let mut damage_levels_total = 0usize;
@@ -273,7 +296,8 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             let Some(gem_level) = row.gem_level.filter(|&l| l > 0).map(|l| l as u32) else {
                 continue;
             };
-            let stats = resolve_row_stats(row);
+            let mut stats = resolve_row_stats(row);
+            apply_ignored(&mut stats, &main_set.ignored_stats);
             let damage_multiplier = raw_multiplier(row);
             // 收录有 stat 或有非平凡倍率的等级行。
             if !stats.is_empty() || (damage_multiplier - 1.0).abs() > f64::EPSILON {
@@ -333,6 +357,9 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 let paired = main_rows.get(indx);
                 let mut stats = paired.map(|p| resolve_row_stats(p)).unwrap_or_default();
                 stats.extend(resolve_row_stats(row));
+                // 本 set 的 RemoveStats 作用于**合并后**的行（vendor 先 tableConcat
+                // 再置零）：Essence Drain DoT set 置零主 set 拼入的 62/115 击中段。
+                apply_ignored(&mut stats, &add_set.ignored_stats);
                 // 倍率：本行 BaseMultiplier ≠ 0 取本行（:533-541 两分支终值同为本行
                 // `/10000+1`；UseSetAttackMulti 列未下载），否则回退主配对行。
                 let damage_multiplier = if row.base_multiplier.unwrap_or(0) != 0 {

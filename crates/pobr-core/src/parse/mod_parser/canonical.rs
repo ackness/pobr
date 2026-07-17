@@ -133,6 +133,15 @@ fn canonical_tag(tag: &ModTag) -> String {
                 format!("SkillTypes({})", hex.join(","))
             }
         }
+        ModTag::SkillTypesNeg(st) => {
+            let w = st.words();
+            if w[1..].iter().all(|&x| x == 0) {
+                format!("SkillTypesNeg({:#x})", w[0])
+            } else {
+                let hex: Vec<String> = w.iter().map(|x| format!("{x:#x}")).collect();
+                format!("SkillTypesNeg({})", hex.join(","))
+            }
+        }
         ModTag::SkillName { names } => format!("SkillName(names=[{}])", names.join(",")),
         ModTag::SlotName(s) => format!("SlotName({s})"),
         ModTag::DistanceRamp { ramp } => {

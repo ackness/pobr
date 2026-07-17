@@ -6,16 +6,16 @@
   },
   "summary": {
     "total": 4280,
-    "parsed": 3442,
-    "unsupported": 838,
+    "parsed": 3438,
+    "unsupported": 842,
     "err": 0,
-    "coverage_ratio": 0.804206
+    "coverage_ratio": 0.803271
   },
   "by_source": [
     {
       "source": "C1_build",
-      "parsed": 1195,
-      "unsupported": 511,
+      "parsed": 1191,
+      "unsupported": 515,
       "err": 0
     },
     {
@@ -183,6 +183,26 @@
       "source": "C1_build"
     },
     {
+      "text": "Also grants 180 Guard",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Also grants 265 Guard",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Also grants 435 Guard",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Also grants 491 Guard",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
       "text": "Amber Amulet",
       "status": "unsupported",
       "source": "C1_build"
@@ -211,26 +231,6 @@
       "text": "Apocalypse Desire",
       "status": "unsupported",
       "source": "C1_build"
-    },
-    {
-      "text": "Apocalypse Hope",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "Apocalypse Pelt",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "Apocalypse Vessel",
-      "status": "unsupported",
-      "source": "C1_build"
-    },
-    {
-      "text": "Apply [Debilitate] to Enemies 30 Metres in front of you while your [Shield] is raised",
-      "status": "unsupported",
-      "source": "C2_tree"
     }
   ]
 }

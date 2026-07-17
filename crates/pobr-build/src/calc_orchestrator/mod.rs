@@ -1436,6 +1436,17 @@ fn inject_attribute_derivation(
         let str_total = session.attribute_total("Strength", cls_str);
         let dex_total = session.attribute_total("Dexterity", cls_dex);
         let int_total = session.attribute_total("Intelligence", cls_int);
+        // （存量 #7-4）Giant's Blood 键石「Inherent Life granted by Strength is
+        // halved」（vendor CalcPerform.lua:500-505：flag HalvesLifeFromStrength →
+        // `Life BASE = Str × 1` 而非 ×2）。CharacterBase 已烘焙职业起始段
+        // `cls_str × life_per_strength`，此处增量按「目标总量 − 烘焙段」注入，
+        // 使 Str 派生生命总量 = str_total × 减半后系数（wolf-pack 802→401，
+        // oracle Life 逐源钉值）。
+        let life_per_str = if session.has_flag("HalvesLifeFromStrength") {
+            cc.life_per_strength / 2.0
+        } else {
+            cc.life_per_strength
+        };
         let mk = |stat: &str, value: f64| {
             let origin = ModifierSource::new(SourceId::new(
                 SourceKind::CharacterBase,
@@ -1445,7 +1456,10 @@ fn inject_attribute_derivation(
             Modifier::number(stat, ModType::Base, value).with_origin(origin)
         };
         session.add_modifiers([
-            mk("MaximumLife", cc.life_per_strength * (str_total - cls_str)),
+            mk(
+                "MaximumLife",
+                str_total * life_per_str - cls_str * cc.life_per_strength,
+            ),
             mk(
                 "MaximumMana",
                 cc.mana_per_intelligence * (int_total - cls_int),
@@ -1502,7 +1516,10 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     let str_total = session.base_sum("Strength");
     let dex_total = session.base_sum("Dexterity");
     let int_total = session.base_sum("Intelligence");
-    let spirit_total = session.base_sum("Spirit");
+    // （存量 #7-4）Spirit 分母 = **最终池值**（calc_spirit_pool，含 INC/MORE 与
+    // 转换扣减）——vendor PerStat 读 output.Spirit；BASE-only 会把 wolf-pack
+    // Perfidy「+2 Armour per 1 Spirit」欠算 72 base（Spirit 336 vs base 300）。
+    let spirit_total = session.spirit_total();
     let mana_total = session.pool_total("MaximumMana");
     let life_total = session.pool_total("MaximumLife");
     session.set_multiplier("Strength", str_total);

@@ -1209,6 +1209,14 @@ pub fn fill_ehp_pob2(
 
         // ---- 新口径 max hit（:3540-3697）----
         let pool_by_type = total_hit_pools(&mom, es_recovery_cap, &pools, &ctx);
+        // 诊断：POBR_DBG_EHPPOOL=1 时 dump 池分解（与 oracle <Type>TotalHitPool /
+        // MoMHitPool / Ward 对照）。
+        if std::env::var("POBR_DBG_EHPPOOL").is_ok() {
+            eprintln!(
+                "[POBR_EHPPOOL] pools={pool_by_type:?} mom={mom:?} es_cap={es_recovery_cap:.2} ward={:.2} guard=({:.2},{:.2}) aegis_shared={:.2}",
+                pools.ward, pools.guard_shared, pools.guard_shared_rate, pools.aegis_shared,
+            );
+        }
         let inputs = MaxHitInputs {
             mit: &mit,
             pools_full: &pools,

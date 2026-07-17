@@ -533,7 +533,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 // Atziri's Communion 的 Spirit→Life 保留转换（LifeReservePercentPerSpirit，
 // vendor CalcDefence.lua:248-254）接入后双列翻正；abyssal-lich（同戴 Communion）
 // SpiritUnres inf→1.00x 同根。见 buffs.rs spirit_reservation_modifiers 转换分支。
-const BASELINE_DEF_CORE_HIT5: usize = 140; // Communion 后 140/144（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
+const BASELINE_DEF_CORE_HIT5: usize = 142; // 存量 #7-3/4（charm-guard 摘除 + wolf-pack Life/Armour 收敛 + gemling 池名归一）后 142/144（Communion 140（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -638,7 +638,7 @@ const BASELINE_DEF_CORE_HIT5: usize = 140; // Communion 后 140/144（ItemES 138
 // **0.5.4b #4 Communion/LowLife + Voices 重记（+3 @5% 410→413 / +5 @10% 429→434）**：
 // core-8 的 SpiritUnres/LifeUnres 翻正（见 BASELINE_DEF_CORE_HIT5 上说明）+
 // abyssal-lich EnergyShield 0.93x→0.98x（Voices sinister 珠宝的 ES 词条找回）。
-const BASELINE_DEF_HIT5: usize = 413; // Communion+Voices 后 413/450（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT5: usize = 425; // 存量 #7-3/4 后 425/450（ritualist 6 格 + gemling 9 格 + wolf-pack Life/Armour 精确翻正，wolf-pack MaxHit 族随 charm-guard 掩蔽摘除移出——余量 = companion ally-mitigation 层；Communion+Voices 413（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
 const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refraction 429；ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
@@ -742,8 +742,13 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // 欠条）、blood-mage 0.880x / abyssal-lich 0.926x（Mageblood 词条族缺口，Phase 1
 // 独立项——oracle 钉值 blood-mage 缺 `INC CritChance 107 'Mageblood'`）、
 // frost-bomb 0.661x（golden 两版未动，存量冷却 DPS 缺口）。
-const BASELINE_OFF_HIT5: usize = 71; // 0.5.4b #6 AvgDamage 族后 71/80（Blazing Critical 58；grenade 短语解禁 56；Communion+Voices 52；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 73; // 0.5.4b #6 AvgDamage 族后 73/80（Blazing Critical 64；grenade 短语解禁 62；Communion+Voices 59；迁移基线 47；0.5.0=74）
+// （存量 #7-1）frost-bomb TotalDPS 0.66x→1.00x 翻正（off @5/@10 各 +1）：
+// Archmage buff `DamageGainAsLightning`（BASE 4/100 Mana → 80% gain-as，
+// act_int.lua:229-231）+ curse 链两缺口（EW 取数等级未吃 +8 spell skill
+// levels：-58→-66；技能局部 CurseEffect 段缺失：Heightened Curse +25 +
+// EW 品质 +10 → 敌抗 9→-7，oracle enemyMitigation 逐源钉值）。
+const BASELINE_OFF_HIT5: usize = 73; // #6 AvgDamage 族 + 存量 #7（frost-bomb/essence-drain）合并实测 73/80，超过 0.5.0 时代的 71（#6 单独 71；#7 单独 60；迁移基线 39）
+const BASELINE_OFF_HIT10: usize = 75; // #6+#7 合并实测 75/80（#6 单独 73；#7 单独 66；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -828,8 +833,13 @@ const BASELINE_OFF_HIT10: usize = 73; // 0.5.4b #6 AvgDamage 族后 73/80（Blaz
 // uptime-scaled DamageGainAsFire 12.04% 未建模，新旧 vendor 同值的存量 warcry
 // uptime 机制，见 BASELINE_OFF_HIT5 注）；deadeye 0.69x = hit 0.83x²；
 // blood-mage 0.79x（Mageblood）；gemling 1.10x 高估（存量）。
-const BASELINE_DOT_HIT5: usize = 25; // 0.5.4b #6 后 25/37（Blazing Critical 16；grenade 短语解禁 14；Communion+Voices 13；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 27; // 0.5.4b #6 后 27/37（Blazing Critical 21；grenade 短语解禁 19；Communion+Voices 18；迁移基线 11；0.5.0=28）
+// （存量 #7-1）frost-bomb 修复的 dot 列迁移：CombinedDPS 0.66x→1.00x 入列
+// （@5/@10 各 +1）、TotalDotDPS 0.87x→1.07x 入 @10%；druid-oracle-comet
+// TotalDotDPS 1.04x→1.06x 出 @5%（EW 变强的下游——vendor 侧 druid 的 EW
+// 根本未入 enemy resistMods（curse 槽位/优先级差异，oracle 钉值），PoBR
+// 施加了它，存量高估被放大 2%，另行追）。@5 净 0、@10 净 +2。
+const BASELINE_DOT_HIT5: usize = 27; // #6+#7 合并实测 27/37，超过 0.5.0 时代的 26（#6 单独 25；#7 单独 18；迁移基线 9）
+const BASELINE_DOT_HIT10: usize = 31; // #6+#7 合并实测 31/37（#6 单独 27；#7 单独 25；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -847,8 +857,8 @@ const BASELINE_DOT_HIT10: usize = 27; // 0.5.4b #6 后 27/37（Blazing Critical 
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 41; // 0.5.4b #6 +1（#4 后 40；Communion+Voices 38）；迁移基线 27；0.5.0=44
-const PANEL_OFF_HIT10: usize = 42; // 0.5.4b #6 +1（#4 后 41；Communion+Voices 39）；迁移基线 30；0.5.0=46
+const PANEL_OFF_HIT5: usize = 42; // #6 与存量 #7 RemoveStats 各 +1 叠加实测 42（#4 后 40；Communion+Voices 38）；迁移基线 27；0.5.0=44
+const PANEL_OFF_HIT10: usize = 43; // 同上叠加实测 43（#4 后 41；Communion+Voices 39）；迁移基线 30；0.5.0=46
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

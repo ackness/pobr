@@ -99,26 +99,6 @@
       "source_note": "金护符阿兹莫里之灵附身（Stag/Wolf/Bear…）：玩家侧 buff 数值无可验证一手来源（poe2db/wiki 仅载敌方附身效果，BuffDefinitions 未入库）→ 暂解析为 FLAG 登记，数据可得后升级 handler 接具体 buff"
     },
     {
-      "id": "also_grants_guard",
-      "pattern": "also grants (\\d+) guard",
-      "vendor_pattern": null,
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "BASE",
-          "value": 100
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "BASE",
-          "value": "$1"
-        }
-      ],
-      "verified": false,
-      "batch": "S0",
-      "source_note": "药剂/护符使用效果：PoE2 Guard buff=生命/ES 前全额吸收击中的缓冲池（agent-docs/active-defences.md §2；poe2db Guard 定义）→ rate 100 + limit $1，消费端 pool_setup.rs:132 现成（EHP/MaxHit 承受层）。vendor ModParser 未接此词条（比 PoB2 多建模一层）"
-    },
-    {
       "id": "armour_applies_to_fcl_instead_of_physical",
       "pattern": "armour applies to fire, cold and lightning damage taken from hits instead of physical damage",
       "vendor_pattern": "armour applies to fire, cold and lightning damage taken from hits instead of physical damage",
