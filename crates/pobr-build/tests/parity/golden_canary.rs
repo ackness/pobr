@@ -142,8 +142,11 @@ fn canary_evasion_melee() {
 }
 
 /// 火焰法术 / 护甲层（CI，Life=1 跳过）。
+///
+/// Phase 0 曾以「0.5.4b offence DPS 适配缺口（~0.60x）」`#[ignore]`；#4 重验
+/// ember-fusillade TotalDPS 已 1.00x（548742 vs 549423——gap map 条目在先前
+/// mana-multiplier / Arcane Surge 等修复中顺带闭合，未及回验），un-ignore。
 #[test]
-#[ignore = "0.5.4b offence DPS 适配缺口（~0.60x）；见 docs/adapting-to-0.5.4b.md Phase 1"]
 fn canary_fire_spell_armour() {
     let d = load_data();
     let n = "druid-oracle-ember-fusillade";

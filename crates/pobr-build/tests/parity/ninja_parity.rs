@@ -528,7 +528,12 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 // 展示行」改为 PoB2 口径「基底 DB 重算 (esBase+flat)×(1+localInc/100)×(1+quality/100)」
 // （Item.lua:1994-1996；展示行跨数据版本会滞后）——titan ES 41→55、stormweaver ES
 // 986→1120，各连带 ESRecoveryCap。见 calc_orchestrator/defence.rs::item_rolled_defence。
-const BASELINE_DEF_CORE_HIT5: usize = 138; // ItemES 后 138/144（Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
+// **0.5.4b #4 Communion/LowLife + Voices 重记（+2 @5% core-8 138→140）**：
+// huntress-ritualist SpiritUnres −13.00x→1.00x / LifeUnres 12.74x→1.01x——
+// Atziri's Communion 的 Spirit→Life 保留转换（LifeReservePercentPerSpirit，
+// vendor CalcDefence.lua:248-254）接入后双列翻正；abyssal-lich（同戴 Communion）
+// SpiritUnres inf→1.00x 同根。见 buffs.rs spirit_reservation_modifiers 转换分支。
+const BASELINE_DEF_CORE_HIT5: usize = 140; // Communion 后 140/144（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -630,8 +635,11 @@ const BASELINE_DEF_CORE_HIT5: usize = 138; // ItemES 后 138/144（Barrier-Life 
 // FireEffectiveAppliedArmour 21181.2）。wolf-pack Fire/Cold/LightMaxHit
 // 0.94x→0.96x（@5% 翻正）、TotalEHP 0.81x→0.88x（余量 = Armour 0.98x 本体
 // 差 + ChaosMaxHit 0.87x + Life 1.11x，均与本通道无关）。@10% 无变化。
-const BASELINE_DEF_HIT5: usize = 410; // ArmourAppliesTo 后 410/450（Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 429; // Refraction 后 429/450（ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
+// **0.5.4b #4 Communion/LowLife + Voices 重记（+3 @5% 410→413 / +5 @10% 429→434）**：
+// core-8 的 SpiritUnres/LifeUnres 翻正（见 BASELINE_DEF_CORE_HIT5 上说明）+
+// abyssal-lich EnergyShield 0.93x→0.98x（Voices sinister 珠宝的 ES 词条找回）。
+const BASELINE_DEF_HIT5: usize = 413; // Communion+Voices 后 413/450（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refraction 429；ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
@@ -677,8 +685,19 @@ const BASELINE_DEF_HIT10: usize = 429; // Refraction 后 429/450（ItemES 428；
 // mana_pool 并回填 cfg.stats["Mana"]，但漏刷 cfg.multipliers["Mana"]（per-100-max-Mana
 // 类词条如 Arcane Intensity 读它）→ 池转换 build 的 mana 缩放用了转换前的旧值。补刷后
 // blood-mage SpellDamage INC 39→105、TotalDPS 0.74x→0.87x，其 DoT 基底随之抬升。见 perform.rs。
-const BASELINE_OFF_HIT5: usize = 46; // mana-mult 后 46/80（Silver-speed 45；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 55; // mana-mult 后 55/80（Silver-speed 54；迁移基线 47；0.5.0=74）
+// **0.5.4b #4 Communion/LowLife + Voices 重记（off +6 @5% 46→52 / +4 @10% 55→59）**：
+// 两个 0.5.4b 新机制在真实 build 上叠加成 per-build DPS 簇（gap map「~0.60x」项）：
+// 1. Atziri's Communion Spirit→Life 保留转换（vendor CalcDefence.lua:248-254）→
+//    重保留 build 自动 Low Life（:335-350 unreserved ≤ 35%）→「while on Low Life」
+//    族增伤解锁（ritualist：tree +60 与 Direstrike buff +70 attack INC，oracle
+//    damageModList 钉值 = 缺口 130 INC 整）。
+// 2. Voices「Allocates 2 Sinister Jewel sockets」→ sinister socket 珠宝入计
+//    （ritualist crit chance/mult 13/37 INC 找回，双列精确闭合）。
+// huntress-ritualist TotalDPS 0.68x→0.99x（AvgDamage/CritChance/CritMultiplier 同翻）、
+// witch-abyssal-lich TotalDPS 0.62x→0.91x（Speed 0.91x→1.00x、CritChance 0.98x、
+// CritMultiplier 0.75x→0.97x，其中 Speed/CritChance @5% 翻正、DPS 未回带）。
+const BASELINE_OFF_HIT5: usize = 52; // Communion+Voices 后 52/80（mana-mult 46；Silver-speed 45；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 59; // Communion+Voices 后 59/80（mana-mult 55；Silver-speed 54；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -739,8 +758,12 @@ const BASELINE_OFF_HIT10: usize = 55; // mana-mult 后 55/80（Silver-speed 54�
 // 18 build 逐格 diff 仅 blood-mage 三格变动。冻结榜只剩 legacy `split`。
 // **bloodmage mana-mult 重记（dot +2 @5% 9→11 / @10% 11→13）**：见 BASELINE_OFF_HIT5 上
 // 说明——mana 缩放抬 blood-mage 的 spell DoT 基底，其 TotalDotDPS/CombinedDPS 翻正。
-const BASELINE_DOT_HIT5: usize = 11; // mana-mult 后 11/37（迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 13; // mana-mult 后 13/37（迁移基线 11；0.5.0=28）
+// **0.5.4b #4 Communion/LowLife + Voices 重记（dot +2 @5% 11→13 / +5 @10% 13→18）**：
+// ritualist TotalDotDPS 0.60x→1.00x / CombinedDPS 0.63x→0.99x（LowLife 增伤 +
+// sinister 珠宝的 damaging-ailment-magnitude 词条同时抬 bleed/poison 基底）；
+// abyssal-lich dot 列随 hit 侧收敛入 @10% 带。
+const BASELINE_DOT_HIT5: usize = 13; // Communion+Voices 后 13/37（mana-mult 11；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 18; // Communion+Voices 后 18/37（mana-mult 13；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -758,8 +781,8 @@ const BASELINE_DOT_HIT10: usize = 13; // mana-mult 后 13/37（迁移基线 11�
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 27; // 4.5.4.3 迁移基线 27/80（0.5.0=44）
-const PANEL_OFF_HIT10: usize = 30; // 4.5.4.3 迁移基线 30/80（0.5.0=46）
+const PANEL_OFF_HIT5: usize = 38; // 0.5.4b #4 Communion+Voices 后 38/80（迁移基线 27；0.5.0=44）
+const PANEL_OFF_HIT10: usize = 39; // 0.5.4b #4 Communion+Voices 后 39/80（迁移基线 30；0.5.0=46）
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
