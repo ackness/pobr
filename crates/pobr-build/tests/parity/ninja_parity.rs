@@ -720,8 +720,8 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // act_int.lua:229-231）+ curse 链两缺口（EW 取数等级未吃 +8 spell skill
 // levels：-58→-66；技能局部 CurseEffect 段缺失：Heightened Curse +25 +
 // EW 品质 +10 → 敌抗 9→-7，oracle enemyMitigation 逐源钉值）。
-const BASELINE_OFF_HIT5: usize = 59; // frost-bomb 后 59/80（Blazing Critical 58；grenade 短语解禁 56；Communion+Voices 52；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 65; // frost-bomb 后 65/80（Blazing Critical 64；grenade 短语解禁 62；Communion+Voices 59；迁移基线 47；0.5.0=74）
+const BASELINE_OFF_HIT5: usize = 60; // RemoveStats 后 60/80（frost-bomb 59；essence-drain TotalDPS 0 命中入列）（Blazing Critical 58；grenade 短语解禁 56；Communion+Voices 52；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 66; // RemoveStats 后 66/80（frost-bomb 65（Blazing Critical 64；grenade 短语解禁 62；Communion+Voices 59；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -804,8 +804,8 @@ const BASELINE_OFF_HIT10: usize = 65; // frost-bomb 后 65/80（Blazing Critical
 // TotalDotDPS 1.04x→1.06x 出 @5%（EW 变强的下游——vendor 侧 druid 的 EW
 // 根本未入 enemy resistMods（curse 槽位/优先级差异，oracle 钉值），PoBR
 // 施加了它，存量高估被放大 2%，另行追）。@5 净 0、@10 净 +2。
-const BASELINE_DOT_HIT5: usize = 16; // Blazing Critical 后 16/37（grenade 短语解禁 14；Communion+Voices 13；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 23; // frost-bomb 后 23/37（Blazing Critical 21；grenade 短语解禁 19；Communion+Voices 18；迁移基线 11；0.5.0=28）
+const BASELINE_DOT_HIT5: usize = 18; // RemoveStats 后 18/37（essence-drain WithDot/Combined 1.36x→1.00x 双入列；Blazing Critical 16（grenade 短语解禁 14；Communion+Voices 13；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 25; // RemoveStats 后 25/37（frost-bomb 23（Blazing Critical 21；grenade 短语解禁 19；Communion+Voices 18；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -823,8 +823,8 @@ const BASELINE_DOT_HIT10: usize = 23; // frost-bomb 后 23/37（Blazing Critical
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 40; // 0.5.4b #4（Communion+Voices 38；grenade 短语解禁 +2）；迁移基线 27；0.5.0=44
-const PANEL_OFF_HIT10: usize = 41; // 0.5.4b #4（Communion+Voices 39；grenade 短语解禁 +2）；迁移基线 30；0.5.0=46
+const PANEL_OFF_HIT5: usize = 41; // RemoveStats（essence-drain 幻影击中清零）+1；0.5.4b #4 40（Communion+Voices 38；grenade 短语解禁 +2）；迁移基线 27；0.5.0=44
+const PANEL_OFF_HIT10: usize = 42; // RemoveStats +1；0.5.4b #4 41（Communion+Voices 39；grenade 短语解禁 +2）；迁移基线 30；0.5.0=46
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

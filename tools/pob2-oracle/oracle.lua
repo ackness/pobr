@@ -771,6 +771,19 @@ if mainSkill then
 			if vv then skillInfo.skillFlags[k] = true end
 		end
 	end
+	-- Selected statSet (multi-set gems like Essence Drain: [1]=Projectile,
+	-- [2]=Damage over Time) — which set drives the main output.
+	if ae and ae.statSet then
+		skillInfo.statSetIndex = ae.statSet.index
+		if ae.statSet.statSet then
+			skillInfo.statSetLabel = ae.statSet.statSet.label
+		end
+	end
+	if mainSkill.skillData then
+		skillInfo.chaosMin = mainSkill.skillData.ChaosMin
+		skillInfo.chaosMax = mainSkill.skillData.ChaosMax
+		skillInfo.chaosDot = mainSkill.skillData.ChaosDot
+	end
 	-- skillData.dpsMultiplier (post calcLib.mod "DPS" fold, CalcOffence.lua:3863) for
 	-- the W-C4 dps end-factor parity checks.
 	if mainSkill.skillData then

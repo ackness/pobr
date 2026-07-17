@@ -11,7 +11,7 @@
     { "name": "SkillGems", "columns": ["BaseItemType","GemType","GemColour","MinLevelReq","StrengthRequirementPercent","DexterityRequirementPercent","IntelligenceRequirementPercent","GemEffects","ItemExperienceType"] },
     { "name": "GrantedEffects", "columns": ["Id","IsSupport","ActiveSkill","StatSet","CastTime","CostTypes","AllowedActiveSkillTypes","AddedActiveSkillTypes","ExcludedActiveSkillTypes","SupportsGemsOnly","CannotBeSupported","AdditionalStatSets"] },
     { "name": "GrantedEffectsPerLevel", "columns": ["GrantedEffect","Level","Cooldown","CostAmounts","AttackTime","CostMultiplier","StoredUses","Reservation","EffectOnPlayer","AttackSpeedMultiplier"] },
-    { "name": "GrantedEffectStatSets", "columns": ["Id","BaseEffectiveness","IncrementalEffectiveness","DamageIncrementalEffectiveness","ImplicitStats","ConstantStats","ConstantStatsValues","Label"] },
+    { "name": "GrantedEffectStatSets", "columns": ["Id","BaseEffectiveness","IncrementalEffectiveness","DamageIncrementalEffectiveness","ImplicitStats","ConstantStats","ConstantStatsValues","Label","IgnoredStats"] },
     { "name": "GrantedEffectStatSetsPerLevel", "columns": ["StatSet","GemLevel","BaseMultiplier","BaseResolvedValues","FloatStats","FloatStatsValues","AdditionalStats","AdditionalStatsValues","SpellCritChance","AttackCritChance"] },
     { "name": "ActiveSkills", "columns": ["Id","DisplayedName","Description","ActiveSkillTypes","GrantedEffect"] },
     { "name": "ActiveSkillType", "columns": ["Id"] },
