@@ -12,7 +12,7 @@ use super::ailment::{
 };
 use super::output::StoredDamageRange;
 use super::skill_mechanics::{
-    calc_aoe, calc_cooldown, calc_life_cost, calc_mana_cost, calc_projectile_count,
+    calc_aoe, calc_cooldown, calc_mana_cost, calc_projectile_count,
     calc_spirit_reservation,
 };
 use super::trigger::{
@@ -909,13 +909,24 @@ fn fill_skill_mechanics(env: &mut Env) {
     }
 
     // 消耗：各资源需对应基础值 BASE 词条。无则跳过（保持 0）。
+    // hybrid mana→life 转换（`HybridManaAndLifeCost_Life`，如 Atalui's Bloodletting /
+    // Blood-Magic 族）：Life 侧吃 mana finalBase × hybrid，Mana 侧链尾
+    // `floor((1-hybrid)×ManaCost)`（vendor CalcOffence.lua:2090-2104 + :2160-2162）。
+    let hybrid = crate::calc::skill_mechanics::hybrid_life_cost_share(db, cfg);
     let base_mc = db.sum(ModType::Base, cfg, &[ModName::from("SkillManaCostBase")]);
     if base_mc > 0.0 {
-        env.player.output.mana_cost = calc_mana_cost(db, cfg, base_mc).final_cost;
+        let mana = calc_mana_cost(db, cfg, base_mc).final_cost;
+        env.player.output.mana_cost = if hybrid > 0.0 {
+            ((1.0 - hybrid) * mana).floor().max(0.0)
+        } else {
+            mana
+        };
     }
     let base_lc = db.sum(ModType::Base, cfg, &[ModName::from("SkillLifeCostBase")]);
-    if base_lc > 0.0 {
-        env.player.output.life_cost = calc_life_cost(db, cfg, base_lc).final_cost;
+    if base_lc > 0.0 || (hybrid > 0.0 && base_mc > 0.0) {
+        env.player.output.life_cost =
+            crate::calc::skill_mechanics::calc_life_cost_hybrid(db, cfg, base_lc, base_mc)
+                .final_cost;
     }
     let base_sr = db.sum(
         ModType::Base,

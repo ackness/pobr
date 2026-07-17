@@ -493,6 +493,23 @@ impl CalculationSession {
             .sum(ModType::Base, &self.env.cfg, &[ModName::from(name)])
     }
 
+    /// 主技能 Life 消耗快照（vendor `output.LifeCost`；含 hybrid mana→life 转换）。
+    /// 编排层在全部来源注入后调用，回填 `cfg.stats/multipliers["LifeCost"]` 供
+    /// per-life-cost 词条（PerStat stat=LifeCost，如 Atalui's Bloodletting 的
+    /// gain-as-physical）在伤害聚合期取数——与 vendor CalcOffence 先算 cost 再算
+    /// 伤害的顺序等价。
+    pub fn life_cost_snapshot(&self) -> f64 {
+        let base_mc = self.base_sum("SkillManaCostBase");
+        let base_lc = self.base_sum("SkillLifeCostBase");
+        super::skill_mechanics::calc_life_cost_hybrid(
+            &self.env.player.mod_db,
+            &self.env.cfg,
+            base_lc,
+            base_mc,
+        )
+        .final_cost
+    }
+
     /// 属性最终总量（PoB2 `calculateAttributes`，CalcPerform.lua:381-388：
     /// `output[stat] = m_max(round(calcLib.val(modDB, stat)), 0)`，calcLib.val =
     /// `Σbase × (1 + Σinc/100) × Πmore`）。`class_base` = 职业起始属性（PoBR 把它

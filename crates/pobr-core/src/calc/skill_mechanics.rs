@@ -599,13 +599,25 @@ pub fn calc_skill_cost(
 
     // 辅助宝石 cost 倍率：连乘截断 4 位小数 → 作用于 base → floor
     // （PoB2 CalcOffence.lua:2052/:2076-2077，先于 inc/more 链）。
-    let support_mult_names = [ModName::from("SupportManaMultiplier")];
-    let support_mult = {
-        let m = db.more(cfg, &support_mult_names);
-        (m * 10000.0).floor() / 10000.0
-    };
-    let base_cost_after_support = (base_cost * support_mult).floor();
+    let base_cost_after_support = (base_cost * support_cost_multiplier(db, cfg)).floor();
+    let final_cost = apply_cost_chain(db, cfg, resource_mod_prefix, base_cost_after_support);
 
+    SkillCostResult {
+        kind,
+        base_cost,
+        final_cost: round(final_cost),
+        no_cost: false,
+    }
+}
+
+/// 消耗 inc/more/efficiency 链（vendor CalcOffence.lua:2126-2160 第二循环），
+/// 入参 `final_base` = 已含 SupportManaMultiplier 的 finalBaseCost。
+fn apply_cost_chain(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    resource_mod_prefix: &str,
+    final_base: f64,
+) -> f64 {
     let type_cost_name = format!("{resource_mod_prefix}Cost");
     let generic_cost_name = "Cost";
     let inc_names = [
@@ -623,11 +635,10 @@ pub fn calc_skill_cost(
     //   1) `floor(finalBaseCost × (1+inc/100))` (inc 正 → floor，inc 负 → ceil)
     //   2) `floor/ceil(step1 × moreType)` (more < 1 → ceil)
     //   3) `floor/ceil(step2 × moreGeneric)`
-    // finalBaseCost = 上方 base_cost_after_support（已含 SupportManaMultiplier）。
     let after_inc = if inc >= 0.0 {
-        (base_cost_after_support * (1.0 + inc / 100.0)).floor()
+        (final_base * (1.0 + inc / 100.0)).floor()
     } else {
-        (base_cost_after_support * (1.0 + inc / 100.0)).ceil()
+        (final_base * (1.0 + inc / 100.0)).ceil()
     };
     let after_more_type = if more_type < 1.0 {
         (after_inc * more_type).ceil()
@@ -652,17 +663,30 @@ pub fn calc_skill_cost(
             ModName::from("CostEfficiency"),
         ],
     );
-    let final_cost = after_more / (1.0 + efficiency / 100.0);
+    after_more / (1.0 + efficiency / 100.0)
+}
 
-    SkillCostResult {
-        kind,
-        base_cost,
-        final_cost: round(final_cost),
-        no_cost: false,
-    }
+/// 辅助宝石 cost 倍率连乘，截断 4 位小数（PoB2 CalcOffence.lua:2062
+/// `mult = floor(More(skillCfg, "SupportManaMultiplier"), 4)`）。
+fn support_cost_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let m = db.more(cfg, &[ModName::from("SupportManaMultiplier")]);
+    (m * 10000.0).floor() / 10000.0
+}
+
+/// Hybrid mana→life 消耗份额（0..=1）。来源 = `HybridManaAndLifeCost_Life` BASE
+/// （vendor stat `base_skill_cost_life_instead_of_mana_%`，如 Atalui's Bloodletting
+/// constantStat 100；Blood-Magic 族树词条同名），vendor 封顶 100
+/// （CalcOffence.lua:2067 `m_min(Sum(...), 100) / 100`）。
+pub fn hybrid_life_cost_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    (db.sum(ModType::Base, cfg, &[ModName::from("HybridManaAndLifeCost_Life")]).min(100.0) / 100.0)
+        .max(0.0)
 }
 
 /// 方便的 Mana 消耗计算。
+///
+/// 注意：hybrid mana→life 转换（[`hybrid_life_cost_share`] > 0）时 vendor 在链尾
+/// 追加 `floor((1 - hybrid) × ManaCost)`（CalcOffence.lua:2160-2162）——由调用方
+/// （perform fill）执行，本函数保持单资源纯链。
 pub fn calc_mana_cost(db: &ModDb, cfg: &CalcConfig, base_mana_cost: f64) -> SkillCostResult {
     calc_skill_cost(db, cfg, SkillCostKind::Mana, "Mana", base_mana_cost)
 }
@@ -670,6 +694,38 @@ pub fn calc_mana_cost(db: &ModDb, cfg: &CalcConfig, base_mana_cost: f64) -> Skil
 /// 方便的 Life 消耗计算。
 pub fn calc_life_cost(db: &ModDb, cfg: &CalcConfig, base_life_cost: f64) -> SkillCostResult {
     calc_skill_cost(db, cfg, SkillCostKind::Life, "Life", base_life_cost)
+}
+
+/// Life 消耗（含 hybrid mana→life 转换，vendor CalcOffence.lua:2090-2104 Life 分支）：
+/// `life.finalBaseCost = round(base_life×mult + round(floor(base_mana×mult) × hybrid))`，
+/// 之后走 Life 消耗 inc/more/efficiency 链。hybrid = 0 时与 [`calc_life_cost`] 等价。
+pub fn calc_life_cost_hybrid(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base_life_cost: f64,
+    base_mana_cost: f64,
+) -> SkillCostResult {
+    let hybrid = hybrid_life_cost_share(db, cfg);
+    if hybrid <= 0.0 {
+        return calc_life_cost(db, cfg, base_life_cost);
+    }
+    if db.flag(cfg, ModName::from("HasNoCost")) {
+        return SkillCostResult {
+            kind: SkillCostKind::Life,
+            base_cost: base_life_cost,
+            final_cost: 0.0,
+            no_cost: true,
+        };
+    }
+    let mult = support_cost_multiplier(db, cfg);
+    let mana_final_base = (base_mana_cost * mult).floor();
+    let life_final_base = (base_life_cost * mult + (mana_final_base * hybrid).round()).round();
+    SkillCostResult {
+        kind: SkillCostKind::Life,
+        base_cost: base_life_cost,
+        final_cost: round(apply_cost_chain(db, cfg, "Life", life_final_base)),
+        no_cost: false,
+    }
 }
 
 /// 方便的 Spirit（保留）消耗计算。

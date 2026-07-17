@@ -1522,6 +1522,14 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     session.set_stat("Spirit", spirit_total);
     session.set_stat("Mana", mana_total);
     session.set_stat("Life", life_total);
+    // 主技能 Life 消耗快照（vendor output.LifeCost）：per-life-cost 词条
+    // （PerStat stat=LifeCost，如 Atalui's Bloodletting gain-as-physical）的取数源。
+    // 消耗先于伤害结算，与 vendor CalcOffence 顺序一致。
+    let life_cost = session.life_cost_snapshot();
+    if life_cost > 0.0 {
+        session.set_stat("LifeCost", life_cost);
+        session.set_multiplier("LifeCost", life_cost);
+    }
     // per-槽位防御缩放（`<Stat>On<Slot>`）：使 `+N to Armour per M Item Energy Shield on
     // Equipped Boots` 这类按某件装备防御值缩放的词条生效（PoB2 PerStat `<Stat>On<Slot>`）。
     for (var, value) in per_slot_defence_multipliers(build, data) {
