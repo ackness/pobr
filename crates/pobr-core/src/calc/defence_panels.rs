@@ -8,7 +8,8 @@
 //! vendor 参照：`vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua`
 //! - Block：:961-1058（BlockChanceMax 体系 + 三分型 + lucky/unlucky 幂）
 //! - Ward：:1144-1273（per-slot 聚合 + EnergyShieldToWard）
-//! - Deflection：:48-54（`deflectChance` 公式）+ :1487-1506（rating 合成）
+//! - Deflection：:48-54（`deflectChance` 公式）+ :1516-1522（rating 合成，
+//!   0.22.0 vendor 行号；0.5.4b 复核公式未变）
 //! - Spirit：:73-126（Life/Mana/Spirit 统一池公式）
 
 use crate::{CalcConfig, ModDb};
@@ -228,7 +229,7 @@ pub fn calc_ward(db: &ModDb, cfg: &CalcConfig, es_to_ward: bool) -> f64 {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Deflection（CalcDefence.lua:48-54 / :1487-1506）
+// Deflection（CalcDefence.lua:48-54 / :1516-1522）
 // ─────────────────────────────────────────────────────────────────
 
 /// Deflection 面板结果。
@@ -255,14 +256,14 @@ fn deflect_chance_pct(deflection: f64, accuracy: f64, cap: f64) -> f64 {
     (100.0 - chance_to_not_deflect.round()).clamp(0.0, cap)
 }
 
-/// Deflection 合成（CalcDefence.lua:1490-1497）。
+/// Deflection 合成（CalcDefence.lua:1516-1522）。
 ///
 /// `DeflectionRating = ΣBASE DeflectionRating + (Evasion × ΣBASE
 /// EvasionGainAsDeflection/100 + Armour × ΣBASE ArmourGainAsDeflection/100)
 /// × calcLib.mod(DeflectionRating)`——vendor 括号语义：inc/more 乘区**只作用于
 /// GainAs 派生部分**（:1490 原文）。`DeflectChance = deflectChance(rating,
-/// enemyAccuracy)`；`DeflectIsLucky` → `(1−(1−p)²)`（:1492-1495）；
-/// `DeflectEffect = clamp(基础 40 + ΣBASE, 0, 100)`（:1496，常量
+/// enemyAccuracy)`；`DeflectIsLucky` → `(1−(1−p)²)`（:1518-1521）；
+/// `DeflectEffect = clamp(基础 40 + ΣBASE, 0, 100)`（:1522，常量
 /// `cfg.constants.game().deflect_effect`）。
 pub fn calc_deflection(
     db: &ModDb,
@@ -294,7 +295,7 @@ pub fn calc_deflection(
         enemy_accuracy,
         cfg.constants.game().deflection_chance_cap,
     );
-    // :1492-1495 DeflectIsLucky 幂。
+    // :1518-1521 DeflectIsLucky 幂。
     if db.flag(cfg, ModName::from("DeflectIsLucky")) {
         chance = luck_transform(chance, true, false);
     }
@@ -383,7 +384,7 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
     // --- Ward 池（CalcDefence.lua:1144-1296；EnergyShieldToWard 走 C-1 快照）---
     env.player.output.ward = calc_ward(db, cfg, keystones.energy_shield_to_ward);
 
-    // --- Deflection（CalcDefence.lua:48-54 / :1487-1506）---
+    // --- Deflection（CalcDefence.lua:48-54 / :1516-1522）---
     // 敌人命中读数同 Track E evade 路径（env.enemy.base.accuracy）。
     let deflect = calc_deflection(
         db,
