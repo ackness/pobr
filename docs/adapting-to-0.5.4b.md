@@ -359,6 +359,39 @@ no `buff_definitions` entry content changed and parity is untouched. Line
 ranges re-pointed to the 0.22.0 (`ce8bffab`) locations, hashes refreshed via
 `--write`, `_meta.vendor_commit` updated; check now reports 0 drift.
 
+**#8 target — the blood-mage/abyssal "Mageblood crit family" residual. ✅ DONE
+(one root cause, and it was not Mageblood).** The #6 ledger entry ("PoBR missing
+`INC CritChance 107 'Mageblood'`") turned out to be a stale symptom: line-by-line
+diff of `calc/mageblood.rs` against vendor `CalcPerform.lua:66-142` shows the
+effects table complete (all 14 legacies, Diamond included), and the
+per-duplicate implicit (`all mage's legacies have (%d+)% increased effect...`,
+ModParser.lua:5558 → `MagesLegacyEffect` INC) is already covered by
+`generated/special_vendor.json` (`vnd_all_mage_s_legacies_have_d_...`). A
+per-mod dump of the live build confirmed `CriticalStrikeChance INC 107
+src=Mageblood` present and oracle-exact. The *actual* gap, pinned by diffing
+oracle `critModList`/`ORACLE_EXTRA_STATS` per-source against the PoBR ModDb:
+both builds anoint their amulet with `{enchant}Allocates Zarokh's Gift` — a
+*named jewel socket* node (0_5 tree 11184, `isJewelSocket` + `sinister`, alias
+`DeliriumAnoint_ZarokhsGift_`). Vendor allocates it through the
+`ResolveGrantedPassiveNodes` sockets-by-name fallback
+(PassiveSpec.lua:1106-1114); PoBR's granted-passive path only matches Notables,
+and the jewel gate in `xml_build.rs` only knew the Voices sinister-count
+channel, so the socketed jewel was dropped whole (blood-mage: Pandemonium
+Ornament — CritChance INC 24 + CritMult INC 25/28, exactly the CritMult
+5.34-vs-5.87 delta; abyssal: an ES/defence jewel). Fix:
+`NAMED_SOCKETS_0_5` in `xml_build.rs` — scan equipped items' three text
+sections for `Allocates <name>`, match named sockets (0_5 tree has exactly
+one: Zarokh's Gift), and treat the node as allocated for jewel inclusion,
+same pinned-id pattern (and same tree-version ceiling) as
+`SINISTER_SOCKETS_0_5`. Results: blood-mage TotalDPS 0.880x→1.00x (CritChance
+88.5→92.1, CritMult 5.34→5.87, both golden-exact), abyssal-lich TotalDPS
+0.926x→1.00x (CritChance/CritMult 1.00x; ES 12124→12437 vs golden 12434,
+MaxHit family + TotalEHP 0.97-0.98x→1.00x). 18-build per-cell diff: only these
+two builds moved. Baselines: off 73→76 @5% / 75→76 @10%, dot 27→31 @5% /
+31→33 @10%; def counts unchanged (the abyssal def cells were already inside
+the 5% band). The other 7 Mageblood wearers: no movement — their legacy
+modelling was already complete.
+
 ## Tooling
 
 - `examples/demo-bd-test/tools/recapture_golden.py` — refresh fixture goldens
