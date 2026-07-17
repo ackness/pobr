@@ -5069,7 +5069,9 @@
     {
       "phrase": "skill speed",
       "names": [
-        "SkillSpeed"
+        "SkillSpeed",
+        "WarcrySpeed",
+        "TotemPlacementSpeed"
       ]
     },
     {

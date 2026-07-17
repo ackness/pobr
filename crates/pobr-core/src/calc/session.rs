@@ -341,6 +341,15 @@ impl CalculationSession {
         self.env.buff_skills.push(spec);
     }
 
+    /// 注入一个 warcry 技能规格（存量 #9 warcry uptime 机器）。消费在 `perform`
+    /// 的 hand pass 之前（[`super::warcry::apply_warcry_uptime`]）：按
+    /// `min((賦能次数/主技能Speed)/(冷却+喊叫时间), 1)` 折算 uptime 后，把 warcry
+    /// 的进攻性效果（Infernal Cry `DamageGainAsFire`）缩放注入玩家 db
+    /// （vendor CalcOffence.lua:3229-3256）。`cfg.mode_buffs` 门控。
+    pub fn add_warcry_skill(&mut self, spec: super::warcry::WarcrySpec) {
+        self.env.warcry_skills.push(spec);
+    }
+
     /// 接入一个召唤物（M5a-B2）：从 [`MinionDef`](super::MinionDef) 真实底材 + 召唤
     /// 宝石等级 + 数量上限派生召唤物 `Actor` 接入 `Env.minions`，并把上限写为玩家
     /// `Multiplier:SummonedMinion` / `Multiplier:MinionPresenceCount`（供「per Minion」

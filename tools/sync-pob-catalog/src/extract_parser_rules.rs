@@ -578,7 +578,16 @@ const AGGREGATE_EXPANSION: &[(&str, &[&str])] = &[
     ("strength and intelligence", &["Strength", "Intelligence"]),
     ("strength and dexterity", &["Strength", "Dexterity"]),
     ("dexterity and intelligence", &["Dexterity", "Intelligence"]),
-    ("skill speed", &["SkillSpeed"]),
+    // vendor `["skill speed"] = { "Speed", "WarcrySpeed", "TotemPlacementSpeed" }`
+    // （ModParser.lua:770）。裸 `Speed` → PoBR 速度桶名 `SkillSpeed`；WarcrySpeed /
+    // TotemPlacementSpeed 保留原名扇出（存量 #9 起 WarcrySpeed 有真消费方 =
+    // `pobr-core::calc::warcry` 的喊叫时间，CalcOffence.lua:350-359；
+    // TotemPlacementSpeed 仍为惰性作用域名）。此前只落 `SkillSpeed` 单名，
+    // 「N% increased Skill Speed」文本对 warcry 喊叫速度静默丢失。
+    (
+        "skill speed",
+        &["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"],
+    ),
 ];
 
 /// 抽取自检（蓝图 §1.9）：钉定 commit 下计数 / form id 集容差 0（Err）；

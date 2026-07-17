@@ -236,6 +236,37 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
     calculate_minimal_vs_enemy(db, &ModDb::new(), cfg, input)
 }
 
+/// 出手速率解析（= vendor `globalOutput.Speed`）：速度族（按技能类型取 AttackSpeed 或
+/// CastSpeed，SkillSpeed 始终）作为一个 inc/more 乘区；ActionSpeed 独立乘区单独相乘
+/// （对齐 PoB CalcOffence：`finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod`）。
+/// 攻击吃武器攻速 + AttackSpeed，法术吃技能施法速率 + CastSpeed——不混淆。
+/// 速度 inc/more 缩放后，先按附加施放/攻击时间（TotalCastTime/TotalAttackTime）换算
+/// 有效时间，再乘 ActionSpeed 独立乘区（PoB CalcOffence L2827 的加法分母 + 末端 action
+/// speed），最后冷却限速 + 服务器帧 cap。
+///
+/// 独立成函供两处共用：`calculate_minimal_vs_enemy` 主链，以及 warcry uptime 预算
+/// （`calc::warcry`——vendor 的 warcry 段读同一 `globalOutput.Speed`，
+/// CalcOffence.lua:3235）。
+pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
+    let speed_names = super::skill_use_time::speed_names_for(cfg);
+    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
+    let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
+    let more_speed = db.more(cfg, &speed_names);
+    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
+        * db.more(cfg, &action_speed_names);
+    let scaled_rate = apply_total_time(
+        db,
+        cfg,
+        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
+    );
+    let uncapped_action_rate = scaled_rate * action_speed_mod;
+    round(apply_server_tick_cap(
+        db,
+        cfg,
+        apply_cooldown_cap(db, cfg, uncapped_action_rate),
+    ))
+}
+
 /// 完整入口：玩家 modDB + 敌人 modDB。敌人侧减伤/受伤链/格挡仅在
 /// `cfg.mode_effective == true` 时生效（面板口径不引入敌人交互，保证与历史输出一致）。
 ///
@@ -257,29 +288,7 @@ pub fn calculate_minimal_vs_enemy(
     let cold_resistance = cold.final_value;
     let lightning_resistance = lightning.final_value;
 
-    // 速度族（按技能类型取 AttackSpeed 或 CastSpeed，SkillSpeed 始终）作为一个 inc/more 乘区；
-    // ActionSpeed 独立乘区单独相乘（对齐 PoB CalcOffence：
-    // finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod）。攻击吃武器攻速 + AttackSpeed，
-    // 法术吃技能施法速率 + CastSpeed——不混淆（攻击不吃 CastSpeed、法术不吃 AttackSpeed）。
-    let speed_names = super::skill_use_time::speed_names_for(cfg);
-    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
-    let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
-    let more_speed = db.more(cfg, &speed_names);
-    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-        * db.more(cfg, &action_speed_names);
-    // 速度 inc/more 缩放后，先按附加施放/攻击时间（TotalCastTime/TotalAttackTime）换算有效时间，
-    // 再乘 ActionSpeed 独立乘区（对齐 PoB CalcOffence L2827 的加法分母 + 末端 action speed）。
-    let scaled_rate = apply_total_time(
-        db,
-        cfg,
-        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
-    );
-    let uncapped_action_rate = scaled_rate * action_speed_mod;
-    let action_rate = round(apply_server_tick_cap(
-        db,
-        cfg,
-        apply_cooldown_cap(db, cfg, uncapped_action_rate),
-    ));
+    let action_rate = resolve_action_rate(db, cfg, input);
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
     // PoE2 命中率（agent-docs/accuracy-and-enemy.md §二,§三）：

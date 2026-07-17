@@ -1393,6 +1393,14 @@ fn inject_buffs_and_heralds(session: &mut CalculationSession, build: &Build, dat
         session.add_buff_skill(spec);
     }
 
+    // 4b'''.（存量 #9）warcry 技能 → WarcrySpec 经 `session.add_warcry_skill` 注入，
+    //     消费在 pobr-core `calc::warcry`（perform 的 hand pass 之前）：按
+    //     `min((賦能次数/主技能Speed)/(冷却+喊叫时间), 1)` 折算 uptime 后把 warcry
+    //     进攻效果（Infernal `DamageGainAsFire`）缩放注入（CalcOffence.lua:3203-3256）。
+    for spec in warcry_skill_specs(build, data) {
+        session.add_warcry_skill(spec);
+    }
+
     // 4b''.（M4-m）herald 在场计数/条件（vendor CalcPerform.lua:1792-1805，
     //     mode_buffs 段——本编排路径恒置 mode_buffs=true）：已启用组中
     //     skill_types 含 Herald 的主动技能按显示名去重 → `Multiplier:Herald`
