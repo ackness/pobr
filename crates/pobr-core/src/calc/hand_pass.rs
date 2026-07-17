@@ -194,6 +194,19 @@ fn run_single_pass(
     hand: &HandSource,
     input: &MinimalInput,
 ) -> MinimalOutput {
+    let (hand_cfg, hand_input) = hand_scope(hand, cfg, input);
+    calculate_minimal_vs_enemy(db, enemy_db, &hand_cfg, &hand_input)
+}
+
+/// per-hand 计算域派生（武器基底注入 `MinimalInput` 副本 + per-hand 条件翻转 +
+/// 武器位段替换）。`run_single_pass` 与 warcry uptime 预算（`calc::warcry` 需按
+/// 主手域解析 Speed，vendor CalcOffence.lua:3235 读同一 pass 的
+/// `globalOutput.Speed`）共用，保证两处速率逐位一致。
+pub(crate) fn hand_scope(
+    hand: &HandSource,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> (CalcConfig, MinimalInput) {
     let mut hand_input = *input;
     hand_input.base_hit_min += hand.weapon.hit_min;
     hand_input.base_hit_max += hand.weapon.hit_max;
@@ -209,7 +222,7 @@ fn run_single_pass(
     // per-hand 武器位（W-B2）：非空时替换 cfg 的武器位段为该手武器位
     // （空 = 恒等，legacy 位表 / 非武器攻击 source 零行为）。
     hand_cfg.flags = hand_cfg.flags.replace_weapon_flags(hand.weapon.flags);
-    calculate_minimal_vs_enemy(db, enemy_db, &hand_cfg, &hand_input)
+    (hand_cfg, hand_input)
 }
 
 /// combineStat：按 [`COMBINE_TABLE`] 合并两腿（vendor `:2451-2545` + 调用面）。

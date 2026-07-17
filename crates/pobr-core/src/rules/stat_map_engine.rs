@@ -1724,6 +1724,15 @@ pub fn translate_mod_name(
         // 消费方 = `calc::ailment::ailment_rate_mod`（CalcOffence.lua:5036 rateMod，
         // calcLib.mod 的 INC+MORE 两腿同名集）。
         "BleedFaster" | "PoisonFaster" | "IgniteFaster" => base_name.to_string(),
+        // 存量 #9：warcry uptime 机器直通族（vendor `warcry_empowers_per_X_monster_power[_mp_cap]`
+        // → WarcryPowerPer/Cap（SkillStatMap.lua:608-613）、Infernal Cry per-set
+        // `infernal_cry_exerted_attack_all_damage_%_to_gain_as_fire_%` →
+        // InfernalExtraFireDamageMultiplier（act_str.lua:7729-7731））。消费方 =
+        // `calc::warcry`（賦能次数 CalcPerform.lua:2121-2123 + uptime 缩放的
+        // DamageGainAsFire 注入 CalcOffence.lua:3251-3254）。
+        "WarcryPowerPer" | "WarcryPowerCap" | "InfernalExtraFireDamageMultiplier" => {
+            base_name.to_string()
+        }
         // M4-K：异常持续时间——vendor 施加方词条名带 Enemy 前缀（作用于敌身上的
         // debuff 时长，CalcOffence.lua:5037 durationMod 取
         // `Enemy<Ailment>Duration`/`EnemyAilmentDuration`/`DamagingAilmentDuration`），

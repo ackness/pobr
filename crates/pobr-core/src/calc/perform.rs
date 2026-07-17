@@ -123,6 +123,13 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         env.cfg.multipliers.insert("Life".into(), life_pool);
     }
 
+    // warcry uptime 机器（存量 #9，vendor CalcOffence.lua:3203-3256）：在 hand pass
+    // **之前**把 uptime 缩放后的 warcry 进攻效果（Infernal `DamageGainAsFire`）注入
+    // 玩家 db——vendor 同样在伤害段之前写 skillModList，故击中与其派生 DoT（点燃）
+    // 都吃该增益。主技能 Speed 用与主手 pass 逐位一致的 resolve_action_rate 预解析
+    // （速率是 (db,cfg,input) 的确定函数，注入 gain-as 不回馈速度，无自引用）。
+    super::warcry::apply_warcry_uptime(env);
+
     let mut input = MinimalInput::from(env.player.base);
     // 命中率的敌人闪避来源：优先用 enemy.mod_db 的 Evasion BASE（setup_env 注入，含档位倍率），
     // 回退到 enemy.base.evasion 标量（兼容直接构造 Env 的旧入口）。

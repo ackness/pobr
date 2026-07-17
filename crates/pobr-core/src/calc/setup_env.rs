@@ -150,6 +150,36 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier);
     inject_ehp_damage_placeholder(&mut env.enemy.mod_db, constants, defaults.level, tier);
 
+    // 档位预设的**玩家侧** mod 组（数据驱动：`enemy_presets.json::tiers[].player_mods`；
+    // vendor ConfigOptions.lua L2007-2008 等 `modList:NewMod("WarcryPower","BASE",20,
+    // "Boss")` + `Multiplier:EnemyPower`，Boss/Pinnacle/Uber 共通）。首个消费方 =
+    // warcry uptime 机器（`calc::warcry` 的 WarcryPower 求和，CalcPerform.lua:2120）。
+    // effective_only 条目（当前 player_mods 无）按保守跳过，避免面板口径引入敌人交互。
+    if let Some(preset) = env.cfg.constants.enemy_presets.tier_for(tier) {
+        let player_mods: Vec<crate::Modifier> = preset
+            .player_mods
+            .iter()
+            .filter(|m| !m.effective_only)
+            .filter_map(|m| {
+                let mod_type = match m.mod_type.as_str() {
+                    "BASE" => ModType::Base,
+                    "INC" => ModType::Inc,
+                    "MORE" => ModType::More,
+                    _ => return None, // 未知类型：保守跳过（数据损坏防御）。
+                };
+                Some(
+                    crate::Modifier::number(m.name.as_str(), mod_type, m.value)
+                        .with_source(m.source_label.clone())
+                        .with_origin(ModifierSource::new(SourceId::new(
+                            SourceKind::EnemyConfig,
+                            format!("tier_player.{}.{}", preset.id, m.name),
+                        ))),
+                )
+            })
+            .collect();
+        env.player.mod_db.add_list(player_mods);
+    }
+
     // 注意：Boss 自带元素穿透（Pinnacle 3 / Uber 8，vendor `pinnacleBossPen = 15/5` /
     // `uberBossPen = 40/5`，Modules/Data.lua:231/:233）**只作用在防御侧**——
     // `enemy{Fire,Cold,Lightning}Pen` config var 没有 apply 函数（ConfigOptions.lua:2269-2273，

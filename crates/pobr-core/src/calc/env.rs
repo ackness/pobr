@@ -26,6 +26,13 @@ pub struct Env {
     /// 且 minion buff 未落地，本波收在 `Env` 顶层（语义即玩家侧）；T3 消费时如需
     /// per-actor 再迁。**本阶段零消费**：空与否输出逐值不变。
     pub buff_skills: Vec<BuffSpec>,
+    /// 玩家的 warcry 技能规格（存量 #9；`session::add_warcry_skill` 写入，
+    /// `perform` 在 hand pass 之前经 [`super::warcry::apply_warcry_uptime`] 消费——
+    /// uptime 缩放后的 warcry 进攻效果（Infernal `DamageGainAsFire`）注入玩家 db）。
+    pub warcry_skills: Vec<super::warcry::WarcrySpec>,
+    /// warcry uptime 增益已注入（幂等防重，vendor `InfernalActive` flag 同责，
+    /// CalcPerform.lua:1365）。
+    pub warcry_gain_injected: bool,
     /// keystone 名 → modifier 列表（M3 T0-4；`session::set_keystone_mods` 写入，
     /// T5 `merge_keystones`（env_finalize 阶段 1/5）消费）。**本阶段零消费**。
     pub keystone_mods: BTreeMap<String, Vec<crate::Modifier>>,
@@ -73,6 +80,8 @@ impl Env {
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),
             minions: Vec::new(),
             buff_skills: Vec::new(),
+            warcry_skills: Vec::new(),
+            warcry_gain_injected: false,
             keystone_mods: BTreeMap::new(),
             buff_definitions: Vec::new(),
             buff_handler_registry: Arc::new(HandlerRegistry::new()),

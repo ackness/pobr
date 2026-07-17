@@ -776,3 +776,104 @@ pub(crate) fn spirit_reservation_modifiers(
     }
     mods
 }
+
+/// （存量 #9）把所有**已启用 warcry 主动技能**构造为 [`pobr_core::calc::WarcrySpec`]，
+/// 经 `session.add_warcry_skill` 注入、由 pobr-core `calc::warcry`（perform 的
+/// hand pass 之前）按 uptime 缩放消费（vendor CalcOffence.lua:3203-3256 +
+/// CalcPerform.lua:2116-2142；机制分解与 oracle 钉值见 warcry.rs 模块 doc）。
+///
+/// spec 装配（全部走既有数据通道，零技能硬编码）：
+/// - **skill-local mods** = 自身 statSet stat（含品质段）经 statmap
+///   （`mapped_stat_modifiers`——Infernal 的 per-set
+///   `infernal_cry_exerted_attack_all_damage_%_to_gain_as_fire_%` →
+///   `InfernalExtraFireDamageMultiplier`、常量 stat `warcry_empowers_per_X_...` →
+///   `WarcryPowerPer/Cap`）+ 组内**兼容 support** 载荷（`support_modifiers`，
+///   如 Cooldown Recovery II → `CooldownRecovery INC 30`）+ `WarcryCastTime BASE`
+///   （效果 `cast_time`，对位 vendor skillModList 的 "Base" 条目，
+///   CalcOffence.lua:351 的求和源）。
+/// - **取数等级** = 宝石等级 + 适用的 `+N to Level of ...`（`additional_gem_levels`，
+///   vendor applyGemMods——smith 的 Infernal 21+1=22 级 gain 51 + 品质 trunc(0.5×23)=11
+///   → 62，oracle 逐值）。
+/// - cooldown / storedUses = granted_effect_levels 行（`resolve_skill_level`）。
+///
+/// 同一效果多组重复按 id 去重（vendor `not globalOutput.<X>CryCalculated` 同责）。
+pub(crate) fn warcry_skill_specs(
+    build: &Build,
+    data: &BuildData,
+) -> Vec<pobr_core::calc::WarcrySpec> {
+    use std::collections::HashSet;
+    let mut specs = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            if effect.is_support || !effect.skill_types.iter().any(|t| t == "Warcry") {
+                continue;
+            }
+            if !seen.insert(gem.skill_id.as_str()) {
+                continue;
+            }
+            // 全局 +N gem levels（applyGemMods）+ 同组兼容 support 授予等级
+            // （smith 的 Fire Mastery `supported_fire_skill_gem_level_+` → Infernal
+            // 21→22 级，gain 51+q11=62 = oracle 逐值）。
+            let level = gem.gem_level
+                + additional_gem_levels(build, data, &gem.skill_id)
+                + support_granted_gem_levels(build, data, &gem.skill_id);
+            let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
+            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+            let stats: Vec<pobr_data::catalog::SkillDamageStat> = es.all().cloned().collect();
+            if std::env::var("POBR_DBG_WARCRY").is_ok() {
+                eprintln!(
+                    "[POBR_DBG_WARCRY] specs {} level={level} q={} set_key={set_key:?} stats={:?}",
+                    gem.skill_id,
+                    gem.quality,
+                    stats
+                        .iter()
+                        .map(|s| (s.stat.as_str(), s.value))
+                        .collect::<Vec<_>>()
+                );
+            }
+            let mut mods = mapped_stat_modifiers(
+                &stats,
+                SourceKind::SkillGem,
+                &gem.skill_id,
+                &gem.skill_id,
+                set_key.as_deref(),
+            );
+            mods.extend(support_modifiers(group, data, &gem.skill_id));
+            if let Some(ms) = effect.cast_time {
+                mods.push(
+                    Modifier::number("WarcryCastTime", ModType::Base, f64::from(ms) / 1000.0)
+                        .with_source("Base"),
+                );
+            }
+            let (cooldown_base_s, stored_uses) = data
+                .resolve_skill_level(&gem.skill_id, level)
+                .map(|r| {
+                    (
+                        r.cooldown_s.unwrap_or(0.0),
+                        // vendor `skillData.storedUses or 0`（CalcOffence.lua:3236）。
+                        r.stored_uses.map_or(0.0, f64::from),
+                    )
+                })
+                .unwrap_or((0.0, 0.0));
+            // warcry 键名（vendor CalcPerform.lua:2124 gsub 链：`" Cry"`/`"'s"`/空格
+            // 全剥）："Infernal Cry" → `Infernal`。
+            let name = buff_skill_name(data, &gem.skill_id)
+                .replace(" Cry", "")
+                .replace("'s", "")
+                .replace(' ', "");
+            specs.push(pobr_core::calc::WarcrySpec {
+                name,
+                skill_id: gem.skill_id.clone(),
+                cooldown_base_s,
+                stored_uses,
+                skill_types: skill_type_bits(&effect.skill_types),
+                mods,
+            });
+        }
+    }
+    specs
+}

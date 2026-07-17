@@ -32,6 +32,7 @@ pub mod stun;
 pub mod survivability;
 pub mod taken;
 pub mod trigger;
+pub mod warcry;
 
 pub use actor::{Actor, ActorBaseStats};
 pub use ailment::{
@@ -120,6 +121,8 @@ pub use taken::{
     MitigationCtx, MitigationInputs, armour_applies_pct, build_mitigation_ctx, damage_shift_table,
     effective_applied_armour, taken_hit_from_damage,
 };
+pub use warcry::WarcrySpec;
+
 pub use trigger::{
     CwcTriggerRate, EnergyTriggerRate, RotationResult, RotationSkill, SocketedSpellInfo,
     TriggerCondition, TriggerRate, TriggerSourceStats, action_cooldown, calc_cwc_trigger_rate,
