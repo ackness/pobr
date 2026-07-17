@@ -705,8 +705,18 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // 树词条（oracle extraModList 钉源 Tree:21077/354/48429）生效：deadeye Speed
 // 0.65x→1.00x（翻正）、TotalDPS 0.53x→0.83x；gemling Speed/AvgDamage/TotalDPS/
 // CombinedDPS 全部 1.00-1.04x 翻正。
-const BASELINE_OFF_HIT5: usize = 56; // grenade 短语解禁后 56/80（Communion+Voices 52；mana-mult 46；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 62; // grenade 短语解禁后 62/80（Communion+Voices 59；mana-mult 55；迁移基线 47；0.5.0=74）
+// **0.5.4b #5 Blazing Critical 全局火焰 buff 重记（off +2 @5% 56→58 / +2 @10%
+// 62→64）**：0.22.0 给 `support_blazing_crits_gain_%_fire_damage_with_attacks_
+// on_critical_hit` 补 GlobalEffect/Buff tag（sup_int.lua:959）——15%
+// `DamageGainAsFire`（Attack + Condition:CritRecently）从死词条变成全局玩家
+// buff。两处接线：stat_map_engine 玩家 buff 允收名单 + support_buff_specs
+// 裁决对象补附加授予效果（Charged Staff 的隐藏 Attack 附加效果
+// ChargedStaffShockwavePlayer 才是 Blazing Critical 的兼容宿主）。
+// monk-twister AverageDamage/TotalDPS 0.60x→0.96x 双列翻正；flicker
+// TotalDPS 0.76x→0.84x、spirit-walker 0.78x→0.89x 收敛未入列（残余 =
+// 攻击 AvgDamage 族存量缺口的平方传导）。
+const BASELINE_OFF_HIT5: usize = 58; // Blazing Critical 后 58/80（grenade 短语解禁 56；Communion+Voices 52；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 64; // Blazing Critical 后 64/80（grenade 短语解禁 62；Communion+Voices 59；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -773,8 +783,19 @@ const BASELINE_OFF_HIT10: usize = 62; // grenade 短语解禁后 62/80（Communi
 // abyssal-lich dot 列随 hit 侧收敛入 @10% 带。
 // **0.5.4b #4 grenade 短语解禁重记（dot +1 @5% 13→14 / +1 @10% 18→19）**：
 // gemling CombinedDPS 0.65x→1.04x 翻正（见 BASELINE_OFF_HIT5 上说明）。
-const BASELINE_DOT_HIT5: usize = 14; // grenade 短语解禁后 14/37（Communion+Voices 13；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 19; // grenade 短语解禁后 19/37（Communion+Voices 18；迁移基线 11；0.5.0=28）
+// **0.5.4b #5 Blazing Critical 重记（dot +2 @5% 14→16 / +2 @10% 19→21）**：
+// 点燃火源随全局 15% DamageGainAsFire 平方级放大（chance ∝ fire/threshold ×
+// magnitude ∝ fire）：monk-twister TotalDotDPS 0.44x→0.98x + CombinedDPS
+// 0.60x→0.96x 翻正；flicker dot 0.05x→0.72x、spirit-walker 0.23x→0.87x 收敛
+// 未入列（残余同为 hit 侧存量缺口的平方传导，非 dot 侧机制）。其余 dot 脱靶
+// 逐格判定：deadeye 0.69x=hit 0.83x²、blood-mage 0.79x≈hit 0.87x²、titan/
+// abyssal/pathfinder 0.91-0.94x 随 hit 收敛；smith 0.20x 中 dot 特有残差 =
+// Infernal Cry uptime-scaled DamageGainAsFire 12% 未建模（新旧 vendor 同值，
+// 存量缺口非 0.5.4b 项）；frost-bomb 0.87x / essence-drain WithDotDPS 1.36x
+// golden 两版未动（存量）；gemling dot 1.10x 高估 = fire/crit 小幅 hit 侧
+// 高估的下游传导（oracle 逐分量：fire 1.03x × stacks 1.05x × crit 混叠）。
+const BASELINE_DOT_HIT5: usize = 16; // Blazing Critical 后 16/37（grenade 短语解禁 14；Communion+Voices 13；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 21; // Blazing Critical 后 21/37（grenade 短语解禁 19；Communion+Voices 18；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
