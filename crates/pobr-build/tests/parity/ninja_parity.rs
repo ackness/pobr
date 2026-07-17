@@ -646,8 +646,18 @@ const BASELINE_DEF_CORE_HIT5: usize = 142; // 存量 #7-3/4（charm-guard 摘除
 // **0.5.4b #4 Communion/LowLife + Voices 重记（+3 @5% 410→413 / +5 @10% 429→434）**：
 // core-8 的 SpiritUnres/LifeUnres 翻正（见 BASELINE_DEF_CORE_HIT5 上说明）+
 // abyssal-lich EnergyShield 0.93x→0.98x（Voices sinister 珠宝的 ES 词条找回）。
-const BASELINE_DEF_HIT5: usize = 425; // 存量 #7-3/4 后 425/450（ritualist 6 格 + gemling 9 格 + wolf-pack Life/Armour 精确翻正，wolf-pack MaxHit 族随 charm-guard 掩蔽摘除移出——余量 = companion ally-mitigation 层；Communion+Voices 413（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refraction 429；ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
+// **#12 companion allies 层重记（+6 @5% 425→431 / +5 @10% 434→439）**：伴侣先扣层
+// 落地（TakenFromCompanionBeforeYou buff 允收 + TotalCompanionLife 求和注入 +
+// pool_setup companion AllyLayer；连带 = 召唤物等级吃 `+N to Level of Minion
+// Skills`、召唤物基础生命改走 monsterAllyLifeTable、Loyalty 的 −30% more minion
+// life 经 minion 域 statmap 通道注入）。spirit-walker-twister 6 格全翻正
+// （5×MaxHit + TotalEHP 0.89-0.90x→1.00x 精确闭合，Bear Companion + Wild
+// Protector 自带 10% taken）；wolf-pack MaxHit 族 0.82x→0.90x / ChaosMaxHit
+// 0.72x→0.80x / TotalEHP 0.74x→0.83x（池侧 3817 vs oracle 3826.67 = 0.9975 已
+// 闭合，余量 = per-type taken 乘子侧 ~10% 均匀缺口 + Mana 761.2 vs 770，均与
+// companion 层无关）。
+const BASELINE_DEF_HIT5: usize = 431; // #12 companion 后 431/450（存量 #7-3/4 425：ritualist 6 格 + gemling 9 格 + wolf-pack Life/Armour 精确翻正，wolf-pack MaxHit 族随 charm-guard 掩蔽摘除移出；Communion+Voices 413（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 439; // #12 companion 后 439/450（Communion+Voices 434；Refraction 429；ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs

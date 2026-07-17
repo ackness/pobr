@@ -1287,7 +1287,15 @@ fn perform_minion_from_def_with_limit() {
     env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
 
     let def = minion_def_zombie();
-    env.add_minion_from_def(&def, 20, 3, vec![], vec![], AttributeInfusion::default());
+    env.add_minion_from_def(
+        &def,
+        20,
+        3,
+        vec![],
+        vec![],
+        AttributeInfusion::default(),
+        false,
+    );
     perform(&mut env).unwrap();
 
     // 数量上限写入玩家 multiplier。
@@ -1334,6 +1342,7 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
             vec![entry],
             vec![],
             AttributeInfusion::default(),
+            false,
         );
         perform(&mut env).unwrap();
         env.player.output.minions[0].dps

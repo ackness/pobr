@@ -44,6 +44,10 @@ pub struct Actor {
     pub base: ActorBaseStats,
     pub output: OutputTable,
     pub breakdown: BreakdownTable,
+    /// 可受伤伴侣召唤物（授予技能 `SkillType.Companion` 且非
+    /// `MinionsAreUndamagable`，spawn 侧判定）。`TotalCompanionLife` 求和
+    /// （vendor CalcPerform.lua:3364-3370）只计此类召唤物；玩家 Actor 恒 false。
+    pub is_companion: bool,
 }
 
 impl Actor {
@@ -54,6 +58,7 @@ impl Actor {
             base,
             output: OutputTable::default(),
             breakdown: BreakdownTable::default(),
+            is_companion: false,
         }
     }
 }

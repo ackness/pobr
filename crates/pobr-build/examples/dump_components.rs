@@ -56,6 +56,12 @@ fn main() {
             out.mana,
             out.mana_unreserved,
         );
+        for (i, m) in out.minions.iter().enumerate() {
+            println!(
+                "  minion[{i}]: level={} life={:.2} armour={:.2} evasion={:.2} es={:.2}",
+                m.level, m.life, m.armour, m.evasion, m.energy_shield,
+            );
+        }
         println!(
             "  maxhit: phys={:.1} fire={:.1} cold={:.1} light={:.1} chaos={:.1} total_ehp={:.1}",
             out.physical_max_hit_pob2,

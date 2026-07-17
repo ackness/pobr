@@ -170,6 +170,14 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     env.player.breakdown = BreakdownTable::from_steps(output.breakdown);
     calc_defence(&mut env.player, &env.cfg, env.enemy.base.accuracy);
 
+    // 召唤物（Lane4）：每个召唤物是独立 Actor，复用玩家同款 offence/defence 管线。
+    // 无召唤物时该段空转。位置在 fill_mechanics **之前**（vendor 先例：
+    // CalcPerform.lua:3323-3370 calcMinionLifePool 在 calcs.defence(env.player)
+    // 之前算好召唤物生命）——伴侣总生命（inject_companion_life）要先于 EHP/max-hit
+    // 池整备写入玩家 ModDb。
+    perform_minions(env);
+    inject_companion_life(env);
+
     fill_mechanics(env);
     // 弩 reload 折算（M4-T4 W-D2）：紧跟 fill_mechanics——vendor 顺序先服务器帧
     // cap（calc_skill_use_time 内）后 reload（CalcOffence.lua:2864-2867）；下游
@@ -184,11 +192,43 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // 只读消费异常侧 bleed/poison/ignite 现值（ailment.rs 不改，T4 一波约定）。
     fill_skill_dot_stage(env);
 
-    // 召唤物（Lane4）：每个召唤物是独立 Actor，复用玩家同款 offence/defence 管线。
-    // 无召唤物时该段空转，行为与无此字段时完全一致（向后兼容）。
-    perform_minions(env);
-
     Ok(())
+}
+
+/// （#12 companion allies 层）伴侣总生命入库（vendor CalcPerform.lua:3364-3370）：
+/// 玩家有 `TakenFromCompanionBeforeYou`（Loyalty support 的
+/// `companion_takes_%_damage_before_you_from_support` buff 载荷）且无
+/// `TotalCompanionLife` Override（config 覆盖通道）时，把全部**可受伤伴侣**召唤物
+/// （`Actor::is_companion`，spawn 侧按授予技能 SkillType 判定）的生命求和写入玩家
+/// `TotalCompanionLife` BASE。消费方 = `pool_setup::build_pool_state` 的 companion
+/// 先扣层（EHP reduce_pools 与 max-hit extend_total_hit_pool 共用）。
+fn inject_companion_life(env: &mut Env) {
+    let taken_name = [ModName::from("TakenFromCompanionBeforeYou")];
+    if env.player.mod_db.sum(ModType::Base, &env.cfg, &taken_name) == 0.0 {
+        return;
+    }
+    if env
+        .player
+        .mod_db
+        .override_(&env.cfg, ModName::from("TotalCompanionLife"))
+        .is_some()
+    {
+        return;
+    }
+    let total: f64 = env
+        .minions
+        .iter()
+        .filter(|m| m.is_companion)
+        .map(|m| m.output.life)
+        .sum();
+    env.player.mod_db.add_mod(
+        crate::Modifier::number("TotalCompanionLife", ModType::Base, total).with_origin(
+            ModifierSource::new(SourceId::new(
+                SourceKind::GameConstant,
+                "companion.total_life",
+            )),
+        ),
+    );
 }
 
 /// 对每个召唤物跑同一套 offence/defence 管线，并把关键输出快照收集到玩家

@@ -114,6 +114,11 @@ impl Env {
     ///
     /// `limit` 通常由玩家技能 `skillModList:Sum(limitName)` 派生（本阶段由调用方给定）。
     /// `limit == 0` 时仍写入（multiplier=0，等价无召唤数量贡献，向后兼容）。
+    ///
+    /// `is_companion`：授予技能是 `SkillType.Companion` 且非
+    /// `MinionsAreUndamagable`（调用方按 skill_types 判定）——`TotalCompanionLife`
+    /// 求和（vendor CalcPerform.lua:3364-3370）只计此类召唤物。
+    #[allow(clippy::too_many_arguments)]
     pub fn add_minion_from_def(
         &mut self,
         def: &super::MinionDef,
@@ -122,6 +127,7 @@ impl Env {
         minion_modifiers: Vec<super::MinionModifierEntry>,
         ally_buff_mods: Vec<crate::Modifier>,
         infusion: super::AttributeInfusion,
+        is_companion: bool,
     ) -> &mut Self {
         let ctx = super::build_minion_context_from_def(
             def,
@@ -131,7 +137,9 @@ impl Env {
             infusion,
         );
         super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
-        self.minions.push(minion_actor_from_context(&ctx));
+        let mut actor = minion_actor_from_context(&ctx);
+        actor.is_companion = is_companion;
+        self.minions.push(actor);
         self
     }
 

@@ -455,6 +455,68 @@ modelling was already complete.
   guards on the era-stable stats. Authoritative ES gate remains ninja_parity's
   0.5.4b fixture goldens.
 
+**#12 — companion allies defence layer. ✅ DONE (exact on twister; wolf-pack
+residual is mitigation-side, not companion).** Vendor semantics (all pinned by
+oracle on `mercenary-tactician-wolf-pack`):
+
+- *Mitigation* (`CalcDefence.lua:2961-2965`): `CompanionAllyDamageMitigation =
+  Σ BASE TakenFromCompanionBeforeYou + Σ BASE
+  TakenFromCompanionBeforeYouFromDeflected × DeflectChance/100`. The 10% comes
+  from Loyalty support's constant stat
+  `companion_takes_%_damage_before_you_from_support` (SkillStatMap.lua:2559 →
+  `TakenFromCompanionBeforeYou` BASE, GlobalEffect/Buff/unscalable); Wild
+  Protector (twister's bear) carries the same stat on its own stat set.
+- *Pool* (`CalcPerform.lua:3323-3370` `calcMinionLifePool`): when the player
+  has the mitigation mod and no config Override, `TotalCompanionLife` = Σ life
+  of minions whose granting skill has `SkillType.Companion` and not
+  `MinionsAreUndamagable`. Oracle decomposition for the wolf: minion level 44
+  (= `minionLevelTable[18+4]` — gem 18 + item "+4 to Level of all Minion
+  Skills"), base life `floor(monsterAllyLifeTable[44]=2938 × minionData.life
+  1.1) = 3231`, × Loyalty `support_trusty_companion_minion_life_+%_final`
+  MORE −30 → **2262** (`TotalCompanionLife` golden).
+- *Consumption*: max hit (`:3656-3663`) folds the layer with the shared
+  poolProtected formula (`protected = L/(r)×(1−r)`; pool < protected ⇒
+  pool/(1−r), i.e. ×1/0.9); EHP (`:493-495` + `reducePoolsByDamage:525-531`)
+  drains `damage × r` capped by remaining companion life, not recoupable.
+
+PoBR implementation (minimal slice — no companion actor abstraction; reuses
+the existing minion actor + the existing generic `AllyLayer` machinery that
+EHP/max-hit already shared):
+
+- `TakenFromCompanionBeforeYou` admitted through the player-buff statmap
+  allow-list (`stat_map_engine::translate_player_buff_mod_name`) — reaches the
+  player ModDb via the existing support/active buff channels (Loyalty via
+  `support_buff_specs`, Wild Protector via the active-skill Buff branch).
+- Minion fixes feeding the life sum (all vendor-faithful, benefit every
+  summoner): spawn level now includes `+N to Level` gem bonuses
+  (`spawn_minions` → `additional_gem_levels` + `support_granted_gem_levels`);
+  minion base life switched from the enemy `monsterLifeTable` to
+  `monsterAllyLifeTable` (new `MONSTER_ALLY_LIFE_TABLE` const, vendor
+  CalcPerform.lua:1046 floor semantics); Loyalty's −30% more minion life flows
+  through a new narrow minion-domain statmap mapper
+  (`map_minion_life_stat`, inner allow-list = Life → `MaximumLife`) into the
+  group's `MinionModifierEntry` channel.
+- `Actor::is_companion` marks companion minions at spawn (skill_types
+  judgement); `perform` now runs `perform_minions` *before* `fill_mechanics`
+  (vendor precedent: minion life pools are computed before player defence) and
+  `inject_companion_life` writes `TotalCompanionLife` BASE into the player
+  ModDb (Override-aware); `pool_setup::build_pool_state` emits the
+  `companion` AllyLayer consumed by both EHP and max-hit paths.
+- Not modelled: the `...FromDeflected × DeflectChance` term (no source in the
+  18-build corpus; wolf-pack oracle mitigation is exactly 10 = pure hits
+  term) and multi-companion stacking (no corpus; the sum loop is already
+  general over `env.minions`).
+
+Results: PoBR wolf pool 3817.0 vs oracle `<Type>TotalHitPool` 3826.67
+(0.9975 — remaining 0.25% is the pre-existing Mana 761.2 vs 770 gap);
+`huntress-spirit-walker-twister` closes exactly (5×MaxHit + TotalEHP
+0.89-0.90x → 1.00x); wolf-pack moves MaxHit 0.82→0.90x, ChaosMaxHit
+0.72→0.80x, TotalEHP 0.74→0.83x — the residual is a uniform ~10% per-type
+taken-multiplier gap (armour-applies/mitigation side, tracked separately),
+not the companion layer. Baselines: def 425→431 @5%, 434→439 @10%; off/dot/
+core-8 unchanged; 18-build per-cell diff shows only twister and wolf-pack
+moving.
+
 ## Tooling
 
 - `examples/demo-bd-test/tools/recapture_golden.py` — refresh fixture goldens

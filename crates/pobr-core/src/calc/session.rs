@@ -367,6 +367,7 @@ impl CalculationSession {
         minion_modifiers: Vec<super::MinionModifierEntry>,
         ally_buff_mods: Vec<Modifier>,
         infusion: super::AttributeInfusion,
+        is_companion: bool,
     ) {
         self.env.add_minion_from_def(
             def,
@@ -375,6 +376,7 @@ impl CalculationSession {
             minion_modifiers,
             ally_buff_mods,
             infusion,
+            is_companion,
         );
     }
 

@@ -85,6 +85,65 @@ pub(crate) fn spawn_minions(
             if minion_ids.is_empty() {
                 continue;
             }
+            // 召唤物等级取**生效宝石等级**（vendor `data.minionLevelTable[activeEffect
+            // .level]`，CalcActiveSkill.lua:948——activeEffect.level 含 applyGemMods
+            // 的 `+N to Level of all <X> Skills` 与 support 授予等级）。wolf-pack
+            // 「+4 to Level of all Minion Skills」：gem 18 → 22 → 怪物等级 44
+            // （oracle 钉值；修正前 36 → 生命 1013 vs 2262）。
+            let effective_gem_level = gem_level
+                .saturating_add(additional_gem_levels(build, data, skill_id))
+                .saturating_add(support_granted_gem_levels(build, data, skill_id));
+            // （#12 companion）伴侣判定：授予技能 `SkillType.Companion` 且非
+            // `MinionsAreUndamagable`（vendor CalcPerform.lua:3365-3367 的
+            // includeSkill 谓词）→ 该技能的召唤物计入 `TotalCompanionLife`。
+            let is_companion = data.granted_effects.get(skill_id).is_some_and(|e| {
+                e.skill_types.iter().any(|t| t == "Companion")
+                    && !e.skill_types.iter().any(|t| t == "MinionsAreUndamagable")
+            });
+            // （#12）同组兼容 support 的召唤物侧载荷（vendor：support statmap 的
+            // `MinionModifier LIST` 并入被支援技能 skillModList →
+            // `addMinionModifiers` 注入**该技能的** minion modDB，组内作用域）。
+            // 数据通道 = `map_minion_life_stat`（第一批只收内层 Life，如 Loyalty
+            // 的 −30% more minion life）。
+            let mut group_minion_modifiers = minion_modifiers.clone();
+            if let Some(catalog) = data.stat_map_catalog.as_deref() {
+                use pobr_core::calc::minion::MinionModifierEntry;
+                use pobr_core::rules::stat_map_engine::map_minion_life_stat;
+                for sup in super::triggers::judge_group_supports(group, data, skill_id).compatible {
+                    let sup_gem = &group.gem_skills[sup.gem_index];
+                    let set_index = (sup_gem.skill_id == sup.effect_id)
+                        .then_some(sup_gem.stat_set_index)
+                        .flatten();
+                    // quality 传 0 与 support_modifiers 同口径（support 品质表条目不存在）。
+                    let stats = data.effect_stats(&sup.effect_id, sup_gem.gem_level, 0, set_index);
+                    let set_key = data.selected_set_key(&sup.effect_id, set_index);
+                    for ds in stats.all() {
+                        if ds.value == 0.0 {
+                            continue;
+                        }
+                        for inner in map_minion_life_stat(
+                            catalog,
+                            &sup.effect_id,
+                            set_key.as_deref(),
+                            &ds.stat,
+                            ds.value,
+                        ) {
+                            let origin = ModifierSource::new(SourceId::new(
+                                SourceKind::SupportGem,
+                                format!("minion.{}.{}", sup.effect_id, ds.stat),
+                            ))
+                            .with_raw_text(format!(
+                                "minion {} {} ({})",
+                                sup.effect_id, ds.stat, ds.value
+                            ));
+                            group_minion_modifiers.push(MinionModifierEntry {
+                                inner: inner.with_origin(origin),
+                                minion_type: None,
+                            });
+                        }
+                    }
+                }
+            }
             for minion_id in minion_ids {
                 if !seen.insert(minion_id.clone()) {
                     continue;
@@ -105,16 +164,17 @@ pub(crate) fn spawn_minions(
                     if summed >= 1.0 { summed as u32 } else { 1 }
                 };
                 let def = def.clone();
-                // `add_minion_from_def` 内部经 `minion_level_from_gem_level` 把 gem_level
-                // 映射到怪物等级（CalcActiveSkill.lua:896 默认规则），故此处传 gem_level
-                // 原值，不可预先 resolve（否则二次映射）。
+                // `add_minion_from_def` 内部经 `minion_level_from_gem_level` 把宝石等级
+                // 映射到怪物等级（CalcActiveSkill.lua:948 默认规则），故此处传生效
+                // 宝石等级（含 +N to Level 加成），不可预先 resolve（否则二次映射）。
                 session.add_minion_from_def(
                     &def,
-                    gem_level,
+                    effective_gem_level,
                     limit,
-                    minion_modifiers.clone(),
+                    group_minion_modifiers.clone(),
                     Vec::new(),
                     AttributeInfusion::default(),
+                    is_companion,
                 );
             }
         }

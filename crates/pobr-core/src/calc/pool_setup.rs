@@ -17,7 +17,8 @@
 //! `pool_damage.rs` 状态机只消费固化后的值类型；本文件同样不写 `Env`。
 
 use crate::calc::pool_damage::{
-    PoolCtx, PoolState, apply_protected_layer, life_hit_pool_with_loss_prevention, pool_protected,
+    AllyLayer, PoolCtx, PoolState, apply_protected_layer, life_hit_pool_with_loss_prevention,
+    pool_protected,
 };
 use crate::rules::DefenceKeystones;
 use crate::{CalcConfig, ModDb};
@@ -114,8 +115,9 @@ pub fn build_pool_ctx(
 /// 构造扣池前的池快照（CalcDefence.lua:2821-2881 + reducePoolsByDamage 入口
 /// :490-516 的 output 读出口径）。
 ///
-/// allies 段本阶段为空 Vec（玩家无 frost shield / soul link 来源时 vendor 同样为空，
-/// 结构保留给后续 minion/party 接入）。
+/// allies 段目前只接 companion 层（`TakenFromCompanionBeforeYou` +
+/// `TotalCompanionLife`，#12）；frost shield / spectre / totem / soul link 等
+/// 其余先扣层无来源时 vendor 同样为空，结构保留给后续接入。
 pub fn build_pool_state(db: &ModDb, cfg: &CalcConfig, base: &PoolBaseStats) -> PoolState {
     // Aegis（:2860-2877）：modDB:Max 取最强单源（非求和）。
     let aegis_shared = db.max_of(ModType::Base, cfg, &[ModName::from("AegisValue")]);
@@ -156,8 +158,34 @@ pub fn build_pool_state(db: &ModDb, cfg: &CalcConfig, base: &PoolBaseStats) -> P
             0.0
         };
     }
+    // 伴侣先扣层（#12；CalcDefence.lua:2961-2965 整备 + :493-495/:3087-3088 EHP
+    // 表 + :3656-3663 max-hit）：`TakenFromCompanionBeforeYou` ≠ 0 时取
+    // `TotalCompanionLife`（config Override 优先，否则 perform 注入的 BASE 和）。
+    // deflected 项（`TakenFromCompanionBeforeYouFromDeflected × DeflectChance`，
+    // :2962-2963）未建模——18-build 语料无来源（wolf-pack oracle 钉值 mitigation
+    // 恰为 10 = 纯 hits 项），接入时需在此叠加。
+    let mut allies = Vec::new();
+    let companion_rate = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("TakenFromCompanionBeforeYou")],
+    );
+    if companion_rate != 0.0 {
+        let companion_life_name = ModName::from("TotalCompanionLife");
+        let companion_life = db
+            .override_(cfg, companion_life_name.clone())
+            .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[companion_life_name]));
+        if companion_life > 0.0 {
+            allies.push(AllyLayer {
+                id: "companion",
+                remaining: companion_life,
+                mitigation_pct: companion_rate,
+                damage_type: None,
+            });
+        }
+    }
     PoolState {
-        allies: Vec::new(),
+        allies,
         aegis_shared,
         aegis_shared_elemental,
         aegis_by_type,
@@ -490,6 +518,53 @@ mod tests {
         assert_eq!(state.life, 1000.0);
         assert_eq!(state.mana, 500.0);
         assert_eq!(state.energy_shield, 600.0);
+    }
+
+    /// （#12）companion 先扣层整备（:2961-2965）：mitigation ≠ 0 且生命 > 0 时
+    /// 产出 allies 层；Override 优先于 BASE 求和（config `TotalCompanionLife`
+    /// 覆盖通道）；mitigation = 0 或生命 = 0 → allies 空。
+    #[test]
+    fn build_pool_state_companion_ally_layer() {
+        let cfg = CalcConfig::new();
+        // 无 mitigation → 空。
+        assert!(
+            build_pool_state(&ModDb::new(), &cfg, &base_stats())
+                .allies
+                .is_empty()
+        );
+        // wolf-pack 钉值形态：10% + 2262（oracle TotalCompanionLife）。
+        let mut db = ModDb::new();
+        db.add_list([
+            Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 10.0),
+            Modifier::number("TotalCompanionLife", ModType::Base, 2262.0),
+        ]);
+        let state = build_pool_state(&db, &cfg, &base_stats());
+        assert_eq!(state.allies.len(), 1);
+        assert_eq!(state.allies[0].id, "companion");
+        assert_eq!(state.allies[0].remaining, 2262.0);
+        assert_eq!(state.allies[0].mitigation_pct, 10.0);
+        assert_eq!(state.allies[0].damage_type, None);
+        // Override 优先。
+        let mut db2 = ModDb::new();
+        db2.add_list([
+            Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 10.0),
+            Modifier::number("TotalCompanionLife", ModType::Base, 2262.0),
+            Modifier::number("TotalCompanionLife", ModType::Override, 500.0),
+        ]);
+        let state2 = build_pool_state(&db2, &cfg, &base_stats());
+        assert_eq!(state2.allies[0].remaining, 500.0);
+        // mitigation 有、生命 0 → 空（vendor :3656 `TotalCompanionLife > 0` 门控）。
+        let mut db3 = ModDb::new();
+        db3.add_list([Modifier::number(
+            "TakenFromCompanionBeforeYou",
+            ModType::Base,
+            10.0,
+        )]);
+        assert!(
+            build_pool_state(&db3, &cfg, &base_stats())
+                .allies
+                .is_empty()
+        );
     }
 
     /// MinimumBypass = 全类型 min（:2709-2721）。
