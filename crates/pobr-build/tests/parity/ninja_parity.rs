@@ -747,8 +747,20 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // act_int.lua:229-231）+ curse 链两缺口（EW 取数等级未吃 +8 spell skill
 // levels：-58→-66；技能局部 CurseEffect 段缺失：Heightened Curse +25 +
 // EW 品质 +10 → 敌抗 9→-7，oracle enemyMitigation 逐源钉值）。
-const BASELINE_OFF_HIT5: usize = 73; // #6 AvgDamage 族 + 存量 #7（frost-bomb/essence-drain）合并实测 73/80，超过 0.5.0 时代的 71（#6 单独 71；#7 单独 60；迁移基线 39）
-const BASELINE_OFF_HIT10: usize = 75; // #6+#7 合并实测 75/80（#6 单独 73；#7 单独 66；迁移基线 47；0.5.0=74）
+// **0.5.4b #8 Zarokh's Gift anoint socket 重记（off +3 @5% 73→76 / +1 @10% 75→76）**：
+// #6 留下的「blood-mage 缺 `INC CritChance 107 'Mageblood'`」钉值实为下游症状：
+// Mageblood 效果表与 `MagesLegacyEffect` 解析均已在位（逐 mod 对拍与 oracle 一致），
+// 真根因 = 两 build 的 amulet anoint `{enchant}Allocates Zarokh's Gift` 未把具名
+// jewel socket 节点 11184 视为已分配（vendor PassiveSpec.lua:1106-1114 sockets 名
+// 匹配 fallback），socket 内珠宝（blood-mage: Pandemonium Ornament——CritChance
+// INC 24 + CritMult INC 25/28；abyssal: 同位 ES/防御珠宝）整体被丢弃。修复见
+// xml_build.rs NAMED_SOCKETS_0_5。blood-mage TotalDPS 0.880x→1.00x（CritChance
+// 88.5→92.1、CritMult 5.34→5.87 逐值精确）、abyssal-lich TotalDPS 0.926x→1.00x
+// （CritChance/CritMult 1.00x；ES 12124→12437 vs golden 12434、MaxHit 五族 +
+// TotalEHP 0.97-0.98x→1.00x——def 列先前已在 5% 带内，def 计数不变）。
+// 18 build 逐格 diff 仅此两 build 变动。
+const BASELINE_OFF_HIT5: usize = 76; // #8 Zarokh's Gift 后 76/80（#6+#7 合并 73；#6 单独 71；#7 单独 60；迁移基线 39）
+const BASELINE_OFF_HIT10: usize = 76; // #8 后 76/80（#6+#7 合并 75；#6 单独 73；#7 单独 66；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -838,8 +850,12 @@ const BASELINE_OFF_HIT10: usize = 75; // #6+#7 合并实测 75/80（#6 单独 73
 // TotalDotDPS 1.04x→1.06x 出 @5%（EW 变强的下游——vendor 侧 druid 的 EW
 // 根本未入 enemy resistMods（curse 槽位/优先级差异，oracle 钉值），PoBR
 // 施加了它，存量高估被放大 2%，另行追）。@5 净 0、@10 净 +2。
-const BASELINE_DOT_HIT5: usize = 27; // #6+#7 合并实测 27/37，超过 0.5.0 时代的 26（#6 单独 25；#7 单独 18；迁移基线 9）
-const BASELINE_DOT_HIT10: usize = 31; // #6+#7 合并实测 31/37（#6 单独 27；#7 单独 25；迁移基线 11；0.5.0=28）
+// **0.5.4b #8 Zarokh's Gift anoint socket 重记（dot +4 @5% 27→31 / +2 @10% 31→33）**：
+// blood-mage TotalDotDPS 0.79x→1.00x + CombinedDPS 0.88x→1.00x、abyssal-lich
+// TotalDotDPS 0.94x→1.00x + CombinedDPS 0.93x→1.00x——hit 侧 crit 闭合后
+// 点燃/DoT 基底跟正（见 BASELINE_OFF_HIT5 上 #8 说明）。
+const BASELINE_DOT_HIT5: usize = 31; // #8 后 31/37（#6+#7 合并 27；#6 单独 25；#7 单独 18；迁移基线 9）
+const BASELINE_DOT_HIT10: usize = 33; // #8 后 33/37（#6+#7 合并 31；#6 单独 27；#7 单独 25；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

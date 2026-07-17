@@ -677,11 +677,33 @@ fn parse_items_and_slots(
         .flat_map(|it| it.implicit_texts.iter().chain(&it.modifier_texts))
         .filter_map(|t| sinister_socket_alloc_count(t))
         .sum();
-    let sinister_allocated: std::collections::HashSet<u32> = SINISTER_SOCKETS_0_5
+    let mut sinister_allocated: std::collections::HashSet<u32> = SINISTER_SOCKETS_0_5
         .iter()
         .copied()
         .take(sinister_count)
         .collect();
+    // 具名 jewel socket 的「Allocates <名>」授予（vendor PassiveSpec.lua:1106-1114
+    // ResolveGrantedPassiveNodes 的 sockets 名匹配 fallback）：amulet anoint
+    // `{enchant}Allocates Zarokh's Gift` 分配 socket 节点，socket 内珠宝随之入计。
+    // ponytail: 0_5 树唯一具名 socket 就是 Zarokh's Gift（其余全叫 Sinister Jewel
+    // Socket，走上面的 Voices 计数通道）；树版本再迭代新增具名 socket 时 parity
+    // 门禁会点名，届时改从树数据取名表。
+    const NAMED_SOCKETS_0_5: [(&str, u32); 1] = [("zarokh's gift", 11184)];
+    let equipped_texts = out.iter().flat_map(|(_, item)| {
+        item.implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+    });
+    for text in equipped_texts {
+        if let Some(name) = text.trim().strip_prefix("Allocates ")
+            && let Some((_, node)) = NAMED_SOCKETS_0_5
+                .iter()
+                .find(|(n, _)| name.trim().eq_ignore_ascii_case(n))
+        {
+            sinister_allocated.insert(*node);
+        }
+    }
     let mut all_jewel_ids = jewel_ids;
     all_jewel_ids.extend(
         socket_items
