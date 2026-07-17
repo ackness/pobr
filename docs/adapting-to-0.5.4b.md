@@ -307,6 +307,12 @@ Remaining offence after #6, each triaged:
 - `deadeye` 0.832x — the long-registered pre-0.5.4b per-hit shortfall
   (pob2_parity.rs); golden did move in the flip but the residual matches the
   old ledger.
+  ✅ (2026-07-17, #10) 根因钉死：Deadeye 升华 Point Blank（Tree:41875）的
+  「first 3.5m 20% more → 7m 后 0%」被引擎误析为平坦 ProjectileDamage MORE 20
+  且带 leftover 被产线丢弃——所有分量统一少 ×1.20（oracle：MORE Damage 100 +
+  DistanceRamp {35:0.2,70:0}，SkillDist=20 求值 +20%，ModParser.lua:2911-2913）。
+  修复 = special 通道字面条目 ×2 + special 编译器 DistanceRamp tag 支持。
+  AverageDamage/TotalDPS 0.83x→1.00x，连带 ignite 链 TotalDotDPS 0.69x→1.00x。
 - `blood-mage` 0.880x / `abyssal-lich` 0.926x — Mageblood mod family
   (oracle pins blood-mage's missing `INC CritChance 107 'Mageblood'`; golden
   CritChance 72.45→92.1 and CritMult 5.34→5.87 moved with 0.5.4b while PoBR
@@ -339,6 +345,19 @@ Remaining offence after #6, each triaged:
 - `spirit-walker`/`monk-twister` last ~2%: "Barrage Repeats" MORE DPS
   (vendor `output.DpsMultiplier` via `calcLib.mod(..., "DPS")`) — repeat
   DPS bonus channel unwired.
+  ✅ (2026-07-17, #10) 通道接通：Barrage buff 载荷（BarrageRepeats BASE 2 /
+  BarrageRepeatDamage MORE -45 / SequentialProjectiles flag）经 buff 域允收
+  名单入 player db，`dps_end_factors` 复刻 vendor 门控（CalcOffence.lua:962-976）
+  与 MoreInternal 逐名桶百分比取整（ModList.lua:143：MORE 1.65 → ×1.02，
+  oracle DpsMultiplier=1.02 逐位）。两 build TotalDPS 0.98x→1.00x。
+  vendor else 分支（crossbow barrage 攻时惩罚）无语料覆盖，未实现（代码内登记）。
+  同批（#10-3）smith/titan 命中高估根因 = 非伤害源武器上的裸「Adds N to M
+  <type> Damage」泄漏进全局加法桶（vendor Item.lua:1923-1928 全类型折入
+  weaponData 局部；titan Nebuloch 混沌 30-52 × added-effectiveness 3.47 =
+  幻影 104-180 混沌 base，oracle ChaosMinBase=0）。剔除后 titan TotalDPS
+  1.05x→1.01x、smith AverageDamage 1.02x→1.00x；titan 残余 ~0.9% 与
+  Armour 面板 0.99x 同根（盾 rolled 1736 vs vendor 重算 1725 喂
+  per-15-shield-armour phys base）+ 暴击率尾差，属防御侧通道。
 
 Remaining elsewhere, re-triage against fresh `defenceModList` dumps:
 the wolf-pack EHP remainder decomposed above
