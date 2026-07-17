@@ -10,8 +10,9 @@ use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载取整精度例外表（单对象域，恒走 `overlay/` 定位，缺文件即报错）。
+    /// 加载取整精度例外表（单对象域，版本无关策展）：版本 `overlay/` 优先、
+    /// `overlay-common/` 兜底（[`Self::load_overlay_or_common`]），两层皆缺即报错。
     pub fn high_precision_mods(&self) -> Result<HighPrecisionModsDef, LoadError> {
-        self.load_json_at(self.overlay_path("high_precision_mods.json"))
+        self.load_overlay_or_common("high_precision_mods.json")
     }
 }

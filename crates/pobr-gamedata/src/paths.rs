@@ -54,6 +54,44 @@ impl GameData {
             .parent()
             .map(|parent| parent.join("overlay-common").join(rel))
     }
+
+    /// 加载一个**单对象策展 overlay 域**，版本层优先、版本无关层
+    /// `overlay-common/<rel>` 兜底：版本 `overlay/<rel>` 存在则整份用之（版本特有修正
+    /// 的逃生舱），否则读 common（版本目录免费继承，见 `docs/version-bump-architecture.md`
+    /// P1-3）。两层皆缺 → 版本层的 [`LoadError::Io`]（NotFound，路径指向 `overlay/`），
+    /// 是否降级由消费方裁决。列表域（按 id 逐条覆盖/追加）用 [`merge_by_key`] 而非本方法。
+    pub(crate) fn load_overlay_or_common<T>(&self, rel: &str) -> Result<T, crate::LoadError>
+    where
+        T: for<'de> serde::Deserialize<'de>,
+    {
+        match self.load_json_at::<T>(self.overlay_path(rel)) {
+            Err(crate::LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                match self.overlay_common_path(rel) {
+                    Some(common) => self.load_json_at(common),
+                    // root 无父目录（FS 根）——无 common 层可退，复现版本层 NotFound 给消费方。
+                    None => self.load_json_at(self.overlay_path(rel)),
+                }
+            }
+            other => other,
+        }
+    }
+}
+
+/// 合并两个按稳定 key 索引的策展 overlay 层：`version` 每条按 `key` 覆盖 `common`
+/// 同 key 条目（整条替换，保持 common 原位），common 无此 key 的 version 条目按出现序
+/// 追加在末尾。同输入恒同输出（确定性）。人工策展基底放 common，版本特有覆盖放版本层
+/// （见 `docs/version-bump-architecture.md` P1-3）。
+pub(crate) fn merge_by_key<T>(common: Vec<T>, version: Vec<T>, key: impl Fn(&T) -> &str) -> Vec<T> {
+    let mut entries = common;
+    for v in version {
+        match entries.iter_mut().find(|e| key(e) == key(&v)) {
+            Some(slot) => *slot = v,
+            None => entries.push(v),
+        }
+    }
+    entries
 }
 
 #[cfg(test)]

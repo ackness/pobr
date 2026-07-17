@@ -82,16 +82,10 @@ impl GameData {
     }
 }
 
-/// 合并策展两层：`common`（版本无关基底）叠 `version`（版本特有覆盖）。version 的每条
-/// 按 `id` 覆盖 common 同 id 条目（整条替换，保持 common 原位）；common 无此 id 的
-/// version 条目按 version 出现序追加在末尾。同输入恒同输出（确定性）。
+/// 合并策展两层：`common`（版本无关基底）叠 `version`（版本特有覆盖），按 `id`
+/// 逐条覆盖/追加（[`crate::paths::merge_by_key`] 的 special_mods 特化）。
 fn merge_special_layers(common: SpecialModsDef, version: SpecialModsDef) -> SpecialModsDef {
-    let mut entries = common.entries;
-    for v in version.entries {
-        match entries.iter_mut().find(|e| e.id == v.id) {
-            Some(slot) => *slot = v,
-            None => entries.push(v),
-        }
+    SpecialModsDef {
+        entries: crate::paths::merge_by_key(common.entries, version.entries, |e| &e.id),
     }
-    SpecialModsDef { entries }
 }

@@ -11,9 +11,10 @@ use pobr_data::catalog::local_mods::LocalModsDef;
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载局部词条白名单（单对象域，恒走 `overlay/` 定位，缺文件即报错——
-    /// 降级语义由消费方裁决，不在 loader 层吞错）。
+    /// 加载局部词条白名单（单对象域，版本无关策展）：版本 `overlay/` 优先、
+    /// `overlay-common/` 兜底（[`Self::load_overlay_or_common`]），两层皆缺即报错——
+    /// 降级语义由消费方裁决，不在 loader 层吞错。
     pub fn local_mods(&self) -> Result<LocalModsDef, LoadError> {
-        self.load_json_at(self.overlay_path("local_mods.json"))
+        self.load_overlay_or_common("local_mods.json")
     }
 }
