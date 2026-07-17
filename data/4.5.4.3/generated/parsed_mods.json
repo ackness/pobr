@@ -8543,6 +8543,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 10.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 10.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 10.0
         }
       ]
     },
@@ -8557,6 +8567,22 @@
           "tags": [
             "Multiplier { var: \"RemovableFrenzyCharge\", div: 1.0, limit: Some(1.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "Multiplier { var: \"RemovableFrenzyCharge\", div: 1.0, limit: Some(1.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "Multiplier { var: \"RemovableFrenzyCharge\", div: 1.0, limit: Some(1.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
         }
       ]
     },
@@ -8566,6 +8592,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 10.0,
           "tags": [
@@ -13467,6 +13509,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 16.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 16.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 16.0
         }
       ]
     },
@@ -14535,6 +14587,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 2.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 2.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 2.0
         }
       ]
     },
@@ -14544,6 +14606,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 2.0,
+          "tags": [
+            "SkillTypes(SkillTypes(140737488355328))"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 2.0,
+          "tags": [
+            "SkillTypes(SkillTypes(140737488355328))"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 2.0,
           "tags": [
@@ -20243,6 +20321,22 @@
           "tags": [
             "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
           ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -20535,6 +20629,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 3.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 3.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 3.0
         }
       ]
     },
@@ -20549,6 +20653,22 @@
           "tags": [
             "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
           ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -20558,6 +20678,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "SkillTypes(SkillTypes(140737488355328))"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "SkillTypes(SkillTypes(140737488355328))"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 3.0,
           "tags": [
@@ -20737,6 +20873,16 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": -3.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": -3.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": -3.0
         }
@@ -23434,6 +23580,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 4.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 4.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 4.0
         }
       ]
     },
@@ -24444,6 +24600,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 40.0,
+          "tags": [
+            "Condition { var: \"OpenWeaknessEnemyPresence\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 40.0,
+          "tags": [
+            "Condition { var: \"OpenWeaknessEnemyPresence\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 40.0,
           "tags": [
@@ -25674,6 +25846,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 5.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 5.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 5.0
         }
       ]
     },
@@ -25993,6 +26175,16 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": -5.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": -5.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": -5.0
         }
@@ -27677,6 +27869,16 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 6.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 6.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 6.0
         }
@@ -29760,6 +29962,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 8.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 8.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 8.0,
           "tags": [
@@ -40347,6 +40565,18 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "More",
+          "value": 30.0,
+          "kw": 16384
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "More",
+          "value": 30.0,
+          "kw": 16384
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "More",
           "value": 30.0,
           "kw": 16384
