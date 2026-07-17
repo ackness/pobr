@@ -515,7 +515,12 @@ pub(crate) fn spirit_reservation_modifiers(
                     mult *= 1.0 + row.reservation_multiplier.unwrap_or(0.0) / 100.0;
                 }
                 spirit_to_life += data
-                    .effect_stats(&sup.skill_id, sup.gem_level, sup.quality, sup.stat_set_index)
+                    .effect_stats(
+                        &sup.skill_id,
+                        sup.gem_level,
+                        sup.quality,
+                        sup.stat_set_index,
+                    )
                     .all()
                     .filter(|s| {
                         s.stat == "skill_reserves_X_life_permyriad_per_spirit_instead_of_spirit"
@@ -619,11 +624,11 @@ pub(crate) fn spirit_reservation_modifiers(
                     + db.sum(pobr_data::prelude::ModType::Inc, &gem_cfg, &l_eff_names))
                 .max(-100.0);
                 let l_eff_more = db.more(&gem_cfg, &l_eff_names);
-                let percent = (flat * spirit_to_life * mult * l_factor / (1.0 + l_eff / 100.0)
-                    / l_eff_more
-                    * 100.0)
-                    .round()
-                    / 100.0;
+                let percent =
+                    (flat * spirit_to_life * mult * l_factor / (1.0 + l_eff / 100.0) / l_eff_more
+                        * 100.0)
+                        .round()
+                        / 100.0;
                 if percent > 0.0 {
                     let origin = ModifierSource::new(SourceId::new(
                         SourceKind::SkillGem,

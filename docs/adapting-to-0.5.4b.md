@@ -121,11 +121,71 @@ Armour itself 0.98x (18169.78 vs 18580), ChaosMaxHit 0.87x (oracle
 `ChaosEffectiveAppliedArmour` = 0 — chaos gap is elsewhere), and Life 1.11x
 (PoBR overestimate 2973.6 vs 2674).
 
-Remaining, re-triage against fresh `defenceModList` dumps: offence per-build
-DPS clusters, ailment magnitude, and the wolf-pack EHP remainder decomposed
-above (Armour 0.98x / ChaosMaxHit 0.87x / Life 1.11x). Each is its own
-oracle-guided investigation; not all are single formula constants (several
-are unmodeled unique/flask interactions).
+**#4 target — offence per-build DPS clusters. ✅ DONE (three sub-fixes).**
+Re-triage first: the gap-map poster child `druid-oracle-ember-fusillade` was
+already at TotalDPS 1.00x (closed as a side effect of earlier fixes; its
+`canary_fire_spell_armour` re-verified and un-ignored). The real 0.5.4b
+clusters (cells where PoBR ≈ old 0.5.0 golden while the 0.5.4b golden moved):
+
+- **#4a Atziri's Communion → auto Low Life** (`huntress-ritualist-bow-shot`,
+  `witch-abyssal-lich-detonate-dead`): 0.5.4b added
+  `LifeReservePercentPerSpirit` (CalcDefence.lua:248-254) — the Communion
+  support converts a persistent skill's Spirit reservation into Life percent
+  reservation (0.66%/spirit), pushing heavy-reservation builds under the
+  auto Low Life threshold (:335-350, unreserved ≤ 35%), which unlocks the
+  "while on Low Life" mod family. Oracle `damageModList` pinned ritualist's
+  missing 130 Damage INC to exactly the two LowLife-gated entries (tree
+  +60, Direstrike buff +70 — the buff's stat-map entry already carried
+  `Condition:LowLife`; only the condition was never true). Three generic
+  consumption points: nameSpec-only gem resolution (lineage supports
+  serialize without skillId/gemId), the spirit→life conversion branch in
+  `spirit_reservation_modifiers`, and
+  `CalculationSession::bridge_low_pool_conditions` (orchestrator 6e).
+  Ritualist TotalDPS 0.68x→0.99x, TotalDotDPS 0.60x→1.00x,
+  SpiritUnres/LifeUnres exact.
+- **#4b Voices sinister jewel sockets** (ritualist, titan, abyssal-lich):
+  the 0.5.4b Voices unique "Allocates 2 Sinister Jewel sockets"
+  (ModParser 0.22.0 `GrantedPassive SinisterJewelSockets`,
+  PassiveSpec.lua:1067-1090 alias order `voices_jewel_slot1..5` → 0_5 tree
+  nodes 62152/26178/23960/39087/3367). PoBR's tree-jewel gate dropped
+  jewels in never-allocated sinister sockets; `parse_items_and_slots` now
+  admits the first N pinned sockets. Ritualist CritChance 27.84→29.10 and
+  CritMultiplier 4.37→4.74, both exact (missing 13/37 INC matched the two
+  sinister jewels line-for-line).
+- **#4c grenade phrases un-preempted** (`ranger-deadeye-` /
+  `mercenary-gemling-explosive-grenade`): vendor 0.22.0 added
+  `not grantedEffect.fromItem` to the gem-name registration loop
+  (ModParser.lua:6423) — "Grenade" (fromItem) no longer shadows the
+  modFlagList phrases, so `grenade` / `for grenade skills` are live
+  `SkillType.Grenade` tags again (run-parsemod verified). The PR#53-era
+  extractor overrides (dead-entry / inert-SkillName rewrite, correct for
+  0.21) were retired and `mod_parser_rules.json` + `parsed_mods.json`
+  regenerated. Deadeye's 3×15% grenade-CDR tree nodes (oracle
+  `extraModList` — new `ORACLE_EXTRA_STATS` tooling — Tree:21077/354/48429)
+  now apply: Speed 0.164→0.254 (1.00x), TotalDPS 0.53x→0.83x; gemling
+  Speed/AvgDamage/TotalDPS all 1.00-1.04x.
+
+Aggregate: off @5% 46→56 (@10% 55→62), dot 11→14 (@10% 13→19), def 25-col
+410→413 (@10% 429→434), core-8 138→140, panel off 27→40 / 30→41.
+
+Remaining offence clusters after #4 (TotalDPS @5%, decomposed): the attack
+AverageDamage family — smith-of-kitava 0.57x, monk-flicker 0.76x,
+spirit-walker 0.78x (dot 0.23x), monk-twister 0.88x, titan 0.87x (its
+CritMultiplier is a separate 0.5.4b "Bifurcated Crit Damage Bonus" MORE
+mechanic, golden 5.00 vs PoBR 6.0) — plus blood-mage 0.87x, abyssal-lich
+0.91x, pathfinder 0.90x, deadeye per-hit 0.83x (pre-0.5.4b shortfall,
+documented in pob2_parity.rs), and frost-bomb 0.66x (golden unchanged
+0.5.0→0.5.4b — a pre-existing cooldown-DPS gap, not a 0.5.4b regression).
+These moved 6-46% in the 0.5.4b golden with per-build factors — no shared
+constant; each needs its own oracle decomposition.
+
+Remaining elsewhere, re-triage against fresh `defenceModList` dumps:
+ailment magnitude (#5) and the wolf-pack EHP remainder decomposed above
+(Armour 0.98x / ChaosMaxHit 0.87x / Life 1.11x). Also ritualist TotalEHP
+moved 1.04x→1.10x with #4a (低血 EHP 口径——vendor 只在显式
+`conditionLowLife` config 下 cap `LifeRecoverable`，PoBR 的 EHP 消费端
+尚未对齐该分支). Each is its own oracle-guided investigation; not all are
+single formula constants (several are unmodeled unique/flask interactions).
 Also pending from the vendor bump itself: `check-buff-refs` reports 15
 `vendor_ref` line-hash drifts in `data/overlay-common/buff_definitions.json`
 (e.g. OnslaughtFlask/ShapersPresence/UnholyMight) — the 4.5.4.3 upgrade swapped

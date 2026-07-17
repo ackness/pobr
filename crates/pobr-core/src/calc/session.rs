@@ -187,8 +187,8 @@ impl CalculationSession {
         }
         let db = &self.env.player.mod_db;
         let cfg = &self.env.cfg;
-        let mult = (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor()
-            / 10_000.0;
+        let mult =
+            (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
         let eff_names = [
             ModName::from("LifeReservationEfficiency"),
             ModName::from("ReservationEfficiency"),
@@ -199,7 +199,14 @@ impl CalculationSession {
         let flat = db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * factor;
         let percent = db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * factor;
         let reserved = super::survivability::reservation(life, flat, percent).reserved;
-        if (life - reserved) / life <= self.env.cfg.constants.game_constants.game.low_pool_threshold
+        if (life - reserved) / life
+            <= self
+                .env
+                .cfg
+                .constants
+                .game_constants
+                .game
+                .low_pool_threshold
         {
             self.env.cfg.conditions.insert("LowLife".into(), true);
         }
