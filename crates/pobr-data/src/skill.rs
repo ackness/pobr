@@ -76,6 +76,9 @@ impl SkillTypes {
     /// 「Persistent Buffs have N% less Reservation」（Tactician『A Solid
     /// Plan』）以 Persistent+Buff 双 tag AND 限定作用域）
     pub const PERSISTENT: Self = Self::bit(139);
+    /// PoB2 SkillType.Barrageable = 70（Barrage buff 的 repeats DPS 乘区
+    /// 门控，vendor CalcOffence.lua:962-976）
+    pub const BARRAGEABLE: Self = Self::bit(69);
 
     /// 第 `index` 位（0-based）置 1 的掩码（const 构造）。
     const fn bit(index: u32) -> Self {

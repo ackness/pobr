@@ -37,6 +37,14 @@ fn discover_builds() -> Vec<PathBuf> {
         .filter(|p| p.is_dir() && p.join("code.txt").exists() && p.join("meta.json").exists())
         .collect();
     dirs.sort();
+    // Debug aid: POBR_ONLY_BUILD=<substring> narrows the dashboard to matching
+    // build dirs so POBR_DBG_* channels stay readable. Never set in CI.
+    if let Ok(filter) = std::env::var("POBR_ONLY_BUILD") {
+        dirs.retain(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().contains(&filter))
+        });
+    }
     dirs
 }
 
@@ -759,8 +767,8 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // （CritChance/CritMult 1.00x；ES 12124→12437 vs golden 12434、MaxHit 五族 +
 // TotalEHP 0.97-0.98x→1.00x——def 列先前已在 5% 带内，def 计数不变）。
 // 18 build 逐格 diff 仅此两 build 变动。
-const BASELINE_OFF_HIT5: usize = 76; // #8 Zarokh's Gift 后 76/80（#6+#7 合并 73；#6 单独 71；#7 单独 60；迁移基线 39）
-const BASELINE_OFF_HIT10: usize = 76; // #8 后 76/80（#6+#7 合并 75；#6 单独 73；#7 单独 66；迁移基线 47；0.5.0=74）
+const BASELINE_OFF_HIT5: usize = 78; // #10 进攻残差精修后 78/80（deadeye Point Blank DistanceRamp 0.83x→1.00x +2 格；twister Barrage repeats 0.98→1.00、warrior 局部 adds 泄漏 1.02/1.05→1.00 原在带内；#8 后 76；#6+#7 合并 73；迁移基线 39）
+const BASELINE_OFF_HIT10: usize = 78; // #10 后 78/80（#8 后 76；#6+#7 合并 75；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -872,8 +880,8 @@ const BASELINE_OFF_HIT10: usize = 76; // #8 后 76/80（#6+#7 合并 75；#6 单
 // TotalDotDPS 1.06x→1.00x（182.40 vs 182.60）、monk frost-bomb 1.07x→0.99x
 // （4.53 vs 4.58）；witch-lich 带内微降（21659→21621，仍 1.00x）。curse 槽位
 // 归属逐 build 不变（druid 单槽仍 Temporal Chains 胜出，EW 依旧不入槽）。
-const BASELINE_DOT_HIT5: usize = 33; // 存量 #11 后 33/37（#8+#9 合并 31；#8 单独 31；#9 单独 27；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 34; // #8+#9 合并实测 34/37（#8 单独 33；#9 单独 32；迁移基线 11；0.5.0=28）
+const BASELINE_DOT_HIT5: usize = 36; // #10+#11 合并实测 36/37（#10 单独 34：deadeye ignite 链随 Point Blank 修复 + smith/titan dot 回带；#11 单独 33：Blasphemy 半身修复 druid/frost-bomb；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 36; // #10+#11 合并实测 36/37（#8+#9 合并 34；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

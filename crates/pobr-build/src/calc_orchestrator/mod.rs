@@ -421,7 +421,16 @@ pub fn calculate_with_data_session(
     inject_defence_base(&mut session, build, data);
 
     // 2. 装备：归因路径注入（逐件 filter / Kalandra 镜射 / 局部词条剔除 / 槽位加成数值副本）。
-    inject_items(&mut session, build, data, ctx.off_weapon.is_some())?;
+    let main_weapon_active = ctx
+        .main_effect
+        .is_some_and(|e| e.is_attack() && !e.is_non_weapon_attack());
+    inject_items(
+        &mut session,
+        build,
+        data,
+        ctx.off_weapon.is_some(),
+        main_weapon_active,
+    )?;
 
     // 2b. 珠宝（天赋树/深渊槽）：词条按全局注入。
     stage_inject_jewels(&mut session, &ctx)?;
@@ -1813,12 +1822,14 @@ fn inject_character_base(
 }
 
 /// 2 阶段：装备归因路径注入——逐件 filter / Kalandra 镜射 / 局部词条（武器·防御·Spirit）
-/// 剔除 / add_item / 槽位加成效果数值副本。`off_weapon_active` = 副手武器源是否被消费。
+/// 剔除 / add_item / 槽位加成效果数值副本。`off_weapon_active` = 副手武器源是否被消费；
+/// `main_weapon_active` = 主技能以 Weapon1 为伤害源（持武攻击）。
 fn inject_items(
     session: &mut CalculationSession,
     build: &Build,
     data: &BuildData,
     off_weapon_active: bool,
+    main_weapon_active: bool,
 ) -> Result<(), BuildError> {
     // 槽位加成效果（『N% increased bonuses gained from Equipped Rings and Amulets』，
     // Ritualist 等）：对应槽位物品词条按 scale 追加缩放副本（PoB2 CalcPerform.lua:
@@ -1843,6 +1854,39 @@ fn inject_items(
             filtered.implicit_texts = drop_local(filtered.implicit_texts);
             filtered.modifier_texts = drop_local(filtered.modifier_texts);
             filtered.enchant_texts = drop_local(filtered.enchant_texts);
+        }
+        // 非伤害源武器的裸「Adds N to M <type> Damage」剔除（#10-3，titan/smith
+        // 高估根因）：vendor Item.lua:1923-1928 把武器上全类型裸 adds 折入
+        // weaponData（局部，只随该武器攻击生效）。主技能不以该武器为伤害源
+        // （非武器攻击如 Shield Wall / 法术 / 未消费副手）时，这些词条不得进
+        // 全局加法桶（titan Nebuloch『Adds 30 to 52 Chaos damage』经 added
+        // effectiveness 放大 → TotalDPS 1.05x）。该武器**是**伤害源时维持现状：
+        // 裸元素/混沌 adds 走全局注入近似（与 vendor weaponData 折算数值等价，
+        // deadeye/twister 1.00x 钉住）。
+        let weapon_source_inactive = (slot == EquipmentSlot::Weapon1 && !main_weapon_active)
+            || (slot == EquipmentSlot::Weapon2 && !off_weapon_active);
+        if weapon_source_inactive && data.weapon_base(&item.base.to_string()).is_some() {
+            const TYPED_ADDS_SUFFIXES: [&str; 5] = [
+                "physical damage",
+                "fire damage",
+                "cold damage",
+                "lightning damage",
+                "chaos damage",
+            ];
+            let drop_typed_adds = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| {
+                        let clean = clean_item_text(t);
+                        !TYPED_ADDS_SUFFIXES
+                            .iter()
+                            .any(|s| parse_adds_with_suffix(&clean, s).is_some())
+                    })
+                    .collect()
+            };
+            filtered.implicit_texts = drop_typed_adds(filtered.implicit_texts);
+            filtered.modifier_texts = drop_typed_adds(filtered.modifier_texts);
+            filtered.enchant_texts = drop_typed_adds(filtered.enchant_texts);
         }
         // 护甲件：剔除局部「increased / +flat Armour/Evasion/ES」（已折入 rolled 件级底值 /
         // 基底兜底乘区，见 defence_base_modifiers）；留在全局会重复（且错误地变成全局加法）。
