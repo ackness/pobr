@@ -533,7 +533,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 // Atziri's Communion 的 Spirit→Life 保留转换（LifeReservePercentPerSpirit，
 // vendor CalcDefence.lua:248-254）接入后双列翻正；abyssal-lich（同戴 Communion）
 // SpiritUnres inf→1.00x 同根。见 buffs.rs spirit_reservation_modifiers 转换分支。
-const BASELINE_DEF_CORE_HIT5: usize = 140; // Communion 后 140/144（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
+const BASELINE_DEF_CORE_HIT5: usize = 142; // 存量 #7-3/4（charm-guard 摘除 + wolf-pack Life/Armour 收敛 + gemling 池名归一）后 142/144（Communion 140（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -638,7 +638,7 @@ const BASELINE_DEF_CORE_HIT5: usize = 140; // Communion 后 140/144（ItemES 138
 // **0.5.4b #4 Communion/LowLife + Voices 重记（+3 @5% 410→413 / +5 @10% 429→434）**：
 // core-8 的 SpiritUnres/LifeUnres 翻正（见 BASELINE_DEF_CORE_HIT5 上说明）+
 // abyssal-lich EnergyShield 0.93x→0.98x（Voices sinister 珠宝的 ES 词条找回）。
-const BASELINE_DEF_HIT5: usize = 413; // Communion+Voices 后 413/450（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT5: usize = 425; // 存量 #7-3/4 后 425/450（ritualist 6 格 + gemling 9 格 + wolf-pack Life/Armour 精确翻正，wolf-pack MaxHit 族随 charm-guard 掩蔽摘除移出——余量 = companion ally-mitigation 层；Communion+Voices 413（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
 const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refraction 429；ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧

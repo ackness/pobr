@@ -1722,7 +1722,7 @@
       "vendor_pattern": "if you have at least (%d+) (%a+) support gems socketed",
       "mods": [
         {
-          "name": "Life",
+          "name": "MaximumLife",
           "type": "INC",
           "value": 5,
           "tags": [
@@ -1736,7 +1736,7 @@
       ],
       "verified": false,
       "batch": "a2-real-gaps",
-      "source_note": "A2 真缺口 #4/#5/#6（oracle：<stat> INC 5 + MultiplierThreshold{<Color>SupportGems,10}，vendor ModParser.lua:1697 函数 tag）；下界阈值盲产欠算安全（cfg.multiplier 未灌 <Color>SupportGems 时不生效，编排层计数接线后自动生效）；DSL 不吃捕获——按语料钉值"
+      "source_note": "A2 真缺口 #4/#5/#6（oracle：<stat> INC 5 + MultiplierThreshold{<Color>SupportGems,10}，vendor ModParser.lua:1697 函数 tag）；下界阈值盲产欠算安全（cfg.multiplier 未灌 <Color>SupportGems 时不生效，编排层计数接线后自动生效）；DSL 不吃捕获——按语料钉值；名归一 MaximumLife（parser name_map 口径，裸 Life 是死桶——wolf-pack 5% INC 漏计根因）"
     },
     {
       "id": "threshold_10_blue_support_gems_5pct",
@@ -1744,7 +1744,7 @@
       "vendor_pattern": "if you have at least (%d+) (%a+) support gems socketed",
       "mods": [
         {
-          "name": "Mana",
+          "name": "MaximumMana",
           "type": "INC",
           "value": 5,
           "tags": [
@@ -1758,7 +1758,7 @@
       ],
       "verified": false,
       "batch": "a2-real-gaps",
-      "source_note": "A2 真缺口 #4/#5/#6（oracle：<stat> INC 5 + MultiplierThreshold{<Color>SupportGems,10}，vendor ModParser.lua:1697 函数 tag）；下界阈值盲产欠算安全（cfg.multiplier 未灌 <Color>SupportGems 时不生效，编排层计数接线后自动生效）；DSL 不吃捕获——按语料钉值"
+      "source_note": "A2 真缺口 #4/#5/#6（oracle：<stat> INC 5 + MultiplierThreshold{<Color>SupportGems,10}，vendor ModParser.lua:1697 函数 tag）；下界阈值盲产欠算安全（cfg.multiplier 未灌 <Color>SupportGems 时不生效，编排层计数接线后自动生效）；DSL 不吃捕获——按语料钉值；名归一 MaximumMana（同 red 条目）"
     },
     {
       "id": "threshold_10_green_support_gems_5pct",

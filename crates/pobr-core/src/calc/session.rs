@@ -511,6 +511,17 @@ impl CalculationSession {
     /// （CalcOffence pool 段）。供编排层在全部来源注入后回填 PerStat 资源分母
     /// （vendor PerStat tag 读 actor **output**，ModStore.lua:440-460 GetStat）——
     /// [`base_sum`](Self::base_sum) 只取 BASE 之和，会漏掉 inc/more 缩放后的池值。
+    /// Spirit 最终池值（vendor `output.Spirit`，[`calc_spirit_pool`] 同源：
+    /// OVERRIDE → (base + Extra) × 未转换比例 × (1+Σinc/100) × Πmore，round）。
+    /// 供编排层回填 PerStat `Spirit` 分母——vendor PerStat 读 actor output
+    /// （ModStore.lua:440-460 GetStat），BASE-only 会把「+2 Armour per 1 Spirit」
+    /// （wolf-pack Perfidy，Spirit 336 vs base 300）欠算。
+    ///
+    /// [`calc_spirit_pool`]: super::calc_spirit_pool
+    pub fn spirit_total(&self) -> f64 {
+        super::calc_spirit_pool(&self.env.player.mod_db, &self.env.cfg)
+    }
+
     pub fn pool_total(&self, name: &str) -> f64 {
         let actor_base = match name {
             "MaximumLife" => self.env.player.base.life,

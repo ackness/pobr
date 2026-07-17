@@ -25335,7 +25335,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Life",
+          "name": "MaximumLife",
           "type": "Inc",
           "value": 5.0,
           "tags": [
@@ -25349,7 +25349,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Mana",
+          "name": "MaximumMana",
           "type": "Inc",
           "value": 5.0,
           "tags": [
@@ -33015,67 +33015,19 @@
     },
     {
       "text": "Also grants 180 Guard",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "Base",
-          "value": 100.0
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "Base",
-          "value": 180.0
-        }
-      ]
+      "status": "unsupported"
     },
     {
       "text": "Also grants 265 Guard",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "Base",
-          "value": 100.0
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "Base",
-          "value": 265.0
-        }
-      ]
+      "status": "unsupported"
     },
     {
       "text": "Also grants 435 Guard",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "Base",
-          "value": 100.0
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "Base",
-          "value": 435.0
-        }
-      ]
+      "status": "unsupported"
     },
     {
       "text": "Also grants 491 Guard",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "Base",
-          "value": 100.0
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "Base",
-          "value": 491.0
-        }
-      ]
+      "status": "unsupported"
     },
     {
       "text": "Amber Amulet",

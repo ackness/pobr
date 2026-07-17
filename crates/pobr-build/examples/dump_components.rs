@@ -42,6 +42,30 @@ fn main() {
         out.action_rate,
         out.hit_chance
     );
+    // POBR_DUMP_DEFENCE=1：附加防御/EHP 池分解（与 oracle mainOutput 的
+    // <Type>TotalHitPool / LifeRecoverable / MaximumHitTaken 族对照）。
+    if std::env::var("POBR_DUMP_DEFENCE").is_ok() {
+        println!(
+            "  life={:.2} life_unres={:.2} life_recoverable={:.2} es={:.2} es_cap={:.2} ward={:.2} mana={:.2} mana_unres={:.2}",
+            out.life,
+            out.life_unreserved,
+            out.life_recoverable,
+            out.energy_shield,
+            out.energy_shield_recovery_cap,
+            out.ward,
+            out.mana,
+            out.mana_unreserved,
+        );
+        println!(
+            "  maxhit: phys={:.1} fire={:.1} cold={:.1} light={:.1} chaos={:.1} total_ehp={:.1}",
+            out.physical_max_hit_pob2,
+            out.fire_max_hit_pob2,
+            out.cold_max_hit_pob2,
+            out.lightning_max_hit_pob2,
+            out.chaos_max_hit_pob2,
+            out.total_ehp_pob2,
+        );
+    }
     let mut sum = 0.0;
     for c in &out.damage_components {
         let avg = c.avg();
