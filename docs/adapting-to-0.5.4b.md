@@ -83,6 +83,11 @@ un-ignored; `ranger-deadeye` Evasion 0.99x vs 0.5.4b golden 29774. The stale
 
 Remaining after Mageblood, re-triage against fresh `defenceModList` dumps:
 DeflectionRating scaling, offence per-build DPS clusters, ailment magnitude.
+Also pending from the vendor bump itself: `check-buff-refs` reports 15
+`vendor_ref` line-hash drifts in `data/overlay-common/buff_definitions.json`
+(e.g. OnslaughtFlask/ShapersPresence/UnholyMight) — the 4.5.4.3 upgrade swapped
+the vendor without the manual buff re-review; each drifted buff needs its
+vendor lines re-checked for semantic changes, then `--write` to refresh.
 Each is its own oracle-guided investigation; not all are single formula
 constants (several are unmodeled unique/flask interactions).
 
