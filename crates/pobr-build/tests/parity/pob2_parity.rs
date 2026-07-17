@@ -175,7 +175,19 @@ fn deadeye_parity_report() {
 #[test]
 fn martial_parity_report() {
     let data = load_data();
-    let (out, _pob2) = report("MARTIAL", MARTIAL, &data);
+    let (out, pob2) = report("MARTIAL", MARTIAL, &data);
     assert!(out.life.is_finite() && out.mana.is_finite());
     assert!(out.dps.is_finite());
+    // EnergyShield「1.12x 高估」诊断（存量 #11-2）：**旧样本 golden 失真，非 PoBR
+    // 多算**。本 code `targetVersion="0_1"`（PoE2 0.1 时代导出），内嵌 PlayerStat
+    // EnergyShield=6257；同一 XML 喂当前 vendor（tools/pob2-oracle）得 7008，
+    // PoBR 7005.5 = 0.9996x 现行 vendor。0.1→0.5.x 间未变的口径（Life/Mana/
+    // Evasion/三抗/Crit）内嵌值与现行 oracle 逐位一致，唯 ES（与进攻侧）随数据
+    // 版本漂移——与上方 deadeye 的 Mageblood/res 旧样本失效同类。断言按**现行
+    // vendor 语义**守护（容差 0.15 覆盖 stale-golden 缺口 1.12x，只防大幅倒退；
+    // 权威 ES 门禁走 ninja_parity 的 0.5.4b fixture golden）。
+    assert_within(&pob2, "EnergyShield", out.energy_shield, 0.15);
+    assert_within(&pob2, "Evasion", out.evasion, 0.05);
+    assert_within(&pob2, "Mana", out.mana, 0.05);
+    assert_within(&pob2, "CritChance", out.crit_chance * 100.0, 0.05);
 }

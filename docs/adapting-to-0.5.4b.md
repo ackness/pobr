@@ -404,6 +404,38 @@ two builds moved. Baselines: off 73→76 @5% / 75→76 @10%, dot 27→31 @5% /
 the 5% band). The other 7 Mageblood wearers: no movement — their legacy
 modelling was already complete.
 
+**#11 — two legacy leftovers. ✅ DONE (one real root cause, one stale golden).**
+
+- *druid EW "curse-slot over-application" (TotalDotDPS 1.06x)*: the #7 hypothesis
+  (PoBR applying Elemental Weakness that vendor keeps out of the slot) was
+  **wrong** — `POBR_DBG_CURSE` + `POBR_DBG_ENEMYMIT` show PoBR's single curse
+  slot already resolves to Temporal Chains (EW excluded, IgniteEffMult 0.6 ==
+  vendor). The real residual was the **Temporal Chains magnitude**: support
+  judgement only enumerated gems whose *primary* granted effect is a support,
+  so Blasphemy's support half (`SupportBlasphemyPlayer`, additional granted
+  effect carrying `support_blasphemy_curse_effect_+%_final` → `CurseEffect
+  MORE -41` @L19, act_int.lua:1126-1163) never entered the curse local-effect
+  multiplier. TC applied at floor(-25×0.55)=-13% expire-slower vs vendor
+  floor(-25×(1.1×0.59×0.5))=-8 (CalcPerform.lua:2422-2430 inc/more chain +
+  Pinnacle `CurseEffectOnSelf MORE -50`), inflating ignite
+  `debuffDurationMult` (CalcOffence.lua:1845) 1/0.87 vs 1/0.92. Fix: expand
+  `judge_group_supports` candidates to each gem's granted-effect list
+  (`gem_effects` overlay) routed by `is_support` — vendor CalcSetup gemList
+  semantics — and carry the support *effect id* to all consumers. After:
+  ignite duration 4.3478 == oracle, druid TotalDotDPS 1.06x→1.00x, monk
+  frost-bomb 1.07x→0.99x, dot baseline 31→33 @5%; per-build curse slot
+  occupancy unchanged across all 18 builds.
+- *MARTIAL embedded-sample ES 1.12x (pob2_parity.rs)*: **stale golden, not a
+  PoBR over-count.** The code is a `targetVersion="0_1"` (PoE2 0.1-era) export;
+  feeding the same decoded XML to the current vendor oracle yields
+  EnergyShield 7008 vs PoBR 7005.5 (0.9996x), while every era-stable stat
+  (Life/Mana/Evasion/resists/crit) matches the embedded values exactly — only
+  ES (and offence) drifted with 0.5.x data. Same class as the deadeye
+  Mageblood/res stale-sample notes in that file; documented inline and
+  guarded with a wide (0.15) tolerance against the embedded value plus tight
+  guards on the era-stable stats. Authoritative ES gate remains ninja_parity's
+  0.5.4b fixture goldens.
+
 ## Tooling
 
 - `examples/demo-bd-test/tools/recapture_golden.py` — refresh fixture goldens
