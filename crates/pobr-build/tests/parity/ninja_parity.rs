@@ -838,8 +838,17 @@ const BASELINE_OFF_HIT10: usize = 75; // #6+#7 合并实测 75/80（#6 单独 73
 // TotalDotDPS 1.04x→1.06x 出 @5%（EW 变强的下游——vendor 侧 druid 的 EW
 // 根本未入 enemy resistMods（curse 槽位/优先级差异，oracle 钉值），PoBR
 // 施加了它，存量高估被放大 2%，另行追）。@5 净 0、@10 净 +2。
+// **存量 #9 warcry uptime 机器重记（dot +1 @10% 31→32）**：Infernal Cry 的
+// uptime 缩放 `DamageGainAsFire`（CalcOffence.lua:3229-3256，pobr-core
+// `calc::warcry`）落地，smith TotalDotDPS 0.40x→1.06x 入 @10% 带（uptime/
+// castTime/cooldown 对 oracle 逐位：19.4116%/0.544218/6.27；gain 62×uptime
+// =12.035 与 vendor "Uptime Scaled Infernal Cry" 条 bit-exact）。残余 +6% =
+// smith 命中侧原有 +2% 高估（此前被缺失的 gain 抵消遮蔽，AverageDamage
+// 0.996→1.02）经点燃 ∝ 火源² 放大——命中侧存量项，非 warcry 机制。titan 随动：
+// TotalDotDPS 0.98→1.01、TotalDPS 0.98→1.05（同为被遮蔽的原有高估暴露，
+// 仍在 @5% 带内）。其余 16 build 无 warcry，逐值不变。
 const BASELINE_DOT_HIT5: usize = 27; // #6+#7 合并实测 27/37，超过 0.5.0 时代的 26（#6 单独 25；#7 单独 18；迁移基线 9）
-const BASELINE_DOT_HIT10: usize = 31; // #6+#7 合并实测 31/37（#6 单独 27；#7 单独 25；迁移基线 11；0.5.0=28）
+const BASELINE_DOT_HIT10: usize = 32; // 存量 #9 warcry uptime 后实测 32/37（#6+#7 31；#6 单独 27；#7 单独 25；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

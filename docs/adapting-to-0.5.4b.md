@@ -324,6 +324,18 @@ Remaining offence after #6, each triaged:
   a pre-existing warcry-uptime gap; needs the warcry buff machinery
   (duration/cooldown/cast-time of a non-main skill + WarcryPower config),
   registered for its own slice.
+  ✅ (2026-07-17, #9) warcry uptime 机器落地（pobr-core `calc::warcry` +
+  编排层 `warcry_skill_specs`，全数据驱动零技能硬编码）：smith TotalDotDPS
+  0.40x→1.06x（@10% 带内）。uptime/castTime/cooldown 对 oracle 逐位
+  （19.4116% / 0.544218 / 6.27），注入 gain 12.035 = vendor "Uptime Scaled
+  Infernal Cry" 条 bit-exact。连带修三处通道：敌人档位预设 player_mods
+  （WarcryPower BASE 20）此前未注入 player db；statmap 直通族补
+  WarcryPowerPer/Cap + InfernalExtraFireDamageMultiplier；parser 「skill
+  speed」短语恢复 vendor 三名扇出（ModParser.lua:770 {Speed, WarcrySpeed,
+  TotemPlacementSpeed}，此前 curated 收窄为单名致树上 17 INC WarcrySpeed
+  丢失）。残余 +6% = smith 命中侧原有 +2% 高估（此前被缺失 gain 抵消遮蔽）
+  经点燃平方放大；titan 同理暴露（TotalDPS 0.98→1.05，带内）。dot 基线
+  @10% 31→32。
 - `spirit-walker`/`monk-twister` last ~2%: "Barrage Repeats" MORE DPS
   (vendor `output.DpsMultiplier` via `calcLib.mod(..., "DPS")`) — repeat
   DPS bonus channel unwired.
