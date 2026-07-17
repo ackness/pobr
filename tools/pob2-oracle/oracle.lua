@@ -426,6 +426,16 @@ local intermediates = {}
 -- Global increased/more damage
 intermediates.IncDamage = smlSum("INC", skillCfg, "Damage")
 intermediates.MoreDamage = smlMore(skillCfg, "Damage")
+-- DistanceRamp probe: the cfg distance the engine evaluated ramp tags against.
+intermediates.SkillDist = skillCfg and skillCfg.skillDist or nil
+if skillCfg then
+	local copyTable = copyTable
+	for _, dist in ipairs({ 5, 20, 30, 40 }) do
+		local probe = copyTable(skillCfg, true)
+		probe.skillDist = dist
+		intermediates["MoreDamage_at" .. dist] = smlMore(probe, "Damage")
+	end
+end
 
 -- Damaging-ailment magnitude breakdown (the `<Ailment>MagnitudeEffect` factor =
 -- calcLib.mod(skillModList, dotCfg, "AilmentMagnitude"), CalcOffence.lua:5145).

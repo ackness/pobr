@@ -791,21 +791,28 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
         // （编排路径暂无 FlaskBuff/CharmBuff 载荷，T4 槽位接线后生效）+ 阶段 6
         // buff_expander（trigger flag 未置仍零输出）。
         .with_mode_combat(true);
-    // DistanceRamp 的 skillDist（vendor CalcActiveSkill.lua:655 `skillCfg.skillDist =
-    // env.mode_effective and env.configInput.enemyDistance`）：仅 effective 口径 +
-    // enemyDistance 的 `<Input>` **显式值**（vendor `configInput`，不含 `<Placeholder>`
-    // 占位值——后者经 ConfigTab apply 只兜底 `Multiplier:enemyDistance`（命中距离惩罚），
-    // 不喂 skillDist）。demo 套件 18 个 build 的 enemyDistance 全是 placeholder → 此处
-    // None → Close/Far Combat 距离 MORE 整条跳过，与 golden 一致（PoB2 同样不应用）。
+    // DistanceRamp 的 skillDist（vendor CalcActiveSkill.lua:671+684，0.22.0）：
+    // `effectiveRange = env.configInput.enemyDistance or env.configPlaceholder.enemyDistance`，
+    // `skillDist = env.mode_effective and effectiveRange`。0.22.0 起 **placeholder
+    // 兜底喂 skillDist**（旧 vendor 只读显式 `<Input>`——彼时 demo 套件全 placeholder
+    // → None → Close Combat 距离 MORE 整条跳过）。回退链对齐 vendor ConfigTab：
+    // 显式 `<Input>` → XML `<Placeholder>` → 目录 `defaultPlaceholderState`
+    // （ConfigTab.lua:559 对缺省项预填占位默认，enemyDistance = 20）。
     let skill_distance = options
         .mode_effective
         .then(|| {
-            build
-                .config
-                .raw_inputs
-                .values
+            let raw = &build.config.raw_inputs;
+            raw.values
                 .get("enemyDistance")
+                .or_else(|| raw.placeholders.get("enemyDistance"))
                 .and_then(|v| v.as_number())
+                .or_else(|| {
+                    data.config_catalog
+                        .as_deref()
+                        .and_then(|c| c.get("enemyDistance"))
+                        .and_then(|def| def.default.as_ref())
+                        .and_then(|d| d.placeholder_number)
+                })
         })
         .flatten();
     cfg = cfg.with_skill_distance(skill_distance);
