@@ -709,6 +709,23 @@ for _, name in ipairs({ "CritMultiplier", "CritChance" }) do
 	end
 end
 
+-- Ad-hoc stat tabulation: ORACLE_EXTRA_STATS="CooldownRecovery,Speed" dumps the
+-- per-source mod list for any vendor stat names (same shape as critModList),
+-- keyed under extraModList. Zero cost when the env var is unset.
+local extraModList
+do
+	local names = os.getenv("ORACLE_EXTRA_STATS")
+	if names and #names > 0 then
+		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {} }
+		for name in names:gmatch("[^,%s]+") do
+			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE" }) do
+				local list = tabulateModList(mt, name)
+				if #list > 0 then extraModList[mt][name] = list end
+			end
+		end
+	end
+end
+
 -- Aggregate cross-check: Sum/More over the same names PoBR uses, so the JSON
 -- carries the authoritative PoB2 totals alongside the per-mod breakdown.
 local damageAgg = {
@@ -990,6 +1007,7 @@ local report = {
 	intermediates = intermediates,
 	damageModList = damageModList,
 	critModList = critModList,
+	extraModList = extraModList,
 	damageAgg = damageAgg,
 	components = components,
 	summedBase = summedBase,
