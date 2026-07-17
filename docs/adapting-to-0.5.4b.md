@@ -240,11 +240,15 @@ moved 1.04x→1.10x with #4a (低血 EHP 口径——vendor 只在显式
 `conditionLowLife` config 下 cap `LifeRecoverable`，PoBR 的 EHP 消费端
 尚未对齐该分支). Each is its own oracle-guided investigation; not all are
 single formula constants (several are unmodeled unique/flask interactions).
-Also pending from the vendor bump itself: `check-buff-refs` reports 15
-`vendor_ref` line-hash drifts in `data/overlay-common/buff_definitions.json`
-(e.g. OnslaughtFlask/ShapersPresence/UnholyMight) — the 4.5.4.3 upgrade swapped
-the vendor without the manual buff re-review; each drifted buff needs its
-vendor lines re-checked for semantic changes, then `--write` to refresh.
+✅ (2026-07-17) `check-buff-refs` 15-drift re-review done: the recorded hashes
+were pinned at vendor `2df5a743` (pre-0.21.0; never refreshed at a82a33b either),
+so every buff "drifted" purely because `doActorMisc` shifted ~+75 lines
+(:503-765 → :578-850) and the Arcane Surge block moved :1580-1591 → :1606-1617.
+All 15 blocks were diffed against the pinned baseline: 14 byte-identical,
+UnholyMight differs by one removed trailing space — zero semantic changes, so
+no `buff_definitions` entry content changed and parity is untouched. Line
+ranges re-pointed to the 0.22.0 (`ce8bffab`) locations, hashes refreshed via
+`--write`, `_meta.vendor_commit` updated; check now reports 0 drift.
 
 ## Tooling
 

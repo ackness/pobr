@@ -4,11 +4,11 @@
       "Modules/CalcPerform.lua"
     ],
     "generator": "manual-curation (00-index 裁决 §4.2-4 批准的 overlay 通道例外)",
-    "regen_command": "人工归纳（doActorMisc :503-765 过程式 if-chain 无法 luajit 序列化）；vendor 升级后跑 `cargo run -p sync-pob-catalog -- check-buff-refs --vendor-root vendor/PathOfBuilding-PoE2/src --defs data/4.5.0.3.4/overlay/buff_definitions.json` 对账，人工复核后 --write 刷新行段 hash",
+    "regen_command": "人工归纳（doActorMisc :578-850 过程式 if-chain 无法 luajit 序列化）；vendor 升级后跑 `cargo run -p sync-pob-catalog -- check-buff-refs --vendor-root vendor/PathOfBuilding-PoE2/src --defs data/overlay-common/buff_definitions.json` 对账，人工复核后 --write 刷新行段 hash",
     "schema": "buff_definitions/v1",
     "vendor": "PathOfBuilding-PoE2",
-    "vendor_commit": "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f",
-    "vendor_commit_subject": "2df5a74 Fix crash when importing a character that uses Facebreaker gloves (#2098)"
+    "vendor_commit": "ce8bffaba31f8e68cfce70579e1c96465e7c133c",
+    "vendor_commit_subject": "ce8bffa Fix Liminal Coil counting Marks as Curses (#2365)"
   },
   "buffs": [
     {
@@ -78,8 +78,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 586,
-        "line_end": 593,
+        "line_start": 661,
+        "line_end": 668,
         "segment_hash": "fnv1a64:e3f46c64c93e2f77"
       },
       "notes": "vendor 逐 mod m_floor(coeff × effectMod)，effect 级不取整"
@@ -125,8 +125,8 @@
       "verified": true,
       "vendor_ref": {
         "file": "Modules/CalcDefence.lua",
-        "line_start": 1580,
-        "line_end": 1591,
+        "line_start": 1606,
+        "line_end": 1617,
         "segment_hash": "fnv1a64:144064cc425efef2"
       },
       "notes": "基本形（默认 15% Cast Speed / 20% more ManaRegen × effect，effect=1+Σinc/100 不取整，vendor 无 floor）。未覆盖分支：Max(ArcaneSurgeCastSpeed/ManaRegen) 覆写、ArcaneSurgeLifeRegen flag（LifeRegen 改道）、ArcaneSurgeDamage（Spell Damage MORE）——均无树/装备样本，出现时升级 handler。"
@@ -156,8 +156,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 582,
-        "line_end": 585,
+        "line_start": 657,
+        "line_end": 660,
         "segment_hash": "fnv1a64:dbd8f9c8a44c9452"
       }
     },
@@ -185,8 +185,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 594,
-        "line_end": 597,
+        "line_start": 669,
+        "line_end": 672,
         "segment_hash": "fnv1a64:4abf1b725bc2c12b"
       }
     },
@@ -198,8 +198,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 612,
-        "line_end": 631,
+        "line_start": 687,
+        "line_end": 706,
         "segment_hash": "fnv1a64:36b76d63b4ee74c6"
       },
       "notes": "真逻辑：Max({source=Skill}) 查询 + Override 上限 + Nightblade 交互 + 输出字段 ElusiveEffectMod"
@@ -212,8 +212,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 571,
-        "line_end": 576,
+        "line_start": 646,
+        "line_end": 651,
         "segment_hash": "fnv1a64:7d71030ed94f4da6"
       },
       "notes": "真逻辑：selfCast 门控需 mainSkill.activeEffect.srcInstance 状态；公式 = floor(75×(1+BuffEffectOnSelf/100)) → Speed MORE / Cost INC -e / AoE INC（全 Cast flag）"
@@ -226,8 +226,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 524,
-        "line_end": 538,
+        "line_start": 599,
+        "line_end": 613,
         "segment_hash": "fnv1a64:9e63cf1ecf4d6c25"
       },
       "notes": "真逻辑：stacks 模型（Maximum/Minimum/Override Fortification + alliedFortify）→ DamageTakenWhenHit MORE -floor((1+BuffEffectOnSelf/100)×stacks)；触发还含 Multiplier:Fortification > 0 分支"
@@ -260,8 +260,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 684,
-        "line_end": 687,
+        "line_start": 760,
+        "line_end": 763,
         "segment_hash": "fnv1a64:b64bb12d1a1a4549"
       },
       "notes": "calcLib.mod = (1+ΣINC/100)×ΠMORE；vendor m_max(m_floor(70×mod),0)——floor 在 clamp 前，与 effect 公式序一致"
@@ -351,8 +351,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 598,
-        "line_end": 608,
+        "line_start": 673,
+        "line_end": 683,
         "segment_hash": "fnv1a64:7ccc1cb631cff09f"
       },
       "notes": "全字面量（不吃 BuffEffectOnSelf 缩放）"
@@ -382,8 +382,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 748,
-        "line_end": 751,
+        "line_start": 824,
+        "line_end": 827,
         "segment_hash": "fnv1a64:679897be912337f4"
       }
     },
@@ -412,8 +412,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 744,
-        "line_end": 747,
+        "line_start": 820,
+        "line_end": 823,
         "segment_hash": "fnv1a64:56f9043453784061"
       }
     },
@@ -472,8 +472,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 539,
-        "line_end": 570,
+        "line_start": 614,
+        "line_end": 645,
         "segment_hash": "fnv1a64:e6f99ba533f1ffe3"
       },
       "notes": "基本形（不含 Silver Flask 分支——见 OnslaughtFlask handler 条目）；effect = floor(10×(1+Σinc/100))"
@@ -486,8 +486,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 539,
-        "line_end": 570,
+        "line_start": 614,
+        "line_end": 645,
         "segment_hash": "fnv1a64:e6f99ba533f1ffe3"
       },
       "notes": "真逻辑：Silver Flask 来源时 effect 计入 flaskData.effectInc + FlaskEffect/MagicUtilityFlaskEffect INC（依赖 M3-T4 flask merge，M3 末接通）"
@@ -509,8 +509,8 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 752,
-        "line_end": 754,
+        "line_start": 828,
+        "line_end": 830,
         "segment_hash": "fnv1a64:7b53c45448fcec95"
       }
     },
@@ -553,9 +553,9 @@
       "verified": false,
       "vendor_ref": {
         "file": "Modules/CalcPerform.lua",
-        "line_start": 577,
-        "line_end": 581,
-        "segment_hash": "fnv1a64:6ffdd69243656a03"
+        "line_start": 652,
+        "line_end": 656,
+        "segment_hash": "fnv1a64:91e4f9947ce02683"
       },
       "notes": "vendor 注释：Magnitude 经 Multiplier 实现（perStat 数据该阶段不可用）；DamageGainAsChaos = 0.3×(1+BuffEffectOnSelf/100) per Multiplier"
     }

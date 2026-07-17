@@ -75,7 +75,7 @@ fn handler_budget() {
     assert!(handlers.contains(&"buff:onslaught_flask"));
 }
 
-/// Onslaught 公式参数（vendor :539-570 基本形）。
+/// Onslaught 公式参数（vendor :614-645 基本形）。
 #[test]
 fn onslaught_formula() {
     let doc = load();
@@ -97,7 +97,7 @@ fn onslaught_formula() {
     assert_eq!(def.mods[3].value, BuffModValue::PerEffect { coeff: 1.0 });
 }
 
-/// Adrenaline 逐 mod floor（vendor :586-593）。
+/// Adrenaline 逐 mod floor（vendor :661-668）。
 #[test]
 fn adrenaline_per_mod_rounding() {
     let doc = load();
@@ -120,7 +120,7 @@ fn adrenaline_per_mod_rounding() {
     );
 }
 
-/// UnholyMight：Multiplier 字面量 + 0.3 系数 per-multiplier（vendor :577-581）。
+/// UnholyMight：Multiplier 字面量 + 0.3 系数 per-multiplier（vendor :652-656）。
 #[test]
 fn unholy_might_shape() {
     let doc = load();
@@ -142,12 +142,12 @@ fn unholy_might_shape() {
 #[test]
 fn vendor_refs_well_formed() {
     let doc = load();
-    // 允许的 vendor 行段：doActorMisc（CalcPerform :503-765，主体）+
-    // Arcane Surge 注入段（CalcDefence :1580-1591，vendor 把该 buff 写在
+    // 允许的 vendor 行段：doActorMisc（CalcPerform :578-850，主体）+
+    // Arcane Surge 注入段（CalcDefence :1606-1617，vendor 把该 buff 写在
     // doActorLifeManaSpirit 之后、recovery 之前——M4-n 条目）。
     let allowed: &[(&str, u32, u32)] = &[
-        ("Modules/CalcPerform.lua", 503, 765),
-        ("Modules/CalcDefence.lua", 1580, 1591),
+        ("Modules/CalcPerform.lua", 578, 850),
+        ("Modules/CalcDefence.lua", 1606, 1617),
     ];
     for buff in &doc.buffs {
         assert!(
