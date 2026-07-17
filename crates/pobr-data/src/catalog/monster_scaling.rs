@@ -134,10 +134,12 @@ impl MonsterScalingTable {
 /// fallback（无 GameData 注入时使用）：与 `base/monster_scaling.json` **逐值相等**
 /// （搬迁不变式，W2 测试已锁 JSON == Rust 准源）。
 ///
-/// - 有 pobr Rust 准源的七张表直接引用 `crate::monster` 既有 const（零字面量复制）；
-/// - `ally_life` / `ally_damage` 为 vendor-only（pobr 此前未迁、calc 暂无消费方），
-///   字面量抄录自 `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` L8 / L10
-///   （与 `base/monster_scaling.json` 同源同值；`ally_damage` 为 2 位小数口径）。
+/// - 有 pobr Rust 准源的八张表（含 #12 升格的 `ally_life` =
+///   `MONSTER_ALLY_LIFE_TABLE`，消费方 = 召唤物基础生命派生）直接引用
+///   `crate::monster` 既有 const（零字面量复制）；
+/// - `ally_damage` 为 vendor-only（calc 暂无消费方），字面量抄录自
+///   `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` L10
+///   （与 `base/monster_scaling.json` 同源同值；2 位小数口径）。
 impl Default for MonsterScalingTable {
     fn default() -> Self {
         Self {
@@ -145,20 +147,7 @@ impl Default for MonsterScalingTable {
             evasion: MONSTER_EVASION_TABLE.to_vec(),
             armour: MONSTER_ARMOUR_TABLE.to_vec(),
             life: MONSTER_LIFE_TABLE.to_vec(),
-            ally_life: vec![
-                51, 83, 116, 150, 186, 223, 261, 300, 341, 382, // lv1-10
-                426, 471, 517, 565, 614, 665, 718, 772, 828, 886, // lv11-20
-                945, 1007, 1070, 1135, 1203, 1272, 1344, 1417, 1493, 1571, // lv21-30
-                1652, 1734, 1820, 1907, 1998, 2091, 2186, 2285, 2386, 2490, // lv31-40
-                2598, 2708, 2821, 2938, 3058, 3181, 3307, 3438, 3571, 3709, // lv41-50
-                3850, 3995, 4144, 4298, 4455, 4617, 4783, 4953, 5128, 5308, // lv51-60
-                5493, 5682, 5877, 6077, 6282, 6492, 6708, 6930, 7157, 7391, // lv61-70
-                7630, 7876, 8128, 8387, 8652, 8924, 9203, 9489, 9783, 10084, // lv71-80
-                10393, 10710, 11034, 11367, 11708, 12058, 12417, 12785, 13161,
-                13548, // lv81-90
-                13944, 14350, 14766, 15192, 15629, 16076, 16535, 17005, 17486,
-                17980, // lv91-100
-            ],
+            ally_life: crate::monster::MONSTER_ALLY_LIFE_TABLE.to_vec(),
             damage: MONSTER_DAMAGE_TABLE.to_vec(),
             ally_damage: vec![
                 3.11, 4.42, 5.82, 7.31, 8.92, 10.63, 12.46, 14.42, // lv1-8
