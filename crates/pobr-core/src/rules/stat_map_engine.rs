@@ -1866,12 +1866,9 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             // limit / limitTotal（vendor ModStore.lua:461-468 + :402-404；如 Atalui's
             // Bloodletting `PerStat{stat=LifeCost,div=20,limit=40,limitTotal}`——
             // per 20 life cost 至多 +40% 总量封顶）。
-            let mut mtag =
-                ModTag::multiplier(var, number("div").unwrap_or(1.0), number("limit"));
-            if let (
-                ModTag::Multiplier { limit_total, .. },
-                Some(StatMapValue::Bool(true)),
-            ) = (&mut mtag, tag.get("limitTotal"))
+            let mut mtag = ModTag::multiplier(var, number("div").unwrap_or(1.0), number("limit"));
+            if let (ModTag::Multiplier { limit_total, .. }, Some(StatMapValue::Bool(true))) =
+                (&mut mtag, tag.get("limitTotal"))
             {
                 *limit_total = true;
             }

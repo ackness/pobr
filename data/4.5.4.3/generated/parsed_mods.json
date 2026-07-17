@@ -14489,7 +14489,18 @@
     },
     {
       "text": "2% increased [Attack] Damage per 75 [ItemArmour|Item Armour] and [ItemEvasion|Evasion] on Equipped Shield",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AttackDamage",
+          "type": "Inc",
+          "value": 2.0,
+          "tags": [
+            "Multiplier { var: \"ArmourOnweapon2|EvasionOnweapon2\", div: 75.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"UsingShield\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "2% increased [Attack] Speed",
@@ -23315,7 +23326,18 @@
     },
     {
       "text": "4% increased [Attack] Damage per 75 [ItemArmour|Item Armour] and [ItemEvasion|Evasion] on Equipped Shield",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AttackDamage",
+          "type": "Inc",
+          "value": 4.0,
+          "tags": [
+            "Multiplier { var: \"ArmourOnweapon2|EvasionOnweapon2\", div: 75.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"UsingShield\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "4% increased [Attack] Speed",

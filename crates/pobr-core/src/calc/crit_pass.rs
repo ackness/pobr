@@ -169,8 +169,7 @@ where
                 .iter()
                 .zip(non_crit.raw_avgs.iter())
                 .map(|((ty, avg), raw)| {
-                    avg * crit.multiplier
-                        * mitigation(&cfg_crit, *ty, raw * crit.multiplier)
+                    avg * crit.multiplier * mitigation(&cfg_crit, *ty, raw * crit.multiplier)
                 })
                 .sum();
             hit_leg * (1.0 - c) + crit_leg_mitigated * c

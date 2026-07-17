@@ -678,7 +678,13 @@ fn support_cost_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// constantStat 100；Blood-Magic 族树词条同名），vendor 封顶 100
 /// （CalcOffence.lua:2067 `m_min(Sum(...), 100) / 100`）。
 pub fn hybrid_life_cost_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    (db.sum(ModType::Base, cfg, &[ModName::from("HybridManaAndLifeCost_Life")]).min(100.0) / 100.0)
+    (db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("HybridManaAndLifeCost_Life")],
+    )
+    .min(100.0)
+        / 100.0)
         .max(0.0)
 }
 

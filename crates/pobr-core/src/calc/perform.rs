@@ -12,8 +12,7 @@ use super::ailment::{
 };
 use super::output::StoredDamageRange;
 use super::skill_mechanics::{
-    calc_aoe, calc_cooldown, calc_mana_cost, calc_projectile_count,
-    calc_spirit_reservation,
+    calc_aoe, calc_cooldown, calc_mana_cost, calc_projectile_count, calc_spirit_reservation,
 };
 use super::trigger::{
     RotationSkill, TriggerSourceStats, calc_cwc_trigger_rate_traced, calc_multi_spell_rotation,

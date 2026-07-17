@@ -6,10 +6,10 @@
   },
   "summary": {
     "total": 4280,
-    "parsed": 3440,
-    "unsupported": 840,
+    "parsed": 3442,
+    "unsupported": 838,
     "err": 0,
-    "coverage_ratio": 0.803738
+    "coverage_ratio": 0.804206
   },
   "by_source": [
     {
@@ -20,8 +20,8 @@
     },
     {
       "source": "C2_tree",
-      "parsed": 2212,
-      "unsupported": 329,
+      "parsed": 2214,
+      "unsupported": 327,
       "err": 0
     },
     {
@@ -44,11 +44,6 @@
     },
     {
       "text": "15% chance to gain [UndeadArchon|Archon of Undeath] when you use a [Command|Command] skill",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "2% increased [Attack] Damage per 75 [ItemArmour|Item Armour] and [ItemEvasion|Evasion] on Equipped Shield",
       "status": "unsupported",
       "source": "C2_tree"
     },
@@ -89,11 +84,6 @@
     },
     {
       "text": "3% chance to gain [Volatility] on Kill",
-      "status": "unsupported",
-      "source": "C2_tree"
-    },
-    {
-      "text": "4% increased [Attack] Damage per 75 [ItemArmour|Item Armour] and [ItemEvasion|Evasion] on Equipped Shield",
       "status": "unsupported",
       "source": "C2_tree"
     },
@@ -231,6 +221,16 @@
       "text": "Apocalypse Pelt",
       "status": "unsupported",
       "source": "C1_build"
+    },
+    {
+      "text": "Apocalypse Vessel",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Apply [Debilitate] to Enemies 30 Metres in front of you while your [Shield] is raised",
+      "status": "unsupported",
+      "source": "C2_tree"
     }
   ]
 }

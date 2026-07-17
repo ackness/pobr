@@ -233,6 +233,92 @@ Dot-side leftovers, each triaged **not** a 0.5.4b ailment item:
   stacks 1.05x × slight crit-chance overshoot — downstream of its small
   hit-side overestimates, no dot-side mechanism.
 
+**#6 target — the attack AverageDamage family. ✅ DONE (five generic-consumption-point
+fixes; the whole family is inside the 5% band).** Per-build oracle decomposition
+confirmed the #4 verdict (per-build factors, no shared constant) but found two
+*shared* root causes hitting multiple builds plus per-build items:
+
+- **#6a Bifurcate crit pipeline (Garukhan's Resolve builds: spirit-walker /
+  pathfinder / titan).** Two halves:
+  (i) the bifurcated extra-crit-damage weight is the *conditional* probability
+  `(PreBifurcateCritChance²/100) / CritChance` (CalcOffence.lua:3823-3846 —
+  identical in 0.21/0.22, i.e. a PoBR mis-port, not a 0.5.4b change; PoBR had
+  the unconditional `pre²/10000`), and
+  (ii) **0.22.0 added `CritMultiplier` to the weapon convert-to-local list**
+  (Item.lua:1954-1961): an unflagged crit-damage-bonus mod on a weapon now
+  gains `Condition:{Main,Off}HandAttack`, so Nebuloch's +29% no longer leaks
+  into titan's Shield Wall (a non-weapon attack running the off-hand pass).
+  Consumption points: `resolve_crit_multiplier` + new
+  `CalculationSession::add_weapon_item` (orchestrator routes items whose base
+  resolves as a weapon). Titan CritMultiplier 6.02→5.00 (golden exact,
+  oracle PreEffectiveCritMultiplier 4.88 reproduced); spirit-walker /
+  pathfinder CritMult 0.94x→1.00x/0.99x.
+- **#6b enemyDistance placeholder feeds skillDist (0.22.0,
+  CalcActiveSkill.lua:671 `configInput or configPlaceholder`).** The old vendor
+  read only the explicit `<Input>` (what PoBR mirrored), so every DistanceRamp
+  mod was dropped whole. Close Combat II's 30% MORE (ramp {10:1, 35:0},
+  evaluated at the placeholder distance 20 → ×0.6 = 18%) now lands. Fallback
+  chain mirrors ConfigTab: Input → XML Placeholder → catalog
+  `defaultPlaceholderState`. flicker 0.838x→0.99x; smith one of three stacked
+  segments. (Oracle probes added: `intermediates.SkillDist` +
+  `MoreDamage_at{5,20,30,40}` — this is how the 30-vs-18 ramp base was pinned.)
+- **#6c PerStat `statList` (smith/titan shield notable Tree:27687, "4%
+  increased Attack Damage per 75 Item Armour and Evasion on Equipped
+  Shield", ModParser.lua:1631).** The rule-driven parser rejected statList
+  tag phrases whole. Normalized to a `|`-joined compound Multiplier var,
+  summed at eval (ModStore.lua:445-452 semantics: Σstats then one
+  floor(sum/div)). Oracle-pinned 88 INC; smith Physical pool scale lands at
+  9.5899 = oracle exactly.
+- **#6d hybrid mana→life cost + per-LifeCost mods (smith's Atalui's
+  Bloodletting).** `base_skill_cost_life_instead_of_mana_%` →
+  `HybridManaAndLifeCost_Life` turns `floor(manaBase × supportMult) × hybrid`
+  into the Life cost base (CalcOffence.lua:2067/:2090-2104; mana chain tail
+  `floor((1-hybrid)×ManaCost)`); statmap PerStat now admits
+  `limit`/`limitTotal` so the support's `PerStat{stat=LifeCost, div=20,
+  limit=40, limitTotal}` gain-as-physical maps; the orchestrator prefills
+  `cfg.stats/multipliers[LifeCost]` from the new
+  `CalculationSession::life_cost_snapshot` (vendor's cost-before-damage
+  ordering). Oracle LifeCost 309 → floor(309/20)=15 → +30%
+  DamageGainAsPhysical.
+- **#6e per-leg enemy mitigation in the crit short-circuit path.** The
+  short-circuit (identical legs) mitigated the non-crit leg and scaled by
+  crit.effect — valid only for raw-independent mitigation; enemy armour DR
+  depends on hit size (vendor pass 1 computes DR against the post-crit-mult
+  hit, CalcOffence.lua:4395 blend). Reconstruct the crit leg as
+  `non_crit × crit.multiplier` and blend per-leg; bit-identical when
+  mitigation has no raw dependency. spirit-walker mitigated hit 42291 vs
+  vendor AverageDamage 42318 (0.9994).
+
+Aggregate: off @5% 58→71 (@10% 64→73), dot 16→25 (@10% 21→27), panel off
+40→41/41→42; def unchanged. Per-build TotalDPS (effective): smith 0.575x→0.996x,
+titan 0.874x→0.978x, flicker 0.838x→1.003x, spirit-walker 0.892x→0.980x,
+monk-twister 0.958x→0.980x, pathfinder 0.904x→0.963x, ritualist →1.000x.
+
+Remaining offence after #6, each triaged:
+- `deadeye` 0.832x — the long-registered pre-0.5.4b per-hit shortfall
+  (pob2_parity.rs); golden did move in the flip but the residual matches the
+  old ledger.
+- `blood-mage` 0.880x / `abyssal-lich` 0.926x — Mageblood mod family
+  (oracle pins blood-mage's missing `INC CritChance 107 'Mageblood'`; golden
+  CritChance 72.45→92.1 and CritMult 5.34→5.87 moved with 0.5.4b while PoBR
+  sits at the old CritMult 5.34 exactly). This is the Phase-1 standalone item.
+- `frost-bomb` 0.661x — golden unchanged across the flip; pre-existing
+  cooldown-DPS gap.
+- `smith` TotalDotDPS 0.40x — hit is 0.996x now, so the dot residual is purely
+  the un-modeled *uptime-scaled* Infernal Cry `DamageGainAsFire`
+  (fire-source ratio 0.63² ≈ 0.40). Mechanism fully decomposed: uptime =
+  `min((NumInfernalEmpowers/Speed)/(cooldown + warcryCastTime), 1) ×
+  storedUses` (CalcOffence.lua:3229-3257), `NumInfernalEmpowers =
+  floor(min(WarcryPower 20, cap 50)/per 10)` (CalcPerform.lua:2117-2131),
+  gain-as = gem's `infernal_cry_exerted_attack_all_damage_%_to_gain_as_fire_%`
+  (62 at smith's level) × uptime 19.41% = 12.04. Identical in both vendors —
+  a pre-existing warcry-uptime gap; needs the warcry buff machinery
+  (duration/cooldown/cast-time of a non-main skill + WarcryPower config),
+  registered for its own slice.
+- `spirit-walker`/`monk-twister` last ~2%: "Barrage Repeats" MORE DPS
+  (vendor `output.DpsMultiplier` via `calcLib.mod(..., "DPS")`) — repeat
+  DPS bonus channel unwired.
+
 Remaining elsewhere, re-triage against fresh `defenceModList` dumps:
 the wolf-pack EHP remainder decomposed above
 (Armour 0.98x / ChaosMaxHit 0.87x / Life 1.11x). Also ritualist TotalEHP

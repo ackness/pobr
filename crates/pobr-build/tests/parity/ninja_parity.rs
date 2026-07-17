@@ -715,8 +715,35 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // monk-twister AverageDamage/TotalDPS 0.60x→0.96x 双列翻正；flicker
 // TotalDPS 0.76x→0.84x、spirit-walker 0.78x→0.89x 收敛未入列（残余 =
 // 攻击 AvgDamage 族存量缺口的平方传导）。
-const BASELINE_OFF_HIT5: usize = 58; // Blazing Critical 后 58/80（grenade 短语解禁 56；Communion+Voices 52；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 64; // Blazing Critical 后 64/80（grenade 短语解禁 62；Communion+Voices 59；迁移基线 47；0.5.0=74）
+// **0.5.4b #6 攻击 AvgDamage 族攻坚重记（off +13 @5% 58→71 / +9 @10% 64→73）**：
+// 五个通用消费点修复叠加，整族（smith/titan/flicker/monk-twister/spirit-walker/
+// pathfinder/ritualist/gemling）全部进入 5% 带：
+// 1. Bifurcate 爆伤条件概率（vendor :3823-3846 `conditionalBifurcateChance =
+//    (PreBifurcate²/100)/CritChance`，PoBR 误移植为无条件 pre²/10000——新旧 vendor
+//    同式，属存量误差）+ 武器无 flag 爆伤词条转按手条件（Item.lua:1954-1961，
+//    **0.22.0 新增** CritMultiplier 进转换清单）：spirit-walker/pathfinder CritMult
+//    0.94x→1.00x/0.99x，titan CritMult 1.20x→1.00x（oracle 钉值 6.02→5.00 golden 精确）。
+// 2. enemyDistance placeholder 喂 skillDist（CalcActiveSkill.lua:671，**0.22.0 新增**
+//    configPlaceholder 兜底）：Close Combat 30% MORE 按 ramp(20)=0.6 生效 →
+//    flicker 0.838x→0.99x、smith +Close Combat 段。
+// 3. PerStat statList 支持（ModParser.lua:1631 `per 75 armour and evasion on
+//    equipped shield` → `|` 复合 Multiplier var 求和）：smith/titan 盾防御缩放
+//    tree notable（Tree:27687，oracle 钉值 88 INC）生效。
+// 4. hybrid mana→life cost + per-LifeCost 词条（Atalui's Bloodletting：
+//    `base_skill_cost_life_instead_of_mana_%` 100 + PerStat{stat=LifeCost,div=20,
+//    limit=40,limitTotal}，vendor :2067/:2090-2104）：smith +30% DamageGainAsPhysical
+//    （oracle LifeCost 309 → floor(309/20)=15 → 30）。
+// 5. 暴击短路路径分腿减伤 blend（vendor :4395；敌方护甲 DR 依赖单次击中量，
+//    crit 腿用暴击后击中算 DR）：spirit-walker 0.94x→0.98x、blood-mage/abyssal-lich
+//    连带收敛（0.87x→0.88x / 0.91x→0.93x，未入列）。
+// 逐 build：smith 0.575x→0.996x、titan 0.874x→0.978x、flicker 0.838x→1.003x、
+// spirit-walker 0.892x→0.980x、monk-twister 0.958x→0.980x、pathfinder 0.904x→
+// 0.963x、ritualist 0.989x→1.000x。剩余脱靶：deadeye 0.832x（pre-0.5.4b per-hit
+// 欠条）、blood-mage 0.880x / abyssal-lich 0.926x（Mageblood 词条族缺口，Phase 1
+// 独立项——oracle 钉值 blood-mage 缺 `INC CritChance 107 'Mageblood'`）、
+// frost-bomb 0.661x（golden 两版未动，存量冷却 DPS 缺口）。
+const BASELINE_OFF_HIT5: usize = 71; // 0.5.4b #6 AvgDamage 族后 71/80（Blazing Critical 58；grenade 短语解禁 56；Communion+Voices 52；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 73; // 0.5.4b #6 AvgDamage 族后 73/80（Blazing Critical 64；grenade 短语解禁 62；Communion+Voices 59；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -794,8 +821,15 @@ const BASELINE_OFF_HIT10: usize = 64; // Blazing Critical 后 64/80（grenade �
 // 存量缺口非 0.5.4b 项）；frost-bomb 0.87x / essence-drain WithDotDPS 1.36x
 // golden 两版未动（存量）；gemling dot 1.10x 高估 = fire/crit 小幅 hit 侧
 // 高估的下游传导（oracle 逐分量：fire 1.03x × stacks 1.05x × crit 混叠）。
-const BASELINE_DOT_HIT5: usize = 16; // Blazing Critical 后 16/37（grenade 短语解禁 14；Communion+Voices 13；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 21; // Blazing Critical 后 21/37（grenade 短语解禁 19；Communion+Voices 18；迁移基线 11；0.5.0=28）
+// **0.5.4b #6 AvgDamage 族 dot 列跟涨重记（dot +9 @5% 16→25 / +6 @10% 21→27）**：
+// 点燃 ∝ 火源²，hit 侧整族闭合后 dot 列自动跟正（flicker 0.72x→0.87✓ 附近、
+// spirit-walker 0.87x→0.98x✓、titan/pathfinder/monk-twister CombinedDPS 随 hit
+// 翻正）。剩余脱靶：smith TotalDotDPS 0.40x（= 火源比 0.63² —— Infernal Cry
+// uptime-scaled DamageGainAsFire 12.04% 未建模，新旧 vendor 同值的存量 warcry
+// uptime 机制，见 BASELINE_OFF_HIT5 注）；deadeye 0.69x = hit 0.83x²；
+// blood-mage 0.79x（Mageblood）；gemling 1.10x 高估（存量）。
+const BASELINE_DOT_HIT5: usize = 25; // 0.5.4b #6 后 25/37（Blazing Critical 16；grenade 短语解禁 14；Communion+Voices 13；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 27; // 0.5.4b #6 后 27/37（Blazing Critical 21；grenade 短语解禁 19；Communion+Voices 18；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -813,8 +847,8 @@ const BASELINE_DOT_HIT10: usize = 21; // Blazing Critical 后 21/37（grenade �
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 40; // 0.5.4b #4（Communion+Voices 38；grenade 短语解禁 +2）；迁移基线 27；0.5.0=44
-const PANEL_OFF_HIT10: usize = 41; // 0.5.4b #4（Communion+Voices 39；grenade 短语解禁 +2）；迁移基线 30；0.5.0=46
+const PANEL_OFF_HIT5: usize = 41; // 0.5.4b #6 +1（#4 后 40；Communion+Voices 38）；迁移基线 27；0.5.0=44
+const PANEL_OFF_HIT10: usize = 42; // 0.5.4b #6 +1（#4 后 41；Communion+Voices 39）；迁移基线 30；0.5.0=46
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

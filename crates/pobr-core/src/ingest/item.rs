@@ -184,8 +184,8 @@ pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentS
         _ => return,
     };
     for m in modifiers {
-        let keyword_ok = m.keyword_flags == KeywordFlags::NONE
-            || m.keyword_flags == KeywordFlags::ATTACK;
+        let keyword_ok =
+            m.keyword_flags == KeywordFlags::NONE || m.keyword_flags == KeywordFlags::ATTACK;
         if m.name == ModName::from("CriticalStrikeMultiplier")
             && m.flags == ModFlags::NONE
             && keyword_ok
