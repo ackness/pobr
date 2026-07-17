@@ -618,8 +618,13 @@ const BASELINE_DEF_CORE_HIT5: usize = 138; // ItemES 后 138/144（Barrier-Life 
 // BASELINE_DEF_CORE_HIT5 上的说明；gemling 8 列（Life/TotalEHP/5×MaxHit/LifeUnres）翻正。
 // **Item ES 重算重记（+4 @5% 401→405 / +3 @10% 425→428）**：titan+stormweaver 各
 // ES+ESRecoveryCap 翻正；见 BASELINE_DEF_CORE_HIT5 上说明。
-const BASELINE_DEF_HIT5: usize = 405; // ItemES 后 405/450（Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
+// **Refraction buff EvasionGainAsDeflection 重记（+2 @5% 405→407 / +1 @10%
+// 428→429）**：support Refraction I/II 的 Refractive Plating buff 载荷
+// （`support_tempered_valour_deflection_rating_%_of_evasion_rating` BASE 20）
+// 经 player buff 允收名单接入（stat_map_engine），wolf-pack DeflectChance
+// 0.80x→1.00x（@5%+@10%）、pathfinder 0.93x→1.00x（@5%）。
+const BASELINE_DEF_HIT5: usize = 407; // Refraction 后 407/450（ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 429; // Refraction 后 429/450（ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs

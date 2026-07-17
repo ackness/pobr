@@ -81,15 +81,35 @@ un-ignored; `ranger-deadeye` Evasion 0.99x vs 0.5.4b golden 29774. The stale
 `ninja-bd-deadeye.txt` embedded PlayerStats predate PoB2's Mageblood modeling
 (res/evasion assertions on that old sample relaxed accordingly).
 
-Remaining after Mageblood, re-triage against fresh `defenceModList` dumps:
-DeflectionRating scaling, offence per-build DPS clusters, ailment magnitude.
+**#2 target — DeflectionRating. ✅ DONE (re-triage + Refraction buff).**
+Re-triage after Mageblood showed the gap-map entry (`monk-martial-artist`
+13476 vs 22312) was **downstream of the Evasion gap**: rating derives from
+`Evasion × EvasionGainAsDeflection%` (CalcDefence.lua:1516-1522, formula
+unchanged in 0.5.4b) and closed to 0.998x once Mageblood landed — the
+deflection canary (`defence_panels_golden::deflection_matches_golden`)
+re-verified against a fresh oracle run and un-ignored, no formula change.
+One genuine deflection-side source remained: the **Refraction I/II support**
+Refractive Plating buff (`sup_str.lua:5984/6023`,
+`support_tempered_valour_deflection_rating_%_of_evasion_rating` BASE 20,
+gated by `MultiplierThreshold ValourStacks/thresholdVar=
+RefractionMinimumValour` — zero setters vendor-wide, so threshold is
+statically 0). Admitted via the player-buff stat-map allowlist plus a
+`MultiplierThreshold` arm in `translate_tag` (thresholdVar accepted only for
+verified zero-setter vars). wolf-pack DeflectChance 0.80x→1.00x, pathfinder
+0.93x→1.00x; def 25-col baseline 405→407 @5% / 428→429 @10%. The same buff's
+`ArmourAppliesTo<El>DamageTaken` payloads stay reported (EHP-side lead:
+wolf-pack TotalEHP 0.76x→0.81x, remainder likely there).
+
+Remaining, re-triage against fresh `defenceModList` dumps: offence per-build
+DPS clusters, ailment magnitude, and the wolf-pack EHP remainder
+(`ArmourAppliesTo<El>DamageTaken`, see #2 above). Each is its own oracle-guided
+investigation; not all are single formula constants (several are unmodeled
+unique/flask interactions).
 Also pending from the vendor bump itself: `check-buff-refs` reports 15
 `vendor_ref` line-hash drifts in `data/overlay-common/buff_definitions.json`
 (e.g. OnslaughtFlask/ShapersPresence/UnholyMight) — the 4.5.4.3 upgrade swapped
 the vendor without the manual buff re-review; each drifted buff needs its
 vendor lines re-checked for semantic changes, then `--write` to refresh.
-Each is its own oracle-guided investigation; not all are single formula
-constants (several are unmodeled unique/flask interactions).
 
 ## Tooling
 

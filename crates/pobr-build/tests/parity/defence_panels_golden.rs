@@ -97,13 +97,18 @@ fn block_chance_zero_on_non_shield_builds() {
 /// `DeflectChance`/`DeflectionRating` @5%（13-G10）：huntress/monk 系
 /// `Gain Deflection Rating equal to N% of Evasion` build 是现成 fixture；
 /// 无 deflect 来源的 build 双值保持 0（verify 零值不误报）。
+///
+/// 0.5.4b 适配注：Phase 0 曾以「DeflectionRating ~0.60x」ignore 本 canary；
+/// 复盘（oracle 复跑 2026-07-17）确认该缺口整体是 Evasion 缺口（Mageblood，
+/// 6685c30）的下游——rating 派生自 `Evasion × GainAsDeflection%`，公式本身
+/// （CalcDefence.lua:48-54 / :1516-1522）与 vendor 一致，Evasion 闭合后
+/// monk rating 22267.8 vs golden 22312.08（0.998x），无需公式改动。
 #[test]
-#[ignore = "0.5.4b DeflectionRating 公式适配缺口（~0.60x）；见 docs/adapting-to-0.5.4b.md Phase 1"]
 fn deflection_matches_golden() {
     let data = load_data();
     for name in [
         "huntress-spirit-walker-twister", // rating 5666.7 / chance 37
-        "monk-martial-artist-twister",    // rating 11229.76 / chance 58
+        "monk-martial-artist-twister",    // rating 22312.08 / chance 84
         "warrior-titan-shield-wall",      // rating 0.84 / chance 0
         "sorceress-stormweaver-comet",    // 0 / 0
     ] {

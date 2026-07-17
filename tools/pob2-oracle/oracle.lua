@@ -932,7 +932,7 @@ end
 local defenceModList = {}
 do
 	local pdb = mainEnv.player.modDB
-	for _, name in ipairs({ "Armour", "Evasion", "ArmourAndEvasion", "Defences", "EnergyShield" }) do
+	for _, name in ipairs({ "Armour", "Evasion", "ArmourAndEvasion", "Defences", "EnergyShield", "DeflectionRating", "EvasionGainAsDeflection", "ArmourGainAsDeflection", "DeflectEffect" }) do
 		for _, mtype in ipairs({ "BASE", "INC", "MORE" }) do
 			pcall(function()
 				for _, m in ipairs(pdb:Tabulate(mtype, nil, name)) do

@@ -731,6 +731,12 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         "FireDamage" => Ok(vec!["FireDamage"]),
         "ColdDamage" => Ok(vec!["ColdDamage"]),
         "LightningDamage" => Ok(vec!["LightningDamage"]),
+        // Refraction I/II support（`sup_str.lua:5984/6023` Refractive Plating buff，
+        // `support_tempered_valour_deflection_rating_%_of_evasion_rating` → BASE 20）：
+        // 消费方 = `calc::defence_panels::calc_deflection`（CalcDefence.lua:1516
+        // `Evasion × ΣBASE EvasionGainAsDeflection / 100`）。同 buff 的
+        // ArmourAppliesTo<El>DamageTaken 载荷暂无消费方，维持上报（EHP 侧任务）。
+        "EvasionGainAsDeflection" => Ok(vec!["EvasionGainAsDeflection"]),
         // Sigil of Power `circle_of_power_max_stages` → 玩家 `Multiplier:
         // SigilOfPowerMaxStages` BASE（vendor 消费点 = GetMultiplier 动态上限
         // ModStore.lua:369；PoBR 编排层把 buff 载荷中 `Multiplier:` BASE 桥进
@@ -1780,6 +1786,47 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 limit_actor: None,
                 invert: matches!(tag.get("invert"), Some(StatMapValue::Bool(true))),
                 limit_total: matches!(tag.get("limitTotal"), Some(StatMapValue::Bool(true))),
+            })
+        }
+        // 阈值 gate（vendor ModStore.lua:429-459）：`mult = GetMultiplier(var)`，
+        // `threshold = tag.threshold or GetMultiplier(thresholdVar)`，落错侧跳过。
+        // `thresholdVar` 形态只准入 **已核实全 vendor 树零 setter** 的变量
+        // （GetMultiplier 对未设变量恒返 0 → 阈值恒 0，静态折算无损）；有 setter
+        // 的（如 Attrition `AttritionCullSeconds`）维持 Unsupported——静态折 0 会
+        // 错开 gate。actor/thresholdActor/scalar/equals 变体由 keys_subset 挡下。
+        "MultiplierThreshold" => {
+            if !keys_subset_of(&["type", "var", "threshold", "thresholdVar", "upper"]) {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "MultiplierThreshold 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            let Some(var) = text("var") else {
+                return Err(UnsupportedReason::UnsupportedTag(
+                    "MultiplierThreshold 缺 var".into(),
+                ));
+            };
+            let threshold = match (number("threshold"), text("thresholdVar")) {
+                (Some(t), None) => t,
+                // Refraction I/II `RefractionMinimumValour`（sup_str.lua:5978-6024）：
+                // 全 vendor 树无任何 setter → 恒 0（ValourStacks ≥ 0 恒过 gate，
+                // 与 vendor 默认配置行为一致）。
+                (None, Some(v)) if v == "RefractionMinimumValour" => 0.0,
+                (None, Some(v)) => {
+                    return Err(UnsupportedReason::UnsupportedTag(format!(
+                        "MultiplierThreshold thresholdVar 非零 setter 未核实：{v}"
+                    )));
+                }
+                _ => {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "MultiplierThreshold 缺 threshold".into(),
+                    ));
+                }
+            };
+            Ok(ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper: matches!(tag.get("upper"), Some(StatMapValue::Bool(true))),
             })
         }
         "PerStat" => {
@@ -3401,6 +3448,78 @@ mod tests {
             .with_multiplier("SigilOfPowerStage", 9.0)
             .with_multiplier("SigilOfPowerMaxStages", 4.0);
         assert_eq!(m.effective_number(&cfg9), Some(68.0));
+    }
+
+    /// Refraction II 形态（vendor sup_str.lua:6023-6025：`support_tempered_
+    /// valour_deflection_rating_%_of_evasion_rating` → `EvasionGainAsDeflection
+    /// BASE 20` + GlobalEffect Buff "Refractive Plating" + MultiplierThreshold
+    /// ValourStacks/thresholdVar=RefractionMinimumValour）→ 玩家侧 BASE，
+    /// threshold 静态折 0（该 var 全 vendor 树零 setter），默认 cfg 下生效。
+    /// oracle 钉值（wolf-pack）：tree 28 + 本载荷 20 = 48%，rating 11791.52。
+    #[test]
+    fn player_buff_refraction_evasion_gain_as_deflection_maps() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportRefractionPlayerTwo": { "1": {
+                 "support_tempered_valour_deflection_rating_%_of_evasion_rating": {
+                   "mods": [ { "kind": "mod", "name": "EvasionGainAsDeflection",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" },
+                                         { "type": "MultiplierThreshold", "var": "ValourStacks",
+                                           "thresholdVar": "RefractionMinimumValour" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SupportRefractionPlayerTwo",
+            None,
+            "support_tempered_valour_deflection_rating_%_of_evasion_rating",
+            20.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "EvasionGainAsDeflection");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(20.0));
+        assert_eq!(
+            m.tags,
+            vec![crate::ModTag::MultiplierThreshold {
+                var: "ValourStacks".into(),
+                threshold: 0.0,
+                upper: false,
+            }],
+            "thresholdVar 静态折 0，GlobalEffect 剥除"
+        );
+        // 默认 cfg（ValourStacks 未注入 = 0）：0 ≥ 0 → 生效，与 vendor 默认一致。
+        assert!(m.matches(&crate::CalcConfig::new()));
+    }
+
+    /// MultiplierThreshold thresholdVar 有 setter（Attrition
+    /// `AttritionCullSeconds`，act_str.lua:1258 设 Multiplier）→ 静态折 0 会
+    /// 错开 gate，维持 Unsupported 整条上报。
+    #[test]
+    fn player_buff_threshold_var_with_setter_reported() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "AttritionPlayer": { "1": {
+                 "attrition_cull_payload": {
+                   "mods": [ { "kind": "mod", "name": "EvasionGainAsDeflection",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff" },
+                                         { "type": "MultiplierThreshold", "var": "EnemyPresenceSeconds",
+                                           "thresholdVar": "AttritionCullSeconds" } ] } ] } } } } }"#,
+        );
+        assert!(matches!(
+            map_player_buff_stat(
+                &catalog,
+                "AttritionPlayer",
+                None,
+                "attrition_cull_payload",
+                1.0,
+            ),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
     }
 
     /// Sigil of Power 最大层数载荷（`circle_of_power_max_stages` →
