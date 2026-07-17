@@ -696,8 +696,17 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // huntress-ritualist TotalDPS 0.68x→0.99x（AvgDamage/CritChance/CritMultiplier 同翻）、
 // witch-abyssal-lich TotalDPS 0.62x→0.91x（Speed 0.91x→1.00x、CritChance 0.98x、
 // CritMultiplier 0.75x→0.97x，其中 Speed/CritChance @5% 翻正、DPS 未回带）。
-const BASELINE_OFF_HIT5: usize = 52; // Communion+Voices 后 52/80（mana-mult 46；Silver-speed 45；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 59; // Communion+Voices 后 59/80（mana-mult 55；Silver-speed 54；迁移基线 47；0.5.0=74）
+// **0.5.4b #4 grenade 短语解禁重记（off +4 @5% 52→56 / +3 @10% 59→62）**：vendor
+// 0.22.0 ModParser gem 名注册循环新增 `not grantedEffect.fromItem` 排除
+// （ModParser.lua:6423）——`MeleeGrenadeLauncherPlayer`（name "Grenade"，fromItem）
+// 不再抢注 skillNameList，`grenade` / `for grenade skills` 短语恢复为 live
+// `SkillType.Grenade` tag（run-parsemod 双证）。PR#53 时代（0.21 语义）的抽取侧
+// 死条目/惰性改写撤销 + mod_parser_rules/parsed_mods 再生成。deadeye 3×15 CDR
+// 树词条（oracle extraModList 钉源 Tree:21077/354/48429）生效：deadeye Speed
+// 0.65x→1.00x（翻正）、TotalDPS 0.53x→0.83x；gemling Speed/AvgDamage/TotalDPS/
+// CombinedDPS 全部 1.00-1.04x 翻正。
+const BASELINE_OFF_HIT5: usize = 56; // grenade 短语解禁后 56/80（Communion+Voices 52；mana-mult 46；迁移基线 39；0.5.0=71）
+const BASELINE_OFF_HIT10: usize = 62; // grenade 短语解禁后 62/80（Communion+Voices 59；mana-mult 55；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -762,8 +771,10 @@ const BASELINE_OFF_HIT10: usize = 59; // Communion+Voices 后 59/80（mana-mult 
 // ritualist TotalDotDPS 0.60x→1.00x / CombinedDPS 0.63x→0.99x（LowLife 增伤 +
 // sinister 珠宝的 damaging-ailment-magnitude 词条同时抬 bleed/poison 基底）；
 // abyssal-lich dot 列随 hit 侧收敛入 @10% 带。
-const BASELINE_DOT_HIT5: usize = 13; // Communion+Voices 后 13/37（mana-mult 11；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 18; // Communion+Voices 后 18/37（mana-mult 13；迁移基线 11；0.5.0=28）
+// **0.5.4b #4 grenade 短语解禁重记（dot +1 @5% 13→14 / +1 @10% 18→19）**：
+// gemling CombinedDPS 0.65x→1.04x 翻正（见 BASELINE_OFF_HIT5 上说明）。
+const BASELINE_DOT_HIT5: usize = 14; // grenade 短语解禁后 14/37（Communion+Voices 13；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 19; // grenade 短语解禁后 19/37（Communion+Voices 18；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -781,8 +792,8 @@ const BASELINE_DOT_HIT10: usize = 18; // Communion+Voices 后 18/37（mana-mult 
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 38; // 0.5.4b #4 Communion+Voices 后 38/80（迁移基线 27；0.5.0=44）
-const PANEL_OFF_HIT10: usize = 39; // 0.5.4b #4 Communion+Voices 后 39/80（迁移基线 30；0.5.0=46）
+const PANEL_OFF_HIT5: usize = 40; // 0.5.4b #4（Communion+Voices 38；grenade 短语解禁 +2）；迁移基线 27；0.5.0=44
+const PANEL_OFF_HIT10: usize = 41; // 0.5.4b #4（Communion+Voices 39；grenade 短语解禁 +2）；迁移基线 30；0.5.0=46
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

@@ -8325,7 +8325,7 @@
           "type": "Inc",
           "value": 10.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -10452,7 +10452,7 @@
           "type": "Inc",
           "value": 12.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -11404,7 +11404,7 @@
           "type": "Inc",
           "value": 15.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -23564,7 +23564,7 @@
           "type": "Inc",
           "value": 40.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -30055,7 +30055,7 @@
           "type": "Inc",
           "value": -80.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]

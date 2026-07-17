@@ -126,23 +126,23 @@ const POBR_EXTRA_TAG_PHRASES: &[(&str, &str)] = &[
 
 /// vendor 死条目（B3 裁决）：modFlagList 里存在、但 vendor `parseMod` 运行时**永不
 /// 命中**的 flag 短语——skillNameList 的 SkillName 剥离（order=1，在 flag scan
-/// 之前）抢先吃掉短语中的技能名（`for grenade skills` 中 `grenade` 被剥成
-/// SkillName tag，残留 `forSkills` → 整行 extra 非空 → PoB2 树加载丢弃该行）。
-/// 抽取表保留这些条目会让 engine 比 vendor「多生效」词条（deadeye/gemling 实测
-/// +45% CDR over-apply）。裁决方法：`tools/pob2-oracle/run-parsemod.sh` 实喂词条
-/// 看 leftover；版本升级后若 parity 出现同型 over-apply，用同一方法审计新条目。
-const VENDOR_DEAD_FLAG_PHRASES: &[&str] = &["for grenade skills"];
+/// 之前）抢先吃掉短语中的技能名，残留非空 → 整行不生效。裁决方法：
+/// `tools/pob2-oracle/run-parsemod.sh` 实喂词条看 leftover；版本升级后 parity
+/// 出现同型 over/under-apply 时用同一方法重审。
+///
+/// **0.5.4b（vendor 0.22.0）清空 grenade 项**：vendor gem 名注册循环新增
+/// `not grantedEffect.fromItem` 排除（ModParser.lua:6423，0.21→0.22 delta），
+/// `MeleeGrenadeLauncherPlayer`（name "Grenade"，fromItem）不再注册
+/// skillNameList → `grenade` / `for grenade skills` 恢复为 modFlagList 的
+/// **live** `SkillType.Grenade` tag（run-parsemod 实证：`15% increased
+/// Cooldown Recovery Rate for Grenade Skills` → CooldownRecovery INC 15 +
+/// SkillType 159，leftover 空）。0.21 时代的死条目/抢先改写（PR#53）随之撤销；
+/// deadeye 3×15 CDR 树词条 under-apply（Speed 0.164 vs oracle 0.254）即此根因。
+const VENDOR_DEAD_FLAG_PHRASES: &[&str] = &[];
 
-/// vendor skillNameList 抢先条目（B3 死条目机制的**改写**变体）：modFlagList 的裸
-/// `grenade` 短语在 vendor 运行时永不产 SkillType tag——skillNameList（order=1）
-/// 先把词剥成 `SkillName{"Grenade"}`（技能名单里存在字面名 "Grenade" 的条目），
-/// 残留恰好可解析 → 整行保留但 tag 恒不匹配（无真实技能叫 "grenade"）= 零效果。
-/// ModCache golden 逐字对齐：`12% increased Grenade Damage` → `Damage INC 12 +
-/// SkillName{"Grenade"}`；oracle 探针（塞词条到 gemling 戒指）实测 ratio=1.0000。
-/// 抽取表保留 SkillType payload 会让 engine 比 vendor 多生效（gemling/deadeye
-/// 全类型 inc +60 over-apply，AvgDmg 1.13x 根因）。与死条目的区别：这里 vendor
-/// 行为是「保留行 + 惰性 tag」而非丢行，故改写 payload 而非剔除条目。
-const VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES: &[(&str, &str)] = &[("grenade", "Grenade")];
+/// vendor skillNameList 抢先条目（机制说明见 [`VENDOR_DEAD_FLAG_PHRASES`]——
+/// 「保留行 + 惰性 SkillName tag」改写变体）。0.5.4b 起清空（同上 fromItem 排除）。
+const VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES: &[(&str, &str)] = &[];
 
 /// 完整 overlay 文档（生成侧；消费侧 schema =
 /// [`pobr_data::catalog::parser_rules::ModParserRulesDoc`]，serde 形状一致）。
