@@ -37,6 +37,14 @@ fn discover_builds() -> Vec<PathBuf> {
         .filter(|p| p.is_dir() && p.join("code.txt").exists() && p.join("meta.json").exists())
         .collect();
     dirs.sort();
+    // Debug aid: POBR_ONLY_BUILD=<substring> narrows the dashboard to matching
+    // build dirs so POBR_DBG_* channels stay readable. Never set in CI.
+    if let Ok(filter) = std::env::var("POBR_ONLY_BUILD") {
+        dirs.retain(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().contains(&filter))
+        });
+    }
     dirs
 }
 
@@ -759,8 +767,8 @@ const BASELINE_DEF_HIT10: usize = 434; // Communion+Voices 后 434/450（Refract
 // （CritChance/CritMult 1.00x；ES 12124→12437 vs golden 12434、MaxHit 五族 +
 // TotalEHP 0.97-0.98x→1.00x——def 列先前已在 5% 带内，def 计数不变）。
 // 18 build 逐格 diff 仅此两 build 变动。
-const BASELINE_OFF_HIT5: usize = 76; // #8 Zarokh's Gift 后 76/80（#6+#7 合并 73；#6 单独 71；#7 单独 60；迁移基线 39）
-const BASELINE_OFF_HIT10: usize = 76; // #8 后 76/80（#6+#7 合并 75；#6 单独 73；#7 单独 66；迁移基线 47；0.5.0=74）
+const BASELINE_OFF_HIT5: usize = 78; // #10 进攻残差精修后 78/80（deadeye Point Blank DistanceRamp 0.83x→1.00x +2 格；twister Barrage repeats 0.98→1.00、warrior 局部 adds 泄漏 1.02/1.05→1.00 原在带内；#8 后 76；#6+#7 合并 73；迁移基线 39）
+const BASELINE_OFF_HIT10: usize = 78; // #10 后 78/80（#8 后 76；#6+#7 合并 75；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -864,8 +872,8 @@ const BASELINE_OFF_HIT10: usize = 76; // #8 后 76/80（#6+#7 合并 75；#6 单
 // 0.996→1.02）经点燃 ∝ 火源² 放大——命中侧存量项，非 warcry 机制。titan 随动：
 // TotalDotDPS 0.98→1.01、TotalDPS 0.98→1.05（同为被遮蔽的原有高估暴露，
 // 仍在 @5% 带内）。其余 16 build 无 warcry，逐值不变。
-const BASELINE_DOT_HIT5: usize = 31; // #8+#9 合并实测 31/37（#8 单独 31；#9 单独 27；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 34; // #8+#9 合并实测 34/37（#8 单独 33；#9 单独 32；迁移基线 11；0.5.0=28）
+const BASELINE_DOT_HIT5: usize = 34; // #10 后 34/37（deadeye ignite 链随 Point Blank 修复 0.69x→1.00x + smith/titan dot 随局部 adds 剔除回带；#8+#9 合并 31；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 36; // #10 后 36/37（#8+#9 合并 34；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。

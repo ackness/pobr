@@ -405,6 +405,12 @@ pub(crate) fn aggregate_inc_more(
                 c.name, c.value, c.raw_text
             );
         }
+        for c in db.contributions(ModType::More, cfg, &generic_names) {
+            eprintln!(
+                "[POBR_POOL_MORE] {:?} {} src={:?}",
+                c.name, c.value, c.raw_text
+            );
+        }
     }
 
     // PoB2-PoE2：类型化 inc/more 只按分量**最终伤害类型**聚合，**不**叠加转换源类型
