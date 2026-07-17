@@ -734,9 +734,17 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // Refraction I/II support（`sup_str.lua:5984/6023` Refractive Plating buff，
         // `support_tempered_valour_deflection_rating_%_of_evasion_rating` → BASE 20）：
         // 消费方 = `calc::defence_panels::calc_deflection`（CalcDefence.lua:1516
-        // `Evasion × ΣBASE EvasionGainAsDeflection / 100`）。同 buff 的
-        // ArmourAppliesTo<El>DamageTaken 载荷暂无消费方，维持上报（EHP 侧任务）。
+        // `Evasion × ΣBASE EvasionGainAsDeflection / 100`）。
         "EvasionGainAsDeflection" => Ok(vec!["EvasionGainAsDeflection"]),
+        // 同 buff 的 `support_tempered_valour_%_armour_to_apply_to_elemental_damage`
+        // → ArmourAppliesTo<El>DamageTaken BASE 30（Refraction II）。消费方 =
+        // `calc::taken::armour_applies_pct`（vendor CalcDefence.lua:2361-2368
+        // `percentOfArmourApplies` → `effectiveAppliedArmour`，进 per-type
+        // DamageReduction / MaximumHit / EHP）。tag 形态与 deflection 载荷同
+        // （GlobalEffect + MultiplierThreshold RefractionMinimumValour 静态折 0）。
+        "ArmourAppliesToFireDamageTaken" => Ok(vec!["ArmourAppliesToFireDamageTaken"]),
+        "ArmourAppliesToColdDamageTaken" => Ok(vec!["ArmourAppliesToColdDamageTaken"]),
+        "ArmourAppliesToLightningDamageTaken" => Ok(vec!["ArmourAppliesToLightningDamageTaken"]),
         // Sigil of Power `circle_of_power_max_stages` → 玩家 `Multiplier:
         // SigilOfPowerMaxStages` BASE（vendor 消费点 = GetMultiplier 动态上限
         // ModStore.lua:369；PoBR 编排层把 buff 载荷中 `Multiplier:` BASE 桥进
@@ -3494,6 +3502,67 @@ mod tests {
         );
         // 默认 cfg（ValourStacks 未注入 = 0）：0 ≥ 0 → 生效，与 vendor 默认一致。
         assert!(m.matches(&crate::CalcConfig::new()));
+    }
+
+    /// 同 buff 的护甲折算载荷（vendor sup_str.lua:6019-6021：`support_tempered_
+    /// valour_%_armour_to_apply_to_elemental_damage` → ArmourAppliesTo{Fire,Cold,
+    /// Lightning}DamageTaken BASE 30，tag 形态与 deflection 载荷同）→ 三条玩家侧
+    /// BASE，消费方 `calc::taken::armour_applies_pct`。oracle 钉值（wolf-pack）：
+    /// tree 84 + 本载荷 30 = 114%，FireEffectiveAppliedArmour 21181.2。
+    #[test]
+    fn player_buff_refraction_armour_applies_to_elements_maps() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportRefractionPlayerTwo": { "1": {
+                 "support_tempered_valour_%_armour_to_apply_to_elemental_damage": {
+                   "mods": [ { "kind": "mod", "name": "ArmourAppliesToFireDamageTaken",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" },
+                                         { "type": "MultiplierThreshold", "var": "ValourStacks",
+                                           "thresholdVar": "RefractionMinimumValour" } ] },
+                             { "kind": "mod", "name": "ArmourAppliesToColdDamageTaken",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" },
+                                         { "type": "MultiplierThreshold", "var": "ValourStacks",
+                                           "thresholdVar": "RefractionMinimumValour" } ] },
+                             { "kind": "mod", "name": "ArmourAppliesToLightningDamageTaken",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" },
+                                         { "type": "MultiplierThreshold", "var": "ValourStacks",
+                                           "thresholdVar": "RefractionMinimumValour" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SupportRefractionPlayerTwo",
+            None,
+            "support_tempered_valour_%_armour_to_apply_to_elemental_damage",
+            30.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let names: Vec<&str> = items
+            .iter()
+            .map(|item| {
+                let MappedItem::Modifier(m) = item else {
+                    panic!("期望 Modifier");
+                };
+                assert_eq!(m.mod_type, ModType::Base);
+                assert_eq!(m.value.as_number(), Some(30.0));
+                // 默认 cfg（ValourStacks 未注入 = 0）：0 ≥ 0 → 生效。
+                assert!(m.matches(&crate::CalcConfig::new()));
+                m.name.as_str()
+            })
+            .collect();
+        assert_eq!(
+            names,
+            vec![
+                "ArmourAppliesToFireDamageTaken",
+                "ArmourAppliesToColdDamageTaken",
+                "ArmourAppliesToLightningDamageTaken",
+            ]
+        );
     }
 
     /// MultiplierThreshold thresholdVar 有 setter（Attrition

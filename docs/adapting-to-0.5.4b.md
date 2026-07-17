@@ -100,11 +100,32 @@ verified zero-setter vars). wolf-pack DeflectChance 0.80x→1.00x, pathfinder
 `ArmourAppliesTo<El>DamageTaken` payloads stay reported (EHP-side lead:
 wolf-pack TotalEHP 0.76x→0.81x, remainder likely there).
 
+**#3 target — `ArmourAppliesTo<El>DamageTaken` (Refraction buff payload).
+✅ DONE.** The consumption chain already existed end-to-end
+(`calc::taken::armour_applies_pct` → `build_mitigation_ctx` → per-type
+DamageReduction / MaximumHit / EHP, mirroring CalcDefence.lua:2361-2368
+`percentOfArmourApplies` → `effectiveAppliedArmour`); tree-sourced percentages
+flow through `mod_parser` ("X% of Armour also applies to Y damage taken").
+The only gap was the player-buff stat-map allowlist: the Refractive Plating
+buff's second stat key
+(`support_tempered_valour_%_armour_to_apply_to_elemental_damage`,
+`sup_str.lua:6019-6021`, three `ArmourAppliesTo{Fire,Cold,Lightning}
+DamageTaken` BASE 30 mods with the same GlobalEffect + MultiplierThreshold
+tags as the deflection payload) hit `UnknownModName`. Oracle attribution
+(extended `defenceModList` name set) pins wolf-pack at tree 84 + buff 30 =
+114% per element, `<El>EffectiveAppliedArmour` = 18580 × 1.14 = 21181.2.
+Admitting the three names closes wolf-pack Fire/Cold/LightMaxHit
+0.94x→0.96x (@5% hits) and TotalEHP 0.81x→0.88x; def 25-col baseline
+407→410 @5% (429 @10% unchanged). The EHP remainder is **not** this channel:
+Armour itself 0.98x (18169.78 vs 18580), ChaosMaxHit 0.87x (oracle
+`ChaosEffectiveAppliedArmour` = 0 — chaos gap is elsewhere), and Life 1.11x
+(PoBR overestimate 2973.6 vs 2674).
+
 Remaining, re-triage against fresh `defenceModList` dumps: offence per-build
-DPS clusters, ailment magnitude, and the wolf-pack EHP remainder
-(`ArmourAppliesTo<El>DamageTaken`, see #2 above). Each is its own oracle-guided
-investigation; not all are single formula constants (several are unmodeled
-unique/flask interactions).
+DPS clusters, ailment magnitude, and the wolf-pack EHP remainder decomposed
+above (Armour 0.98x / ChaosMaxHit 0.87x / Life 1.11x). Each is its own
+oracle-guided investigation; not all are single formula constants (several
+are unmodeled unique/flask interactions).
 Also pending from the vendor bump itself: `check-buff-refs` reports 15
 `vendor_ref` line-hash drifts in `data/overlay-common/buff_definitions.json`
 (e.g. OnslaughtFlask/ShapersPresence/UnholyMight) — the 4.5.4.3 upgrade swapped

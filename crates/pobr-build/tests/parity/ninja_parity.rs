@@ -623,7 +623,14 @@ const BASELINE_DEF_CORE_HIT5: usize = 138; // ItemES 后 138/144（Barrier-Life 
 // （`support_tempered_valour_deflection_rating_%_of_evasion_rating` BASE 20）
 // 经 player buff 允收名单接入（stat_map_engine），wolf-pack DeflectChance
 // 0.80x→1.00x（@5%+@10%）、pathfinder 0.93x→1.00x（@5%）。
-const BASELINE_DEF_HIT5: usize = 407; // Refraction 后 407/450（ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+// **Refraction buff ArmourAppliesTo<El>DamageTaken 重记（+3 @5% 407→410）**：
+// 同 buff 的 `support_tempered_valour_%_armour_to_apply_to_elemental_damage`
+// 载荷（三条 BASE 30）经同一 player buff 允收名单接入，消费方
+// `calc::taken::armour_applies_pct`（tree 84 + buff 30 = 114%，oracle 钉值
+// FireEffectiveAppliedArmour 21181.2）。wolf-pack Fire/Cold/LightMaxHit
+// 0.94x→0.96x（@5% 翻正）、TotalEHP 0.81x→0.88x（余量 = Armour 0.98x 本体
+// 差 + ChaosMaxHit 0.87x + Life 1.11x，均与本通道无关）。@10% 无变化。
+const BASELINE_DEF_HIT5: usize = 410; // ArmourAppliesTo 后 410/450（Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
 const BASELINE_DEF_HIT10: usize = 429; // Refraction 后 429/450（ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
