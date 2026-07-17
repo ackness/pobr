@@ -193,10 +193,41 @@ pub fn dps_end_factors(
     let activate_twice = db
         .sum(ModType::Base, cfg, &[ModName::from("GrenadeActivateTwice")])
         .min(100.0);
+    // Barrage repeats（vendor CalcOffence.lua:962-976）：Barrageable 技能被
+    // Barrage buff 授予 SequentialProjectiles + BarrageRepeats 时，写入
+    // `DPS MORE (1 + Σ BarrageRepeats) × mod(BarrageRepeatDamage)`。vendor 把
+    // 该值**原样**当 MORE 百分比（repeats=1 → MORE 2 → ×1.02，oracle 实证
+    // spirit-walker-twister DpsMultiplier=1.02）——忠实复刻，不换算为倍数。
+    // ponytail: vendor 同块的 else 分支（crossbow barrage 的 additionalProjectiles
+    // → 攻速惩罚 ReplaceMod）无 fixture 覆盖，暂不实现。
+    let barrage_repeats_more = {
+        let barrageable = cfg.skill_types.intersects(SkillTypes::BARRAGEABLE)
+            && db.flag(cfg, ModName::from("SequentialProjectiles"))
+            && !db.flag(cfg, ModName::from("OneShotProj"))
+            && !db.flag(cfg, ModName::from("NoAdditionalProjectiles"))
+            && !db.flag(cfg, ModName::from("TriggeredBySnipe"));
+        let repeats = db.sum(ModType::Base, cfg, &[ModName::from("BarrageRepeats")]);
+        if barrageable && repeats > 0.0 {
+            let repeat_damage_names = [ModName::from("BarrageRepeatDamage")];
+            let repeat_damage = (1.0 + db.sum(ModType::Inc, cfg, &repeat_damage_names) / 100.0)
+                * db.more(cfg, &repeat_damage_names);
+            let dps_multi = (1.0 + repeats) * repeat_damage;
+            // vendor MoreInternal 逐名桶百分比取整（ModList.lua:143
+            // `result * round(modResult, 2)`）：Barrage Repeats 的 DPS MORE 桶
+            // 折算后取整到 0.01（1.65 → ×1.0165 → ×1.02，oracle 实证
+            // spirit-walker DpsMultiplier=1.02）。
+            // ponytail: 与 db.more("DPS") 分桶各自取整——vendor 把二者并在同一
+            // "DPS" 名桶先乘后取整，语料中无并存场景，出现时再并桶。
+            ((1.0 + dps_multi / 100.0) * 100.0).round() / 100.0
+        } else {
+            1.0
+        }
+    };
     let dps_multiplier = skill_dps_multiplier.unwrap_or(1.0)
         * (1.0 + db.sum(ModType::Inc, cfg, &dps_names) / 100.0)
         * db.more(cfg, &dps_names)
-        * (1.0 + activate_twice / 100.0);
+        * (1.0 + activate_twice / 100.0)
+        * barrage_repeats_more;
     let quantity_multiplier = db
         .sum(ModType::Base, cfg, &[ModName::from("QuantityMultiplier")])
         .max(1.0);

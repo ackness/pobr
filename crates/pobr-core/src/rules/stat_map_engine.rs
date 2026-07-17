@@ -817,6 +817,12 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // `inject_per_x_multipliers` 预灌（cfg.multipliers["Mana"] = 全管线池值）。
         // monk-invoker-frost-bomb TotalDPS 0.66x 根因（缺 80% 闪电 gain-as）。
         "DamageGainAsLightning" => Ok(vec!["DamageGainAsLightning"]),
+        // （#10-2）Barrage buff（BarragePlayer `empower_barrage_*`，act_dex.lua:
+        // 216-224）：`BarrageRepeats` BASE / `BarrageRepeatDamage` MORE。消费方 =
+        // `calc::scaled_damage::dps_end_factors` 的 Barrage repeats DPS 乘区
+        // （vendor CalcOffence.lua:962-976，Barrageable + SequentialProjectiles 门控）。
+        "BarrageRepeats" => Ok(vec!["BarrageRepeats"]),
+        "BarrageRepeatDamage" => Ok(vec!["BarrageRepeatDamage"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -877,7 +883,9 @@ fn collect_player_buff_flag(
     items: &mut Vec<MappedItem>,
 ) -> Result<(), UnsupportedReason> {
     let name = element.name.as_deref().unwrap_or("?");
-    if !is_cross_type_ailment_flag(name) {
+    // `SequentialProjectiles`（Barrage buff，act_dex.lua:219）：消费方 =
+    // `dps_end_factors` 的 Barrage repeats 门控（vendor CalcOffence.lua:962）。
+    if !is_cross_type_ailment_flag(name) && name != "SequentialProjectiles" {
         return Err(UnsupportedReason::UnknownModName(format!("flag:{name}")));
     }
     if !element.flags.is_empty() {
