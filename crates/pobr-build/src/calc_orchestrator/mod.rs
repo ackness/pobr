@@ -478,6 +478,10 @@ pub fn calculate_with_data_session(
     // 6d. 来源授予的条件 flag → cfg 条件桥接（Bonded modifiers / Arcane Surge）。
     inject_condition_bridges(&mut session);
 
+    // 6e. 低生命自动条件（vendor CalcDefence.lua:335-350：未预留比例 ≤ 0.35 →
+    //     Condition:LowLife）。须在预留 mod 注入（4d）与池值可算（6c）之后。
+    session.bridge_low_pool_conditions();
+
     // 诊断 dump（POBR_DBG_UNSUPPORTED / ALLMODS / STAT，parity 排查用）。
     stage_debug_dumps(&session);
 
@@ -592,7 +596,59 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(adjusted);
     }
 
+    // nameSpec-only gem 引用 → skill_id 回填（PoB2 SkillsTab 按 nameSpec 反查
+    // gem 的等价物）：lineage support（如 Atziri's Communion）在 XML 里缺
+    // skillId/gemId，仅有显示名。按归一化名匹配 granted_effects id；未命中
+    // 保持空 id（全部消费点惰性跳过）。
+    if let Some(resolved) = resolve_name_spec_gems(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     build
+}
+
+/// 把 `GemSkillRef { skill_id: "", name_spec: Some(name) }` 的显示名解析为授予
+/// 效果 id。归一化 = 小写 + 仅保留字母数字；候选 id 剥 `Player` 后缀（含
+/// `PlayerTwo/Three` 等 lineage 变体不匹配也无妨——它们的 XML 带 skillId），
+/// support id 另剥 `Support` 前缀（`SupportAtzirisCommunionPlayer` →
+/// `atziriscommunion` = nameSpec "Atziri's Communion" 归一形）。无改动返回 None。
+fn resolve_name_spec_gems(build: &Build, data: &BuildData) -> Option<Build> {
+    fn norm(s: &str) -> String {
+        s.chars()
+            .filter(char::is_ascii_alphanumeric)
+            .map(|c| c.to_ascii_lowercase())
+            .collect()
+    }
+    let pending: Vec<String> = build
+        .socket_groups
+        .iter()
+        .flat_map(|g| &g.gem_skills)
+        .filter(|gem| gem.skill_id.is_empty())
+        .filter_map(|gem| gem.name_spec.clone())
+        .collect();
+    if pending.is_empty() {
+        return None;
+    }
+    let mut lookup: std::collections::HashMap<String, &str> = std::collections::HashMap::new();
+    for id in data.granted_effects.keys() {
+        let stem = id.strip_suffix("Player").unwrap_or(id);
+        let stem = stem.strip_prefix("Support").unwrap_or(stem);
+        lookup.insert(norm(stem), id.as_str());
+    }
+    let mut out = build.clone();
+    let mut changed = false;
+    for group in &mut out.socket_groups {
+        for gem in &mut group.gem_skills {
+            if gem.skill_id.is_empty()
+                && let Some(name) = &gem.name_spec
+                && let Some(id) = lookup.get(&norm(name))
+            {
+                gem.skill_id = (*id).to_string();
+                changed = true;
+            }
+        }
+    }
+    changed.then_some(out)
 }
 
 /// 阶段 1：主技能解析——分等级参数、终态 skillTypes 不动点（vendor

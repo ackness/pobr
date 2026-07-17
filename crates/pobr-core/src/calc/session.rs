@@ -164,6 +164,47 @@ impl CalculationSession {
             .flag(&self.env.cfg, ModName::from(name))
     }
 
+    /// 低生命自动条件桥（vendor CalcDefence.lua:335-350：`(max − reserved)/max ≤
+    /// LowPoolThreshold(0.35)` → `condList["LowLife"] = true`）。0.5.4b 起
+    /// Spirit→Life 保留转换（Atziri's Communion）使重保留 build 自动进入 Low Life，
+    /// 解锁「while on Low Life」族词条（tree + Direstrike 支援 buff）。
+    ///
+    /// 须在全部来源注入后、[`perform_minimal`](Self::perform_minimal) 之前调用
+    /// （预留 mod 已注入，条件在 perform 的聚合查询期生效——vendor 同序：
+    /// doActorLifeManaSpiritReservation 先于 calcs.offence）。预留聚合口径与
+    /// perform 预留段逐式相同（ReservationMultiplier floor4 + efficiency 除数）。
+    /// 显式 config 条件（`conditionLowLife`）优先，不被覆盖。
+    // ponytail: 只桥 Life（唯一有 fixture 佐证的池）；LowMana/LowSpirit 同一
+    // vendor 循环，出现消费 build 时按本函数样板扩展。LowLifePercentage 覆盖
+    // stat（vendor :337）全 fixture 无来源，未建模。
+    pub fn bridge_low_pool_conditions(&mut self) {
+        if self.env.cfg.conditions.contains_key("LowLife") {
+            return;
+        }
+        let life = self.pool_total("MaximumLife");
+        if life <= 0.0 {
+            return;
+        }
+        let db = &self.env.player.mod_db;
+        let cfg = &self.env.cfg;
+        let mult = (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor()
+            / 10_000.0;
+        let eff_names = [
+            ModName::from("LifeReservationEfficiency"),
+            ModName::from("ReservationEfficiency"),
+        ];
+        let eff_inc = db.sum(ModType::Inc, cfg, &eff_names).max(-100.0);
+        let divisor = ((1.0 + eff_inc / 100.0) * db.more(cfg, &eff_names)).max(1e-12);
+        let factor = mult / divisor;
+        let flat = db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * factor;
+        let percent = db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * factor;
+        let reserved = super::survivability::reservation(life, flat, percent).reserved;
+        if (life - reserved) / life <= self.env.cfg.constants.game_constants.game.low_pool_threshold
+        {
+            self.env.cfg.conditions.insert("LowLife".into(), true);
+        }
+    }
+
     pub fn add_modifier_texts(
         &mut self,
         texts: impl IntoIterator<Item = impl AsRef<str>>,

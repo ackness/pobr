@@ -1145,15 +1145,17 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                     "Gem" if in_target_set => {
                         if let Some(cur) = current.as_mut()
                             && attr_bool_default_true(&e, b"enabled")
-                            && let Some(gem_id) = attr_value(&e, b"gemId")
-                            && !gem_id.is_empty()
                         {
+                            let gem_id = attr_value(&e, b"gemId").filter(|v| !v.is_empty());
+                            let skill_id = attr_value(&e, b"skillId").filter(|v| !v.is_empty());
+                            // lineage support（如 Atziri's Communion）序列化时缺
+                            // skillId/gemId，仅有 nameSpec——保留显示名，交编排层
+                            // `stage_build_view` 按 granted_effects 反查回填 id。
+                            let name_spec = attr_value(&e, b"nameSpec").filter(|v| !v.is_empty());
                             // 捕获每个启用 gem 的 skillId + level + quality（active 与
                             // support 皆收）。quality 属性缺失/非法按 0（无品质），对齐
                             // PoB2 SkillsTab.lua 的 `quality` 属性读取（缺省 0）。
-                            if let Some(skill_id) = attr_value(&e, b"skillId")
-                                && !skill_id.is_empty()
-                            {
+                            if skill_id.is_some() || name_spec.is_some() {
                                 let level = attr_value(&e, b"level")
                                     .and_then(|v| v.parse::<u32>().ok())
                                     .unwrap_or(1);
@@ -1166,20 +1168,28 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                 // （calcs 页独立选择）M1 不做，忽略。
                                 let stat_set_index = attr_value(&e, b"statSetIndex")
                                     .and_then(|v| v.parse::<u32>().ok());
-                                // 组内首个启用 gem 视为主动技能（PoB Gem 列表 active 在前）。
-                                if cur.active_skill_id.is_none() {
+                                // 组内首个带 skillId 的启用 gem 视为主动技能
+                                // （PoB Gem 列表 active 在前；nameSpec-only 引用
+                                // 均为 lineage support，不参与主动技能判定）。
+                                if let Some(skill_id) = &skill_id
+                                    && cur.active_skill_id.is_none()
+                                {
                                     cur.active_skill_id = Some(skill_id.clone());
                                     cur.active_gem_level = Some(level);
                                     cur.active_gem_quality = Some(quality);
                                 }
+                                let name_spec_pending = skill_id.is_none();
                                 cur.gem_skills.push(crate::build::GemSkillRef {
-                                    skill_id,
+                                    skill_id: skill_id.unwrap_or_default(),
                                     gem_level: level,
                                     quality,
                                     stat_set_index,
+                                    name_spec: if name_spec_pending { name_spec } else { None },
                                 });
                             }
-                            cur.gem_ids.push(gem_id);
+                            if let Some(gem_id) = gem_id {
+                                cur.gem_ids.push(gem_id);
+                            }
                         }
                     }
                     "StatSetIndex" if in_target_set => {

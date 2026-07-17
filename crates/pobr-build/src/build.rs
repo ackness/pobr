@@ -37,6 +37,12 @@ pub struct GemSkillRef {
     /// `"nil"`，解析归一化为 `None`）。`statSetIndexCalcs`（calcs 页独立选择）
     /// M1 不做，解析忽略。
     pub stat_set_index: Option<u32>,
+    /// PoB `<Gem nameSpec>` 显示名——仅当 XML 缺 `skillId`/`gemId`（lineage
+    /// support 如 Atziri's Communion 的序列化形态）时携带，`skill_id` 此时为空串。
+    /// 编排层 `stage_build_view` 按显示名归一匹配 granted_effects 回填
+    /// `skill_id`（PoB2 SkillsTab 按 nameSpec 反查 gem 的等价物）；未解析成功
+    /// 的引用在全部消费点因 `granted_effects.get("")` 落空而惰性跳过。
+    pub name_spec: Option<String>,
 }
 
 /// 一组同插槽的技能宝石（主动技能 + 其辅助）。简化等价物：用稳定 gem id 表示。
@@ -128,6 +134,7 @@ impl SocketGroup {
             gem_level,
             quality,
             stat_set_index: None,
+            name_spec: None,
         });
         self
     }
@@ -144,6 +151,7 @@ impl SocketGroup {
             gem_level,
             quality: 0,
             stat_set_index: Some(stat_set_index),
+            name_spec: None,
         });
         self
     }

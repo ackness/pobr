@@ -495,6 +495,12 @@ pub(crate) fn spirit_reservation_modifiers(
             let own = level_row(data, &gem.skill_id, gem.gem_level);
             let mut flat = own.and_then(|r| r.spirit_reservation_flat).unwrap_or(0.0);
             let mut mult = 1.0 + own.and_then(|r| r.reservation_multiplier).unwrap_or(0.0) / 100.0;
+            // Spirit→Life 保留转换（vendor CalcDefence.lua:248-254，0.5.4b 新增；
+            // Atziri's Communion support 的 constant stat
+            // `skill_reserves_X_life_permyriad_per_spirit_instead_of_spirit` = 66，
+            // SkillStatMap div=100 → 每点 Spirit 保留 0.66% Life）。命中时该技能的
+            // Spirit 保留整体转为 Life 百分比保留（Spirit 置 0）。
+            let mut spirit_to_life = 0.0;
             // 同组 support：spirit flat（ExtraSpirit）+ reservation_multiplier MORE。
             for sup in &group.gem_skills {
                 if data
@@ -508,6 +514,14 @@ pub(crate) fn spirit_reservation_modifiers(
                     flat += row.spirit_reservation_flat.unwrap_or(0.0);
                     mult *= 1.0 + row.reservation_multiplier.unwrap_or(0.0) / 100.0;
                 }
+                spirit_to_life += data
+                    .effect_stats(&sup.skill_id, sup.gem_level, sup.quality, sup.stat_set_index)
+                    .all()
+                    .filter(|s| {
+                        s.stat == "skill_reserves_X_life_permyriad_per_spirit_instead_of_spirit"
+                    })
+                    .map(|s| s.value / 100.0)
+                    .sum::<f64>();
             }
             // Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy`
             // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
@@ -574,6 +588,58 @@ pub(crate) fn spirit_reservation_modifiers(
             );
             // PoB2 对保留倍率乘积截断到 4 位小数后再乘 base（floor(x, 4)）。
             let mult = (mult * 10000.0).floor() / 10000.0;
+            // Spirit→Life 转换分支（vendor CalcDefence.lua:248-254 + per-pool 循环
+            // name="Life"）：Life.basePercent = Spirit.baseFlat × 每点转换率；
+            // 因子换用 Life 池名（LifeReserved/Reserved、LifeReservationEfficiency/
+            // ReservationEfficiency；宝石品质效率项 pool 无关照除）；百分比
+            // round 2 位（vendor :312）。产出 `LifeReservedPercent` INC 由
+            // perform 预留段消费（ritualist：Eternal Rage 155×0.66×0.9 = 92.07%
+            // → LifeReserved 270 / LifeUnreserved 23，golden 一致）。
+            if spirit_to_life > 0.0 {
+                let life_reserved_names = [
+                    pobr_data::prelude::ModName::from("LifeReserved"),
+                    pobr_data::prelude::ModName::from("Reserved"),
+                ];
+                let l_inc = db.sum(
+                    pobr_data::prelude::ModType::Inc,
+                    &gem_cfg,
+                    &life_reserved_names,
+                );
+                let l_more = db.more(&gem_cfg, &life_reserved_names);
+                let l_factor = if l_more > 0.0 && l_inc > -100.0 {
+                    (100.0 + l_inc) / 100.0 * l_more
+                } else {
+                    0.0
+                };
+                let l_eff_names = [
+                    pobr_data::prelude::ModName::from("LifeReservationEfficiency"),
+                    pobr_data::prelude::ModName::from("ReservationEfficiency"),
+                ];
+                let l_eff = (quality_eff
+                    + db.sum(pobr_data::prelude::ModType::Inc, &gem_cfg, &l_eff_names))
+                .max(-100.0);
+                let l_eff_more = db.more(&gem_cfg, &l_eff_names);
+                let percent = (flat * spirit_to_life * mult * l_factor / (1.0 + l_eff / 100.0)
+                    / l_eff_more
+                    * 100.0)
+                    .round()
+                    / 100.0;
+                if percent > 0.0 {
+                    let origin = ModifierSource::new(SourceId::new(
+                        SourceKind::SkillGem,
+                        format!("spirit.{}", gem.skill_id),
+                    ))
+                    .with_raw_text(format!(
+                        "life reservation from spirit {} ({} × {spirit_to_life}%)",
+                        gem.skill_id, flat
+                    ));
+                    mods.push(
+                        Modifier::number("LifeReservedPercent", ModType::Inc, percent)
+                            .with_origin(origin),
+                    );
+                }
+                continue;
+            }
             let mut reserved = (flat * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
                 .round()
                 .max(0.0);
