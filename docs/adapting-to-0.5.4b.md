@@ -179,8 +179,62 @@ documented in pob2_parity.rs), and frost-bomb 0.66x (golden unchanged
 These moved 6-46% in the 0.5.4b golden with per-build factors — no shared
 constant; each needs its own oracle decomposition.
 
+**#5 target — ailment (ignite) magnitude. ✅ DONE (one root cause: Blazing
+Critical global fire buff).** Re-triage first: the ailment *formula* did not
+change in 0.5.4b — `IgniteChanceMultiplier`/`monsterAilmentThresholdTable`/
+`defaultAilmentDamageTypes`/the `ailmentDPSUncapped` assembly are byte-identical
+between vendors (only `skillData.dpsMultiplier` → `output.DpsMultiplier`, a
+refactor PoBR already mirrors via `dps_end_factors`). Yet 16 of 18 dot goldens
+moved (1.07×–22.4×). Oracle decomposition on the extreme mover
+(`monk-martial-artist-flicker-strike`, dot 0.05x, golden 47→1054) pinned a
+single fire-specific ×4 on the hit: PoBR's stored-Fire range was 0.21x oracle
+while every other damage type sat at the uniform 0.85x hit gap. Per-source
+tabulation (`ORACLE_EXTRA_STATS=DamageGainAsFire`) showed the missing 15%:
+the **Blazing Critical** support (`sup_int.lua:959`) — 0.22.0 added a
+`GlobalEffect effectType=Buff` tag to its
+`support_blazing_crits_gain_%_fire_damage_with_attacks_on_critical_hit` stat,
+turning the 15% `DamageGainAsFire` (Attack + Condition:CritRecently) from a
+dead skill-local mod (old-vendor oracle: absent from the skill modList,
+IgniteDPS 47.54 = PoBR's 47.55 exactly) into a global player buff ("imbue all
+of your Attacks with Fire"). Since ignite chance ∝ fireAvg/threshold and
+magnitude ∝ fireAvg, the buff amplifies IgniteDPS quadratically (×16 on
+flicker). Exactly the three worst dot movers carry the gem (flicker,
+spirit-walker, monk-twister).
+
+Two generic consumption points (no per-gem code):
+- `translate_player_buff_mod_name` allowlist admits `DamageGainAsFire`
+  (consumer = the existing gain-as matrix in `calc::damage::buildGainTable`
+  mirror; flags/Condition tags already translate).
+- `support_buff_specs` now judges support compatibility against **additional
+  granted effects** too (mirroring `buff_skill_specs`): Blazing Critical's
+  host in these builds is Charged Staff, whose gem is Spell-typed — the
+  compatible skill is its hidden Attack additional effect
+  `ChargedStaffShockwavePlayer` (act_int.lua:3387).
+
+Result: monk-twister TotalDotDPS 0.44x→0.98x, CombinedDPS 0.60x→0.96x,
+AverageDamage/TotalDPS 0.60x→0.96x (all into the 5% band); flicker dot
+0.05x→0.72x, spirit-walker 0.23x→0.87x (remainder = the attack AvgDamage
+family's hit gap squared, not a dot-side mechanic). Baselines: off 56→58 @5%
+(62→64 @10%), dot 14→16 @5% (19→21 @10%); def/panel unchanged (CritRecently
+is combat-gated, panel mode unaffected). No ailment canary was left ignored
+(the suite's only `#[ignore]` is the vendor-dependent oracle differential).
+
+Dot-side leftovers, each triaged **not** a 0.5.4b ailment item:
+- `smith-of-kitava` dot 0.20x: hit gap 0.57x squared explains 0.32; the extra
+  residual is the un-modeled *uptime-scaled* Infernal Cry `DamageGainAsFire`
+  12.04% — present and identical in both vendors (old-vendor oracle proves it
+  predates 0.5.4b), i.e. a pre-existing warcry-uptime gap.
+- `deadeye` 0.69x = hit 0.83x², `blood-mage` 0.79x ≈ hit 0.87x² (its ~16%
+  per-hit shortfall is the long-registered pre-0.5.4b item), `titan` 0.91x /
+  `abyssal-lich` 0.94x / `pathfinder` 0.92x track their hit gaps.
+- `frost-bomb` dot 0.87x and `essence-drain` WithDotDPS 1.36x: goldens
+  byte-identical across the flip — pre-existing gaps.
+- `gemling` dot 1.10x over: oracle per-component shows fire stored 1.03x ×
+  stacks 1.05x × slight crit-chance overshoot — downstream of its small
+  hit-side overestimates, no dot-side mechanism.
+
 Remaining elsewhere, re-triage against fresh `defenceModList` dumps:
-ailment magnitude (#5) and the wolf-pack EHP remainder decomposed above
+the wolf-pack EHP remainder decomposed above
 (Armour 0.98x / ChaosMaxHit 0.87x / Life 1.11x). Also ritualist TotalEHP
 moved 1.04x→1.10x with #4a (低血 EHP 口径——vendor 只在显式
 `conditionLowLife` config 下 cap `LifeRecoverable`，PoBR 的 EHP 消费端
