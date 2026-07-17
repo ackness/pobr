@@ -15,12 +15,11 @@
 #   pipeline/regen-all.sh                       # patch 读 config.json；手工域从同 patch 旧产物沿用
 #   OLD_PATCH=4.5.0.3.4 pipeline/regen-all.sh    # 手工域从指定旧版本沿用（跨版本升级）
 #
-# 手工策展 overlay（无 vendor/官方自动通道）：buff_definitions / high_precision_mods /
-# local_mods / vendor_name_aliases —— 跨版本升级时从 OLD_PATCH 沿用，并需人工复核
-# （游戏平衡变更可能使其过时）。
-# special_mods 不在此列：已迁到版本无关的 data/overlay-common/special_mods.json，
-# 新版本目录由 gamedata 加载期自动合并继承，无需逐版本沿用（P1-3）。真正版本特有的
-# special_mods 修正才留在 data/<patch>/overlay/special_mods.json。
+# 手工策展 overlay（无 vendor/官方自动通道）全部已迁到版本无关的
+# data/overlay-common/（special_mods / buff_definitions / high_precision_mods /
+# local_mods / vendor_name_aliases）：新版本目录由 gamedata 加载期自动合并/兜底
+# 继承，无需逐版本沿用（P1-3）。真正版本特有的修正才放 data/<patch>/overlay/<域>.json
+# （加载期按 id 覆盖 common，或对单对象域整份覆盖）。
 
 # 韧性化：不用 -e 全局中止。前置步骤（adapter base/tree）失败仍立即退出（无 base
 # 数据则后续无意义）；overlay 单步失败只记录、续跑其余，末尾汇总。
@@ -125,19 +124,10 @@ soft_step trigger_configs "${SYNC[@]}" gen-trigger-configs --vendor-root "$VENDO
 # stat_id_map（M6 E/F 段 B）须在 stat_descriptions + mod_parser_rules 之后——消费两者跑引擎派生。
 soft_step stat_id_map     "${SYNC[@]}" gen-stat-id-map --overlay-dir "$OVL" --out "$OVL/stat_id_map.json"
 
-# ---- 6) 手工策展 overlay：从 OLD_PATCH 沿用（需人工复核）----
-echo "== [6/8] 手工策展 overlay 从 $OLD_PATCH 沿用"
-# special_mods 已移出：策展条目在 data/overlay-common/，加载期合并继承（P1-3），
-# 不再逐版本沿用。
-for f in buff_definitions high_precision_mods local_mods vendor_name_aliases; do
-    src="data/$OLD_PATCH/overlay/$f.json"
-    if [[ -f "$src" ]]; then
-        cp "$src" "$OVL/$f.json"
-        echo "   carried over: $f.json（人工域，复核游戏平衡变更）"
-    else
-        echo "   WARN: 缺 ${src}，跳过 $f.json" >&2
-    fi
-done
+# ---- 6) 手工策展 overlay：全部迁至 data/overlay-common/，无逐版本沿用 ----
+# special_mods / buff_definitions / high_precision_mods / local_mods /
+# vendor_name_aliases 均在 data/overlay-common/，gamedata 加载期合并/兜底继承（P1-3）。
+# 版本特有修正才落 data/<patch>/overlay/<域>.json。此步已无沿用动作。
 
 # ---- 6b) 手工策展 base 文件：管线不产出，从 OLD_PATCH 沿用（需人工复核版本变更）----
 # 这些是 git 跟踪、无生成器的游戏常量/定义（武器类型、game/character constants、

@@ -62,9 +62,18 @@ top of the machine-generated `.dat` import. The two files this guide is about:
 > it is a correction that only applies to a single game version. `regen-all.sh`
 > no longer carries `special_mods.json` forward between versions — the common
 > layer replaces that manual step (see `docs/version-bump-architecture.md` P1-3).
+>
+> The same version-independent common layer now also holds the other four
+> hand-curated overlay domains — `buff_definitions.json`, `high_precision_mods.json`,
+> `local_mods.json`, `vendor_name_aliases.json` (all in `data/overlay-common/`).
+> The list domain (`buff_definitions`) merges by `id` like `special_mods`; the
+> single-object domains (`high_precision_mods`, `local_mods`) are version-first
+> with common fallback — a `data/<version>/overlay/<file>.json`, if present,
+> overrides the common copy entirely. Add curated edits to the common copy unless
+> they are version-specific.
 
 The remaining overlay files are separate domains (base-item overrides, uniques,
-gem effects, buff/curse definitions, stat descriptions, …). They follow their
+gem effects, curse definitions, stat descriptions, …). They follow their
 own schemas in `crates/pobr-data` and are out of scope here; the same
 "add JSON, no Rust" philosophy applies, and `--check` will grow to cover them if
 they become a common contribution surface.

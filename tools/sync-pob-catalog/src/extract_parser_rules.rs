@@ -384,7 +384,7 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
 /// M6.3 路线 B 抽取期归一：把 `name_map` 的 vendor ModName 归一为 PoBR canonical
 /// StatId（别名表 [`VENDOR_NAME_ALIASES`]）+ 按短语展开聚合名
 /// （[`AGGREGATE_EXPANSION`]）。**源真理 =
-/// `data/4.5.0.3.4/overlay/vendor_name_aliases.json`**（本表的 real-rename 子集
+/// `data/overlay-common/vendor_name_aliases.json`**（本表的 real-rename 子集
 /// 与之一致）；结构归一规格见 `blueprints/m6-alias-table.md` §3。
 ///
 /// 设计：仅改 `names`，不增删条目（保 [`PINNED_SECTION_COUNTS`] 计数）。

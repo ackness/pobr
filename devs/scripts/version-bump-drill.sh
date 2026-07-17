@@ -178,7 +178,10 @@ fi
 
 # ---- [3b] 策展域对账：buff_definitions（F4，机跑通道）----
 step 3b "策展域对账：check-buff-refs（buff_definitions.json）"
+# buff_definitions 已迁至版本无关的 data/overlay-common/（P1-3）；版本特有覆盖若存在
+# 则优先对账，否则对账 common 层基底。
 DEFS="$OVERLAY_DIR/buff_definitions.json"
+[[ -f "$DEFS" ]] || DEFS="$ROOT/data/overlay-common/buff_definitions.json"
 if [[ ! -d "$VENDOR" ]]; then
     echo "SKIP: vendor 检出不存在（${VENDOR}）"
     SKIPPED+=("vendor 缺失 → buff_definitions 对账跳过")
