@@ -823,6 +823,12 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // （vendor CalcOffence.lua:962-976，Barrageable + SequentialProjectiles 门控）。
         "BarrageRepeats" => Ok(vec!["BarrageRepeats"]),
         "BarrageRepeatDamage" => Ok(vec!["BarrageRepeatDamage"]),
+        // （#12 companion allies 层）Loyalty support（SupportLoyaltyPlayer）的
+        // `companion_takes_%_damage_before_you_from_support` → BASE 10（GlobalEffect
+        // /Buff/unscalable，SkillStatMap.lua:2559-2561）。消费方 = perform 的
+        // `inject_companion_life` 门控 + `pool_setup::build_pool_state` companion
+        // 先扣层（CalcDefence.lua:2961-2965 / :3656-3663）。
+        "TakenFromCompanionBeforeYou" => Ok(vec!["TakenFromCompanionBeforeYou"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -1006,6 +1012,92 @@ fn collect_player_buff_mod(
         items.push(MappedItem::Modifier(Box::new(modifier)));
     }
     Ok(())
+}
+
+// ---- #12：minion 域（MinionModifier LIST 载荷 → 召唤物内层 mod） ----
+
+/// 把一条 support/skill stat 经 statmap 翻译为**召唤物侧**内层 modifier 列表
+/// （`MinionModifierEntry.inner` 载荷；消费方 = 编排层 spawn_minions →
+/// `build_minion_context` 通道 1）。
+///
+/// vendor 语义：statmap 的 `mod("MinionModifier","LIST",{ mod = mod(<inner>) })`
+/// 随 support 并入被支援技能 skillModList（CalcActiveSkill.lua merge 循环），
+/// `addMinionModifiers`（CalcPerform.lua:1668-1686）再把内层 mod 注入**该技能的**
+/// 召唤物 modDB——作用域是组内被支援技能的 minion，不是全局。典型 = Loyalty
+/// support `support_trusty_companion_minion_life_+%_final` → Life MORE −30
+/// （wolf-pack 伴侣生命 3231 × 0.7 = 2262 的 MORE 因子，oracle 钉值）。
+///
+/// 第一批允收内层 = `Life`（BASE/INC/MORE；vendor 名 `Life` 归一到 PoBR 生命池
+/// 聚合名 `MaximumLife`，与 buff 域 [`translate_player_buff_mod_name`] 同口径）。
+/// 其余内层（伤害/速度族）暂不准入——minion DPS 不在 parity 面板，宁可跳过不可
+/// 错算。保守门控：外层带 flags/keyword_flags/tags/scalar、内层含
+/// kind/mod_type/name 之外的键的条目整条跳过（返回空，不上报——窄通道，
+/// 未准入形态无消费方）。
+pub fn map_minion_life_stat(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> Vec<Modifier> {
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return Vec::new();
+    };
+    if entry.unextractable {
+        return Vec::new();
+    }
+    let params = MergeParams {
+        div: entry.div,
+        mult: entry.mult,
+        base: entry.base,
+        value: entry.value,
+    };
+    let mut out = Vec::new();
+    for element in &entry.mods {
+        if element.kind != "mod"
+            || element.name.as_deref() != Some("MinionModifier")
+            || element.mod_type.as_deref() != Some("LIST")
+            || !element.flags.is_empty()
+            || !element.keyword_flags.is_empty()
+            || !element.tags.is_empty()
+            || element.scalar.is_some()
+        {
+            continue;
+        }
+        let Some(StatMapValue::Table(wrapper)) = &element.value else {
+            continue;
+        };
+        let Some(StatMapValue::Table(inner)) = wrapper.get("mod") else {
+            continue;
+        };
+        // 内层只接受 `{ kind:"mod", mod_type, name:"Life" }` 的裸形态
+        // （带 tags/flags 的内层 = 额外门控语义，跳过）。
+        if wrapper.len() != 1
+            || inner
+                .keys()
+                .any(|k| !matches!(k.as_str(), "kind" | "mod_type" | "name"))
+        {
+            continue;
+        }
+        if !matches!(inner.get("name"), Some(StatMapValue::Text(n)) if n == "Life") {
+            continue;
+        }
+        let mod_type = match inner.get("mod_type") {
+            Some(StatMapValue::Text(t)) => match t.as_str() {
+                "BASE" => ModType::Base,
+                "INC" => ModType::Inc,
+                "MORE" => ModType::More,
+                _ => continue,
+            },
+            _ => continue,
+        };
+        out.push(Modifier::number(
+            "MaximumLife",
+            mod_type,
+            params.merge(stat_value),
+        ));
+    }
+    out
 }
 
 // ---- M4-L：debuff 域（GlobalEffect effectType=Debuff）敌侧映射 ----
@@ -3326,6 +3418,51 @@ mod tests {
         assert_eq!(
             map_debuff_stat(&catalog, "X", None, "no_such_stat", 1.0),
             MappedOutcome::Unknown
+        );
+    }
+
+    /// （#12）Loyalty 形态（per_stat_set["SupportLoyaltyPlayer"]["1"]）：
+    /// `MinionModifier LIST { mod = Life MORE }` → 召唤物内层 `MaximumLife MORE`
+    /// （名归一，与 buff 域 Life→MaximumLife 同口径）。allow-list 外内层
+    /// （Damage）与带 tag 的外层整条跳过（返回空）。
+    #[test]
+    fn minion_life_stat_maps_loyalty_more_life() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportLoyaltyPlayer": { "1": {
+                 "support_trusty_companion_minion_life_+%_final": {
+                   "mods": [ { "kind": "mod", "name": "MinionModifier", "mod_type": "LIST",
+                               "value": { "mod": { "kind": "mod", "mod_type": "MORE",
+                                                   "name": "Life" } } } ] },
+                 "minion_damage_+%": {
+                   "mods": [ { "kind": "mod", "name": "MinionModifier", "mod_type": "LIST",
+                               "value": { "mod": { "kind": "mod", "mod_type": "INC",
+                                                   "name": "Damage" } } } ] } } } } }"#,
+        );
+        let mods = map_minion_life_stat(
+            &catalog,
+            "SupportLoyaltyPlayer",
+            None,
+            "support_trusty_companion_minion_life_+%_final",
+            -30.0,
+        );
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name.as_str(), "MaximumLife");
+        assert_eq!(mods[0].mod_type, ModType::More);
+        assert_eq!(mods[0].value.as_number(), Some(-30.0));
+        // 内层非 Life（Damage）：窄通道未准入 → 空。
+        assert!(
+            map_minion_life_stat(
+                &catalog,
+                "SupportLoyaltyPlayer",
+                None,
+                "minion_damage_+%",
+                20.0
+            )
+            .is_empty()
+        );
+        // 未知 stat → 空。
+        assert!(
+            map_minion_life_stat(&catalog, "SupportLoyaltyPlayer", None, "no_such", 1.0).is_empty()
         );
     }
 
