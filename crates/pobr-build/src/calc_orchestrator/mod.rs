@@ -1852,9 +1852,20 @@ fn inject_items(
             filtered.modifier_texts = drop_spirit(filtered.modifier_texts);
             filtered.enchant_texts = drop_spirit(filtered.enchant_texts);
         }
-        session
-            .add_item(slot, &filtered)
-            .map_err(|e| BuildError::Parse(e.to_string()))?;
+        // 武器件走 add_weapon_item：无 flag 爆伤词条转按手条件
+        // （vendor Item.lua:1954-1961，0.22.0 把 CritMultiplier 加进转换清单；
+        // 仅武器基底转换——Weapon2 的盾/箭袋/法器等非武器件不转）。
+        let is_weapon_item = matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2)
+            && data.weapon_base(&item.base.to_string()).is_some();
+        if is_weapon_item {
+            session
+                .add_weapon_item(slot, &filtered)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        } else {
+            session
+                .add_item(slot, &filtered)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
 
         // 槽位加成效果副本：该槽位有 `EffectOfBonusesFrom<Slot>` INC 时，把本件已
         // 注入词条的**数值差额副本** 追加注入（vendor CalcPerform.lua:1347-1369

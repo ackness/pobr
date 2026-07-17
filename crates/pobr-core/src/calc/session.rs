@@ -266,6 +266,17 @@ impl CalculationSession {
         Ok(())
     }
 
+    /// 接入一件**武器**（调用方判定基底为武器）：同 [`Self::add_item`]，另按 vendor
+    /// `Item.lua:1954-1961` 把无 flag 的爆伤词条转为按手条件
+    /// （见 [`crate::item::apply_weapon_hand_conditions`]）。
+    pub fn add_weapon_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
+        let mut ingest = ingest_item_with_ctx(slot, item, self.parse_ctx())?;
+        crate::item::apply_weapon_hand_conditions(&mut ingest.modifiers, slot);
+        self.env.player.mod_db.add_list(ingest.modifiers);
+        self.unsupported_modifier_texts.extend(ingest.unsupported);
+        Ok(())
+    }
+
     /// 接入一件**激活态**药剂/护符（M3-T4 通道切换）：词条经
     /// [`crate::item::ingest_flask_charm`] 打包为 `FlaskBuff`/`CharmBuff` 载荷
     /// List mod 注入（List 不参与 sum/more/flag 聚合 → 未合并前零直接影响），由
