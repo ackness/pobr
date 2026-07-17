@@ -663,6 +663,25 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 upper,
             })
         }
+        "DistanceRamp" => {
+            // 距离插值（vendor ModStore.lua:574-590）。TemplateScalarDef 无嵌套
+            // 数组形态，ramp 点列以 `"距离 倍率"` 文本对转录（如 `["35 0.2",
+            // "70 0"]` = vendor `{ {35,0.2}, {70,0} }`）；语义与 statmap 引擎的
+            // DistanceRamp 分支一致（求值期按 `cfg.skill_distance` 线性插值）。
+            let TemplateScalarDef::TextList(points) = tag.fields.get("ramp")? else {
+                return None;
+            };
+            let mut ramp = Vec::with_capacity(points.len());
+            for point in points {
+                let mut parts = point.split_whitespace();
+                let (Some(dist), Some(mult), None) = (parts.next(), parts.next(), parts.next())
+                else {
+                    return None;
+                };
+                ramp.push((dist.parse().ok()?, mult.parse().ok()?));
+            }
+            (!ramp.is_empty()).then_some(ModTag::DistanceRamp { ramp })
+        }
         // 未映射 tag 形态：保守跳过。
         _ => None,
     }

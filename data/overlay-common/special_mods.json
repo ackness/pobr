@@ -2245,6 +2245,62 @@
       "source_note": "ModParser.lua:3281 -- Warrior - Smith of Kitava，function(num,_,dmgType)→mod(ArmourAppliesTo<Type>DamageTaken,BASE,num,{type=ItemCondition,itemSlot=Body Armour,rarityCond=NORMAL})。vendor 函数形带 (%a+) 伤害类型捕获 + ItemCondition，extract_parser_rules 抽不出（S2 批仅手转非 body-armour 的 fire/cold/lightning 三元素，漏 chaos + 漏 body-armour-grants 变体）。legacy 经 body-armour-grants 前缀剥离 + parse_armour_applies_pct（legacy.rs:393/1621）通用处理任意类型，chaos 正常，故 engine 落后 legacy。本条把 vendor ItemCondition{Body Armour,NORMAL} 映射为 pobr `Condition:NormalBodyArmourEquipped`（orchestrator calc_orchestrator.rs:373 按体甲槽 Normal 稀有度置真，与 legacy.rs:397 同口径），消费侧 taken.rs ArmourAppliesToChaosDamageTaken。修 warrior-smith-of-kitava-shield-wall ChaosMaxHit 0.84x→1.00x"
     },
     {
+      "id": "point_blank_projectiles_more_hit_damage_scaling_down",
+      "pattern": "projectiles deal 20% more hit damage to targets in the first 3\\.5 metres of their movement, scaling down with distance travelled to reach 0% after 7 metres",
+      "vendor_pattern": "projectiles deal (%d+)%% more hit damage to targets in the first ([%d%.]+) metres of their movement, scaling [du][op]w?n? with distance travelled to reach (%d+)%% after ([%d%.]+) metres",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "MORE",
+          "value": 100,
+          "flags": [
+            "Hit",
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "DistanceRamp",
+              "ramp": [
+                "35 0.2",
+                "70 0"
+              ]
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "ModParser.lua:2911-2913（vendor 产 Damage MORE 100 + DistanceRamp {10*首距, num/100},{10*末距, low/100}；本条为 Point Blank 升华固定文本 20%/3.5m→0%/7m 的字面转写，ramp={35,0.2},{70,0}。数值/距离不同的未来变体保守不匹配。此前引擎误产平坦 ProjectileDamage MORE 20（丢距离插值）——special 通道整行优先修正）"
+    },
+    {
+      "id": "point_blank_projectiles_more_hit_damage_scaling_up",
+      "pattern": "projectiles deal 0% more hit damage to targets in the first 3\\.5 metres of their movement, scaling up with distance travelled to reach 20% after 7 metres",
+      "vendor_pattern": "projectiles deal (%d+)%% more hit damage to targets in the first ([%d%.]+) metres of their movement, scaling [du][op]w?n? with distance travelled to reach (%d+)%% after ([%d%.]+) metres",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "MORE",
+          "value": 100,
+          "flags": [
+            "Hit",
+            "Projectile"
+          ],
+          "tags": [
+            {
+              "type": "DistanceRamp",
+              "ramp": [
+                "35 0",
+                "70 0.2"
+              ]
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "fork-a",
+      "source_note": "ModParser.lua:2911-2913（同上规则的 scaling-up 变体固定文本 0%/3.5m→20%/7m，ramp={35,0},{70,0.2}）"
+    },
+    {
       "id": "prevent_pct_of_damage_from_deflected_hits",
       "pattern": "prevent \\+(\\d+(?:\\.\\d+)?)% of damage from deflected hits",
       "vendor_pattern": "prevent %+(%d+)%% of damage from deflected hits",
