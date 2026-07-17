@@ -469,9 +469,17 @@ impl Modifier {
                     // 取数源按 actor 维度切换（PoB2 ModStore.lua:347-353 `tag.actor` →
                     // getActor(self, ...).modDB）：None＝当前 cfg.multiplier；Some＝
                     // actor_multipliers 快照（缺键＝0，保守等价 PoB2 actor 缺位不生效）。
-                    let base = match actor {
-                        None => cfg.multiplier(var),
-                        Some(actor) => cfg.actor_multiplier(*actor, var),
+                    // `|` 连接的复合 var（vendor PerStat `statList` 归一产物，见
+                    // mod_parser template）：各分量取数求和后再 ÷div（vendor
+                    // ModStore.lua:445-452 对 statList 逐项 GetStat 累加）。
+                    let lookup = |v: &str| match actor {
+                        None => cfg.multiplier(v),
+                        Some(actor) => cfg.actor_multiplier(*actor, v),
+                    };
+                    let base = if var.contains('|') {
+                        var.split('|').map(&lookup).sum()
+                    } else {
+                        lookup(var)
                     };
                     // PoB2 ModStore.lua EvalMod（Multiplier L365 / PerStat L460）：
                     // `mult = m_floor(base / (tag.div or 1) + 0.0001)` —— 资源数除以 div 后向下取整
