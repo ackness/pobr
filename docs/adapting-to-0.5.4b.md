@@ -178,6 +178,10 @@ documented in pob2_parity.rs), and frost-bomb 0.66x (golden unchanged
 0.5.0→0.5.4b — a pre-existing cooldown-DPS gap, not a 0.5.4b regression).
 These moved 6-46% in the 0.5.4b golden with per-build factors — no shared
 constant; each needs its own oracle decomposition.
+✅ (2026-07-17, 存量清扫 #7) frost-bomb TotalDPS 0.66x→1.00x：双根因 =
+Archmage buff `DamageGainAsLightning`（80% per 100 Mana）未入玩家 buff
+允收名单 + SkillType neg tag 不支持；以及 curse 链两缺口（EW 取数等级未吃
++spell-skill levels、技能局部 CurseEffect 段缺失）。见 commit 9075077。
 
 **#5 target — ailment (ignite) magnitude. ✅ DONE (one root cause: Blazing
 Critical global fire buff).** Re-triage first: the ailment *formula* did not
@@ -229,6 +233,11 @@ Dot-side leftovers, each triaged **not** a 0.5.4b ailment item:
   `abyssal-lich` 0.94x / `pathfinder` 0.92x track their hit gaps.
 - `frost-bomb` dot 0.87x and `essence-drain` WithDotDPS 1.36x: goldens
   byte-identical across the flip — pre-existing gaps.
+  ✅ (2026-07-17, #7) essence-drain 1.36x→1.00x：数据管线漏下
+  `GrantedEffectStatSets.RemoveStats`（社区 schema 名 `IgnoredStats`）——
+  ED 的 DoT set 本应移除主 set 的击中伤害 stat，PoBR 幻影击中 120.87 DPS。
+  管线补列 + adapter 置零语义 + 55 效果重生成（commit 5edb741）。
+  frost-bomb dot 随 #7-1 修复 0.87x→1.07x（@10% 带内）。
 - `gemling` dot 1.10x over: oracle per-component shows fire stored 1.03x ×
   stacks 1.05x × slight crit-chance overshoot — downstream of its small
   hit-side overestimates, no dot-side mechanism.
@@ -240,6 +249,20 @@ moved 1.04x→1.10x with #4a (低血 EHP 口径——vendor 只在显式
 `conditionLowLife` config 下 cap `LifeRecoverable`，PoBR 的 EHP 消费端
 尚未对齐该分支). Each is its own oracle-guided investigation; not all are
 single formula constants (several are unmodeled unique/flask interactions).
+✅ (2026-07-17, #7) 两项收口（commit 6bb0685）：
+- ritualist TotalEHP 1.10x→1.00x：LifeRecoverable 口径是误诊（两侧本就一致，
+  vendor 只在显式 config 下 cap）；真根因 = 策展条目 `also_grants_guard`
+  （护符 "Also grants N Guard"）vendor 根本不解析（oracle AnyGuard=False），
+  幻影 +491 共享 Guard 池已摘除。twister maxhit 族随之 1.06x→0.97x。
+- wolf-pack：Life 1.11x→1.00x（Giant's Blood `HalvesLifeFromStrength`
+  接消费端）、Armour 0.98x→1.00x（PerStat Spirit 分母改读最终池值 336 而非
+  BASE 300）、Mana→0.99x + gemling Life/Mana/MaxHit 族→1.00x（overlay-common
+  三色宝石阈值条目池名归一 MaximumLife/MaximumMana）。**未闭合余量** =
+  companion ally-mitigation 层：vendor 把每个 hit pool 扩到
+  `pool/(1−CompanionAllyDamageMitigation 10%)`（上限 TotalCompanionLife
+  2262，CalcDefence.lua:3567-3595 allies 层）——PoBR 无 companion actor，
+  maxhit 族诚实落在 ~0.82x（此前被幻影 Guard 掩蔽到 ~0.96x）。归 companion
+  本体项目。
 ✅ (2026-07-17) `check-buff-refs` 15-drift re-review done: the recorded hashes
 were pinned at vendor `2df5a743` (pre-0.21.0; never refreshed at a82a33b either),
 so every buff "drifted" purely because `doActorMisc` shifted ~+75 lines
