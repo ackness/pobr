@@ -662,11 +662,31 @@ fn parse_items_and_slots(
 
     // 树上珠宝在 `<Tree><Spec><Sockets><Socket nodeId itemId/>`（非 ItemSet），单独收集；
     // 仅保留 socket 节点已分配的珠宝。
+    let socket_items = parse_socket_node_items(xml)?;
+    // Voices（0.5.4b unique）：「Allocates N Sinister Jewel sockets」——已分配 socket
+    // 内珠宝带此词条时，按 vendor alias 序把前 N 个 sinister socket 视为已分配
+    // （vendor PassiveSpec.lua:1067-1090 `voices_jewel_slot1..5` → 0_5 tree 节点 id，
+    // 钉自 TreeData/0_5/tree.lua `sinister=true` + `aliasPassiveSocket`）。
+    // ponytail: 节点 id 钉 0_5 树（sinister socket 仅存在于 0.5.4+；旧树版本无此
+    // 词条来源，零行为）。树版本再迭代时 parity 门禁会点名此列，届时改从树数据取。
+    const SINISTER_SOCKETS_0_5: [u32; 5] = [62152, 26178, 23960, 39087, 3367];
+    let sinister_count: usize = socket_items
+        .iter()
+        .filter(|(node, _)| allocated.contains(node))
+        .filter_map(|(_, id)| items.get(id))
+        .flat_map(|it| it.implicit_texts.iter().chain(&it.modifier_texts))
+        .filter_map(|t| sinister_socket_alloc_count(t))
+        .sum();
+    let sinister_allocated: std::collections::HashSet<u32> = SINISTER_SOCKETS_0_5
+        .iter()
+        .copied()
+        .take(sinister_count)
+        .collect();
     let mut all_jewel_ids = jewel_ids;
     all_jewel_ids.extend(
-        parse_socket_node_items(xml)?
+        socket_items
             .into_iter()
-            .filter(|(node, _)| allocated.contains(node))
+            .filter(|(node, _)| allocated.contains(node) || sinister_allocated.contains(node))
             .map(|(_, item)| item),
     );
     all_jewel_ids.sort_unstable();
@@ -681,6 +701,19 @@ fn parse_items_and_slots(
         .filter_map(|(slot, id)| Some((slot.clone(), items.get(id).cloned()?)))
         .collect();
     Ok((out, jewels, flask_charms, use_second_weapon_set))
+}
+
+/// 解析「Allocates N Sinister Jewel socket(s)」词条 → N（vendor ModParser.lua
+/// `allocates (%d+) sinister jewel sockets?` → GrantedPassive SinisterJewelSockets）。
+/// 非此词条返回 None。
+fn sinister_socket_alloc_count(text: &str) -> Option<usize> {
+    let rest = text.trim().strip_prefix("Allocates ")?;
+    let (num, tail) = rest.split_once(' ')?;
+    matches!(
+        tail.trim().to_ascii_lowercase().as_str(),
+        "sinister jewel sockets" | "sinister jewel socket"
+    )
+    .then(|| num.parse().ok())?
 }
 
 /// 解析树插槽 `<Socket nodeId="N" itemId="M"/>` → `(socket_node, item_id)`（itemId≠0）。
