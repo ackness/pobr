@@ -750,6 +750,14 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // ModStore.lua:369；PoBR 编排层把 buff 载荷中 `Multiplier:` BASE 桥进
         // cfg.multipliers，见 calc_orchestrator buff specs 注入点）。
         "Multiplier:SigilOfPowerMaxStages" => Ok(vec!["Multiplier:SigilOfPowerMaxStages"]),
+        // （0.5.4b #5）Blazing Critical support（sup_int.lua:959）：0.22.0 给
+        // `support_blazing_crits_gain_%_fire_damage_with_attacks_on_critical_hit`
+        // 补上 GlobalEffect/Buff tag——15% `DamageGainAsFire` BASE（ModFlag.Attack
+        // + Condition:CritRecently）从「只挂在被支援技能上的死词条」变成全局玩家
+        // buff（"imbue all of your Attacks"）。消费方 = `calc::damage` gain-as
+        // 矩阵（buildGainTable，`DamageGainAs<To>` BASE 查询）；点燃火源随之
+        // 平方级放大（chance ∝ fire/threshold，magnitude ∝ fire）。
+        "DamageGainAsFire" => Ok(vec!["DamageGainAsFire"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }

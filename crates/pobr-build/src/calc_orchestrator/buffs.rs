@@ -329,16 +329,23 @@ pub(crate) fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpe
     let mut specs = Vec::new();
     let mut seen: HashSet<&str> = HashSet::new();
     for group in build.enabled_socket_groups() {
-        // 组内已启用主动技能（效果已知且非 support）。
+        // 组内已启用主动技能（效果已知且非 support）。含附加授予效果
+        // （overlay/gem_effects.json 外键；vendor 对 additionalGrantedEffectId1..N
+        // 各建独立 activeSkill，support 对其同样逐个裁决——0.5.4b #5 案例：
+        // Charged Staff 的隐藏附加效果 ChargedStaffShockwavePlayer 是 Attack，
+        // Blazing Critical 借它兼容并全局授 buff）。
         let active_ids: Vec<&str> = group
             .gem_skills
             .iter()
-            .filter(|g| {
-                data.granted_effects
-                    .get(&g.skill_id)
-                    .is_some_and(|e| !e.is_support)
+            .flat_map(|g| {
+                std::iter::once(g.skill_id.as_str()).chain(
+                    data.gem_effects
+                        .get(&g.skill_id)
+                        .into_iter()
+                        .flat_map(|l| l.additional_granted_effect_ids.iter().map(String::as_str)),
+                )
             })
-            .map(|g| g.skill_id.as_str())
+            .filter(|id| data.granted_effects.get(*id).is_some_and(|e| !e.is_support))
             .collect();
         if active_ids.is_empty() {
             continue;
