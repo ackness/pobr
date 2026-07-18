@@ -656,8 +656,28 @@ const BASELINE_DEF_CORE_HIT5: usize = 142; // 存量 #7-3/4（charm-guard 摘除
 // 0.72x→0.80x / TotalEHP 0.74x→0.83x（池侧 3817 vs oracle 3826.67 = 0.9975 已
 // 闭合，余量 = per-type taken 乘子侧 ~10% 均匀缺口 + Mana 761.2 vs 770，均与
 // companion 层无关）。
-const BASELINE_DEF_HIT5: usize = 431; // #12 companion 后 431/450（存量 #7-3/4 425：ritualist 6 格 + gemling 9 格 + wolf-pack Life/Armour 精确翻正，wolf-pack MaxHit 族随 charm-guard 掩蔽摘除移出；Communion+Voices 413（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 439; // #12 companion 后 439/450（Communion+Voices 434；Refraction 429；ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
+// **#13 防御残差定点修复重记（+6 @5% 431→437 / +6 @10% 439→445）**：三根因——
+// ① wolf-pack per-type taken 乘子 ~10% 均匀缺口 = 敌人 Intimidated 基础条件对
+//    （vendor CalcSetup.lua:73-77 `Damage INC -10 / DamageTaken INC 10 if
+//    Intimidated`）未建：体甲词条「Enemies in your Presence are Intimidated」的
+//    敌侧 `Condition:Intimidated` flag 已入 enemy db 但无消费方。setup_enemy 注入
+//    条件对 + env_finalize 桥接 flag→cfg `EnemyIntimidated` + orchestrator 默认
+//    置真 `EnemyInPresence`（vendor CalcPerform.lua:524）→ `<X>EnemyDamageMult`
+//    0.9 生效（max hit 末端除数 :3734-3771 + EHP 进伤），wolf-pack 5×MaxHit
+//    0.80-0.90x→1.00x、TotalEHP 0.83x→1.00x、PhysDR 68.03 精确。
+// ② wolf-pack Mana 761.2 vs 770 = The Adorned「97% increased Effect of Jewel
+//    Socket Passive Skills containing Corrupted Magic Jewels」未建：腐化魔法珠宝
+//    （Rallying Ruby ×6，enchant +Int/+Dex/+chaos res）mod 未按 1.97 缩放
+//    （vendor CalcSetup.lua:944-948/:1342-1347，ScaleAddList = trunc(round(v×s,2))）。
+//    orchestrator stage_inject_jewels 解析后缩放注入 → Int 135→139 → Mana 770
+//    精确（连带 ChaosMaxHit 尾差闭合）。
+// ③ titan Armour 0.985x = 三件 Runeforged 基底（0.5.4b buff 过）护甲展示行滞后：
+//    item_rolled_defence 的「基底已知恒重算」从 ES-only 扩到三防（vendor
+//    Item.lua:1994-1996 + round 口径）——手套 96→101 / 盔 192→284 / 靴 58→100，
+//    Gear:Armour 6100→6239 = vendor，titan Armour/ES/5×MaxHit 精确闭合；连带
+//    pathfinder Evasion 0.98x→1.00x、twister DeflectChance 0.97x→1.00x 精确化。
+const BASELINE_DEF_HIT5: usize = 437; // #13 残差定点后 437/450（#12 companion 431；存量 #7-3/4 425：ritualist 6 格 + gemling 9 格 + wolf-pack Life/Armour 精确翻正，wolf-pack MaxHit 族随 charm-guard 掩蔽摘除移出；Communion+Voices 413（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 445; // #13 残差定点后 445/450（#12 companion 439；Communion+Voices 434；Refraction 429；ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs

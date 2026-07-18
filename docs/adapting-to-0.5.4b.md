@@ -517,9 +517,64 @@ not the companion layer. Baselines: def 425→431 @5%, 434→439 @10%; off/dot/
 core-8 unchanged; 18-build per-cell diff shows only twister and wolf-pack
 moving.
 
+**#13 — defensive residuals pinpoint fixes. ✅ DONE (wolf-pack + titan defensive
+columns all exact).** Three independent root causes, each pinned by oracle:
+
+- *wolf-pack per-type taken ~10% uniform gap = enemy Intimidated base pair.*
+  Oracle `<X>EnemyDamageMult = 0.9` for all five types; enemyDB tabulate shows
+  a single `Damage INC -10, source "Base"` — the actor-init conditional mod
+  `Damage INC -10 { Condition: Intimidated }` (CalcSetup.lua:73-77, paired with
+  `DamageTaken INC 10`), lit by the body-armour corrupted implicit "Enemies in
+  your Presence are Intimidated" (flag reaches PoBR's enemy db but had no
+  consumer). Note the Enfeeble curse payload is *not* the source — its MORE is
+  gated `!Unique` and the Pinnacle enemy is Unique on both sides. Fix (all
+  generic consumers): `setup_enemy` injects the Intimidated base pair (tag
+  `EnemyIntimidated`); `env_finalize::bridge_enemy_condition_flags` bridges the
+  enemy-db `Condition:Intimidated` FLAG into cfg `EnemyIntimidated` (vendor
+  ModStore GetCondition semantics; allow-list = Intimidated only); orchestrator
+  seeds `EnemyInPresence` true (CalcPerform.lua:524 default — PoBR does not
+  model PresenceRadius vs enemyDistance). `EnemyDamageMult` was already wired
+  as the max-hit end divisor (:3734-3771) and EHP damage-in multiplier — only
+  the mod was missing. wolf-pack Phys/Fire/Cold/Light MaxHit 0.90x→1.00x,
+  PhysDR 65.69→68.03 (oracle 68), TotalEHP 0.83x→(with the Mana fix) 1.00x.
+- *wolf-pack Mana 761.2 vs 770 = The Adorned corrupted-magic-jewel scaling.*
+  Oracle Int=139 vs PoBR 135: the six tree-socketed "Rallying Ruby of Valour"
+  magic jewels (corrupted, enchant implicits +Int/+Dex/+chaos res) are scaled
+  ×1.97 by The Adorned's "97% increased Effect of Jewel Socket Passive Skills
+  containing Corrupted Magic Jewels" (CalcSetup.lua:944-948 sets the
+  multiplier, :1342-1347 `ScaleAddList`, value = `trunc(round(v×scale, 2))`,
+  ModStore.lua:70-79): +5 Int→9, +4 Dex→7. Fix: `Item.corrupted` field (item
+  text `Corrupted` marker line, both parse paths) +
+  `stage_inject_jewels` parses corrupted-magic-jewel texts and injects
+  value-scaled modifiers (`adorned_corrupted_magic_jewel_inc` matches the
+  two-physical-line wrapped text). Int 135→139 → Mana 770 exact; chaos resist
+  uncapped 72→81 (capped 75) closes the ChaosMaxHit tail (17008 vs 17007).
+  Not modelled: sinister/containJewelSocket socket exemptions, `unscalable`
+  payloads (no corpus source).
+- *titan Armour 0.985x = Runeforged base-armour display-line lag* (the #10-era
+  "shield 1736 vs recomputed 1725" hypothesis was wrong — oracle
+  `item.armourData.Armour = 1736` exactly, the shield was never the gap).
+  Per-slot dump vs oracle `ArmourOn<Slot>`: gloves 96 vs 101, helmet 192 vs
+  284, boots 58 vs 100 — three 0.5.4b-buffed Runeforged bases whose item-text
+  `Armour:` lines lag the base DB (same family as the c705fe4 ES fix; helmet
+  recompute 169×1.40×1.20=283.9→284 matches oracle exactly). Fix:
+  `item_rolled_defence` now recomputes **all three** defences from the base DB
+  when the base is known (vendor Item.lua:1994-1996, incl. `round()`), not
+  just ES. titan Armour 38960→39546 exact, ES 54.67→55 exact, 5×MaxHit exact;
+  fleet-wide the per-item `round()` also lands pathfinder Evasion
+  0.98x→1.00x and twister DeflectChance 0.97x→1.00x exact.
+
+Baselines: def 431→437 @5%, 439→445 @10% (the six wolf-pack cells);
+off/dot/core-8 unchanged; 18-build per-cell diff shows no cell regressing.
+titan TotalEHP 0.92x remains (separate residual, outside #13 scope).
+
 ## Tooling
 
 - `examples/demo-bd-test/tools/recapture_golden.py` — refresh fixture goldens
   against the currently vendored PoB2 (run after any vendor bump).
 - `tools/pob2-oracle/run.sh <decoded.xml> out.json` — per-build 0.5.4b breakdown
   (`mainOutput` scalars + `intermediates` / `components` / `conversionTable`).
+  `enemyMitigation.dealtMods` lists enemy outgoing-Damage scalers (Enfeeble /
+  Intimidated-style feeds of `<X>EnemyDamageMult`); `ORACLE_DUMP_ITEMS="2,17"`
+  dumps listed build items' parsed modLines + evaluated modList + armourData
+  (provenance diffs for jewel-effect scaling / item defence recompute).
