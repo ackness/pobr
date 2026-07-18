@@ -1135,21 +1135,30 @@ fn memory_backend_matches_dir_backend() {
     let request = serde_json::json!({ "pob_code": demo_code() }).to_string();
     let from_dir = pobr_wasm::calculate_build_json(&request).expect("dir backend");
 
-    // 把版本目录整体读入内存表，走 stage/init 路径重建。
+    // 把版本目录整体读入内存表，走 stage/init 路径重建。版本无关策展层
+    // `data/overlay-common/`（P1-3）位于版本目录的兄弟路径，内存后端按
+    // `overlay-common/<rel>` 键解析（见 `pobr-gamedata::paths::overlay_common_path`），
+    // 生产 wasm 流程（web sync-data）同样打包该目录——staging 必须一并灌入，
+    // 否则内存后端静默丢失全部 curated special_mods。
     let root = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
-    for entry in walk_files(&root) {
-        // GameData 只读 JSON；跳过杂项文件（.DS_Store 等）。
-        if entry.extension().and_then(|e| e.to_str()) != Some("json") {
-            continue;
+    let common_root = repo_data_root().join("overlay-common");
+    let stage_tree = |tree_root: &std::path::Path, key_prefix: &str| {
+        for entry in walk_files(tree_root) {
+            // GameData 只读 JSON；跳过杂项文件（.DS_Store 等）。
+            if entry.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let rel = entry
+                .strip_prefix(tree_root)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/");
+            let content = std::fs::read_to_string(&entry).expect("read data file");
+            pobr_wasm::stage_data_file(&format!("{key_prefix}{rel}"), &content);
         }
-        let rel = entry
-            .strip_prefix(&root)
-            .unwrap()
-            .to_string_lossy()
-            .replace('\\', "/");
-        let content = std::fs::read_to_string(&entry).expect("read data file");
-        pobr_wasm::stage_data_file(&rel, &content);
-    }
+    };
+    stage_tree(&root, "");
+    stage_tree(&common_root, "overlay-common/");
     pobr_wasm::init_staged_data().expect("init memory backend");
     let from_memory = pobr_wasm::calculate_build_json(&request).expect("memory backend");
     assert_eq!(
