@@ -579,6 +579,26 @@ if enemyDB then
 		end
 	end
 	enemyMitigation.resistMods = resistMods
+	-- Per-mod source dump of enemy outgoing-Damage scalers (Enfeeble-style
+	-- "enemies deal less damage" curses feeding <Type>EnemyDamageMult).
+	local dealtMods = {}
+	for _, mt in ipairs({ "INC", "MORE" }) do
+		local okDmg, dmgTable = pcall(function()
+			return enemyDB:Tabulate(mt, nil, "Damage", "PhysicalDamage", "FireDamage",
+				"ColdDamage", "LightningDamage", "ChaosDamage", "ElementalDamage")
+		end)
+		if okDmg and dmgTable then
+			for _, entry in ipairs(dmgTable) do
+				dealtMods[#dealtMods + 1] = {
+					modType = mt,
+					name = entry.mod.name,
+					value = entry.value,
+					source = entry.mod.source,
+				}
+			end
+		end
+	end
+	enemyMitigation.dealtMods = dealtMods
 	-- Exposure effect composition (vendor CalcPerform.lua:3222-3227): global modDB
 	-- INC + per-active-skill skill-scoped INC, plus extra exposure BASE.
 	local pdb = mainEnv.player.modDB
@@ -1008,10 +1028,46 @@ do
 	end
 end
 
+-- Ad-hoc item mod dump: ORACLE_DUMP_ITEMS="18,19,21" dumps each listed build
+-- item's parsed modLines + evaluated modList (post-range) for provenance diffs.
+local itemDump
+do
+	local ids = os.getenv("ORACLE_DUMP_ITEMS")
+	if ids and #ids > 0 then
+		itemDump = {}
+		for idStr in ids:gmatch("[^,%s]+") do
+			local id = tonumber(idStr)
+			local item = build.itemsTab.items[id]
+			if item then
+				local lines = {}
+				for _, ml in ipairs(item.explicitModLines or {}) do
+					lines[#lines + 1] = { line = ml.line, range = ml.range }
+				end
+				for _, ml in ipairs(item.enchantModLines or {}) do
+					lines[#lines + 1] = { line = ml.line, range = ml.range, enchant = true }
+				end
+				for _, ml in ipairs(item.implicitModLines or {}) do
+					lines[#lines + 1] = { line = ml.line, range = ml.range, implicit = true }
+				end
+				local mods = {}
+				if item.modList then
+					for _, m in ipairs(item.modList) do
+						mods[#mods + 1] = { name = m.name, type = m.type, value = type(m.value) ~= "table" and m.value or nil }
+					end
+				end
+				itemDump[tostring(id)] = { title = item.title, baseName = item.baseName, lines = lines, mods = mods,
+					armourData = item.armourData, quality = item.quality,
+					baseArmour = item.base and item.base.armour or nil }
+			end
+		end
+	end
+end
+
 ----------------------------------------------------------------------
 -- Assemble report
 ----------------------------------------------------------------------
 local report = {
+	itemDump = itemDump,
 	spiritReservations = spiritReservations,
 	spiritReservedBreakdown = spiritReservedBreakdown,
 	defenceModList = defenceModList,
