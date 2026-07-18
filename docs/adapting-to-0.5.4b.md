@@ -517,6 +517,37 @@ not the companion layer. Baselines: def 425→431 @5%, 434→439 @10%; off/dot/
 core-8 unchanged; 18-build per-cell diff shows only twister and wolf-pack
 moving.
 
+**#14 — defensive 25-col long-tail triage. ✅ DONE (six clusters closed;
+def 25-col 431→444 @5% / 439→444 @10%, core-8 142→144/144 = 100%).**
+
+First full per-cell triage of the 19 cells outside the 5% band (never done
+before). Full table at triage time (`~` = inside 10%, outside 5%; excluded =
+wolf-pack ×6 + titan ×1, task #13's lane):
+
+| build × col | ratio | root cause | vintage | status |
+|---|---|---|---|---|
+| druid-ember-fusillade PhysDR | 1.06x ~ | armour-DR **integer rounding**: vendor `<X>TakenHit` chain uses `calcs.armourReduction` = `round(armourReductionF)` (CalcDefence.lua:2402, Common.lua round = floor(x+0.5)); PoBR used the fractional variant everywhere. Golden PhysDR is always integer for this reason. | pre-existing (only visible at small DR) | ✅ fixed (699e9e3) |
+| ranger-deadeye PhysDR | 1.20x | same | same | ✅ fixed (699e9e3) |
+| abyssal-lich Life | 1.05x ~ | **Life→ES pool conversion** never deducted: 0_5-tree "Enhanced Barrier" (node 44299) gained `5% of Maximum Life Converted to Energy Shield` in 0.5.4b tree data; parser produced `LifeConvertToEnergyShield` BASE 5, defence matrix credited the ES side, but the pool-side `(1−conv/100)` (CalcDefence.lua:92) was explicitly deferred and never landed. Oracle: 1511×0.95×1.18 = 1693.83 vs golden 1694 exact. | 0.5.4b (node stats changed on 0_5 tree) | ✅ fixed (8b742d8) |
+| abyssal-lich LifeUnres | 1.05x ~ | dependent (reservation is %-based) | — | ✅ same commit |
+| essence-drain SpiritUnres | 0.86x (6 vs 7) | **Blasphemy per-curse rounding** drifted in 0.5.4b vendor: per-curse flat now folds into `baseFlat` *before* one efficiency-scaled round (`round(180/1.1)=164`, CalcDefence.lua:229-239); PoBR kept the old per-instance `round(60/1.1)=55×3=165`. Oracle `spiritReservedBreakdown` pins 164. | 0.5.4b (vendor code change) | ✅ fixed (fff5b2e) |
+| gemling SpiritUnres | 3.33x (−60 vs −18) | **altQualityStats channel missing**: Gemling's "Advanced Thaumaturgy" (GemlingQuality flag) makes gems apply their alt quality stats (CalcTools.lua:147-152). Mirage Archer (alt `base_reservation_efficiency_+%` ×2 → 62% @q31) and Eternal Rage (alt `base_spirit_reservation_efficiency_+%` ×0.75 → 23%) reservation efficiencies were lost: 60→37, 100→81 (Δ42 = the whole gap). extract-lua gem-quality never transcribed `altQualityStats`. | pre-existing (data channel gap) | ✅ fixed (2896807) |
+| smith Armour | 0.76x | **two dead provisioning inputs** (both mods parsed): ① `Multiplier:AllocatedConnectedNotable` — count of allocated tree.lua `applyToArmour=true` notables (12 exist, smith allocates 8 → +200×8 flat; CalcSetup.lua:840-841); the flag was absent from PoBR tree data. ② `StrRequirementsOn<slot>` PercentStat stats (CalcPerform.lua:1848-1857) — base-item attribute requirements absent from PoBR data (.dat bundle unavailable) → extended extract-bases vendor channel with `req = {str/dex/int}`. Oracle: Tree:9988 BASE 1600 + Tree:59589 152/120/161. Result 49096.16 vs 49096 exact. **Note**: the old "vendor↔PoBR tree skill mapping deadlock" memory was stale — `applyToArmour` is plain per-node vendor tree data, no mapping needed. | pre-existing | ✅ fixed (22e1b79) |
+| smith PhysMaxHit / FireMaxHit / ColdMaxHit / LightMaxHit | 0.91-0.93x ~ | dependent on Armour | — | ✅ same commit (all 1.00x exact) |
+| smith TotalEHP | 0.85→0.92x ~ | after Armour fix, residual = **EHP average block used 2 categories instead of 4**: vendor `EffectiveAverageBlockChance = (attack+projectile+spell+spellProjectile)/4` (CalcDefence.lua:1067) with `SpellProjectileBlock = max(spellBlock…, ProjectileBlock)` (:1013). Shield builds with 0 spell block: PoBR 13.65% vs vendor 20.475%. | pre-existing | ✅ fixed (3ab51dc), 99177 vs 99167.69 |
+| titan TotalEHP | 0.92x ~ | same block-average root (shared consumption point; cell itself is #13's lane but the generic fix closes it) | pre-existing | ✅ same commit, 58898 vs 58904.30 |
+
+Remaining after #14: the 6 wolf-pack cells (TotalEHP 0.83x, 4×ele/phys
+MaxHit 0.90x, ChaosMaxHit 0.80x) — task #13's territory (per-type taken-mult
+~10% uniform gap, see #12 notes).
+
+Deliberate ceilings (marked in code): pool-conv applies to the whole
+Maximum<res> BASE sum (vendor exempts `Extra<res>`; no dual-conversion build
+in corpus); `reqMult` for attribute requirements held at 1 (no
+reduced-requirements + armour-from-str build in corpus); alt quality stats
+consumed only by the reservation-efficiency path so far (accessor is
+general; offence-side alt stats wire up when a fixture demands).
+
 ## Tooling
 
 - `examples/demo-bd-test/tools/recapture_golden.py` — refresh fixture goldens
