@@ -599,6 +599,50 @@ reduced-requirements + armour-from-str build in corpus); alt quality stats
 consumed only by the reservation-efficiency path so far (accessor is
 general; offence-side alt stats wire up when a fixture demands).
 
+**#15 — last three panel cells. ✅ DONE (off 78→80/80, dot 36→37/37 —
+offensive and dot panels now full score alongside def 450/450).**
+
+1. **gemling CritChance 1.20x → 1.00x (10.30 → 8.55 exact).** Root cause: the
+   old 75a348e "keep inactive weapon-set nodes allocated for radius-jewel
+   grants" mechanism was based on a misreading — in vendor, *every* mod on an
+   `allocMode ≠ 0` node (the node's own stats **and** radius-jewel grants
+   alike) gets `Condition: WeaponSet<N>` appended (CalcSetup.lua:222-223; the
+   jewel-source branch :224-227 only fires for allocMode-0 nodes), so grants
+   landing on inactive-set notables are dead. Oracle `critModList` Tabulate
+   pins exactly one `7 @ Tree:32763` (INC total 71 = 14+10+7+10+20+10 →
+   5 × 1.71 = 8.55). The 75a348e-era claim of 6×+7 matched the *old* golden
+   (10.30); the 0.5.4b golden re-snap flipped it. Mechanism fully reverted
+   (build.rs field + xml_build plumbing + collect.rs geometry merge). The same
+   jewel's Small-node grants (crossbow damage) shrink too → gemling
+   AvgDamage/TotalDPS 1.04x → 0.97x (still in band, sign flipped).
+2. **gemling TotalDotDPS 1.10x → 0.95x (in band).** After the crit fix the
+   residual decomposes exactly: ignite chance 0.0962 vs oracle 0.098636
+   (0.9754) × stack potential 0.2603 vs 0.26691 (0.9752); both scale with the
+   hit's fire damage, and 0.9754² ≈ 0.951 matches the dot ratio bit-for-bit.
+   I.e. the dot residual is purely downstream of the pre-existing AvgDamage
+   0.97x under-estimate (previously masked by the wrong 6× jewel grant); no
+   independent dot-side gap.
+3. **wolf-pack Speed 1.43x → 1.00x.** Two stacked causes: ① main-skill
+   selection — Wolf Pack (`Minion`+`Companion`, neither Attack nor Spell)
+   failed PoBR's is-damage-skill filter, so the designated `mainSocketGroup=4`
+   yielded nothing and the fallback scan hijacked the main skill to the
+   Blasphemy group's Temporal Chains (0.7 s cast → Speed 1.43). Vendor's
+   `socketGroupSkillList` has **no** damage filter — fix: after
+   `pick_group_main_skill` misses on the *designated* group, fall back to the
+   `mainActiveSkill`-chosen active gem (`pick_group_chosen_active`;
+   cross-group scan still damage-only). ② speed bucket — with Wolf Pack as
+   main (castTime 1 s), PoBR's "untyped skill eats all three speed buckets"
+   fallback consumed the weapon's `12% reduced Attack Speed` → 0.88. Vendor
+   mod-matching requires the cfg to carry ModFlag.Attack/Cast for those mods
+   to apply; untyped skills eat neither → `speed_names_for` now returns only
+   `SkillSpeed` for non-attack/non-spell skills. Oracle mainOutput pins
+   Speed = 1, Time = 1, CastRate = 1 (statSetLabel "Minion Info", player
+   TotalDPS 0).
+
+18-build per-cell diff after #15: every offensive/dot/defensive cell is a
+hit (450/450, 144/144, 80/80, 37/37) — zero regressions by construction.
+Panel-mode offensive ratchet re-measured 42/43 → 45/47 (@5%/@10%).
+
 ## Tooling
 
 - `examples/demo-bd-test/tools/recapture_golden.py` — refresh fixture goldens

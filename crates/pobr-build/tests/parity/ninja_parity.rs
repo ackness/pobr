@@ -714,14 +714,11 @@ const BASELINE_DEF_HIT10: usize = 450; // #13+#14 合并实测 450/450 = 100%（
 //   titan-shield-wall 连带。
 // 三修复 build 互不重叠、增益叠加；合并后全量实测重记（master 62/70 → 70/73）。
 //
-// **radius-jewel × weapon-set 交互修复重记（gemling CritChance）**：非激活武器组专属点
-// 在 PoB2 仍留在 allocNodes（CalcSetup.lua:209-228），范围珠宝授予（`... in Radius also
-// grant`，源=jewel）照样落到这些 notable 上。PoBR 原先把非激活组节点整个剔除 → gemling
-// crit jewel 的 `7% increased Crit Hit Chance for Attacks` 只命中 1/6 个 in-radius
-// notable（其余 5 个在 WeaponSet2）→ CritChance 8.55 vs 10.30（0.83x）。修复=
-// `parse_passive_nodes` 单独回传被剔除的非激活组节点，`radius_jewel_expansions` 在几何里
-// 并回完整已分配集（节点自身 mod 仍 masking，行为不变）。gemling CritChance→1.00x、
-// AvgDamage/TotalDPS 0.96x→1.03x。其余 build 零回归（off 70/73 → 71/74）。
+// **radius-jewel × weapon-set 交互修复重记（gemling CritChance，⚠️已在 #15 回退）**：
+// 曾把非激活武器组节点并回 radius 授予几何（当时 golden 10.30 = 6×+7）。0.5.4b 重采
+// golden 后 vendor 实测（oracle Tabulate）授予受**目标节点**的 `Condition:WeaponSet<N>`
+// 门控（CalcSetup.lua:222-223），非激活组授予净效果为零 → 正确值 8.55 = 1×+7，
+// 机制整体回退（见 BASELINE_OFF_HIT5 上 #15 ①）。
 // **Mageblood Diamond crit 名归一重记（+2 @5% 39→41 / +3 @10% 47→50）**：Mageblood
 // LegacyOfDiamond 注入 vendor 名 `CritChance` INC，但 calc::crit 读 `CriticalStrikeChance`
 // （PoBR 规范名）——裸注入不过 parser 的 translate_vendor_name，落死桶（同 Virtuous
@@ -811,8 +808,25 @@ const BASELINE_DEF_HIT10: usize = 450; // #13+#14 合并实测 450/450 = 100%（
 // （CritChance/CritMult 1.00x；ES 12124→12437 vs golden 12434、MaxHit 五族 +
 // TotalEHP 0.97-0.98x→1.00x——def 列先前已在 5% 带内，def 计数不变）。
 // 18 build 逐格 diff 仅此两 build 变动。
-const BASELINE_OFF_HIT5: usize = 78; // #10 进攻残差精修后 78/80（deadeye Point Blank DistanceRamp 0.83x→1.00x +2 格；twister Barrage repeats 0.98→1.00、warrior 局部 adds 泄漏 1.02/1.05→1.00 原在带内；#8 后 76；#6+#7 合并 73；迁移基线 39）
-const BASELINE_OFF_HIT10: usize = 78; // #10 后 78/80（#8 后 76；#6+#7 合并 75；迁移基线 47；0.5.0=74）
+// **#15 最后三格清零（off 78→80、dot 36→37，进攻/dot 满分）**：
+// ① gemling CritChance 1.20x→1.00x：范围珠宝授予不再落到非激活武器组节点——
+//    vendor 对 allocMode≠0 节点的**每条** mod（含珠宝授予）都加 `Condition:WeaponSet<N>`
+//    （CalcSetup.lua:222-223，节点自身门控优先于珠宝来源分支 :224-227），非激活组
+//    授予净效果为零；oracle critModList 实证仅 1 条 `7 @ Tree:32763`（旧 75a348e 的
+//    「按 jewel allocMode 门控」判读有误，已整体回退）。同珠宝的 Small 授予
+//    （Crossbow 伤害）同步收敛 → AvgDamage/TotalDPS 1.04x→0.97x（带内换向）。
+// ② gemling TotalDotDPS 1.10x→0.95x（转入带内）：点燃链吃 crit/珠宝高估传导，修复后
+//    残差 -4.9%（952 vs 1001）分解 = 点燃几率 0.0962 vs 0.098636（0.9754）× 堆叠潜力
+//    0.2603 vs 0.26691（0.9752）——两者均 ∝ 击中火伤，0.9754² ≈ 0.951 与 dot 残差
+//    逐位吻合，即完全是 AvgDamage 0.97x 既有低估的下游（此前被 6× 珠宝授予掩盖）。
+// ③ wolf-pack Speed 1.43x→1.00x：主技能选择兜底——mainSocketGroup 指向的组无
+//    攻击/法术候选（Wolf Pack = Minion+Companion）时不再回退扫描其它组（曾错选
+//    Blasphemy 组 Temporal Chains，0.7s 施放 → 1.43），改用组内 mainActiveSkill
+//    选中项（vendor socketGroupSkillList 无伤害过滤）；并修 speed bucket：非攻非
+//    法术技能不吃 Attack/CastSpeed INC（vendor ModFlag 匹配语义），Wolf Pack 不再
+//    错吃武器 `12% reduced Attack Speed`（0.88→1.00）。18 build 逐格零倒退（全命中）。
+const BASELINE_OFF_HIT5: usize = 80; // #15 满分 80/80（#10 后 78；#8 后 76；#6+#7 合并 73；迁移基线 39）
+const BASELINE_OFF_HIT10: usize = 80; // #15 满分 80/80（#10 后 78；#8 后 76；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -924,8 +938,8 @@ const BASELINE_OFF_HIT10: usize = 78; // #10 后 78/80（#8 后 76；#6+#7 合�
 // TotalDotDPS 1.06x→1.00x（182.40 vs 182.60）、monk frost-bomb 1.07x→0.99x
 // （4.53 vs 4.58）；witch-lich 带内微降（21659→21621，仍 1.00x）。curse 槽位
 // 归属逐 build 不变（druid 单槽仍 Temporal Chains 胜出，EW 依旧不入槽）。
-const BASELINE_DOT_HIT5: usize = 36; // #10+#11 合并实测 36/37（#10 单独 34：deadeye ignite 链随 Point Blank 修复 + smith/titan dot 回带；#11 单独 33：Blasphemy 半身修复 druid/frost-bomb；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 36; // #10+#11 合并实测 36/37（#8+#9 合并 34；迁移基线 11；0.5.0=28）
+const BASELINE_DOT_HIT5: usize = 37; // #15 满分 37/37（gemling TotalDotDPS 随 crit 修复入带；#10+#11 合并 36；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 37; // #15 满分 37/37（#10+#11 合并 36；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -943,8 +957,8 @@ const BASELINE_DOT_HIT10: usize = 36; // #10+#11 合并实测 36/37（#8+#9 合�
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 42; // #6 与存量 #7 RemoveStats 各 +1 叠加实测 42（#4 后 40；Communion+Voices 38）；迁移基线 27；0.5.0=44
-const PANEL_OFF_HIT10: usize = 43; // 同上叠加实测 43（#4 后 41；Communion+Voices 39）；迁移基线 30；0.5.0=46
+const PANEL_OFF_HIT5: usize = 45; // #15 实测 45（gemling CritChance + wolf-pack Speed/DPS 面板同收）；#6+#7 叠加 42；迁移基线 27；0.5.0=44
+const PANEL_OFF_HIT10: usize = 47; // #15 实测 47（同上）；#6+#7 叠加 43；迁移基线 30；0.5.0=46
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]
