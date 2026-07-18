@@ -1345,7 +1345,46 @@ fn apply_server_tick_cap(db: &ModDb, cfg: &CalcConfig, rate: f64) -> f64 {
 
 pub(crate) fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
     let names = [ModName::from(name)];
-    scaled_numeric_stat(db, cfg, base, &names)
+    let conv = pool_conversion_pct(db, cfg, name);
+    if conv == 0.0 {
+        return scaled_numeric_stat(db, cfg, base, &names);
+    }
+    // vendor CalcDefence.lua:92-95：`(base × (1 − conv/100) + extra) × (1+inc) × more`。
+    // OVERRIDE 仍然胜过一切（ChaosInoculation 等池钳定）。
+    for n in &names {
+        if let Some(value) = db.override_(cfg, n.clone()) {
+            return round(value);
+        }
+    }
+    let base_value = base + db.sum(ModType::Base, cfg, &names);
+    let inc = db.sum(ModType::Inc, cfg, &names);
+    let more = db.more(cfg, &names);
+    round(base_value * (1.0 - conv / 100.0) * (1.0 + inc / 100.0) * more)
+}
+
+/// Life/Mana 池的「N% of Maximum X Converted to <defence>」扣减率
+/// （vendor CalcDefence.lua:92 `conv = m_min(Sum(BASE, res.."ConvertTo…"), 100)`）。
+/// 只扣池本体；ES/Armour/Evasion 侧的**转入**由 defence 矩阵按未扣减的全局底
+/// 处理（:1364 `ceil(globalBase × rate/100)`，见 calc_defence_resources）。
+// ponytail: vendor 把 conv 只作用于 base 段、Extra<res> 免扣——PoBR 的矩阵转入
+// 现注入为 Maximum<res> BASE，会一并被扣；fixture 集无「双向转换」build，出现时
+// 再把注入名迁到 Extra<res> 通道。
+fn pool_conversion_pct(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
+    let prefix = match name {
+        "MaximumLife" => "Life",
+        "MaximumMana" => "Mana",
+        _ => return 0.0,
+    };
+    db.sum(
+        ModType::Base,
+        cfg,
+        &[
+            ModName::from(format!("{prefix}ConvertToEnergyShield")),
+            ModName::from(format!("{prefix}ConvertToArmour")),
+            ModName::from(format!("{prefix}ConvertToEvasion")),
+        ],
+    )
+    .min(100.0)
 }
 
 fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[ModName]) -> f64 {
@@ -1403,7 +1442,9 @@ fn scaled_pool_traced(
         trace,
         format!("{stat_name} BASE modifier sum"),
     );
-    let base_total = base + base_mods.value;
+    // Life/Mana 池转换扣减（vendor :92——与 scaled_pool 非追踪路径同式）。
+    let conv_factor = 1.0 - pool_conversion_pct(db, cfg, stat_name) / 100.0;
+    let base_total = (base + base_mods.value) * conv_factor;
     let base_total_node = trace.add_node(
         format!("{stat_name} base total"),
         base_total,
