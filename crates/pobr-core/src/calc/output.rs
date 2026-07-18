@@ -169,6 +169,12 @@ pub struct OutputTable {
     pub effective_block_chance: f64,
     /// 有效法术格挡几率（%；PoB2 `EffectiveSpellBlockChance`）。
     pub effective_spell_block_chance: f64,
+    /// 有效投射物攻击格挡几率（%；PoB2 `EffectiveProjectileBlockChance`）。
+    /// EHP 平均格挡 = 四分型均值（vendor CalcDefence.lua:1067）。
+    pub effective_projectile_block_chance: f64,
+    /// 有效法术投射物格挡几率（%；PoB2 `EffectiveSpellProjectileBlockChance`，
+    /// vendor :1013 与 ProjectileBlock 取 max）。
+    pub effective_spell_projectile_block_chance: f64,
     /// 格挡承伤比例（%；被格挡命中仍承受的伤害份额，PoB2 `BlockEffect`，
     /// ModParser.lua:2479；0 = 完全格挡）。
     pub block_effect: f64,
@@ -451,6 +457,8 @@ impl Default for OutputTable {
             spell_block_chance_max: 0.0,
             effective_block_chance: 0.0,
             effective_spell_block_chance: 0.0,
+            effective_projectile_block_chance: 0.0,
+            effective_spell_projectile_block_chance: 0.0,
             block_effect: 0.0,
             deflection_rating: 0.0,
             deflect_chance: 0.0,

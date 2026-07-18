@@ -46,6 +46,10 @@ pub struct BlockResult {
     pub effective_block_chance: f64,
     /// 有效法术格挡（%）。
     pub effective_spell_block_chance: f64,
+    /// 有效投射物攻击格挡（%）。EHP 平均格挡 = 四分型均值（vendor :1067）。
+    pub effective_projectile_block_chance: f64,
+    /// 有效法术投射物格挡（%）。
+    pub effective_spell_projectile_block_chance: f64,
     /// 格挡承伤比例（%；被格挡命中仍承受的伤害份额 = Σ BASE BlockEffect，
     /// vendor `DamageTakenOnBlock`；0 = 完全格挡）。
     pub block_effect_taken_pct: f64,
@@ -186,6 +190,11 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         spell_projectile_block_chance: round(spell_projectile),
         effective_block_chance: effective(block, "BlockChance"),
         effective_spell_block_chance: effective(spell, "SpellBlockChance"),
+        effective_projectile_block_chance: effective(projectile, "ProjectileBlockChance"),
+        effective_spell_projectile_block_chance: effective(
+            spell_projectile,
+            "SpellProjectileBlockChance",
+        ),
         // :1054-1058 承伤份额（clamp 到 [0,100]，超额防住不为负）。
         block_effect_taken_pct: db
             .sum(ModType::Base, cfg, &[ModName::from("BlockEffect")])
@@ -370,6 +379,9 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
     env.player.output.spell_block_chance_max = block.spell_block_chance_max;
     env.player.output.effective_block_chance = block.effective_block_chance;
     env.player.output.effective_spell_block_chance = block.effective_spell_block_chance;
+    env.player.output.effective_projectile_block_chance = block.effective_projectile_block_chance;
+    env.player.output.effective_spell_projectile_block_chance =
+        block.effective_spell_projectile_block_chance;
     env.player.output.block_effect = block.block_effect_taken_pct;
 
     // --- Spirit 池本值 + 未预留余量（CalcDefence.lua:73-126 / :330-337）---

@@ -1134,10 +1134,16 @@ pub fn fill_ehp_pob2(
         let n_hits = number_of_hits_to_die(&taken_hit, &pools, &ctx, &params);
 
         // ---- mitigation 概率层（:3155-3247）----
-        // 平均格挡：vendor :1052 为四分型均值；Projectile 分型未进 OutputTable
-        // （无投射物专项词条时与基础分型同值），以 (攻击+法术)/2 等价。
-        let avg_block_frac =
-            (out.effective_block_chance + out.effective_spell_block_chance) / 2.0 / 100.0;
+        // 平均格挡 = 四分型均值（vendor :1067 EffectiveAverageBlockChance）。旧
+        // 二分型均值把 SpellProjectileBlock = max(spellBlock, projBlock)（:1013）
+        // 漏掉——盾 build（spellBlock 0、projBlock = block）被低估：smith 13.65
+        // vs vendor 20.475（TotalEHP 0.92x 根因）。
+        let avg_block_frac = (out.effective_block_chance
+            + out.effective_projectile_block_chance
+            + out.effective_spell_block_chance
+            + out.effective_spell_projectile_block_chance)
+            / 4.0
+            / 100.0;
         // vendor BlockEffect（防住份额%）= 100 − ΣBASE = 100 − out.block_effect（承伤份额）。
         let block_effect_mult = 1.0 - avg_block_frac * (100.0 - out.block_effect) / 100.0;
         // :3195 deflect 乘数（chance<100 口径；=100 时已折入 afterReductionMulti）。
