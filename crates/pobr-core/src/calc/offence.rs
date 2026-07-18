@@ -260,6 +260,17 @@ pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalI
         input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
     );
     let uncapped_action_rate = scaled_rate * action_speed_mod;
+    if std::env::var("POBR_DBG_SPEED").is_ok() {
+        eprintln!(
+            "[POBR_DBG_SPEED] base={} inc={} more={} action={} scaled={} names={:?}",
+            input.base_action_rate,
+            inc_speed,
+            more_speed,
+            action_speed_mod,
+            scaled_rate,
+            speed_names
+        );
+    }
     round(apply_server_tick_cap(
         db,
         cfg,

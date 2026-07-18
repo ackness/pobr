@@ -913,10 +913,13 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
 /// `CalculationSession::new`）。
 fn stage_weapon_bases(ctx: &mut StageCtx<'_>) {
     let (build, data) = (ctx.build, ctx.data);
-    if let Some((skill, _, _)) = &ctx.main_skill
+    if let Some((skill, _, skill_id)) = &ctx.main_skill
         && let Some(use_time) = skill.use_time_s
         && use_time > 0.0
     {
+        if std::env::var("POBR_DBG_SPEED").is_ok() {
+            eprintln!("[POBR_DBG_SPEED] main skill_id={skill_id} use_time={use_time}");
+        }
         ctx.base_input.base_action_rate = 1.0 / use_time;
     }
 
