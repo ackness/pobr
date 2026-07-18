@@ -181,6 +181,7 @@ fn minion_increased_damage_raises_minion_dps() {
         base: ItemBaseId::from("Ring"),
         rarity: ItemRarity::Rare,
         quality: 0,
+        corrupted: false,
         implicit_texts: vec![],
         modifier_texts: vec!["Minions deal 50% increased Damage".into()],
         enchant_texts: vec![],

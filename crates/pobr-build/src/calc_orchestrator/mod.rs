@@ -1063,6 +1063,7 @@ fn stage_inject_jewels(
     session: &mut CalculationSession,
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
+    let adorned_inc = adorned_corrupted_magic_jewel_inc(&ctx.build.jewels);
     for jewel in &ctx.build.jewels {
         let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data));
         let texts: Vec<&str> = filtered
@@ -1072,11 +1073,68 @@ fn stage_inject_jewels(
             .chain(&filtered.enchant_texts)
             .map(String::as_str)
             .collect();
-        session
-            .add_modifier_texts(texts)
-            .map_err(|e| BuildError::Parse(e.to_string()))?;
+        // The Adorned（vendor CalcSetup.lua:944-948 + :1342-1347）：树插槽内的
+        // **腐化魔法**珠宝全部 mod 按 `1 + N/100` 缩放注入（ScaleAddList 语义，
+        // 数值 = trunc(round(v×scale, 2))，ModStore.lua:70-79）。
+        // ponytail: 不建模 vendor 的 sinister/containJewelSocket 插槽豁免与
+        // unscalable 标记（语料无来源），parity 点名时再接。
+        if let Some(inc) = adorned_inc
+            && jewel.rarity == pobr_data::item::ItemRarity::Magic
+            && jewel.corrupted
+        {
+            let scale = 1.0 + inc / 100.0;
+            let parse_ctx = engine_ctx(ctx.data);
+            let mut mods: Vec<pobr_core::Modifier> = Vec::new();
+            for text in texts {
+                let Ok(outcome) = parse_ctx.parse(text) else {
+                    continue;
+                };
+                for mut m in outcome.mods {
+                    if let pobr_core::ModValue::Number(v) = m.value {
+                        m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
+                    }
+                    mods.push(m);
+                }
+            }
+            session.add_modifiers(mods);
+        } else {
+            session
+                .add_modifier_texts(texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
     }
     Ok(())
+}
+
+/// 珠宝列表内 The Adorned 的「N% increased Effect of Jewel Socket Passive Skills
+/// containing Corrupted Magic Jewels」数值（XML 内该词条折行为两个物理行，按
+/// 空格拼接后匹配；vendor 解析为 `JewelData{corruptedMagicJewelIncEffect}`）。
+/// 无该珠宝 → `None`。
+fn adorned_corrupted_magic_jewel_inc(jewels: &[Item]) -> Option<f64> {
+    const SUFFIX: &str =
+        "% increased Effect of Jewel Socket Passive Skills containing Corrupted Magic Jewels";
+    for jewel in jewels {
+        if jewel.rarity != pobr_data::item::ItemRarity::Unique {
+            continue;
+        }
+        let joined = jewel.modifier_texts.join(" ");
+        if let Some(pos) = joined.find(SUFFIX) {
+            let head = &joined[..pos];
+            let num_start = head
+                .rfind(|c: char| !c.is_ascii_digit())
+                .map_or(0, |i| i + 1);
+            if let Ok(v) = head[num_start..].parse::<f64>() {
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
+/// vendor `ModStore:ScaleAddMod` 数值缩放语义（ModStore.lua:70-79）：
+/// `m_modf(round(v × scale, 2))` —— 先四舍五入到 2 位小数，再截尾取整。
+fn scale_trunc_2dp(value: f64, scale: f64) -> f64 {
+    ((value * scale * 100.0).round() / 100.0).trunc()
 }
 
 /// 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
@@ -2050,6 +2108,7 @@ mod ring3_tests {
             base: ItemBaseId::from("Ring"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec!["+30 to maximum Life".into()],
             enchant_texts: vec![],
@@ -2181,6 +2240,7 @@ mod tests {
             base: ItemBaseId::from("Iron Ring"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec![format!("+{amount} to maximum Life")],
             enchant_texts: vec![],
@@ -2200,6 +2260,7 @@ mod tests {
             base: ItemBaseId::from("Solar Amulet"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec![],
             enchant_texts: vec!["Allocates Paragon".into()],
@@ -3248,6 +3309,7 @@ mod tests {
             base: ItemBaseId::from("Visceral Quiver"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec!["53% increased Damage with Bow Skills".into()],
             enchant_texts: vec![],
@@ -4452,6 +4514,7 @@ mod tests {
                     base: ItemBaseId::from(base_name.as_str()),
                     rarity: ItemRarity::Normal,
                     quality: 0,
+                    corrupted: false,
                     implicit_texts: vec![],
                     modifier_texts: vec![],
                     enchant_texts: vec![],
@@ -4480,6 +4543,7 @@ mod tests {
                 base: ItemBaseId::from(base_name.as_str()),
                 rarity: ItemRarity::Normal,
                 quality: 0,
+                corrupted: false,
                 implicit_texts: vec![],
                 modifier_texts: vec![],
                 enchant_texts: vec![],

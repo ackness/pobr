@@ -213,6 +213,7 @@ mod tests {
             base: ItemBaseId::from("Test Wand"),
             rarity: ItemRarity::Unique,
             quality: 0,
+            corrupted: false,
             implicit_texts: Vec::new(),
             modifier_texts: vec![format!("Grants Skill: Level {level} Firebolt")],
             enchant_texts: Vec::new(),

@@ -936,6 +936,7 @@ mod kalandra_tests {
             base: ItemBaseId::from("Ring"),
             rarity: ItemRarity::Unique,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: texts.iter().map(|s| s.to_string()).collect(),
             enchant_texts: vec![],

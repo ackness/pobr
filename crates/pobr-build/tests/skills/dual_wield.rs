@@ -31,6 +31,7 @@ fn weapon(base_name: &str, mods: &[&str]) -> Item {
         base: ItemBaseId::from(base_name),
         rarity: ItemRarity::Normal,
         quality: 0,
+        corrupted: false,
         implicit_texts: vec![],
         modifier_texts: mods.iter().map(|s| s.to_string()).collect(),
         enchant_texts: vec![],

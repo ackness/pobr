@@ -108,6 +108,7 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
     let mut rolled_defence = RolledDefence::default();
 
     // 后续段：先扫描元数据（Quality / Implicits 头 / 防御底值），再按行归类词条。
+    let mut corrupted = false;
     for section in &sections[1..] {
         let mut mod_lines: Vec<&str> = Vec::new();
 
@@ -119,7 +120,10 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
             } else if accumulate_rolled_defence(line, &mut rolled_defence) {
                 // 已掷出防御底值行：记入 rolled_defence，不计入词条。
             } else if is_metadata_line(line) {
-                // 元数据行不计入词条。
+                // 元数据行不计入词条；`Corrupted` 标记行落 corrupted 状态。
+                if line.trim() == "Corrupted" {
+                    corrupted = true;
+                }
             } else {
                 mod_lines.push(line);
             }
@@ -138,6 +142,7 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
         base,
         rarity,
         quality,
+        corrupted,
         implicit_texts,
         modifier_texts,
         enchant_texts,
@@ -203,6 +208,7 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     let mut quality = 0u8;
     let mut implicit_count = 0usize;
     let mut rolled_defence = RolledDefence::default();
+    let mut corrupted = false;
     let mut mod_lines: Vec<&str> = Vec::new();
     for &line in &lines[idx..] {
         if let Some(value) = quality_from_line(line) {
@@ -212,7 +218,10 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
         } else if accumulate_rolled_defence(line, &mut rolled_defence) {
             // 已掷出防御底值行：记入 rolled_defence，不计入词条。
         } else if is_xml_metadata_line(line) {
-            // 元数据行不计入词条。
+            // 元数据行不计入词条；`Corrupted` 标记行落 corrupted 状态。
+            if line == "Corrupted" {
+                corrupted = true;
+            }
         } else {
             mod_lines.push(line);
         }
@@ -233,6 +242,7 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
         base,
         rarity,
         quality,
+        corrupted,
         implicit_texts,
         modifier_texts,
         enchant_texts,

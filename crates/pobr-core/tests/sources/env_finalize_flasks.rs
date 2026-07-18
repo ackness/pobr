@@ -25,6 +25,7 @@ fn utility_item(base: &str, explicits: &[&str]) -> Item {
         base: ItemBaseId::from(base),
         rarity: ItemRarity::Magic,
         quality: 0,
+        corrupted: false,
         implicit_texts: Vec::new(),
         modifier_texts: explicits.iter().map(|t| (*t).to_string()).collect(),
         enchant_texts: Vec::new(),

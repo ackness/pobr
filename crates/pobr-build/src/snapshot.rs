@@ -248,6 +248,7 @@ mod tests {
                 base: ItemBaseId::from("Iron Ring"),
                 rarity: ItemRarity::Rare,
                 quality: 0,
+                corrupted: false,
                 implicit_texts: vec![],
                 modifier_texts: vec!["+10 to maximum Life".into()],
                 enchant_texts: vec![],
