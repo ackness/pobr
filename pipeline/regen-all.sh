@@ -15,9 +15,11 @@
 #   pipeline/regen-all.sh                       # patch 读 config.json；手工域从同 patch 旧产物沿用
 #   OLD_PATCH=4.5.0.3.4 pipeline/regen-all.sh    # 手工域从指定旧版本沿用（跨版本升级）
 #
-# 手工策展 overlay（无 vendor/官方自动通道）：buff_definitions / high_precision_mods /
-# local_mods / special_mods / vendor_name_aliases —— 跨版本升级时从 OLD_PATCH 沿用，
-# 并需人工复核（游戏平衡变更可能使其过时）。
+# 手工策展 overlay（无 vendor/官方自动通道）全部已迁到版本无关的
+# data/overlay-common/（special_mods / buff_definitions / high_precision_mods /
+# local_mods / vendor_name_aliases）：新版本目录由 gamedata 加载期自动合并/兜底
+# 继承，无需逐版本沿用（P1-3）。真正版本特有的修正才放 data/<patch>/overlay/<域>.json
+# （加载期按 id 覆盖 common，或对单对象域整份覆盖）。
 
 # 韧性化：不用 -e 全局中止。前置步骤（adapter base/tree）失败仍立即退出（无 base
 # 数据则后续无意义）；overlay 单步失败只记录、续跑其余，末尾汇总。
@@ -122,17 +124,10 @@ soft_step trigger_configs "${SYNC[@]}" gen-trigger-configs --vendor-root "$VENDO
 # stat_id_map（M6 E/F 段 B）须在 stat_descriptions + mod_parser_rules 之后——消费两者跑引擎派生。
 soft_step stat_id_map     "${SYNC[@]}" gen-stat-id-map --overlay-dir "$OVL" --out "$OVL/stat_id_map.json"
 
-# ---- 6) 手工策展 overlay：从 OLD_PATCH 沿用（需人工复核）----
-echo "== [6/8] 手工策展 overlay 从 $OLD_PATCH 沿用"
-for f in buff_definitions high_precision_mods local_mods special_mods vendor_name_aliases; do
-    src="data/$OLD_PATCH/overlay/$f.json"
-    if [[ -f "$src" ]]; then
-        cp "$src" "$OVL/$f.json"
-        echo "   carried over: $f.json（人工域，复核游戏平衡变更）"
-    else
-        echo "   WARN: 缺 ${src}，跳过 $f.json" >&2
-    fi
-done
+# ---- 6) 手工策展 overlay：全部迁至 data/overlay-common/，无逐版本沿用 ----
+# special_mods / buff_definitions / high_precision_mods / local_mods /
+# vendor_name_aliases 均在 data/overlay-common/，gamedata 加载期合并/兜底继承（P1-3）。
+# 版本特有修正才落 data/<patch>/overlay/<域>.json。此步已无沿用动作。
 
 # ---- 6b) 手工策展 base 文件：管线不产出，从 OLD_PATCH 沿用（需人工复核版本变更）----
 # 这些是 git 跟踪、无生成器的游戏常量/定义（武器类型、game/character constants、
@@ -169,9 +164,10 @@ if [[ ${#OVERLAY_FAILURES[@]} -gt 0 ]]; then
 fi
 
 # ---- 6c) vendor specialModList 批量抽取 (generated/special_vendor.json) ----
-# 必须在 special_derived (步骤 4) 与 special_mods 沿用 (步骤 6) 之后：抽取器对这
-# 两个文件做 key 去重。注意去重读的是 pobr_data::data_version() 指向的数据目录，
-# 不是 $PATCH——升级 drill 中先把 DATA_VERSION 常量推进到 $PATCH 再跑本脚本。
+# 必须在 special_derived (步骤 4) 之后：抽取器对 special_mods（overlay-common +
+# 版本 overlay 两层）/ special_derived 做 key 去重。注意去重读的是
+# pobr_data::data_version() 指向的数据目录（含其同级 overlay-common），不是 $PATCH——
+# 升级 drill 中先把 DATA_VERSION 常量推进到 $PATCH 再跑本脚本。
 # 4.5.4.3 升级曾漏掉这一步 (special_vendor 为 0 条)；precompile-mods --check 现在
 # 会对缺失报错。
 echo "== [6c] extract-lua --what special-mods (generated/special_vendor.json)"
@@ -179,14 +175,27 @@ mkdir -p "$OUT_DIR/generated"
 soft_step special_vendor "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$OUT_DIR/generated/special_vendor.json"
 
 # ---- 7) generated/（precompile-mods）----
-echo "== [7/8] precompile-mods（generated/）"
+echo "== [7/9] precompile-mods（generated/）"
 soft_step precompile_mods cargo run --quiet -p precompile-mods -- --data "$OUT_DIR" --report
 
 # ---- 8) manifest.json：以 OLD_PATCH 结构为模板，仅换版本号 ----
-echo "== [8/8] manifest.json"
+echo "== [8/9] manifest.json"
 if [[ -f "data/$OLD_PATCH/manifest.json" ]]; then
-    sed "s/\"$OLD_PATCH\"/\"$PATCH\"/g" "data/$OLD_PATCH/manifest.json" > "$OUT_DIR/manifest.json"
+    sed "s/\"${OLD_PATCH}\"/\"${PATCH}\"/g" "data/${OLD_PATCH}/manifest.json" > "${OUT_DIR}/manifest.json"
 fi
+
+# ---- 9) test-pin 快照 bless（generated/test_pins.json，v0.0.3 P0-1）----
+# 数据内容计数钉（parser 规则段计数 / minion 系数等）不再手写在测试里，而是存
+# 每版本一份的 generated/test_pins.json；这里以 POBR_BLESS_PINS=1 重跑对应定向
+# 测试把实际值写回快照（与 regen 同一提交）。注意：
+#   - 快照落在各测试**实际加载**的版本目录（golden 测试 =
+#     pobr_data::GOLDEN_PARITY_DATA_VERSION）——升级 drill 中 golden 尚未切换时，
+#     刷新的是旧 golden 目录，属预期；
+#   - 必须用 cargo test（单进程多线程，写回有进程内锁），勿换 nextest
+#     （进程/测试并发写同一快照会互相覆盖）。
+echo "== [9/9] test-pin bless（generated/test_pins.json）"
+soft_step pin_parser_rules env POBR_BLESS_PINS=1 cargo test --quiet -p pobr-gamedata --lib parser_rules
+soft_step pin_minions env POBR_BLESS_PINS=1 cargo test --quiet -p pobr-build --test skills minions::build_data_minion_def
 
 # ---- 汇总 ----
 echo "regen-all: 完成 → $OUT_DIR"

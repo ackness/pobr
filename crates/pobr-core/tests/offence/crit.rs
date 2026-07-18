@@ -199,9 +199,11 @@ fn bifurcate_crit_chance_50_to_75() {
     approx(crit.chance, 0.75);
 }
 
-/// Bifurcate 额外爆伤：两次都暴击概率 = PreBifurcate²/100，额外加权一份 extra。
+/// Bifurcate 额外爆伤：条件概率「至少一次暴击时两次都暴击」额外加权一份 extra
+/// （vendor CalcOffence.lua `conditionalBifurcateChance`）。
 /// base_crit=50%，extra 基础 = (100)/100 = 1.0；
-/// bifurcateMultiChance = 50²/100 = 25；extra' = 1.0 + 25*1.0/100 = 1.25 → crit_mult = 2.25。
+/// bifurcateMultiChance = 50²/100 = 25；有效暴击 = 75；
+/// conditional = 25/75 = 1/3；extra' = 1.0×(1+1/3) → crit_mult = 2.3333。
 #[test]
 fn bifurcate_adds_extra_crit_multiplier() {
     let mut db = player_with_base_crit(50.0);
@@ -210,7 +212,7 @@ fn bifurcate_adds_extra_crit_multiplier() {
     let cfg = CalcConfig::spell().with_mode_effective(true);
 
     let crit = resolve_crit(&db, &enemy, &cfg, 1.0, 0.0, true);
-    approx(crit.multiplier, 2.25);
+    approx(crit.multiplier, 1.0 + 1.0 + 25.0 / 75.0);
 }
 
 // ─────────────────────────── Inevitable ───────────────────────────

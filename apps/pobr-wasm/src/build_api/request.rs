@@ -192,6 +192,7 @@ fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> Socket
             gem_level: gem.level,
             quality: gem.quality,
             stat_set_index: None,
+            name_spec: None,
         });
         if let Some(gem_id) = gem_id {
             group.gem_ids.push(gem_id);

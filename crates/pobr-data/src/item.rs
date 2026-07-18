@@ -57,6 +57,9 @@ pub struct Item {
     pub base: ItemBaseId,
     pub rarity: ItemRarity,
     pub quality: u8,
+    /// 是否已腐化（item 文本的 `Corrupted` 标记行）。消费方：The Adorned 珠宝
+    /// 效果缩放（corrupted magic jewel 门控）等 vendor `item.corrupted` 语义。
+    pub corrupted: bool,
     /// implicit 词条文本（基底固有词缀），归因到 `SourceKind::ItemImplicit`。
     pub implicit_texts: Vec<String>,
     /// explicit 词条文本（前后缀），归因到 `SourceKind::ItemAffix`。

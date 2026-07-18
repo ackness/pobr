@@ -151,6 +151,7 @@ fn bare_weapon(base_name: &str) -> Item {
         base: ItemBaseId::from(base_name),
         rarity: ItemRarity::Normal,
         quality: 0,
+        corrupted: false,
         implicit_texts: vec![],
         modifier_texts: vec![],
         enchant_texts: vec![],

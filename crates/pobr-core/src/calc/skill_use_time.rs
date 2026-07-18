@@ -44,21 +44,23 @@ pub fn speed_names() -> [ModName; 3] {
 }
 
 /// 按技能类型选取速度 bucket：攻击 → `[AttackSpeed, SkillSpeed]`，法术 → `[CastSpeed, SkillSpeed]`，
-/// 二者皆非（如纯 DoT/未标记）→ 取全部三个（向后兼容）。
+/// 二者皆非（如伙伴/召唤/预留类主技能）→ 仅 `[SkillSpeed]`。
 ///
 /// 出处：PoB CalcOffence——攻击只吃攻速、法术只吃施法速度，`SkillSpeed` 两者通吃；不混淆
 /// （避免攻击错误吃到 `increased Cast Speed`、法术错误吃到 `increased Attack Speed`）。
+/// 未标记技能：vendor 的 `Speed` mod 带 ModFlag.Attack/Cast，flag 匹配要求 cfg 含对应位
+/// ——非攻非法术 cfg 二者皆不吃（wolf-pack 实测：Wolf Pack 主技能曾错吃武器
+/// `12% reduced Attack Speed` → Speed 0.88 vs vendor 1.00）。
 pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
     // 攻击/法术判定同时认 ModFlags（orchestrator 经 `skill_type_flags` 注入）与 SkillTypes
     // （`CalcConfig::attack()`/`spell()` 预设），二者任一命中即可——兼容两条装配路径。
     let is_attack = cfg.flags.intersects(ModFlags::ATTACK) || cfg.is_attack();
     let is_spell = cfg.flags.intersects(ModFlags::SPELL) || cfg.is_spell();
-    let untyped = !is_attack && !is_spell;
     let mut names = Vec::with_capacity(3);
-    if is_attack || untyped {
+    if is_attack {
         names.push(ModName::from(SPEED_BUCKET[0])); // AttackSpeed
     }
-    if is_spell || untyped {
+    if is_spell {
         names.push(ModName::from(SPEED_BUCKET[1])); // CastSpeed
     }
     names.push(ModName::from(SPEED_BUCKET[2])); // SkillSpeed（始终）

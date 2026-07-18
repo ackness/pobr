@@ -384,17 +384,35 @@ pub fn buff_pass(env: &mut Env) {
                 // （:2296-2298）不实现（简化 (g)：无 aura 源建模）。
                 let curse_effect = [ModName::from("CurseEffect")];
                 let curse_effect_on_self = [ModName::from("CurseEffectOnSelf")];
+                // spec.local_effect_inc/more = vendor skillModList 的技能局部
+                // CurseEffect 段（宝石品质 / 组内 support，编排层预折）。
                 let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &curse_effect)
+                    + spec.local_effect_inc
                     + env
                         .enemy
                         .mod_db
                         .sum(ModType::Inc, &env.cfg, &curse_effect_on_self);
-                let mut more = env.player.mod_db.more(&env.cfg, &curse_effect) * spec.magnitude;
+                let mut more = env.player.mod_db.more(&env.cfg, &curse_effect)
+                    * spec.local_effect_more
+                    * spec.magnitude;
                 if !spec.is_mark {
                     // vendor :2303-2305：非 mark 再乘敌侧 CurseEffectOnSelf MORE。
                     more *= env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self);
                 }
                 let mult = (1.0 + inc / 100.0) * more;
+                if std::env::var("POBR_DBG_CURSE").is_ok() {
+                    eprintln!(
+                        "[POBR_CURSE] entry name={} inc={inc:.2} (local_inc={:.2}) more={more:.4} (local_more={:.4} magnitude={:.4}) mult={mult:.4} mods={:?}",
+                        spec.name,
+                        spec.local_effect_inc,
+                        spec.local_effect_more,
+                        spec.magnitude,
+                        spec.mods
+                            .iter()
+                            .map(|m| (&m.name, &m.value))
+                            .collect::<Vec<_>>(),
+                    );
+                }
                 let source_id = format!("curse.{}", spec.skill_id);
                 let mods = spec
                     .mods
@@ -659,6 +677,8 @@ mod tests {
             socket_index,
             is_mark,
             ignore_curse_limit,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         }
     }
@@ -674,6 +694,8 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         }
     }
@@ -1075,6 +1097,8 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         });
 
@@ -1107,6 +1131,8 @@ mod tests {
             socket_index: 1,
             is_mark: false,
             ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
             skill_types: pobr_data::skill::SkillTypes::NONE,
         });
 

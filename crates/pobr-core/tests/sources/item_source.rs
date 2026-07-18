@@ -16,6 +16,7 @@ fn helmet(texts: &[&str]) -> Item {
         base: ItemBaseId::from("Helmet"),
         rarity: ItemRarity::Rare,
         quality: 20,
+        corrupted: false,
         implicit_texts: Vec::new(),
         modifier_texts: texts.iter().map(|t| (*t).to_string()).collect(),
         enchant_texts: Vec::new(),
@@ -114,6 +115,7 @@ fn ingest_item_distinguishes_implicit_explicit_enchant_sections() {
         base: ItemBaseId::from("Helmet"),
         rarity: ItemRarity::Rare,
         quality: 0,
+        corrupted: false,
         implicit_texts: vec!["+30% to Fire Resistance".to_string()],
         modifier_texts: vec!["+40 to maximum Life".to_string()],
         enchant_texts: vec!["+25% to Cold Resistance".to_string()],
@@ -157,6 +159,7 @@ fn ingest_item_collects_unsupported_texts_across_sections() {
         base: ItemBaseId::from("Helmet"),
         rarity: ItemRarity::Rare,
         quality: 0,
+        corrupted: false,
         implicit_texts: vec!["split".to_string()],
         modifier_texts: vec!["+40 to maximum Life".to_string(), "mirrored".to_string()],
         enchant_texts: Vec::new(),
@@ -179,6 +182,7 @@ fn ingested_item_modifiers_attribute_back_to_slot() {
         base: ItemBaseId::from("Iron Ring"),
         rarity: ItemRarity::Rare,
         quality: 0,
+        corrupted: false,
         implicit_texts: Vec::new(),
         modifier_texts: vec!["+25 to maximum Life".to_string()],
         enchant_texts: Vec::new(),
@@ -209,6 +213,7 @@ fn ingested_implicit_attributes_to_item_implicit_source() {
         base: ItemBaseId::from("Amber Amulet"),
         rarity: ItemRarity::Rare,
         quality: 0,
+        corrupted: false,
         implicit_texts: vec!["+25 to maximum Life".to_string()],
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
@@ -242,6 +247,7 @@ fn session_add_item_feeds_minimal_calc() {
         base: ItemBaseId::from("Plate Vest"),
         rarity: ItemRarity::Rare,
         quality: 0,
+        corrupted: false,
         implicit_texts: Vec::new(),
         modifier_texts: vec![
             "+40 to maximum Life".to_string(),
@@ -294,6 +300,7 @@ fn bare_item(base: &str, slot_quality: u8) -> Item {
         base: ItemBaseId::from(base),
         rarity: ItemRarity::Rare,
         quality: slot_quality,
+        corrupted: false,
         implicit_texts: Vec::new(),
         modifier_texts: Vec::new(),
         enchant_texts: Vec::new(),
@@ -368,6 +375,7 @@ fn utility_item(base: &str, implicits: &[&str], explicits: &[&str]) -> Item {
         base: ItemBaseId::from(base),
         rarity: ItemRarity::Magic,
         quality: 0,
+        corrupted: false,
         implicit_texts: implicits.iter().map(|t| (*t).to_string()).collect(),
         modifier_texts: explicits.iter().map(|t| (*t).to_string()).collect(),
         enchant_texts: Vec::new(),
@@ -433,8 +441,11 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
 /// 同样来自真实 build，静默忽略会让调用方误以为效果已经生效。
 #[test]
 fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
-    // 引擎 special 通道已建模这两行（GuardAbsorb* / SpiritPossessionOnUse）——
-    // legacy 时代它们是 unmodeled unsupported，现应正常产 mod、不进 unsupported。
+    // possession 行由引擎 special 通道建模（SpiritPossessionOnUse），正常产 mod。
+    // guard 行（`Also grants N Guard`）曾被策展条目 also_grants_guard 建模，但
+    // vendor ModParser 根本不解析它——对 PoB2 golden 是幻影 Guard 池（存量 #7
+    // 已摘除，ritualist EHP 1.10x→1.00x）。与 PoB2 对齐后它回到「未建模 →
+    // 必须响亮进 unsupported 报告」的口径，静默忽略才是失败。
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
@@ -446,9 +457,10 @@ fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
 
     let ingest = ingest_flask_charm("Charm 1", &charm);
 
-    assert!(
-        ingest.unsupported.is_empty(),
-        "guard/possession 行应由引擎解析，实际 unsupported: {:?}",
+    assert_eq!(
+        ingest.unsupported,
+        vec!["Also grants 435 Guard".to_string()],
+        "guard 行未建模应上报（与 PoB2 口径一致）、possession 行应解析，实际 unsupported: {:?}",
         ingest.unsupported
     );
 }

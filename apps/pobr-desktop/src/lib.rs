@@ -31,6 +31,7 @@ pub fn example_build() -> Build {
         base: ItemBaseId::from("Iron Ring"),
         rarity: ItemRarity::Rare,
         quality: 0,
+        corrupted: false,
         implicit_texts: vec![],
         modifier_texts: vec![
             "+25 to maximum Life".to_string(),

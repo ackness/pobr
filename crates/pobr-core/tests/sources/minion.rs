@@ -33,14 +33,16 @@ fn gem_level_table_maps_per_pob2() {
 }
 
 #[test]
-fn base_stats_use_monster_table_times_normalizer() {
+fn base_stats_use_ally_life_table_times_normalizer() {
+    // #12 起召唤物生命走盟友表 + floor（vendor CalcPerform.lua:1046
+    // `m_floor(monsterAllyLifeTable[level] × minionData.life)`），不再用敌方
+    // monsterLifeTable。armour/evasion 仍走敌方表（vendor 同源）。
     let data = MinionData {
         life: 0.7,
         ..MinionData::default()
     };
     let base = derive_minion_base_stats(20, &data);
-    let row = MonsterScalingRow::at_level(40);
-    let expected = (row.life as f64 * 0.7 * 1_000_000_000.0).round() / 1_000_000_000.0;
+    let expected = (pobr_data::monster::monster_ally_life(40) as f64 * 0.7).floor();
     assert!((base.life - expected).abs() < 1e-6);
     assert!(base.life > 0.0);
 }
@@ -282,8 +284,8 @@ fn build_context_from_raging_spirit_life_matches_pob2() {
     // 暴怒魂灵：life=0.25，gem_level=20 → 怪物等级 40。
     let def = minion_def_raging_spirit();
     let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
-    let row = MonsterScalingRow::at_level(40);
-    let expected = (row.life as f64 * 0.25 * 1e9).round() / 1e9;
+    // #12：生命走盟友表 + floor（vendor CalcPerform.lua:1046）。
+    let expected = (pobr_data::monster::monster_ally_life(40) as f64 * 0.25).floor();
     assert!(
         (ctx.base.life - expected).abs() < 1e-6,
         "RagingSpirit life: expected {expected}, got {}",

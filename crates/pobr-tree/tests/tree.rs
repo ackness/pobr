@@ -273,6 +273,7 @@ fn compute_node_mods_splits_multiline_stats_into_separate_texts() {
 fn from_nodes_round_trips_with_positions() {
     let nodes = vec![
         PassiveNodeDef {
+            apply_to_armour: false,
             skill: 1,
             id: "a".into(),
             name: None,
@@ -288,6 +289,7 @@ fn from_nodes_round_trips_with_positions() {
             variants: vec![],
         },
         PassiveNodeDef {
+            apply_to_armour: false,
             skill: 2,
             id: "b".into(),
             name: None,

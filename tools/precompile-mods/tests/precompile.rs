@@ -125,14 +125,22 @@ fn committed_coverage_matches_fresh_run() {
          请重跑 cargo run -p precompile-mods -- --data data/{PATCH} --report 并提交"
     );
 
-    // 棘轮基线应与已提交产物的 coverage_ratio 一致。
+    // 覆盖率棘轮：已提交产物不得低于基线（与 devs/scripts/regen-check.sh 同语义）。
+    // 基线是人工决策闸门（同 parity_no_regression），不随 regen 自动刷新；覆盖率
+    // 提升后抬高基线是可选的 deliberate 动作，故这里断言方向而非相等——数据 regen
+    // 抬升覆盖率不再机械打碎本测试。
     let baseline_path = repo_root().join("devs/ci/parse-coverage-baseline.json");
     if baseline_path.is_file() {
         let baseline: serde_json::Value =
             serde_json::from_slice(&std::fs::read(&baseline_path).unwrap()).unwrap();
-        assert_eq!(
-            baseline["coverage_ratio"], committed_summary["coverage_ratio"],
-            "baseline coverage_ratio 与已提交报表不一致——更新 devs/ci/parse-coverage-baseline.json"
+        let base = baseline["coverage_ratio"].as_f64().expect("baseline ratio");
+        let cur = committed_summary["coverage_ratio"]
+            .as_f64()
+            .expect("committed ratio");
+        assert!(
+            cur + 5e-7 >= base,
+            "覆盖率棘轮失败：已提交 {cur} < 基线 {base}——解析覆盖率不得降低；\
+             若属预期（语料扩面）请同 PR 更新 devs/ci/parse-coverage-baseline.json"
         );
     }
 
@@ -178,10 +186,23 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
             std::fs::copy(&src, tmp_data.join("generated").join(name)).unwrap();
         }
     }
-    // overlay/special_mods.json（parser 引擎 special 通道输入）。存在即拷。
+    // overlay/special_mods.json（parser 引擎 special 通道输入，版本特有条目）。存在即拷。
     let special_mods = src_data.join("overlay/special_mods.json");
     if special_mods.is_file() {
         std::fs::copy(&special_mods, tmp_data.join("overlay/special_mods.json")).unwrap();
+    }
+    // overlay-common/special_mods.json（版本无关策展层，P1-3）：gamedata 加载期把它
+    // merge 到版本 overlay 之下，是引擎 special 规则的大头（133 条）。它是版本目录的
+    // **同级**兄弟，隔离镜像里也必须复刻到 <tmp>/data/overlay-common/，否则 fresh 重跑
+    // 只见版本层零头、覆盖率跌破已提交产物。存在即拷。
+    if let Some(src_common) = src_data
+        .parent()
+        .map(|p| p.join("overlay-common/special_mods.json"))
+        && src_common.is_file()
+    {
+        let dst_common = tmp.join("data/overlay-common");
+        std::fs::create_dir_all(&dst_common).unwrap();
+        std::fs::copy(&src_common, dst_common.join("special_mods.json")).unwrap();
     }
     // overlay/mod_parser_rules.json（引擎解析规则六表——删 legacy 后是唯一
     // 解析器，缺它 precompile 直接报错）。存在即拷。

@@ -752,6 +752,9 @@ impl BuildData {
                 .get(skill_id)
                 .map(|rows| {
                     rows.iter()
+                        // alt 品质 stat 仅 GemlingQuality build 生效，走
+                        // [`Self::alt_quality_stats`] 由消费方按 flag 叠加。
+                        .filter(|q| !q.alt)
                         .map(|q| SkillDamageStat {
                             stat: q.stat.clone(),
                             // trunc（toward zero），对齐 math.modf 整数部分。
@@ -768,6 +771,32 @@ impl BuildData {
             base,
             quality: quality_stats,
         }
+    }
+
+    /// alt 品质 stat（vendor `altQualityStats`）在给定品质下的 trunc 值。
+    ///
+    /// 仅当 build 带 GemlingQuality flag（Gemling 升华『Gem Quality grants
+    /// Socketed Skills an additional effect』）时叠加进技能 stat 集
+    /// （PoB2 `CalcTools.lua:147-152` `includeAltQualityStats`）——由消费方
+    /// 判定 flag 后调用（[`Self::effect_stats`] 恒不含 alt 行）。
+    // ponytail: 目前只有 spirit 预留效率消费此通道（gemling parity 钉值）；
+    // offence/statmap 侧待有 fixture 逼出偏差时再接（同一 accessor，零改数据）。
+    pub fn alt_quality_stats(&self, skill_id: &str, quality: u32) -> Vec<SkillDamageStat> {
+        if quality == 0 {
+            return Vec::new();
+        }
+        self.gem_quality_stats
+            .get(skill_id)
+            .map(|rows| {
+                rows.iter()
+                    .filter(|q| q.alt)
+                    .map(|q| SkillDamageStat {
+                        stat: q.stat.clone(),
+                        value: (q.per_quality_rate * f64::from(quality)).trunc(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// 取某授予效果在某 (宝石等级, 品质, statSet 形态) 下**未选 set** 的 stat 快照
@@ -816,7 +845,7 @@ impl BuildData {
             if quality > 0
                 && let Some(rows) = self.gem_quality_stats.get(skill_id)
             {
-                for q in rows {
+                for q in rows.iter().filter(|q| !q.alt) {
                     // trunc（toward zero），与 effect_stats 的品质段同语义。
                     *acc.entry(q.stat.clone()).or_default() +=
                         (q.per_quality_rate * f64::from(quality)).trunc();
@@ -1018,6 +1047,7 @@ mod tests {
             vec![QualityStat {
                 stat: "beta".into(),
                 per_quality_rate: 0.55,
+                alt: false,
             }],
         );
 

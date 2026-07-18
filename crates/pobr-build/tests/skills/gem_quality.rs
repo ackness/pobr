@@ -63,10 +63,12 @@ fn quality_segment_truncates_toward_zero() {
             QualityStat {
                 stat: "synth_pos".into(),
                 per_quality_rate: 0.55,
+                alt: false,
             },
             QualityStat {
                 stat: "synth_neg".into(),
                 per_quality_rate: -0.55,
+                alt: false,
             },
         ],
     );

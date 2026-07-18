@@ -249,7 +249,8 @@
     "orbit_index": 0,
     "x": -15422.891927,
     "y": 5717.99705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 116,
@@ -10526,7 +10527,8 @@
     "orbit_index": 0,
     "x": -15190.211927,
     "y": 5992.68705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 8531,
@@ -12762,7 +12764,8 @@
     "orbit_index": 0,
     "x": -15031.611927,
     "y": 6079.39705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 10011,
@@ -17727,7 +17730,8 @@
     "orbit_index": 0,
     "x": -14861.501927,
     "y": 6123.01705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 13777,
@@ -20686,7 +20690,8 @@
     "orbit_index": 0,
     "x": -14062.601927,
     "y": 5558.05705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 16311,
@@ -25715,7 +25720,8 @@
     "orbit_index": 0,
     "x": -14136.951927,
     "y": 5717.99705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 20205,
@@ -28867,7 +28873,8 @@
     "orbit_index": 0,
     "x": -15325.041927,
     "y": 5867.83705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 22927,
@@ -32032,7 +32039,8 @@
     "orbit_index": 0,
     "x": -14678.231927,
     "y": 6123.01705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 25446,
@@ -63080,7 +63088,8 @@
     "orbit_index": 0,
     "x": -14511.001927,
     "y": 6079.39705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 49356,
@@ -77820,7 +77829,8 @@
     "orbit_index": 0,
     "x": -14353.191927,
     "y": 5992.68705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 60916,
@@ -77914,7 +77924,8 @@
     "orbit_index": 0,
     "x": -14229.211927,
     "y": 5867.83705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 61042,
@@ -83073,7 +83084,8 @@
     "orbit_index": 0,
     "x": -15479.931927,
     "y": 5558.05705,
-    "ascendancy_id": "Warrior3"
+    "ascendancy_id": "Warrior3",
+    "apply_to_armour": true
   },
   {
     "skill": 64990,

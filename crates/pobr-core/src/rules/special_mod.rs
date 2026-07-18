@@ -663,6 +663,25 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 upper,
             })
         }
+        "DistanceRamp" => {
+            // 距离插值（vendor ModStore.lua:574-590）。TemplateScalarDef 无嵌套
+            // 数组形态，ramp 点列以 `"距离 倍率"` 文本对转录（如 `["35 0.2",
+            // "70 0"]` = vendor `{ {35,0.2}, {70,0} }`）；语义与 statmap 引擎的
+            // DistanceRamp 分支一致（求值期按 `cfg.skill_distance` 线性插值）。
+            let TemplateScalarDef::TextList(points) = tag.fields.get("ramp")? else {
+                return None;
+            };
+            let mut ramp = Vec::with_capacity(points.len());
+            for point in points {
+                let mut parts = point.split_whitespace();
+                let (Some(dist), Some(mult), None) = (parts.next(), parts.next(), parts.next())
+                else {
+                    return None;
+                };
+                ramp.push((dist.parse().ok()?, mult.parse().ok()?));
+            }
+            (!ramp.is_empty()).then_some(ModTag::DistanceRamp { ramp })
+        }
         // 未映射 tag 形态：保守跳过。
         _ => None,
     }
@@ -1415,16 +1434,30 @@ mod tests {
     }
 
     /// 真实仓库数据全量编译成功（闸门冒烟，正式断言在 special_mods_gate.rs）。
+    /// special_mods 分两层：版本无关策展层 `data/overlay-common/`（P1-3）+ 版本层
+    /// `data/<ver>/overlay/`。这里读同一并集拼接后编译（pobr-core 不依赖 pobr-gamedata，
+    /// 故直读文件而非走 loader）。
     #[test]
     fn repo_special_mods_compile() {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../data")
-            .join(pobr_data::data_version())
-            .join("overlay/special_mods.json");
-        let raw = std::fs::read_to_string(path).expect("special_mods.json 可读");
-        let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
-        let rules = SpecialModRules::compile(&doc.entries, &HandlerRegistry::new())
+        let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
+        let mut entries = Vec::new();
+        for path in [
+            data_root.join("overlay-common/special_mods.json"),
+            data_root
+                .join(pobr_data::data_version())
+                .join("overlay/special_mods.json"),
+        ] {
+            let raw = match std::fs::read_to_string(&path) {
+                Ok(raw) => raw,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(e) => panic!("{}: {e}", path.display()),
+            };
+            let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
+            entries.extend(doc.entries);
+        }
+        assert!(!entries.is_empty(), "special_mods 两层皆空？");
+        let rules = SpecialModRules::compile(&entries, &HandlerRegistry::new())
             .expect("仓库 special_mods 全量编译成功");
-        assert_eq!(rules.len(), doc.entries.len());
+        assert_eq!(rules.len(), entries.len());
     }
 }

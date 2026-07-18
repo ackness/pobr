@@ -12,8 +12,7 @@ use super::ailment::{
 };
 use super::output::StoredDamageRange;
 use super::skill_mechanics::{
-    calc_aoe, calc_cooldown, calc_life_cost, calc_mana_cost, calc_projectile_count,
-    calc_spirit_reservation,
+    calc_aoe, calc_cooldown, calc_mana_cost, calc_projectile_count, calc_spirit_reservation,
 };
 use super::trigger::{
     RotationSkill, TriggerSourceStats, calc_cwc_trigger_rate_traced, calc_multi_spell_rotation,
@@ -124,6 +123,13 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         env.cfg.multipliers.insert("Life".into(), life_pool);
     }
 
+    // warcry uptime 机器（存量 #9，vendor CalcOffence.lua:3203-3256）：在 hand pass
+    // **之前**把 uptime 缩放后的 warcry 进攻效果（Infernal `DamageGainAsFire`）注入
+    // 玩家 db——vendor 同样在伤害段之前写 skillModList，故击中与其派生 DoT（点燃）
+    // 都吃该增益。主技能 Speed 用与主手 pass 逐位一致的 resolve_action_rate 预解析
+    // （速率是 (db,cfg,input) 的确定函数，注入 gain-as 不回馈速度，无自引用）。
+    super::warcry::apply_warcry_uptime(env);
+
     let mut input = MinimalInput::from(env.player.base);
     // 命中率的敌人闪避来源：优先用 enemy.mod_db 的 Evasion BASE（setup_env 注入，含档位倍率），
     // 回退到 enemy.base.evasion 标量（兼容直接构造 Env 的旧入口）。
@@ -164,6 +170,14 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     env.player.breakdown = BreakdownTable::from_steps(output.breakdown);
     calc_defence(&mut env.player, &env.cfg, env.enemy.base.accuracy);
 
+    // 召唤物（Lane4）：每个召唤物是独立 Actor，复用玩家同款 offence/defence 管线。
+    // 无召唤物时该段空转。位置在 fill_mechanics **之前**（vendor 先例：
+    // CalcPerform.lua:3323-3370 calcMinionLifePool 在 calcs.defence(env.player)
+    // 之前算好召唤物生命）——伴侣总生命（inject_companion_life）要先于 EHP/max-hit
+    // 池整备写入玩家 ModDb。
+    perform_minions(env);
+    inject_companion_life(env);
+
     fill_mechanics(env);
     // 弩 reload 折算（M4-T4 W-D2）：紧跟 fill_mechanics——vendor 顺序先服务器帧
     // cap（calc_skill_use_time 内）后 reload（CalcOffence.lua:2864-2867）；下游
@@ -178,11 +192,43 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // 只读消费异常侧 bleed/poison/ignite 现值（ailment.rs 不改，T4 一波约定）。
     fill_skill_dot_stage(env);
 
-    // 召唤物（Lane4）：每个召唤物是独立 Actor，复用玩家同款 offence/defence 管线。
-    // 无召唤物时该段空转，行为与无此字段时完全一致（向后兼容）。
-    perform_minions(env);
-
     Ok(())
+}
+
+/// （#12 companion allies 层）伴侣总生命入库（vendor CalcPerform.lua:3364-3370）：
+/// 玩家有 `TakenFromCompanionBeforeYou`（Loyalty support 的
+/// `companion_takes_%_damage_before_you_from_support` buff 载荷）且无
+/// `TotalCompanionLife` Override（config 覆盖通道）时，把全部**可受伤伴侣**召唤物
+/// （`Actor::is_companion`，spawn 侧按授予技能 SkillType 判定）的生命求和写入玩家
+/// `TotalCompanionLife` BASE。消费方 = `pool_setup::build_pool_state` 的 companion
+/// 先扣层（EHP reduce_pools 与 max-hit extend_total_hit_pool 共用）。
+fn inject_companion_life(env: &mut Env) {
+    let taken_name = [ModName::from("TakenFromCompanionBeforeYou")];
+    if env.player.mod_db.sum(ModType::Base, &env.cfg, &taken_name) == 0.0 {
+        return;
+    }
+    if env
+        .player
+        .mod_db
+        .override_(&env.cfg, ModName::from("TotalCompanionLife"))
+        .is_some()
+    {
+        return;
+    }
+    let total: f64 = env
+        .minions
+        .iter()
+        .filter(|m| m.is_companion)
+        .map(|m| m.output.life)
+        .sum();
+    env.player.mod_db.add_mod(
+        crate::Modifier::number("TotalCompanionLife", ModType::Base, total).with_origin(
+            ModifierSource::new(SourceId::new(
+                SourceKind::GameConstant,
+                "companion.total_life",
+            )),
+        ),
+    );
 }
 
 /// 对每个召唤物跑同一套 offence/defence 管线，并把关键输出快照收集到玩家
@@ -909,13 +955,24 @@ fn fill_skill_mechanics(env: &mut Env) {
     }
 
     // 消耗：各资源需对应基础值 BASE 词条。无则跳过（保持 0）。
+    // hybrid mana→life 转换（`HybridManaAndLifeCost_Life`，如 Atalui's Bloodletting /
+    // Blood-Magic 族）：Life 侧吃 mana finalBase × hybrid，Mana 侧链尾
+    // `floor((1-hybrid)×ManaCost)`（vendor CalcOffence.lua:2090-2104 + :2160-2162）。
+    let hybrid = crate::calc::skill_mechanics::hybrid_life_cost_share(db, cfg);
     let base_mc = db.sum(ModType::Base, cfg, &[ModName::from("SkillManaCostBase")]);
     if base_mc > 0.0 {
-        env.player.output.mana_cost = calc_mana_cost(db, cfg, base_mc).final_cost;
+        let mana = calc_mana_cost(db, cfg, base_mc).final_cost;
+        env.player.output.mana_cost = if hybrid > 0.0 {
+            ((1.0 - hybrid) * mana).floor().max(0.0)
+        } else {
+            mana
+        };
     }
     let base_lc = db.sum(ModType::Base, cfg, &[ModName::from("SkillLifeCostBase")]);
-    if base_lc > 0.0 {
-        env.player.output.life_cost = calc_life_cost(db, cfg, base_lc).final_cost;
+    if base_lc > 0.0 || (hybrid > 0.0 && base_mc > 0.0) {
+        env.player.output.life_cost =
+            crate::calc::skill_mechanics::calc_life_cost_hybrid(db, cfg, base_lc, base_mc)
+                .final_cost;
     }
     let base_sr = db.sum(
         ModType::Base,
@@ -1028,12 +1085,29 @@ fn damaging_ailment_for_pass(
         ctx.speed,
     );
     let sp = stack_potential(&stack);
+    if std::env::var("POBR_DBG_AILMENT").is_ok() {
+        eprintln!(
+            "[POBR_AILMENT] {name}: hit50={hit50:.2} crit50={crit50:.2} probe_chance={:.4} duration={:.4} speed={:.4} hit_chance={:.4} active={:.4} max={} sp={sp:.4}",
+            probe_out.chance,
+            ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+            ctx.speed,
+            ctx.hit_chance,
+            stack.active_stacks,
+            stack.max_stacks,
+        );
+    }
     let ailment_crit = ailment_crit_chance(ctx.crit_chance, sp);
     let roll = roll_average(&stack);
     // Pass 2：高 roll 来源 + over-stacking 暴击 → 最终 magnitude。
     let (hit_rolled, crit_rolled) = stored_source_at_roll(kind, &ctx.ranges, player, cfg, roll);
     let source = make_source(hit_rolled, crit_rolled, ailment_crit);
     let (out, _) = run(&source, trace);
+    if std::env::var("POBR_DBG_AILMENT").is_ok() {
+        eprintln!(
+            "[POBR_AILMENT] {name}: roll={roll:.2} hit_rolled={hit_rolled:.2} crit_rolled={crit_rolled:.2} ailment_crit={ailment_crit:.4} chance={:.4} eff_mult={:.4} magnitude_dps={:.4} duration={:.4}",
+            out.chance, out.eff_mult, out.magnitude_dps, out.duration_secs,
+        );
+    }
 
     if stack.active_stacks > 0.0 {
         // vendor uptime 口径（`:5189-5193`）：activeAilments = min(stacks, max)。

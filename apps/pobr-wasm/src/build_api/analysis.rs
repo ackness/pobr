@@ -248,6 +248,7 @@ fn apply_variant(
                 gem_level: gem.level,
                 quality: gem.quality,
                 stat_set_index: None,
+                name_spec: None,
             });
             if let Some(effect) = data.gem_effects.get(&gem.skill_id) {
                 group.gem_ids.push(effect.gem_id.clone());

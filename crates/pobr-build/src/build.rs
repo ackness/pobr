@@ -12,7 +12,7 @@ use std::collections::HashMap;
 
 use pobr_data::build_config::ViewMode;
 use pobr_data::item::{EquipmentSlot, Item};
-use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
+use pobr_data::passive_tree::PassiveTreeSpec;
 
 use crate::build_config::BuildConfig;
 
@@ -37,6 +37,12 @@ pub struct GemSkillRef {
     /// `"nil"`，解析归一化为 `None`）。`statSetIndexCalcs`（calcs 页独立选择）
     /// M1 不做，解析忽略。
     pub stat_set_index: Option<u32>,
+    /// PoB `<Gem nameSpec>` 显示名——仅当 XML 缺 `skillId`/`gemId`（lineage
+    /// support 如 Atziri's Communion 的序列化形态）时携带，`skill_id` 此时为空串。
+    /// 编排层 `stage_build_view` 按显示名归一匹配 granted_effects 回填
+    /// `skill_id`（PoB2 SkillsTab 按 nameSpec 反查 gem 的等价物）；未解析成功
+    /// 的引用在全部消费点因 `granted_effects.get("")` 落空而惰性跳过。
+    pub name_spec: Option<String>,
 }
 
 /// 一组同插槽的技能宝石（主动技能 + 其辅助）。简化等价物：用稳定 gem id 表示。
@@ -128,6 +134,7 @@ impl SocketGroup {
             gem_level,
             quality,
             stat_set_index: None,
+            name_spec: None,
         });
         self
     }
@@ -144,6 +151,7 @@ impl SocketGroup {
             gem_level,
             quality: 0,
             stat_set_index: Some(stat_set_index),
+            name_spec: None,
         });
         self
     }
@@ -211,15 +219,6 @@ pub struct Build {
     /// `jewels` 注入珠宝**自身**的全局词条，本列表额外按半径几何把 `also grant` 展开为
     /// 「半径内已分配对应种类节点数 × 授予」的全局 mod（见 `calc_orchestrator`）。
     pub radius_jewels: Vec<RadiusJewel>,
-    /// 非激活武器组专属点（`<WeaponSet1/2>` 中属于未激活组的已分配节点）。
-    ///
-    /// 这些节点的**自身** mod 已在解析层 masking（不进 [`Self::tree`] 的 `allocated_nodes`，
-    /// 等价 PoB2 `Condition: WeaponSet<N>` 门控）；但 PoB2 仍把它们留在 `allocNodes`，
-    /// 因此**范围珠宝授予**（`... in Radius also grant`）按 PoB2 语义仍会落到这些节点上
-    /// （CalcSetup.lua:209-228，授予源=jewel、按 jewel allocMode 门控）。此列表供
-    /// `radius_jewel_expansions` 在 radius 几何里并回完整已分配集，复刻该行为。
-    /// 无武器组切换的 build 此列表为空，对计算零影响。
-    pub inactive_weapon_set_nodes: Vec<NodeId>,
     /// **激活态**药剂/护符的「槽名 + 物品」（M3-T4，蓝图 §7.2-2）：
     /// `("Flask 1"|"Charm 1..3", Item)`，XML 文档序，仅 `active="true"` 的槽进入
     /// （vendor CalcSetup.lua:1014-1028 `slot.active` 门控）。槽名供 flask/charm
@@ -290,12 +289,6 @@ impl Build {
         self
     }
 
-    /// 设定非激活武器组专属点列表（见 [`Self::inactive_weapon_set_nodes`]），返回新副本。
-    pub fn with_inactive_weapon_set_nodes(mut self, nodes: Vec<NodeId>) -> Self {
-        self.inactive_weapon_set_nodes = nodes;
-        self
-    }
-
     /// 设定激活态药剂/护符的槽名保留列表（见 [`Self::utility_slots`]），返回新副本。
     pub fn with_utility_slots(mut self, slots: Vec<(String, Item)>) -> Self {
         self.utility_slots = slots;
@@ -335,6 +328,7 @@ mod tests {
             base: ItemBaseId::from("Iron Ring"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec!["+10 to maximum Life".into()],
             enchant_texts: vec![],

@@ -85,6 +85,65 @@ pub(crate) fn spawn_minions(
             if minion_ids.is_empty() {
                 continue;
             }
+            // 召唤物等级取**生效宝石等级**（vendor `data.minionLevelTable[activeEffect
+            // .level]`，CalcActiveSkill.lua:948——activeEffect.level 含 applyGemMods
+            // 的 `+N to Level of all <X> Skills` 与 support 授予等级）。wolf-pack
+            // 「+4 to Level of all Minion Skills」：gem 18 → 22 → 怪物等级 44
+            // （oracle 钉值；修正前 36 → 生命 1013 vs 2262）。
+            let effective_gem_level = gem_level
+                .saturating_add(additional_gem_levels(build, data, skill_id))
+                .saturating_add(support_granted_gem_levels(build, data, skill_id));
+            // （#12 companion）伴侣判定：授予技能 `SkillType.Companion` 且非
+            // `MinionsAreUndamagable`（vendor CalcPerform.lua:3365-3367 的
+            // includeSkill 谓词）→ 该技能的召唤物计入 `TotalCompanionLife`。
+            let is_companion = data.granted_effects.get(skill_id).is_some_and(|e| {
+                e.skill_types.iter().any(|t| t == "Companion")
+                    && !e.skill_types.iter().any(|t| t == "MinionsAreUndamagable")
+            });
+            // （#12）同组兼容 support 的召唤物侧载荷（vendor：support statmap 的
+            // `MinionModifier LIST` 并入被支援技能 skillModList →
+            // `addMinionModifiers` 注入**该技能的** minion modDB，组内作用域）。
+            // 数据通道 = `map_minion_life_stat`（第一批只收内层 Life，如 Loyalty
+            // 的 −30% more minion life）。
+            let mut group_minion_modifiers = minion_modifiers.clone();
+            if let Some(catalog) = data.stat_map_catalog.as_deref() {
+                use pobr_core::calc::minion::MinionModifierEntry;
+                use pobr_core::rules::stat_map_engine::map_minion_life_stat;
+                for sup in super::triggers::judge_group_supports(group, data, skill_id).compatible {
+                    let sup_gem = &group.gem_skills[sup.gem_index];
+                    let set_index = (sup_gem.skill_id == sup.effect_id)
+                        .then_some(sup_gem.stat_set_index)
+                        .flatten();
+                    // quality 传 0 与 support_modifiers 同口径（support 品质表条目不存在）。
+                    let stats = data.effect_stats(&sup.effect_id, sup_gem.gem_level, 0, set_index);
+                    let set_key = data.selected_set_key(&sup.effect_id, set_index);
+                    for ds in stats.all() {
+                        if ds.value == 0.0 {
+                            continue;
+                        }
+                        for inner in map_minion_life_stat(
+                            catalog,
+                            &sup.effect_id,
+                            set_key.as_deref(),
+                            &ds.stat,
+                            ds.value,
+                        ) {
+                            let origin = ModifierSource::new(SourceId::new(
+                                SourceKind::SupportGem,
+                                format!("minion.{}.{}", sup.effect_id, ds.stat),
+                            ))
+                            .with_raw_text(format!(
+                                "minion {} {} ({})",
+                                sup.effect_id, ds.stat, ds.value
+                            ));
+                            group_minion_modifiers.push(MinionModifierEntry {
+                                inner: inner.with_origin(origin),
+                                minion_type: None,
+                            });
+                        }
+                    }
+                }
+            }
             for minion_id in minion_ids {
                 if !seen.insert(minion_id.clone()) {
                     continue;
@@ -105,16 +164,17 @@ pub(crate) fn spawn_minions(
                     if summed >= 1.0 { summed as u32 } else { 1 }
                 };
                 let def = def.clone();
-                // `add_minion_from_def` 内部经 `minion_level_from_gem_level` 把 gem_level
-                // 映射到怪物等级（CalcActiveSkill.lua:896 默认规则），故此处传 gem_level
-                // 原值，不可预先 resolve（否则二次映射）。
+                // `add_minion_from_def` 内部经 `minion_level_from_gem_level` 把宝石等级
+                // 映射到怪物等级（CalcActiveSkill.lua:948 默认规则），故此处传生效
+                // 宝石等级（含 +N to Level 加成），不可预先 resolve（否则二次映射）。
                 session.add_minion_from_def(
                     &def,
-                    gem_level,
+                    effective_gem_level,
                     limit,
-                    minion_modifiers.clone(),
+                    group_minion_modifiers.clone(),
                     Vec::new(),
                     AttributeInfusion::default(),
+                    is_companion,
                 );
             }
         }
@@ -170,28 +230,10 @@ pub(crate) fn pick_group_main_skill<'b>(
     build_data: &'b BuildData,
     group: &'b SocketGroup,
 ) -> Option<(&'b str, u32, Option<u32>)> {
-    // 非辅助宝石列表（meta 壳算入），与 PoB socketGroupSkillList 一致。`gem_skills` 存的是
-    // 授予效果 id，故经 granted_effects.is_support 判定（未知效果按非 support 处理，宁可保留）。
-    let actives: Vec<&crate::build::GemSkillRef> = group
-        .gem_skills
-        .iter()
-        .filter(|g| {
-            !build_data
-                .granted_effects
-                .get(&g.skill_id)
-                .map(|e| e.is_support)
-                .unwrap_or(false)
-        })
-        .collect();
+    let actives = group_active_gems(build_data, group);
 
     if !actives.is_empty() {
-        // mainActiveSkill（1-based）→ 0-based，越界 clamp 到末项。
-        let idx = group
-            .main_active_skill
-            .unwrap_or(1)
-            .saturating_sub(1)
-            .min(actives.len() - 1);
-        let chosen = actives[idx];
+        let chosen = group_chosen_active(group, &actives);
 
         // 指定项即伤害技能 → 直接用；否则（meta 壳等）穿透到组内首个伤害技能。
         if is_damage_skill(build_data, &chosen.skill_id) {
@@ -235,6 +277,71 @@ pub(crate) fn pick_group_main_skill<'b>(
         .map(|id| (id, group.active_gem_level.unwrap_or(1), None))
 }
 
+/// 组内非辅助宝石列表（meta 壳算入），与 PoB `socketGroupSkillList` 一致。`gem_skills`
+/// 存的是授予效果 id，故经 granted_effects.is_support 判定（未知效果按非 support 处理，
+/// 宁可保留）。
+fn group_active_gems<'b>(
+    build_data: &BuildData,
+    group: &'b SocketGroup,
+) -> Vec<&'b crate::build::GemSkillRef> {
+    group
+        .gem_skills
+        .iter()
+        .filter(|g| {
+            !build_data
+                .granted_effects
+                .get(&g.skill_id)
+                .map(|e| e.is_support)
+                .unwrap_or(false)
+        })
+        .collect()
+}
+
+/// `mainActiveSkill`（1-based，缺省 1，越界 clamp 到末项）在非辅助宝石列表中的选中项。
+fn group_chosen_active<'b>(
+    group: &SocketGroup,
+    actives: &[&'b crate::build::GemSkillRef],
+) -> &'b crate::build::GemSkillRef {
+    let idx = group
+        .main_active_skill
+        .unwrap_or(1)
+        .saturating_sub(1)
+        .min(actives.len() - 1);
+    actives[idx]
+}
+
+/// 组内按 `mainActiveSkill` 选中的**任意**主动技能（非 support、非 Meta 壳），
+/// 不要求攻击/法术标签。
+///
+/// vendor 语义：`socketGroupSkillList` 收录组内全部非辅助宝石，`mainActiveSkill`
+/// 直接选中——**没有**「必须是伤害技能」的过滤（CalcSetup.lua socketGroupSkillList
+/// 段）。伙伴/召唤类主技能（如 Wolf Pack：`Minion`+`Companion`，非 Attack 非
+/// Spell）在 vendor 里照常作为 mainActiveSkill 计算（castTime 基底、Speed=1/castTime）。
+/// PoBR 的 [`pick_group_main_skill`] 出于 meta 壳穿透保留伤害技能偏好；本函数作为
+/// **显式指定主组**（`mainSocketGroup`）落空后的兜底，避免回退扫描把主技能劫持到
+/// 其它组（wolf-pack 实测：曾错落到 Blasphemy 组的 Temporal Chains，
+/// Speed 1.43 vs vendor 1.00）。仅供指定主组分支消费；回退扫描仍只找伤害技能组。
+pub(crate) fn pick_group_chosen_active<'b>(
+    build_data: &'b BuildData,
+    group: &'b SocketGroup,
+) -> Option<(&'b str, u32, Option<u32>)> {
+    let actives = group_active_gems(build_data, group);
+    if actives.is_empty() {
+        return None;
+    }
+    let chosen = group_chosen_active(group, &actives);
+    // Meta 壳无独立施放参数，仍排除（穿透逻辑归 pick_group_main_skill）。
+    let effect = build_data.granted_effects.get(&chosen.skill_id)?;
+    if effect.skill_types.iter().any(|t| t == "Meta") {
+        return None;
+    }
+    Some((
+        chosen.skill_id.as_str(),
+        chosen.gem_level,
+        chosen.stat_set_index,
+    ))
+}
+
 /// 解析 build 的主技能分等级参数：优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+
 /// 组内 `mainActiveSkill` 选中真正的伤害技能（跳过 support 与 meta/触发壳），用其授予效果
 /// id + 宝石等级查 [`BuildData::resolve_skill_level`]。
@@ -249,9 +356,12 @@ pub(crate) fn resolve_main_skill<'b>(
     data: &'b BuildData,
 ) -> Option<(ResolvedSkillLevel, &'b SocketGroup, &'b str)> {
     // 优先用 PoB 指定的主技能组（`mainSocketGroup`，1-based）+ 组内 mainActiveSkill。
+    // 组内无伤害技能候选时兜底用选中的任意主动技能（vendor 语义无伤害过滤，
+    // 见 [`pick_group_chosen_active`]；避免伙伴/召唤主组被回退扫描劫持到其它组）。
     if let Some(n) = build.main_socket_group
         && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
-        && let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
+        && let Some((skill_id, level, set_index)) =
+            pick_group_main_skill(data, group).or_else(|| pick_group_chosen_active(data, group))
         && let Some(resolved) =
             resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)
     {
@@ -278,7 +388,8 @@ pub(crate) fn resolve_main_skill<'b>(
 pub fn resolve_main_skill_selection(build: &Build, data: &BuildData) -> Option<(usize, String)> {
     if let Some(n) = build.main_socket_group
         && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
-        && let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
+        && let Some((skill_id, level, set_index)) =
+            pick_group_main_skill(data, group).or_else(|| pick_group_chosen_active(data, group))
         && resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index).is_some()
     {
         return Some((n.saturating_sub(1), skill_id.to_string()));
@@ -350,13 +461,13 @@ pub(crate) fn support_granted_gem_levels(build: &Build, data: &BuildData, skill_
         }
         let judgement = super::triggers::judge_group_supports(group, data, skill_id);
         let mut total = 0u32;
-        for &idx in &judgement.compatible {
-            let sup = &group.gem_skills[idx];
+        for sup in &judgement.compatible {
+            let host = &group.gem_skills[sup.gem_index];
             let stats = data.effect_stats(
-                &sup.skill_id,
-                sup.gem_level,
-                sup.quality,
-                sup.stat_set_index,
+                &sup.effect_id,
+                host.gem_level,
+                host.quality,
+                sup.stat_set_index(group),
             );
             for s in &stats.base {
                 let Some(rest) = s.stat.strip_prefix("supported_") else {
@@ -440,6 +551,30 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
         }
     }
     out
+}
+
+/// build 是否带 GemlingQuality flag（vendor ModParser.lua:3353『Gem Quality
+/// grants Socketed Skills an additional effect』→ `env.useAltGemQualityStats`，
+/// CalcSetup.lua:835）——激活时全部宝石叠加 `altQualityStats` 品质 stat
+/// （CalcTools.lua:147-152）。扫描面 = 已分配树节点 + 油涂授予 notable
+/// （与 [`gem_property_bonuses`] 同源；vendor 该 flag 只查 nodesModsList）。
+pub(crate) fn gemling_quality_flag(build: &Build, data: &BuildData) -> bool {
+    const FLAG_TEXT: &str = "gem quality grants socketed skills an additional effect";
+    let matches = |stat: &str| {
+        clean_grant_text(stat)
+            .trim()
+            .eq_ignore_ascii_case(FLAG_TEXT)
+    };
+    for node_id in &build.tree.allocated_nodes {
+        if let Some(node) = data.passive_nodes.get(&node_id.0)
+            && node.stats.iter().any(|s| matches(s))
+        {
+            return true;
+        }
+    }
+    granted_passive_defs(build, data)
+        .iter()
+        .any(|def| def.stats.iter().any(|s| matches(s)))
 }
 
 /// 某 GemProperty 词条是否适用于指定授予效果的宝石（vendor `applyGemMods`
@@ -876,6 +1011,7 @@ mod kalandra_tests {
             base: ItemBaseId::from("Ring"),
             rarity: ItemRarity::Unique,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: texts.iter().map(|s| s.to_string()).collect(),
             enchant_texts: vec![],

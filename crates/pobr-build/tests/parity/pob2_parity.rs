@@ -160,15 +160,34 @@ fn deadeye_parity_report() {
     // 两层「过算抵消欠算」**叠乘**拆除（0.613x × 0.647/0.817 ≈ 0.485x，实测吻合），
     // 容差按合并后真实偏差放宽，只防进一步倒退；待 grenade 冷却吞吐 / Mirage 数据
     // 补齐后收紧。
-    assert_within(&pob2, "AverageDamage", out.total_hit_avg, 0.55);
-    assert_within(&pob2, "TotalDPS", out.dps, 0.55);
+    //
+    // 0.5.4b #4（grenade 短语解禁）后收口：AvgDamage 实测 1.04x——上述「过算抵消
+    // 欠算」链中 base 侧缺口已被历次修复闭合，容差 0.55→0.20 收紧。TotalDPS **不再
+    // 对本旧样本断言**（与上方 res/evasion 同理）：内嵌 PlayerStat 导出早于 0.5.4b
+    // 的 grenade CDR 再平衡（vendor 0.22.0 ModParser gem 循环加 `fromItem` 排除，
+    // `for grenade skills` 短语复活 → 3×15 CDR 树词条生效，Speed 0.164→0.254），
+    // 旧样本 Speed 口径已失效；权威 DPS 门禁走 ninja_parity 的 0.5.4b fixture
+    // golden（Speed 0.254 精确、TotalDPS 0.83x 且棘轮守护）。
+    assert_within(&pob2, "AverageDamage", out.total_hit_avg, 0.20);
     // Evasion 见上方注释：内嵌样本缺 Mageblood（14301），不硬断言；权威值走 fixture golden。
 }
 
 #[test]
 fn martial_parity_report() {
     let data = load_data();
-    let (out, _pob2) = report("MARTIAL", MARTIAL, &data);
+    let (out, pob2) = report("MARTIAL", MARTIAL, &data);
     assert!(out.life.is_finite() && out.mana.is_finite());
     assert!(out.dps.is_finite());
+    // EnergyShield「1.12x 高估」诊断（存量 #11-2）：**旧样本 golden 失真，非 PoBR
+    // 多算**。本 code `targetVersion="0_1"`（PoE2 0.1 时代导出），内嵌 PlayerStat
+    // EnergyShield=6257；同一 XML 喂当前 vendor（tools/pob2-oracle）得 7008，
+    // PoBR 7005.5 = 0.9996x 现行 vendor。0.1→0.5.x 间未变的口径（Life/Mana/
+    // Evasion/三抗/Crit）内嵌值与现行 oracle 逐位一致，唯 ES（与进攻侧）随数据
+    // 版本漂移——与上方 deadeye 的 Mageblood/res 旧样本失效同类。断言按**现行
+    // vendor 语义**守护（容差 0.15 覆盖 stale-golden 缺口 1.12x，只防大幅倒退；
+    // 权威 ES 门禁走 ninja_parity 的 0.5.4b fixture golden）。
+    assert_within(&pob2, "EnergyShield", out.energy_shield, 0.15);
+    assert_within(&pob2, "Evasion", out.evasion, 0.05);
+    assert_within(&pob2, "Mana", out.mana, 0.05);
+    assert_within(&pob2, "CritChance", out.crit_chance * 100.0, 0.05);
 }

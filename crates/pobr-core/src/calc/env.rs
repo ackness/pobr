@@ -26,6 +26,13 @@ pub struct Env {
     /// 且 minion buff 未落地，本波收在 `Env` 顶层（语义即玩家侧）；T3 消费时如需
     /// per-actor 再迁。**本阶段零消费**：空与否输出逐值不变。
     pub buff_skills: Vec<BuffSpec>,
+    /// 玩家的 warcry 技能规格（存量 #9；`session::add_warcry_skill` 写入，
+    /// `perform` 在 hand pass 之前经 [`super::warcry::apply_warcry_uptime`] 消费——
+    /// uptime 缩放后的 warcry 进攻效果（Infernal `DamageGainAsFire`）注入玩家 db）。
+    pub warcry_skills: Vec<super::warcry::WarcrySpec>,
+    /// warcry uptime 增益已注入（幂等防重，vendor `InfernalActive` flag 同责，
+    /// CalcPerform.lua:1365）。
+    pub warcry_gain_injected: bool,
     /// keystone 名 → modifier 列表（M3 T0-4；`session::set_keystone_mods` 写入，
     /// T5 `merge_keystones`（env_finalize 阶段 1/5）消费）。**本阶段零消费**。
     pub keystone_mods: BTreeMap<String, Vec<crate::Modifier>>,
@@ -73,6 +80,8 @@ impl Env {
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),
             minions: Vec::new(),
             buff_skills: Vec::new(),
+            warcry_skills: Vec::new(),
+            warcry_gain_injected: false,
             keystone_mods: BTreeMap::new(),
             buff_definitions: Vec::new(),
             buff_handler_registry: Arc::new(HandlerRegistry::new()),
@@ -105,6 +114,11 @@ impl Env {
     ///
     /// `limit` 通常由玩家技能 `skillModList:Sum(limitName)` 派生（本阶段由调用方给定）。
     /// `limit == 0` 时仍写入（multiplier=0，等价无召唤数量贡献，向后兼容）。
+    ///
+    /// `is_companion`：授予技能是 `SkillType.Companion` 且非
+    /// `MinionsAreUndamagable`（调用方按 skill_types 判定）——`TotalCompanionLife`
+    /// 求和（vendor CalcPerform.lua:3364-3370）只计此类召唤物。
+    #[allow(clippy::too_many_arguments)]
     pub fn add_minion_from_def(
         &mut self,
         def: &super::MinionDef,
@@ -113,6 +127,7 @@ impl Env {
         minion_modifiers: Vec<super::MinionModifierEntry>,
         ally_buff_mods: Vec<crate::Modifier>,
         infusion: super::AttributeInfusion,
+        is_companion: bool,
     ) -> &mut Self {
         let ctx = super::build_minion_context_from_def(
             def,
@@ -122,7 +137,9 @@ impl Env {
             infusion,
         );
         super::write_summoned_minion_multipliers(&mut self.player.mod_db, limit, &def.id);
-        self.minions.push(minion_actor_from_context(&ctx));
+        let mut actor = minion_actor_from_context(&ctx);
+        actor.is_companion = is_companion;
+        self.minions.push(actor);
         self
     }
 

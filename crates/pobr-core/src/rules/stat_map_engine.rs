@@ -430,6 +430,57 @@ pub fn has_curse_payload(
         .is_some_and(|entry| entry.mods.iter().any(is_curse_effect))
 }
 
+/// （存量 #7-1）curse 技能的**技能局部效果乘区**取数：stat 若映射为
+/// **无 GlobalEffect tag** 的 `CurseEffect` INC/MORE（留在 skillModList 的
+/// 技能局部 mod——vendor curse 乘区 CalcPerform.lua:2423/:2427 读
+/// `skillModList:Sum/More(skillCfg, "CurseEffect")`），返回其
+/// `(inc 增量, more 因子)`。典型来源 = curse 宝石自身品质 `curse_effect_+%`
+/// （EW 0.5/q）、组内 Heightened Curse support（constantStats +25）、
+/// Atziri's Allure lineage（`support_atziri_curse_effect_+%_final` MORE -20）。
+///
+/// 保守口径：仅 kind=="mod"、无 tag、无 flag 的裸 `CurseEffect` 计入
+/// （Mark 门控变体带 SkillType tag，不计——mark 域另行建模时再放开）；
+/// 其余 stat / 形态返回 `(0.0, 1.0)`（零贡献，不误算）。
+pub fn curse_local_effect(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> (f64, f64) {
+    let (mut inc, mut more) = (0.0, 1.0);
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return (inc, more);
+    };
+    if entry.unextractable {
+        return (inc, more);
+    }
+    let params = MergeParams {
+        div: entry.div,
+        mult: entry.mult,
+        base: entry.base,
+        value: entry.value,
+    };
+    for element in &entry.mods {
+        if element.kind != "mod"
+            || element.name.as_deref() != Some("CurseEffect")
+            || !element.tags.is_empty()
+            || !element.flags.is_empty()
+            || !element.keyword_flags.is_empty()
+            || element.scalar.is_some()
+        {
+            continue;
+        }
+        let merged = params.merge(stat_value);
+        match element.mod_type.as_deref() {
+            Some("INC") => inc += merged,
+            Some("MORE") => more *= 1.0 + merged / 100.0,
+            _ => {}
+        }
+    }
+    (inc, more)
+}
+
 /// 元素是否为**曝光施加能力**载荷（M4-m，宿主探测用、非取数）：vendor
 /// `flag("InflictExposure", …)`（SkillStatMap.lua:1692-1715 各 on_shock /
 /// on_cold_crit / on_ignite / on_hit 形）或 `<El>ExposureChance BASE`
@@ -731,11 +782,53 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         "FireDamage" => Ok(vec!["FireDamage"]),
         "ColdDamage" => Ok(vec!["ColdDamage"]),
         "LightningDamage" => Ok(vec!["LightningDamage"]),
+        // Refraction I/II support（`sup_str.lua:5984/6023` Refractive Plating buff，
+        // `support_tempered_valour_deflection_rating_%_of_evasion_rating` → BASE 20）：
+        // 消费方 = `calc::defence_panels::calc_deflection`（CalcDefence.lua:1516
+        // `Evasion × ΣBASE EvasionGainAsDeflection / 100`）。
+        "EvasionGainAsDeflection" => Ok(vec!["EvasionGainAsDeflection"]),
+        // 同 buff 的 `support_tempered_valour_%_armour_to_apply_to_elemental_damage`
+        // → ArmourAppliesTo<El>DamageTaken BASE 30（Refraction II）。消费方 =
+        // `calc::taken::armour_applies_pct`（vendor CalcDefence.lua:2361-2368
+        // `percentOfArmourApplies` → `effectiveAppliedArmour`，进 per-type
+        // DamageReduction / MaximumHit / EHP）。tag 形态与 deflection 载荷同
+        // （GlobalEffect + MultiplierThreshold RefractionMinimumValour 静态折 0）。
+        "ArmourAppliesToFireDamageTaken" => Ok(vec!["ArmourAppliesToFireDamageTaken"]),
+        "ArmourAppliesToColdDamageTaken" => Ok(vec!["ArmourAppliesToColdDamageTaken"]),
+        "ArmourAppliesToLightningDamageTaken" => Ok(vec!["ArmourAppliesToLightningDamageTaken"]),
         // Sigil of Power `circle_of_power_max_stages` → 玩家 `Multiplier:
         // SigilOfPowerMaxStages` BASE（vendor 消费点 = GetMultiplier 动态上限
         // ModStore.lua:369；PoBR 编排层把 buff 载荷中 `Multiplier:` BASE 桥进
         // cfg.multipliers，见 calc_orchestrator buff specs 注入点）。
         "Multiplier:SigilOfPowerMaxStages" => Ok(vec!["Multiplier:SigilOfPowerMaxStages"]),
+        // （0.5.4b #5）Blazing Critical support（sup_int.lua:959）：0.22.0 给
+        // `support_blazing_crits_gain_%_fire_damage_with_attacks_on_critical_hit`
+        // 补上 GlobalEffect/Buff tag——15% `DamageGainAsFire` BASE（ModFlag.Attack
+        // + Condition:CritRecently）从「只挂在被支援技能上的死词条」变成全局玩家
+        // buff（"imbue all of your Attacks"）。消费方 = `calc::damage` gain-as
+        // 矩阵（buildGainTable，`DamageGainAs<To>` BASE 查询）；点燃火源随之
+        // 平方级放大（chance ∝ fire/threshold，magnitude ∝ fire）。
+        "DamageGainAsFire" => Ok(vec!["DamageGainAsFire"]),
+        // （存量 #7-1）Archmage（act_int.lua:229-231）：`archmage_all_damage_%_to_
+        // gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana`
+        // → `DamageGainAsLightning` BASE 4（GlobalEffect/Buff + SkillType
+        // Channel neg + SkillType Spell + PerStat Mana div 100）。消费方与
+        // DamageGainAsFire 同 = `calc::damage` gain-as 矩阵；Mana 分母由编排层
+        // `inject_per_x_multipliers` 预灌（cfg.multipliers["Mana"] = 全管线池值）。
+        // monk-invoker-frost-bomb TotalDPS 0.66x 根因（缺 80% 闪电 gain-as）。
+        "DamageGainAsLightning" => Ok(vec!["DamageGainAsLightning"]),
+        // （#10-2）Barrage buff（BarragePlayer `empower_barrage_*`，act_dex.lua:
+        // 216-224）：`BarrageRepeats` BASE / `BarrageRepeatDamage` MORE。消费方 =
+        // `calc::scaled_damage::dps_end_factors` 的 Barrage repeats DPS 乘区
+        // （vendor CalcOffence.lua:962-976，Barrageable + SequentialProjectiles 门控）。
+        "BarrageRepeats" => Ok(vec!["BarrageRepeats"]),
+        "BarrageRepeatDamage" => Ok(vec!["BarrageRepeatDamage"]),
+        // （#12 companion allies 层）Loyalty support（SupportLoyaltyPlayer）的
+        // `companion_takes_%_damage_before_you_from_support` → BASE 10（GlobalEffect
+        // /Buff/unscalable，SkillStatMap.lua:2559-2561）。消费方 = perform 的
+        // `inject_companion_life` 门控 + `pool_setup::build_pool_state` companion
+        // 先扣层（CalcDefence.lua:2961-2965 / :3656-3663）。
+        "TakenFromCompanionBeforeYou" => Ok(vec!["TakenFromCompanionBeforeYou"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
@@ -796,7 +889,9 @@ fn collect_player_buff_flag(
     items: &mut Vec<MappedItem>,
 ) -> Result<(), UnsupportedReason> {
     let name = element.name.as_deref().unwrap_or("?");
-    if !is_cross_type_ailment_flag(name) {
+    // `SequentialProjectiles`（Barrage buff，act_dex.lua:219）：消费方 =
+    // `dps_end_factors` 的 Barrage repeats 门控（vendor CalcOffence.lua:962）。
+    if !is_cross_type_ailment_flag(name) && name != "SequentialProjectiles" {
         return Err(UnsupportedReason::UnknownModName(format!("flag:{name}")));
     }
     if !element.flags.is_empty() {
@@ -917,6 +1012,92 @@ fn collect_player_buff_mod(
         items.push(MappedItem::Modifier(Box::new(modifier)));
     }
     Ok(())
+}
+
+// ---- #12：minion 域（MinionModifier LIST 载荷 → 召唤物内层 mod） ----
+
+/// 把一条 support/skill stat 经 statmap 翻译为**召唤物侧**内层 modifier 列表
+/// （`MinionModifierEntry.inner` 载荷；消费方 = 编排层 spawn_minions →
+/// `build_minion_context` 通道 1）。
+///
+/// vendor 语义：statmap 的 `mod("MinionModifier","LIST",{ mod = mod(<inner>) })`
+/// 随 support 并入被支援技能 skillModList（CalcActiveSkill.lua merge 循环），
+/// `addMinionModifiers`（CalcPerform.lua:1668-1686）再把内层 mod 注入**该技能的**
+/// 召唤物 modDB——作用域是组内被支援技能的 minion，不是全局。典型 = Loyalty
+/// support `support_trusty_companion_minion_life_+%_final` → Life MORE −30
+/// （wolf-pack 伴侣生命 3231 × 0.7 = 2262 的 MORE 因子，oracle 钉值）。
+///
+/// 第一批允收内层 = `Life`（BASE/INC/MORE；vendor 名 `Life` 归一到 PoBR 生命池
+/// 聚合名 `MaximumLife`，与 buff 域 [`translate_player_buff_mod_name`] 同口径）。
+/// 其余内层（伤害/速度族）暂不准入——minion DPS 不在 parity 面板，宁可跳过不可
+/// 错算。保守门控：外层带 flags/keyword_flags/tags/scalar、内层含
+/// kind/mod_type/name 之外的键的条目整条跳过（返回空，不上报——窄通道，
+/// 未准入形态无消费方）。
+pub fn map_minion_life_stat(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &str,
+    stat_value: f64,
+) -> Vec<Modifier> {
+    let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        return Vec::new();
+    };
+    if entry.unextractable {
+        return Vec::new();
+    }
+    let params = MergeParams {
+        div: entry.div,
+        mult: entry.mult,
+        base: entry.base,
+        value: entry.value,
+    };
+    let mut out = Vec::new();
+    for element in &entry.mods {
+        if element.kind != "mod"
+            || element.name.as_deref() != Some("MinionModifier")
+            || element.mod_type.as_deref() != Some("LIST")
+            || !element.flags.is_empty()
+            || !element.keyword_flags.is_empty()
+            || !element.tags.is_empty()
+            || element.scalar.is_some()
+        {
+            continue;
+        }
+        let Some(StatMapValue::Table(wrapper)) = &element.value else {
+            continue;
+        };
+        let Some(StatMapValue::Table(inner)) = wrapper.get("mod") else {
+            continue;
+        };
+        // 内层只接受 `{ kind:"mod", mod_type, name:"Life" }` 的裸形态
+        // （带 tags/flags 的内层 = 额外门控语义，跳过）。
+        if wrapper.len() != 1
+            || inner
+                .keys()
+                .any(|k| !matches!(k.as_str(), "kind" | "mod_type" | "name"))
+        {
+            continue;
+        }
+        if !matches!(inner.get("name"), Some(StatMapValue::Text(n)) if n == "Life") {
+            continue;
+        }
+        let mod_type = match inner.get("mod_type") {
+            Some(StatMapValue::Text(t)) => match t.as_str() {
+                "BASE" => ModType::Base,
+                "INC" => ModType::Inc,
+                "MORE" => ModType::More,
+                _ => continue,
+            },
+            _ => continue,
+        };
+        out.push(Modifier::number(
+            "MaximumLife",
+            mod_type,
+            params.merge(stat_value),
+        ));
+    }
+    out
 }
 
 // ---- M4-L：debuff 域（GlobalEffect effectType=Debuff）敌侧映射 ----
@@ -1643,6 +1824,15 @@ pub fn translate_mod_name(
         // 消费方 = `calc::ailment::ailment_rate_mod`（CalcOffence.lua:5036 rateMod，
         // calcLib.mod 的 INC+MORE 两腿同名集）。
         "BleedFaster" | "PoisonFaster" | "IgniteFaster" => base_name.to_string(),
+        // 存量 #9：warcry uptime 机器直通族（vendor `warcry_empowers_per_X_monster_power[_mp_cap]`
+        // → WarcryPowerPer/Cap（SkillStatMap.lua:608-613）、Infernal Cry per-set
+        // `infernal_cry_exerted_attack_all_damage_%_to_gain_as_fire_%` →
+        // InfernalExtraFireDamageMultiplier（act_str.lua:7729-7731））。消费方 =
+        // `calc::warcry`（賦能次数 CalcPerform.lua:2121-2123 + uptime 缩放的
+        // DamageGainAsFire 注入 CalcOffence.lua:3251-3254）。
+        "WarcryPowerPer" | "WarcryPowerCap" | "InfernalExtraFireDamageMultiplier" => {
+            base_name.to_string()
+        }
         // M4-K：异常持续时间——vendor 施加方词条名带 Enemy 前缀（作用于敌身上的
         // debuff 时长，CalcOffence.lua:5037 durationMod 取
         // `Enemy<Ailment>Duration`/`EnemyAilmentDuration`/`DamagingAilmentDuration`），
@@ -1782,8 +1972,49 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 limit_total: matches!(tag.get("limitTotal"), Some(StatMapValue::Bool(true))),
             })
         }
+        // 阈值 gate（vendor ModStore.lua:429-459）：`mult = GetMultiplier(var)`，
+        // `threshold = tag.threshold or GetMultiplier(thresholdVar)`，落错侧跳过。
+        // `thresholdVar` 形态只准入 **已核实全 vendor 树零 setter** 的变量
+        // （GetMultiplier 对未设变量恒返 0 → 阈值恒 0，静态折算无损）；有 setter
+        // 的（如 Attrition `AttritionCullSeconds`）维持 Unsupported——静态折 0 会
+        // 错开 gate。actor/thresholdActor/scalar/equals 变体由 keys_subset 挡下。
+        "MultiplierThreshold" => {
+            if !keys_subset_of(&["type", "var", "threshold", "thresholdVar", "upper"]) {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "MultiplierThreshold 含约定外键：{:?}",
+                    tag.keys().collect::<Vec<_>>()
+                )));
+            }
+            let Some(var) = text("var") else {
+                return Err(UnsupportedReason::UnsupportedTag(
+                    "MultiplierThreshold 缺 var".into(),
+                ));
+            };
+            let threshold = match (number("threshold"), text("thresholdVar")) {
+                (Some(t), None) => t,
+                // Refraction I/II `RefractionMinimumValour`（sup_str.lua:5978-6024）：
+                // 全 vendor 树无任何 setter → 恒 0（ValourStacks ≥ 0 恒过 gate，
+                // 与 vendor 默认配置行为一致）。
+                (None, Some(v)) if v == "RefractionMinimumValour" => 0.0,
+                (None, Some(v)) => {
+                    return Err(UnsupportedReason::UnsupportedTag(format!(
+                        "MultiplierThreshold thresholdVar 非零 setter 未核实：{v}"
+                    )));
+                }
+                _ => {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "MultiplierThreshold 缺 threshold".into(),
+                    ));
+                }
+            };
+            Ok(ModTag::MultiplierThreshold {
+                var,
+                threshold,
+                upper: matches!(tag.get("upper"), Some(StatMapValue::Bool(true))),
+            })
+        }
         "PerStat" => {
-            if !keys_subset_of(&["type", "stat", "div"]) {
+            if !keys_subset_of(&["type", "stat", "div", "limit", "limitTotal"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "PerStat 含约定外键：{:?}",
                     tag.keys().collect::<Vec<_>>()
@@ -1800,31 +2031,43 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 "Int" => "Intelligence".to_string(),
                 other => other.to_string(),
             };
-            Ok(ModTag::multiplier(var, number("div").unwrap_or(1.0), None))
+            // limit / limitTotal（vendor ModStore.lua:461-468 + :402-404；如 Atalui's
+            // Bloodletting `PerStat{stat=LifeCost,div=20,limit=40,limitTotal}`——
+            // per 20 life cost 至多 +40% 总量封顶）。
+            let mut mtag = ModTag::multiplier(var, number("div").unwrap_or(1.0), number("limit"));
+            if let (ModTag::Multiplier { limit_total, .. }, Some(StatMapValue::Bool(true))) =
+                (&mut mtag, tag.get("limitTotal"))
+            {
+                *limit_total = true;
+            }
+            Ok(mtag)
         }
-        // 技能类型限定（vendor `{ type = "SkillType", skillType = SkillType.X }`，
-        // 如 Garukhan `attacks_roll_crits_twice` 的 Attack 限定）→
-        // [`ModTag::SkillTypes`]（`Modifier::matches` 按 `cfg.skill_types`
-        // intersects 判定）。第一批仅 Attack/Spell（编排层 `skill_type_bits`
-        // 当前只填这两个判别位——其余类型位未注入 cfg，盲翻会让 mod 恒不生效，
-        // 维持 Unsupported 整条跳过）。`neg` 变体同样不支持。
+        // 技能类型限定（vendor `{ type = "SkillType", skillType = SkillType.X,
+        // [neg = true] }`，如 Garukhan `attacks_roll_crits_twice` 的 Attack 限定、
+        // Archmage buff 的「non-channelling Spells」= Channel neg + Spell）→
+        // [`ModTag::SkillTypes`] / [`ModTag::SkillTypesNeg`]（`Modifier::matches`
+        // 按 `cfg.skill_types` intersects / 反选判定）。类型名走单源
+        // `SkillTypes::from_pob2_name`（A1 全量 290 枚举表）——编排层
+        // `skill_type_bits` 已全量置位（conditions.rs），限 Attack/Spell 的
+        // 旧白名单口径已过时。枚举外名维持 Unsupported。
         "SkillType" => {
-            if !keys_subset_of(&["type", "skillType"]) {
+            if !keys_subset_of(&["type", "skillType", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "SkillType 含约定外键：{:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
-            let bits = match text("skillType").as_deref() {
-                Some("Attack") => SkillTypes::ATTACK,
-                Some("Spell") => SkillTypes::SPELL,
-                other => {
-                    return Err(UnsupportedReason::UnsupportedTag(format!(
-                        "SkillType 未支持类型：{other:?}"
-                    )));
-                }
+            let name = text("skillType");
+            let Some(bits) = name.as_deref().and_then(SkillTypes::from_pob2_name) else {
+                return Err(UnsupportedReason::UnsupportedTag(format!(
+                    "SkillType 未支持类型：{name:?}"
+                )));
             };
-            Ok(ModTag::SkillTypes(bits))
+            if matches!(tag.get("neg"), Some(StatMapValue::Bool(true))) {
+                Ok(ModTag::SkillTypesNeg(bits))
+            } else {
+                Ok(ModTag::SkillTypes(bits))
+            }
         }
         // 距离插值（vendor `{ type = "DistanceRamp", ramp = {{d,m},...} }`，如 Close
         // Combat `support_close_combat_attack_damage_+%_final_from_distance`）→
@@ -2014,7 +2257,8 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(1.0), "div=100 → 分数");
     }
 
-    /// 白名单外 flag 维持未知名上报；SkillType 未支持类型整条跳过。
+    /// 白名单外 flag 维持未知名上报；SkillType 枚举外类型名整条跳过
+    /// （枚举内类型经 `SkillTypes::from_pob2_name` 全量准入——存量 #7-1）。
     #[test]
     fn flag_kind_outside_whitelist_or_unknown_skill_type_unsupported() {
         let entry = entry_json(
@@ -2027,12 +2271,33 @@ mod tests {
 
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "flag", "name": "BifurcateCrit", "mod_type": "FLAG",
-                 "tags": [ { "type": "SkillType", "skillType": "Minion" } ] } ] }"#,
+                 "tags": [ { "type": "SkillType", "skillType": "NotARealSkillType" } ] } ] }"#,
         );
         assert!(matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
         ));
+    }
+
+    /// （存量 #7-1）SkillType tag：枚举内类型名全量准入（单源
+    /// `SkillTypes::from_pob2_name`）；`neg = true` → [`ModTag::SkillTypesNeg`]
+    /// （vendor ModStore.lua:829-833 反选，如 Archmage 的 non-channelling 限定）。
+    #[test]
+    fn skill_type_tag_full_enum_and_neg_translate() {
+        use pobr_data::skill::SkillTypes;
+        let mut tag = BTreeMap::new();
+        tag.insert("type".into(), StatMapValue::Text("SkillType".into()));
+        tag.insert("skillType".into(), StatMapValue::Text("Minion".into()));
+        assert_eq!(
+            translate_tag(&tag).unwrap(),
+            ModTag::SkillTypes(SkillTypes::MINION)
+        );
+        tag.insert("skillType".into(), StatMapValue::Text("Channel".into()));
+        tag.insert("neg".into(), StatMapValue::Bool(true));
+        assert_eq!(
+            translate_tag(&tag).unwrap(),
+            ModTag::SkillTypesNeg(SkillTypes::CHANNEL)
+        );
     }
 
     /// CritChanceCap 直通（Garukhan constant stat 50 → OVERRIDE）。
@@ -2637,6 +2902,47 @@ mod tests {
         );
     }
 
+    /// （存量 #7-1）curse 技能局部效果乘区取数：裸 `CurseEffect` INC/MORE 计入，
+    /// 带 GlobalEffect / 其他 tag 的元素与无关 stat 归零贡献。
+    #[test]
+    fn curse_local_effect_collects_bare_curse_effect_only() {
+        let catalog = catalog_json(
+            r#"{
+              "global": {
+                "curse_effect_+%": { "mods": [ { "kind": "mod", "name": "CurseEffect", "mod_type": "INC" } ] },
+                "support_atziri_curse_effect_+%_final": { "mods": [ { "kind": "mod", "name": "CurseEffect", "mod_type": "MORE" } ] },
+                "mark_effect_+%": { "mods": [ { "kind": "mod", "name": "CurseEffect", "mod_type": "INC",
+                    "tags": [ { "type": "SkillType", "skillType": "Mark" } ] } ] }
+              },
+              "per_stat_set": {}
+            }"#,
+        );
+        assert_eq!(
+            curse_local_effect(&catalog, "X", None, "curse_effect_+%", 25.0),
+            (25.0, 1.0)
+        );
+        assert_eq!(
+            curse_local_effect(
+                &catalog,
+                "X",
+                None,
+                "support_atziri_curse_effect_+%_final",
+                -20.0
+            ),
+            (0.0, 0.8)
+        );
+        // 带 tag（Mark 门控）的变体保守不计。
+        assert_eq!(
+            curse_local_effect(&catalog, "X", None, "mark_effect_+%", 30.0),
+            (0.0, 1.0)
+        );
+        // 无关 stat / 无条目 → 零贡献。
+        assert_eq!(
+            curse_local_effect(&catalog, "X", None, "nope", 1.0),
+            (0.0, 1.0)
+        );
+    }
+
     // ---- W-J：isGlobalEffect / global-only merge ----
 
     /// isGlobalEffect 等价（CalcActiveSkill.lua:68-80）：单 mod 查自身 tags；
@@ -3115,6 +3421,51 @@ mod tests {
         );
     }
 
+    /// （#12）Loyalty 形态（per_stat_set["SupportLoyaltyPlayer"]["1"]）：
+    /// `MinionModifier LIST { mod = Life MORE }` → 召唤物内层 `MaximumLife MORE`
+    /// （名归一，与 buff 域 Life→MaximumLife 同口径）。allow-list 外内层
+    /// （Damage）与带 tag 的外层整条跳过（返回空）。
+    #[test]
+    fn minion_life_stat_maps_loyalty_more_life() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportLoyaltyPlayer": { "1": {
+                 "support_trusty_companion_minion_life_+%_final": {
+                   "mods": [ { "kind": "mod", "name": "MinionModifier", "mod_type": "LIST",
+                               "value": { "mod": { "kind": "mod", "mod_type": "MORE",
+                                                   "name": "Life" } } } ] },
+                 "minion_damage_+%": {
+                   "mods": [ { "kind": "mod", "name": "MinionModifier", "mod_type": "LIST",
+                               "value": { "mod": { "kind": "mod", "mod_type": "INC",
+                                                   "name": "Damage" } } } ] } } } } }"#,
+        );
+        let mods = map_minion_life_stat(
+            &catalog,
+            "SupportLoyaltyPlayer",
+            None,
+            "support_trusty_companion_minion_life_+%_final",
+            -30.0,
+        );
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name.as_str(), "MaximumLife");
+        assert_eq!(mods[0].mod_type, ModType::More);
+        assert_eq!(mods[0].value.as_number(), Some(-30.0));
+        // 内层非 Life（Damage）：窄通道未准入 → 空。
+        assert!(
+            map_minion_life_stat(
+                &catalog,
+                "SupportLoyaltyPlayer",
+                None,
+                "minion_damage_+%",
+                20.0
+            )
+            .is_empty()
+        );
+        // 未知 stat → 空。
+        assert!(
+            map_minion_life_stat(&catalog, "SupportLoyaltyPlayer", None, "no_such", 1.0).is_empty()
+        );
+    }
+
     /// Precision II 形态（sup_dex.lua:4216-4250）：`Accuracy INC` + GlobalEffect
     /// Buff（含 effectName 键，无门控语义）→ 玩家侧 Accuracy INC，tag 剥净。
     #[test]
@@ -3401,6 +3752,139 @@ mod tests {
             .with_multiplier("SigilOfPowerStage", 9.0)
             .with_multiplier("SigilOfPowerMaxStages", 4.0);
         assert_eq!(m.effective_number(&cfg9), Some(68.0));
+    }
+
+    /// Refraction II 形态（vendor sup_str.lua:6023-6025：`support_tempered_
+    /// valour_deflection_rating_%_of_evasion_rating` → `EvasionGainAsDeflection
+    /// BASE 20` + GlobalEffect Buff "Refractive Plating" + MultiplierThreshold
+    /// ValourStacks/thresholdVar=RefractionMinimumValour）→ 玩家侧 BASE，
+    /// threshold 静态折 0（该 var 全 vendor 树零 setter），默认 cfg 下生效。
+    /// oracle 钉值（wolf-pack）：tree 28 + 本载荷 20 = 48%，rating 11791.52。
+    #[test]
+    fn player_buff_refraction_evasion_gain_as_deflection_maps() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportRefractionPlayerTwo": { "1": {
+                 "support_tempered_valour_deflection_rating_%_of_evasion_rating": {
+                   "mods": [ { "kind": "mod", "name": "EvasionGainAsDeflection",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" },
+                                         { "type": "MultiplierThreshold", "var": "ValourStacks",
+                                           "thresholdVar": "RefractionMinimumValour" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SupportRefractionPlayerTwo",
+            None,
+            "support_tempered_valour_deflection_rating_%_of_evasion_rating",
+            20.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("期望 Modifier");
+        };
+        assert_eq!(m.name.as_str(), "EvasionGainAsDeflection");
+        assert_eq!(m.mod_type, ModType::Base);
+        assert_eq!(m.value.as_number(), Some(20.0));
+        assert_eq!(
+            m.tags,
+            vec![crate::ModTag::MultiplierThreshold {
+                var: "ValourStacks".into(),
+                threshold: 0.0,
+                upper: false,
+            }],
+            "thresholdVar 静态折 0，GlobalEffect 剥除"
+        );
+        // 默认 cfg（ValourStacks 未注入 = 0）：0 ≥ 0 → 生效，与 vendor 默认一致。
+        assert!(m.matches(&crate::CalcConfig::new()));
+    }
+
+    /// 同 buff 的护甲折算载荷（vendor sup_str.lua:6019-6021：`support_tempered_
+    /// valour_%_armour_to_apply_to_elemental_damage` → ArmourAppliesTo{Fire,Cold,
+    /// Lightning}DamageTaken BASE 30，tag 形态与 deflection 载荷同）→ 三条玩家侧
+    /// BASE，消费方 `calc::taken::armour_applies_pct`。oracle 钉值（wolf-pack）：
+    /// tree 84 + 本载荷 30 = 114%，FireEffectiveAppliedArmour 21181.2。
+    #[test]
+    fn player_buff_refraction_armour_applies_to_elements_maps() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "SupportRefractionPlayerTwo": { "1": {
+                 "support_tempered_valour_%_armour_to_apply_to_elemental_damage": {
+                   "mods": [ { "kind": "mod", "name": "ArmourAppliesToFireDamageTaken",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" },
+                                         { "type": "MultiplierThreshold", "var": "ValourStacks",
+                                           "thresholdVar": "RefractionMinimumValour" } ] },
+                             { "kind": "mod", "name": "ArmourAppliesToColdDamageTaken",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" },
+                                         { "type": "MultiplierThreshold", "var": "ValourStacks",
+                                           "thresholdVar": "RefractionMinimumValour" } ] },
+                             { "kind": "mod", "name": "ArmourAppliesToLightningDamageTaken",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff",
+                                           "effectName": "Refractive Plating" },
+                                         { "type": "MultiplierThreshold", "var": "ValourStacks",
+                                           "thresholdVar": "RefractionMinimumValour" } ] } ] } } } } }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_player_buff_stat(
+            &catalog,
+            "SupportRefractionPlayerTwo",
+            None,
+            "support_tempered_valour_%_armour_to_apply_to_elemental_damage",
+            30.0,
+        ) else {
+            panic!("期望 Mapped");
+        };
+        let names: Vec<&str> = items
+            .iter()
+            .map(|item| {
+                let MappedItem::Modifier(m) = item else {
+                    panic!("期望 Modifier");
+                };
+                assert_eq!(m.mod_type, ModType::Base);
+                assert_eq!(m.value.as_number(), Some(30.0));
+                // 默认 cfg（ValourStacks 未注入 = 0）：0 ≥ 0 → 生效。
+                assert!(m.matches(&crate::CalcConfig::new()));
+                m.name.as_str()
+            })
+            .collect();
+        assert_eq!(
+            names,
+            vec![
+                "ArmourAppliesToFireDamageTaken",
+                "ArmourAppliesToColdDamageTaken",
+                "ArmourAppliesToLightningDamageTaken",
+            ]
+        );
+    }
+
+    /// MultiplierThreshold thresholdVar 有 setter（Attrition
+    /// `AttritionCullSeconds`，act_str.lua:1258 设 Multiplier）→ 静态折 0 会
+    /// 错开 gate，维持 Unsupported 整条上报。
+    #[test]
+    fn player_buff_threshold_var_with_setter_reported() {
+        let catalog = catalog_json(
+            r#"{ "global": {}, "per_stat_set": { "AttritionPlayer": { "1": {
+                 "attrition_cull_payload": {
+                   "mods": [ { "kind": "mod", "name": "EvasionGainAsDeflection",
+                               "mod_type": "BASE",
+                               "tags": [ { "type": "GlobalEffect", "effectType": "Buff" },
+                                         { "type": "MultiplierThreshold", "var": "EnemyPresenceSeconds",
+                                           "thresholdVar": "AttritionCullSeconds" } ] } ] } } } } }"#,
+        );
+        assert!(matches!(
+            map_player_buff_stat(
+                &catalog,
+                "AttritionPlayer",
+                None,
+                "attrition_cull_payload",
+                1.0,
+            ),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
     }
 
     /// Sigil of Power 最大层数载荷（`circle_of_power_max_stages` →

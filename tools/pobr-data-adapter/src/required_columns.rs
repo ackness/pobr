@@ -141,6 +141,9 @@ const REQUIRED_EN: &[(&str, &[&str])] = &[
             "BaseEffectiveness",
             "ConstantStats",
             "ConstantStatsValues",
+            // （存量 #7-2）社区 schema 名 IgnoredStats = vendor RemoveStats：
+            // DoT 变体 set 移除主 set 击中伤害 stat（缺列 → 不移除，幻影击中回归）。
+            "IgnoredStats",
         ],
     ),
     (

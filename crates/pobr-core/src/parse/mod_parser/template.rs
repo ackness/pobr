@@ -264,12 +264,32 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             // M6.3 归一（C2）：vendor `PerStat{stat,div,limit}` ↔ PoBR `Multiplier
             // {var=stat,div,limit}` 字段一一对应（计算侧 effective_number 只识别
             // Multiplier；legacy 也统一产 Multiplier）。归一为 Multiplier。
-            let stat = f
-                .get("stat")
-                .or_else(|| f.get("var"))
-                .and_then(|v| field_text(v, captures))?;
-            let stat = normalize_perstat_slot_suffix(&stat);
-            let stat = normalize_attribute_var(&stat);
+            //
+            // vendor `statList = {A, B, …}`（如 `per 75 armour and evasion on
+            // equipped shield` → {ArmourOnWeapon 2, EvasionOnWeapon 2}，
+            // ModParser.lua:1631）：mult = floor(Σstats/div)——多 stat 求和后再
+            // 除。归一为 `|` 连接的复合 var，取数端（effective_number Multiplier
+            // 分支）按 `|` 拆分求和，语义与 vendor ModStore.lua:445-452 一致。
+            let stat = if let Some(StatMapValue::List(items)) = f.get("statList") {
+                let parts: Vec<String> = items
+                    .iter()
+                    .map(|v| field_text(v, captures))
+                    .collect::<Option<_>>()?;
+                if parts.is_empty() {
+                    return None;
+                }
+                parts
+                    .into_iter()
+                    .map(|p| normalize_attribute_var(&normalize_perstat_slot_suffix(&p)))
+                    .collect::<Vec<_>>()
+                    .join("|")
+            } else {
+                let stat = f
+                    .get("stat")
+                    .or_else(|| f.get("var"))
+                    .and_then(|v| field_text(v, captures))?;
+                normalize_attribute_var(&normalize_perstat_slot_suffix(&stat))
+            };
             let div = f
                 .get("div")
                 .and_then(|v| field_number(v, captures))

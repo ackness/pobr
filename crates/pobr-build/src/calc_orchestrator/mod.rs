@@ -421,7 +421,16 @@ pub fn calculate_with_data_session(
     inject_defence_base(&mut session, build, data);
 
     // 2. 装备：归因路径注入（逐件 filter / Kalandra 镜射 / 局部词条剔除 / 槽位加成数值副本）。
-    inject_items(&mut session, build, data, ctx.off_weapon.is_some())?;
+    let main_weapon_active = ctx
+        .main_effect
+        .is_some_and(|e| e.is_attack() && !e.is_non_weapon_attack());
+    inject_items(
+        &mut session,
+        build,
+        data,
+        ctx.off_weapon.is_some(),
+        main_weapon_active,
+    )?;
 
     // 2b. 珠宝（天赋树/深渊槽）：词条按全局注入。
     stage_inject_jewels(&mut session, &ctx)?;
@@ -477,6 +486,10 @@ pub fn calculate_with_data_session(
 
     // 6d. 来源授予的条件 flag → cfg 条件桥接（Bonded modifiers / Arcane Surge）。
     inject_condition_bridges(&mut session);
+
+    // 6e. 低生命自动条件（vendor CalcDefence.lua:335-350：未预留比例 ≤ 0.35 →
+    //     Condition:LowLife）。须在预留 mod 注入（4d）与池值可算（6c）之后。
+    session.bridge_low_pool_conditions();
 
     // 诊断 dump（POBR_DBG_UNSUPPORTED / ALLMODS / STAT，parity 排查用）。
     stage_debug_dumps(&session);
@@ -592,7 +605,59 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(adjusted);
     }
 
+    // nameSpec-only gem 引用 → skill_id 回填（PoB2 SkillsTab 按 nameSpec 反查
+    // gem 的等价物）：lineage support（如 Atziri's Communion）在 XML 里缺
+    // skillId/gemId，仅有显示名。按归一化名匹配 granted_effects id；未命中
+    // 保持空 id（全部消费点惰性跳过）。
+    if let Some(resolved) = resolve_name_spec_gems(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     build
+}
+
+/// 把 `GemSkillRef { skill_id: "", name_spec: Some(name) }` 的显示名解析为授予
+/// 效果 id。归一化 = 小写 + 仅保留字母数字；候选 id 剥 `Player` 后缀（含
+/// `PlayerTwo/Three` 等 lineage 变体不匹配也无妨——它们的 XML 带 skillId），
+/// support id 另剥 `Support` 前缀（`SupportAtzirisCommunionPlayer` →
+/// `atziriscommunion` = nameSpec "Atziri's Communion" 归一形）。无改动返回 None。
+fn resolve_name_spec_gems(build: &Build, data: &BuildData) -> Option<Build> {
+    fn norm(s: &str) -> String {
+        s.chars()
+            .filter(char::is_ascii_alphanumeric)
+            .map(|c| c.to_ascii_lowercase())
+            .collect()
+    }
+    let pending: Vec<String> = build
+        .socket_groups
+        .iter()
+        .flat_map(|g| &g.gem_skills)
+        .filter(|gem| gem.skill_id.is_empty())
+        .filter_map(|gem| gem.name_spec.clone())
+        .collect();
+    if pending.is_empty() {
+        return None;
+    }
+    let mut lookup: std::collections::HashMap<String, &str> = std::collections::HashMap::new();
+    for id in data.granted_effects.keys() {
+        let stem = id.strip_suffix("Player").unwrap_or(id);
+        let stem = stem.strip_prefix("Support").unwrap_or(stem);
+        lookup.insert(norm(stem), id.as_str());
+    }
+    let mut out = build.clone();
+    let mut changed = false;
+    for group in &mut out.socket_groups {
+        for gem in &mut group.gem_skills {
+            if gem.skill_id.is_empty()
+                && let Some(name) = &gem.name_spec
+                && let Some(id) = lookup.get(&norm(name))
+            {
+                gem.skill_id = (*id).to_string();
+                changed = true;
+            }
+        }
+    }
+    changed.then_some(out)
 }
 
 /// 阶段 1：主技能解析——分等级参数、终态 skillTypes 不动点（vendor
@@ -735,21 +800,28 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
         // （编排路径暂无 FlaskBuff/CharmBuff 载荷，T4 槽位接线后生效）+ 阶段 6
         // buff_expander（trigger flag 未置仍零输出）。
         .with_mode_combat(true);
-    // DistanceRamp 的 skillDist（vendor CalcActiveSkill.lua:655 `skillCfg.skillDist =
-    // env.mode_effective and env.configInput.enemyDistance`）：仅 effective 口径 +
-    // enemyDistance 的 `<Input>` **显式值**（vendor `configInput`，不含 `<Placeholder>`
-    // 占位值——后者经 ConfigTab apply 只兜底 `Multiplier:enemyDistance`（命中距离惩罚），
-    // 不喂 skillDist）。demo 套件 18 个 build 的 enemyDistance 全是 placeholder → 此处
-    // None → Close/Far Combat 距离 MORE 整条跳过，与 golden 一致（PoB2 同样不应用）。
+    // DistanceRamp 的 skillDist（vendor CalcActiveSkill.lua:671+684，0.22.0）：
+    // `effectiveRange = env.configInput.enemyDistance or env.configPlaceholder.enemyDistance`，
+    // `skillDist = env.mode_effective and effectiveRange`。0.22.0 起 **placeholder
+    // 兜底喂 skillDist**（旧 vendor 只读显式 `<Input>`——彼时 demo 套件全 placeholder
+    // → None → Close Combat 距离 MORE 整条跳过）。回退链对齐 vendor ConfigTab：
+    // 显式 `<Input>` → XML `<Placeholder>` → 目录 `defaultPlaceholderState`
+    // （ConfigTab.lua:559 对缺省项预填占位默认，enemyDistance = 20）。
     let skill_distance = options
         .mode_effective
         .then(|| {
-            build
-                .config
-                .raw_inputs
-                .values
+            let raw = &build.config.raw_inputs;
+            raw.values
                 .get("enemyDistance")
+                .or_else(|| raw.placeholders.get("enemyDistance"))
                 .and_then(|v| v.as_number())
+                .or_else(|| {
+                    data.config_catalog
+                        .as_deref()
+                        .and_then(|c| c.get("enemyDistance"))
+                        .and_then(|def| def.default.as_ref())
+                        .and_then(|d| d.placeholder_number)
+                })
         })
         .flatten();
     cfg = cfg.with_skill_distance(skill_distance);
@@ -790,6 +862,14 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
     // 是否为盾牌类基底判定——build-state 默认，全 build 一致，非特化。
     if main_hand_offhand_is_shield(build, data) {
         cfg = cfg.with_condition("UsingShield", true);
+    }
+    // 敌人在 Presence 内（vendor CalcPerform.lua:524 `condList["EnemyInPresence"]
+    // = PresenceRadius >= enemyDistance`）：默认 Presence 半径（数米级）恒大于默认
+    // 敌人距离 → 默认真，使「Enemies in your Presence ...」族敌侧词条生效。
+    // ponytail: pobr 未建模 PresenceRadius/enemyDistance 数值比较，恒置真；用户
+    // 拉远 enemyDistance 的口径差留 parity 点名再接。
+    if !cfg.conditions.contains_key("EnemyInPresence") {
+        cfg = cfg.with_condition("EnemyInPresence", true);
     }
     // 伙伴在场条件（vendor ConfigOptions.lua:1012-1014 `companionInPresence`
     // defaultState=true，ifSkillType=CreatesCompanion 门控）：已启用技能含
@@ -833,10 +913,13 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
 /// `CalculationSession::new`）。
 fn stage_weapon_bases(ctx: &mut StageCtx<'_>) {
     let (build, data) = (ctx.build, ctx.data);
-    if let Some((skill, _, _)) = &ctx.main_skill
+    if let Some((skill, _, skill_id)) = &ctx.main_skill
         && let Some(use_time) = skill.use_time_s
         && use_time > 0.0
     {
+        if std::env::var("POBR_DBG_SPEED").is_ok() {
+            eprintln!("[POBR_DBG_SPEED] main skill_id={skill_id} use_time={use_time}");
+        }
         ctx.base_input.base_action_rate = 1.0 / use_time;
     }
 
@@ -983,6 +1066,7 @@ fn stage_inject_jewels(
     session: &mut CalculationSession,
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
+    let adorned_inc = adorned_corrupted_magic_jewel_inc(&ctx.build.jewels);
     for jewel in &ctx.build.jewels {
         let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data));
         let texts: Vec<&str> = filtered
@@ -992,11 +1076,68 @@ fn stage_inject_jewels(
             .chain(&filtered.enchant_texts)
             .map(String::as_str)
             .collect();
-        session
-            .add_modifier_texts(texts)
-            .map_err(|e| BuildError::Parse(e.to_string()))?;
+        // The Adorned（vendor CalcSetup.lua:944-948 + :1342-1347）：树插槽内的
+        // **腐化魔法**珠宝全部 mod 按 `1 + N/100` 缩放注入（ScaleAddList 语义，
+        // 数值 = trunc(round(v×scale, 2))，ModStore.lua:70-79）。
+        // ponytail: 不建模 vendor 的 sinister/containJewelSocket 插槽豁免与
+        // unscalable 标记（语料无来源），parity 点名时再接。
+        if let Some(inc) = adorned_inc
+            && jewel.rarity == pobr_data::item::ItemRarity::Magic
+            && jewel.corrupted
+        {
+            let scale = 1.0 + inc / 100.0;
+            let parse_ctx = engine_ctx(ctx.data);
+            let mut mods: Vec<pobr_core::Modifier> = Vec::new();
+            for text in texts {
+                let Ok(outcome) = parse_ctx.parse(text) else {
+                    continue;
+                };
+                for mut m in outcome.mods {
+                    if let pobr_core::ModValue::Number(v) = m.value {
+                        m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
+                    }
+                    mods.push(m);
+                }
+            }
+            session.add_modifiers(mods);
+        } else {
+            session
+                .add_modifier_texts(texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
     }
     Ok(())
+}
+
+/// 珠宝列表内 The Adorned 的「N% increased Effect of Jewel Socket Passive Skills
+/// containing Corrupted Magic Jewels」数值（XML 内该词条折行为两个物理行，按
+/// 空格拼接后匹配；vendor 解析为 `JewelData{corruptedMagicJewelIncEffect}`）。
+/// 无该珠宝 → `None`。
+fn adorned_corrupted_magic_jewel_inc(jewels: &[Item]) -> Option<f64> {
+    const SUFFIX: &str =
+        "% increased Effect of Jewel Socket Passive Skills containing Corrupted Magic Jewels";
+    for jewel in jewels {
+        if jewel.rarity != pobr_data::item::ItemRarity::Unique {
+            continue;
+        }
+        let joined = jewel.modifier_texts.join(" ");
+        if let Some(pos) = joined.find(SUFFIX) {
+            let head = &joined[..pos];
+            let num_start = head
+                .rfind(|c: char| !c.is_ascii_digit())
+                .map_or(0, |i| i + 1);
+            if let Ok(v) = head[num_start..].parse::<f64>() {
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
+/// vendor `ModStore:ScaleAddMod` 数值缩放语义（ModStore.lua:70-79）：
+/// `m_modf(round(v × scale, 2))` —— 先四舍五入到 2 位小数，再截尾取整。
+fn scale_trunc_2dp(value: f64, scale: f64) -> f64 {
+    ((value * scale * 100.0).round() / 100.0).trunc()
 }
 
 /// 2b'. 范围珠宝 `... Passive Skills in Radius also grant <mod>`：按珠宝插槽**半径内
@@ -1330,6 +1471,14 @@ fn inject_buffs_and_heralds(session: &mut CalculationSession, build: &Build, dat
         session.add_buff_skill(spec);
     }
 
+    // 4b'''.（存量 #9）warcry 技能 → WarcrySpec 经 `session.add_warcry_skill` 注入，
+    //     消费在 pobr-core `calc::warcry`（perform 的 hand pass 之前）：按
+    //     `min((賦能次数/主技能Speed)/(冷却+喊叫时间), 1)` 折算 uptime 后把 warcry
+    //     进攻效果（Infernal `DamageGainAsFire`）缩放注入（CalcOffence.lua:3203-3256）。
+    for spec in warcry_skill_specs(build, data) {
+        session.add_warcry_skill(spec);
+    }
+
     // 4b''.（M4-m）herald 在场计数/条件（vendor CalcPerform.lua:1792-1805，
     //     mode_buffs 段——本编排路径恒置 mode_buffs=true）：已启用组中
     //     skill_types 含 Herald 的主动技能按显示名去重 → `Multiplier:Herald`
@@ -1373,6 +1522,17 @@ fn inject_attribute_derivation(
         let str_total = session.attribute_total("Strength", cls_str);
         let dex_total = session.attribute_total("Dexterity", cls_dex);
         let int_total = session.attribute_total("Intelligence", cls_int);
+        // （存量 #7-4）Giant's Blood 键石「Inherent Life granted by Strength is
+        // halved」（vendor CalcPerform.lua:500-505：flag HalvesLifeFromStrength →
+        // `Life BASE = Str × 1` 而非 ×2）。CharacterBase 已烘焙职业起始段
+        // `cls_str × life_per_strength`，此处增量按「目标总量 − 烘焙段」注入，
+        // 使 Str 派生生命总量 = str_total × 减半后系数（wolf-pack 802→401，
+        // oracle Life 逐源钉值）。
+        let life_per_str = if session.has_flag("HalvesLifeFromStrength") {
+            cc.life_per_strength / 2.0
+        } else {
+            cc.life_per_strength
+        };
         let mk = |stat: &str, value: f64| {
             let origin = ModifierSource::new(SourceId::new(
                 SourceKind::CharacterBase,
@@ -1382,7 +1542,10 @@ fn inject_attribute_derivation(
             Modifier::number(stat, ModType::Base, value).with_origin(origin)
         };
         session.add_modifiers([
-            mk("MaximumLife", cc.life_per_strength * (str_total - cls_str)),
+            mk(
+                "MaximumLife",
+                str_total * life_per_str - cls_str * cc.life_per_strength,
+            ),
             mk(
                 "MaximumMana",
                 cc.mana_per_intelligence * (int_total - cls_int),
@@ -1439,7 +1602,10 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     let str_total = session.base_sum("Strength");
     let dex_total = session.base_sum("Dexterity");
     let int_total = session.base_sum("Intelligence");
-    let spirit_total = session.base_sum("Spirit");
+    // （存量 #7-4）Spirit 分母 = **最终池值**（calc_spirit_pool，含 INC/MORE 与
+    // 转换扣减）——vendor PerStat 读 output.Spirit；BASE-only 会把 wolf-pack
+    // Perfidy「+2 Armour per 1 Spirit」欠算 72 base（Spirit 336 vs base 300）。
+    let spirit_total = session.spirit_total();
     let mana_total = session.pool_total("MaximumMana");
     let life_total = session.pool_total("MaximumLife");
     session.set_multiplier("Strength", str_total);
@@ -1459,6 +1625,14 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     session.set_stat("Spirit", spirit_total);
     session.set_stat("Mana", mana_total);
     session.set_stat("Life", life_total);
+    // 主技能 Life 消耗快照（vendor output.LifeCost）：per-life-cost 词条
+    // （PerStat stat=LifeCost，如 Atalui's Bloodletting gain-as-physical）的取数源。
+    // 消耗先于伤害结算，与 vendor CalcOffence 顺序一致。
+    let life_cost = session.life_cost_snapshot();
+    if life_cost > 0.0 {
+        session.set_stat("LifeCost", life_cost);
+        session.set_multiplier("LifeCost", life_cost);
+    }
     // per-槽位防御缩放（`<Stat>On<Slot>`）：使 `+N to Armour per M Item Energy Shield on
     // Equipped Boots` 这类按某件装备防御值缩放的词条生效（PoB2 PerStat `<Stat>On<Slot>`）。
     for (var, value) in per_slot_defence_multipliers(build, data) {
@@ -1485,6 +1659,55 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     session.set_multiplier("StrengthMoteSkillCount", str_mote);
     session.set_multiplier("DexterityMoteSkillCount", dex_mote);
     session.set_multiplier("IntelligenceMoteSkillCount", int_mote);
+    // Smith of Kitava 身甲连接 notable 计数（vendor CalcSetup.lua:840-841：
+    // 已分配且 tree.lua `applyToArmour=true` 的 notable 数 →
+    // `Multiplier:AllocatedConnectedNotable`）。消费方 = Masterwork
+    // 『+200 to Armour for each Connected Notable Passive Skill Allocated』。
+    let connected_notables = build
+        .tree
+        .allocated_nodes
+        .iter()
+        .filter(|id| {
+            data.passive_nodes
+                .get(&id.0)
+                .is_some_and(|n| n.apply_to_armour)
+        })
+        .count();
+    if connected_notables > 0 {
+        session.set_multiplier("AllocatedConnectedNotable", connected_notables as f64);
+    }
+    // 装备属性需求快照（vendor CalcPerform.lua:1848-1857：
+    // `output[attr.."RequirementsOn"..slot] = floor(itemReq × reqMult)`）——
+    // 『Gain Armour equal to N% of total Strength Requirements of Equipped
+    // Boots, Gloves and Helmet』（PercentStat `StrRequirementsOn<slot>`）取数源。
+    // ponytail: reqMult（GlobalAttributeRequirements 词条族）恒按 1；出现带
+    // 「reduced attribute requirements」的相关 build 时再接乘子。
+    for (var, value) in per_slot_attribute_requirements(build, data) {
+        session.set_stat(var, value);
+    }
+}
+
+/// 每槽位装备的属性需求（`{Str,Dex,Int}RequirementsOn<slot>` → 值）。
+/// 槽位词根与 PercentStat tag 的 stat 名对齐（`StrRequirementsOnboots` 等，
+/// 小写槽名 = 引擎解析产物）；无需求/空槽不产出。
+fn per_slot_attribute_requirements(build: &Build, data: &BuildData) -> Vec<(String, f64)> {
+    let mut out = Vec::new();
+    for (slot, item) in build.equipped_items() {
+        let Some(def) = data.base_items.get(&item.base.to_string()) else {
+            continue;
+        };
+        let slot_key = slot.id();
+        for (attr, req) in [
+            ("Str", def.req_str),
+            ("Dex", def.req_dex),
+            ("Int", def.req_int),
+        ] {
+            if req > 0 {
+                out.push((format!("{attr}RequirementsOn{slot_key}"), f64::from(req)));
+            }
+        }
+    }
+    out
 }
 
 /// Attribute-Mote 计数（Gemling Virtuous Barrier）：base 3/3/3 + 每个启用非辅助
@@ -1717,12 +1940,14 @@ fn inject_character_base(
 }
 
 /// 2 阶段：装备归因路径注入——逐件 filter / Kalandra 镜射 / 局部词条（武器·防御·Spirit）
-/// 剔除 / add_item / 槽位加成效果数值副本。`off_weapon_active` = 副手武器源是否被消费。
+/// 剔除 / add_item / 槽位加成效果数值副本。`off_weapon_active` = 副手武器源是否被消费；
+/// `main_weapon_active` = 主技能以 Weapon1 为伤害源（持武攻击）。
 fn inject_items(
     session: &mut CalculationSession,
     build: &Build,
     data: &BuildData,
     off_weapon_active: bool,
+    main_weapon_active: bool,
 ) -> Result<(), BuildError> {
     // 槽位加成效果（『N% increased bonuses gained from Equipped Rings and Amulets』，
     // Ritualist 等）：对应槽位物品词条按 scale 追加缩放副本（PoB2 CalcPerform.lua:
@@ -1747,6 +1972,39 @@ fn inject_items(
             filtered.implicit_texts = drop_local(filtered.implicit_texts);
             filtered.modifier_texts = drop_local(filtered.modifier_texts);
             filtered.enchant_texts = drop_local(filtered.enchant_texts);
+        }
+        // 非伤害源武器的裸「Adds N to M <type> Damage」剔除（#10-3，titan/smith
+        // 高估根因）：vendor Item.lua:1923-1928 把武器上全类型裸 adds 折入
+        // weaponData（局部，只随该武器攻击生效）。主技能不以该武器为伤害源
+        // （非武器攻击如 Shield Wall / 法术 / 未消费副手）时，这些词条不得进
+        // 全局加法桶（titan Nebuloch『Adds 30 to 52 Chaos damage』经 added
+        // effectiveness 放大 → TotalDPS 1.05x）。该武器**是**伤害源时维持现状：
+        // 裸元素/混沌 adds 走全局注入近似（与 vendor weaponData 折算数值等价，
+        // deadeye/twister 1.00x 钉住）。
+        let weapon_source_inactive = (slot == EquipmentSlot::Weapon1 && !main_weapon_active)
+            || (slot == EquipmentSlot::Weapon2 && !off_weapon_active);
+        if weapon_source_inactive && data.weapon_base(&item.base.to_string()).is_some() {
+            const TYPED_ADDS_SUFFIXES: [&str; 5] = [
+                "physical damage",
+                "fire damage",
+                "cold damage",
+                "lightning damage",
+                "chaos damage",
+            ];
+            let drop_typed_adds = |texts: Vec<String>| -> Vec<String> {
+                texts
+                    .into_iter()
+                    .filter(|t| {
+                        let clean = clean_item_text(t);
+                        !TYPED_ADDS_SUFFIXES
+                            .iter()
+                            .any(|s| parse_adds_with_suffix(&clean, s).is_some())
+                    })
+                    .collect()
+            };
+            filtered.implicit_texts = drop_typed_adds(filtered.implicit_texts);
+            filtered.modifier_texts = drop_typed_adds(filtered.modifier_texts);
+            filtered.enchant_texts = drop_typed_adds(filtered.enchant_texts);
         }
         // 护甲件：剔除局部「increased / +flat Armour/Evasion/ES」（已折入 rolled 件级底值 /
         // 基底兜底乘区，见 defence_base_modifiers）；留在全局会重复（且错误地变成全局加法）。
@@ -1796,9 +2054,20 @@ fn inject_items(
             filtered.modifier_texts = drop_spirit(filtered.modifier_texts);
             filtered.enchant_texts = drop_spirit(filtered.enchant_texts);
         }
-        session
-            .add_item(slot, &filtered)
-            .map_err(|e| BuildError::Parse(e.to_string()))?;
+        // 武器件走 add_weapon_item：无 flag 爆伤词条转按手条件
+        // （vendor Item.lua:1954-1961，0.22.0 把 CritMultiplier 加进转换清单；
+        // 仅武器基底转换——Weapon2 的盾/箭袋/法器等非武器件不转）。
+        let is_weapon_item = matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2)
+            && data.weapon_base(&item.base.to_string()).is_some();
+        if is_weapon_item {
+            session
+                .add_weapon_item(slot, &filtered)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        } else {
+            session
+                .add_item(slot, &filtered)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
 
         // 槽位加成效果副本：该槽位有 `EffectOfBonusesFrom<Slot>` INC 时，把本件已
         // 注入词条的**数值差额副本** 追加注入（vendor CalcPerform.lua:1347-1369
@@ -1891,6 +2160,7 @@ mod ring3_tests {
             base: ItemBaseId::from("Ring"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec!["+30 to maximum Life".into()],
             enchant_texts: vec![],
@@ -1902,6 +2172,7 @@ mod ring3_tests {
     fn ring_slot_data() -> BuildData {
         // 『+1 Ring Slot』词条节点（Ritualist『Unfurled Finger』形态）。
         let node = pobr_data::catalog::PassiveNodeDef {
+            apply_to_armour: false,
             skill: 34785,
             id: "ascendancy_ritualist_unfurled_finger".into(),
             name: Some("Unfurled Finger".into()),
@@ -2022,6 +2293,7 @@ mod tests {
             base: ItemBaseId::from("Iron Ring"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec![format!("+{amount} to maximum Life")],
             enchant_texts: vec![],
@@ -2041,6 +2313,7 @@ mod tests {
             base: ItemBaseId::from("Solar Amulet"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec![],
             enchant_texts: vec!["Allocates Paragon".into()],
@@ -2196,6 +2469,7 @@ mod tests {
     fn passive_node_contributes_attributed_life() {
         // 构造一个携带 +30 maximum Life 的普通节点，分配后应抬升生命。
         let node = pobr_data::catalog::PassiveNodeDef {
+            apply_to_armour: false,
             skill: 12345,
             id: "test_life_node".into(),
             name: Some("Life Node".into()),
@@ -2243,6 +2517,7 @@ mod tests {
         stats: Vec<String>,
     ) -> pobr_data::catalog::PassiveNodeDef {
         pobr_data::catalog::PassiveNodeDef {
+            apply_to_armour: false,
             skill,
             id: format!("n{skill}"),
             name: None,
@@ -2709,6 +2984,7 @@ mod tests {
             vec![QualityStat {
                 stat: "damage_+%".into(),
                 per_quality_rate: 0.55,
+                alt: false,
             }],
         );
         // 直接调取数点（不经 calculate_with_data）：手动安装 Data 通道上下文
@@ -3059,6 +3335,7 @@ mod tests {
     fn slot_bonus_effect_scales_covers_equipped_quiver() {
         use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
         let quiver_node = pobr_data::catalog::PassiveNodeDef {
+            apply_to_armour: false,
             skill: 30341,
             id: "bow_quiver_effect".into(),
             name: Some("Master Fletching".into()),
@@ -3089,6 +3366,7 @@ mod tests {
             base: ItemBaseId::from("Visceral Quiver"),
             rarity: ItemRarity::Rare,
             quality: 0,
+            corrupted: false,
             implicit_texts: vec![],
             modifier_texts: vec!["53% increased Damage with Bow Skills".into()],
             enchant_texts: vec![],
@@ -4239,6 +4517,9 @@ mod tests {
     /// 测试用武器基底（仅 item_class 参与持握/近战判定）。
     fn weapon_base_item(name: &str, item_class: &str) -> pobr_data::catalog::BaseItemDef {
         pobr_data::catalog::BaseItemDef {
+            req_str: 0,
+            req_dex: 0,
+            req_int: 0,
             id: format!("Test/{name}"),
             name: name.to_string(),
             item_class: item_class.to_string(),
@@ -4293,6 +4574,7 @@ mod tests {
                     base: ItemBaseId::from(base_name.as_str()),
                     rarity: ItemRarity::Normal,
                     quality: 0,
+                    corrupted: false,
                     implicit_texts: vec![],
                     modifier_texts: vec![],
                     enchant_texts: vec![],
@@ -4321,6 +4603,7 @@ mod tests {
                 base: ItemBaseId::from(base_name.as_str()),
                 rarity: ItemRarity::Normal,
                 quality: 0,
+                corrupted: false,
                 implicit_texts: vec![],
                 modifier_texts: vec![],
                 enchant_texts: vec![],

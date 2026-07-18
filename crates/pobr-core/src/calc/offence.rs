@@ -236,6 +236,48 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
     calculate_minimal_vs_enemy(db, &ModDb::new(), cfg, input)
 }
 
+/// 出手速率解析（= vendor `globalOutput.Speed`）：速度族（按技能类型取 AttackSpeed 或
+/// CastSpeed，SkillSpeed 始终）作为一个 inc/more 乘区；ActionSpeed 独立乘区单独相乘
+/// （对齐 PoB CalcOffence：`finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod`）。
+/// 攻击吃武器攻速 + AttackSpeed，法术吃技能施法速率 + CastSpeed——不混淆。
+/// 速度 inc/more 缩放后，先按附加施放/攻击时间（TotalCastTime/TotalAttackTime）换算
+/// 有效时间，再乘 ActionSpeed 独立乘区（PoB CalcOffence L2827 的加法分母 + 末端 action
+/// speed），最后冷却限速 + 服务器帧 cap。
+///
+/// 独立成函供两处共用：`calculate_minimal_vs_enemy` 主链，以及 warcry uptime 预算
+/// （`calc::warcry`——vendor 的 warcry 段读同一 `globalOutput.Speed`，
+/// CalcOffence.lua:3235）。
+pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
+    let speed_names = super::skill_use_time::speed_names_for(cfg);
+    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
+    let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
+    let more_speed = db.more(cfg, &speed_names);
+    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
+        * db.more(cfg, &action_speed_names);
+    let scaled_rate = apply_total_time(
+        db,
+        cfg,
+        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
+    );
+    let uncapped_action_rate = scaled_rate * action_speed_mod;
+    if std::env::var("POBR_DBG_SPEED").is_ok() {
+        eprintln!(
+            "[POBR_DBG_SPEED] base={} inc={} more={} action={} scaled={} names={:?}",
+            input.base_action_rate,
+            inc_speed,
+            more_speed,
+            action_speed_mod,
+            scaled_rate,
+            speed_names
+        );
+    }
+    round(apply_server_tick_cap(
+        db,
+        cfg,
+        apply_cooldown_cap(db, cfg, uncapped_action_rate),
+    ))
+}
+
 /// 完整入口：玩家 modDB + 敌人 modDB。敌人侧减伤/受伤链/格挡仅在
 /// `cfg.mode_effective == true` 时生效（面板口径不引入敌人交互，保证与历史输出一致）。
 ///
@@ -257,29 +299,7 @@ pub fn calculate_minimal_vs_enemy(
     let cold_resistance = cold.final_value;
     let lightning_resistance = lightning.final_value;
 
-    // 速度族（按技能类型取 AttackSpeed 或 CastSpeed，SkillSpeed 始终）作为一个 inc/more 乘区；
-    // ActionSpeed 独立乘区单独相乘（对齐 PoB CalcOffence：
-    // finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod）。攻击吃武器攻速 + AttackSpeed，
-    // 法术吃技能施法速率 + CastSpeed——不混淆（攻击不吃 CastSpeed、法术不吃 AttackSpeed）。
-    let speed_names = super::skill_use_time::speed_names_for(cfg);
-    let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
-    let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
-    let more_speed = db.more(cfg, &speed_names);
-    let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
-        * db.more(cfg, &action_speed_names);
-    // 速度 inc/more 缩放后，先按附加施放/攻击时间（TotalCastTime/TotalAttackTime）换算有效时间，
-    // 再乘 ActionSpeed 独立乘区（对齐 PoB CalcOffence L2827 的加法分母 + 末端 action speed）。
-    let scaled_rate = apply_total_time(
-        db,
-        cfg,
-        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
-    );
-    let uncapped_action_rate = scaled_rate * action_speed_mod;
-    let action_rate = round(apply_server_tick_cap(
-        db,
-        cfg,
-        apply_cooldown_cap(db, cfg, uncapped_action_rate),
-    ));
+    let action_rate = resolve_action_rate(db, cfg, input);
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
     // PoE2 命中率（agent-docs/accuracy-and-enemy.md §二,§三）：
@@ -942,6 +962,22 @@ fn enemy_damage_multiplier(
             }
         }
         let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
+        // 诊断：POBR_DBG_ENEMYMIT=1 时逐类型 dump 敌方减伤分解（与 oracle
+        // enemyMitigation 对照：resistBase/pen/takenInc/takenMore）。
+        if std::env::var("POBR_DBG_ENEMYMIT").is_ok() {
+            eprintln!(
+                "[POBR_ENEMYMIT] {type_prefix}: resist={resist:.2} eff_resist={effective_resist:.2} taken_inc={taken_inc:.2} taken_more={taken_more:.4}"
+            );
+            for m in enemy_db.iter_mods() {
+                let n = m.name.as_str();
+                if n == format!("{type_prefix}Resist") || n == "ElementalResist" {
+                    eprintln!(
+                        "[POBR_ENEMYMIT]   {n} {:?} {:?} origin={:?} tags={:?}",
+                        m.mod_type, m.value, m.origin, m.tags
+                    );
+                }
+            }
+        }
         1.0 - effective_resist / 100.0
     };
 
@@ -1320,7 +1356,46 @@ fn apply_server_tick_cap(db: &ModDb, cfg: &CalcConfig, rate: f64) -> f64 {
 
 pub(crate) fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
     let names = [ModName::from(name)];
-    scaled_numeric_stat(db, cfg, base, &names)
+    let conv = pool_conversion_pct(db, cfg, name);
+    if conv == 0.0 {
+        return scaled_numeric_stat(db, cfg, base, &names);
+    }
+    // vendor CalcDefence.lua:92-95：`(base × (1 − conv/100) + extra) × (1+inc) × more`。
+    // OVERRIDE 仍然胜过一切（ChaosInoculation 等池钳定）。
+    for n in &names {
+        if let Some(value) = db.override_(cfg, n.clone()) {
+            return round(value);
+        }
+    }
+    let base_value = base + db.sum(ModType::Base, cfg, &names);
+    let inc = db.sum(ModType::Inc, cfg, &names);
+    let more = db.more(cfg, &names);
+    round(base_value * (1.0 - conv / 100.0) * (1.0 + inc / 100.0) * more)
+}
+
+/// Life/Mana 池的「N% of Maximum X Converted to <defence>」扣减率
+/// （vendor CalcDefence.lua:92 `conv = m_min(Sum(BASE, res.."ConvertTo…"), 100)`）。
+/// 只扣池本体；ES/Armour/Evasion 侧的**转入**由 defence 矩阵按未扣减的全局底
+/// 处理（:1364 `ceil(globalBase × rate/100)`，见 calc_defence_resources）。
+// ponytail: vendor 把 conv 只作用于 base 段、Extra<res> 免扣——PoBR 的矩阵转入
+// 现注入为 Maximum<res> BASE，会一并被扣；fixture 集无「双向转换」build，出现时
+// 再把注入名迁到 Extra<res> 通道。
+fn pool_conversion_pct(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
+    let prefix = match name {
+        "MaximumLife" => "Life",
+        "MaximumMana" => "Mana",
+        _ => return 0.0,
+    };
+    db.sum(
+        ModType::Base,
+        cfg,
+        &[
+            ModName::from(format!("{prefix}ConvertToEnergyShield")),
+            ModName::from(format!("{prefix}ConvertToArmour")),
+            ModName::from(format!("{prefix}ConvertToEvasion")),
+        ],
+    )
+    .min(100.0)
 }
 
 fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[ModName]) -> f64 {
@@ -1378,7 +1453,9 @@ fn scaled_pool_traced(
         trace,
         format!("{stat_name} BASE modifier sum"),
     );
-    let base_total = base + base_mods.value;
+    // Life/Mana 池转换扣减（vendor :92——与 scaled_pool 非追踪路径同式）。
+    let conv_factor = 1.0 - pool_conversion_pct(db, cfg, stat_name) / 100.0;
+    let base_total = (base + base_mods.value) * conv_factor;
     let base_total_node = trace.add_node(
         format!("{stat_name} base total"),
         base_total,

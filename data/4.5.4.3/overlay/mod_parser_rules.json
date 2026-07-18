@@ -3,8 +3,8 @@
     "schema": "mod_parser_rules/v1",
     "generator": "sync-pob-catalog extract-lua",
     "vendor": "PathOfBuilding-PoE2",
-    "vendor_commit": "29ab8262dd4a867eac56165afb8391a509e34a0e",
-    "vendor_commit_subject": "29ab826 Add support for Darkness Enthroned and Atziri's Splendour augment mods (#2343)",
+    "vendor_commit": "ce8bffaba31f8e68cfce70579e1c96465e7c133c",
+    "vendor_commit_subject": "ce8bffaba31f8e68cfce70579e1c96465e7c133c",
     "extracted_files": [
       "Modules/ModParser.lua"
     ],
@@ -5069,7 +5069,9 @@
     {
       "phrase": "skill speed",
       "names": [
-        "SkillSpeed"
+        "SkillSpeed",
+        "WarcrySpeed",
+        "TotemPlacementSpeed"
       ]
     },
     {
@@ -6213,6 +6215,15 @@
       ]
     },
     {
+      "phrase": "for grenade skills",
+      "tags": [
+        {
+          "type": "SkillType",
+          "skill_type": "Grenade"
+        }
+      ]
+    },
+    {
       "phrase": "for hexes",
       "tags": [
         {
@@ -6429,8 +6440,8 @@
       "phrase": "grenade",
       "tags": [
         {
-          "type": "SkillName",
-          "skillName": "Grenade"
+          "type": "SkillType",
+          "skill_type": "Grenade"
         }
       ]
     },

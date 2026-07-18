@@ -349,21 +349,27 @@ fn repo_data_dir() -> PathBuf {
 
 /// 返回（raw key 集 = vendor_pattern ∪ pattern；regex pattern 集）。缺文件容忍
 /// （version-bump 演练时可能只有部分文件）。
+///
+/// 去重源含**三处** special_mods：版本无关策展层 `data/overlay-common/special_mods.json`
+/// （P1-3）、版本层 `overlay/special_mods.json`、派生表 `generated/special_derived.json`。
+/// 漏读 overlay-common 会让抽取器把已策展的 133 条当作新 vendor 条目重复产出，
+/// 下游 precompile-mods --check 报重复 id。
 fn load_existing_keys() -> io::Result<(BTreeSet<String>, BTreeSet<String>)> {
     let mut raw_keys = BTreeSet::new();
     let mut patterns = BTreeSet::new();
-    for rel in [
-        "overlay/special_mods.json",
-        "generated/special_derived.json",
-    ] {
-        let path = repo_data_dir().join(rel);
+    let paths = [
+        repo_data_dir().join("../overlay-common/special_mods.json"),
+        repo_data_dir().join("overlay/special_mods.json"),
+        repo_data_dir().join("generated/special_derived.json"),
+    ];
+    for path in paths {
         let text = match std::fs::read_to_string(&path) {
             Ok(t) => t,
             Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
             Err(e) => return Err(e),
         };
         let doc: SpecialModsDef = serde_json::from_str(&text)
-            .map_err(|error| io::Error::other(format!("{rel} 解析失败：{error}")))?;
+            .map_err(|error| io::Error::other(format!("{} 解析失败：{error}", path.display())))?;
         for entry in doc.entries {
             if let Some(vp) = entry.vendor_pattern {
                 raw_keys.insert(vp);

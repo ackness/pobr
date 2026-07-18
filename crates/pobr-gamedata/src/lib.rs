@@ -16,6 +16,7 @@ pub mod manifest;
 pub mod overlay;
 pub mod paths;
 pub mod ruleset;
+pub mod test_pins;
 
 use std::fmt;
 use std::fs;

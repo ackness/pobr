@@ -36,49 +36,53 @@ mod tests {
 
     use crate::GameData;
 
+    fn golden_version_dir() -> std::path::PathBuf {
+        crate::repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION)
+    }
+
     fn real_data() -> GameData {
         // 本模块测试钉定段计数 / vendor-commit 实测样本（版本特定，随抽取增长），故加载
         // golden 校验版本而非活动版本（数据/计算解耦，见 pobr_data::GOLDEN_PARITY_DATA_VERSION）。
-        GameData::new(crate::repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION))
+        GameData::new(golden_version_dir())
     }
 
-    /// 仓库真实数据：各段条目数与钉定 vendor commit 的实测值一致
-    /// （蓝图 §1.9 计数自检的消费侧镜像。golden 4.5.4.3（vendor ce8bffab）实测：
-    /// forms 91→95、name_map 775→789、flag_phrases 201→205、tag_phrases 687→691、
-    /// flag_types 25→26、distinct forms 28→29）。
+    /// 仓库真实数据：各段条目数与 blessed 快照一致（蓝图 §1.9 计数自检的消费侧
+    /// 镜像）。计数随 vendor 抽取增长——具体数值进 `generated/test_pins.json`
+    /// （regen 后 `POBR_BLESS_PINS=1` 刷新，见 [`crate::test_pins`]）；本函数只
+    /// 保留结构性守卫（核心 form id 必须在场）。
     #[test]
     fn real_data_section_counts() {
         let doc = real_data()
             .mod_parser_rules()
             .expect("加载 mod_parser_rules.json 不应失败")
             .expect("仓库数据包应含 mod_parser_rules 域");
-        assert_eq!(doc.forms.len(), 95, "forms");
-        assert_eq!(doc.name_map.len(), 789, "name_map");
-        assert_eq!(doc.flag_phrases.len(), 205, "flag_phrases");
-        assert_eq!(doc.pre_flags.len(), 219, "pre_flags");
-        assert_eq!(doc.tag_phrases.len(), 691, "tag_phrases");
-        assert_eq!(doc.suffix_types.len(), 40, "suffix_types");
-        assert_eq!(doc.damage_types.len(), 5, "damage_types");
-        assert_eq!(doc.pen_types.len(), 6, "pen_types");
-        assert_eq!(doc.regen_types.len(), 32, "regen_types");
-        assert_eq!(doc.degen_types.len(), 32, "degen_types");
-        assert_eq!(doc.cost_types_map.len(), 32, "cost_types_map");
-        assert_eq!(doc.base_cost_types.len(), 32, "base_cost_types");
-        // 26 = vendor 25（4.5.4.3 ce8bffab 新增一条）+ pobr `hindered`→
-        // `Condition:Hindered`（M6-conv2：legacy `parse_enemy_inner` 对 `are hindered`
-        // 的特例搬迁，使 `Enemies in your Presence are Hindered` 走 EnemyModifier
-        // 包装收敛，见 m6-dualrun-report §2.5）。
-        assert_eq!(doc.flag_types.len(), 26, "flag_types");
-        assert_eq!(doc.unsupported, vec!["mirrored"], "unsupported");
-        assert_eq!(
-            doc.unsupported_pobr_extra,
-            vec!["split"],
-            "unsupported_pobr_extra"
-        );
-        // form id 集 29 种（蓝图 §1.1 记 28；4.5.4.3 vendor 新增 1 种）
         let forms: std::collections::BTreeSet<&str> =
             doc.forms.iter().map(|f| f.form.as_str()).collect();
-        assert_eq!(forms.len(), 29, "distinct form ids");
+        // flag_types 含 pobr 自增条目 `hindered`→`Condition:Hindered`（M6-conv2，
+        // 见 m6-dualrun-report §2.5），计数恒 = vendor + 1。
+        crate::test_pins::assert_pin(
+            &golden_version_dir(),
+            "parser_rules.section_counts",
+            serde_json::json!({
+                "forms": doc.forms.len(),
+                "name_map": doc.name_map.len(),
+                "flag_phrases": doc.flag_phrases.len(),
+                "pre_flags": doc.pre_flags.len(),
+                "tag_phrases": doc.tag_phrases.len(),
+                "suffix_types": doc.suffix_types.len(),
+                "damage_types": doc.damage_types.len(),
+                "pen_types": doc.pen_types.len(),
+                "regen_types": doc.regen_types.len(),
+                "degen_types": doc.degen_types.len(),
+                "cost_types_map": doc.cost_types_map.len(),
+                "base_cost_types": doc.base_cost_types.len(),
+                "flag_types": doc.flag_types.len(),
+                "distinct_forms": forms.len(),
+                "unsupported": doc.unsupported,
+                "unsupported_pobr_extra": doc.unsupported_pobr_extra,
+            }),
+        );
+        // 结构性守卫：核心 form id 缺失 = 抽取通道坏，不随数据漂移。
         for id in [
             "INC", "RED", "MORE", "LESS", "BASE", "PEN", "DMG", "DOUBLED",
         ] {
@@ -240,7 +244,8 @@ mod tests {
         assert!(loaded.is_none());
     }
 
-    /// 探针推断条目的 handler 兜底数量在蓝图预算内（≤15；当前实测 3）。
+    /// 探针推断条目的 handler 兜底数量在蓝图预算内（≤15，结构性守卫）；具体
+    /// 条数随 vendor 漂移，进 blessed 快照。
     #[test]
     fn handler_fallback_within_budget() {
         let doc = real_data().mod_parser_rules().unwrap().unwrap();
@@ -255,6 +260,10 @@ mod tests {
                 .filter(|e| e.handler_id.is_some())
                 .count();
         assert!(handlers <= 15, "handler 兜底 {handlers} 超出蓝图预算 ≤15");
-        assert_eq!(handlers, 3, "钉定 vendor commit 下实测 3 条 handler 兜底");
+        crate::test_pins::assert_pin(
+            &golden_version_dir(),
+            "parser_rules.handler_fallbacks",
+            handlers,
+        );
     }
 }

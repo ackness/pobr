@@ -228,14 +228,15 @@ pub(crate) fn item_rolled_defence(item: &Item, data: &BuildData, level: u32) -> 
         } else {
             base * (1.0 + local_pct[idx] / 100.0) * (1.0 + quality_pct / 100.0)
         };
-        // ES（idx 2）：PoB2 恒从基底物品 DB 重算 `EnergyShield = round((esBase+flat) ×
-        // (1+localInc/100) × (1+quality/100))`（Item.lua:1994-1996），不信物品文本的
-        // `Energy Shield: N` 展示行——该行可能滞后于当前数据版本的基底 ES（跨版本重算
-        // 与导入期展示值分歧，titan 手套 26→28 / 靴 15→27 = 41→55 根因）。基底已知时
-        // ES 优先重算；护甲/闪避仍信 rolled 行（其局部 inc 解析不保证在所有基底上完整，
-        // 避免回归）。
-        out[idx] = if idx == 2 && default_val.is_some() {
-            recompute
+        // PoB2 恒从基底物品 DB 重算三防 `round((base+flat) × (1+localInc/100) ×
+        // (1+quality/100))`（Item.lua:1994-1996），不信物品文本的 `Armour:/Evasion:/
+        // Energy Shield: N` 展示行——该行可能滞后于当前数据版本的基底值（跨版本重算
+        // 与导入期展示值分歧：titan ES 手套 26→28 / 靴 15→27 = 41→55；0.5.4b
+        // Runeforged 基底护甲 buff 后 titan 手套 96→101 / 盔 192→284 / 靴 58→100，
+        // Gear:Armour 6100→6239 = vendor）。基底已知时重算（vendor round 同口径）；
+        // 基底不在库时回退 rolled 行（不臆造）。
+        out[idx] = if default_val.is_some() {
+            recompute.round()
         } else {
             rolled_val.unwrap_or(recompute)
         };

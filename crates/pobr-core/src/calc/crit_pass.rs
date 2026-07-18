@@ -157,14 +157,26 @@ where
         // total = round(Σavg × crit.effect)，I5 恒等保证与真 blend 数学相同。
         let player_side: f64 = leg_total(&non_crit);
         let mitigated: f64 = if mode_effective {
-            leg_total_mitigated(&non_crit, &cfg_hit, &mitigation)
+            // 减伤侧**不能**走「单腿减伤 × crit.effect」：敌方护甲减伤依赖
+            // 单次击中量（vendor pass1 用暴击后的击中量算 DR，暴击更大 → DR
+            // 更小），raw 依赖使 I5 恒等在减伤维度不成立。短路下暴击腿 =
+            // 非暴击腿 × crit.multiplier，据此按 vendor `:4395` 分腿减伤后
+            // blend；减伤对 raw 无依赖（纯抗性/受伤链）时数学上退化为
+            // 旧公式，逐值不变。
+            let hit_leg = leg_total_mitigated(&non_crit, &cfg_hit, &mitigation);
+            let crit_leg_mitigated: f64 = non_crit
+                .avgs
+                .iter()
+                .zip(non_crit.raw_avgs.iter())
+                .map(|((ty, avg), raw)| {
+                    avg * crit.multiplier * mitigation(&cfg_crit, *ty, raw * crit.multiplier)
+                })
+                .sum();
+            hit_leg * (1.0 - c) + crit_leg_mitigated * c
         } else {
-            player_side
+            player_side * crit.effect
         };
-        (
-            round(player_side * crit.effect),
-            round(mitigated * crit.effect),
-        )
+        (round(player_side * crit.effect), round(mitigated))
     } else {
         // 真双腿 blend（`:4395`）：分腿过敌方减伤后按 c 加权。
         let blend = |hit: f64, crit_v: f64| hit * (1.0 - c) + crit_v * c;

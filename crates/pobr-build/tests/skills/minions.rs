@@ -56,8 +56,12 @@ fn zombie_build(gem_level: u32) -> Build {
 fn build_data_minion_def_zombie() {
     let data = load_data();
     let zombie = data.minion_def("RaisedZombie").expect("RaisedZombie 在库");
-    assert_eq!(zombie.life, 0.7); // Minions.lua:12
-    assert_eq!(zombie.damage, 0.75); // :18
+    // 数值系数来自 Minions.lua，随平衡补丁漂移 → blessed 快照（POBR_BLESS_PINS=1 刷新）。
+    pobr_gamedata::test_pins::assert_pin(
+        &repo_data_root().join(version()),
+        "minions.raised_zombie",
+        serde_json::json!({ "life": zombie.life, "damage": zombie.damage }),
+    );
     assert!(zombie.base_damage_ignores_attack_speed);
 }
 
@@ -68,8 +72,12 @@ fn build_data_minion_def_spectre_falls_back() {
     let c = data
         .minion_def("Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre")
         .expect("Lightless Abomination 在库（落 spectres）");
-    assert_eq!(c.life, 2.2); // Spectres.lua（4.5.4.3/0.5.4b：3.0→2.2）
-    assert_eq!(c.armour, 0.4);
+    // 数值系数来自 Spectres.lua，随平衡补丁漂移（0.5.4b：life 3.0→2.2）→ blessed 快照。
+    pobr_gamedata::test_pins::assert_pin(
+        &repo_data_root().join(version()),
+        "minions.spectre_cocoon3",
+        serde_json::json!({ "life": c.life, "armour": c.armour }),
+    );
 }
 
 #[test]
@@ -173,6 +181,7 @@ fn minion_increased_damage_raises_minion_dps() {
         base: ItemBaseId::from("Ring"),
         rarity: ItemRarity::Rare,
         quality: 0,
+        corrupted: false,
         implicit_texts: vec![],
         modifier_texts: vec!["Minions deal 50% increased Damage".into()],
         enchant_texts: vec![],

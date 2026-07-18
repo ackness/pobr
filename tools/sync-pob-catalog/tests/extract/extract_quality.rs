@@ -106,6 +106,7 @@ fn assemble_document_is_deterministic_and_sorted_by_effect() {
         effect: effect.to_string(),
         stat: stat.to_string(),
         rate,
+        alt: false,
     };
     // 两种到达顺序（effect 层乱序，单效果内顺序一致——对齐 Lua 侧 pairs 外层
     // 不确定 / ipairs 内层连续的输出形态）。

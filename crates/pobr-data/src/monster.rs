@@ -251,6 +251,25 @@ pub const MONSTER_LIFE_TABLE: [u32; MONSTER_TABLE_LEN] = [
     43001, 44291, 45619, 46988, 48398, 49850, 51345, 52885, 54472, 56106, // lv91-100
 ];
 
+/// 盟友（非敌对召唤物）生命值查表（等级 1..=100）。
+///
+/// 来源：PoB2 `src/Data/Misc.lua::data.monsterAllyLifeTable`（L8）。召唤物基础生命
+/// = `floor(monsterAllyLifeTable[level] × minionData.life)`（CalcPerform.lua:1046；
+/// 敌对召唤物才用 `monsterLifeTable` × mapLevelLifeMult）。与敌方表不同：无 lv65+
+/// 终局跳升，平滑单调。
+pub const MONSTER_ALLY_LIFE_TABLE: [u32; MONSTER_TABLE_LEN] = [
+    51, 83, 116, 150, 186, 223, 261, 300, 341, 382, // lv1-10
+    426, 471, 517, 565, 614, 665, 718, 772, 828, 886, // lv11-20
+    945, 1007, 1070, 1135, 1203, 1272, 1344, 1417, 1493, 1571, // lv21-30
+    1652, 1734, 1820, 1907, 1998, 2091, 2186, 2285, 2386, 2490, // lv31-40
+    2598, 2708, 2821, 2938, 3058, 3181, 3307, 3438, 3571, 3709, // lv41-50
+    3850, 3995, 4144, 4298, 4455, 4617, 4783, 4953, 5128, 5308, // lv51-60
+    5493, 5682, 5877, 6077, 6282, 6492, 6708, 6930, 7157, 7391, // lv61-70
+    7630, 7876, 8128, 8387, 8652, 8924, 9203, 9489, 9783, 10084, // lv71-80
+    10393, 10710, 11034, 11367, 11708, 12058, 12417, 12785, 13161, 13548, // lv81-90
+    13944, 14350, 14766, 15192, 15629, 16076, 16535, 17005, 17486, 17980, // lv91-100
+];
+
 /// 怪物基础伤害查表（等级 1..=100，f64）。
 ///
 /// 来源：PoB2 `src/Data/Misc.lua::data.monsterDamageTable`（DefaultMonsterStats.dat）。
@@ -374,6 +393,11 @@ pub fn monster_armour(level: u32) -> u32 {
 /// 查询怪物生命值（等级 1..=100，超界自动 clamp）。
 pub fn monster_life(level: u32) -> u32 {
     MONSTER_LIFE_TABLE[level_to_index(level)]
+}
+
+/// 查询盟友（非敌对召唤物）生命值（等级 1..=100，超界自动 clamp）。
+pub fn monster_ally_life(level: u32) -> u32 {
+    MONSTER_ALLY_LIFE_TABLE[level_to_index(level)]
 }
 
 /// 查询怪物基础伤害（等级 1..=100，超界自动 clamp）。

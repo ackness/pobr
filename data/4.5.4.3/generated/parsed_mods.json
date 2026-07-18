@@ -8325,7 +8325,7 @@
           "type": "Inc",
           "value": 10.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -8543,6 +8543,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 10.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 10.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 10.0
         }
       ]
     },
@@ -8557,6 +8567,22 @@
           "tags": [
             "Multiplier { var: \"RemovableFrenzyCharge\", div: 1.0, limit: Some(1.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
           ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "Multiplier { var: \"RemovableFrenzyCharge\", div: 1.0, limit: Some(1.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "Multiplier { var: \"RemovableFrenzyCharge\", div: 1.0, limit: Some(1.0), actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }"
+          ]
         }
       ]
     },
@@ -8566,6 +8592,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 10.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 10.0,
           "tags": [
@@ -10452,7 +10494,7 @@
           "type": "Inc",
           "value": 12.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -11404,7 +11446,7 @@
           "type": "Inc",
           "value": 15.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -13467,6 +13509,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 16.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 16.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 16.0
         }
       ]
     },
@@ -14489,7 +14541,18 @@
     },
     {
       "text": "2% increased [Attack] Damage per 75 [ItemArmour|Item Armour] and [ItemEvasion|Evasion] on Equipped Shield",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AttackDamage",
+          "type": "Inc",
+          "value": 2.0,
+          "tags": [
+            "Multiplier { var: \"ArmourOnweapon2|EvasionOnweapon2\", div: 75.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"UsingShield\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "2% increased [Attack] Speed",
@@ -14524,6 +14587,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 2.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 2.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 2.0
         }
       ]
     },
@@ -14533,6 +14606,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 2.0,
+          "tags": [
+            "SkillTypes(SkillTypes(140737488355328))"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 2.0,
+          "tags": [
+            "SkillTypes(SkillTypes(140737488355328))"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 2.0,
           "tags": [
@@ -20232,6 +20321,22 @@
           "tags": [
             "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
           ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -20524,6 +20629,16 @@
           "name": "SkillSpeed",
           "type": "Inc",
           "value": 3.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 3.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 3.0
         }
       ]
     },
@@ -20538,6 +20653,22 @@
           "tags": [
             "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
           ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -20547,6 +20678,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "SkillTypes(SkillTypes(140737488355328))"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 3.0,
+          "tags": [
+            "SkillTypes(SkillTypes(140737488355328))"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 3.0,
           "tags": [
@@ -20726,6 +20873,16 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": -3.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": -3.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": -3.0
         }
@@ -23315,7 +23472,18 @@
     },
     {
       "text": "4% increased [Attack] Damage per 75 [ItemArmour|Item Armour] and [ItemEvasion|Evasion] on Equipped Shield",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "AttackDamage",
+          "type": "Inc",
+          "value": 4.0,
+          "tags": [
+            "Multiplier { var: \"ArmourOnweapon2|EvasionOnweapon2\", div: 75.0, limit: None, actor: None, limit_var: None, limit_actor: None, invert: false, limit_total: false }",
+            "Condition { var: \"UsingShield\", negated: false, actor: None }"
+          ]
+        }
+      ]
     },
     {
       "text": "4% increased [Attack] Speed",
@@ -23410,6 +23578,16 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 4.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 4.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 4.0
         }
@@ -23564,7 +23742,7 @@
           "type": "Inc",
           "value": 40.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -24422,6 +24600,22 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 40.0,
+          "tags": [
+            "Condition { var: \"OpenWeaknessEnemyPresence\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 40.0,
+          "tags": [
+            "Condition { var: \"OpenWeaknessEnemyPresence\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 40.0,
           "tags": [
@@ -25335,7 +25529,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Life",
+          "name": "MaximumLife",
           "type": "Inc",
           "value": 5.0,
           "tags": [
@@ -25349,7 +25543,7 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "Mana",
+          "name": "MaximumMana",
           "type": "Inc",
           "value": 5.0,
           "tags": [
@@ -25650,6 +25844,16 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 5.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 5.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 5.0
         }
@@ -25971,6 +26175,16 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": -5.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": -5.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": -5.0
         }
@@ -27655,6 +27869,16 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "Inc",
+          "value": 6.0
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 6.0
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "Inc",
           "value": 6.0
         }
@@ -29743,6 +29967,22 @@
           "tags": [
             "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
           ]
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "Inc",
+          "value": 8.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
+        },
+        {
+          "name": "TotemPlacementSpeed",
+          "type": "Inc",
+          "value": 8.0,
+          "tags": [
+            "Condition { var: \"Shapeshifted\", negated: false, actor: None }"
+          ]
         }
       ]
     },
@@ -30055,7 +30295,7 @@
           "type": "Inc",
           "value": -80.0,
           "tags": [
-            "SkillName { names: [\"grenade\"] }"
+            "SkillTypes(SkillTypes([0, 0, 1073741824, 0, 0]))"
           ]
         }
       ]
@@ -33015,67 +33255,19 @@
     },
     {
       "text": "Also grants 180 Guard",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "Base",
-          "value": 100.0
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "Base",
-          "value": 180.0
-        }
-      ]
+      "status": "unsupported"
     },
     {
       "text": "Also grants 265 Guard",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "Base",
-          "value": 100.0
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "Base",
-          "value": 265.0
-        }
-      ]
+      "status": "unsupported"
     },
     {
       "text": "Also grants 435 Guard",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "Base",
-          "value": 100.0
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "Base",
-          "value": 435.0
-        }
-      ]
+      "status": "unsupported"
     },
     {
       "text": "Also grants 491 Guard",
-      "status": "parsed",
-      "mods": [
-        {
-          "name": "GuardAbsorbRate",
-          "type": "Base",
-          "value": 100.0
-        },
-        {
-          "name": "GuardAbsorbLimit",
-          "type": "Base",
-          "value": 491.0
-        }
-      ]
+      "status": "unsupported"
     },
     {
       "text": "Amber Amulet",
@@ -40373,6 +40565,18 @@
       "mods": [
         {
           "name": "SkillSpeed",
+          "type": "More",
+          "value": 30.0,
+          "kw": 16384
+        },
+        {
+          "name": "WarcrySpeed",
+          "type": "More",
+          "value": 30.0,
+          "kw": 16384
+        },
+        {
+          "name": "TotemPlacementSpeed",
           "type": "More",
           "value": 30.0,
           "kw": 16384

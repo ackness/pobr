@@ -207,6 +207,7 @@ fn resolve_crit_impl(
         cfg,
         mode_effective,
         pre_bifurcate_pct,
+        crit_pct,
         bifurcate,
         inevitable,
         inevitable_less_more,
@@ -254,6 +255,7 @@ fn resolve_crit_multiplier(
     cfg: &CalcConfig,
     mode_effective: bool,
     pre_bifurcate_pct: f64,
+    effective_crit_pct: f64,
     bifurcate: bool,
     inevitable: bool,
     inevitable_less_more: Option<f64>,
@@ -289,11 +291,18 @@ fn resolve_crit_multiplier(
                 * more
         };
 
-    // 分岔："两次都暴击"的概率额外加权一份爆伤（CalcOffence.lua L3796–3811），
+    // 分岔：条件概率「已知至少一次暴击时两次都暴击」额外加权一份爆伤
+    // （CalcOffence.lua:3823-3846 `conditionalBifurcateChance =
+    // (PreBifurcateCritChance²/100) / CritChance`，vendor 0.21/0.22 同式），
     // 与必然互斥（必然路径已把 100% 暴击折进 less）。
     if mode_effective && bifurcate && !inevitable {
         let bifurcate_multi_chance = pre_bifurcate_pct.powi(2) / 100.0;
-        extra += bifurcate_multi_chance * extra / 100.0;
+        let conditional = if effective_crit_pct > 0.0 {
+            bifurcate_multi_chance / effective_crit_pct
+        } else {
+            0.0
+        };
+        extra += conditional * extra;
     }
 
     // 敌方 SelfCritMultiplier（标记等）：BASE 加成 × (1 + INC/100)（CalcOffence.lua L3814–3825）。

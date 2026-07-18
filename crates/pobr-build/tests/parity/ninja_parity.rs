@@ -37,6 +37,14 @@ fn discover_builds() -> Vec<PathBuf> {
         .filter(|p| p.is_dir() && p.join("code.txt").exists() && p.join("meta.json").exists())
         .collect();
     dirs.sort();
+    // Debug aid: POBR_ONLY_BUILD=<substring> narrows the dashboard to matching
+    // build dirs so POBR_DBG_* channels stay readable. Never set in CI.
+    if let Ok(filter) = std::env::var("POBR_ONLY_BUILD") {
+        dirs.retain(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().contains(&filter))
+        });
+    }
     dirs
 }
 
@@ -528,7 +536,16 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 // 展示行」改为 PoB2 口径「基底 DB 重算 (esBase+flat)×(1+localInc/100)×(1+quality/100)」
 // （Item.lua:1994-1996；展示行跨数据版本会滞后）——titan ES 41→55、stormweaver ES
 // 986→1120，各连带 ESRecoveryCap。见 calc_orchestrator/defence.rs::item_rolled_defence。
-const BASELINE_DEF_CORE_HIT5: usize = 138; // ItemES 后 138/144（Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
+// **0.5.4b #4 Communion/LowLife + Voices 重记（+2 @5% core-8 138→140）**：
+// huntress-ritualist SpiritUnres −13.00x→1.00x / LifeUnres 12.74x→1.01x——
+// Atziri's Communion 的 Spirit→Life 保留转换（LifeReservePercentPerSpirit，
+// vendor CalcDefence.lua:248-254）接入后双列翻正；abyssal-lich（同戴 Communion）
+// SpiritUnres inf→1.00x 同根。见 buffs.rs spirit_reservation_modifiers 转换分支。
+// **#14 防御长尾分诊重记（+2 core-8 142→144/144 = 100%）**：abyssal-lich Life
+// （LifeConvertToEnergyShield 池扣减，0_5 树 Enhanced Barrier）+ smith Armour
+// （connected-notable multiplier + StrRequirements 快照）翻正。详见 #14 各修复
+// commit 与 docs/adapting-to-0.5.4b.md §#14。
+const BASELINE_DEF_CORE_HIT5: usize = 144; // #14 长尾分诊后 144/144（存量 #7-3/4 142；Communion 140（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -618,8 +635,63 @@ const BASELINE_DEF_CORE_HIT5: usize = 138; // ItemES 后 138/144（Barrier-Life 
 // BASELINE_DEF_CORE_HIT5 上的说明；gemling 8 列（Life/TotalEHP/5×MaxHit/LifeUnres）翻正。
 // **Item ES 重算重记（+4 @5% 401→405 / +3 @10% 425→428）**：titan+stormweaver 各
 // ES+ESRecoveryCap 翻正；见 BASELINE_DEF_CORE_HIT5 上说明。
-const BASELINE_DEF_HIT5: usize = 405; // ItemES 后 405/450（Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
+// **Refraction buff EvasionGainAsDeflection 重记（+2 @5% 405→407 / +1 @10%
+// 428→429）**：support Refraction I/II 的 Refractive Plating buff 载荷
+// （`support_tempered_valour_deflection_rating_%_of_evasion_rating` BASE 20）
+// 经 player buff 允收名单接入（stat_map_engine），wolf-pack DeflectChance
+// 0.80x→1.00x（@5%+@10%）、pathfinder 0.93x→1.00x（@5%）。
+// **Refraction buff ArmourAppliesTo<El>DamageTaken 重记（+3 @5% 407→410）**：
+// 同 buff 的 `support_tempered_valour_%_armour_to_apply_to_elemental_damage`
+// 载荷（三条 BASE 30）经同一 player buff 允收名单接入，消费方
+// `calc::taken::armour_applies_pct`（tree 84 + buff 30 = 114%，oracle 钉值
+// FireEffectiveAppliedArmour 21181.2）。wolf-pack Fire/Cold/LightMaxHit
+// 0.94x→0.96x（@5% 翻正）、TotalEHP 0.81x→0.88x（余量 = Armour 0.98x 本体
+// 差 + ChaosMaxHit 0.87x + Life 1.11x，均与本通道无关）。@10% 无变化。
+// **0.5.4b #4 Communion/LowLife + Voices 重记（+3 @5% 410→413 / +5 @10% 429→434）**：
+// core-8 的 SpiritUnres/LifeUnres 翻正（见 BASELINE_DEF_CORE_HIT5 上说明）+
+// abyssal-lich EnergyShield 0.93x→0.98x（Voices sinister 珠宝的 ES 词条找回）。
+// **#12 companion allies 层重记（+6 @5% 425→431 / +5 @10% 434→439）**：伴侣先扣层
+// 落地（TakenFromCompanionBeforeYou buff 允收 + TotalCompanionLife 求和注入 +
+// pool_setup companion AllyLayer；连带 = 召唤物等级吃 `+N to Level of Minion
+// Skills`、召唤物基础生命改走 monsterAllyLifeTable、Loyalty 的 −30% more minion
+// life 经 minion 域 statmap 通道注入）。spirit-walker-twister 6 格全翻正
+// （5×MaxHit + TotalEHP 0.89-0.90x→1.00x 精确闭合，Bear Companion + Wild
+// Protector 自带 10% taken）；wolf-pack MaxHit 族 0.82x→0.90x / ChaosMaxHit
+// 0.72x→0.80x / TotalEHP 0.74x→0.83x（池侧 3817 vs oracle 3826.67 = 0.9975 已
+// 闭合，余量 = per-type taken 乘子侧 ~10% 均匀缺口 + Mana 761.2 vs 770，均与
+// companion 层无关）。
+// **#13 防御残差定点修复重记（+6 @5% 431→437 / +6 @10% 439→445）**：三根因——
+// ① wolf-pack per-type taken 乘子 ~10% 均匀缺口 = 敌人 Intimidated 基础条件对
+//    （vendor CalcSetup.lua:73-77 `Damage INC -10 / DamageTaken INC 10 if
+//    Intimidated`）未建：体甲词条「Enemies in your Presence are Intimidated」的
+//    敌侧 `Condition:Intimidated` flag 已入 enemy db 但无消费方。setup_enemy 注入
+//    条件对 + env_finalize 桥接 flag→cfg `EnemyIntimidated` + orchestrator 默认
+//    置真 `EnemyInPresence`（vendor CalcPerform.lua:524）→ `<X>EnemyDamageMult`
+//    0.9 生效（max hit 末端除数 :3734-3771 + EHP 进伤），wolf-pack 5×MaxHit
+//    0.80-0.90x→1.00x、TotalEHP 0.83x→1.00x、PhysDR 68.03 精确。
+// ② wolf-pack Mana 761.2 vs 770 = The Adorned「97% increased Effect of Jewel
+//    Socket Passive Skills containing Corrupted Magic Jewels」未建：腐化魔法珠宝
+//    （Rallying Ruby ×6，enchant +Int/+Dex/+chaos res）mod 未按 1.97 缩放
+//    （vendor CalcSetup.lua:944-948/:1342-1347，ScaleAddList = trunc(round(v×s,2))）。
+//    orchestrator stage_inject_jewels 解析后缩放注入 → Int 135→139 → Mana 770
+//    精确（连带 ChaosMaxHit 尾差闭合）。
+// ③ titan Armour 0.985x = 三件 Runeforged 基底（0.5.4b buff 过）护甲展示行滞后：
+//    item_rolled_defence 的「基底已知恒重算」从 ES-only 扩到三防（vendor
+//    Item.lua:1994-1996 + round 口径）——手套 96→101 / 盔 192→284 / 靴 58→100，
+//    Gear:Armour 6100→6239 = vendor，titan Armour/ES/5×MaxHit 精确闭合；连带
+//    pathfinder Evasion 0.98x→1.00x、twister DeflectChance 0.97x→1.00x 精确化。
+// **#14 防御长尾分诊重记（+13 @5% 431→444 / +5 @10% 439→444）**：五簇闭合——
+// ① PhysDR 取整（vendor :2402 armourReduction 整数变体）ember/deadeye 2 格；
+// ② Life 池 ConvertTo 扣减（CalcDefence.lua:92）abyssal-lich Life/LifeUnres 2 格；
+// ③ Blasphemy per-curse 并入 baseFlat 单次 round（:229-239）essence-drain
+//    SpiritUnres 1 格；④ altQualityStats 通道（GemlingQuality 门控，
+//    CalcTools.lua:147-152）gemling SpiritUnres 1 格；⑤ Smith connected-notable
+//    multiplier + StrRequirementsOn<slot> 快照（CalcSetup.lua:840/CalcPerform.
+//    lua:1848-1857）smith Armour+4×MaxHit+TotalEHP 等 5 格；⑥ EHP 平均格挡改
+//    四分型均值（:1067，SpellProjectileBlock=max(spell,proj) 不再漏）smith+titan
+//    TotalEHP 2 格。剩余 6 格全部 = wolf-pack（#13 领地）。
+const BASELINE_DEF_HIT5: usize = 450; // #13+#14 合并实测 450/450 = 100%（#13 单独 437：wolf-pack 全清；#14 单独 444：长尾 12 格+四分型格挡；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 450; // #13+#14 合并实测 450/450 = 100%（迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
@@ -642,14 +714,11 @@ const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425�
 //   titan-shield-wall 连带。
 // 三修复 build 互不重叠、增益叠加；合并后全量实测重记（master 62/70 → 70/73）。
 //
-// **radius-jewel × weapon-set 交互修复重记（gemling CritChance）**：非激活武器组专属点
-// 在 PoB2 仍留在 allocNodes（CalcSetup.lua:209-228），范围珠宝授予（`... in Radius also
-// grant`，源=jewel）照样落到这些 notable 上。PoBR 原先把非激活组节点整个剔除 → gemling
-// crit jewel 的 `7% increased Crit Hit Chance for Attacks` 只命中 1/6 个 in-radius
-// notable（其余 5 个在 WeaponSet2）→ CritChance 8.55 vs 10.30（0.83x）。修复=
-// `parse_passive_nodes` 单独回传被剔除的非激活组节点，`radius_jewel_expansions` 在几何里
-// 并回完整已分配集（节点自身 mod 仍 masking，行为不变）。gemling CritChance→1.00x、
-// AvgDamage/TotalDPS 0.96x→1.03x。其余 build 零回归（off 70/73 → 71/74）。
+// **radius-jewel × weapon-set 交互修复重记（gemling CritChance，⚠️已在 #15 回退）**：
+// 曾把非激活武器组节点并回 radius 授予几何（当时 golden 10.30 = 6×+7）。0.5.4b 重采
+// golden 后 vendor 实测（oracle Tabulate）授予受**目标节点**的 `Condition:WeaponSet<N>`
+// 门控（CalcSetup.lua:222-223），非激活组授予净效果为零 → 正确值 8.55 = 1×+7，
+// 机制整体回退（见 BASELINE_OFF_HIT5 上 #15 ①）。
 // **Mageblood Diamond crit 名归一重记（+2 @5% 39→41 / +3 @10% 47→50）**：Mageblood
 // LegacyOfDiamond 注入 vendor 名 `CritChance` INC，但 calc::crit 读 `CriticalStrikeChance`
 // （PoBR 规范名）——裸注入不过 parser 的 translate_vendor_name，落死桶（同 Virtuous
@@ -665,8 +734,99 @@ const BASELINE_DEF_HIT10: usize = 428; // ItemES 后 428/450（Barrier-Life 425�
 // mana_pool 并回填 cfg.stats["Mana"]，但漏刷 cfg.multipliers["Mana"]（per-100-max-Mana
 // 类词条如 Arcane Intensity 读它）→ 池转换 build 的 mana 缩放用了转换前的旧值。补刷后
 // blood-mage SpellDamage INC 39→105、TotalDPS 0.74x→0.87x，其 DoT 基底随之抬升。见 perform.rs。
-const BASELINE_OFF_HIT5: usize = 46; // mana-mult 后 46/80（Silver-speed 45；迁移基线 39；0.5.0=71）
-const BASELINE_OFF_HIT10: usize = 55; // mana-mult 后 55/80（Silver-speed 54；迁移基线 47；0.5.0=74）
+// **0.5.4b #4 Communion/LowLife + Voices 重记（off +6 @5% 46→52 / +4 @10% 55→59）**：
+// 两个 0.5.4b 新机制在真实 build 上叠加成 per-build DPS 簇（gap map「~0.60x」项）：
+// 1. Atziri's Communion Spirit→Life 保留转换（vendor CalcDefence.lua:248-254）→
+//    重保留 build 自动 Low Life（:335-350 unreserved ≤ 35%）→「while on Low Life」
+//    族增伤解锁（ritualist：tree +60 与 Direstrike buff +70 attack INC，oracle
+//    damageModList 钉值 = 缺口 130 INC 整）。
+// 2. Voices「Allocates 2 Sinister Jewel sockets」→ sinister socket 珠宝入计
+//    （ritualist crit chance/mult 13/37 INC 找回，双列精确闭合）。
+// huntress-ritualist TotalDPS 0.68x→0.99x（AvgDamage/CritChance/CritMultiplier 同翻）、
+// witch-abyssal-lich TotalDPS 0.62x→0.91x（Speed 0.91x→1.00x、CritChance 0.98x、
+// CritMultiplier 0.75x→0.97x，其中 Speed/CritChance @5% 翻正、DPS 未回带）。
+// **0.5.4b #4 grenade 短语解禁重记（off +4 @5% 52→56 / +3 @10% 59→62）**：vendor
+// 0.22.0 ModParser gem 名注册循环新增 `not grantedEffect.fromItem` 排除
+// （ModParser.lua:6423）——`MeleeGrenadeLauncherPlayer`（name "Grenade"，fromItem）
+// 不再抢注 skillNameList，`grenade` / `for grenade skills` 短语恢复为 live
+// `SkillType.Grenade` tag（run-parsemod 双证）。PR#53 时代（0.21 语义）的抽取侧
+// 死条目/惰性改写撤销 + mod_parser_rules/parsed_mods 再生成。deadeye 3×15 CDR
+// 树词条（oracle extraModList 钉源 Tree:21077/354/48429）生效：deadeye Speed
+// 0.65x→1.00x（翻正）、TotalDPS 0.53x→0.83x；gemling Speed/AvgDamage/TotalDPS/
+// CombinedDPS 全部 1.00-1.04x 翻正。
+// **0.5.4b #5 Blazing Critical 全局火焰 buff 重记（off +2 @5% 56→58 / +2 @10%
+// 62→64）**：0.22.0 给 `support_blazing_crits_gain_%_fire_damage_with_attacks_
+// on_critical_hit` 补 GlobalEffect/Buff tag（sup_int.lua:959）——15%
+// `DamageGainAsFire`（Attack + Condition:CritRecently）从死词条变成全局玩家
+// buff。两处接线：stat_map_engine 玩家 buff 允收名单 + support_buff_specs
+// 裁决对象补附加授予效果（Charged Staff 的隐藏 Attack 附加效果
+// ChargedStaffShockwavePlayer 才是 Blazing Critical 的兼容宿主）。
+// monk-twister AverageDamage/TotalDPS 0.60x→0.96x 双列翻正；flicker
+// TotalDPS 0.76x→0.84x、spirit-walker 0.78x→0.89x 收敛未入列（残余 =
+// 攻击 AvgDamage 族存量缺口的平方传导）。
+// **0.5.4b #6 攻击 AvgDamage 族攻坚重记（off +13 @5% 58→71 / +9 @10% 64→73）**：
+// 五个通用消费点修复叠加，整族（smith/titan/flicker/monk-twister/spirit-walker/
+// pathfinder/ritualist/gemling）全部进入 5% 带：
+// 1. Bifurcate 爆伤条件概率（vendor :3823-3846 `conditionalBifurcateChance =
+//    (PreBifurcate²/100)/CritChance`，PoBR 误移植为无条件 pre²/10000——新旧 vendor
+//    同式，属存量误差）+ 武器无 flag 爆伤词条转按手条件（Item.lua:1954-1961，
+//    **0.22.0 新增** CritMultiplier 进转换清单）：spirit-walker/pathfinder CritMult
+//    0.94x→1.00x/0.99x，titan CritMult 1.20x→1.00x（oracle 钉值 6.02→5.00 golden 精确）。
+// 2. enemyDistance placeholder 喂 skillDist（CalcActiveSkill.lua:671，**0.22.0 新增**
+//    configPlaceholder 兜底）：Close Combat 30% MORE 按 ramp(20)=0.6 生效 →
+//    flicker 0.838x→0.99x、smith +Close Combat 段。
+// 3. PerStat statList 支持（ModParser.lua:1631 `per 75 armour and evasion on
+//    equipped shield` → `|` 复合 Multiplier var 求和）：smith/titan 盾防御缩放
+//    tree notable（Tree:27687，oracle 钉值 88 INC）生效。
+// 4. hybrid mana→life cost + per-LifeCost 词条（Atalui's Bloodletting：
+//    `base_skill_cost_life_instead_of_mana_%` 100 + PerStat{stat=LifeCost,div=20,
+//    limit=40,limitTotal}，vendor :2067/:2090-2104）：smith +30% DamageGainAsPhysical
+//    （oracle LifeCost 309 → floor(309/20)=15 → 30）。
+// 5. 暴击短路路径分腿减伤 blend（vendor :4395；敌方护甲 DR 依赖单次击中量，
+//    crit 腿用暴击后击中算 DR）：spirit-walker 0.94x→0.98x、blood-mage/abyssal-lich
+//    连带收敛（0.87x→0.88x / 0.91x→0.93x，未入列）。
+// 逐 build：smith 0.575x→0.996x、titan 0.874x→0.978x、flicker 0.838x→1.003x、
+// spirit-walker 0.892x→0.980x、monk-twister 0.958x→0.980x、pathfinder 0.904x→
+// 0.963x、ritualist 0.989x→1.000x。剩余脱靶：deadeye 0.832x（pre-0.5.4b per-hit
+// 欠条）、blood-mage 0.880x / abyssal-lich 0.926x（Mageblood 词条族缺口，Phase 1
+// 独立项——oracle 钉值 blood-mage 缺 `INC CritChance 107 'Mageblood'`）、
+// frost-bomb 0.661x（golden 两版未动，存量冷却 DPS 缺口）。
+// （存量 #7-1）frost-bomb TotalDPS 0.66x→1.00x 翻正（off @5/@10 各 +1）：
+// Archmage buff `DamageGainAsLightning`（BASE 4/100 Mana → 80% gain-as，
+// act_int.lua:229-231）+ curse 链两缺口（EW 取数等级未吃 +8 spell skill
+// levels：-58→-66；技能局部 CurseEffect 段缺失：Heightened Curse +25 +
+// EW 品质 +10 → 敌抗 9→-7，oracle enemyMitigation 逐源钉值）。
+// **0.5.4b #8 Zarokh's Gift anoint socket 重记（off +3 @5% 73→76 / +1 @10% 75→76）**：
+// #6 留下的「blood-mage 缺 `INC CritChance 107 'Mageblood'`」钉值实为下游症状：
+// Mageblood 效果表与 `MagesLegacyEffect` 解析均已在位（逐 mod 对拍与 oracle 一致），
+// 真根因 = 两 build 的 amulet anoint `{enchant}Allocates Zarokh's Gift` 未把具名
+// jewel socket 节点 11184 视为已分配（vendor PassiveSpec.lua:1106-1114 sockets 名
+// 匹配 fallback），socket 内珠宝（blood-mage: Pandemonium Ornament——CritChance
+// INC 24 + CritMult INC 25/28；abyssal: 同位 ES/防御珠宝）整体被丢弃。修复见
+// xml_build.rs NAMED_SOCKETS_0_5。blood-mage TotalDPS 0.880x→1.00x（CritChance
+// 88.5→92.1、CritMult 5.34→5.87 逐值精确）、abyssal-lich TotalDPS 0.926x→1.00x
+// （CritChance/CritMult 1.00x；ES 12124→12437 vs golden 12434、MaxHit 五族 +
+// TotalEHP 0.97-0.98x→1.00x——def 列先前已在 5% 带内，def 计数不变）。
+// 18 build 逐格 diff 仅此两 build 变动。
+// **#15 最后三格清零（off 78→80、dot 36→37，进攻/dot 满分）**：
+// ① gemling CritChance 1.20x→1.00x：范围珠宝授予不再落到非激活武器组节点——
+//    vendor 对 allocMode≠0 节点的**每条** mod（含珠宝授予）都加 `Condition:WeaponSet<N>`
+//    （CalcSetup.lua:222-223，节点自身门控优先于珠宝来源分支 :224-227），非激活组
+//    授予净效果为零；oracle critModList 实证仅 1 条 `7 @ Tree:32763`（旧 75a348e 的
+//    「按 jewel allocMode 门控」判读有误，已整体回退）。同珠宝的 Small 授予
+//    （Crossbow 伤害）同步收敛 → AvgDamage/TotalDPS 1.04x→0.97x（带内换向）。
+// ② gemling TotalDotDPS 1.10x→0.95x（转入带内）：点燃链吃 crit/珠宝高估传导，修复后
+//    残差 -4.9%（952 vs 1001）分解 = 点燃几率 0.0962 vs 0.098636（0.9754）× 堆叠潜力
+//    0.2603 vs 0.26691（0.9752）——两者均 ∝ 击中火伤，0.9754² ≈ 0.951 与 dot 残差
+//    逐位吻合，即完全是 AvgDamage 0.97x 既有低估的下游（此前被 6× 珠宝授予掩盖）。
+// ③ wolf-pack Speed 1.43x→1.00x：主技能选择兜底——mainSocketGroup 指向的组无
+//    攻击/法术候选（Wolf Pack = Minion+Companion）时不再回退扫描其它组（曾错选
+//    Blasphemy 组 Temporal Chains，0.7s 施放 → 1.43），改用组内 mainActiveSkill
+//    选中项（vendor socketGroupSkillList 无伤害过滤）；并修 speed bucket：非攻非
+//    法术技能不吃 Attack/CastSpeed INC（vendor ModFlag 匹配语义），Wolf Pack 不再
+//    错吃武器 `12% reduced Attack Speed`（0.88→1.00）。18 build 逐格零倒退（全命中）。
+const BASELINE_OFF_HIT5: usize = 80; // #15 满分 80/80（#10 后 78；#8 后 76；#6+#7 合并 73；迁移基线 39）
+const BASELINE_OFF_HIT10: usize = 80; // #15 满分 80/80（#10 后 78；#8 后 76；迁移基线 47；0.5.0=74）
 
 /// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
@@ -727,8 +887,59 @@ const BASELINE_OFF_HIT10: usize = 55; // mana-mult 后 55/80（Silver-speed 54�
 // 18 build 逐格 diff 仅 blood-mage 三格变动。冻结榜只剩 legacy `split`。
 // **bloodmage mana-mult 重记（dot +2 @5% 9→11 / @10% 11→13）**：见 BASELINE_OFF_HIT5 上
 // 说明——mana 缩放抬 blood-mage 的 spell DoT 基底，其 TotalDotDPS/CombinedDPS 翻正。
-const BASELINE_DOT_HIT5: usize = 11; // mana-mult 后 11/37（迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 13; // mana-mult 后 13/37（迁移基线 11；0.5.0=28）
+// **0.5.4b #4 Communion/LowLife + Voices 重记（dot +2 @5% 11→13 / +5 @10% 13→18）**：
+// ritualist TotalDotDPS 0.60x→1.00x / CombinedDPS 0.63x→0.99x（LowLife 增伤 +
+// sinister 珠宝的 damaging-ailment-magnitude 词条同时抬 bleed/poison 基底）；
+// abyssal-lich dot 列随 hit 侧收敛入 @10% 带。
+// **0.5.4b #4 grenade 短语解禁重记（dot +1 @5% 13→14 / +1 @10% 18→19）**：
+// gemling CombinedDPS 0.65x→1.04x 翻正（见 BASELINE_OFF_HIT5 上说明）。
+// **0.5.4b #5 Blazing Critical 重记（dot +2 @5% 14→16 / +2 @10% 19→21）**：
+// 点燃火源随全局 15% DamageGainAsFire 平方级放大（chance ∝ fire/threshold ×
+// magnitude ∝ fire）：monk-twister TotalDotDPS 0.44x→0.98x + CombinedDPS
+// 0.60x→0.96x 翻正；flicker dot 0.05x→0.72x、spirit-walker 0.23x→0.87x 收敛
+// 未入列（残余同为 hit 侧存量缺口的平方传导，非 dot 侧机制）。其余 dot 脱靶
+// 逐格判定：deadeye 0.69x=hit 0.83x²、blood-mage 0.79x≈hit 0.87x²、titan/
+// abyssal/pathfinder 0.91-0.94x 随 hit 收敛；smith 0.20x 中 dot 特有残差 =
+// Infernal Cry uptime-scaled DamageGainAsFire 12% 未建模（新旧 vendor 同值，
+// 存量缺口非 0.5.4b 项）；frost-bomb 0.87x / essence-drain WithDotDPS 1.36x
+// golden 两版未动（存量）；gemling dot 1.10x 高估 = fire/crit 小幅 hit 侧
+// 高估的下游传导（oracle 逐分量：fire 1.03x × stacks 1.05x × crit 混叠）。
+// **0.5.4b #6 AvgDamage 族 dot 列跟涨重记（dot +9 @5% 16→25 / +6 @10% 21→27）**：
+// 点燃 ∝ 火源²，hit 侧整族闭合后 dot 列自动跟正（flicker 0.72x→0.87✓ 附近、
+// spirit-walker 0.87x→0.98x✓、titan/pathfinder/monk-twister CombinedDPS 随 hit
+// 翻正）。剩余脱靶：smith TotalDotDPS 0.40x（= 火源比 0.63² —— Infernal Cry
+// uptime-scaled DamageGainAsFire 12.04% 未建模，新旧 vendor 同值的存量 warcry
+// uptime 机制，见 BASELINE_OFF_HIT5 注）；deadeye 0.69x = hit 0.83x²；
+// blood-mage 0.79x（Mageblood）；gemling 1.10x 高估（存量）。
+// （存量 #7-1）frost-bomb 修复的 dot 列迁移：CombinedDPS 0.66x→1.00x 入列
+// （@5/@10 各 +1）、TotalDotDPS 0.87x→1.07x 入 @10%；druid-oracle-comet
+// TotalDotDPS 1.04x→1.06x 出 @5%（EW 变强的下游——vendor 侧 druid 的 EW
+// 根本未入 enemy resistMods（curse 槽位/优先级差异，oracle 钉值），PoBR
+// 施加了它，存量高估被放大 2%，另行追）。@5 净 0、@10 净 +2。
+// **0.5.4b #8 Zarokh's Gift anoint socket 重记（dot +4 @5% 27→31 / +2 @10% 31→33）**：
+// blood-mage TotalDotDPS 0.79x→1.00x + CombinedDPS 0.88x→1.00x、abyssal-lich
+// TotalDotDPS 0.94x→1.00x + CombinedDPS 0.93x→1.00x——hit 侧 crit 闭合后
+// 点燃/DoT 基底跟正（见 BASELINE_OFF_HIT5 上 #8 说明）。
+
+// **存量 #9 warcry uptime 机器重记（dot +1 @10% 31→32）**：Infernal Cry 的
+// uptime 缩放 `DamageGainAsFire`（CalcOffence.lua:3229-3256，pobr-core
+// `calc::warcry`）落地，smith TotalDotDPS 0.40x→1.06x 入 @10% 带（uptime/
+// castTime/cooldown 对 oracle 逐位：19.4116%/0.544218/6.27；gain 62×uptime
+// =12.035 与 vendor "Uptime Scaled Infernal Cry" 条 bit-exact）。残余 +6% =
+// smith 命中侧原有 +2% 高估（此前被缺失的 gain 抵消遮蔽，AverageDamage
+// 0.996→1.02）经点燃 ∝ 火源² 放大——命中侧存量项，非 warcry 机制。titan 随动：
+// TotalDotDPS 0.98→1.01、TotalDPS 0.98→1.05（同为被遮蔽的原有高估暴露，
+// 仍在 @5% 带内）。其余 16 build 无 warcry，逐值不变。
+// **存量 #11 Blasphemy support 半身接入（dot +2 @5% 31→33）**：support 裁决
+// 扩到宝石附加授予效果（gem_effects 外键），Blasphemy 的 SupportBlasphemyPlayer
+// （`support_blasphemy_curse_effect_+%_final` → `CurseEffect MORE -41`@L19）进入
+// curse 局部乘区——Temporal Chains 施加值 -13→-8（vendor 逐位：mult 0.55→0.3245，
+// (1+10%)×0.59×0.5boss），点燃 debuffDurationMult 1/0.87→1/0.92 跟正：druid
+// TotalDotDPS 1.06x→1.00x（182.40 vs 182.60）、monk frost-bomb 1.07x→0.99x
+// （4.53 vs 4.58）；witch-lich 带内微降（21659→21621，仍 1.00x）。curse 槽位
+// 归属逐 build 不变（druid 单槽仍 Temporal Chains 胜出，EW 依旧不入槽）。
+const BASELINE_DOT_HIT5: usize = 37; // #15 满分 37/37（gemling TotalDotDPS 随 crit 修复入带；#10+#11 合并 36；迁移基线 9；0.5.0=26）
+const BASELINE_DOT_HIT10: usize = 37; // #15 满分 37/37（#10+#11 合并 36；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
 /// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
@@ -746,8 +957,8 @@ const BASELINE_DOT_HIT10: usize = 13; // mana-mult 后 13/37（迁移基线 11�
 /// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
 /// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
 /// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 27; // 4.5.4.3 迁移基线 27/80（0.5.0=44）
-const PANEL_OFF_HIT10: usize = 30; // 4.5.4.3 迁移基线 30/80（0.5.0=46）
+const PANEL_OFF_HIT5: usize = 45; // #15 实测 45（gemling CritChance + wolf-pack Speed/DPS 面板同收）；#6+#7 叠加 42；迁移基线 27；0.5.0=44
+const PANEL_OFF_HIT10: usize = 47; // #15 实测 47（同上）；#6+#7 叠加 43；迁移基线 30；0.5.0=46
 
 /// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
 #[test]

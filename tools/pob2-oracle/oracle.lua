@@ -426,6 +426,16 @@ local intermediates = {}
 -- Global increased/more damage
 intermediates.IncDamage = smlSum("INC", skillCfg, "Damage")
 intermediates.MoreDamage = smlMore(skillCfg, "Damage")
+-- DistanceRamp probe: the cfg distance the engine evaluated ramp tags against.
+intermediates.SkillDist = skillCfg and skillCfg.skillDist or nil
+if skillCfg then
+	local copyTable = copyTable
+	for _, dist in ipairs({ 5, 20, 30, 40 }) do
+		local probe = copyTable(skillCfg, true)
+		probe.skillDist = dist
+		intermediates["MoreDamage_at" .. dist] = smlMore(probe, "Damage")
+	end
+end
 
 -- Damaging-ailment magnitude breakdown (the `<Ailment>MagnitudeEffect` factor =
 -- calcLib.mod(skillModList, dotCfg, "AilmentMagnitude"), CalcOffence.lua:5145).
@@ -569,6 +579,26 @@ if enemyDB then
 		end
 	end
 	enemyMitigation.resistMods = resistMods
+	-- Per-mod source dump of enemy outgoing-Damage scalers (Enfeeble-style
+	-- "enemies deal less damage" curses feeding <Type>EnemyDamageMult).
+	local dealtMods = {}
+	for _, mt in ipairs({ "INC", "MORE" }) do
+		local okDmg, dmgTable = pcall(function()
+			return enemyDB:Tabulate(mt, nil, "Damage", "PhysicalDamage", "FireDamage",
+				"ColdDamage", "LightningDamage", "ChaosDamage", "ElementalDamage")
+		end)
+		if okDmg and dmgTable then
+			for _, entry in ipairs(dmgTable) do
+				dealtMods[#dealtMods + 1] = {
+					modType = mt,
+					name = entry.mod.name,
+					value = entry.value,
+					source = entry.mod.source,
+				}
+			end
+		end
+	end
+	enemyMitigation.dealtMods = dealtMods
 	-- Exposure effect composition (vendor CalcPerform.lua:3222-3227): global modDB
 	-- INC + per-active-skill skill-scoped INC, plus extra exposure BASE.
 	local pdb = mainEnv.player.modDB
@@ -709,6 +739,23 @@ for _, name in ipairs({ "CritMultiplier", "CritChance" }) do
 	end
 end
 
+-- Ad-hoc stat tabulation: ORACLE_EXTRA_STATS="CooldownRecovery,Speed" dumps the
+-- per-source mod list for any vendor stat names (same shape as critModList),
+-- keyed under extraModList. Zero cost when the env var is unset.
+local extraModList
+do
+	local names = os.getenv("ORACLE_EXTRA_STATS")
+	if names and #names > 0 then
+		extraModList = { INC = {}, MORE = {}, BASE = {}, OVERRIDE = {} }
+		for name in names:gmatch("[^,%s]+") do
+			for _, mt in ipairs({ "BASE", "INC", "MORE", "OVERRIDE" }) do
+				local list = tabulateModList(mt, name)
+				if #list > 0 then extraModList[mt][name] = list end
+			end
+		end
+	end
+end
+
 -- Aggregate cross-check: Sum/More over the same names PoBR uses, so the JSON
 -- carries the authoritative PoB2 totals alongside the per-mod breakdown.
 local damageAgg = {
@@ -753,6 +800,19 @@ if mainSkill then
 		for k, vv in pairs(mainSkill.skillFlags) do
 			if vv then skillInfo.skillFlags[k] = true end
 		end
+	end
+	-- Selected statSet (multi-set gems like Essence Drain: [1]=Projectile,
+	-- [2]=Damage over Time) — which set drives the main output.
+	if ae and ae.statSet then
+		skillInfo.statSetIndex = ae.statSet.index
+		if ae.statSet.statSet then
+			skillInfo.statSetLabel = ae.statSet.statSet.label
+		end
+	end
+	if mainSkill.skillData then
+		skillInfo.chaosMin = mainSkill.skillData.ChaosMin
+		skillInfo.chaosMax = mainSkill.skillData.ChaosMax
+		skillInfo.chaosDot = mainSkill.skillData.ChaosDot
 	end
 	-- skillData.dpsMultiplier (post calcLib.mod "DPS" fold, CalcOffence.lua:3863) for
 	-- the W-C4 dps end-factor parity checks.
@@ -932,7 +992,7 @@ end
 local defenceModList = {}
 do
 	local pdb = mainEnv.player.modDB
-	for _, name in ipairs({ "Armour", "Evasion", "ArmourAndEvasion", "Defences", "EnergyShield" }) do
+	for _, name in ipairs({ "Armour", "Evasion", "ArmourAndEvasion", "Defences", "EnergyShield", "DeflectionRating", "EvasionGainAsDeflection", "ArmourGainAsDeflection", "DeflectEffect", "ArmourAppliesToFireDamageTaken", "ArmourAppliesToColdDamageTaken", "ArmourAppliesToLightningDamageTaken", "ArmourAppliesToChaosDamageTaken", "ArmourAppliesToElementalDamageTaken", "EvasionAppliesToFireDamageTaken", "EvasionAppliesToColdDamageTaken", "EvasionAppliesToLightningDamageTaken", "EnergyShieldAppliesToFireDamageTaken", "EnergyShieldAppliesToColdDamageTaken", "EnergyShieldAppliesToLightningDamageTaken" }) do
 		for _, mtype in ipairs({ "BASE", "INC", "MORE" }) do
 			pcall(function()
 				for _, m in ipairs(pdb:Tabulate(mtype, nil, name)) do
@@ -968,10 +1028,46 @@ do
 	end
 end
 
+-- Ad-hoc item mod dump: ORACLE_DUMP_ITEMS="18,19,21" dumps each listed build
+-- item's parsed modLines + evaluated modList (post-range) for provenance diffs.
+local itemDump
+do
+	local ids = os.getenv("ORACLE_DUMP_ITEMS")
+	if ids and #ids > 0 then
+		itemDump = {}
+		for idStr in ids:gmatch("[^,%s]+") do
+			local id = tonumber(idStr)
+			local item = build.itemsTab.items[id]
+			if item then
+				local lines = {}
+				for _, ml in ipairs(item.explicitModLines or {}) do
+					lines[#lines + 1] = { line = ml.line, range = ml.range }
+				end
+				for _, ml in ipairs(item.enchantModLines or {}) do
+					lines[#lines + 1] = { line = ml.line, range = ml.range, enchant = true }
+				end
+				for _, ml in ipairs(item.implicitModLines or {}) do
+					lines[#lines + 1] = { line = ml.line, range = ml.range, implicit = true }
+				end
+				local mods = {}
+				if item.modList then
+					for _, m in ipairs(item.modList) do
+						mods[#mods + 1] = { name = m.name, type = m.type, value = type(m.value) ~= "table" and m.value or nil }
+					end
+				end
+				itemDump[tostring(id)] = { title = item.title, baseName = item.baseName, lines = lines, mods = mods,
+					armourData = item.armourData, quality = item.quality,
+					baseArmour = item.base and item.base.armour or nil }
+			end
+		end
+	end
+end
+
 ----------------------------------------------------------------------
 -- Assemble report
 ----------------------------------------------------------------------
 local report = {
+	itemDump = itemDump,
 	spiritReservations = spiritReservations,
 	spiritReservedBreakdown = spiritReservedBreakdown,
 	defenceModList = defenceModList,
@@ -990,6 +1086,7 @@ local report = {
 	intermediates = intermediates,
 	damageModList = damageModList,
 	critModList = critModList,
+	extraModList = extraModList,
 	damageAgg = damageAgg,
 	components = components,
 	summedBase = summedBase,

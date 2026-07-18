@@ -73,7 +73,6 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let use_second_weapon_set = parse_active_item_set(xml)?.3;
     let ParsedPassives {
         allocated: allocated_nodes,
-        inactive_weapon_set: inactive_weapon_set_nodes,
         tree_version,
     } = parse_passive_nodes(xml, use_second_weapon_set)?;
     let allocated_set: std::collections::HashSet<u32> =
@@ -109,9 +108,6 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     }
     if !radius_jewels.is_empty() {
         build = build.with_radius_jewels(radius_jewels);
-    }
-    if !inactive_weapon_set_nodes.is_empty() {
-        build = build.with_inactive_weapon_set_nodes(inactive_weapon_set_nodes);
     }
     if !flask_charms.is_empty() {
         build = build.with_utility_slots(flask_charms);
@@ -470,25 +466,18 @@ struct SpecNodes {
 /// `activeSpec` 为 1-based 索引；越界 / 缺失时取首个 `<Spec>`。无 `<Spec>` 返回空。
 ///
 /// 武器集语义（PoB2 CalcSetup.lua:209-233 / :791-792）：武器集专属点
-/// （`allocMode = 1|2`）的全部**自身** mod 追加 `Condition: WeaponSet<N>`，而该条件
-/// flag 只对当前激活武器集置真（`useSecondWeaponSet` ? 2 : 1）——净效果是非激活集
-/// 专属点的**自身词条**整体不生效。PoBR 在解析层等价实现：从已分配节点中剔除非激活集
-/// 的专属点（其自身 mod 收集随之关闭，与 PoB2 条件门控等价）。
+/// （`allocMode = 1|2`）节点上的**每条** mod——含自身词条与范围珠宝授予——都被追加
+/// `Condition: WeaponSet<N>`（节点自身 allocMode 优先，CalcSetup.lua:222-223；珠宝
+/// 来源门控的 :224-227 分支仅对 allocMode=0 节点生效），而该条件 flag 只对当前激活
+/// 武器集置真（`useSecondWeaponSet` ? 2 : 1）——净效果是非激活集专属点上的全部词条
+/// **整体不生效**。PoBR 在解析层等价实现：从已分配节点中剔除非激活集的专属点
+/// （mod 收集 / 范围珠宝授予计数 / per-X 倍率均随之一致；oracle 实证见
+/// `collect::radius_jewel_expansions`）。
 ///
-/// ⚠️ 但 PoB2 **不**把这些节点从 `allocNodes` 移除——它们仍是已分配节点，只是自身 mod
-/// 被条件门控（CalcSetup.lua:209-228）。因此**范围珠宝授予**（`... in Radius also
-/// grant`，源=jewel 而非节点，按 jewel 的 allocMode 门控而非节点的，:224-228）仍会落到
-/// 这些非激活集 notable 上。PoBR 把剔除掉的节点单独回传（返回值 `.1`），供
-/// [`crate::calc_orchestrator::collect::radius_jewel_expansions`] 在 radius 几何里并回，
-/// 以复刻 PoB2「非激活集节点仍计入 radius 授予」的行为（gemling crit jewel 实测）。
-///
-/// 返回 `(激活已分配节点, 被剔除的非激活集节点, tree_version)`。
 /// [`parse_passive_nodes`] 的解析结果。
 struct ParsedPassives {
     /// 激活已分配节点（自身 mod 参与计算）。
     allocated: Vec<NodeId>,
-    /// 被剔除的非激活武器组专属点（自身 mod 已 masking，但仍计入范围珠宝授予几何）。
-    inactive_weapon_set: Vec<NodeId>,
     tree_version: Option<String>,
 }
 
@@ -540,7 +529,6 @@ fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<ParsedP
     if specs.is_empty() {
         return Ok(ParsedPassives {
             allocated: Vec::new(),
-            inactive_weapon_set: Vec::new(),
             tree_version: None,
         });
     }
@@ -548,25 +536,19 @@ fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<ParsedP
     let spec = specs.swap_remove(idx);
     let tree_version = spec.tree_version;
 
-    // 剔除非激活武器集的专属点（保持原始顺序，确定性）。被剔除的节点单独回传：
-    // 它们自身 mod 不生效，但 PoB2 仍把它们留在 allocNodes，范围珠宝授予照样落上去。
+    // 剔除非激活武器集的专属点（保持原始顺序，确定性）。
     let inactive: std::collections::HashSet<NodeId> = spec.weapon_set
         [if use_second_weapon_set { 0 } else { 1 }]
     .iter()
     .copied()
     .collect();
-    let mut nodes = Vec::with_capacity(spec.nodes.len());
-    let mut masked = Vec::new();
-    for n in spec.nodes {
-        if inactive.contains(&n) {
-            masked.push(n);
-        } else {
-            nodes.push(n);
-        }
-    }
+    let allocated = spec
+        .nodes
+        .into_iter()
+        .filter(|n| !inactive.contains(n))
+        .collect();
     Ok(ParsedPassives {
-        allocated: nodes,
-        inactive_weapon_set: masked,
+        allocated,
         tree_version,
     })
 }
@@ -662,11 +644,53 @@ fn parse_items_and_slots(
 
     // 树上珠宝在 `<Tree><Spec><Sockets><Socket nodeId itemId/>`（非 ItemSet），单独收集；
     // 仅保留 socket 节点已分配的珠宝。
+    let socket_items = parse_socket_node_items(xml)?;
+    // Voices（0.5.4b unique）：「Allocates N Sinister Jewel sockets」——已分配 socket
+    // 内珠宝带此词条时，按 vendor alias 序把前 N 个 sinister socket 视为已分配
+    // （vendor PassiveSpec.lua:1067-1090 `voices_jewel_slot1..5` → 0_5 tree 节点 id，
+    // 钉自 TreeData/0_5/tree.lua `sinister=true` + `aliasPassiveSocket`）。
+    // ponytail: 节点 id 钉 0_5 树（sinister socket 仅存在于 0.5.4+；旧树版本无此
+    // 词条来源，零行为）。树版本再迭代时 parity 门禁会点名此列，届时改从树数据取。
+    const SINISTER_SOCKETS_0_5: [u32; 5] = [62152, 26178, 23960, 39087, 3367];
+    let sinister_count: usize = socket_items
+        .iter()
+        .filter(|(node, _)| allocated.contains(node))
+        .filter_map(|(_, id)| items.get(id))
+        .flat_map(|it| it.implicit_texts.iter().chain(&it.modifier_texts))
+        .filter_map(|t| sinister_socket_alloc_count(t))
+        .sum();
+    let mut sinister_allocated: std::collections::HashSet<u32> = SINISTER_SOCKETS_0_5
+        .iter()
+        .copied()
+        .take(sinister_count)
+        .collect();
+    // 具名 jewel socket 的「Allocates <名>」授予（vendor PassiveSpec.lua:1106-1114
+    // ResolveGrantedPassiveNodes 的 sockets 名匹配 fallback）：amulet anoint
+    // `{enchant}Allocates Zarokh's Gift` 分配 socket 节点，socket 内珠宝随之入计。
+    // ponytail: 0_5 树唯一具名 socket 就是 Zarokh's Gift（其余全叫 Sinister Jewel
+    // Socket，走上面的 Voices 计数通道）；树版本再迭代新增具名 socket 时 parity
+    // 门禁会点名，届时改从树数据取名表。
+    const NAMED_SOCKETS_0_5: [(&str, u32); 1] = [("zarokh's gift", 11184)];
+    let equipped_texts = out.iter().flat_map(|(_, item)| {
+        item.implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+    });
+    for text in equipped_texts {
+        if let Some(name) = text.trim().strip_prefix("Allocates ")
+            && let Some((_, node)) = NAMED_SOCKETS_0_5
+                .iter()
+                .find(|(n, _)| name.trim().eq_ignore_ascii_case(n))
+        {
+            sinister_allocated.insert(*node);
+        }
+    }
     let mut all_jewel_ids = jewel_ids;
     all_jewel_ids.extend(
-        parse_socket_node_items(xml)?
+        socket_items
             .into_iter()
-            .filter(|(node, _)| allocated.contains(node))
+            .filter(|(node, _)| allocated.contains(node) || sinister_allocated.contains(node))
             .map(|(_, item)| item),
     );
     all_jewel_ids.sort_unstable();
@@ -681,6 +705,19 @@ fn parse_items_and_slots(
         .filter_map(|(slot, id)| Some((slot.clone(), items.get(id).cloned()?)))
         .collect();
     Ok((out, jewels, flask_charms, use_second_weapon_set))
+}
+
+/// 解析「Allocates N Sinister Jewel socket(s)」词条 → N（vendor ModParser.lua
+/// `allocates (%d+) sinister jewel sockets?` → GrantedPassive SinisterJewelSockets）。
+/// 非此词条返回 None。
+fn sinister_socket_alloc_count(text: &str) -> Option<usize> {
+    let rest = text.trim().strip_prefix("Allocates ")?;
+    let (num, tail) = rest.split_once(' ')?;
+    matches!(
+        tail.trim().to_ascii_lowercase().as_str(),
+        "sinister jewel sockets" | "sinister jewel socket"
+    )
+    .then(|| num.parse().ok())?
 }
 
 /// 解析树插槽 `<Socket nodeId="N" itemId="M"/>` → `(socket_node, item_id)`（itemId≠0）。
@@ -1145,15 +1182,17 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                     "Gem" if in_target_set => {
                         if let Some(cur) = current.as_mut()
                             && attr_bool_default_true(&e, b"enabled")
-                            && let Some(gem_id) = attr_value(&e, b"gemId")
-                            && !gem_id.is_empty()
                         {
+                            let gem_id = attr_value(&e, b"gemId").filter(|v| !v.is_empty());
+                            let skill_id = attr_value(&e, b"skillId").filter(|v| !v.is_empty());
+                            // lineage support（如 Atziri's Communion）序列化时缺
+                            // skillId/gemId，仅有 nameSpec——保留显示名，交编排层
+                            // `stage_build_view` 按 granted_effects 反查回填 id。
+                            let name_spec = attr_value(&e, b"nameSpec").filter(|v| !v.is_empty());
                             // 捕获每个启用 gem 的 skillId + level + quality（active 与
                             // support 皆收）。quality 属性缺失/非法按 0（无品质），对齐
                             // PoB2 SkillsTab.lua 的 `quality` 属性读取（缺省 0）。
-                            if let Some(skill_id) = attr_value(&e, b"skillId")
-                                && !skill_id.is_empty()
-                            {
+                            if skill_id.is_some() || name_spec.is_some() {
                                 let level = attr_value(&e, b"level")
                                     .and_then(|v| v.parse::<u32>().ok())
                                     .unwrap_or(1);
@@ -1166,20 +1205,28 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                 // （calcs 页独立选择）M1 不做，忽略。
                                 let stat_set_index = attr_value(&e, b"statSetIndex")
                                     .and_then(|v| v.parse::<u32>().ok());
-                                // 组内首个启用 gem 视为主动技能（PoB Gem 列表 active 在前）。
-                                if cur.active_skill_id.is_none() {
+                                // 组内首个带 skillId 的启用 gem 视为主动技能
+                                // （PoB Gem 列表 active 在前；nameSpec-only 引用
+                                // 均为 lineage support，不参与主动技能判定）。
+                                if let Some(skill_id) = &skill_id
+                                    && cur.active_skill_id.is_none()
+                                {
                                     cur.active_skill_id = Some(skill_id.clone());
                                     cur.active_gem_level = Some(level);
                                     cur.active_gem_quality = Some(quality);
                                 }
+                                let name_spec_pending = skill_id.is_none();
                                 cur.gem_skills.push(crate::build::GemSkillRef {
-                                    skill_id,
+                                    skill_id: skill_id.unwrap_or_default(),
                                     gem_level: level,
                                     quality,
                                     stat_set_index,
+                                    name_spec: if name_spec_pending { name_spec } else { None },
                                 });
                             }
-                            cur.gem_ids.push(gem_id);
+                            if let Some(gem_id) = gem_id {
+                                cur.gem_ids.push(gem_id);
+                            }
                         }
                     }
                     "StatSetIndex" if in_target_set => {

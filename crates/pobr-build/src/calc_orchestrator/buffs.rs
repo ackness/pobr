@@ -183,6 +183,8 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
+                            local_effect_inc: 0.0,
+                            local_effect_more: 1.0,
                             skill_types: pobr_data::skill::SkillTypes::NONE,
                         });
                     }
@@ -197,6 +199,8 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                             socket_index,
                             is_mark: false,
                             ignore_curse_limit: false,
+                            local_effect_inc: 0.0,
+                            local_effect_more: 1.0,
                             skill_types: pobr_data::skill::SkillTypes::NONE,
                         });
                     }
@@ -256,6 +260,8 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         socket_index,
                         is_mark: false,
                         ignore_curse_limit: false,
+                        local_effect_inc: 0.0,
+                        local_effect_more: 1.0,
                         // vendor per-skill skillCfg（buff_pass 乘区对域限定词条——
                         // 「Banner Skills have N% increased Aura Magnitudes」的
                         // SkillTypes(Banner) tag——按本效果类型位匹配）。
@@ -265,8 +271,12 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     // curse 效果词条（M3-W4）：statset stat 经 statmap curse 域映射
                     // 为敌侧 modifier（Despair→ChaosResist 减抗、Enfeeble→Damage MORE…），
                     // buff_pass 施 CurseEffect 乘区 + Condition:Effective 后入 enemy db。
+                    // （存量 #7-1）取数等级 = 宝石等级 + 适用的 `+N to Level of all
+                    // <X> Skills`（vendor applyGemMods 对每个 gem effect 生效，
+                    // CalcSetup.lua:410-435——EW 19+8→27，载荷 -58→-66）。
+                    let curse_level = gem.gem_level + additional_gem_levels(build, data, skill_id);
                     let es =
-                        data.effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
+                        data.effect_stats(skill_id, curse_level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     // vendor 注册前置（M4-l）：buffList 仅由 GlobalEffect 载荷构成
                     // （CalcActiveSkill.lua:976-1041），curse 表项只从 buffList 构造
@@ -290,6 +300,14 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         continue;
                     }
                     let mods = curse_stat_modifiers(data, &es, skill_id, set_key.as_deref());
+                    // （存量 #7-1）技能局部 CurseEffect 段（vendor curse 乘区
+                    // CalcPerform.lua:2423/:2427 读 skillModList）：curse 宝石
+                    // 自身品质段（EW `curse_effect_+%` 0.5/q）+ 组内**兼容**
+                    // support（Heightened Curse constantStats +25、Atziri's
+                    // Allure MORE -20）payload，经 statmap global 段
+                    // `curse_local_effect` 折算预汇入 spec。
+                    let (local_effect_inc, local_effect_more) =
+                        curse_local_effect_scale(group, data, gem, skill_id, curse_level);
                     specs.push(BuffSpec {
                         name: buff_skill_name(data, skill_id),
                         kind: BuffKind::Curse,
@@ -300,6 +318,8 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         socket_index,
                         is_mark,
                         ignore_curse_limit: false,
+                        local_effect_inc,
+                        local_effect_more,
                         skill_types: pobr_data::skill::SkillTypes::NONE,
                     });
                 }
@@ -307,6 +327,59 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
         }
     }
     specs
+}
+
+/// （存量 #7-1）一个 curse 技能的**技能局部** CurseEffect 乘区段
+/// （vendor CalcPerform.lua:2423 `skillModList:Sum("INC", skillCfg,
+/// "CurseEffect")` + :2427 `More(...)`）：
+/// - curse 宝石自身 effect stats（品质段携带 `curse_effect_+%`，如 EW 0.5/q）；
+/// - 组内**兼容** support（[`judge_group_supports`] 四段裁决，与主技能支援
+///   判定同源）的 effect stats（Heightened Curse constantStats `curse_effect_+%`
+///   +25、Atziri's Allure `support_atziri_curse_effect_+%_final` MORE -20）。
+///
+/// stat → (INC, MORE) 折算走 statmap 数据（[`stat_map_engine::curse_local_effect`]，
+/// global 段 `curse_effect_+%` → 裸 `CurseEffect INC`）。无 catalog → (0, 1)。
+fn curse_local_effect_scale(
+    group: &crate::build::SocketGroup,
+    data: &BuildData,
+    gem: &crate::build::GemSkillRef,
+    skill_id: &str,
+    curse_level: u32,
+) -> (f64, f64) {
+    let Some(catalog) = resolve_stat_map_catalog(data) else {
+        return (0.0, 1.0);
+    };
+    let (mut inc, mut more) = (0.0, 1.0);
+    let mut absorb = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
+        let es = data.effect_stats(effect_id, level, quality, set_index);
+        let set_key = data.selected_set_key(effect_id, set_index);
+        for ds in es.all() {
+            if ds.value == 0.0 {
+                continue;
+            }
+            let (di, dm) = stat_map_engine::curse_local_effect(
+                &catalog,
+                effect_id,
+                set_key.as_deref(),
+                &ds.stat,
+                ds.value,
+            );
+            inc += di;
+            more *= dm;
+        }
+    };
+    absorb(skill_id, curse_level, gem.quality, gem.stat_set_index);
+    let judgement = super::triggers::judge_group_supports(group, data, skill_id);
+    for sup in &judgement.compatible {
+        let host = &group.gem_skills[sup.gem_index];
+        absorb(
+            &sup.effect_id,
+            host.gem_level,
+            host.quality,
+            sup.stat_set_index(group),
+        );
+    }
+    (inc, more)
 }
 
 /// （M4-G）support 授予的**玩家侧 buff** → [`BuffSpec`]（kind = [`BuffKind::Buff`]，
@@ -327,57 +400,65 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
 pub(crate) fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
-    let mut seen: HashSet<&str> = HashSet::new();
+    let mut seen: HashSet<String> = HashSet::new();
     for group in build.enabled_socket_groups() {
-        // 组内已启用主动技能（效果已知且非 support）。
+        // 组内已启用主动技能（效果已知且非 support）。含附加授予效果
+        // （overlay/gem_effects.json 外键；vendor 对 additionalGrantedEffectId1..N
+        // 各建独立 activeSkill，support 对其同样逐个裁决——0.5.4b #5 案例：
+        // Charged Staff 的隐藏附加效果 ChargedStaffShockwavePlayer 是 Attack，
+        // Blazing Critical 借它兼容并全局授 buff）。
         let active_ids: Vec<&str> = group
             .gem_skills
             .iter()
-            .filter(|g| {
-                data.granted_effects
-                    .get(&g.skill_id)
-                    .is_some_and(|e| !e.is_support)
+            .flat_map(|g| {
+                std::iter::once(g.skill_id.as_str()).chain(
+                    data.gem_effects
+                        .get(&g.skill_id)
+                        .into_iter()
+                        .flat_map(|l| l.additional_granted_effect_ids.iter().map(String::as_str)),
+                )
             })
-            .map(|g| g.skill_id.as_str())
+            .filter(|id| data.granted_effects.get(*id).is_some_and(|e| !e.is_support))
             .collect();
         if active_ids.is_empty() {
             continue;
         }
         // 任一主动技能裁决兼容即纳入（vendor：support 对组内逐主动技能各自判定）。
-        let mut compatible: HashSet<usize> = HashSet::new();
+        let mut compatible: HashSet<(usize, String)> = HashSet::new();
         for active_id in &active_ids {
-            for idx in judge_group_supports(group, data, active_id).compatible {
-                compatible.insert(idx);
+            for sup in judge_group_supports(group, data, active_id).compatible {
+                compatible.insert((sup.gem_index, sup.effect_id));
             }
         }
-        let mut indices: Vec<usize> = compatible.into_iter().collect();
-        indices.sort_unstable();
-        for idx in indices {
+        let mut entries: Vec<(usize, String)> = compatible.into_iter().collect();
+        entries.sort_unstable();
+        for (idx, effect_id) in entries {
             let gem = &group.gem_skills[idx];
-            if !seen.insert(gem.skill_id.as_str()) {
+            if !seen.insert(effect_id.clone()) {
                 continue;
             }
-            let es = data.effect_stats(
-                &gem.skill_id,
-                gem.gem_level,
-                gem.quality,
-                gem.stat_set_index,
-            );
-            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-            let mods = player_buff_stat_modifiers(data, &es, &gem.skill_id, set_key.as_deref());
+            // 附加授予的 support 半身不沿用宝石实例 statSetIndex（只对主效果有意义）。
+            let set_index = (gem.skill_id == effect_id)
+                .then_some(gem.stat_set_index)
+                .flatten();
+            let es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
+            let set_key = data.selected_set_key(&effect_id, set_index);
+            let mods = player_buff_stat_modifiers(data, &es, &effect_id, set_key.as_deref());
             if mods.is_empty() {
                 continue;
             }
             specs.push(BuffSpec {
-                name: buff_skill_name(data, &gem.skill_id),
+                name: buff_skill_name(data, &effect_id),
                 kind: BuffKind::Buff,
-                skill_id: gem.skill_id.clone(),
+                skill_id: effect_id.clone(),
                 mods,
                 magnitude: 1.0,
                 slot: group.slot.clone(),
                 socket_index: (idx + 1) as u32,
                 is_mark: false,
                 ignore_curse_limit: false,
+                local_effect_inc: 0.0,
+                local_effect_more: 1.0,
                 skill_types: pobr_data::skill::SkillTypes::NONE,
             });
         }
@@ -478,6 +559,11 @@ pub(crate) fn spirit_reservation_modifiers(
         &pobr_core::CalcConfig::new(),
         pobr_data::prelude::ModName::from("AncestralBond"),
     );
+    // GemlingQuality（升华『Gem Quality grants Socketed Skills an additional
+    // effect』）：激活时宝石 altQualityStats 品质 stat 生效（CalcTools.lua:147-152），
+    // 预留效率经此获得（如 Mirage Archer alt `base_reservation_efficiency_+%` ×2、
+    // Eternal Rage alt `base_spirit_reservation_efficiency_+%` ×0.75）。
+    let use_alt_quality = super::skill_resolve::gemling_quality_flag(build, data);
     for group in build.enabled_socket_groups() {
         for gem in &group.gem_skills {
             let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
@@ -495,6 +581,12 @@ pub(crate) fn spirit_reservation_modifiers(
             let own = level_row(data, &gem.skill_id, gem.gem_level);
             let mut flat = own.and_then(|r| r.spirit_reservation_flat).unwrap_or(0.0);
             let mut mult = 1.0 + own.and_then(|r| r.reservation_multiplier).unwrap_or(0.0) / 100.0;
+            // Spirit→Life 保留转换（vendor CalcDefence.lua:248-254，0.5.4b 新增；
+            // Atziri's Communion support 的 constant stat
+            // `skill_reserves_X_life_permyriad_per_spirit_instead_of_spirit` = 66，
+            // SkillStatMap div=100 → 每点 Spirit 保留 0.66% Life）。命中时该技能的
+            // Spirit 保留整体转为 Life 百分比保留（Spirit 置 0）。
+            let mut spirit_to_life = 0.0;
             // 同组 support：spirit flat（ExtraSpirit）+ reservation_multiplier MORE。
             for sup in &group.gem_skills {
                 if data
@@ -508,27 +600,75 @@ pub(crate) fn spirit_reservation_modifiers(
                     flat += row.spirit_reservation_flat.unwrap_or(0.0);
                     mult *= 1.0 + row.reservation_multiplier.unwrap_or(0.0) / 100.0;
                 }
+                spirit_to_life += data
+                    .effect_stats(
+                        &sup.skill_id,
+                        sup.gem_level,
+                        sup.quality,
+                        sup.stat_set_index,
+                    )
+                    .all()
+                    .filter(|s| {
+                        s.stat == "skill_reserves_X_life_permyriad_per_spirit_instead_of_spirit"
+                    })
+                    .map(|s| s.value / 100.0)
+                    .sum::<f64>();
             }
-            // Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy`
-            // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
-            // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
-            // AppliesCurse 主动技能数）。被包 curse 自身预留 0（levels 无 flat，
-            // 进 vendor 预留循环但 baseFlat=0——两侧一致，无需额外排除）。
             let es = data.effect_stats(
                 &gem.skill_id,
                 gem.gem_level,
                 gem.quality,
                 gem.stat_set_index,
             );
+            // Blasphemy per-curse 预留（vendor CalcDefence.lua:229-239）：`IsBlasphemy`
+            // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
+            // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
+            // AppliesCurse 主动技能数）。0.5.4b vendor 口径 = **先并入 baseFlat 再统一
+            // 缩放 round 一次**（:236-238 `values.baseFlat += flat × instances`，
+            // essence-drain round(180/1.1)=164 ≠ 旧的单份 round(60/1.1)=55×3=165，
+            // oracle spiritReservedBreakdown 钉值 164）。被包 curse 自身预留 0
+            // （levels 无 flat，vendor 同——无需额外排除）。
+            if has("IsBlasphemy") {
+                let per_curse: f64 = es
+                    .all()
+                    .filter(|s| s.stat == "blasphemy_base_spirit_reservation_per_socketed_curse")
+                    .map(|s| s.value)
+                    .sum();
+                let curse_count = group
+                    .gem_skills
+                    .iter()
+                    .filter(|g| {
+                        data.granted_effects.get(&g.skill_id).is_some_and(|e| {
+                            !e.is_support && e.skill_types.iter().any(|t| t == "AppliesCurse")
+                        })
+                    })
+                    .count();
+                flat += per_curse * curse_count as f64;
+            }
             // 预留效率（vendor :240-243/:251 `/(1 + efficiency/100)`，clamp ≥ −100）：
-            // - 宝石自身品质 stat `base_reservation_efficiency_+%`（q20 Blasphemy=10%）；
+            // - 宝石自身品质 stat `base_reservation_efficiency_+%` /
+            //   `base_spirit_reservation_efficiency_+%`（q20 Blasphemy=10%；后者是
+            //   Spirit 池限定形，statmap → SpiritReservationEfficiency，Spirit 预留
+            //   两名同入 `/(1+eff/100)`）；
+            // - GemlingQuality build 另叠 altQualityStats 同名 stat（Mirage Archer
+            //   ×2 / Eternal Rage ×0.75，oracle gemling 62/23 钉值）；
             // - 树/装备词条族（`Spirit`/裸 `ReservationEfficiency` INC，域限定经
             //   `ModTag::SkillTypes` 匹配——per-gem cfg 带该效果的类型位，vendor
             //   skillCfg Sum 同口径。「Meta Skills have N% increased Reservation
             //   Efficiency」（tree 42245/63236）对 Blasphemy/Archmage 等 Meta 效果生效）。
+            const EFFICIENCY_STATS: [&str; 2] = [
+                "base_reservation_efficiency_+%",
+                "base_spirit_reservation_efficiency_+%",
+            ];
+            let alt_quality = if use_alt_quality {
+                data.alt_quality_stats(&gem.skill_id, gem.quality)
+            } else {
+                Vec::new()
+            };
             let quality_eff: f64 = es
                 .all()
-                .filter(|s| s.stat == "base_reservation_efficiency_+%")
+                .chain(alt_quality.iter())
+                .filter(|s| EFFICIENCY_STATS.contains(&s.stat.as_str()))
                 .map(|s| s.value)
                 .sum();
             let gem_cfg = pobr_core::CalcConfig::new()
@@ -574,36 +714,61 @@ pub(crate) fn spirit_reservation_modifiers(
             );
             // PoB2 对保留倍率乘积截断到 4 位小数后再乘 base（floor(x, 4)）。
             let mult = (mult * 10000.0).floor() / 10000.0;
-            let mut reserved = (flat * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
+            // Spirit→Life 转换分支（vendor CalcDefence.lua:248-254 + per-pool 循环
+            // name="Life"）：Life.basePercent = Spirit.baseFlat × 每点转换率；
+            // 因子换用 Life 池名（LifeReserved/Reserved、LifeReservationEfficiency/
+            // ReservationEfficiency；宝石品质效率项 pool 无关照除）；百分比
+            // round 2 位（vendor :312）。产出 `LifeReservedPercent` INC 由
+            // perform 预留段消费（ritualist：Eternal Rage 155×0.66×0.9 = 92.07%
+            // → LifeReserved 270 / LifeUnreserved 23，golden 一致）。
+            if spirit_to_life > 0.0 {
+                let life_reserved_names = [
+                    pobr_data::prelude::ModName::from("LifeReserved"),
+                    pobr_data::prelude::ModName::from("Reserved"),
+                ];
+                let l_inc = db.sum(
+                    pobr_data::prelude::ModType::Inc,
+                    &gem_cfg,
+                    &life_reserved_names,
+                );
+                let l_more = db.more(&gem_cfg, &life_reserved_names);
+                let l_factor = if l_more > 0.0 && l_inc > -100.0 {
+                    (100.0 + l_inc) / 100.0 * l_more
+                } else {
+                    0.0
+                };
+                let l_eff_names = [
+                    pobr_data::prelude::ModName::from("LifeReservationEfficiency"),
+                    pobr_data::prelude::ModName::from("ReservationEfficiency"),
+                ];
+                let l_eff = (quality_eff
+                    + db.sum(pobr_data::prelude::ModType::Inc, &gem_cfg, &l_eff_names))
+                .max(-100.0);
+                let l_eff_more = db.more(&gem_cfg, &l_eff_names);
+                let percent =
+                    (flat * spirit_to_life * mult * l_factor / (1.0 + l_eff / 100.0) / l_eff_more
+                        * 100.0)
+                        .round()
+                        / 100.0;
+                if percent > 0.0 {
+                    let origin = ModifierSource::new(SourceId::new(
+                        SourceKind::SkillGem,
+                        format!("spirit.{}", gem.skill_id),
+                    ))
+                    .with_raw_text(format!(
+                        "life reservation from spirit {} ({} × {spirit_to_life}%)",
+                        gem.skill_id, flat
+                    ));
+                    mods.push(
+                        Modifier::number("LifeReservedPercent", ModType::Inc, percent)
+                            .with_origin(origin),
+                    );
+                }
+                continue;
+            }
+            let reserved = (flat * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
                 .round()
                 .max(0.0);
-            // Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy`
-            // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
-            // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
-            // AppliesCurse 主动技能数）。口径 = **单份缩放后 round 再 ×instances**
-            // （:282-283 `blasphemyEffectiveFlat = round(...)；reservedFlat += ... ×
-            // instances`，essence-drain 60→55×3=165 ≠ round(180/1.1)=164）。被包
-            // curse 自身预留 0（levels 无 flat，vendor 同——无需额外排除）。
-            if has("IsBlasphemy") {
-                let per_curse: f64 = es
-                    .all()
-                    .filter(|s| s.stat == "blasphemy_base_spirit_reservation_per_socketed_curse")
-                    .map(|s| s.value)
-                    .sum();
-                let curse_count = group
-                    .gem_skills
-                    .iter()
-                    .filter(|g| {
-                        data.granted_effects.get(&g.skill_id).is_some_and(|e| {
-                            !e.is_support && e.skill_types.iter().any(|t| t == "AppliesCurse")
-                        })
-                    })
-                    .count();
-                reserved += (per_curse * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
-                    .round()
-                    .max(0.0)
-                    * curse_count as f64;
-            }
             if reserved <= 0.0 {
                 continue;
             }
@@ -622,4 +787,105 @@ pub(crate) fn spirit_reservation_modifiers(
         }
     }
     mods
+}
+
+/// （存量 #9）把所有**已启用 warcry 主动技能**构造为 [`pobr_core::calc::WarcrySpec`]，
+/// 经 `session.add_warcry_skill` 注入、由 pobr-core `calc::warcry`（perform 的
+/// hand pass 之前）按 uptime 缩放消费（vendor CalcOffence.lua:3203-3256 +
+/// CalcPerform.lua:2116-2142；机制分解与 oracle 钉值见 warcry.rs 模块 doc）。
+///
+/// spec 装配（全部走既有数据通道，零技能硬编码）：
+/// - **skill-local mods** = 自身 statSet stat（含品质段）经 statmap
+///   （`mapped_stat_modifiers`——Infernal 的 per-set
+///   `infernal_cry_exerted_attack_all_damage_%_to_gain_as_fire_%` →
+///   `InfernalExtraFireDamageMultiplier`、常量 stat `warcry_empowers_per_X_...` →
+///   `WarcryPowerPer/Cap`）+ 组内**兼容 support** 载荷（`support_modifiers`，
+///   如 Cooldown Recovery II → `CooldownRecovery INC 30`）+ `WarcryCastTime BASE`
+///   （效果 `cast_time`，对位 vendor skillModList 的 "Base" 条目，
+///   CalcOffence.lua:351 的求和源）。
+/// - **取数等级** = 宝石等级 + 适用的 `+N to Level of ...`（`additional_gem_levels`，
+///   vendor applyGemMods——smith 的 Infernal 21+1=22 级 gain 51 + 品质 trunc(0.5×23)=11
+///   → 62，oracle 逐值）。
+/// - cooldown / storedUses = granted_effect_levels 行（`resolve_skill_level`）。
+///
+/// 同一效果多组重复按 id 去重（vendor `not globalOutput.<X>CryCalculated` 同责）。
+pub(crate) fn warcry_skill_specs(
+    build: &Build,
+    data: &BuildData,
+) -> Vec<pobr_core::calc::WarcrySpec> {
+    use std::collections::HashSet;
+    let mut specs = Vec::new();
+    let mut seen: HashSet<&str> = HashSet::new();
+    for group in build.enabled_socket_groups() {
+        for gem in &group.gem_skills {
+            let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
+                continue;
+            };
+            if effect.is_support || !effect.skill_types.iter().any(|t| t == "Warcry") {
+                continue;
+            }
+            if !seen.insert(gem.skill_id.as_str()) {
+                continue;
+            }
+            // 全局 +N gem levels（applyGemMods）+ 同组兼容 support 授予等级
+            // （smith 的 Fire Mastery `supported_fire_skill_gem_level_+` → Infernal
+            // 21→22 级，gain 51+q11=62 = oracle 逐值）。
+            let level = gem.gem_level
+                + additional_gem_levels(build, data, &gem.skill_id)
+                + support_granted_gem_levels(build, data, &gem.skill_id);
+            let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
+            let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+            let stats: Vec<pobr_data::catalog::SkillDamageStat> = es.all().cloned().collect();
+            if std::env::var("POBR_DBG_WARCRY").is_ok() {
+                eprintln!(
+                    "[POBR_DBG_WARCRY] specs {} level={level} q={} set_key={set_key:?} stats={:?}",
+                    gem.skill_id,
+                    gem.quality,
+                    stats
+                        .iter()
+                        .map(|s| (s.stat.as_str(), s.value))
+                        .collect::<Vec<_>>()
+                );
+            }
+            let mut mods = mapped_stat_modifiers(
+                &stats,
+                SourceKind::SkillGem,
+                &gem.skill_id,
+                &gem.skill_id,
+                set_key.as_deref(),
+            );
+            mods.extend(support_modifiers(group, data, &gem.skill_id));
+            if let Some(ms) = effect.cast_time {
+                mods.push(
+                    Modifier::number("WarcryCastTime", ModType::Base, f64::from(ms) / 1000.0)
+                        .with_source("Base"),
+                );
+            }
+            let (cooldown_base_s, stored_uses) = data
+                .resolve_skill_level(&gem.skill_id, level)
+                .map(|r| {
+                    (
+                        r.cooldown_s.unwrap_or(0.0),
+                        // vendor `skillData.storedUses or 0`（CalcOffence.lua:3236）。
+                        r.stored_uses.map_or(0.0, f64::from),
+                    )
+                })
+                .unwrap_or((0.0, 0.0));
+            // warcry 键名（vendor CalcPerform.lua:2124 gsub 链：`" Cry"`/`"'s"`/空格
+            // 全剥）："Infernal Cry" → `Infernal`。
+            let name = buff_skill_name(data, &gem.skill_id)
+                .replace(" Cry", "")
+                .replace("'s", "")
+                .replace(' ', "");
+            specs.push(pobr_core::calc::WarcrySpec {
+                name,
+                skill_id: gem.skill_id.clone(),
+                cooldown_base_s,
+                stored_uses,
+                skill_types: skill_type_bits(&effect.skill_types),
+                mods,
+            });
+        }
+    }
+    specs
 }

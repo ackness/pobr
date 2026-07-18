@@ -162,6 +162,40 @@ fn ingest_section(
     Ok(())
 }
 
+/// 武器件上的「转局部」词条：无 flag 的 `CriticalStrikeMultiplier`（vendor
+/// `CritMultiplier`）加 `Condition:{Main,Off}HandAttack` tag，使其只作用于
+/// **用该武器攻击**的 hand pass（非武器攻击如 Shield Wall / 法术不吃）。
+///
+/// 对照 vendor `Item.lua:1954-1961`（"Convert accuracy, crit damage bonus, …
+/// to local"）：0.22.0（0.5.4b）把 `CritMultiplier and mod.flags == 0` 加进
+/// 转换清单。守卫与 vendor 逐条对应：`mod.flags == 0`、
+/// `keywordFlags == 0 or KeywordFlag.Attack`、`not mod[1]`（无既有 tag）。
+///
+/// 仅由编排层对**武器**件调用（Weapon2 的盾/箭袋/法器不转换——vendor 该转换在
+/// `self.base.weapon` 分支内）。
+///
+/// ponytail: vendor 同清单还有 Accuracy/ImpaleChance/OnHit/leech 的转换
+/// （0.22.0 之前就有、PoBR 未建模的存量项）；此处只落地 0.5.4b 增量
+/// CritMultiplier，其余待各自 oracle 钉值后按同一入口补。
+pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentSlot) {
+    let var = match slot {
+        EquipmentSlot::Weapon1 => "MainHandAttack",
+        EquipmentSlot::Weapon2 => "OffHandAttack",
+        _ => return,
+    };
+    for m in modifiers {
+        let keyword_ok =
+            m.keyword_flags == KeywordFlags::NONE || m.keyword_flags == KeywordFlags::ATTACK;
+        if m.name == ModName::from("CriticalStrikeMultiplier")
+            && m.flags == ModFlags::NONE
+            && keyword_ok
+            && m.tags.is_empty()
+        {
+            m.tags.push(ModTag::condition(var, false));
+        }
+    }
+}
+
 /// 把物品词条 Multiplier tag 里的 `{SlotName}` 占位符替换为本件槽位 ID。
 ///
 /// PoB2 在合并物品 mod 时按所在槽展开 `{SlotName}`（`calcLib.mod`）。典型来源

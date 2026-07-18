@@ -52,6 +52,14 @@ pub struct BuffSpec {
     pub socket_index: u32,
     pub is_mark: bool,
     pub ignore_curse_limit: bool,
+    /// （存量 #7-1）技能局部效果乘区 INC 增量（vendor curse 分支
+    /// CalcPerform.lua:2423 `skillModList:Sum("INC", skillCfg, "CurseEffect")`
+    /// 的 PoBR 对位——curse 宝石自身品质 `curse_effect_+%` + 组内兼容 support
+    /// （Heightened Curse +25）payload；编排层构造，默认 0）。
+    pub local_effect_inc: f64,
+    /// 同上 MORE 因子（:2427 `skillModList:More(skillCfg, "CurseEffect")`，
+    /// 如 Atziri's Allure -20% final；默认 1）。
+    pub local_effect_more: f64,
     /// 来源效果的技能类型位（vendor per-skill `skillCfg`——buff_pass 乘区对
     /// 域限定词条（「Banner Skills have N% increased Aura Magnitudes」的
     /// SkillTypes tag）按此匹配；默认 NONE = 旧行为，域词条不命中）。
@@ -164,6 +172,54 @@ impl CalculationSession {
             .flag(&self.env.cfg, ModName::from(name))
     }
 
+    /// 低生命自动条件桥（vendor CalcDefence.lua:335-350：`(max − reserved)/max ≤
+    /// LowPoolThreshold(0.35)` → `condList["LowLife"] = true`）。0.5.4b 起
+    /// Spirit→Life 保留转换（Atziri's Communion）使重保留 build 自动进入 Low Life，
+    /// 解锁「while on Low Life」族词条（tree + Direstrike 支援 buff）。
+    ///
+    /// 须在全部来源注入后、[`perform_minimal`](Self::perform_minimal) 之前调用
+    /// （预留 mod 已注入，条件在 perform 的聚合查询期生效——vendor 同序：
+    /// doActorLifeManaSpiritReservation 先于 calcs.offence）。预留聚合口径与
+    /// perform 预留段逐式相同（ReservationMultiplier floor4 + efficiency 除数）。
+    /// 显式 config 条件（`conditionLowLife`）优先，不被覆盖。
+    // ponytail: 只桥 Life（唯一有 fixture 佐证的池）；LowMana/LowSpirit 同一
+    // vendor 循环，出现消费 build 时按本函数样板扩展。LowLifePercentage 覆盖
+    // stat（vendor :337）全 fixture 无来源，未建模。
+    pub fn bridge_low_pool_conditions(&mut self) {
+        if self.env.cfg.conditions.contains_key("LowLife") {
+            return;
+        }
+        let life = self.pool_total("MaximumLife");
+        if life <= 0.0 {
+            return;
+        }
+        let db = &self.env.player.mod_db;
+        let cfg = &self.env.cfg;
+        let mult =
+            (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
+        let eff_names = [
+            ModName::from("LifeReservationEfficiency"),
+            ModName::from("ReservationEfficiency"),
+        ];
+        let eff_inc = db.sum(ModType::Inc, cfg, &eff_names).max(-100.0);
+        let divisor = ((1.0 + eff_inc / 100.0) * db.more(cfg, &eff_names)).max(1e-12);
+        let factor = mult / divisor;
+        let flat = db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * factor;
+        let percent = db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * factor;
+        let reserved = super::survivability::reservation(life, flat, percent).reserved;
+        if (life - reserved) / life
+            <= self
+                .env
+                .cfg
+                .constants
+                .game_constants
+                .game
+                .low_pool_threshold
+        {
+            self.env.cfg.conditions.insert("LowLife".into(), true);
+        }
+    }
+
     pub fn add_modifier_texts(
         &mut self,
         texts: impl IntoIterator<Item = impl AsRef<str>>,
@@ -213,6 +269,17 @@ impl CalculationSession {
     /// `unsupported_modifier_texts`。
     pub fn add_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
         let ingest = ingest_item_with_ctx(slot, item, self.parse_ctx())?;
+        self.env.player.mod_db.add_list(ingest.modifiers);
+        self.unsupported_modifier_texts.extend(ingest.unsupported);
+        Ok(())
+    }
+
+    /// 接入一件**武器**（调用方判定基底为武器）：同 [`Self::add_item`]，另按 vendor
+    /// `Item.lua:1954-1961` 把无 flag 的爆伤词条转为按手条件
+    /// （见 [`crate::item::apply_weapon_hand_conditions`]）。
+    pub fn add_weapon_item(&mut self, slot: EquipmentSlot, item: &Item) -> Result<(), ParseError> {
+        let mut ingest = ingest_item_with_ctx(slot, item, self.parse_ctx())?;
+        crate::item::apply_weapon_hand_conditions(&mut ingest.modifiers, slot);
         self.env.player.mod_db.add_list(ingest.modifiers);
         self.unsupported_modifier_texts.extend(ingest.unsupported);
         Ok(())
@@ -274,6 +341,15 @@ impl CalculationSession {
         self.env.buff_skills.push(spec);
     }
 
+    /// 注入一个 warcry 技能规格（存量 #9 warcry uptime 机器）。消费在 `perform`
+    /// 的 hand pass 之前（[`super::warcry::apply_warcry_uptime`]）：按
+    /// `min((賦能次数/主技能Speed)/(冷却+喊叫时间), 1)` 折算 uptime 后，把 warcry
+    /// 的进攻性效果（Infernal Cry `DamageGainAsFire`）缩放注入玩家 db
+    /// （vendor CalcOffence.lua:3229-3256）。`cfg.mode_buffs` 门控。
+    pub fn add_warcry_skill(&mut self, spec: super::warcry::WarcrySpec) {
+        self.env.warcry_skills.push(spec);
+    }
+
     /// 接入一个召唤物（M5a-B2）：从 [`MinionDef`](super::MinionDef) 真实底材 + 召唤
     /// 宝石等级 + 数量上限派生召唤物 `Actor` 接入 `Env.minions`，并把上限写为玩家
     /// `Multiplier:SummonedMinion` / `Multiplier:MinionPresenceCount`（供「per Minion」
@@ -291,6 +367,7 @@ impl CalculationSession {
         minion_modifiers: Vec<super::MinionModifierEntry>,
         ally_buff_mods: Vec<Modifier>,
         infusion: super::AttributeInfusion,
+        is_companion: bool,
     ) {
         self.env.add_minion_from_def(
             def,
@@ -299,6 +376,7 @@ impl CalculationSession {
             minion_modifiers,
             ally_buff_mods,
             infusion,
+            is_companion,
         );
     }
 
@@ -434,6 +512,23 @@ impl CalculationSession {
             .sum(ModType::Base, &self.env.cfg, &[ModName::from(name)])
     }
 
+    /// 主技能 Life 消耗快照（vendor `output.LifeCost`；含 hybrid mana→life 转换）。
+    /// 编排层在全部来源注入后调用，回填 `cfg.stats/multipliers["LifeCost"]` 供
+    /// per-life-cost 词条（PerStat stat=LifeCost，如 Atalui's Bloodletting 的
+    /// gain-as-physical）在伤害聚合期取数——与 vendor CalcOffence 先算 cost 再算
+    /// 伤害的顺序等价。
+    pub fn life_cost_snapshot(&self) -> f64 {
+        let base_mc = self.base_sum("SkillManaCostBase");
+        let base_lc = self.base_sum("SkillLifeCostBase");
+        super::skill_mechanics::calc_life_cost_hybrid(
+            &self.env.player.mod_db,
+            &self.env.cfg,
+            base_lc,
+            base_mc,
+        )
+        .final_cost
+    }
+
     /// 属性最终总量（PoB2 `calculateAttributes`，CalcPerform.lua:381-388：
     /// `output[stat] = m_max(round(calcLib.val(modDB, stat)), 0)`，calcLib.val =
     /// `Σbase × (1 + Σinc/100) × Πmore`）。`class_base` = 职业起始属性（PoBR 把它
@@ -455,6 +550,17 @@ impl CalculationSession {
     /// （CalcOffence pool 段）。供编排层在全部来源注入后回填 PerStat 资源分母
     /// （vendor PerStat tag 读 actor **output**，ModStore.lua:440-460 GetStat）——
     /// [`base_sum`](Self::base_sum) 只取 BASE 之和，会漏掉 inc/more 缩放后的池值。
+    /// Spirit 最终池值（vendor `output.Spirit`，[`calc_spirit_pool`] 同源：
+    /// OVERRIDE → (base + Extra) × 未转换比例 × (1+Σinc/100) × Πmore，round）。
+    /// 供编排层回填 PerStat `Spirit` 分母——vendor PerStat 读 actor output
+    /// （ModStore.lua:440-460 GetStat），BASE-only 会把「+2 Armour per 1 Spirit」
+    /// （wolf-pack Perfidy，Spirit 336 vs base 300）欠算。
+    ///
+    /// [`calc_spirit_pool`]: super::calc_spirit_pool
+    pub fn spirit_total(&self) -> f64 {
+        super::calc_spirit_pool(&self.env.player.mod_db, &self.env.cfg)
+    }
+
     pub fn pool_total(&self, name: &str) -> f64 {
         let actor_base = match name {
             "MaximumLife" => self.env.player.base.life,

@@ -266,7 +266,11 @@ pub fn derive_minion_base_stats(gem_level: u32, data: &MinionData) -> MinionBase
     let level = minion_level_from_gem_level(gem_level);
     let row = MonsterScalingRow::at_level(level);
 
-    let life = round(row.life as f64 * data.life);
+    // 生命走**盟友表**（vendor CalcPerform.lua:1046 `m_floor(monsterAllyLifeTable
+    // [level] × minionData.life)`——PoBR 召唤物全为玩家盟友；敌对召唤物
+    // （hostile spectre，用 monsterLifeTable × mapLevelLifeMult）未建模）。
+    // wolf-pack 钉值：ally[44]=2938 × 1.1 = 3231（oracle Life BASE 3231）。
+    let life = (pobr_data::monster::monster_ally_life(level) as f64 * data.life).floor();
     let armour = round(row.armour as f64 * data.armour);
     let evasion = round(row.evasion as f64 * data.evasion);
     // 生命转 ES：energy_shield 占比 × 100 = LifeConvertToEnergyShield BASE，这里直接折算 ES 基础。

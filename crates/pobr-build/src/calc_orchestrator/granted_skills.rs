@@ -149,6 +149,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
                 gem_level: level,
                 quality: 0,
                 stat_set_index: None,
+                name_spec: None,
             }],
             main_active_skill: None,
         });
@@ -179,6 +180,9 @@ mod tests {
         data.base_items.insert(
             "Firebolt".to_string(),
             BaseItemDef {
+                req_str: 0,
+                req_dex: 0,
+                req_int: 0,
                 id: GEM_ID.to_string(),
                 name: "Firebolt".to_string(),
                 item_class: "Skill Gem".to_string(),
@@ -212,6 +216,7 @@ mod tests {
             base: ItemBaseId::from("Test Wand"),
             rarity: ItemRarity::Unique,
             quality: 0,
+            corrupted: false,
             implicit_texts: Vec::new(),
             modifier_texts: vec![format!("Grants Skill: Level {level} Firebolt")],
             enchant_texts: Vec::new(),

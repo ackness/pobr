@@ -45,6 +45,13 @@ pub fn env_finalize(env: &mut Env) {
     expand_misc_buffs(env);
     // 阶段 7（T4）：非伤害异常施加（Chill/Shock → enemy db）。
     apply_nondamaging_ailments(env);
+    // 阶段 7.5：敌侧条件 flag → cfg 条件桥接（vendor ModStore GetCondition 语义：
+    // enemyDB 的 `Condition:<X>` FLAG 使敌人条件 <X> 为真）。pobr 条件统一放
+    // cfg.conditions（敌侧键空间 = `Enemy<X>`），故在全部敌侧注入源（item
+    // EnemyModifier 转发 / buff_pass / 异常）落库后统一回填。
+    // ponytail: 允收名单只有 Intimidated（消费方 = setup_enemy 注入的敌人基础
+    // 条件对）；其余 Condition:* flag 已各有专用桥（config/异常），需要时逐条扩。
+    bridge_enemy_condition_flags(env);
     // 阶段 8（M4-L）：曝光归约（vendor CalcPerform.lua:3214-3247 "Apply
     // exposures"，buff 循环之后 / offence 之前）——enemy db 内全部
     // `<El>Exposure BASE`（config 注入 + buff_pass Debuff 路径，如 Frost Bomb）
@@ -451,6 +458,25 @@ pub fn expand_misc_buffs(env: &mut Env) {
 /// 无来源词条时空转（empty-spin 不变式保持）。
 pub fn apply_nondamaging_ailments(env: &mut Env) {
     super::ailment_apply::apply_nondamaging_ailments(env);
+}
+
+/// 阶段 7.5：敌侧 `Condition:<X>` FLAG → `cfg.conditions["Enemy<X>"]` 桥接。
+///
+/// vendor 语义（ModStore.lua `GetCondition`）：条件真值 = conditions 表 **或**
+/// modDB `Condition:<X>` FLAG 聚合——敌人被词条施加的条件态（如体甲「Enemies in
+/// your Presence are Intimidated」→ enemy db `Condition:Intimidated` flag）等价
+/// 于 config 勾选。pobr 的条件消费统一走 `cfg.conditions`，此处把 flag 聚合结果
+/// 回填（`matches(cfg)` 已含 Effective/EnemyInPresence 等 tag 门控）。
+fn bridge_enemy_condition_flags(env: &mut Env) {
+    // ponytail: 允收名单当前仅 Intimidated（唯一有敌方基础条件对消费方的条件）；
+    // 全量 `Condition:*` 泛化会一次性点亮全部敌况词条，留给 parity 点名逐条扩。
+    const BRIDGED: &[&str] = &["Intimidated"];
+    for cond in BRIDGED {
+        let flag = ModName::from(format!("Condition:{cond}"));
+        if env.enemy.mod_db.flag(&env.cfg, flag) {
+            env.cfg.conditions.insert(format!("Enemy{cond}"), true);
+        }
+    }
 }
 
 #[cfg(test)]

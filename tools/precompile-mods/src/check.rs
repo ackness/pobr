@@ -46,13 +46,21 @@ pub fn check(data_dir: &Path) -> Result<(), String> {
         None
     };
 
-    // 2) special_mods.json (hand-curated) + generated/special_derived.json —
-    //    both optional; generated/special_vendor.json — required (the 4.5.4.3
-    //    upgrade shipped without it because regen-all.sh lacked the step and
-    //    nothing failed; a missing file must be loud, not a silent skip).
-    //    All three are concatenated for the compile step below.
+    // 2) special_mods entries come from three sources, all concatenated for the
+    //    compile step below (matches the runtime `GameData::load_ruleset` set):
+    //    - overlay-common/special_mods.json (version-independent curated, P1-3) +
+    //      overlay/special_mods.json (version-specific) — both optional;
+    //    - generated/special_derived.json — optional;
+    //    - generated/special_vendor.json — required (the 4.5.4.3 upgrade shipped
+    //      without it because regen-all.sh lacked the step and nothing failed;
+    //      a missing file must be loud, not a silent skip).
+    let overlay_common = data_dir
+        .parent()
+        .map(|p| p.join("overlay-common"))
+        .unwrap_or_else(|| data_dir.join("overlay-common"));
     let mut special_entries = Vec::new();
     for (path, required) in [
+        (overlay_common.join("special_mods.json"), false),
         (overlay.join("special_mods.json"), false),
         (generated.join("special_derived.json"), false),
         (generated.join("special_vendor.json"), true),
@@ -128,11 +136,18 @@ fn load_strict<T: DeserializeOwned>(path: &Path, errors: &mut Vec<String>) -> Op
 mod tests {
     use super::*;
 
-    /// The committed repo data passes `--check` (deserialize + compile clean),
-    /// for both the parity-golden version and CURRENT.
+    /// The committed repo data passes `--check` (deserialize + compile clean)
+    /// for the active and parity-golden versions. Versions come from the
+    /// `pobr_data` constants (auto-advance on data bumps, no literal to
+    /// re-pin); stale/experimental dirs under `data/` are out of contract.
     #[test]
     fn repo_overlay_passes_check() {
-        for version in ["4.5.0.3.4", "4.5.4.3"] {
+        let mut versions = vec![
+            pobr_data::DATA_VERSION,
+            pobr_data::GOLDEN_PARITY_DATA_VERSION,
+        ];
+        versions.dedup();
+        for version in versions {
             let data_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../data")
                 .join(version);
