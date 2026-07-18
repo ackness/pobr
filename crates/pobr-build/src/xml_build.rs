@@ -73,7 +73,6 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let use_second_weapon_set = parse_active_item_set(xml)?.3;
     let ParsedPassives {
         allocated: allocated_nodes,
-        inactive_weapon_set: inactive_weapon_set_nodes,
         tree_version,
     } = parse_passive_nodes(xml, use_second_weapon_set)?;
     let allocated_set: std::collections::HashSet<u32> =
@@ -109,9 +108,6 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     }
     if !radius_jewels.is_empty() {
         build = build.with_radius_jewels(radius_jewels);
-    }
-    if !inactive_weapon_set_nodes.is_empty() {
-        build = build.with_inactive_weapon_set_nodes(inactive_weapon_set_nodes);
     }
     if !flask_charms.is_empty() {
         build = build.with_utility_slots(flask_charms);
@@ -470,25 +466,18 @@ struct SpecNodes {
 /// `activeSpec` 为 1-based 索引；越界 / 缺失时取首个 `<Spec>`。无 `<Spec>` 返回空。
 ///
 /// 武器集语义（PoB2 CalcSetup.lua:209-233 / :791-792）：武器集专属点
-/// （`allocMode = 1|2`）的全部**自身** mod 追加 `Condition: WeaponSet<N>`，而该条件
-/// flag 只对当前激活武器集置真（`useSecondWeaponSet` ? 2 : 1）——净效果是非激活集
-/// 专属点的**自身词条**整体不生效。PoBR 在解析层等价实现：从已分配节点中剔除非激活集
-/// 的专属点（其自身 mod 收集随之关闭，与 PoB2 条件门控等价）。
+/// （`allocMode = 1|2`）节点上的**每条** mod——含自身词条与范围珠宝授予——都被追加
+/// `Condition: WeaponSet<N>`（节点自身 allocMode 优先，CalcSetup.lua:222-223；珠宝
+/// 来源门控的 :224-227 分支仅对 allocMode=0 节点生效），而该条件 flag 只对当前激活
+/// 武器集置真（`useSecondWeaponSet` ? 2 : 1）——净效果是非激活集专属点上的全部词条
+/// **整体不生效**。PoBR 在解析层等价实现：从已分配节点中剔除非激活集的专属点
+/// （mod 收集 / 范围珠宝授予计数 / per-X 倍率均随之一致；oracle 实证见
+/// `collect::radius_jewel_expansions`）。
 ///
-/// ⚠️ 但 PoB2 **不**把这些节点从 `allocNodes` 移除——它们仍是已分配节点，只是自身 mod
-/// 被条件门控（CalcSetup.lua:209-228）。因此**范围珠宝授予**（`... in Radius also
-/// grant`，源=jewel 而非节点，按 jewel 的 allocMode 门控而非节点的，:224-228）仍会落到
-/// 这些非激活集 notable 上。PoBR 把剔除掉的节点单独回传（返回值 `.1`），供
-/// [`crate::calc_orchestrator::collect::radius_jewel_expansions`] 在 radius 几何里并回，
-/// 以复刻 PoB2「非激活集节点仍计入 radius 授予」的行为（gemling crit jewel 实测）。
-///
-/// 返回 `(激活已分配节点, 被剔除的非激活集节点, tree_version)`。
 /// [`parse_passive_nodes`] 的解析结果。
 struct ParsedPassives {
     /// 激活已分配节点（自身 mod 参与计算）。
     allocated: Vec<NodeId>,
-    /// 被剔除的非激活武器组专属点（自身 mod 已 masking，但仍计入范围珠宝授予几何）。
-    inactive_weapon_set: Vec<NodeId>,
     tree_version: Option<String>,
 }
 
@@ -540,7 +529,6 @@ fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<ParsedP
     if specs.is_empty() {
         return Ok(ParsedPassives {
             allocated: Vec::new(),
-            inactive_weapon_set: Vec::new(),
             tree_version: None,
         });
     }
@@ -548,25 +536,19 @@ fn parse_passive_nodes(xml: &str, use_second_weapon_set: bool) -> Result<ParsedP
     let spec = specs.swap_remove(idx);
     let tree_version = spec.tree_version;
 
-    // 剔除非激活武器集的专属点（保持原始顺序，确定性）。被剔除的节点单独回传：
-    // 它们自身 mod 不生效，但 PoB2 仍把它们留在 allocNodes，范围珠宝授予照样落上去。
+    // 剔除非激活武器集的专属点（保持原始顺序，确定性）。
     let inactive: std::collections::HashSet<NodeId> = spec.weapon_set
         [if use_second_weapon_set { 0 } else { 1 }]
     .iter()
     .copied()
     .collect();
-    let mut nodes = Vec::with_capacity(spec.nodes.len());
-    let mut masked = Vec::new();
-    for n in spec.nodes {
-        if inactive.contains(&n) {
-            masked.push(n);
-        } else {
-            nodes.push(n);
-        }
-    }
+    let allocated = spec
+        .nodes
+        .into_iter()
+        .filter(|n| !inactive.contains(n))
+        .collect();
     Ok(ParsedPassives {
-        allocated: nodes,
-        inactive_weapon_set: masked,
+        allocated,
         tree_version,
     })
 }

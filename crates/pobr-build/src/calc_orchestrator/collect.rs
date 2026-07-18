@@ -309,17 +309,15 @@ pub(crate) fn radius_jewel_expansions<'a>(
     }
     // 已分配节点集合（含种类）。坐标取自 data.passive_nodes（树数据回填的 x/y）。
     //
-    // 并入 `inactive_weapon_set_nodes`：非激活武器组专属点的**自身** mod 虽已 masking，
-    // 但 PoB2 仍把它们留在 allocNodes（CalcSetup.lua:209-228），范围珠宝授予照样落上去。
-    // radius 几何因此须按完整已分配集筛 in-radius 节点（gemling crit jewel 实测：6 个
-    // in-radius notable 中 5 个在非激活组，缺它们会把 +7×6 误算成 +7×1）。
-    let allocated: std::collections::HashSet<u32> = build
-        .tree
-        .allocated_nodes
-        .iter()
-        .chain(build.inactive_weapon_set_nodes.iter())
-        .map(|n| n.0)
-        .collect();
+    // 只取**激活武器集**的已分配节点：PoB2 虽把非激活集专属点留在 allocNodes，且范围
+    // 珠宝授予也会写进它们的 modList，但节点上的**每条** mod（含珠宝授予）都会被追加
+    // `Condition: WeaponSet<N>`（CalcSetup.lua:222-223，节点自身 allocMode 优先于
+    // 珠宝来源的 :224-227 分支）——非激活集节点上的授予净效果为零。oracle Tabulate
+    // 实证（gemling crit jewel）：6 个 in-radius notable 只有激活集的 1 个贡献 +7
+    // （critModList 仅一条 `7 @ Tree:32763`，CritChance 8.55）。PoBR 解析层已按激活集
+    // 剔除非激活专属点，这里直接用 `tree.allocated_nodes` 即等价。
+    let allocated: std::collections::HashSet<u32> =
+        build.tree.allocated_nodes.iter().map(|n| n.0).collect();
 
     // 位置表：socket 自身 + 全部已分配节点（候选只在已分配集合中筛）。
     let mut positions: std::collections::HashMap<u32, (f64, f64)> =
