@@ -37,6 +37,9 @@ struct NodeOrbit {
     group: u32,
     orbit: u32,
     orbit_index: u32,
+    /// vendor `applyToArmour=true`（Smith of Kitava 身甲连接 notable 标记，
+    /// 同一 nodes 块顶层字段，顺路抽取回填 `PassiveNodeDef::apply_to_armour`）。
+    apply_to_armour: bool,
 }
 
 /// 从 vendor `tree.lua` 解析出的布局常量、group 坐标与节点 orbit 槽位。
@@ -98,6 +101,11 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     let mut missing = 0usize;
     let mut off_graph = 0usize;
     for node in &mut nodes {
+        // applyToArmour（Smith 身甲连接 notable）与坐标同源顺路回填（图外与否无关）。
+        node.apply_to_armour = layout
+            .node_orbits
+            .get(&node.skill)
+            .is_some_and(|no| no.apply_to_armour);
         if !on_graph(node) {
             node.x = None;
             node.y = None;
@@ -347,6 +355,7 @@ fn parse_node_orbits(block: &str) -> BTreeMap<u32, NodeOrbit> {
                                 group,
                                 orbit,
                                 orbit_index,
+                                apply_to_armour: top.contains("applyToArmour=true"),
                             },
                         );
                     }
@@ -491,6 +500,7 @@ mod tests {
                 group: 813,
                 orbit: 0,
                 orbit_index: 0,
+                apply_to_armour: false,
             },
         );
         let layout = TreeLayout {

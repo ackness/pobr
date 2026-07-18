@@ -296,9 +296,10 @@ fn taken_hit_per_type_neutral_identity() {
     assert_eq!(dr, [0.0; 5]);
 }
 
-/// 抗性 + 护甲减伤（:2379-2383/:2442）：fire 抗 75%、物理 effArmour 2000 vs 进伤 1000
-/// → 护甲 DR = 2000/(2000+10×1000) = 16.67%（armour_ratio=10，四舍到 9 位）→
-/// 物理承受 = 1000 × (1−0.1667) = 833.33…；fire 承受 = 500 × 0.25 = 125。
+/// 抗性 + 护甲减伤（:2402-2409/:2442）：fire 抗 75%、物理 effArmour 2000 vs 进伤 1000
+/// → 护甲 DR = round(2000/(2000+10×1000)×100) = round(16.67) = **17%**（vendor
+/// `calcs.armourReduction` 是取整变体，Common.lua round=floor(x+0.5)）→
+/// 物理承受 = 1000 × (1−0.17) = 830；fire 承受 = 500 × 0.25 = 125。
 #[test]
 fn taken_hit_per_type_applies_resist_and_armour() {
     // Arrange
@@ -315,9 +316,9 @@ fn taken_hit_per_type_applies_resist_and_armour() {
     let (taken, dr) = taken_hit_per_type(&damage, &mit);
 
     // Assert
-    let armour_dr = 2000.0 / (2000.0 + 10.0 * 1000.0); // 0.166666…
-    assert!((dr[0] - armour_dr * 100.0).abs() < 1e-6);
-    assert!((taken.physical - 1000.0 * (1.0 - armour_dr)).abs() < 1e-3);
+    let armour_dr_pct = (2000.0_f64 / (2000.0 + 10.0 * 1000.0) * 100.0).round(); // 17
+    assert!((dr[0] - armour_dr_pct).abs() < 1e-6);
+    assert!((taken.physical - 1000.0 * (1.0 - armour_dr_pct / 100.0)).abs() < 1e-3);
     assert!((taken.fire - 125.0).abs() < 1e-9);
 }
 

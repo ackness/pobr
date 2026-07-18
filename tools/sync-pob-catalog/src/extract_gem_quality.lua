@@ -105,19 +105,28 @@ end
 -- 抽取并输出 JSONL（pairs 顺序不确定没关系：Rust 侧按 effect_id 排序，
 -- 单个效果内的行经 ipairs 保持 vendor 顺序且在输出中天然连续成组）
 ----------------------------------------------------------------------
+-- altQualityStats（vendor CalcTools.lua:147-152）：仅 GemlingQuality flag build
+-- 生效的附加品质 stat，带 "alt":true 标记转录（消费侧按 flag 门控）。
 for skillId, skill in pairs(skills) do
-	if type(skill) == "table" and type(skill.qualityStats) == "table" then
-		for _, qs in ipairs(skill.qualityStats) do
-			if type(qs) == "table" and type(qs[1]) == "string" and type(qs[2]) == "number" then
-				print(
-					'{"effect":"'
-						.. jsonEscape(skillId)
-						.. '","stat":"'
-						.. jsonEscape(qs[1])
-						.. '","rate":'
-						.. jsonNum(qs[2])
-						.. "}"
-				)
+	if type(skill) == "table" then
+		for _, field in ipairs({ "qualityStats", "altQualityStats" }) do
+			local list = skill[field]
+			if type(list) == "table" then
+				local altSuffix = field == "altQualityStats" and ',"alt":true' or ""
+				for _, qs in ipairs(list) do
+					if type(qs) == "table" and type(qs[1]) == "string" and type(qs[2]) == "number" then
+						print(
+							'{"effect":"'
+								.. jsonEscape(skillId)
+								.. '","stat":"'
+								.. jsonEscape(qs[1])
+								.. '","rate":'
+								.. jsonNum(qs[2])
+								.. altSuffix
+								.. "}"
+						)
+					end
+				end
 			end
 		end
 	end

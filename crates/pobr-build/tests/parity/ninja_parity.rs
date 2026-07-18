@@ -541,7 +541,11 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 // Atziri's Communion 的 Spirit→Life 保留转换（LifeReservePercentPerSpirit，
 // vendor CalcDefence.lua:248-254）接入后双列翻正；abyssal-lich（同戴 Communion）
 // SpiritUnres inf→1.00x 同根。见 buffs.rs spirit_reservation_modifiers 转换分支。
-const BASELINE_DEF_CORE_HIT5: usize = 142; // 存量 #7-3/4（charm-guard 摘除 + wolf-pack Life/Armour 收敛 + gemling 池名归一）后 142/144（Communion 140（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
+// **#14 防御长尾分诊重记（+2 core-8 142→144/144 = 100%）**：abyssal-lich Life
+// （LifeConvertToEnergyShield 池扣减，0_5 树 Enhanced Barrier）+ smith Armour
+// （connected-notable multiplier + StrRequirements 快照）翻正。详见 #14 各修复
+// commit 与 docs/adapting-to-0.5.4b.md §#14。
+const BASELINE_DEF_CORE_HIT5: usize = 144; // #14 长尾分诊后 144/144（存量 #7-3/4 142；Communion 140（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
 // **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
 // `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
 // 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
@@ -676,8 +680,18 @@ const BASELINE_DEF_CORE_HIT5: usize = 142; // 存量 #7-3/4（charm-guard 摘除
 //    Item.lua:1994-1996 + round 口径）——手套 96→101 / 盔 192→284 / 靴 58→100，
 //    Gear:Armour 6100→6239 = vendor，titan Armour/ES/5×MaxHit 精确闭合；连带
 //    pathfinder Evasion 0.98x→1.00x、twister DeflectChance 0.97x→1.00x 精确化。
-const BASELINE_DEF_HIT5: usize = 437; // #13 残差定点后 437/450（#12 companion 431；存量 #7-3/4 425：ritualist 6 格 + gemling 9 格 + wolf-pack Life/Armour 精确翻正，wolf-pack MaxHit 族随 charm-guard 掩蔽摘除移出；Communion+Voices 413（ArmourAppliesTo 410；Refraction 407；ItemES 405；Barrier-Life 401；Mageblood 393；迁移基线 343；0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 445; // #13 残差定点后 445/450（#12 companion 439；Communion+Voices 434；Refraction 429；ItemES 428；Barrier-Life 425；Mageblood 417；迁移基线 361；0.5.0=432）
+// **#14 防御长尾分诊重记（+13 @5% 431→444 / +5 @10% 439→444）**：五簇闭合——
+// ① PhysDR 取整（vendor :2402 armourReduction 整数变体）ember/deadeye 2 格；
+// ② Life 池 ConvertTo 扣减（CalcDefence.lua:92）abyssal-lich Life/LifeUnres 2 格；
+// ③ Blasphemy per-curse 并入 baseFlat 单次 round（:229-239）essence-drain
+//    SpiritUnres 1 格；④ altQualityStats 通道（GemlingQuality 门控，
+//    CalcTools.lua:147-152）gemling SpiritUnres 1 格；⑤ Smith connected-notable
+//    multiplier + StrRequirementsOn<slot> 快照（CalcSetup.lua:840/CalcPerform.
+//    lua:1848-1857）smith Armour+4×MaxHit+TotalEHP 等 5 格；⑥ EHP 平均格挡改
+//    四分型均值（:1067，SpellProjectileBlock=max(spell,proj) 不再漏）smith+titan
+//    TotalEHP 2 格。剩余 6 格全部 = wolf-pack（#13 领地）。
+const BASELINE_DEF_HIT5: usize = 450; // #13+#14 合并实测 450/450 = 100%（#13 单独 437：wolf-pack 全清；#14 单独 444：长尾 12 格+四分型格挡；迁移基线 343；0.5.0=415）
+const BASELINE_DEF_HIT10: usize = 450; // #13+#14 合并实测 450/450 = 100%（迁移基线 361；0.5.0=432）
 // **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
 // （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
 // ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs

@@ -559,6 +559,11 @@ pub(crate) fn spirit_reservation_modifiers(
         &pobr_core::CalcConfig::new(),
         pobr_data::prelude::ModName::from("AncestralBond"),
     );
+    // GemlingQuality（升华『Gem Quality grants Socketed Skills an additional
+    // effect』）：激活时宝石 altQualityStats 品质 stat 生效（CalcTools.lua:147-152），
+    // 预留效率经此获得（如 Mirage Archer alt `base_reservation_efficiency_+%` ×2、
+    // Eternal Rage alt `base_spirit_reservation_efficiency_+%` ×0.75）。
+    let use_alt_quality = super::skill_resolve::gemling_quality_flag(build, data);
     for group in build.enabled_socket_groups() {
         for gem in &group.gem_skills {
             let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
@@ -609,26 +614,61 @@ pub(crate) fn spirit_reservation_modifiers(
                     .map(|s| s.value / 100.0)
                     .sum::<f64>();
             }
-            // Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy`
-            // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
-            // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
-            // AppliesCurse 主动技能数）。被包 curse 自身预留 0（levels 无 flat，
-            // 进 vendor 预留循环但 baseFlat=0——两侧一致，无需额外排除）。
             let es = data.effect_stats(
                 &gem.skill_id,
                 gem.gem_level,
                 gem.quality,
                 gem.stat_set_index,
             );
+            // Blasphemy per-curse 预留（vendor CalcDefence.lua:229-239）：`IsBlasphemy`
+            // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
+            // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
+            // AppliesCurse 主动技能数）。0.5.4b vendor 口径 = **先并入 baseFlat 再统一
+            // 缩放 round 一次**（:236-238 `values.baseFlat += flat × instances`，
+            // essence-drain round(180/1.1)=164 ≠ 旧的单份 round(60/1.1)=55×3=165，
+            // oracle spiritReservedBreakdown 钉值 164）。被包 curse 自身预留 0
+            // （levels 无 flat，vendor 同——无需额外排除）。
+            if has("IsBlasphemy") {
+                let per_curse: f64 = es
+                    .all()
+                    .filter(|s| s.stat == "blasphemy_base_spirit_reservation_per_socketed_curse")
+                    .map(|s| s.value)
+                    .sum();
+                let curse_count = group
+                    .gem_skills
+                    .iter()
+                    .filter(|g| {
+                        data.granted_effects.get(&g.skill_id).is_some_and(|e| {
+                            !e.is_support && e.skill_types.iter().any(|t| t == "AppliesCurse")
+                        })
+                    })
+                    .count();
+                flat += per_curse * curse_count as f64;
+            }
             // 预留效率（vendor :240-243/:251 `/(1 + efficiency/100)`，clamp ≥ −100）：
-            // - 宝石自身品质 stat `base_reservation_efficiency_+%`（q20 Blasphemy=10%）；
+            // - 宝石自身品质 stat `base_reservation_efficiency_+%` /
+            //   `base_spirit_reservation_efficiency_+%`（q20 Blasphemy=10%；后者是
+            //   Spirit 池限定形，statmap → SpiritReservationEfficiency，Spirit 预留
+            //   两名同入 `/(1+eff/100)`）；
+            // - GemlingQuality build 另叠 altQualityStats 同名 stat（Mirage Archer
+            //   ×2 / Eternal Rage ×0.75，oracle gemling 62/23 钉值）；
             // - 树/装备词条族（`Spirit`/裸 `ReservationEfficiency` INC，域限定经
             //   `ModTag::SkillTypes` 匹配——per-gem cfg 带该效果的类型位，vendor
             //   skillCfg Sum 同口径。「Meta Skills have N% increased Reservation
             //   Efficiency」（tree 42245/63236）对 Blasphemy/Archmage 等 Meta 效果生效）。
+            const EFFICIENCY_STATS: [&str; 2] = [
+                "base_reservation_efficiency_+%",
+                "base_spirit_reservation_efficiency_+%",
+            ];
+            let alt_quality = if use_alt_quality {
+                data.alt_quality_stats(&gem.skill_id, gem.quality)
+            } else {
+                Vec::new()
+            };
             let quality_eff: f64 = es
                 .all()
-                .filter(|s| s.stat == "base_reservation_efficiency_+%")
+                .chain(alt_quality.iter())
+                .filter(|s| EFFICIENCY_STATS.contains(&s.stat.as_str()))
                 .map(|s| s.value)
                 .sum();
             let gem_cfg = pobr_core::CalcConfig::new()
@@ -726,36 +766,9 @@ pub(crate) fn spirit_reservation_modifiers(
                 }
                 continue;
             }
-            let mut reserved = (flat * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
+            let reserved = (flat * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
                 .round()
                 .max(0.0);
-            // Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy`
-            // 效果按**被包 curse 数**各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
-            // （constant stat = 60；vendor `supportEffect.isSupporting` 计数 ≙ 同组
-            // AppliesCurse 主动技能数）。口径 = **单份缩放后 round 再 ×instances**
-            // （:282-283 `blasphemyEffectiveFlat = round(...)；reservedFlat += ... ×
-            // instances`，essence-drain 60→55×3=165 ≠ round(180/1.1)=164）。被包
-            // curse 自身预留 0（levels 无 flat，vendor 同——无需额外排除）。
-            if has("IsBlasphemy") {
-                let per_curse: f64 = es
-                    .all()
-                    .filter(|s| s.stat == "blasphemy_base_spirit_reservation_per_socketed_curse")
-                    .map(|s| s.value)
-                    .sum();
-                let curse_count = group
-                    .gem_skills
-                    .iter()
-                    .filter(|g| {
-                        data.granted_effects.get(&g.skill_id).is_some_and(|e| {
-                            !e.is_support && e.skill_types.iter().any(|t| t == "AppliesCurse")
-                        })
-                    })
-                    .count();
-                reserved += (per_curse * mult * res_factor / (1.0 + efficiency / 100.0) / eff_more)
-                    .round()
-                    .max(0.0)
-                    * curse_count as f64;
-            }
             if reserved <= 0.0 {
                 continue;
             }

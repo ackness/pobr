@@ -180,6 +180,9 @@ mod tests {
         data.base_items.insert(
             "Firebolt".to_string(),
             BaseItemDef {
+                req_str: 0,
+                req_dex: 0,
+                req_int: 0,
                 id: GEM_ID.to_string(),
                 name: "Firebolt".to_string(),
                 item_class: "Skill Gem".to_string(),

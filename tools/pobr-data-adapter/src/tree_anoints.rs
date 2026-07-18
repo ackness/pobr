@@ -106,6 +106,7 @@ fn parse_missing_notables(
             connections: Vec::new(),
             ascendancy_id: None,
             variants: Vec::new(),
+            apply_to_armour: false,
         });
     }
     if out.is_empty() {

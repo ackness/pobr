@@ -103,6 +103,7 @@ fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
             // `is_some()` 判「属于飞升」，语义等价。
             ascendancy_id: string_field(node_block, "ascendancyName="),
             variants: Vec::new(),
+            apply_to_armour: false,
         });
     }
     if out.is_empty() {

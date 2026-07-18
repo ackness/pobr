@@ -175,21 +175,22 @@ fn dedupes_across_groups_and_skips_disabled() {
     assert_eq!(calc(&build, &data), 0.0, "禁用组不预留");
 }
 
-/// Blasphemy per-curse 预留（vendor CalcDefence.lua:273-284）：`IsBlasphemy` 效果按
+/// Blasphemy per-curse 预留（vendor CalcDefence.lua:229-239）：`IsBlasphemy` 效果按
 /// 同组 AppliesCurse 主动技能数各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
-/// （constant stat 60），口径 = 单份缩放 round 后 ×count。品质效率（:251，
-/// q20 Blasphemy = 20×0.5 = 10%）除在每份上：round(60/1.1) = 55。
+/// （constant stat 60）**先并入 baseFlat**，再统一缩放 round 一次（:236-238）。
+/// 品质效率（q20 Blasphemy = 20×0.5 = 10%）除在总量上：round(120/1.1) = 109
+/// （≠ 旧的单份 round(60/1.1)=55×2=110；essence-drain oracle 钉值同口径 164）。
 #[test]
 fn blasphemy_reserves_per_socketed_curse_with_quality_efficiency() {
     let data = repo_data();
-    // q20 Blasphemy + 2 条 curse → 55 × 2 = 110（curse 自身预留 0）。
+    // q20 Blasphemy + 2 条 curse → round(120/1.1) = 109（curse 自身预留 0）。
     let build = build_with_group(
         SocketGroup::new()
             .with_gem_skill_quality("BlasphemyPlayer", 19, 20)
             .with_gem_skill("TemporalChainsPlayer", 19)
             .with_gem_skill("EnfeeblePlayer", 19),
     );
-    assert_eq!(calc(&build, &data), 110.0);
+    assert_eq!(calc(&build, &data), 109.0);
 
     // q0 Blasphemy + 1 条 curse → 60（无效率缩放）。
     let build = build_with_group(

@@ -43,6 +43,9 @@ pub struct QualityRow {
     pub stat: String,
     /// 每 1 点品质的斜率（vendor 数据已 `/1000`，原样转录）。
     pub rate: f64,
+    /// vendor `altQualityStats` 条目（仅 GemlingQuality flag build 生效）。
+    #[serde(default)]
+    pub alt: bool,
 }
 
 /// 完整 overlay 文档（生成侧；消费侧 schema 见
@@ -73,6 +76,7 @@ pub fn assemble_quality_document(meta: OverlayMeta, rows: Vec<QualityRow>) -> St
         by_effect.entry(row.effect).or_default().push(QualityStat {
             stat: row.stat,
             per_quality_rate: row.rate,
+            alt: row.alt,
         });
     }
     let effects = by_effect

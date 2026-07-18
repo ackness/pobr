@@ -101,6 +101,12 @@ pub struct PassiveNodeDef {
     /// `#[serde(default)]` 兼容；非 switchable 节点恒为空。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub variants: Vec<PassiveNodeVariant>,
+    /// Smith of Kitava 身甲连接 notable 标记（vendor `tree.lua` `applyToArmour`，
+    /// 由 `pobr-data-adapter --tree-coords` 回填）：已分配数 →
+    /// `Multiplier:AllocatedConnectedNotable`（vendor CalcSetup.lua:840-841，
+    /// 消费方 = Masterwork『+200 to Armour for each Connected Notable …』）。
+    #[serde(default, skip_serializing_if = "core::ops::Not::not")]
+    pub apply_to_armour: bool,
 }
 
 /// 某个职业的飞升摘要。
