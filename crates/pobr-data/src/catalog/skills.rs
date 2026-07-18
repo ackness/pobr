@@ -388,6 +388,16 @@ pub struct QualityStat {
     /// stat 集——**截断取整**（toward zero），对齐 PoB2 `CalcTools.lua:142`
     /// `math.modf(stat[2] * skillInstance.quality)`。
     pub per_quality_rate: f64,
+    /// alt 品质 stat（vendor `altQualityStats`）：仅当 build 带 GemlingQuality
+    /// flag（Gemling 升华『Gem Quality grants Socketed Skills an additional
+    /// effect』）时叠加（PoB2 `CalcTools.lua:147-152` `includeAltQualityStats`）。
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub alt: bool,
+}
+
+/// serde 跳过 false 布尔（diff 友好；旧数据无 `alt` 键 = false）。
+fn is_false(v: &bool) -> bool {
+    !*v
 }
 
 /// 某授予效果的品质 stat 表（`overlay/gem_quality_stats.json` 的单条）。

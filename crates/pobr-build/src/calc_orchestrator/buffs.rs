@@ -559,6 +559,11 @@ pub(crate) fn spirit_reservation_modifiers(
         &pobr_core::CalcConfig::new(),
         pobr_data::prelude::ModName::from("AncestralBond"),
     );
+    // GemlingQuality（升华『Gem Quality grants Socketed Skills an additional
+    // effect』）：激活时宝石 altQualityStats 品质 stat 生效（CalcTools.lua:147-152），
+    // 预留效率经此获得（如 Mirage Archer alt `base_reservation_efficiency_+%` ×2、
+    // Eternal Rage alt `base_spirit_reservation_efficiency_+%` ×0.75）。
+    let use_alt_quality = super::skill_resolve::gemling_quality_flag(build, data);
     for group in build.enabled_socket_groups() {
         for gem in &group.gem_skills {
             let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
@@ -641,14 +646,29 @@ pub(crate) fn spirit_reservation_modifiers(
                 flat += per_curse * curse_count as f64;
             }
             // 预留效率（vendor :240-243/:251 `/(1 + efficiency/100)`，clamp ≥ −100）：
-            // - 宝石自身品质 stat `base_reservation_efficiency_+%`（q20 Blasphemy=10%）；
+            // - 宝石自身品质 stat `base_reservation_efficiency_+%` /
+            //   `base_spirit_reservation_efficiency_+%`（q20 Blasphemy=10%；后者是
+            //   Spirit 池限定形，statmap → SpiritReservationEfficiency，Spirit 预留
+            //   两名同入 `/(1+eff/100)`）；
+            // - GemlingQuality build 另叠 altQualityStats 同名 stat（Mirage Archer
+            //   ×2 / Eternal Rage ×0.75，oracle gemling 62/23 钉值）；
             // - 树/装备词条族（`Spirit`/裸 `ReservationEfficiency` INC，域限定经
             //   `ModTag::SkillTypes` 匹配——per-gem cfg 带该效果的类型位，vendor
             //   skillCfg Sum 同口径。「Meta Skills have N% increased Reservation
             //   Efficiency」（tree 42245/63236）对 Blasphemy/Archmage 等 Meta 效果生效）。
+            const EFFICIENCY_STATS: [&str; 2] = [
+                "base_reservation_efficiency_+%",
+                "base_spirit_reservation_efficiency_+%",
+            ];
+            let alt_quality = if use_alt_quality {
+                data.alt_quality_stats(&gem.skill_id, gem.quality)
+            } else {
+                Vec::new()
+            };
             let quality_eff: f64 = es
                 .all()
-                .filter(|s| s.stat == "base_reservation_efficiency_+%")
+                .chain(alt_quality.iter())
+                .filter(|s| EFFICIENCY_STATS.contains(&s.stat.as_str()))
                 .map(|s| s.value)
                 .sum();
             let gem_cfg = pobr_core::CalcConfig::new()

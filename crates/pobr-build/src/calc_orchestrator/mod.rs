@@ -2860,6 +2860,7 @@ mod tests {
             vec![QualityStat {
                 stat: "damage_+%".into(),
                 per_quality_rate: 0.55,
+                alt: false,
             }],
         );
         // 直接调取数点（不经 calculate_with_data）：手动安装 Data 通道上下文

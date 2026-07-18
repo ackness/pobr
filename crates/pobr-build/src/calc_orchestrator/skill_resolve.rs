@@ -502,6 +502,30 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
     out
 }
 
+/// build 是否带 GemlingQuality flag（vendor ModParser.lua:3353『Gem Quality
+/// grants Socketed Skills an additional effect』→ `env.useAltGemQualityStats`，
+/// CalcSetup.lua:835）——激活时全部宝石叠加 `altQualityStats` 品质 stat
+/// （CalcTools.lua:147-152）。扫描面 = 已分配树节点 + 油涂授予 notable
+/// （与 [`gem_property_bonuses`] 同源；vendor 该 flag 只查 nodesModsList）。
+pub(crate) fn gemling_quality_flag(build: &Build, data: &BuildData) -> bool {
+    const FLAG_TEXT: &str = "gem quality grants socketed skills an additional effect";
+    let matches = |stat: &str| {
+        clean_grant_text(stat)
+            .trim()
+            .eq_ignore_ascii_case(FLAG_TEXT)
+    };
+    for node_id in &build.tree.allocated_nodes {
+        if let Some(node) = data.passive_nodes.get(&node_id.0)
+            && node.stats.iter().any(|s| matches(s))
+        {
+            return true;
+        }
+    }
+    granted_passive_defs(build, data)
+        .iter()
+        .any(|def| def.stats.iter().any(|s| matches(s)))
+}
+
 /// 某 GemProperty 词条是否适用于指定授予效果的宝石（vendor `applyGemMods`
 /// keyword/keywordList 逐项 `gemIsType` + `gemRequirements` 检查，
 /// CalcSetup.lua:410-435）。
