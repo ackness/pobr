@@ -113,7 +113,15 @@ for name, base in pairs(itemBases) do
 				tagsJson = "[" .. table.concat(keys, ",") .. "]"
 			end
 		end
-		if blockChance or spirit or reloadMs or charmBuff or tagsJson then
+		-- 基底属性需求（vendor `req = { str/dex/int/level }`；level 不入库——
+		-- 消费方是装备需求快照 `<Attr>RequirementsOn<slot>`，只吃三属性）。
+		local reqStr, reqDex, reqInt = nil, nil, nil
+		if type(base.req) == "table" then
+			if type(base.req.str) == "number" and base.req.str > 0 then reqStr = base.req.str end
+			if type(base.req.dex) == "number" and base.req.dex > 0 then reqDex = base.req.dex end
+			if type(base.req.int) == "number" and base.req.int > 0 then reqInt = base.req.int end
+		end
+		if blockChance or spirit or reloadMs or charmBuff or tagsJson or reqStr or reqDex or reqInt then
 			local parts = { '"name":"' .. jsonEscape(name) .. '"' }
 			if blockChance then
 				parts[#parts + 1] = '"block_chance":' .. jsonNum(blockChance)
@@ -129,6 +137,15 @@ for name, base in pairs(itemBases) do
 			end
 			if tagsJson then
 				parts[#parts + 1] = '"tags":' .. tagsJson
+			end
+			if reqStr then
+				parts[#parts + 1] = '"req_str":' .. string.format("%d", reqStr)
+			end
+			if reqDex then
+				parts[#parts + 1] = '"req_dex":' .. string.format("%d", reqDex)
+			end
+			if reqInt then
+				parts[#parts + 1] = '"req_int":' .. string.format("%d", reqInt)
 			end
 			print("{" .. table.concat(parts, ",") .. "}")
 		end

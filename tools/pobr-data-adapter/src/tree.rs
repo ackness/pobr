@@ -152,6 +152,7 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
             // isSwitchable 变体由独立的 `--tree-variants <tree.lua>` 步骤回填
             // （GGG data.json 不携带 options 变体）。
             variants: Vec::new(),
+            apply_to_armour: false,
         });
     }
     nodes.sort_by_key(|n| n.skill);

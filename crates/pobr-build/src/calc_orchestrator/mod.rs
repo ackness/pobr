@@ -1590,6 +1590,55 @@ fn inject_per_x_multipliers(session: &mut CalculationSession, build: &Build, dat
     session.set_multiplier("StrengthMoteSkillCount", str_mote);
     session.set_multiplier("DexterityMoteSkillCount", dex_mote);
     session.set_multiplier("IntelligenceMoteSkillCount", int_mote);
+    // Smith of Kitava 身甲连接 notable 计数（vendor CalcSetup.lua:840-841：
+    // 已分配且 tree.lua `applyToArmour=true` 的 notable 数 →
+    // `Multiplier:AllocatedConnectedNotable`）。消费方 = Masterwork
+    // 『+200 to Armour for each Connected Notable Passive Skill Allocated』。
+    let connected_notables = build
+        .tree
+        .allocated_nodes
+        .iter()
+        .filter(|id| {
+            data.passive_nodes
+                .get(&id.0)
+                .is_some_and(|n| n.apply_to_armour)
+        })
+        .count();
+    if connected_notables > 0 {
+        session.set_multiplier("AllocatedConnectedNotable", connected_notables as f64);
+    }
+    // 装备属性需求快照（vendor CalcPerform.lua:1848-1857：
+    // `output[attr.."RequirementsOn"..slot] = floor(itemReq × reqMult)`）——
+    // 『Gain Armour equal to N% of total Strength Requirements of Equipped
+    // Boots, Gloves and Helmet』（PercentStat `StrRequirementsOn<slot>`）取数源。
+    // ponytail: reqMult（GlobalAttributeRequirements 词条族）恒按 1；出现带
+    // 「reduced attribute requirements」的相关 build 时再接乘子。
+    for (var, value) in per_slot_attribute_requirements(build, data) {
+        session.set_stat(var, value);
+    }
+}
+
+/// 每槽位装备的属性需求（`{Str,Dex,Int}RequirementsOn<slot>` → 值）。
+/// 槽位词根与 PercentStat tag 的 stat 名对齐（`StrRequirementsOnboots` 等，
+/// 小写槽名 = 引擎解析产物）；无需求/空槽不产出。
+fn per_slot_attribute_requirements(build: &Build, data: &BuildData) -> Vec<(String, f64)> {
+    let mut out = Vec::new();
+    for (slot, item) in build.equipped_items() {
+        let Some(def) = data.base_items.get(&item.base.to_string()) else {
+            continue;
+        };
+        let slot_key = slot.id();
+        for (attr, req) in [
+            ("Str", def.req_str),
+            ("Dex", def.req_dex),
+            ("Int", def.req_int),
+        ] {
+            if req > 0 {
+                out.push((format!("{attr}RequirementsOn{slot_key}"), f64::from(req)));
+            }
+        }
+    }
+    out
 }
 
 /// Attribute-Mote 计数（Gemling Virtuous Barrier）：base 3/3/3 + 每个启用非辅助
@@ -2053,6 +2102,7 @@ mod ring3_tests {
     fn ring_slot_data() -> BuildData {
         // 『+1 Ring Slot』词条节点（Ritualist『Unfurled Finger』形态）。
         let node = pobr_data::catalog::PassiveNodeDef {
+            apply_to_armour: false,
             skill: 34785,
             id: "ascendancy_ritualist_unfurled_finger".into(),
             name: Some("Unfurled Finger".into()),
@@ -2347,6 +2397,7 @@ mod tests {
     fn passive_node_contributes_attributed_life() {
         // 构造一个携带 +30 maximum Life 的普通节点，分配后应抬升生命。
         let node = pobr_data::catalog::PassiveNodeDef {
+            apply_to_armour: false,
             skill: 12345,
             id: "test_life_node".into(),
             name: Some("Life Node".into()),
@@ -2394,6 +2445,7 @@ mod tests {
         stats: Vec<String>,
     ) -> pobr_data::catalog::PassiveNodeDef {
         pobr_data::catalog::PassiveNodeDef {
+            apply_to_armour: false,
             skill,
             id: format!("n{skill}"),
             name: None,
@@ -3211,6 +3263,7 @@ mod tests {
     fn slot_bonus_effect_scales_covers_equipped_quiver() {
         use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
         let quiver_node = pobr_data::catalog::PassiveNodeDef {
+            apply_to_armour: false,
             skill: 30341,
             id: "bow_quiver_effect".into(),
             name: Some("Master Fletching".into()),
@@ -4391,6 +4444,9 @@ mod tests {
     /// 测试用武器基底（仅 item_class 参与持握/近战判定）。
     fn weapon_base_item(name: &str, item_class: &str) -> pobr_data::catalog::BaseItemDef {
         pobr_data::catalog::BaseItemDef {
+            req_str: 0,
+            req_dex: 0,
+            req_int: 0,
             id: format!("Test/{name}"),
             name: name.to_string(),
             item_class: item_class.to_string(),

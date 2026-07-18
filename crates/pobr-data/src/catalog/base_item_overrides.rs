@@ -40,6 +40,14 @@ pub struct BaseItemOverrideEntry {
     /// spawn weight 判定（tier 反查）需要全集。消费侧与 base tags **并集** merge。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
+    /// 基底属性需求（vendor `req = { str/dex/int }`；消费侧写入
+    /// [`super::BaseItemDef::req_str`] 等，装备需求快照的取数源）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub req_str: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub req_dex: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub req_int: Option<u32>,
 }
 
 /// `overlay/base_item_overrides.json` 顶层（消费侧视角：`_meta` 头部为生成溯源

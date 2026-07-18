@@ -51,6 +51,18 @@ pub struct BaseItemDef {
     /// 非 charm / 无 buff 为空。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub charm_buff: Vec<String>,
+    /// 基底属性需求（vendor `Data/Bases/*.lua` 的 `req = { str/dex/int }`；GGG
+    /// `.dat` 对应表 bundle 不可得，走 `overlay/base_item_overrides.json` 抽取
+    /// merge——与 [`Self::spirit`] 同款兜底）。消费方 = 装备需求快照
+    /// `<Attr>RequirementsOn<slot>`（vendor CalcPerform.lua:1848-1857，
+    /// Smith『Gain Armour equal to 150% of total Strength Requirements …』）。
+    /// 无需求为 0。
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub req_str: u32,
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub req_dex: u32,
+    #[serde(default, skip_serializing_if = "is_zero_u32")]
+    pub req_int: u32,
 }
 
 /// 武器基底数值（`WeaponTypes.dat` 外键解析；攻击技能伤害的基底，对照 PoB2

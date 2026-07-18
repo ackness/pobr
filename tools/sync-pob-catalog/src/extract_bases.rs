@@ -189,6 +189,9 @@ mod tests {
         };
         let entries = vec![
             BaseItemOverrideEntry {
+                req_str: None,
+                req_dex: None,
+                req_int: None,
                 name: "Omen Sceptre".to_string(),
                 block_chance: None,
                 spirit: Some(100),
@@ -197,6 +200,9 @@ mod tests {
                 tags: None,
             },
             BaseItemOverrideEntry {
+                req_str: None,
+                req_dex: None,
+                req_int: None,
                 name: "Crude Tower Shield".to_string(),
                 block_chance: Some(26.0),
                 spirit: None,
@@ -205,6 +211,9 @@ mod tests {
                 tags: None,
             },
             BaseItemOverrideEntry {
+                req_str: None,
+                req_dex: None,
+                req_int: None,
                 name: "Makeshift Crossbow".to_string(),
                 block_chance: None,
                 spirit: None,
@@ -213,6 +222,9 @@ mod tests {
                 tags: None,
             },
             BaseItemOverrideEntry {
+                req_str: None,
+                req_dex: None,
+                req_int: None,
                 name: "Ruby Charm".to_string(),
                 block_chance: None,
                 spirit: None,

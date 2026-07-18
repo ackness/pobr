@@ -102,6 +102,16 @@ pub fn apply_base_item_overrides(bases: &mut [BaseItemDef], overrides: &BaseItem
             merged.dedup();
             base.tags = merged;
         }
+        // 基底属性需求（vendor `req = { str/dex/int }`，装备需求快照取数源）。
+        if let Some(req) = entry.req_str {
+            base.req_str = req;
+        }
+        if let Some(req) = entry.req_dex {
+            base.req_dex = req;
+        }
+        if let Some(req) = entry.req_int {
+            base.req_int = req;
+        }
     }
 }
 
@@ -125,6 +135,9 @@ mod tests {
             armour,
             spirit: None,
             charm_buff: Vec::new(),
+            req_str: 0,
+            req_dex: 0,
+            req_int: 0,
         }
     }
 
@@ -149,6 +162,9 @@ mod tests {
         let overrides = BaseItemOverridesDef {
             overrides: vec![
                 BaseItemOverrideEntry {
+                    req_str: None,
+                    req_dex: None,
+                    req_int: None,
                     name: "Crude Tower Shield".to_string(),
                     block_chance: Some(26.0),
                     spirit: None,
@@ -157,6 +173,9 @@ mod tests {
                     tags: None,
                 },
                 BaseItemOverrideEntry {
+                    req_str: None,
+                    req_dex: None,
+                    req_int: None,
                     name: "Omen Sceptre".to_string(),
                     block_chance: None,
                     spirit: Some(100),
@@ -183,6 +202,9 @@ mod tests {
         let mut bases = vec![base("Phantom Buckler", None)];
         let overrides = BaseItemOverridesDef {
             overrides: vec![BaseItemOverrideEntry {
+                req_str: None,
+                req_dex: None,
+                req_int: None,
                 name: "Phantom Buckler".to_string(),
                 block_chance: Some(20.0),
                 spirit: None,
@@ -203,6 +225,9 @@ mod tests {
         let mut bases = vec![base("Crude Tower Shield", Some(armour_stats(18)))];
         let overrides = BaseItemOverridesDef {
             overrides: vec![BaseItemOverrideEntry {
+                req_str: None,
+                req_dex: None,
+                req_int: None,
                 name: "Removed Legacy Shield".to_string(),
                 block_chance: Some(30.0),
                 spirit: None,
@@ -233,6 +258,9 @@ mod tests {
         let overrides = BaseItemOverridesDef {
             overrides: vec![
                 BaseItemOverrideEntry {
+                    req_str: None,
+                    req_dex: None,
+                    req_int: None,
                     name: "Makeshift Crossbow".to_string(),
                     block_chance: None,
                     spirit: None,
@@ -241,6 +269,9 @@ mod tests {
                     tags: None,
                 },
                 BaseItemOverrideEntry {
+                    req_str: None,
+                    req_dex: None,
+                    req_int: None,
                     name: "Weaponless Oddity".to_string(),
                     block_chance: None,
                     spirit: None,
@@ -278,6 +309,9 @@ mod tests {
         let overrides = BaseItemOverridesDef {
             overrides: vec![
                 BaseItemOverrideEntry {
+                    req_str: None,
+                    req_dex: None,
+                    req_int: None,
                     name: "Ruby Charm".to_string(),
                     block_chance: None,
                     spirit: None,
@@ -286,6 +320,9 @@ mod tests {
                     tags: None,
                 },
                 BaseItemOverrideEntry {
+                    req_str: None,
+                    req_dex: None,
+                    req_int: None,
                     name: "Topaz Charm".to_string(),
                     block_chance: None,
                     spirit: None,
@@ -295,6 +332,9 @@ mod tests {
                 },
                 // charm_buff None → 不动（保持空），且校验非 charm 基底不受扰动。
                 BaseItemOverrideEntry {
+                    req_str: None,
+                    req_dex: None,
+                    req_int: None,
                     name: "Crude Tower Shield".to_string(),
                     block_chance: Some(26.0),
                     spirit: None,

@@ -432,6 +432,9 @@ fn run(args: Args) -> Result<String, String> {
         }
 
         bases.push(BaseItemDef {
+            req_str: 0,
+            req_dex: 0,
+            req_int: 0,
             id: raw.id,
             name: raw.name,
             item_class,

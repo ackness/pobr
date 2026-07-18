@@ -581,8 +581,9 @@ pub fn taken_hit_per_type(
         // 注意这是**取整**变体（Common.lua round=floor(x+0.5)；armourReductionF 才是
         // 小数变体，仅 takenHitFromDamage/:437 用）。golden PhysicalDamageReduction
         // 恒为整数即由此来。
-        let armour_dr = vendor_round(armour_reduction(mit.effective_applied_armour[i], damage) * 100.0)
-            .min(mit.dr_max_pct[i]);
+        let armour_dr =
+            vendor_round(armour_reduction(mit.effective_applied_armour[i], damage) * 100.0)
+                .min(mit.dr_max_pct[i]);
         // :2382 totalReduct = min(drMax, armourReduct + flatDR)。
         let total_dr = (armour_dr + mit.flat_dr_pct[i]).min(mit.dr_max_pct[i]);
         // :2383 reductMult = 1 − clamp(totalReduct − overwhelm, 0, drMax)/100。
