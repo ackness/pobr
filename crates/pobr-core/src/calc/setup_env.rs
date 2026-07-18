@@ -295,6 +295,21 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
     if tier.is_pinnacle_or_uber() {
         push_enemy_condition(db, "PinnacleBoss", "pinnacle_boss");
     }
+
+    // 敌人 actor 基础条件态词条（vendor CalcSetup.lua:73-77 initModDB——每个 actor
+    // 的 modDB 都带的 Intimidated 条件对：受伤 +10% INC / 输出 −10% INC）。条件 var
+    // 用 cfg 键空间的 `EnemyIntimidated`（config `conditionEnemyIntimidated` 与
+    // env_finalize 的敌侧 `Condition:Intimidated` flag 桥接同置此键）。
+    // ponytail: 仅落敌方消费的 Intimidated 对；Maimed/Unnerved/Debilitated 等同表
+    // 条件在 18-build 语料无来源，parity 点名时再逐条补。
+    for (name, value) in [("DamageTaken", 10.0), ("Damage", -10.0)] {
+        db.add_mod(
+            Modifier::number(ModName::from(name), ModType::Inc, value)
+                .with_source("enemy intimidated_base")
+                .with_origin(enemy_source("intimidated_base"))
+                .with_tag(ModTag::condition("EnemyIntimidated", false)),
+        );
+    }
 }
 
 /// EHP 进伤 placeholder 注入（M2 F-1）：把 vendor ConfigOptions.lua:1982-1996 的

@@ -863,6 +863,14 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
     if main_hand_offhand_is_shield(build, data) {
         cfg = cfg.with_condition("UsingShield", true);
     }
+    // 敌人在 Presence 内（vendor CalcPerform.lua:524 `condList["EnemyInPresence"]
+    // = PresenceRadius >= enemyDistance`）：默认 Presence 半径（数米级）恒大于默认
+    // 敌人距离 → 默认真，使「Enemies in your Presence ...」族敌侧词条生效。
+    // ponytail: pobr 未建模 PresenceRadius/enemyDistance 数值比较，恒置真；用户
+    // 拉远 enemyDistance 的口径差留 parity 点名再接。
+    if !cfg.conditions.contains_key("EnemyInPresence") {
+        cfg = cfg.with_condition("EnemyInPresence", true);
+    }
     // 伙伴在场条件（vendor ConfigOptions.lua:1012-1014 `companionInPresence`
     // defaultState=true，ifSkillType=CreatesCompanion 门控）：已启用技能含
     // `CreatesCompanion` 时默认置真，使「while your Companion is in your
