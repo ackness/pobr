@@ -1085,7 +1085,7 @@ fn damaging_ailment_for_pass(
         ctx.speed,
     );
     let sp = stack_potential(&stack);
-    if std::env::var("POBR_DBG_AILMENT").is_ok() {
+    if dbg_env!("POBR_DBG_AILMENT").is_some() {
         eprintln!(
             "[POBR_AILMENT] {name}: hit50={hit50:.2} crit50={crit50:.2} probe_chance={:.4} duration={:.4} speed={:.4} hit_chance={:.4} active={:.4} max={} sp={sp:.4}",
             probe_out.chance,
@@ -1102,7 +1102,7 @@ fn damaging_ailment_for_pass(
     let (hit_rolled, crit_rolled) = stored_source_at_roll(kind, &ctx.ranges, player, cfg, roll);
     let source = make_source(hit_rolled, crit_rolled, ailment_crit);
     let (out, _) = run(&source, trace);
-    if std::env::var("POBR_DBG_AILMENT").is_ok() {
+    if dbg_env!("POBR_DBG_AILMENT").is_some() {
         eprintln!(
             "[POBR_AILMENT] {name}: roll={roll:.2} hit_rolled={hit_rolled:.2} crit_rolled={crit_rolled:.2} ailment_crit={ailment_crit:.4} chance={:.4} eff_mult={:.4} magnitude_dps={:.4} duration={:.4}",
             out.chance, out.eff_mult, out.magnitude_dps, out.duration_secs,

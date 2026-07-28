@@ -429,7 +429,7 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
 ) -> Option<ResolvedSkillLevel> {
     let bonus = additional_gem_levels(build, data, skill_id)
         .saturating_add(support_granted_gem_levels(build, data, skill_id));
-    if std::env::var("POBR_DBG_GEMLVL").is_ok() {
+    if pobr_core::dbg_env!("POBR_DBG_GEMLVL").is_some() {
         eprintln!("[POBR_GEMLVL] {skill_id} base={base_level} bonus={bonus}");
     }
     data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)

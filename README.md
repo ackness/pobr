@@ -80,7 +80,7 @@ zero-I/O. Dependencies only point downward, with `pobr-data` at the bottom.
 
 ## Workspace layout
 
-15 members — `crates/` are libraries, `apps/` are executables, `tools/` are
+14 members — `crates/` are libraries, `apps/` are executables, `tools/` are
 data/maintenance tooling:
 
 | Crate | Responsibility |
@@ -92,7 +92,6 @@ data/maintenance tooling:
 | `crates/pobr-tree` | Passive tree topology, allocated-node mod collection, radius jewels |
 | `crates/pobr-build` | Build state, PoB build code encode/decode, import recognition, `CalcOrchestrator` (cached), build comparison. **Home of the parity tests** |
 | `crates/pobr-item` | Full-fidelity edit-mode parsing of raw item text + reverse serialization (BuildRaw round-trip) |
-| `crates/pobr-trade` | Trade query / pricing abstraction (`TradeBackend` trait + offline `MockBackend`) |
 | `apps/pobr-cli` | CLI: `calculate` / `parse-mod` / `decode-code` / `encode-code` |
 | `apps/pobr-wasm` | Web/WASM API: pure-Rust JSON in/out; wasm-bindgen bindings behind the `wasm` feature |
 | `apps/pobr-desktop` | Minimal desktop entry-point skeleton |

@@ -187,7 +187,7 @@ pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>, ctx: ParseCtx<'_>)
             }
             None => {
                 // 诊断口径与 filter_parseable 一致（结构性丢弃可见性）。
-                if std::env::var("POBR_DBG_DROPPED").is_ok() {
+                if pobr_core::dbg_env!("POBR_DBG_DROPPED").is_some() {
                     eprintln!("[POBR_DROP] {}", texts[i]);
                 }
                 i += 1;
@@ -524,7 +524,7 @@ pub(crate) fn radius_jewel_notable_effect_copies(
 /// engine 未注入（旧数据包）时无解析器：一切按 Unsupported → 全部丢弃。
 pub(crate) fn gate_parses(ctx: ParseCtx<'_>, t: &str) -> bool {
     // 诊断：POBR_GATE_DENY=子串1,子串2 强制丢弃匹配行（parity 二分定位用）。
-    if let Ok(deny) = std::env::var("POBR_GATE_DENY")
+    if let Some(deny) = pobr_core::dbg_env!("POBR_GATE_DENY")
         && deny.split(',').any(|p| !p.is_empty() && t.contains(p))
     {
         return false;
@@ -533,7 +533,7 @@ pub(crate) fn gate_parses(ctx: ParseCtx<'_>, t: &str) -> bool {
         matches!(o.status, pobr_core::mod_parser::ParseStatus::Parsed) && o.unparsed.is_none()
     });
     // 诊断：POBR_DBG_GATE=1 时 dump 被闸门丢弃的行。
-    if !pass && std::env::var("POBR_DBG_GATE").is_ok() {
+    if !pass && pobr_core::dbg_env!("POBR_DBG_GATE").is_some() {
         eprintln!("[GATE_DROP] {t}");
     }
     pass
@@ -550,7 +550,7 @@ pub(crate) fn filter_parseable(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<Str
         .filter(|text| {
             let ok = gate_parses(ctx, text);
             // 诊断：POBR_DBG_DROPPED=1 时 dump 被结构性丢弃的词条（parity 排查用）。
-            if !ok && std::env::var("POBR_DBG_DROPPED").is_ok() {
+            if !ok && pobr_core::dbg_env!("POBR_DBG_DROPPED").is_some() {
                 eprintln!("[POBR_DROP] {text}");
             }
             ok

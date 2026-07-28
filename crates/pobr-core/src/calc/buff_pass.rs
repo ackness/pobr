@@ -400,7 +400,7 @@ pub fn buff_pass(env: &mut Env) {
                     more *= env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self);
                 }
                 let mult = (1.0 + inc / 100.0) * more;
-                if std::env::var("POBR_DBG_CURSE").is_ok() {
+                if dbg_env!("POBR_DBG_CURSE").is_some() {
                     eprintln!(
                         "[POBR_CURSE] entry name={} inc={inc:.2} (local_inc={:.2}) more={more:.4} (local_more={:.4} magnitude={:.4}) mult={mult:.4} mods={:?}",
                         spec.name,
@@ -574,7 +574,7 @@ pub fn buff_pass(env: &mut Env) {
     env.cfg
         .multipliers
         .insert("CurseOnEnemy".to_string(), occupied.len() as f64);
-    if std::env::var("POBR_DBG_CURSE").is_ok() {
+    if dbg_env!("POBR_DBG_CURSE").is_some() {
         eprintln!(
             "[POBR_CURSE] occupied={} limit={curse_limit} names={:?}",
             occupied.len(),

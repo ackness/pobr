@@ -797,7 +797,16 @@ impl ModDb {
         (value, override_node)
     }
 
-    /// 遍历库内全部 modifier（不分 name 桶，顺序为桶内插入序）。供 bench / 诊断用。
+    /// 遍历库内全部 modifier（不分 name 桶）。
+    ///
+    /// **顺序保证仅限桶内**：同一 [`ModName`] 的 modifier 按插入序连续排列；**桶间
+    /// 顺序不保证**——`mods` 是 `HashMap`，其 `RandomState` 每进程重新播种，故跨
+    /// name 的相对顺序逐次运行都可能不同。
+    ///
+    /// 调用方若跨多个 name 收集，结果只能喂给**序无关**的消费（`max` / 求和 /
+    /// `any` / 收进 `HashSet`）；需要稳定顺序时请按单一 name 过滤（等价只碰一个
+    /// 桶），或改用 [`Self::filtered`]。反例：把跨桶结果按序写回另一个 ModDb，会让
+    /// `override_`（后写覆盖）与 [`Self::list`] 的输出随进程漂移。
     pub fn iter_mods(&self) -> impl Iterator<Item = &Modifier> {
         self.mods.values().flat_map(|mods| mods.iter())
     }

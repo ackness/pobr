@@ -490,15 +490,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pobr-trade"
-version = "0.0.3"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "pobr-tree"
 version = "0.0.3"
 dependencies = [
