@@ -9,6 +9,19 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
+/// `write!` / `writeln!` 到 `String` 的省噪包装。
+///
+/// sink 恒为 `String`，而 `impl fmt::Write for String` 的 `Err` 分支不可达
+/// （`push_str` 不会失败），所以这里的 `Result` 没有可处理的失败态。用宏就地吞
+/// 掉，免去正文四十来处 `.unwrap()` —— 那些 unwrap 不会 panic，但会让「wasm 里
+/// 有 N 个 unwrap」这个指标每次审计都要重新排查一遍。
+macro_rules! w {
+    ($w:expr, $($arg:tt)*) => { let _ = write!($w, $($arg)*); };
+}
+macro_rules! wln {
+    ($w:expr, $($arg:tt)*) => { let _ = writeln!($w, $($arg)*); };
+}
+
 /// 待写出的技能组（已做 gem_id 反查）。
 pub(crate) struct XmlSkillGroup {
     pub slot: Option<String>,
@@ -63,29 +76,27 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     let mut xml = String::new();
     let w = &mut xml;
 
-    writeln!(w, r#"<?xml version="1.0" encoding="UTF-8"?>"#).unwrap();
-    writeln!(w, "<PathOfBuilding2>").unwrap();
+    wln!(w, r#"<?xml version="1.0" encoding="UTF-8"?>"#);
+    wln!(w, "<PathOfBuilding2>");
 
     // Build 头部（mainSocketGroup 1-based）。
-    write!(
+    w!(
         w,
         r#"  <Build level="{}" className="{}" targetVersion="0_1""#,
         input.level,
         esc_attr(input.class_name),
-    )
-    .unwrap();
+    );
     if !input.ascendancy_name.is_empty() {
-        write!(
+        w!(
             w,
             r#" ascendClassName="{}""#,
             esc_attr(input.ascendancy_name)
-        )
-        .unwrap();
+        );
     }
     if let Some(main) = input.main_socket_group {
-        write!(w, r#" mainSocketGroup="{}""#, main + 1).unwrap();
+        w!(w, r#" mainSocketGroup="{}""#, main + 1);
     }
-    writeln!(w, "/>").unwrap();
+    wln!(w, "/>");
 
     // 物品：装备 + 药剂/护符 + 树珠宝统一编 id（1-based，文档序）。
     let mut item_blocks: Vec<&str> = Vec::new();
@@ -117,14 +128,13 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     }
 
     // Tree（单 Spec；AttributeOverride 与 Sockets 内嵌）。
-    writeln!(w, r#"  <Tree activeSpec="1">"#).unwrap();
-    writeln!(
+    wln!(w, r#"  <Tree activeSpec="1">"#);
+    wln!(
         w,
         r#"    <Spec treeVersion="{}" nodes="{}">"#,
         esc_attr(input.tree_version),
         csv(input.allocated_nodes.iter().copied()),
-    )
-    .unwrap();
+    );
     if !input.attribute_choices.is_empty() {
         let pick = |want: &str| {
             csv(input
@@ -133,70 +143,68 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
                 .filter(|(_, c)| c.as_str() == want)
                 .map(|(&n, _)| n))
         };
-        writeln!(
+        wln!(
             w,
             r#"      <AttributeOverride strNodes="{}" dexNodes="{}" intNodes="{}"/>"#,
             pick("str"),
             pick("dex"),
             pick("int"),
-        )
-        .unwrap();
+        );
     }
     if !socket_lines.is_empty() {
-        writeln!(w, "      <Sockets>").unwrap();
+        wln!(w, "      <Sockets>");
         for line in &socket_lines {
-            writeln!(w, "{line}").unwrap();
+            wln!(w, "{line}");
         }
-        writeln!(w, "      </Sockets>").unwrap();
+        wln!(w, "      </Sockets>");
     }
-    writeln!(w, "    </Spec>").unwrap();
-    writeln!(w, "  </Tree>").unwrap();
+    wln!(w, "    </Spec>");
+    wln!(w, "  </Tree>");
 
     // Skills。
-    writeln!(w, r#"  <Skills activeSkillSet="1">"#).unwrap();
-    writeln!(w, r#"    <SkillSet id="1">"#).unwrap();
+    wln!(w, r#"  <Skills activeSkillSet="1">"#);
+    wln!(w, r#"    <SkillSet id="1">"#);
     for group in &input.socket_groups {
-        write!(w, r#"      <Skill enabled="{}""#, group.enabled).unwrap();
+        w!(w, r#"      <Skill enabled="{}""#, group.enabled);
         if let Some(slot) = &group.slot {
-            write!(w, r#" slot="{}""#, esc_attr(slot)).unwrap();
+            w!(w, r#" slot="{}""#, esc_attr(slot));
         }
         if let Some(source) = &group.source {
-            write!(w, r#" source="{}""#, esc_attr(source)).unwrap();
+            w!(w, r#" source="{}""#, esc_attr(source));
         }
-        writeln!(w, ">").unwrap();
+        wln!(w, ">");
         for (gem_id, skill_id, level, quality) in &group.gems {
-            write!(w, r#"        <Gem skillId="{}""#, esc_attr(skill_id)).unwrap();
+            w!(w, r#"        <Gem skillId="{}""#, esc_attr(skill_id));
             if !gem_id.is_empty() {
-                write!(w, r#" gemId="{}""#, esc_attr(gem_id)).unwrap();
+                w!(w, r#" gemId="{}""#, esc_attr(gem_id));
             }
-            writeln!(
+            wln!(
                 w,
                 r#" level="{level}" quality="{quality}" enabled="true"/>"#
-            )
-            .unwrap();
+            );
         }
-        writeln!(w, "      </Skill>").unwrap();
+        wln!(w, "      </Skill>");
     }
-    writeln!(w, "    </SkillSet>").unwrap();
-    writeln!(w, "  </Skills>").unwrap();
+    wln!(w, "    </SkillSet>");
+    wln!(w, "  </Skills>");
 
     // Items（文本块 + 激活 ItemSet 槽位映射）。
-    writeln!(w, r#"  <Items activeItemSet="1">"#).unwrap();
+    wln!(w, r#"  <Items activeItemSet="1">"#);
     for (idx, text) in item_blocks.iter().enumerate() {
-        writeln!(w, r#"    <Item id="{}">"#, idx + 1).unwrap();
-        writeln!(w, "{}", esc_text(text.trim_end())).unwrap();
-        writeln!(w, "    </Item>").unwrap();
+        wln!(w, r#"    <Item id="{}">"#, idx + 1);
+        wln!(w, "{}", esc_text(text.trim_end()));
+        wln!(w, "    </Item>");
     }
-    writeln!(w, r#"    <ItemSet id="1" useSecondWeaponSet="false">"#).unwrap();
+    wln!(w, r#"    <ItemSet id="1" useSecondWeaponSet="false">"#);
     for line in &slot_lines {
-        writeln!(w, "{line}").unwrap();
+        wln!(w, "{line}");
     }
-    writeln!(w, "    </ItemSet>").unwrap();
-    writeln!(w, "  </Items>").unwrap();
+    wln!(w, "    </ItemSet>");
+    wln!(w, "  </Items>");
 
     // Config。
     if !input.config_inputs.is_empty() {
-        writeln!(w, "  <Config>").unwrap();
+        wln!(w, "  <Config>");
         for (name, value) in input.config_inputs {
             let attr = match value {
                 serde_json::Value::Bool(b) => format!(r#"boolean="{b}""#),
@@ -206,18 +214,18 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
                     esc_attr(other.as_str().unwrap_or_default())
                 ),
             };
-            writeln!(w, r#"    <Input name="{}" {attr}/>"#, esc_attr(name)).unwrap();
+            wln!(w, r#"    <Input name="{}" {attr}/>"#, esc_attr(name));
         }
-        writeln!(w, "  </Config>").unwrap();
+        wln!(w, "  </Config>");
     }
 
     // Notes。
     if let Some(notes) = input.notes
         && !notes.is_empty()
     {
-        writeln!(w, "  <Notes>{}</Notes>", esc_text(notes)).unwrap();
+        wln!(w, "  <Notes>{}</Notes>", esc_text(notes));
     }
 
-    writeln!(w, "</PathOfBuilding2>").unwrap();
+    wln!(w, "</PathOfBuilding2>");
     xml
 }
