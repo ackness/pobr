@@ -294,7 +294,7 @@ pub(crate) fn calculate_components(
 
     // 第三步：跑转换链，产出带 type_path 的「转换后基础分量」。
     let converted = apply_conversion_chain(&base, &rules);
-    if std::env::var("POBR_DBG_BASES").is_ok() {
+    if dbg_env!("POBR_DBG_BASES").is_some() {
         for (t, mn, mx) in &base {
             eprintln!("[POBR_BASE] {t:?} {mn:.2}/{mx:.2}");
         }
@@ -344,7 +344,7 @@ fn scale_components_no_conversion(
 fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> DamageComponent {
     let (inc, more) = aggregate_inc_more(db, cfg, comp.damage_type);
     let scale = (1.0 + inc / 100.0) * more;
-    if std::env::var("POBR_DBG_BASES").is_ok() {
+    if dbg_env!("POBR_DBG_BASES").is_some() {
         eprintln!(
             "[POBR_POOL] {:?} inc={inc:.2} more={more:.4} scale={scale:.4}",
             comp.damage_type
@@ -397,7 +397,7 @@ pub(crate) fn aggregate_inc_more(
     // 通用桶只算一次（不限定伤害类型）。
     let mut inc = db.sum(ModType::Inc, cfg, &generic_names);
     let mut more = db.more(cfg, &generic_names);
-    if std::env::var("POBR_DBG_BASES").is_ok() && final_type == DamageType::Physical {
+    if dbg_env!("POBR_DBG_BASES").is_some() && final_type == DamageType::Physical {
         eprintln!("[POBR_POOL_NAMES] {generic_names:?}");
         for c in db.contributions(ModType::Inc, cfg, &generic_names) {
             eprintln!(

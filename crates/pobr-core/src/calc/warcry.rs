@@ -252,7 +252,7 @@ pub fn apply_warcry_uptime(env: &mut Env) {
         None => super::offence::resolve_action_rate(&env.player.mod_db, &env.cfg, &input),
     };
 
-    let dbg = std::env::var("POBR_DBG_WARCRY").is_ok();
+    let dbg = dbg_env!("POBR_DBG_WARCRY").is_some();
     let mut gain_mods: Vec<Modifier> = Vec::new();
     for spec in &env.warcry_skills {
         // per-skill scope cfg（vendor skillCfg）：warcry 自身类型位；flags/keyword

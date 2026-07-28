@@ -836,7 +836,7 @@ pub(crate) fn warcry_skill_specs(
             let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
             let stats: Vec<pobr_data::catalog::SkillDamageStat> = es.all().cloned().collect();
-            if std::env::var("POBR_DBG_WARCRY").is_ok() {
+            if pobr_core::dbg_env!("POBR_DBG_WARCRY").is_some() {
                 eprintln!(
                     "[POBR_DBG_WARCRY] specs {} level={level} q={} set_key={set_key:?} stats={:?}",
                     gem.skill_id,

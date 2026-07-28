@@ -414,11 +414,7 @@ pub fn calc_defence_resources(
         total += kept_total[s] + total_received[s];
         *value = round(total);
         // 诊断（POBR_DBG_DEFRES=<idx>）：dump 某 defence 资源逐分量（armour=0）。
-        if std::env::var("POBR_DBG_DEFRES")
-            .ok()
-            .and_then(|v| v.parse::<usize>().ok())
-            == Some(s)
-        {
+        if dbg_env!("POBR_DBG_DEFRES").and_then(|v| v.parse::<usize>().ok()) == Some(s) {
             let raw_base_ct = db
                 .iter_mods()
                 .filter(|m| {

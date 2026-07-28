@@ -22,6 +22,11 @@
 //! `SourceId`），显示文本走 `pobr-i18n`；calc 函数对 `Env` 的可变写入集中在
 //! `perform`，并行化只在只读快照阶段展开（不可变 / 确定性）。
 
+// 诊断环境变量快照宏。`#[macro_use]` 须在其余 mod 声明之前，供本 crate 各层直接
+// 用 `dbg_env!`；`#[macro_export]` 使 pobr-build 亦可复用（见 dbg_env.rs 模块文档）。
+#[macro_use]
+mod dbg_env;
+
 // ── 词条分层（目录即叙事）──
 pub mod aggregate;
 pub mod attribute;

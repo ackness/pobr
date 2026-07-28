@@ -917,7 +917,7 @@ fn stage_weapon_bases(ctx: &mut StageCtx<'_>) {
         && let Some(use_time) = skill.use_time_s
         && use_time > 0.0
     {
-        if std::env::var("POBR_DBG_SPEED").is_ok() {
+        if pobr_core::dbg_env!("POBR_DBG_SPEED").is_some() {
             eprintln!("[POBR_DBG_SPEED] main skill_id={skill_id} use_time={use_time}");
         }
         ctx.base_input.base_action_rate = 1.0 / use_time;
@@ -1312,14 +1312,14 @@ fn stage_inject_extra_texts(
 /// 诊断 dump（环境变量门控，parity 排查用；只读不改 session）。
 fn stage_debug_dumps(session: &CalculationSession) {
     // 诊断：POBR_DBG_UNSUPPORTED=1 时 dump 全部未解析词条文本（parity 排查用）。
-    if std::env::var("POBR_DBG_UNSUPPORTED").is_ok() {
+    if pobr_core::dbg_env!("POBR_DBG_UNSUPPORTED").is_some() {
         for t in session.unsupported_modifier_texts() {
             eprintln!("[POBR_UNSUP] {t}");
         }
     }
     // 诊断：POBR_DBG_ALLMODS=1 时 dump 玩家 ModDb 全部 modifier（engine vs legacy ingest
     // 逐 mod 全集 diff 用；M6 fork(a) 定位 ingest 分歧）。排序前缀 name 便于 sort+diff。
-    if std::env::var("POBR_DBG_ALLMODS").is_ok() {
+    if pobr_core::dbg_env!("POBR_DBG_ALLMODS").is_some() {
         for m in session.all_mods() {
             eprintln!(
                 "[POBR_ALLMOD] {:?} {:?} {:?} flags={:?} kw={:?} tags={:?}",
@@ -1328,8 +1328,8 @@ fn stage_debug_dumps(session: &CalculationSession) {
         }
     }
     // 诊断：POBR_DBG_STAT=<ModName> 时逐来源 dump 该属性的全部 modifier（parity 排查用）。
-    if let Ok(stat) = std::env::var("POBR_DBG_STAT") {
-        for m in session.mods_named(&stat) {
+    if let Some(stat) = pobr_core::dbg_env!("POBR_DBG_STAT") {
+        for m in session.mods_named(stat) {
             eprintln!(
                 "[POBR_DBG] {stat} {:?} {:?} tags={:?} src={:?} origin={:?}",
                 m.mod_type,
