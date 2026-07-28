@@ -233,7 +233,7 @@ pub fn duplicate_set(xml: &str, kind: SetKind, index: usize, title: &str) -> Opt
     let at = last?.end;
     let mut out = xml.to_string();
     out.insert_str(at, &format!("\n{copy}"));
-    Some(out)
+    Some(normalize_ids(&out, kind))
 }
 
 /// 改第 `index` 套的 `title`（缺该属性则插入）。返回 `None` 表示该套不存在。
@@ -253,7 +253,43 @@ pub fn remove_set(xml: &str, kind: SetKind, index: usize) -> Option<String> {
     let r = nth_element(xml, tag, index)?;
     let mut out = xml.to_string();
     out.replace_range(r, "");
-    Some(out)
+    Some(normalize_ids(&out, kind))
+}
+
+/// 把该类元素的 `id` 属性重排为文档序（1..n）。
+///
+/// **必须做**：`<SkillSet>` / `<ItemSet>` 的选中是按 `id` **属性**匹配的
+/// （`xml_build::parse_socket_groups`），而 loadout 清单按**文档序**编号。复制不改 id
+/// 会产生两个 `id="1"`，切到第二组时按 `id="2"` 查无此集，技能/装备直接空掉；删除则
+/// 会留下空洞，让其后各套的两种编号错位。重排后两种口径恒等。
+///
+/// `<Spec>` 没有 id 属性（本就按文档序选），原样返回。
+fn normalize_ids(xml: &str, kind: SetKind) -> String {
+    if kind == SetKind::Tree {
+        return xml.to_string();
+    }
+    let tag = kind.tag();
+    let mut out = xml.to_string();
+    let mut n = 1;
+    while let Some(r) = nth_element(&out, tag, n) {
+        let el = &out[r.clone()];
+        let end = el.find('>').unwrap_or(el.len());
+        let open = &el[..end];
+        let new_open = match open.find("id=\"") {
+            Some(at) => {
+                let vs = at + "id=\"".len();
+                match open[vs..].find('"') {
+                    Some(ve) => format!("{}{n}{}", &open[..vs], &open[vs + ve..]),
+                    None => open.to_string(),
+                }
+            }
+            None => format!("<{tag} id=\"{n}\"{}", &open[1 + tag.len()..]),
+        };
+        let replaced = format!("{new_open}{}", &el[end..]);
+        out.replace_range(r, &replaced);
+        n += 1;
+    }
+    out
 }
 
 /// 在元素的开始标签上设置 `title`（已有则替换）。
@@ -379,6 +415,44 @@ mod tests {
             out.rfind("C {c}") > out.rfind(r#"title="B""#),
             "副本应在末尾"
         );
+    }
+
+    /// 回归钉子：SkillSet/ItemSet 的选中按 `id` **属性**匹配，复制不重排 id 会让
+    /// 第二组按 `id="2"` 查无此集 → 技能/装备整个空掉（实测表现为 DPS 归零）。
+    #[test]
+    fn duplicating_renumbers_ids_so_the_copy_is_selectable() {
+        let xml =
+            r#"<Skills activeSkillSet="1"><SkillSet id="1" title="A"><Skill/></SkillSet></Skills>"#;
+
+        let out = duplicate_set(xml, SetKind::Skill, 1, "B").expect("dup");
+
+        assert!(out.contains(r#"<SkillSet id="1" title="A""#), "{out}");
+        assert!(
+            out.contains(r#"<SkillSet id="2" title="B""#),
+            "副本必须拿到新 id：{out}"
+        );
+    }
+
+    #[test]
+    fn removing_closes_the_id_gap() {
+        // 删掉中间一套后，其后各套的 id 必须补位，否则文档序与 id 永久错位。
+        let xml = r#"<Items><ItemSet id="1" title="A"/><ItemSet id="2" title="B"/><ItemSet id="3" title="C"/></Items>"#;
+
+        let out = remove_set(xml, SetKind::Item, 2).expect("remove");
+
+        assert!(out.contains(r#"<ItemSet id="1" title="A"/>"#), "{out}");
+        assert!(
+            out.contains(r#"<ItemSet id="2" title="C"/>"#),
+            "C 应补位到 id=2：{out}"
+        );
+        assert!(!out.contains(r#"id="3""#));
+    }
+
+    #[test]
+    fn tree_specs_keep_no_id_attribute() {
+        // `<Spec>` 本就按文档序选中，不该被塞 id。
+        let out = duplicate_set(TWO_SPECS, SetKind::Tree, 1, "C").expect("dup");
+        assert!(!out.contains("<Spec id="), "{out}");
     }
 
     #[test]

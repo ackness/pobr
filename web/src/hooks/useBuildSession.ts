@@ -102,6 +102,8 @@ export interface BuildSession {
   loadouts: LoadoutJson[];
   /** 当前选中的 loadout 下标。 */
   activeLoadout: number | null;
+  /** 复制 / 重命名 / 删除当前 loadout（同名写进三类 set；随后整份重载）。 */
+  manageLoadout: (op: 'duplicate' | 'rename' | 'remove', name?: string) => Promise<void>;
   newBuild: (className: string, ascendancyName: string) => void;
   setCharacter: (patch: Partial<CharacterState>) => void;
   /** 点选加点/取消；属性小点加点时带三选一。 */
@@ -580,6 +582,42 @@ export function useBuildSession(): BuildSession {
     [apply, setNotes, state?.pobCode],
   );
 
+  /**
+   * 组管理：复制 / 重命名 / 删除当前 loadout，然后按新 code 重新载入。
+   *
+   * `name` 会同时写进天赋树 / 装备 / 技能三类 set 的 title——**同名即成组**，所以
+   * 用户只需要起个阶段名（"1-30级"、"mapping"），不必知道 `{tag}` 绑定语法。
+   *
+   * 与切换同样是整份重载，因此同样会丢弃未保存编辑；调用方负责先确认。
+   * 无 `pobCode`（手搓 build）时无从操作，直接忽略。
+   */
+  const manageLoadout = useCallback(
+    async (op: 'duplicate' | 'rename' | 'remove', name?: string) => {
+      const code = stateRef.current?.pobCode;
+      if (!code) return;
+      setBusy(true);
+      setError(null);
+      try {
+        const backend = await getBackend();
+        // 目标 = 当前选中组（后端缺省即 active，这里显式传以免竞态）。
+        const current = build?.loadouts?.[build?.active_loadout ?? 0];
+        const nextCode = await backend.manageLoadout(
+          code,
+          op,
+          name,
+          current
+            ? { tree: current.tree, item: current.item, skill: current.skill }
+            : undefined,
+        );
+        await importCode(nextCode);
+      } catch (err) {
+        setError(formatApiError(err));
+        setBusy(false);
+      }
+    },
+    [importCode, build],
+  );
+
   const newBuild = useCallback(
     (className: string, ascendancyName: string) => {
       setBuild(null);
@@ -904,6 +942,7 @@ export function useBuildSession(): BuildSession {
     importSession,
     importCode,
     switchLoadout,
+    manageLoadout,
     loadouts: build?.loadouts ?? [],
     activeLoadout: build?.active_loadout ?? null,
     newBuild,

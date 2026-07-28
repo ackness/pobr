@@ -26,6 +26,19 @@ const DICT = {
 
   // 页签
   'loadout.switch': { 'en-US': 'Loadout', 'zh-TW': '配置組', 'zh-CN': '配置组' },
+  'loadout.new': { 'en-US': '+ New stage…', 'zh-TW': '＋ 新增階段…', 'zh-CN': '＋ 新增阶段…' },
+  'loadout.rename': { 'en-US': 'Rename…', 'zh-TW': '重新命名…', 'zh-CN': '重命名…' },
+  'loadout.remove': { 'en-US': 'Delete this stage', 'zh-TW': '刪除此階段', 'zh-CN': '删除此阶段' },
+  'loadout.namePrompt': {
+    'en-US': 'Stage name (e.g. "1-30", "mapping"). Tree, gear and skills are grouped by this name.',
+    'zh-TW': '階段名稱（如「1-30 級」「mapping」）。天賦、裝備、技能以同名成組。',
+    'zh-CN': '阶段名称（如「1-30 级」「mapping」）。天赋、装备、技能以同名成组。',
+  },
+  'loadout.confirmRemove': {
+    'en-US': 'Delete this stage? Its tree, gear and skill set are removed from the build.',
+    'zh-TW': '刪除此階段？其天賦、裝備與技能組會一併從 build 移除。',
+    'zh-CN': '删除此阶段？其天赋、装备与技能组会一并从 build 移除。',
+  },
   'loadout.confirmDiscard': {
     'en-US': 'Switching reloads this build from its code and discards your unsaved edits. Continue?',
     'zh-TW': '切換配置組會用原始 code 重新載入，未保存的修改將丟失。要繼續嗎？',

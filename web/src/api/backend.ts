@@ -37,6 +37,16 @@ export interface PobrBackend {
     pobCode: string,
     sel: { tree: number; item: number | null; skill: number | null },
   ): Promise<BuildJson>;
+  /**
+   * 组管理：复制 / 重命名 / 删除一个 loadout，返回**新的 build code**。
+   * `name` 同时写进三类 set 的 title——同名即成组，用户无需理解 `{tag}` 语法。
+   */
+  manageLoadout(
+    pobCode: string,
+    op: 'duplicate' | 'rename' | 'remove',
+    name?: string,
+    target?: { tree: number; item: number | null; skill: number | null },
+  ): Promise<string>;
   /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
   decodeBuildFile(content: string): Promise<BuildJson>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
