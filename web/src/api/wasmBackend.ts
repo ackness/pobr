@@ -34,6 +34,7 @@ interface WasmModule {
   initStagedData(): void;
   isDataReady(): boolean;
   decodeBuildJson(code: string): string;
+  decodeBuildLoadoutJson(requestJson: string): string;
   decodeBuildFileJson(content: string): string;
   calculateBuildJson(requestJson: string): string;
   encodeBuildJson(requestJson: string): string;
@@ -136,6 +137,10 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async decodeBuild(pobCode) {
       return JSON.parse(wasm.decodeBuildJson(pobCode)) as BuildJson;
+    },
+    async switchLoadout(pobCode, sel) {
+      const req = JSON.stringify({ code: pobCode, ...sel });
+      return JSON.parse(wasm.decodeBuildLoadoutJson(req)) as BuildJson;
     },
     async decodeBuildFile(content) {
       return JSON.parse(wasm.decodeBuildFileJson(content)) as BuildJson;

@@ -29,6 +29,14 @@ export interface PobrBackend {
   /** 初始化（wasm 模块加载 + 游戏数据注入）；幂等。 */
   init(onProgress?: (message: string) => void): Promise<void>;
   decodeBuild(pobCode: string): Promise<BuildJson>;
+  /**
+   * 切到指定 loadout 后重新解码（成组切换天赋/装备/技能）。
+   * 三个序号取自 `BuildJson.loadouts[]`；null 表示该类保持原样。
+   */
+  switchLoadout(
+    pobCode: string,
+    sel: { tree: number; item: number | null; skill: number | null },
+  ): Promise<BuildJson>;
   /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
   decodeBuildFile(content: string): Promise<BuildJson>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;

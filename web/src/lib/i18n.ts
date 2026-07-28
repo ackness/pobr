@@ -25,6 +25,7 @@ const DICT = {
   'beta.dismiss': { 'en-US': 'Got it', 'zh-TW': '知道了', 'zh-CN': '知道了' },
 
   // 页签
+  'loadout.switch': { 'en-US': 'Loadout', 'zh-TW': '配置組', 'zh-CN': '配置组' },
   'tab.build': { 'en-US': 'Build', 'zh-TW': '構建', 'zh-CN': '构建' },
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },

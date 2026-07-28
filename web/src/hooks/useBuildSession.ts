@@ -21,6 +21,7 @@ import type {
   EnemyTier,
   FullDpsResponse,
   JewelInput,
+  LoadoutJson,
   PassiveTreeMeta,
   SlotItemInput,
   SocketGroupInput,
@@ -95,6 +96,12 @@ export interface BuildSession {
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
   importSession: (json: string) => void;
   importCode: (code: string) => Promise<void>;
+  /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
+  switchLoadout: (sel: { tree: number; item: number | null; skill: number | null }) => Promise<void>;
+  /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
+  loadouts: LoadoutJson[];
+  /** 当前选中的 loadout 下标。 */
+  activeLoadout: number | null;
   newBuild: (className: string, ascendancyName: string) => void;
   setCharacter: (patch: Partial<CharacterState>) => void;
   /** 点选加点/取消；属性小点加点时带三选一。 */
@@ -514,6 +521,51 @@ export function useBuildSession(): BuildSession {
     [apply, setNotes, mergeImportedIntoLibrary],
   );
 
+  /**
+   * 切到另一个 loadout（成组换天赋/装备/技能）。
+   *
+   * 实现上等价于「用同一份 code 换个视角重新导入」——切换在 wasm 的 XML 层完成
+   * （改写三个 active 属性后重解析），所以结果与在 PoB2 里手动切三个下拉一致。
+   *
+   * 因此**会丢弃导入后的本地编辑**：整份状态由重解码结果覆盖，与 importCode 同
+   * 语义。调用方负责在有未保存改动时先提示。无 `pobCode`（手搓/国服 .build 导入）
+   * 时无从重解析，直接忽略。
+   */
+  const switchLoadout = useCallback(
+    async (sel: { tree: number; item: number | null; skill: number | null }) => {
+      const code = state?.pobCode;
+      if (!code) return;
+      setBusy(true);
+      setError(null);
+      try {
+        const decoded = await (await getBackend()).switchLoadout(code, sel);
+        setBuild(decoded);
+        const { overview, annotations } = splitNotes(decoded.notes ?? '');
+        if (decoded.notes) setNotes(overview);
+        apply({
+          pobCode: code,
+          character: {
+            level: decoded.character.level,
+            class_name: decoded.character.class_name,
+            ascendancy_name: decoded.character.ascendancy_name,
+          },
+          allocatedNodes: decoded.tree.allocated_nodes,
+          attributeChoices: decoded.tree.attribute_choices ?? {},
+          ...materialize(decoded),
+          annotations,
+          params: {
+            config_inputs: decoded.config_inputs ?? {},
+            main_socket_group: decoded.main_socket_group ?? undefined,
+          },
+        });
+      } catch (err) {
+        setError(formatApiError(err));
+        setBusy(false);
+      }
+    },
+    [apply, setNotes, state?.pobCode],
+  );
+
   const newBuild = useCallback(
     (className: string, ascendancyName: string) => {
       setBuild(null);
@@ -831,6 +883,9 @@ export function useBuildSession(): BuildSession {
     exportCode,
     importSession,
     importCode,
+    switchLoadout,
+    loadouts: build?.loadouts ?? [],
+    activeLoadout: build?.active_loadout ?? null,
     newBuild,
     setCharacter,
     toggleNode,

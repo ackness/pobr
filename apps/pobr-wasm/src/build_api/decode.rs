@@ -4,7 +4,8 @@
 use std::collections::BTreeMap;
 
 use pobr_build::{
-    Build, BuildData, decode_pob_code, parse_build, parse_notes, parse_raw_items_view,
+    Build, BuildData, SetSelection, active_selection, decode_pob_code, derive_loadouts,
+    parse_build, parse_build_sets, parse_notes, parse_raw_items_view, select_sets,
 };
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::passive_tree::AttributeChoice;
@@ -101,10 +102,43 @@ struct BuildJson {
     config_inputs: BTreeMap<String, serde_json::Value>,
     /// `<Notes>` 自由文本（PoB 笔记页；无该段为 null）。
     notes: Option<String>,
+    /// 成组切换清单（PoB2 loadout：天赋/装备/技能按 title 命名约定绑定）。
+    /// 单套 build 恒为一条 `Default`；前端据此渲染切换下拉。
+    loadouts: Vec<LoadoutJson>,
+    /// 当前 build 对应的 loadout 下标（`loadouts` 内），无法判定时为 null。
+    active_loadout: Option<usize>,
+}
+
+/// 一个可切换的 loadout。`tree`/`item`/`skill` 是 1-based 文档序，回传
+/// `decodeBuildJson` 的 selection 即可切过去；`null` = 该类未参与绑定（单套豁免）。
+#[derive(Debug, Serialize)]
+struct LoadoutJson {
+    name: String,
+    tree: usize,
+    item: Option<usize>,
+    skill: Option<usize>,
 }
 
 fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
     let raw_items = parse_raw_items_view(xml).map_err(|e| format!("parse items: {e}"))?;
+    // Loadout 清单 + 当前选中项：按 XML 的 active 三元组反查（切换后重新 decode
+    // 时，改写过的 active 会指向新组，前端据此高亮）。
+    let sets = parse_build_sets(xml).map_err(|e| format!("parse sets: {e}"))?;
+    let active = active_selection(xml);
+    let loadouts: Vec<LoadoutJson> = derive_loadouts(&sets)
+        .into_iter()
+        .map(|l| LoadoutJson {
+            name: l.name,
+            tree: l.tree,
+            item: l.item,
+            skill: l.skill,
+        })
+        .collect();
+    let active_loadout = loadouts.iter().position(|l| {
+        l.tree == active.tree.unwrap_or(1)
+            && l.item.is_none_or(|i| Some(i) == active.item)
+            && l.skill.is_none_or(|s| Some(s) == active.skill)
+    });
     Ok(BuildJson {
         character: CharacterJson {
             level: build.character.level,
@@ -168,6 +202,8 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             .map(|(k, v)| (k.clone(), config_value_json(v)))
             .collect(),
         notes: parse_notes(xml).map_err(|e| format!("parse notes: {e}"))?,
+        loadouts,
+        active_loadout,
     })
 }
 
@@ -179,8 +215,49 @@ pub fn decode_build_json(code: &str) -> Result<String, String> {
 }
 
 fn decode_build_impl(code: &str) -> Result<String, super::ApiError> {
-    let xml = decode_pob_code(code.trim())
+    decode_selected(code, &SetSelection::default())
+}
+
+/// 0.1b：同 [`decode_build_json`]，但先切到指定的 loadout（成组切换）。
+///
+/// 请求形状 `{ "code": "...", "tree": 2, "item": 2, "skill": null }`——三个序号取自
+/// 响应里 `loadouts[]` 的条目；省略/`null` 表示该类保持原样（单套豁免）。切换在
+/// **XML 层**完成（改写三个 active 属性后重新解析），因此结果与用 PoB2 手动切三个
+/// 下拉完全一致。
+pub fn decode_build_loadout_json(request_json: &str) -> Result<String, String> {
+    state::cached_response("decode_loadout", request_json, || {
+        decode_loadout_impl(request_json).map_err(super::ApiError::into_json)
+    })
+}
+
+#[derive(Debug, Deserialize)]
+struct LoadoutRequest {
+    code: String,
+    #[serde(default)]
+    tree: Option<usize>,
+    #[serde(default)]
+    item: Option<usize>,
+    #[serde(default)]
+    skill: Option<usize>,
+}
+
+fn decode_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: LoadoutRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("parse request: {e}")))?;
+    decode_selected(
+        &req.code,
+        &SetSelection {
+            tree: req.tree,
+            item: req.item,
+            skill: req.skill,
+        },
+    )
+}
+
+fn decode_selected(code: &str, sel: &SetSelection) -> Result<String, super::ApiError> {
+    let raw = decode_pob_code(code.trim())
         .map_err(|e| super::ApiError::decode_error(format!("decode build code: {e}")))?;
+    let xml = select_sets(&raw, sel);
     let build = parse_build(&xml)
         .map_err(|e| super::ApiError::decode_error(format!("parse build xml: {e}")))?;
     let json = build_to_json(&build, &xml)?;
@@ -414,6 +491,14 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             }
             note
         }),
+        // 国服 `.build` 无多套概念：给一条全豁免的 Default，前端下拉形状一致。
+        loadouts: vec![LoadoutJson {
+            name: "Default".to_string(),
+            tree: 1,
+            item: None,
+            skill: None,
+        }],
+        active_loadout: Some(0),
     };
     Ok(serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))?)
 }

@@ -75,6 +75,12 @@ export default function App() {
         character={session.character}
         classNames={session.classNames}
         busy={session.busy}
+        loadouts={session.loadouts}
+        activeLoadout={session.activeLoadout}
+        onLoadout={(i) => {
+          const l = session.loadouts[i];
+          if (l) void session.switchLoadout({ tree: l.tree, item: l.item, skill: l.skill });
+        }}
       />
       {!betaDismissed && (
         <div className="beta-banner" role="note">
