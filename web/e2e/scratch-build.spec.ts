@@ -24,11 +24,15 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   await page.getByLabel('Level').fill('90');
   await expect(lifeValue).not.toHaveText(lifeBefore!, { timeout: 30_000 });
 
-  // 树上点一个节点 → 已加点计数变为 1。
+  // 树上点一个节点 → 沿最短路径整条点亮（PoB2 语义，见 lib/passiveGraph）。
+  // 具体点数取决于该节点离职业起点多远，故只断言「从 0 变成正数」——钉死数字会
+  // 让树数据一升级就挂。
   await page.getByRole('button', { name: 'Tree' }).click();
   await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.tree-count')).toContainText('0 allocated', { timeout: 30_000 });
   await page.locator('.node').first().click({ force: true });
-  await expect(page.locator('.tree-count')).toContainText('1 allocated', { timeout: 30_000 });
+  await expect(page.locator('.tree-count')).toHaveText(/[1-9]\d* allocated/, { timeout: 30_000 });
+  await expect(page.locator('.node-allocated').first()).toBeVisible();
 
   // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Total DPS 出数。
   await page.getByRole('button', { name: 'Skills' }).click();
