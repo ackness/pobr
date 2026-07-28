@@ -1,4 +1,11 @@
 //! stat_map — StatMap/curse/debuff/exposure/player_buff 映射 + STAT_MAP_CTX 双跑收集器。
+//!
+//! **双跑上下文（M1-T2.3）**：[`mapped_stat_modifiers`] 是自由函数、三个取数点
+//! （skill_base / quality / support）不持有编排选项——按 §3.2 共享规则（只改
+//! `mapped_stat_modifiers` + `OrchestratorOptions` 字段、主流程接线 ≤3 行），
+//! 模式与 catalog 经线程局部上下文 [`STAT_MAP_CTX`] 传递：`calculate_with_data`
+//! 开头安装、guard 离开作用域复位。单次计算单线程、安装/复位确定性，不构成
+//! 共享可变状态。
 
 use super::*;
 
