@@ -179,6 +179,12 @@ export interface GemCatalogEntry {
   is_support: boolean;
   /** 血脉（Lineage）特殊辅助宝石（徽标 + 优化器候选筛选）。 */
   is_lineage: boolean;
+  /**
+   * 技能标签（升序去重）。主动宝石＝granted effect 的 `skill_types`；辅助宝石＝
+   * `require_skill_types`（能辅助什么），已滤掉 AND/OR/NOT 逻辑算子。
+   * 含大量内部机制词，展示前过 `lib/gemTags` 的白名单。
+   */
+  tags: string[];
 }
 
 /** 节点威力条目（node_power_json；PoB2 热力图语义）。 */
