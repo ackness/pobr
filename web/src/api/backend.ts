@@ -41,7 +41,9 @@ export interface PobrBackend {
   decodeBuildFile(content: string): Promise<BuildJson>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
   /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
-  encodeBuild(request: CalculateBuildRequest & { notes?: string }): Promise<string>;
+  encodeBuild(
+    request: CalculateBuildRequest & { notes?: string; base_code?: string },
+  ): Promise<string>;
   /** 逐技能组 DPS + FullDPS 汇总（点击触发；计算量 = 1 + 启用伤害组数）。 */
   fullDps(request: CalculateBuildRequest): Promise<FullDpsResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;

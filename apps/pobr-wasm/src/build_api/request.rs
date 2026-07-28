@@ -139,6 +139,10 @@ pub struct CalculateBuildRequest {
     pub(crate) config_inputs: BTreeMap<String, serde_json::Value>,
     /// 笔记（仅 `encode_build_json` 写进 `<Notes>`；计算路径忽略）。
     pub(crate) notes: Option<String>,
+    /// 导入时的原始 build code（仅 `encode_build_json` 用）：产物以它为底，只替换
+    /// 当前 active 的那一套，其余 loadout 原样保留。缺省 = 全量生成单套。
+    #[serde(default)]
+    pub(crate) base_code: Option<String>,
 }
 
 fn parse_enemy_tier(s: &str) -> Result<EnemyTier, String> {

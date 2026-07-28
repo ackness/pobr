@@ -26,6 +26,11 @@ const DICT = {
 
   // 页签
   'loadout.switch': { 'en-US': 'Loadout', 'zh-TW': '配置組', 'zh-CN': '配置组' },
+  'loadout.confirmDiscard': {
+    'en-US': 'Switching reloads this build from its code and discards your unsaved edits. Continue?',
+    'zh-TW': '切換配置組會用原始 code 重新載入，未保存的修改將丟失。要繼續嗎？',
+    'zh-CN': '切换配置组会用原始 code 重新加载，未保存的修改将丢失。要继续吗？',
+  },
   'tab.build': { 'en-US': 'Build', 'zh-TW': '構建', 'zh-CN': '构建' },
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },

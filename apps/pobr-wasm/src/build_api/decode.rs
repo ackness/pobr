@@ -4,8 +4,9 @@
 use std::collections::BTreeMap;
 
 use pobr_build::{
-    Build, BuildData, SetSelection, active_selection, decode_pob_code, derive_loadouts,
-    parse_build, parse_build_sets, parse_notes, parse_raw_items_view, select_sets,
+    Build, BuildData, SetKind, SetSelection, active_selection, decode_pob_code, derive_loadouts,
+    duplicate_set, parse_build, parse_build_sets, parse_notes, parse_raw_items_view, remove_set,
+    rename_set, select_sets,
 };
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::passive_tree::AttributeChoice;
@@ -252,6 +253,76 @@ fn decode_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
             skill: req.skill,
         },
     )
+}
+
+/// 0.1c：组管理——复制 / 重命名 / 删除一个 loadout，返回**新的 build code**。
+///
+/// 请求 `{ code, op, name?, tree?, item?, skill? }`：`op` ∈ `duplicate` /
+/// `rename` / `remove`；三个序号指定操作哪一套（缺省 = 当前 active）。三类 set
+/// 一并操作——loadout 是它们的组合，只动一类会让绑定错位。
+///
+/// 复制而非新建空套（同 PoB2 `CustomLoadout` 的 `CopyTree`/`CopyItemSet` 语义）：
+/// 新阶段总是从上一阶段改出来的，空树对用户没用。
+pub fn manage_loadout_json(request_json: &str) -> Result<String, String> {
+    manage_loadout_impl(request_json).map_err(super::ApiError::into_json)
+}
+
+#[derive(Debug, Deserialize)]
+struct ManageRequest {
+    code: String,
+    op: String,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    tree: Option<usize>,
+    #[serde(default)]
+    item: Option<usize>,
+    #[serde(default)]
+    skill: Option<usize>,
+}
+
+fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
+    let req: ManageRequest = serde_json::from_str(request_json)
+        .map_err(|e| super::ApiError::bad_request(format!("parse request: {e}")))?;
+    let xml = decode_pob_code(req.code.trim())
+        .map_err(|e| super::ApiError::decode_error(format!("decode build code: {e}")))?;
+    let active = active_selection(&xml);
+    let targets = [
+        (SetKind::Tree, req.tree.or(active.tree).unwrap_or(1)),
+        (SetKind::Item, req.item.or(active.item).unwrap_or(1)),
+        (SetKind::Skill, req.skill.or(active.skill).unwrap_or(1)),
+    ];
+
+    let mut out = xml;
+    for (kind, index) in targets {
+        let applied = match req.op.as_str() {
+            "duplicate" => {
+                let name = req.name.as_deref().ok_or_else(|| {
+                    super::ApiError::bad_request("name is required for duplicate")
+                })?;
+                duplicate_set(&out, kind, index, name)
+            }
+            "rename" => {
+                let name = req
+                    .name
+                    .as_deref()
+                    .ok_or_else(|| super::ApiError::bad_request("name is required for rename"))?;
+                rename_set(&out, kind, index, name)
+            }
+            "remove" => remove_set(&out, kind, index),
+            other => {
+                return Err(super::ApiError::bad_request(format!("unknown op: {other}")));
+            }
+        };
+        // 某一类缺该套（如只有一套技能集）时跳过——单套豁免下这是正常形态。
+        if let Some(next) = applied {
+            out = next;
+        }
+    }
+    Ok(serde_json::to_string(
+        &pobr_build::encode_pob_code(&out).map_err(|e| format!("encode: {e}"))?,
+    )
+    .map_err(|e| format!("serialize: {e}"))?)
 }
 
 fn decode_selected(code: &str, sel: &SetSelection) -> Result<String, super::ApiError> {

@@ -79,7 +79,10 @@ export default function App() {
         activeLoadout={session.activeLoadout}
         onLoadout={(i) => {
           const l = session.loadouts[i];
-          if (l) void session.switchLoadout({ tree: l.tree, item: l.item, skill: l.skill });
+          if (!l) return;
+          // 切换是整份重解码——有未保存编辑时先确认（见 useBuildSession.switchLoadout）。
+          if (session.isDirty && !window.confirm(t(lang, 'loadout.confirmDiscard'))) return;
+          void session.switchLoadout({ tree: l.tree, item: l.item, skill: l.skill });
         }}
       />
       {!betaDismissed && (

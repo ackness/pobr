@@ -27,7 +27,9 @@ pub use catalog::{
     classify_item_lines_json, gem_catalog_json, reforge_runes_json, rune_catalog_json,
     translate_lines_to_zh_cn_json,
 };
-pub use decode::{decode_build_file_json, decode_build_json, decode_build_loadout_json};
+pub use decode::{
+    decode_build_file_json, decode_build_json, decode_build_loadout_json, manage_loadout_json,
+};
 pub use encode::encode_build_json;
 pub use request::{
     CalculateBuildRequest, CharacterOverride, GemInput, JewelInput, SlotItemInput, SocketGroupInput,

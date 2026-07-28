@@ -114,6 +114,8 @@ export interface BuildSession {
   currentRequest: () => CalculateBuildRequest | null;
   /** 状态版本号（每次编辑 +1；hover 收益等缓存的失效键）。 */
   stateVersion: number;
+  /** 自上次导入 / 切换 loadout 以来是否有编辑（切换会整份覆盖，据此提醒）。 */
+  isDirty: boolean;
   /** 物品/珠宝/技能组套装库（独立持久化，跨 build 复用）。 */
   library: Library;
   saveLibraryItem: (kind: 'item' | 'jewel', text: string, slot?: string) => void;
@@ -324,6 +326,14 @@ export function useBuildSession(): BuildSession {
   }, []);
   const [library, setLibrary] = useState<Library>(loadLibrary);
   const [stateVersion, setStateVersion] = useState(0);
+  /**
+   * 「干净」基线：导入 / 切换 loadout 落地时记下当时的版本号。之后每次编辑
+   * `stateVersion` 递增，超过基线即视为有未保存改动——切换 loadout 会整份重解码
+   * 覆盖状态，切之前要据此提醒。
+   */
+  const cleanVersionRef = useRef(0);
+  /** `stateVersion` 的同步副本（apply 内自增，避免在 setState updater 里做副作用）。 */
+  const versionRef = useRef(0);
 
   const persistLibrary = useCallback((next: Library) => {
     setLibrary(next);
@@ -356,15 +366,19 @@ export function useBuildSession(): BuildSession {
 
   /** 应用新状态并触发重算 + 自动保存到浏览器。 */
   const apply = useCallback(
-    (next: BuildState) => {
+    (next: BuildState, opts?: { clean?: boolean }) => {
       setState(next);
       stateRef.current = next;
-      setStateVersion((v) => v + 1);
+      versionRef.current += 1;
+      setStateVersion(versionRef.current);
+      // 整份替换（导入 / 切 loadout）落地即为新基线，不算「未保存改动」。
+      if (opts?.clean) cleanVersionRef.current = versionRef.current;
       saveToStorage(next, notesRef.current);
       recalc(next);
     },
     [recalc],
   );
+
 
   // 启动：初始化后端 → 加载职业元数据 → 以首个职业开一个空 build（PoB2 新建语义）。
   useEffect(() => {
@@ -396,7 +410,7 @@ export function useBuildSession(): BuildSession {
               .catch(() => !cancelled && apply(saved.state));
             return;
           }
-          apply(saved.state);
+          apply(saved.state, { clean: true });
           return;
         }
         const firstClass = meta.classes[0]?.name ?? 'Warrior';
@@ -512,7 +526,7 @@ export function useBuildSession(): BuildSession {
             config_inputs: decoded.config_inputs ?? {},
             main_socket_group: decoded.main_socket_group ?? undefined,
           },
-        });
+        }, { clean: true });
       } catch (err) {
         setError(formatApiError(err));
         setBusy(false);
@@ -557,7 +571,7 @@ export function useBuildSession(): BuildSession {
             config_inputs: decoded.config_inputs ?? {},
             main_socket_group: decoded.main_socket_group ?? undefined,
           },
-        });
+        }, { clean: true });
       } catch (err) {
         setError(formatApiError(err));
         setBusy(false);
@@ -580,7 +594,7 @@ export function useBuildSession(): BuildSession {
         jewels: [],
         annotations: {},
         params: { config_inputs: {} },
-      });
+      }, { clean: true });
     },
     [apply],
   );
@@ -743,8 +757,14 @@ export function useBuildSession(): BuildSession {
     const backend = await getBackend();
     // encode 走全量覆盖（toRequest 本就不带 pob_code——分享内容 = 当前编辑态本身）；
     // 局部注释嵌入 <Notes> 标记段随 code 往返（PoB2 里显示为普通笔记）。
+    // base_code：导入过的 build 以原始 code 为底做合并，保住未在编辑的其余
+    // loadout（多套 build 不带它导出会只剩当前这套）。
     const request = toRequest(state);
-    return backend.encodeBuild({ ...request, notes: composeNotes(notes, state.annotations) });
+    return backend.encodeBuild({
+      ...request,
+      notes: composeNotes(notes, state.annotations),
+      base_code: state.pobCode ?? undefined,
+    });
   }, [state, notes]);
 
   const importSession = useCallback(
@@ -897,6 +917,7 @@ export function useBuildSession(): BuildSession {
     setJewels,
     currentRequest,
     stateVersion,
+    isDirty: stateVersion > cleanVersionRef.current,
     library,
     saveLibraryItem,
     removeLibraryItem,
