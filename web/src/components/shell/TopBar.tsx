@@ -1,4 +1,4 @@
-import type { ClassNames } from '../../api/types';
+import type { ClassNames, LoadoutJson } from '../../api/types';
 import type { CharacterState } from '../../hooks/useBuildSession';
 import { LANGS, bindT, type Lang, type UiKey } from '../../lib/i18n';
 
@@ -30,9 +30,24 @@ interface Props {
   character: CharacterState | null;
   classNames: ClassNames;
   busy: boolean;
+  /** 成组切换清单；≤1 条时不渲染下拉（无可切的组）。 */
+  loadouts: LoadoutJson[];
+  activeLoadout: number | null;
+  onLoadout: (index: number) => void;
 }
 
-export function TopBar({ tab, onTab, lang, onLang, character, classNames, busy }: Props) {
+export function TopBar({
+  tab,
+  onTab,
+  lang,
+  onLang,
+  character,
+  classNames,
+  busy,
+  loadouts,
+  activeLoadout,
+  onLoadout,
+}: Props) {
   const tt = bindT(lang);
   const displayName = (c: CharacterState) => {
     const raw = c.ascendancy_name || c.class_name;
@@ -59,6 +74,23 @@ export function TopBar({ tab, onTab, lang, onLang, character, classNames, busy }
       </nav>
       <div className="topbar-right">
         {busy && <span className="topbar-busy" role="status">⟳</span>}
+        {loadouts.length > 1 && (
+          <select
+            className="topbar-loadout"
+            aria-label={tt('loadout.switch')}
+            title={tt('loadout.switch')}
+            value={activeLoadout ?? ''}
+            onChange={(e) => onLoadout(Number(e.target.value))}
+            disabled={busy}
+          >
+            {activeLoadout === null && <option value="">—</option>}
+            {loadouts.map((l, i) => (
+              <option key={`${l.name}-${i}`} value={i}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        )}
         {character && (
           <span className="topbar-character">
             Lv{character.level} {displayName(character)}

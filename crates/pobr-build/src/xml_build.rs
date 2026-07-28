@@ -36,6 +36,7 @@ use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
 use crate::build::{Build, CharacterIdentity, RadiusJewel, SocketGroup};
 use crate::build_code::decode_pob_code;
 use crate::error::{BuildError, XmlError};
+use crate::loadout::{BuildSets, SetRef};
 use crate::xml_serde::parse_build_header;
 
 /// 槽位装备 + 珠宝（无固定槽位）+ 激活 ItemSet 的 `useSecondWeaponSet` 标志。
@@ -823,6 +824,43 @@ pub fn parse_notes(xml: &str) -> Result<Option<String>, XmlError> {
     }
     let trimmed = text.trim();
     Ok((!trimmed.is_empty()).then(|| trimmed.to_string()))
+}
+
+/// 抽取 build XML 里各类 set 的清单（`<Spec>` / `<ItemSet>` / `<SkillSet>`），供
+/// [`crate::loadout::derive_loadouts`] 推导成组切换。
+///
+/// `id` 取**文档序**（1-based）而非 XML 的 `id` 属性——`activeSpec` /
+/// `activeItemSet` / `activeSkillSet` 都是按序号选中的（见 [`parse_passive_nodes`]
+/// 等），元素自带的 `id` 属性未必与之一致。`title` 缺省为 `"Default"`，与 vendor
+/// `spec.title or "Default"` 同口径。
+pub fn parse_build_sets(xml: &str) -> Result<BuildSets, XmlError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+
+    let mut sets = BuildSets::default();
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
+                let bucket = match element_name(&e).as_str() {
+                    "Spec" => &mut sets.trees,
+                    "ItemSet" => &mut sets.items,
+                    "SkillSet" => &mut sets.skills,
+                    _ => continue,
+                };
+                let title = attr_value(&e, b"title")
+                    .filter(|t| !t.trim().is_empty())
+                    .unwrap_or_else(|| "Default".to_string());
+                bucket.push(SetRef {
+                    id: bucket.len() + 1,
+                    title,
+                });
+            }
+            Ok(Event::Eof) => break,
+            Err(e) => return Err(XmlError::Parse(e.to_string())),
+            _ => {}
+        }
+    }
+    Ok(sets)
 }
 
 /// 解析 build XML 的原始物品文本视图（见 [`RawItemsView`]）。

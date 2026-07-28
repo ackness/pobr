@@ -216,3 +216,18 @@
     flex-direction: column;
   }
 }
+
+/* Loadout 切换下拉：与语言按钮同级，仅存在多个组时渲染。 */
+.topbar-loadout {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  padding: 2px var(--space-1);
+  max-width: 12rem;
+}
+
+.topbar-loadout:disabled {
+  opacity: 0.5;
+}

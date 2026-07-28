@@ -33,6 +33,7 @@ pub mod corpus;
 pub mod error;
 pub mod handlers;
 pub mod import_detect;
+pub mod loadout;
 pub mod snapshot;
 pub mod xml_build;
 pub mod xml_serde;
@@ -51,9 +52,13 @@ pub use calc_orchestrator::{
 pub use comparison::{FieldDiff, OutputComparison, compare_outputs};
 pub use error::{BuildCodeError, BuildError, XmlError};
 pub use import_detect::{ImportKind, ShareService, detect_import};
+pub use loadout::{
+    BuildSets, Loadout, SetRef, SetSelection, active_selection, derive_loadouts, select_sets,
+};
 pub use snapshot::BuildSnapshot;
 pub use xml_build::{
     RawItemsView, default_quest_stat_reward_texts, default_true_condition_keys, parse_build,
-    parse_build_from_code, parse_notes, parse_raw_items_view, radius_jewel_from_text,
+    parse_build_from_code, parse_build_sets, parse_notes, parse_raw_items_view,
+    radius_jewel_from_text,
 };
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

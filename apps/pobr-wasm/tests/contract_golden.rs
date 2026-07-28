@@ -12,8 +12,9 @@ use serde_json::Value;
 /// `SCHEMA_VERSION` 与 `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` 同时 +1。
 #[test]
 fn schema_version_pinned() {
-    // v2：Err 侧结构化 {code, message, slot?} + calculate 响应新增 item_errors。
-    assert_eq!(pobr_wasm::SCHEMA_VERSION, 2);
+    // v3：gem catalog entry 新增 tags；BuildJson 新增 loadouts / active_loadout。
+    // （两项皆为纯新增字段，旧前端忽略即可，但键集合断言已变——按本文件约定 +1。）
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 3);
 }
 
 /// 真实 demo build（与 ninja_parity 同源）。
@@ -61,6 +62,8 @@ fn decode_build_json_shape() {
             "main_socket_group",
             "config_inputs",
             "notes",
+            "loadouts",
+            "active_loadout",
         ],
         "BuildJson",
     );
@@ -1356,4 +1359,73 @@ fn response_cache_hits_on_repeat_request() {
         pobr_wasm::state::response_cache_hits() > hits_before,
         "second call should hit the response cache"
     );
+}
+
+/// 真实单套 build：恰好一个全豁免的 Default loadout，且被标记为当前选中。
+#[test]
+fn real_build_exposes_a_single_default_loadout() {
+    let json: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&demo_code()).expect("decode"))
+            .expect("valid json");
+
+    let loadouts = json["loadouts"].as_array().expect("loadouts array");
+    assert_eq!(loadouts.len(), 1);
+    assert_keys(&loadouts[0], &["name", "tree", "item", "skill"], "loadout");
+    assert_eq!(loadouts[0]["tree"], 1);
+    assert!(loadouts[0]["item"].is_null(), "单套豁免");
+    assert_eq!(json["active_loadout"], 0);
+}
+
+/// 成组切换端到端：多套 build → 切到第二组 → 树/技能确实换了一套。
+#[test]
+fn switching_loadout_changes_tree_and_skills() {
+    // Arrange：构造一个双组 build（标识符绑定），编码成 code。
+    let xml = r#"<PathOfBuilding2>
+  <Build level="1" className="Witch"/>
+  <Tree activeSpec="1">
+    <Spec title="早期 {a}" nodes="1,2" treeVersion="0_5"/>
+    <Spec title="后期 {b}" nodes="3,4,5" treeVersion="0_5"/>
+  </Tree>
+  <Skills activeSkillSet="1">
+    <SkillSet id="1" title="起手 {a}"><Skill enabled="true"><Gem skillId="Fireball" gemId="Metadata/Items/Gems/SkillGemFireball" level="1" quality="0" enabled="true"/></Skill></SkillSet>
+    <SkillSet id="2" title="成型 {b}"><Skill enabled="true"><Gem skillId="Firestorm" gemId="Metadata/Items/Gems/SkillGemFirestorm" level="1" quality="0" enabled="true"/></Skill></SkillSet>
+  </Skills>
+  <Items activeItemSet="1">
+    <ItemSet id="1" title="便宜 {a}"/>
+    <ItemSet id="2" title="毕业 {b}"/>
+  </Items>
+</PathOfBuilding2>"#;
+    let code = pobr_build::encode_pob_code(xml).expect("encode");
+
+    // Act：默认解码 = 第一组。
+    let first: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("decode")).unwrap();
+    let loadouts = first["loadouts"].as_array().expect("loadouts");
+    assert_eq!(loadouts.len(), 2, "两个标识符绑定组");
+    assert_eq!(first["active_loadout"], 0);
+    assert_eq!(
+        first["tree"]["allocated_nodes"].as_array().unwrap().len(),
+        2
+    );
+
+    // 切到第二组。
+    let target = &loadouts[1];
+    let req = serde_json::json!({
+        "code": code,
+        "tree": target["tree"],
+        "item": target["item"],
+        "skill": target["skill"],
+    })
+    .to_string();
+    let second: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_loadout_json(&req).expect("switch")).unwrap();
+
+    // Assert：树换成 3 点那套，技能换成第二组，且 active 指向第二组。
+    assert_eq!(
+        second["tree"]["allocated_nodes"].as_array().unwrap().len(),
+        3
+    );
+    assert_eq!(second["active_loadout"], 1);
+    let gem = &second["socket_groups"][0]["gems"][0]["skill_id"];
+    assert_eq!(gem, "Firestorm", "技能集应随组切换");
 }

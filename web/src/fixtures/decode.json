@@ -556,5 +556,14 @@
       5284
     ],
     "tree_version": "0_5"
-  }
+  },
+  "loadouts": [
+    {
+      "name": "Default",
+      "tree": 1,
+      "item": null,
+      "skill": null
+    }
+  ],
+  "active_loadout": 0
 }

@@ -20,8 +20,9 @@ pub mod zh;
 
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
-    decode_build_json, encode_build_json, full_dps_json, gem_catalog_json, node_power_json,
-    optimize_variants_json, reforge_runes_json, rune_catalog_json, translate_lines_to_zh_cn_json,
+    decode_build_json, decode_build_loadout_json, encode_build_json, full_dps_json,
+    gem_catalog_json, node_power_json, optimize_variants_json, reforge_runes_json,
+    rune_catalog_json, translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -31,7 +32,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// 并同步 `web/src/api/types.ts` 的 `EXPECTED_SCHEMA_VERSION`。
 /// 前端 boot 时比对（见 [`wasm::schema_version`]），错配即提示强刷——
 /// 关掉「旧前端缓存 + 新 wasm 资产」静默崩的口子。
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 /// wasm-bindgen 绑定：仅在 `wasm` feature 下编译，向 JS 暴露与宿主 API 同名的函数。
 #[cfg(feature = "wasm")]
@@ -108,6 +109,13 @@ pub mod wasm {
     #[wasm_bindgen(js_name = gemCatalogJson)]
     pub fn gem_catalog_json() -> Result<String, JsError> {
         crate::build_api::gem_catalog_json().map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`decodeBuildLoadoutJson(requestJson) -> string`——切到指定 loadout
+    /// 后重新解码（`{code, tree, item, skill}`，序号取自响应的 `loadouts[]`）。
+    #[wasm_bindgen(js_name = decodeBuildLoadoutJson)]
+    pub fn decode_build_loadout_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::decode_build_loadout_json(request_json).map_err(|err| JsError::new(&err))
     }
 
     /// JS 入口：`decodeBuildFileJson(content) -> string`（国服 .build 文件 → 结构化 build）。

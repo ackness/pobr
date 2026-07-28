@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 2;
+export const EXPECTED_SCHEMA_VERSION = 3;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -123,6 +123,25 @@ export interface BuildJson {
   config_inputs: Record<string, ConfigInputValue>;
   /** `<Notes>` 自由文本（PoB 笔记页）。 */
   notes: string | null;
+  /** 成组切换清单（PoB2 loadout）；单套 build 恒为一条 Default。 */
+  loadouts: LoadoutJson[];
+  /** 当前对应的 loadout 下标；无法判定为 null。 */
+  active_loadout: number | null;
+}
+
+/**
+ * 一个可切换的 loadout —— PoB2 把天赋树 / 装备 / 技能按各自 `title` 的命名约定
+ * 绑成一组（`Build.lua::SyncLoadouts`），因此零格式扩展、与 PoB2 双向兼容。
+ *
+ * 建组方式：各类 title 取同名，或用花括号标识（`"升级期 {lvl30}"`，`{a,b}` 表示
+ * 一套属多组）。某类只有一套时该类不参与绑定，对应字段为 null。
+ */
+export interface LoadoutJson {
+  name: string;
+  /** 1-based 文档序，回传 `switchLoadout` 用。 */
+  tree: number;
+  item: number | null;
+  skill: number | null;
 }
 
 // ---------------------------------------------------------------------------
