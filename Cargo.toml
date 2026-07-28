@@ -3,12 +3,10 @@ members = [
     "crates/pobr-data",
     "crates/pobr-core",
     "crates/pobr-gamedata",
-    # 占位骨架（尚未实现，见 devs/docs/architecture/02-crate-design.md）
     "crates/pobr-i18n",
     "crates/pobr-tree",
     "crates/pobr-item",
     "crates/pobr-build",
-    "crates/pobr-trade",
     "apps/pobr-cli",
     "apps/pobr-desktop",
     "apps/pobr-wasm",
@@ -32,7 +30,6 @@ pobr-i18n = { path = "crates/pobr-i18n" }
 pobr-tree = { path = "crates/pobr-tree" }
 pobr-item = { path = "crates/pobr-item" }
 pobr-build = { path = "crates/pobr-build" }
-pobr-trade = { path = "crates/pobr-trade" }
 regex = "1.11"
 # M6-B 数据驱动 parser 引擎的 plain 短语 / literal 预过滤索引（蓝图 §2.3）。
 aho-corasick = "1.1"

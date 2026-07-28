@@ -65,7 +65,7 @@ I/O 收口在 `pobr-gamedata` 一处；`pobr-data` / `pobr-core` 维持零 I/O�
 
 ## Workspace 结构
 
-15 个 member，`crates/` 为库、`apps/` 为可执行、`tools/` 为数据/维护工具：
+14 个 member，`crates/` 为库、`apps/` 为可执行、`tools/` 为数据/维护工具：
 
 | Crate | 职责 |
 |-------|------|
@@ -76,7 +76,6 @@ I/O 收口在 `pobr-gamedata` 一处；`pobr-data` / `pobr-core` 维持零 I/O�
 | `crates/pobr-tree` | 天赋树拓扑、allocated node mod 收集、范围珠宝 |
 | `crates/pobr-build` | Build 状态、PoB Build Code 编解码、导入识别、`CalcOrchestrator`（带缓存）、Build 对比。**parity 测试主战场** |
 | `crates/pobr-item` | raw item 文本的全保真编辑态解析 + 逆向序列化（BuildRaw 往返） |
-| `crates/pobr-trade` | Trade 查询 / 价格抽象（`TradeBackend` trait + 离线 `MockBackend`） |
 | `apps/pobr-cli` | CLI：`calculate` / `parse-mod` / `decode-code` / `encode-code` |
 | `apps/pobr-wasm` | Web/WASM API：纯 Rust JSON 入出，`wasm` feature 下 wasm-bindgen 绑定 |
 | `apps/pobr-desktop` | 桌面入口最小骨架 |
