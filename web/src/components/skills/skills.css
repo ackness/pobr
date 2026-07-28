@@ -319,6 +319,23 @@
 }
 
 /* 血脉（Lineage）辅助宝石徽标 */
+/* 技能标签组：推到行尾，与宝石名争空间时名字优先。 */
+.gem-tags {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-1);
+  flex: none;
+}
+
+.gem-tag {
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  padding: 0 var(--space-1);
+  white-space: nowrap;
+}
+
 .gem-lineage-badge {
   color: var(--accent-gold-bright, var(--accent-gold-dim));
   border: 1px solid var(--accent-gold-dim);

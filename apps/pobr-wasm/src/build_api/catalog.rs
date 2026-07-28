@@ -112,6 +112,10 @@ struct GemCatalogEntry {
     is_support: bool,
     /// 血脉（Lineage）特殊辅助宝石（gem 基底 id 判定；前端徽标 + 优化器候选筛选）。
     is_lineage: bool,
+    /// 技能标签（升序去重）。主动宝石取 granted effect 的 `skill_types`；辅助宝石取
+    /// `require_skill_types`（即「能辅助什么」），并滤掉 `AND`/`OR`/`NOT` 这类逻辑
+    /// 连接词——它们是门控表达式的算子，不是标签。前端按白名单挑可读项展示。
+    tags: Vec<String>,
 }
 
 /// 宝石目录：`{skill_id, name, name_zh_tw, colour, is_support}` 按名称排序。
@@ -136,6 +140,24 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
         let Some(skill_id) = gem.granted_effect_id.clone() else {
             continue;
         };
+        let mut tags = data
+            .granted_effects
+            .get(&skill_id)
+            .map(|effect| {
+                if gem.is_support {
+                    effect
+                        .require_skill_types
+                        .iter()
+                        .filter(|tag| !matches!(tag.as_str(), "AND" | "OR" | "NOT"))
+                        .cloned()
+                        .collect::<Vec<_>>()
+                } else {
+                    effect.skill_types.clone()
+                }
+            })
+            .unwrap_or_default();
+        tags.sort();
+        tags.dedup();
         by_skill.entry(skill_id.clone()).or_insert(GemCatalogEntry {
             skill_id,
             name: name_by_gem_id
@@ -152,6 +174,7 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
             },
             is_support: gem.is_support,
             is_lineage: gem.id.contains("Lineage"),
+            tags,
         });
     }
     let mut entries: Vec<GemCatalogEntry> = by_skill.into_values().collect();

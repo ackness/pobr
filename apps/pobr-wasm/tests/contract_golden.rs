@@ -361,6 +361,7 @@ fn manual_skills_and_items_without_code() {
             "colour",
             "is_support",
             "is_lineage",
+            "tags",
         ],
         "gem catalog entry",
     );

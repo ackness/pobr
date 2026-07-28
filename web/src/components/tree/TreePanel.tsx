@@ -5,6 +5,12 @@ import type { AttributeChoice, PassiveNode, TreeArt } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames } from '../../hooks/useLocalizedLines';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
+import {
+  buildPassiveGraph,
+  classStartSkill,
+  deallocateNode,
+  shortestAllocationPath,
+} from '../../lib/passiveGraph';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
 import { AppSelect } from '../shared/AppSelect';
@@ -215,6 +221,16 @@ export function TreePanel({ session, lang }: Props) {
 
   const byId = useMemo(() => new Map(placed.map((n) => [n.skill, n])), [placed]);
 
+  /**
+   * 寻路图与职业起点。用 `nodes` 全集而非 `placed`——后者按当前飞升过滤，拿它建图
+   * 会让路径在飞升边界断裂；`buildPassiveGraph` 内部已跳过跨飞升的伪边。
+   */
+  const graph = useMemo(() => buildPassiveGraph(nodes ?? []), [nodes]);
+  const startSkill = useMemo(
+    () => classStartSkill(nodes ?? [], session.character?.class_name),
+    [nodes, session.character?.class_name],
+  );
+
   /** 搜索命中集（名称 + 词条文本，剥 `[a|b]` 标记后不分大小写子串匹配）。 */
   const searchHits = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -301,25 +317,53 @@ export function TreePanel({ session, lang }: Props) {
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  /** 点选加点/取消（拖拽平移不触发）；属性小点弹三选一；珠宝插槽开编辑器。 */
-  const handleNodeClick = useCallback((node: PassiveNode, e: React.MouseEvent) => {
-    if (dragRef.current?.moved) return;
-    const s = sessionRef.current;
-    const isAlloc = s.allocatedNodes.includes(node.skill);
-    if (!isAlloc && isAttrNode(node)) {
-      const rect = svgRef.current!.getBoundingClientRect();
-      setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
-      return;
-    }
-    if (node.kind === 'jewel_socket') {
-      if (!isAlloc) s.toggleNode(node.skill);
-      const existing = s.jewels.find((j) => j.socket_node === node.skill);
-      setJewelEdit({ socket: node.skill, draft: existing?.text ?? JEWEL_TEMPLATE });
-      return;
-    }
-    setAttrPicker(null);
-    s.toggleNode(node.skill);
-  }, []);
+  /**
+   * 点选加点/取消（拖拽平移不触发）；属性小点弹三选一；珠宝插槽开编辑器。
+   *
+   * 加点走最短路径：点一个未加点的远端节点会把沿途节点一并点亮（PoB2 语义）。
+   * 相邻节点的路径长度为 1，交互与寻路接入前逐字一致。取消加点走级联清理——
+   * `deallocateNode` 在图模型解释不了当前加点全集时自动退化为单点取消，
+   * 导入的真实 build 常含模型外连接，不会被误删整棵树。
+   */
+  const handleNodeClick = useCallback(
+    (node: PassiveNode, e: React.MouseEvent) => {
+      if (dragRef.current?.moved) return;
+      const s = sessionRef.current;
+      const allocated = new Set(s.allocatedNodes);
+      const isAlloc = allocated.has(node.skill);
+
+      // 珠宝插槽：点击恒为「（必要时先接上）开编辑器」，不走取消分支。
+      if (node.kind === 'jewel_socket') {
+        if (!isAlloc) {
+          s.setAllocatedNodes([
+            ...s.allocatedNodes,
+            ...shortestAllocationPath(graph, allocated, startSkill, node.skill),
+          ]);
+        }
+        const existing = s.jewels.find((j) => j.socket_node === node.skill);
+        setJewelEdit({ socket: node.skill, draft: existing?.text ?? JEWEL_TEMPLATE });
+        return;
+      }
+
+      if (isAlloc) {
+        setAttrPicker(null);
+        s.setAllocatedNodes([...deallocateNode(graph, allocated, startSkill, node.skill)]);
+        return;
+      }
+
+      const path = shortestAllocationPath(graph, allocated, startSkill, node.skill);
+      // 相邻单点仍弹三选一（原行为）；多步路径穿过的属性小点只点亮、不定选择，
+      // 比例交给工具栏的批量调配面板（choice 留空＝引擎语义无贡献）。
+      if (path.length <= 1 && isAttrNode(node)) {
+        const rect = svgRef.current!.getBoundingClientRect();
+        setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
+        return;
+      }
+      setAttrPicker(null);
+      s.setAllocatedNodes([...s.allocatedNodes, ...path]);
+    },
+    [graph, startSkill],
+  );
 
   const edgesEl = useMemo(
     () => (

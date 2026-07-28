@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry } from '../../api/types';
 import { bindT, type Lang } from '../../lib/i18n';
+import { gemTagLabels, gemTagMatches } from '../../lib/gemTags';
 
 /** 宝石颜色 → 语义 CSS 变量（tokens.css）。 */
 const COLOUR_VAR: Record<string, string> = {
@@ -58,7 +59,9 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
           q === '' ||
           e.name.toLowerCase().includes(q) ||
           (e.name_zh_tw ?? '').includes(query.trim()) ||
-          (e.name_zh_cn ?? '').includes(query.trim()),
+          (e.name_zh_cn ?? '').includes(query.trim()) ||
+          // 标签也参与搜索：输入 "projectile" / "投射物" 可筛出该类技能。
+          gemTagMatches(e.tags, query.trim()),
       )
       .slice(0, 200);
   }, [entries, query, colour]);
@@ -129,6 +132,8 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
             {filtered.map((entry, idx) => {
               const primary = gemDisplayName(entry, lang);
               const secondary = primary === entry.name ? entry.name_zh_tw : entry.name;
+              // 限 3 个：列表项是单行 flex，再多会挤掉宝石名。
+              const tags = gemTagLabels(entry.tags, lang, 3);
               return (
                 <li
                   key={entry.skill_id}
@@ -149,6 +154,15 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                     <span className="gem-lineage-badge">{tt('picker.lineage')}</span>
                   )}
                   {secondary && <span className="gem-secondary">{secondary}</span>}
+                  {tags.length > 0 && (
+                    <span className="gem-tags">
+                      {tags.map((tag) => (
+                        <span key={tag} className="gem-tag">
+                          {tag}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </li>
               );
             })}
