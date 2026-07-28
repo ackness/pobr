@@ -21,8 +21,8 @@ pub mod zh;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, decode_build_loadout_json, encode_build_json, full_dps_json,
-    gem_catalog_json, node_power_json, optimize_variants_json, reforge_runes_json,
-    rune_catalog_json, translate_lines_to_zh_cn_json,
+    gem_catalog_json, manage_loadout_json, node_power_json, optimize_variants_json,
+    reforge_runes_json, rune_catalog_json, translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -116,6 +116,13 @@ pub mod wasm {
     #[wasm_bindgen(js_name = decodeBuildLoadoutJson)]
     pub fn decode_build_loadout_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::decode_build_loadout_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS 入口：`manageLoadoutJson(requestJson) -> string`——复制/重命名/删除一个
+    /// loadout，返回新的 build code（`{code, op, name?, tree?, item?, skill?}`）。
+    #[wasm_bindgen(js_name = manageLoadoutJson)]
+    pub fn manage_loadout_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::manage_loadout_json(request_json).map_err(|err| JsError::new(&err))
     }
 
     /// JS 入口：`decodeBuildFileJson(content) -> string`（国服 .build 文件 → 结构化 build）。

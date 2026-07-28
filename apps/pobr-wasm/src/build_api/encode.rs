@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use pobr_build::encode_pob_code;
+use pobr_build::{decode_pob_code, encode_pob_code, merge_active_sets};
 use pobr_data::item::EquipmentSlot;
 
 use super::request::CalculateBuildRequest;
@@ -43,6 +43,11 @@ fn current_tree_version() -> String {
 /// 请求形状与 [`CalculateBuildRequest`] 相同（web 端始终发全量覆盖 + 可选
 /// `notes`）；`character.class_name` 必填。往返契约：产出的 code 重新解码计算
 /// 与直接按请求计算结果一致（`contract_golden::encode_build_roundtrip`）。
+///
+/// **多套保全**：请求带 `base_code`（导入时的原始 code）时，产物以它为底、只替换
+/// 当前 active 的那一套（[`merge_active_sets`]），其余 Spec / SkillSet / ItemSet
+/// 连同各自 `title` 原样保留——否则多套 build 一导出就只剩编辑中的这套，loadout
+/// 绑定随之全断。手搓 build 无 `base_code`，仍走全量生成。
 pub fn encode_build_json(request_json: &str) -> Result<String, String> {
     encode_build_impl(request_json).map_err(super::ApiError::into_json)
 }
@@ -148,5 +153,19 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         config_inputs: &config_inputs,
         notes: req.notes.as_deref(),
     });
+    // 有底稿则写回其 active 套，保住其余 loadout；底稿损坏时降级为纯编辑态产物
+    // （宁可丢多套也不能让导出直接失败）。
+    let xml = match req
+        .base_code
+        .as_deref()
+        .map(str::trim)
+        .filter(|c| !c.is_empty())
+    {
+        Some(code) => match decode_pob_code(code) {
+            Ok(base) => merge_active_sets(&base, &xml),
+            Err(_) => xml,
+        },
+        None => xml,
+    };
     Ok(encode_pob_code(&xml).map_err(|e| format!("encode: {e}"))?)
 }

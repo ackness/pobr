@@ -36,6 +36,7 @@ pub mod import_detect;
 pub mod loadout;
 pub mod snapshot;
 pub mod xml_build;
+pub mod xml_merge;
 pub mod xml_serde;
 
 pub use build::{Build, CharacterIdentity, SocketGroup};
@@ -61,4 +62,5 @@ pub use xml_build::{
     parse_build_from_code, parse_build_sets, parse_notes, parse_raw_items_view,
     radius_jewel_from_text,
 };
+pub use xml_merge::{SetKind, duplicate_set, merge_active_sets, remove_set, rename_set};
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

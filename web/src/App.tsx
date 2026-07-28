@@ -79,8 +79,32 @@ export default function App() {
         activeLoadout={session.activeLoadout}
         onLoadout={(i) => {
           const l = session.loadouts[i];
-          if (l) void session.switchLoadout({ tree: l.tree, item: l.item, skill: l.skill });
+          if (!l) return;
+          // 切换是整份重解码——有未保存编辑时先确认（见 useBuildSession.switchLoadout）。
+          if (session.isDirty && !window.confirm(t(lang, 'loadout.confirmDiscard'))) return;
+          void session.switchLoadout({ tree: l.tree, item: l.item, skill: l.skill });
         }}
+        onManageLoadout={
+          // 需要原始 code 才能改组；手搓 build 没有，隐藏整个下拉。
+          session.build && session.loadouts.length > 0
+            ? (op) => {
+                // 三种操作都会整份重载，先按未保存改动确认。
+                if (session.isDirty && !window.confirm(t(lang, 'loadout.confirmDiscard'))) return;
+                if (op === 'remove') {
+                  if (!window.confirm(t(lang, 'loadout.confirmRemove'))) return;
+                  void session.manageLoadout('remove');
+                  return;
+                }
+                const current = session.loadouts[session.activeLoadout ?? 0]?.name ?? '';
+                const name = window.prompt(
+                  t(lang, 'loadout.namePrompt'),
+                  op === 'rename' ? current : '',
+                );
+                if (!name?.trim()) return;
+                void session.manageLoadout(op, name.trim());
+              }
+            : undefined
+        }
       />
       {!betaDismissed && (
         <div className="beta-banner" role="note">

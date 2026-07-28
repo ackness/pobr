@@ -1429,3 +1429,127 @@ fn switching_loadout_changes_tree_and_skills() {
     let gem = &second["socket_groups"][0]["gems"][0]["skill_id"];
     assert_eq!(gem, "Firestorm", "技能集应随组切换");
 }
+
+/// 多套 build 编辑后导出：其余 loadout 与各自 title 必须活下来。
+///
+/// 回归钉子——`write_build_xml` 只生成单套，导出若不以原始 code 为底做合并，
+/// 一个双组 build 点一次导出就只剩当前这套，loadout 绑定全断。
+#[test]
+fn exporting_a_multi_loadout_build_keeps_the_other_sets() {
+    ensure_data();
+    let base_xml = r#"<PathOfBuilding2>
+  <Build level="1" className="Witch"/>
+  <Tree activeSpec="1">
+    <Spec title="早期 {a}" nodes="1,2" treeVersion="0_5"/>
+    <Spec title="后期 {b}" nodes="3,4,5" treeVersion="0_5"/>
+  </Tree>
+  <Skills activeSkillSet="1">
+    <SkillSet id="1" title="早期 {a}"><Skill enabled="true"><Gem skillId="Fireball" gemId="Metadata/Items/Gems/SkillGemFireball" level="1" quality="0" enabled="true"/></Skill></SkillSet>
+    <SkillSet id="2" title="后期 {b}"><Skill enabled="true"><Gem skillId="Firestorm" gemId="Metadata/Items/Gems/SkillGemFirestorm" level="1" quality="0" enabled="true"/></Skill></SkillSet>
+  </Skills>
+  <Items activeItemSet="1">
+    <ItemSet id="1" title="早期 {a}"/>
+    <ItemSet id="2" title="后期 {b}"/>
+  </Items>
+</PathOfBuilding2>"#;
+    let base_code = pobr_build::encode_pob_code(base_xml).expect("encode base");
+
+    // 编辑当前套（改树），带 base_code 导出。
+    let req = serde_json::json!({
+        "character": { "level": 1, "class_name": "Witch" },
+        "allocated_nodes": [9, 9, 9],
+        "base_code": base_code,
+    })
+    .to_string();
+    let out_code = pobr_wasm::encode_build_json(&req).expect("encode");
+    let out_code: String = serde_json::from_str(&out_code).unwrap_or(out_code);
+    let out_xml = pobr_build::decode_pob_code(out_code.trim()).expect("decode result");
+
+    // 两套俱在，title 保留。
+    assert_eq!(out_xml.matches("<Spec").count(), 2, "Spec 少了：{out_xml}");
+    assert_eq!(out_xml.matches("<SkillSet").count(), 2, "SkillSet 少了");
+    assert_eq!(out_xml.matches("<ItemSet").count(), 2, "ItemSet 少了");
+    for title in ["早期 {a}", "后期 {b}"] {
+        assert!(out_xml.contains(title), "title `{title}` 丢了");
+    }
+    // 编辑落到了 active 那一套。
+    assert!(
+        out_xml.contains(r#"nodes="9,9,9""#),
+        "编辑未写回：{out_xml}"
+    );
+    assert!(out_xml.contains(r#"nodes="3,4,5""#), "另一套树被覆盖了");
+
+    // 往返：导出的 code 仍能推导出两个 loadout。
+    let redecoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&out_code).expect("redecode")).unwrap();
+    assert_eq!(redecoded["loadouts"].as_array().unwrap().len(), 2);
+}
+
+/// 无 base_code（手搓 build）时仍走全量生成，不受合并逻辑影响。
+#[test]
+fn exporting_without_base_code_still_produces_a_single_set() {
+    ensure_data();
+    let req = serde_json::json!({
+        "character": { "level": 1, "class_name": "Witch" },
+        "allocated_nodes": [1, 2],
+    })
+    .to_string();
+    let out_code = pobr_wasm::encode_build_json(&req).expect("encode");
+    let out_code: String = serde_json::from_str(&out_code).unwrap_or(out_code);
+    let out_xml = pobr_build::decode_pob_code(out_code.trim()).expect("decode");
+    assert_eq!(out_xml.matches("<Spec").count(), 1);
+}
+
+/// 组管理端到端：复制出一个新组 → 清单多一条 → 重命名 → 删除后复原。
+#[test]
+fn managing_loadouts_duplicates_renames_and_removes() {
+    let xml = r#"<PathOfBuilding2>
+  <Build level="1" className="Witch"/>
+  <Tree activeSpec="1"><Spec title="早期 {a}" nodes="1,2" treeVersion="0_5"/></Tree>
+  <Skills activeSkillSet="1"><SkillSet id="1" title="早期 {a}"><Skill enabled="true"><Gem skillId="Fireball" gemId="G" level="1" quality="0" enabled="true"/></Skill></SkillSet></Skills>
+  <Items activeItemSet="1"><ItemSet id="1" title="早期 {a}"/></Items>
+</PathOfBuilding2>"#;
+    let code = pobr_build::encode_pob_code(xml).expect("encode");
+
+    let manage = |code: &str, op: &str, name: Option<&str>| -> String {
+        let req = serde_json::json!({ "code": code, "op": op, "name": name }).to_string();
+        let out = pobr_wasm::manage_loadout_json(&req).expect("manage");
+        serde_json::from_str::<String>(&out).expect("code string")
+    };
+    let loadout_names = |code: &str| -> Vec<String> {
+        let v: Value =
+            serde_json::from_str(&pobr_wasm::decode_build_json(code).expect("decode")).unwrap();
+        v["loadouts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| l["name"].as_str().unwrap().to_string())
+            .collect()
+    };
+
+    // 复制：多出一组，且原组保留。
+    let dup = manage(&code, "duplicate", Some("后期 {b}"));
+    let names = loadout_names(&dup);
+    assert_eq!(names.len(), 2, "复制后应有两组：{names:?}");
+    assert!(names.iter().any(|n| n.contains("早期")));
+    assert!(names.iter().any(|n| n.contains("后期")));
+
+    // 重命名第二组。
+    let req = serde_json::json!({
+        "code": dup, "op": "rename", "name": "大后期 {b}",
+        "tree": 2, "item": 2, "skill": 2,
+    })
+    .to_string();
+    let renamed: String =
+        serde_json::from_str(&pobr_wasm::manage_loadout_json(&req).expect("rename")).unwrap();
+    assert!(loadout_names(&renamed).iter().any(|n| n.contains("大后期")));
+
+    // 删除第二组 → 回到一组。
+    let req = serde_json::json!({
+        "code": renamed, "op": "remove", "tree": 2, "item": 2, "skill": 2,
+    })
+    .to_string();
+    let removed: String =
+        serde_json::from_str(&pobr_wasm::manage_loadout_json(&req).expect("remove")).unwrap();
+    assert_eq!(loadout_names(&removed).len(), 1);
+}

@@ -37,11 +37,23 @@ export interface PobrBackend {
     pobCode: string,
     sel: { tree: number; item: number | null; skill: number | null },
   ): Promise<BuildJson>;
+  /**
+   * 组管理：复制 / 重命名 / 删除一个 loadout，返回**新的 build code**。
+   * `name` 同时写进三类 set 的 title——同名即成组，用户无需理解 `{tag}` 语法。
+   */
+  manageLoadout(
+    pobCode: string,
+    op: 'duplicate' | 'rename' | 'remove',
+    name?: string,
+    target?: { tree: number; item: number | null; skill: number | null },
+  ): Promise<string>;
   /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
   decodeBuildFile(content: string): Promise<BuildJson>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
   /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
-  encodeBuild(request: CalculateBuildRequest & { notes?: string }): Promise<string>;
+  encodeBuild(
+    request: CalculateBuildRequest & { notes?: string; base_code?: string },
+  ): Promise<string>;
   /** 逐技能组 DPS + FullDPS 汇总（点击触发；计算量 = 1 + 启用伤害组数）。 */
   fullDps(request: CalculateBuildRequest): Promise<FullDpsResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;

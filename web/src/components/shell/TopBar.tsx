@@ -34,6 +34,8 @@ interface Props {
   loadouts: LoadoutJson[];
   activeLoadout: number | null;
   onLoadout: (index: number) => void;
+  /** 组管理（复制 / 重命名 / 删除当前组）；无导入 code 时为 undefined。 */
+  onManageLoadout?: (op: 'duplicate' | 'rename' | 'remove') => void;
 }
 
 export function TopBar({
@@ -47,6 +49,7 @@ export function TopBar({
   loadouts,
   activeLoadout,
   onLoadout,
+  onManageLoadout,
 }: Props) {
   const tt = bindT(lang);
   const displayName = (c: CharacterState) => {
@@ -74,13 +77,22 @@ export function TopBar({
       </nav>
       <div className="topbar-right">
         {busy && <span className="topbar-busy" role="status">⟳</span>}
-        {loadouts.length > 1 && (
+        {loadouts.length > 0 && onManageLoadout && (
           <select
             className="topbar-loadout"
             aria-label={tt('loadout.switch')}
             title={tt('loadout.switch')}
             value={activeLoadout ?? ''}
-            onChange={(e) => onLoadout(Number(e.target.value))}
+            onChange={(e) => {
+              const v = e.target.value;
+              // 操作项用 `op:` 前缀区分于组下标；选完复位到当前组，避免下拉停在操作项上。
+              if (v.startsWith('op:')) {
+                e.target.value = String(activeLoadout ?? 0);
+                onManageLoadout(v.slice(3) as 'duplicate' | 'rename' | 'remove');
+                return;
+              }
+              onLoadout(Number(v));
+            }}
             disabled={busy}
           >
             {activeLoadout === null && <option value="">—</option>}
@@ -89,6 +101,10 @@ export function TopBar({
                 {l.name}
               </option>
             ))}
+            <option disabled>──────</option>
+            <option value="op:duplicate">{tt('loadout.new')}</option>
+            <option value="op:rename">{tt('loadout.rename')}</option>
+            {loadouts.length > 1 && <option value="op:remove">{tt('loadout.remove')}</option>}
           </select>
         )}
         {character && (
