@@ -1,0 +1,236 @@
+{
+  "_meta": {
+    "schema": "parse-coverage/v1",
+    "generator": "precompile-mods --report",
+    "note": "M6-T7 覆盖率报表；coverage_ratio 进 devs/ci/parse-coverage-baseline.json 棘轮"
+  },
+  "summary": {
+    "total": 4280,
+    "parsed": 3438,
+    "unsupported": 842,
+    "err": 0,
+    "coverage_ratio": 0.803271
+  },
+  "by_source": [
+    {
+      "source": "C1_build",
+      "parsed": 1191,
+      "unsupported": 515,
+      "err": 0
+    },
+    {
+      "source": "C2_tree",
+      "parsed": 2214,
+      "unsupported": 327,
+      "err": 0
+    },
+    {
+      "source": "SD_derived",
+      "parsed": 33,
+      "unsupported": 0,
+      "err": 0
+    }
+  ],
+  "gaps_top_n": [
+    {
+      "text": "10% chance to gain [Volatility] on Kill",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "12% increased [Spell] Damage with [Spell|Spells] that cost Life",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "15% chance to gain [UndeadArchon|Archon of Undeath] when you use a [Command|Command] skill",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "20% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "21% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "22% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "23% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "24% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "25% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "28% Chance to gain a Charge when you kill an enemy",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "3% chance to gain [Volatility] on Kill",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "40% increased [Spell] Damage with [Spell|Spells] that cost Life",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "5% chance to gain [Volatility] on Kill",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "50% chance to gain [Volatility] when you are [Stun|Stunned]",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "6% increased [Spell] Damage with [Spell|Spells] that cost Life",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "Absent Amulet",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Abundant Ultimate Mana Flask of the Endless",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Adonia&apos;s Ego",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Against the Darkness",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Damage taken from Hits Contributes to Magnitude of Chill inflicted on you",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 25% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 27% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 28% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 35% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 36% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 40% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 43% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All Mage&apos;s Legacies have 46% increased effect per duplicate Mage&apos;s Legacy you have",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "All [DamageTypes|Damage] is taken from Mana before Life\n50% less Mana Recovery Rate",
+      "status": "unsupported",
+      "source": "C2_tree"
+    },
+    {
+      "text": "Alpha&apos;s Howl",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Also grants 180 Guard",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Also grants 265 Guard",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Also grants 435 Guard",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Also grants 491 Guard",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Amber Amulet",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Amethyst Ring",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Amor Mandragora",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Analyst&apos;s Stone Charm of the Perpetual",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Ancestral Tiara",
+      "status": "unsupported",
+      "source": "C1_build"
+    },
+    {
+      "text": "Apocalypse Desire",
+      "status": "unsupported",
+      "source": "C1_build"
+    }
+  ]
+}
