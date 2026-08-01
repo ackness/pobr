@@ -25,6 +25,9 @@
 # 数据则后续无意义）；overlay 单步失败只记录、续跑其余，末尾汇总。
 set -uo pipefail
 
+# sccache 本机偶发拒绝启动会连坐所有 cargo 步骤；进程内禁用 wrapper（同 bump-version.sh）。
+export CARGO_BUILD_RUSTC_WRAPPER=""
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 

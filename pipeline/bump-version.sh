@@ -28,6 +28,10 @@
 
 set -uo pipefail
 
+# sccache 本机偶发拒绝启动会连坐所有 cargo 步骤（2026-08-01 两次中断实录）；
+# 脚本进程内禁用 wrapper，冷构建慢一点但升级流程稳定。
+export CARGO_BUILD_RUSTC_WRAPPER=""
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}" || exit 1
 
@@ -54,8 +58,11 @@ soft_step() {
 }
 die_on_fail() { "$@" || { echo "bump-version: 关键步骤失败，中止：$*" >&2; exit 1; }; }
 
-OLD_PATCH="$(sed -n 's/.*"patch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' pipeline/config.json | head -1)"
-[[ -n "${OLD_PATCH}" ]] || { echo "bump-version: 无法从 config.json 读取当前 patch" >&2; exit 1; }
+# OLD_PATCH 读 lib.rs 的 DATA_VERSION 常量而非 config.json：config.json 在步骤 [1]
+# 就被推进，失败后重跑会把 OLD_PATCH 读成新版本（自沿用→6b 拷空、[6] sed 落空）；
+# DATA_VERSION 在步骤 [6] 末尾才推进，重跑时仍指向上一个完整交付的版本。
+OLD_PATCH="$(sed -n 's/^pub const DATA_VERSION: &str = "\([^"]*\)";/\1/p' crates/pobr-data/src/lib.rs)"
+[[ -n "${OLD_PATCH}" ]] || { echo "bump-version: 无法从 crates/pobr-data/src/lib.rs 读取 DATA_VERSION" >&2; exit 1; }
 
 # ---- [1] 目标补丁号 ----
 echo "== [1/9] 目标补丁号"
