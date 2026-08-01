@@ -138,12 +138,14 @@ fn field_number_capop(value: &StatMapValue, captures: &[String]) -> Option<f64> 
 /// - `Condition` / `ActorCondition` (var/neg/actor);
 /// - `SkillType` (skill_type name);
 /// - `DamageType` (damageType name);
-/// - `PerStat` / `PercentStat` (stat/div/limit).
+/// - `PerStat` / `PercentStat` (stat/div/limit);
+/// - `SkillName` (skill name list);
+/// - `SlotName` (equipment slot);
+/// - `MultiplierThreshold` (var/threshold/upper/actor).
 ///
 /// **Not mappable** (no pobr landing point, returns `None`; the line can still produce other
 /// mods, but the caller uses this to treat the whole line as a conservative mismatch — see
-/// engine): `SkillName` / `GlobalEffect` / `ItemCondition` / `MultiplierThreshold` /
-/// `StatThreshold` etc.
+/// engine): `GlobalEffect` / `ItemCondition` / `StatThreshold` etc.
 pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
     let f = &tag.fields;
     match tag.tag_type.as_str() {
@@ -469,9 +471,9 @@ fn normalize_enemy_cond_var(var: &str) -> String {
     }
 }
 
-/// Whether this is a tag type this module "knows but has no pobr landing point for" (as
-/// distinct from a genuinely unknown type; lets engine decide whether to still emit partial
-/// support). Currently conservative: any `compile_tag` returning None counts as a mismatch.
+/// Whether [`compile_tag`] has a landing point for this tag type. Kept in sync
+/// with the match arms there; the engine uses it to tell a tag it cannot map
+/// from one it does not recognise at all.
 pub fn is_mappable_tag_type(tag_type: &str) -> bool {
     matches!(
         tag_type,
@@ -484,6 +486,7 @@ pub fn is_mappable_tag_type(tag_type: &str) -> bool {
             | "PerStat"
             | "PercentStat"
             | "SlotName"
+            | "MultiplierThreshold"
     )
 }
 

@@ -4,9 +4,9 @@
 //!
 //! Comparison unit: a canonical string built from a sorted `Vec<Modifier>`.
 //! Modifiers sort by `(name, mod_type, tags, flags, kw, value)`; f64 uses
-//! shortest round-trip representation; `source` (the original text) is
-//! included, `origin` (SourceId) is excluded (the two sides of a dual run
-//! construct origins differently). `status`/`unparsed` are compared too.
+//! shortest round-trip representation. Neither `source` (the original text) nor
+//! `origin` (SourceId) takes part — the two sides of a dual run construct both
+//! differently. `status`/`unparsed` are compared too.
 
 use super::outcome::{ParseOutcome, ParseStatus};
 use crate::modifier::ModValue;
@@ -183,7 +183,7 @@ mod tests {
     use pobr_data::prelude::ModType;
 
     #[test]
-    fn canonical_ignores_origin_keeps_source() {
+    fn canonical_ignores_origin_and_source() {
         let a = Modifier::number("Life", ModType::Base, 50.0).with_source("orig");
         let origin = pobr_data::prelude::ModifierSource::new(pobr_data::prelude::SourceId::new(
             pobr_data::prelude::SourceKind::PassiveNode,

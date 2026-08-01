@@ -662,43 +662,7 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.es_recoup_rate = es_recoup_rate;
 }
 
-/// Trigger rate fill (Lane B): reads cooldown-gated / CWC trigger mods, writes `trigger_rate_cap` /
-/// `skill_trigger_rate`.
-///
-/// Two trigger models that mods can drive immediately (the energy-driven model needs the build
-/// layer to inject socketed-spell data, deferred):
-/// - **Cooldown-gated** (`TriggerCooldownBase` BASE, seconds): the source skill itself has a
-///   trigger cooldown. `action_cd = max(TriggeredSkillCooldown, TriggerCooldownBase / icdr)`,
-///   `cap = 1/ceil_tick(action_cd)`, `rate = min(cap, effective_action_rate)`.
-/// - **CWC** (`CWCTriggerTime` BASE, seconds): channelling trigger, cadence set by the
-///   channelling interval rounded to the frame, clamped by the triggered skill's cooldown.
-///
-/// `icdr` = `(1 + Σinc_CooldownRecovery/100) × Πmore_CooldownRecovery` (PoB2's `calcLib.mod`),
-/// used as the trigger cooldown's divisor. Source-rate gating prefers the build layer's injected
-/// `TriggerSourceRate` BASE (the trigger source skill's effective cast/attack rate, corresponding
-/// to PoB2's EffectiveSourceRate); when not injected, falls back to the main skill's
-/// `effective_action_rate` (placeholder semantics — the main skill isn't actually the trigger
-/// source). The trigger rate is then multiplied by triggerChance at the end (hit/crit/explicit
-/// trigger-chance conversion, PoB2 CalcTriggers.lua L715-777).
-///
-/// Both fields stay 0 with no `TriggerCooldownBase` / `CWCTriggerTime` mods (an ordinary build
-/// with no trigger doesn't enter either branch, panel stays 0). **The build layer's
-/// `calc_orchestrator` now injects `TriggeredSkillCooldown` + `TriggerCooldownBase` for built-in
-/// triggers (`Triggered` / `InbuiltTrigger` main skills), and injects `TriggerSourceRate` when
-/// there's a trigger-source skill in the group; CWC main skills get `CWCTriggerTime` +
-/// `CWCAddsCastTime` injected.**
-/// Source: agent-docs/triggers.md §3 / §4.2; the Lane B integration_spec; PoB2 CalcTriggers.lua
-/// L74-86 findTriggerSkill / L702-707 EffectiveSourceRate / L715-777 triggerChance;
-/// CWCHandler L262-263 (finding 03-06: CWC goes through calcMultiSpellRotationImpact).
-/// Skill DoT fill (added at the function level): reads panel signals from the existing output
-/// (effective rate / hit DPS / the three ailment DoT values), runs
-/// [`super::skill_dot::calc_skill_dot`], and lands the `// === ===` contract's five fields into the table.
-///
-/// The ailment DoT value convention = vendor's `TotalXDPS or XDPS` (`CalcOffence.lua:6226-6231`):
-/// the stacked value (`*_stacked_dps`, written by fill_ailments only when a stacking config is
-/// present) is preferred, otherwise the single-stack expected DPS. With no skill DoT and no
-/// ailment DoT, the output is all zero and the contract fields stay at their neutral Default.
-/// Crossbow reload fill (added at the function level): folds the magazine-cycle average
+/// Crossbow reload fill: folds the magazine-cycle average
 /// (bolt_count shots × attack speed + the reload interval) into the effective rate and DPS.
 ///
 /// Data channel: `CrossbowReloadTimeBase` BASE (seconds, injected by the orchestration layer from
@@ -759,6 +723,14 @@ fn fill_crossbow_reload(env: &mut Env) {
     out.action_rate = round(out.action_rate * factor);
 }
 
+/// Skill DoT fill: reads panel signals from the existing output
+/// (effective rate / hit DPS / the three ailment DoT values), runs
+/// [`super::skill_dot::calc_skill_dot`], and lands the `// === ===` contract's five fields into the table.
+///
+/// The ailment DoT value convention = vendor's `TotalXDPS or XDPS` (`CalcOffence.lua:6226-6231`):
+/// the stacked value (`*_stacked_dps`, written by fill_ailments only when a stacking config is
+/// present) is preferred, otherwise the single-stack expected DPS. With no skill DoT and no
+/// ailment DoT, the output is all zero and the contract fields stay at their neutral Default.
 fn fill_skill_dot_stage(env: &mut Env) {
     let out = &env.player.output;
     let pick = |stacked: f64, single: f64| if stacked > 0.0 { stacked } else { single };
@@ -778,6 +750,34 @@ fn fill_skill_dot_stage(env: &mut Env) {
     super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
 }
 
+/// Trigger rate fill (Lane B): reads cooldown-gated / CWC trigger mods, writes `trigger_rate_cap` /
+/// `skill_trigger_rate`.
+///
+/// Two trigger models that mods can drive immediately (the energy-driven model needs the build
+/// layer to inject socketed-spell data, deferred):
+/// - **Cooldown-gated** (`TriggerCooldownBase` BASE, seconds): the source skill itself has a
+///   trigger cooldown. `action_cd = max(TriggeredSkillCooldown, TriggerCooldownBase / icdr)`,
+///   `cap = 1/ceil_tick(action_cd)`, `rate = min(cap, effective_action_rate)`.
+/// - **CWC** (`CWCTriggerTime` BASE, seconds): channelling trigger, cadence set by the
+///   channelling interval rounded to the frame, clamped by the triggered skill's cooldown.
+///
+/// `icdr` = `(1 + Σinc_CooldownRecovery/100) × Πmore_CooldownRecovery` (PoB2's `calcLib.mod`),
+/// used as the trigger cooldown's divisor. Source-rate gating prefers the build layer's injected
+/// `TriggerSourceRate` BASE (the trigger source skill's effective cast/attack rate, corresponding
+/// to PoB2's EffectiveSourceRate); when not injected, falls back to the main skill's
+/// `effective_action_rate` (placeholder semantics — the main skill isn't actually the trigger
+/// source). The trigger rate is then multiplied by triggerChance at the end (hit/crit/explicit
+/// trigger-chance conversion, PoB2 CalcTriggers.lua L715-777).
+///
+/// Both fields stay 0 with no `TriggerCooldownBase` / `CWCTriggerTime` mods (an ordinary build
+/// with no trigger doesn't enter either branch, panel stays 0). **The build layer's
+/// `calc_orchestrator` now injects `TriggeredSkillCooldown` + `TriggerCooldownBase` for built-in
+/// triggers (`Triggered` / `InbuiltTrigger` main skills), and injects `TriggerSourceRate` when
+/// there's a trigger-source skill in the group; CWC main skills get `CWCTriggerTime` +
+/// `CWCAddsCastTime` injected.**
+/// Source: agent-docs/triggers.md §3 / §4.2; the Lane B integration_spec; PoB2 CalcTriggers.lua
+/// L74-86 findTriggerSkill / L702-707 EffectiveSourceRate / L715-777 triggerChance;
+/// CWCHandler L262-263 (finding 03-06: CWC goes through calcMultiSpellRotationImpact).
 fn fill_trigger(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;

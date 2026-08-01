@@ -470,9 +470,8 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::Cal
 
 /// Convenience constructor: builds a complete `Env` from a player [`Actor`] (player + enemy scaling + cfg).
 ///
-/// Note: this function builds the enemy via [`setup_enemy`], which only
-/// injects `ElementalPenetration BASE` into the player modDB when a boss has
-/// inherent penetration (see [`setup_enemy`]); other player sources (equipment/tree/gems) are not injected here.
+/// Only the enemy side is populated, by [`setup_enemy`]. Nothing is written to
+/// the player modDB here — equipment, tree and gem sources are the caller's job.
 pub fn env_with_enemy(player: Actor, config_level: u32, tier: EnemyTier) -> Env {
     let mut env = Env::new(player);
     setup_enemy(&mut env, config_level, tier);
